@@ -61,12 +61,16 @@ public final class ObjectiveEntry {
         return this.displayText;
     }
 
-    /** 隐藏目标——不在 HUD 上显示，直到完成后才揭示 */
+    /**
+     * 隐藏目标——不在 HUD 上显示，直到完成后才揭示
+     */
     public boolean isHidden() {
         return this.hidden;
     }
 
-    /** 可选目标——不阻塞阶段完成 */
+    /**
+     * 可选目标——不阻塞阶段完成
+     */
     public boolean isOptional() {
         return this.optional;
     }

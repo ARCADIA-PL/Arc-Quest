@@ -15,19 +15,29 @@ import java.util.*;
  */
 public class QuestCapabilityImpl implements IQuestCapability {
 
-    /** 活跃任务：questId → 运行时数据 */
+    /**
+     * 活跃任务：questId → 运行时数据
+     */
     private final Map<String, QuestRuntimeData> activeQuests = new LinkedHashMap<>();
 
-    /** 已完成的任务 ID */
+    /**
+     * 已完成的任务 ID
+     */
     private final Set<String> completedQuests = new LinkedHashSet<>();
 
-    /** 已失败的任务 ID */
+    /**
+     * 已失败的任务 ID
+     */
     private final Set<String> failedQuests = new LinkedHashSet<>();
 
-    /** 全局标记 */
+    /**
+     * 全局标记
+     */
     private final Set<String> flags = new HashSet<>();
 
-    /** 全局变量 */
+    /**
+     * 全局变量
+     */
     private final Map<String, Integer> variables = new HashMap<>();
 
     // ═══════════════════════════════════════════════════════
@@ -98,10 +108,25 @@ public class QuestCapabilityImpl implements IQuestCapability {
     //  Flag 系统
     // ═══════════════════════════════════════════════════════
 
-    @Override public void setFlag(String flag) { flags.add(flag); }
-    @Override public boolean hasFlag(String flag) { return flags.contains(flag); }
-    @Override public void removeFlag(String flag) { flags.remove(flag); }
-    @Override public Set<String> getAllFlags() { return Collections.unmodifiableSet(flags); }
+    @Override
+    public void setFlag(String flag) {
+        flags.add(flag);
+    }
+
+    @Override
+    public boolean hasFlag(String flag) {
+        return flags.contains(flag);
+    }
+
+    @Override
+    public void removeFlag(String flag) {
+        flags.remove(flag);
+    }
+
+    @Override
+    public Set<String> getAllFlags() {
+        return Collections.unmodifiableSet(flags);
+    }
 
     // ═══════════════════════════════════════════════════════
     //  Variable 系统
@@ -221,5 +246,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
     public void copyFrom(IQuestCapability other) {
         // 最简洁的方式：序列化 → 反序列化
         this.deserializeNBT(other.serializeNBT());
+    }
+
+    @Override
+    public void clearAllData() {
+        activeQuests.clear();
+        completedQuests.clear();
+        failedQuests.clear();
+        flags.clear();
+        variables.clear();
     }
 }

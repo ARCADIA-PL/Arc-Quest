@@ -2,6 +2,7 @@ package org.com.arc_quest.quest.tracking;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -32,7 +33,8 @@ public final class QuestEventManager {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private QuestEventManager() {}
+    private QuestEventManager() {
+    }
 
     // ═══════════════════════════════════════════════════════
     //  击杀检测
@@ -99,7 +101,7 @@ public final class QuestEventManager {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  核心：统一匹配 → 推进
+    // 核心：统一匹配与推进
     // ═══════════════════════════════════════════════════════
 
     private static void processMatch(ServerPlayer player,
@@ -160,7 +162,7 @@ public final class QuestEventManager {
 
     public static void broadcastExplore(Set<UUID> players,
                                         ResourceLocation locationId,
-                                        net.minecraft.server.MinecraftServer server) {
+                                        MinecraftServer server) {
         Objects.requireNonNull(players);
         Objects.requireNonNull(locationId);
         for (UUID uuid : players) {

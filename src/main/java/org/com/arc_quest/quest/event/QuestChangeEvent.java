@@ -20,25 +20,6 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class QuestChangeEvent {
 
-    public enum Type {
-        /** 新任务可接取 */
-        QUEST_UNLOCKED,
-        /** 玩家接取了任务 */
-        QUEST_ACCEPTED,
-        /** 任务完成 */
-        QUEST_COMPLETED,
-        /** 任务失败 */
-        QUEST_FAILED,
-        /** 阶段切换 */
-        PHASE_CHANGED,
-        /** 单个目标进度更新 */
-        OBJECTIVE_PROGRESSED,
-        /** 单个目标完成 */
-        OBJECTIVE_COMPLETED,
-        /** 所有数据全量同步（登录/维度切换） */
-        FULL_SYNC
-    }
-
     private final Type type;
     @Nullable
     private final ResourceLocation questId;
@@ -53,7 +34,6 @@ public final class QuestChangeEvent {
     private final int objectiveIndex;
     private final int currentProgress;
     private final int requiredProgress;
-
     private QuestChangeEvent(Builder builder) {
         this.type = builder.type;
         this.questId = builder.questId;
@@ -66,59 +46,14 @@ public final class QuestChangeEvent {
         this.requiredProgress = builder.requiredProgress;
     }
 
-    // ── Getters ──
-
-    public Type getType() {
-        return this.type;
-    }
-
-    @Nullable
-    public ResourceLocation getQuestId() {
-        return this.questId;
-    }
-
-    @Nullable
-    public QuestState getOldState() {
-        return this.oldState;
-    }
-
-    @Nullable
-    public QuestState getNewState() {
-        return this.newState;
-    }
-
-    @Nullable
-    public String getOldPhaseId() {
-        return this.oldPhaseId;
-    }
-
-    @Nullable
-    public String getNewPhaseId() {
-        return this.newPhaseId;
-    }
-
-    public int getObjectiveIndex() {
-        return this.objectiveIndex;
-    }
-
-    public int getCurrentProgress() {
-        return this.currentProgress;
-    }
-
-    public int getRequiredProgress() {
-        return this.requiredProgress;
-    }
-
-    // ════════════════════════════════════════
-    //  静态工厂方法
-    // ════════════════════════════════════════
-
     public static QuestChangeEvent questUnlocked(ResourceLocation questId) {
         return new Builder(Type.QUEST_UNLOCKED)
                 .questId(questId)
                 .states(QuestState.LOCKED, QuestState.AVAILABLE)
                 .build();
     }
+
+    // ── Getters ──
 
     public static QuestChangeEvent questAccepted(ResourceLocation questId) {
         return new Builder(Type.QUEST_ACCEPTED)
@@ -173,11 +108,91 @@ public final class QuestChangeEvent {
         return new Builder(Type.FULL_SYNC).build();
     }
 
+    public Type getType() {
+        return this.type;
+    }
+
+    @Nullable
+    public ResourceLocation getQuestId() {
+        return this.questId;
+    }
+
+    // ════════════════════════════════════════
+    //  静态工厂方法
+    // ════════════════════════════════════════
+
+    @Nullable
+    public QuestState getOldState() {
+        return this.oldState;
+    }
+
+    @Nullable
+    public QuestState getNewState() {
+        return this.newState;
+    }
+
+    @Nullable
+    public String getOldPhaseId() {
+        return this.oldPhaseId;
+    }
+
+    @Nullable
+    public String getNewPhaseId() {
+        return this.newPhaseId;
+    }
+
+    public int getObjectiveIndex() {
+        return this.objectiveIndex;
+    }
+
+    public int getCurrentProgress() {
+        return this.currentProgress;
+    }
+
+    public int getRequiredProgress() {
+        return this.requiredProgress;
+    }
+
     @Override
     public String toString() {
         return "QuestChangeEvent{" + this.type
                 + (this.questId != null ? ", quest=" + this.questId : "")
                 + "}";
+    }
+
+    public enum Type {
+        /**
+         * 新任务可接取
+         */
+        QUEST_UNLOCKED,
+        /**
+         * 玩家接取了任务
+         */
+        QUEST_ACCEPTED,
+        /**
+         * 任务完成
+         */
+        QUEST_COMPLETED,
+        /**
+         * 任务失败
+         */
+        QUEST_FAILED,
+        /**
+         * 阶段切换
+         */
+        PHASE_CHANGED,
+        /**
+         * 单个目标进度更新
+         */
+        OBJECTIVE_PROGRESSED,
+        /**
+         * 单个目标完成
+         */
+        OBJECTIVE_COMPLETED,
+        /**
+         * 所有数据全量同步（登录/维度切换）
+         */
+        FULL_SYNC
     }
 
     // ── 内部 Builder ──

@@ -12,6 +12,30 @@ import java.util.Set;
  */
 public final class VariableCondition implements ICondition {
 
+    private final String variableName;
+    private final Op operator;
+    private final int expectedValue;
+    public VariableCondition(String variableName, Op operator, int expectedValue) {
+        Objects.requireNonNull(variableName);
+        Objects.requireNonNull(operator);
+        this.variableName = variableName;
+        this.operator = operator;
+        this.expectedValue = expectedValue;
+    }
+
+    @Override
+    public boolean test(Set<ResourceLocation> completedQuests,
+                        Set<String> flags,
+                        Map<String, Integer> variables) {
+        int actual = variables.getOrDefault(this.variableName, 0);
+        return this.operator.evaluate(actual, this.expectedValue);
+    }
+
+    @Override
+    public String describe() {
+        return "Var(" + this.variableName + " " + this.operator + " " + this.expectedValue + ")";
+    }
+
     public enum Op {
         EQUAL("=="),
         NOT_EQUAL("!="),
@@ -41,30 +65,5 @@ public final class VariableCondition implements ICondition {
         public String toString() {
             return this.symbol;
         }
-    }
-
-    private final String variableName;
-    private final Op operator;
-    private final int expectedValue;
-
-    public VariableCondition(String variableName, Op operator, int expectedValue) {
-        Objects.requireNonNull(variableName);
-        Objects.requireNonNull(operator);
-        this.variableName = variableName;
-        this.operator = operator;
-        this.expectedValue = expectedValue;
-    }
-
-    @Override
-    public boolean test(Set<ResourceLocation> completedQuests,
-                        Set<String> flags,
-                        Map<String, Integer> variables) {
-        int actual = variables.getOrDefault(this.variableName, 0);
-        return this.operator.evaluate(actual, this.expectedValue);
-    }
-
-    @Override
-    public String describe() {
-        return "Var(" + this.variableName + " " + this.operator + " " + this.expectedValue + ")";
     }
 }

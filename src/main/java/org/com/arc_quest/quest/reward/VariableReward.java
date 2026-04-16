@@ -8,12 +8,9 @@ import org.com.arc_quest.quest.api.IReward;
  */
 public final class VariableReward implements IReward {
 
-    public enum Op {SET, ADD, SUBTRACT, MULTIPLY}
-
     private final String variableName;
     private final Op operation;
     private final int value;
-
     public VariableReward(String variableName, Op operation, int value) {
         this.variableName = variableName;
         this.operation = operation;
@@ -61,4 +58,6 @@ public final class VariableReward implements IReward {
     public String describe() {
         return "Var(" + this.variableName + " " + this.operation + " " + this.value + ")";
     }
+
+    public enum Op {SET, ADD, SUBTRACT, MULTIPLY}
 }

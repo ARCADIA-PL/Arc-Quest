@@ -19,6 +19,7 @@ public final class QuestDefinition {
     private final ResourceLocation iconTexture;
     private final int sortOrder;
     private final boolean repeatable;
+    private final QuestVisualConfig visualConfig;
 
     private final List<ICondition> unlockConditions;
     private final LinkedHashMap<String, PhaseDefinition> phases;
@@ -39,7 +40,8 @@ public final class QuestDefinition {
                            String initialPhaseId,
                            List<IReward> completionRewards,
                            List<String> flagsToSetOnAccept,
-                           List<String> flagsToSetOnComplete) {
+                           List<String> flagsToSetOnComplete,
+                           QuestVisualConfig visualConfig) {
         Objects.requireNonNull(id, "Quest id must not be null");
         Objects.requireNonNull(category);
         Objects.requireNonNull(displayName);
@@ -58,6 +60,7 @@ public final class QuestDefinition {
         this.iconTexture = iconTexture;
         this.sortOrder = sortOrder;
         this.repeatable = repeatable;
+        this.visualConfig = visualConfig != null ? visualConfig : QuestVisualConfig.EMPTY;
         this.unlockConditions = Collections.unmodifiableList(unlockConditions);
         this.phases = new LinkedHashMap<>(phases);          // 防御性拷贝
         this.initialPhaseId = initialPhaseId;
@@ -132,6 +135,52 @@ public final class QuestDefinition {
 
     public List<String> getFlagsToSetOnComplete() {
         return this.flagsToSetOnComplete;
+    }
+
+    /**
+     * 获取视觉配置。
+     */
+    public QuestVisualConfig getVisualConfig() {
+        return this.visualConfig;
+    }
+
+    /**
+     * 向后兼容：获取旧版icon字段。
+     */
+    @Nullable
+    public ResourceLocation getLegacyIcon() {
+        return this.iconTexture;
+    }
+
+    /**
+     * 推荐：通过视觉配置获取指定位置的图标。
+     */
+    @Nullable
+    public ResourceLocation getIconFor(IconPosition position) {
+        return this.visualConfig.getIcon(position)
+                .map(VisualAsset::texture)
+                .orElse(this.iconTexture);  // 回退到旧字段
+    }
+
+    /**
+     * 获取任务的主题色。
+     */
+    public int getThemeColor() {
+        return this.visualConfig.getThemeColor();
+    }
+
+    /**
+     * 检查是否有指定类型的立绘。
+     */
+    public boolean hasSplash(SplashType type) {
+        return this.visualConfig.getSplash(type).isPresent();
+    }
+
+    /**
+     * 获取指定类型的立绘配置。
+     */
+    public java.util.Optional<VisualAsset> getSplashConfig(SplashType type) {
+        return this.visualConfig.getSplash(type);
     }
 
     /**

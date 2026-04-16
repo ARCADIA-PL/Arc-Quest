@@ -19,10 +19,11 @@ public class QuestCapabilityProvider implements ICapabilitySerializable<Compound
 
     /**
      * 全局 Capability 令牌。
-     * 在 {@link CapabilityEventHandler#onRegisterCapabilities} 中注册类型后即可使用。
+     * 在 {@link CapabilityEventHandler.ModBusEvents#onRegisterCapabilities} 中注册类型后即可使用。
      */
     public static final Capability<IQuestCapability> QUEST_CAP =
-            CapabilityManager.get(new CapabilityToken<>() {});
+            CapabilityManager.get(new CapabilityToken<>() {
+            });
 
     private final QuestCapabilityImpl backend = new QuestCapabilityImpl();
     private final LazyOptional<IQuestCapability> optional = LazyOptional.of(() -> backend);

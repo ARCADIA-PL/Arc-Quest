@@ -4,7 +4,10 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**

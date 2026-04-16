@@ -11,8 +11,10 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
 /**
@@ -26,7 +28,8 @@ public final class CapabilityEventHandler {
 
     private static final ResourceLocation CAP_ID = ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "quest_data");
 
-    private CapabilityEventHandler() {}
+    private CapabilityEventHandler() {
+    }
 
     // ═══════════════════════════════════════════════════════
     //  MOD 总线 — 注册 Capability 类型
@@ -84,12 +87,16 @@ public final class CapabilityEventHandler {
         /**
          * 玩家登录时：
          * 1. 重建 ObjectiveTracker 索引
-         * 2. 全量同步到客户端
+         * 2. 验证并修复任务数据（处理代码修改后的不兼容）
+         * 3. 全量同步到客户端
          */
         @SubscribeEvent
         public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
             if (event.getEntity() instanceof ServerPlayer serverPlayer) {
                 serverPlayer.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
+                    // 验证并修复任务数据
+                    validateAndFixQuestData(serverPlayer, cap);
+                    
                     // 重建追踪索引
                     QuestProgressHandler.rebuildTrackingIndex(serverPlayer, cap);
 
@@ -99,6 +106,54 @@ public final class CapabilityEventHandler {
                     LOGGER.debug("[ArcQuest] Login sync complete for: {}",
                             serverPlayer.getGameProfile().getName());
                 });
+            }
+        }
+
+        /**
+         * 验证并修复玩家的任务数据，确保与当前注册的定义一致。
+         * <p>
+         * 处理场景：
+         * - 任务定义被修改（阶段增删、目标变更）
+         * - 旧存档中的任务数据与新定义不匹配
+         */
+        private static void validateAndFixQuestData(ServerPlayer player, IQuestCapability cap) {
+            var activeQuests = cap.getAllActiveQuests();
+            if (activeQuests.isEmpty()) return;
+
+            boolean needsSync = false;
+
+            for (var entry : activeQuests.entrySet()) {
+                String questId = entry.getKey();
+                QuestRuntimeData data = entry.getValue();
+                ResourceLocation rl = ResourceLocation.tryParse(questId);
+                
+                if (rl == null) continue;
+                
+                QuestDefinition def = QuestRegistry.get(rl);
+                if (def == null) {
+                    // 任务定义已被移除，标记为失败
+                    LOGGER.warn("[ArcQuest] Quest '{}' no longer exists in registry. Marking as failed for player: {}",
+                            questId, player.getName().getString());
+                    data.setState(org.com.arc_quest.quest.api.QuestState.FAILED);
+                    needsSync = true;
+                    continue;
+                }
+
+                // 检查当前阶段是否存在
+                String currentPhase = data.getCurrentPhaseId();
+                if (!def.getPhaseIds().contains(currentPhase)) {
+                    // 阶段不存在，重置到第一个阶段
+                    String firstPhase = def.getPhaseIds().iterator().next();
+                    LOGGER.warn("[ArcQuest] Phase '{}' not found in quest '{}'. Resetting to phase '{}' for player: {}",
+                            currentPhase, questId, firstPhase, player.getName().getString());
+                    data.setCurrentPhaseId(firstPhase);
+                    data.resetObjectives(def.getPhase(firstPhase).getObjectives().size());
+                    needsSync = true;
+                }
+            }
+
+            if (needsSync) {
+                LOGGER.info("[ArcQuest] Fixed quest data inconsistencies for player: {}", player.getName().getString());
             }
         }
 

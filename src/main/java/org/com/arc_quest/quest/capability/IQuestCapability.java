@@ -22,38 +22,67 @@ public interface IQuestCapability {
     //  任务生命周期
     // ═══════════════════════════════════════════════════════
 
-    /** 添加一个活跃任务。 */
+    /**
+     * 添加一个活跃任务。
+     */
     void addActiveQuest(QuestRuntimeData data);
 
-    /** 移除活跃任务（放弃时调用）。 */
+    /**
+     * 移除活跃任务（放弃时调用）。
+     */
     void removeActiveQuest(String questId);
 
-    /** 将任务标记为已完成并从活跃列表移除。 */
+    /**
+     * 将任务标记为已完成并从活跃列表移除。
+     */
     void markCompleted(String questId);
 
-    /** 将任务标记为失败并从活跃列表移除。 */
+    /**
+     * 将任务标记为失败并从活跃列表移除。
+     */
     void markFailed(String questId);
 
-    /** 获取活跃任务运行时数据（可变引用，服务端直接修改）。 */
+    /**
+     * 获取活跃任务运行时数据（可变引用，服务端直接修改）。
+     */
     @Nullable
     QuestRuntimeData getActiveQuest(String questId);
 
-    /** 返回所有活跃任务的不可变视图。 */
+    /**
+     * 返回所有活跃任务的不可变视图。
+     */
     Map<String, QuestRuntimeData> getAllActiveQuests();
 
-    /** 已完成的任务 ID 集合。 */
+    /**
+     * 已完成的任务 ID 集合。
+     */
     Set<String> getCompletedQuests();
 
-    /** 已失败的任务 ID 集合。 */
+    /**
+     * 获取已完成任务的 ID 列表（用于指令显示）。
+     */
+    default java.util.List<String> getCompletedQuestIds() {
+        return new java.util.ArrayList<>(getCompletedQuests());
+    }
+
+    /**
+     * 已失败的任务 ID 集合。
+     */
     Set<String> getFailedQuests();
 
-    /** 任务是否正在进行中。 */
+    /**
+     * 任务是否正在进行中。
+     */
     boolean isQuestActive(String questId);
 
-    /** 任务是否已完成。 */
+    /**
+     * 任务是否已完成。
+     */
     boolean isQuestCompleted(String questId);
 
-    /** 任务是否已失败。 */
+    /**
+     * 任务是否已失败。
+     */
     boolean isQuestFailed(String questId);
 
     // ═══════════════════════════════════════════════════════
@@ -61,8 +90,11 @@ public interface IQuestCapability {
     // ═══════════════════════════════════════════════════════
 
     void setFlag(String flag);
+
     boolean hasFlag(String flag);
+
     void removeFlag(String flag);
+
     Set<String> getAllFlags();
 
     // ═══════════════════════════════════════════════════════
@@ -70,8 +102,11 @@ public interface IQuestCapability {
     // ═══════════════════════════════════════════════════════
 
     int getVariable(String key);
+
     void setVariable(String key, int value);
+
     void incrementVariable(String key, int amount);
+
     Map<String, Integer> getAllVariables();
 
     // ═══════════════════════════════════════════════════════
@@ -79,8 +114,22 @@ public interface IQuestCapability {
     // ═══════════════════════════════════════════════════════
 
     CompoundTag serializeNBT();
+
     void deserializeNBT(CompoundTag tag);
 
-    /** 从另一个 Capability 复制全部数据（死亡克隆时使用）。 */
+    /**
+     * 从另一个 Capability 复制全部数据（死亡克隆时使用）。
+     */
     void copyFrom(IQuestCapability other);
+
+    /**
+     * 清除所有任务数据（用于 resetall 指令）。
+     */
+    default void clearAllData() {
+        // 降级方案：逐个移除
+        java.util.List<String> activeIds = new java.util.ArrayList<>(getAllActiveQuests().keySet());
+        for (String questId : activeIds) {
+            removeActiveQuest(questId);
+        }
+    }
 }

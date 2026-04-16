@@ -35,7 +35,8 @@ public final class QuestProgressHandler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private QuestProgressHandler() {}
+    private QuestProgressHandler() {
+    }
 
     // ═══════════════════════════════════════════════════════
     //  接受任务
@@ -94,11 +95,17 @@ public final class QuestProgressHandler {
         );
         cap.addActiveQuest(data);
 
+        // 设置任务接受时的 flag
+        for (String flag : def.getFlagsToSetOnAccept()) {
+            cap.setFlag(flag);
+        }
+
         // 注册到追踪器
         registerPhaseObjectives(player, def, firstPhase);
 
         // 同步 & 事件
         ArcQuestNetwork.syncQuestState(player, data);
+        ArcQuestNetwork.syncFlagsAndVars(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
 
         LOGGER.info("[ArcQuest] Player {} accepted quest: {}",
@@ -204,24 +211,38 @@ public final class QuestProgressHandler {
         // 从追踪器中移除旧阶段目标
         unregisterPhaseObjectives(player, def, phase);
 
-        // 确定下一步：看 transitions
+        // 确定下一步：看 transitions 或 choices
         List<PhaseTransition> transitions = phase.getTransitions();
+        boolean hasChoices = phase.hasChoices();
+
+        if (hasChoices) {
+            // 有 choices → 等待玩家选择（不自动推进）
+            LOGGER.debug("[ArcQuest] Phase {} has choices, awaiting player selection.",
+                    phase.getPhaseId());
+            
+            // 触发事件通知 GUI 显示选择界面
+            QuestEventBus.fire(QuestChangeEvent.phaseChanged(
+                    ResourceLocation.parse(data.getQuestId()),
+                    data.getCurrentPhaseId(),
+                    data.getCurrentPhaseId()));
+            
+            // 同步状态并显示Toast
+            ArcQuestNetwork.syncQuestState(player, data);
+            return;
+        }
 
         if (transitions.isEmpty()) {
-            // 没有后续阶段 → 任务完成
             completeQuest(player, cap, data, def);
             return;
         }
 
         if (transitions.size() == 1 && !transitions.get(0).requiresChoice()) {
-            // 唯一的自动过渡
             PhaseTransition auto = transitions.get(0);
 
-            // 检查过渡条件
             Set<ResourceLocation> completedQuests = cap.getCompletedQuests().stream()
                     .map(ResourceLocation::parse)
                     .collect(Collectors.toSet());
-            boolean conditionsMet = auto.getCondition() == null || 
+            boolean conditionsMet = auto.getCondition() == null ||
                     auto.getCondition().test(completedQuests, cap.getAllFlags(), cap.getAllVariables());
 
             if (conditionsMet) {
@@ -233,22 +254,20 @@ public final class QuestProgressHandler {
             return;
         }
 
-        // 多个过渡 → 等待玩家选择
+        // 多个过渡，等待玩家选择
         LOGGER.debug("[ArcQuest] Phase {} has {} transitions, awaiting player choice.",
                 phase.getPhaseId(), transitions.size());
 
-        // 触发事件通知 GUI 显示选择界面
         QuestEventBus.fire(QuestChangeEvent.phaseChanged(
-                ResourceLocation.parse(data.getQuestId()), 
-                data.getCurrentPhaseId(), 
+                ResourceLocation.parse(data.getQuestId()),
+                data.getCurrentPhaseId(),
                 data.getCurrentPhaseId()));
 
-        // 同步状态让客户端知道需要选择
         ArcQuestNetwork.syncQuestState(player, data);
     }
 
     // ═══════════════════════════════════════════════════════
-    //  阶段推进
+    // 阶段推进
     // ═══════════════════════════════════════════════════════
 
     /**
@@ -284,11 +303,11 @@ public final class QuestProgressHandler {
     /**
      * 玩家选择分支过渡（由网络包 C2S 触发）。
      *
-     * @param transitionIndex 玩家选择的过渡索引
+     * @param choiceIndex 玩家选择的 choice 索引
      */
     public static void handlePlayerChoice(ServerPlayer player,
                                           String questId,
-                                          int transitionIndex) {
+                                          int choiceIndex) {
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
         if (cap == null) return;
@@ -302,27 +321,41 @@ public final class QuestProgressHandler {
         PhaseDefinition currentPhase = findPhase(def, data.getCurrentPhaseId());
         if (currentPhase == null) return;
 
-        List<PhaseTransition> transitions = currentPhase.getTransitions();
-        if (transitionIndex < 0 || transitionIndex >= transitions.size()) {
-            LOGGER.warn("[ArcQuest] Invalid transition index {} for quest {}", transitionIndex, questId);
+        // 从 choices 列表中获取（而不是 transitions）
+        List<ChoiceOption> choices = currentPhase.getChoices();
+        if (choiceIndex < 0 || choiceIndex >= choices.size()) {
+            LOGGER.warn("[ArcQuest] Invalid choice index {} for quest {}", choiceIndex, questId);
             return;
         }
 
-        PhaseTransition chosen = transitions.get(transitionIndex);
+        ChoiceOption chosen = choices.get(choiceIndex);
 
-        // 验证条件
+        // 验证可见性条件
         Set<ResourceLocation> completedQuests = cap.getCompletedQuests().stream()
                 .map(ResourceLocation::parse)
                 .collect(Collectors.toSet());
-        ICondition condition = chosen.getCondition();
-        boolean conditionsMet = condition == null || 
-                condition.test(completedQuests, cap.getAllFlags(), cap.getAllVariables());
+        ICondition visibleCondition = chosen.getVisibleCondition();
+        boolean conditionsMet = visibleCondition == null ||
+                visibleCondition.test(completedQuests, cap.getAllFlags(), cap.getAllVariables());
         if (!conditionsMet) {
-            LOGGER.debug("[ArcQuest] Transition conditions not met for choice {}", transitionIndex);
+            LOGGER.debug("[ArcQuest] Choice conditions not met for index {}", choiceIndex);
             return;
         }
 
-        advanceToPhase(player, cap, data, def, chosen.getTargetPhaseId());
+        // 更新运行时数据
+        String flagToSet = chosen.getFlagToSet();
+        if (flagToSet != null && !flagToSet.isEmpty()) {
+            cap.setFlag(flagToSet);
+            LOGGER.debug("[ArcQuest] Set flag '{}' from choice", flagToSet);
+        }
+
+        // 推进到目标 phase
+        String targetPhaseId = chosen.getTargetPhaseId();
+        if (targetPhaseId != null && !targetPhaseId.isEmpty()) {
+            advanceToPhase(player, cap, data, def, targetPhaseId);
+        } else {
+            LOGGER.warn("[ArcQuest] Choice has no target phase: {}", choiceIndex);
+        }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -342,6 +375,10 @@ public final class QuestProgressHandler {
             } catch (Exception e) {
                 LOGGER.error("[ArcQuest] Error granting completion reward: {}", e.getMessage(), e);
             }
+        }
+
+        for (String flag : def.getFlagsToSetOnComplete()) {
+            cap.setFlag(flag);
         }
 
         // 更新状态
@@ -392,6 +429,12 @@ public final class QuestProgressHandler {
 
         if (!cap.isQuestActive(questId)) return;
 
+        // 先标记为 FAILED，再移除（这样会出现在 FAILED 标签页）
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data != null) {
+            data.setState(QuestState.FAILED);
+        }
+        cap.markFailed(questId);
         cap.removeActiveQuest(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
 
@@ -400,6 +443,63 @@ public final class QuestProgressHandler {
 
         ArcQuestNetwork.syncFullData(player, cap); // 全量同步最安全
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
+    }
+
+    /**
+     * 强制完成任务（用于指令）。
+     */
+    public static void forceComplete(ServerPlayer player, String questId) {
+        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                .orElse(null);
+        if (cap == null) return;
+
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data == null) return;
+
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null) return;
+
+        // 发放最终奖励
+        for (IReward reward : def.getCompletionRewards()) {
+            try {
+                reward.grant(player);
+            } catch (Exception e) {
+                LOGGER.error("[ArcQuest] Error granting completion reward: {}", e.getMessage(), e);
+            }
+        }
+
+        for (String flag : def.getFlagsToSetOnComplete()) {
+            cap.setFlag(flag);
+        }
+
+        // 更新状态
+        data.setState(QuestState.COMPLETED);
+        cap.markCompleted(questId);
+
+        // 清理追踪
+        ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
+
+        LOGGER.info("[ArcQuest] Player {} force-completed quest: {}",
+                player.getGameProfile().getName(), questId);
+
+        // 同步 & 事件
+        ArcQuestNetwork.syncQuestState(player, data);
+        ArcQuestNetwork.syncFlagsAndVars(player, cap);
+        QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
+    }
+
+    /**
+     * 同步指定任务到客户端（用于指令）。
+     */
+    public static void syncToClient(ServerPlayer player, String questId) {
+        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                .orElse(null);
+        if (cap == null) return;
+
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data != null) {
+            ArcQuestNetwork.syncQuestState(player, data);
+        }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -433,9 +533,9 @@ public final class QuestProgressHandler {
     /**
      * 将某阶段的所有目标注册到追踪器。
      */
-    private static void registerPhaseObjectives(ServerPlayer player,
-                                                QuestDefinition def,
-                                                PhaseDefinition phase) {
+    public static void registerPhaseObjectives(ServerPlayer player,
+                                               QuestDefinition def,
+                                               PhaseDefinition phase) {
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int i = 0; i < objectives.size(); i++) {
             ObjectiveEntry obj = objectives.get(i);

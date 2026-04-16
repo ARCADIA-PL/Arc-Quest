@@ -37,7 +37,9 @@ public final class TrackedObjective {
         this.entry = null;
     }
 
-    /** 便捷构造器：直接从 ObjectiveEntry 创建 */
+    /**
+     * 便捷构造器：直接从 ObjectiveEntry 创建
+     */
     public TrackedObjective(UUID playerId,
                             ResourceLocation questId,
                             String phaseId,

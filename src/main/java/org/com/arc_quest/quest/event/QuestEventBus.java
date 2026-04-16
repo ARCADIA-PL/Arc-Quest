@@ -30,11 +30,15 @@ public final class QuestEventBus {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** 全量监听器 */
+    /**
+     * 全量监听器
+     */
     private static final CopyOnWriteArrayList<IQuestChangeListener> GLOBAL_LISTENERS =
             new CopyOnWriteArrayList<>();
 
-    /** 按类型分桶的监听器 */
+    /**
+     * 按类型分桶的监听器
+     */
     private static final EnumMap<QuestChangeEvent.Type, List<IQuestChangeListener>> TYPED_LISTENERS =
             new EnumMap<>(QuestChangeEvent.Type.class);
 

@@ -3,7 +3,6 @@ package org.com.arc_quest.quest.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
@@ -24,26 +23,35 @@ import java.util.*;
  */
 public final class ClientQuestCache {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final ClientQuestCache INSTANCE = new ClientQuestCache();
-
-    /** 活跃任务（客户端镜像） */
+    private static final Logger LOGGER = LogUtils.getLogger();
+    /**
+     * 活跃任务（客户端镜像）
+     */
     private final Map<String, QuestRuntimeData> activeQuests = new LinkedHashMap<>();
 
-    /** 已完成任务 ID */
+    /**
+     * 已完成任务 ID
+     */
     private final Set<String> completedQuests = new LinkedHashSet<>();
 
-    /** 已失败任务 ID */
+    /**
+     * 已失败任务 ID
+     */
     private final Set<String> failedQuests = new LinkedHashSet<>();
 
-    /** 全局 Flags */
+    /**
+     * 全局 Flags
+     */
     private final Set<String> flags = new HashSet<>();
 
-    /** 全局 Variables */
+    /**
+     * 全局 Variables
+     */
     private final Map<String, Integer> variables = new HashMap<>();
 
-    private ClientQuestCache() {}
+    private ClientQuestCache() {
+    }
 
     // ═══════════════════════════════════════════════════════
     //  网络包调用的更新方法
@@ -99,21 +107,46 @@ public final class ClientQuestCache {
      */
     public void updateQuest(QuestRuntimeData data) {
         String questId = data.getQuestId();
+        QuestState oldState = null;
+        
+        // 记录旧状态用于动画触发
+        if (activeQuests.containsKey(questId)) {
+            oldState = activeQuests.get(questId).getState();
+        } else if (completedQuests.contains(questId)) {
+            oldState = QuestState.COMPLETED;
+        } else if (failedQuests.contains(questId)) {
+            oldState = QuestState.FAILED;
+        }
 
         switch (data.getState()) {
             case ACTIVE -> {
                 activeQuests.put(questId, data);
                 completedQuests.remove(questId);
                 failedQuests.remove(questId);
+                
+                // 触发动画钩子：接取任务
+                if (oldState == null) {
+                    onQuestAccepted(questId);
+                }
             }
             case COMPLETED -> {
                 activeQuests.remove(questId);
                 completedQuests.add(questId);
                 failedQuests.remove(questId);
+                
+                // 触发动画钩子：完成任务
+                if (oldState != QuestState.COMPLETED) {
+                    onQuestCompleted(questId);
+                }
             }
             case FAILED -> {
                 activeQuests.remove(questId);
                 failedQuests.add(questId);
+                
+                // 触发动画钩子：任务失败
+                if (oldState != QuestState.FAILED) {
+                    onQuestFailed(questId);
+                }
             }
             default -> activeQuests.put(questId, data);
         }
@@ -130,7 +163,13 @@ public final class ClientQuestCache {
             LOGGER.warn("[ClientCache] Received objective update for unknown quest: {}", questId);
             return;
         }
+        int oldProgress = data.getObjectiveProgress(objIndex);
         data.setObjectiveProgress(objIndex, newProgress);
+        
+        // 触发动画钩子：目标进度更新
+        if (newProgress > oldProgress) {
+            onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);
+        }
 
         LOGGER.debug("[ClientCache] Objective updated: {}#{}={}", questId, objIndex, newProgress);
     }
@@ -152,63 +191,87 @@ public final class ClientQuestCache {
     //  GUI 读取接口（只读）
     // ═══════════════════════════════════════════════════════
 
-    /** 获取活跃任务数据（可能为 null）。 */
+    /**
+     * 获取活跃任务数据（可能为 null）。
+     */
     @Nullable
     public QuestRuntimeData getActiveQuest(String questId) {
         return activeQuests.get(questId);
     }
 
-    /** 获取所有活跃任务（不可变视图）。 */
+    /**
+     * 获取所有活跃任务（不可变视图）。
+     */
     public Map<String, QuestRuntimeData> getAllActiveQuests() {
         return Collections.unmodifiableMap(activeQuests);
     }
 
-    /** 任务是否正在进行。 */
+    /**
+     * 任务是否正在进行。
+     */
     public boolean isQuestActive(String questId) {
         return activeQuests.containsKey(questId);
     }
 
-    /** 任务是否已完成。 */
+    /**
+     * 任务是否已完成。
+     */
     public boolean isQuestCompleted(String questId) {
         return completedQuests.contains(questId);
     }
 
-    /** 任务是否已失败。 */
+    /**
+     * 任务是否已失败。
+     */
     public boolean isQuestFailed(String questId) {
         return failedQuests.contains(questId);
     }
 
-    /** 获取已完成任务列表。 */
+    /**
+     * 获取已完成任务列表。
+     */
     public Set<String> getCompletedQuests() {
         return Collections.unmodifiableSet(completedQuests);
     }
 
-    /** 获取已失败任务列表。 */
+    /**
+     * 获取已失败任务列表。
+     */
     public Set<String> getFailedQuests() {
         return Collections.unmodifiableSet(failedQuests);
     }
 
-    /** 是否有某个全局 Flag。 */
+    /**
+     * 是否有某个全局 Flag。
+     */
     public boolean hasFlag(String flag) {
         return flags.contains(flag);
     }
 
-    /** 获取全局变量值。 */
+    /**
+     * 获取全局变量值。
+     */
     public int getVariable(String key) {
         return variables.getOrDefault(key, 0);
     }
 
-    /** 获取所有 Flags。 */
+    /**
+     * 获取所有 Flags。
+     */
     public Set<String> getAllFlags() {
         return Collections.unmodifiableSet(flags);
     }
 
-    /** 获取所有 Variables。 */
+    /**
+     * 获取所有 Variables。
+     */
     public Map<String, Integer> getAllVariables() {
         return Collections.unmodifiableMap(variables);
     }
 
-    /** 清空所有缓存（断开连接时调用）。 */
+    /**
+     * 清空所有缓存（断开连接时调用）。
+     */
     public void clear() {
         activeQuests.clear();
         completedQuests.clear();
@@ -216,5 +279,56 @@ public final class ClientQuestCache {
         flags.clear();
         variables.clear();
         LOGGER.debug("[ClientCache] Cache cleared.");
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  动画事件钩子（供外部 UI 引擎对接）
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 任务被接受时触发。
+     * <p>
+     * 示例对接你的动画引擎：<br>
+     * {@code SkinSplashRenderer.trigger("quest_accept", questId);}
+     *
+     * @param questId 任务 ID
+     */
+    private void onQuestAccepted(String questId) {
+        // 默认空实现，子类或外部监听器可覆盖
+        LOGGER.info("[AnimationHook] Quest accepted: {}", questId);
+    }
+
+    /**
+     * 任务完成时触发。
+     * <p>
+     * 示例对接你的动画引擎：<br>
+     * {@code SkinSplashRenderer.trigger("quest_complete", questId);}
+     *
+     * @param questId 任务 ID
+     */
+    private void onQuestCompleted(String questId) {
+        LOGGER.info("[AnimationHook] Quest completed: {}", questId);
+    }
+
+    /**
+     * 任务失败时触发。
+     *
+     * @param questId 任务 ID
+     */
+    private void onQuestFailed(String questId) {
+        LOGGER.info("[AnimationHook] Quest failed: {}", questId);
+    }
+
+    /**
+     * 目标进度更新时触发。
+     *
+     * @param questId     任务 ID
+     * @param objIndex    目标索引
+     * @param oldProgress 旧进度
+     * @param newProgress 新进度
+     */
+    private void onObjectiveProgressed(String questId, int objIndex, int oldProgress, int newProgress) {
+        LOGGER.debug("[AnimationHook] Objective progressed: {}#{} {}→{}",
+                questId, objIndex, oldProgress, newProgress);
     }
 }

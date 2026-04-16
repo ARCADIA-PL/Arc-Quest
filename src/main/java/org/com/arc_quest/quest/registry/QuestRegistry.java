@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.quest.api.QuestCategory;
 import org.com.arc_quest.quest.api.QuestDefinition;
+import org.com.arc_quest.quest.condition.QuestCompletedCondition;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -110,18 +111,12 @@ public final class QuestRegistry {
         int warnings = 0;
         for (QuestDefinition quest : REGISTRY.values()) {
             for (var cond : quest.getUnlockConditions()) {
-                if (cond instanceof org.com.arc_quest.quest.condition.QuestCompletedCondition qcc) {
-                    try {
-                        java.lang.reflect.Field f = qcc.getClass().getDeclaredField("requiredQuestId");
-                        f.setAccessible(true);
-                        ResourceLocation ref = (ResourceLocation) f.get(qcc);
-                        if (!REGISTRY.containsKey(ref)) {
-                            LOGGER.warn("[ArcQuest] Quest '{}' requires unknown quest '{}' as prerequisite",
-                                    quest.getId(), ref);
-                            warnings++;
-                        }
-                    } catch (ReflectiveOperationException ignored) {
-                        // 反射失败则跳过验证
+                if (cond instanceof QuestCompletedCondition qcc) {
+                    ResourceLocation ref = qcc.getRequiredQuestId();
+                    if (!REGISTRY.containsKey(ref)) {
+                        LOGGER.warn("[ArcQuest] Quest '{}' requires unknown quest '{}' as prerequisite",
+                                quest.getId(), ref);
+                        warnings++;
                     }
                 }
             }

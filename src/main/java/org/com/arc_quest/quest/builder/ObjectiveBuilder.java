@@ -14,7 +14,7 @@ import java.util.Objects;
 
 /**
  * 流式构建单个 ObjectiveEntry。
- *
+ * <p>
  * 用法示例：
  * <pre>
  *   ObjectiveBuilder.kill(EntityType.ZOMBIE, 3)
@@ -25,12 +25,12 @@ import java.util.Objects;
 public final class ObjectiveBuilder {
 
     private final ObjectiveType type;
+    private final Map<String, String> extraData = new LinkedHashMap<>();
     private ResourceLocation targetId;
     private int requiredCount = 1;
     private Component displayText = Component.literal("???");
     private boolean hidden = false;
     private boolean optional = false;
-    private final Map<String, String> extraData = new LinkedHashMap<>();
 
     private ObjectiveBuilder(ObjectiveType type) {
         this.type = type;

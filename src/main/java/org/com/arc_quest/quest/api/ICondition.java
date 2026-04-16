@@ -1,8 +1,9 @@
 package org.com.arc_quest.quest.api;
 
 import net.minecraft.resources.ResourceLocation;
-import java.util.Set;
+
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 通用条件接口。
@@ -19,6 +20,13 @@ import java.util.Map;
 public interface ICondition {
 
     /**
+     * 永远为 true 的条件（无前置）
+     */
+    static ICondition always() {
+        return (cq, f, v) -> true;
+    }
+
+    /**
      * @param completedQuests 玩家已完成的任务 ID 集合
      * @param flags           玩家已设置的全局 Flag 集合
      * @param variables       玩家全局变量表 (name → value)
@@ -28,14 +36,14 @@ public interface ICondition {
                  Set<String> flags,
                  Map<String, Integer> variables);
 
+    // ── 组合器 ──
+
     /**
      * 人类可读的描述（用于调试日志 / UI 提示）
      */
     default String describe() {
         return getClass().getSimpleName();
     }
-
-    // ── 组合器 ──
 
     default ICondition and(ICondition other) {
         ICondition self = this;
@@ -80,10 +88,5 @@ public interface ICondition {
                 return "NOT(" + self.describe() + ")";
             }
         };
-    }
-
-    /** 永远为 true 的条件（无前置） */
-    static ICondition always() {
-        return (cq, f, v) -> true;
     }
 }

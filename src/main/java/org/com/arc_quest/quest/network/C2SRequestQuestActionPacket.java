@@ -25,16 +25,14 @@ import java.util.function.Supplier;
 public class C2SRequestQuestActionPacket {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    public enum Action {
-        ACCEPT,
-        ABANDON,
-        CHOOSE
-    }
-
     private final Action action;
     private final String questId;
     private final int transitionIndex; // 仅 CHOOSE 时有效
+    private C2SRequestQuestActionPacket(Action action, String questId, int transitionIndex) {
+        this.action = action;
+        this.questId = questId;
+        this.transitionIndex = transitionIndex;
+    }
 
     // ── 工厂方法 ──────────────────────────────────────
 
@@ -50,21 +48,13 @@ public class C2SRequestQuestActionPacket {
         return new C2SRequestQuestActionPacket(Action.CHOOSE, questId, transitionIndex);
     }
 
-    private C2SRequestQuestActionPacket(Action action, String questId, int transitionIndex) {
-        this.action = action;
-        this.questId = questId;
-        this.transitionIndex = transitionIndex;
-    }
-
-    // ── 编码 ──────────────────────────────────────────
-
     public static void encode(C2SRequestQuestActionPacket pkt, FriendlyByteBuf buf) {
         buf.writeEnum(pkt.action);
         buf.writeUtf(pkt.questId, 256);
         buf.writeVarInt(pkt.transitionIndex);
     }
 
-    // ── 解码 ──────────────────────────────────────────
+    // ── 编码 ──────────────────────────────────────────
 
     public static C2SRequestQuestActionPacket decode(FriendlyByteBuf buf) {
         Action action = buf.readEnum(Action.class);
@@ -73,7 +63,7 @@ public class C2SRequestQuestActionPacket {
         return new C2SRequestQuestActionPacket(action, questId, idx);
     }
 
-    // ── 处理（服务端）─────────────────────────────────
+    // ── 解码 ──────────────────────────────────────────
 
     public static void handle(C2SRequestQuestActionPacket pkt,
                               Supplier<NetworkEvent.Context> ctx) {
@@ -100,5 +90,13 @@ public class C2SRequestQuestActionPacket {
             }
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    // ── 处理（服务端）─────────────────────────────────
+
+    public enum Action {
+        ACCEPT,
+        ABANDON,
+        CHOOSE
     }
 }

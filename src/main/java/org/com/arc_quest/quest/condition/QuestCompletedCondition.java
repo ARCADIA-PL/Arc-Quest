@@ -25,4 +25,12 @@ public final class QuestCompletedCondition implements ICondition {
     public String describe() {
         return "QuestCompleted(" + this.requiredQuestId + ")";
     }
+
+    /**
+     * 获取所需完成任务的 ID。
+     * 用于注册表验证等场景。
+     */
+    public ResourceLocation getRequiredQuestId() {
+        return this.requiredQuestId;
+    }
 }

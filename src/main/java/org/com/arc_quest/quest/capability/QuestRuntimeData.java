@@ -26,11 +26,12 @@ import java.util.*;
 public final class QuestRuntimeData {
 
     private final String questId;
+    private final Set<String> localFlags;
+    private final List<String> completedPhases; // 已完成的 phase 历史
     private QuestState state;
     private String currentPhaseId;
     private int[] objectiveProgress;
-    private long acceptedAtTick;
-    private final Set<String> localFlags;
+    private final long acceptedAtTick;
 
     // ── 构造 ──────────────────────────────────────────────
 
@@ -44,31 +45,122 @@ public final class QuestRuntimeData {
         this.objectiveProgress = new int[objectiveCount];
         this.acceptedAtTick = acceptedAtTick;
         this.localFlags = new HashSet<>();
+        this.completedPhases = new ArrayList<>();
     }
 
-    /** 反序列化专用 */
+    /**
+     * 反序列化专用
+     */
     private QuestRuntimeData(String questId,
                              QuestState state,
                              String currentPhaseId,
                              int[] objectiveProgress,
                              long acceptedAtTick,
-                             Set<String> localFlags) {
+                             Set<String> localFlags,
+                             List<String> completedPhases) {
         this.questId = questId;
         this.state = state;
         this.currentPhaseId = currentPhaseId;
         this.objectiveProgress = objectiveProgress;
         this.acceptedAtTick = acceptedAtTick;
         this.localFlags = localFlags;
+        this.completedPhases = completedPhases;
     }
 
     // ── Getters ───────────────────────────────────────────
 
-    public String getQuestId() { return questId; }
-    public QuestState getState() { return state; }
-    public String getCurrentPhaseId() { return currentPhaseId; }
-    public int getObjectiveCount() { return objectiveProgress.length; }
-    public long getAcceptedAtTick() { return acceptedAtTick; }
-    public Set<String> getLocalFlags() { return Collections.unmodifiableSet(localFlags); }
+    public static QuestRuntimeData deserializeNBT(CompoundTag tag) {
+        String questId = tag.getString("QuestId");
+        QuestState state;
+        try {
+            state = QuestState.valueOf(tag.getString("State"));
+        } catch (IllegalArgumentException e) {
+            state = QuestState.ACTIVE;
+        }
+        String phaseId = tag.getString("PhaseId");
+        int[] progress = tag.getIntArray("Progress");
+        long accepted = tag.getLong("AcceptedAt");
+
+        Set<String> flags = new HashSet<>();
+        ListTag flagList = tag.getList("LocalFlags", Tag.TAG_STRING);
+        for (int i = 0; i < flagList.size(); i++) {
+            flags.add(flagList.getString(i));
+        }
+
+        List<String> completedPhases = new ArrayList<>();
+        ListTag phaseList = tag.getList("CompletedPhases", Tag.TAG_STRING);
+        for (int i = 0; i < phaseList.size(); i++) {
+            completedPhases.add(phaseList.getString(i));
+        }
+
+        return new QuestRuntimeData(questId, state, phaseId,
+                Arrays.copyOf(progress, progress.length), accepted, flags, completedPhases);
+    }
+
+    public static QuestRuntimeData readFromNetwork(FriendlyByteBuf buf) {
+        String questId = buf.readUtf(256);
+        QuestState state = buf.readEnum(QuestState.class);
+        String phaseId = buf.readUtf(256);
+        int len = buf.readVarInt();
+        int[] progress = new int[len];
+        for (int i = 0; i < len; i++) {
+            progress[i] = buf.readVarInt();
+        }
+        long accepted = buf.readLong();
+        int flagCount = buf.readVarInt();
+        Set<String> flags = new HashSet<>(flagCount);
+        for (int i = 0; i < flagCount; i++) {
+            flags.add(buf.readUtf(256));
+        }
+        
+        int phaseCount = buf.readVarInt();
+        List<String> completedPhases = new ArrayList<>(phaseCount);
+        for (int i = 0; i < phaseCount; i++) {
+            completedPhases.add(buf.readUtf(256));
+        }
+        
+        return new QuestRuntimeData(questId, state, phaseId, progress, accepted, flags, completedPhases);
+    }
+
+    public String getQuestId() {
+        return questId;
+    }
+
+    public QuestState getState() {
+        return state;
+    }
+
+    public void setState(QuestState state) {
+        this.state = Objects.requireNonNull(state);
+    }
+
+    public String getCurrentPhaseId() {
+        return currentPhaseId;
+    }
+
+    public void setCurrentPhaseId(String phaseId) {
+        // 切换 phase 时，记录旧的 phase 为已完成
+        if (!this.currentPhaseId.equals(phaseId)) {
+            if (!completedPhases.contains(this.currentPhaseId)) {
+                completedPhases.add(this.currentPhaseId);
+            }
+        }
+        this.currentPhaseId = Objects.requireNonNull(phaseId);
+    }
+
+    public int getObjectiveCount() {
+        return objectiveProgress.length;
+    }
+
+    // ── Setters ───────────────────────────────────────────
+
+    public long getAcceptedAtTick() {
+        return acceptedAtTick;
+    }
+
+    public Set<String> getLocalFlags() {
+        return Collections.unmodifiableSet(localFlags);
+    }
 
     public int getObjectiveProgress(int index) {
         if (index < 0 || index >= objectiveProgress.length) return 0;
@@ -77,16 +169,6 @@ public final class QuestRuntimeData {
 
     public int[] getAllProgress() {
         return Arrays.copyOf(objectiveProgress, objectiveProgress.length);
-    }
-
-    // ── Setters ───────────────────────────────────────────
-
-    public void setState(QuestState state) {
-        this.state = Objects.requireNonNull(state);
-    }
-
-    public void setCurrentPhaseId(String phaseId) {
-        this.currentPhaseId = Objects.requireNonNull(phaseId);
     }
 
     /**
@@ -108,16 +190,32 @@ public final class QuestRuntimeData {
         }
     }
 
-    /** 重置目标进度数组（切换阶段时调用）。 */
+    /**
+     * 重置目标进度数组（切换阶段时调用）。
+     */
     public void resetObjectives(int newCount) {
         this.objectiveProgress = new int[newCount];
     }
 
-    public void addLocalFlag(String flag) { localFlags.add(flag); }
-    public boolean hasLocalFlag(String flag) { return localFlags.contains(flag); }
-    public void removeLocalFlag(String flag) { localFlags.remove(flag); }
+    public void addLocalFlag(String flag) {
+        localFlags.add(flag);
+    }
 
     // ── NBT 序列化 ────────────────────────────────────────
+
+    public boolean hasLocalFlag(String flag) {
+        return localFlags.contains(flag);
+    }
+
+    public void removeLocalFlag(String flag) {
+        localFlags.remove(flag);
+    }
+
+    public List<String> getCompletedPhases() {
+        return Collections.unmodifiableList(completedPhases);
+    }
+
+    // ── 网络序列化 ────────────────────────────────────────
 
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
@@ -133,32 +231,14 @@ public final class QuestRuntimeData {
         }
         tag.put("LocalFlags", flagList);
 
+        ListTag phaseList = new ListTag();
+        for (String p : completedPhases) {
+            phaseList.add(StringTag.valueOf(p));
+        }
+        tag.put("CompletedPhases", phaseList);
+
         return tag;
     }
-
-    public static QuestRuntimeData deserializeNBT(CompoundTag tag) {
-        String questId = tag.getString("QuestId");
-        QuestState state;
-        try {
-            state = QuestState.valueOf(tag.getString("State"));
-        } catch (IllegalArgumentException e) {
-            state = QuestState.ACTIVE;
-        }
-        String phaseId = tag.getString("PhaseId");
-        int[] progress = tag.getIntArray("Progress");
-        long accepted = tag.getLong("AcceptedAt");
-
-        Set<String> flags = new HashSet<>();
-        ListTag flagList = tag.getList("LocalFlags", Tag.TAG_STRING);
-        for (int i = 0; i < flagList.size(); i++) {
-            flags.add(flagList.getString(i));
-        }
-
-        return new QuestRuntimeData(questId, state, phaseId,
-                Arrays.copyOf(progress, progress.length), accepted, flags);
-    }
-
-    // ── 网络序列化 ────────────────────────────────────────
 
     public void writeToNetwork(FriendlyByteBuf buf) {
         buf.writeUtf(questId);
@@ -173,24 +253,10 @@ public final class QuestRuntimeData {
         for (String f : localFlags) {
             buf.writeUtf(f);
         }
-    }
-
-    public static QuestRuntimeData readFromNetwork(FriendlyByteBuf buf) {
-        String questId = buf.readUtf(256);
-        QuestState state = buf.readEnum(QuestState.class);
-        String phaseId = buf.readUtf(256);
-        int len = buf.readVarInt();
-        int[] progress = new int[len];
-        for (int i = 0; i < len; i++) {
-            progress[i] = buf.readVarInt();
+        buf.writeVarInt(completedPhases.size());
+        for (String p : completedPhases) {
+            buf.writeUtf(p);
         }
-        long accepted = buf.readLong();
-        int flagCount = buf.readVarInt();
-        Set<String> flags = new HashSet<>(flagCount);
-        for (int i = 0; i < flagCount; i++) {
-            flags.add(buf.readUtf(256));
-        }
-        return new QuestRuntimeData(questId, state, phaseId, progress, accepted, flags);
     }
 
     // ── 深拷贝 ────────────────────────────────────────────
@@ -200,7 +266,8 @@ public final class QuestRuntimeData {
                 questId, state, currentPhaseId,
                 Arrays.copyOf(objectiveProgress, objectiveProgress.length),
                 acceptedAtTick,
-                new HashSet<>(localFlags));
+                new HashSet<>(localFlags),
+                new ArrayList<>(completedPhases));
     }
 
     @Override

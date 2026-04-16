@@ -1,6 +1,7 @@
 package org.com.arc_quest.quest.builder;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.quest.api.*;
 
 import java.util.ArrayList;
@@ -21,15 +22,15 @@ import java.util.Objects;
 public final class PhaseBuilder {
 
     private final String phaseId;
-    private Component displayName;
     private final List<ObjectiveEntry> objectives = new ArrayList<>();
     private final List<PhaseTransition> transitions = new ArrayList<>();
     private final List<ChoiceOption> choices = new ArrayList<>();
     private final List<IReward> phaseRewards = new ArrayList<>();
     private final List<String> flagsOnEnter = new ArrayList<>();
     private final List<String> flagsOnComplete = new ArrayList<>();
-
+    private Component displayName;
     private int transitionPriorityCounter = 0;
+    private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
 
     private PhaseBuilder(String phaseId) {
         Objects.requireNonNull(phaseId);
@@ -128,6 +129,90 @@ public final class PhaseBuilder {
         return this;
     }
 
+    // ════════════════════════════════════════
+    //  视觉配置（高可扩展 API）
+    // ════════════════════════════════════════
+
+    /**
+     * 设置视觉配置（高级 API）。
+     */
+    public PhaseBuilder visualConfig(QuestVisualConfig config) {
+        if (config != null) {
+            this.visualConfigBuilder = QuestVisualConfig.builder()
+                    .themeColor(config.getThemeColor());
+            for (SplashType type : SplashType.values()) {
+                config.getSplash(type).ifPresent(asset ->
+                        this.visualConfigBuilder.splash(type, asset));
+            }
+            for (IconPosition pos : IconPosition.values()) {
+                config.getIcon(pos).ifPresent(asset ->
+                        this.visualConfigBuilder.icon(pos, asset));
+            }
+        }
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加阶段开始立绘。
+     */
+    public PhaseBuilder startSplash(ResourceLocation texture, float scale) {
+        this.visualConfigBuilder.splash(SplashType.PHASE_START, texture, scale);
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加阶段开始立绘（默认缩放 1.0）。
+     */
+    public PhaseBuilder startSplash(ResourceLocation texture) {
+        return startSplash(texture, 1.0f);
+    }
+
+    /**
+     * 便捷方法：添加阶段完成立绘。
+     */
+    public PhaseBuilder completeSplash(ResourceLocation texture, float scale) {
+        this.visualConfigBuilder.splash(SplashType.PHASE_COMPLETE, texture, scale);
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加阶段完成立绘（默认缩放 1.0）。
+     */
+    public PhaseBuilder completeSplash(ResourceLocation texture) {
+        return completeSplash(texture, 1.0f);
+    }
+
+    /**
+     * 便捷方法：添加阶段标签图标。
+     */
+    public PhaseBuilder labelIcon(ResourceLocation texture, float scale) {
+        this.visualConfigBuilder.icon(IconPosition.PHASE_LABEL, texture, scale);
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加阶段标签图标（默认缩放 1.0）。
+     */
+    public PhaseBuilder labelIcon(ResourceLocation texture) {
+        return labelIcon(texture, 1.0f);
+    }
+
+    /**
+     * 便捷方法：设置阶段主题色。
+     */
+    public PhaseBuilder themeColor(int color) {
+        this.visualConfigBuilder.themeColor(color);
+        return this;
+    }
+
+    /**
+     * 便捷方法：从 ChatFormatting 设置阶段主题色。
+     */
+    public PhaseBuilder themeColor(net.minecraft.ChatFormatting formatting) {
+        this.visualConfigBuilder.themeColorFromChatFormatting(formatting);
+        return this;
+    }
+
     // ── 构建 ──
 
     public PhaseDefinition build() {
@@ -146,7 +231,8 @@ public final class PhaseBuilder {
                 new ArrayList<>(this.choices),
                 new ArrayList<>(this.phaseRewards),
                 new ArrayList<>(this.flagsOnEnter),
-                new ArrayList<>(this.flagsOnComplete)
+                new ArrayList<>(this.flagsOnComplete),
+                this.visualConfigBuilder.build()
         );
     }
 }

@@ -1,0 +1,141 @@
+package org.com.arc_quest.client.gui;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
+import org.com.arc_quest.quest.api.QuestDefinition;
+import org.com.arc_quest.quest.registry.QuestRegistry;
+
+public class BranchChoiceToast {
+
+    public static final int POPUP_W = 220;
+    public static final int POPUP_H = 36;
+    private static final int COLOR_ACCENT = 0xFFFFCC44;
+
+    private static final float TIME_ENTER = 600f;
+    private static final float TIME_EXIT  = 400f;
+    private static final float FLY_DIST   = 10f;
+
+    private final String questId;
+    private long startTime;
+    private boolean isDismissing = false;
+    private long dismissStartTime = 0;
+    private long lastRenderTime = 0;
+
+    public BranchChoiceToast(String questId) {
+        this.questId = questId;
+        this.startTime = Util.getMillis();
+        this.lastRenderTime = Util.getMillis();
+    }
+
+    public void dismiss() {
+        if (!isDismissing) {
+            isDismissing = true;
+            dismissStartTime = Util.getMillis();
+        }
+    }
+
+    public boolean isExpired() {
+        if (!isDismissing) return false;
+        return Util.getMillis() - dismissStartTime >= TIME_EXIT;
+    }
+
+    public String getQuestId() {
+        return questId;
+    }
+
+    public boolean render(GuiGraphics g, int baseX, int baseY, float parentAlpha, float partialTick, boolean isFrozen) {
+        long now = Util.getMillis();
+
+        // 【核心】：如果界面被阻塞，冻结时间线，留待玩家关闭界面时继续播放！
+        if (isFrozen) {
+            long dt = now - lastRenderTime;
+            this.startTime += dt;
+            if (isDismissing) this.dismissStartTime += dt;
+            this.lastRenderTime = now;
+
+            // 【新增隐藏逻辑】：在任务书/对话界面开启期间，彻底隐形，让出视觉焦点！
+            return true;
+        }
+        this.lastRenderTime = now;
+
+        long elapsedEnter = now - startTime;
+        float alpha = 1f, textDriftX = 0f, revealProgress = 1f, wipeProgress = 0f;
+        float lineWidth = POPUP_W - 20f;
+
+        if (!isDismissing && elapsedEnter < TIME_ENTER) {
+            float t = elapsedEnter / TIME_ENTER;
+            float ease = QuestAnimUtil.easeOutQuintic(t);
+            alpha = ease; revealProgress = ease;
+            textDriftX = -(1f - ease) * FLY_DIST; lineWidth *= ease;
+        } else if (!isDismissing) {
+            textDriftX = (float)Math.sin(elapsedEnter / 400.0) * 0.5f;
+        } else {
+            long elapsedExit = now - dismissStartTime;
+            if (elapsedExit >= TIME_EXIT) return false;
+            float t = elapsedExit / TIME_EXIT;
+            float ease = QuestAnimUtil.easeInQuartic(t);
+            wipeProgress = ease; alpha = 1f - (float)Math.pow(t, 6);
+            textDriftX = ease * FLY_DIST; lineWidth *= (1f - ease);
+        }
+
+        float finalAlpha = alpha * parentAlpha;
+        if (finalAlpha < 0.01f) return true;
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+
+        int scLeft = baseX - 20;
+        int scRight = baseX + POPUP_W + 20;
+        if (!isDismissing && elapsedEnter < TIME_ENTER) scRight = baseX + (int)(POPUP_W * revealProgress);
+        else if (isDismissing) scRight = baseX + (int)(POPUP_W * (1f - wipeProgress));
+
+        g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
+
+        // 通透磨砂玻璃感
+        int bgA = (int)(finalAlpha * 0x88);
+        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, (bgA << 24) | 0x121212);
+
+        int accentA = (int)(finalAlpha * 255);
+        int themeColor = COLOR_ACCENT & 0xFFFFFF;
+        g.fill(baseX, baseY, baseX + 4, baseY + POPUP_H, (accentA << 24) | themeColor);
+
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
+        String questName = def != null ? def.getDisplayName().getString() : questId;
+        Font font = Minecraft.getInstance().font;
+
+        float contentX = baseX + 12 + textDriftX;
+        float contentY = baseY + 6;
+
+        if (accentA > 5) {
+            g.pose().pushPose();
+            g.pose().translate(contentX, contentY, 0);
+            g.pose().scale(0.7f, 0.7f, 1f);
+            g.drawString(font, "ARES SYSTEM // BRANCH AVAILABLE", 0, 0, QuestAnimUtil.withAlpha(0xAAAAAA, accentA), true);
+            g.pose().popPose();
+
+            int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, accentA);
+            g.pose().pushPose();
+            g.pose().translate(contentX, contentY + 10, 0);
+            g.pose().scale(1.0f, 1.0f, 1f);
+            String prefix = "New Path Unlocked: ";
+            String cutName = font.plainSubstrByWidth(questName, POPUP_W - 30 - font.width(prefix));
+            g.drawString(font, prefix + cutName, 0, 0, titleColor, true);
+            g.pose().popPose();
+
+            float lineY = contentY + 22;
+            if (lineWidth > 2) {
+                int lineColor = QuestAnimUtil.withAlpha(themeColor, accentA);
+                g.fill((int)contentX, (int)lineY, (int)(contentX + lineWidth), (int)lineY + 1, lineColor);
+                if (lineWidth > 10) g.fill((int)(contentX + lineWidth), (int)lineY - 1, (int)(contentX + lineWidth) + 3, (int)lineY + 2, lineColor);
+            }
+        }
+
+        g.disableScissor();
+        RenderSystem.disableBlend();
+        return true;
+    }
+}

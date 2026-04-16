@@ -20,11 +20,11 @@ import java.util.*;
  */
 public final class ObjectiveTracker {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-
-    /** 单例 */
+    /**
+     * 单例
+     */
     public static final ObjectiveTracker INSTANCE = new ObjectiveTracker();
-
+    private static final Logger LOGGER = LogUtils.getLogger();
     /**
      * 核心索引：ObjectiveKey → 该 key 下所有正在追踪的目标句柄
      * <p>

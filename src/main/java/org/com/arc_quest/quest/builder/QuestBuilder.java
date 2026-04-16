@@ -9,7 +9,9 @@ import org.com.arc_quest.quest.condition.QuestCompletedCondition;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 /**
  * 流式构建 QuestDefinition 的顶层 Builder。
@@ -27,6 +29,11 @@ import java.util.*;
 public final class QuestBuilder {
 
     private final ResourceLocation id;
+    private final List<ICondition> unlockConditions = new ArrayList<>();
+    private final LinkedHashMap<String, PhaseDefinition> phases = new LinkedHashMap<>();
+    private final List<IReward> completionRewards = new ArrayList<>();
+    private final List<String> flagsOnAccept = new ArrayList<>();
+    private final List<String> flagsOnComplete = new ArrayList<>();
     private QuestCategory category = QuestCategory.ADVENTURE;
     private Component displayName;
     private Component description = Component.empty();
@@ -34,13 +41,8 @@ public final class QuestBuilder {
     private ResourceLocation iconTexture;
     private int sortOrder = 0;
     private boolean repeatable = false;
-
-    private final List<ICondition> unlockConditions = new ArrayList<>();
-    private final LinkedHashMap<String, PhaseDefinition> phases = new LinkedHashMap<>();
     private String initialPhaseId = null;
-    private final List<IReward> completionRewards = new ArrayList<>();
-    private final List<String> flagsOnAccept = new ArrayList<>();
-    private final List<String> flagsOnComplete = new ArrayList<>();
+    private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
 
     private QuestBuilder(ResourceLocation id) {
         this.id = id;
@@ -119,7 +121,7 @@ public final class QuestBuilder {
     public QuestBuilder requiresQuest(String questPath) {
         this.unlockConditions.add(
                 new QuestCompletedCondition(
-                        new ResourceLocation(Arc_quest.MOD_ID, questPath)));
+                        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, questPath)));
         return this;
     }
 
@@ -196,6 +198,123 @@ public final class QuestBuilder {
     }
 
     // ════════════════════════════════════════
+    //  视觉配置（高可扩展 API）
+    // ════════════════════════════════════════
+
+    /**
+     * 设置视觉配置（高级 API，直接传入完整配置）。
+     */
+    public QuestBuilder visualConfig(QuestVisualConfig config) {
+        if (config != null) {
+            // 重建 builder 以替换配置
+            this.visualConfigBuilder = QuestVisualConfig.builder()
+                    .themeColor(config.getThemeColor());
+            // 复制所有立绘配置
+            for (SplashType type : SplashType.values()) {
+                config.getSplash(type).ifPresent(asset ->
+                        this.visualConfigBuilder.splash(type, asset));
+            }
+            // 复制所有图标配置
+            for (IconPosition pos : IconPosition.values()) {
+                config.getIcon(pos).ifPresent(asset ->
+                        this.visualConfigBuilder.icon(pos, asset));
+            }
+        }
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加任务获得时的立绘。
+     */
+    public QuestBuilder acquisitionSplash(ResourceLocation texture, float scale) {
+        this.visualConfigBuilder.splash(SplashType.QUEST_ACQUIRED, texture, scale);
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加任务获得时的立绘（默认缩放 1.0）。
+     */
+    public QuestBuilder acquisitionSplash(ResourceLocation texture) {
+        return acquisitionSplash(texture, 1.0f);
+    }
+
+    /**
+     * 便捷方法：添加任务详情的立绘。
+     */
+    public QuestBuilder detailSplash(ResourceLocation texture, float scale) {
+        this.visualConfigBuilder.splash(SplashType.QUEST_DETAIL, texture, scale);
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加任务详情的立绘（默认缩放 1.0）。
+     */
+    public QuestBuilder detailSplash(ResourceLocation texture) {
+        return detailSplash(texture, 1.0f);
+    }
+
+    /**
+     * 便捷方法：添加任务完成时的立绘。
+     */
+    public QuestBuilder completionSplash(ResourceLocation texture, float scale) {
+        this.visualConfigBuilder.splash(SplashType.QUEST_COMPLETED, texture, scale);
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加任务完成时的立绘（默认缩放 1.0）。
+     */
+    public QuestBuilder completionSplash(ResourceLocation texture) {
+        return completionSplash(texture, 1.0f);
+    }
+
+    /**
+     * 便捷方法：添加任务列表图标。
+     */
+    public QuestBuilder listIcon(ResourceLocation texture, float scale) {
+        this.visualConfigBuilder.icon(IconPosition.QUEST_LIST, texture, scale);
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加任务列表图标（默认缩放 1.0）。
+     */
+    public QuestBuilder listIcon(ResourceLocation texture) {
+        return listIcon(texture, 1.0f);
+    }
+
+    /**
+     * 便捷方法：添加任务标题图标。
+     */
+    public QuestBuilder titleIcon(ResourceLocation texture, float scale) {
+        this.visualConfigBuilder.icon(IconPosition.QUEST_TITLE, texture, scale);
+        return this;
+    }
+
+    /**
+     * 便捷方法：添加任务标题图标（默认缩放 1.0）。
+     */
+    public QuestBuilder titleIcon(ResourceLocation texture) {
+        return titleIcon(texture, 1.0f);
+    }
+
+    /**
+     * 便捷方法：设置主题色（ARGB 整数）。
+     */
+    public QuestBuilder themeColor(int color) {
+        this.visualConfigBuilder.themeColor(color);
+        return this;
+    }
+
+    /**
+     * 便捷方法：从 ChatFormatting 设置主题色。
+     */
+    public QuestBuilder themeColor(net.minecraft.ChatFormatting formatting) {
+        this.visualConfigBuilder.themeColorFromChatFormatting(formatting);
+        return this;
+    }
+
+    // ════════════════════════════════════════
     //  构建
     // ════════════════════════════════════════
 
@@ -241,7 +360,8 @@ public final class QuestBuilder {
                 this.initialPhaseId,
                 new ArrayList<>(this.completionRewards),
                 new ArrayList<>(this.flagsOnAccept),
-                new ArrayList<>(this.flagsOnComplete)
+                new ArrayList<>(this.flagsOnComplete),
+                this.visualConfigBuilder.build()
         );
     }
 
