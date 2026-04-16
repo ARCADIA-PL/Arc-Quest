@@ -1,0 +1,28 @@
+package org.com.arc_quest.quest.condition;
+
+import net.minecraft.resources.ResourceLocation;
+import org.com.arc_quest.quest.api.ICondition;
+
+import java.util.Map;
+import java.util.Set;
+
+public final class QuestCompletedCondition implements ICondition {
+
+    private final ResourceLocation requiredQuestId;
+
+    public QuestCompletedCondition(ResourceLocation requiredQuestId) {
+        this.requiredQuestId = requiredQuestId;
+    }
+
+    @Override
+    public boolean test(Set<ResourceLocation> completedQuests,
+                        Set<String> flags,
+                        Map<String, Integer> variables) {
+        return completedQuests.contains(this.requiredQuestId);
+    }
+
+    @Override
+    public String describe() {
+        return "QuestCompleted(" + this.requiredQuestId + ")";
+    }
+}

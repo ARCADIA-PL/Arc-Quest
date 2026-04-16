@@ -1,0 +1,258 @@
+package org.com.arc_quest.quest.builder;
+
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.quest.api.*;
+import org.com.arc_quest.quest.condition.FlagSetCondition;
+import org.com.arc_quest.quest.condition.QuestCompletedCondition;
+import org.com.arc_quest.quest.registry.QuestRegistry;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.*;
+
+/**
+ * 流式构建 QuestDefinition 的顶层 Builder。
+ *
+ * <pre>
+ *   QuestBuilder.create("tutorial_main")
+ *       .category(QuestCategory.ARCHON)
+ *       .displayName("黎明之路")
+ *       .phase(PhaseBuilder.create("step1")...)
+ *       .phase(PhaseBuilder.create("step2")...)
+ *       .reward(new ItemReward(...))
+ *       .buildAndRegister();
+ * </pre>
+ */
+public final class QuestBuilder {
+
+    private final ResourceLocation id;
+    private QuestCategory category = QuestCategory.ADVENTURE;
+    private Component displayName;
+    private Component description = Component.empty();
+    @Nullable
+    private ResourceLocation iconTexture;
+    private int sortOrder = 0;
+    private boolean repeatable = false;
+
+    private final List<ICondition> unlockConditions = new ArrayList<>();
+    private final LinkedHashMap<String, PhaseDefinition> phases = new LinkedHashMap<>();
+    private String initialPhaseId = null;
+    private final List<IReward> completionRewards = new ArrayList<>();
+    private final List<String> flagsOnAccept = new ArrayList<>();
+    private final List<String> flagsOnComplete = new ArrayList<>();
+
+    private QuestBuilder(ResourceLocation id) {
+        this.id = id;
+    }
+
+    /**
+     * 创建 Builder，ID 自动加 arc_quest 命名空间
+     */
+    public static QuestBuilder create(String path) {
+        return new QuestBuilder(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, path));
+    }
+
+    /**
+     * 创建 Builder，使用完整 ResourceLocation
+     */
+    public static QuestBuilder create(ResourceLocation id) {
+        return new QuestBuilder(id);
+    }
+
+    // ════════════════════════════════════════
+    //  基本属性
+    // ════════════════════════════════════════
+
+    public QuestBuilder category(QuestCategory category) {
+        this.category = category;
+        return this;
+    }
+
+    public QuestBuilder displayName(String literal) {
+        this.displayName = Component.literal(literal);
+        return this;
+    }
+
+    public QuestBuilder displayName(Component component) {
+        this.displayName = component;
+        return this;
+    }
+
+    public QuestBuilder description(String literal) {
+        this.description = Component.literal(literal);
+        return this;
+    }
+
+    public QuestBuilder description(Component component) {
+        this.description = component;
+        return this;
+    }
+
+    public QuestBuilder icon(ResourceLocation texture) {
+        this.iconTexture = texture;
+        return this;
+    }
+
+    public QuestBuilder sortOrder(int order) {
+        this.sortOrder = order;
+        return this;
+    }
+
+    public QuestBuilder repeatable() {
+        this.repeatable = true;
+        return this;
+    }
+
+    // ════════════════════════════════════════
+    //  解锁条件
+    // ════════════════════════════════════════
+
+    public QuestBuilder unlockCondition(ICondition condition) {
+        this.unlockConditions.add(condition);
+        return this;
+    }
+
+    /**
+     * 快捷：需要指定任务已完成
+     */
+    public QuestBuilder requiresQuest(String questPath) {
+        this.unlockConditions.add(
+                new QuestCompletedCondition(
+                        new ResourceLocation(Arc_quest.MOD_ID, questPath)));
+        return this;
+    }
+
+    public QuestBuilder requiresQuest(ResourceLocation questId) {
+        this.unlockConditions.add(
+                new QuestCompletedCondition(questId));
+        return this;
+    }
+
+    /**
+     * 快捷：需要指定 Flag 已设置
+     */
+    public QuestBuilder requiresFlag(String flag) {
+        this.unlockConditions.add(
+                new FlagSetCondition(flag));
+        return this;
+    }
+
+    // ════════════════════════════════════════
+    //  阶段
+    // ════════════════════════════════════════
+
+    /**
+     * 添加阶段（传入 PhaseBuilder，自动 build）。
+     * 第一个添加的阶段自动成为 initialPhase。
+     */
+    public QuestBuilder phase(PhaseBuilder phaseBuilder) {
+        PhaseDefinition phase = phaseBuilder.build();
+        return this.phase(phase);
+    }
+
+    public QuestBuilder phase(PhaseDefinition phase) {
+        String pid = phase.getPhaseId();
+        if (this.phases.containsKey(pid)) {
+            throw new IllegalArgumentException(
+                    "Duplicate phase id '" + pid + "' in quest '" + this.id + "'");
+        }
+        this.phases.put(pid, phase);
+        if (this.initialPhaseId == null) {
+            this.initialPhaseId = pid;
+        }
+        return this;
+    }
+
+    /**
+     * 显式指定起始阶段（覆盖默认的"第一个添加的"）
+     */
+    public QuestBuilder startAt(String phaseId) {
+        this.initialPhaseId = phaseId;
+        return this;
+    }
+
+    // ════════════════════════════════════════
+    //  完成奖励
+    // ════════════════════════════════════════
+
+    public QuestBuilder reward(IReward reward) {
+        this.completionRewards.add(reward);
+        return this;
+    }
+
+    // ════════════════════════════════════════
+    //  Flags
+    // ════════════════════════════════════════
+
+    public QuestBuilder setFlagOnAccept(String flag) {
+        this.flagsOnAccept.add(flag);
+        return this;
+    }
+
+    public QuestBuilder setFlagOnComplete(String flag) {
+        this.flagsOnComplete.add(flag);
+        return this;
+    }
+
+    // ════════════════════════════════════════
+    //  构建
+    // ════════════════════════════════════════
+
+    public QuestDefinition build() {
+        if (this.displayName == null) {
+            this.displayName = Component.literal(this.id.getPath());
+        }
+        if (this.phases.isEmpty()) {
+            throw new IllegalStateException("Quest '" + this.id + "' has no phases");
+        }
+        if (this.initialPhaseId == null) {
+            this.initialPhaseId = this.phases.keySet().iterator().next();
+        }
+
+        // 验证所有 transition 引用的 phaseId 都存在
+        for (PhaseDefinition phase : this.phases.values()) {
+            for (PhaseTransition tr : phase.getTransitions()) {
+                if (!this.phases.containsKey(tr.getTargetPhaseId())) {
+                    throw new IllegalStateException(
+                            "Quest '" + this.id + "', phase '" + phase.getPhaseId()
+                                    + "' references unknown phase '" + tr.getTargetPhaseId() + "'");
+                }
+            }
+            for (ChoiceOption ch : phase.getChoices()) {
+                if (!this.phases.containsKey(ch.getTargetPhaseId())) {
+                    throw new IllegalStateException(
+                            "Quest '" + this.id + "', phase '" + phase.getPhaseId()
+                                    + "' choice references unknown phase '" + ch.getTargetPhaseId() + "'");
+                }
+            }
+        }
+
+        return new QuestDefinition(
+                this.id,
+                this.category,
+                this.displayName,
+                this.description,
+                this.iconTexture,
+                this.sortOrder,
+                this.repeatable,
+                new ArrayList<>(this.unlockConditions),
+                new LinkedHashMap<>(this.phases),
+                this.initialPhaseId,
+                new ArrayList<>(this.completionRewards),
+                new ArrayList<>(this.flagsOnAccept),
+                new ArrayList<>(this.flagsOnComplete)
+        );
+    }
+
+    /**
+     * 构建并直接注册到全局 QuestRegistry。
+     *
+     * @return 构建好的 QuestDefinition（方便链式引用）
+     */
+    public QuestDefinition buildAndRegister() {
+        QuestDefinition def = this.build();
+        QuestRegistry.register(def);
+        return def;
+    }
+}
