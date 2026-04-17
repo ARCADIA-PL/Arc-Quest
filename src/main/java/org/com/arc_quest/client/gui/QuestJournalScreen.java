@@ -19,9 +19,11 @@ import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class QuestJournalScreen extends Screen {
 
@@ -583,7 +585,14 @@ public class QuestJournalScreen extends Screen {
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
 
         if (entry.state() == QuestState.ACTIVE && runtime != null) {
-            PhaseDefinition phase = def.getAllPhases().stream().filter(p -> p.getPhaseId().equals(runtime.getCurrentPhaseId())).findFirst().orElse(null);
+            // P2优化：使用传统for循环替代Stream
+            PhaseDefinition phase = null;
+            for (PhaseDefinition p : def.getAllPhases()) {
+                if (p.getPhaseId().equals(runtime.getCurrentPhaseId())) {
+                    phase = p;
+                    break;
+                }
+            }
             if (phase != null) {
                 g.pose().pushPose();
                 g.pose().translate(0, localY, 0);
@@ -678,7 +687,21 @@ public class QuestJournalScreen extends Screen {
                     List<ChoiceOption> choices = def.getPhase(runtime.getCurrentPhaseId()).getChoices();
                     for (int i = 0; i < choices.size(); i++) {
                         ChoiceOption choice = choices.get(i);
-                        if (choice.getVisibleCondition() != null && !choice.getVisibleCondition().test(ClientQuestCache.INSTANCE.getCompletedQuests().stream().map(ResourceLocation::tryParse).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet()), ClientQuestCache.INSTANCE.getAllFlags(), ClientQuestCache.INSTANCE.getAllVariables())) continue;
+                        // P2优化：使用传统for循环替代Stream，避免创建中间对象
+                        boolean isVisible = true;
+                        if (choice.getVisibleCondition() != null) {
+                            Set<ResourceLocation> completedRL = new HashSet<>();
+                            for (String id : ClientQuestCache.INSTANCE.getCompletedQuests()) {
+                                ResourceLocation rl = ResourceLocation.tryParse(id);
+                                if (rl != null) completedRL.add(rl);
+                            }
+                            isVisible = choice.getVisibleCondition().test(
+                                    completedRL,
+                                    ClientQuestCache.INSTANCE.getAllFlags(),
+                                    ClientQuestCache.INSTANCE.getAllVariables()
+                            );
+                        }
+                        if (!isVisible) continue;
 
                         int btnW = scrollAreaW - 24, btnH = 22;
                         int absX = x + 12, absY = scrollAreaY + 12 - (int)detailScrollOffset + localY;

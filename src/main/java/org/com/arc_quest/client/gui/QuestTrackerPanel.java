@@ -366,7 +366,13 @@ public class QuestTrackerPanel {
 
     private static PhaseDefinition findPhase(QuestDefinition def, String phaseId) {
         if (def == null || phaseId == null) return null;
-        return def.getAllPhases().stream().filter(p -> p.getPhaseId().equals(phaseId)).findFirst().orElse(null);
+        // P2优化：使用传统for循环替代Stream，避免每帧创建对象
+        for (PhaseDefinition phase : def.getAllPhases()) {
+            if (phase.getPhaseId().equals(phaseId)) {
+                return phase;
+            }
+        }
+        return null;
     }
 
     private void ensureArraySize(int size) {

@@ -39,6 +39,9 @@ public class QuestCapabilityImpl implements IQuestCapability {
      * 全局变量
      */
     private final Map<String, Integer> variables = new HashMap<>();
+    
+    // P2优化：脏标记，用于延迟保存
+    private boolean isDirty = false;
 
     // ═══════════════════════════════════════════════════════
     //  任务生命周期
@@ -48,11 +51,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
     public void addActiveQuest(QuestRuntimeData data) {
         Objects.requireNonNull(data);
         activeQuests.put(data.getQuestId(), data);
+        this.isDirty = true; // 标记为脏
     }
 
     @Override
     public void removeActiveQuest(String questId) {
         activeQuests.remove(questId);
+        this.isDirty = true; // 标记为脏
     }
 
     @Override
@@ -60,12 +65,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
         activeQuests.remove(questId);
         completedQuests.add(questId);
         failedQuests.remove(questId); // 安全起见
+        this.isDirty = true; // 标记为脏
     }
 
     @Override
     public void markFailed(String questId) {
         activeQuests.remove(questId);
         failedQuests.add(questId);
+        this.isDirty = true; // 标记为脏
     }
 
     @Nullable
@@ -111,6 +118,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public void setFlag(String flag) {
         flags.add(flag);
+        this.isDirty = true; // 标记为脏
     }
 
     @Override
@@ -121,6 +129,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public void removeFlag(String flag) {
         flags.remove(flag);
+        this.isDirty = true; // 标记为脏
     }
 
     @Override
@@ -140,11 +149,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public void setVariable(String key, int value) {
         variables.put(key, value);
+        this.isDirty = true; // 标记为脏
     }
 
     @Override
     public void incrementVariable(String key, int amount) {
         variables.merge(key, amount, Integer::sum);
+        this.isDirty = true; // 标记为脏
     }
 
     @Override
@@ -255,5 +266,34 @@ public class QuestCapabilityImpl implements IQuestCapability {
         failedQuests.clear();
         flags.clear();
         variables.clear();
+        this.isDirty = true; // 标记为脏
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    //  P2优化：脏标记管理
+    // ═══════════════════════════════════════════════════════
+    
+    /**
+     * 检查是否有任何数据被修改（需要保存）。
+     */
+    public boolean isDirty() {
+        if (this.isDirty) return true;
+        
+        // 检查所有活跃任务是否有脏数据
+        for (QuestRuntimeData data : activeQuests.values()) {
+            if (data.isDirty()) return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 重置所有脏标记（在保存后调用）。
+     */
+    public void clearDirty() {
+        this.isDirty = false;
+        for (QuestRuntimeData data : activeQuests.values()) {
+            data.clearDirty();
+        }
     }
 }
