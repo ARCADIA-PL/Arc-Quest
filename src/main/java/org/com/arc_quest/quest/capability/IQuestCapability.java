@@ -153,8 +153,7 @@ public interface IQuestCapability {
 
 
     default void clearAllData() {
-
-        java.util.List<String> activeIds = new java.util.ArrayList<>(getAllActiveQuests().keySet());
+        List<String> activeIds = new ArrayList<>(getAllActiveQuests().keySet());
         for (String questId : activeIds) {
             removeActiveQuest(questId);
         }

@@ -47,7 +47,7 @@ public final class EpicMainlineDemo {
                     ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_complete.png"),
                     1f
                 )
-                .themeColor(net.minecraft.ChatFormatting.GOLD)
+                .themeColor(ChatFormatting.GOLD)
                 // 阶段 1：收集木材制作武器
                 .phase(PhaseBuilder.create("gather_wood")
                         .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood"))

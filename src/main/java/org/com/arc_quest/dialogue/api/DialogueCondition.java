@@ -199,7 +199,7 @@ public sealed interface DialogueCondition {
     }
 
     /** 所有条件均满足 (AND)。 */
-    record All(java.util.List<DialogueCondition> conditions) implements DialogueCondition {
+    record All(List<DialogueCondition> conditions) implements DialogueCondition {
         @Override
         public boolean test(ServerPlayer player) {
             return conditions.stream().allMatch(c -> c.test(player));
@@ -207,7 +207,7 @@ public sealed interface DialogueCondition {
     }
 
     /** 任一条件满足 (OR)。 */
-    record Any(java.util.List<DialogueCondition> conditions) implements DialogueCondition {
+    record Any(List<DialogueCondition> conditions) implements DialogueCondition {
         @Override
         public boolean test(ServerPlayer player) {
             return conditions.stream().anyMatch(c -> c.test(player));

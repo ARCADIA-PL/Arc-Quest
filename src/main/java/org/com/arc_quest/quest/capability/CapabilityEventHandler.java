@@ -12,6 +12,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.QuestDefinition;
+import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.registry.QuestRegistry;
@@ -134,7 +135,7 @@ public final class CapabilityEventHandler {
                     // 任务定义已被移除，标记为失败
                     LOGGER.warn("[ArcQuest] Quest '{}' no longer exists in registry. Marking as failed for player: {}",
                             questId, player.getName().getString());
-                    data.setState(org.com.arc_quest.quest.api.QuestState.FAILED);
+                    data.setState(QuestState.FAILED);
                     needsSync = true;
                     continue;
                 }

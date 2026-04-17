@@ -21,7 +21,9 @@ import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.QuestEventManager;
 import org.slf4j.Logger;
 
+import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 /**
  * 对话选择触发的服务端动作。
@@ -82,7 +84,7 @@ public sealed interface DialogueAction {
 
             String nextPhaseId = def.evaluateNextPhase(currentPhase,
                     cap.getCompletedQuests().stream().map(ResourceLocation::parse)
-                            .collect(java.util.stream.Collectors.toSet()),
+                            .collect(Collectors.toSet()),
                     cap.getAllFlags(), cap.getAllVariables());
 
             if (nextPhaseId != null) {

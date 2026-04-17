@@ -1,8 +1,13 @@
 package org.com.arc_quest.quest.api;
 
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.ResourceLocation;
+
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 完整的视觉配置集合（高可扩展容器）。
@@ -78,19 +83,19 @@ public class QuestVisualConfig {
     }
 
     /** 获取所有启用的立绘类型。 */
-    public java.util.Set<SplashType> getEnabledSplashTypes() {
+    public Set<SplashType> getEnabledSplashTypes() {
         return splashAssets.entrySet().stream()
                 .filter(e -> e.getValue().enabled())
                 .map(Map.Entry::getKey)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
     }
 
     /** 获取所有启用的图标位置。 */
-    public java.util.Set<IconPosition> getEnabledIconPositions() {
+    public Set<IconPosition> getEnabledIconPositions() {
         return iconAssets.entrySet().stream()
                 .filter(e -> e.getValue().enabled())
                 .map(Map.Entry::getKey)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
     }
 
     // ═══════════════════════════════════════════
@@ -111,12 +116,12 @@ public class QuestVisualConfig {
         }
 
         /** 便捷方法：快速添加立绘。 */
-        public Builder splash(SplashType type, net.minecraft.resources.ResourceLocation texture, float scale) {
+        public Builder splash(SplashType type, ResourceLocation texture, float scale) {
             return splash(type, VisualAsset.of(texture, scale));
         }
 
         /** 便捷方法：快速添加立绘（默认缩放1.0）。 */
-        public Builder splash(SplashType type, net.minecraft.resources.ResourceLocation texture) {
+        public Builder splash(SplashType type, ResourceLocation texture) {
             return splash(type, VisualAsset.of(texture));
         }
 
@@ -129,12 +134,12 @@ public class QuestVisualConfig {
         }
 
         /** 便捷方法：快速添加图标。 */
-        public Builder icon(IconPosition position, net.minecraft.resources.ResourceLocation texture, float scale) {
+        public Builder icon(IconPosition position, ResourceLocation texture, float scale) {
             return icon(position, VisualAsset.of(texture, scale));
         }
 
         /** 便捷方法：快速添加图标（默认缩放1.0）。 */
-        public Builder icon(IconPosition position, net.minecraft.resources.ResourceLocation texture) {
+        public Builder icon(IconPosition position, ResourceLocation texture) {
             return icon(position, VisualAsset.of(texture));
         }
 
@@ -145,7 +150,7 @@ public class QuestVisualConfig {
         }
 
         /** 从 ChatFormatting 设置主题色。 */
-        public Builder themeColorFromChatFormatting(net.minecraft.ChatFormatting formatting) {
+        public Builder themeColorFromChatFormatting(ChatFormatting formatting) {
             Integer color = formatting.getColor();
             if (color != null) {
                 this.themeColor = 0xFF000000 | color;

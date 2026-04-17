@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * 不可变阶段定义，任务由有序 Phase 构成。
@@ -105,12 +106,12 @@ public final class PhaseDefinition {
     }
 
 
-    public java.util.Optional<VisualAsset> getSplashConfig(SplashType type) {
+    public Optional<VisualAsset> getSplashConfig(SplashType type) {
         return this.visualConfig.getSplash(type);
     }
 
 
-    public java.util.Optional<VisualAsset> getIconConfig(IconPosition position) {
+    public Optional<VisualAsset> getIconConfig(IconPosition position) {
         return this.visualConfig.getIcon(position);
     }
 

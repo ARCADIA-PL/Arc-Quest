@@ -1,5 +1,6 @@
 package org.com.arc_quest.quest.builder;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.Arc_quest;
@@ -309,7 +310,7 @@ public final class QuestBuilder {
     /**
      * 便捷方法：从 ChatFormatting 设置主题色。
      */
-    public QuestBuilder themeColor(net.minecraft.ChatFormatting formatting) {
+    public QuestBuilder themeColor(ChatFormatting formatting) {
         this.visualConfigBuilder.themeColorFromChatFormatting(formatting);
         return this;
     }

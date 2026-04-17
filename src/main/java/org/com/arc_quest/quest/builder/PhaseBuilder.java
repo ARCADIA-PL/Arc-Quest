@@ -1,5 +1,6 @@
 package org.com.arc_quest.quest.builder;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.quest.api.*;
@@ -208,7 +209,7 @@ public final class PhaseBuilder {
     /**
      * 便捷方法：从 ChatFormatting 设置阶段主题色。
      */
-    public PhaseBuilder themeColor(net.minecraft.ChatFormatting formatting) {
+    public PhaseBuilder themeColor(ChatFormatting formatting) {
         this.visualConfigBuilder.themeColorFromChatFormatting(formatting);
         return this;
     }

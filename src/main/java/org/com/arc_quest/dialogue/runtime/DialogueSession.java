@@ -3,6 +3,8 @@ package org.com.arc_quest.dialogue.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.dialogue.api.*;
+import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -107,7 +109,7 @@ public class DialogueSession {
         DialogueChoice choice = visibleChoices.get(choiceIndex);
         
         // [新增] 检查选项是否可重复及冷却（使用持久化数据）
-        var cap = player.getCapability(org.com.arc_quest.quest.capability.QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        var cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
         if (cap != null && !checkChoiceCooldown(cap, currentNode.nodeId(), choiceIndex, choice)) {
             return currentNode;  // 冷却中，不执行
         }
@@ -150,7 +152,7 @@ public class DialogueSession {
         if (currentNode.hasChoices()) return currentNode;
 
         // [新增] 检查节点是否可重复及冷却（使用持久化数据）
-        var cap = player.getCapability(org.com.arc_quest.quest.capability.QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        var cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
         if (cap != null && !checkNodeCooldown(cap, currentNode)) {
             return null;  // 冷却中，无法访问
         }
@@ -249,7 +251,7 @@ public class DialogueSession {
     /**
      * 检查节点是否可访问（考虑可重复性和冷却）。
      */
-    private boolean checkNodeCooldown(org.com.arc_quest.quest.capability.IQuestCapability cap, DialogueNode node) {
+    private boolean checkNodeCooldown(IQuestCapability cap, DialogueNode node) {
         if (!node.repeatable()) {
             // 一次性节点：检查是否已经访问过
             if (cap.hasVisitedNode(node.nodeId())) {
@@ -278,7 +280,7 @@ public class DialogueSession {
     /**
      * 检查选项是否可选择（考虑可重复性和冷却）。
      */
-    private boolean checkChoiceCooldown(org.com.arc_quest.quest.capability.IQuestCapability cap, String nodeId, int choiceIndex, DialogueChoice choice) {
+    private boolean checkChoiceCooldown(IQuestCapability cap, String nodeId, int choiceIndex, DialogueChoice choice) {
         String key = nodeId + ":" + choiceIndex;
 
         if (!choice.repeatable()) {

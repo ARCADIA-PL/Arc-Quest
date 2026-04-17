@@ -1,10 +1,13 @@
 package org.com.arc_quest.dialogue.builder;
 
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.registry.DialogueRegistry;
 import org.com.arc_quest.quest.api.QuestVisualConfig;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -448,7 +451,7 @@ public class DialogueTreeBuilder {
         }
 
         /** 添加自定义 Lambda 事件处理器。 */
-        public ChoiceBuilder addEvents(java.util.function.BiConsumer<net.minecraft.server.level.ServerPlayer, net.minecraft.world.entity.Entity> handler) {
+        public ChoiceBuilder addEvents(BiConsumer<ServerPlayer, Entity> handler) {
             actions.add(new DialogueAction.LambdaAction(handler));
             return this;
         }

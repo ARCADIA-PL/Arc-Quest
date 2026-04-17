@@ -167,7 +167,7 @@ public final class QuestDefinition {
     }
 
 
-    public java.util.Optional<VisualAsset> getSplashConfig(SplashType type) {
+    public Optional<VisualAsset> getSplashConfig(SplashType type) {
         return this.visualConfig.getSplash(type);
     }
 

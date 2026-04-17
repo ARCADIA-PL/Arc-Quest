@@ -2,6 +2,7 @@ package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.slf4j.Logger;
@@ -93,7 +94,7 @@ public final class ConditionalTextEvaluator {
                     
                     // 必须同时满足：任务存在 + 处于激活状态 + 阶段ID匹配
                     boolean result = data != null 
-                        && org.com.arc_quest.quest.api.QuestState.ACTIVE.equals(data.getState())
+                        && QuestState.ACTIVE.equals(data.getState())
                         && phaseId.equals(data.getCurrentPhaseId());
                     
                     LOGGER.debug("[ConditionalText] QUEST_PHASE result: {}", result);

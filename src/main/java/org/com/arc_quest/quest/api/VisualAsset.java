@@ -1,5 +1,6 @@
 package org.com.arc_quest.quest.api;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
@@ -67,7 +68,7 @@ public record VisualAsset(
             return this;
         }
 
-        public Builder tintColorFromChatFormatting(net.minecraft.ChatFormatting formatting) {
+        public Builder tintColorFromChatFormatting(ChatFormatting formatting) {
             Integer color = formatting.getColor();
             if (color != null) {
                 this.tintColor = 0xFF000000 | color;
