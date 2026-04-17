@@ -1,17 +1,21 @@
 # 对话系统详解
 
 **模块**: dialogue/  
-**最后更新**: 2026-04-17
+**最后更新**: 2026-04-17  
+**版本**: v2.0（新增生命周期管理、冷却状态检查）
 
 ---
 
 ## 📋 目录
 
 1. [对话树设计](#对话树设计)
-2. [NPC交互流程](#npc交互流程)
-3. [动作执行机制](#动作执行机制)
-4. [上下文变量替换](#上下文变量替换)
-5. [实战示例](#实战示例)
+2. [生命周期管理](#生命周期管理) ⭐ **新增**
+3. [NPC交互流程](#npc交互流程)
+4. [动作执行机制](#动作执行机制)
+5. [上下文变量替换](#上下文变量替换)
+6. [条件系统](#条件系统) ⭐ **增强**
+7. [动态文本与预设动作](#动态文本与预设动作) ⭐ **新增**
+8. [实战示例](#实战示例)
 
 ---
 
@@ -97,11 +101,223 @@ DialogueTree (对话树)
 
 ---
 
+## 生命周期管理
+
+### 三层生命周期配置
+
+对话系统支持在三个层级配置可重复性和冷却时间：
+
+| 层级 | 配置项 | 作用范围 | 数据存储 |
+|------|--------|----------|----------|
+| **对话树** | `repeatable`, `cooldownSeconds` | 整个对话的启动 | `dialogueHistory` |
+| **节点** | `repeatable`, `cooldownSeconds` | 节点的访问 | `nodeVisitHistory` |
+| **选项** | `repeatable`, `cooldownSeconds` | 选项的选择 | `choiceSelectionHistory` |
+
+---
+
+### 1. 对话树级别
+
+#### 一次性对话（默认）
+
+```java
+DialogueTreeBuilder.create("one_time_intro")
+    .npc("神秘老人")
+    .repeatable(false)  // 玩家只能进行一次此对话
+    
+    .node("start")
+        .say("我是时间的守护者...")
+        .choice("聆听", c -> c.goTo("story"))
+    
+    .buildAndRegister();
+```
+
+**行为**:
+- ✅ 玩家首次对话正常进行
+- ❌ 第二次尝试对话时被阻止
+- 💾 记录到 `dialogueHistory`
+
+---
+
+#### 带冷却的可重复对话
+
+```java
+DialogueTreeBuilder.create("daily_greeting")
+    .npc("村民")
+    .repeatable(true)
+    .cooldown(86400)  // 24小时冷却
+    
+    .node("start")
+        .say("早上好！这是今天的奖励。")
+        .choice("谢谢", c -> c.giveItem("minecraft:bread", 5).close())
+    
+    .buildAndRegister();
+```
+
+**行为**:
+- ✅ 玩家每天可与 NPC 对话一次
+- ⏰ 冷却期间尝试对话被阻止
+- 💾 记录最后对话时间戳
+
+---
+
+### 2. 节点级别
+
+#### 一次性节点
+
+```java
+.node("backstory")
+    .say("让我告诉你我的过去...")
+    .repeatable(false)  // 此节点只能访问一次
+    .choice("明白了", c -> c.goTo("next"))
+```
+
+**行为**:
+- ✅ 首次访问正常显示
+- ❌ 再次到达此节点时被跳过或报错
+- 💾 记录到 `nodeVisitHistory`
+
+---
+
+#### 带冷却的节点
+
+```java
+.node("daily_hint")
+    .say("今天的提示是：去北边的山洞看看。")
+    .repeatable(true)
+    .cooldown(3600)  // 1小时冷却
+    .choice("好的", c -> c.close())
+```
+
+**行为**:
+- ✅ 每小时可提供一次提示
+- ⏰ 冷却期间无法再次访问
+- 💾 记录最后访问时间戳
+
+---
+
+### 3. 选项级别
+
+#### 一次性选项
+
+``java
+.node("reward_choice")
+    .say("选择一个奖励：")
+    .choice("金币 x100（仅限一次）", c -> c
+        .giveItem("minecraft:gold_ingot", 100)
+        .repeatable(false)  // 此选项只能选择一次
+        .close())
+    .choice("经验瓶 x10（仅限一次）\", c -> c
+        .giveXp(100)
+        .repeatable(false)
+        .close())
+```
+
+**行为**:
+- ✅ 每个选项只能选择一次
+- 👁️ 已选择的选项自动隐藏（需配合条件）
+- 💾 记录到 `choiceSelectionHistory`
+
+---
+
+#### 带冷却的选项
+
+```java
+.node("shop")
+    .say("今日特惠：")
+    .choice("购买药水（1小时冷却）", c -> c
+        .giveItem("minecraft:potion\", 1)
+        .repeatable(true)
+        .cooldown(3600)
+        .close())
+```
+
+**行为**:
+- ✅ 每小时可购买一次
+- ⏰ 冷却期间选项不可见或禁用
+- 💾 记录最后选择时间戳
+
+---
+
+### 配置冲突检测
+
+系统会在注册时自动检测不合理的配置组合：
+
+#### ❌ 冲突1：一次性对话 + 节点冷却
+
+``java
+DialogueTreeBuilder.create("invalid_dialogue")
+    .repeatable(false)  // 一次性对话
+    .node("start")
+        .cooldown(3600)  // ❌ 报错：Cooldown is meaningless for one-time dialogue tree
+```
+
+**错误信息**:
+```
+WARN [DialogueRegistry] Dialogue 'invalid_dialogue' has validation errors:
+WARN   - Node 'start' has cooldownSeconds=3600 but dialogue tree is one-time (repeatable=false). Cooldown is meaningless.
+```
+
+---
+
+#### ❌ 冲突2：一次性节点 + 节点冷却
+
+``java
+.node("intro")
+    .repeatable(false)  // 一次性节点
+    .cooldown(3600)     // ❌ 报错：Cooldown is meaningless for one-time nodes
+```
+
+---
+
+#### ❌ 冲突3：一次性选项 + 选项冷却
+
+``java
+.choice("Accept Reward", c -> c.giveItem("...").close())
+    .repeatable(false)  // 一次性选项
+    .cooldown(3600)     // ❌ 报错：Cooldown is meaningless for one-time choices
+```
+
+---
+
+### 数据持久化
+
+所有历史记录存储在玩家的 `IQuestCapability` 中，完全独立：
+
+```java
+// 每个玩家独立的 HashMap
+private final Map<String, Long> dialogueHistory = new HashMap<>();      // dialogueId -> timestamp
+private final Map<String, Long> nodeVisitHistory = new HashMap<>();     // nodeId -> timestamp
+private final Map<String, Long> choiceSelectionHistory = new HashMap<>(); // choiceKey -> timestamp
+```
+
+**特性**:
+- ✅ 玩家退出游戏后数据保留
+- ✅ 服务器重启后数据保留
+- ✅ 跨维度有效
+- ✅ 玩家之间互不影响
+
+**NBT 存储**:
+```
+playerdata/<UUID>.dat
+└── ArcQuest
+    ├── DialogueHistory
+    │   ├── "epic_village_elder": 1712345678901
+    │   └── "daily_greeting": 1712432078901
+    ├── NodeVisitHistory
+    │   ├── "backstory": 1712345678901
+    │   └── "daily_hint": 1712432078901
+    └── ChoiceSelectionHistory
+        ├── "reward_choice:0": 1712345678901
+        └── "shop:buy_potion": 1712432078901
+```
+
+---
+
 ## NPC交互流程
 
 ### 完整交互流程
 
-```mermaid
+```
 graph TD
     A[玩家右键点击实体] --> B{实体是否有对话?}
     B -->|否| C[原版交互]
@@ -372,7 +588,7 @@ for (DialogueAction action : choice.getActions()) {
 **用途**: 在对话文本中动态插入变量
 
 **示例**:
-```java
+```
 // 设置上下文变量
 DialogueContext context = new DialogueContext();
 context.put("player_name", player.getName().getString());
@@ -420,11 +636,526 @@ session.getContext().put("completed_quests", cap.getCompletedQuests().size());
 
 ---
 
+## 条件系统
+
+### DialogueCondition 类型总览
+
+对话条件用于控制选项的可见性，支持多种判断逻辑：
+
+| 条件类型 | 用途 | 示例 |
+|---------|------|------|
+| **任务相关** | 检查任务状态 | `HasQuest`, `QuestActive`, `QuestCompleted`, `QuestPhase` |
+| **等级相关** | 检查玩家等级 | `MinLevel` |
+| **历史状态** ⭐ **新增** | 检查对话/节点/选项历史 | `NodeVisited`, `ChoiceSelected`, `DialogueCompleted` |
+| **冷却状态** ⭐ **新增** | 精确检查冷却时间 | `NodeOnCooldown`, `ChoiceOnCooldown`, `DialogueOnCooldown` |
+| **逻辑组合** | AND/OR/NOT | `All`, `Any`, `Not` |
+
+---
+
+### 1. 任务相关条件
+
+#### HasQuest - 拥有任务（任何状态）
+
+```java
+.choice("询问任务进度", c -> c.goTo("quest_status"))
+    .visibleIf(new DialogueCondition.HasQuest("arc_quest:epic_prologue"))
+```
+
+---
+
+#### QuestActive - 任务进行中
+
+```java
+.choice("继续任务", c -> c.goTo("continue"))
+    .visibleIf(new DialogueCondition.QuestActive("arc_quest:epic_prologue"))
+```
+
+---
+
+#### QuestCompleted - 任务已完成
+
+```java
+.choice("领取奖励", c -> c.giveItem("...").close())
+    .visibleIf(new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"))
+```
+
+---
+
+#### QuestPhase - 任务处于特定阶段
+
+```java
+.choice("汇报进度", c -> c.goTo("report"))
+    .visibleIf(new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "gather_wood"))
+```
+
+---
+
+### 2. 历史状态条件 ⭐ **新增**
+
+#### NodeVisited - 节点是否被访问过
+
+**用途**: 实现一次性剧情节点
+
+```java
+// 仅当玩家未访问过 intro_story 节点时显示选项
+.choiceIf(
+    new DialogueCondition.Not(new DialogueCondition.NodeVisited("intro_story")),
+    "介绍故事背景",
+    c -> c.goTo("intro_story")
+)
+```
+
+**应用场景**:
+- 新手引导（只显示一次）
+- 剧情揭示（避免剧透重复）
+- 一次性提示
+
+---
+
+#### ChoiceSelected - 选项是否被选择过
+
+**用途**: 实现一次性奖励选项
+
+```java
+// 仅当玩家未选择过该选项时显示
+.choiceIf(
+    new DialogueCondition.Not(new DialogueCondition.ChoiceSelected("start:reward")),
+    "领取新手礼包（仅限一次）",
+    c -> c.giveItem("minecraft:diamond", 5).close()
+)
+```
+
+**选项键格式**:
+- 推荐：`nodeId:choiceIndex` （如 `"start:0"`）
+- 或自定义唯一键（如 `"daily_reward_2024"`）
+
+---
+
+#### DialogueCompleted - 对话树是否已完成
+
+**用途**: 实现首次见面礼
+
+```java
+// 仅当玩家未完成此对话树时显示
+.choiceIf(
+    new DialogueCondition.Not(new DialogueCondition.DialogueCompleted("epic_village_elder")),
+    "首次见面礼",
+    c -> c.giveItem("minecraft:bread", 10).close()
+)
+```
+
+---
+
+### 3. 冷却状态条件 ⭐ **新增**
+
+> ⚠️ **重要**：冷却条件需要手动指定冷却时间，必须与定义中的 `cooldownSeconds` 一致。
+
+#### NodeOnCooldown - 节点是否在冷却中
+
+```java
+// 每日任务节点（24小时冷却）
+.choiceIf(
+    new DialogueCondition.Not(new DialogueCondition.NodeOnCooldown("daily_quest", 86400)),
+    "领取每日任务",
+    c -> c.goTo("daily_quest_node")
+)
+```
+
+**工作原理**:
+```java
+long lastTime = cap.getLastNodeVisit(nodeId);
+if (lastTime == 0) return false; // 从未访问过，不在冷却中
+
+long currentTime = System.currentTimeMillis();
+long cooldownMs = cooldownSeconds * 1000;
+return (currentTime - lastTime) < cooldownMs; // 精确判断
+```
+
+---
+
+#### ChoiceOnCooldown - 选项是否在冷却中
+
+```java
+// 提示选项（1小时冷却）
+.choiceIf(
+    new DialogueCondition.Not(new DialogueCondition.ChoiceOnCooldown("start:hint", 3600)),
+    "获取提示（1小时冷却）",
+    c -> c.goTo("hint_node")
+)
+```
+
+---
+
+#### DialogueOnCooldown - 对话树是否在冷却中
+
+```java
+// NPC 对话冷却（2小时）
+.choiceIf(
+    new DialogueCondition.Not(new DialogueCondition.DialogueOnCooldown("epic_village_elder", 7200)),
+    "再次交谈（2小时后可用）",
+    c -> c.goTo("repeat_chat")
+)
+```
+
+---
+
+### 4. 逻辑组合条件
+
+#### Not - 逻辑取反
+
+```java
+// 仅当玩家没有某个任务时显示
+.choiceIf(
+    new DialogueCondition.Not(new DialogueCondition.HasQuest("arc_quest:epic_prologue")),
+    "接受任务",
+    c -> c.startQuest("arc_quest:epic_prologue").close()
+)
+```
+
+---
+
+#### All - 所有条件均满足（AND）
+
+```java
+// 需要同时满足多个条件
+.choiceIf(
+    new DialogueCondition.All(List.of(
+        new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"),
+        new DialogueCondition.MinLevel(10),
+        new DialogueCondition.Not(new DialogueCondition.HasQuest("arc_quest:epic_chapter1"))
+    )),
+    "开始第一章",
+    c -> c.startQuest("arc_quest:epic_chapter1").close()
+)
+```
+
+---
+
+#### Any - 任一条件满足（OR）
+
+```java
+// 满足任一条件即可
+.choiceIf(
+    new DialogueCondition.Any(List.of(
+        new DialogueCondition.QuestCompleted("arc_quest:side_quest_a"),
+        new DialogueCondition.QuestCompleted("arc_quest:side_quest_b")
+    )),
+    "解锁隐藏剧情",
+    c -> c.goTo("secret_story")
+)
+```
+
+---
+
+### 5. 实战：复杂条件组合
+
+#### 示例：分支选择
+
+```java
+.node("branch_choice")
+    .say("你选择了哪条道路？")
+    
+    // 战斗路线：需要完成序章且等级>=15
+    .choiceIf(
+        new DialogueCondition.All(List.of(
+            new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"),
+            new DialogueCondition.MinLevel(15)
+        )),
+        "战斗之路（需等级15）",
+        c -> c.setFlag("chose_combat_path").goTo("combat_intro")
+    )
+    
+    // 探索路线：需要完成序章且有特定道具
+    .choiceIf(
+        new DialogueCondition.All(List.of(
+            new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"),
+            new DialogueCondition.HasQuest("arc_quest:has_compass")
+        )),
+        "探索之路（需指南针）",
+        c -> c.setFlag("chose_exploration_path").goTo("exploration_intro")
+    )
+    
+    // 默认选项：未达到条件
+    .choice("我还没准备好", c -> c.close())
+```
+
+---
+
+#### 示例：周期性内容
+
+```java
+.node("daily_rewards")
+    .say("今日奖励已刷新！")
+    
+    // 每日签到（24小时冷却）
+    .choiceIf(
+        new DialogueCondition.Not(new DialogueCondition.NodeOnCooldown("daily_signin", 86400)),
+        "签到领取奖励",
+        c -> c
+            .giveItem("minecraft:gold_ingot", 10)
+            .close()
+    )
+    
+    // 每小时提示
+    .choiceIf(
+        new DialogueCondition.Not(new DialogueCondition.NodeOnCooldown("daily_hint", 3600)),
+        "获取今日提示",
+        c -> c.goTo("hint_node")
+    )
+    
+    // 总是可见的退出选项
+    .choice("离开", c -> c.close())
+```
+
+---
+
+## 动态文本与预设动作
+
+### sayIf() - 条件文本
+
+**用途**: 根据条件动态显示不同的对话文本
+
+**API**:
+```java
+public DialogueTreeBuilder sayIf(DialogueCondition condition, String text)
+```
+
+**工作原理**:
+1. 在服务端评估所有 `sayIf()` 条件
+2. 第一个满足条件的文本被选中
+3. 如果都不满足，使用最后的 `say()` 作为兜底
+
+---
+
+#### 示例1：根据任务状态显示不同文本
+
+```java
+.node("start")
+    // 情况1：完全新手
+    .sayIf(
+        new DialogueCondition.Not(new DialogueCondition.HasQuest("arc_quest:epic_prologue")),
+        "你好，冒险者！我是村庄长老。"
+    )
+    
+    // 情况2：序章进行中
+    .sayIf(
+        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "gather_wood"),
+        "木材收集得怎么样了？"
+    )
+    
+    // 情况3：序章已完成
+    .sayIf(
+        new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"),
+        "感谢你保护了村庄！"
+    )
+    
+    // 默认文本（兜底）
+    .say("欢迎回到村庄。")
+```
+
+**执行流程**:
+```
+玩家打开对话
+  ↓
+服务端评估条件（按顺序）
+  ↓
+找到第一个满足的条件 → 返回对应文本
+  ↓
+发送到客户端显示
+```
+
+---
+
+#### 示例2：复杂条件组合
+
+```java
+.node("greeting")
+    // 传奇英雄
+    .sayIf(
+        new DialogueCondition.QuestCompleted("arc_quest:epic_finale"),
+        "向您致敬，传奇英雄！"
+    )
+    
+    // 第一章完成，等待分支选择
+    .sayIf(
+        new DialogueCondition.All(List.of(
+            new DialogueCondition.QuestCompleted("arc_quest:epic_chapter1"),
+            new DialogueCondition.Not(new DialogueCondition.HasQuest("arc_quest:epic_branch_choice"))
+        )),
+        "你已准备好做出选择了。"
+    )
+    
+    // 默认
+    .say("你好，旅行者。")
+```
+
+---
+
+### choiceIf() - 条件选项
+
+**用途**: 根据条件动态显示/隐藏选项
+
+**API**:
+```java
+public DialogueTreeBuilder choiceIf(
+    DialogueCondition condition, 
+    String text,
+    Consumer<ChoiceBuilder> configurator
+)
+```
+
+**示例**:
+```java
+.node("main_menu")
+    .say("你想做什么？")
+    
+    // 仅当未接受任务时显示
+    .choiceIf(
+        new DialogueCondition.Not(new DialogueCondition.HasQuest("quest_id")),
+        "接受任务",
+        c -> c.startQuest("quest_id").close()
+    )
+    
+    // 仅当任务进行中时显示
+    .choiceIf(
+        new DialogueCondition.QuestActive("quest_id"),
+        "汇报进度",
+        c -> c.goTo("report")
+    )
+    
+    // 仅当任务完成后显示
+    .choiceIf(
+        new DialogueCondition.QuestCompleted("quest_id"),
+        "领取奖励",
+        c -> c.giveItem("...").close()
+    )
+    
+    // 总是显示
+    .choice("离开", c -> c.close())
+```
+
+---
+
+### PresetActions - 预设动作
+
+**位置**: `org.com.arc_quest.dialogue.action.PresetActions`
+
+**用途**: 提供常用的物品给予、效果施加等快捷方法
+
+---
+
+#### 内置预设动作（ChoiceBuilder 方法）
+
+| 方法 | 说明 | 等效操作 |
+|------|------|----------|
+| `presetStoneSword()` | 给予石剑 x1 | `giveItem("minecraft:stone_sword", 1)` |
+| `presetIronArmorSet()` | 给予铁甲全套 | 4个 giveItem 调用 |
+| `presetDiamondArmorSet()` | 给予钻石甲全套 | 4个 giveItem 调用 |
+| `presetNetheriteIngot()` | 给予下界合金锭 x1 | `giveItem("minecraft:netherite_ingot", 1)` |
+| `presetTorches()` | 给予火把 x32 | `giveItem("minecraft:torch", 32)` |
+| `presetBread()` | 给予面包 x4 | `giveItem("minecraft:bread", 4)` |
+| `presetStrength()` | 给予力量效果60秒 | `runCommand("effect give @p minecraft:strength 60 0")` |
+| `presetHeroOfVillage()` | 给予村庄英雄30分钟 | `runCommand("effect give @p minecraft:hero_of_the_village 1800 0")` |
+
+---
+
+#### 使用示例
+
+```java
+.choice("领取新手礼包", c -> c
+    .presetStoneSword()           // 石剑
+    .presetBread()                // 面包
+    .presetTorches()              // 火把
+    .close()
+)
+
+.choice("领取高级装备", c -> c
+    .presetIronArmorSet()         // 铁甲全套
+    .presetStrength()             // 力量效果
+    .close()
+)
+
+.choice("传奇奖励", c -> c
+    .presetDiamondArmorSet()      // 钻石甲全套
+    .presetNetheriteIngot()       // 下界合金锭
+    .presetHeroOfVillage()        // 村庄英雄
+    .close()
+)
+```
+
+---
+
+#### 自定义预设动作
+
+你可以在自己的代码中创建类似的预设方法：
+
+```java
+public class MyPresetActions {
+    
+    /** 给予玩家探险家套装 */
+    public static void applyExplorerKit(ChoiceBuilder builder) {
+        builder
+            .giveItem("minecraft:leather_helmet", 1)
+            .giveItem("minecraft:compass", 1)
+            .giveItem("minecraft:map", 1)
+            .giveItem("minecraft:torch", 16);
+    }
+}
+
+// 使用
+.choice("领取探险家套装", c -> {
+    MyPresetActions.applyExplorerKit(c);
+    c.close();
+})
+```
+
+---
+
+#### PresetActions 工具类
+
+**位置**: `org.com.arc_quest.dialogue.action.PresetActions`
+
+**提供的静态方法**:
+
+| 方法 | 参数 | 说明 |
+|------|------|------|
+| `awardItem()` | ServerPlayer, Item, int | 玩家获得物品 |
+| `giveItem()` | ServerPlayer, Item | 玩家失去物品 |
+| `exChangeItem()` | ServerPlayer, Item, Item | 玩家交换物品 |
+| `addEffects()` | ServerPlayer, MobEffect, int, int | 玩家获得效果 |
+| `triggerInteraction()` | ServerPlayer, String | 触发任务交互标识 |
+| `addEvents()` | ServerPlayer, Entity, BiConsumer | 添加自定义事件处理器 |
+
+**使用场景**:
+- 在自定义 DialogueAction 中调用
+- 在 Lambda 回调中使用
+- 扩展模组功能时复用
+
+---
+
+#### 示例：使用 addEvents Lambda 回调
+
+```java
+.choice("特殊互动", c -> c
+    .addEvents((player, target) -> {
+        // 自定义逻辑
+        PresetActions.addEffects(player, MobEffects.SPEED, 1200, 1);
+        player.sendMessage(
+            Component.literal("你获得了速度提升！"), 
+            Util.NIL_UUID
+        );
+    })
+    .close()
+)
+```
+
+---
+
 ## 实战示例
 
 ### 示例1：简单问候对话
 
-```java
+``java
 DialogueTreeBuilder.create("simple_greeting")
     .npc("村民")
 
@@ -456,7 +1187,7 @@ DialogueTreeBuilder.create("simple_greeting")
 
 ### 示例2：任务给予对话
 
-```java
+``java
 DialogueTreeBuilder.create("quest_giver")
     .npc("村长")
 
@@ -513,7 +1244,7 @@ DialogueTreeBuilder.create("quest_giver")
 
 ### 示例3：条件分支对话
 
-```java
+``java
 DialogueTreeBuilder.create("shopkeeper")
     .npc("商人")
 
@@ -538,7 +1269,7 @@ DialogueTreeBuilder.create("shopkeeper")
 ```
 
 **条件判断逻辑**:
-```java
+``java
 // goToIf 内部实现
 public NodeBuilder goToIf(String nodeId, String requiredFlag) {
     this.choices.add(new DialogueChoice(
@@ -561,7 +1292,7 @@ List<DialogueChoice> visibleChoices = node.getChoices().stream()
 ### 示例4：多语言对话
 
 **定义翻译键**:
-```properties
+```
 # assets/arc_quest/lang/en_us.json
 {
   "dialogue.shopkeeper.start.text": "Welcome, ${player_name}!",
@@ -578,7 +1309,7 @@ List<DialogueChoice> visibleChoices = node.getChoices().stream()
 ```
 
 **使用翻译**:
-```java
+``java
 DialogueTreeBuilder.create("shopkeeper")
     .npc(Component.translatable("npc.shopkeeper.name").getString())
 
@@ -600,20 +1331,20 @@ DialogueTreeBuilder.create("shopkeeper")
 
 #### 1. 强制打开对话
 
-```bash
+```
 /quest dialogue @p villager_greeting
 ```
 
 #### 2. 查看对话注册表
 
-```bash
+```
 /quest registry
 # 输出所有注册的对话ID
 ```
 
 #### 3. 日志监控
 
-```java
+```
 // 在 log4j2.xml 中添加
 <Logger name="org.com.arc_quest.dialogue" level="DEBUG"/>
 ```

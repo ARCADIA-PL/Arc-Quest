@@ -2,7 +2,8 @@
 
 **模块**: dialogue/  
 **适用对象**: 开发者、外部AI学习  
-**最后更新**: 2026-04-17
+**最后更新**: 2026-04-17  
+**版本**: v2.0（新增生命周期管理、冷却状态检查）
 
 ---
 
@@ -16,7 +17,7 @@
 
 ---
 
-## 数据结构层 (dialogue/api/)
+## 数据结构层
 
 ### DialogueTree - 对话树
 
@@ -30,6 +31,8 @@ private final String defaultNpc;
 private final String startNodeId;
 private final Map<String, DialogueNode> nodes;
 private final QuestVisualConfig visualConfig;
+private final boolean repeatable;        // ⭐ 新增：是否可重复对话
+private final long cooldownSeconds;      // ⭐ 新增：冷却时间（秒）
 ```
 
 **核心方法**:
@@ -69,6 +72,9 @@ private final String speaker;
 private final String text;
 private final List<DialogueChoice> choices;
 private final String autoNextId;
+private final int delayMs;
+private final boolean repeatable;        // ⭐ 新增：节点是否可重复访问
+private final long cooldownSeconds;      // ⭐ 新增：节点冷却时间（秒）
 ```
 
 **核心方法**:
@@ -97,6 +103,8 @@ private final String text;
 private final String nextNodeId;
 private final List<DialogueCondition> conditions;
 private final List<DialogueAction> actions;
+private final boolean repeatable;        // ⭐ 新增：选项是否可重复选择
+private final long cooldownSeconds;      // ⭐ 新增：选项冷却时间（秒）
 ```
 
 **核心方法**:
@@ -136,7 +144,7 @@ new DialogueAction.Close()
 
 ### DialogueCondition - 对话条件
 
-**类型**: `interface`  
+**类型**: `sealed interface`  
 **位置**: `org.com.arc_quest.dialogue.api.DialogueCondition`
 
 **方法**:
@@ -144,10 +152,100 @@ new DialogueAction.Close()
 boolean test(ServerPlayer player);
 ```
 
-**常见用途**:
-- 检查任务完成状态
-- 检查flag设置
-- 检查变量值
+**实现类**:
+
+#### 任务相关条件
+
+| 类名 | 构造参数 | 说明 |
+|------|---------|------|
+| `HasQuest` | String questId | 玩家拥有指定任务（任何状态） |
+| `QuestActive` | String questId | 任务处于 ACTIVE 状态 |
+| `QuestCompleted` | String questId | 任务已完成 |
+| `QuestPhase` | String questId, String phaseId | 任务处于特定阶段 |
+| `QuestPhaseRange` | String questId, String startPhase, String endPhase, ... | Phase 区间检查 |
+
+---
+
+#### 等级相关条件
+
+| 类名 | 构造参数 | 说明 |
+|------|---------|------|
+| `MinLevel` | int level | 玩家等级 >= level |
+
+---
+
+#### 历史状态条件 ⭐ **新增**
+
+| 类名 | 构造参数 | 说明 |
+|------|---------|------|
+| `NodeVisited` | String nodeId | 节点是否被访问过 |
+| `ChoiceSelected` | String choiceKey | 选项是否被选择过 |
+| `DialogueCompleted` | String dialogueId | 对话树是否已完成 |
+
+**使用示例**:
+```java
+// 检查节点是否被访问过
+new DialogueCondition.NodeVisited("intro_story")
+
+// 检查选项是否被选择过
+new DialogueCondition.ChoiceSelected("start:0")
+
+// 检查对话树是否已完成
+new DialogueCondition.DialogueCompleted("epic_village_elder")
+```
+
+---
+
+#### 冷却状态条件 ⭐ **新增**
+
+| 类名 | 构造参数 | 说明 |
+|------|---------|------|
+| `NodeOnCooldown` | String nodeId, long cooldownSeconds | 节点是否在冷却中 |
+| `ChoiceOnCooldown` | String choiceKey, long cooldownSeconds | 选项是否在冷却中 |
+| `DialogueOnCooldown` | String dialogueId, long cooldownSeconds | 对话树是否在冷却中 |
+
+**使用示例**:
+```java
+// 检查节点冷却（24小时）
+new DialogueCondition.NodeOnCooldown("daily_quest", 86400)
+
+// 检查选项冷却（1小时）
+new DialogueCondition.ChoiceOnCooldown("start:hint", 3600)
+
+// 检查对话树冷却（2小时）
+new DialogueCondition.DialogueOnCooldown("epic_village_elder", 7200)
+```
+
+⚠️ **注意**: 冷却条件需要手动指定冷却时间，必须与定义中的 `cooldownSeconds` 一致。
+
+---
+
+#### 逻辑组合条件
+
+| 类名 | 构造参数 | 说明 |
+|------|---------|------|
+| `Not` | DialogueCondition inner | 逻辑取反 |
+| `All` | List\<DialogueCondition\> conditions | 所有条件均满足 (AND) |
+| `Any` | List\<DialogueCondition\> conditions | 任一条件满足 (OR) |
+| `Always` | 无 | 无条件通过 |
+
+**使用示例**:
+```java
+// NOT
+new DialogueCondition.Not(new DialogueCondition.HasQuest("quest_id"))
+
+// AND
+new DialogueCondition.All(List.of(
+    new DialogueCondition.QuestCompleted("quest_a"),
+    new DialogueCondition.MinLevel(10)
+))
+
+// OR
+new DialogueCondition.Any(List.of(
+    new DialogueCondition.QuestCompleted("quest_b"),
+    new DialogueCondition.QuestCompleted("quest_c")
+))
+```
 
 ---
 
@@ -264,7 +362,7 @@ DialogueTreeBuilder.create("test_villager")
 
 ---
 
-## 注册表层 (dialogue/registry/)
+## 注册表层
 
 ### DialogueRegistry - 对话注册表
 
@@ -331,7 +429,7 @@ new DialogueAction.Custom(new ResourceLocation("mymod", "give_coins"), actionDat
 
 ---
 
-## 运行时层 (dialogue/runtime/)
+## 运行时层
 
 ### DialogueSession - 对话会话
 
@@ -407,7 +505,7 @@ NpcDialogueHandler.registerListeners();  // 在FMLCommonSetupEvent中调用
 
 ---
 
-## 网络包 (dialogue/network/)
+## 网络包
 
 ### S2COpenDialoguePacket - 打开对话
 

@@ -19,7 +19,7 @@
 
 ---
 
-## 数据结构层 (quest/api/)
+## 数据结构层
 
 ### QuestDefinition - 任务定义
 
@@ -439,7 +439,7 @@ ObjectiveBuilder.visit(100.5, 64.0, 200.5, 10.0)
 
 ---
 
-## 注册表层 (quest/registry/)
+## 注册表层
 
 ### QuestRegistry - 任务注册表
 
@@ -524,7 +524,7 @@ private final Map<String, Integer> globalVariables = new HashMap<>();
 
 ---
 
-## 逻辑处理层 (quest/logic/)
+## 逻辑处理层
 
 ### QuestProgressHandler - 进度处理器
 
@@ -564,7 +564,7 @@ advanceToNextPhase(player, questId, nextPhaseId)
 
 ---
 
-## 追踪系统 (quest/tracking/)
+## 追踪系统
 
 ### ObjectiveTracker - 目标追踪器
 
@@ -602,7 +602,7 @@ private final Map<String, Object> properties;
 
 ---
 
-## 条件系统 (quest/condition/)
+## 条件系统
 
 ### ICondition - 条件接口
 
@@ -637,7 +637,7 @@ new VariableCondition("reputation", op -> op >= 50)
 
 ---
 
-## 奖励系统 (quest/reward/)
+## 奖励系统
 
 ### IReward - 奖励接口
 

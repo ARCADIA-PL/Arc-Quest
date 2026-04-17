@@ -12,7 +12,7 @@
 2. [任务系统API](#任务系统api)
 3. [对话系统API](#对话系统api)
 4. [视觉系统API](#视觉系统api)
-5. [HUD渲染系统API](#hud渲染系统api)
+5. [HUD渲染系统API](#2-hud组件层-clientgui)
 6. [网络同步API](#网络同步api)
 7. [数据存储API](#数据存储api)
 8. [事件系统API](#事件系统api)

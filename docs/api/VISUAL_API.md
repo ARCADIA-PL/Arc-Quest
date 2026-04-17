@@ -15,7 +15,7 @@
 
 ---
 
-## 渲染器层 (client/gui/render/)
+## 渲染器层
 
 ### QuestSplashRenderer - 立绘渲染器
 
@@ -98,7 +98,7 @@ QuestIconRenderer.renderIcon(g, asset, x, y, 20, 20);
 
 ---
 
-## 动画工具 (client/gui/)
+## 动画工具
 
 ### QuestAnimUtil - 动画工具集
 
@@ -141,7 +141,7 @@ QuestIconRenderer.renderIcon(g, asset, x, y, 20, 20);
 
 ---
 
-## 渲染工具 (client/gui/)
+## 渲染工具
 
 ### QuestRenderUtil - 渲染工具集
 
