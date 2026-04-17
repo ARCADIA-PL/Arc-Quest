@@ -95,13 +95,12 @@ public class BranchChoiceToast {
 
         g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
 
-        // 通透磨砂玻璃感
+        // 使用共用渲染方法绘制磨砂玻璃面板
         int bgA = (int)(finalAlpha * 0x88);
-        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, (bgA << 24) | 0x121212);
-
         int accentA = (int)(finalAlpha * 255);
         int themeColor = COLOR_ACCENT & 0xFFFFFF;
-        g.fill(baseX, baseY, baseX + 4, baseY + POPUP_H, (accentA << 24) | themeColor);
+        QuestRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H,
+                0x121212, bgA, themeColor, accentA, 4);
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
         String questName = def != null ? def.getDisplayName().getString() : questId;
@@ -111,27 +110,21 @@ public class BranchChoiceToast {
         float contentY = baseY + 6;
 
         if (accentA > 5) {
-            g.pose().pushPose();
-            g.pose().translate(contentX, contentY, 0);
-            g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, "ARES SYSTEM // BRANCH AVAILABLE", 0, 0, QuestAnimUtil.withAlpha(0xAAAAAA, accentA), true);
-            g.pose().popPose();
-
-            int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, accentA);
-            g.pose().pushPose();
-            g.pose().translate(contentX, contentY + 10, 0);
-            g.pose().scale(1.0f, 1.0f, 1f);
+            String subtitle = "ARES SYSTEM // BRANCH AVAILABLE";
             String prefix = "New Path Unlocked: ";
             String cutName = font.plainSubstrByWidth(questName, POPUP_W - 30 - font.width(prefix));
-            g.drawString(font, prefix + cutName, 0, 0, titleColor, true);
-            g.pose().popPose();
+            String title = prefix + cutName;
+            
+            // 使用共用方法绘制双行文本
+            int subColor = QuestAnimUtil.withAlpha(0xAAAAAA, accentA);
+            int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, accentA);
+            QuestRenderUtil.drawDualText(g, font, contentX, contentY,
+                    subtitle, title, subColor, titleColor, 1.0f);
 
-            float lineY = contentY + 22;
-            if (lineWidth > 2) {
-                int lineColor = QuestAnimUtil.withAlpha(themeColor, accentA);
-                g.fill((int)contentX, (int)lineY, (int)(contentX + lineWidth), (int)lineY + 1, lineColor);
-                if (lineWidth > 10) g.fill((int)(contentX + lineWidth), (int)lineY - 1, (int)(contentX + lineWidth) + 3, (int)lineY + 2, lineColor);
-            }
+            // 绘制装饰线
+            QuestRenderUtil.drawTextWithLine(g, font, contentX, contentY + 10,
+                    "", QuestAnimUtil.withAlpha(themeColor, accentA),
+                    lineWidth, 12);
         }
 
         g.disableScissor();

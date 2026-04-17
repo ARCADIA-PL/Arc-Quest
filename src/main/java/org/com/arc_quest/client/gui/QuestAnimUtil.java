@@ -58,6 +58,13 @@ public final class QuestAnimUtil {
     }
 
     /**
+     * Ease-in quartic
+     */
+    public static float easeInQuartic(float t) {
+        return t * t * t * t;
+    }
+
+    /**
      * Ease-out quintic
      */
     public static float easeOutQuintic(float t) {
@@ -65,10 +72,10 @@ public final class QuestAnimUtil {
     }
 
     /**
-     * Ease-in quartic
+     * Ease-in sextic（用于退场alpha）
      */
-    public static float easeInQuartic(float t) {
-        return t * t * t * t;
+    public static float easeInSextic(float t) {
+        return (float) Math.pow(t, 6);
     }
 
     /**

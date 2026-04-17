@@ -87,30 +87,30 @@ public class PhaseUpdateToast {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int bgA = (int)(alpha * 0x88); // 统一的磨砂灰底
-        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, (bgA << 24) | 0x121212);
-
+        // 使用共用渲染方法绘制磨砂玻璃面板
+        int bgA = (int)(alpha * 0x88);
         int accentA = (int)(alpha * 255);
-        g.fill(baseX, baseY, baseX + 4, baseY + POPUP_H, (accentA << 24) | activeTheme);
+        QuestRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H,
+                0x121212, bgA, themeColor & 0x00FFFFFF, accentA, 4);
 
         float textBaseX = baseX + 12 + textDriftX;
         float textBaseY = baseY + 6;
 
         if (accentA > 5) {
-            g.pose().pushPose(); g.pose().translate(textBaseX, textBaseY, 0); g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, Component.translatable("arc_quest.hud.new_phase").getString(), 0, 0, QuestAnimUtil.withAlpha(0xAAAAAA, accentA), true);
-            g.pose().popPose();
+            String subtitle = Component.translatable("arc_quest.hud.new_phase").getString();
+            String title = font.plainSubstrByWidth(phaseName, POPUP_W - 30);
+            
+            // 使用共用方法绘制双行文本
+            int subColor = QuestAnimUtil.withAlpha(0xAAAAAA, accentA);
+            int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, accentA);
+            QuestRenderUtil.drawDualText(g, font, textBaseX, textBaseY,
+                    subtitle, title, subColor, titleColor, 1.0f);
 
-            g.pose().pushPose(); g.pose().translate(textBaseX, textBaseY + 10, 0); g.pose().scale(1.0f, 1.0f, 1f);
-            g.drawString(font, font.plainSubstrByWidth(phaseName, POPUP_W - 30), 0, 0, QuestAnimUtil.withAlpha(0xFFFFFF, accentA), true);
-            g.pose().popPose();
-
-            float lineY = textBaseY + 22;
-            if (accentLineWidth > 2) {
-                int lineColor = QuestAnimUtil.withAlpha(activeTheme, accentA);
-                g.fill((int)textBaseX, (int)lineY, (int)(textBaseX + accentLineWidth), (int)lineY + 1, lineColor);
-                if (accentLineWidth > 10) g.fill((int)(textBaseX + accentLineWidth), (int)lineY - 1, (int)(textBaseX + accentLineWidth) + 3, (int)lineY + 2, lineColor);
-            }
+            // 绘制装饰线
+            float lineWidth = targetLineWidth * (elapsed < PHASE_ENTER ? revealProgress : (elapsed >= PHASE_ENTER + PHASE_HOLD ? (1f - wipeProgress) : 1f));
+            QuestRenderUtil.drawTextWithLine(g, font, textBaseX, textBaseY + 10,
+                    "", QuestAnimUtil.withAlpha(activeTheme, accentA),
+                    lineWidth, 12);
         }
         g.disableScissor();
         RenderSystem.disableBlend();

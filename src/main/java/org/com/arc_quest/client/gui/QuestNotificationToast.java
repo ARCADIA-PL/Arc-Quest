@@ -68,27 +68,25 @@ public class QuestNotificationToast {
 
         int toastX = (int) (screenWidth - TOAST_WIDTH - marginRight + slideX);
 
+        // 使用共用渲染方法绘制Toast面板
         int bgAlpha = (int) (0x88 * alpha);
-        int bgColor = (bgAlpha << 24) | 0x121212;
-        g.fill(toastX, slotY, toastX + TOAST_WIDTH, slotY + TOAST_HEIGHT, bgColor);
-
         int accentAlpha = (int) (255 * alpha);
-        int accentColor = (accentAlpha << 24) | (type.accentColor & 0x00FFFFFF);
-        g.fill(toastX, slotY, toastX + 3, slotY + TOAST_HEIGHT, accentColor);
-
         int lineAlpha = (int) (80 * alpha);
-        g.fill(toastX + 3, slotY + TOAST_HEIGHT - 1, toastX + TOAST_WIDTH, slotY + TOAST_HEIGHT, (lineAlpha << 24) | (type.accentColor & 0x00FFFFFF));
+        QuestRenderUtil.drawToastPanel(g, toastX, slotY, TOAST_WIDTH, TOAST_HEIGHT,
+                0x121212, bgAlpha,
+                type.accentColor & 0x00FFFFFF, accentAlpha, 3,
+                lineAlpha);
 
         int textAlpha = (int) (255 * alpha);
         if (textAlpha > 8) {
-            g.pose().pushPose();
-            g.pose().translate(toastX + 8, slotY + 4, 0);
-            g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, type.prefix, 0, 0, QuestAnimUtil.withAlpha(type.accentColor, textAlpha), true);
-            g.pose().popPose();
-
+            String subtitle = type.prefix;
             String nameStr = font.plainSubstrByWidth(text, TOAST_WIDTH - 16);
-            g.drawString(font, nameStr, toastX + 8, slotY + TOAST_HEIGHT - font.lineHeight - 3, QuestAnimUtil.withAlpha(0xFFFFFF, textAlpha), true);
+            
+            // 使用共用方法绘制双行文本
+            int subColor = QuestAnimUtil.withAlpha(type.accentColor, textAlpha);
+            int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, textAlpha);
+            QuestRenderUtil.drawDualText(g, font, toastX + 8, slotY + 4,
+                    subtitle, nameStr, subColor, titleColor, 1.0f);
         }
 
         RenderSystem.enableDepthTest();

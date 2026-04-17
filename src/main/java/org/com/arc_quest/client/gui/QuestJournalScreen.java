@@ -29,7 +29,7 @@ public class QuestJournalScreen extends Screen {
     private static final int THEME_COMPLETED = 0x66FF66;
     private static final int THEME_FAILED = 0xFF6666;
 
-    private static final int LIST_WIDTH = 180;
+    private static final int LIST_WIDTH = 205;
     private static final int LIST_MARGIN = 16;
     private static final int DETAIL_MARGIN = 12;
     private static final int ENTRY_HEIGHT = 24;
@@ -433,7 +433,6 @@ public class QuestJournalScreen extends Screen {
             selectedSlide = lerp(selectedSlide, selectedIndex, 0.25f);
             int hlY = (int) (y + 2 - scrollOffset + selectedSlide * ENTRY_HEIGHT);
 
-            // 动态阵营高亮色
             int entryTheme = theme;
             if (selectedIndex < currentEntries.size() && currentEntries.get(selectedIndex).def != null) {
                 int defTheme = currentEntries.get(selectedIndex).def.getThemeColor();
@@ -465,20 +464,40 @@ public class QuestJournalScreen extends Screen {
                 int nameColor = (i == selectedIndex) ? QuestAnimUtil.withAlpha(0xFFFFFF, (int) (255 * transitionAlpha)) : QuestAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray, (int) (255 * transitionAlpha));
 
                 int textOffsetX = 10;
-                // 渲染条目图标
                 if (entry.def != null) {
                     entry.def.getVisualConfig().getIcon(IconPosition.QUEST_LIST).ifPresent(icon -> {
                         QuestIconRenderer.renderIcon(g, icon, x + 10, entryY + (ENTRY_HEIGHT - 12)/2, 12, 12);
                     });
                     if (entry.def.getVisualConfig().getIcon(IconPosition.QUEST_LIST).isPresent()) {
-                        textOffsetX = 26; // 给图标让位
+                        textOffsetX = 26;
                     }
                 }
 
+                // 【智能响应式排版（Auto-Shrink & Ellipsis）】
+                int maxDrawWidth = w - textOffsetX - 16;
+                String displayName = entry.displayName();
+                int textW = font.width(displayName);
+                float baseScale = 1f;
+
+                if (textW > maxDrawWidth) {
+                    // 最多允许将字号缩小到 75% 以容纳更长的英文词汇
+                    baseScale = Math.max(0.75f, (float) maxDrawWidth / textW);
+
+                    // 如果缩小到 75% 还是放不下（比如极端长度的名字），则优雅地补充省略号
+                    if (font.width(displayName) * baseScale > maxDrawWidth) {
+                        int allowedW = (int) (maxDrawWidth / 0.75f) - font.width("...");
+                        displayName = font.plainSubstrByWidth(displayName, allowedW) + "...";
+                    }
+                }
+
+                float finalScale = baseScale * (1f + 0.03f * eHover);
+
                 g.pose().pushPose();
-                g.pose().translate(x + textOffsetX, entryY + (ENTRY_HEIGHT - font.lineHeight) / 2f, 0);
-                g.pose().scale(1f + 0.03f * eHover, 1f + 0.03f * eHover, 1f);
-                g.drawString(font, font.plainSubstrByWidth(entry.displayName(), w - textOffsetX - 14), 0, 0, nameColor, true);
+                // 动态计算Y轴居中，确保即便字号缩小，文字依然垂直居中
+                float textY = entryY + (ENTRY_HEIGHT - font.lineHeight * baseScale) / 2f + 1;
+                g.pose().translate(x + textOffsetX, textY, 0);
+                g.pose().scale(finalScale, finalScale, 1f);
+                g.drawString(font, displayName, 0, 0, nameColor, true);
                 g.pose().popPose();
             }
         }
@@ -509,14 +528,12 @@ public class QuestJournalScreen extends Screen {
 
         g.enableScissor(x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
 
-        // ── 高级悬浮水印渲染 ──
         def.getSplashConfig(SplashType.QUEST_DETAIL).ifPresent(asset -> {
             RenderSystem.enableBlend();
-            // 应用极低透明度融入背景
             float watermarkAlpha = 0.15f * dAlpha;
-            int rw = (int)(w * 0.7f); // 尺寸自适应面板
+            int rw = (int)(w * 0.7f);
             int rh = rw;
-            int rx = x + w / 2 - rw / 2 + (int)((1f - detailReveal) * 50f); // 伴随滚入动画
+            int rx = x + w / 2 - rw / 2 + (int)((1f - detailReveal) * 50f);
             int ry = scrollAreaY + scrollAreaH / 2 - rh / 2;
 
             RenderSystem.setShaderColor(1f, 1f, 1f, watermarkAlpha);
@@ -529,7 +546,6 @@ public class QuestJournalScreen extends Screen {
 
         int localY = 0;
 
-        // ── 标题与图标 ──
         int titleIconOffset = 0;
         if (def.getVisualConfig().getIcon(IconPosition.QUEST_TITLE).isPresent()) {
             int finalLocalY = localY;
@@ -548,7 +564,6 @@ public class QuestJournalScreen extends Screen {
         g.pose().popPose();
         localY += 18;
 
-        // ── 描述 ──
         if (!def.getDescription().getString().isEmpty()) {
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
@@ -612,7 +627,6 @@ public class QuestJournalScreen extends Screen {
                     localY += 12;
                 }
 
-
                 localY += 6;
                 g.fill(0, localY, scrollAreaW - 24, localY + 1, QuestAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
                 localY += 10;
@@ -666,37 +680,31 @@ public class QuestJournalScreen extends Screen {
                         ChoiceOption choice = choices.get(i);
                         if (choice.getVisibleCondition() != null && !choice.getVisibleCondition().test(ClientQuestCache.INSTANCE.getCompletedQuests().stream().map(ResourceLocation::tryParse).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet()), ClientQuestCache.INSTANCE.getAllFlags(), ClientQuestCache.INSTANCE.getAllVariables())) continue;
 
-                        int btnW = scrollAreaW - 24, btnH = 22; // 稍微增高按钮增加呼吸感
+                        int btnW = scrollAreaW - 24, btnH = 22;
                         int absX = x + 12, absY = scrollAreaY + 12 - (int)detailScrollOffset + localY;
                         currentChoiceButtons.add(new ChoiceButtonRect(absX, absY, btnW, btnH, i));
 
                         boolean isHovered = mx >= absX && mx <= absX + btnW && my >= absY && my <= absY + btnH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
 
-                        // 【高级视觉】：悬停时整体边框和文本变为主题色
                         int borderColor = isHovered ? activeTheme : 0x666666;
                         int textColor   = isHovered ? activeTheme : 0xCCCCCC;
 
-                        // 渲染按钮底板
                         g.fill(0, localY, btnW, localY + btnH, QuestAnimUtil.withAlpha(0xFFFFFF, (int)((isHovered ? 0x22 : 0x11) * dAlpha)));
-                        // 渲染四周边框
                         g.fill(0, localY, btnW, localY + 1, QuestAnimUtil.withAlpha(borderColor, (int)(200 * dAlpha)));
                         g.fill(0, localY + btnH - 1, btnW, localY + btnH, QuestAnimUtil.withAlpha(borderColor, (int)(200 * dAlpha)));
                         g.fill(0, localY, 1, localY + btnH, QuestAnimUtil.withAlpha(borderColor, (int)(200 * dAlpha)));
                         g.fill(btnW - 1, localY, btnW, localY + btnH, QuestAnimUtil.withAlpha(borderColor, (int)(200 * dAlpha)));
 
-                        // 【像素级对齐】：通过严密的数学计算绝对居中文字
                         float textScale = 0.8f;
                         float textH = font.lineHeight * textScale;
                         float textYOffset = (btnH - textH) / 2f;
 
                         g.pose().pushPose();
-                        // 向下偏移 textYOffset 确保像素级居中！
                         g.pose().translate(8, localY + textYOffset + 1, 0);
                         g.pose().scale(textScale, textScale, 1f);
 
                         String safeChoiceText = font.plainSubstrByWidth((i + 1) + ". " + choice.getDisplayText().getString(), (int)((btnW - 16) / textScale));
 
-                        // 悬停时文本应用主题色
                         g.drawString(font, safeChoiceText, 0, 0, QuestAnimUtil.withAlpha(textColor, safeA), false);
                         g.pose().popPose();
 
@@ -769,9 +777,8 @@ public class QuestJournalScreen extends Screen {
 
     private List<String> wrapText(String text, int maxWidth) {
         List<String> lines = new ArrayList<>();
-        // 先按\n分割成段落
         String[] paragraphs = text.split("\\n");
-        
+
         for (String paragraph : paragraphs) {
             StringBuilder current = new StringBuilder();
             for (String word : paragraph.split(" ")) {
