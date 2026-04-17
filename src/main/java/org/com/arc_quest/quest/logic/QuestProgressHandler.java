@@ -167,8 +167,8 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName(), questId, phaseId,
                 objIndex, newProgress, required);
 
-        // 同步单目标进度
-        ArcQuestNetwork.syncObjectiveProgress(player, questId, objIndex, newProgress);
+        // P0优化：使用增量同步替代全量同步，减少带宽占用
+        ArcQuestNetwork.syncDeltaProgress(player, questId, objIndex, newProgress);
 
         // 触发事件
         QuestEventBus.fire(QuestChangeEvent.objectiveProgressed(

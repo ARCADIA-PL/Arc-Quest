@@ -63,6 +63,15 @@ public final class ArcQuestNetwork {
                 S2CSyncObjectivePacket::handle
         );
 
+        // ─── S2C：增量进度同步（P0优化）───
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CDeltaProgressPacket.class,
+                S2CDeltaProgressPacket::encode,
+                S2CDeltaProgressPacket::decode,
+                S2CDeltaProgressPacket::handle
+        );
+
         // ─── S2C：Flags / Variables 同步 ───
         CHANNEL.registerMessage(
                 packetId++,
@@ -121,14 +130,32 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * 单目标进度同步（轻量级，高频）
+     * 单目标进度同步（轻量级，高频）- 已废弃，使用syncDeltaProgress替代
+     * @deprecated 使用 {@link #syncDeltaProgress(ServerPlayer, String, int, int)} 以获得更好的性能
      */
+    @Deprecated
     public static void syncObjectiveProgress(ServerPlayer player,
                                              String questId,
                                              int objIndex,
                                              int newProgress) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncObjectivePacket(questId, objIndex, newProgress));
+    }
+
+    /**
+     * 增量进度同步（P0优化）- 仅同步变化的字段，体积极小。
+     *
+     * @param player         目标玩家
+     * @param questId        任务ID
+     * @param objectiveIndex 目标索引
+     * @param newProgress    新进度值
+     */
+    public static void syncDeltaProgress(ServerPlayer player,
+                                         String questId,
+                                         int objectiveIndex,
+                                         int newProgress) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new S2CDeltaProgressPacket(questId, objectiveIndex, newProgress));
     }
 
     /**

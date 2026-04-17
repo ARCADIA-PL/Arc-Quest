@@ -32,6 +32,9 @@ public final class QuestRuntimeData {
     private String currentPhaseId;
     private int[] objectiveProgress;
     private final long acceptedAtTick;
+    
+    // P2优化：脏标记，用于I/O防抖
+    private boolean isDirty = false;
 
     // ── 构造 ──────────────────────────────────────────────
 
@@ -174,6 +177,8 @@ public final class QuestRuntimeData {
     /**
      * 增加目标进度，返回增加后的值。
      * 不会超过 {@code clampMax}（若 clampMax <= 0 则不做上限限制）。
+     * 
+     * P2优化：设置脏标记，延迟同步和保存
      */
     public int incrementProgress(int index, int amount, int clampMax) {
         if (index < 0 || index >= objectiveProgress.length) return 0;
@@ -181,12 +186,14 @@ public final class QuestRuntimeData {
         if (clampMax > 0 && objectiveProgress[index] > clampMax) {
             objectiveProgress[index] = clampMax;
         }
+        this.isDirty = true; // 标记为脏数据
         return objectiveProgress[index];
     }
 
     public void setObjectiveProgress(int index, int value) {
         if (index >= 0 && index < objectiveProgress.length) {
             objectiveProgress[index] = value;
+            this.isDirty = true; // 标记为脏数据
         }
     }
 
@@ -213,6 +220,24 @@ public final class QuestRuntimeData {
 
     public List<String> getCompletedPhases() {
         return Collections.unmodifiableList(completedPhases);
+    }
+
+    // ════════════════════════════════════════
+    //  P2优化：脏标记管理
+    // ════════════════════════════════════════
+
+    /**
+     * 检查数据是否为脏（需要保存/同步）。
+     */
+    public boolean isDirty() {
+        return isDirty;
+    }
+
+    /**
+     * 重置脏标记（在保存/同步后调用）。
+     */
+    public void clearDirty() {
+        this.isDirty = false;
     }
 
     // ── 网络序列化 ────────────────────────────────────────
