@@ -25,30 +25,23 @@ public class S2CSyncQuestStatePacket {
 
     public static void handle(S2CSyncQuestStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ClientQuestCache.INSTANCE.updateQuest(pkt.data);
-
             ResourceLocation questRl = ResourceLocation.tryParse(pkt.data.getQuestId());
             QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
             String name = def != null ? def.getDisplayName().getString() : pkt.data.getQuestId();
 
+            // 在更新缓存前检查是否为新任务
+            boolean isNewQuest = !ClientQuestCache.INSTANCE.isQuestActive(pkt.data.getQuestId());
+
+            // 更新客户端缓存
+            ClientQuestCache.INSTANCE.updateQuest(pkt.data);
+
             switch (pkt.data.getState()) {
                 case ACTIVE -> {
-                    boolean isNewQuest = !ClientQuestCache.INSTANCE.isQuestActive(pkt.data.getQuestId());
-
                     if (isNewQuest) {
                         QuestToastManager.show(QuestToastManager.ToastType.QUEST_ACCEPTED, name);
                         if (def != null) ClientQuestEvents.handleVisualTrigger(def, SplashType.QUEST_ACQUIRED, null);
                     } else {
                         QuestToastManager.show(QuestToastManager.ToastType.PHASE_ADVANCED, name);
-                        // 【修改点】：暂时停用 PHASE_ADVANCED 相关的立绘弹出，保持 UI 克制
-                        /*
-                        if (def != null) {
-                            String phaseName = def.getPhase(pkt.data.getCurrentPhaseId()) != null
-                                    ? def.getPhase(pkt.data.getCurrentPhaseId()).getDisplayName().getString()
-                                    : pkt.data.getCurrentPhaseId();
-                            ClientQuestEvents.handleVisualTrigger(def, SplashType.PHASE_START, phaseName);
-                        }
-                        */
                     }
 
                     if (def != null && Minecraft.getInstance().player != null) {

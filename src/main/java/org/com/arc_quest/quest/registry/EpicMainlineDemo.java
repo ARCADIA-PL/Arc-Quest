@@ -1,5 +1,6 @@
 package org.com.arc_quest.quest.registry;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
@@ -37,6 +38,16 @@ public final class EpicMainlineDemo {
                 .description(Component.translatable("arc_quest.quest.epic_prologue.desc"))
                 .icon(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/quest/prologue.png"))
                 .sortOrder(0)
+                // 视觉配置
+                .acquisitionSplash(
+                    ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
+                    1f
+                )
+                .completionSplash(
+                    ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_complete.png"),
+                    1f
+                )
+                .themeColor(net.minecraft.ChatFormatting.GOLD)
                 // 阶段 1：收集木材制作武器
                 .phase(PhaseBuilder.create("gather_wood")
                         .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood"))
@@ -83,6 +94,16 @@ public final class EpicMainlineDemo {
                 .description(Component.translatable("arc_quest.quest.epic_chapter1.desc"))
                 .sortOrder(1)
                 .requiresQuest("epic_prologue")
+                // 视觉配置
+                .acquisitionSplash(
+                    ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/chapter1_acquire.png"),
+                    1f
+                )
+                .completionSplash(
+                    ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/chapter1_complete.png"),
+                    1f
+                )
+                .themeColor(ChatFormatting.BLUE)
                 // 阶段 1：准备火把和工具
                 .phase(PhaseBuilder.create("prepare_tools")
                         .displayName(Component.translatable("arc_quest.phase.epic_chapter1.prepare_tools"))

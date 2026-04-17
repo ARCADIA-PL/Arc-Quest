@@ -1,176 +1,237 @@
+// 文件名: org.com.arc_quest.client.gui.render.QuestSplashRenderer.java
 package org.com.arc_quest.client.gui.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import org.com.arc_quest.quest.api.VisualAsset;
-
-import java.util.ArrayDeque;
-import java.util.Queue;
+import net.minecraft.resources.ResourceLocation;
+import org.com.arc_quest.quest.api.QuestDefinition;
+import org.com.arc_quest.quest.api.SplashType;
 
 public class QuestSplashRenderer {
+    private static QuestDefinition activeQuest = null;
+    private static SplashType activeType = null;
+    private static ResourceLocation activeTexture = null;
+    private static long startTime = 0;
 
-    // ── 动画时间轴 ──
-    private static final float TIME_ENTER = 600f;
-    private static final float TIME_HOLD  = 2500f;
+    // 完美继承 Ares Genesis 的顶级时间轴配置
+    private static final float TIME_ENTER = 700f;
+    private static final float TIME_HOLD  = 2900f;
     private static final float TIME_EXIT  = 500f;
-    private static final float FLY_DIST   = 15f;
-    private static final float DRIFT_DIST = 2f;
 
-    // ── 弹幕队列 ──
-    private record SplashRequest(VisualAsset asset, String title, String subtitle, int themeColor) {}
-    private static final Queue<SplashRequest> queue = new ArrayDeque<>();
+    private static final float MAX_DRIFT = 3.0f;
+    private static final float FLY_DISTANCE = 4.0f;
 
-    private static SplashRequest currentSplash = null;
-    private static long currentStartTime = 0;
-
-    /**
-     * 触发一个新立绘（自动进入队列）
-     */
-    public static void trigger(VisualAsset asset, String title, String subtitle, int themeColor) {
-        if (asset != null && asset.enabled() && asset.texture() != null) {
-            queue.offer(new SplashRequest(asset, title, subtitle, themeColor));
+    public static void trigger(QuestDefinition quest, SplashType type, ResourceLocation texture) {
+        if (quest != null && texture != null) {
+            activeQuest = quest;
+            activeType = type;
+            activeTexture = texture;
+            startTime = Util.getMillis();
         }
     }
 
-    public static void render(GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
-        long now = Util.getMillis();
+    public static boolean isActive() {
+        return activeQuest != null;
+    }
 
-        // 队列管理
-        if (currentSplash == null) {
-            if (queue.isEmpty()) return;
-            currentSplash = queue.poll();
-            currentStartTime = now;
-        }
+    public static void render(GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
+        if (activeQuest == null || activeTexture == null) return;
 
-        long elapsed = now - currentStartTime;
+        long elapsed = Util.getMillis() - startTime;
         float totalTime = TIME_ENTER + TIME_HOLD + TIME_EXIT;
 
         if (elapsed >= totalTime) {
-            currentSplash = null; // 动画结束，下一帧加载新弹幕
+            activeQuest = null;
             return;
         }
 
-        // ── 尺寸与比例 ──
-        int frameW = 240;
-        int frameH = 135;
-        float finalScale = (screenHeight * 0.35f) / (float) frameH; // 动态适配屏幕
+        // 采用 16:9 标准宽屏立绘比例
+        int frameW = 400;
+        int frameH = 225;
 
-        float textW = Minecraft.getInstance().font.width(currentSplash.title) * 1.2f;
-        float targetLineWidth = Math.max(textW + 30, frameW * finalScale - 20);
+        // 动态缩放：占据屏幕高度的 70% (黄金视觉比例)
+        float finalScale = (screenHeight * 0.70f) / (float) frameH;
 
-        // ── 动画数学计算 ──
+        Font font = Minecraft.getInstance().font;
+        String titleStr = activeQuest.getDisplayName().getString();
+        float textWidth = font.width(titleStr) * 1.45f;
+        float targetLineWidth = Math.max(textWidth + 30, (frameW - 40) * finalScale);
+
         float alpha = 1f;
-        float scaleAnim = finalScale;
-        float revealProgress = 1f;
-        float wipeProgress = 0f;
+
+        // 【核心修改】精准锚定屏幕绝对正中央
+        float baseX = (screenWidth / 2f) - ((frameW * finalScale) / 2f);
+        float currentY = (screenHeight / 2f) - ((frameH * finalScale) / 2f);
+
         float currentX;
+
+        float scaleAnim = finalScale;
+        float revealProgress = 1.0f;
+        float wipeProgress = 0.0f;
+
+        float textFade = 1f;
+        float currentLineWidth = targetLineWidth;
         float textDriftX = 0f;
-        float lineW = targetLineWidth;
 
-        float baseX = Math.max(20f, screenWidth * 0.03f); // 左侧留白
-        float baseY = screenHeight / 2f - (frameH * finalScale) / 2f; // 垂直居中
+        float actualFlyDist = FLY_DISTANCE * finalScale;
+        float actualDrift = MAX_DRIFT * finalScale;
 
-        if (elapsed < TIME_ENTER) { // 入场
-            float t = Math.min(1f, elapsed / TIME_ENTER);
-            float ease = 1f - (float)Math.pow(1f - t, 5); // easeOutQuint
+        // 1:1 移植 Genesis 的数学缓动曲线
+        if (elapsed < TIME_ENTER) {
+            float t = elapsed / TIME_ENTER;
+            t = Math.min(1.0f, t);
+            float easeOut = (float)(1.0 - Math.pow(1.0 - t, 5)); // Ease Out Quint
 
-            revealProgress = ease;
-            alpha = ease;
-            scaleAnim = finalScale * (1.1f - 0.1f * ease);
-            currentX = baseX - (1f - ease) * FLY_DIST;
-            lineW *= ease;
-            textDriftX = -(1f - ease) * 15f;
+            revealProgress = easeOut;
+            alpha = easeOut;
+            scaleAnim = finalScale * (1.10f - 0.10f * easeOut); // 轻微缩放推镜
+            currentX = baseX - (1.0f - easeOut) * actualFlyDist * 2f;
 
-        } else if (elapsed < TIME_ENTER + TIME_HOLD) { // 待机呼吸
+            textFade = easeOut;
+            currentLineWidth *= easeOut;
+            textDriftX = -(1.0f - easeOut) * 25f;
+
+        } else if (elapsed < TIME_ENTER + TIME_HOLD) {
             float t = (elapsed - TIME_ENTER) / TIME_HOLD;
-            float driftEase = (float)Math.sin(t * Math.PI);
+            t = Math.min(1.0f, t);
+            float driftEase = (float) Math.sin(t * (Math.PI / 2)); // 丝滑正弦漂移
 
-            currentX = baseX + (driftEase * DRIFT_DIST);
+            currentX = baseX + (driftEase * actualDrift);
+            scaleAnim = finalScale;
 
-        } else { // 退场
-            float t = Math.min(1f, (elapsed - TIME_ENTER - TIME_HOLD) / TIME_EXIT);
-            float ease = (float)Math.pow(t, 4); // easeInQuart
+        } else {
+            float t = (elapsed - TIME_ENTER - TIME_HOLD) / TIME_EXIT;
+            t = Math.min(1.0f, t);
+            float easeIn = (float)Math.pow(t, 4.0); // Ease In Quart
 
-            wipeProgress = ease;
-            alpha = 1f - (float)Math.pow(t, 6);
-            currentX = baseX + DRIFT_DIST + (ease * FLY_DIST);
-            lineW *= (1f - ease);
-            textDriftX = ease * 25f;
+            wipeProgress = easeIn;
+            float startExitX = baseX + actualDrift;
+            currentX = startExitX + (easeIn * actualFlyDist * 1.5f);
+
+            alpha = 1.0f - (float)Math.pow(t, 8.0);
+            textFade = 1f - easeIn;
+            textDriftX = easeIn * 40f;
         }
 
-        if (alpha < 0.01f) return;
+        if (revealProgress <= 0.001f || wipeProgress >= 0.999f) return;
 
-        // ── Scissor 裁剪遮罩设置 ──
-        float drawW = Math.max(frameW * scaleAnim, lineW + 40f);
-        int scLeft = (int)currentX - 20;
-        int scRight = (int)(currentX + drawW + 20);
+        int themeColor = activeType == SplashType.QUEST_FAILED ? 0xFF1111 : activeQuest.getVisualConfig().getThemeColor();
+
+        // 丝滑裁切 (Scissor Wipe) 逻辑
+        float absoluteRightEdge = currentX + (frameW * scaleAnim);
+        float lineRightEdge = currentX + (20 * scaleAnim) + targetLineWidth + 50f;
+        float maxDrawWidth = Math.max(absoluteRightEdge, lineRightEdge);
+
+        int scX1 = (int)(currentX - 50);
+        int scX2 = (int)(maxDrawWidth + 50);
 
         if (elapsed < TIME_ENTER) {
-            scRight = (int)(currentX + drawW * revealProgress);
+            scX2 = (int)(currentX + (maxDrawWidth - currentX) * revealProgress);
         } else if (elapsed >= TIME_ENTER + TIME_HOLD) {
-            scRight = (int)(currentX + drawW * (1f - wipeProgress));
+            scX2 = (int)(currentX + (maxDrawWidth - currentX) * (1.0f - wipeProgress));
         }
 
-        g.enableScissor(scLeft, 0, scRight, screenHeight);
-
-        // ── 渲染底板与立绘 ──
-        g.pose().pushPose();
-        g.pose().translate(currentX, baseY, 0);
-
+        // ==========================================
+        // 0. 极其轻微的全局暗化 (仅仅 20% 的透明度)
+        // ==========================================
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0, 0, 4000f);
+        RenderSystem.disableDepthTest();
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int bgAlpha = (int)(alpha * 0xDD);
-        g.fill(0, 0, (int)(frameW * finalScale), (int)(frameH * finalScale), (bgAlpha << 24) | 0x1A1A1A);
-
-        int accentColor = currentSplash.themeColor & 0xFFFFFF;
-        g.fill(0, 0, 3, (int)(frameH * finalScale), ((int)(alpha * 255) << 24) | accentColor);
-
-        // 立绘渲染（应用 VisualAsset 的缩放与偏移）
-        VisualAsset asset = currentSplash.asset;
-        g.pose().pushPose();
-        // 修正中心点进行缩放
-        g.pose().translate((frameW * finalScale)/2f, (frameH * finalScale)/2f, 0);
-        g.pose().scale(scaleAnim * asset.scale(), scaleAnim * asset.scale(), 1f);
-        g.pose().translate(-(frameW * finalScale)/2f, -(frameH * finalScale)/2f, 0);
-
-        g.pose().translate(asset.offsetX() * finalScale, asset.offsetY() * finalScale, 0);
-
-        RenderSystem.setShaderColor(1f, 1f, 1f, alpha);
-        g.blit(asset.texture(), 0, 0, 0, 0, (int)(frameW * finalScale), (int)(frameH * finalScale), (int)(frameW * finalScale), (int)(frameH * finalScale));
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        g.pose().popPose();
-
-        // ── 渲染文字 ──
-        float textX = 15 * finalScale + textDriftX;
-        float textY = frameH * finalScale - 35;
-
-        int textColor = ((int)(alpha * 255) << 24) | 0xFFFFFF;
-        int subColor = ((int)(alpha * 255) << 24) | 0xAAAAAA;
-
-        g.pose().pushPose();
-        g.pose().translate(textX, textY, 0);
-        g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(Minecraft.getInstance().font, currentSplash.subtitle, 0, -10, subColor, true);
-        g.pose().popPose();
-
-        g.pose().pushPose();
-        g.pose().translate(textX, textY + 5, 0);
-        g.pose().scale(1.1f, 1.1f, 1f);
-        g.drawString(Minecraft.getInstance().font, currentSplash.title, 0, 0, textColor, true);
-        g.pose().popPose();
-
-        // 装饰线
-        if (lineW > 2) {
-            int lineCol = ((int)(alpha * 255) << 24) | accentColor;
-            g.fill((int)textX, (int)textY + 22, (int)(textX + lineW), (int)textY + 23, lineCol);
-            if (lineW > 10) g.fill((int)(textX + lineW), (int)textY + 21, (int)(textX + lineW) + 3, (int)textY + 24, lineCol);
+        int globalDimAlpha = (int)(alpha * 100); // 极限克制
+        if (globalDimAlpha > 0) {
+            guiGraphics.fill(0, 0, screenWidth, screenHeight, globalDimAlpha << 24);
         }
 
+        // ==========================================
+        // 1. 立绘渲染层
+        // ==========================================
+        guiGraphics.enableScissor(scX1, -1000, scX2, 10000);
+
+        guiGraphics.pose().pushPose();
+        float scaleOffsetW = (frameW * scaleAnim - frameW * finalScale) / 2f;
+        float scaleOffsetH = (frameH * scaleAnim - frameH * finalScale) / 2f;
+
+        guiGraphics.pose().translate(currentX - scaleOffsetW, currentY - scaleOffsetH, 0);
+        guiGraphics.pose().scale(scaleAnim, scaleAnim, 1f);
+
+        // 立绘本身
+        guiGraphics.setColor(1f, 1f, 1f, alpha);
+        guiGraphics.blit(activeTexture, 0, 0, 0, 0, frameW, frameH, frameW, frameH);
+        guiGraphics.setColor(1f, 1f, 1f, 1f);
+
+        // 雕花：左侧的主题色机能线
+        int borderAlpha = Math.max(0, Math.min(255, (int)(alpha * 255)));
+        int borderColor = (borderAlpha << 24) | (themeColor & 0xFFFFFF);
+        guiGraphics.fill(0, 0, 3, frameH, borderColor);
+
+        // 雕花：四个角的高级感边框折角 (Bracket Accents)
+        int decColor = (borderAlpha << 24) | 0xFFFFFF;
+        guiGraphics.fill(0, 0, 20, 2, decColor); // 左上横
+        guiGraphics.fill(0, 0, 2, 20, decColor); // 左上竖
+        guiGraphics.fill(frameW - 20, frameH - 2, frameW, frameH, decColor); // 右下横
+        guiGraphics.fill(frameW - 2, frameH - 20, frameW, frameH, decColor); // 右下竖
+
+        guiGraphics.pose().popPose();
+
+        // ==========================================
+        // 2. 排版与装饰层 (贴紧立绘左下角，带视差漂移)
+        // ==========================================
+        guiGraphics.pose().pushPose();
+
+        float textStartX = currentX + (20 * finalScale) + textDriftX;
+        float textStartY = currentY + (frameH * finalScale) - 65; // 锚定在立绘内部靠下
+
+        guiGraphics.pose().translate(textStartX, textStartY, 50);
+
+        int baseAlpha = Math.max(0, Math.min(255, (int)(textFade * 255)));
+        int titleColor = (baseAlpha << 24) | 0xFFFFFF;
+        int subColor = (baseAlpha << 24) | 0xAAAAAA;
+        int statusColor = (baseAlpha << 24) | (themeColor & 0xFFFFFF);
+        int lineColor = (baseAlpha << 24) | (themeColor & 0xFFFFFF);
+
+        if (baseAlpha > 5) {
+            // [雕花] 顶层小字：系统分类
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().scale(0.85f, 0.85f, 1f);
+            guiGraphics.drawString(font, "SYS.ARC_QUEST // " + activeQuest.getCategory().name(), 0, -22, subColor, true);
+            guiGraphics.pose().popPose();
+
+            // [雕花] 状态高亮：ACCEPTED / COMPLETED / FAILED
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().scale(1.1f, 1.1f, 1f);
+            guiGraphics.drawString(font, activeType.name().replace("_", " "), 0, -8, statusColor, true);
+            guiGraphics.pose().popPose();
+
+            // 主标题：任务名称
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().scale(1.45f, 1.45f, 1f);
+            guiGraphics.drawString(font, titleStr, 0, 6, titleColor, true);
+            guiGraphics.pose().popPose();
+        }
+
+        // [雕花] 底层机能拉线与游标
+        currentLineWidth = Math.max(0f, currentLineWidth);
+        int lineY = 28;
+        if (baseAlpha > 5 && currentLineWidth > 0) {
+            guiGraphics.fill(0, lineY, (int)currentLineWidth, lineY + 1, lineColor);
+            if (currentLineWidth > 5) {
+                // 末尾的小方块游标
+                guiGraphics.fill((int)currentLineWidth, lineY - 2, (int)currentLineWidth + 4, lineY + 3, lineColor);
+            }
+        }
+
+        guiGraphics.pose().popPose();
+
+        // 恢复渲染管线状态
         RenderSystem.disableBlend();
-        g.pose().popPose();
-        g.disableScissor();
+        guiGraphics.disableScissor();
+        RenderSystem.enableDepthTest();
+        guiGraphics.pose().popPose();
     }
 }

@@ -1,4 +1,3 @@
-// 新建: quest/api/SplashType.java
 package org.com.arc_quest.quest.api;
 
 /**
@@ -33,7 +32,7 @@ public enum SplashType {
     //  未来扩展区域（按需添加）
     // ═══════════════════════════════════════════
     /** 任务失败时的立绘 */
-    // QUEST_FAILED,
+    QUEST_FAILED,
 
     /** 分支选择时的立绘 */
     // BRANCH_CHOICE,

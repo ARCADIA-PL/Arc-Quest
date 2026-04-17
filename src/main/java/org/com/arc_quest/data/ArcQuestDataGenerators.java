@@ -1,6 +1,3 @@
-// ═══════════════════════════════════════════════════════════
-// 文件: org/com/arc_quest/data/ArcQuestDataGenerators.java
-// ═══════════════════════════════════════════════════════════
 package org.com.arc_quest.data;
 
 import net.minecraft.data.DataGenerator;
