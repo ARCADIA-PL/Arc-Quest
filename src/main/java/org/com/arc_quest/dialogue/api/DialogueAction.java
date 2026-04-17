@@ -22,43 +22,20 @@ import org.slf4j.Logger;
 
 /**
  * 对话选择触发的服务端动作。
- *
- * <pre>
- * JSON 示例:
- * { "type": "START_QUEST",    "quest_id": "rescue_villager" }
- * { "type": "COMPLETE_QUEST", "quest_id": "rescue_villager" }
- * { "type": "ADVANCE_PHASE",  "quest_id": "rescue_villager" }
- * { "type": "GIVE_XP",        "amount": 50 }
- * { "type": "GIVE_ITEM",      "item": "minecraft:diamond", "count": 3 }
- * { "type": "NOTIFY_TALK",    "npc_id": "elder" }
- * { "type": "RUN_COMMAND",    "command": "/effect give @s strength 60 1" }
- * { "type": "SET_FLAG",       "flag": "talked_to_elder" }
- * { "type": "SET_VARIABLE",   "key": "reputation", "value": 10 }
- * { "type": "CUSTOM",         "type_id": "mymod:give_coins", "data": {...} }
- * </pre>
  */
 public sealed interface DialogueAction {
 
     Logger LOGGER = LogUtils.getLogger();
 
-    /**
-     * 在服务端执行动作。
-     */
+
     void execute(ServerPlayer player);
 
-    /**
-     * 在服务端执行动作（带会话上下文）。
-     * <p>
-     * 默认实现委托给 {@link #execute(ServerPlayer)}。
-     * {@link Custom} 类型重写此方法以获取会话上下文。
-     */
+
     default void execute(ServerPlayer player, DialogueSession session) {
         execute(player);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  原有动作类型
-    // ═══════════════════════════════════════════════════════
+
 
     /** 开始任务。 */
     record StartQuest(String questId) implements DialogueAction {
@@ -179,20 +156,9 @@ public sealed interface DialogueAction {
         }
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  新增动作类型
-    // ═══════════════════════════════════════════════════════
 
-    /**
-     * 以执行者身份执行服务端命令。
-     * <p>
-     * 支持 {@code @s} 代表当前玩家。命令文本中的 {@code %player%}
-     * 和 {@code %npc%} 会通过 {@link DialogueSession#processText} 替换。
-     *
-     * <pre>
-     * { "type": "RUN_COMMAND", "command": "/effect give @s minecraft:strength 600 1" }
-     * </pre>
-     */
+
+
     record RunCommand(String command) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
@@ -210,7 +176,7 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player, DialogueSession session) {
             MinecraftServer server = player.getServer();
             if (server != null) {
-                // 通过 session 做变量替换后再执行
+
                 String resolved = session != null ? session.processText(command) : command;
                 String cmd = resolved.startsWith("/") ? resolved.substring(1) : resolved;
                 server.getCommands().performPrefixedCommand(
@@ -258,25 +224,7 @@ public sealed interface DialogueAction {
         }
     }
 
-    /**
-     * 外部模组自定义动作。
-     * <p>
-     * 通过 {@link DialogueActionTypes#register} 注册处理器，
-     * 再在对话中引用。
-     *
-     * <pre>
-     * // 注册
-     * DialogueActionTypes.register(
-     *     new ResourceLocation("economy", "give_coins"),
-     *     (player, session, data) -> EconomyAPI.addCoins(player, data.getInt("amount"))
-     * );
-     *
-     * // 使用
-     * CompoundTag data = new CompoundTag();
-     * data.putInt("amount", 500);
-     * new DialogueAction.Custom(new ResourceLocation("economy", "give_coins"), data)
-     * </pre>
-     */
+
     record Custom(ResourceLocation typeId, CompoundTag data) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {

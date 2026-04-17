@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 /**
- * 不可变的完整任务定义。由 QuestBuilder 构建，存入 QuestRegistry。
+ * 不可变任务定义，由 QuestBuilder 构建。
  */
 public final class QuestDefinition {
 
@@ -137,24 +137,18 @@ public final class QuestDefinition {
         return this.flagsToSetOnComplete;
     }
 
-    /**
-     * 获取视觉配置。
-     */
+
     public QuestVisualConfig getVisualConfig() {
         return this.visualConfig;
     }
 
-    /**
-     * 向后兼容：获取旧版icon字段。
-     */
+
     @Nullable
     public ResourceLocation getLegacyIcon() {
         return this.iconTexture;
     }
 
-    /**
-     * 推荐：通过视觉配置获取指定位置的图标。
-     */
+
     @Nullable
     public ResourceLocation getIconFor(IconPosition position) {
         return this.visualConfig.getIcon(position)
@@ -162,30 +156,22 @@ public final class QuestDefinition {
                 .orElse(this.iconTexture);  // 回退到旧字段
     }
 
-    /**
-     * 获取任务的主题色。
-     */
+
     public int getThemeColor() {
         return this.visualConfig.getThemeColor();
     }
 
-    /**
-     * 检查是否有指定类型的立绘。
-     */
+
     public boolean hasSplash(SplashType type) {
         return this.visualConfig.getSplash(type).isPresent();
     }
 
-    /**
-     * 获取指定类型的立绘配置。
-     */
+
     public java.util.Optional<VisualAsset> getSplashConfig(SplashType type) {
         return this.visualConfig.getSplash(type);
     }
 
-    /**
-     * 检测解锁条件是否全部满足
-     */
+    /** 检测解锁条件是否全部满足 */
     public boolean canUnlock(Set<ResourceLocation> completedQuests,
                              Set<String> flags,
                              Map<String, Integer> variables) {

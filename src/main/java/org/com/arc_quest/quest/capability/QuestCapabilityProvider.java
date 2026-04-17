@@ -11,16 +11,11 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Forge Capability Provider — 将 {@link IQuestCapability} 绑定到 Player Entity。
- * <p>
- * 同时负责 NBT 的序列化/反序列化（存盘时自动调用）。
+ * Forge Capability Provider，将 IQuestCapability 绑定到 Player Entity。
  */
 public class QuestCapabilityProvider implements ICapabilitySerializable<CompoundTag> {
 
-    /**
-     * 全局 Capability 令牌。
-     * 在 {@link CapabilityEventHandler.ModBusEvents#onRegisterCapabilities} 中注册类型后即可使用。
-     */
+
     public static final Capability<IQuestCapability> QUEST_CAP =
             CapabilityManager.get(new CapabilityToken<>() {
             });
@@ -28,7 +23,7 @@ public class QuestCapabilityProvider implements ICapabilitySerializable<Compound
     private final QuestCapabilityImpl backend = new QuestCapabilityImpl();
     private final LazyOptional<IQuestCapability> optional = LazyOptional.of(() -> backend);
 
-    // ── ICapabilityProvider ───────────────────────────────
+
 
     @Override
     public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap,
@@ -51,7 +46,7 @@ public class QuestCapabilityProvider implements ICapabilitySerializable<Compound
         backend.deserializeNBT(nbt);
     }
 
-    // ── 失效 ──────────────────────────────────────────────
+
 
     public void invalidate() {
         optional.invalidate();

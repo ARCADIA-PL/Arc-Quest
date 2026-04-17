@@ -9,43 +9,29 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 /**
- * {@link IQuestCapability} 的标准实现。
- * <p>
- * 全部数据以 Java 集合形式持有，序列化到 NBT（存盘）/FriendlyByteBuf（网络）。
+ * IQuestCapability 的标准实现。
  */
 public class QuestCapabilityImpl implements IQuestCapability {
 
-    /**
-     * 活跃任务：questId → 运行时数据
-     */
+
     private final Map<String, QuestRuntimeData> activeQuests = new LinkedHashMap<>();
 
-    /**
-     * 已完成的任务 ID
-     */
+
     private final Set<String> completedQuests = new LinkedHashSet<>();
 
-    /**
-     * 已失败的任务 ID
-     */
+
     private final Set<String> failedQuests = new LinkedHashSet<>();
 
-    /**
-     * 全局标记
-     */
+
     private final Set<String> flags = new HashSet<>();
 
-    /**
-     * 全局变量
-     */
+
     private final Map<String, Integer> variables = new HashMap<>();
     
     // P2优化：脏标记，用于延迟保存
     private boolean isDirty = false;
 
-    // ═══════════════════════════════════════════════════════
-    //  任务生命周期
-    // ═══════════════════════════════════════════════════════
+
 
     @Override
     public void addActiveQuest(QuestRuntimeData data) {
@@ -111,9 +97,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return failedQuests.contains(questId);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  Flag 系统
-    // ═══════════════════════════════════════════════════════
+
 
     @Override
     public void setFlag(String flag) {
@@ -137,9 +121,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return Collections.unmodifiableSet(flags);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  Variable 系统
-    // ═══════════════════════════════════════════════════════
+
 
     @Override
     public int getVariable(String key) {
@@ -163,43 +145,36 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return Collections.unmodifiableMap(variables);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  NBT 序列化
-    // ═══════════════════════════════════════════════════════
+
 
     @Override
     public CompoundTag serializeNBT() {
         CompoundTag root = new CompoundTag();
 
-        // 活跃任务
         ListTag activeList = new ListTag();
         for (QuestRuntimeData data : activeQuests.values()) {
             activeList.add(data.serializeNBT());
         }
         root.put("ActiveQuests", activeList);
 
-        // 已完成
         ListTag completedList = new ListTag();
         for (String id : completedQuests) {
             completedList.add(StringTag.valueOf(id));
         }
         root.put("CompletedQuests", completedList);
 
-        // 已失败
         ListTag failedList = new ListTag();
         for (String id : failedQuests) {
             failedList.add(StringTag.valueOf(id));
         }
         root.put("FailedQuests", failedList);
 
-        // Flags
         ListTag flagList = new ListTag();
         for (String f : flags) {
             flagList.add(StringTag.valueOf(f));
         }
         root.put("Flags", flagList);
 
-        // Variables
         CompoundTag varsTag = new CompoundTag();
         for (Map.Entry<String, Integer> e : variables.entrySet()) {
             varsTag.putInt(e.getKey(), e.getValue());
@@ -217,45 +192,38 @@ public class QuestCapabilityImpl implements IQuestCapability {
         flags.clear();
         variables.clear();
 
-        // 活跃任务
         ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
         for (int i = 0; i < activeList.size(); i++) {
             QuestRuntimeData data = QuestRuntimeData.deserializeNBT(activeList.getCompound(i));
             activeQuests.put(data.getQuestId(), data);
         }
 
-        // 已完成
         ListTag completedList = root.getList("CompletedQuests", Tag.TAG_STRING);
         for (int i = 0; i < completedList.size(); i++) {
             completedQuests.add(completedList.getString(i));
         }
 
-        // 已失败
         ListTag failedList = root.getList("FailedQuests", Tag.TAG_STRING);
         for (int i = 0; i < failedList.size(); i++) {
             failedQuests.add(failedList.getString(i));
         }
 
-        // Flags
         ListTag flagList = root.getList("Flags", Tag.TAG_STRING);
         for (int i = 0; i < flagList.size(); i++) {
             flags.add(flagList.getString(i));
         }
 
-        // Variables
         CompoundTag varsTag = root.getCompound("Variables");
         for (String key : varsTag.getAllKeys()) {
             variables.put(key, varsTag.getInt(key));
         }
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  深拷贝（死亡克隆）
-    // ═══════════════════════════════════════════════════════
+
 
     @Override
     public void copyFrom(IQuestCapability other) {
-        // 最简洁的方式：序列化 → 反序列化
+
         this.deserializeNBT(other.serializeNBT());
     }
 
@@ -269,17 +237,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
         this.isDirty = true; // 标记为脏
     }
     
-    // ═══════════════════════════════════════════════════════
-    //  P2优化：脏标记管理
-    // ═══════════════════════════════════════════════════════
+
     
-    /**
-     * 检查是否有任何数据被修改（需要保存）。
-     */
+
     public boolean isDirty() {
         if (this.isDirty) return true;
         
-        // 检查所有活跃任务是否有脏数据
+
         for (QuestRuntimeData data : activeQuests.values()) {
             if (data.isDirty()) return true;
         }
@@ -287,9 +251,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return false;
     }
     
-    /**
-     * 重置所有脏标记（在保存后调用）。
-     */
+
     public void clearDirty() {
         this.isDirty = false;
         for (QuestRuntimeData data : activeQuests.values()) {

@@ -10,18 +10,7 @@ import org.com.arc_quest.quest.api.QuestState;
 import java.util.*;
 
 /**
- * 单个任务的运行时可变数据。
- * 存储在 Capability 的 Map<String, QuestRuntimeData> 中。
- *
- * <p>字段说明：
- * <ul>
- *   <li>{@code questId}          — 引用 QuestDefinition 的唯一键</li>
- *   <li>{@code state}            — 当前状态 (IN_PROGRESS / COMPLETED / FAILED)</li>
- *   <li>{@code currentPhaseId}   — 当前所处阶段 ID</li>
- *   <li>{@code objectiveProgress}— 当前阶段每个目标的已完成数量</li>
- *   <li>{@code acceptedAtTick}   — 接受任务时的游戏刻</li>
- *   <li>{@code localFlags}       — 任务级局部标记（不影响全局 Flag）</li>
- * </ul>
+ * 任务运行时数据，存储在 Capability 中。
  */
 public final class QuestRuntimeData {
 
@@ -51,9 +40,7 @@ public final class QuestRuntimeData {
         this.completedPhases = new ArrayList<>();
     }
 
-    /**
-     * 反序列化专用
-     */
+
     private QuestRuntimeData(String questId,
                              QuestState state,
                              String currentPhaseId,
@@ -70,7 +57,7 @@ public final class QuestRuntimeData {
         this.completedPhases = completedPhases;
     }
 
-    // ── Getters ───────────────────────────────────────────
+
 
     public static QuestRuntimeData deserializeNBT(CompoundTag tag) {
         String questId = tag.getString("QuestId");
@@ -155,7 +142,7 @@ public final class QuestRuntimeData {
         return objectiveProgress.length;
     }
 
-    // ── Setters ───────────────────────────────────────────
+
 
     public long getAcceptedAtTick() {
         return acceptedAtTick;
@@ -174,12 +161,7 @@ public final class QuestRuntimeData {
         return Arrays.copyOf(objectiveProgress, objectiveProgress.length);
     }
 
-    /**
-     * 增加目标进度，返回增加后的值。
-     * 不会超过 {@code clampMax}（若 clampMax <= 0 则不做上限限制）。
-     * 
-     * P2优化：设置脏标记，延迟同步和保存
-     */
+    /** 增加目标进度，返回增加后的值。不会超过 {@code clampMax}（若 <= 0 则无上限）。*/
     public int incrementProgress(int index, int amount, int clampMax) {
         if (index < 0 || index >= objectiveProgress.length) return 0;
         objectiveProgress[index] += amount;

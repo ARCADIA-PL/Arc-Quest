@@ -15,16 +15,16 @@ public class DialogueTreeBuilder {
     private final String dialogueId;
     private String defaultNpc = "";
 
-    // 自动追踪第一个节点作为起始节点
+
     private String startNodeId = null;
 
-    // 所有已提交的节点
+
     private final Map<String, DialogueNode> committedNodes = new LinkedHashMap<>();
 
-    // [新增] 可选的视觉配置
+
     private QuestVisualConfig visualConfig = null;
 
-    // ── 当前正在构建的节点（延迟提交） ──
+
     private String curNodeId;
     private String curSpeaker;
     private String curText;
@@ -33,9 +33,7 @@ public class DialogueTreeBuilder {
     private final List<DialogueChoice> curChoices = new ArrayList<>();
     private boolean hasOpenNode = false;
 
-    // ═══════════════════════════════════════════════════════
-    //  构造
-    // ═══════════════════════════════════════════════════════
+
 
     private DialogueTreeBuilder(String dialogueId) {
         this.dialogueId = Objects.requireNonNull(dialogueId, "dialogueId must not be null");
@@ -45,9 +43,7 @@ public class DialogueTreeBuilder {
         return new DialogueTreeBuilder(dialogueId);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  树级配置
-    // ═══════════════════════════════════════════════════════
+
 
     /** 设置默认 NPC 名称（所有节点的 fallback speaker）。 */
     public DialogueTreeBuilder npc(String npcName) {
@@ -61,19 +57,13 @@ public class DialogueTreeBuilder {
         return this;
     }
 
-    /**
-     * [新增] 设置视觉配置（对话 UI 的外观定制）。
-     * <p>
-     * 如果不设置，构建时使用 {@code null}（对话树 record 中为 null 即可）。
-     */
+
     public DialogueTreeBuilder visualConfig(QuestVisualConfig config) {
         this.visualConfig = config;
         return this;
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  节点构建
-    // ═══════════════════════════════════════════════════════
+
 
     public DialogueTreeBuilder node(String nodeId) {
         commitCurrentNode();
@@ -148,9 +138,7 @@ public class DialogueTreeBuilder {
         return this;
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  构建
-    // ═══════════════════════════════════════════════════════
+
 
     public DialogueTree build() {
         commitCurrentNode();
@@ -163,7 +151,7 @@ public class DialogueTreeBuilder {
                     + "' not found in dialogue '" + dialogueId + "'.");
         }
 
-        // ★ 修复：传入第5个参数 QuestVisualConfig（可为 null）
+
         return new DialogueTree(
                 dialogueId,
                 defaultNpc,
@@ -179,9 +167,7 @@ public class DialogueTreeBuilder {
         return tree;
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  内部
-    // ═══════════════════════════════════════════════════════
+
 
     private void ensureOpenNode() {
         if (!hasOpenNode) {
