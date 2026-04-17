@@ -1,3 +1,4 @@
+// 文件名: org.com.arc_quest.client.gui.DialogueScreen.java
 package org.com.arc_quest.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -140,13 +141,11 @@ public class DialogueScreen extends Screen {
     private void sendChoice(int index) { if (isClosing) return; ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(index)); }
     private void sendAutoAdvance() { if (!autoAdvanceSent) { autoAdvanceSent = true; ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.autoAdvance()); } }
 
-    // 重写拦截原版 ESC 关闭
     @Override
     public void onClose() {
         startClose();
     }
 
-    // 安全启动关闭动画（但不立即发送网络包）
     private void startClose() {
         if (!isClosing) {
             isClosing = true;
@@ -164,19 +163,23 @@ public class DialogueScreen extends Screen {
         if (dt > 0.1f) dt = 0.1f;
         Font font = this.font;
 
-        // 【核心修复】：统一使用 QuestAnimUtil 的平滑阻尼 Lerp，告别断层
-        float targetAnim = isClosing ? 0f : 1f;
-        masterAnim = QuestAnimUtil.lerp(masterAnim, targetAnim, isClosing ? 0.2f : 0.12f, dt);
+        // 【终极修复：纯线性驱动 + Cubic缓冲】彻底根治由于Lerp导致的无限尾巴卡顿问题
+        if (isClosing) {
+            masterAnim -= 4.0f * dt; // 退出速度：约 0.25 秒
+        } else {
+            masterAnim += 3.0f * dt; // 进入速度：约 0.33 秒
+        }
+        masterAnim = Math.max(0f, Math.min(1f, masterAnim)); // 严密钳制在0-1之间
 
-        // 【核心修复】：必须等到客户端动画彻底消失，才给服务器发包，防止服务端强行关闭界面导致动画撕裂！
-        if (isClosing && masterAnim <= 0.01f) {
+        if (isClosing && masterAnim <= 0.0f) { // 精准到达 0
             ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close());
             if (minecraft != null) minecraft.setScreen(null);
             return;
         }
 
+        // 仅进行单次曲线计算，动画曲线完美无瑕
         float easeMaster = QuestAnimUtil.easeOutCubic(masterAnim);
-        float masterAlpha = Math.max(0, Math.min(1f, easeMaster));
+        float masterAlpha = Math.max(0f, Math.min(1f, easeMaster));
 
         if (!typewriterDone && masterAnim > 0.1f) {
             typewriterProgress += CHARS_PER_SECOND * dt;
@@ -202,9 +205,9 @@ public class DialogueScreen extends Screen {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        // 【核心修复】：解除数学钳制，黑边高度可以完美缩减到 0！
-        int targetBarHeight = Math.max(24, (int)(this.height * 0.08f));
-        int barHeight = (int)(targetBarHeight * easeMaster);
+        // 【终极修复：加入 Math.round】防止小数截断导致的单像素跳跃
+        int targetBarHeight = Math.max(24, (int)(this.height * 0.1f));
+        int barHeight = Math.round(targetBarHeight * easeMaster);
 
         if (barHeight > 0) {
             g.fill(0, 0, this.width, barHeight, 0xFF000000);
@@ -216,12 +219,13 @@ public class DialogueScreen extends Screen {
         int targetBaseY = contentBottomY - totalContentHeight;
 
         int gradientTop = targetBaseY - 60;
-        int safeAlpha = (int)(255 * masterAlpha);
+        int safeAlpha = Math.round(255 * masterAlpha);
         if (safeAlpha > 2) {
-            g.fillGradient(0, gradientTop, this.width, this.height - barHeight, 0x00000000, QuestAnimUtil.withAlpha(0x050505, (int)(220 * masterAlpha)));
+            g.fillGradient(0, gradientTop, this.width, this.height - barHeight, 0x00000000, QuestAnimUtil.withAlpha(0x050505, Math.round(220 * masterAlpha)));
         }
 
-        int yOffsetAnim = (int)((1f - easeMaster) * 15);
+        // 同样用 round 避免像素抖动
+        int yOffsetAnim = Math.round((1f - easeMaster) * 15f);
         int textBaseY = targetBaseY + yOffsetAnim;
 
         // ── 渲染名字 ──
@@ -257,7 +261,7 @@ public class DialogueScreen extends Screen {
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
             for (int i = 0; i < choices.length; i++) {
                 int cy = choiceStartY + i * (choiceH + gap);
-                int currentExpand = (int)(15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
+                int currentExpand = Math.round(15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
                 boolean hovered = !isClosing && mouseX >= choiceX - currentExpand && mouseX <= choiceX + choiceW && mouseY >= cy && mouseY <= cy + choiceH;
 
                 float targetReveal = isClosing ? 0f : 1f;
@@ -267,29 +271,29 @@ public class DialogueScreen extends Screen {
                 float hEase = QuestAnimUtil.easeOutCubic(choiceHover[i]);
 
                 if (revealEase < 0.01f) continue;
-                int baseAlpha = (int)(255 * masterAlpha * revealEase);
+                int baseAlpha = Math.round(255 * masterAlpha * revealEase);
 
-                int expandAnim = (int)(15 * hEase);
-                int currentX = choiceX - expandAnim + (int)((1f - revealEase) * 30f);
+                int expandAnim = Math.round(15 * hEase);
+                int currentX = choiceX - expandAnim + Math.round((1f - revealEase) * 30f);
                 int currentW = choiceW + expandAnim;
 
-                int bgAlphaAnim = (int)((120 + 40 * hEase) * masterAlpha * revealEase);
-                int bgGray = (int)(15 + 25 * hEase);
+                int bgAlphaAnim = Math.round((120 + 40 * hEase) * masterAlpha * revealEase);
+                int bgGray = Math.round(15 + 25 * hEase);
                 int finalBg = (bgAlphaAnim << 24) | (bgGray << 16) | (bgGray << 8) | bgGray;
                 g.fill(currentX, cy, currentX + currentW, cy + choiceH, finalBg);
 
-                int lineGray = (int)(85 + (255 - 85) * hEase);
+                int lineGray = Math.round(85 + (255 - 85) * hEase);
                 int lineColor = (lineGray << 16) | (lineGray << 8) | lineGray;
                 g.fill(currentX, cy, currentX + 2, cy + choiceH, QuestAnimUtil.withAlpha(lineColor, baseAlpha));
 
                 if (hEase > 0.01f) {
-                    int arrowAlpha = (int)(baseAlpha * hEase);
+                    int arrowAlpha = Math.round(baseAlpha * hEase);
                     g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, QuestAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
                 }
 
-                int textGray = (int)(170 + (255 - 170) * hEase);
+                int textGray = Math.round(170 + (255 - 170) * hEase);
                 int textColor = (textGray << 16) | (textGray << 8) | textGray;
-                int textOffsetX = 12 + (int)(10 * hEase);
+                int textOffsetX = 12 + Math.round(10 * hEase);
 
                 String safeChoice = font.plainSubstrByWidth(choices[i], currentW - textOffsetX - 10);
                 g.drawString(font, safeChoice, currentX + textOffsetX, cy + (choiceH - font.lineHeight) / 2 + 1, QuestAnimUtil.withAlpha(textColor, baseAlpha), true);
@@ -302,9 +306,9 @@ public class DialogueScreen extends Screen {
             float pulseA = 0.3f + 0.7f * (float)Math.abs(Math.sin(timeSec * 3f));
             float driftY = (float)Math.sin(timeSec * 5f) * 1.5f;
             int indX = textBaseX + font.width(wrappedLines.get(wrappedLines.size() - 1)) + 12;
-            int indY = textBaseY + (wrappedLines.size() - 1) * lineHeight + yOffsetAnim + (int)driftY;
+            int indY = textBaseY + (wrappedLines.size() - 1) * lineHeight + yOffsetAnim + Math.round(driftY);
             g.pose().pushPose(); g.pose().translate(indX, indY, 0); g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, "▼", 0, 0, QuestAnimUtil.withAlpha(0xFFFFFFFF, (int)(safeAlpha * pulseA)), true);
+            g.drawString(font, "▼", 0, 0, QuestAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeAlpha * pulseA)), true);
             g.pose().popPose();
         }
         RenderSystem.disableBlend();
