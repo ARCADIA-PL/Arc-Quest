@@ -1,23 +1,36 @@
-# Arc Quest 模组完整文档
+# Arc Quest 模组完整技术文档
 
 **版本**: 1.0.0  
 **Minecraft**: 1.20.1 Forge  
-**最后更新**: 2026-04-17
+**Java**: 17  
+**最后更新**: 2026-04-17  
+**文档类型**: API参考 + 架构设计 + 使用指南
 
 ---
 
 ## 📋 目录
 
+### 快速开始
 1. [项目概述](#项目概述)
 2. [核心架构](#核心架构)
 3. [任务系统](#任务系统)
 4. [对话系统](#对话系统)
 5. [视觉系统](#视觉系统)
-6. [网络同步](#网络同步)
-7. [命令系统](#命令系统)
-8. [数据生成](#数据生成)
-9. [API使用指南](#api使用指南)
-10. [常见问题](#常见问题)
+6. [HUD系统](#hud-系统)
+7. [网络同步](#网络同步)
+8. [命令系统](#命令系统)
+9. [数据生成](#数据生成)
+10. [API使用指南](#api使用指南)
+11. [常见问题](#常见问题)
+
+### 深度参考
+- **[📘 完整API参考手册](API_REFERENCE.md)** - 事无巨细的类方法接口文档（1593行）
+  - 所有公共API的方法签名、参数说明、返回值
+  - 数据结构字段详解
+  - Builder API完整用法
+  - 枚举类型完整列表
+  - 文件结构映射
+  - 设计模式说明
 
 ---
 
@@ -1394,6 +1407,67 @@ QuestHudOverlay (317行)          QuestTrackerPanel (388行)
 - ✅ ClientQuestEvents.handleVisualTrigger() 防御性检查（null安全）
 - ✅ 阶段立绘优先级（Phase配置优先于Quest配置）
 - ✅ 文档完善（添加立绘工作流程和排查指南）
+
+---
+
+## 📘 完整API参考
+
+本文档提供了模组的高层架构和使用指南。如需查阅**所有类的方法接口、参数说明、返回值类型、数据结构字段**等详细信息，请参阅：
+
+👉 **[API_REFERENCE.md](API_REFERENCE.md)** - 1593行完整API参考手册
+
+### API参考包含内容：
+
+✅ **任务系统API**
+- QuestDefinition、PhaseDefinition、ObjectiveEntry 所有方法
+- QuestBuilder、PhaseBuilder、ObjectiveBuilder 链式调用API
+- QuestRegistry、QuestCapability 注册和存储接口
+- QuestProgressHandler、ObjectiveTracker 逻辑处理
+
+✅ **对话系统API**
+- DialogueTree、DialogueNode、DialogueChoice 数据结构
+- DialogueRegistry、DialogueSessionManager 运行时管理
+- DialogueAction 动作系统
+
+✅ **视觉系统API**
+- QuestVisualConfig、VisualAsset 配置结构
+- QuestSplashRenderer、QuestIconRenderer 渲染器
+- SplashType、IconPosition 枚举
+
+✅ **HUD渲染系统API**
+- QuestHudOverlay、QuestTrackerPanel 协调器和面板
+- PhaseUpdateToast、BranchChoiceToast 弹窗组件
+- QuestToastManager Toast队列管理
+- QuestAnimUtil、QuestRenderUtil 工具类
+
+✅ **网络同步API**
+- S2CSyncQuestStatePacket 等6个网络包
+- ClientQuestCache 客户端缓存
+- ArcQuestNetwork 网络注册
+
+✅ **数据存储API**
+- QuestCapabilityProvider Capability系统
+- NBT序列化/反序列化
+
+✅ **事件系统API**
+- QuestEventBus 事件总线
+- QuestChangeEvent 事件类型
+
+✅ **命令系统API**
+- ArcQuestCommands 12个子命令
+- 权限要求和用法
+
+✅ **工具类API**
+- QuestAnimUtil 动画函数（lerp、缓动、颜色）
+- QuestRenderUtil 渲染辅助（面板、文本、Scissor）
+
+✅ **附录**
+- 所有枚举类型完整列表
+- 文件结构映射
+- 关键设计模式说明
+- 性能优化要点
+
+---
 
 ## 许可证
 
