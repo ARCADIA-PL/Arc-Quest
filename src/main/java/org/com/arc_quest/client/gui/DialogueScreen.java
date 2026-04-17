@@ -1,4 +1,5 @@
 // 文件名: org.com.arc_quest.client.gui.DialogueScreen.java
+
 package org.com.arc_quest.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -36,6 +37,7 @@ public class DialogueScreen extends Screen {
 
     private float typewriterProgress = 0f;
     private boolean typewriterDone = false;
+    private long typewriterDoneTime = 0;
 
     private float[] choiceReveal;
     private float[] choiceHover;
@@ -69,6 +71,7 @@ public class DialogueScreen extends Screen {
 
         this.typewriterProgress = 0f;
         this.typewriterDone = false;
+        this.typewriterDoneTime = 0;
         this.choicesVisible = false;
         this.autoAdvanceSent = false;
         this.autoAdvanceTime = 0;
@@ -82,7 +85,7 @@ public class DialogueScreen extends Screen {
     protected void init() {
         super.init();
         this.lastRenderTime = 0;
-        this.masterAnim = 0f; // 从 0 开始，触发入场动画
+        this.masterAnim = 0f;
     }
 
     @Override
@@ -103,7 +106,12 @@ public class DialogueScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == 256) { startClose(); return true; }
         if (keyCode == 32 || keyCode == 257) {
-            if (!typewriterDone) { typewriterProgress = fullText.length(); typewriterDone = true; return true; }
+            if (!typewriterDone) {
+                typewriterProgress = fullText.length();
+                typewriterDone = true;
+                typewriterDoneTime = Util.getMillis();
+                return true;
+            }
             if (isTerminal && choices.length == 0) { startClose(); return true; }
             if (hasAutoNext && choices.length == 0 && !autoAdvanceSent) { sendAutoAdvance(); return true; }
             return true;
@@ -118,7 +126,13 @@ public class DialogueScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
-        if (!typewriterDone) { typewriterProgress = fullText.length(); typewriterDone = true; playClick(); return true; }
+        if (!typewriterDone) {
+            typewriterProgress = fullText.length();
+            typewriterDone = true;
+            typewriterDoneTime = Util.getMillis();
+            playClick();
+            return true;
+        }
         if (choicesVisible && choices.length > 0) {
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap);
             for (int i = 0; i < choices.length; i++) {
@@ -163,27 +177,29 @@ public class DialogueScreen extends Screen {
         if (dt > 0.1f) dt = 0.1f;
         Font font = this.font;
 
-        // 【终极修复：纯线性驱动 + Cubic缓冲】彻底根治由于Lerp导致的无限尾巴卡顿问题
         if (isClosing) {
-            masterAnim -= 4.0f * dt; // 退出速度：约 0.25 秒
+            masterAnim -= 4.0f * dt;
         } else {
-            masterAnim += 3.0f * dt; // 进入速度：约 0.33 秒
+            masterAnim += 3.0f * dt;
         }
-        masterAnim = Math.max(0f, Math.min(1f, masterAnim)); // 严密钳制在0-1之间
+        masterAnim = Math.max(0f, Math.min(1f, masterAnim));
 
-        if (isClosing && masterAnim <= 0.0f) { // 精准到达 0
+        if (isClosing && masterAnim <= 0.0f) {
             ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close());
             if (minecraft != null) minecraft.setScreen(null);
             return;
         }
 
-        // 仅进行单次曲线计算，动画曲线完美无瑕
         float easeMaster = QuestAnimUtil.easeOutCubic(masterAnim);
         float masterAlpha = Math.max(0f, Math.min(1f, easeMaster));
 
         if (!typewriterDone && masterAnim > 0.1f) {
             typewriterProgress += CHARS_PER_SECOND * dt;
-            if (typewriterProgress >= fullText.length()) { typewriterProgress = fullText.length(); typewriterDone = true; }
+            if (typewriterProgress >= fullText.length()) {
+                typewriterProgress = fullText.length();
+                typewriterDone = true;
+                typewriterDoneTime = now;
+            }
         }
 
         if (typewriterDone && choices.length > 0 && !choicesVisible) choicesVisible = true;
@@ -205,8 +221,7 @@ public class DialogueScreen extends Screen {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        // 【终极修复：加入 Math.round】防止小数截断导致的单像素跳跃
-        int targetBarHeight = Math.max(24, (int)(this.height * 0.1f));
+        int targetBarHeight = Math.max(24, (int)(this.height * 0.08f));
         int barHeight = Math.round(targetBarHeight * easeMaster);
 
         if (barHeight > 0) {
@@ -224,7 +239,6 @@ public class DialogueScreen extends Screen {
             g.fillGradient(0, gradientTop, this.width, this.height - barHeight, 0x00000000, QuestAnimUtil.withAlpha(0x050505, Math.round(220 * masterAlpha)));
         }
 
-        // 同样用 round 避免像素抖动
         int yOffsetAnim = Math.round((1f - easeMaster) * 15f);
         int textBaseY = targetBaseY + yOffsetAnim;
 
@@ -256,25 +270,40 @@ public class DialogueScreen extends Screen {
             g.pose().popPose();
         }
 
-        // ── 渲染玩家选项 ──
+        // ── 渲染玩家选项 (清脆且带有柔和S曲线的瀑布流) ──
         if (choicesVisible && choices.length > 0) {
+            float timeSinceTextDone = (now - typewriterDoneTime) / 1000f;
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
+
             for (int i = 0; i < choices.length; i++) {
                 int cy = choiceStartY + i * (choiceH + gap);
                 int currentExpand = Math.round(15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
                 boolean hovered = !isClosing && mouseX >= choiceX - currentExpand && mouseX <= choiceX + choiceW && mouseY >= cy && mouseY <= cy + choiceH;
 
-                float targetReveal = isClosing ? 0f : 1f;
-                choiceReveal[i] = QuestAnimUtil.lerp(choiceReveal[i], targetReveal, 0.15f + i * 0.03f, dt);
-                float revealEase = QuestAnimUtil.easeOutCubic(choiceReveal[i]);
-                choiceHover[i] = QuestAnimUtil.step(choiceHover[i], hovered ? 1f : 0f, 12f, dt);
+                // 【收紧留白与级联】：0.05s起步，0.08s间隔。形成“唰啦”展开的折扇手感
+                float staggerDelay = 0.05f + (i * 0.08f);
+                float targetReveal = (!isClosing && timeSinceTextDone >= staggerDelay) ? 1f : 0f;
+
+                // 【提速】：恢复到 5.0f，消除等待感，让UI瞬间到位
+                float revealSpeed = isClosing ? 15f : 5.0f;
+                choiceReveal[i] = QuestAnimUtil.step(choiceReveal[i], targetReveal, revealSpeed, dt);
+
+                float progress = choiceReveal[i];
+                float revealEase = QuestAnimUtil.easeOutCubic(progress);
+
+                // 【保留核心曲线】：依然是S型曲线 (3x² - 2x³)，但是因为速度快了，现在它是“爆发起步 -> 瞬间柔和贴合”
+                float slideEase = progress * progress * (3f - 2f * progress);
+
+                choiceHover[i] = QuestAnimUtil.step(choiceHover[i], hovered ? 1f : 0f, 10f, dt);
                 float hEase = QuestAnimUtil.easeOutCubic(choiceHover[i]);
 
-                if (revealEase < 0.01f) continue;
+                if (progress < 0.01f) continue;
                 int baseAlpha = Math.round(255 * masterAlpha * revealEase);
 
                 int expandAnim = Math.round(15 * hEase);
-                int currentX = choiceX - expandAnim + Math.round((1f - revealEase) * 30f);
+
+                // 【缩短距离】：60像素。刚好能看出明显的水平位移滑入，但绝不拖泥带水
+                int currentX = choiceX - expandAnim + Math.round((1f - slideEase) * 60f);
                 int currentW = choiceW + expandAnim;
 
                 int bgAlphaAnim = Math.round((120 + 40 * hEase) * masterAlpha * revealEase);
