@@ -30,6 +30,51 @@ public final class EpicDialogueTrees {
 
     /**
      * 村庄长老 —— 任务发布者
+     * 
+     * <p>新增条件类型示例（对话历史状态检查）：
+     * <pre>
+     * // 1. 检查节点是否已被访问过（一次性节点）
+     * .choiceIf(
+     *     new DialogueCondition.Not(new DialogueCondition.NodeVisited("intro_story")),
+     *     "介绍故事背景",
+     *     c -> c.goTo("intro_story")
+     * )
+     * 
+     * // 2. 检查选项是否已被选择过（一次性选项）
+     * .choiceIf(
+     *     new DialogueCondition.Not(new DialogueCondition.ChoiceSelected("start:0")),
+     *     "接受任务（仅限一次）",
+     *     c -> c.startQuest("...").close()
+     * )
+     * 
+     * // 3. 检查对话树是否已完成（一次性对话）
+     * .choiceIf(
+     *     new DialogueCondition.Not(new DialogueCondition.DialogueCompleted("epic_village_elder")),
+     *     "首次对话奖励",
+     *     c -> c.giveItem("...", 1).close()
+     * )
+     * 
+     * // 4. 精确检查节点冷却状态（需指定冷却时间）
+     * .choiceIf(
+     *     new DialogueCondition.Not(new DialogueCondition.NodeOnCooldown("daily_quest", 86400)), // 24小时冷却
+     *     "领取每日任务",
+     *     c -> c.goTo("daily_quest_node")
+     * )
+     * 
+     * // 5. 精确检查选项冷却状态
+     * .choiceIf(
+     *     new DialogueCondition.Not(new DialogueCondition.ChoiceOnCooldown("start:hint", 3600)), // 1小时冷却
+     *     "获取提示（1小时冷却）",
+     *     c -> c.goTo("hint_node")
+     * )
+     * 
+     * // 6. 精确检查对话树冷却状态
+     * .choiceIf(
+     *     new DialogueCondition.Not(new DialogueCondition.DialogueOnCooldown("epic_village_elder", 7200)), // 2小时冷却
+     *     "再次交谈（2小时后可用）",
+     *     c -> c.goTo("repeat_chat")
+     * )
+     * </pre>
      */
     private static void registerVillageElder() {
         DialogueTreeBuilder.create("epic_village_elder")

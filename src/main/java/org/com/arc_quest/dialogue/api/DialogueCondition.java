@@ -219,4 +219,119 @@ public sealed interface DialogueCondition {
         @Override
         public boolean test(ServerPlayer player) { return true; }
     }
+
+    // ═══════════════════════════════════════════════════════
+    //  对话历史状态检查条件
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 检查指定节点是否已被访问过（一次性节点）。
+     *
+     * @param nodeId 节点 ID
+     */
+    record NodeVisited(String nodeId) implements DialogueCondition {
+        @Override
+        public boolean test(ServerPlayer player) {
+            return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                    .map(cap -> cap.hasVisitedNode(nodeId))
+                    .orElse(false);
+        }
+    }
+
+    /**
+     * 检查指定节点是否在冷却中。
+     * <p>
+     * 注意：此条件需要配合 {@link NodeVisited} 使用，或者在已知节点有冷却配置时使用。
+     *
+     * @param nodeId          节点 ID
+     * @param cooldownSeconds 冷却时间（秒），必须与节点定义中的 cooldownSeconds 一致
+     */
+    record NodeOnCooldown(String nodeId, long cooldownSeconds) implements DialogueCondition {
+        @Override
+        public boolean test(ServerPlayer player) {
+            return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                    .map(cap -> {
+                        long lastTime = cap.getLastNodeVisit(nodeId);
+                        if (lastTime == 0) return false; // 从未访问过，不在冷却中
+
+                        long currentTime = System.currentTimeMillis();
+                        long cooldownMs = cooldownSeconds * 1000;
+                        return (currentTime - lastTime) < cooldownMs;
+                    }).orElse(false);
+        }
+    }
+
+    /**
+     * 检查指定选项是否已被选择过（一次性选项）。
+     *
+     * @param choiceKey 选项键（格式：nodeId:choiceIndex 或自定义唯一键）
+     */
+    record ChoiceSelected(String choiceKey) implements DialogueCondition {
+        @Override
+        public boolean test(ServerPlayer player) {
+            return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                    .map(cap -> cap.hasSelectedChoice(choiceKey))
+                    .orElse(false);
+        }
+    }
+
+    /**
+     * 检查指定选项是否在冷却中。
+     * <p>
+     * 注意：此条件需要配合 {@link ChoiceSelected} 使用，或者在已知选项有冷却配置时使用。
+     *
+     * @param choiceKey       选项键（格式：nodeId:choiceIndex 或自定义唯一键）
+     * @param cooldownSeconds 冷却时间（秒），必须与选项定义中的 cooldownSeconds 一致
+     */
+    record ChoiceOnCooldown(String choiceKey, long cooldownSeconds) implements DialogueCondition {
+        @Override
+        public boolean test(ServerPlayer player) {
+            return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                    .map(cap -> {
+                        long lastTime = cap.getLastChoiceSelection(choiceKey);
+                        if (lastTime == 0) return false; // 从未选择过，不在冷却中
+
+                        long currentTime = System.currentTimeMillis();
+                        long cooldownMs = cooldownSeconds * 1000;
+                        return (currentTime - lastTime) < cooldownMs;
+                    }).orElse(false);
+        }
+    }
+
+    /**
+     * 检查指定对话树是否已完成（一次性对话）。
+     *
+     * @param dialogueId 对话树 ID
+     */
+    record DialogueCompleted(String dialogueId) implements DialogueCondition {
+        @Override
+        public boolean test(ServerPlayer player) {
+            return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                    .map(cap -> cap.hasCompletedDialogue(dialogueId))
+                    .orElse(false);
+        }
+    }
+
+    /**
+     * 检查指定对话树是否在冷却中。
+     * <p>
+     * 注意：此条件需要配合 {@link DialogueCompleted} 使用，或者在已知对话树有冷却配置时使用。
+     *
+     * @param dialogueId      对话树 ID
+     * @param cooldownSeconds 冷却时间（秒），必须与对话树定义中的 cooldownSeconds 一致
+     */
+    record DialogueOnCooldown(String dialogueId, long cooldownSeconds) implements DialogueCondition {
+        @Override
+        public boolean test(ServerPlayer player) {
+            return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                    .map(cap -> {
+                        long lastTime = cap.getLastDialogueTime(dialogueId);
+                        if (lastTime == 0) return false; // 从未进行过对话，不在冷却中
+
+                        long currentTime = System.currentTimeMillis();
+                        long cooldownMs = cooldownSeconds * 1000;
+                        return (currentTime - lastTime) < cooldownMs;
+                    }).orElse(false);
+        }
+    }
 }

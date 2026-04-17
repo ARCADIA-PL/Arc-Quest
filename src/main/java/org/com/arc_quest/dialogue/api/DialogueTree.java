@@ -72,6 +72,57 @@ public record DialogueTree(
             errors.add("Start node '" + startNodeId + "' not found in nodes.");
         }
 
+        // ═══════════════════════════════════════════
+        //  检查生命周期配置冲突
+        // ═══════════════════════════════════════════
+
+        // 规则1：如果对话树是一次性的（repeatable=false），则节点和选项不应设置冷却
+        if (!repeatable) {
+            for (var entry : nodes.entrySet()) {
+                String nodeId = entry.getKey();
+                DialogueNode node = entry.getValue();
+
+                if (node.cooldownSeconds() > 0) {
+                    errors.add("Node '" + nodeId + "' has cooldownSeconds=" + node.cooldownSeconds()
+                            + " but dialogue tree is one-time (repeatable=false). Cooldown is meaningless.");
+                }
+
+                // 检查选项
+                if (node.choices() != null) {
+                    for (int i = 0; i < node.choices().size(); i++) {
+                        DialogueChoice choice = node.choices().get(i);
+                        if (choice.cooldownSeconds() > 0) {
+                            errors.add("Node '" + nodeId + "' choice[" + i + "] has cooldownSeconds="
+                                    + choice.cooldownSeconds()
+                                    + " but dialogue tree is one-time. Cooldown is meaningless.");
+                        }
+                    }
+                }
+            }
+        }
+
+        // 规则2：如果节点是一次性的（repeatable=false），则不应设置冷却
+        for (var entry : nodes.entrySet()) {
+            String nodeId = entry.getKey();
+            DialogueNode node = entry.getValue();
+
+            if (!node.repeatable() && node.cooldownSeconds() > 0) {
+                errors.add("Node '" + nodeId + "' is one-time (repeatable=false) but has cooldownSeconds="
+                        + node.cooldownSeconds() + ". Cooldown is meaningless for one-time nodes.");
+            }
+
+            // 规则3：如果选项是一次性的（repeatable=false），则不应设置冷却
+            if (node.choices() != null) {
+                for (int i = 0; i < node.choices().size(); i++) {
+                    DialogueChoice choice = node.choices().get(i);
+                    if (!choice.repeatable() && choice.cooldownSeconds() > 0) {
+                        errors.add("Node '" + nodeId + "' choice[" + i + "] is one-time but has cooldownSeconds="
+                                + choice.cooldownSeconds() + ". Cooldown is meaningless for one-time choices.");
+                    }
+                }
+            }
+        }
+
         // 检查每个节点的引用是否有效
         for (var entry : nodes.entrySet()) {
             String nodeId = entry.getKey();
