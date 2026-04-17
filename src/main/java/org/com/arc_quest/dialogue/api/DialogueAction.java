@@ -5,6 +5,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.dialogue.registry.DialogueActionTypes;
@@ -19,6 +20,8 @@ import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.QuestEventManager;
 import org.slf4j.Logger;
+
+import java.util.function.BiConsumer;
 
 /**
  * 对话选择触发的服务端动作。
@@ -234,6 +237,30 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player, DialogueSession session) {
             DialogueActionTypes.execute(typeId, player, session, data != null ? data : new CompoundTag());
+        }
+    }
+
+    /**
+     * Lambda 动作 - 允许用户自定义回调逻辑。
+     * <p>
+     * 注意：此动作不支持序列化，仅用于代码驱动的对话树。
+     */
+    record LambdaAction(BiConsumer<ServerPlayer, Entity> handler, Entity target) implements DialogueAction {
+
+        public LambdaAction(BiConsumer<ServerPlayer, Entity> handler) {
+            this(handler, null);
+        }
+
+        @Override
+        public void execute(ServerPlayer player) {
+            if (handler != null) {
+                handler.accept(player, target);
+            }
+        }
+
+        @Override
+        public void execute(ServerPlayer player, DialogueSession session) {
+            execute(player);
         }
     }
 }

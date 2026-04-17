@@ -1,7 +1,9 @@
 package org.com.arc_quest.client.events;
 
+import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
@@ -12,25 +14,41 @@ import org.com.arc_quest.quest.api.SplashType;
 @Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, value = Dist.CLIENT)
 public class ClientQuestEvents {
 
-    /**
-     * 将 SplashRenderer 挂载到原版 GUI 渲染管线末端
-     */
     @SubscribeEvent
     public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {
-        // 确保它覆盖在所有东西的最上层
+        if (Minecraft.getInstance().screen != null) return;
+
         QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
                 event.getWindow().getGuiScaledWidth(),
                 event.getWindow().getGuiScaledHeight());
     }
 
-    /**
-     * 供网络包处理器调用的公共方法。
-     * 当收到服务器同步任务状态时调用此方法触发立绘。
-     */
+    @SubscribeEvent
+    public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
+        if (QuestSplashRenderer.isActive()) {
+            QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
+                    event.getScreen().width,
+                    event.getScreen().height);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onScreenMouseClickPre(ScreenEvent.MouseButtonPressed.Pre event) {
+        if (QuestSplashRenderer.isActive()) event.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public static void onScreenKeyPressPre(ScreenEvent.KeyPressed.Pre event) {
+        if (QuestSplashRenderer.isActive()) event.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public static void onScreenScrollPre(ScreenEvent.MouseScrolled.Pre event) {
+        if (QuestSplashRenderer.isActive()) event.setCanceled(true);
+    }
+
     public static void handleVisualTrigger(QuestDefinition quest, SplashType type, String phaseName) {
         if (quest == null) return;
-
-        // 根据类型获取对应的纹理资源
         quest.getSplashConfig(type).ifPresent(asset -> {
             QuestSplashRenderer.trigger(quest, type, asset.texture());
         });

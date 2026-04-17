@@ -10,6 +10,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
+import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
@@ -18,19 +19,8 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 对话界面。
- *
- * <h3>变更记录</h3>
- * <ul>
- *   <li>[新增] {@code entityId} —— 关联的 NPC 实体 ID，用于获取实体引用</li>
- *   <li>[新增] {@link #updateEntityId(int)} —— 更新实体 ID</li>
- *   <li>[改动] 构造器新增 {@code entityId} 参数</li>
- * </ul>
- */
 public class DialogueScreen extends Screen {
 
-    // ── 打字机 ──
     private static final float CHARS_PER_SECOND = 45f;
 
     private String speaker;
@@ -40,17 +30,16 @@ public class DialogueScreen extends Screen {
     private boolean hasAutoNext;
     private int delayMs;
 
-    /** [新增] 关联的 NPC 实体网络 ID。 */
     private int entityId = -1;
-
-    /** [新增] 缓存的 NPC 实体引用（客户端）。 */
     @Nullable
     private Entity cachedNpcEntity;
 
-    // ── 全局高级动画控制 ──
     private float masterAnim = 0f;
     private long lastRenderTime = 0;
     private float dt = 0f;
+
+    // [新增] 挂起动画透明度（用于被立绘覆盖时的退场/入场）
+    private float suspendAlpha = 1.0f;
 
     private float typewriterProgress = 0f;
     private boolean typewriterDone = false;
@@ -66,13 +55,11 @@ public class DialogueScreen extends Screen {
 
     private List<String> wrappedLines;
 
-    /** [改动] 原有构造器保持兼容。 */
     public DialogueScreen(String dialogueId, String speaker, String text,
                           String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
         this(dialogueId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, -1);
     }
 
-    /** [新增] 完整构造器（带 entityId）。 */
     public DialogueScreen(String dialogueId, String speaker, String text,
                           String[] choices, boolean isTerminal, boolean hasAutoNext,
                           int delayMs, int entityId) {
@@ -86,11 +73,10 @@ public class DialogueScreen extends Screen {
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
-    /** [新增] 更新关联实体 ID。 */
     public void updateEntityId(int entityId) {
         if (this.entityId != entityId) {
             this.entityId = entityId;
-            this.cachedNpcEntity = null; // 清除缓存，下次渲染时重新查找
+            this.cachedNpcEntity = null;
         }
     }
 
@@ -115,9 +101,6 @@ public class DialogueScreen extends Screen {
         this.wrappedLines = null;
     }
 
-    /**
-     * [新增] 获取关联的 NPC 实体（客户端侧，用于未来扩展如模型渲染）。
-     */
     @Nullable
     public Entity getNpcEntity() {
         if (cachedNpcEntity == null && entityId != -1 && minecraft != null && minecraft.level != null) {
@@ -131,7 +114,8 @@ public class DialogueScreen extends Screen {
         super.init();
         this.lastRenderTime = 0;
         this.masterAnim = 0f;
-        this.cachedNpcEntity = null; // 重新查找
+        this.suspendAlpha = 1f;
+        this.cachedNpcEntity = null;
     }
 
     @Override
@@ -150,6 +134,8 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (QuestSplashRenderer.isActive()) return true; // 全局拦截
+
         if (keyCode == 256) { startClose(); return true; }
         if (keyCode == 32 || keyCode == 257) {
             if (!typewriterDone) {
@@ -171,6 +157,8 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (QuestSplashRenderer.isActive()) return true; // 全局拦截
+
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
         if (!typewriterDone) {
             typewriterProgress = fullText.length();
@@ -218,9 +206,26 @@ public class DialogueScreen extends Screen {
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
-        dt = (now - lastRenderTime) / 1000f;
+        float realDt = (now - lastRenderTime) / 1000f;
         lastRenderTime = now;
-        if (dt > 0.1f) dt = 0.1f;
+        if (realDt > 0.1f) realDt = 0.1f;
+
+        // [核心架构] 判断立绘状态，挂起当前界面逻辑
+        boolean splashActive = QuestSplashRenderer.isActive();
+        if (splashActive) {
+            // 立绘出现，对话框加速淡出
+            suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
+            dt = 0f; // 冻结内部一切物理与打字机动画
+
+            // 补偿冻结的时间，防止立绘结束后倒计时直接跳过
+            if (typewriterDone && typewriterDoneTime > 0) typewriterDoneTime += (long)(realDt * 1000);
+            if (autoAdvanceTime > 0) autoAdvanceTime += (long)(realDt * 1000);
+        } else {
+            // 立绘消失，对话框平滑入场
+            suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
+            dt = realDt; // 恢复时间流逝
+        }
+
         Font font = this.font;
 
         if (isClosing) {
@@ -236,8 +241,9 @@ public class DialogueScreen extends Screen {
             return;
         }
 
-        float easeMaster = QuestAnimUtil.easeOutCubic(masterAnim);
-        float masterAlpha = Math.max(0f, Math.min(1f, easeMaster));
+        // [视效联动] 将挂起动画乘入主轴动画，实现黑底降下、文字缩回的自然退场
+        float easeMaster = QuestAnimUtil.easeOutCubic(masterAnim) * QuestAnimUtil.easeOutCubic(suspendAlpha);
+        float masterAlpha = Math.max(0f, Math.min(1f, easeMaster)) * suspendAlpha;
 
         if (!typewriterDone && masterAnim > 0.1f) {
             typewriterProgress += CHARS_PER_SECOND * dt;
@@ -324,7 +330,8 @@ public class DialogueScreen extends Screen {
             for (int i = 0; i < choices.length; i++) {
                 int cy = choiceStartY + i * (choiceH + gap);
                 int currentExpand = Math.round(15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
-                boolean hovered = !isClosing && mouseX >= choiceX - currentExpand && mouseX <= choiceX + choiceW && mouseY >= cy && mouseY <= cy + choiceH;
+                // 立绘激活时剥夺 Hover 判定
+                boolean hovered = !isClosing && !splashActive && mouseX >= choiceX - currentExpand && mouseX <= choiceX + choiceW && mouseY >= cy && mouseY <= cy + choiceH;
 
                 float staggerDelay = 0.05f + (i * 0.08f);
                 float targetReveal = (!isClosing && timeSinceTextDone >= staggerDelay) ? 1f : 0f;

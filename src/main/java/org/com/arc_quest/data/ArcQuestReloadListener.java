@@ -8,7 +8,7 @@ import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
-import org.com.arc_quest.dialogue.registry.TestDialogues;
+import org.com.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -43,9 +43,9 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Void>
                          @NotNull ProfilerFiller profiler) {
         profiler.startTick();
 
-        // 重新注册测试对话（防止reload后丢失）
-        TestDialogues.registerAll();
-        LOGGER.info("[ArcQuest] Test dialogues re-registered after reload.");
+        // 重新注册对话树（防止reload后丢失）
+        EpicDialogueTrees.registerAll();
+        LOGGER.info("[ArcQuest] Epic dialogues re-registered after reload.");
 
         profiler.endTick();
     }

@@ -57,7 +57,8 @@ public final class EpicMainlineDemo {
                 // 阶段 1.5：与村民对话测试
                 .phase(PhaseBuilder.create("talk_villager")
                         .displayName(Component.translatable("arc_quest.phase.epic_prologue.talk_villager"))
-                        .objective(ObjectiveBuilder.interact(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "villager_npc")).display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))
+                        .objective(ObjectiveBuilder.interact(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "village_elder")).display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))
+                        .setFlagOnComplete("elder_consulted")  // ← 新增：标记已与长老交谈
                         .thenGoTo("craft_sword"))
                 // 阶段 2：制作铁剑
                 .phase(PhaseBuilder.create("craft_sword")
@@ -77,7 +78,9 @@ public final class EpicMainlineDemo {
                         .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_food"))
                         .objective(ObjectiveBuilder.collect(Items.BREAD, 10).display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.0")))
                         .objective(ObjectiveBuilder.collect(Items.COOKED_BEEF, 5).display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.1")))
-                        .setFlagOnComplete("prologue_completed"))
+                        .setFlagOnComplete("prologue_completed")
+                        .setFlagOnComplete("blacksmith_unlocked")  // ← 新增：解锁铁匠特殊对话
+                        .setFlagOnComplete("merchant_unlocked"))  // ← 新增：解锁商人特殊对话
                 // 奖励
                 .reward(new ItemReward(Items.IRON_SWORD, 1))
                 .reward(new ItemReward(Items.SHIELD, 1))

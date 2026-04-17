@@ -21,6 +21,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addToastTranslations();
         addCommandTranslations();
         addDialogueTranslations();
+        addEpicDialogueTranslations();
 
         // ── 任务链 ──
         addPrologueQuest();
@@ -240,6 +241,311 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "§fVery well... Should you change your mind, seek me out at any hour.");
         add("dialogue.test_villager.decline.choice1",
                 "Farewell");
+    }
+
+    /**
+     * Epic mainline dialogue translations.
+     */
+    private void addEpicDialogueTranslations() {
+        // ═══════════════════════════════════════════
+        // Village Elder
+        // ═══════════════════════════════════════════
+        add("dialogue.epic_village_elder.npc_name", "§6§lVillage Elder");
+        
+        // Start node - multiple states
+        add("dialogue.epic_village_elder.start.newcomer",
+                "§fWelcome, stranger. I am the guardian of these lands.\n"
+                        + "If you are ready, I can tell you the truth about this world...");
+        add("dialogue.epic_village_elder.start.choice_intro",
+                "Please, tell me what has happened.");
+        
+        add("dialogue.epic_village_elder.start.phase_gather_wood",
+                "§fAdventurer, gather wood and craft weapons!\n"
+                        + "The zombie horde may strike at any moment. We must be prepared.");
+        add("dialogue.epic_village_elder.start.choice_wood_tip",
+                "I will complete it as soon as possible");
+        
+        add("dialogue.epic_village_elder.start.phase_talk_villager",
+                "§fExcellent, you have armed yourself.\n"
+                        + "Now, let me inform you of the next step...");
+        add("dialogue.epic_village_elder.start.choice_accept_mission",
+                "I am ready. Give the order!");
+        
+        add("dialogue.epic_village_elder.start.phase_defend",
+                "§c§lWARNING! The zombie army approaches!\n"
+                        + "§fTake up your arms and defend our home!\n"
+                        + "§e(Received Strength Potion x1)");
+        add("dialogue.epic_village_elder.start.choice_encourage",
+                "For the village!");
+        
+        add("dialogue.epic_village_elder.start.prologue_done",
+                "§a§lWell done, warrior!\n"
+                        + "§fThe prologue is complete, but the true challenge has just begun.\n"
+                        + "Strange echoes come from the depths of the mine... Are you ready to explore?");
+        add("dialogue.epic_village_elder.start.choice_start_chapter1",
+                "I am ready. Begin Chapter 1!");
+        
+        add("dialogue.epic_village_elder.start.chapter1_done",
+                "§b§lIncredible... You defeated the mine guardian!\n"
+                        + "§fNow you face an important choice:\n"
+                        + "§c• Path of Combat: Assault the Nether Fortress\n"
+                        + "§9• Path of Exploration: Seek the Ocean Monument\n"
+                        + "Your choice will determine your ultimate fate...");
+        add("dialogue.epic_village_elder.start.choice_branch",
+                "I wish to learn more about these choices");
+        
+        add("dialogue.epic_village_elder.start.legendary",
+                "§5§l✨ Legendary Hero ✨\n"
+                        + "§fYou did it! The Ender Dragon has been vanquished, and peace restored.\n"
+                        + "Your name shall be forever remembered in these lands!\n"
+                        + "§e(Received Hero of the Village effect + 100 XP)");
+        add("dialogue.epic_village_elder.start.choice_legendary",
+                "It is my honor");
+        
+        add("dialogue.epic_village_elder.start.default",
+                "§fMay your journey be fruitful, adventurer.");
+        add("dialogue.epic_village_elder.start.choice_default",
+                "Farewell");
+        
+        // Intro story
+        add("dialogue.epic_village_elder.intro_story.text",
+                "§6§lThe gears of fate begin to turn...\n\n"
+                        + "§fLong ago, this world was filled with peace and prosperity.\n"
+                        + "But with the awakening of the Ender Dragon, dark forces rose once more.\n"
+                        + "The undead army stands at our gates. We need a hero...\n\n"
+                        + "§eWill you become our hope?");
+        add("dialogue.epic_village_elder.intro_story.choice_accept",
+                "I accept this mission!");
+        add("dialogue.epic_village_elder.intro_story.choice_decline",
+                "I need time to consider");
+        
+        // Prologue accepted
+        add("dialogue.epic_village_elder.prologue_accepted.text",
+                "§a§lQuest Accepted!\n\n"
+                        + "§fFirst: Collect §6Oak Logs x5\n"
+                        + "Second: Return to me for further instructions\n\n"
+                        + "§eGood luck, warrior!");
+        add("dialogue.epic_village_elder.prologue_accepted.choice_ok",
+                "Understood!");
+        
+        // Chapter 1 accepted
+        add("dialogue.epic_village_elder.chapter1_accepted.text",
+                "§b§lChapter I: Whispers of the Abyss\n\n"
+                        + "§fAncient secrets lie hidden in the depths of the mine...\n"
+                        + "Prepare torches and weapons. Beware of cave spiders!\n\n"
+                        + "§eObjectives: Collect Coal x16, Sticks x8");
+        add("dialogue.epic_village_elder.chapter1_accepted.choice_ok",
+                "I will be careful");
+        
+        // Branch introduction
+        add("dialogue.epic_village_elder.branch_introduction.text",
+                "§6§lTwo paths, two destinies...\n\n"
+                        + "§c[Path of Combat]\n"
+                        + "Assault the Nether Fortress directly, facing Blazes and Wither Skeletons.\n"
+                        + "Suitable for warriors who love intense combat.\n\n"
+                        + "§9[Path of Exploration]\n"
+                        + "Uncover the secrets of the Ocean Monument, solving ancient puzzles.\n"
+                        + "Suitable for adventurers who love discovery.\n\n"
+                        + "§eWhat is your choice?");
+        add("dialogue.epic_village_elder.branch_introduction.choice_combat",
+                "Tell me about the Path of Combat");
+        add("dialogue.epic_village_elder.branch_introduction.choice_exploration",
+                "Tell me about the Path of Exploration");
+        add("dialogue.epic_village_elder.branch_introduction.choice_think",
+                "Let me think about it");
+        
+        // Explain combat path
+        add("dialogue.epic_village_elder.explain_combat.text",
+                "§c§lPath of Combat: Trial by Fire\n\n"
+                        + "§fYou will face:\n"
+                        + "• §6Blazes§r - Flame emissaries of the Nether\n"
+                        + "• §4Wither Skeletons§r - Terrifying fortress guards\n"
+                        + "• §5Nether Fortress§r - A dangerous labyrinth\n\n"
+                        + "§eRewards: Netherite scraps, powerful combat skills\n\n"
+                        + "§cWarning: This path is fraught with danger, but the rewards are great!");
+        add("dialogue.epic_village_elder.explain_combat.choice_confirm",
+                "I choose combat!");
+        
+        // Explain exploration path
+        add("dialogue.epic_village_elder.explain_exploration.text",
+                "§9§lPath of Exploration: Echoes of the Deep\n\n"
+                        + "§fYou will discover:\n"
+                        + "• §3Guardians§r - Sentinels of the Ocean Monument\n"
+                        + "• §bPrismarine Materials§r - Mysterious ocean energy\n"
+                        + "• §eElder Guardian§r - The final boss of the temple\n\n"
+                        + "§eRewards: Trident, Heart of the Sea, ancient knowledge\n\n"
+                        + "§9Tip: Prepare potions of water breathing!");
+        add("dialogue.epic_village_elder.explain_exploration.choice_confirm",
+                "I choose exploration!");
+        
+        // Decline node
+        add("dialogue.epic_village_elder.decline.text",
+                "§fNo matter. Return when you are ready.\n"
+                        + "The village gates are always open to you.");
+        add("dialogue.epic_village_elder.decline.choice1",
+                "Thank you for understanding");
+
+        // ═══════════════════════════════════════════
+        // Blacksmith
+        // ═══════════════════════════════════════════
+        add("dialogue.epic_blacksmith.npc_name", "§8§lBlacksmith");
+        
+        add("dialogue.epic_blacksmith.start.early",
+                "§fHey, rookie! Need weapons?\n"
+                        + "I only have stone gear for now, but it's enough for early battles.\n"
+                        + "§e(Stone Sword x1 = 5 gold)");
+        add("dialogue.epic_blacksmith.start.choice_buy_stone_sword",
+                "Give me a stone sword");
+        
+        add("dialogue.epic_blacksmith.start.mid",
+                "§7Oh? You've started exploring the mines?\n"
+                        + "Then you'll need better equipment!\n"
+                        + "§e(Full Iron Armor Set = 50 gold)");
+        add("dialogue.epic_blacksmith.start.choice_buy_iron_gear",
+                "I want iron gear");
+        
+        add("dialogue.epic_blacksmith.start.late",
+                "§bWow, you completed Chapter 1?!\n"
+                        + "Looks like you're a serious adventurer.\n"
+                        + "Check out these diamond wares!\n"
+                        + "§e(Full Diamond Armor Set = 100 gold)");
+        add("dialogue.epic_blacksmith.start.choice_buy_diamond_gear",
+                "Diamond gear sounds good");
+        
+        add("dialogue.epic_blacksmith.start.legendary",
+                "§5§lA Legendary Hero arrives!\n"
+                        + "§fIt is my honor to forge equipment for you.\n"
+                        + "Behold my finest work — Netherite gear!\n"
+                        + "§e(Netherite Ingot x1 = 200 gold)");
+        add("dialogue.epic_blacksmith.start.choice_buy_netherite",
+                "I want the strongest gear!");
+        
+        add("dialogue.epic_blacksmith.start.default",
+                "§fSpeak your needs. My craftsmanship is the finest in the village!");
+        add("dialogue.epic_blacksmith.start.choice_leave",
+                "Perhaps next time");
+
+        // ═══════════════════════════════════════════
+        // Merchant
+        // ═══════════════════════════════════════════
+        add("dialogue.epic_merchant.npc_name", "§a§lTraveling Merchant");
+        
+        add("dialogue.epic_merchant.start.phase_gather",
+                "§fOff on an adventure, adventurer?\n"
+                        + "Bring some food. You might get hungry on the road.\n"
+                        + "§e(Bread x4 = 2 gold)");
+        add("dialogue.epic_merchant.start.choice_buy_food",
+                "Some bread, please");
+        
+        add("dialogue.epic_merchant.start.phase_defend",
+                "§cHeard zombies are coming to attack?\n"
+                        + "These healing potions might save your life!\n"
+                        + "§e(Healing Potion x2 = 10 gold)");
+        add("dialogue.epic_merchant.start.choice_buy_potions",
+                "Give me some potions");
+        
+        add("dialogue.epic_merchant.start.phase_chapter1",
+                "§8Heading to the mines? A wise choice is to bring enough torches.\n"
+                        + "Anything could happen in the darkness...\n"
+                        + "§e(Torches x32 = 5 gold)");
+        add("dialogue.epic_merchant.start.choice_buy_torches",
+                "A stack of torches");
+        
+        add("dialogue.epic_merchant.start.default",
+                "§fWelcome to my shop! A wide variety of goods await~");
+        add("dialogue.epic_merchant.start.choice_browse",
+                "Let me see what you have");
+        add("dialogue.epic_merchant.start.choice_leave",
+                "Until next time");
+        
+        add("dialogue.epic_merchant.shop_menu.text",
+                "§a§l=== Merchant's Shelves ===\n\n"
+                        + "§fPlease select the category of goods you wish to purchase:");
+        add("dialogue.epic_merchant.shop_menu.choice_food",
+                "🍞 Food Pack (5 gold)");
+        add("dialogue.epic_merchant.shop_menu.choice_tools",
+                "⚒️ Tool Pack (10 gold)");
+        add("dialogue.epic_merchant.shop_menu.choice_back",
+                "← Back");
+
+        // ═══════════════════════════════════════════
+        // Wandering Trader - sayIf() Example NPC
+        // ═══════════════════════════════════════════
+        add("dialogue.epic_wandering_trader.npc_name", "§a§lWandering Trader");
+        
+        // Start node - 5 states
+        add("dialogue.epic_wandering_trader.start.newbie",
+                "§fHey there, new face! I'm a traveling merchant.\n"
+                        + "§eIf you're just starting out, I can give you some advice...");
+        
+        add("dialogue.epic_wandering_trader.start.prologue_active",
+                "§fOh? You've accepted the Elder's quest?\n"
+                        + "§ePrologue in progress... Good luck, adventurer!");
+        
+        add("dialogue.epic_wandering_trader.start.chapter1_ready",
+                "§bHeard you completed the prologue? Amazing!\n"
+                        + "§eTreasures await in the mine depths. Ready to explore?");
+        
+        add("dialogue.epic_wandering_trader.start.chapter1_active",
+                "§8The mine is dangerous, isn't it? Watch out for cave spiders!\n"
+                        + "§eIf your gear isn't good enough, I have some nice items...");
+        
+        add("dialogue.epic_wandering_trader.start.legendary",
+                "§5§l✨ Legendary Hero! ✨\n"
+                        + "§fNever thought I'd meet the one who defeated the Ender Dragon!\n"
+                        + "§eMy humble shop is honored. Please browse freely!");
+        
+        add("dialogue.epic_wandering_trader.start.default",
+                "§fWelcome to my mobile shop! Items refresh daily~");
+        
+        add("dialogue.epic_wandering_trader.start.choice_shop",
+                "Let me see your wares");
+        add("dialogue.epic_wandering_trader.start.choice_rumors",
+                "Any rumors?");
+        add("dialogue.epic_wandering_trader.start.choice_bye",
+                "Farewell");
+        
+        // Shop menu
+        add("dialogue.epic_wandering_trader.shop_menu.text",
+                "§a§l=== Wandering Trader's Shelves ===\n\n"
+                        + "§fPlease select the category of goods you wish to purchase:");
+        add("dialogue.epic_wandering_trader.shop_menu.choice_supplies",
+                "📦 Supply Pack (Torches x32 + Bread x4)");
+        add("dialogue.epic_wandering_trader.shop_menu.choice_equipment",
+                "⚔️ Weapons & Armor");
+        add("dialogue.epic_wandering_trader.shop_menu.choice_back",
+                "← Back");
+        
+        // Equipment menu
+        add("dialogue.epic_wandering_trader.equipment_menu.text",
+                "§6§l=== Weapons & Armor ===\n\n"
+                        + "§fBased on your adventure progress, here are recommendations:");
+        add("dialogue.epic_wandering_trader.equipment_menu.choice_stone",
+                "🗡️ Stone Sword x1 (Beginner)");
+        add("dialogue.epic_wandering_trader.equipment_menu.choice_iron",
+                "🛡️ Iron Armor Set (Advanced)");
+        add("dialogue.epic_wandering_trader.equipment_menu.choice_diamond",
+                "💎 Diamond Armor Set (Elite)");
+        add("dialogue.epic_wandering_trader.equipment_menu.choice_back",
+                "← Back");
+        
+        // Purchase complete
+        add("dialogue.epic_wandering_trader.purchase_complete.text",
+                "§a§lTransaction Complete!\n\n"
+                        + "§fThank you for your business. Good luck!");
+        add("dialogue.epic_wandering_trader.purchase_complete.choice_continue",
+                "Continue shopping");
+        
+        // Rumors
+        add("dialogue.epic_wandering_trader.rumors.text",
+                "§6§l=== Latest Rumors ===\n\n"
+                        + "§f• Strange echoes from the mine depths...\n"
+                        + "§f• Some say they saw a Nether Fortress\n"
+                        + "§f• Ocean monuments hide ancient secrets\n"
+                        + "§f• The Ender Dragon's power is awakening\n\n"
+                        + "§eI heard these from travelers across the land~");
+        add("dialogue.epic_wandering_trader.rumors.choice_back",
+                "← Back");
     }
 
     // ═══════════════════════════════════════════════════════

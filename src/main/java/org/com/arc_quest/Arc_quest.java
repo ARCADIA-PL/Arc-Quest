@@ -17,7 +17,7 @@ import org.com.arc_quest.client.events.ClientEventHandler;
 import org.com.arc_quest.client.gui.QuestHudOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
-import org.com.arc_quest.dialogue.registry.TestDialogues;
+import org.com.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
@@ -40,23 +40,13 @@ public class Arc_quest {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             ArcQuestContent.registerAll();
-            TestDialogues.registerAll();
+            EpicDialogueTrees.registerAll();
             ArcQuestNetwork.register();
         });
     }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {}
-
-    @SubscribeEvent
-    public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            var cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-            if (cap.getAllActiveQuests().isEmpty()) {
-                QuestProgressHandler.acceptQuest(player, "arc_quest:epic_prologue");
-            }
-        }
-    }
 
     @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {

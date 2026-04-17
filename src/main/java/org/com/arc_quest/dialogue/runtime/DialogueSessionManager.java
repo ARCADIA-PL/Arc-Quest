@@ -214,7 +214,14 @@ public final class DialogueSessionManager {
         if (node == null) return;
 
         String speaker = node.speaker().isEmpty() ? session.getTree().defaultNpc() : node.speaker();
-        String text = session.processText(node.text());
+        
+        // [新增] 评估条件文本，选择合适的文本
+        String text = ConditionalTextEvaluator.evaluate(
+            player, 
+            node.conditionalTexts(), 
+            node.text()
+        );
+        text = session.processText(text);
 
         // 构建可见选择文本列表
         var visibleChoices = session.getVisibleChoices();
