@@ -41,7 +41,7 @@ public class S2CSyncQuestStatePacket {
                         QuestToastManager.show(QuestToastManager.ToastType.QUEST_ACCEPTED, name);
                         if (def != null) ClientQuestEvents.handleVisualTrigger(def, SplashType.QUEST_ACQUIRED, null);
                     } else {
-                        QuestToastManager.show(QuestToastManager.ToastType.PHASE_ADVANCED, name);
+                        /*QuestToastManager.show(QuestToastManager.ToastType.PHASE_ADVANCED, name);*/
                     }
 
                     if (def != null && Minecraft.getInstance().player != null) {

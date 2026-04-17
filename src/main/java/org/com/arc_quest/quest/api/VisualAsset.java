@@ -1,4 +1,3 @@
-// 新建: quest/api/VisualAsset.java
 package org.com.arc_quest.quest.api;
 
 import net.minecraft.resources.ResourceLocation;

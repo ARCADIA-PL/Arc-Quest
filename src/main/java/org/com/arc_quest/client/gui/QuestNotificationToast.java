@@ -1,4 +1,3 @@
-// 新建: org.com.arc_quest.client.gui.QuestNotificationToast.java
 package org.com.arc_quest.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;

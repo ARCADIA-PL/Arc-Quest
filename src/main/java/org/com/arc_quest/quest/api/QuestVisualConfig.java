@@ -1,4 +1,3 @@
-// 新建: quest/api/QuestVisualConfig.java
 package org.com.arc_quest.quest.api;
 
 import java.util.EnumMap;

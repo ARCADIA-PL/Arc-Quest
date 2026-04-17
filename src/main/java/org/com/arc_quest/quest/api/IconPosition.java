@@ -1,4 +1,3 @@
-// 新建: quest/api/IconPosition.java
 package org.com.arc_quest.quest.api;
 
 /**
