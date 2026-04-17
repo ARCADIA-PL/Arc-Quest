@@ -1,14 +1,26 @@
 package org.com.arc_quest.dialogue.registry;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import org.com.arc_quest.dialogue.api.DialogueTree;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 /**
  * 全局对话树注册表（线程安全，支持热重载）。
+ *
+ * <h3>变更记录</h3>
+ * <ul>
+ *   <li>[新增] {@link #bindEntity(EntityType, String)} —— 实体类型 → 固定对话绑定</li>
+ *   <li>[新增] {@link #bindEntityDynamic(EntityType, BiFunction)} —— 实体类型 → 动态对话选择器</li>
+ *   <li>[新增] {@link #getDialogueForEntity(Entity, ServerPlayer)} —— 根据实体获取对话 ID</li>
+ * </ul>
  */
 public final class DialogueRegistry {
 
@@ -17,10 +29,21 @@ public final class DialogueRegistry {
 
     private final Map<String, DialogueTree> trees = new ConcurrentHashMap<>();
 
-    /** NPC ID → 对话树 ID 映射。 */
+    /** NPC ID（字符串标识） → 对话树 ID 映射。 */
     private final Map<String, String> npcBindings = new ConcurrentHashMap<>();
 
+    /** [新增] 实体类型 → 固定对话树 ID。 */
+    private final Map<EntityType<?>, String> entityBindings = new ConcurrentHashMap<>();
+
+    /** [新增] 实体类型 → 动态对话选择器（可根据实体实例和玩家状态决定对话 ID）。 */
+    private final Map<EntityType<?>, BiFunction<Entity, ServerPlayer, String>> entityDynamicBindings =
+            new ConcurrentHashMap<>();
+
     private DialogueRegistry() {}
+
+    // ═══════════════════════════════════════════════════════
+    //  对话树注册
+    // ═══════════════════════════════════════════════════════
 
     public void register(DialogueTree tree) {
         List<String> errors = tree.validate();
@@ -32,6 +55,7 @@ public final class DialogueRegistry {
         LOGGER.debug("[DialogueRegistry] Registered dialogue: {}", tree.dialogueId());
     }
 
+    @Nullable
     public DialogueTree get(String dialogueId) {
         return trees.get(dialogueId);
     }
@@ -44,20 +68,104 @@ public final class DialogueRegistry {
         return Collections.unmodifiableSet(trees.keySet());
     }
 
+    // ═══════════════════════════════════════════════════════
+    //  NPC ID 绑定（字符串标识）
+    // ═══════════════════════════════════════════════════════
+
     /** 绑定 NPC ID 到对话树。 */
     public void bindNpc(String npcId, String dialogueId) {
         npcBindings.put(npcId, dialogueId);
     }
 
     /** 获取 NPC 绑定的对话树 ID。 */
+    @Nullable
     public String getDialogueForNpc(String npcId) {
         return npcBindings.get(npcId);
     }
+
+    // ═══════════════════════════════════════════════════════
+    //  [新增] 实体类型绑定
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 绑定实体类型到固定对话树 ID。
+     * <p>
+     * 适用于不实现 {@link org.com.arc_quest.dialogue.api.IDialogueNpc} 的原版/第三方实体。
+     *
+     * <pre>{@code
+     * DialogueRegistry.INSTANCE.bindEntity(EntityType.VILLAGER, "arc_quest:villager_greeting");
+     * }</pre>
+     */
+    public void bindEntity(EntityType<?> entityType, String dialogueId) {
+        entityBindings.put(entityType, dialogueId);
+        LOGGER.debug("[DialogueRegistry] Bound entity type {} → dialogue '{}'",
+                entityType, dialogueId);
+    }
+
+    /**
+     * 绑定实体类型到动态对话选择器。
+     * <p>
+     * 选择器根据具体实体实例和玩家状态返回对话 ID，返回 null 表示不触发对话。
+     *
+     * <pre>{@code
+     * DialogueRegistry.INSTANCE.bindEntityDynamic(EntityType.VILLAGER, (entity, player) -> {
+     *     Villager villager = (Villager) entity;
+     *     if (villager.getVillagerData().getProfession() == VillagerProfession.WEAPONSMITH) {
+     *         return "arc_quest:weaponsmith";
+     *     }
+     *     return "arc_quest:villager_generic";
+     * });
+     * }</pre>
+     */
+    public void bindEntityDynamic(EntityType<?> entityType,
+                                  BiFunction<Entity, ServerPlayer, String> selector) {
+        entityDynamicBindings.put(entityType, selector);
+        LOGGER.debug("[DialogueRegistry] Bound dynamic entity type {} → selector", entityType);
+    }
+
+    /**
+     * [新增] 根据实体和玩家获取对话树 ID。
+     * <p>
+     * 查找顺序：
+     * <ol>
+     *   <li>动态绑定（{@link #bindEntityDynamic}）</li>
+     *   <li>固定绑定（{@link #bindEntity}）</li>
+     * </ol>
+     *
+     * @param entity 目标实体
+     * @param player 交互的玩家
+     * @return 对话树 ID，null 表示无绑定
+     */
+    @Nullable
+    public String getDialogueForEntity(Entity entity, ServerPlayer player) {
+        EntityType<?> type = entity.getType();
+
+        // 优先：动态选择器
+        BiFunction<Entity, ServerPlayer, String> dynamicSelector = entityDynamicBindings.get(type);
+        if (dynamicSelector != null) {
+            try {
+                String result = dynamicSelector.apply(entity, player);
+                if (result != null) return result;
+            } catch (Exception e) {
+                LOGGER.error("[DialogueRegistry] Error in dynamic entity binding for {}: {}",
+                        type, e.getMessage());
+            }
+        }
+
+        // 其次：固定绑定
+        return entityBindings.get(type);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  清理（重载前调用）
+    // ═══════════════════════════════════════════════════════
 
     /** 清空所有（重载前调用）。 */
     public void clearAll() {
         trees.clear();
         npcBindings.clear();
-        LOGGER.info("[DialogueRegistry] Cleared all dialogue trees and NPC bindings.");
+        entityBindings.clear();
+        entityDynamicBindings.clear();
+        LOGGER.info("[DialogueRegistry] Cleared all dialogue trees and bindings.");
     }
 }

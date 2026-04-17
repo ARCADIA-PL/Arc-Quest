@@ -1,5 +1,3 @@
-// 文件名: org.com.arc_quest.client.gui.DialogueScreen.java
-
 package org.com.arc_quest.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -11,13 +9,25 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 对话界面。
+ *
+ * <h3>变更记录</h3>
+ * <ul>
+ *   <li>[新增] {@code entityId} —— 关联的 NPC 实体 ID，用于获取实体引用</li>
+ *   <li>[新增] {@link #updateEntityId(int)} —— 更新实体 ID</li>
+ *   <li>[改动] 构造器新增 {@code entityId} 参数</li>
+ * </ul>
+ */
 public class DialogueScreen extends Screen {
 
     // ── 打字机 ──
@@ -29,6 +39,13 @@ public class DialogueScreen extends Screen {
     private boolean isTerminal;
     private boolean hasAutoNext;
     private int delayMs;
+
+    /** [新增] 关联的 NPC 实体网络 ID。 */
+    private int entityId = -1;
+
+    /** [新增] 缓存的 NPC 实体引用（客户端）。 */
+    @Nullable
+    private Entity cachedNpcEntity;
 
     // ── 全局高级动画控制 ──
     private float masterAnim = 0f;
@@ -49,15 +66,32 @@ public class DialogueScreen extends Screen {
 
     private List<String> wrappedLines;
 
+    /** [改动] 原有构造器保持兼容。 */
     public DialogueScreen(String dialogueId, String speaker, String text,
                           String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
+        this(dialogueId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, -1);
+    }
+
+    /** [新增] 完整构造器（带 entityId）。 */
+    public DialogueScreen(String dialogueId, String speaker, String text,
+                          String[] choices, boolean isTerminal, boolean hasAutoNext,
+                          int delayMs, int entityId) {
         super(Component.translatable("screen.dialogue.title"));
+        this.entityId = entityId;
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
     public void updateNode(String speaker, String text, String[] choices,
                            boolean isTerminal, boolean hasAutoNext, int delayMs) {
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
+    }
+
+    /** [新增] 更新关联实体 ID。 */
+    public void updateEntityId(int entityId) {
+        if (this.entityId != entityId) {
+            this.entityId = entityId;
+            this.cachedNpcEntity = null; // 清除缓存，下次渲染时重新查找
+        }
     }
 
     private void applyNodeData(String speaker, String text, String[] choices,
@@ -81,11 +115,23 @@ public class DialogueScreen extends Screen {
         this.wrappedLines = null;
     }
 
+    /**
+     * [新增] 获取关联的 NPC 实体（客户端侧，用于未来扩展如模型渲染）。
+     */
+    @Nullable
+    public Entity getNpcEntity() {
+        if (cachedNpcEntity == null && entityId != -1 && minecraft != null && minecraft.level != null) {
+            cachedNpcEntity = minecraft.level.getEntity(entityId);
+        }
+        return cachedNpcEntity;
+    }
+
     @Override
     protected void init() {
         super.init();
         this.lastRenderTime = 0;
         this.masterAnim = 0f;
+        this.cachedNpcEntity = null; // 重新查找
     }
 
     @Override
@@ -270,7 +316,7 @@ public class DialogueScreen extends Screen {
             g.pose().popPose();
         }
 
-        // ── 渲染玩家选项 (清脆且带有柔和S曲线的瀑布流) ──
+        // ── 渲染玩家选项 ──
         if (choicesVisible && choices.length > 0) {
             float timeSinceTextDone = (now - typewriterDoneTime) / 1000f;
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
@@ -280,18 +326,15 @@ public class DialogueScreen extends Screen {
                 int currentExpand = Math.round(15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
                 boolean hovered = !isClosing && mouseX >= choiceX - currentExpand && mouseX <= choiceX + choiceW && mouseY >= cy && mouseY <= cy + choiceH;
 
-                // 【收紧留白与级联】：0.05s起步，0.08s间隔。形成“唰啦”展开的折扇手感
                 float staggerDelay = 0.05f + (i * 0.08f);
                 float targetReveal = (!isClosing && timeSinceTextDone >= staggerDelay) ? 1f : 0f;
 
-                // 【提速】：恢复到 5.0f，消除等待感，让UI瞬间到位
                 float revealSpeed = isClosing ? 15f : 5.0f;
                 choiceReveal[i] = QuestAnimUtil.step(choiceReveal[i], targetReveal, revealSpeed, dt);
 
                 float progress = choiceReveal[i];
                 float revealEase = QuestAnimUtil.easeOutCubic(progress);
 
-                // 【保留核心曲线】：依然是S型曲线 (3x² - 2x³)，但是因为速度快了，现在它是“爆发起步 -> 瞬间柔和贴合”
                 float slideEase = progress * progress * (3f - 2f * progress);
 
                 choiceHover[i] = QuestAnimUtil.step(choiceHover[i], hovered ? 1f : 0f, 10f, dt);
@@ -302,7 +345,6 @@ public class DialogueScreen extends Screen {
 
                 int expandAnim = Math.round(15 * hEase);
 
-                // 【缩短距离】：60像素。刚好能看出明显的水平位移滑入，但绝不拖泥带水
                 int currentX = choiceX - expandAnim + Math.round((1f - slideEase) * 60f);
                 int currentW = choiceW + expandAnim;
 
@@ -329,7 +371,7 @@ public class DialogueScreen extends Screen {
             }
         }
 
-        // ── 渲染“可继续”悬浮跳动箭头 ──
+        // ── 渲染"可继续"悬浮跳动箭头 ──
         if (typewriterDone && choices.length == 0 && safeAlpha > 5 && !isClosing) {
             float timeSec = now / 1000f;
             float pulseA = 0.3f + 0.7f * (float)Math.abs(Math.sin(timeSec * 3f));

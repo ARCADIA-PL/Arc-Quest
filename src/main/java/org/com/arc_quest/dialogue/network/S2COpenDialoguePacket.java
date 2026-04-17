@@ -9,6 +9,11 @@ import java.util.function.Supplier;
 
 /**
  * 服务端→客户端：打开/更新/关闭对话界面。
+ *
+ * <h3>变更记录</h3>
+ * <ul>
+ *   <li>[新增] {@code entityId} —— 关联的 NPC 实体网络 ID（-1 = 无实体）</li>
+ * </ul>
  */
 public class S2COpenDialoguePacket {
 
@@ -23,9 +28,21 @@ public class S2COpenDialoguePacket {
     private final int delayMs;
     private final boolean isClose;
 
+    /** [新增] 关联的 NPC 实体网络 ID，-1 = 无实体。 */
+    private final int entityId;
+
+    /** 原有构造器（向后兼容，entityId = -1）。 */
     public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
                                  String text, String[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs) {
+        this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, -1);
+    }
+
+    /** [新增] 完整构造器（带 entityId）。 */
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
+                                 String text, String[] choices,
+                                 boolean isTerminal, boolean hasAutoNext, int delayMs,
+                                 int entityId) {
         this.dialogueId = dialogueId;
         this.nodeId = nodeId;
         this.speaker = speaker;
@@ -35,6 +52,7 @@ public class S2COpenDialoguePacket {
         this.hasAutoNext = hasAutoNext;
         this.delayMs = delayMs;
         this.isClose = false;
+        this.entityId = entityId;
     }
 
     private S2COpenDialoguePacket() {
@@ -47,6 +65,7 @@ public class S2COpenDialoguePacket {
         this.hasAutoNext = false;
         this.delayMs = 0;
         this.isClose = true;
+        this.entityId = -1;
     }
 
     public static S2COpenDialoguePacket close() {
@@ -69,6 +88,7 @@ public class S2COpenDialoguePacket {
             buf.writeBoolean(isTerminal);
             buf.writeBoolean(hasAutoNext);
             buf.writeVarInt(delayMs);
+            buf.writeInt(entityId);             // [新增]
         }
     }
 
@@ -88,8 +108,9 @@ public class S2COpenDialoguePacket {
         boolean terminal = buf.readBoolean();
         boolean autoNext = buf.readBoolean();
         int delay = buf.readVarInt();
+        int entityId = buf.readInt();           // [新增]
 
-        return new S2COpenDialoguePacket(dId, nId, spk, txt, choices, terminal, autoNext, delay);
+        return new S2COpenDialoguePacket(dId, nId, spk, txt, choices, terminal, autoNext, delay, entityId);
     }
 
     public static void handle(S2COpenDialoguePacket pkt,
@@ -107,10 +128,12 @@ public class S2COpenDialoguePacket {
                 // 更新现有对话界面
                 ds.updateNode(pkt.speaker, pkt.text, pkt.choices,
                         pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs);
+                ds.updateEntityId(pkt.entityId);    // [新增]
             } else {
                 // 打开新对话界面
                 mc.setScreen(new DialogueScreen(pkt.dialogueId, pkt.speaker,
-                        pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs));
+                        pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext,
+                        pkt.delayMs, pkt.entityId));  // [改动] 传入 entityId
             }
         });
         ctx.get().setPacketHandled(true);
@@ -118,4 +141,5 @@ public class S2COpenDialoguePacket {
 
     // ── Getter ──
     public String getDialogueId() { return dialogueId; }
+    public int getEntityId() { return entityId; }           // [新增]
 }

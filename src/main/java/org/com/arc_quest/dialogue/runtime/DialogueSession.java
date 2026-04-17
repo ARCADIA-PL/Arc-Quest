@@ -2,12 +2,10 @@ package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
-import org.com.arc_quest.dialogue.api.DialogueAction;
-import org.com.arc_quest.dialogue.api.DialogueChoice;
-import org.com.arc_quest.dialogue.api.DialogueNode;
-import org.com.arc_quest.dialogue.api.DialogueTree;
+import org.com.arc_quest.dialogue.api.*;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +14,14 @@ import java.util.UUID;
  * 单次对话会话（服务端状态）。
  * <p>
  * 生命周期：创建 → 推进节点 → 玩家选择 → ... → 结束（关闭/终端节点）。
+ *
+ * <h3>变更记录</h3>
+ * <ul>
+ *   <li>[新增] {@link #context} —— 运行时上下文，支持 {@code {key}} 变量替换</li>
+ *   <li>[新增] {@link #entityId} —— 关联的 NPC 实体 ID（-1 = 无实体）</li>
+ *   <li>[新增] {@link #execute(DialogueAction)} —— 带会话上下文的动作执行</li>
+ *   <li>[改动] {@link #processText(String)} —— 增加 context 变量替换</li>
+ * </ul>
  */
 public class DialogueSession {
 
@@ -27,13 +33,39 @@ public class DialogueSession {
     private DialogueNode currentNode;
     private boolean ended = false;
 
+    /** [新增] 运行时上下文 */
+    private final DialogueContext context;
+
+    /** [新增] 关联的 NPC 实体 ID，-1 表示无实体（命令触发） */
+    private final int entityId;
+
     /** 过滤后的当前可见选择列表（条件已评估）。 */
     private List<DialogueChoice> visibleChoices = List.of();
 
+    // ═══════════════════════════════════════════════════════
+    //  构造器
+    // ═══════════════════════════════════════════════════════
+
+    /** 原有构造器（向后兼容）。 */
     public DialogueSession(ServerPlayer player, DialogueTree tree) {
+        this(player, tree, new DialogueContext(), -1);
+    }
+
+    /**
+     * [新增] 完整构造器（带上下文和实体关联）。
+     *
+     * @param player   对话玩家
+     * @param tree     对话树
+     * @param context  运行时上下文（不可为 null）
+     * @param entityId 关联的 NPC 实体 ID（-1 = 无实体）
+     */
+    public DialogueSession(ServerPlayer player, DialogueTree tree,
+                           DialogueContext context, int entityId) {
         this.sessionId = UUID.randomUUID();
         this.player = player;
         this.tree = tree;
+        this.context = context != null ? context : new DialogueContext();
+        this.entityId = entityId;
         this.currentNode = tree.getStartNode();
         evaluateVisibleChoices();
     }
@@ -48,6 +80,12 @@ public class DialogueSession {
     public DialogueNode getCurrentNode() { return currentNode; }
     public boolean isEnded() { return ended; }
     public List<DialogueChoice> getVisibleChoices() { return visibleChoices; }
+
+    /** [新增] 获取运行时上下文。 */
+    public DialogueContext getContext() { return context; }
+
+    /** [新增] 获取关联的 NPC 实体 ID（-1 = 无实体）。 */
+    public int getEntityId() { return entityId; }
 
     // ═══════════════════════════════════════════════════════
     // 核心逻辑
@@ -69,14 +107,9 @@ public class DialogueSession {
 
         DialogueChoice choice = visibleChoices.get(choiceIndex);
 
-        // 执行动作
+        // 执行动作 [改动: 使用带 session 上下文的 execute]
         for (DialogueAction action : choice.actions()) {
-            try {
-                action.execute(player);
-            } catch (Exception e) {
-                LOGGER.error("[Dialogue] Error executing action {} in session {}",
-                        action.getClass().getSimpleName(), sessionId, e);
-            }
+            executeAction(action);
         }
 
         // 跳转
@@ -109,7 +142,7 @@ public class DialogueSession {
      */
     public DialogueNode autoAdvance() {
         if (ended || currentNode == null) return null;
-        if (currentNode.hasChoices()) return currentNode; // 等待玩家选择
+        if (currentNode.hasChoices()) return currentNode;
 
         String nextId = currentNode.autoNextId();
         if (nextId == null) {
@@ -161,11 +194,40 @@ public class DialogueSession {
     }
 
     /**
-     * 替换文本变量。
+     * [改动] 执行单个动作（带会话上下文）。
+     * <p>
+     * 优先使用 {@link DialogueAction#execute(ServerPlayer, DialogueSession)}，
+     * 让 {@link DialogueAction.Custom} 和 {@link DialogueAction.RunCommand}
+     * 等类型能够获取会话上下文。
+     */
+    private void executeAction(DialogueAction action) {
+        try {
+            action.execute(player, this);
+        } catch (Exception e) {
+            LOGGER.error("[Dialogue] Error executing action {} in session {}",
+                    action.getClass().getSimpleName(), sessionId, e);
+        }
+    }
+
+    /**
+     * [改动] 替换文本变量。
+     * <p>
+     * 替换顺序：
+     * <ol>
+     *   <li>{@code %player%} → 玩家名</li>
+     *   <li>{@code %npc%} → 默认 NPC 名</li>
+     *   <li>{@code {key}} → context 中对应的值</li>
+     * </ol>
      */
     public String processText(String raw) {
         if (raw == null) return "";
-        return raw.replace("%player%", player.getName().getString())
+        String result = raw
+                .replace("%player%", player.getName().getString())
                 .replace("%npc%", tree.defaultNpc());
+        // [新增] context 变量替换
+        if (!context.isEmpty()) {
+            result = context.resolve(result);
+        }
+        return result;
     }
 }

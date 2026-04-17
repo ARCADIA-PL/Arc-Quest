@@ -2,108 +2,87 @@ package org.com.arc_quest.dialogue.api;
 
 import org.com.arc_quest.quest.api.QuestVisualConfig;
 
-import java.util.*;
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
- * 完整的对话树定义（不可变）。
+ * 对话树定义（不可变）。
  *
- * @param dialogueId    全局唯一 ID
- * @param defaultNpc    默认 NPC 名称
- * @param startNodeId   入口节点 ID
- * @param nodes         所有节点的映射 (nodeId → DialogueNode)
- * @param visualConfig  视觉配置（立绘、图标、主题色）
+ * @param dialogueId  对话树唯一 ID
+ * @param defaultNpc  默认 NPC 名称（用于 speaker 为空时的 fallback 和 %npc% 替换）
+ * @param startNodeId 起始节点 ID
+ * @param nodes       节点 ID → 节点定义
+ * @param visualConfig 可选的 UI 视觉配置（可为 null，使用默认样式）
  */
 public record DialogueTree(
         String dialogueId,
         String defaultNpc,
         String startNodeId,
         Map<String, DialogueNode> nodes,
-        QuestVisualConfig visualConfig
+        @Nullable QuestVisualConfig visualConfig
 ) {
+
+    /**
+     * 获取起始节点。
+     */
+    @Nullable
     public DialogueNode getStartNode() {
         return nodes.get(startNodeId);
     }
 
+    /**
+     * 根据 ID 获取节点。
+     */
+    @Nullable
     public DialogueNode getNode(String nodeId) {
-        return nodeId == null ? null : nodes.get(nodeId);
+        return nodeId != null ? nodes.get(nodeId) : null;
     }
 
     /**
-     * 获取对话的主题色。
+     * 验证对话树的完整性，返回错误列表（空列表 = 无错误）。
      */
-    public int getThemeColor() {
-        return visualConfig != null ? visualConfig.getThemeColor() : 0xFFFFFFFF;
-    }
-
-    /**
-     * 获取对话的立绘配置。
-     */
-    public java.util.Optional<org.com.arc_quest.quest.api.VisualAsset> getSplashConfig(
-            org.com.arc_quest.quest.api.SplashType type) {
-        if (visualConfig == null) {
-            return java.util.Optional.empty();
-        }
-        return visualConfig.getSplash(type);
-    }
-
-    /** 验证树的完整性。 */
     public List<String> validate() {
         List<String> errors = new ArrayList<>();
-        if (getStartNode() == null) {
-            errors.add("Start node '" + startNodeId + "' not found in dialogue '" + dialogueId + "'");
+
+        if (dialogueId == null || dialogueId.isEmpty()) {
+            errors.add("dialogueId is null or empty.");
         }
+        if (startNodeId == null || startNodeId.isEmpty()) {
+            errors.add("startNodeId is null or empty.");
+        }
+        if (nodes == null || nodes.isEmpty()) {
+            errors.add("No nodes defined.");
+            return errors;
+        }
+        if (!nodes.containsKey(startNodeId)) {
+            errors.add("Start node '" + startNodeId + "' not found in nodes.");
+        }
+
+        // 检查每个节点的引用是否有效
         for (var entry : nodes.entrySet()) {
+            String nodeId = entry.getKey();
             DialogueNode node = entry.getValue();
-            if (node.hasChoices()) {
-                for (DialogueChoice choice : node.choices()) {
+
+            // 检查 autoNextId
+            if (node.autoNextId() != null && !nodes.containsKey(node.autoNextId())) {
+                errors.add("Node '" + nodeId + "' autoNextId '" + node.autoNextId()
+                        + "' references non-existent node.");
+            }
+
+            // 检查选项的 nextNodeId
+            if (node.choices() != null) {
+                for (int i = 0; i < node.choices().size(); i++) {
+                    DialogueChoice choice = node.choices().get(i);
                     if (choice.nextNodeId() != null && !nodes.containsKey(choice.nextNodeId())) {
-                        errors.add("Node '" + entry.getKey() + "' choice points to missing node '"
-                                + choice.nextNodeId() + "'");
+                        errors.add("Node '" + nodeId + "' choice[" + i + "] nextNodeId '"
+                                + choice.nextNodeId() + "' references non-existent node.");
                     }
                 }
             }
-            if (node.autoNextId() != null && !nodes.containsKey(node.autoNextId())) {
-                errors.add("Node '" + entry.getKey() + "' autoNext points to missing node '"
-                        + node.autoNextId() + "'");
-            }
         }
+
         return errors;
-    }
-
-    /** Builder. */
-    public static Builder builder(String dialogueId) {
-        return new Builder(dialogueId);
-    }
-
-    public static class Builder {
-        private final String dialogueId;
-        private String defaultNpc = "NPC";
-        private String startNodeId = "start";
-        private final Map<String, DialogueNode> nodes = new LinkedHashMap<>();
-        private QuestVisualConfig visualConfig = QuestVisualConfig.EMPTY;
-
-        Builder(String dialogueId) { this.dialogueId = dialogueId; }
-
-        public Builder defaultNpc(String npc) { this.defaultNpc = npc; return this; }
-        public Builder startNode(String id) { this.startNodeId = id; return this; }
-
-        public Builder addNode(DialogueNode node) {
-            nodes.put(node.nodeId(), node);
-            return this;
-        }
-
-        /**
-         * 设置视觉配置。
-         */
-        public Builder visualConfig(QuestVisualConfig config) {
-            this.visualConfig = config;
-            return this;
-        }
-
-        public DialogueTree build() {
-            return new DialogueTree(dialogueId, defaultNpc, startNodeId,
-                    Collections.unmodifiableMap(new LinkedHashMap<>(nodes)),
-                    visualConfig);
-        }
     }
 }
