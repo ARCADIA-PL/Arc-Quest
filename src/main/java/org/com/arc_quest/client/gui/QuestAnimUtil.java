@@ -160,15 +160,41 @@ public final class QuestAnimUtil {
     }
 
     /**
-     * 绘制进度条（带发光边缘）。
+     * 绘制进度条（带发光边缘）- 优化版。
      */
     public static void drawProgressBarGlow(GuiGraphics g, int x, int y, int w, int h,
                                            float progress, int bgColor, int fillColor, int glowColor) {
-        drawProgressBar(g, x, y, w, h, progress, bgColor, fillColor);
+        // 使用批量绘制（最多3个矩形：背景+填充+发光）
         int fillW = (int) (w * Math.max(0f, Math.min(1f, progress)));
-        if (fillW > 2) {
-            // 末端发光像素
-            g.fill(x + fillW - 2, y, x + fillW, y + h, glowColor);
+        int rectCount = 1 + (fillW > 0 ? 1 : 0) + (fillW > 2 ? 1 : 0);
+        int[] rects = new int[rectCount * 5];
+        
+        int idx = 0;
+        // 背景
+        rects[idx++] = x;
+        rects[idx++] = y;
+        rects[idx++] = w;
+        rects[idx++] = h;
+        rects[idx++] = bgColor;
+        
+        // 填充
+        if (fillW > 0) {
+            rects[idx++] = x;
+            rects[idx++] = y;
+            rects[idx++] = fillW;
+            rects[idx++] = h;
+            rects[idx++] = fillColor;
         }
+        
+        // 发光边缘
+        if (fillW > 2) {
+            rects[idx++] = x + fillW - 2;
+            rects[idx++] = y;
+            rects[idx++] = 2;
+            rects[idx++] = h;
+            rects[idx++] = glowColor;
+        }
+        
+        QuestRenderUtil.drawBatchRects(g, rects, rectCount);
     }
 }

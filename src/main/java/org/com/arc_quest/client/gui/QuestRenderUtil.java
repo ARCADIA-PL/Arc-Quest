@@ -1,8 +1,13 @@
 package org.com.arc_quest.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.GameRenderer;
 
 /**
  * 共享渲染工具集，提取自各个HUD组件的通用绘制逻辑。
@@ -13,11 +18,53 @@ public final class QuestRenderUtil {
     }
 
     // ═══════════════════════════════════════════════════════
+    //  批量矩形绘制（顶点缓冲优化）
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 使用顶点缓冲批量绘制多个矩形（比GuiGraphics.fill更高效）。
+     *
+     * @param g        图形上下文
+     * @param rects    矩形数组 [x, y, w, h, color] 每组5个int
+     * @param rectCount 矩形数量
+     */
+    public static void drawBatchRects(GuiGraphics g, int[] rects, int rectCount) {
+        if (rectCount <= 0) return;
+
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder buffer = tesselator.getBuilder();
+        
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
+        for (int i = 0; i < rectCount; i++) {
+            int idx = i * 5;
+            int x = rects[idx];
+            int y = rects[idx + 1];
+            int w = rects[idx + 2];
+            int h = rects[idx + 3];
+            int color = rects[idx + 4];
+
+            float a = (color >> 24 & 255) / 255.0F;
+            float r = (color >> 16 & 255) / 255.0F;
+            float gr = (color >> 8 & 255) / 255.0F;
+            float b = (color & 255) / 255.0F;
+
+            buffer.vertex(x, y + h, 0).color(r, gr, b, a).endVertex();
+            buffer.vertex(x + w, y + h, 0).color(r, gr, b, a).endVertex();
+            buffer.vertex(x + w, y, 0).color(r, gr, b, a).endVertex();
+            buffer.vertex(x, y, 0).color(r, gr, b, a).endVertex();
+        }
+
+        tesselator.end();
+    }
+
+    // ═══════════════════════════════════════════════════════
     //  面板绘制
     // ═══════════════════════════════════════════════════════
 
     /**
-     * 绘制带左侧主题色条的面板（磨砂玻璃风格）。
+     * 绘制带左侧主题色条的面板（磨砂玻璃风格）- 优化版。
      *
      * @param g            图形上下文
      * @param x            X坐标
@@ -33,17 +80,28 @@ public final class QuestRenderUtil {
     public static void drawGlassPanel(GuiGraphics g, int x, int y, int w, int h,
                                       int bgColor, int bgAlpha,
                                       int accentColor, int accentAlpha, int accentWidth) {
-        int r = x + w, b = y + h;
+        // 使用批量绘制（2个矩形：背景+强调条）
+        int[] rects = new int[10]; // 2个矩形 * 5个参数
         
-        // 背景
-        g.fill(x, y, r, b, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
+        // 背景矩形
+        rects[0] = x;
+        rects[1] = y;
+        rects[2] = w;
+        rects[3] = h;
+        rects[4] = (bgAlpha << 24) | (bgColor & 0x00FFFFFF);
         
-        // 左侧强调条
-        g.fill(x, y, x + accentWidth, b, (accentAlpha << 24) | (accentColor & 0x00FFFFFF));
+        // 强调条矩形
+        rects[5] = x;
+        rects[6] = y;
+        rects[7] = accentWidth;
+        rects[8] = h;
+        rects[9] = (accentAlpha << 24) | (accentColor & 0x00FFFFFF);
+        
+        drawBatchRects(g, rects, 2);
     }
 
     /**
-     * 绘制带装饰线的Toast面板。
+     * 绘制带装饰线的Toast面板 - 优化版。
      *
      * @param g              图形上下文
      * @param x              X坐标
@@ -61,18 +119,34 @@ public final class QuestRenderUtil {
                                       int bgColor, int bgAlpha,
                                       int accentColor, int accentAlpha, int accentWidth,
                                       int lineAlpha) {
-        int r = x + w, b = y + h;
+        // 使用批量绘制（3个矩形：背景+强调条+装饰线）
+        int rectCount = lineAlpha > 0 ? 3 : 2;
+        int[] rects = new int[rectCount * 5];
         
-        // 背景
-        g.fill(x, y, r, b, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
+        // 背景矩形
+        rects[0] = x;
+        rects[1] = y;
+        rects[2] = w;
+        rects[3] = h;
+        rects[4] = (bgAlpha << 24) | (bgColor & 0x00FFFFFF);
         
-        // 左侧强调条
-        g.fill(x, y, x + accentWidth, b, (accentAlpha << 24) | (accentColor & 0x00FFFFFF));
+        // 强调条矩形
+        rects[5] = x;
+        rects[6] = y;
+        rects[7] = accentWidth;
+        rects[8] = h;
+        rects[9] = (accentAlpha << 24) | (accentColor & 0x00FFFFFF);
         
-        // 底部装饰线
+        // 底部装饰线矩形
         if (lineAlpha > 0) {
-            g.fill(x + accentWidth, b - 1, r, b, (lineAlpha << 24) | (accentColor & 0x00FFFFFF));
+            rects[10] = x + accentWidth;
+            rects[11] = y + h - 1;
+            rects[12] = w - accentWidth;
+            rects[13] = 1;
+            rects[14] = (lineAlpha << 24) | (accentColor & 0x00FFFFFF);
         }
+        
+        drawBatchRects(g, rects, rectCount);
     }
 
     // ═══════════════════════════════════════════════════════
