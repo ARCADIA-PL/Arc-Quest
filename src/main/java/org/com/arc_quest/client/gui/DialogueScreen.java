@@ -81,7 +81,7 @@ public class DialogueScreen extends Screen {
     protected void init() {
         super.init();
         this.lastRenderTime = 0;
-        this.masterAnim = 0f;
+        this.masterAnim = 0f; // 从 0 开始，触发入场动画
     }
 
     @Override
@@ -100,10 +100,10 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) { sendClose(); return true; }
+        if (keyCode == 256) { startClose(); return true; }
         if (keyCode == 32 || keyCode == 257) {
             if (!typewriterDone) { typewriterProgress = fullText.length(); typewriterDone = true; return true; }
-            if (isTerminal && choices.length == 0) { sendClose(); return true; }
+            if (isTerminal && choices.length == 0) { startClose(); return true; }
             if (hasAutoNext && choices.length == 0 && !autoAdvanceSent) { sendAutoAdvance(); return true; }
             return true;
         }
@@ -129,16 +129,30 @@ public class DialogueScreen extends Screen {
                 }
             }
         }
-        if (isTerminal && typewriterDone && choices.length == 0) { sendClose(); playClick(); return true; }
+        if (isTerminal && typewriterDone && choices.length == 0) { startClose(); playClick(); return true; }
         if (typewriterDone && choices.length == 0 && !autoAdvanceSent) { sendAutoAdvance(); playClick(); return true; }
         return super.mouseClicked(mx, my, button);
     }
 
     @Override
     public boolean isPauseScreen() { return false; }
+
     private void sendChoice(int index) { if (isClosing) return; ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(index)); }
     private void sendAutoAdvance() { if (!autoAdvanceSent) { autoAdvanceSent = true; ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.autoAdvance()); } }
-    private void sendClose() { if (!isClosing) { ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close()); isClosing = true; } }
+
+    // 重写拦截原版 ESC 关闭
+    @Override
+    public void onClose() {
+        startClose();
+    }
+
+    // 安全启动关闭动画（但不立即发送网络包）
+    private void startClose() {
+        if (!isClosing) {
+            isClosing = true;
+        }
+    }
+
     private void playClick() { if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0F, 0.8F)); }
 
     @Override
@@ -150,11 +164,16 @@ public class DialogueScreen extends Screen {
         if (dt > 0.1f) dt = 0.1f;
         Font font = this.font;
 
+        // 【核心修复】：统一使用 QuestAnimUtil 的平滑阻尼 Lerp，告别断层
         float targetAnim = isClosing ? 0f : 1f;
-        float lerpSpeed = isClosing ? 15f : 10f;
-        masterAnim += (targetAnim - masterAnim) * lerpSpeed * dt;
+        masterAnim = QuestAnimUtil.lerp(masterAnim, targetAnim, isClosing ? 0.2f : 0.12f, dt);
 
-        if (isClosing && masterAnim <= 0.01f) { if (minecraft != null) minecraft.setScreen(null); return; }
+        // 【核心修复】：必须等到客户端动画彻底消失，才给服务器发包，防止服务端强行关闭界面导致动画撕裂！
+        if (isClosing && masterAnim <= 0.01f) {
+            ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close());
+            if (minecraft != null) minecraft.setScreen(null);
+            return;
+        }
 
         float easeMaster = QuestAnimUtil.easeOutCubic(masterAnim);
         float masterAlpha = Math.max(0, Math.min(1f, easeMaster));
@@ -170,13 +189,11 @@ public class DialogueScreen extends Screen {
             if (now - autoAdvanceTime >= delayMs) sendAutoAdvance();
         }
 
-        // ── 【新增核心逻辑】：提前计算文字排版，实现动态拔高 ──
         int baseChoiceX = getChoiceX();
         int textBaseX = Math.max(30, (int)(this.width * 0.05f));
         int maxTextWidth = (choices.length > 0) ? (baseChoiceX - textBaseX - Math.max(20, (int)(this.width * 0.05f))) : (this.width - textBaseX - Math.max(40, (int)(this.width * 0.1f)));
         if (wrappedLines == null) wrappedLines = wrapText(fullText, maxTextWidth, font);
 
-        // 计算所有文本需要的总高度
         int lineHeight = font.lineHeight + 6;
         int totalTextHeight = wrappedLines.size() * lineHeight;
         int speakerHeight = (speaker != null && !speaker.isBlank()) ? 28 : 10;
@@ -185,23 +202,20 @@ public class DialogueScreen extends Screen {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        // 1. 渲染上下电影黑边
-        int barHeight = Math.max(24, (int)(this.height * 0.08f * easeMaster));
+        // 【核心修复】：解除数学钳制，黑边高度可以完美缩减到 0！
+        int targetBarHeight = Math.max(24, (int)(this.height * 0.08f));
+        int barHeight = (int)(targetBarHeight * easeMaster);
+
         if (barHeight > 0) {
             g.fill(0, 0, this.width, barHeight, 0xFF000000);
             g.fill(0, this.height - barHeight, this.width, this.height, 0xFF000000);
         }
 
-        // 2. 核心：底部锚定算法
-        // 让对话区域的“底边”永远在下电影黑边上方一段距离
         int bottomPadding = Math.max(30, (int)(this.height * 0.05f));
         int contentBottomY = this.height - barHeight - bottomPadding;
-
-        // 推导出文本块的“起始顶点 Y”（文本越多，起始点越往上冒）
         int targetBaseY = contentBottomY - totalContentHeight;
 
-        // 3. 动态黑色渐变遮罩（确保长文本背后也是黑底）
-        int gradientTop = targetBaseY - 60; // 遮罩顶部比文字顶部高60像素，作为柔和过渡
+        int gradientTop = targetBaseY - 60;
         int safeAlpha = (int)(255 * masterAlpha);
         if (safeAlpha > 2) {
             g.fillGradient(0, gradientTop, this.width, this.height - barHeight, 0x00000000, QuestAnimUtil.withAlpha(0x050505, (int)(220 * masterAlpha)));
@@ -222,7 +236,7 @@ public class DialogueScreen extends Screen {
             textBaseY += 10;
         }
 
-        // ── 渲染正文（根据动态起始点往下排版） ──
+        // ── 渲染正文 ──
         if (safeAlpha > 5) {
             int visibleChars = (int) typewriterProgress;
             int charCount = 0;
@@ -238,7 +252,7 @@ public class DialogueScreen extends Screen {
             g.pose().popPose();
         }
 
-        // ── 渲染玩家选项（右侧，不受文本高度影响） ──
+        // ── 渲染玩家选项 ──
         if (choicesVisible && choices.length > 0) {
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
             for (int i = 0; i < choices.length; i++) {
