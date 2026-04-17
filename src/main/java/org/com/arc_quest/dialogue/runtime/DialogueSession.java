@@ -5,7 +5,6 @@ import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.dialogue.api.*;
 import org.slf4j.Logger;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -106,6 +105,12 @@ public class DialogueSession {
         }
 
         DialogueChoice choice = visibleChoices.get(choiceIndex);
+        
+        // [新增] 检查选项是否可重复及冷却（使用持久化数据）
+        var cap = player.getCapability(org.com.arc_quest.quest.capability.QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        if (cap != null && !checkChoiceCooldown(cap, currentNode.nodeId(), choiceIndex, choice)) {
+            return currentNode;  // 冷却中，不执行
+        }
 
         // 执行动作 [改动: 使用带 session 上下文的 execute]
         for (DialogueAction action : choice.actions()) {
@@ -143,6 +148,12 @@ public class DialogueSession {
     public DialogueNode autoAdvance() {
         if (ended || currentNode == null) return null;
         if (currentNode.hasChoices()) return currentNode;
+
+        // [新增] 检查节点是否可重复及冷却（使用持久化数据）
+        var cap = player.getCapability(org.com.arc_quest.quest.capability.QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        if (cap != null && !checkNodeCooldown(cap, currentNode)) {
+            return null;  // 冷却中，无法访问
+        }
 
         String nextId = currentNode.autoNextId();
         if (nextId == null) {
@@ -229,5 +240,70 @@ public class DialogueSession {
             result = context.resolve(result);
         }
         return result;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  节点和选项的冷却管理
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 检查节点是否可访问（考虑可重复性和冷却）。
+     */
+    private boolean checkNodeCooldown(org.com.arc_quest.quest.capability.IQuestCapability cap, DialogueNode node) {
+        if (!node.repeatable()) {
+            // 一次性节点：检查是否已经访问过
+            if (cap.hasVisitedNode(node.nodeId())) {
+                LOGGER.debug("[Dialogue] One-time node '{}' already visited.", node.nodeId());
+                return false;
+            }
+        } else if (node.cooldownSeconds() > 0) {
+            // 可重复节点但有冷却
+            long lastTime = cap.getLastNodeVisit(node.nodeId());
+            long currentTime = System.currentTimeMillis();
+            long cooldownMs = node.cooldownSeconds() * 1000;
+
+            if (lastTime > 0 && (currentTime - lastTime) < cooldownMs) {
+                long remainingSeconds = (cooldownMs - (currentTime - lastTime)) / 1000;
+                LOGGER.debug("[Dialogue] Node '{}' on cooldown. Remaining: {}s",
+                    node.nodeId(), remainingSeconds);
+                return false;
+            }
+        }
+
+        // 记录访问时间
+        cap.recordNodeVisit(node.nodeId(), System.currentTimeMillis());
+        return true;
+    }
+
+    /**
+     * 检查选项是否可选择（考虑可重复性和冷却）。
+     */
+    private boolean checkChoiceCooldown(org.com.arc_quest.quest.capability.IQuestCapability cap, String nodeId, int choiceIndex, DialogueChoice choice) {
+        String key = nodeId + ":" + choiceIndex;
+
+        if (!choice.repeatable()) {
+            // 一次性选项：检查是否已经选择过
+            if (cap.hasSelectedChoice(key)) {
+                LOGGER.debug("[Dialogue] One-time choice at node '{}' index {} already selected.",
+                    nodeId, choiceIndex);
+                return false;
+            }
+        } else if (choice.cooldownSeconds() > 0) {
+            // 可重复选项但有冷却
+            long lastTime = cap.getLastChoiceSelection(key);
+            long currentTime = System.currentTimeMillis();
+            long cooldownMs = choice.cooldownSeconds() * 1000;
+
+            if (lastTime > 0 && (currentTime - lastTime) < cooldownMs) {
+                long remainingSeconds = (cooldownMs - (currentTime - lastTime)) / 1000;
+                LOGGER.debug("[Dialogue] Choice at node '{}' index {} on cooldown. Remaining: {}s",
+                    nodeId, choiceIndex, remainingSeconds);
+                return false;
+            }
+        }
+
+        // 记录选择时间
+        cap.recordChoiceSelection(key, System.currentTimeMillis());
+        return true;
     }
 }

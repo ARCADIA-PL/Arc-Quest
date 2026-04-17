@@ -30,6 +30,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
     
     // P2优化：脏标记，用于延迟保存
     private boolean isDirty = false;
+    
+    // [新增] 对话历史记录
+    private final Map<String, Long> dialogueHistory = new HashMap<>();      // dialogueId -> timestamp
+    private final Map<String, Long> nodeVisitHistory = new HashMap<>();     // nodeId -> timestamp
+    private final Map<String, Long> choiceSelectionHistory = new HashMap<>(); // choiceKey -> timestamp
 
 
 
@@ -181,6 +186,25 @@ public class QuestCapabilityImpl implements IQuestCapability {
         }
         root.put("Variables", varsTag);
 
+        // [新增] 序列化对话历史
+        CompoundTag dialogueHistoryTag = new CompoundTag();
+        for (Map.Entry<String, Long> e : dialogueHistory.entrySet()) {
+            dialogueHistoryTag.putLong(e.getKey(), e.getValue());
+        }
+        root.put("DialogueHistory", dialogueHistoryTag);
+
+        CompoundTag nodeVisitHistoryTag = new CompoundTag();
+        for (Map.Entry<String, Long> e : nodeVisitHistory.entrySet()) {
+            nodeVisitHistoryTag.putLong(e.getKey(), e.getValue());
+        }
+        root.put("NodeVisitHistory", nodeVisitHistoryTag);
+
+        CompoundTag choiceSelectionHistoryTag = new CompoundTag();
+        for (Map.Entry<String, Long> e : choiceSelectionHistory.entrySet()) {
+            choiceSelectionHistoryTag.putLong(e.getKey(), e.getValue());
+        }
+        root.put("ChoiceSelectionHistory", choiceSelectionHistoryTag);
+
         return root;
     }
 
@@ -217,6 +241,28 @@ public class QuestCapabilityImpl implements IQuestCapability {
         for (String key : varsTag.getAllKeys()) {
             variables.put(key, varsTag.getInt(key));
         }
+
+        // [新增] 反序列化对话历史
+        if (root.contains("DialogueHistory", Tag.TAG_COMPOUND)) {
+            CompoundTag dialogueHistoryTag = root.getCompound("DialogueHistory");
+            for (String key : dialogueHistoryTag.getAllKeys()) {
+                dialogueHistory.put(key, dialogueHistoryTag.getLong(key));
+            }
+        }
+
+        if (root.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
+            CompoundTag nodeVisitHistoryTag = root.getCompound("NodeVisitHistory");
+            for (String key : nodeVisitHistoryTag.getAllKeys()) {
+                nodeVisitHistory.put(key, nodeVisitHistoryTag.getLong(key));
+            }
+        }
+
+        if (root.contains("ChoiceSelectionHistory", Tag.TAG_COMPOUND)) {
+            CompoundTag choiceSelectionHistoryTag = root.getCompound("ChoiceSelectionHistory");
+            for (String key : choiceSelectionHistoryTag.getAllKeys()) {
+                choiceSelectionHistory.put(key, choiceSelectionHistoryTag.getLong(key));
+            }
+        }
     }
 
 
@@ -234,6 +280,9 @@ public class QuestCapabilityImpl implements IQuestCapability {
         failedQuests.clear();
         flags.clear();
         variables.clear();
+        dialogueHistory.clear();
+        nodeVisitHistory.clear();
+        choiceSelectionHistory.clear();
         this.isDirty = true; // 标记为脏
     }
     
@@ -257,5 +306,63 @@ public class QuestCapabilityImpl implements IQuestCapability {
         for (QuestRuntimeData data : activeQuests.values()) {
             data.clearDirty();
         }
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    //  对话历史记录实现
+    // ═══════════════════════════════════════════════════════
+
+    @Override
+    public void recordDialogueTime(String dialogueId, long timestamp) {
+        dialogueHistory.put(dialogueId, timestamp);
+        this.isDirty = true;
+    }
+
+    @Override
+    public long getLastDialogueTime(String dialogueId) {
+        return dialogueHistory.getOrDefault(dialogueId, 0L);
+    }
+
+    @Override
+    public boolean hasCompletedDialogue(String dialogueId) {
+        return dialogueHistory.containsKey(dialogueId);
+    }
+
+    @Override
+    public void markDialogueCompleted(String dialogueId) {
+        dialogueHistory.put(dialogueId, System.currentTimeMillis());
+        this.isDirty = true;
+    }
+
+    @Override
+    public void recordNodeVisit(String nodeId, long timestamp) {
+        nodeVisitHistory.put(nodeId, timestamp);
+        this.isDirty = true;
+    }
+
+    @Override
+    public long getLastNodeVisit(String nodeId) {
+        return nodeVisitHistory.getOrDefault(nodeId, 0L);
+    }
+
+    @Override
+    public boolean hasVisitedNode(String nodeId) {
+        return nodeVisitHistory.containsKey(nodeId);
+    }
+
+    @Override
+    public void recordChoiceSelection(String choiceKey, long timestamp) {
+        choiceSelectionHistory.put(choiceKey, timestamp);
+        this.isDirty = true;
+    }
+
+    @Override
+    public long getLastChoiceSelection(String choiceKey) {
+        return choiceSelectionHistory.getOrDefault(choiceKey, 0L);
+    }
+
+    @Override
+    public boolean hasSelectedChoice(String choiceKey) {
+        return choiceSelectionHistory.containsKey(choiceKey);
     }
 }

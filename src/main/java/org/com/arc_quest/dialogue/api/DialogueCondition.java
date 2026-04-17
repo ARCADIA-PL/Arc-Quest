@@ -1,9 +1,17 @@
 package org.com.arc_quest.dialogue.api;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.QuestState;
+import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
+import org.com.arc_quest.quest.registry.QuestRegistry;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * 对话条件门控。
@@ -74,8 +82,103 @@ public sealed interface DialogueCondition {
                         QuestRuntimeData data = cap.getActiveQuest(questId);
                         return data != null
                                 && data.getState() == QuestState.ACTIVE
-                                && java.util.Objects.equals(data.getCurrentPhaseId(), phaseId);
+                                && Objects.equals(data.getCurrentPhaseId(), phaseId);
                     }).orElse(false);
+        }
+    }
+
+    /**
+     * Phase 区间条件 - 检查玩家是否处于指定的 Phase 区间。
+     *
+     * @param questId       任务ID
+     * @param startPhase    起始 Phase（可为 null 表示无下限）
+     * @param endPhase      结束 Phase（可为 null 表示无上限）
+     * @param includeStart  是否包含起始 Phase
+     * @param includeEnd    是否包含结束 Phase
+     * @param boundaryType  边界类型：BEFORE/AFTER/BETWEEN
+     */
+    record QuestPhaseRange(
+            String questId,
+            String startPhase,
+            String endPhase,
+            boolean includeStart,
+            boolean includeEnd,
+            RangeType boundaryType
+    ) implements DialogueCondition {
+
+        public enum RangeType {
+            BEFORE,    // 在 startPhase 之前
+            AFTER,     // 在 endPhase 之后
+            BETWEEN    // 在 startPhase 和 endPhase 之间
+        }
+
+        @Override
+        public boolean test(ServerPlayer player) {
+            return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                    .map(cap -> {
+                        QuestRuntimeData data = cap.getActiveQuest(questId);
+                        if (data == null || data.getState() != QuestState.ACTIVE) {
+                            return false;
+                        }
+
+                        String currentPhase = data.getCurrentPhaseId();
+                        List<String> phaseOrder = getPhaseOrder(cap, questId);
+                        if (phaseOrder.isEmpty()) {
+                            return false;
+                        }
+
+                        int currentIndex = phaseOrder.indexOf(currentPhase);
+                        if (currentIndex == -1) {
+                            return false;
+                        }
+
+                        return switch (boundaryType) {
+                            case BEFORE -> checkBefore(phaseOrder, currentIndex, startPhase, includeStart);
+                            case AFTER -> checkAfter(phaseOrder, currentIndex, endPhase, includeEnd);
+                            case BETWEEN -> checkBetween(phaseOrder, currentIndex, startPhase, endPhase, includeStart, includeEnd);
+                        };
+                    }).orElse(false);
+        }
+
+        private boolean checkBefore(List<String> phaseOrder, int currentIndex, String targetPhase, boolean includeTarget) {
+            if (targetPhase == null) return true;
+            int targetIndex = phaseOrder.indexOf(targetPhase);
+            if (targetIndex == -1) return false;
+            return includeTarget ? currentIndex <= targetIndex : currentIndex < targetIndex;
+        }
+
+        private boolean checkAfter(List<String> phaseOrder, int currentIndex, String targetPhase, boolean includeTarget) {
+            if (targetPhase == null) return true;
+            int targetIndex = phaseOrder.indexOf(targetPhase);
+            if (targetIndex == -1) return false;
+            return includeTarget ? currentIndex >= targetIndex : currentIndex > targetIndex;
+        }
+
+        private boolean checkBetween(List<String> phaseOrder, int currentIndex, String startPhase, String endPhase, boolean includeStart, boolean includeEnd) {
+            int startIndex = startPhase != null ? phaseOrder.indexOf(startPhase) : 0;
+            int endIndex = endPhase != null ? phaseOrder.indexOf(endPhase) : phaseOrder.size() - 1;
+
+            if (startIndex == -1 || endIndex == -1) return false;
+            if (startIndex > endIndex) return false;
+
+            int effectiveStart = includeStart ? startIndex : startIndex + 1;
+            int effectiveEnd = includeEnd ? endIndex : endIndex - 1;
+
+            return currentIndex >= effectiveStart && currentIndex <= effectiveEnd;
+        }
+
+        /**
+         * 获取任务的 Phase 顺序列表。
+         */
+        private List<String> getPhaseOrder(IQuestCapability cap, String questId) {
+            ResourceLocation rl = ResourceLocation.tryParse(questId);
+            if (rl == null) return List.of();
+
+            QuestDefinition def = QuestRegistry.get(rl);
+            if (def == null) return List.of();
+
+            // 使用 getPhaseIds() 获取有序的 Phase ID 列表
+            return new ArrayList<>(def.getPhaseIds());
         }
     }
 

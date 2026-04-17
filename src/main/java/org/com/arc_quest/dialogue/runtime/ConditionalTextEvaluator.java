@@ -2,7 +2,6 @@ package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
-import org.com.arc_quest.dialogue.api.DialogueCondition;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.slf4j.Logger;

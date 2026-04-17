@@ -13,6 +13,8 @@ import java.util.Map;
  * @param choices          玩家可选择的回复列表
  * @param autoNextId       如果没有 choices，自动跳转的节点 ID（null = 结束）
  * @param delayMs          自动跳转前的延迟（毫秒），0 = 立即
+ * @param repeatable       节点是否可重复访问（默认 true）
+ * @param cooldownSeconds  节点冷却时间（秒），0 = 无冷却，仅当 repeatable=true 时有效
  */
 public record DialogueNode(
         String nodeId,
@@ -21,8 +23,19 @@ public record DialogueNode(
         Map<String, String> conditionalTexts,
         List<DialogueChoice> choices,
         String autoNextId,
-        int delayMs
+        int delayMs,
+        boolean repeatable,
+        long cooldownSeconds
 ) {
+    /**
+     * 向后兼容构造器（默认可重复，无冷却）。
+     */
+    public DialogueNode(String nodeId, String speaker, String text,
+                        Map<String, String> conditionalTexts,
+                        List<DialogueChoice> choices,
+                        String autoNextId, int delayMs) {
+        this(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs, true, 0);
+    }
     /** 是否为终端节点（无选择、无自动跳转）。 */
     public boolean isTerminal() {
         return (choices == null || choices.isEmpty()) && autoNextId == null;
@@ -46,6 +59,8 @@ public record DialogueNode(
         private List<DialogueChoice> choices = List.of();
         private String autoNextId = null;
         private int delayMs = 0;
+        private boolean repeatable = true;
+        private long cooldownSeconds = 0;
 
         Builder(String nodeId) { this.nodeId = nodeId; }
 
@@ -56,9 +71,11 @@ public record DialogueNode(
         public Builder choices(List<DialogueChoice> c) { this.choices = List.copyOf(c); return this; }
         public Builder autoNext(String id) { this.autoNextId = id; return this; }
         public Builder delay(int ms) { this.delayMs = ms; return this; }
+        public Builder repeatable(boolean r) { this.repeatable = r; return this; }
+        public Builder cooldown(long seconds) { this.cooldownSeconds = seconds; return this; }
 
         public DialogueNode build() {
-            return new DialogueNode(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs);
+            return new DialogueNode(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs, repeatable, cooldownSeconds);
         }
     }
 }

@@ -38,6 +38,9 @@ public final class DialogueSessionManager {
 
     /** 玩家 UUID → 活跃会话。 */
     private final Map<UUID, DialogueSession> sessions = new ConcurrentHashMap<>();
+    
+    // [新增] 对话历史记录：playerUUID -> (dialogueId -> lastTimestamp)
+    private final Map<UUID, Map<String, Long>> dialogueHistory = new ConcurrentHashMap<>();
 
     private DialogueSessionManager() {}
 
@@ -82,6 +85,31 @@ public final class DialogueSessionManager {
      */
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                           DialogueTree tree, DialogueContext context) {
+        // [新增] 检查对话是否可重复及冷却（使用持久化数据）
+        var cap = player.getCapability(org.com.arc_quest.quest.capability.QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        if (cap != null) {
+            if (!tree.repeatable()) {
+                // 一次性对话：检查是否已经完成过
+                if (cap.hasCompletedDialogue(tree.dialogueId())) {
+                    LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.",
+                        tree.dialogueId(), player.getName().getString());
+                    return null;
+                }
+            } else if (tree.cooldownSeconds() > 0) {
+                // 可重复对话但有冷却：检查冷却时间
+                long lastTime = cap.getLastDialogueTime(tree.dialogueId());
+                long currentTime = System.currentTimeMillis();
+                long cooldownMs = tree.cooldownSeconds() * 1000;
+                
+                if (lastTime > 0 && (currentTime - lastTime) < cooldownMs) {
+                    long remainingSeconds = (cooldownMs - (currentTime - lastTime)) / 1000;
+                    LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}. Remaining: {}s",
+                        tree.dialogueId(), player.getName().getString(), remainingSeconds);
+                    return null;
+                }
+            }
+        }
+        
         // 结束旧会话
         endDialogue(player);
 
@@ -101,6 +129,11 @@ public final class DialogueSessionManager {
 
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}).",
                 tree.dialogueId(), player.getName().getString(), entityId);
+
+        // [新增] 记录对话时间（使用持久化数据）
+        if (cap != null) {
+            cap.recordDialogueTime(tree.dialogueId(), System.currentTimeMillis());
+        }
 
         // 发送初始状态到客户端
         sendNodeToClient(session);
@@ -202,6 +235,35 @@ public final class DialogueSessionManager {
      */
     public void onPlayerLogout(ServerPlayer player) {
         endDialogue(player); // [改动] 改为调用 endDialogue 以正确清理 NPC 状态
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  对话历史与冷却管理
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 检查玩家是否完成过某对话（用于一次性对话）。
+     */
+    private boolean hasCompletedDialogue(UUID playerUUID, String dialogueId) {
+        Map<String, Long> history = dialogueHistory.get(playerUUID);
+        return history != null && history.containsKey(dialogueId);
+    }
+
+    /**
+     * 获取玩家上次对话的时间戳。
+     */
+    private long getLastDialogueTime(UUID playerUUID, String dialogueId) {
+        Map<String, Long> history = dialogueHistory.get(playerUUID);
+        if (history == null) return 0;
+        return history.getOrDefault(dialogueId, 0L);
+    }
+
+    /**
+     * 记录对话时间。
+     */
+    private void recordDialogueTime(java.util.UUID playerUUID, String dialogueId) {
+        dialogueHistory.computeIfAbsent(playerUUID, k -> new java.util.HashMap<>())
+                .put(dialogueId, System.currentTimeMillis());
     }
 
     // ═══════════════════════════════════════════════════════

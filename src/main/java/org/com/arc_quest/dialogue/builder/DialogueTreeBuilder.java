@@ -23,6 +23,8 @@ public class DialogueTreeBuilder {
 
 
     private QuestVisualConfig visualConfig = null;
+    private boolean repeatable = true;  // 默认可重复
+    private long cooldownSeconds = 0;   // 默认无冷却
 
 
     private String curNodeId;
@@ -33,6 +35,8 @@ public class DialogueTreeBuilder {
     private int curDelayMs;
     private final List<DialogueChoice> curChoices = new ArrayList<>();
     private boolean hasOpenNode = false;
+    private boolean curRepeatable = true;
+    private long curCooldownSeconds = 0;
 
 
 
@@ -64,6 +68,29 @@ public class DialogueTreeBuilder {
         return this;
     }
 
+    /** 设置为一次性对话（不可重复）。 */
+    public DialogueTreeBuilder oneTime() {
+        this.repeatable = false;
+        this.cooldownSeconds = 0;
+        return this;
+    }
+
+    /** 设置对话为可重复，并添加冷却时间（秒）。 */
+    public DialogueTreeBuilder cooldown(long seconds) {
+        this.repeatable = true;
+        this.cooldownSeconds = Math.max(0, seconds);
+        return this;
+    }
+
+    /** 显式设置是否可重复。 */
+    public DialogueTreeBuilder repeatable(boolean repeatable) {
+        this.repeatable = repeatable;
+        if (!repeatable) {
+            this.cooldownSeconds = 0;
+        }
+        return this;
+    }
+
 
 
     public DialogueTreeBuilder node(String nodeId) {
@@ -77,6 +104,8 @@ public class DialogueTreeBuilder {
         this.curDelayMs = 0;
         this.curChoices.clear();
         this.hasOpenNode = true;
+        this.curRepeatable = true;
+        this.curCooldownSeconds = 0;
 
         if (startNodeId == null) {
             startNodeId = nodeId;
@@ -147,6 +176,22 @@ public class DialogueTreeBuilder {
         return this;
     }
 
+    /** 设置当前节点为一次性节点（不可重复访问）。 */
+    public DialogueTreeBuilder nodeOneTime() {
+        ensureOpenNode();
+        this.curRepeatable = false;
+        this.curCooldownSeconds = 0;
+        return this;
+    }
+
+    /** 设置当前节点的冷却时间（秒）。 */
+    public DialogueTreeBuilder nodeCooldown(long seconds) {
+        ensureOpenNode();
+        this.curRepeatable = true;
+        this.curCooldownSeconds = Math.max(0, seconds);
+        return this;
+    }
+
 
 
     public DialogueTree build() {
@@ -160,13 +205,15 @@ public class DialogueTreeBuilder {
                     + "' not found in dialogue '" + dialogueId + "'.");
         }
 
-
+        // 构建对话树
         return new DialogueTree(
                 dialogueId,
                 defaultNpc,
                 startNodeId,
                 Map.copyOf(committedNodes),
-                visualConfig
+                visualConfig,
+                repeatable,
+                cooldownSeconds
         );
     }
 
@@ -199,7 +246,9 @@ public class DialogueTreeBuilder {
                 conditionalTextsMap,
                 List.copyOf(curChoices),
                 curAutoNextId,
-                curDelayMs
+                curDelayMs,
+                curRepeatable,
+                curCooldownSeconds
         );
 
         committedNodes.put(curNodeId, node);
@@ -212,7 +261,7 @@ public class DialogueTreeBuilder {
             return Map.of();
         }
         
-        java.util.Map<String, String> map = new java.util.LinkedHashMap<>();
+        Map<String, String> map = new LinkedHashMap<>();
         
         // 添加条件文本
         for (ConditionalText ct : curConditionalTexts) {
@@ -269,6 +318,8 @@ public class DialogueTreeBuilder {
         private String nextNodeId = null;
         private final List<DialogueCondition> conditions = new ArrayList<>();
         private final List<DialogueAction> actions = new ArrayList<>();
+        private boolean repeatable = true;
+        private long cooldownSeconds = 0;
 
         ChoiceBuilder(String text) {
             this.text = text;
@@ -412,12 +463,28 @@ public class DialogueTreeBuilder {
             return this;
         }
 
+        /** 设置为一次性选项（不可重复选择）。 */
+        public ChoiceBuilder oneTime() {
+            this.repeatable = false;
+            this.cooldownSeconds = 0;
+            return this;
+        }
+
+        /** 设置选项冷却时间（秒）。 */
+        public ChoiceBuilder cooldown(long seconds) {
+            this.repeatable = true;
+            this.cooldownSeconds = Math.max(0, seconds);
+            return this;
+        }
+
         DialogueChoice build() {
             return new DialogueChoice(
                     text,
                     nextNodeId,
                     List.copyOf(conditions),
-                    List.copyOf(actions)
+                    List.copyOf(actions),
+                    repeatable,
+                    cooldownSeconds
             );
         }
     }

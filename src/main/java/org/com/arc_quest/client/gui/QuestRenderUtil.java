@@ -8,7 +8,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
-import org.joml.Matrix4f; // 【架构师修复】必须导入 joml 矩阵
+import org.joml.Matrix4f;
 
 /**
  * 共享渲染工具集。

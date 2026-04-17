@@ -10,19 +10,31 @@ import java.util.Map;
 /**
  * 对话树定义（不可变）。
  *
- * @param dialogueId  对话树唯一 ID
- * @param defaultNpc  默认 NPC 名称（用于 speaker 为空时的 fallback 和 %npc% 替换）
- * @param startNodeId 起始节点 ID
- * @param nodes       节点 ID → 节点定义
- * @param visualConfig 可选的 UI 视觉配置（可为 null，使用默认样式）
+ * @param dialogueId      对话树唯一 ID
+ * @param defaultNpc      默认 NPC 名称（用于 speaker 为空时的 fallback 和 %npc% 替换）
+ * @param startNodeId     起始节点 ID
+ * @param nodes           节点 ID → 节点定义
+ * @param visualConfig    可选的 UI 视觉配置（可为 null，使用默认样式）
+ * @param repeatable      是否可重复对话（默认 true）
+ * @param cooldownSeconds 对话冷却时间（秒），0 = 无冷却，仅当 repeatable=true 时有效
  */
 public record DialogueTree(
         String dialogueId,
         String defaultNpc,
         String startNodeId,
         Map<String, DialogueNode> nodes,
-        @Nullable QuestVisualConfig visualConfig
+        @Nullable QuestVisualConfig visualConfig,
+        boolean repeatable,
+        long cooldownSeconds
 ) {
+
+    /**
+     * 向后兼容构造器（默认可重复，无冷却）。
+     */
+    public DialogueTree(String dialogueId, String defaultNpc, String startNodeId,
+                        Map<String, DialogueNode> nodes, @Nullable QuestVisualConfig visualConfig) {
+        this(dialogueId, defaultNpc, startNodeId, nodes, visualConfig, true, 0);
+    }
 
     /**
      * 获取起始节点。
