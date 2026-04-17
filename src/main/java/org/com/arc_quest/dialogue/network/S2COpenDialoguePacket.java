@@ -118,8 +118,8 @@ public class S2COpenDialoguePacket {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.isClose) {
-                if (mc.screen instanceof DialogueScreen) {
-                    mc.setScreen(null);
+                if (mc.screen instanceof DialogueScreen ds) {
+                    ds.startCloseAnimation();
                 }
                 return;
             }

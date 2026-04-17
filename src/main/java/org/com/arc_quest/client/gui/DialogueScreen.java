@@ -38,7 +38,6 @@ public class DialogueScreen extends Screen {
     private long lastRenderTime = 0;
     private float dt = 0f;
 
-    // [新增] 挂起动画透明度（用于被立绘覆盖时的退场/入场）
     private float suspendAlpha = 1.0f;
 
     private float typewriterProgress = 0f;
@@ -134,7 +133,7 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (QuestSplashRenderer.isActive()) return true; // 全局拦截
+        if (QuestSplashRenderer.isActive()) return true;
 
         if (keyCode == 256) { startClose(); return true; }
         if (keyCode == 32 || keyCode == 257) {
@@ -157,7 +156,7 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (QuestSplashRenderer.isActive()) return true; // 全局拦截
+        if (QuestSplashRenderer.isActive()) return true;
 
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
         if (!typewriterDone) {
@@ -194,6 +193,11 @@ public class DialogueScreen extends Screen {
         startClose();
     }
 
+
+    public void startCloseAnimation() {
+        startClose();
+    }
+
     private void startClose() {
         if (!isClosing) {
             isClosing = true;
@@ -210,20 +214,16 @@ public class DialogueScreen extends Screen {
         lastRenderTime = now;
         if (realDt > 0.1f) realDt = 0.1f;
 
-        // [核心架构] 判断立绘状态，挂起当前界面逻辑
         boolean splashActive = QuestSplashRenderer.isActive();
         if (splashActive) {
-            // 立绘出现，对话框加速淡出
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
-            dt = 0f; // 冻结内部一切物理与打字机动画
+            dt = 0f;
 
-            // 补偿冻结的时间，防止立绘结束后倒计时直接跳过
             if (typewriterDone && typewriterDoneTime > 0) typewriterDoneTime += (long)(realDt * 1000);
             if (autoAdvanceTime > 0) autoAdvanceTime += (long)(realDt * 1000);
         } else {
-            // 立绘消失，对话框平滑入场
             suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
-            dt = realDt; // 恢复时间流逝
+            dt = realDt;
         }
 
         Font font = this.font;
@@ -241,7 +241,6 @@ public class DialogueScreen extends Screen {
             return;
         }
 
-        // [视效联动] 将挂起动画乘入主轴动画，实现黑底降下、文字缩回的自然退场
         float easeMaster = QuestAnimUtil.easeOutCubic(masterAnim) * QuestAnimUtil.easeOutCubic(suspendAlpha);
         float masterAlpha = Math.max(0f, Math.min(1f, easeMaster)) * suspendAlpha;
 
@@ -294,7 +293,6 @@ public class DialogueScreen extends Screen {
         int yOffsetAnim = Math.round((1f - easeMaster) * 15f);
         int textBaseY = targetBaseY + yOffsetAnim;
 
-        // ── 渲染名字 ──
         if (speaker != null && !speaker.isBlank() && safeAlpha > 5) {
             g.pose().pushPose(); g.pose().translate(textBaseX, textBaseY, 0); g.pose().scale(1.1f, 1.1f, 1f);
             g.drawString(font, speaker, 0, 0, QuestAnimUtil.withAlpha(0xFFFFFFFF, safeAlpha), true);
@@ -306,7 +304,6 @@ public class DialogueScreen extends Screen {
             textBaseY += 10;
         }
 
-        // ── 渲染正文 ──
         if (safeAlpha > 5) {
             int visibleChars = (int) typewriterProgress;
             int charCount = 0;
@@ -322,7 +319,6 @@ public class DialogueScreen extends Screen {
             g.pose().popPose();
         }
 
-        // ── 渲染玩家选项 ──
         if (choicesVisible && choices.length > 0) {
             float timeSinceTextDone = (now - typewriterDoneTime) / 1000f;
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8, choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
@@ -330,7 +326,6 @@ public class DialogueScreen extends Screen {
             for (int i = 0; i < choices.length; i++) {
                 int cy = choiceStartY + i * (choiceH + gap);
                 int currentExpand = Math.round(15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
-                // 立绘激活时剥夺 Hover 判定
                 boolean hovered = !isClosing && !splashActive && mouseX >= choiceX - currentExpand && mouseX <= choiceX + choiceW && mouseY >= cy && mouseY <= cy + choiceH;
 
                 float staggerDelay = 0.05f + (i * 0.08f);
@@ -378,7 +373,6 @@ public class DialogueScreen extends Screen {
             }
         }
 
-        // ── 渲染"可继续"悬浮跳动箭头 ──
         if (typewriterDone && choices.length == 0 && safeAlpha > 5 && !isClosing) {
             float timeSec = now / 1000f;
             float pulseA = 0.3f + 0.7f * (float)Math.abs(Math.sin(timeSec * 3f));

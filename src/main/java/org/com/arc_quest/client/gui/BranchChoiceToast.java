@@ -50,14 +50,12 @@ public class BranchChoiceToast {
     public boolean render(GuiGraphics g, int baseX, int baseY, float parentAlpha, float partialTick, boolean isFrozen) {
         long now = Util.getMillis();
 
-        // 【核心】：如果界面被阻塞，冻结时间线，留待玩家关闭界面时继续播放！
         if (isFrozen) {
             long dt = now - lastRenderTime;
             this.startTime += dt;
             if (isDismissing) this.dismissStartTime += dt;
             this.lastRenderTime = now;
 
-            // 【新增隐藏逻辑】：在任务书/对话界面开启期间，彻底隐形，让出视觉焦点！
             return true;
         }
         this.lastRenderTime = now;
@@ -95,7 +93,6 @@ public class BranchChoiceToast {
 
         g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
 
-        // 使用共用渲染方法绘制磨砂玻璃面板
         int bgA = (int)(finalAlpha * 0x88);
         int accentA = (int)(finalAlpha * 255);
         int themeColor = COLOR_ACCENT & 0xFFFFFF;
@@ -115,13 +112,11 @@ public class BranchChoiceToast {
             String cutName = font.plainSubstrByWidth(questName, POPUP_W - 30 - font.width(prefix));
             String title = prefix + cutName;
             
-            // 使用共用方法绘制双行文本
             int subColor = QuestAnimUtil.withAlpha(0xAAAAAA, accentA);
             int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, accentA);
             QuestRenderUtil.drawDualText(g, font, contentX, contentY,
                     subtitle, title, subColor, titleColor, 1.0f);
 
-            // 绘制装饰线
             QuestRenderUtil.drawTextWithLine(g, font, contentX, contentY + 10,
                     "", QuestAnimUtil.withAlpha(themeColor, accentA),
                     lineWidth, 12);
