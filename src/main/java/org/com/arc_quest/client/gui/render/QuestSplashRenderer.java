@@ -1,4 +1,3 @@
-// 文件名: org.com.arc_quest.client.gui.render.QuestSplashRenderer.java
 package org.com.arc_quest.client.gui.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
