@@ -379,9 +379,22 @@ public class DialogueTreeBuilder {
         } else if (condition instanceof DialogueCondition.Not n) {
             return "NOT:" + serializeCondition(n.inner());
         } else if (condition instanceof DialogueCondition.All a) {
-            return "ALL:" + a.conditions().size();
+            StringBuilder sb = new StringBuilder("ALL:");
+            for (int i = 0; i < a.conditions().size(); i++) {
+                if (i > 0) sb.append(";");
+                sb.append(serializeCondition(a.conditions().get(i)));
+            }
+            return sb.toString();
         } else if (condition instanceof DialogueCondition.Any any) {
-            return "ANY:" + any.conditions().size();
+            StringBuilder sb = new StringBuilder("ANY:");
+            for (int i = 0; i < any.conditions().size(); i++) {
+                if (i > 0) sb.append(";");
+                sb.append(serializeCondition(any.conditions().get(i)));
+            }
+            return sb.toString();
+        } else if (condition instanceof DialogueCondition.CustomCondition cc) {
+            // ✅ CustomCondition 可以序列化（存储注册名称）
+            return "CUSTOM:" + cc.nameOrPredicate();
         } else if (condition instanceof DialogueCondition.IsMorning) {
             return "IS_MORNING";
         } else if (condition instanceof DialogueCondition.IsAfternoon) {
@@ -616,12 +629,10 @@ public class DialogueTreeBuilder {
          *
          * @param predicate 条件判断函数，接收 (player, npc) 参数
          * @return 当前构建器
-         * @deprecated v2 已废弃，请使用标准条件
          */
-        @Deprecated(forRemoval = true)
         public ChoiceBuilder conditionIf(BiPredicate<ServerPlayer, Entity> predicate) {
-            throw new UnsupportedOperationException(
-                    "Custom conditions are not supported in v2. Use standard conditions instead.");
+            conditions.add(DialogueCondition.CustomCondition.create(predicate));
+            return this;
         }
 
         /**

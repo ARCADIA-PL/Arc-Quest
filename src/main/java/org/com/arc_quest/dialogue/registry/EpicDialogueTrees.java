@@ -652,9 +652,6 @@ public final class EpicDialogueTrees {
         DialogueTreeBuilder.create("epic_mysterious_merchant")
                 .npc(Component.translatable("dialogue.epic_mysterious_merchant.npc_name").getString())
 
-                //  对话树级别配置：每天晚上10点重置（跨天区间通过条件控制）
-                .cooldownGameDay()  // 使用游戏日冷却作为示例
-
                 // ═══════════════════════════════════════════
                 // 起始节点 - 只在特定时间开放
                 // ═══════════════════════════════════════════
@@ -662,35 +659,50 @@ public final class EpicDialogueTrees {
 
                 // 情况1：深夜时段（22:00-凌晨6:00）- 商店开放
                 .sayIf(
-                        new DialogueCondition.GameTimeInRange(16000, 0),  // 跨天区间
+                        new DialogueCondition.All(List.of(
+                                //示范自定义条件
+                                /*DialogueCondition.CustomCondition.create((serverPlayer, npc) -> {
+                                    if (npc instanceof LivingEntity livingNpc) {
+                                        return livingNpc.hasEffect(MobEffects.NIGHT_VISION);
+                                    }
+                                    return false;
+                                }),*/
+                                new DialogueCondition.GameTimeInRange(16000, 0)
+
+                        )),
                         Component.translatable("dialogue.epic_mysterious_merchant.start.open").getString()
                 )
 
-                // 情况2：白天时段 - 商店关闭
+                // 情况2：早晨关闭（6:00-12:00）
                 .sayIf(
                         new DialogueCondition.All(List.of(
                                 new DialogueCondition.Not(new DialogueCondition.GameTimeInRange(16000, 0)),
-                                new DialogueCondition.IsMorning()  // 6:00-12:00
+                                new DialogueCondition.IsMorning()
                         )),
                         Component.translatable("dialogue.epic_mysterious_merchant.start.closed_morning").getString()
                 )
 
+                // 情况3：下午关闭（12:00-18:00）
                 .sayIf(
                         new DialogueCondition.All(List.of(
                                 new DialogueCondition.Not(new DialogueCondition.GameTimeInRange(16000, 0)),
-                                new DialogueCondition.IsAfternoon()  // 12:00-18:00
+                                new DialogueCondition.IsAfternoon()
                         )),
                         Component.translatable("dialogue.epic_mysterious_merchant.start.closed_afternoon").getString()
                 )
+
+                // 情况4：傍晚/夜晚关闭（18:00-22:00）- 使用默认文本
 
                 // 默认文本
                 .say(Component.translatable("dialogue.epic_mysterious_merchant.start.default").getString())
 
                 // 选项1：购买商品（仅在深夜开放）
                 .choiceIf(
-                        new DialogueCondition.GameTimeInRange(16000, 0),  // 跨天区间
+                        new DialogueCondition.GameTimeInRange(16000, 0),  // 跨天区间：22:00→次日6:00
                         Component.translatable("dialogue.epic_mysterious_merchant.start.choice_shop").getString(),
-                        c -> c.goTo("shop")
+                        c -> {
+                            c.goTo("shop");
+                        }
                 )
 
                 // 选项2：询问身份（首次见面）

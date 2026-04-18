@@ -2,7 +2,6 @@ package org.com.arc_quest.quest.capability;
 
 import net.minecraft.nbt.CompoundTag;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 

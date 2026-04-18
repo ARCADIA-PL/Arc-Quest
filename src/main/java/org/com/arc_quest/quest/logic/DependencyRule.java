@@ -2,7 +2,6 @@ package org.com.arc_quest.quest.logic;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.com.arc_quest.quest.api.ObjectiveEntry;
 import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.capability.IQuestCapability;
@@ -10,9 +9,7 @@ import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 
 import javax.annotation.Nullable;
-import java.util.List;
 import java.util.Objects;
-import java.util.function.BiConsumer;
 
 /**
  * 声明式依赖规则。

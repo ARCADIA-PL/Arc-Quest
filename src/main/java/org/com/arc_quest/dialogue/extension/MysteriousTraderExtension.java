@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.com.arc_quest.dialogue.api.IEntityDialogueExtension;
+import org.com.arc_quest.dialogue.api.ProgressScope;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -26,7 +27,7 @@ import org.jetbrains.annotations.Nullable;
  * @since 2.0
  */
 @EntityDialogueExtension(modId = Arc_quest.MOD_ID)
-public class TraderExtension implements IEntityDialogueExtension<WanderingTrader> {
+public class MysteriousTraderExtension implements IEntityDialogueExtension<WanderingTrader> {
 
     @Override
     public EntityType<WanderingTrader> getEntityType() {
@@ -45,11 +46,8 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
         var persistentData = wanderingTrader.getPersistentData();
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
-            if ("merchant".equals(npcId)) {
-                return "epic_merchant";
-            }
-            if ("wandering_trader".equals(npcId)) {
-                return "epic_wandering_trader";
+            if ("mysterious_merchant".equals(npcId)) {
+                return "epic_mysterious_merchant";
             }
         }
 
@@ -59,11 +57,8 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
             wanderingTrader.save(fullNbt);
             if (fullNbt.contains("ArcQuestNpcId")) {
                 String npcId = fullNbt.getString("ArcQuestNpcId");
-                if ("merchant".equals(npcId)) {
-                    return "epic_merchant";
-                }
-                if ("wandering_trader".equals(npcId)) {
-                    return "epic_wandering_trader";
+                if ("mysterious_merchant".equals(npcId)) {
+                    return "epic_mysterious_merchant";
                 }
             }
         } catch (Exception e) {
@@ -73,15 +68,17 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
         // 3. 通过自定义名称识别（最简单）
         if (wanderingTrader.hasCustomName()) {
             String name = wanderingTrader.getCustomName().getString();
-            if (name.contains("商人") || name.contains("Merchant")) {
-                return "epic_merchant";
-            }
-            if (name.contains("行商") || name.contains("WanderingTrader")) {
-                return "epic_wandering_trader";
+            if (name.contains("神秘人") || name.contains("MysteriousMerchant")) {
+                return "epic_mysterious_merchant";
             }
         }
 
         return null;
+    }
+
+    @Override
+    public ProgressScope getProgressScope() {
+        return ProgressScope.INSTANCE;
     }
 
     @Override

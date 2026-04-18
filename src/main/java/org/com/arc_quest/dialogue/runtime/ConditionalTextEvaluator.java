@@ -2,10 +2,10 @@ package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.IQuestCapability;
-import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -25,17 +25,17 @@ public final class ConditionalTextEvaluator {
     /**
      * 根据玩家状态评估条件文本，返回最高优先级的匹配文本。
      *
-     * @param player           玩家
+     * @param ctx              对话评估上下文（包含 player、npc、namespace 等信息）
      * @param conditionalTexts 条件文本映射（格式："priority|condition" → 文本）
      * @param defaultText      默认文本
      * @return 匹配的文本，或默认文本
      */
-    public static String evaluate(ServerPlayer player, Map<String, String> conditionalTexts, String defaultText) {
+    public static String evaluate(DialogueEvalContext ctx, Map<String, String> conditionalTexts, String defaultText) {
         if (conditionalTexts == null || conditionalTexts.isEmpty()) {
             return defaultText;
         }
 
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        IQuestCapability cap = ctx.questCap();
 
         // 收集所有匹配的条件文本及其优先级
         List<TextMatch> matches = new ArrayList<>();
@@ -57,7 +57,7 @@ public final class ConditionalTextEvaluator {
                 }
             }
 
-            boolean matched = matchesCondition(player, cap, conditionKey);
+            boolean matched = matchesCondition(ctx, cap, conditionKey);
             LOGGER.debug("[ConditionalText] Key={}, Condition={}, Matched={}, Text={}", 
                     key, conditionKey, matched, text.substring(0, Math.min(20, text.length())));
             
@@ -94,9 +94,12 @@ public final class ConditionalTextEvaluator {
     }
 
     /**
-     * 检查条件标识是否匹配玩家状态。
+     * 检查条件标识是否匹配玩家,NPC状态。
      */
-    private static boolean matchesCondition(ServerPlayer player, IQuestCapability cap, String conditionKey) {
+    private static boolean matchesCondition(DialogueEvalContext ctx, IQuestCapability cap, String conditionKey) {
+        ServerPlayer player = ctx.player();
+        Entity npc = ctx.npc();
+        
         try {
             // HAS_QUEST:quest_id
             if (conditionKey.startsWith("HAS_QUEST:")) {
@@ -147,18 +150,36 @@ public final class ConditionalTextEvaluator {
             // NOT:inner_condition
             if (conditionKey.startsWith("NOT:")) {
                 String innerCondition = conditionKey.substring(4);
-                return !matchesCondition(player, cap, innerCondition);
+                return !matchesCondition(ctx, cap, innerCondition);
             }
 
-            // ALL:count （需要额外存储子条件，简化版暂不支持）
+            // ALL:cond1;cond2;cond3... （AND 组合条件）
             if (conditionKey.startsWith("ALL:")) {
-                // AND 组合条件
-                return false;
+                String conditionsStr = conditionKey.substring(4);
+                if (conditionsStr.isEmpty()) {
+                    return false;
+                }
+                String[] subConditions = conditionsStr.split(";");
+                for (String subCond : subConditions) {
+                    if (!matchesCondition(ctx, cap, subCond)) {
+                        return false;
+                    }
+                }
+                return true;
             }
 
-            // ANY:count （需要额外存储子条件，简化版暂不支持）
+            // ANY:cond1;cond2;cond3... （OR 组合条件）
             if (conditionKey.startsWith("ANY:")) {
-                // OR 组合条件
+                String conditionsStr = conditionKey.substring(4);
+                if (conditionsStr.isEmpty()) {
+                    return false;
+                }
+                String[] subConditions = conditionsStr.split(";");
+                for (String subCond : subConditions) {
+                    if (matchesCondition(ctx, cap, subCond)) {
+                        return true;
+                    }
+                }
                 return false;
             }
 
@@ -201,6 +222,22 @@ public final class ConditionalTextEvaluator {
                         LOGGER.warn("[ConditionalText] Failed to parse time range: {}", conditionKey);
                         return false;
                     }
+                }
+            }
+
+            // CUSTOM:name - 自定义条件
+            if (conditionKey.startsWith("CUSTOM:")) {
+                String name = conditionKey.substring(7);
+                var predicate = org.com.arc_quest.dialogue.api.RegisteredConditions.get(name);
+                if (predicate == null) {
+                    LOGGER.warn("[ConditionalText] Custom condition '{}' is not registered", name);
+                    return false;
+                }
+                try {
+                    return predicate.test(player, npc);
+                } catch (Exception e) {
+                    LOGGER.warn("[ConditionalText] Error evaluating custom condition '{}': {}", name, e.getMessage());
+                    return false;
                 }
             }
 

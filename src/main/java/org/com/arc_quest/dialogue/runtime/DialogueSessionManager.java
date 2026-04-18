@@ -71,26 +71,29 @@ public final class DialogueSessionManager {
 
         String dialogueId = tree.dialogueId();
         
-        //  使用新的 DialogueProgressStore API
         var progress = cap.getDialogueProgress();
         long nowReal = System.currentTimeMillis();
         long nowGame = player.level().getGameTime();
-        long nowDayTime = player.level().getDayTime();  // 用于 GAME_TICK 冷却
+        long nowDayTime = player.level().getDayTime();
         
-        // 确定命名空间（用于冷却检查）
-        // 对话树级别的冷却使用对话树ID作为namespace
+        // 确定命名空间（用于冷却检查和进度记录）
+        int entityId = npcEntity != null ? npcEntity.getId() : -1;
+        DialogueSession tempSession = new DialogueSession(player, tree, context, entityId);
+        String namespace = tempSession.getNamespace();
+        
+        LOGGER.debug("[Dialogue] Resolved namespace='{}' for dialogue='{}'", namespace, dialogueId);
 
         // 检查是否已经完成过（一次性对话）
-        if (!tree.repeatable() && progress.hasCompletedDialogue(dialogueId, dialogueId)) {
+        if (!tree.repeatable() && progress.hasCompletedDialogue(namespace, dialogueId)) {
             LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.",
                     dialogueId, player.getName().getString());
             return null;
         }
 
-        // 检查冷却（使用新的 ProgressStore API）
+        // 检查冷却
         if (tree.cooldownSeconds() != 0 || tree.cooldownType() != CooldownType.NONE) {
             boolean onCooldown = progress.isDialogueOnCooldown(
-                    dialogueId, dialogueId,
+                    namespace, dialogueId,
                     tree.cooldownType(), (int) tree.cooldownSeconds(), tree.resetTimeTicks(),
                     nowReal, nowGame, nowDayTime);
             
@@ -104,11 +107,8 @@ public final class DialogueSessionManager {
         // 结束旧会话
         endDialogue(player);
 
-        int entityId = npcEntity != null ? npcEntity.getId() : -1;
-
-        // 创建会话
-        DialogueSession session = new DialogueSession(player, tree, context, entityId);
-        sessions.put(player.getUUID(), session);
+        // 使用已创建的会话
+        sessions.put(player.getUUID(), tempSession);
 
         // 设置 NPC 对话状态
         if (npcEntity instanceof IDialogueNpc) {
@@ -116,16 +116,16 @@ public final class DialogueSessionManager {
             patch.setConversing(player);
         }
 
-        LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}).",
-                tree.dialogueId(), player.getName().getString(), entityId);
+        LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).",
+                tree.dialogueId(), player.getName().getString(), entityId, namespace);
 
-        //  记录对话访问（使用新API）
-        progress.recordDialogueVisit(dialogueId, dialogueId, nowReal, nowGame, nowDayTime);
+        // 记录对话访问
+        progress.recordDialogueVisit(namespace, dialogueId, nowReal, nowGame, nowDayTime);
 
         // 发送初始状态到客户端
-        sendNodeToClient(session);
+        sendNodeToClient(tempSession);
 
-        return session;
+        return tempSession;
     }
 
     /**
@@ -231,9 +231,24 @@ public final class DialogueSessionManager {
 
         String speaker = node.speaker().isEmpty() ? session.getTree().defaultNpc() : node.speaker();
 
-        // 评估条件文本，选择合适的文本
+        // 从 session 中获取 npc 实体
+        net.minecraft.world.entity.Entity npc = (session.getEntityId() != -1) 
+                ? session.getPlayer().level().getEntity(session.getEntityId()) 
+                : null;
+        
+        // 获取玩家的进度存储
+        var cap = session.getPlayer().getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        var progress = cap.getDialogueProgress();
+        
+        DialogueEvalContext ctx = DialogueEvalContext.of(
+                session.getPlayer(),
+                npc,
+                session.getNamespace(),
+                progress
+        );
+        
         String text = ConditionalTextEvaluator.evaluate(
-                player,
+                ctx,
                 node.conditionalTexts(),
                 node.text()
         );

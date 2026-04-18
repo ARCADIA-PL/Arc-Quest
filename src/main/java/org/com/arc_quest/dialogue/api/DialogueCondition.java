@@ -1,5 +1,7 @@
 package org.com.arc_quest.dialogue.api;
 
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.runtime.DialogueEvalContext;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
@@ -7,6 +9,7 @@ import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 
 import java.util.List;
+import java.util.function.BiPredicate;
 
 /**
  * 对话条件 —— 控制选项/文本的可见性。
@@ -16,6 +19,8 @@ public sealed interface DialogueCondition permits
         DialogueCondition.Not,
         DialogueCondition.All,
         DialogueCondition.Any,
+        // ── 自定义条件 ──
+        DialogueCondition.CustomCondition,
         // ── 任务状态 ──
         DialogueCondition.HasQuest,
         DialogueCondition.QuestActive,
@@ -69,6 +74,78 @@ public sealed interface DialogueCondition permits
         @Override
         public boolean test(DialogueEvalContext ctx) {
             return conditions.stream().anyMatch(c -> c.test(ctx));
+        }
+    }
+
+    /**
+     * 自定义条件 - 支持 lambda 表达式，自动注册后可用于 .sayIf() 和 .choiceIf()。
+     * <p>
+     * 使用方式：
+     * <ol>
+     *   <li><b>直接内联</b>（推荐）：{@code CustomCondition.create((player, npc) -> ...)}</li>
+     *   <li><b>手动注册</b>：{@code RegisteredConditions.register("name", predicate)} + {@code new CustomCondition("name")}</li>
+     * </ol>
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * // 方式1：直接内联（一步完成）
+     * .sayIf(
+     *     DialogueCondition.CustomCondition.create((player, npc) -> player.getHealth() > 10.0f),
+     *     "生命值充足"
+     * )
+     *
+     * // 方式2：手动注册（可复用）
+     * RegisteredConditions.register("has_diamond", (player, npc) -> {
+     *     return player.getInventory().contains(new ItemStack(Items.DIAMOND));
+     * });
+     * .sayIf(new DialogueCondition.CustomCondition("has_diamond"), "你有钻石")
+     * }</pre>
+     *
+     * @param nameOrPredicate 注册名称 或 lambda 表达式（通过 create() 工厂方法创建时自动注册）
+     */
+    record CustomCondition(String nameOrPredicate) implements DialogueCondition {
+        
+        private static final String AUTO_PREFIX = "auto_";
+        
+        /**
+         * 便捷工厂方法：自动注册 lambda 并创建条件。
+         * <p>
+         * 这是推荐使用的方式，语法简洁
+         *
+         * @param predicate 条件判断函数
+         * @return 自动注册的自定义条件
+         */
+        public static CustomCondition create(BiPredicate<ServerPlayer, Entity> predicate) {
+            String name = RegisteredConditions.autoRegister(predicate);
+            return new CustomCondition(name);
+        }
+        
+        /**
+         * 构造函数：使用已注册的名称。
+         *
+         * @param nameOrPredicate 已注册的条件名称
+         */
+        public CustomCondition {
+            if (!nameOrPredicate.startsWith(AUTO_PREFIX)) {
+                if (!RegisteredConditions.isRegistered(nameOrPredicate)) {
+                    Arc_quest.LOGGER.warn("[CustomCondition] Condition '{}' is not registered", nameOrPredicate);
+                }
+            }
+        }
+        
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            BiPredicate<ServerPlayer, Entity> predicate = RegisteredConditions.get(nameOrPredicate);
+            if (predicate == null) {
+                Arc_quest.LOGGER.warn("[CustomCondition] Condition '{}' is not found", nameOrPredicate);
+                return false;
+            }
+            try {
+                return predicate.test(ctx.player(), ctx.npc());
+            } catch (Exception e) {
+                Arc_quest.LOGGER.warn("[CustomCondition] Error evaluating condition '{}': {}", nameOrPredicate, e.getMessage());
+                return false;
+            }
         }
     }
 
@@ -236,10 +313,15 @@ public sealed interface DialogueCondition permits
         public boolean test(DialogueEvalContext ctx) {
             long t = ctx.dayTimeTick();
             if (startTick <= endTick) {
+                // 普通区间
                 return t >= startTick && t <= endTick;
             } else {
-                // 跨天：如 22:00 (16000) → 06:00 (0)
-                return t >= startTick || t <= endTick;
+                // 跨天区间
+                if (endTick == 0) {
+                    return t >= startTick;
+                } else {
+                    return t >= startTick || t < endTick;
+                }
             }
         }
     }

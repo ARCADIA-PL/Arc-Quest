@@ -2,6 +2,7 @@ package org.com.arc_quest.dialogue.runtime;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 
@@ -69,11 +70,9 @@ public record DialogueEvalContext(
     }
 
     /**
-     * 日内时间刻 [0, 23999]，供 IsMorning/IsAfternoon/IsNight 等时间条件使用。
-     * <p>
-     * 注意：此值基于 getDayTime()，会被 /time set 指令直接影响。
+     * 日内时间刻 [0, 24000]，供 IsMorning/IsAfternoon/IsNight 等时间条件使用。
      */
     public long dayTimeTick() {
-        return dayTime % 24000;
+        return TimeSanitizer.sanitizeDayTime(player.level());
     }
 }
