@@ -20,7 +20,8 @@ import java.util.UUID;
 public class DialogueNpcPatch {
 
     public static final Capability<DialogueNpcPatch> CAPABILITY =
-            CapabilityManager.get(new CapabilityToken<>() {});
+            CapabilityManager.get(new CapabilityToken<>() {
+            });
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -36,9 +37,13 @@ public class DialogueNpcPatch {
         this.owner = owner;
     }
 
-    public void setConversing(@Nullable Player player) {
-        this.conversingPlayer = player;
-        this.conversingPlayerUUID = player != null ? player.getUUID() : null;
+    /**
+     * 获取实体的 DialogueNpcPatch。
+     *
+     * @return patch 实例，若实体未附加 capability 则返回 null
+     */
+    public static @NotNull DialogueNpcPatch get(Entity entity) {
+        return entity.getCapability(CAPABILITY).orElse(null);
     }
 
     public void clearConversing() {
@@ -50,6 +55,11 @@ public class DialogueNpcPatch {
         return conversingPlayer != null && conversingPlayer.isAlive();
     }
 
+    public void setConversing(@Nullable Player player) {
+        this.conversingPlayer = player;
+        this.conversingPlayerUUID = player != null ? player.getUUID() : null;
+    }
+
     @Nullable
     public Player getConversingPlayer() {
         return conversingPlayer;
@@ -58,6 +68,7 @@ public class DialogueNpcPatch {
     public Entity getOwner() {
         return owner;
     }
+
     /**
      * 每 tick 调用。处理：
      * <ol>
@@ -111,15 +122,6 @@ public class DialogueNpcPatch {
                 mob.getNavigation().stop();
             }
         }
-    }
-
-    /**
-     * 获取实体的 DialogueNpcPatch。
-     *
-     * @return patch 实例，若实体未附加 capability 则返回 null
-     */
-    public static @NotNull DialogueNpcPatch get(Entity entity) {
-        return entity.getCapability(CAPABILITY).orElse(null);
     }
 
     public CompoundTag save() {

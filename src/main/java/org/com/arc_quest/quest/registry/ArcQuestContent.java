@@ -22,7 +22,7 @@ public final class ArcQuestContent {
         EpicMainlineDemo.registerBranchChoice();
 
         QuestRegistry.freeze();
-        
+
         LOGGER.info("[ArcQuest] Total registered quests: {}", QuestRegistry.getAll().size());
     }
 

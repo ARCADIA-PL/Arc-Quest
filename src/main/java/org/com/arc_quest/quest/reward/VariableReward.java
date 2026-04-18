@@ -11,6 +11,7 @@ public final class VariableReward implements IReward {
     private final String variableName;
     private final Op operation;
     private final int value;
+
     public VariableReward(String variableName, Op operation, int value) {
         this.variableName = variableName;
         this.operation = operation;

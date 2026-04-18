@@ -14,13 +14,6 @@ import java.util.function.BiFunction;
 
 /**
  * 全局对话树注册表（线程安全，支持热重载）。
- *
- * <h3>变更记录</h3>
- * <ul>
- *   <li>[新增] {@link #bindEntity(EntityType, String)} —— 实体类型 → 固定对话绑定</li>
- *   <li>[新增] {@link #bindEntityDynamic(EntityType, BiFunction)} —— 实体类型 → 动态对话选择器</li>
- *   <li>[新增] {@link #getDialogueForEntity(Entity, ServerPlayer)} —— 根据实体获取对话 ID</li>
- * </ul>
  */
 public final class DialogueRegistry {
 
@@ -29,21 +22,25 @@ public final class DialogueRegistry {
 
     private final Map<String, DialogueTree> trees = new ConcurrentHashMap<>();
 
-    /** NPC ID（字符串标识） → 对话树 ID 映射。 */
+    /**
+     * NPC ID（字符串标识） → 对话树 ID 映射。
+     */
     private final Map<String, String> npcBindings = new ConcurrentHashMap<>();
 
-    /** [新增] 实体类型 → 固定对话树 ID。 */
+    /**
+     * 实体类型 → 固定对话树 ID。
+     */
     private final Map<EntityType<?>, String> entityBindings = new ConcurrentHashMap<>();
 
-    /** [新增] 实体类型 → 动态对话选择器（可根据实体实例和玩家状态决定对话 ID）。 */
+    /**
+     * 实体类型 → 动态对话选择器（可根据实体实例和玩家状态决定对话 ID）。
+     */
     private final Map<EntityType<?>, BiFunction<Entity, ServerPlayer, String>> entityDynamicBindings =
             new ConcurrentHashMap<>();
 
-    private DialogueRegistry() {}
+    private DialogueRegistry() {
+    }
 
-    // ═══════════════════════════════════════════════════════
-    //  对话树注册
-    // ═══════════════════════════════════════════════════════
 
     public void register(DialogueTree tree) {
         List<String> errors = tree.validate();
@@ -68,24 +65,20 @@ public final class DialogueRegistry {
         return Collections.unmodifiableSet(trees.keySet());
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  NPC ID 绑定（字符串标识）
-    // ═══════════════════════════════════════════════════════
-
-    /** 绑定 NPC ID 到对话树。 */
+    /**
+     * 绑定 NPC ID 到对话树。
+     */
     public void bindNpc(String npcId, String dialogueId) {
         npcBindings.put(npcId, dialogueId);
     }
 
-    /** 获取 NPC 绑定的对话树 ID。 */
+    /**
+     * 获取 NPC 绑定的对话树 ID。
+     */
     @Nullable
     public String getDialogueForNpc(String npcId) {
         return npcBindings.get(npcId);
     }
-
-    // ═══════════════════════════════════════════════════════
-    //  [新增] 实体类型绑定
-    // ═══════════════════════════════════════════════════════
 
     /**
      * 绑定实体类型到固定对话树 ID。
@@ -124,7 +117,7 @@ public final class DialogueRegistry {
     }
 
     /**
-     * [新增] 根据实体和玩家获取对话树 ID。
+     * 根据实体和玩家获取对话树 ID。
      * <p>
      * 查找顺序：
      * <ol>
@@ -140,7 +133,6 @@ public final class DialogueRegistry {
     public String getDialogueForEntity(Entity entity, ServerPlayer player) {
         EntityType<?> type = entity.getType();
 
-        // 优先：动态选择器
         BiFunction<Entity, ServerPlayer, String> dynamicSelector = entityDynamicBindings.get(type);
         if (dynamicSelector != null) {
             try {
@@ -152,15 +144,12 @@ public final class DialogueRegistry {
             }
         }
 
-        // 其次：固定绑定
         return entityBindings.get(type);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  清理（重载前调用）
-    // ═══════════════════════════════════════════════════════
-
-    /** 清空所有（重载前调用）。 */
+    /**
+     * 清空所有（重载前调用）。
+     */
     public void clearAll() {
         trees.clear();
         npcBindings.clear();

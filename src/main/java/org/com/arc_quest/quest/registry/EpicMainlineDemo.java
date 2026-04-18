@@ -21,7 +21,8 @@ import org.com.arc_quest.quest.reward.VariableReward;
  */
 public final class EpicMainlineDemo {
 
-    private EpicMainlineDemo() {}
+    private EpicMainlineDemo() {
+    }
 
     public static void registerAll() {
         registerPrologue();
@@ -40,12 +41,12 @@ public final class EpicMainlineDemo {
                 .sortOrder(0)
                 // 视觉配置
                 .acquisitionSplash(
-                    ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
-                    1f
+                        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
+                        1f
                 )
                 .completionSplash(
-                    ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_complete.png"),
-                    1f
+                        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_complete.png"),
+                        1f
                 )
                 .themeColor(ChatFormatting.GOLD)
                 // 阶段 1：收集木材制作武器
@@ -58,7 +59,7 @@ public final class EpicMainlineDemo {
                 .phase(PhaseBuilder.create("talk_villager")
                         .displayName(Component.translatable("arc_quest.phase.epic_prologue.talk_villager"))
                         .objective(ObjectiveBuilder.interact(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "village_elder")).display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))
-                        .setFlagOnComplete("elder_consulted")  // ← 新增：标记已与长老交谈
+                        .setFlagOnComplete("elder_consulted")  // 标记已与长老交谈
                         .thenGoTo("craft_sword"))
                 // 阶段 2：制作铁剑
                 .phase(PhaseBuilder.create("craft_sword")
@@ -79,8 +80,8 @@ public final class EpicMainlineDemo {
                         .objective(ObjectiveBuilder.collect(Items.BREAD, 10).display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.0")))
                         .objective(ObjectiveBuilder.collect(Items.COOKED_BEEF, 5).display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.1")))
                         .setFlagOnComplete("prologue_completed")
-                        .setFlagOnComplete("blacksmith_unlocked")  // ← 新增：解锁铁匠特殊对话
-                        .setFlagOnComplete("merchant_unlocked"))  // ← 新增：解锁商人特殊对话
+                        .setFlagOnComplete("blacksmith_unlocked")  // 解锁铁匠特殊对话
+                        .setFlagOnComplete("merchant_unlocked"))  // 解锁商人特殊对话
                 // 奖励
                 .reward(new ItemReward(Items.IRON_SWORD, 1))
                 .reward(new ItemReward(Items.SHIELD, 1))
@@ -99,12 +100,12 @@ public final class EpicMainlineDemo {
                 .requiresQuest("epic_prologue")
                 // 视觉配置
                 .acquisitionSplash(
-                    ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/chapter1_acquire.png"),
-                    1f
+                        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/chapter1_acquire.png"),
+                        1f
                 )
                 .completionSplash(
-                    ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/chapter1_complete.png"),
-                    1f
+                        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/chapter1_complete.png"),
+                        1f
                 )
                 .themeColor(ChatFormatting.BLUE)
                 // 阶段 1：准备火把和工具

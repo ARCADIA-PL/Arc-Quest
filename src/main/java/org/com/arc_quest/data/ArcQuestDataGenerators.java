@@ -19,7 +19,8 @@ import org.com.arc_quest.Arc_quest;
 @Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ArcQuestDataGenerators {
 
-    private ArcQuestDataGenerators() {}
+    private ArcQuestDataGenerators() {
+    }
 
     @SubscribeEvent
     public static void gatherData(GatherDataEvent event) {

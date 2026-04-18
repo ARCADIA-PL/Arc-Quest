@@ -10,14 +10,14 @@ public final class QuestAnimUtil {
     private QuestAnimUtil() {
     }
 
-
-
-
     public static float lerp(float current, float target, float speedAt60Fps, float dt) {
         float factor = 1.0f - (float) Math.pow(1.0 - speedAt60Fps, dt * 60.0f);
         return current + (target - current) * factor;
     }
 
+    public static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
 
     public static float step(float current, float target, float speedPerSecond, float dt) {
         float amount = speedPerSecond * dt;
@@ -25,9 +25,6 @@ public final class QuestAnimUtil {
         if (current > target) return Math.max(current - amount, target);
         return current;
     }
-
-
-
 
     public static float easeOutCubic(float t) {
         return 1.0f - (float) Math.pow(1.0 - t, 3);
@@ -65,14 +62,10 @@ public final class QuestAnimUtil {
         return 1.0f + c3 * (float) Math.pow(t - 1, 3) + c1 * (float) Math.pow(t - 1, 2);
     }
 
-
-
-
     public static int withAlpha(int rgb, int alpha) {
         alpha = Math.max(0, Math.min(255, alpha));
         return (alpha << 24) | (rgb & 0x00FFFFFF);
     }
-
 
     public static int lerpColor(int c1, int c2, float t) {
         t = Math.max(0f, Math.min(1f, t));
@@ -84,8 +77,6 @@ public final class QuestAnimUtil {
         int b = (int) (b1 + (b2 - b1) * t);
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
-
-
 
 
     public static void drawFrame(GuiGraphics g, int x, int y, int w, int h,
@@ -123,7 +114,7 @@ public final class QuestAnimUtil {
         int fillW = (int) (w * Math.max(0f, Math.min(1f, progress)));
         int rectCount = 1 + (fillW > 0 ? 1 : 0) + (fillW > 2 ? 1 : 0);
         int[] rects = new int[rectCount * 5];
-        
+
         int idx = 0;
         // 背景
         rects[idx++] = x;
@@ -131,7 +122,7 @@ public final class QuestAnimUtil {
         rects[idx++] = w;
         rects[idx++] = h;
         rects[idx++] = bgColor;
-        
+
         // 填充
         if (fillW > 0) {
             rects[idx++] = x;
@@ -140,7 +131,7 @@ public final class QuestAnimUtil {
             rects[idx++] = h;
             rects[idx++] = fillColor;
         }
-        
+
         // 发光边缘
         if (fillW > 2) {
             rects[idx++] = x + fillW - 2;
@@ -149,7 +140,7 @@ public final class QuestAnimUtil {
             rects[idx++] = h;
             rects[idx++] = glowColor;
         }
-        
+
         QuestRenderUtil.drawBatchRects(g, rects, rectCount);
     }
 }

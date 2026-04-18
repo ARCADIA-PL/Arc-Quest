@@ -26,7 +26,8 @@ public final class ClientEventHandler {
             "key.categories.arc_quest"
     );
 
-    private ClientEventHandler() {}
+    private ClientEventHandler() {
+    }
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {

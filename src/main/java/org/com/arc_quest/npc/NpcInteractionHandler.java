@@ -10,12 +10,17 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.DialogueTree;
+import org.com.arc_quest.dialogue.capability.DialogueNpcPatch;
 import org.com.arc_quest.dialogue.registry.DialogueRegistry;
+import org.com.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.com.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.slf4j.Logger;
 
 /**
- * NPC 右键交互钩子。
+ * NPC 右键交互钩子（旧系统 - 后备机制）。
+ * <p>
+ * ⚠️ 注意：此处理器作为 IEntityDialogueExtension 扩展系统的后备机制。
+ * 当实体类型没有注册扩展时，才会使用此处理器。
  * <p>
  * 检测方式（优先级从高到低）：
  * <ol>
@@ -47,6 +52,11 @@ public class NpcInteractionHandler {
         // 如果玩家已在对话中，忽略
         if (DialogueSessionManager.INSTANCE.isInDialogue(player)) return;
 
+        // 如果实体类型已有扩展系统处理，跳过旧系统
+        if (EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(target.getType())) {
+            return;
+        }
+
         String dialogueId = resolveDialogueId(target);
         if (dialogueId == null) return;
 
@@ -56,6 +66,9 @@ public class NpcInteractionHandler {
                     dialogueId, target.getName().getString());
             return;
         }
+
+        // 确保实体有 DialogueNpcPatch（用于注视玩家、停止移动等行为）
+        ensureDialogueNpcPatch(target, player);
 
         // 开始对话
         DialogueSessionManager.INSTANCE.startDialogue(player, tree);
@@ -67,24 +80,52 @@ public class NpcInteractionHandler {
     private static String resolveDialogueId(Entity entity) {
         CompoundTag persistentData = entity.getPersistentData();
 
-        // 方式 1：直接指定对话 ID
+        // 方式 1：PersistentData 中直接指定对话 ID
         if (persistentData.contains(TAG_DIALOGUE_ID)) {
             return persistentData.getString(TAG_DIALOGUE_ID);
         }
 
-        // 方式 2：通过 NPC ID 查询绑定
+        // 方式 2：PersistentData 中通过 NPC ID 查询绑定
         if (persistentData.contains(TAG_NPC_ID)) {
             String npcId = persistentData.getString(TAG_NPC_ID);
             return DialogueRegistry.INSTANCE.getDialogueForNpc(npcId);
         }
 
-        // 方式 3：使用 CustomName 作为 NPC ID
+        // 方式 3：根 NBT 中检查（支持 /summon 直接写入）
+        CompoundTag fullNbt = new CompoundTag();
+        entity.saveWithoutId(fullNbt);
+
+        if (fullNbt.contains(TAG_DIALOGUE_ID)) {
+            return fullNbt.getString(TAG_DIALOGUE_ID);
+        }
+
+        if (fullNbt.contains(TAG_NPC_ID)) {
+            String npcId = fullNbt.getString(TAG_NPC_ID);
+            return DialogueRegistry.INSTANCE.getDialogueForNpc(npcId);
+        }
+
+        // 方式 4：使用 CustomName 作为 NPC ID
         if (entity.hasCustomName()) {
             String customName = entity.getCustomName().getString();
             String binding = DialogueRegistry.INSTANCE.getDialogueForNpc(customName);
-            if (binding != null) return binding;
+            return binding;
         }
 
         return null;
+    }
+
+    /**
+     * 确保实体有 DialogueNpcPatch 并设置对话状态。
+     * <p>
+     * 对于通过 NBT 标签绑定的 NPC（未实现 IDialogueNpc 接口），
+     * 需要手动附加 DialogueNpcPatch 以支持注视玩家、停止移动等行为。
+     *
+     * @param entity 目标实体
+     * @param player 对话玩家
+     */
+    private static void ensureDialogueNpcPatch(Entity entity, ServerPlayer player) {
+        entity.getCapability(DialogueNpcPatch.CAPABILITY).ifPresent(patch -> {
+            patch.setConversing(player);
+        });
     }
 }

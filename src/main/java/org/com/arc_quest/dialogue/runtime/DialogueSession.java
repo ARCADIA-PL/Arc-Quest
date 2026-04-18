@@ -2,7 +2,9 @@ package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.dialogue.api.*;
+import org.com.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.slf4j.Logger;
@@ -14,14 +16,11 @@ import java.util.UUID;
 /**
  * 单次对话会话（服务端状态）。
  * <p>
- * 生命周期：创建 → 推进节点 → 玩家选择 → ... → 结束（关闭/终端节点）。
- *
- * <h3>变更记录</h3>
+ * <b>v2.1 时间系统重构变更</b>:
  * <ul>
- *   <li>[新增] {@link #context} —— 运行时上下文，支持 {@code {key}} 变量替换</li>
- *   <li>[新增] {@link #entityId} —— 关联的 NPC 实体 ID（-1 = 无实体）</li>
- *   <li>[新增] {@link #execute(DialogueAction)} —— 带会话上下文的动作执行</li>
- *   <li>[改动] {@link #processText(String)} —— 增加 context 变量替换</li>
+ *   <li>所有时间获取统一通过 {@link #snapshot()} 一次性采样三个时钟</li>
+ *   <li>所有 record/cooldown 调用传递完整的三时钟快照</li>
+ *   <li>GAME_TICK 冷却剩余时间正确计算</li>
  * </ul>
  */
 public class DialogueSession {
@@ -31,35 +30,42 @@ public class DialogueSession {
     private final UUID sessionId;
     private final ServerPlayer player;
     private final DialogueTree tree;
-    private DialogueNode currentNode;
-    private boolean ended = false;
-
-    /** [新增] 运行时上下文 */
     private final DialogueContext context;
-
-    /** [新增] 关联的 NPC 实体 ID，-1 表示无实体（命令触发） */
     private final int entityId;
 
-    /** 过滤后的当前可见选择列表（条件已评估）。 */
+    private final String namespace;
+    private final DialogueProgressStore progress;
+
+    private DialogueNode currentNode;
+    private boolean ended = false;
     private List<DialogueChoice> visibleChoices = List.of();
 
-    // ═══════════════════════════════════════════════════════
-    //  构造器
-    // ═══════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════
+    //  时间快照（避免同一操作内多次调用 Level 方法取到不同值）
+    // ═══════════════════════════════════════════════
 
-    /** 原有构造器（向后兼容）。 */
+    /**
+     * 一次性采样三个时钟，确保同一操作内的所有记录和检查使用一致的时间值。
+     */
+    private record TimeSnapshot(long realTime, long gameTime, long dayTime) {
+    }
+
+    private TimeSnapshot snapshot() {
+        return new TimeSnapshot(
+                System.currentTimeMillis(),
+                player.level().getGameTime(),
+                player.level().getDayTime()
+        );
+    }
+
+    // ═══════════════════════════════════════════════
+    //  构造器
+    // ═══════════════════════════════════════════════
+
     public DialogueSession(ServerPlayer player, DialogueTree tree) {
         this(player, tree, new DialogueContext(), -1);
     }
 
-    /**
-     * [新增] 完整构造器（带上下文和实体关联）。
-     *
-     * @param player   对话玩家
-     * @param tree     对话树
-     * @param context  运行时上下文（不可为 null）
-     * @param entityId 关联的 NPC 实体 ID（-1 = 无实体）
-     */
     public DialogueSession(ServerPlayer player, DialogueTree tree,
                            DialogueContext context, int entityId) {
         this.sessionId = UUID.randomUUID();
@@ -68,12 +74,22 @@ public class DialogueSession {
         this.context = context != null ? context : new DialogueContext();
         this.entityId = entityId;
         this.currentNode = tree.getStartNode();
+
+        this.namespace = resolveNamespace();
+
+        this.progress = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                .map(IQuestCapability::getDialogueProgress)
+                .orElseGet(DialogueProgressStore::new);
+
+        LOGGER.debug("[Dialogue] Session created: tree={}, entityId={}, namespace={}",
+                tree.dialogueId(), entityId, namespace);
+
         evaluateVisibleChoices();
     }
 
-    // ═══════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════
     //  公开查询
-    // ═══════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════
 
     public UUID getSessionId() { return sessionId; }
     public ServerPlayer getPlayer() { return player; }
@@ -81,40 +97,135 @@ public class DialogueSession {
     public DialogueNode getCurrentNode() { return currentNode; }
     public boolean isEnded() { return ended; }
     public List<DialogueChoice> getVisibleChoices() { return visibleChoices; }
-
-    /** [新增] 获取运行时上下文。 */
     public DialogueContext getContext() { return context; }
-
-    /** [新增] 获取关联的 NPC 实体 ID（-1 = 无实体）。 */
     public int getEntityId() { return entityId; }
+    public String getNamespace() { return namespace; }
 
-    // ═══════════════════════════════════════════════════════
-    // 核心逻辑
-    // ═══════════════════════════════════════════════════════
+    /**
+     * 获取每个可见选项的冷却剩余时间（秒）。
+     *
+     * @return 数组，长度与 visibleChoices 相同，0 = 可用，>0 = 剩余秒数
+     */
+    public int[] getChoiceCooldowns() {
+        if (visibleChoices.isEmpty()) {
+            return new int[0];
+        }
+
+        TimeSnapshot ts = snapshot();
+        int[] cooldowns = new int[visibleChoices.size()];
+
+        for (int i = 0; i < visibleChoices.size(); i++) {
+            DialogueChoice choice = visibleChoices.get(i);
+
+            int originalIndex = currentNode.choices().indexOf(choice);
+            if (originalIndex == -1 || choice.cooldownType() == CooldownType.NONE) {
+                cooldowns[i] = 0;
+                continue;
+            }
+
+            boolean onCooldown = progress.isChoiceOnCooldown(
+                    namespace, currentNode.nodeId(), originalIndex,
+                    choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
+                    ts.realTime, ts.gameTime, ts.dayTime);
+
+            if (!onCooldown) {
+                cooldowns[i] = 0;
+                continue;
+            }
+
+            // 计算剩余时间
+            var entry = progress.getChoiceEntry(namespace, currentNode.nodeId(), originalIndex);
+            cooldowns[i] = computeRemainingSeconds(entry, choice, ts);
+        }
+
+        return cooldowns;
+    }
+
+    /**
+     * 根据冷却类型计算剩余秒数。
+     */
+    private int computeRemainingSeconds(DialogueProgressStore.Entry entry,
+                                        DialogueChoice choice, TimeSnapshot ts) {
+        if (!entry.exists()) return (int) choice.cooldownSeconds();
+
+        return switch (choice.cooldownType()) {
+            case NONE -> 0;
+
+            case SECONDS -> {
+                long cooldownMs = choice.cooldownSeconds() * 1000L;
+                long elapsed = ts.realTime - entry.realTime();
+                long remainingMs = cooldownMs - elapsed;
+                yield (int) Math.max(1, remainingMs / 1000);
+            }
+
+            case GAME_DAY -> {
+                // 距离现实午夜的秒数（粗略估计）
+                long nowMs = ts.realTime % (24 * 60 * 60 * 1000L);
+                long remainMs = (24 * 60 * 60 * 1000L) - nowMs;
+                yield (int) Math.max(1, remainMs / 1000);
+            }
+
+            case GAME_TICK -> {
+                // 用 tick 数除以 20 转秒
+                int remainTicks = progress.getGameTickCooldownRemainingTicks(
+                        entry, choice.resetTimeTicks(), ts.gameTime, ts.dayTime);
+                yield Math.max(1, remainTicks / 20);
+            }
+        };
+    }
+
+    // ═══════════════════════════════════════════════
+    //  核心逻辑
+    // ═══════════════════════════════════════════════
 
     /**
      * 玩家做出选择。
-     *
-     * @param choiceIndex 在 {@link #getVisibleChoices()} 中的索引
-     * @return 新的当前节点，null = 对话结束
      */
     public DialogueNode choose(int choiceIndex) {
         if (ended) return null;
-
         if (choiceIndex < 0 || choiceIndex >= visibleChoices.size()) {
             LOGGER.warn("[Dialogue] Invalid choice index {} for session {}", choiceIndex, sessionId);
             return currentNode;
         }
 
         DialogueChoice choice = visibleChoices.get(choiceIndex);
-        
-        // [新增] 检查选项是否可重复及冷却（使用持久化数据）
-        var cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-        if (cap != null && !checkChoiceCooldown(cap, currentNode.nodeId(), choiceIndex, choice)) {
-            return currentNode;  // 冷却中，不执行
+
+        int originalIndex = currentNode.choices().indexOf(choice);
+        if (originalIndex == -1) {
+            LOGGER.error("[Dialogue] Choice not found in original list! Using visible index {}.", choiceIndex);
+            originalIndex = choiceIndex;
         }
 
-        // 执行动作 [改动: 使用带 session 上下文的 execute]
+        LOGGER.info("[DEBUG-Choose] Clicked choice: visibleIndex={}, originalIndex={}, text={}",
+                choiceIndex, originalIndex, choice.text());
+
+        // 一次性采样时间
+        TimeSnapshot ts = snapshot();
+
+        if (!checkChoiceAvailable(choice, originalIndex, ts)) {
+            return currentNode;
+        }
+
+        // 检查目标节点
+        String nextNodeId = choice.nextNodeId();
+        if (nextNodeId != null) {
+            DialogueNode nextNode = tree.getNode(nextNodeId);
+            if (nextNode != null && !checkNodeAvailable(nextNode, ts)) {
+                LOGGER.debug("[Dialogue] Target node '{}' is on cooldown, blocking choice.", nextNodeId);
+                return currentNode;
+            }
+        }
+
+        // 记录选项选择（传递完整三时钟）
+        progress.recordChoiceSelection(namespace, currentNode.nodeId(), originalIndex,
+                ts.realTime, ts.gameTime, ts.dayTime);
+
+        LOGGER.info("[DEBUG-Record] Recorded choice: ns={}, node={}, idx={}, " +
+                        "realTime={}, gameTime={}, dayTime={}",
+                namespace, currentNode.nodeId(), originalIndex,
+                ts.realTime, ts.gameTime, ts.dayTime);
+
+        // 执行动作
         for (DialogueAction action : choice.actions()) {
             executeAction(action);
         }
@@ -127,10 +238,17 @@ public class DialogueSession {
 
         DialogueNode nextNode = tree.getNode(choice.nextNodeId());
         if (nextNode == null) {
-            LOGGER.warn("[Dialogue] Next node '{}' not found, ending session.", choice.nextNodeId());
+            LOGGER.warn("[Dialogue] Next node '{}' not found, ending.", choice.nextNodeId());
             end();
             return null;
         }
+
+        // 记录目标节点访问（传递完整三时钟）
+        progress.recordNodeVisit(namespace, nextNode.nodeId(),
+                ts.realTime, ts.gameTime, ts.dayTime);
+
+        LOGGER.info("[DEBUG-Record] Recorded node visit: ns={}, node={}, dayTime={}",
+                namespace, nextNode.nodeId(), ts.dayTime);
 
         currentNode = nextNode;
         evaluateVisibleChoices();
@@ -138,23 +256,20 @@ public class DialogueSession {
         if (currentNode.isTerminal()) {
             end();
         }
-
         return currentNode;
     }
 
     /**
-     * 处理自动跳转（无选择节点）。
-     *
-     * @return 新节点，null = 结束
+     * 自动跳转（无选择节点）。
      */
     public DialogueNode autoAdvance() {
         if (ended || currentNode == null) return null;
         if (currentNode.hasChoices()) return currentNode;
 
-        // [新增] 检查节点是否可重复及冷却（使用持久化数据）
-        var cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-        if (cap != null && !checkNodeCooldown(cap, currentNode)) {
-            return null;  // 冷却中，无法访问
+        TimeSnapshot ts = snapshot();
+
+        if (!checkNodeAvailable(currentNode, ts)) {
+            return null;
         }
 
         String nextId = currentNode.autoNextId();
@@ -169,25 +284,93 @@ public class DialogueSession {
             return null;
         }
 
+        // 记录访问（传递完整三时钟）
+        progress.recordNodeVisit(namespace, nextNode.nodeId(),
+                ts.realTime, ts.gameTime, ts.dayTime);
+
         currentNode = nextNode;
         evaluateVisibleChoices();
-
-        if (currentNode.isTerminal() && !currentNode.hasChoices()) {
-            // 终端但可能需要显示最后文本后再结束
-        }
-
         return currentNode;
     }
 
     public void end() {
         ended = true;
-        LOGGER.debug("[Dialogue] Session {} ended for player {}.",
-                sessionId, player.getName().getString());
+        LOGGER.debug("[Dialogue] Session {} ended.", sessionId);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  内部
-    // ═══════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════
+    //  文本处理
+    // ═══════════════════════════════════════════════
+
+    public String processText(String raw) {
+        if (raw == null) return "";
+        String result = raw
+                .replace("%player%", player.getName().getString())
+                .replace("%npc%", tree.defaultNpc());
+        if (!context.isEmpty()) {
+            result = context.resolve(result);
+        }
+        return result;
+    }
+
+    // ═══════════════════════════════════════════════
+    //  内部：命名空间解析（不变）
+    // ═══════════════════════════════════════════════
+
+    private String resolveNamespace() {
+        if (entityId == -1) {
+            LOGGER.info("[DEBUG-Namespace] entityId=-1, using tree ID: {}", tree.dialogueId());
+            return tree.dialogueId();
+        }
+
+        Entity npc = player.level().getEntity(entityId);
+        if (npc == null) {
+            LOGGER.warn("[DEBUG-Namespace] NPC entity not found for entityId={}", entityId);
+            return tree.dialogueId();
+        }
+
+        LOGGER.info("[DEBUG-Namespace] Resolving for entityId={}, type={}, uuid={}",
+                entityId, npc.getType().getDescriptionId(), npc.getStringUUID());
+
+        var manager = EntityDialogueExtensionManager.INSTANCE;
+        var extensions = manager.getExtensionsForEntityType(npc.getType());
+
+        for (var extObj : extensions) {
+            @SuppressWarnings("unchecked")
+            IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extObj;
+
+            String dialogueId = ext.getDialogueTreeId(player, npc, null);
+            if (dialogueId != null && dialogueId.equals(tree.dialogueId())) {
+                ProgressScope scope = ext.getProgressScope();
+                LOGGER.info("[DEBUG-Namespace] Matched ext={}, scope={}",
+                        ext.getClass().getSimpleName(), scope);
+
+                return switch (scope) {
+                    case INSTANCE -> npc.getStringUUID();
+                    case CUSTOM -> {
+                        String custom = ext.getProgressNamespace(npc);
+                        yield custom != null ? custom : tree.dialogueId();
+                    }
+                    case DIALOGUE_TREE -> tree.dialogueId();
+                };
+            }
+        }
+
+        return tree.dialogueId();
+    }
+
+    // ═══════════════════════════════════════════════
+    //  内部：构建评估上下文
+    // ═══════════════════════════════════════════════
+
+    private DialogueEvalContext buildEvalContext() {
+        Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
+        return DialogueEvalContext.of(player, npc, namespace, progress);
+    }
+
+    // ═══════════════════════════════════════════════
+    //  内部：条件评估（不变）
+    // ═══════════════════════════════════════════════
 
     private void evaluateVisibleChoices() {
         if (currentNode == null || !currentNode.hasChoices()) {
@@ -195,24 +378,94 @@ public class DialogueSession {
             return;
         }
 
-        List<DialogueChoice> visible = new ArrayList<>();
+        DialogueEvalContext ctx = buildEvalContext();
+
+        List<DialogueChoice> passing = new ArrayList<>();
         for (DialogueChoice choice : currentNode.choices()) {
             boolean pass = choice.conditions().isEmpty()
-                    || choice.conditions().stream().allMatch(c -> c.test(player));
+                    || choice.conditions().stream().allMatch(c -> c.test(ctx));
+
+            LOGGER.debug("[Dialogue] Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
+
             if (pass) {
-                visible.add(choice);
+                passing.add(choice);
             }
         }
-        visibleChoices = List.copyOf(visible);
+
+        if (passing.isEmpty()) {
+            visibleChoices = List.of();
+        } else {
+            int maxPriority = passing.stream()
+                    .mapToInt(DialogueChoice::priority)
+                    .max().orElse(0);
+            visibleChoices = passing.stream()
+                    .filter(c -> c.priority() == maxPriority)
+                    .toList();
+        }
     }
 
-    /**
-     * [改动] 执行单个动作（带会话上下文）。
-     * <p>
-     * 优先使用 {@link DialogueAction#execute(ServerPlayer, DialogueSession)}，
-     * 让 {@link DialogueAction.Custom} 和 {@link DialogueAction.RunCommand}
-     * 等类型能够获取会话上下文。
-     */
+    // ═══════════════════════════════════════════════
+    //  内部：冷却检查（使用 TimeSnapshot）
+    // ═══════════════════════════════════════════════
+
+    private boolean checkNodeAvailable(DialogueNode node, TimeSnapshot ts) {
+        // 一次性检查
+        if (!node.repeatable() && progress.hasVisitedNode(namespace, node.nodeId())) {
+            LOGGER.debug("[Dialogue] One-time node '{}' already visited.", node.nodeId());
+            return false;
+        }
+
+        // 冷却检查（传递三时钟）
+        if (node.cooldownType() != CooldownType.NONE) {
+            boolean onCooldown = progress.isNodeOnCooldown(
+                    namespace, node.nodeId(),
+                    node.cooldownType(), (int) node.cooldownSeconds(), node.resetTimeTicks(),
+                    ts.realTime, ts.gameTime, ts.dayTime);
+            if (onCooldown) {
+                LOGGER.debug("[Dialogue] Node '{}' on cooldown.", node.nodeId());
+                return false;
+            }
+        }
+
+        // 记录本次访问
+        progress.recordNodeVisit(namespace, node.nodeId(),
+                ts.realTime, ts.gameTime, ts.dayTime);
+        return true;
+    }
+
+    private boolean checkChoiceAvailable(DialogueChoice choice, int choiceIndex,
+                                         TimeSnapshot ts) {
+        LOGGER.info("[DEBUG-Cooldown] Checking choice: node={}, idx={}, type={}, seconds={}",
+                currentNode.nodeId(), choiceIndex, choice.cooldownType(), choice.cooldownSeconds());
+
+        // 一次性检查
+        if (!choice.repeatable() &&
+                progress.hasSelectedChoice(namespace, currentNode.nodeId(), choiceIndex)) {
+            LOGGER.debug("[Dialogue] One-time choice [{}/{}] already selected.",
+                    currentNode.nodeId(), choiceIndex);
+            return false;
+        }
+
+        // 冷却检查（传递三时钟）
+        if (choice.cooldownType() != CooldownType.NONE) {
+            boolean onCooldown = progress.isChoiceOnCooldown(
+                    namespace, currentNode.nodeId(), choiceIndex,
+                    choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
+                    ts.realTime, ts.gameTime, ts.dayTime);
+
+            LOGGER.info("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}",
+                    currentNode.nodeId(), choiceIndex, onCooldown);
+
+            if (onCooldown) return false;
+        }
+
+        return true;
+    }
+
+    // ═══════════════════════════════════════════════
+    //  内部：动作执行（不变）
+    // ═══════════════════════════════════════════════
+
     private void executeAction(DialogueAction action) {
         try {
             action.execute(player, this);
@@ -220,92 +473,5 @@ public class DialogueSession {
             LOGGER.error("[Dialogue] Error executing action {} in session {}",
                     action.getClass().getSimpleName(), sessionId, e);
         }
-    }
-
-    /**
-     * [改动] 替换文本变量。
-     * <p>
-     * 替换顺序：
-     * <ol>
-     *   <li>{@code %player%} → 玩家名</li>
-     *   <li>{@code %npc%} → 默认 NPC 名</li>
-     *   <li>{@code {key}} → context 中对应的值</li>
-     * </ol>
-     */
-    public String processText(String raw) {
-        if (raw == null) return "";
-        String result = raw
-                .replace("%player%", player.getName().getString())
-                .replace("%npc%", tree.defaultNpc());
-        // [新增] context 变量替换
-        if (!context.isEmpty()) {
-            result = context.resolve(result);
-        }
-        return result;
-    }
-
-    // ═══════════════════════════════════════════════════════
-    //  节点和选项的冷却管理
-    // ═══════════════════════════════════════════════════════
-
-    /**
-     * 检查节点是否可访问（考虑可重复性和冷却）。
-     */
-    private boolean checkNodeCooldown(IQuestCapability cap, DialogueNode node) {
-        if (!node.repeatable()) {
-            // 一次性节点：检查是否已经访问过
-            if (cap.hasVisitedNode(node.nodeId())) {
-                LOGGER.debug("[Dialogue] One-time node '{}' already visited.", node.nodeId());
-                return false;
-            }
-        } else if (node.cooldownSeconds() > 0) {
-            // 可重复节点但有冷却
-            long lastTime = cap.getLastNodeVisit(node.nodeId());
-            long currentTime = System.currentTimeMillis();
-            long cooldownMs = node.cooldownSeconds() * 1000;
-
-            if (lastTime > 0 && (currentTime - lastTime) < cooldownMs) {
-                long remainingSeconds = (cooldownMs - (currentTime - lastTime)) / 1000;
-                LOGGER.debug("[Dialogue] Node '{}' on cooldown. Remaining: {}s",
-                    node.nodeId(), remainingSeconds);
-                return false;
-            }
-        }
-
-        // 记录访问时间
-        cap.recordNodeVisit(node.nodeId(), System.currentTimeMillis());
-        return true;
-    }
-
-    /**
-     * 检查选项是否可选择（考虑可重复性和冷却）。
-     */
-    private boolean checkChoiceCooldown(IQuestCapability cap, String nodeId, int choiceIndex, DialogueChoice choice) {
-        String key = nodeId + ":" + choiceIndex;
-
-        if (!choice.repeatable()) {
-            // 一次性选项：检查是否已经选择过
-            if (cap.hasSelectedChoice(key)) {
-                LOGGER.debug("[Dialogue] One-time choice at node '{}' index {} already selected.",
-                    nodeId, choiceIndex);
-                return false;
-            }
-        } else if (choice.cooldownSeconds() > 0) {
-            // 可重复选项但有冷却
-            long lastTime = cap.getLastChoiceSelection(key);
-            long currentTime = System.currentTimeMillis();
-            long cooldownMs = choice.cooldownSeconds() * 1000;
-
-            if (lastTime > 0 && (currentTime - lastTime) < cooldownMs) {
-                long remainingSeconds = (cooldownMs - (currentTime - lastTime)) / 1000;
-                LOGGER.debug("[Dialogue] Choice at node '{}' index {} on cooldown. Remaining: {}s",
-                    nodeId, choiceIndex, remainingSeconds);
-                return false;
-            }
-        }
-
-        // 记录选择时间
-        cap.recordChoiceSelection(key, System.currentTimeMillis());
-        return true;
     }
 }

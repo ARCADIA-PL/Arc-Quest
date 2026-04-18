@@ -24,7 +24,6 @@ public class QuestCapabilityProvider implements ICapabilitySerializable<Compound
     private final LazyOptional<IQuestCapability> optional = LazyOptional.of(() -> backend);
 
 
-
     @Override
     public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap,
                                                       @Nullable Direction side) {
@@ -45,7 +44,6 @@ public class QuestCapabilityProvider implements ICapabilitySerializable<Compound
     public void deserializeNBT(CompoundTag nbt) {
         backend.deserializeNBT(nbt);
     }
-
 
 
     public void invalidate() {

@@ -15,6 +15,9 @@ import java.util.Map;
  * @param delayMs          自动跳转前的延迟（毫秒），0 = 立即
  * @param repeatable       节点是否可重复访问（默认 true）
  * @param cooldownSeconds  节点冷却时间（秒），0 = 无冷却，仅当 repeatable=true 时有效
+ * @param cooldownType     冷却类型（SECONDS=秒级, GAME_DAY=游戏日, GAME_TICK=固定时间刻）
+ * @param resetTimeTicks   重置时间刻（Minecraft tick），仅当 cooldownType=GAME_TICK 时有效
+ *                         <p>例如：6000=早上6点, 12000=中午12点, 18000=晚上6点
  */
 public record DialogueNode(
         String nodeId,
@@ -25,7 +28,9 @@ public record DialogueNode(
         String autoNextId,
         int delayMs,
         boolean repeatable,
-        long cooldownSeconds
+        long cooldownSeconds,
+        CooldownType cooldownType,
+        int resetTimeTicks
 ) {
     /**
      * 向后兼容构造器（默认可重复，无冷却）。
@@ -34,21 +39,50 @@ public record DialogueNode(
                         Map<String, String> conditionalTexts,
                         List<DialogueChoice> choices,
                         String autoNextId, int delayMs) {
-        this(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs, true, 0);
+        this(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs, true, 0, CooldownType.NONE, 0);
     }
-    /** 是否为终端节点（无选择、无自动跳转）。 */
+
+    /**
+     * 完整构造器（带冷却类型和重置时间刻）。
+     */
+    public DialogueNode(String nodeId, String speaker, String text,
+                        Map<String, String> conditionalTexts,
+                        List<DialogueChoice> choices,
+                        String autoNextId, int delayMs,
+                        boolean repeatable, long cooldownSeconds,
+                        CooldownType cooldownType, int resetTimeTicks) {
+        this.nodeId = nodeId;
+        this.speaker = speaker;
+        this.text = text;
+        this.conditionalTexts = conditionalTexts;
+        this.choices = choices;
+        this.autoNextId = autoNextId;
+        this.delayMs = delayMs;
+        this.repeatable = repeatable;
+        this.cooldownSeconds = cooldownSeconds;
+        this.cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
+        this.resetTimeTicks = resetTimeTicks;
+    }
+
+    /**
+     * Builder 便捷方法。
+     */
+    public static Builder builder(String nodeId) {
+        return new Builder(nodeId);
+    }
+
+    /**
+     * 是否为终端节点（无选择、无自动跳转）。
+     */
     public boolean isTerminal() {
         return (choices == null || choices.isEmpty()) && autoNextId == null;
     }
 
-    /** 是否需要玩家选择。 */
+    /**
+     * 是否需要玩家选择。
+     */
     public boolean hasChoices() {
         return choices != null && !choices.isEmpty();
-    }
-
-    /** Builder 便捷方法。 */
-    public static Builder builder(String nodeId) {
-        return new Builder(nodeId);
     }
 
     public static class Builder {
@@ -61,21 +95,97 @@ public record DialogueNode(
         private int delayMs = 0;
         private boolean repeatable = true;
         private long cooldownSeconds = 0;
+        private CooldownType cooldownType = CooldownType.NONE;
+        private int resetTimeTicks = 0;  // 重置时间刻
 
-        Builder(String nodeId) { this.nodeId = nodeId; }
+        Builder(String nodeId) {
+            this.nodeId = nodeId;
+        }
 
-        public Builder speaker(String s) { this.speaker = s; return this; }
-        public Builder text(String t) { this.text = t; return this; }
-        public Builder conditionalTexts(Map<String, String> ct) { this.conditionalTexts = ct; return this; }
-        public Builder choices(DialogueChoice... c) { this.choices = List.of(c); return this; }
-        public Builder choices(List<DialogueChoice> c) { this.choices = List.copyOf(c); return this; }
-        public Builder autoNext(String id) { this.autoNextId = id; return this; }
-        public Builder delay(int ms) { this.delayMs = ms; return this; }
-        public Builder repeatable(boolean r) { this.repeatable = r; return this; }
-        public Builder cooldown(long seconds) { this.cooldownSeconds = seconds; return this; }
+        public Builder speaker(String s) {
+            this.speaker = s;
+            return this;
+        }
+
+        public Builder text(String t) {
+            this.text = t;
+            return this;
+        }
+
+        public Builder conditionalTexts(Map<String, String> ct) {
+            this.conditionalTexts = ct;
+            return this;
+        }
+
+        public Builder choices(DialogueChoice... c) {
+            this.choices = List.of(c);
+            return this;
+        }
+
+        public Builder choices(List<DialogueChoice> c) {
+            this.choices = List.copyOf(c);
+            return this;
+        }
+
+        public Builder autoNext(String id) {
+            this.autoNextId = id;
+            return this;
+        }
+
+        public Builder delay(int ms) {
+            this.delayMs = ms;
+            return this;
+        }
+
+        public Builder repeatable(boolean r) {
+            this.repeatable = r;
+            return this;
+        }
+
+        public Builder cooldown(long seconds) {
+            this.cooldownSeconds = seconds;
+            this.cooldownType = CooldownType.SECONDS;
+            return this;
+        }
+
+        /**
+         * 设置游戏日冷却（每天一次）。
+         */
+        public Builder cooldownGameDay() {
+            this.cooldownSeconds = 1;
+            this.cooldownType = CooldownType.GAME_DAY;
+            return this;
+        }
+
+        /**
+         * 设置固定时间刻冷却。
+         */
+        public Builder cooldownAtTick(int tick) {
+            this.cooldownSeconds = 1;
+            this.cooldownType = CooldownType.GAME_TICK;
+            this.resetTimeTicks = Math.max(0, Math.min(tick, 23999));  // 限制在 0-23999
+            return this;
+        }
+
+        /**
+         * 设置冷却类型。
+         */
+        public Builder cooldownType(CooldownType type) {
+            this.cooldownType = type;
+            return this;
+        }
+
+        /**
+         * 设置重置时间刻（仅 GAME_TICK 有效）。
+         */
+        public Builder resetTimeTicks(int ticks) {
+            this.resetTimeTicks = Math.max(0, Math.min(ticks, 23999));
+            return this;
+        }
 
         public DialogueNode build() {
-            return new DialogueNode(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs, repeatable, cooldownSeconds);
+            return new DialogueNode(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs,
+                    repeatable, cooldownSeconds, cooldownType, resetTimeTicks);
         }
     }
 }

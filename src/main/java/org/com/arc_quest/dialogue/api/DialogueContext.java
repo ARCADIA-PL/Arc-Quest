@@ -33,6 +33,10 @@ public class DialogueContext {
     //  写入（服务端使用）
     // ═══════════════════════════════════════════════════════
 
+    public static DialogueContext fromTag(CompoundTag tag) {
+        return new DialogueContext(tag);
+    }
+
     public DialogueContext put(String key, String value) {
         data.putString(key, value);
         return this;
@@ -48,14 +52,14 @@ public class DialogueContext {
         return this;
     }
 
+    // ═══════════════════════════════════════════════════════
+    //  读取
+    // ═══════════════════════════════════════════════════════
+
     public DialogueContext put(String key, float value) {
         data.putFloat(key, value);
         return this;
     }
-
-    // ═══════════════════════════════════════════════════════
-    //  读取
-    // ═══════════════════════════════════════════════════════
 
     public String getString(String key, String defaultValue) {
         return data.contains(key, Tag.TAG_STRING) ? data.getString(key) : defaultValue;
@@ -73,19 +77,23 @@ public class DialogueContext {
         return data.contains(key, Tag.TAG_FLOAT) ? data.getFloat(key) : defaultValue;
     }
 
+    // ═══════════════════════════════════════════════════════
+    //  文本变量替换
+    // ═══════════════════════════════════════════════════════
+
     public boolean has(String key) {
         return data.contains(key);
     }
 
     // ═══════════════════════════════════════════════════════
-    //  文本变量替换
+    //  合并
     // ═══════════════════════════════════════════════════════
 
     /**
      * 将文本中的 {@code {key}} 占位符替换为 context 中对应的值。
      * <p>
      * 例: {@code "你好，{playerName}！声望：{reputation}"} →
-     *     {@code "你好，Steve！声望：42"}
+     * {@code "你好，Steve！声望：42"}
      *
      * @param template 包含 {key} 占位符的原始文本
      * @return 替换后的文本
@@ -119,7 +127,7 @@ public class DialogueContext {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  合并
+    //  序列化
     // ═══════════════════════════════════════════════════════
 
     /**
@@ -132,16 +140,8 @@ public class DialogueContext {
         return this;
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  序列化
-    // ═══════════════════════════════════════════════════════
-
     public CompoundTag toTag() {
         return data.copy();
-    }
-
-    public static DialogueContext fromTag(CompoundTag tag) {
-        return new DialogueContext(tag);
     }
 
     public boolean isEmpty() {

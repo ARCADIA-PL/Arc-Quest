@@ -11,6 +11,9 @@ import java.util.List;
  * @param actions         选择后执行的动作列表
  * @param repeatable      选项是否可重复选择（默认 true）
  * @param cooldownSeconds 选项冷却时间（秒），0 = 无冷却，仅当 repeatable=true 时有效
+ * @param cooldownType    冷却类型（SECONDS=秒级, GAME_DAY=游戏日, GAME_TICK=固定时间刻）
+ * @param resetTimeTicks  重置时间刻（Minecraft tick），仅当 cooldownType=GAME_TICK 时有效
+ * @param priority        选项优先级（默认 0），高优先级会覆盖低优先级选项
  */
 public record DialogueChoice(
         String text,
@@ -18,28 +21,84 @@ public record DialogueChoice(
         List<DialogueCondition> conditions,
         List<DialogueAction> actions,
         boolean repeatable,
-        long cooldownSeconds
+        long cooldownSeconds,
+        CooldownType cooldownType,
+        int resetTimeTicks,
+        int priority
 ) {
     /**
-     * 向后兼容构造器（默认可重复，无冷却）。
+     * 向后兼容构造器（默认可重复，无冷却，优先级 0）。
      */
     public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
                           List<DialogueAction> actions) {
-        this(text, nextNodeId, conditions, actions, true, 0);
+        this(text, nextNodeId, conditions, actions, true, 0, CooldownType.NONE, 0, 0);
     }
-    /** 便捷构造：无条件、无动作。 */
+
+    /**
+     * 完整构造器（带优先级和冷却类型）。
+     */
+    public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
+                          List<DialogueAction> actions, boolean repeatable, long cooldownSeconds,
+                          CooldownType cooldownType, int resetTimeTicks, int priority) {
+        this.text = text;
+        this.nextNodeId = nextNodeId;
+        this.conditions = conditions;
+        this.actions = actions;
+        this.repeatable = repeatable;
+        this.cooldownSeconds = cooldownSeconds;
+        this.cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
+        this.resetTimeTicks = resetTimeTicks;
+        this.priority = priority;
+    }
+
+    /**
+     * 便捷构造：无条件、无动作。
+     */
     public static DialogueChoice simple(String text, String nextNodeId) {
         return new DialogueChoice(text, nextNodeId, List.of(), List.of());
     }
 
-    /** 便捷构造：带单个动作。 */
+    /**
+     * 便捷构造：带单个动作。
+     */
     public static DialogueChoice withAction(String text, String nextNodeId, DialogueAction action) {
         return new DialogueChoice(text, nextNodeId, List.of(), List.of(action));
     }
 
-    /** 便捷构造：带条件。 */
+    /**
+     * 便捷构造：带条件。
+     */
     public static DialogueChoice conditional(String text, String nextNodeId,
                                              DialogueCondition condition) {
         return new DialogueChoice(text, nextNodeId, List.of(condition), List.of());
+    }
+
+    /**
+     * 便捷构造：带优先级。
+     */
+    public static DialogueChoice prioritized(String text, String nextNodeId, int priority) {
+        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, priority);
+    }
+
+    /**
+     * 便捷构造：带条件和优先级。
+     */
+    public static DialogueChoice prioritizedConditional(String text, String nextNodeId,
+                                                        DialogueCondition condition, int priority) {
+        return new DialogueChoice(text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, priority);
+    }
+
+    /**
+     * 便捷构造：带游戏日冷却。
+     */
+    public static DialogueChoice gameDayCooldown(String text, String nextNodeId) {
+        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_DAY, 0, 0);
+    }
+
+    /**
+     * 便捷构造：带固定时间刻冷却。
+     */
+    public static DialogueChoice cooldownAtTick(String text, String nextNodeId, int tick) {
+        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_TICK, tick, 0);
     }
 }

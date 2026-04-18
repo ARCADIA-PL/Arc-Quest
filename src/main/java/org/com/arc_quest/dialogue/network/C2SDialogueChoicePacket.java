@@ -12,11 +12,12 @@ import java.util.function.Supplier;
  */
 public class C2SDialogueChoicePacket {
 
-    /** -1 = 自动跳转请求, -2 = 关闭对话, >=0 = 选择索引。 */
-    private final int choiceIndex;
-
     public static final int AUTO_ADVANCE = -1;
     public static final int CLOSE = -2;
+    /**
+     * -1 = 自动跳转请求, -2 = 关闭对话, >=0 = 选择索引。
+     */
+    private final int choiceIndex;
 
     public C2SDialogueChoicePacket(int choiceIndex) {
         this.choiceIndex = choiceIndex;
@@ -31,10 +32,6 @@ public class C2SDialogueChoicePacket {
     }
 
     // ── 序列化 ──
-
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeVarInt(choiceIndex);
-    }
 
     public static C2SDialogueChoicePacket decode(FriendlyByteBuf buf) {
         return new C2SDialogueChoicePacket(buf.readVarInt());
@@ -53,5 +50,9 @@ public class C2SDialogueChoicePacket {
             }
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    public void encode(FriendlyByteBuf buf) {
+        buf.writeVarInt(choiceIndex);
     }
 }

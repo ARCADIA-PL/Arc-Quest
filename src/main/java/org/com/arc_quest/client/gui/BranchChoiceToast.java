@@ -16,8 +16,8 @@ public class BranchChoiceToast {
     private static final int COLOR_ACCENT = 0xFFFFCC44;
 
     private static final float TIME_ENTER = 600f;
-    private static final float TIME_EXIT  = 400f;
-    private static final float FLY_DIST   = 10f;
+    private static final float TIME_EXIT = 400f;
+    private static final float FLY_DIST = 10f;
 
     private final String questId;
     private long startTime;
@@ -67,17 +67,21 @@ public class BranchChoiceToast {
         if (!isDismissing && elapsedEnter < TIME_ENTER) {
             float t = elapsedEnter / TIME_ENTER;
             float ease = QuestAnimUtil.easeOutQuintic(t);
-            alpha = ease; revealProgress = ease;
-            textDriftX = -(1f - ease) * FLY_DIST; lineWidth *= ease;
+            alpha = ease;
+            revealProgress = ease;
+            textDriftX = -(1f - ease) * FLY_DIST;
+            lineWidth *= ease;
         } else if (!isDismissing) {
-            textDriftX = (float)Math.sin(elapsedEnter / 400.0) * 0.5f;
+            textDriftX = (float) Math.sin(elapsedEnter / 400.0) * 0.5f;
         } else {
             long elapsedExit = now - dismissStartTime;
             if (elapsedExit >= TIME_EXIT) return false;
             float t = elapsedExit / TIME_EXIT;
             float ease = QuestAnimUtil.easeInQuartic(t);
-            wipeProgress = ease; alpha = 1f - (float)Math.pow(t, 6);
-            textDriftX = ease * FLY_DIST; lineWidth *= (1f - ease);
+            wipeProgress = ease;
+            alpha = 1f - (float) Math.pow(t, 6);
+            textDriftX = ease * FLY_DIST;
+            lineWidth *= (1f - ease);
         }
 
         float finalAlpha = alpha * parentAlpha;
@@ -88,13 +92,13 @@ public class BranchChoiceToast {
 
         int scLeft = baseX - 20;
         int scRight = baseX + POPUP_W + 20;
-        if (!isDismissing && elapsedEnter < TIME_ENTER) scRight = baseX + (int)(POPUP_W * revealProgress);
-        else if (isDismissing) scRight = baseX + (int)(POPUP_W * (1f - wipeProgress));
+        if (!isDismissing && elapsedEnter < TIME_ENTER) scRight = baseX + (int) (POPUP_W * revealProgress);
+        else if (isDismissing) scRight = baseX + (int) (POPUP_W * (1f - wipeProgress));
 
         g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
 
-        int bgA = (int)(finalAlpha * 0x88);
-        int accentA = (int)(finalAlpha * 255);
+        int bgA = (int) (finalAlpha * 0x88);
+        int accentA = (int) (finalAlpha * 255);
         int themeColor = COLOR_ACCENT & 0xFFFFFF;
         QuestRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H,
                 0x121212, bgA, themeColor, accentA, 4);
@@ -111,7 +115,7 @@ public class BranchChoiceToast {
             String prefix = "New Path Unlocked: ";
             String cutName = font.plainSubstrByWidth(questName, POPUP_W - 30 - font.width(prefix));
             String title = prefix + cutName;
-            
+
             int subColor = QuestAnimUtil.withAlpha(0xAAAAAA, accentA);
             int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, accentA);
             QuestRenderUtil.drawDualText(g, font, contentX, contentY,

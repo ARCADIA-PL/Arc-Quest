@@ -15,10 +15,16 @@ public final class QuestToastManager {
     private static final int MARGIN_RIGHT = 8;
     private static final int MARGIN_TOP = 8;
 
-    private QuestToastManager() {}
+    private QuestToastManager() {
+    }
 
-    public static void show(ToastType type, String questName) { pendingQueue.addLast(new QuestNotificationToast(type, questName)); }
-    public static void show(ToastType type, Component questName) { show(type, questName.getString()); }
+    public static void show(ToastType type, String questName) {
+        pendingQueue.addLast(new QuestNotificationToast(type, questName));
+    }
+
+    public static void show(ToastType type, Component questName) {
+        show(type, questName.getString());
+    }
 
     public static void clear() {
         pendingQueue.clear();
@@ -69,7 +75,12 @@ public final class QuestToastManager {
         PHASE_ADVANCED(0xFFCC44, "▸ PHASE ADVANCED"),
         OBJECTIVE_COMPLETE(0x88DDFF, "✔ OBJECTIVE DONE");
 
-        public final int accentColor; public final String prefix;
-        ToastType(int color, String prefix) { this.accentColor = color; this.prefix = prefix; }
+        public final int accentColor;
+        public final String prefix;
+
+        ToastType(int color, String prefix) {
+            this.accentColor = color;
+            this.prefix = prefix;
+        }
     }
 }

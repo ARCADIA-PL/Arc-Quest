@@ -55,8 +55,16 @@ public final class QuestRenderUtil {
                                       int bgColor, int bgAlpha,
                                       int accentColor, int accentAlpha, int accentWidth) {
         int[] rects = new int[10];
-        rects[0] = x; rects[1] = y; rects[2] = w; rects[3] = h; rects[4] = (bgAlpha << 24) | (bgColor & 0x00FFFFFF);
-        rects[5] = x; rects[6] = y; rects[7] = accentWidth; rects[8] = h; rects[9] = (accentAlpha << 24) | (accentColor & 0x00FFFFFF);
+        rects[0] = x;
+        rects[1] = y;
+        rects[2] = w;
+        rects[3] = h;
+        rects[4] = (bgAlpha << 24) | (bgColor & 0x00FFFFFF);
+        rects[5] = x;
+        rects[6] = y;
+        rects[7] = accentWidth;
+        rects[8] = h;
+        rects[9] = (accentAlpha << 24) | (accentColor & 0x00FFFFFF);
         drawBatchRects(g, rects, 2);
     }
 
@@ -67,11 +75,23 @@ public final class QuestRenderUtil {
         int rectCount = lineAlpha > 0 ? 3 : 2;
         int[] rects = new int[rectCount * 5];
 
-        rects[0] = x; rects[1] = y; rects[2] = w; rects[3] = h; rects[4] = (bgAlpha << 24) | (bgColor & 0x00FFFFFF);
-        rects[5] = x; rects[6] = y; rects[7] = accentWidth; rects[8] = h; rects[9] = (accentAlpha << 24) | (accentColor & 0x00FFFFFF);
+        rects[0] = x;
+        rects[1] = y;
+        rects[2] = w;
+        rects[3] = h;
+        rects[4] = (bgAlpha << 24) | (bgColor & 0x00FFFFFF);
+        rects[5] = x;
+        rects[6] = y;
+        rects[7] = accentWidth;
+        rects[8] = h;
+        rects[9] = (accentAlpha << 24) | (accentColor & 0x00FFFFFF);
 
         if (lineAlpha > 0) {
-            rects[10] = x + accentWidth; rects[11] = y + h - 1; rects[12] = w - accentWidth; rects[13] = 1; rects[14] = (lineAlpha << 24) | (accentColor & 0x00FFFFFF);
+            rects[10] = x + accentWidth;
+            rects[11] = y + h - 1;
+            rects[12] = w - accentWidth;
+            rects[13] = 1;
+            rects[14] = (lineAlpha << 24) | (accentColor & 0x00FFFFFF);
         }
 
         drawBatchRects(g, rects, rectCount);

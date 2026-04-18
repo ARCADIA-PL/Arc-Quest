@@ -2,20 +2,23 @@
 
 **模块**: dialogue/  
 **最后更新**: 2026-04-17  
-**版本**: v2.0（新增生命周期管理、冷却状态检查）
+**版本**: v3.2（新增游戏时间刻冷却系统、时间段条件）
 
 ---
 
 ## 📋 目录
 
 1. [对话树设计](#对话树设计)
-2. [生命周期管理](#生命周期管理) ⭐ **新增**
+2. [生命周期管理](#生命周期管理)
 3. [NPC交互流程](#npc交互流程)
 4. [动作执行机制](#动作执行机制)
 5. [上下文变量替换](#上下文变量替换)
 6. [条件系统](#条件系统) ⭐ **增强**
-7. [动态文本与预设动作](#动态文本与预设动作) ⭐ **新增**
-8. [实战示例](#实战示例)
+7. [权重与优先级系统](#权重与优先级系统)
+8. [动态文本与预设动作](#动态文本与预设动作)
+9. [IEntityDialogueExtension扩展系统](#ientitydialogueextension扩展系统)
+10. [游戏时间刻冷却系统](#游戏时间刻冷却系统) ⭐ **新增 v3.2**
+11. [实战示例](#实战示例)
 
 ---
 
@@ -799,7 +802,153 @@ return (currentTime - lastTime) < cooldownMs; // 精确判断
 
 ---
 
-### 4. 逻辑组合条件
+### 5. NPC相关条件 ⭐ **新增 v3.0**
+
+> 💡 **重要**：所有对话条件现在都支持检查 NPC（对话目标）的状态。
+
+#### 条件接口签名变更
+
+```java
+public sealed interface DialogueCondition {
+    /**
+     * 测试条件是否满足
+     * @param player 玩家
+     * @param npc NPC实体（可能为null）
+     * @return 是否满足条件
+     */
+    boolean test(ServerPlayer player, Entity npc);
+}
+```
+
+**向后兼容**：旧的条件实现会自动忽略 `npc` 参数，继续正常工作。
+
+---
+
+#### NpcExists - NPC是否存在
+
+```java
+.choiceIf(
+    new DialogueCondition.NpcExists(),
+    "与NPC对话",
+    c -> c.goTo("talk")
+)
+```
+
+**用途**：确保 NPC 实体仍然有效。
+
+---
+
+#### NpcHasTag - NPC是否有特定标签
+
+```java
+// 只与带有 "friendly" 标签的 NPC 对话
+.choiceIf(
+    new DialogueCondition.NpcHasTag("friendly"),
+    "友好对话",
+    c -> c.goTo("friendly_talk")
+)
+```
+
+**设置标签**：
+```java
+entity.addTag("friendly");
+```
+
+---
+
+#### NpcHasName - NPC名称匹配
+
+```java
+.choiceIf(
+    new DialogueCondition.NpcHasName("老村长"),
+    "与村长对话",
+    c -> c.goTo("elder_talk")
+)
+```
+
+---
+
+#### NpcDistance - NPC距离检查
+
+```java
+// 只有在 5 格以内才能选择此选项
+.choiceIf(
+    new DialogueCondition.NpcDistance(5.0),
+    "靠近交谈",
+    c -> c.goTo("close_talk")
+)
+```
+
+---
+
+#### NpcEntityType - NPC类型检查
+
+```java
+// 只与村民对话
+.choiceIf(
+    new DialogueCondition.NpcEntityType(EntityType.VILLAGER),
+    "与村民交谈",
+    c -> c.goTo("villager_talk")
+)
+
+// 只与流浪商人对话
+.choiceIf(
+    new DialogueCondition.NpcEntityType(EntityType.WANDERING_TRADER),
+    "与商人交易",
+    c -> c.goTo("trader_talk")
+)
+```
+
+---
+
+#### NpcPersistentData - NPC持久化数据检查
+
+```java
+// 检查 NPC 的自定义数据
+.choiceIf(
+    new DialogueCondition.NpcPersistentData("quest_giver", "true"),
+    "接受任务",
+    c -> c.startQuest("my_quest").close()
+)
+```
+
+**设置数据**：
+```java
+entity.getPersistentData().putString("quest_giver", "true");
+```
+
+---
+
+#### NpcNbtData - NPC完整NBT检查
+
+```java
+// 检查复杂的 NBT 结构
+.choiceIf(
+    new DialogueCondition.NpcNbtData(nbt -> 
+        nbt.contains("CustomName") && 
+        nbt.getString("CustomName").contains("传奇")
+    ),
+    "与传奇NPC对话",
+    c -> c.goTo("legendary_talk")
+)
+```
+
+---
+
+#### NpcIsLiving / NpcIsMob / NpcIsVillager / NpcIsWanderingTrader
+
+便捷的条件类型检查：
+
+```java
+.choiceIf(new DialogueCondition.NpcIsLiving(), "与生物对话", ...)
+.choiceIf(new DialogueCondition.NpcIsMob(), "与怪物对话", ...)
+.choiceIf(new DialogueCondition.NpcIsVillager(), "与村民对话", ...)
+.choiceIf(new DialogueCondition.NpcIsWanderingTrader(), "与商人对话", ...)
+```
+
+---
+
+### 6. 逻辑组合条件
 
 #### Not - 逻辑取反
 
@@ -905,6 +1054,344 @@ return (currentTime - lastTime) < cooldownMs; // 精确判断
     
     // 总是可见的退出选项
     .choice("离开", c -> c.close())
+```
+
+---
+
+## 权重与优先级系统
+
+### 概述
+
+权重系统允许你控制多个条件同时满足时，哪些选项或文本应该显示。通过设置 `priority`（优先级），高优先级的内容会覆盖低优先级的内容。
+
+**核心规则**：
+1. ✅ **最高优先级胜出**：只显示优先级最高的选项/文本
+2. ✅ **平局处理**：相同优先级时，按定义顺序选择第一个
+3. ✅ **默认优先级**：不指定时为 `0`
+4. ✅ **支持负数**：可以使用负数优先级
+
+---
+
+### 1. 选项优先级（DialogueChoice）
+
+#### API
+
+```java
+// 方式1：简化方法（推荐简单场景）
+public DialogueTreeBuilder choice(String text, String nextNodeId, int priority);
+public DialogueTreeBuilder choiceIf(DialogueCondition condition, String text, 
+                                    String nextNodeId, int priority);
+
+// 方式2：Consumer 模式（推荐复杂配置）
+.choice("文本", choice -> {
+    choice.goTo("node")
+          .priority(100)
+          .action(giveItem)
+          .cooldown(60);
+})
+```
+
+---
+
+#### 示例1：基础优先级
+
+```java
+.node("greeting")
+    .say("你好，旅行者！")
+    
+    // 默认选项（priority = 0）
+    .choice("闲聊", "chat", 0)
+    
+    // 高优先级：任务相关（priority = 50）
+    .choiceIf(
+        new DialogueCondition.HasQuest("help_village"),
+        "汇报任务进度",
+        "quest_report",
+        50
+    )
+    
+    // 更高优先级：紧急事件（priority = 100）
+    .choiceIf(
+        new DialogueCondition.QuestPhase("defend_village", "under_attack"),
+        "村庄正在被攻击！",
+        "emergency",
+        100
+    )
+```
+
+**效果**：
+| 玩家状态 | 显示选项 |
+|---------|----------|
+| 无特殊状态 | "闲聊" (priority 0) |
+| 有任务 | "汇报任务进度" (priority 50) |
+| 村庄被攻击 | "村庄正在被攻击！" (priority 100) |
+
+---
+
+#### 示例2：相同优先级
+
+```java
+.node("rewards")
+    .say("选择一个奖励：")
+    
+    // 两个选项优先级相同
+    .choiceIf(
+        new DialogueCondition.MinLevel(20),
+        "金币 x100",
+        "reward_gold",
+        50
+    )
+    .choiceIf(
+        new DialogueCondition.QuestCompleted("side_quest"),
+        "经验瓶 x10",
+        "reward_xp",
+        50
+    )
+```
+
+**行为**：如果两个条件都满足，显示**先定义**的选项（"金币 x100"）。
+
+---
+
+#### 示例3：Boss战前对话
+
+```java
+.node("boss_taunt")
+    .say("你竟敢挑战我？")
+    
+    // 等级不足（强制显示警告）
+    .choiceIf(
+        new DialogueCondition.Not(new DialogueCondition.MinLevel(50)),
+        "回去练练吧，蝼蚁！",
+        "dismiss",
+        200  // ← 超高优先级
+    )
+    
+    // 已完成前置任务
+    .choiceIf(
+        new DialogueCondition.QuestCompleted("prepare_battle"),
+        "看来你做好了准备...",
+        "ready",
+        100
+    )
+    
+    // 普通挑战者
+    .choiceIf(
+        new DialogueCondition.MinLevel(50),
+        "让我看看你的实力！",
+        "challenge",
+        50
+    )
+```
+
+**效果**：
+- 等级 < 50 → 始终显示 "回去练练吧"（priority 200）
+- 等级 ≥ 50 + 完成前置 → 显示 "做好准备"（priority 100）
+- 等级 ≥ 50 → 显示 "让我看看"（priority 50）
+
+---
+
+### 2. 条件文本优先级（sayIf）
+
+#### API
+
+```java
+// 不带优先级（默认 priority = 0）
+public DialogueTreeBuilder sayIf(DialogueCondition condition, String text);
+
+// 带优先级
+public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, int priority);
+```
+
+---
+
+#### 示例1：NPC声望系统
+
+```java
+.node("blacksmith")
+    .say("需要修理装备吗？")  // priority = 0
+    
+    // 陌生人
+    .sayIf(
+        new DialogueCondition.Not(new DialogueCondition.HasQuest("help_blacksmith")),
+        "第一次来？先帮我个忙吧。",
+        0
+    )
+    
+    // 朋友
+    .sayIf(
+        new DialogueCondition.QuestCompleted("help_blacksmith"),
+        "老朋友，给你打九折！",
+        50
+    )
+    
+    // VIP
+    .sayIf(
+        new DialogueCondition.All(List.of(
+            new DialogueCondition.QuestCompleted("help_blacksmith"),
+            new DialogueCondition.MinLevel(30)
+        )),
+        "大师，您的订单我亲自处理！",
+        100
+    )
+```
+
+**效果**：
+- 无特殊状态 → "需要修理装备吗？"
+- 完成任务 → "老朋友，给你打九折！"
+- 完成任务 + 等级≥30 → "大师，您的订单我亲自处理！"
+
+---
+
+#### 示例2：多语言问候
+
+```java
+.node("greeting")
+    .say("Hello!")  // 默认英语
+    
+    .sayIf(
+        new DialogueCondition.NpcHasName("法国商人"),
+        "Bonjour!",
+        10
+    )
+    
+    .sayIf(
+        new DialogueCondition.NpcHasName("日本武士"),
+        "こんにちは！",
+        10
+    )
+    
+    .sayIf(
+        new DialogueCondition.NpcHasName("中国商人"),
+        "你好！",
+        10
+    )
+```
+
+**行为**：相同优先级时，显示**先定义**的匹配文本。
+
+---
+
+### 3. 工作原理
+
+#### 选项过滤流程
+
+```java
+// DialogueSession.evaluateVisibleChoices()
+
+// 步骤1：收集所有满足条件的选项
+List<DialogueChoice> passingChoices = new ArrayList<>();
+for (DialogueChoice choice : currentNode.choices()) {
+    boolean pass = choice.conditions().isEmpty()
+            || choice.conditions().stream().allMatch(c -> c.test(player, npc));
+    if (pass) {
+        passingChoices.add(choice);
+    }
+}
+
+// 步骤2：找到最高优先级
+int maxPriority = passingChoices.stream()
+        .mapToInt(DialogueChoice::priority)
+        .max()
+        .orElse(0);
+
+// 步骤3：只保留最高优先级的选项
+List<DialogueChoice> filtered = new ArrayList<>();
+for (DialogueChoice choice : passingChoices) {
+    if (choice.priority() == maxPriority) {
+        filtered.add(choice);
+    }
+}
+visibleChoices = List.copyOf(filtered);
+```
+
+---
+
+#### 条件文本评估流程
+
+```java
+// ConditionalTextEvaluator.evaluate()
+
+// 步骤1：解析序列化格式 "priority|condition"
+for (Map.Entry<String, String> entry : conditionalTexts.entrySet()) {
+    String key = entry.getKey();  // "50|HAS_QUEST:quest_id"
+    String text = entry.getValue();
+    
+    // 解析优先级
+    int separatorIndex = key.indexOf('|');
+    int priority = Integer.parseInt(key.substring(0, separatorIndex));
+    String conditionKey = key.substring(separatorIndex + 1);
+    
+    if (matchesCondition(player, cap, conditionKey)) {
+        matches.add(new TextMatch(text, priority));
+    }
+}
+
+// 步骤2：找到最高优先级
+int maxPriority = matches.stream()
+        .mapToInt(m -> m.priority)
+        .max()
+        .orElse(0);
+
+// 步骤3：返回第一个最高优先级的匹配
+for (TextMatch match : matches) {
+    if (match.priority == maxPriority) {
+        return match.text;
+    }
+}
+```
+
+---
+
+### 4. 最佳实践
+
+#### 优先级建议值
+
+| 场景 | 建议优先级 | 说明 |
+|------|-----------|------|
+| **默认/兜底** | 0 | 无条件显示的选项 |
+| **普通条件** | 10-50 | 任务状态、等级等 |
+| **重要条件** | 50-100 | 关键剧情、分支选择 |
+| **紧急/强制** | 100-200 | 警告、错误提示 |
+| **系统级** | 200+ | 权限检查、封禁提示 |
+
+---
+
+#### 设计原则
+
+1. **保持简洁**：不要过度使用优先级，尽量让逻辑清晰
+2. **文档化**：在代码注释中说明为什么设置某个优先级
+3. **测试边界**：确保相同优先级时的行为符合预期
+4. **避免冲突**：不同层级的优先级应该有明显的差距
+
+---
+
+#### 常见错误
+
+❌ **错误1：优先级差距太小**
+```java
+.choice("选项A", "node_a", 50)
+.choice("选项B", "node_b", 51)  // 难以维护
+```
+
+✅ **正确：使用明显的间隔**
+```java
+.choice("选项A", "node_a", 50)
+.choice("选项B", "node_b", 100)  // 清晰的层级
+```
+
+---
+
+❌ **错误2：忘记默认选项**
+```java
+.choiceIf(condition, "条件选项", "node", 100)
+// 如果条件不满足，没有任何选项显示！
+```
+
+✅ **正确：提供兜底选项**
+```java
+.choiceIf(condition, "条件选项", "node", 100)
+.choice("默认选项", "default_node", 0)  // 总是可见
 ```
 
 ---
@@ -1148,6 +1635,793 @@ public class MyPresetActions {
     .close()
 )
 ```
+
+---
+
+## IEntityDialogueExtension扩展系统
+
+### 概述
+
+`IEntityDialogueExtension` 是一个强大的扩展系统，允许你为不同类型的实体（村民、流浪商人、自定义NPC等）添加**专属的对话行为**。通过注解驱动的方式，系统会自动扫描并注册扩展。
+
+**核心优势**：
+- ✅ **自动发现**：使用 `@EntityDialogueExtension` 注解，无需手动注册
+- ✅ **类型安全**：泛型约束确保扩展与实体类型匹配
+- ✅ **灵活扩展**：可以为任何实体类型添加自定义逻辑
+- ✅ **优先级控制**：支持多个扩展冲突时的优先级选择
+
+---
+
+### 1. 核心接口
+
+#### IEntityDialogueExtension<T>
+
+```java
+public interface IEntityDialogueExtension<T extends Entity> {
+    /**
+     * 获取支持的实体类型
+     */
+    Class<T> getSupportedEntityType();
+    
+    /**
+     * 检查实体是否可以使用此扩展
+     */
+    boolean canApply(T entity);
+    
+    /**
+     * 应用扩展（在对话开始前调用）
+     */
+    void onApply(T entity, ServerPlayer player, DialogueSession session);
+    
+    /**
+     * 获取扩展优先级（数值越大优先级越高）
+     */
+    default int getPriority() {
+        return 0;
+    }
+}
+```
+
+---
+
+### 2. 注解驱动
+
+#### @EntityDialogueExtension
+
+```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface EntityDialogueExtension {
+    /**
+     * 扩展名称（唯一标识）
+     */
+    String value();
+    
+    /**
+     * 优先级（默认 0）
+     */
+    int priority() default 0;
+}
+```
+
+---
+
+### 3. 内置扩展示例
+
+#### 示例1：村民长老扩展
+
+**文件**: `dialogue/extension/VillageElderExtension.java`
+
+```java
+@EntityDialogueExtension(value = "village_elder", priority = 100)
+public class VillageElderExtension implements IEntityDialogueExtension<Villager> {
+    
+    @Override
+    public Class<Villager> getSupportedEntityType() {
+        return Villager.class;
+    }
+    
+    @Override
+    public boolean canApply(Villager entity) {
+        // 只应用于带有 "elder" 标签的村民
+        return entity.getTags().contains("elder");
+    }
+    
+    @Override
+    public void onApply(Villager entity, ServerPlayer player, DialogueSession session) {
+        // 设置上下文变量
+        session.getContext().put("elder_name", entity.getCustomName() != null 
+            ? entity.getCustomName().getString() 
+            : "村长");
+        
+        // 给予玩家村庄英雄效果
+        if (player != null) {
+            player.addEffect(new MobEffectInstance(
+                MobEffects.HERO_OF_THE_VILLAGE, 
+                6000,  // 5分钟
+                0
+            ));
+        }
+        
+        Arc_quest.LOGGER.info("[VillageElder] Applied elder extension to villager at {}", 
+            entity.blockPosition());
+    }
+}
+```
+
+---
+
+#### 示例2：流浪商人扩展
+
+**文件**: `dialogue/extension/TraderExtension.java`
+
+```java
+@EntityDialogueExtension(value = "wandering_trader", priority = 50)
+public class TraderExtension implements IEntityDialogueExtension<WanderingTrader> {
+    
+    @Override
+    public Class<WanderingTrader> getSupportedEntityType() {
+        return WanderingTrader.class;
+    }
+    
+    @Override
+    public boolean canApply(WanderingTrader entity) {
+        return true;  // 应用于所有流浪商人
+    }
+    
+    @Override
+    public void onApply(WanderingTrader entity, ServerPlayer player, DialogueSession session) {
+        // 随机折扣（50% - 80%）
+        double discount = 0.5 + Math.random() * 0.3;
+        session.getContext().put("discount", String.format("%.0f%%", discount * 100));
+        
+        // 记录交易次数
+        int tradeCount = entity.getPersistentData().getInt("trade_count");
+        session.getContext().put("trade_count", String.valueOf(tradeCount));
+        
+        Arc_quest.LOGGER.info("[Trader] Applied trader extension with discount: {}", discount);
+    }
+}
+```
+
+---
+
+#### 示例3：铁匠扩展
+
+**文件**: `dialogue/extension/BlacksmithExtension.java`
+
+```java
+@EntityDialogueExtension(value = "blacksmith", priority = 75)
+public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
+    
+    @Override
+    public Class<Villager> getSupportedEntityType() {
+        return Villager.class;
+    }
+    
+    @Override
+    public boolean canApply(Villager entity) {
+        // 只应用于职业为铁匠的村民
+        return entity.getVillagerData().getProfession() == VillagerProfession.ARMORER
+            || entity.getVillagerData().getProfession() == VillagerProfession.TOOLSMITH
+            || entity.getVillagerData().getProfession() == VillagerProfession.WEAPONSMITH;
+    }
+    
+    @Override
+    public void onApply(Villager entity, ServerPlayer player, DialogueSession session) {
+        // 检查玩家装备耐久度
+        ItemStack mainHand = player.getMainHandItem();
+        if (!mainHand.isEmpty() && mainHand.isDamageableItem()) {
+            int durabilityPercent = (int) ((1.0 - (double) mainHand.getDamageValue() / mainHand.getMaxDamage()) * 100);
+            session.getContext().put("weapon_durability", String.valueOf(durabilityPercent));
+        }
+        
+        Arc_quest.LOGGER.info("[Blacksmith] Applied blacksmith extension");
+    }
+}
+```
+
+---
+
+### 4. 扩展管理器
+
+#### EntityDialogueExtensionManager
+
+**位置**: `dialogue/registry/EntityDialogueExtensionManager.java`
+
+**职责**：
+- 自动扫描并注册所有带 `@EntityDialogueExtension` 注解的类
+- 管理扩展的优先级和冲突解决
+- 提供扩展查询接口
+
+**核心方法**：
+
+```java
+// 初始化（在 FMLCommonSetupEvent 中调用）
+public static void init() {
+    // 自动扫描并注册
+    List<IEntityDialogueExtension<?>> extensions = 
+        AnnotatedInstanceUtil.getInstances(EntityDialogueExtension.class);
+    
+    for (IEntityDialogueExtension<?> ext : extensions) {
+        register(ext);
+    }
+}
+
+// 注册扩展
+public static void register(IEntityDialogueExtension<?> extension);
+
+// 查找适用的扩展
+public static Optional<IEntityDialogueExtension<?>> findApplicableExtension(Entity entity);
+
+// 应用扩展
+public static void applyExtension(Entity entity, ServerPlayer player, DialogueSession session);
+```
+
+---
+
+### 5. 工作流程
+
+```mermaid
+graph TD
+    A[玩家右键点击实体] --> B[NpcDialogueHandler拦截]
+    B --> C[查询DialogueRegistry获取对话树]
+    C --> D[EntityDialogueExtensionManager.findApplicableExtension]
+    D --> E{找到扩展?}
+    E -->|是| F[调用 extension.onApply]
+    E -->|否| G[跳过扩展]
+    F --> H[创建DialogueSession]
+    G --> H
+    H --> I[发送S2COpenDialoguePacket]
+    I --> J[客户端显示对话]
+```
+
+---
+
+### 6. 实战示例
+
+#### 示例1：动态对话内容
+
+```java
+@EntityDialogueExtension(value = "quest_giver", priority = 100)
+public class QuestGiverExtension implements IEntityDialogueExtension<Villager> {
+    
+    @Override
+    public Class<Villager> getSupportedEntityType() {
+        return Villager.class;
+    }
+    
+    @Override
+    public boolean canApply(Villager entity) {
+        return entity.getPersistentData().contains("quest_id");
+    }
+    
+    @Override
+    public void onApply(Villager entity, ServerPlayer player, DialogueSession session) {
+        String questId = entity.getPersistentData().getString("quest_id");
+        session.getContext().put("available_quest", questId);
+        
+        // 检查任务状态
+        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        if (cap != null) {
+            if (cap.hasQuest(questId)) {
+                session.getContext().put("quest_status", "active");
+            } else if (cap.isQuestCompleted(questId)) {
+                session.getContext().put("quest_status", "completed");
+            } else {
+                session.getContext().put("quest_status", "available");
+            }
+        }
+    }
+}
+```
+
+**在对话中使用**：
+```java
+.node("start")
+    .sayIf(
+        new DialogueCondition.QuestPhase("${available_quest}", "active"),
+        "你的任务进展如何？"
+    )
+    .sayIf(
+        new DialogueCondition.QuestPhase("${available_quest}", "completed"),
+        "太棒了！来领取奖励吧。"
+    )
+    .say("我有一个任务给你，要接受吗？")
+```
+
+---
+
+#### 示例2：声望系统
+
+```java
+@EntityDialogueExtension(value = "reputation_npc", priority = 80)
+public class ReputationExtension implements IEntityDialogueExtension<Villager> {
+    
+    @Override
+    public Class<Villager> getSupportedEntityType() {
+        return Villager.class;
+    }
+    
+    @Override
+    public boolean canApply(Villager entity) {
+        return entity.getPersistentData().contains("faction_id");
+    }
+    
+    @Override
+    public void onApply(Villager entity, ServerPlayer player, DialogueSession session) {
+        String factionId = entity.getPersistentData().getString("faction_id");
+        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        
+        if (cap != null) {
+            int reputation = cap.getVariable(factionId + "_reputation");
+            session.getContext().put("reputation", String.valueOf(reputation));
+            
+            // 根据声望设置称呼
+            String title;
+            if (reputation >= 100) {
+                title = "尊敬的英雄";
+            } else if (reputation >= 50) {
+                title = "朋友";
+            } else if (reputation >= 0) {
+                title = "旅行者";
+            } else {
+                title = "陌生人";
+            }
+            session.getContext().put("player_title", title);
+        }
+    }
+}
+```
+
+**在对话中使用**：
+```java
+.node("greeting")
+    .say("你好，${player_title}！你的声望值是：${reputation}")
+```
+
+---
+
+### 7. 高级用法
+
+#### 冲突解决
+
+当多个扩展都适用于同一个实体时，系统会选择**优先级最高**的扩展：
+
+```java
+@EntityDialogueExtension(value = "generic_villager", priority = 10)
+public class GenericVillagerExtension implements IEntityDialogueExtension<Villager> {
+    // 通用村民扩展（低优先级）
+}
+
+@EntityDialogueExtension(value = "elder_villager", priority = 100)
+public class ElderVillagerExtension implements IEntityDialogueExtension<Villager> {
+    // 长老村民扩展（高优先级）
+    
+    @Override
+    public boolean canApply(Villager entity) {
+        return entity.getTags().contains("elder");
+    }
+}
+```
+
+**结果**：
+- 普通村民 → 使用 `GenericVillagerExtension`（priority 10）
+- 带 "elder" 标签的村民 → 使用 `ElderVillagerExtension`（priority 100）
+
+---
+
+#### 扩展组合
+
+你可以在一个扩展中调用其他扩展的逻辑：
+
+```java
+@Override
+public void onApply(Villager entity, ServerPlayer player, DialogueSession session) {
+    // 先应用基础逻辑
+    applyBaseLogic(entity, player, session);
+    
+    // 再应用特殊逻辑
+    if (entity.getTags().contains("vip")) {
+        applyVipLogic(entity, player, session);
+    }
+}
+```
+
+---
+
+### 8. 最佳实践
+
+#### 1. 保持扩展单一职责
+
+❌ **错误**：一个扩展处理太多逻辑
+```java
+@Override
+public void onApply(...) {
+    // 设置上下文
+    // 给予物品
+    // 修改实体属性
+    // 发送消息
+    // ... 太多职责
+}
+```
+
+✅ **正确**：拆分为多个小扩展
+```java
+@EntityDialogueExtension(value = "context_setter", priority = 100)
+public class ContextSetterExtension { ... }
+
+@EntityDialogueExtension(value = "item_granter", priority = 90)
+public class ItemGranterExtension { ... }
+```
+
+---
+
+#### 2. 使用合理的优先级
+
+| 场景 | 建议优先级 | 说明 |
+|------|-----------|------|
+| **通用扩展** | 10-50 | 适用于大多数实体 |
+| **特定职业** | 50-100 | 如铁匠、农民 |
+| **特殊NPC** | 100-200 | 如村长、任务发布者 |
+| **事件限定** | 200+ | 如节日活动NPC |
+
+---
+
+#### 3. 性能优化
+
+```java
+@Override
+public boolean canApply(Villager entity) {
+    // ✅ 快速失败：先检查简单的条件
+    if (!entity.getPersistentData().contains("key")) {
+        return false;
+    }
+    
+    // ✅ 缓存结果（如果需要复杂计算）
+    // ❌ 避免在 canApply 中进行耗时操作
+    return true;
+}
+```
+
+---
+
+#### 4. 日志记录
+
+```java
+@Override
+public void onApply(Villager entity, ServerPlayer player, DialogueSession session) {
+    Arc_quest.LOGGER.debug("[MyExtension] Applied to villager at {}", 
+        entity.blockPosition());
+    
+    // 只在调试模式下记录详细信息
+    if (Arc_quest.DEBUG_MODE) {
+        Arc_quest.LOGGER.trace("[MyExtension] Context variables: {}", 
+            session.getContext().getAll());
+    }
+}
+```
+
+---
+
+## 游戏时间刻冷却系统
+
+### 概述
+
+游戏时间刻冷却系统（v3.2新增）允许对话节点、选项和对话树在**每天固定的游戏时间刻**重置，而不是基于现实时间或简单的天数计算。
+
+**核心优势**:
+- ✅ 使用 `Level.getGameTime()` 获取世界总运行时间
+- ✅ 精确到 tick 级别（1 tick = 1/20 秒）
+- ✅ 不受 TPS 波动、玩家离线、世界暂停影响
+- ✅ 支持跨天区间（如 12000-0，晚上6点到早上6点）
+
+---
+
+### Minecraft 时间系统
+
+Minecraft 使用 **tick** 作为时间单位：
+
+```
+1 tick = 1/20 秒（理想情况下）
+1 游戏日 = 24000 ticks = 20 分钟（现实时间）
+```
+
+**时间刻对应关系**:
+
+| Tick 值 | 游戏时间 | 说明 |
+|---------|---------|------|
+| **0** | 早上 6:00 | 日出，一天开始 |
+| **1000** | 早上 7:00 | `/time set day` 默认值 |
+| **6000** | 中午 12:00 | 正午 |
+| **12000** | 晚上 6:00 | 日落开始 |
+| **13000** | 晚上 7:00 | `/time set night` 默认值 |
+| **18000** | 午夜 12:00 | 深夜 |
+
+---
+
+### CooldownType 枚举
+
+```java
+public enum CooldownType {
+    NONE,           // 无冷却
+    SECONDS,        // 现实时间秒（System.currentTimeMillis）
+    GAME_DAY,       // 游戏日（按天计算）
+    GAME_TICK       // ⭐ 游戏时间刻（Level.getGameTime）
+}
+```
+
+---
+
+### 配置示例
+
+#### 1. 节点级别的 GAME_TICK 冷却
+
+```java
+.node("daily_hint")
+    .say("今天的提示是：去北边的山洞看看。")
+    .choice("好的", c -> c.close())
+    .repeatable(true)
+    .cooldownType(CooldownType.GAME_TICK)  // ⭐ 使用游戏时间刻
+    .cooldownResetTick(0)                   // ⭐ 每天早上6点重置
+```
+
+**行为**:
+- ✅ 每天早上6:00自动重置
+- ✅ 所有玩家在同一游戏时刻看到新提示
+- ✅ 不受服务器 TPS 波动影响
+
+---
+
+#### 2. 选项级别的 GAME_TICK 冷却
+
+```java
+.node("shop")
+    .say("今日特惠：")
+    .choice("购买药水（每天限购）", c -> c
+        .giveItem("minecraft:potion", 1)
+        .repeatable(true)
+        .cooldownType(CooldownType.GAME_TICK)
+        .cooldownResetTick(1000)  // 每天早上7点重置
+        .close())
+```
+
+---
+
+#### 3. 对话树级别的 GAME_TICK 冷却
+
+```java
+DialogueTreeBuilder.create("elder_advice")
+    .npc("智者")
+    .repeatable(true)
+    .cooldownType(CooldownType.GAME_TICK)
+    .cooldownResetTick(6000)  // 每天中午12点重置
+    
+    .node("start")
+        .say("让我给你一些建议...")
+        .choice("聆听", c -> c.goTo("advice"))
+    
+    .buildAndRegister();
+```
+
+---
+
+### 时间段条件
+
+配合 GAME_TICK 冷却，可以使用时间段条件动态显示不同内容：
+
+#### 内置时间段条件
+
+| 条件类 | 时间范围 | Tick 范围 | 说明 |
+|--------|---------|----------|------|
+| `IsMorning()` | 6:00-12:00 | 0-6000 | 早晨 |
+| `IsAfternoon()` | 12:00-18:00 | 6000-12000 | 下午 |
+| `IsNight()` | 18:00-次日6:00 | 12000-0 | 夜晚（跨天） |
+
+---
+
+#### 使用示例
+
+```java
+.node("time_based_greeting")
+    .sayIf(
+        Map.of(
+            "morning", "早上好！新的一天开始了。",
+            "afternoon", "下午好！工作顺利吗？",
+            "night", "晚上好！注意安全。"
+        ),
+        new DialogueCondition.IsMorning()   // 6:00-12:00
+    )
+    .sayIf(
+        Map.of(
+            "afternoon", "下午好！工作顺利吗？",
+            "night", "晚上好！注意安全。"
+        ),
+        new DialogueCondition.IsAfternoon() // 12:00-18:00
+    )
+    .sayIf(
+        Map.of(
+            "night", "晚上好！注意安全。"
+        ),
+        new DialogueCondition.IsNight()     // 18:00-次日6:00（跨天）
+    )
+```
+
+---
+
+#### 自定义时间区间
+
+```java
+// 黄昏时段（17:00-19:00）
+new DialogueCondition.GameTimeInRange(11000, 13000)
+
+// 深夜时段（23:00-凌晨4:00，跨天）
+new DialogueCondition.GameTimeInRange(20000, 4000)
+
+// 工作时间（9:00-17:00）
+new DialogueCondition.GameTimeInRange(3000, 11000)
+```
+
+---
+
+### 数据存储
+
+所有游戏时间刻记录存储在玩家的 `IQuestCapability` 中：
+
+```java
+// 每个玩家独立的 HashMap
+private final Map<String, Long> nodeVisitGameTime = new HashMap<>();       // nodeId -> worldGameTime
+private final Map<String, Long> choiceSelectionGameTime = new HashMap<>(); // choiceKey -> worldGameTime
+private final Map<String, Long> dialogueGameTime = new HashMap<>();        // dialogueId -> worldGameTime
+```
+
+**NBT 存储**:
+```
+playerdata/<UUID>.dat
+└── ArcQuest
+    ├── NodeVisitGameTime
+    │   ├── "daily_hint": 1234567890      // worldGameTime
+    │   └── "blacksmith_work": 1234591890
+    ├── ChoiceSelectionGameTime
+    │   ├── "shop:buy_potion": 1234567890
+    │   └── "reward:daily": 1234591890
+    └── DialogueGameTime
+        ├── "elder_advice": 1234567890
+        └── "daily_npc": 1234591890
+```
+
+---
+
+### 实现原理
+
+```java
+/**
+ * 检查自上次访问后是否经过了指定的重置时间刻。
+ */
+private boolean hasPassedResetTick(ServerPlayer player, String nodeId, int resetTick) {
+    if (player.level() == null) return true;
+    
+    var cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+    if (cap == null) return true;
+    
+    long lastGameTime = cap.getLastNodeVisitGameTime(nodeId);
+    if (lastGameTime < 0) return true;  // 从未访问过
+    
+    long currentTotalGameTime = player.level().getGameTime();
+    long currentDayTime = currentTotalGameTime % 24000;
+    long lastDayTime = lastGameTime % 24000;
+    
+    // 计算经过了多少天
+    long daysElapsed = (currentTotalGameTime - lastGameTime) / 24000;
+    
+    if (daysElapsed > 0) {
+        return true;  // 已过至少一天
+    }
+    
+    // 同一天内，检查是否跨过了重置点
+    if (lastDayTime <= resetTick && currentDayTime >= resetTick) {
+        return true;
+    }
+    
+    return false;
+}
+```
+
+---
+
+### 最佳实践
+
+#### 1. 选择合适的重置时间点
+
+```java
+// ✅ 推荐：整点重置，便于记忆
+.cooldownResetTick(0)      // 6:00
+.cooldownResetTick(1000)   // 7:00
+.cooldownResetTick(6000)   // 12:00
+
+// ❌ 避免：奇怪的时间点
+.cooldownResetTick(1237)   // 难以记忆
+```
+
+---
+
+#### 2. 配合时间段条件使用
+
+```java
+// ✅ 推荐：冷却 + 时间段双重控制
+.node("night_guard")
+    .sayIf(
+        Map.of("night", "夜晚危险，小心行事。"),
+        new DialogueCondition.IsNight()
+    )
+    .repeatable(true)
+    .cooldownType(CooldownType.GAME_TICK)
+    .cooldownResetTick(12000)  // 每天18:00重置
+```
+
+---
+
+#### 3. 考虑玩家体验
+
+```java
+// ✅ 友好：给予足够的时间窗口
+.cooldownResetTick(0)  // 早上6点，玩家刚上线
+
+// ❌ 不友好：重置时间在深夜
+.cooldownResetTick(18000)  // 午夜12点，大多数玩家在睡觉
+```
+
+---
+
+### 常见问题
+
+#### Q1: GAME_TICK 和 GAME_DAY 有什么区别？
+
+**A**: 
+- `GAME_DAY`: 按完整的天数计算，不考虑具体时间点
+- `GAME_TICK`: 精确到 tick，支持在每天的特定时刻重置
+
+**示例**:
+```java
+// GAME_DAY: 只要过了一天就重置，不管几点
+.cooldownType(CooldownType.GAME_DAY)
+// 昨天6:00访问 → 今天6:01访问 ✅ 已重置
+// 昨天23:00访问 → 今天0:01访问 ✅ 已重置
+
+// GAME_TICK: 必须跨过重置点才重置
+.cooldownType(CooldownType.GAME_TICK)
+.cooldownResetTick(0)  // 6:00重置
+// 昨天6:00访问 → 今天5:59访问 ❌ 未重置
+// 昨天6:00访问 → 今天6:01访问 ✅ 已重置
+```
+
+---
+
+#### Q2: 如果服务器 TPS 不稳定怎么办？
+
+**A**: `Level.getGameTime()` 返回的是世界总运行 tick 数，不受 TPS 影响。即使服务器卡顿，游戏时间刻仍然准确累计。
+
+---
+
+#### Q3: 玩家离线期间时间如何计算？
+
+**A**: 游戏时间刻是世界级别的，玩家离线期间世界仍在运行（除非服务器关闭）。重新登录时，`getGameTime()` 会返回当前的世界总 tick 数，自动计算经过的时间。
+
+---
+
+#### Q4: 如何处理跨天区间？
+
+**A**: 当 `startTick > endTick` 时，系统自动识别为跨天区间：
+
+```java
+// 夜晚：18:00-次日6:00
+new DialogueCondition.GameTimeInRange(12000, 0)
+// 内部逻辑：worldTime >= 12000 OR worldTime < 0
+```
+
+---
+
+**详细文档**: 请参阅 [GAME_TICK_COOLDOWN.md](GAME_TICK_COOLDOWN.md) 获取更详细的指南。
 
 ---
 
@@ -1418,4 +2692,10 @@ session.skipTypewriter();
 
 **文档结束**
 
-*本文档详细讲解了Arc Quest对话系统的设计原理、交互流程和实战示例。*
+*本文档详细讲解了Arc Quest对话系统的设计原理、交互流程、权重系统、NPC条件支持和IEntityDialogueExtension扩展系统。*
+
+**版本历史**：
+- **v3.2** (2026-04-17): 新增游戏时间刻冷却系统（GAME_TICK）、时间段条件、跨天区间支持
+- **v3.0** (2026-04-17): 新增权重与优先级系统、NPC相关条件支持、IEntityDialogueExtension扩展系统
+- **v2.0** (2026-04-16): 新增生命周期管理、冷却状态检查、节点/选项历史记录
+- **v1.0** (2026-04-15): 初始版本，基础对话树、条件系统、动作执行

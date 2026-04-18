@@ -19,24 +19,25 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     public static final QuestHudOverlay INSTANCE = new QuestHudOverlay();
     private static final int POPUP_H = 36;
-
+    private final QuestTrackerPanel trackerPanel = new QuestTrackerPanel();
     private long lastRenderTime = 0;
     private float dt = 0f;
-
     private String lastKnownPhaseId = null;
-
     private PhaseUpdateToast phaseUpdateToast = null;
     private BranchChoiceToast branchChoiceToast = null;
-
     private float currentPhasePopupY = -1;
     private float currentBranchToastY = -1;
 
-    private final QuestTrackerPanel trackerPanel = new QuestTrackerPanel();
+    private QuestHudOverlay() {
+    }
 
-    private QuestHudOverlay() {}
+    public void setTrackedQuest(String questId) {
+        trackerPanel.setTrackedQuest(questId);
+    }
 
-    public void setTrackedQuest(String questId) { trackerPanel.setTrackedQuest(questId); }
-    public String getTrackedQuestId() { return trackerPanel.getTrackedQuestId(); }
+    public String getTrackedQuestId() {
+        return trackerPanel.getTrackedQuestId();
+    }
 
     @Override
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
@@ -91,12 +92,12 @@ public class QuestHudOverlay implements IGuiOverlay {
 
         // 渲染左侧Toast（保持不透明度，暂停动画）
         if (isPhaseActive) {
-            if (!phaseUpdateToast.render(g, mc.font, leftBaseX, (int)currentPhasePopupY, 1f, isBlockingScreen)) {
+            if (!phaseUpdateToast.render(g, mc.font, leftBaseX, (int) currentPhasePopupY, 1f, isBlockingScreen)) {
                 phaseUpdateToast = null;
             }
         }
         if (isBranchActive) {
-            if (!branchChoiceToast.render(g, leftBaseX, (int)currentBranchToastY, 1f, partialTick, isBlockingScreen)) {
+            if (!branchChoiceToast.render(g, leftBaseX, (int) currentBranchToastY, 1f, partialTick, isBlockingScreen)) {
                 branchChoiceToast = null;
                 currentBranchToastY = -1;
             }
@@ -141,7 +142,15 @@ public class QuestHudOverlay implements IGuiOverlay {
         return null;
     }
 
-    public void showBranchChoiceToast(String questId) { this.branchChoiceToast = new BranchChoiceToast(questId); }
-    public void clearBranchChoiceToast() { if (this.branchChoiceToast != null) this.branchChoiceToast.dismiss(); }
-    public String getBranchChoiceQuestId() { return branchChoiceToast != null ? branchChoiceToast.getQuestId() : null; }
+    public void showBranchChoiceToast(String questId) {
+        this.branchChoiceToast = new BranchChoiceToast(questId);
+    }
+
+    public void clearBranchChoiceToast() {
+        if (this.branchChoiceToast != null) this.branchChoiceToast.dismiss();
+    }
+
+    public String getBranchChoiceQuestId() {
+        return branchChoiceToast != null ? branchChoiceToast.getQuestId() : null;
+    }
 }

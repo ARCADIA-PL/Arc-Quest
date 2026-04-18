@@ -81,7 +81,7 @@ public class QuestNotificationToast {
         if (textAlpha > 8) {
             String subtitle = type.prefix;
             String nameStr = font.plainSubstrByWidth(text, TOAST_WIDTH - 16);
-            
+
             // 使用共用方法绘制双行文本
             int subColor = QuestAnimUtil.withAlpha(type.accentColor, textAlpha);
             int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, textAlpha);

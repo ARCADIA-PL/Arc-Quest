@@ -3,7 +3,7 @@
 **模块**: dialogue/  
 **适用对象**: 开发者、外部AI学习  
 **最后更新**: 2026-04-17  
-**版本**: v2.0（新增生命周期管理、冷却状态检查）
+**版本**: v3.2（新增游戏时间刻冷却系统、时间段条件）
 
 ---
 
@@ -31,8 +31,10 @@ private final String defaultNpc;
 private final String startNodeId;
 private final Map<String, DialogueNode> nodes;
 private final QuestVisualConfig visualConfig;
-private final boolean repeatable;        // ⭐ 新增：是否可重复对话
-private final long cooldownSeconds;      // ⭐ 新增：冷却时间（秒）
+private final boolean repeatable;              // 是否可重复对话
+private final long cooldownSeconds;            // 冷却时间（秒，SECONDS类型）
+private final CooldownType cooldownType;       // ⭐ 新增：冷却类型（NONE/SECONDS/GAME_DAY/GAME_TICK）
+private final int cooldownResetTick;           // ⭐ 新增：GAME_TICK类型的重置时间点（0-23999）
 ```
 
 **核心方法**:
@@ -73,8 +75,10 @@ private final String text;
 private final List<DialogueChoice> choices;
 private final String autoNextId;
 private final int delayMs;
-private final boolean repeatable;        // ⭐ 新增：节点是否可重复访问
-private final long cooldownSeconds;      // ⭐ 新增：节点冷却时间（秒）
+private final boolean repeatable;              // 节点是否可重复访问
+private final long cooldownSeconds;            // 冷却时间（秒，SECONDS类型）
+private final CooldownType cooldownType;       // ⭐ 新增：冷却类型
+private final int cooldownResetTick;           // ⭐ 新增：GAME_TICK类型的重置时间点
 ```
 
 **核心方法**:
@@ -103,8 +107,10 @@ private final String text;
 private final String nextNodeId;
 private final List<DialogueCondition> conditions;
 private final List<DialogueAction> actions;
-private final boolean repeatable;        // ⭐ 新增：选项是否可重复选择
-private final long cooldownSeconds;      // ⭐ 新增：选项冷却时间（秒）
+private final boolean repeatable;              // 选项是否可重复选择
+private final long cooldownSeconds;            // 冷却时间（秒，SECONDS类型）
+private final CooldownType cooldownType;       // ⭐ 新增：冷却类型
+private final int cooldownResetTick;           // ⭐ 新增：GAME_TICK类型的重置时间点
 ```
 
 **核心方法**:
@@ -217,6 +223,40 @@ new DialogueCondition.DialogueOnCooldown("epic_village_elder", 7200)
 ```
 
 ⚠️ **注意**: 冷却条件需要手动指定冷却时间，必须与定义中的 `cooldownSeconds` 一致。
+
+---
+
+#### 游戏时间区间条件 ⭐ **新增 v3.2**
+
+| 类名 | 构造参数 | 说明 |
+|------|---------|------|
+| `GameTimeInRange` | int startTick, int endTick | 检查游戏时间是否在指定区间 |
+| `IsMorning` | 无 | 检查是否是早晨（6:00-12:00） |
+| `IsAfternoon` | 无 | 检查是否是下午（12:00-18:00） |
+| `IsNight` | 无 | 检查是否是夜晚（18:00-次日6:00，跨天） |
+
+**Minecraft 时间系统**:
+- 1 游戏日 = 24000 tick = 20 分钟（现实时间）
+- 0 = 早上6点（日出）
+- 6000 = 中午12点
+- 12000 = 晚上6点（日落）
+- 18000 = 午夜12点
+
+**使用示例**:
+```java
+// 自定义时间区间（9:00-17:00）
+new DialogueCondition.GameTimeInRange(3000, 11000)
+
+// 跨天区间（22:00-凌晨6:00）
+new DialogueCondition.GameTimeInRange(16000, 0)
+
+// 使用内置时间段
+new DialogueCondition.IsMorning()   // 6:00-12:00
+new DialogueCondition.IsAfternoon() // 12:00-18:00
+new DialogueCondition.IsNight()     // 18:00-次日6:00
+```
+
+⚠️ **注意**: 当 `startTick > endTick` 时，系统自动识别为跨天区间。
 
 ---
 

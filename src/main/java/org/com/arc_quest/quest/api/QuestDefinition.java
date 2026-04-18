@@ -171,7 +171,9 @@ public final class QuestDefinition {
         return this.visualConfig.getSplash(type);
     }
 
-    /** 检测解锁条件是否全部满足 */
+    /**
+     * 检测解锁条件是否全部满足
+     */
     public boolean canUnlock(Set<ResourceLocation> completedQuests,
                              Set<String> flags,
                              Map<String, Integer> variables) {

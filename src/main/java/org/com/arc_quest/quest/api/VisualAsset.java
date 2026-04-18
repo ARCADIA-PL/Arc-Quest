@@ -12,29 +12,37 @@ import org.jetbrains.annotations.Nullable;
  */
 public record VisualAsset(
         @Nullable ResourceLocation texture,   // 纹理路径
-        float scale,                           // 缩放比例（默认1.0）
-        float offsetX,                         // X轴偏移（像素，默认0）
-        float offsetY,                         // Y轴偏移（像素，默认0）
+        float scale,                           // 缩放比例
+        float offsetX,                         // X轴偏移（像素）
+        float offsetY,                         // Y轴偏移（像素）
         int tintColor,                         // 染色颜色（ARGB，0xFFFFFFFF=无染色）
         boolean enabled                        // 是否启用
 ) {
 
-    /** 默认禁用状态。 */
+    /**
+     * 默认禁用状态。
+     */
     public static final VisualAsset DISABLED = new VisualAsset(
             null, 1.0f, 0f, 0f, 0xFFFFFFFF, false
     );
 
-    /** Builder 便捷方法。 */
+    /**
+     * Builder 便捷方法。
+     */
     public static Builder builder() {
         return new Builder();
     }
 
-    /** 快速创建启用的纹理。 */
+    /**
+     * 快速创建启用的纹理。
+     */
     public static VisualAsset of(ResourceLocation texture) {
         return new VisualAsset(texture, 1.0f, 0f, 0f, 0xFFFFFFFF, true);
     }
 
-    /** 快速创建带缩放的纹理。 */
+    /**
+     * 快速创建带缩放的纹理。
+     */
     public static VisualAsset of(ResourceLocation texture, float scale) {
         return new VisualAsset(texture, scale, 0f, 0f, 0xFFFFFFFF, true);
     }

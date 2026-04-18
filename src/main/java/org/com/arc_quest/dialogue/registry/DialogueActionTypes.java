@@ -46,19 +46,7 @@ public final class DialogueActionTypes {
 
     private static final Map<ResourceLocation, ActionHandler> HANDLERS = new ConcurrentHashMap<>();
 
-    private DialogueActionTypes() {}
-
-    /**
-     * 动作处理器函数接口。
-     */
-    @FunctionalInterface
-    public interface ActionHandler {
-        /**
-         * @param player  触发动作的玩家
-         * @param session 当前对话会话（可获取上下文、对话树等信息）
-         * @param data    动作携带的自定义 NBT 数据
-         */
-        void execute(ServerPlayer player, @Nullable DialogueSession session, CompoundTag data);
+    private DialogueActionTypes() {
     }
 
     /**
@@ -93,13 +81,30 @@ public final class DialogueActionTypes {
         }
     }
 
-    /** 检查指定类型是否已注册。 */
+    /**
+     * 检查指定类型是否已注册。
+     */
     public static boolean isRegistered(ResourceLocation typeId) {
         return HANDLERS.containsKey(typeId);
     }
 
-    /** 获取所有已注册的类型 ID（只读视图）。 */
+    /**
+     * 获取所有已注册的类型 ID（只读视图）。
+     */
     public static Set<ResourceLocation> getAllTypes() {
         return Collections.unmodifiableSet(HANDLERS.keySet());
+    }
+
+    /**
+     * 动作处理器函数接口。
+     */
+    @FunctionalInterface
+    public interface ActionHandler {
+        /**
+         * @param player  触发动作的玩家
+         * @param session 当前对话会话（可获取上下文、对话树等信息）
+         * @param data    动作携带的自定义 NBT 数据
+         */
+        void execute(ServerPlayer player, @Nullable DialogueSession session, CompoundTag data);
     }
 }

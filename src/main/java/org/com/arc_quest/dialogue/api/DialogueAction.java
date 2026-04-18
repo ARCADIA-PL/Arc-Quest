@@ -21,7 +21,6 @@ import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.QuestEventManager;
 import org.slf4j.Logger;
 
-import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -41,8 +40,9 @@ public sealed interface DialogueAction {
     }
 
 
-
-    /** 开始任务。 */
+    /**
+     * 开始任务。
+     */
     record StartQuest(String questId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
@@ -50,7 +50,9 @@ public sealed interface DialogueAction {
         }
     }
 
-    /** 强制完成任务。 */
+    /**
+     * 强制完成任务。
+     */
     record CompleteQuest(String questId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
@@ -65,7 +67,9 @@ public sealed interface DialogueAction {
         }
     }
 
-    /** 推进任务到下一阶段。 */
+    /**
+     * 推进任务到下一阶段。
+     */
     record AdvancePhase(String questId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
@@ -97,7 +101,9 @@ public sealed interface DialogueAction {
         }
     }
 
-    /** 给予经验。 */
+    /**
+     * 给予经验。
+     */
     record GiveXp(int amount) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
@@ -106,7 +112,9 @@ public sealed interface DialogueAction {
         }
     }
 
-    /** 给予物品。 */
+    /**
+     * 给予物品。
+     */
     record GiveItem(String itemId, int count) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
@@ -125,7 +133,9 @@ public sealed interface DialogueAction {
         }
     }
 
-    /** 通知对话目标（触发 TALK 类型目标检测）。 */
+    /**
+     * 通知对话目标（触发 TALK 类型目标检测）。
+     */
     record NotifyTalk(String npcId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
@@ -136,7 +146,9 @@ public sealed interface DialogueAction {
         }
     }
 
-    /** 通知交互目标（触发 INTERACT 类型目标检测）。 */
+    /**
+     * 通知交互目标（触发 INTERACT 类型目标检测）。
+     */
     record NotifyInteract(String targetId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
@@ -147,21 +159,24 @@ public sealed interface DialogueAction {
         }
     }
 
-    /** 空操作（仅关闭对话）。 */
+    /**
+     * 空操作（仅关闭对话）。
+     */
     record NoOp() implements DialogueAction {
         @Override
-        public void execute(ServerPlayer player) {}
+        public void execute(ServerPlayer player) {
+        }
     }
 
-    /** 关闭对话（由客户端处理）。 */
+    /**
+     * 关闭对话（由客户端处理）。
+     */
     record Close() implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
             // 关闭动作用于标记对话结束，实际关闭由客户端处理
         }
     }
-
-
 
 
     record RunCommand(String command) implements DialogueAction {

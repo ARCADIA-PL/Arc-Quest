@@ -108,7 +108,7 @@ public final class ClientQuestCache {
     public void updateQuest(QuestRuntimeData data) {
         String questId = data.getQuestId();
         QuestState oldState = null;
-        
+
         // 记录旧状态用于动画触发
         if (activeQuests.containsKey(questId)) {
             oldState = activeQuests.get(questId).getState();
@@ -123,7 +123,7 @@ public final class ClientQuestCache {
                 activeQuests.put(questId, data);
                 completedQuests.remove(questId);
                 failedQuests.remove(questId);
-                
+
                 // 触发动画钩子：接取任务
                 if (oldState == null) {
                     onQuestAccepted(questId);
@@ -133,7 +133,7 @@ public final class ClientQuestCache {
                 activeQuests.remove(questId);
                 completedQuests.add(questId);
                 failedQuests.remove(questId);
-                
+
                 // 触发动画钩子：完成任务
                 if (oldState != QuestState.COMPLETED) {
                     onQuestCompleted(questId);
@@ -142,7 +142,7 @@ public final class ClientQuestCache {
             case FAILED -> {
                 activeQuests.remove(questId);
                 failedQuests.add(questId);
-                
+
                 // 触发动画钩子：任务失败
                 if (oldState != QuestState.FAILED) {
                     onQuestFailed(questId);
@@ -165,7 +165,7 @@ public final class ClientQuestCache {
         }
         int oldProgress = data.getObjectiveProgress(objIndex);
         data.setObjectiveProgress(objIndex, newProgress);
-        
+
         // 触发动画钩子：目标进度更新
         if (newProgress > oldProgress) {
             onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);

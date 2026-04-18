@@ -3,10 +3,7 @@ package org.com.arc_quest.dialogue.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import org.com.arc_quest.dialogue.api.DialogueContext;
-import org.com.arc_quest.dialogue.api.DialogueNode;
-import org.com.arc_quest.dialogue.api.DialogueTree;
-import org.com.arc_quest.dialogue.api.IDialogueNpc;
+import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.capability.DialogueNpcPatch;
 import org.com.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.com.arc_quest.dialogue.registry.DialogueRegistry;
@@ -23,24 +20,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * 管理所有活跃的对话会话（服务端全局单例）。
  * <p>
  * 每个玩家同时只能有一个活跃对话。
- *
- * <h3>变更记录</h3>
- * <ul>
- *   <li>[新增] {@link #startDialogue(ServerPlayer, Entity, String, DialogueContext)}
- *       —— 实体感知的对话开启，支持上下文和 NPC 行为控制</li>
- *   <li>[改动] {@link #endDialogue(ServerPlayer)}
- *       —— 自动清理关联实体的 {@link DialogueNpcPatch} 状态</li>
- * </ul>
  */
+
 public final class DialogueSessionManager {
 
     public static final DialogueSessionManager INSTANCE = new DialogueSessionManager();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /** 玩家 UUID → 活跃会话。 */
+    /**
+     * 玩家 UUID → 活跃会话。
+     */
     private final Map<UUID, DialogueSession> sessions = new ConcurrentHashMap<>();
 
-    private DialogueSessionManager() {}
+    private DialogueSessionManager() {
+    }
 
     // ═══════════════════════════════════════════════════════
     //  公共 API
@@ -56,16 +49,7 @@ public final class DialogueSessionManager {
     }
 
     /**
-     * [新增] 为玩家开始新对话（带实体关联和上下文）。
-     * <p>
-     * 由 {@link IDialogueNpc#startDialogueWith(ServerPlayer)} 或
-     * {@link NpcDialogueHandler} 调用。
-     *
-     * @param player     对话玩家
-     * @param npcEntity  NPC 实体（可为 null，命令触发时）
-     * @param dialogueId 对话树 ID
-     * @param context    运行时上下文
-     * @return 创建的会话，或 null（对话树不存在时）
+     * 为玩家开始新对话（带实体关联和上下文）。
      */
     @Nullable
     public DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
@@ -79,29 +63,40 @@ public final class DialogueSessionManager {
     }
 
     /**
-     * [新增] 内部核心方法。
+     * 内部核心方法。
      */
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                           DialogueTree tree, DialogueContext context) {
-        // [新增] 检查对话是否可重复及冷却（使用持久化数据）
         var cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-        if (!tree.repeatable()) {
-            // 一次性对话：检查是否已经完成过
-            if (cap.hasCompletedDialogue(tree.dialogueId())) {
-                LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.",
-                    tree.dialogueId(), player.getName().getString());
-                return null;
-            }
-        } else if (tree.cooldownSeconds() > 0) {
-            // 可重复对话但有冷却：检查冷却时间
-            long lastTime = cap.getLastDialogueTime(tree.dialogueId());
-            long currentTime = System.currentTimeMillis();
-            long cooldownMs = tree.cooldownSeconds() * 1000;
 
-            if (lastTime > 0 && (currentTime - lastTime) < cooldownMs) {
-                long remainingSeconds = (cooldownMs - (currentTime - lastTime)) / 1000;
-                LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}. Remaining: {}s",
-                    tree.dialogueId(), player.getName().getString(), remainingSeconds);
+        String dialogueId = tree.dialogueId();
+        
+        //  使用新的 DialogueProgressStore API
+        var progress = cap.getDialogueProgress();
+        long nowReal = System.currentTimeMillis();
+        long nowGame = player.level().getGameTime();
+        long nowDayTime = player.level().getDayTime();  // 用于 GAME_TICK 冷却
+        
+        // 确定命名空间（用于冷却检查）
+        // 对话树级别的冷却使用对话树ID作为namespace
+
+        // 检查是否已经完成过（一次性对话）
+        if (!tree.repeatable() && progress.hasCompletedDialogue(dialogueId, dialogueId)) {
+            LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.",
+                    dialogueId, player.getName().getString());
+            return null;
+        }
+
+        // 检查冷却（使用新的 ProgressStore API）
+        if (tree.cooldownSeconds() != 0 || tree.cooldownType() != CooldownType.NONE) {
+            boolean onCooldown = progress.isDialogueOnCooldown(
+                    dialogueId, dialogueId,
+                    tree.cooldownType(), (int) tree.cooldownSeconds(), tree.resetTimeTicks(),
+                    nowReal, nowGame, nowDayTime);
+            
+            if (onCooldown) {
+                LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}.",
+                        dialogueId, player.getName().getString());
                 return null;
             }
         }
@@ -115,7 +110,7 @@ public final class DialogueSessionManager {
         DialogueSession session = new DialogueSession(player, tree, context, entityId);
         sessions.put(player.getUUID(), session);
 
-        // [新增] 设置 NPC 对话状态
+        // 设置 NPC 对话状态
         if (npcEntity instanceof IDialogueNpc) {
             DialogueNpcPatch patch = DialogueNpcPatch.get(npcEntity);
             patch.setConversing(player);
@@ -124,8 +119,8 @@ public final class DialogueSessionManager {
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}).",
                 tree.dialogueId(), player.getName().getString(), entityId);
 
-        // [新增] 记录对话时间（使用持久化数据）
-        cap.recordDialogueTime(tree.dialogueId(), System.currentTimeMillis());
+        //  记录对话访问（使用新API）
+        progress.recordDialogueVisit(dialogueId, dialogueId, nowReal, nowGame, nowDayTime);
 
         // 发送初始状态到客户端
         sendNodeToClient(session);
@@ -181,14 +176,12 @@ public final class DialogueSessionManager {
     }
 
     /**
-     * [改动] 强制结束玩家的对话。
-     * <p>
-     * 现在会自动清理关联实体的 {@link DialogueNpcPatch} 对话状态。
+     * 强制结束玩家的对话，清理关联实体的对话状态。
      */
     public void endDialogue(ServerPlayer player) {
         DialogueSession session = sessions.remove(player.getUUID());
         if (session != null) {
-            // [新增] 清理 NPC 实体对话状态
+            // 清理 NPC 实体对话状态
             if (session.getEntityId() != -1) {
                 Entity entity = player.level().getEntity(session.getEntityId());
                 if (entity instanceof IDialogueNpc) {
@@ -212,7 +205,7 @@ public final class DialogueSessionManager {
     }
 
     /**
-     * [新增] 获取玩家的活跃会话。
+     * 获取玩家的活跃会话。
      */
     @Nullable
     public DialogueSession getSession(ServerPlayer player) {
@@ -224,7 +217,7 @@ public final class DialogueSessionManager {
      * 玩家断线清理。
      */
     public void onPlayerLogout(ServerPlayer player) {
-        endDialogue(player); // [改动] 改为调用 endDialogue 以正确清理 NPC 状态
+        endDialogue(player);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -237,12 +230,12 @@ public final class DialogueSessionManager {
         if (node == null) return;
 
         String speaker = node.speaker().isEmpty() ? session.getTree().defaultNpc() : node.speaker();
-        
-        // [新增] 评估条件文本，选择合适的文本
+
+        // 评估条件文本，选择合适的文本
         String text = ConditionalTextEvaluator.evaluate(
-            player, 
-            node.conditionalTexts(), 
-            node.text()
+                player,
+                node.conditionalTexts(),
+                node.text()
         );
         text = session.processText(text);
 
@@ -256,6 +249,9 @@ public final class DialogueSessionManager {
         boolean isTerminal = node.isTerminal();
         boolean hasAutoNext = !node.hasChoices() && node.autoNextId() != null;
 
+        //  获取每个选项的冷却剩余时间
+        int[] choiceCooldowns = session.getChoiceCooldowns();
+
         S2COpenDialoguePacket packet = new S2COpenDialoguePacket(
                 session.getTree().dialogueId(),
                 node.nodeId(),
@@ -265,7 +261,8 @@ public final class DialogueSessionManager {
                 isTerminal,
                 hasAutoNext,
                 node.delayMs(),
-                session.getEntityId()
+                session.getEntityId(),
+                choiceCooldowns  //  传入冷却信息
         );
 
         ArcQuestNetwork.sendToPlayer(player, packet);

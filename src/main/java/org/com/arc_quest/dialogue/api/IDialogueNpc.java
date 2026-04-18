@@ -83,17 +83,23 @@ public interface IDialogueNpc {
                 && player.distanceTo(asEntity()) <= getMaxDialogueDistance();
     }
 
-    /** 最大对话触发距离（方块数）。 */
+    /**
+     * 最大对话触发距离（方块数）。
+     */
     default double getMaxDialogueDistance() {
         return 5.0;
     }
 
-    /** 对话期间是否注视玩家。 */
+    /**
+     * 对话期间是否注视玩家。
+     */
     default boolean shouldLookAtPlayer() {
         return true;
     }
 
-    /** 对话期间是否停止移动。 */
+    /**
+     * 对话期间是否停止移动。
+     */
     default boolean shouldStopMoving() {
         return true;
     }
@@ -116,10 +122,6 @@ public interface IDialogueNpc {
         return asEntity().getDisplayName();
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  便捷触发方法（一般不需要重写）
-    // ═══════════════════════════════════════════════════════
-
     /**
      * 发起对话。由 {@link org.com.arc_quest.dialogue.runtime.NpcDialogueHandler} 调用。
      * <p>
@@ -133,15 +135,12 @@ public interface IDialogueNpc {
 
         Entity self = asEntity();
 
-        // 检查 NPC 是否已在与其他玩家对话
         DialogueNpcPatch patch = DialogueNpcPatch.get(self);
-        if (patch != null && patch.isConversing()) return;
+        if (patch.isConversing()) return;
 
-        // 构建上下文
         DialogueContext context = buildDialogueContext(player);
         context.put("npcName", getDialogueDisplayName().getString());
 
-        // 委托给 SessionManager
         DialogueSessionManager.INSTANCE.startDialogue(player, self, dialogueId, context);
     }
 }

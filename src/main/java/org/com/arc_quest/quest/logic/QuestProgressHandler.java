@@ -56,7 +56,6 @@ public final class QuestProgressHandler {
 
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
-        if (cap == null) return false;
 
         // 检查：是否已经在进行或已完成
         if (cap.isQuestActive(questId)) {
@@ -137,7 +136,6 @@ public final class QuestProgressHandler {
 
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
-        if (cap == null) return;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) return;
@@ -167,7 +165,7 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName(), questId, phaseId,
                 objIndex, newProgress, required);
 
-        // P0优化：使用增量同步替代全量同步，减少带宽占用
+        // 使用增量同步替代全量同步，减少带宽占用
         ArcQuestNetwork.syncDeltaProgress(player, questId, objIndex, newProgress);
 
         // 触发事件
@@ -219,13 +217,13 @@ public final class QuestProgressHandler {
             // 有 choices → 等待玩家选择（不自动推进）
             LOGGER.debug("[ArcQuest] Phase {} has choices, awaiting player selection.",
                     phase.getPhaseId());
-            
+
             // 触发事件通知 GUI 显示选择界面
             QuestEventBus.fire(QuestChangeEvent.phaseChanged(
                     ResourceLocation.parse(data.getQuestId()),
                     data.getCurrentPhaseId(),
                     data.getCurrentPhaseId()));
-            
+
             // 同步状态并显示Toast
             ArcQuestNetwork.syncQuestState(player, data);
             return;
@@ -310,7 +308,6 @@ public final class QuestProgressHandler {
                                           int choiceIndex) {
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
-        if (cap == null) return;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null) return;
@@ -403,7 +400,6 @@ public final class QuestProgressHandler {
     public static void failQuest(ServerPlayer player, String questId) {
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
-        if (cap == null) return;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null) return;
@@ -425,7 +421,6 @@ public final class QuestProgressHandler {
     public static void abandonQuest(ServerPlayer player, String questId) {
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
-        if (cap == null) return;
 
         if (!cap.isQuestActive(questId)) return;
 
@@ -451,7 +446,6 @@ public final class QuestProgressHandler {
     public static void forceComplete(ServerPlayer player, String questId) {
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
-        if (cap == null) return;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null) return;
@@ -494,7 +488,6 @@ public final class QuestProgressHandler {
     public static void syncToClient(ServerPlayer player, String questId) {
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
-        if (cap == null) return;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data != null) {

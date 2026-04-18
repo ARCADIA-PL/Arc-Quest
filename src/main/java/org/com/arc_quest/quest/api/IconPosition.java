@@ -6,22 +6,34 @@ package org.com.arc_quest.quest.api;
  * 每种位置对应UI中的不同渲染点。
  */
 public enum IconPosition {
-    /** 任务列表中的缩略图标 */
+    /**
+     * 任务列表中的缩略图标
+     */
     QUEST_LIST,
 
-    /** 任务标题旁的装饰图标 */
+    /**
+     * 任务标题旁的装饰图标
+     */
     QUEST_TITLE,
 
-    /** 任务详情面板内的主图标 */
+    /**
+     * 任务详情面板内的主图标
+     */
     QUEST_DETAIL_PANEL,
 
-    /** 阶段名称旁的图标 */
+    /**
+     * 阶段名称旁的图标
+     */
     PHASE_LABEL,
 
-    /** HUD追踪栏的图标 */
+    /**
+     * HUD追踪栏的图标
+     */
     HUD_TRACKER,
 
-    /** 对话界面的NPC头像 */
+    /**
+     * 对话界面的NPC头像
+     */
     DIALOGUE_NPC_AVATAR,
 
     // ═══════════════════════════════════════════

@@ -14,7 +14,7 @@ public class S2CDeltaProgressPacket {
     private final String questId;
     private final int objectiveIndex;
     private final int newProgress;
-    
+
 
     public S2CDeltaProgressPacket(String questId, int objectiveIndex, int newProgress) {
         this.questId = questId;

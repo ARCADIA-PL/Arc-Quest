@@ -41,7 +41,8 @@ public final class NpcDialogueHandler {
     private static final ResourceLocation CAP_ID =
             ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "dialogue_npc_patch");
 
-    private NpcDialogueHandler() {}
+    private NpcDialogueHandler() {
+    }
 
     // ═══════════════════════════════════════════════════════
     //  玩家交互 → 对话触发

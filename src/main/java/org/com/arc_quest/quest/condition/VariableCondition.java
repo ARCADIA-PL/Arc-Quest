@@ -15,6 +15,7 @@ public final class VariableCondition implements ICondition {
     private final String variableName;
     private final Op operator;
     private final int expectedValue;
+
     public VariableCondition(String variableName, Op operator, int expectedValue) {
         Objects.requireNonNull(variableName);
         Objects.requireNonNull(operator);

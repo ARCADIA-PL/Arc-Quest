@@ -3,7 +3,8 @@
 **版本**: 1.0.0  
 **Minecraft**: 1.20.1 Forge  
 **Java**: 17  
-**最后更新**: 2026-04-17
+**最后更新**: 2026-04-17  
+**最新版本**: v3.2（游戏时间刻冷却系统）
 
 ---
 
@@ -38,6 +39,7 @@
 
 - [⚙️ 任务系统详解](guide/QUEST_SYSTEM.md) - 任务生命周期、目标追踪、条件判断
 - [💭 对话系统详解](guide/DIALOGUE_SYSTEM.md) - 对话树设计、NPC交互、动作执行
+- [🕒 游戏时间刻冷却系统](guide/GAME_TICK_COOLDOWN.md) ⭐ **新增** - GAME_TICK冷却、时间段条件
 - [✨ 视觉系统详解](guide/VISUAL_SYSTEM.md) - 立绘动画、图标配置、主题色
 - [❓ 常见问题](guide/FAQ.md) - 20+个常见问题解答
 
@@ -152,6 +154,7 @@ docs/
     ├── ARCHITECTURE.md       # 核心架构
     ├── QUEST_SYSTEM.md       # 任务系统详解 ✅
     ├── DIALOGUE_SYSTEM.md    # 对话系统详解 ✅
+    ├── GAME_TICK_COOLDOWN.md # 游戏时间刻冷却系统 ⭐ 新增
     ├── VISUAL_SYSTEM.md      # 视觉系统详解 ✅
     └── FAQ.md                # 常见问题 ✅
 ```
@@ -184,6 +187,39 @@ docs/
 - 补充示例
 - 优化表述
 - 添加新章节
+
+---
+
+## 🆕 最新版本特性 (v3.2)
+
+### 游戏时间刻冷却系统
+
+基于 Minecraft 世界总运行时间的精确冷却机制：
+
+**核心特性**:
+- ✅ 使用 `Level.getGameTime()` 获取世界总运行时间
+- ✅ 精确到 tick 级别（1 tick = 1/20 秒）
+- ✅ 不受 TPS 波动、玩家离线、世界暂停影响
+- ✅ 支持跨天区间（如 12000-0，晚上6点到早上6点）
+- ✅ 内置时间段条件（早晨/下午/夜晚）
+
+**快速示例**:
+```java
+// 每天早上6点重置的每日任务
+.node("daily_quest")
+    .say("今天的任务是...")
+    .repeatable(true)
+    .cooldownType(CooldownType.GAME_TICK)
+    .cooldownResetTick(0)  // 6:00重置
+
+// 根据时间段显示不同文本
+.sayIf(
+    Map.of("morning", "早上好！"),
+    new DialogueCondition.IsMorning()  // 6:00-12:00
+)
+```
+
+**详细文档**: [游戏时间刻冷却系统详解](guide/GAME_TICK_COOLDOWN.md)
 
 ---
 

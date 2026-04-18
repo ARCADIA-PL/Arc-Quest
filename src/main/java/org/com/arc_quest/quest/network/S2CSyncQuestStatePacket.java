@@ -18,10 +18,18 @@ import java.util.function.Supplier;
 public class S2CSyncQuestStatePacket {
 
     private final QuestRuntimeData data;
-    public S2CSyncQuestStatePacket(QuestRuntimeData data) { this.data = data; }
 
-    public static void encode(S2CSyncQuestStatePacket pkt, FriendlyByteBuf buf) { pkt.data.writeToNetwork(buf); }
-    public static S2CSyncQuestStatePacket decode(FriendlyByteBuf buf) { return new S2CSyncQuestStatePacket(QuestRuntimeData.readFromNetwork(buf)); }
+    public S2CSyncQuestStatePacket(QuestRuntimeData data) {
+        this.data = data;
+    }
+
+    public static void encode(S2CSyncQuestStatePacket pkt, FriendlyByteBuf buf) {
+        pkt.data.writeToNetwork(buf);
+    }
+
+    public static S2CSyncQuestStatePacket decode(FriendlyByteBuf buf) {
+        return new S2CSyncQuestStatePacket(QuestRuntimeData.readFromNetwork(buf));
+    }
 
     public static void handle(S2CSyncQuestStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
@@ -51,7 +59,8 @@ public class S2CSyncQuestStatePacket {
                             boolean allCompleted = true;
                             for (int i = 0; i < currentPhase.getObjectives().size(); i++) {
                                 if (i >= progress.length || progress[i] < currentPhase.getObjectives().get(i).getRequiredCount()) {
-                                    allCompleted = false; break;
+                                    allCompleted = false;
+                                    break;
                                 }
                             }
                             if (allCompleted) QuestHudOverlay.INSTANCE.showBranchChoiceToast(pkt.data.getQuestId());

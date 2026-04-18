@@ -13,22 +13,22 @@ import org.slf4j.Logger;
  */
 @Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class QuestCapabilityTickHandler {
-    
+
     private static final Logger LOGGER = LogUtils.getLogger();
     private static int tickCounter = 0;
-    
+
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
 
         if (event.phase != TickEvent.Phase.END) return;
         if (event.player.level().isClientSide()) return;
-        
+
         ServerPlayer player = (ServerPlayer) event.player;
-        
+
 
         tickCounter++;
         if (tickCounter % 20 != 0) return;
-        
+
 
         player.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
             if (cap instanceof QuestCapabilityImpl impl) {
@@ -36,8 +36,8 @@ public class QuestCapabilityTickHandler {
                 if (impl.isDirty()) {
 
                     impl.clearDirty();
-                    
-                    LOGGER.debug("[QuestSave] Player {} data saved (dirty flag cleared)", 
+
+                    LOGGER.debug("[QuestSave] Player {} data saved (dirty flag cleared)",
                             player.getGameProfile().getName());
                 }
             }

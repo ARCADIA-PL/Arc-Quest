@@ -41,17 +41,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 管理员命令集 — 终极修复版。
- *
- * <h3>修复记录</h3>
- * <ul>
- *   <li>FIX-1: 使用 ResourceLocationArgument 解决带冒号ID的解析中断问题</li>
- *   <li>FIX-2: resetall 复制 key 列表后再遍历</li>
- *   <li>FIX-3: suggestPhaseIds 安全获取 questId</li>
- *   <li>FIX-4: complete/fail 走 QuestProgressHandler 统一路径</li>
- *   <li>FIX-5: list 控制台安全</li>
- *   <li>FIX-6: 所有 capability 获取加 null 守卫</li>
- * </ul>
+ * 管理员命令集。
  */
 @Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ArcQuestCommands {
@@ -138,7 +128,17 @@ public class ArcQuestCommands {
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .then(Commands.argument("dialogue_id", StringArgumentType.string())
                                                 .suggests(ArcQuestCommands::suggestDialogueIds)
-                                                .executes(ArcQuestCommands::cmdDialogue))))
+                                                .executes(ArcQuestCommands::cmdDialogue)))
+                                // 对话调试子命令
+                                .then(Commands.literal("reset")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .executes(ctx -> cmdDialogueReset(ctx, null))
+                                                .then(Commands.argument("dialogue_id", StringArgumentType.string())
+                                                        .suggests(ArcQuestCommands::suggestDialogueIds)
+                                                        .executes(ctx -> cmdDialogueReset(ctx, StringArgumentType.getString(ctx, "dialogue_id"))))))
+                                .then(Commands.literal("status")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .executes(ArcQuestCommands::cmdDialogueStatus))))
 
                         // ═══ resetall ═══
                         .then(Commands.literal("resetall")
@@ -354,11 +354,11 @@ public class ArcQuestCommands {
         if (phase != null) {
             data.setCurrentPhaseId(phaseId);
             data.resetObjectives(phase.getObjectives().size());
-            
+
             // 重新注册追踪器（关键！）
             ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
             QuestProgressHandler.registerPhaseObjectives(player, def, phase);
-            
+
             QuestProgressHandler.syncToClient(player, questId);
         }
 
@@ -571,6 +571,43 @@ public class ArcQuestCommands {
     }
 
     // ═══════════════════════════════════════════════════════
+    //  /arcquest dialogue reset
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdDialogueReset(CommandContext<CommandSourceStack> ctx, String dialogueId) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        IQuestCapability cap = getCapOrError(ctx, player);
+        if (cap == null) return 0;
+
+        if (dialogueId == null) {
+            // 重置所有对话进度
+            cap.clearAllData();
+            success(ctx, Component.literal("已重置玩家 " + player.getName().getString() + " 的所有对话进度").getString());
+        } else {
+            // TODO: 实现按对话树ID重置特定进度
+            success(ctx, Component.literal("已请求重置玩家 " + player.getName().getString() + " 的对话树 " + dialogueId + "（功能开发中）").getString());
+        }
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  /arcquest dialogue status
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdDialogueStatus(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        IQuestCapability cap = getCapOrError(ctx, player);
+        if (cap == null) return 0;
+
+        MutableComponent msg = Component.literal("§e=== 对话状态 ===\n");
+        msg.append(Component.literal("§f玩家: " + player.getName().getString() + "\n"));
+        msg.append(Component.literal("§7(详细历史记录功能开发中...)\n"));
+
+        ctx.getSource().sendSuccess(() -> msg, false);
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
     //  /arcquest resetall
     // ═══════════════════════════════════════════════════════
 
@@ -581,13 +618,13 @@ public class ArcQuestCommands {
 
         // 直接清空所有数据（包括 active、completed、failed）
         cap.clearAllData();
-        
+
         // 清理追踪器
         ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
-        
+
         // 全量同步
         ArcQuestNetwork.syncFullData(player, cap);
-        
+
         success(ctx, Component.translatable("arc_quest.command.resetall.success", player.getName().getString()).getString());
         return 1;
     }

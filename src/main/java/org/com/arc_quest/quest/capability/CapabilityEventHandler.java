@@ -97,7 +97,7 @@ public final class CapabilityEventHandler {
                 serverPlayer.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
                     // 验证并修复任务数据
                     validateAndFixQuestData(serverPlayer, cap);
-                    
+
                     // 重建追踪索引
                     QuestProgressHandler.rebuildTrackingIndex(serverPlayer, cap);
 
@@ -127,9 +127,9 @@ public final class CapabilityEventHandler {
                 String questId = entry.getKey();
                 QuestRuntimeData data = entry.getValue();
                 ResourceLocation rl = ResourceLocation.tryParse(questId);
-                
+
                 if (rl == null) continue;
-                
+
                 QuestDefinition def = QuestRegistry.get(rl);
                 if (def == null) {
                     // 任务定义已被移除，标记为失败

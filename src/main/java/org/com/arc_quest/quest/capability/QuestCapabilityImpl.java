@@ -4,66 +4,70 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
 
 import javax.annotation.Nullable;
 import java.util.*;
 
 /**
  * IQuestCapability 的标准实现。
+ * <p>
+ * <b>v2 变更</b>: 对话历史从 6 个 Map 合并为 {@link DialogueProgressStore}。
  */
 public class QuestCapabilityImpl implements IQuestCapability {
 
-
     private final Map<String, QuestRuntimeData> activeQuests = new LinkedHashMap<>();
-
-
     private final Set<String> completedQuests = new LinkedHashSet<>();
-
-
     private final Set<String> failedQuests = new LinkedHashSet<>();
-
-
     private final Set<String> flags = new HashSet<>();
-
-
     private final Map<String, Integer> variables = new HashMap<>();
-    
-    // P2优化：脏标记，用于延迟保存
+
+    /**
+     * ⭐ v2: 统一对话进度存储
+     */
+    private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
+
     private boolean isDirty = false;
-    
-    // [新增] 对话历史记录
-    private final Map<String, Long> dialogueHistory = new HashMap<>();      // dialogueId -> timestamp
-    private final Map<String, Long> nodeVisitHistory = new HashMap<>();     // nodeId -> timestamp
-    private final Map<String, Long> choiceSelectionHistory = new HashMap<>(); // choiceKey -> timestamp
 
+    // ═══════════════════════════════════════════════
+    //  ⭐ v2 新增
+    // ═══════════════════════════════════════════════
 
+    @Override
+    public DialogueProgressStore getDialogueProgress() {
+        return dialogueProgress;
+    }
+
+    // ═══════════════════════════════════════════════
+    //  任务管理（不变）
+    // ═══════════════════════════════════════════════
 
     @Override
     public void addActiveQuest(QuestRuntimeData data) {
         Objects.requireNonNull(data);
         activeQuests.put(data.getQuestId(), data);
-        this.isDirty = true; // 标记为脏
+        isDirty = true;
     }
 
     @Override
     public void removeActiveQuest(String questId) {
         activeQuests.remove(questId);
-        this.isDirty = true; // 标记为脏
+        isDirty = true;
     }
 
     @Override
     public void markCompleted(String questId) {
         activeQuests.remove(questId);
         completedQuests.add(questId);
-        failedQuests.remove(questId); // 安全起见
-        this.isDirty = true; // 标记为脏
+        failedQuests.remove(questId);
+        isDirty = true;
     }
 
     @Override
     public void markFailed(String questId) {
         activeQuests.remove(questId);
         failedQuests.add(questId);
-        this.isDirty = true; // 标记为脏
+        isDirty = true;
     }
 
     @Nullable
@@ -102,12 +106,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return failedQuests.contains(questId);
     }
 
-
+    // ═══════════════════════════════════════════════
+    //  Flag（不变）
+    // ═══════════════════════════════════════════════
 
     @Override
     public void setFlag(String flag) {
         flags.add(flag);
-        this.isDirty = true; // 标记为脏
+        isDirty = true;
     }
 
     @Override
@@ -118,7 +124,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public void removeFlag(String flag) {
         flags.remove(flag);
-        this.isDirty = true; // 标记为脏
+        isDirty = true;
     }
 
     @Override
@@ -126,7 +132,9 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return Collections.unmodifiableSet(flags);
     }
 
-
+    // ═══════════════════════════════════════════════
+    //  Variable（不变）
+    // ═══════════════════════════════════════════════
 
     @Override
     public int getVariable(String key) {
@@ -136,13 +144,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public void setVariable(String key, int value) {
         variables.put(key, value);
-        this.isDirty = true; // 标记为脏
+        isDirty = true;
     }
 
     @Override
     public void incrementVariable(String key, int amount) {
         variables.merge(key, amount, Integer::sum);
-        this.isDirty = true; // 标记为脏
+        isDirty = true;
     }
 
     @Override
@@ -150,12 +158,15 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return Collections.unmodifiableMap(variables);
     }
 
-
+    // ═══════════════════════════════════════════════
+    //  序列化
+    // ═══════════════════════════════════════════════
 
     @Override
     public CompoundTag serializeNBT() {
         CompoundTag root = new CompoundTag();
 
+        // 任务
         ListTag activeList = new ListTag();
         for (QuestRuntimeData data : activeQuests.values()) {
             activeList.add(data.serializeNBT());
@@ -163,47 +174,28 @@ public class QuestCapabilityImpl implements IQuestCapability {
         root.put("ActiveQuests", activeList);
 
         ListTag completedList = new ListTag();
-        for (String id : completedQuests) {
-            completedList.add(StringTag.valueOf(id));
-        }
+        for (String id : completedQuests) completedList.add(StringTag.valueOf(id));
         root.put("CompletedQuests", completedList);
 
         ListTag failedList = new ListTag();
-        for (String id : failedQuests) {
-            failedList.add(StringTag.valueOf(id));
-        }
+        for (String id : failedQuests) failedList.add(StringTag.valueOf(id));
         root.put("FailedQuests", failedList);
 
+        // Flag
         ListTag flagList = new ListTag();
-        for (String f : flags) {
-            flagList.add(StringTag.valueOf(f));
-        }
+        for (String f : flags) flagList.add(StringTag.valueOf(f));
         root.put("Flags", flagList);
 
+        // Variable
         CompoundTag varsTag = new CompoundTag();
-        for (Map.Entry<String, Integer> e : variables.entrySet()) {
-            varsTag.putInt(e.getKey(), e.getValue());
-        }
+        for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
         root.put("Variables", varsTag);
 
-        // [新增] 序列化对话历史
-        CompoundTag dialogueHistoryTag = new CompoundTag();
-        for (Map.Entry<String, Long> e : dialogueHistory.entrySet()) {
-            dialogueHistoryTag.putLong(e.getKey(), e.getValue());
-        }
-        root.put("DialogueHistory", dialogueHistoryTag);
+        // ⭐ v2: 统一对话进度
+        root.put("DialogueProgress", dialogueProgress.serialize());
 
-        CompoundTag nodeVisitHistoryTag = new CompoundTag();
-        for (Map.Entry<String, Long> e : nodeVisitHistory.entrySet()) {
-            nodeVisitHistoryTag.putLong(e.getKey(), e.getValue());
-        }
-        root.put("NodeVisitHistory", nodeVisitHistoryTag);
-
-        CompoundTag choiceSelectionHistoryTag = new CompoundTag();
-        for (Map.Entry<String, Long> e : choiceSelectionHistory.entrySet()) {
-            choiceSelectionHistoryTag.putLong(e.getKey(), e.getValue());
-        }
-        root.put("ChoiceSelectionHistory", choiceSelectionHistoryTag);
+        // 格式版本标记
+        root.putInt("_version", 2);
 
         return root;
     }
@@ -216,6 +208,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         flags.clear();
         variables.clear();
 
+        // 任务
         ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
         for (int i = 0; i < activeList.size(); i++) {
             QuestRuntimeData data = QuestRuntimeData.deserializeNBT(activeList.getCompound(i));
@@ -223,53 +216,35 @@ public class QuestCapabilityImpl implements IQuestCapability {
         }
 
         ListTag completedList = root.getList("CompletedQuests", Tag.TAG_STRING);
-        for (int i = 0; i < completedList.size(); i++) {
-            completedQuests.add(completedList.getString(i));
-        }
+        for (int i = 0; i < completedList.size(); i++) completedQuests.add(completedList.getString(i));
 
         ListTag failedList = root.getList("FailedQuests", Tag.TAG_STRING);
-        for (int i = 0; i < failedList.size(); i++) {
-            failedQuests.add(failedList.getString(i));
-        }
+        for (int i = 0; i < failedList.size(); i++) failedQuests.add(failedList.getString(i));
 
         ListTag flagList = root.getList("Flags", Tag.TAG_STRING);
-        for (int i = 0; i < flagList.size(); i++) {
-            flags.add(flagList.getString(i));
-        }
+        for (int i = 0; i < flagList.size(); i++) flags.add(flagList.getString(i));
 
         CompoundTag varsTag = root.getCompound("Variables");
-        for (String key : varsTag.getAllKeys()) {
-            variables.put(key, varsTag.getInt(key));
-        }
+        for (String key : varsTag.getAllKeys()) variables.put(key, varsTag.getInt(key));
 
-        // [新增] 反序列化对话历史
-        if (root.contains("DialogueHistory", Tag.TAG_COMPOUND)) {
-            CompoundTag dialogueHistoryTag = root.getCompound("DialogueHistory");
-            for (String key : dialogueHistoryTag.getAllKeys()) {
-                dialogueHistory.put(key, dialogueHistoryTag.getLong(key));
-            }
-        }
+        // ⭐ v2: 对话进度 —— 自动检测新旧格式
+        int version = root.getInt("_version"); // 旧格式无此字段，默认0
 
-        if (root.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
-            CompoundTag nodeVisitHistoryTag = root.getCompound("NodeVisitHistory");
-            for (String key : nodeVisitHistoryTag.getAllKeys()) {
-                nodeVisitHistory.put(key, nodeVisitHistoryTag.getLong(key));
-            }
-        }
-
-        if (root.contains("ChoiceSelectionHistory", Tag.TAG_COMPOUND)) {
-            CompoundTag choiceSelectionHistoryTag = root.getCompound("ChoiceSelectionHistory");
-            for (String key : choiceSelectionHistoryTag.getAllKeys()) {
-                choiceSelectionHistory.put(key, choiceSelectionHistoryTag.getLong(key));
-            }
+        if (version >= 2 && root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
+            // 新格式：直接反序列化
+            dialogueProgress.deserialize(root.getCompound("DialogueProgress"));
+        } else if (root.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
+            // 旧格式：迁移
+            dialogueProgress.migrateFromLegacy(root);
         }
     }
 
-
+    // ═══════════════════════════════════════════════
+    //  其他
+    // ═══════════════════════════════════════════════
 
     @Override
     public void copyFrom(IQuestCapability other) {
-
         this.deserializeNBT(other.serializeNBT());
     }
 
@@ -280,89 +255,24 @@ public class QuestCapabilityImpl implements IQuestCapability {
         failedQuests.clear();
         flags.clear();
         variables.clear();
-        dialogueHistory.clear();
-        nodeVisitHistory.clear();
-        choiceSelectionHistory.clear();
-        this.isDirty = true; // 标记为脏
+        dialogueProgress.clear();
+        isDirty = true;
     }
-    
-
-    
 
     public boolean isDirty() {
-        if (this.isDirty) return true;
-        
-
+        if (isDirty) return true;
+        if (dialogueProgress.isDirty()) return true;
         for (QuestRuntimeData data : activeQuests.values()) {
             if (data.isDirty()) return true;
         }
-        
         return false;
     }
-    
 
     public void clearDirty() {
-        this.isDirty = false;
+        isDirty = false;
+        dialogueProgress.clearDirty();
         for (QuestRuntimeData data : activeQuests.values()) {
             data.clearDirty();
         }
-    }
-    
-    // ═══════════════════════════════════════════════════════
-    //  对话历史记录实现
-    // ═══════════════════════════════════════════════════════
-
-    @Override
-    public void recordDialogueTime(String dialogueId, long timestamp) {
-        dialogueHistory.put(dialogueId, timestamp);
-        this.isDirty = true;
-    }
-
-    @Override
-    public long getLastDialogueTime(String dialogueId) {
-        return dialogueHistory.getOrDefault(dialogueId, 0L);
-    }
-
-    @Override
-    public boolean hasCompletedDialogue(String dialogueId) {
-        return dialogueHistory.containsKey(dialogueId);
-    }
-
-    @Override
-    public void markDialogueCompleted(String dialogueId) {
-        dialogueHistory.put(dialogueId, System.currentTimeMillis());
-        this.isDirty = true;
-    }
-
-    @Override
-    public void recordNodeVisit(String nodeId, long timestamp) {
-        nodeVisitHistory.put(nodeId, timestamp);
-        this.isDirty = true;
-    }
-
-    @Override
-    public long getLastNodeVisit(String nodeId) {
-        return nodeVisitHistory.getOrDefault(nodeId, 0L);
-    }
-
-    @Override
-    public boolean hasVisitedNode(String nodeId) {
-        return nodeVisitHistory.containsKey(nodeId);
-    }
-
-    @Override
-    public void recordChoiceSelection(String choiceKey, long timestamp) {
-        choiceSelectionHistory.put(choiceKey, timestamp);
-        this.isDirty = true;
-    }
-
-    @Override
-    public long getLastChoiceSelection(String choiceKey) {
-        return choiceSelectionHistory.getOrDefault(choiceKey, 0L);
-    }
-
-    @Override
-    public boolean hasSelectedChoice(String choiceKey) {
-        return choiceSelectionHistory.containsKey(choiceKey);
     }
 }

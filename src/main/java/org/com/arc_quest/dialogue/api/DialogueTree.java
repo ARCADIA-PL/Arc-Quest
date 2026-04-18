@@ -17,6 +17,8 @@ import java.util.Map;
  * @param visualConfig    可选的 UI 视觉配置（可为 null，使用默认样式）
  * @param repeatable      是否可重复对话（默认 true）
  * @param cooldownSeconds 对话冷却时间（秒），0 = 无冷却，仅当 repeatable=true 时有效
+ * @param cooldownType    冷却类型（SECONDS=秒级, GAME_DAY=游戏日, GAME_TICK=固定时间刻）
+ * @param resetTimeTicks  重置时间刻（Minecraft tick），仅当 cooldownType=GAME_TICK 时有效
  */
 public record DialogueTree(
         String dialogueId,
@@ -25,7 +27,9 @@ public record DialogueTree(
         Map<String, DialogueNode> nodes,
         @Nullable QuestVisualConfig visualConfig,
         boolean repeatable,
-        long cooldownSeconds
+        long cooldownSeconds,
+        CooldownType cooldownType,
+        int resetTimeTicks
 ) {
 
     /**
@@ -33,7 +37,7 @@ public record DialogueTree(
      */
     public DialogueTree(String dialogueId, String defaultNpc, String startNodeId,
                         Map<String, DialogueNode> nodes, @Nullable QuestVisualConfig visualConfig) {
-        this(dialogueId, defaultNpc, startNodeId, nodes, visualConfig, true, 0);
+        this(dialogueId, defaultNpc, startNodeId, nodes, visualConfig, true, 0, CooldownType.NONE, 0);
     }
 
     /**

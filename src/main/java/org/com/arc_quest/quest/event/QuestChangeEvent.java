@@ -34,6 +34,7 @@ public final class QuestChangeEvent {
     private final int objectiveIndex;
     private final int currentProgress;
     private final int requiredProgress;
+
     private QuestChangeEvent(Builder builder) {
         this.type = builder.type;
         this.questId = builder.questId;

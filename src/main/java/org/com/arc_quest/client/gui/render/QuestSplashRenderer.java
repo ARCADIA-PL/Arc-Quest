@@ -10,18 +10,16 @@ import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.SplashType;
 
 public class QuestSplashRenderer {
+    // 完美继承 Ares Genesis 的顶级时间轴配置
+    private static final float TIME_ENTER = 700f;
+    private static final float TIME_HOLD = 2900f;
+    private static final float TIME_EXIT = 500f;
+    private static final float MAX_DRIFT = 3.0f;
+    private static final float FLY_DISTANCE = 4.0f;
     private static QuestDefinition activeQuest = null;
     private static SplashType activeType = null;
     private static ResourceLocation activeTexture = null;
     private static long startTime = 0;
-
-    // 完美继承 Ares Genesis 的顶级时间轴配置
-    private static final float TIME_ENTER = 700f;
-    private static final float TIME_HOLD  = 2900f;
-    private static final float TIME_EXIT  = 500f;
-
-    private static final float MAX_DRIFT = 3.0f;
-    private static final float FLY_DISTANCE = 4.0f;
 
     public static void trigger(QuestDefinition quest, SplashType type, ResourceLocation texture) {
         if (quest != null && texture != null) {
@@ -51,7 +49,7 @@ public class QuestSplashRenderer {
         int frameW = 400;
         int frameH = 225;
 
-        // 动态缩放：占据屏幕高度的 70% (黄金视觉比例)
+        // 动态缩放：占据屏幕高度的 70%
         float finalScale = (screenHeight * 0.70f) / (float) frameH;
 
         Font font = Minecraft.getInstance().font;
@@ -61,7 +59,7 @@ public class QuestSplashRenderer {
 
         float alpha = 1f;
 
-        // 【核心修改】精准锚定屏幕绝对正中央
+        // 精准锚定屏幕绝对正中央
         float baseX = (screenWidth / 2f) - ((frameW * finalScale) / 2f);
         float currentY = (screenHeight / 2f) - ((frameH * finalScale) / 2f);
 
@@ -82,7 +80,7 @@ public class QuestSplashRenderer {
         if (elapsed < TIME_ENTER) {
             float t = elapsed / TIME_ENTER;
             t = Math.min(1.0f, t);
-            float easeOut = (float)(1.0 - Math.pow(1.0 - t, 5)); // Ease Out Quint
+            float easeOut = (float) (1.0 - Math.pow(1.0 - t, 5)); // Ease Out Quint
 
             revealProgress = easeOut;
             alpha = easeOut;
@@ -104,13 +102,13 @@ public class QuestSplashRenderer {
         } else {
             float t = (elapsed - TIME_ENTER - TIME_HOLD) / TIME_EXIT;
             t = Math.min(1.0f, t);
-            float easeIn = (float)Math.pow(t, 4.0); // Ease In Quart
+            float easeIn = (float) Math.pow(t, 4.0); // Ease In Quart
 
             wipeProgress = easeIn;
             float startExitX = baseX + actualDrift;
             currentX = startExitX + (easeIn * actualFlyDist * 1.5f);
 
-            alpha = 1.0f - (float)Math.pow(t, 8.0);
+            alpha = 1.0f - (float) Math.pow(t, 8.0);
             textFade = 1f - easeIn;
             textDriftX = easeIn * 40f;
         }
@@ -124,13 +122,13 @@ public class QuestSplashRenderer {
         float lineRightEdge = currentX + (20 * scaleAnim) + targetLineWidth + 50f;
         float maxDrawWidth = Math.max(absoluteRightEdge, lineRightEdge);
 
-        int scX1 = (int)(currentX - 50);
-        int scX2 = (int)(maxDrawWidth + 50);
+        int scX1 = (int) (currentX - 50);
+        int scX2 = (int) (maxDrawWidth + 50);
 
         if (elapsed < TIME_ENTER) {
-            scX2 = (int)(currentX + (maxDrawWidth - currentX) * revealProgress);
+            scX2 = (int) (currentX + (maxDrawWidth - currentX) * revealProgress);
         } else if (elapsed >= TIME_ENTER + TIME_HOLD) {
-            scX2 = (int)(currentX + (maxDrawWidth - currentX) * (1.0f - wipeProgress));
+            scX2 = (int) (currentX + (maxDrawWidth - currentX) * (1.0f - wipeProgress));
         }
 
         // ==========================================
@@ -142,7 +140,7 @@ public class QuestSplashRenderer {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int globalDimAlpha = (int)(alpha * 100); // 极限克制
+        int globalDimAlpha = (int) (alpha * 100); // 极限克制
         if (globalDimAlpha > 0) {
             guiGraphics.fill(0, 0, screenWidth, screenHeight, globalDimAlpha << 24);
         }
@@ -165,7 +163,7 @@ public class QuestSplashRenderer {
         guiGraphics.setColor(1f, 1f, 1f, 1f);
 
         // 雕花：左侧的主题色机能线
-        int borderAlpha = Math.max(0, Math.min(255, (int)(alpha * 255)));
+        int borderAlpha = Math.max(0, Math.min(255, (int) (alpha * 255)));
         int borderColor = (borderAlpha << 24) | (themeColor & 0xFFFFFF);
         guiGraphics.fill(0, 0, 3, frameH, borderColor);
 
@@ -188,7 +186,7 @@ public class QuestSplashRenderer {
 
         guiGraphics.pose().translate(textStartX, textStartY, 50);
 
-        int baseAlpha = Math.max(0, Math.min(255, (int)(textFade * 255)));
+        int baseAlpha = Math.max(0, Math.min(255, (int) (textFade * 255)));
         int titleColor = (baseAlpha << 24) | 0xFFFFFF;
         int subColor = (baseAlpha << 24) | 0xAAAAAA;
         int statusColor = (baseAlpha << 24) | (themeColor & 0xFFFFFF);
@@ -218,10 +216,10 @@ public class QuestSplashRenderer {
         currentLineWidth = Math.max(0f, currentLineWidth);
         int lineY = 28;
         if (baseAlpha > 5 && currentLineWidth > 0) {
-            guiGraphics.fill(0, lineY, (int)currentLineWidth, lineY + 1, lineColor);
+            guiGraphics.fill(0, lineY, (int) currentLineWidth, lineY + 1, lineColor);
             if (currentLineWidth > 5) {
                 // 末尾的小方块游标
-                guiGraphics.fill((int)currentLineWidth, lineY - 2, (int)currentLineWidth + 4, lineY + 3, lineColor);
+                guiGraphics.fill((int) currentLineWidth, lineY - 2, (int) currentLineWidth + 4, lineY + 3, lineColor);
             }
         }
 

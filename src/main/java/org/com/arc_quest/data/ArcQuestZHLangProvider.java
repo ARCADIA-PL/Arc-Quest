@@ -251,40 +251,40 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // 村庄长老
         // ═══════════════════════════════════════════
         add("dialogue.epic_village_elder.npc_name", "§6§l村庄长老");
-        
+
         // 起始节点 - 多种状态
         add("dialogue.epic_village_elder.start.newcomer",
                 "§f欢迎你，陌生的旅人。我是这片土地的守护者。\n"
                         + "如果你准备好了，我可以告诉你关于这个世界的真相……");
         add("dialogue.epic_village_elder.start.choice_intro",
                 "请告诉我，发生了什么？");
-        
+
         add("dialogue.epic_village_elder.start.phase_gather_wood",
                 "§f冒险者，收集木材制作武器吧！\n"
                         + "僵尸大军随时可能来袭，我们必须做好准备。");
         add("dialogue.epic_village_elder.start.choice_wood_tip",
                 "我会尽快完成的");
-        
+
         add("dialogue.epic_village_elder.start.phase_talk_villager",
                 "§f很好，你已经武装了自己。\n"
                         + "现在，让我告诉你接下来的计划……");
         add("dialogue.epic_village_elder.start.choice_accept_mission",
                 "我准备好了，请下达命令！");
-        
+
         add("dialogue.epic_village_elder.start.phase_defend",
                 "§c§l警告！僵尸大军正在逼近！\n"
                         + "§f拿起你的武器，保卫我们的家园！\n"
                         + "§e（获得力量药水 x1）");
         add("dialogue.epic_village_elder.start.choice_encourage",
                 "为了村庄！");
-        
+
         add("dialogue.epic_village_elder.start.prologue_done",
                 "§a§l干得漂亮，勇士！\n"
                         + "§f序章已经完成，但真正的挑战才刚刚开始。\n"
                         + "矿洞深处传来诡异的回响……你准备好探索了吗？");
         add("dialogue.epic_village_elder.start.choice_start_chapter1",
                 "我准备好了，开始第一章！");
-        
+
         add("dialogue.epic_village_elder.start.chapter1_done",
                 "§b§l难以置信……你竟然击败了矿洞守卫！\n"
                         + "§f现在，你面临一个重要的选择：\n"
@@ -293,7 +293,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "你的选择将决定最终的命运……");
         add("dialogue.epic_village_elder.start.choice_branch",
                 "我想了解更多关于这两个选择");
-        
+
         add("dialogue.epic_village_elder.start.legendary",
                 "§5§l✨ 传奇英雄 ✨\n"
                         + "§f你做到了！末影龙已被击败，世界恢复了和平。\n"
@@ -301,12 +301,12 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "§e（获得村庄英雄效果 + 100经验）");
         add("dialogue.epic_village_elder.start.choice_legendary",
                 "这是我的荣幸");
-        
+
         add("dialogue.epic_village_elder.start.default",
                 "§f祝你旅途顺利，冒险者。");
         add("dialogue.epic_village_elder.start.choice_default",
                 "再见");
-        
+
         // 介绍故事背景
         add("dialogue.epic_village_elder.intro_story.text",
                 "§6§l命运的齿轮开始转动……\n\n"
@@ -318,7 +318,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "我愿意接受这个使命！");
         add("dialogue.epic_village_elder.intro_story.choice_decline",
                 "我需要时间考虑");
-        
+
         // 序章已接受
         add("dialogue.epic_village_elder.prologue_accepted.text",
                 "§a§l任务已接受！\n\n"
@@ -327,7 +327,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "§e祝你好运，勇士！");
         add("dialogue.epic_village_elder.prologue_accepted.choice_ok",
                 "明白了！");
-        
+
         // 第一章已接受
         add("dialogue.epic_village_elder.chapter1_accepted.text",
                 "§b§l第一章：深渊的低语\n\n"
@@ -336,7 +336,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "§e目标：收集煤炭 x16、木棍 x8");
         add("dialogue.epic_village_elder.chapter1_accepted.choice_ok",
                 "我会小心的");
-        
+
         // 分支选择介绍
         add("dialogue.epic_village_elder.branch_introduction.text",
                 "§6§l两条道路，两种命运……\n\n"
@@ -353,7 +353,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "我想了解探索之路");
         add("dialogue.epic_village_elder.branch_introduction.choice_think",
                 "让我再想想");
-        
+
         // 解释战斗路线
         add("dialogue.epic_village_elder.explain_combat.text",
                 "§c§l战斗之路：烈焰的试炼\n\n"
@@ -365,7 +365,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "§c警告：这条路充满危险，但回报丰厚！");
         add("dialogue.epic_village_elder.explain_combat.choice_confirm",
                 "我选择战斗！");
-        
+
         // 解释探索路线
         add("dialogue.epic_village_elder.explain_exploration.text",
                 "§9§l探索之路：深海的遗言\n\n"
@@ -377,7 +377,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "§9提示：准备好水下呼吸药水！");
         add("dialogue.epic_village_elder.explain_exploration.choice_confirm",
                 "我选择探索！");
-        
+
         // 拒绝节点
         add("dialogue.epic_village_elder.decline.text",
                 "§f没关系，当你准备好的时候再来找我吧。\n"
@@ -389,21 +389,21 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // 铁匠
         // ═══════════════════════════════════════════
         add("dialogue.epic_blacksmith.npc_name", "§8§l铁匠");
-        
+
         add("dialogue.epic_blacksmith.start.early",
                 "§f嘿，新手！需要武器吗？\n"
                         + "我现在只有石制装备，但足够应付初期的战斗了。\n"
                         + "§e（石剑 x1 = 5金币）");
         add("dialogue.epic_blacksmith.start.choice_buy_stone_sword",
                 "给我一把石剑");
-        
+
         add("dialogue.epic_blacksmith.start.mid",
                 "§7哦？你已经开始探索矿洞了？\n"
                         + "那就需要更好的装备了！\n"
                         + "§e（全套铁甲 = 50金币）");
         add("dialogue.epic_blacksmith.start.choice_buy_iron_gear",
                 "我要铁制装备");
-        
+
         add("dialogue.epic_blacksmith.start.late",
                 "§b哇，你已经完成了第一章？！\n"
                         + "看来你是认真的冒险者啊。\n"
@@ -411,7 +411,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "§e（全套钻石甲 = 100金币）");
         add("dialogue.epic_blacksmith.start.choice_buy_diamond_gear",
                 "钻石装备听起来不错");
-        
+
         add("dialogue.epic_blacksmith.start.legendary",
                 "§5§l传奇英雄驾到！\n"
                         + "§f能为你打造装备是我的荣幸。\n"
@@ -419,7 +419,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "§e（下界合金锭 x1 = 200金币）");
         add("dialogue.epic_blacksmith.start.choice_buy_netherite",
                 "我要最强的装备！");
-        
+
         add("dialogue.epic_blacksmith.start.default",
                 "§f需要什么尽管说，我的手艺可是村里最好的！");
         add("dialogue.epic_blacksmith.start.choice_leave",
@@ -429,35 +429,35 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // 商人
         // ═══════════════════════════════════════════
         add("dialogue.epic_merchant.npc_name", "§a§l旅行商人");
-        
+
         add("dialogue.epic_merchant.start.phase_gather",
                 "§f冒险者，要出发了吗？\n"
                         + "带上些食物吧，路上可能会饿。\n"
                         + "§e（面包 x4 = 2金币）");
         add("dialogue.epic_merchant.start.choice_buy_food",
                 "来点面包");
-        
+
         add("dialogue.epic_merchant.start.phase_defend",
                 "§c听说僵尸要来袭击？\n"
                         + "这些治疗药水可能会救你一命！\n"
                         + "§e（治疗药水 x2 = 10金币）");
         add("dialogue.epic_merchant.start.choice_buy_potions",
                 "给我一些药水");
-        
+
         add("dialogue.epic_merchant.start.phase_chapter1",
                 "§8要去矿洞？明智的选择是带上足够的火把。\n"
                         + "黑暗中什么都有可能发生……\n"
                         + "§e（火把 x32 = 5金币）");
         add("dialogue.epic_merchant.start.choice_buy_torches",
                 "来一组火把");
-        
+
         add("dialogue.epic_merchant.start.default",
                 "§f欢迎来到我的小店！商品琳琅满目，应有尽有~");
         add("dialogue.epic_merchant.start.choice_browse",
                 "让我看看有什么商品");
         add("dialogue.epic_merchant.start.choice_leave",
                 "下次光临");
-        
+
         add("dialogue.epic_merchant.shop_menu.text",
                 "§a§l=== 商人货架 ===\n\n"
                         + "§f请选择你想购买的商品类别：");
@@ -472,39 +472,39 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // 流浪商人 - sayIf() 示例 NPC
         // ═══════════════════════════════════════════
         add("dialogue.epic_wandering_trader.npc_name", "§a§l流浪商人");
-        
+
         // 起始节点 - 5种状态
         add("dialogue.epic_wandering_trader.start.newbie",
                 "§f哟，新面孔！我是周游各地的流浪商人。\n"
                         + "§e如果你刚开始冒险，我可以给你一些建议……");
-        
+
         add("dialogue.epic_wandering_trader.start.prologue_active",
                 "§f哦？你已经接受了长老的任务？\n"
                         + "§e序章进行中……加油啊，冒险者！");
-        
+
         add("dialogue.epic_wandering_trader.start.chapter1_ready",
                 "§b听说你完成了序章？太厉害了！\n"
                         + "§e矿洞深处有宝藏等待着你，准备好探索了吗？");
-        
+
         add("dialogue.epic_wandering_trader.start.chapter1_active",
                 "§8矿洞很危险吧？小心洞穴蜘蛛！\n"
                         + "§e如果装备不够好，我这里有一些不错的商品……");
-        
+
         add("dialogue.epic_wandering_trader.start.legendary",
                 "§5§l✨ 传奇英雄！✨\n"
                         + "§f没想到能在这里见到击败末影龙的大人物！\n"
                         + "§e我的小店蓬荜生辉，请随意挑选！");
-        
+
         add("dialogue.epic_wandering_trader.start.default",
                 "§f欢迎来到我的移动商店！商品每日更新~");
-        
+
         add("dialogue.epic_wandering_trader.start.choice_shop",
                 "我想看看商品");
         add("dialogue.epic_wandering_trader.start.choice_rumors",
                 "有什么传闻吗？");
         add("dialogue.epic_wandering_trader.start.choice_bye",
                 "再见");
-        
+
         // 商店菜单
         add("dialogue.epic_wandering_trader.shop_menu.text",
                 "§a§l=== 流浪商人货架 ===\n\n"
@@ -515,7 +515,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "⚔️ 武器装备");
         add("dialogue.epic_wandering_trader.shop_menu.choice_back",
                 "← 返回");
-        
+
         // 装备菜单
         add("dialogue.epic_wandering_trader.equipment_menu.text",
                 "§6§l=== 武器装备 ===\n\n"
@@ -528,14 +528,14 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "💎 钻石甲全套（精英装备）");
         add("dialogue.epic_wandering_trader.equipment_menu.choice_back",
                 "← 返回");
-        
+
         // 购买完成
         add("dialogue.epic_wandering_trader.purchase_complete.text",
                 "§a§l交易完成！\n\n"
                         + "§f感谢惠顾，祝你好运！");
         add("dialogue.epic_wandering_trader.purchase_complete.choice_continue",
                 "继续购物");
-        
+
         // 传闻
         add("dialogue.epic_wandering_trader.rumors.text",
                 "§6§l=== 最新传闻 ===\n\n"
@@ -545,6 +545,153 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                         + "§f• 末影龙的力量正在苏醒\n\n"
                         + "§e这些都是我从各地旅人那里听来的~");
         add("dialogue.epic_wandering_trader.rumors.choice_back",
+                "← 返回");
+
+        // ═══════════════════════════════════════════
+        // 村庄守卫 - 展示游戏时间刻冷却、时间段条件、对话历史状态和权重
+        // ═══════════════════════════════════════════
+        add("dialogue.epic_village_guard.npc_name", "§b§l村庄守卫");
+
+        // 起始节点 - 根据时间段显示不同问候语
+        add("dialogue.epic_village_guard.start.morning",
+                "§f早上好，冒险者！§e新的一天开始了，村庄很安全。\n"
+                        + "需要我帮忙吗？");
+
+        add("dialogue.epic_village_guard.start.afternoon",
+                "§f下午好！§e阳光正好，适合巡逻或训练。\n"
+                        + "有什么我能帮你的吗？");
+
+        add("dialogue.epic_village_guard.start.night",
+                "§8夜晚好……§7保持警惕，外面有危险。\n"
+                        + "如果你需要帮助，我可以提供一些支持。");
+
+        add("dialogue.epic_village_guard.start.default",
+                "§f你好，我是村庄的守卫。\n"
+                        + "负责保护这里的安全。");
+
+        add("dialogue.epic_village_guard.start.choice_intro",
+                "你是谁？");
+        add("dialogue.epic_village_guard.start.choice_daily",
+                "📋 领取每日巡逻任务（每天6:00重置）");
+        add("dialogue.epic_village_guard.start.choice_training",
+                "⚔️ 请求训练（1小时冷却）");
+        add("dialogue.epic_village_guard.start.choice_chat",
+                "闲聊");
+        add("dialogue.epic_village_guard.start.choice_bye",
+                "再见");
+
+        // 首次介绍节点
+        add("dialogue.epic_village_guard.intro.text",
+                "§b§l=== 村庄守卫 ===\n\n"
+                        + "§f我叫阿尔文，是这里的守卫队长。\n"
+                        + "§e我的职责是保护村庄免受怪物侵扰。\n\n"
+                        + "§a每天早上6点，我会发布巡逻任务。\n"
+                        + "§6每小时可以提供一次战斗训练。\n\n"
+                        + "§d很高兴认识你，冒险者！");
+        add("dialogue.epic_village_guard.intro.choice_ok",
+                "很高兴认识你");
+
+        // 每日巡逻任务
+        add("dialogue.epic_village_guard.daily_patrol.text",
+                "§a§l=== 每日巡逻任务 ===\n\n"
+                        + "§f今天的任务是巡视村庄周边，确保没有怪物出没。\n\n"
+                        + "§a奖励：\n"
+                        + "§f• 面包 x3\n"
+                        + "§f• 经验值 10\n\n"
+                        + "§e此任务每天早上6点重置。");
+        add("dialogue.epic_village_guard.daily_patrol.choice_thanks",
+                "谢谢！");
+
+        // 训练请求
+        add("dialogue.epic_village_guard.training.text",
+                "§6§l=== 战斗训练 ===\n\n"
+                        + "§f让我教你一些基本的战斗技巧。\n"
+                        + "§e这瓶力量药水可以帮助你练习。\n\n"
+                        + "§a获得：力量药水 x1\n\n"
+                        + "§c下次训练需要等待1小时。");
+        add("dialogue.epic_village_guard.training.choice_thanks",
+                "非常感谢！");
+
+        // 闲聊节点 - 根据时间段显示不同内容
+        add("dialogue.epic_village_guard.chat.morning",
+                "§f早晨的空气真清新啊！\n"
+                        + "§e我最喜欢这个时候巡逻，能看到日出。\n\n"
+                        + "§a今天也会是平静的一天吧……大概。");
+
+        add("dialogue.epic_village_guard.chat.afternoon",
+                "§f下午的阳光有点刺眼呢。\n"
+                        + "§e不过这样的天气最适合训练新兵了。\n\n"
+                        + "§a你要不要也来试试？");
+
+        add("dialogue.epic_village_guard.chat.night",
+                "§8夜晚是最危险的时候……\n"
+                        + "§7僵尸、骷髅、苦力怕都会出来活动。\n\n"
+                        + "§c一定要小心，别离开村庄太远。");
+
+        add("dialogue.epic_village_guard.chat.default",
+                "§f最近村庄还算平静。\n"
+                        + "§e但我们要时刻保持警惕。");
+
+        add("dialogue.epic_village_guard.chat.choice_back",
+                "← 返回");
+
+        // ═══════════════════════════════════════════
+        // 神秘商人 - 展示自定义时间区间和复杂条件
+        // ═══════════════════════════════════════════
+        add("dialogue.epic_mysterious_merchant.npc_name", "§5§l神秘商人");
+
+        // 起始节点 - 只在特定时间开放
+        add("dialogue.epic_mysterious_merchant.start.open",
+                "§5§l✨ 深夜商店已开放 ✨\n\n"
+                        + "§f欢迎来到我的秘密商店……\n"
+                        + "§e只有在深夜时分，我才会现身。\n\n"
+                        + "§d这里有你在别处找不到的稀有物品。");
+
+        add("dialogue.epic_mysterious_merchant.start.closed_morning",
+                "§8……\n\n"
+                        + "§7商人似乎在休息。\n"
+                        + "§e他只在深夜出现。");
+
+        add("dialogue.epic_mysterious_merchant.start.closed_afternoon",
+                "§8……\n\n"
+                        + "§7商人不在这里。\n"
+                        + "§e也许晚上再来看看吧。");
+
+        add("dialogue.epic_mysterious_merchant.start.default",
+                "§8一个神秘的商人，似乎在等待合适的时机。");
+
+        add("dialogue.epic_mysterious_merchant.start.choice_shop",
+                "💎 查看商品（仅深夜开放）");
+        add("dialogue.epic_mysterious_merchant.start.choice_identity",
+                "你是谁？");
+        add("dialogue.epic_mysterious_merchant.start.choice_leave",
+                "离开");
+
+        // 商店节点
+        add("dialogue.epic_mysterious_merchant.shop.text",
+                "§5§l=== 神秘商店 ===\n\n"
+                        + "§f这些是我从各地收集来的珍品……\n"
+                        + "§e价格虽然昂贵，但绝对物超所值。\n\n"
+                        + "§d你想买点什么？");
+
+        add("dialogue.epic_mysterious_merchant.shop.choice_rare",
+                "⭐ 下界合金锭 x1（稀有物品）");
+        add("dialogue.epic_mysterious_merchant.shop.choice_common",
+                "💎 钻石甲全套（普通商品）");
+        add("dialogue.epic_mysterious_merchant.shop.choice_back",
+                "← 返回");
+
+        // 身份揭示节点
+        add("dialogue.epic_mysterious_merchant.identity.text",
+                "§5§l=== 神秘商人的真实身份 ===\n\n"
+                        + "§f呵呵……你想知道我的身份？\n\n"
+                        + "§e我是穿梭于各个维度的旅行者，\n"
+                        + "§5收集着世间最珍贵的宝物。\n\n"
+                        + "§d只有在深夜，当世界沉睡时，\n"
+                        + "§5我才会打开我的商店。\n\n"
+                        + "§f现在，你知道了这个秘密……\n"
+                        + "§e记得保守它哦。");
+        add("dialogue.epic_mysterious_merchant.identity.choice_back",
                 "← 返回");
     }
 

@@ -28,6 +28,7 @@ public class C2SRequestQuestActionPacket {
     private final Action action;
     private final String questId;
     private final int transitionIndex; // 仅 CHOOSE 时有效
+
     private C2SRequestQuestActionPacket(Action action, String questId, int transitionIndex) {
         this.action = action;
         this.questId = questId;

@@ -17,12 +17,11 @@ public final class QuestRuntimeData {
     private final String questId;
     private final Set<String> localFlags;
     private final List<String> completedPhases; // 已完成的 phase 历史
+    private final long acceptedAtTick;
     private QuestState state;
     private String currentPhaseId;
     private int[] objectiveProgress;
-    private final long acceptedAtTick;
-    
-    // P2优化：脏标记，用于I/O防抖
+    // 脏标记，用于I/O防抖
     private boolean isDirty = false;
 
     // ── 构造 ──────────────────────────────────────────────
@@ -56,7 +55,6 @@ public final class QuestRuntimeData {
         this.localFlags = localFlags;
         this.completedPhases = completedPhases;
     }
-
 
 
     public static QuestRuntimeData deserializeNBT(CompoundTag tag) {
@@ -102,13 +100,13 @@ public final class QuestRuntimeData {
         for (int i = 0; i < flagCount; i++) {
             flags.add(buf.readUtf(256));
         }
-        
+
         int phaseCount = buf.readVarInt();
         List<String> completedPhases = new ArrayList<>(phaseCount);
         for (int i = 0; i < phaseCount; i++) {
             completedPhases.add(buf.readUtf(256));
         }
-        
+
         return new QuestRuntimeData(questId, state, phaseId, progress, accepted, flags, completedPhases);
     }
 
@@ -143,7 +141,6 @@ public final class QuestRuntimeData {
     }
 
 
-
     public long getAcceptedAtTick() {
         return acceptedAtTick;
     }
@@ -161,7 +158,9 @@ public final class QuestRuntimeData {
         return Arrays.copyOf(objectiveProgress, objectiveProgress.length);
     }
 
-    /** 增加目标进度，返回增加后的值。不会超过 {@code clampMax}（若 <= 0 则无上限）。*/
+    /**
+     * 增加目标进度，返回增加后的值。不会超过 {@code clampMax}（若 <= 0 则无上限）。
+     */
     public int incrementProgress(int index, int amount, int clampMax) {
         if (index < 0 || index >= objectiveProgress.length) return 0;
         objectiveProgress[index] += amount;
@@ -205,7 +204,7 @@ public final class QuestRuntimeData {
     }
 
     // ════════════════════════════════════════
-    //  P2优化：脏标记管理
+    //  脏标记管理
     // ════════════════════════════════════════
 
     /**

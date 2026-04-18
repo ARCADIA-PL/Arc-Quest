@@ -251,40 +251,40 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // Village Elder
         // ═══════════════════════════════════════════
         add("dialogue.epic_village_elder.npc_name", "§6§lVillage Elder");
-        
+
         // Start node - multiple states
         add("dialogue.epic_village_elder.start.newcomer",
                 "§fWelcome, stranger. I am the guardian of these lands.\n"
                         + "If you are ready, I can tell you the truth about this world...");
         add("dialogue.epic_village_elder.start.choice_intro",
                 "Please, tell me what has happened.");
-        
+
         add("dialogue.epic_village_elder.start.phase_gather_wood",
                 "§fAdventurer, gather wood and craft weapons!\n"
                         + "The zombie horde may strike at any moment. We must be prepared.");
         add("dialogue.epic_village_elder.start.choice_wood_tip",
                 "I will complete it as soon as possible");
-        
+
         add("dialogue.epic_village_elder.start.phase_talk_villager",
                 "§fExcellent, you have armed yourself.\n"
                         + "Now, let me inform you of the next step...");
         add("dialogue.epic_village_elder.start.choice_accept_mission",
                 "I am ready. Give the order!");
-        
+
         add("dialogue.epic_village_elder.start.phase_defend",
                 "§c§lWARNING! The zombie army approaches!\n"
                         + "§fTake up your arms and defend our home!\n"
                         + "§e(Received Strength Potion x1)");
         add("dialogue.epic_village_elder.start.choice_encourage",
                 "For the village!");
-        
+
         add("dialogue.epic_village_elder.start.prologue_done",
                 "§a§lWell done, warrior!\n"
                         + "§fThe prologue is complete, but the true challenge has just begun.\n"
                         + "Strange echoes come from the depths of the mine... Are you ready to explore?");
         add("dialogue.epic_village_elder.start.choice_start_chapter1",
                 "I am ready. Begin Chapter 1!");
-        
+
         add("dialogue.epic_village_elder.start.chapter1_done",
                 "§b§lIncredible... You defeated the mine guardian!\n"
                         + "§fNow you face an important choice:\n"
@@ -293,7 +293,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "Your choice will determine your ultimate fate...");
         add("dialogue.epic_village_elder.start.choice_branch",
                 "I wish to learn more about these choices");
-        
+
         add("dialogue.epic_village_elder.start.legendary",
                 "§5§l✨ Legendary Hero ✨\n"
                         + "§fYou did it! The Ender Dragon has been vanquished, and peace restored.\n"
@@ -301,12 +301,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "§e(Received Hero of the Village effect + 100 XP)");
         add("dialogue.epic_village_elder.start.choice_legendary",
                 "It is my honor");
-        
+
         add("dialogue.epic_village_elder.start.default",
                 "§fMay your journey be fruitful, adventurer.");
         add("dialogue.epic_village_elder.start.choice_default",
                 "Farewell");
-        
+
         // Intro story
         add("dialogue.epic_village_elder.intro_story.text",
                 "§6§lThe gears of fate begin to turn...\n\n"
@@ -318,7 +318,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "I accept this mission!");
         add("dialogue.epic_village_elder.intro_story.choice_decline",
                 "I need time to consider");
-        
+
         // Prologue accepted
         add("dialogue.epic_village_elder.prologue_accepted.text",
                 "§a§lQuest Accepted!\n\n"
@@ -327,7 +327,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "§eGood luck, warrior!");
         add("dialogue.epic_village_elder.prologue_accepted.choice_ok",
                 "Understood!");
-        
+
         // Chapter 1 accepted
         add("dialogue.epic_village_elder.chapter1_accepted.text",
                 "§b§lChapter I: Whispers of the Abyss\n\n"
@@ -336,7 +336,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "§eObjectives: Collect Coal x16, Sticks x8");
         add("dialogue.epic_village_elder.chapter1_accepted.choice_ok",
                 "I will be careful");
-        
+
         // Branch introduction
         add("dialogue.epic_village_elder.branch_introduction.text",
                 "§6§lTwo paths, two destinies...\n\n"
@@ -353,7 +353,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "Tell me about the Path of Exploration");
         add("dialogue.epic_village_elder.branch_introduction.choice_think",
                 "Let me think about it");
-        
+
         // Explain combat path
         add("dialogue.epic_village_elder.explain_combat.text",
                 "§c§lPath of Combat: Trial by Fire\n\n"
@@ -365,7 +365,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "§cWarning: This path is fraught with danger, but the rewards are great!");
         add("dialogue.epic_village_elder.explain_combat.choice_confirm",
                 "I choose combat!");
-        
+
         // Explain exploration path
         add("dialogue.epic_village_elder.explain_exploration.text",
                 "§9§lPath of Exploration: Echoes of the Deep\n\n"
@@ -377,7 +377,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "§9Tip: Prepare potions of water breathing!");
         add("dialogue.epic_village_elder.explain_exploration.choice_confirm",
                 "I choose exploration!");
-        
+
         // Decline node
         add("dialogue.epic_village_elder.decline.text",
                 "§fNo matter. Return when you are ready.\n"
@@ -389,21 +389,21 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // Blacksmith
         // ═══════════════════════════════════════════
         add("dialogue.epic_blacksmith.npc_name", "§8§lBlacksmith");
-        
+
         add("dialogue.epic_blacksmith.start.early",
                 "§fHey, rookie! Need weapons?\n"
                         + "I only have stone gear for now, but it's enough for early battles.\n"
                         + "§e(Stone Sword x1 = 5 gold)");
         add("dialogue.epic_blacksmith.start.choice_buy_stone_sword",
                 "Give me a stone sword");
-        
+
         add("dialogue.epic_blacksmith.start.mid",
                 "§7Oh? You've started exploring the mines?\n"
                         + "Then you'll need better equipment!\n"
                         + "§e(Full Iron Armor Set = 50 gold)");
         add("dialogue.epic_blacksmith.start.choice_buy_iron_gear",
                 "I want iron gear");
-        
+
         add("dialogue.epic_blacksmith.start.late",
                 "§bWow, you completed Chapter 1?!\n"
                         + "Looks like you're a serious adventurer.\n"
@@ -411,7 +411,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "§e(Full Diamond Armor Set = 100 gold)");
         add("dialogue.epic_blacksmith.start.choice_buy_diamond_gear",
                 "Diamond gear sounds good");
-        
+
         add("dialogue.epic_blacksmith.start.legendary",
                 "§5§lA Legendary Hero arrives!\n"
                         + "§fIt is my honor to forge equipment for you.\n"
@@ -419,7 +419,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "§e(Netherite Ingot x1 = 200 gold)");
         add("dialogue.epic_blacksmith.start.choice_buy_netherite",
                 "I want the strongest gear!");
-        
+
         add("dialogue.epic_blacksmith.start.default",
                 "§fSpeak your needs. My craftsmanship is the finest in the village!");
         add("dialogue.epic_blacksmith.start.choice_leave",
@@ -429,35 +429,35 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // Merchant
         // ═══════════════════════════════════════════
         add("dialogue.epic_merchant.npc_name", "§a§lTraveling Merchant");
-        
+
         add("dialogue.epic_merchant.start.phase_gather",
                 "§fOff on an adventure, adventurer?\n"
                         + "Bring some food. You might get hungry on the road.\n"
                         + "§e(Bread x4 = 2 gold)");
         add("dialogue.epic_merchant.start.choice_buy_food",
                 "Some bread, please");
-        
+
         add("dialogue.epic_merchant.start.phase_defend",
                 "§cHeard zombies are coming to attack?\n"
                         + "These healing potions might save your life!\n"
                         + "§e(Healing Potion x2 = 10 gold)");
         add("dialogue.epic_merchant.start.choice_buy_potions",
                 "Give me some potions");
-        
+
         add("dialogue.epic_merchant.start.phase_chapter1",
                 "§8Heading to the mines? A wise choice is to bring enough torches.\n"
                         + "Anything could happen in the darkness...\n"
                         + "§e(Torches x32 = 5 gold)");
         add("dialogue.epic_merchant.start.choice_buy_torches",
                 "A stack of torches");
-        
+
         add("dialogue.epic_merchant.start.default",
                 "§fWelcome to my shop! A wide variety of goods await~");
         add("dialogue.epic_merchant.start.choice_browse",
                 "Let me see what you have");
         add("dialogue.epic_merchant.start.choice_leave",
                 "Until next time");
-        
+
         add("dialogue.epic_merchant.shop_menu.text",
                 "§a§l=== Merchant's Shelves ===\n\n"
                         + "§fPlease select the category of goods you wish to purchase:");
@@ -472,39 +472,39 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // Wandering Trader - sayIf() Example NPC
         // ═══════════════════════════════════════════
         add("dialogue.epic_wandering_trader.npc_name", "§a§lWandering Trader");
-        
+
         // Start node - 5 states
         add("dialogue.epic_wandering_trader.start.newbie",
                 "§fHey there, new face! I'm a traveling merchant.\n"
                         + "§eIf you're just starting out, I can give you some advice...");
-        
+
         add("dialogue.epic_wandering_trader.start.prologue_active",
                 "§fOh? You've accepted the Elder's quest?\n"
                         + "§ePrologue in progress... Good luck, adventurer!");
-        
+
         add("dialogue.epic_wandering_trader.start.chapter1_ready",
                 "§bHeard you completed the prologue? Amazing!\n"
                         + "§eTreasures await in the mine depths. Ready to explore?");
-        
+
         add("dialogue.epic_wandering_trader.start.chapter1_active",
                 "§8The mine is dangerous, isn't it? Watch out for cave spiders!\n"
                         + "§eIf your gear isn't good enough, I have some nice items...");
-        
+
         add("dialogue.epic_wandering_trader.start.legendary",
                 "§5§l✨ Legendary Hero! ✨\n"
                         + "§fNever thought I'd meet the one who defeated the Ender Dragon!\n"
                         + "§eMy humble shop is honored. Please browse freely!");
-        
+
         add("dialogue.epic_wandering_trader.start.default",
                 "§fWelcome to my mobile shop! Items refresh daily~");
-        
+
         add("dialogue.epic_wandering_trader.start.choice_shop",
                 "Let me see your wares");
         add("dialogue.epic_wandering_trader.start.choice_rumors",
                 "Any rumors?");
         add("dialogue.epic_wandering_trader.start.choice_bye",
                 "Farewell");
-        
+
         // Shop menu
         add("dialogue.epic_wandering_trader.shop_menu.text",
                 "§a§l=== Wandering Trader's Shelves ===\n\n"
@@ -515,7 +515,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "⚔️ Weapons & Armor");
         add("dialogue.epic_wandering_trader.shop_menu.choice_back",
                 "← Back");
-        
+
         // Equipment menu
         add("dialogue.epic_wandering_trader.equipment_menu.text",
                 "§6§l=== Weapons & Armor ===\n\n"
@@ -528,14 +528,14 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "💎 Diamond Armor Set (Elite)");
         add("dialogue.epic_wandering_trader.equipment_menu.choice_back",
                 "← Back");
-        
+
         // Purchase complete
         add("dialogue.epic_wandering_trader.purchase_complete.text",
                 "§a§lTransaction Complete!\n\n"
                         + "§fThank you for your business. Good luck!");
         add("dialogue.epic_wandering_trader.purchase_complete.choice_continue",
                 "Continue shopping");
-        
+
         // Rumors
         add("dialogue.epic_wandering_trader.rumors.text",
                 "§6§l=== Latest Rumors ===\n\n"
@@ -545,6 +545,153 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                         + "§f• The Ender Dragon's power is awakening\n\n"
                         + "§eI heard these from travelers across the land~");
         add("dialogue.epic_wandering_trader.rumors.choice_back",
+                "← Back");
+
+        // ═══════════════════════════════════════════
+        // Village Guard - Game tick cooldown, time period conditions, dialogue history, and weights
+        // ═══════════════════════════════════════════
+        add("dialogue.epic_village_guard.npc_name", "§b§lVillage Guard");
+
+        // Start node - Different greetings based on time of day
+        add("dialogue.epic_village_guard.start.morning",
+                "§fGood morning, adventurer! §eA new day begins, and the village is safe.\n"
+                        + "How may I assist you?");
+
+        add("dialogue.epic_village_guard.start.afternoon",
+                "§fGood afternoon! §eThe sun shines bright, perfect for patrol or training.\n"
+                        + "What can I do for you?");
+
+        add("dialogue.epic_village_guard.start.night",
+                "§8Good evening... §7Stay vigilant, danger lurks outside.\n"
+                        + "If you need assistance, I can offer some support.");
+
+        add("dialogue.epic_village_guard.start.default",
+                "§fGreetings, I am the village guard.\n"
+                        + "My duty is to protect this place.");
+
+        add("dialogue.epic_village_guard.start.choice_intro",
+                "Who are you?");
+        add("dialogue.epic_village_guard.start.choice_daily",
+                "📋 Daily Patrol Mission (resets at 6:00)");
+        add("dialogue.epic_village_guard.start.choice_training",
+                "⚔️ Request Training (1h cooldown)");
+        add("dialogue.epic_village_guard.start.choice_chat",
+                "Casual Chat");
+        add("dialogue.epic_village_guard.start.choice_bye",
+                "Farewell");
+
+        // Introduction node
+        add("dialogue.epic_village_guard.intro.text",
+                "§b§l=== Village Guard ===\n\n"
+                        + "§fI am Alvin, captain of the guard here.\n"
+                        + "§eMy duty is to protect the village from monster attacks.\n\n"
+                        + "§aEvery morning at 6:00, I post patrol missions.\n"
+                        + "§6Combat training is available once per hour.\n\n"
+                        + "§dPleased to meet you, adventurer!");
+        add("dialogue.epic_village_guard.intro.choice_ok",
+                "Pleased to meet you too");
+
+        // Daily patrol mission
+        add("dialogue.epic_village_guard.daily_patrol.text",
+                "§a§l=== Daily Patrol Mission ===\n\n"
+                        + "§fToday's mission is to patrol around the village and ensure no monsters appear.\n\n"
+                        + "§aRewards:\n"
+                        + "§f• Bread x3\n"
+                        + "§f• 10 XP\n\n"
+                        + "§eThis mission resets every morning at 6:00.");
+        add("dialogue.epic_village_guard.daily_patrol.choice_thanks",
+                "Thank you!");
+
+        // Training request
+        add("dialogue.epic_village_guard.training.text",
+                "§6§l=== Combat Training ===\n\n"
+                        + "§fLet me teach you some basic combat techniques.\n"
+                        + "§eThis strength potion will aid your practice.\n\n"
+                        + "§aObtained: Strength Potion x1\n\n"
+                        + "§cNext training session available in 1 hour.");
+        add("dialogue.epic_village_guard.training.choice_thanks",
+                "Many thanks!");
+
+        // Chat node - Different content based on time
+        add("dialogue.epic_village_guard.chat.morning",
+                "§fThe morning air is so refreshing!\n"
+                        + "§eI love patrolling at this time, watching the sunrise.\n\n"
+                        + "§aToday will be a peaceful day... probably.");
+
+        add("dialogue.epic_village_guard.chat.afternoon",
+                "§fThe afternoon sun is quite bright.\n"
+                        + "§eBut this weather is perfect for training recruits.\n\n"
+                        + "§aWould you like to try as well?");
+
+        add("dialogue.epic_village_guard.chat.night",
+                "§8Night is the most dangerous time...\n"
+                        + "§7Zombies, skeletons, and creepers all come out.\n\n"
+                        + "§cBe careful, don't venture too far from the village.");
+
+        add("dialogue.epic_village_guard.chat.default",
+                "§fThe village has been relatively calm lately.\n"
+                        + "§eBut we must remain vigilant at all times.");
+
+        add("dialogue.epic_village_guard.chat.choice_back",
+                "← Back");
+
+        // ═══════════════════════════════════════════
+        // Mysterious Merchant - Custom time ranges and complex conditions
+        // ═══════════════════════════════════════════
+        add("dialogue.epic_mysterious_merchant.npc_name", "§5§lMysterious Merchant");
+
+        // Start node - Only open during specific hours
+        add("dialogue.epic_mysterious_merchant.start.open",
+                "§5§l✨ Midnight Shop Open ✨\n\n"
+                        + "§fWelcome to my secret shop...\n"
+                        + "§eI only appear during the late night hours.\n\n"
+                        + "§dHere you'll find rare items unavailable elsewhere.");
+
+        add("dialogue.epic_mysterious_merchant.start.closed_morning",
+                "§8...\n\n"
+                        + "§7The merchant seems to be resting.\n"
+                        + "§eHe only appears late at night.");
+
+        add("dialogue.epic_mysterious_merchant.start.closed_afternoon",
+                "§8...\n\n"
+                        + "§7The merchant is not here.\n"
+                        + "§ePerhaps try again tonight.");
+
+        add("dialogue.epic_mysterious_merchant.start.default",
+                "§8A mysterious merchant, seemingly waiting for the right moment.");
+
+        add("dialogue.epic_mysterious_merchant.start.choice_shop",
+                "💎 Browse Wares (late night only)");
+        add("dialogue.epic_mysterious_merchant.start.choice_identity",
+                "Who are you?");
+        add("dialogue.epic_mysterious_merchant.start.choice_leave",
+                "Leave");
+
+        // Shop node
+        add("dialogue.epic_mysterious_merchant.shop.text",
+                "§5§l=== Mysterious Shop ===\n\n"
+                        + "§fThese are treasures I've collected from across the realms...\n"
+                        + "§eThough pricey, they're absolutely worth it.\n\n"
+                        + "§dWhat would you like to purchase?");
+
+        add("dialogue.epic_mysterious_merchant.shop.choice_rare",
+                "⭐ Netherite Ingot x1 (Rare Item)");
+        add("dialogue.epic_mysterious_merchant.shop.choice_common",
+                "💎 Diamond Armor Set (Common Item)");
+        add("dialogue.epic_mysterious_merchant.shop.choice_back",
+                "← Back");
+
+        // Identity reveal node
+        add("dialogue.epic_mysterious_merchant.identity.text",
+                "§5§l=== The Merchant's True Identity ===\n\n"
+                        + "§fHeh... you wish to know who I am?\n\n"
+                        + "§eI am a traveler who journeys between dimensions,\n"
+                        + "§5collecting the world's most precious treasures.\n\n"
+                        + "§dOnly when the world sleeps, in the dead of night,\n"
+                        + "§5do I open my shop.\n\n"
+                        + "§fNow that you know this secret...\n"
+                        + "§eKeep it well.");
+        add("dialogue.epic_mysterious_merchant.identity.choice_back",
                 "← Back");
     }
 

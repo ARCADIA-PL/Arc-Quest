@@ -48,9 +48,9 @@ public final class PresetActions {
     /**
      * 添加自定义事件处理器 - 允许用户定义玩家与目标实体的交互逻辑。
      *
-     * @param player   玩家
-     * @param target   目标实体（NPC）
-     * @param handler  自定义事件处理器 (player, target) -> { ... }
+     * @param player  玩家
+     * @param target  目标实体（NPC）
+     * @param handler 自定义事件处理器 (player, target) -> { ... }
      */
     public static void addEvents(ServerPlayer player, Entity target, BiConsumer<ServerPlayer, Entity> handler) {
         if (handler != null && target != null) {

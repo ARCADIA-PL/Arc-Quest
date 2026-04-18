@@ -18,7 +18,7 @@ public final class ObjectiveKey {
     public ObjectiveKey(ObjectiveType type, ResourceLocation targetId) {
         this.type = Objects.requireNonNull(type);
         this.targetId = Objects.requireNonNull(targetId);
-        // 预计算 hashCode（不可变对象优化）
+        // 预计算 hashCode（不可变对象）
         this.hashCode = Objects.hash(type, targetId);
     }
 
