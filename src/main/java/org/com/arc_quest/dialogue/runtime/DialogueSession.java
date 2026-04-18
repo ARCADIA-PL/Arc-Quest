@@ -117,6 +117,19 @@ public class DialogueSession {
 
             // 使用 ProgressKey + TimeSnapshot 检查冷却
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
+            
+            // 先检测时间回退，如果检测到则清除记录
+            if (choice.cooldownType() == CooldownType.GAME_TICK) {
+                var entry = progress.getChoiceSelection(choiceKey);
+                if (entry.exists() && entry.dayTime() > ts.dayTime()) {
+                    // 检测到时间回退，清除冷却记录
+                    progress.clearCooldownRecord(choiceKey);
+                    LOGGER.warn("[Cooldown-Clear] ✅ Cleared choice cooldown in getChoiceCooldowns due to time regression: {}", choiceKey);
+                    cooldowns[i] = 0;
+                    continue;
+                }
+            }
+            
             boolean onCooldown = progress.isOnCooldown(
                     choiceKey, choice.cooldownType(), (int) choice.cooldownSeconds(),
                     choice.resetTimeTicks(), ts);
@@ -455,15 +468,40 @@ public class DialogueSession {
 
         // 冷却检查（传递三时钟）
         if (choice.cooldownType() != CooldownType.NONE) {
-            boolean onCooldown = progress.isChoiceOnCooldown(
-                    namespace, currentNode.nodeId(), choiceIndex,
-                    choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
-                    ts.realTime(), ts.gameTime(), ts.dayTime());
+            ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), choiceIndex);
+            
+            // 先检测时间回退，如果检测到则清除记录
+            if (choice.cooldownType() == CooldownType.GAME_TICK) {
+                var entry = progress.getChoiceSelection(choiceKey);
+                if (entry.exists() && entry.dayTime() > ts.dayTime()) {
+                    // 检测到时间回退，清除冷却记录以避免UI不一致
+                    progress.clearCooldownRecord(choiceKey);
+                    LOGGER.warn("[Cooldown-Clear] Cleared cooldown record due to time regression: {}", choiceKey);
+                    // 清除后继续执行，不再检查冷却
+                } else {
+                    // 无时间回退，正常检查冷却
+                    boolean onCooldown = progress.isChoiceOnCooldown(
+                            namespace, currentNode.nodeId(), choiceIndex,
+                            choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
+                            ts.realTime(), ts.gameTime(), ts.dayTime());
 
-            LOGGER.info("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}",
-                    currentNode.nodeId(), choiceIndex, onCooldown);
+                    LOGGER.info("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}",
+                            currentNode.nodeId(), choiceIndex, onCooldown);
 
-            if (onCooldown) return false;
+                    if (onCooldown) return false;
+                }
+            } else {
+                // 非 GAME_TICK 类型，正常检查冷却
+                boolean onCooldown = progress.isChoiceOnCooldown(
+                        namespace, currentNode.nodeId(), choiceIndex,
+                        choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
+                        ts.realTime(), ts.gameTime(), ts.dayTime());
+
+                LOGGER.info("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}",
+                        currentNode.nodeId(), choiceIndex, onCooldown);
+
+                return !onCooldown;
+            }
         }
 
         return true;

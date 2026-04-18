@@ -2,6 +2,7 @@ package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -56,10 +57,17 @@ public final class ConditionalTextEvaluator {
                 }
             }
 
-            if (matchesCondition(player, cap, conditionKey)) {
+            boolean matched = matchesCondition(player, cap, conditionKey);
+            LOGGER.debug("[ConditionalText] Key={}, Condition={}, Matched={}, Text={}", 
+                    key, conditionKey, matched, text.substring(0, Math.min(20, text.length())));
+            
+            if (matched) {
                 matches.add(new TextMatch(text, priority));
             }
         }
+
+        LOGGER.debug("[ConditionalText] Total matches: {}, Default text length: {}", 
+                matches.size(), defaultText != null ? defaultText.length() : 0);
 
         // 如果没有匹配，返回默认文本
         if (matches.isEmpty()) {
@@ -75,6 +83,8 @@ public final class ConditionalTextEvaluator {
         // 返回第一个最高优先级的匹配（按定义顺序）
         for (TextMatch match : matches) {
             if (match.priority == maxPriority) {
+                LOGGER.debug("[ConditionalText] Selected text: {}", 
+                        match.text.substring(0, Math.min(30, match.text.length())));
                 return match.text;
             }
         }
@@ -108,7 +118,7 @@ public final class ConditionalTextEvaluator {
 
             // QUEST_PHASE:quest_id|phase_id (使用 | 分隔，避免与 ResourceLocation 的 : 冲突)
             if (conditionKey.startsWith("QUEST_PHASE:")) {
-                String afterPrefix = conditionKey.substring(12); // 去掉 "QUEST_PHASE:"
+                String afterPrefix = conditionKey.substring(12);
                 int separatorIndex = afterPrefix.indexOf('|');
 
                 if (separatorIndex > 0) {
@@ -155,38 +165,30 @@ public final class ConditionalTextEvaluator {
             // IS_MORNING - 检查是否是早晨（06:00-12:00，tick 0-6000）
             switch (conditionKey) {
                 case "IS_MORNING" -> {
-                    player.level();
-                    long dayTime = player.level().getDayTime() % 24000;
-                    return dayTime >= 0 && dayTime < 6000;
+                    return TimeSanitizer.isMorning(player.level());
                 }
 
                 // IS_AFTERNOON - 检查是否是下午（12:00-18:00，tick 6000-12000）
                 case "IS_AFTERNOON" -> {
-                    player.level();
-                    long dayTime = player.level().getDayTime() % 24000;
-                    return dayTime >= 6000 && dayTime < 12000;
+                    return TimeSanitizer.isAfternoon(player.level());
                 }
 
 
-                // IS_NIGHT - 检查是否是夜晚（18:00-次日06:00，tick 12000-0，跨天区间）
+                // IS_NIGHT - 检查是否是夜晚（18:00-24:00，tick 12000-24000）
                 case "IS_NIGHT" -> {
-                    player.level();
-                    long dayTime = player.level().getDayTime() % 24000;
-                    return dayTime >= 12000 || dayTime < 6000;  // 跨天区间：18:00-24:00 或 00:00-06:00
-
+                    return TimeSanitizer.isNight(player.level());
                 }
             }
 
             // GAME_TIME_IN_RANGE:startTick|endTick - 自定义时间区间
             if (conditionKey.startsWith("GAME_TIME_IN_RANGE:")) {
-                player.level();
-                String rangeStr = conditionKey.substring(19);  // 去掉 "GAME_TIME_IN_RANGE:"
+                String rangeStr = conditionKey.substring(19);
                 String[] parts = rangeStr.split("\\|");
                 if (parts.length == 2) {
                     try {
                         int startTick = Integer.parseInt(parts[0]);
                         int endTick = Integer.parseInt(parts[1]);
-                        long dayTime = player.level().getDayTime() % 24000;
+                        long dayTime = TimeSanitizer.sanitizeDayTime(player.level());
 
                         if (startTick < endTick) {
                             // 正常区间

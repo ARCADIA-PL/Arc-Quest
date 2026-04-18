@@ -290,13 +290,15 @@ public class DialogueProgressStore {
                 // getDayTime() 在自然流逝和 /time add 下单调递增
                 // 只有 /time set 会使其减小
                 // 如果检测到 dayTime 倒退（且 gameTime 确实前进了），
-                // 视为管理员干预，冷却过期
+                // 视为管理员干预，冷却过期并清除记录
                 if (nowDayTime < lastRawDayTime && gameTimeElapsed > 0) {
-                    Arc_quest.LOGGER.info(
-                            "[Cooldown-GAME_TICK] dayTime regression detected: " +
+                    Arc_quest.LOGGER.warn(
+                            "[Cooldown-GAME_TICK] ⚠️ dayTime regression detected: " +
                                     "lastDayTime={}, nowDayTime={}, gameTimeElapsed={} → EXPIRED " +
-                                    "(probable /time set backward)",
+                                    "(probable /time set backward, clearing cooldown record)",
                             lastRawDayTime, nowDayTime, gameTimeElapsed);
+                    // 注意：这里不自动清除记录，而是让上层决定是否需要清理
+                    // 避免频繁/time set导致记录丢失
                     yield false;
                 }
 
@@ -383,6 +385,34 @@ public class DialogueProgressStore {
         } else {
             return (int) (resetTickNorm - currentDayTick);
         }
+    }
+
+    /**
+     * 清除指定 key 的冷却记录（用于时间回退后的清理）。
+     *
+     * @param key ProgressKey
+     */
+    public void clearCooldownRecord(ProgressKey key) {
+        String keyStr = key.toKeyString();
+        
+        if (key.index() >= 0) {
+            // 选项冷却
+            choiceSelections.remove(keyStr);
+            Arc_quest.LOGGER.warn("[Cooldown-Clear] ✅ Removed choice cooldown: {}", keyStr);
+        } else {
+            // 节点或对话冷却
+            if (nodeVisits.containsKey(keyStr)) {
+                nodeVisits.remove(keyStr);
+                Arc_quest.LOGGER.warn("[Cooldown-Clear] ✅ Removed node cooldown: {}", keyStr);
+            } else if (dialogueVisits.containsKey(keyStr)) {
+                dialogueVisits.remove(keyStr);
+                Arc_quest.LOGGER.warn("[Cooldown-Clear] ✅ Removed dialogue cooldown: {}", keyStr);
+            }
+        }
+        
+        //设置脏标记，确保下次保存时同步到NBT
+        dirty = true;
+        Arc_quest.LOGGER.debug("[Cooldown-Clear] Dirty flag set, will save on next tick");
     }
 
     // ═══════════════════════════════════════════════
