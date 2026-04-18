@@ -79,9 +79,7 @@ public final class EpicMainlineDemo {
                         .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_food"))
                         .objective(ObjectiveBuilder.collect(Items.BREAD, 10).display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.0")))
                         .objective(ObjectiveBuilder.collect(Items.COOKED_BEEF, 5).display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.1")))
-                        .setFlagOnComplete("prologue_completed")
-                        .setFlagOnComplete("blacksmith_unlocked")  // 解锁铁匠特殊对话
-                        .setFlagOnComplete("merchant_unlocked"))  // 解锁商人特殊对话
+                        .setFlagOnComplete("prologue_completed"))
                 // 奖励
                 .reward(new ItemReward(Items.IRON_SWORD, 1))
                 .reward(new ItemReward(Items.SHIELD, 1))

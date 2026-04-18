@@ -2,6 +2,7 @@ package org.com.arc_quest.dialogue.runtime;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.CooldownType;
 
@@ -60,6 +61,35 @@ public class DialogueProgressStore {
 
     public static String dialogueKey(String namespace, String dialogueId) {
         return namespace + ":" + dialogueId;
+    }
+
+    // ═══════════════════════════════════════════════
+    //  写入（ProgressKey 版本）
+    // ═══════════════════════════════════════════════
+
+    /**
+     * 使用 ProgressKey 记录节点访问。
+     * 替代 recordNodeVisit(String, String, long, long, long)。
+     */
+    public void recordNodeVisit(ProgressKey key, long realTime, long gameTime, long dayTime) {
+        nodeVisits.put(key.toKeyString(), new Entry(realTime, gameTime, dayTime));
+        dirty = true;
+    }
+
+    /**
+     * 使用 ProgressKey 记录选项选择。
+     */
+    public void recordChoiceSelection(ProgressKey key, long realTime, long gameTime, long dayTime) {
+        choiceSelections.put(key.toKeyString(), new Entry(realTime, gameTime, dayTime));
+        dirty = true;
+    }
+
+    /**
+     * 使用 ProgressKey 记录对话访问。
+     */
+    public void recordDialogueVisit(ProgressKey key, long realTime, long gameTime, long dayTime) {
+        dialogueVisits.put(key.toKeyString(), new Entry(realTime, gameTime, dayTime));
+        dirty = true;
     }
 
     // ═══════════════════════════════════════════════
@@ -124,6 +154,63 @@ public class DialogueProgressStore {
 
     public boolean hasCompletedDialogue(String namespace, String dialogueId) {
         return getDialogueVisit(namespace, dialogueId).exists();
+    }
+
+    // ═══════════════════════════════════════════════
+    //  查询（ProgressKey 版本）
+    // ═══════════════════════════════════════════════
+
+    /**
+     * 使用 ProgressKey 查询节点访问。
+     */
+    public Entry getNodeVisit(ProgressKey key) {
+        return nodeVisits.getOrDefault(key.toKeyString(), Entry.EMPTY);
+    }
+
+    public boolean hasVisitedNode(ProgressKey key) {
+        return getNodeVisit(key).exists();
+    }
+
+    public Entry getChoiceSelection(ProgressKey key) {
+        return choiceSelections.getOrDefault(key.toKeyString(), Entry.EMPTY);
+    }
+
+    public boolean hasSelectedChoice(ProgressKey key) {
+        return getChoiceSelection(key).exists();
+    }
+
+    public Entry getDialogueVisit(ProgressKey key) {
+        return dialogueVisits.getOrDefault(key.toKeyString(), Entry.EMPTY);
+    }
+
+    public boolean hasCompletedDialogue(ProgressKey key) {
+        return getDialogueVisit(key).exists();
+    }
+
+    /**
+     * 统一冷却查询（简化的 5 参数版本）。
+     * <p>
+     * 替代原来的 9 参数方法。TimeSnapshot 封装三个时间值。
+     *
+     * @param key         ProgressKey（自动定位正确的 Map）
+     * @param cooldownType 冷却类型
+     * @param cooldownValue 秒数/tick数
+     * @param resetTick    重置刻
+     * @param ts          时间快照（realTime, gameTime, dayTime）
+     */
+    public boolean isOnCooldown(ProgressKey key, CooldownType cooldownType,
+                                int cooldownValue, int resetTick, TimeSnapshot ts) {
+        Entry entry;
+        if (key.index() >= 0) {
+            entry = choiceSelections.getOrDefault(key.toKeyString(), Entry.EMPTY);
+        } else {
+            // 根据 key 格式判断是节点还是对话
+            entry = nodeVisits.containsKey(key.toKeyString())
+                    ? nodeVisits.get(key.toKeyString())
+                    : dialogueVisits.getOrDefault(key.toKeyString(), Entry.EMPTY);
+        }
+        return isOnCooldown(entry, cooldownType, cooldownValue, resetTick,
+                ts.realTime(), ts.gameTime(), ts.dayTime());
     }
 
     // ═══════════════════════════════════════════════
@@ -385,6 +472,25 @@ public class DialogueProgressStore {
     public long choiceSelections_legacy_get(String legacyKey) {
         Entry e = choiceSelections.get(legacyKey);
         return e != null ? e.realTime() : 0L;
+    }
+
+    /**
+     * 三时钟快照。
+     * <p>
+     * 从 DialogueSession 的 private record 提升为 public，
+     * 供 DialogueProgressStore 和 DialogueEvalContext 共用。
+     */
+    public record TimeSnapshot(long realTime, long gameTime, long dayTime) {
+        /**
+         * 从 ServerPlayer 一次性采样。
+         */
+        public static TimeSnapshot capture(ServerPlayer player) {
+            return new TimeSnapshot(
+                    System.currentTimeMillis(),
+                    player.level().getGameTime(),
+                    player.level().getDayTime()
+            );
+        }
     }
 
     // ═══════════════════════════════════════════════

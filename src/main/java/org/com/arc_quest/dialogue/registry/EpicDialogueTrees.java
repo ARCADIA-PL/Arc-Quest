@@ -287,7 +287,7 @@ public final class EpicDialogueTrees {
                 )
                 .say(Component.translatable("dialogue.epic_blacksmith.start.default").getString())
 
-                // 选项 - 使用预设动作
+                // 选项 - 根据任务状态动态显示
                 .choiceIf(
                         new DialogueCondition.QuestActive("arc_quest:epic_prologue"),
                         Component.translatable("dialogue.epic_blacksmith.start.choice_buy_stone_sword").getString(),

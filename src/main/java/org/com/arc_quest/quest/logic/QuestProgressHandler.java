@@ -381,6 +381,9 @@ public final class QuestProgressHandler {
         // 更新状态
         data.setState(QuestState.COMPLETED);
         cap.markCompleted(questId);
+        
+        // ⭐ v3: 触发跨系统桥接事件
+        CrossSystemBridge.INSTANCE.onQuestCompleted(player, cap, questId);
 
         // 清理追踪
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
@@ -469,6 +472,9 @@ public final class QuestProgressHandler {
         // 更新状态
         data.setState(QuestState.COMPLETED);
         cap.markCompleted(questId);
+        
+        // ⭐ v3: 触发跨系统桥接事件
+        CrossSystemBridge.INSTANCE.onQuestCompleted(player, cap, questId);
 
         // 清理追踪
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);

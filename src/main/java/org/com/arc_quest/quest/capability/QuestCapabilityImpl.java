@@ -5,6 +5,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -13,8 +15,56 @@ import java.util.*;
  * IQuestCapability 的标准实现。
  * <p>
  * <b>v2 变更</b>: 对话历史从 6 个 Map 合并为 {@link DialogueProgressStore}。
+ * <b>v3 变更</b>: 引入 {@link NbtVersionManager} 统一管理版本号,支持链式迁移。
  */
 public class QuestCapabilityImpl implements IQuestCapability {
+    
+    private static final Logger LOGGER = LoggerFactory.getLogger(QuestCapabilityImpl.class);
+    
+    /**
+     * ⭐ v3: NBT 版本管理器(当前版本 = 3)
+     */
+    private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
+        "arc_quest:player_data",
+        3,  // 当前最新版本
+        LOGGER
+    );
+    
+    static {
+        // v0 → v1: 添加 Flags 字段(旧存档可能没有)
+        VERSION_MANAGER.addMigration(0, 1, tag -> {
+            if (!tag.contains("Flags", Tag.TAG_LIST)) {
+                tag.put("Flags", new ListTag());
+            }
+        });
+        
+        // v1 → v2: 添加 DialogueProgress 并迁移旧格式
+        VERSION_MANAGER.addMigration(1, 2, tag -> {
+            // 如果存在旧的 NodeVisitHistory 等字段,迁移到 DialogueProgress
+            if (tag.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
+                CompoundTag dialogueProgress = new CompoundTag();
+                // 迁移逻辑由 DialogueProgressStore.migrateFromLegacy 处理
+                // 这里只是标记需要迁移,实际在 deserializeNBT 中处理
+                tag.putInt("_needs_dialogue_migration", 1);
+            } else if (!tag.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
+                tag.put("DialogueProgress", new CompoundTag());
+            }
+        });
+        
+        // v2 → v3: 移除 _version 字段,改用 _ArcQuestVer
+        VERSION_MANAGER.addMigration(2, 3, tag -> {
+            // 将旧的 _version 字段值复制到 _ArcQuestVer(如果存在)
+            if (tag.contains("_version", Tag.TAG_INT)) {
+                int oldVersion = tag.getInt("_version");
+                tag.putInt("_ArcQuestVer", Math.max(oldVersion, 3));
+                tag.remove("_version");
+            } else {
+                tag.putInt("_ArcQuestVer", 3);
+            }
+            // 清理临时标记
+            tag.remove("_needs_dialogue_migration");
+        });
+    }
 
     private final Map<String, QuestRuntimeData> activeQuests = new LinkedHashMap<>();
     private final Set<String> completedQuests = new LinkedHashSet<>();
@@ -194,14 +244,17 @@ public class QuestCapabilityImpl implements IQuestCapability {
         // ⭐ v2: 统一对话进度
         root.put("DialogueProgress", dialogueProgress.serialize());
 
-        // 格式版本标记
-        root.putInt("_version", 2);
+        // ⭐ v3: 使用 NbtVersionManager 设置版本号
+        VERSION_MANAGER.setInitialVersion(root);
 
         return root;
     }
 
     @Override
     public void deserializeNBT(CompoundTag root) {
+        // ⭐ v3: 先执行版本迁移
+        VERSION_MANAGER.migrate(root);
+        
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();
@@ -227,14 +280,12 @@ public class QuestCapabilityImpl implements IQuestCapability {
         CompoundTag varsTag = root.getCompound("Variables");
         for (String key : varsTag.getAllKeys()) variables.put(key, varsTag.getInt(key));
 
-        // ⭐ v2: 对话进度 —— 自动检测新旧格式
-        int version = root.getInt("_version"); // 旧格式无此字段，默认0
-
-        if (version >= 2 && root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
+        // ⭐ v2/v3: 对话进度 —— 自动检测新旧格式
+        if (root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
             // 新格式：直接反序列化
             dialogueProgress.deserialize(root.getCompound("DialogueProgress"));
         } else if (root.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
-            // 旧格式：迁移
+            // 旧格式：迁移(v1 → v2 迁移时保留的旧字段)
             dialogueProgress.migrateFromLegacy(root);
         }
     }

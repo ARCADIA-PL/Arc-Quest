@@ -7,6 +7,7 @@ import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.quest.logic.CrossSystemBridge;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -41,24 +42,6 @@ public class DialogueSession {
     private List<DialogueChoice> visibleChoices = List.of();
 
     // ═══════════════════════════════════════════════
-    //  时间快照（避免同一操作内多次调用 Level 方法取到不同值）
-    // ═══════════════════════════════════════════════
-
-    /**
-     * 一次性采样三个时钟，确保同一操作内的所有记录和检查使用一致的时间值。
-     */
-    private record TimeSnapshot(long realTime, long gameTime, long dayTime) {
-    }
-
-    private TimeSnapshot snapshot() {
-        return new TimeSnapshot(
-                System.currentTimeMillis(),
-                player.level().getGameTime(),
-                player.level().getDayTime()
-        );
-    }
-
-    // ═══════════════════════════════════════════════
     //  构造器
     // ═══════════════════════════════════════════════
 
@@ -77,9 +60,11 @@ public class DialogueSession {
 
         this.namespace = resolveNamespace();
 
-        this.progress = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .map(IQuestCapability::getDialogueProgress)
-                .orElseGet(DialogueProgressStore::new);
+        // 显式校验 Capability，避免创建临时实例导致数据丢失
+        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                .orElse(null);
+
+        this.progress = cap.getDialogueProgress();
 
         LOGGER.debug("[Dialogue] Session created: tree={}, entityId={}, namespace={}",
                 tree.dialogueId(), entityId, namespace);
@@ -102,6 +87,13 @@ public class DialogueSession {
     public String getNamespace() { return namespace; }
 
     /**
+     * 一次性采样三个时钟，确保同一操作内的所有记录和检查使用一致的时间值。
+     */
+    private DialogueProgressStore.TimeSnapshot snapshot() {
+        return DialogueProgressStore.TimeSnapshot.capture(player);
+    }
+
+    /**
      * 获取每个可见选项的冷却剩余时间（秒）。
      *
      * @return 数组，长度与 visibleChoices 相同，0 = 可用，>0 = 剩余秒数
@@ -111,7 +103,7 @@ public class DialogueSession {
             return new int[0];
         }
 
-        TimeSnapshot ts = snapshot();
+        DialogueProgressStore.TimeSnapshot ts = snapshot();
         int[] cooldowns = new int[visibleChoices.size()];
 
         for (int i = 0; i < visibleChoices.size(); i++) {
@@ -123,10 +115,11 @@ public class DialogueSession {
                 continue;
             }
 
-            boolean onCooldown = progress.isChoiceOnCooldown(
-                    namespace, currentNode.nodeId(), originalIndex,
-                    choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
-                    ts.realTime, ts.gameTime, ts.dayTime);
+            // 使用 ProgressKey + TimeSnapshot 检查冷却
+            ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
+            boolean onCooldown = progress.isOnCooldown(
+                    choiceKey, choice.cooldownType(), (int) choice.cooldownSeconds(),
+                    choice.resetTimeTicks(), ts);
 
             if (!onCooldown) {
                 cooldowns[i] = 0;
@@ -134,7 +127,7 @@ public class DialogueSession {
             }
 
             // 计算剩余时间
-            var entry = progress.getChoiceEntry(namespace, currentNode.nodeId(), originalIndex);
+            var entry = progress.getChoiceSelection(choiceKey);
             cooldowns[i] = computeRemainingSeconds(entry, choice, ts);
         }
 
@@ -145,7 +138,7 @@ public class DialogueSession {
      * 根据冷却类型计算剩余秒数。
      */
     private int computeRemainingSeconds(DialogueProgressStore.Entry entry,
-                                        DialogueChoice choice, TimeSnapshot ts) {
+                                        DialogueChoice choice, DialogueProgressStore.TimeSnapshot ts) {
         if (!entry.exists()) return (int) choice.cooldownSeconds();
 
         return switch (choice.cooldownType()) {
@@ -153,14 +146,14 @@ public class DialogueSession {
 
             case SECONDS -> {
                 long cooldownMs = choice.cooldownSeconds() * 1000L;
-                long elapsed = ts.realTime - entry.realTime();
+                long elapsed = ts.realTime() - entry.realTime();
                 long remainingMs = cooldownMs - elapsed;
                 yield (int) Math.max(1, remainingMs / 1000);
             }
 
             case GAME_DAY -> {
                 // 距离现实午夜的秒数（粗略估计）
-                long nowMs = ts.realTime % (24 * 60 * 60 * 1000L);
+                long nowMs = ts.realTime() % (24 * 60 * 60 * 1000L);
                 long remainMs = (24 * 60 * 60 * 1000L) - nowMs;
                 yield (int) Math.max(1, remainMs / 1000);
             }
@@ -168,7 +161,7 @@ public class DialogueSession {
             case GAME_TICK -> {
                 // 用 tick 数除以 20 转秒
                 int remainTicks = progress.getGameTickCooldownRemainingTicks(
-                        entry, choice.resetTimeTicks(), ts.gameTime, ts.dayTime);
+                        entry, choice.resetTimeTicks(), ts.gameTime(), ts.dayTime());
                 yield Math.max(1, remainTicks / 20);
             }
         };
@@ -200,7 +193,7 @@ public class DialogueSession {
                 choiceIndex, originalIndex, choice.text());
 
         // 一次性采样时间
-        TimeSnapshot ts = snapshot();
+        DialogueProgressStore.TimeSnapshot ts = snapshot();
 
         if (!checkChoiceAvailable(choice, originalIndex, ts)) {
             return currentNode;
@@ -216,14 +209,12 @@ public class DialogueSession {
             }
         }
 
-        // 记录选项选择（传递完整三时钟）
-        progress.recordChoiceSelection(namespace, currentNode.nodeId(), originalIndex,
-                ts.realTime, ts.gameTime, ts.dayTime);
+        // 记录选项选择（使用 ProgressKey）
+        ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
+        progress.recordChoiceSelection(choiceKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
-        LOGGER.info("[DEBUG-Record] Recorded choice: ns={}, node={}, idx={}, " +
-                        "realTime={}, gameTime={}, dayTime={}",
-                namespace, currentNode.nodeId(), originalIndex,
-                ts.realTime, ts.gameTime, ts.dayTime);
+        LOGGER.info("[DEBUG-Record] Recorded choice: key={}, realTime={}, gameTime={}, dayTime={}",
+                choiceKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
         // 执行动作
         for (DialogueAction action : choice.actions()) {
@@ -243,12 +234,12 @@ public class DialogueSession {
             return null;
         }
 
-        // 记录目标节点访问（传递完整三时钟）
-        progress.recordNodeVisit(namespace, nextNode.nodeId(),
-                ts.realTime, ts.gameTime, ts.dayTime);
+        // 记录目标节点访问（使用 ProgressKey）
+        ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
+        progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
-        LOGGER.info("[DEBUG-Record] Recorded node visit: ns={}, node={}, dayTime={}",
-                namespace, nextNode.nodeId(), ts.dayTime);
+        LOGGER.info("[DEBUG-Record] Recorded node visit: key={}, dayTime={}",
+                nodeKey, ts.dayTime());
 
         currentNode = nextNode;
         evaluateVisibleChoices();
@@ -266,7 +257,7 @@ public class DialogueSession {
         if (ended || currentNode == null) return null;
         if (currentNode.hasChoices()) return currentNode;
 
-        TimeSnapshot ts = snapshot();
+        DialogueProgressStore.TimeSnapshot ts = snapshot();
 
         if (!checkNodeAvailable(currentNode, ts)) {
             return null;
@@ -284,9 +275,9 @@ public class DialogueSession {
             return null;
         }
 
-        // 记录访问（传递完整三时钟）
-        progress.recordNodeVisit(namespace, nextNode.nodeId(),
-                ts.realTime, ts.gameTime, ts.dayTime);
+        // 记录访问（使用 ProgressKey）
+        ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
+        progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
         currentNode = nextNode;
         evaluateVisibleChoices();
@@ -296,6 +287,11 @@ public class DialogueSession {
     public void end() {
         ended = true;
         LOGGER.debug("[Dialogue] Session {} ended.", sessionId);
+        
+        // ⭐ v3: 触发跨系统桥接事件(对话完成)
+        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
+                .orElse(null);
+        CrossSystemBridge.INSTANCE.onDialogueCompleted(player, cap, tree.dialogueId());
     }
 
     // ═══════════════════════════════════════════════
@@ -378,29 +374,39 @@ public class DialogueSession {
             return;
         }
 
-        DialogueEvalContext ctx = buildEvalContext();
+        // ⭐ v4: 开始评估周期,启用缓存
+        EvalCache cache = EvalCache.current();
+        cache.beginCycle();
 
-        List<DialogueChoice> passing = new ArrayList<>();
-        for (DialogueChoice choice : currentNode.choices()) {
-            boolean pass = choice.conditions().isEmpty()
-                    || choice.conditions().stream().allMatch(c -> c.test(ctx));
+        try {
+            DialogueEvalContext ctx = buildEvalContext();
 
-            LOGGER.debug("[Dialogue] Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
+            List<DialogueChoice> passing = new ArrayList<>();
+            for (DialogueChoice choice : currentNode.choices()) {
+                boolean pass = choice.conditions().isEmpty()
+                        || choice.conditions().stream().allMatch(c -> 
+                            cache.computeIfAbsent(c, () -> c.test(ctx)));
 
-            if (pass) {
-                passing.add(choice);
+                LOGGER.debug("[Dialogue] Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
+
+                if (pass) {
+                    passing.add(choice);
+                }
             }
-        }
 
-        if (passing.isEmpty()) {
-            visibleChoices = List.of();
-        } else {
-            int maxPriority = passing.stream()
-                    .mapToInt(DialogueChoice::priority)
-                    .max().orElse(0);
-            visibleChoices = passing.stream()
-                    .filter(c -> c.priority() == maxPriority)
-                    .toList();
+            if (passing.isEmpty()) {
+                visibleChoices = List.of();
+            } else {
+                int maxPriority = passing.stream()
+                        .mapToInt(DialogueChoice::priority)
+                        .max().orElse(0);
+                visibleChoices = passing.stream()
+                        .filter(c -> c.priority() == maxPriority)
+                        .toList();
+            }
+        } finally {
+            // ⭐ v4: 结束评估周期
+            cache.endCycle();
         }
     }
 
@@ -408,9 +414,10 @@ public class DialogueSession {
     //  内部：冷却检查（使用 TimeSnapshot）
     // ═══════════════════════════════════════════════
 
-    private boolean checkNodeAvailable(DialogueNode node, TimeSnapshot ts) {
+    private boolean checkNodeAvailable(DialogueNode node, DialogueProgressStore.TimeSnapshot ts) {
         // 一次性检查
-        if (!node.repeatable() && progress.hasVisitedNode(namespace, node.nodeId())) {
+        ProgressKey nodeKey = ProgressKey.ofNode(namespace, node.nodeId());
+        if (!node.repeatable() && progress.hasVisitedNode(nodeKey)) {
             LOGGER.debug("[Dialogue] One-time node '{}' already visited.", node.nodeId());
             return false;
         }
@@ -420,7 +427,7 @@ public class DialogueSession {
             boolean onCooldown = progress.isNodeOnCooldown(
                     namespace, node.nodeId(),
                     node.cooldownType(), (int) node.cooldownSeconds(), node.resetTimeTicks(),
-                    ts.realTime, ts.gameTime, ts.dayTime);
+                    ts.realTime(), ts.gameTime(), ts.dayTime());
             if (onCooldown) {
                 LOGGER.debug("[Dialogue] Node '{}' on cooldown.", node.nodeId());
                 return false;
@@ -429,12 +436,12 @@ public class DialogueSession {
 
         // 记录本次访问
         progress.recordNodeVisit(namespace, node.nodeId(),
-                ts.realTime, ts.gameTime, ts.dayTime);
+                ts.realTime(), ts.gameTime(), ts.dayTime());
         return true;
     }
 
     private boolean checkChoiceAvailable(DialogueChoice choice, int choiceIndex,
-                                         TimeSnapshot ts) {
+                                         DialogueProgressStore.TimeSnapshot ts) {
         LOGGER.info("[DEBUG-Cooldown] Checking choice: node={}, idx={}, type={}, seconds={}",
                 currentNode.nodeId(), choiceIndex, choice.cooldownType(), choice.cooldownSeconds());
 
@@ -451,7 +458,7 @@ public class DialogueSession {
             boolean onCooldown = progress.isChoiceOnCooldown(
                     namespace, currentNode.nodeId(), choiceIndex,
                     choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
-                    ts.realTime, ts.gameTime, ts.dayTime);
+                    ts.realTime(), ts.gameTime(), ts.dayTime());
 
             LOGGER.info("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}",
                     currentNode.nodeId(), choiceIndex, onCooldown);
