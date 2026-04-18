@@ -37,12 +37,7 @@ public final class FlagReward implements IReward {
 
     @Override
     public void grant(ServerPlayer player) {
-        // Phase 2: 从 player 的 Capability 中读写 flags
-        // player.getCapability(ArcQuestCapability.INSTANCE).ifPresent(cap -> {
-        //     if (this.set) cap.setFlag(this.flag);
-        //     else cap.clearFlag(this.flag);
-        // });
-        // ─── 暂留接口，Phase 2 接入 ───
+        // 暂留接口
     }
 
     @Override

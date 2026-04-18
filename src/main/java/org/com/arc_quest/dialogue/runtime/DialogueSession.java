@@ -288,7 +288,7 @@ public class DialogueSession {
         ended = true;
         LOGGER.debug("[Dialogue] Session {} ended.", sessionId);
         
-        // ⭐ v3: 触发跨系统桥接事件(对话完成)
+        // 触发跨系统桥接事件
         IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElse(null);
         CrossSystemBridge.INSTANCE.onDialogueCompleted(player, cap, tree.dialogueId());
@@ -310,7 +310,7 @@ public class DialogueSession {
     }
 
     // ═══════════════════════════════════════════════
-    //  内部：命名空间解析（不变）
+    // 内部：命名空间解析
     // ═══════════════════════════════════════════════
 
     private String resolveNamespace() {
@@ -365,7 +365,7 @@ public class DialogueSession {
     }
 
     // ═══════════════════════════════════════════════
-    //  内部：条件评估（不变）
+    // 内部：条件评估
     // ═══════════════════════════════════════════════
 
     private void evaluateVisibleChoices() {
@@ -470,7 +470,7 @@ public class DialogueSession {
     }
 
     // ═══════════════════════════════════════════════
-    //  内部：动作执行（不变）
+    // 内部：动作执行
     // ═══════════════════════════════════════════════
 
     private void executeAction(DialogueAction action) {

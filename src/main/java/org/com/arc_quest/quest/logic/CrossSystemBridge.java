@@ -39,7 +39,7 @@ public final class CrossSystemBridge {
     
     private final List<DependencyRule> rules = new CopyOnWriteArrayList<>();
     
-    // ⭐ 索引优化: triggerSource → 规则列表,避免 O(n) 遍历
+    // 索引优化
     private final Map<String, List<DependencyRule>> questTriggerIndex = new HashMap<>();
     private final Map<String, List<DependencyRule>> dialogueTriggerIndex = new HashMap<>();
     
@@ -149,12 +149,10 @@ public final class CrossSystemBridge {
     
     /**
      * 触发匹配的规则。
-     * <p>
-     * ⭐ 使用索引优化,从 O(n) 降低到 O(m),其中 m = 匹配的规则数。</p>
      */
     private void triggerRules(ServerPlayer player, IQuestCapability capability,
                              DependencyRule.TriggerType type, String source) {
-        // ⭐ 通过索引直接获取匹配的规则
+        // 通过索引直接获取匹配的规则
         List<DependencyRule> matchedRules = switch (type) {
             case QUEST_COMPLETED, QUEST_FAILED, QUEST_STARTED ->
                 questTriggerIndex.getOrDefault(source, Collections.emptyList());

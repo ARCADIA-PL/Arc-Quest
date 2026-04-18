@@ -59,14 +59,14 @@ import java.util.function.Consumer;
  * </ul>
  */
 public final class NbtVersionManager {
-    // ⭐ 统一使用 _ArcQuestVer (符合设计文档规范)
+    // 统一使用 _ArcQuestVer
     private static final String VERSION_KEY = "_ArcQuestVer";
     
     private final String capabilityName;
     private final int currentVersion;
     private final Logger logger;
     
-    // 迁移函数数组,索引 = fromVersion
+    // 迁移函数数组
     private final Consumer<CompoundTag>[] migrations;
     
     @SuppressWarnings("unchecked")
@@ -74,7 +74,7 @@ public final class NbtVersionManager {
         this.capabilityName = capabilityName;
         this.currentVersion = currentVersion;
         this.logger = logger;
-        this.migrations = new Consumer[currentVersion];  // 索引 0..currentVersion-1
+        this.migrations = new Consumer[currentVersion];
     }
     
     /**
@@ -102,20 +102,15 @@ public final class NbtVersionManager {
     }
     
     /**
-     * 执行迁移,将 tag 从当前版本升级到最新版本。
-     * 
-     * <p>如果 tag 没有版本字段,假定为 v0。</p>
-     * <p>如果 tag 版本已是最新,直接返回。</p>
-     * <p>如果 tag 版本高于当前版本,抛出异常(降级不支持)。</p>
+     * 执行迁移，将 tag 升级到最新版本。
      * 
      * @param tag 要迁移的 NBT 标签
-     * @throws RuntimeException 如果迁移过程中发生错误
      */
     public void migrate(CompoundTag tag) {
         int storedVersion = tag.getInt(VERSION_KEY);
         
         if (storedVersion == currentVersion) {
-            // 已是最新版本,无需迁移
+            // 已是最新版本
             return;
         }
         
@@ -129,7 +124,7 @@ public final class NbtVersionManager {
         logger.info("[{}] Migrating NBT data from v{} to v{}...", 
             capabilityName, storedVersion, currentVersion);
         
-        // 链式迁移: v_stored → v_stored+1 → ... → v_current
+        // 链式迁移
         for (int v = storedVersion; v < currentVersion; v++) {
             if (migrations[v] == null) {
                 throw new RuntimeException(

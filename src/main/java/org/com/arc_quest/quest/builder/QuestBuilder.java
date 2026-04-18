@@ -207,7 +207,7 @@ public final class QuestBuilder {
      */
     public QuestBuilder visualConfig(QuestVisualConfig config) {
         if (config != null) {
-            // 重建 builder 以替换配置
+            // 重建配置
             this.visualConfigBuilder = QuestVisualConfig.builder()
                     .themeColor(config.getThemeColor());
             // 复制所有立绘配置

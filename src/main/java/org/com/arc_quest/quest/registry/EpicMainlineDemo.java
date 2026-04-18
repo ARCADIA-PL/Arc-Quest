@@ -55,7 +55,7 @@ public final class EpicMainlineDemo {
                         .setFlagOnEnter("prologue_started")
                         .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 5).display(Component.translatable("arc_quest.objective.epic_prologue.gather_wood.0")))
                         .thenGoTo("talk_villager"))
-                // 阶段 1.5：与村民对话测试
+                // 阶段：与村民对话
                 .phase(PhaseBuilder.create("talk_villager")
                         .displayName(Component.translatable("arc_quest.phase.epic_prologue.talk_villager"))
                         .objective(ObjectiveBuilder.interact(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "village_elder")).display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))

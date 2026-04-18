@@ -43,7 +43,7 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Void>
                          @NotNull ProfilerFiller profiler) {
         profiler.startTick();
 
-        // 重新注册对话树（防止reload后丢失）
+        // 注册对话树
         EpicDialogueTrees.registerAll();
         LOGGER.info("[ArcQuest] Epic dialogues re-registered after reload.");
 

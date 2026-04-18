@@ -42,7 +42,7 @@ public final class ConditionalTextEvaluator {
             String key = entry.getKey();
             String text = entry.getValue();
 
-            // 解析优先级：格式为 "priority|condition"
+            // 解析优先级
             int priority = 0;
             String conditionKey = key;
             int separatorIndex = key.indexOf('|');
@@ -142,13 +142,13 @@ public final class ConditionalTextEvaluator {
 
             // ALL:count （需要额外存储子条件，简化版暂不支持）
             if (conditionKey.startsWith("ALL:")) {
-                // TODO: 实现 AND 组合条件
+                // AND 组合条件
                 return false;
             }
 
             // ANY:count （需要额外存储子条件，简化版暂不支持）
             if (conditionKey.startsWith("ANY:")) {
-                // TODO: 实现 OR 组合条件
+                // OR 组合条件
                 return false;
             }
 

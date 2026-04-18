@@ -129,7 +129,7 @@ public final class EpicDialogueTrees {
                         Component.translatable("dialogue.epic_village_elder.start.legendary").getString()
                 )
 
-                // 默认文本（兜底）
+                // 兜底文本
                 .say(Component.translatable("dialogue.epic_village_elder.start.default").getString())
 
                 // 选项 - 根据任务状态显示不同选项
@@ -186,7 +186,7 @@ public final class EpicDialogueTrees {
                                 .close()
                 )
 
-                // 默认选项（无条件显示）
+                // 无条件选项
                 .choice(Component.translatable("dialogue.epic_village_elder.start.choice_default").getString(),
                         DialogueTreeBuilder.ChoiceBuilder::close)
 
@@ -429,7 +429,7 @@ public final class EpicDialogueTrees {
                         Component.translatable("dialogue.epic_wandering_trader.start.legendary").getString()
                 )
 
-                // 默认文本（兜底）
+                // 兜底文本
                 .say(Component.translatable("dialogue.epic_wandering_trader.start.default").getString())
 
                 // 选项
@@ -536,7 +536,7 @@ public final class EpicDialogueTrees {
                         Component.translatable("dialogue.epic_village_guard.start.night").getString()
                 )
 
-                // 默认文本
+                // 兜底文本
                 .say(Component.translatable("dialogue.epic_village_guard.start.default").getString())
 
                 // 选项1：首次见面介绍（一次性）
@@ -560,7 +560,7 @@ public final class EpicDialogueTrees {
                 .choice(
                         Component.translatable("dialogue.epic_village_guard.start.choice_training").getString(),
                         c -> {
-                            c.cooldown(3600);  // 1小时=3600秒
+                            c.cooldown(3600);
                             c.goTo("training");
                         }
                 )

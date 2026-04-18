@@ -9,9 +9,6 @@ import java.util.List;
 
 /**
  * 对话条件 —— 控制选项/文本的可见性。
- * <p>
- * <b>v2 变更</b>: {@link #test} 参数从 {@code (Player, Entity)} 改为
- * {@link DialogueEvalContext}，消除对 ThreadLocal 的依赖。
  */
 public sealed interface DialogueCondition permits
         // ── 逻辑组合 ──

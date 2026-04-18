@@ -22,23 +22,23 @@ public class QuestCapabilityImpl implements IQuestCapability {
     private static final Logger LOGGER = LoggerFactory.getLogger(QuestCapabilityImpl.class);
     
     /**
-     * ⭐ v3: NBT 版本管理器(当前版本 = 3)
+     * NBT 版本管理器
      */
     private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
         "arc_quest:player_data",
-        3,  // 当前最新版本
+        3,  // 当前版本
         LOGGER
     );
     
     static {
-        // v0 → v1: 添加 Flags 字段(旧存档可能没有)
+        // v0 → v1: 添加 Flags 字段
         VERSION_MANAGER.addMigration(0, 1, tag -> {
             if (!tag.contains("Flags", Tag.TAG_LIST)) {
                 tag.put("Flags", new ListTag());
             }
         });
         
-        // v1 → v2: 添加 DialogueProgress 并迁移旧格式
+        // v1 → v2: 添加 DialogueProgress
         VERSION_MANAGER.addMigration(1, 2, tag -> {
             // 如果存在旧的 NodeVisitHistory 等字段,迁移到 DialogueProgress
             if (tag.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
@@ -51,9 +51,9 @@ public class QuestCapabilityImpl implements IQuestCapability {
             }
         });
         
-        // v2 → v3: 移除 _version 字段,改用 _ArcQuestVer
+        // v2 → v3: 改用 _ArcQuestVer
         VERSION_MANAGER.addMigration(2, 3, tag -> {
-            // 将旧的 _version 字段值复制到 _ArcQuestVer(如果存在)
+            // 复制旧的 _version 到 _ArcQuestVer
             if (tag.contains("_version", Tag.TAG_INT)) {
                 int oldVersion = tag.getInt("_version");
                 tag.putInt("_ArcQuestVer", Math.max(oldVersion, 3));
@@ -73,7 +73,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     private final Map<String, Integer> variables = new HashMap<>();
 
     /**
-     * ⭐ v2: 统一对话进度存储
+     * 统一对话进度存储
      */
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
 
@@ -89,7 +89,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     // ═══════════════════════════════════════════════
-    //  任务管理（不变）
+    // 任务管理
     // ═══════════════════════════════════════════════
 
     @Override
@@ -157,7 +157,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     // ═══════════════════════════════════════════════
-    //  Flag（不变）
+    // Flag
     // ═══════════════════════════════════════════════
 
     @Override
@@ -183,7 +183,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     // ═══════════════════════════════════════════════
-    //  Variable（不变）
+    // Variable
     // ═══════════════════════════════════════════════
 
     @Override
@@ -241,10 +241,10 @@ public class QuestCapabilityImpl implements IQuestCapability {
         for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
         root.put("Variables", varsTag);
 
-        // ⭐ v2: 统一对话进度
+        // 对话进度
         root.put("DialogueProgress", dialogueProgress.serialize());
 
-        // ⭐ v3: 使用 NbtVersionManager 设置版本号
+        // 设置版本号
         VERSION_MANAGER.setInitialVersion(root);
 
         return root;
@@ -252,7 +252,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
     @Override
     public void deserializeNBT(CompoundTag root) {
-        // ⭐ v3: 先执行版本迁移
+        // 执行版本迁移
         VERSION_MANAGER.migrate(root);
         
         activeQuests.clear();
@@ -280,12 +280,12 @@ public class QuestCapabilityImpl implements IQuestCapability {
         CompoundTag varsTag = root.getCompound("Variables");
         for (String key : varsTag.getAllKeys()) variables.put(key, varsTag.getInt(key));
 
-        // ⭐ v2/v3: 对话进度 —— 自动检测新旧格式
+        // 对话进度 —— 自动检测新旧格式
         if (root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
             // 新格式：直接反序列化
             dialogueProgress.deserialize(root.getCompound("DialogueProgress"));
         } else if (root.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
-            // 旧格式：迁移(v1 → v2 迁移时保留的旧字段)
+            // 旧格式：迁移
             dialogueProgress.migrateFromLegacy(root);
         }
     }

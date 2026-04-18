@@ -13,12 +13,10 @@ import org.slf4j.Logger;
 import java.util.*;
 
 /**
- * 核心目标追踪索引 - P1优化版（使用FastUtil）。
+ * 核心目标追踪索引。
  * <p>
  * 内部维护 {@code Map<ObjectiveKey, Set<TrackedObjective>>}，
  * 保证任何 Forge 事件只需一次 HashMap.get() 即可找到所有相关目标——O(1) 查找。
- * <p>
- * 此类仅运行在服务端主线程上。
  */
 public final class ObjectiveTracker {
 
@@ -31,14 +29,11 @@ public final class ObjectiveTracker {
      * 核心索引：ObjectiveKey → 该 key 下所有正在追踪的目标句柄
      * <p>
      * 例如：Key(KILL, minecraft:zombie) → { PlayerA的任务1目标0, PlayerB的任务3目标1, ... }
-     * <p>
-     * P1优化：使用FastUtil的Object2ObjectOpenHashMap避免装箱/拆箱开销
      */
     private final Object2ObjectOpenHashMap<ObjectiveKey, ObjectOpenHashSet<TrackedObjective>> index = new Object2ObjectOpenHashMap<>();
 
     /**
      * 反向索引：playerId → 该玩家所有正在追踪的句柄（用于快速移除）
-     * P1优化：使用FastUtil的Object2ObjectOpenHashMap
      */
     private final Object2ObjectOpenHashMap<UUID, ObjectOpenHashSet<TrackedObjective>> byPlayer = new Object2ObjectOpenHashMap<>();
 

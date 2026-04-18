@@ -355,7 +355,7 @@ public class ArcQuestCommands {
             data.setCurrentPhaseId(phaseId);
             data.resetObjectives(phase.getObjectives().size());
 
-            // 重新注册追踪器（关键！）
+            // 注册追踪器
             ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
             QuestProgressHandler.registerPhaseObjectives(player, def, phase);
 
@@ -584,7 +584,7 @@ public class ArcQuestCommands {
             cap.clearAllData();
             success(ctx, Component.literal("已重置玩家 " + player.getName().getString() + " 的所有对话进度").getString());
         } else {
-            // TODO: 实现按对话树ID重置特定进度
+            // 按对话树ID重置进度
             success(ctx, Component.literal("已请求重置玩家 " + player.getName().getString() + " 的对话树 " + dialogueId + "（功能开发中）").getString());
         }
         return 1;
@@ -616,7 +616,7 @@ public class ArcQuestCommands {
         IQuestCapability cap = getCapOrError(ctx, player);
         if (cap == null) return 0;
 
-        // 直接清空所有数据（包括 active、completed、failed）
+        // 清空所有数据
         cap.clearAllData();
 
         // 清理追踪器

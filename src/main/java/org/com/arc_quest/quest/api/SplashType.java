@@ -1,10 +1,9 @@
 package org.com.arc_quest.quest.api;
 
 /**
- * 立绘显示时机类型（高可扩展）。
+ * 立绘显示时机类型。
  * <p>
  * 每种类型对应不同的触发时机和渲染场景。
- * 新增类型只需在此枚举添加，无需修改其他代码。
  */
 public enum SplashType {
     /**

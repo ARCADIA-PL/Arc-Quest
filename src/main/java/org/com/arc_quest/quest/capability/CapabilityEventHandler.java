@@ -74,7 +74,7 @@ public final class CapabilityEventHandler {
         @SubscribeEvent
         public static void onPlayerClone(PlayerEvent.Clone event) {
             // 不论是死亡还是末地传送，都复制任务数据
-            event.getOriginal().reviveCaps(); // 1.20.1 需要先恢复旧 caps
+            event.getOriginal().reviveCaps();
             event.getOriginal().getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(oldCap -> {
                 event.getEntity().getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(newCap -> {
                     newCap.copyFrom(oldCap);
@@ -88,7 +88,7 @@ public final class CapabilityEventHandler {
         /**
          * 玩家登录时：
          * 1. 重建 ObjectiveTracker 索引
-         * 2. 验证并修复任务数据（处理代码修改后的不兼容）
+         * 2. 验证任务数据
          * 3. 全量同步到客户端
          */
         @SubscribeEvent
@@ -111,11 +111,7 @@ public final class CapabilityEventHandler {
         }
 
         /**
-         * 验证并修复玩家的任务数据，确保与当前注册的定义一致。
-         * <p>
-         * 处理场景：
-         * - 任务定义被修改（阶段增删、目标变更）
-         * - 旧存档中的任务数据与新定义不匹配
+         * 验证玩家的任务数据，确保与当前注册的定义一致。
          */
         private static void validateAndFixQuestData(ServerPlayer player, IQuestCapability cap) {
             var activeQuests = cap.getAllActiveQuests();
