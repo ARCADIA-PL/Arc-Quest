@@ -23,9 +23,10 @@ public class DialogueTreeBuilder {
     private String defaultNpc = "";
     private String startNodeId = null;
     private QuestVisualConfig visualConfig = null;
-    private boolean repeatable = true;  // 默认可重复
-    private long cooldownSeconds = 0;   // 默认无冷却
-    private CooldownType treeCooldownType = CooldownType.NONE;  // 对话树冷却类型
+    private boolean repeatable = true;
+    private long cooldownSeconds = 0;
+    private CooldownType treeCooldownType = CooldownType.NONE;
+    private int treeCooldownResetTicks = 0; 
     private String curNodeId;
     private String curSpeaker;
     private String curText;
@@ -93,6 +94,32 @@ public class DialogueTreeBuilder {
         this.repeatable = true;
         this.cooldownSeconds = 1;
         this.treeCooldownType = CooldownType.GAME_DAY;
+        return this;
+    }
+
+    /**
+     * 设置对话树为游戏时间刻冷却，并指定重置时间点。
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * // 每天早上6点（tick=0）重置
+     * .cooldownGameTick(0)
+     *
+     * // 每天中午12点（tick=6000）重置
+     * .cooldownGameTick(6000)
+     *
+     * // 每天晚上6点（tick=12000）重置
+     * .cooldownGameTick(12000)
+     * }</pre>
+     *
+     * @param resetTick 重置时间点（0-23999），0=早上6点，6000=中午12点，12000=晚上6点，18000=凌晨0点
+     * @return 当前构建器
+     */
+    public DialogueTreeBuilder cooldownGameTick(int resetTick) {
+        this.repeatable = true;
+        this.cooldownSeconds = 0;
+        this.treeCooldownType = CooldownType.GAME_TICK;
+        this.treeCooldownResetTicks = Math.max(0, Math.min(resetTick, 23999));
         return this;
     }
 
@@ -302,7 +329,7 @@ public class DialogueTreeBuilder {
                 repeatable,
                 cooldownSeconds,
                 treeCooldownType,
-                0
+                treeCooldownResetTicks
         );
     }
 

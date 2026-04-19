@@ -110,7 +110,6 @@ public class DialogueContext {
                 if (tag instanceof StringTag st) {
                     value = st.getAsString();
                 } else if (tag instanceof NumericTag nt) {
-                    // 整数不带小数点
                     Number num = nt.getAsNumber();
                     if (num instanceof Float || num instanceof Double) {
                         value = String.format("%.1f", num.doubleValue());

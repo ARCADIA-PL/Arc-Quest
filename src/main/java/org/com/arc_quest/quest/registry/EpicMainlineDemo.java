@@ -11,7 +11,6 @@ import org.com.arc_quest.quest.builder.ObjectiveBuilder;
 import org.com.arc_quest.quest.builder.PhaseBuilder;
 import org.com.arc_quest.quest.builder.QuestBuilder;
 import org.com.arc_quest.quest.condition.FlagSetCondition;
-import org.com.arc_quest.quest.reward.CommandReward;
 import org.com.arc_quest.quest.reward.FlagReward;
 import org.com.arc_quest.quest.reward.ItemReward;
 import org.com.arc_quest.quest.reward.VariableReward;
@@ -133,7 +132,6 @@ public final class EpicMainlineDemo {
                 // 奖励
                 .reward(new ItemReward(Items.DIAMOND_PICKAXE, 1))
                 .reward(new ItemReward(Items.TORCH, 32))
-                .reward(new CommandReward("give {player} minecraft:experience_bottle 32"))
                 .setFlagOnComplete("chapter1_completed")
                 .setFlagOnComplete("chapter2_unlocked")
                 .buildAndRegister();
@@ -266,8 +264,6 @@ public final class EpicMainlineDemo {
                 .reward(new ItemReward(Items.DRAGON_HEAD, 1))
                 .reward(new ItemReward(Items.ELYTRA, 1))
                 .reward(new ItemReward(Items.TOTEM_OF_UNDYING, 3))
-                .reward(new CommandReward("give {player} minecraft:netherite_ingot 8"))
-                .reward(new CommandReward("give {player} minecraft:experience_bottle 128"))
                 .reward(FlagReward.set("legendary_hero"))
                 .reward(VariableReward.add("hero_level", 999))
                 .buildAndRegister();

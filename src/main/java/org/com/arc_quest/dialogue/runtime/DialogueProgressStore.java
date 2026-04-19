@@ -11,30 +11,6 @@ import java.util.Map;
 
 /**
  * 对话进度统一存储。
- * <p>
- * <b>v2.2 时间系统修正</b>:
- * <ul>
- *   <li>明确 getDayTime() 返回单调递增的原始值（非 [0,23999] 循环）</li>
- *   <li>GAME_TICK 冷却使用"双时钟守卫"：周期比较 + gameTime安全网 + 倒退检测</li>
- *   <li>正确处理 /time set 导致的 dayTime 倒退</li>
- * </ul>
- *
- * <h3>时间字段语义</h3>
- * <pre>
- * Entry.realTime  = System.currentTimeMillis()   → SECONDS / GAME_DAY 冷却
- * Entry.gameTime  = Level.getGameTime()           → 单调递增（不受/time set影响），双时钟守卫
- * Entry.dayTime   = Level.getDayTime()（原始值）  → GAME_TICK 周期比较（自然递增，/time set可倒退）
- * </pre>
- *
- * <h3>getDayTime() 行为澄清</h3>
- * <pre>
- * getDayTime() 在以下情况下单调递增：
- *   - 自然时间流逝（每tick +1）
- *   - /time add N（增加N）
- * getDayTime() 在以下情况下可能减小：
- *   - /time set X（直接设为X，如果X &lt; 当前值则减小）
- * getDayTime() % 24000 才是日内时间 [0, 23999]
- * </pre>
  */
 public class DialogueProgressStore {
 

@@ -2,7 +2,7 @@
 
 **模块**: dialogue/  
 **最后更新**: 2026-04-17  
-**版本**: v3.2（新增游戏时间刻冷却系统、时间段条件）
+**版本**: v3.3（修复文档API一致性，新增对话树GAME_TICK冷却）
 
 ---
 
@@ -13,11 +13,11 @@
 3. [NPC交互流程](#npc交互流程)
 4. [动作执行机制](#动作执行机制)
 5. [上下文变量替换](#上下文变量替换)
-6. [条件系统](#条件系统) ⭐ **增强**
+6. [条件系统](#条件系统)
 7. [权重与优先级系统](#权重与优先级系统)
 8. [动态文本与预设动作](#动态文本与预设动作)
 9. [IEntityDialogueExtension扩展系统](#ientitydialogueextension扩展系统)
-10. [游戏时间刻冷却系统](#游戏时间刻冷却系统) ⭐ **新增 v3.2**
+10. [游戏时间刻冷却系统](#游戏时间刻冷却系统)
 11. [实战示例](#实战示例)
 
 ---
@@ -648,10 +648,12 @@ session.getContext().put("completed_quests", cap.getCompletedQuests().size());
 | 条件类型 | 用途 | 示例 |
 |---------|------|------|
 | **任务相关** | 检查任务状态 | `HasQuest`, `QuestActive`, `QuestCompleted`, `QuestPhase` |
-| **等级相关** | 检查玩家等级 | `MinLevel` |
-| **历史状态** ⭐ **新增** | 检查对话/节点/选项历史 | `NodeVisited`, `ChoiceSelected`, `DialogueCompleted` |
-| **冷却状态** ⭐ **新增** | 精确检查冷却时间 | `NodeOnCooldown`, `ChoiceOnCooldown`, `DialogueOnCooldown` |
+| **Flag/Variable** | 检查标志位和变量 | `HasFlag`, `VariableCheck` |
+| **时间条件** | 检查游戏时间段 | `IsMorning`, `IsAfternoon`, `IsNight`, `GameTimeInRange` |
+| **历史记录** | 检查对话/节点/选项历史 | `NodeVisited`, `ChoiceSelected`, `DialogueCompleted` |
+| **冷却状态** | 精确检查冷却时间 | `NodeOnCooldown`, `ChoiceOnCooldown`, `DialogueOnCooldown` |
 | **逻辑组合** | AND/OR/NOT | `All`, `Any`, `Not` |
+| **自定义条件** | Lambda表达式 | `CustomCondition.of((player, npc) -> ...)` |
 
 ---
 
@@ -661,7 +663,7 @@ session.getContext().put("completed_quests", cap.getCompletedQuests().size());
 
 ```java
 .choice("询问任务进度", c -> c.goTo("quest_status"))
-    .visibleIf(new DialogueCondition.HasQuest("arc_quest:epic_prologue"))
+    .onlyIf(new DialogueCondition.HasQuest("arc_quest:epic_prologue"))
 ```
 
 ---
@@ -670,7 +672,7 @@ session.getContext().put("completed_quests", cap.getCompletedQuests().size());
 
 ```java
 .choice("继续任务", c -> c.goTo("continue"))
-    .visibleIf(new DialogueCondition.QuestActive("arc_quest:epic_prologue"))
+    .onlyIf(new DialogueCondition.QuestActive("arc_quest:epic_prologue"))
 ```
 
 ---
@@ -679,7 +681,7 @@ session.getContext().put("completed_quests", cap.getCompletedQuests().size());
 
 ```java
 .choice("领取奖励", c -> c.giveItem("...").close())
-    .visibleIf(new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"))
+    .onlyIf(new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"))
 ```
 
 ---
@@ -688,7 +690,7 @@ session.getContext().put("completed_quests", cap.getCompletedQuests().size());
 
 ```java
 .choice("汇报进度", c -> c.goTo("report"))
-    .visibleIf(new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "gather_wood"))
+    .onlyIf(new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "gather_wood"))
 ```
 
 ---
@@ -802,153 +804,7 @@ return (currentTime - lastTime) < cooldownMs; // 精确判断
 
 ---
 
-### 5. NPC相关条件 ⭐ **新增 v3.0**
-
-> 💡 **重要**：所有对话条件现在都支持检查 NPC（对话目标）的状态。
-
-#### 条件接口签名变更
-
-```java
-public sealed interface DialogueCondition {
-    /**
-     * 测试条件是否满足
-     * @param player 玩家
-     * @param npc NPC实体（可能为null）
-     * @return 是否满足条件
-     */
-    boolean test(ServerPlayer player, Entity npc);
-}
-```
-
-**向后兼容**：旧的条件实现会自动忽略 `npc` 参数，继续正常工作。
-
----
-
-#### NpcExists - NPC是否存在
-
-```java
-.choiceIf(
-    new DialogueCondition.NpcExists(),
-    "与NPC对话",
-    c -> c.goTo("talk")
-)
-```
-
-**用途**：确保 NPC 实体仍然有效。
-
----
-
-#### NpcHasTag - NPC是否有特定标签
-
-```java
-// 只与带有 "friendly" 标签的 NPC 对话
-.choiceIf(
-    new DialogueCondition.NpcHasTag("friendly"),
-    "友好对话",
-    c -> c.goTo("friendly_talk")
-)
-```
-
-**设置标签**：
-```java
-entity.addTag("friendly");
-```
-
----
-
-#### NpcHasName - NPC名称匹配
-
-```java
-.choiceIf(
-    new DialogueCondition.NpcHasName("老村长"),
-    "与村长对话",
-    c -> c.goTo("elder_talk")
-)
-```
-
----
-
-#### NpcDistance - NPC距离检查
-
-```java
-// 只有在 5 格以内才能选择此选项
-.choiceIf(
-    new DialogueCondition.NpcDistance(5.0),
-    "靠近交谈",
-    c -> c.goTo("close_talk")
-)
-```
-
----
-
-#### NpcEntityType - NPC类型检查
-
-```java
-// 只与村民对话
-.choiceIf(
-    new DialogueCondition.NpcEntityType(EntityType.VILLAGER),
-    "与村民交谈",
-    c -> c.goTo("villager_talk")
-)
-
-// 只与流浪商人对话
-.choiceIf(
-    new DialogueCondition.NpcEntityType(EntityType.WANDERING_TRADER),
-    "与商人交易",
-    c -> c.goTo("trader_talk")
-)
-```
-
----
-
-#### NpcPersistentData - NPC持久化数据检查
-
-```java
-// 检查 NPC 的自定义数据
-.choiceIf(
-    new DialogueCondition.NpcPersistentData("quest_giver", "true"),
-    "接受任务",
-    c -> c.startQuest("my_quest").close()
-)
-```
-
-**设置数据**：
-```java
-entity.getPersistentData().putString("quest_giver", "true");
-```
-
----
-
-#### NpcNbtData - NPC完整NBT检查
-
-```java
-// 检查复杂的 NBT 结构
-.choiceIf(
-    new DialogueCondition.NpcNbtData(nbt -> 
-        nbt.contains("CustomName") && 
-        nbt.getString("CustomName").contains("传奇")
-    ),
-    "与传奇NPC对话",
-    c -> c.goTo("legendary_talk")
-)
-```
-
----
-
-#### NpcIsLiving / NpcIsMob / NpcIsVillager / NpcIsWanderingTrader
-
-便捷的条件类型检查：
-
-```java
-.choiceIf(new DialogueCondition.NpcIsLiving(), "与生物对话", ...)
-.choiceIf(new DialogueCondition.NpcIsMob(), "与怪物对话", ...)
-.choiceIf(new DialogueCondition.NpcIsVillager(), "与村民对话", ...)
-.choiceIf(new DialogueCondition.NpcIsWanderingTrader(), "与商人对话", ...)
-```
-
----
-
-### 6. 逻辑组合条件
+### 4. 逻辑组合条件
 
 #### Not - 逻辑取反
 
@@ -970,7 +826,7 @@ entity.getPersistentData().putString("quest_giver", "true");
 .choiceIf(
     new DialogueCondition.All(List.of(
         new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"),
-        new DialogueCondition.MinLevel(10),
+        new DialogueCondition.HasFlag("reached_level_10"),
         new DialogueCondition.Not(new DialogueCondition.HasQuest("arc_quest:epic_chapter1"))
     )),
     "开始第一章",
@@ -1004,13 +860,13 @@ entity.getPersistentData().putString("quest_giver", "true");
 .node("branch_choice")
     .say("你选择了哪条道路？")
     
-    // 战斗路线：需要完成序章且等级>=15
+    // 战斗路线：需要完成序章且有战斗标记
     .choiceIf(
         new DialogueCondition.All(List.of(
             new DialogueCondition.QuestCompleted("arc_quest:epic_prologue"),
-            new DialogueCondition.MinLevel(15)
+            new DialogueCondition.HasFlag("combat_ready")
         )),
-        "战斗之路（需等级15）",
+        "战斗之路（需战斗准备）",
         c -> c.setFlag("chose_combat_path").goTo("combat_intro")
     )
     
@@ -1136,7 +992,7 @@ public DialogueTreeBuilder choiceIf(DialogueCondition condition, String text,
     
     // 两个选项优先级相同
     .choiceIf(
-        new DialogueCondition.MinLevel(20),
+        new DialogueCondition.HasFlag("vip_member"),
         "金币 x100",
         "reward_gold",
         50
@@ -1159,9 +1015,9 @@ public DialogueTreeBuilder choiceIf(DialogueCondition condition, String text,
 .node("boss_taunt")
     .say("你竟敢挑战我？")
     
-    // 等级不足（强制显示警告）
+    // 未做好准备（强制显示警告）
     .choiceIf(
-        new DialogueCondition.Not(new DialogueCondition.MinLevel(50)),
+        new DialogueCondition.Not(new DialogueCondition.HasFlag("battle_ready")),
         "回去练练吧，蝼蚁！",
         "dismiss",
         200  // ← 超高优先级
@@ -1177,7 +1033,7 @@ public DialogueTreeBuilder choiceIf(DialogueCondition condition, String text,
     
     // 普通挑战者
     .choiceIf(
-        new DialogueCondition.MinLevel(50),
+        new DialogueCondition.HasFlag("battle_ready"),
         "让我看看你的实力！",
         "challenge",
         50
@@ -1185,9 +1041,9 @@ public DialogueTreeBuilder choiceIf(DialogueCondition condition, String text,
 ```
 
 **效果**：
-- 等级 < 50 → 始终显示 "回去练练吧"（priority 200）
-- 等级 ≥ 50 + 完成前置 → 显示 "做好准备"（priority 100）
-- 等级 ≥ 50 → 显示 "让我看看"（priority 50）
+- 未做好准备 → 始终显示 "回去练练吧"（priority 200）
+- 完成前置 + 做好准备 → 显示 "做好准备"（priority 100）
+- 做好准备 → 显示 "让我看看"（priority 50）
 
 ---
 
@@ -1229,7 +1085,7 @@ public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, int p
     .sayIf(
         new DialogueCondition.All(List.of(
             new DialogueCondition.QuestCompleted("help_blacksmith"),
-            new DialogueCondition.MinLevel(30)
+            new DialogueCondition.HasFlag("vip_customer")
         )),
         "大师，您的订单我亲自处理！",
         100
@@ -1239,7 +1095,7 @@ public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, int p
 **效果**：
 - 无特殊状态 → "需要修理装备吗？"
 - 完成任务 → "老朋友，给你打九折！"
-- 完成任务 + 等级≥30 → "大师，您的订单我亲自处理！"
+- 完成任务 + VIP标记 → "大师，您的订单我亲自处理！"
 
 ---
 
@@ -1250,19 +1106,19 @@ public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, int p
     .say("Hello!")  // 默认英语
     
     .sayIf(
-        new DialogueCondition.NpcHasName("法国商人"),
+        new DialogueCondition.HasFlag("language_french"),
         "Bonjour!",
         10
     )
     
     .sayIf(
-        new DialogueCondition.NpcHasName("日本武士"),
+        new DialogueCondition.HasFlag("language_japanese"),
         "こんにちは！",
         10
     )
     
     .sayIf(
-        new DialogueCondition.NpcHasName("中国商人"),
+        new DialogueCondition.HasFlag("language_chinese"),
         "你好！",
         10
     )
@@ -2162,8 +2018,7 @@ public enum CooldownType {
     .say("今天的提示是：去北边的山洞看看。")
     .choice("好的", c -> c.close())
     .repeatable(true)
-    .cooldownType(CooldownType.GAME_TICK)  // ⭐ 使用游戏时间刻
-    .cooldownResetTick(0)                   // ⭐ 每天早上6点重置
+    .nodeCooldownGameTick(0)  // ⭐ 每天早上6点重置
 ```
 
 **行为**:
@@ -2181,8 +2036,7 @@ public enum CooldownType {
     .choice("购买药水（每天限购）", c -> c
         .giveItem("minecraft:potion", 1)
         .repeatable(true)
-        .cooldownType(CooldownType.GAME_TICK)
-        .cooldownResetTick(1000)  // 每天早上7点重置
+        .cooldownGameTick(1000)  // ⭐ 每天早上7点重置
         .close())
 ```
 
@@ -2194,8 +2048,7 @@ public enum CooldownType {
 DialogueTreeBuilder.create("elder_advice")
     .npc("智者")
     .repeatable(true)
-    .cooldownType(CooldownType.GAME_TICK)
-    .cooldownResetTick(6000)  // 每天中午12点重置
+    .cooldownGameTick(6000)  // ⭐ 每天中午12点重置
     
     .node("start")
         .say("让我给你一些建议...")
@@ -2335,12 +2188,12 @@ private boolean hasPassedResetTick(ServerPlayer player, String nodeId, int reset
 
 ```java
 // ✅ 推荐：整点重置，便于记忆
-.cooldownResetTick(0)      // 6:00
-.cooldownResetTick(1000)   // 7:00
-.cooldownResetTick(6000)   // 12:00
+.nodeCooldownGameTick(0)      // 6:00
+.nodeCooldownGameTick(1000)   // 7:00
+.nodeCooldownGameTick(6000)   // 12:00
 
 // ❌ 避免：奇怪的时间点
-.cooldownResetTick(1237)   // 难以记忆
+.nodeCooldownGameTick(1237)   // 难以记忆
 ```
 
 ---
@@ -2355,8 +2208,7 @@ private boolean hasPassedResetTick(ServerPlayer player, String nodeId, int reset
         new DialogueCondition.IsNight()
     )
     .repeatable(true)
-    .cooldownType(CooldownType.GAME_TICK)
-    .cooldownResetTick(12000)  // 每天18:00重置
+    .nodeCooldownGameTick(12000)  // ⭐ 每天18:00重置
 ```
 
 ---
@@ -2365,10 +2217,10 @@ private boolean hasPassedResetTick(ServerPlayer player, String nodeId, int reset
 
 ```java
 // ✅ 友好：给予足够的时间窗口
-.cooldownResetTick(0)  // 早上6点，玩家刚上线
+.nodeCooldownGameTick(0)  // 早上6点，玩家刚上线
 
 // ❌ 不友好：重置时间在深夜
-.cooldownResetTick(18000)  // 午夜12点，大多数玩家在睡觉
+.nodeCooldownGameTick(18000)  // 午夜12点，大多数玩家在睡觉
 ```
 
 ---
@@ -2384,13 +2236,12 @@ private boolean hasPassedResetTick(ServerPlayer player, String nodeId, int reset
 **示例**:
 ```java
 // GAME_DAY: 只要过了一天就重置，不管几点
-.cooldownType(CooldownType.GAME_DAY)
+.cooldownGameDay()
 // 昨天6:00访问 → 今天6:01访问 ✅ 已重置
 // 昨天23:00访问 → 今天0:01访问 ✅ 已重置
 
 // GAME_TICK: 必须跨过重置点才重置
-.cooldownType(CooldownType.GAME_TICK)
-.cooldownResetTick(0)  // 6:00重置
+.cooldownGameTick(0)  // ⭐ 6:00重置
 // 昨天6:00访问 → 今天5:59访问 ❌ 未重置
 // 昨天6:00访问 → 今天6:01访问 ✅ 已重置
 ```
@@ -2650,7 +2501,7 @@ DialogueTreeBuilder.create("shopkeeper")
 ```java
 // 确保条件正确
 .choice("隐藏选项", c -> c.goTo("secret"))
-    .visibleIf(new FlagSetCondition("unlocked_secret"))  // 需要此flag
+    .onlyIf(new FlagSetCondition("unlocked_secret"))  // 需要此flag
 
 // 或者无条件显示
 .choice("始终可见", c -> c.goTo("normal"))
@@ -2695,7 +2546,8 @@ session.skipTypewriter();
 *本文档详细讲解了Arc Quest对话系统的设计原理、交互流程、权重系统、NPC条件支持和IEntityDialogueExtension扩展系统。*
 
 **版本历史**：
+- **v3.3** (2026-04-17): 修复文档API一致性，删除虚假的NPC条件（NpcExists等）和MinLevel条件，新增对话树GAME_TICK冷却
 - **v3.2** (2026-04-17): 新增游戏时间刻冷却系统（GAME_TICK）、时间段条件、跨天区间支持
-- **v3.0** (2026-04-17): 新增权重与优先级系统、NPC相关条件支持、IEntityDialogueExtension扩展系统
+- **v3.0** (2026-04-17): 新增权重与优先级系统、IEntityDialogueExtension扩展系统
 - **v2.0** (2026-04-16): 新增生命周期管理、冷却状态检查、节点/选项历史记录
 - **v1.0** (2026-04-15): 初始版本，基础对话树、条件系统、动作执行

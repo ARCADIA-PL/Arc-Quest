@@ -290,7 +290,7 @@ Options → Language → 简体中文
 **原因1**: 可见性条件未满足
 ```java
 .choice("隐藏选项", c -> c.goTo("secret"))
-    .visibleIf(new FlagSetCondition("unlocked_secret"))  // ← 需要此flag
+    .onlyIf(new FlagSetCondition("unlocked_secret"))  // ← 需要此flag
 
 // 解决：设置flag
 /quest flag @p set unlocked_secret
@@ -299,7 +299,7 @@ Options → Language → 简体中文
 **原因2**: 条件逻辑错误
 ```java
 // 错误：条件永远为false
-.visibleIf(new FlagNotSetCondition("always_set_flag"))
+.onlyIf(new FlagNotSetCondition("always_set_flag"))
 
 // 正确：移除条件或修正逻辑
 .choice("始终可见", c -> c.goTo("normal"))

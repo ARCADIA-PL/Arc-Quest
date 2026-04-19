@@ -4,7 +4,7 @@
 **Minecraft**: 1.20.1 Forge  
 **Java**: 17  
 **最后更新**: 2026-04-17  
-**最新版本**: v3.2（游戏时间刻冷却系统）
+**最新版本**: v3.3（自定义条件、NPC扩展、跨系统桥接）
 
 ---
 
@@ -38,8 +38,7 @@
 ### 🔧 开发指南
 
 - [⚙️ 任务系统详解](guide/QUEST_SYSTEM.md) - 任务生命周期、目标追踪、条件判断
-- [💭 对话系统详解](guide/DIALOGUE_SYSTEM.md) - 对话树设计、NPC交互、动作执行
-- [🕒 游戏时间刻冷却系统](guide/GAME_TICK_COOLDOWN.md) ⭐ **新增** - GAME_TICK冷却、时间段条件
+- [💭 对话系统详解](guide/DIALOGUE_SYSTEM.md) - 对话树设计、NPC交互、自定义条件、时间冷却
 - [✨ 视觉系统详解](guide/VISUAL_SYSTEM.md) - 立绘动画、图标配置、主题色
 - [❓ 常见问题](guide/FAQ.md) - 20+个常见问题解答
 
@@ -152,11 +151,10 @@ docs/
 └── guide/                     # 开发指南
     ├── OVERVIEW.md           # 项目概述
     ├── ARCHITECTURE.md       # 核心架构
-    ├── QUEST_SYSTEM.md       # 任务系统详解 ✅
-    ├── DIALOGUE_SYSTEM.md    # 对话系统详解 ✅
-    ├── GAME_TICK_COOLDOWN.md # 游戏时间刻冷却系统 ⭐ 新增
-    ├── VISUAL_SYSTEM.md      # 视觉系统详解 ✅
-    └── FAQ.md                # 常见问题 ✅
+    ├── QUEST_SYSTEM.md       # 任务系统详解
+    ├── DIALOGUE_SYSTEM.md    # 对话系统详解（含自定义条件、NPC扩展、时间冷却）
+    ├── VISUAL_SYSTEM.md      # 视觉系统详解
+    └── FAQ.md                # 常见问题
 ```
 
 ---
@@ -190,36 +188,16 @@ docs/
 
 ---
 
-## 🆕 最新版本特性 (v3.2)
+## 🆕 最新版本特性 (v3.3)
 
-### 游戏时间刻冷却系统
+### ✨ 核心新功能
 
-基于 Minecraft 世界总运行时间的精确冷却机制：
+- **自定义条件系统** - Lambda 表达式定义灵活条件，支持 `.sayIf()` 和 `.choiceIf()`
+- **NPC对话扩展** - 为特定实体添加自定义对话行为和交互逻辑
+- **跨系统桥接** - 任务和对话的双向联动，Flag/Variable 共享
+- **时间冷却机制** - 三种冷却类型（SECONDS/GAME_DAY/GAME_TICK），支持跨天区间
 
-**核心特性**:
-- ✅ 使用 `Level.getGameTime()` 获取世界总运行时间
-- ✅ 精确到 tick 级别（1 tick = 1/20 秒）
-- ✅ 不受 TPS 波动、玩家离线、世界暂停影响
-- ✅ 支持跨天区间（如 12000-0，晚上6点到早上6点）
-- ✅ 内置时间段条件（早晨/下午/夜晚）
-
-**快速示例**:
-```java
-// 每天早上6点重置的每日任务
-.node("daily_quest")
-    .say("今天的任务是...")
-    .repeatable(true)
-    .cooldownType(CooldownType.GAME_TICK)
-    .cooldownResetTick(0)  // 6:00重置
-
-// 根据时间段显示不同文本
-.sayIf(
-    Map.of("morning", "早上好！"),
-    new DialogueCondition.IsMorning()  // 6:00-12:00
-)
-```
-
-**详细文档**: [游戏时间刻冷却系统详解](guide/GAME_TICK_COOLDOWN.md)
+**详细文档**: [对话系统详解](guide/DIALOGUE_SYSTEM.md)
 
 ---
 
@@ -246,6 +224,6 @@ docs/
 ---
 
 **最后更新**: 2026-04-17  
-**文档版本**: 1.0.0
+**文档版本**: 1.1.0
 
 *祝使用愉快！🎉*
