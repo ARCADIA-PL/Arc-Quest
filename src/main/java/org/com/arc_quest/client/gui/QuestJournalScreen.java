@@ -729,6 +729,7 @@ public class QuestJournalScreen extends Screen {
                                 if (rl != null) completedRL.add(rl);
                             }
                             isVisible = choice.getVisibleCondition().test(
+                                    null,
                                     completedRL,
                                     ClientQuestCache.INSTANCE.getAllFlags(),
                                     ClientQuestCache.INSTANCE.getAllVariables()

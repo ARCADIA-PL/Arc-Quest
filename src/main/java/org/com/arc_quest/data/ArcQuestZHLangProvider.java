@@ -22,6 +22,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addCommandTranslations();
         addDialogueTranslations();
         addEpicDialogueTranslations();
+        addTradeTranslations();
 
         // ── 任务链 ──
         addPrologueQuest();
@@ -202,6 +203,34 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "任务 '%1$s' 未在注册表中找到。");
         addCommandFeedback("error", "no_capability",
                 "无法访问 %1$s 的任务数据，Capability 未附加。");
+
+        // ── 对话系统命令 ──
+        add("arc_quest.command.dialogue.reset.all", "已重置玩家 %1$s 的所有对话进度");
+        add("arc_quest.command.dialogue.reset.single", "已请求重置玩家 %2$s 的对话树 %1$s（功能开发中）");
+        add("arc_quest.command.dialogue.status.header", "§e=== 对话状态 ===");
+        add("arc_quest.command.dialogue.status.player", "§f玩家: %1$s");
+        add("arc_quest.command.dialogue.status.work_in_progress", "§7(详细历史记录功能开发中...)");
+
+        // ── 交易系统命令 ──
+        add("arc_quest.command.trade.error.not_found", "未找到交易商店: %1$s");
+        add("arc_quest.command.trade.open.success", "已为 %2$s 打开交易商店: %1$s");
+        add("arc_quest.command.trade.simple.success", "已为 %2$s 打开简易交易: %1$s");
+        add("arc_quest.command.trade.list.header", "§e=== 交易商店注册表 (%1$s) ===");
+        add("arc_quest.command.trade.list.entry", "§f  %1$s §7- %2$s §8[%3$s entries%4$s]");
+        add("arc_quest.command.trade.list.empty", "§7  (无已注册的交易商店)");
+        add("arc_quest.command.trade.debug.header", "§e=== 交易商店调试: %1$s ===");
+        add("arc_quest.command.trade.debug.name", "§f  名称: %1$s");
+        add("arc_quest.command.trade.debug.description", "§7  描述: %1$s");
+        add("arc_quest.command.trade.debug.mode.simple", "§f  模式: §a简易弹窗");
+        add("arc_quest.command.trade.debug.mode.full", "§f  模式: §b完整窗口");
+        add("arc_quest.command.trade.debug.categories", "§f  分类: §7%1$s 个");
+        add("arc_quest.command.trade.debug.category_entry", "§d    %1$s §7- %2$s");
+        add("arc_quest.command.trade.debug.entries", "§f  交易项: §7%1$s 个");
+        add("arc_quest.command.trade.debug.entry_header", "§a    %1$s §7| %2$s");
+        add("arc_quest.command.trade.debug.costs", "§7      成本: §c%1$s");
+        add("arc_quest.command.trade.debug.rewards", "§7      奖励: §b%1$s");
+        add("arc_quest.command.trade.debug.limit", "§7      限购: §e%1$s 次");
+        add("arc_quest.command.trade.debug.cooldown", "§7      冷却: §e%1$s (%2$s)");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -241,6 +270,74 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "§f好吧……如果你改变主意，随时来找我。");
         add("dialogue.test_villager.decline.choice1",
                 "再见");
+    }
+
+    /**
+     * 交易系统翻译。
+     */
+    private void addTradeTranslations() {
+        // ── 屏幕标题 ──
+        addTradeScreenTitle("screen", "交易矩阵");
+        addTradeScreenTitle("quick", "快速交易");
+
+        // ── 通用标签 ──
+        addTradeLabel("subtitle", "请选择商品");
+        addTradeLabel("closed", "商店已关闭");
+        addTradeLabel("unknown_shop", "未知商店");
+        addTradeLabel("buy", "购买");
+        addTradeLabel("sold_out", "已售罄");
+        addTradeLabel("purchase", "购买");
+        addTradeLabel("maxed", "已达上限");
+        addTradeLabel("cooldown", "%d秒");
+
+        // ── 分类名称 ──
+        addTradeCategory("all", "全部");
+
+        // ── 交易物描述模板 ──
+        addTradeOfferTemplate("item", "%sx%d");
+        addTradeOfferTemplate("effect", "%s%s %d秒");
+        addTradeOfferTemplate("command", "命令: %s");
+        addTradeOfferTemplate("flag.require", "需要: %s");
+        addTradeOfferTemplate("flag.reward", "获得标记: %s");
+
+        // ── 反馈消息 ──
+        addTradeFeedback("success", "交易成功！");
+        addTradeFeedback("error.cooldown", "冷却中，请等待 %d 秒");
+        addTradeFeedback("error.limit", "已达到购买上限");
+        addTradeFeedback("error.cannot_afford", "资源不足");
+        addTradeFeedback("error.condition", "条件未满足");
+
+        // ── 冷却提示文本 ──
+        addTradeCooldownText("game_day", "明日重置");
+        addTradeCooldownText("seconds_remaining", "%d秒后重置");
+        addTradeCooldownText("ticks_remaining", "%dt后重置");
+
+        // ── 交易商店 ──
+        addTradeShop("blacksmith_shop", "铁匠铺", "出售各类武器、护甲和工具");
+        addTradeShop("potion_shop", "药水商人", "出售各类药水效果");
+        addTradeShop("quick_food_trade", "快速补给", null);
+
+        // ── 分类名称 ──
+        addTradeCategory("weapons", "武器");
+        addTradeCategory("armor", "护甲");
+        addTradeCategory("tools", "工具");
+
+        // ── 交易项（铁匠铺） ──
+        addTradeEntry("iron_sword", "铁剑", null);
+        addTradeEntry("diamond_sword", "钻石剑", null);
+        addTradeEntry("iron_chestplate", "铁胸甲", null);
+        addTradeEntry("iron_helmet", "铁头盔", null);
+        addTradeEntry("iron_pickaxe", "铁镐", null);
+
+        // ── 交易项（药水商人） ──
+        addTradeEntry("strength_potion", "力量药水", "给予力量 I 效果 60秒");
+        addTradeEntry("speed_potion", "速度药水", "给予速度 I 效果 120秒");
+        addTradeEntry("regen_potion", "生命恢复药水", "给予生命恢复 II 效果 30秒");
+
+        // ── 交易项（快速补给） ──
+        addTradeEntry("buy_bread", "面包 x4", null);
+        addTradeEntry("buy_steak", "牛排 x2", null);
+        addTradeEntry("buy_golden_apple", "金苹果", null);
     }
 
     /**

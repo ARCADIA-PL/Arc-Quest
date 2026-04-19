@@ -5,8 +5,6 @@ import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.quest.api.QuestCategory;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.condition.QuestCompletedCondition;
-import org.com.arc_quest.quest.logic.CrossSystemBridge;
-import org.com.arc_quest.quest.logic.DependencyRule;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -60,9 +58,6 @@ public final class QuestRegistry {
 
         // 验证跨任务引用的合法性
         validateCrossReferences();
-        
-        // 验证 CrossSystemBridge 中引用的任务 ID 是否存在
-        validateCrossSystemBridgeReferences();
     }
 
     // ════════════════════════════════════════
@@ -131,51 +126,5 @@ public final class QuestRegistry {
         }
     }
     
-    /**
-     * ⭐ 验证 CrossSystemBridge 中引用的任务/对话 ID 是否存在。
-     */
-    private static void validateCrossSystemBridgeReferences() {
-        int warnings = 0;
-        
-        // 遍历所有桥接规则
-        for (DependencyRule rule : CrossSystemBridge.INSTANCE.getAllRules()) {
-            switch (rule.getTriggerType()) {
-                case QUEST_COMPLETED, QUEST_FAILED, QUEST_STARTED -> {
-                    ResourceLocation questId = ResourceLocation.parse(rule.getTriggerSource());
-                    if (!REGISTRY.containsKey(questId)) {
-                        LOGGER.warn("[ArcQuest] CrossSystemBridge rule '{}' references unknown quest: '{}'",
-                                rule.getRuleId(), rule.getTriggerSource());
-                        warnings++;
-                    }
-                }
-                case DIALOGUE_COMPLETED -> {
-                    // 对话 ID 无法在此验证（需要 DialogueRegistry）
-                    // 仅记录日志
-                    LOGGER.debug("[ArcQuest] CrossSystemBridge rule '{}' references dialogue: '{}'",
-                            rule.getRuleId(), rule.getTriggerSource());
-                }
-            }
-            
-            // 验证动作目标
-            switch (rule.getActionType()) {
-                case MARK_OBJECTIVE_COMPLETE, START_QUEST -> {
-                    ResourceLocation targetId = ResourceLocation.parse(rule.getActionTarget());
-                    if (!REGISTRY.containsKey(targetId)) {
-                        LOGGER.warn("[ArcQuest] CrossSystemBridge rule '{}' action targets unknown quest: '{}'",
-                                rule.getRuleId(), rule.getActionTarget());
-                        warnings++;
-                    }
-                }
-                case UNLOCK_DIALOGUE, SET_VARIABLE -> {
-                    // 对话和变量无法在此验证
-                }
-            }
-        }
-        
-        if (warnings > 0) {
-            LOGGER.warn("[ArcQuest] CrossSystemBridge validation: {} warning(s)", warnings);
-        } else {
-            LOGGER.info("[ArcQuest] CrossSystemBridge validation passed.");
-        }
-    }
+
 }

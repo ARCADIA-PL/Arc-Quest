@@ -11,6 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
+import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
@@ -19,7 +20,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DialogueScreen extends Screen {
+    public class DialogueScreen extends Screen {
 
     private static final float CHARS_PER_SECOND = 45f;
 
@@ -35,9 +36,13 @@ public class DialogueScreen extends Screen {
     private boolean hasAutoNext;
     private int delayMs;
 
-    // ── 实时冷却 ──
-    private int[] baseCooldowns;
-    private long nodeUpdateTime;
+    // ── 实时冷却（原始数据）───
+    private long[] choiceLastSelectTimes;
+    private long[] choicePurchaseGameTimes;  //新增：选择时的 gameTime
+    private long[] choicePurchaseDayTimes;   //新增：选择时的 dayTime
+    private int[] choiceCooldownTypes;
+    private long[] choiceCooldownValues;
+    private int[] choiceResetTimeTicks;
 
     // ── 点击动画状态 ──
     private int clickedIndex = -1;
@@ -76,15 +81,21 @@ public class DialogueScreen extends Screen {
     public DialogueScreen(String dialogueId, String speaker, String text,
                           String[] choices, boolean isTerminal, boolean hasAutoNext,
                           int delayMs, int entityId) {
-        this(dialogueId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId, null);
+        this(dialogueId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
+                null, null, null, null, null, null);
     }
 
     public DialogueScreen(String dialogueId, String speaker, String text,
                           String[] choices, boolean isTerminal, boolean hasAutoNext,
-                          int delayMs, int entityId, int[] choiceCooldowns) {
+                          int delayMs, int entityId, long[] choiceLastSelectTimes,
+                          long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
+                          int[] choiceCooldownTypes, long[] choiceCooldownValues,
+                          int[] choiceResetTimeTicks) {
         super(Component.translatable("screen.dialogue.title"));
         this.entityId = entityId;
-        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs, choiceCooldowns);
+        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs,
+                choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
+                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks);
     }
 
     public void updateNode(String speaker, String text, String[] choices,
@@ -94,7 +105,19 @@ public class DialogueScreen extends Screen {
 
     public void updateNode(String speaker, String text, String[] choices,
                            boolean isTerminal, boolean hasAutoNext, int delayMs, int[] choiceCooldowns) {
-        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs, choiceCooldowns);
+        // 向后兼容，旧版本网络包仍可能传入 int[]
+        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs,
+                null, null, null, null, null, null);
+    }
+
+    public void updateNode(String speaker, String text, String[] choices,
+                           boolean isTerminal, boolean hasAutoNext, int delayMs,
+                           long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes,
+                           long[] choicePurchaseDayTimes, int[] choiceCooldownTypes,
+                           long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
+        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs,
+                choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
+                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks);
     }
 
     public void updateEntityId(int entityId) {
@@ -106,7 +129,9 @@ public class DialogueScreen extends Screen {
 
     private void applyNodeData(String speaker, String text, String[] choices,
                                boolean isTerminal, boolean hasAutoNext, int delayMs,
-                               int[] choiceCooldowns) {
+                               long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes,
+                               long[] choicePurchaseDayTimes, int[] choiceCooldownTypes,
+                               long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
         this.speaker = speaker;
         this.fullText = text;
         this.choices = choices != null ? choices : new String[0];
@@ -125,25 +150,52 @@ public class DialogueScreen extends Screen {
         this.choiceHover = new float[this.choices.length];
         this.wrappedLines = null;
 
-        this.nodeUpdateTime = Util.getMillis();
-        this.baseCooldowns = (choiceCooldowns != null) ? choiceCooldowns.clone() : null;
+        //保存原始冷却数据（用于客户端实时计算）
+        this.choiceLastSelectTimes = (choiceLastSelectTimes != null) ? choiceLastSelectTimes.clone() : new long[this.choices.length];
+        this.choicePurchaseGameTimes = (choicePurchaseGameTimes != null) ? choicePurchaseGameTimes.clone() : new long[this.choices.length];
+        this.choicePurchaseDayTimes = (choicePurchaseDayTimes != null) ? choicePurchaseDayTimes.clone() : new long[this.choices.length];
+        this.choiceCooldownTypes = (choiceCooldownTypes != null) ? choiceCooldownTypes.clone() : new int[this.choices.length];
+        this.choiceCooldownValues = (choiceCooldownValues != null) ? choiceCooldownValues.clone() : new long[this.choices.length];
+        this.choiceResetTimeTicks = (choiceResetTimeTicks != null) ? choiceResetTimeTicks.clone() : new int[this.choices.length];
 
         this.clickedIndex = -1;
         this.clickSent = false;
         this.clickAnim = new float[this.choices.length];
     }
 
-    private int getRemainingCooldown(int index) {
-        if (baseCooldowns == null || index >= baseCooldowns.length || baseCooldowns[index] <= 0) {
-            return 0;
+    private boolean isChoiceOnCooldown(int index) {
+        if (index < 0 || index >= choiceLastSelectTimes.length) {
+            return false;
         }
-        long elapsedSeconds = (Util.getMillis() - nodeUpdateTime) / 1000L;
-        return Math.max(0, baseCooldowns[index] - (int) elapsedSeconds);
+        //使用客户端工具类实时计算
+        return ClientCooldownHelper.isOnCooldown(
+                choiceLastSelectTimes[index],
+                choicePurchaseGameTimes[index],
+                choicePurchaseDayTimes[index],
+                choiceCooldownTypes[index],
+                choiceCooldownValues[index],
+                choiceResetTimeTicks[index]
+        );
+    }
+
+    private String getChoiceCooldownText(int index) {
+        if (index < 0 || index >= choiceLastSelectTimes.length) {
+            return "";
+        }
+        //使用客户端工具类实时获取格式化文本
+        return ClientCooldownHelper.getCooldownText(
+                choiceLastSelectTimes[index],
+                choicePurchaseGameTimes[index],
+                choicePurchaseDayTimes[index],
+                choiceCooldownTypes[index],
+                choiceCooldownValues[index],
+                choiceResetTimeTicks[index]
+        );
     }
 
     private void selectChoice(int index) {
         if (isClosing || clickedIndex >= 0) return;
-        if (getRemainingCooldown(index) > 0) return;
+        if (isChoiceOnCooldown(index)) return;
         clickedIndex = index;
         clickSent = false;
         playClick();
@@ -248,7 +300,7 @@ public class DialogueScreen extends Screen {
             int choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap);
 
             for (int i = 0; i < choices.length; i++) {
-                if (getRemainingCooldown(i) > 0) continue;
+                if (isChoiceOnCooldown(i)) continue;
 
                 int cy = choiceStartY + i * (choiceH + gap);
                 int expand = (int) (15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
@@ -452,8 +504,8 @@ public class DialogueScreen extends Screen {
             for (int i = 0; i < choices.length; i++) {
                 int cy = choiceStartY + i * (choiceH + gap);
 
-                int remainingCooldown = getRemainingCooldown(i);
-                boolean onCooldown = remainingCooldown > 0;
+                //实时检查冷却状态（每帧刷新）
+                boolean onCooldown = isChoiceOnCooldown(i);
 
                 boolean isClickTarget = (clickedIndex == i);
                 boolean hasClickSelection = (clickedIndex >= 0);
@@ -576,19 +628,11 @@ public class DialogueScreen extends Screen {
                 String displayText = choices[i];
 
                 if (onCooldown) {
-                    String timeStr;
-                    if (remainingCooldown >= 3600) {
-                        int hours = remainingCooldown / 3600;
-                        int mins = (remainingCooldown % 3600) / 60;
-                        timeStr = String.format("[%dh%dm]", hours, mins);
-                    } else if (remainingCooldown >= 60) {
-                        int mins = remainingCooldown / 60;
-                        int secs = remainingCooldown % 60;
-                        timeStr = String.format("[%dm%ds]", mins, secs);
-                    } else {
-                        timeStr = String.format("[%ds]", remainingCooldown);
+                    //实时获取格式化的冷却文本（支持三种类型）
+                    String cooldownText = getChoiceCooldownText(i);
+                    if (!cooldownText.isEmpty()) {
+                        displayText = choices[i] + " §7" + cooldownText;
                     }
-                    displayText = choices[i] + " §7" + timeStr;
                 }
 
                 String safeChoice = font.plainSubstrByWidth(displayText, currentW - textOffsetX - 10);

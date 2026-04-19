@@ -1,0 +1,235 @@
+package org.com.arc_quest.trade.builder;
+
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import org.com.arc_quest.quest.api.ICondition;
+import org.com.arc_quest.trade.api.TradeCategory;
+import org.com.arc_quest.trade.api.TradeEntry;
+import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.registry.TradeRegistry;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * 流式构建 {@link TradeShopDefinition}。
+ *
+ * <pre>{@code
+ * TradeShopBuilder.create("blacksmith_shop")
+ *     .displayName("铁匠铺")
+ *     .description("出售武器和护甲")
+ *     .category(TradeCategory.of("weapons", "武器"))
+ *     .category(TradeCategory.of("armor", "护甲"))
+ *     .entry(TradeEntryBuilder.create("iron_sword")
+ *         .displayName("铁剑")
+ *         .costItem(Items.EMERALD, 5)
+ *         .rewardItem(Items.IRON_SWORD, 1)
+ *         .category(weaponsCategory))
+ *     .entry(TradeEntryBuilder.create("iron_chestplate")
+ *         .displayName("铁胸甲")
+ *         .costItem(Items.EMERALD, 12)
+ *         .rewardItem(Items.IRON_CHESTPLATE, 1)
+ *         .category(armorCategory))
+ *     .buildAndRegister();
+ * }</pre>
+ */
+public final class TradeShopBuilder {
+
+    private final String shopId;
+    private final List<TradeCategory> categories = new ArrayList<>();
+    private final LinkedHashMap<String, TradeEntry> entries = new LinkedHashMap<>();
+    private Component displayName;
+    @Nullable private Component description;
+    @Nullable private ICondition openCondition;
+    private boolean simpleMode = false;
+    private int themeColor = 0xE0C860;  // 默认金色
+
+    private TradeShopBuilder(String shopId) {
+        this.shopId = Objects.requireNonNull(shopId);
+    }
+
+    public static TradeShopBuilder create(String shopId) {
+        return new TradeShopBuilder(shopId);
+    }
+
+    // ════════════════════════════════════════
+    //  基本属性
+    // ════════════════════════════════════════
+
+    public TradeShopBuilder displayName(String literal) {
+        this.displayName = Component.literal(literal);
+        return this;
+    }
+
+    public TradeShopBuilder displayName(Component name) {
+        this.displayName = name;
+        return this;
+    }
+
+    public TradeShopBuilder description(String literal) {
+        this.description = Component.literal(literal);
+        return this;
+    }
+
+    public TradeShopBuilder description(Component desc) {
+        this.description = desc;
+        return this;
+    }
+
+    /**
+     * 标记为简易模式（弹窗而非完整窗口）
+     */
+    public TradeShopBuilder simpleMode() {
+        this.simpleMode = true;
+        return this;
+    }
+
+    /**
+     * 设置开启条件
+     */
+    public TradeShopBuilder openCondition(ICondition condition) {
+        this.openCondition = condition;
+        return this;
+    }
+
+    // ════════════════════════════════════════
+    //  主题色配置
+    // ════════════════════════════════════════
+
+    /**
+     * 设置商店主题色（ARGB 整数）。
+     * <p>
+     * 示例：0xFFE0C860 (不透明金色), 0x80FF5555 (半透明红色)
+     *
+     * @param color ARGB 颜色值
+     */
+    public TradeShopBuilder themeColor(int color) {
+        this.themeColor = color;
+        return this;
+    }
+
+    /**
+     * 从 RGB 值设置主题色（自动添加完全不透明 Alpha 通道）。
+     *
+     * @param r 红 (0-255)
+     * @param g 绿 (0-255)
+     * @param b 蓝 (0-255)
+     */
+    public TradeShopBuilder themeColorRGB(int r, int g, int b) {
+        this.themeColor = (0xFF << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+        return this;
+    }
+
+    /**
+     * 从 ChatFormatting 设置主题色。
+     */
+    public TradeShopBuilder themeColor(ChatFormatting formatting) {
+        Integer rgb = formatting.getColor();
+        if (rgb != null) {
+            this.themeColor = 0xFF000000 | rgb;
+        }
+        return this;
+    }
+
+    // ════════════════════════════════════════
+    //  分类
+    // ════════════════════════════════════════
+
+    public TradeShopBuilder category(TradeCategory category) {
+        this.categories.add(category);
+        return this;
+    }
+
+    public TradeShopBuilder category(String id, String name) {
+        this.categories.add(TradeCategory.of(id, name));
+        return this;
+    }
+
+    public TradeShopBuilder category(String id, String name, int sortOrder, int color) {
+        this.categories.add(TradeCategory.of(id, name, sortOrder, color));
+        return this;
+    }
+
+    /**
+     * 从 ChatFormatting 创建分类。
+     */
+    public TradeShopBuilder categoryColor(String id, String name, ChatFormatting formatting) {
+        this.categories.add(TradeCategory.ofColor(id, name, formatting));
+        return this;
+    }
+
+    /**
+     * 从 ChatFormatting 创建分类（带排序）。
+     */
+    public TradeShopBuilder categoryColor(String id, String name, int sortOrder, ChatFormatting formatting) {
+        this.categories.add(TradeCategory.ofColor(id, name, sortOrder, formatting));
+        return this;
+    }
+
+    /**
+     * 从 RGB 值创建分类（自动添加完全不透明 Alpha 通道）。
+     */
+    public TradeShopBuilder categoryRGB(String id, String name, int r, int g, int b) {
+        this.categories.add(TradeCategory.ofRGB(id, name, r, g, b));
+        return this;
+    }
+
+    /**
+     * 从 RGB 值创建分类（带排序）。
+     */
+    public TradeShopBuilder categoryRGB(String id, String name, int sortOrder, int r, int g, int b) {
+        this.categories.add(TradeCategory.ofRGB(id, name, sortOrder, r, g, b));
+        return this;
+    }
+
+    // ════════════════════════════════════════
+    //  交易项
+    // ════════════════════════════════════════
+
+    /**
+     * 添加已构建的 TradeEntry
+     */
+    public TradeShopBuilder entry(TradeEntry entry) {
+        if (entries.containsKey(entry.getEntryId())) {
+            throw new IllegalArgumentException(
+                    "Duplicate entry id '" + entry.getEntryId() + "' in shop '" + shopId + "'");
+        }
+        entries.put(entry.getEntryId(), entry);
+        return this;
+    }
+
+    /**
+     * 添加 TradeEntryBuilder（自动 build）
+     */
+    public TradeShopBuilder entry(TradeEntryBuilder entryBuilder) {
+        return entry(entryBuilder.build());
+    }
+
+    // ════════════════════════════════════════
+    //  构建
+    // ════════════════════════════════════════
+
+    public TradeShopDefinition build() {
+        if (displayName == null) {
+            displayName = Component.literal(shopId);
+        }
+        if (entries.isEmpty()) {
+            throw new IllegalStateException("TradeShop '" + shopId + "' has no entries");
+        }
+        return new TradeShopDefinition(
+                shopId, displayName, description,
+                List.copyOf(categories),
+                new LinkedHashMap<>(entries),
+                openCondition, simpleMode, themeColor
+        );
+    }
+
+    public TradeShopDefinition buildAndRegister() {
+        TradeShopDefinition def = build();
+        TradeRegistry.register(def);
+        return def;
+    }
+}

@@ -19,6 +19,9 @@ import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.QuestEventManager;
+import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
 import java.util.function.BiConsumer;
@@ -83,7 +86,7 @@ public sealed interface DialogueAction {
             PhaseDefinition currentPhase = def.getPhase(data.getCurrentPhaseId());
             if (currentPhase == null) return;
 
-            String nextPhaseId = def.evaluateNextPhase(currentPhase,
+            String nextPhaseId = def.evaluateNextPhase(player, currentPhase,
                     cap.getCompletedQuests().stream().map(ResourceLocation::parse)
                             .collect(Collectors.toSet()),
                     cap.getAllFlags(), cap.getAllVariables());
@@ -256,6 +259,33 @@ public sealed interface DialogueAction {
      * <p>
      * 注意：此动作不支持序列化，仅用于代码驱动的对话树。
      */
+    record OpenTrade(String shopId) implements DialogueAction {
+        @Override
+        public void execute(ServerPlayer player) {
+            TradeShopDefinition shop = TradeRegistry.get(shopId);
+            if (shop == null) {
+                LOGGER.warn("[Dialogue] Unknown trade shop: {}", shopId);
+                return;
+            }
+            C2SRequestTradePacket.handleServerOpen(player, shop, false);
+        }
+        @Override
+        public void execute(ServerPlayer player, DialogueSession session) { execute(player); }
+    }
+
+    record OpenSimpleTrade(String shopId) implements DialogueAction {
+        @Override
+        public void execute(ServerPlayer player) {
+            TradeShopDefinition shop = TradeRegistry.get(shopId);
+            if (shop == null) {
+                LOGGER.warn("[Dialogue] Unknown trade shop: {}", shopId);
+                return;
+            }
+            C2SRequestTradePacket.handleServerOpen(player, shop, true);
+        }
+        @Override
+        public void execute(ServerPlayer player, DialogueSession session) { execute(player); }
+    }
     record LambdaAction(BiConsumer<ServerPlayer, Entity> handler, Entity target) implements DialogueAction {
 
         public LambdaAction(BiConsumer<ServerPlayer, Entity> handler) {

@@ -5,6 +5,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.CooldownType;
+import org.com.arc_quest.dialogue.util.TimeSanitizer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -163,10 +164,12 @@ public class DialogueProgressStore {
         return getDialogueVisit(key).exists();
     }
 
+    // ═══════════════════════════════════════════════
+    //  冷却判断（委托给 DialogueCooldownManager）
+    // ═══════════════════════════════════════════════
+
     /**
      * 统一冷却查询（简化的 5 参数版本）。
-     * <p>
-     * 替代原来的 9 参数方法。TimeSnapshot 封装三个时间值。
      *
      * @param key         ProgressKey（自动定位正确的 Map）
      * @param cooldownType 冷却类型
@@ -176,127 +179,17 @@ public class DialogueProgressStore {
      */
     public boolean isOnCooldown(ProgressKey key, CooldownType cooldownType,
                                 int cooldownValue, int resetTick, TimeSnapshot ts) {
-        Entry entry;
-        if (key.index() >= 0) {
-            entry = choiceSelections.getOrDefault(key.toKeyString(), Entry.EMPTY);
-        } else {
-            // 根据 key 格式判断是节点还是对话
-            entry = nodeVisits.containsKey(key.toKeyString())
-                    ? nodeVisits.get(key.toKeyString())
-                    : dialogueVisits.getOrDefault(key.toKeyString(), Entry.EMPTY);
-        }
-        return isOnCooldown(entry, cooldownType, cooldownValue, resetTick,
-                ts.realTime(), ts.gameTime(), ts.dayTime());
+        return UnifiedCooldownManager.isOnCooldown(this, key, cooldownType, cooldownValue, resetTick, ts);
     }
-
-    // ═══════════════════════════════════════════════
-    //  冷却判断
-    // ═══════════════════════════════════════════════
 
     /**
      * 通用冷却检测。
-     * <p>
-     * GAME_TICK 使用"双时钟守卫"算法：
-     * <ol>
-     *   <li>gameTime 安全网：物理上已过24000+刻 → 一定过期</li>
-     *   <li>dayTime 倒退检测：/time set 导致 dayTime 减小 → 视为过期</li>
-     *   <li>周期编号比较：基于 dayTime 原始值的 floorDiv 周期，不同周期 → 过期</li>
-     * </ol>
-     *
-     * @param entry         历史记录
-     * @param cooldownType  冷却类型
-     * @param cooldownValue 秒数（SECONDS 用）
-     * @param resetTick     重置刻（GAME_TICK 用，0~23999）
-     * @param nowRealTime   当前 System.currentTimeMillis()
-     * @param nowGameTime   当前 Level.getGameTime()
-     * @param nowDayTime    当前 Level.getDayTime()（原始累加值）
-     * @return true = 仍在冷却中
      */
     public boolean isOnCooldown(Entry entry, CooldownType cooldownType,
                                 int cooldownValue, int resetTick,
                                 long nowRealTime, long nowGameTime, long nowDayTime) {
-        if (!entry.exists()) return false;
-        if (cooldownType == CooldownType.NONE) return false;
-
-        return switch (cooldownType) {
-            case NONE -> false;
-
-            case SECONDS -> {
-                long cooldownMs = cooldownValue * 1000L;
-                boolean onCooldown = (nowRealTime - entry.realTime()) < cooldownMs;
-                Arc_quest.LOGGER.debug("[Cooldown-SECONDS] elapsed={}ms, cooldown={}ms, onCooldown={}",
-                        nowRealTime - entry.realTime(), cooldownMs, onCooldown);
-                yield onCooldown;
-            }
-
-            case GAME_DAY -> {
-                long lastDay = entry.realTime() / (24 * 60 * 60 * 1000L);
-                long nowDay = nowRealTime / (24 * 60 * 60 * 1000L);
-                boolean onCooldown = lastDay == nowDay;
-                Arc_quest.LOGGER.debug("[Cooldown-GAME_DAY] lastDay={}, nowDay={}, onCooldown={}",
-                        lastDay, nowDay, onCooldown);
-                yield onCooldown;
-            }
-
-            case GAME_TICK -> {
-                long lastRawDayTime = entry.dayTime();
-                long lastGameTime = entry.gameTime();
-
-                // ─── 层1：旧数据兼容 ───
-                if (lastRawDayTime < 0 || lastGameTime < 0) {
-                    Arc_quest.LOGGER.info(
-                            "[Cooldown-GAME_TICK] Legacy entry (dayTime={}, gameTime={}), treating as expired",
-                            lastRawDayTime, lastGameTime);
-                    yield false;
-                }
-
-                // ─── 层2：gameTime 安全网 ───
-                // getGameTime() 绝对单调递增，不受任何命令影响
-                // 如果物理上已过 24000 刻（= 1个游戏日的真实tick数），
-                // 则无论 dayTime 怎么被 /time set 修改，冷却一定已过期
-                long gameTimeElapsed = nowGameTime - lastGameTime;
-                if (gameTimeElapsed >= 24000) {
-                    Arc_quest.LOGGER.info(
-                            "[Cooldown-GAME_TICK] gameTime guard: elapsed={} >= 24000 → EXPIRED",
-                            gameTimeElapsed);
-                    yield false;
-                }
-
-                // ─── 层3：dayTime 倒退检测 ───
-                // getDayTime() 在自然流逝和 /time add 下单调递增
-                // 只有 /time set 会使其减小
-                // 如果检测到 dayTime 倒退（且 gameTime 确实前进了），
-                // 视为管理员干预，冷却过期并清除记录
-                if (nowDayTime < lastRawDayTime && gameTimeElapsed > 0) {
-                    Arc_quest.LOGGER.warn(
-                            "[Cooldown-GAME_TICK] ⚠️ dayTime regression detected: " +
-                                    "lastDayTime={}, nowDayTime={}, gameTimeElapsed={} → EXPIRED " +
-                                    "(probable /time set backward, clearing cooldown record)",
-                            lastRawDayTime, nowDayTime, gameTimeElapsed);
-                    // 注意：这里不自动清除记录，而是让上层决定是否需要清理
-                    // 避免频繁/time set导致记录丢失
-                    yield false;
-                }
-
-                // ─── 层4：周期编号比较（核心算法）───
-                // 此时 dayTime 没有倒退，gameTime 不足24000
-                // 使用 dayTime 的原始累加值计算周期编号
-                // 周期: 以 resetTick 为起点，每 24000 tick 一个周期
-                long recordedPeriod = Math.floorDiv(lastRawDayTime - resetTick, 24000);
-                long currentPeriod = Math.floorDiv(nowDayTime - resetTick, 24000);
-                boolean samePeriod = (recordedPeriod == currentPeriod);
-
-                Arc_quest.LOGGER.info(
-                        "[Cooldown-GAME_TICK] lastDayTime={}, nowDayTime={}, resetTick={}, " +
-                                "gameTimeElapsed={}, recordedPeriod={}, currentPeriod={}, " +
-                                "samePeriod={} → onCooldown={}",
-                        lastRawDayTime, nowDayTime, resetTick,
-                        gameTimeElapsed, recordedPeriod, currentPeriod,
-                        samePeriod, samePeriod);
-
-                yield samePeriod;
-            }
-        };
+        return UnifiedCooldownManager.isOnCooldown(entry, cooldownType, cooldownValue, resetTick,
+                nowRealTime, nowGameTime, nowDayTime);
     }
 
     /**
@@ -334,33 +227,10 @@ public class DialogueProgressStore {
 
     /**
      * 计算 GAME_TICK 冷却剩余时间（tick 数，用于客户端显示）。
-     *
-     * @param nowGameTime 当前 getGameTime()
-     * @param nowDayTime  当前 getDayTime() 原始值
-     * @return 剩余 tick 数，0 = 已可用
      */
     public int getGameTickCooldownRemainingTicks(Entry entry, int resetTick,
                                                  long nowGameTime, long nowDayTime) {
-        if (!entry.exists() || entry.dayTime() < 0 || entry.gameTime() < 0) return 0;
-
-        // 如果双时钟守卫判定为过期，直接返回0
-        long gameTimeElapsed = nowGameTime - entry.gameTime();
-        if (gameTimeElapsed >= 24000) return 0;
-        if (nowDayTime < entry.dayTime() && gameTimeElapsed > 0) return 0;
-
-        long recordedPeriod = Math.floorDiv(entry.dayTime() - resetTick, 24000);
-        long currentPeriod = Math.floorDiv(nowDayTime - resetTick, 24000);
-        if (recordedPeriod != currentPeriod) return 0;
-
-        // 同周期内，计算距离下一个 resetTick 的 tick 数
-        long currentDayTick = ((nowDayTime % 24000) + 24000) % 24000;
-        long resetTickNorm = ((long) resetTick % 24000 + 24000) % 24000;
-
-        if (currentDayTick >= resetTickNorm) {
-            return (int) (24000 - currentDayTick + resetTickNorm);
-        } else {
-            return (int) (resetTickNorm - currentDayTick);
-        }
+        return UnifiedCooldownManager.getGameTickCooldownRemainingTicks(entry, resetTick, nowGameTime, nowDayTime);
     }
 
     /**
@@ -371,22 +241,22 @@ public class DialogueProgressStore {
     public void clearCooldownRecord(ProgressKey key) {
         String keyStr = key.toKeyString();
         
-        if (key.index() >= 0) {
-            // 选项冷却
+        if (keyStr.startsWith("trade:")) {
             choiceSelections.remove(keyStr);
-            Arc_quest.LOGGER.warn("[Cooldown-Clear] ✅ Removed choice cooldown: {}", keyStr);
+            Arc_quest.LOGGER.info("[Cooldown-Clear]  Removed trade cooldown: {}", keyStr);
+        } else if (key.index() >= 0) {
+            choiceSelections.remove(keyStr);
+            Arc_quest.LOGGER.warn("[Cooldown-Clear]  Removed choice cooldown: {}", keyStr);
         } else {
-            // 节点或对话冷却
             if (nodeVisits.containsKey(keyStr)) {
                 nodeVisits.remove(keyStr);
-                Arc_quest.LOGGER.warn("[Cooldown-Clear] ✅ Removed node cooldown: {}", keyStr);
+                Arc_quest.LOGGER.warn("[Cooldown-Clear]  Removed node cooldown: {}", keyStr);
             } else if (dialogueVisits.containsKey(keyStr)) {
                 dialogueVisits.remove(keyStr);
-                Arc_quest.LOGGER.warn("[Cooldown-Clear] ✅ Removed dialogue cooldown: {}", keyStr);
+                Arc_quest.LOGGER.warn("[Cooldown-Clear]  Removed dialogue cooldown: {}", keyStr);
             }
         }
         
-        //设置脏标记，确保下次保存时同步到NBT
         dirty = true;
         Arc_quest.LOGGER.debug("[Cooldown-Clear] Dirty flag set, will save on next tick");
     }
@@ -492,9 +362,9 @@ public class DialogueProgressStore {
          */
         public static TimeSnapshot capture(ServerPlayer player) {
             return new TimeSnapshot(
-                    System.currentTimeMillis(),
-                    player.level().getGameTime(),
-                    player.level().getDayTime()
+                    TimeSanitizer.getCurrentRealTime(),
+                    TimeSanitizer.getCurrentGameTime(player),
+                    TimeSanitizer.getCurrentDayTime(player)
             );
         }
     }

@@ -503,10 +503,10 @@ public final class EpicDialogueTrees {
      *
      * <p>功能展示：
      * <ul>
-     *   <li>✅ 使用 GAME_TICK 冷却类型（每天早上6点重置）</li>
-     *   <li>✅ 使用时间段条件（IsMorning、IsAfternoon、IsNight）</li>
-     *   <li>✅ 检查节点访问历史（NodeVisited）</li>
-     *   <li>✅ 使用权重控制选项优先级</li>
+     *   <li> 使用 GAME_TICK 冷却类型（每天早上6点重置）</li>
+     *   <li> 使用时间段条件（IsMorning、IsAfternoon、IsNight）</li>
+     *   <li> 检查节点访问历史（NodeVisited）</li>
+     *   <li> 使用权重控制选项优先级</li>
      * </ul>
      */
     private static void registerVillageGuard() {
@@ -642,10 +642,10 @@ public final class EpicDialogueTrees {
      *
      * <p>功能展示：
      * <ul>
-     *   <li>✅ 使用 GameTimeInRange 自定义时间区间</li>
-     *   <li>✅ 跨天区间支持（如 22:00-凌晨6:00）</li>
-     *   <li>✅ 组合条件（AND/OR/NOT）</li>
-     *   <li>✅ 对话树级别的冷却配置</li>
+     *   <li> 使用 GameTimeInRange 自定义时间区间</li>
+     *   <li> 跨天区间支持（如 22:00-凌晨6:00）</li>
+     *   <li> 组合条件（AND/OR/NOT）</li>
+     *   <li> 对话树级别的冷却配置</li>
      * </ul>
      */
     private static void registerMysteriousMerchant() {

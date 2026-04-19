@@ -1,7 +1,7 @@
 # 对话系统详解
 
 **模块**: dialogue/  
-**最后更新**: 2026-04-17  
+**最后更新**: 2026-04-20  
 **版本**: v3.3（修复文档API一致性，新增对话树GAME_TICK冷却）
 
 ---
@@ -1929,12 +1929,12 @@ public class ItemGranterExtension { ... }
 ```java
 @Override
 public boolean canApply(Villager entity) {
-    // ✅ 快速失败：先检查简单的条件
+    //快速失败：先检查简单的条件
     if (!entity.getPersistentData().contains("key")) {
         return false;
     }
     
-    // ✅ 缓存结果（如果需要复杂计算）
+    //缓存结果（如果需要复杂计算）
     // ❌ 避免在 canApply 中进行耗时操作
     return true;
 }
@@ -2187,7 +2187,7 @@ private boolean hasPassedResetTick(ServerPlayer player, String nodeId, int reset
 #### 1. 选择合适的重置时间点
 
 ```java
-// ✅ 推荐：整点重置，便于记忆
+//推荐：整点重置，便于记忆
 .nodeCooldownGameTick(0)      // 6:00
 .nodeCooldownGameTick(1000)   // 7:00
 .nodeCooldownGameTick(6000)   // 12:00
@@ -2201,7 +2201,7 @@ private boolean hasPassedResetTick(ServerPlayer player, String nodeId, int reset
 #### 2. 配合时间段条件使用
 
 ```java
-// ✅ 推荐：冷却 + 时间段双重控制
+//推荐：冷却 + 时间段双重控制
 .node("night_guard")
     .sayIf(
         Map.of("night", "夜晚危险，小心行事。"),
@@ -2216,7 +2216,7 @@ private boolean hasPassedResetTick(ServerPlayer player, String nodeId, int reset
 #### 3. 考虑玩家体验
 
 ```java
-// ✅ 友好：给予足够的时间窗口
+//友好：给予足够的时间窗口
 .nodeCooldownGameTick(0)  // 早上6点，玩家刚上线
 
 // ❌ 不友好：重置时间在深夜
@@ -2546,8 +2546,8 @@ session.skipTypewriter();
 *本文档详细讲解了Arc Quest对话系统的设计原理、交互流程、权重系统、NPC条件支持和IEntityDialogueExtension扩展系统。*
 
 **版本历史**：
-- **v3.3** (2026-04-17): 修复文档API一致性，删除虚假的NPC条件（NpcExists等）和MinLevel条件，新增对话树GAME_TICK冷却
-- **v3.2** (2026-04-17): 新增游戏时间刻冷却系统（GAME_TICK）、时间段条件、跨天区间支持
-- **v3.0** (2026-04-17): 新增权重与优先级系统、IEntityDialogueExtension扩展系统
+- **v3.3** (2026-04-20): 修复文档API一致性，删除虚假的NPC条件（NpcExists等）和MinLevel条件，新增对话树GAME_TICK冷却
+- **v3.2** (2026-04-20): 新增游戏时间刻冷却系统（GAME_TICK）、时间段条件、跨天区间支持
+- **v3.0** (2026-04-20): 新增权重与优先级系统、IEntityDialogueExtension扩展系统
 - **v2.0** (2026-04-16): 新增生命周期管理、冷却状态检查、节点/选项历史记录
 - **v1.0** (2026-04-15): 初始版本，基础对话树、条件系统、动作执行

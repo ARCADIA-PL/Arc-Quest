@@ -10,6 +10,8 @@ import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
+import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.com.arc_quest.trade.network.S2COpenTradePacket;
 
 /**
  * Arc Quest 网络通信中心。
@@ -107,6 +109,24 @@ public final class ArcQuestNetwork {
                 C2SDialogueChoicePacket::decode,
                 C2SDialogueChoicePacket::handle
         );
+
+        // --- S2C: Trade window ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2COpenTradePacket.class,
+                S2COpenTradePacket::encode,
+                S2COpenTradePacket::decode,
+                S2COpenTradePacket::handle
+        );
+
+        // --- C2S: Trade request ---
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SRequestTradePacket.class,
+                C2SRequestTradePacket::encode,
+                C2SRequestTradePacket::decode,
+                C2SRequestTradePacket::handle
+        );
     }
 
     // ═══════════════════════════════════════════════════════
@@ -184,6 +204,20 @@ public final class ArcQuestNetwork {
      * 服务端发送对话打开包
      */
     public static void sendToPlayer(ServerPlayer player, S2COpenDialoguePacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    /**
+     * Client sends trade request
+     */
+    public static void sendTradeRequest(C2SRequestTradePacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
+
+    /**
+     * Server sends trade packet
+     */
+    public static void sendTradePacket(ServerPlayer player, S2COpenTradePacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 }

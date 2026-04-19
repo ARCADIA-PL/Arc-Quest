@@ -44,6 +44,9 @@ public final class QuestBuilder {
     private boolean repeatable = false;
     private String initialPhaseId = null;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
+    @Nullable
+    private String chapterShopId;
+    private boolean chapterShopPersistent = true;
 
     private QuestBuilder(ResourceLocation id) {
         this.id = id;
@@ -182,6 +185,26 @@ public final class QuestBuilder {
     public QuestBuilder reward(IReward reward) {
         this.completionRewards.add(reward);
         return this;
+    }
+
+    // ════════════════════════════════════════
+    //  章节商店
+    // ════════════════════════════════════════
+
+    /**
+     * 配置章节商店。
+     *
+     * @param shopId     交易商店注册 ID
+     * @param persistent true=长效（任务完成后仍可访问），false=非长效
+     */
+    public QuestBuilder chapterShop(String shopId, boolean persistent) {
+        this.chapterShopId = shopId;
+        this.chapterShopPersistent = persistent;
+        return this;
+    }
+
+    public QuestBuilder chapterShop(String shopId) {
+        return chapterShop(shopId, true);
     }
 
     // ════════════════════════════════════════
@@ -362,7 +385,9 @@ public final class QuestBuilder {
                 new ArrayList<>(this.completionRewards),
                 new ArrayList<>(this.flagsOnAccept),
                 new ArrayList<>(this.flagsOnComplete),
-                this.visualConfigBuilder.build()
+                this.visualConfigBuilder.build(),
+                this.chapterShopId,
+                this.chapterShopPersistent
         );
     }
 

@@ -4,7 +4,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
+import org.com.arc_quest.dialogue.runtime.ProgressKey;
+import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
+import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +30,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
      */
     private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
         "arc_quest:player_data",
-        3,  // 当前版本
+        3,
         LOGGER
     );
     
@@ -40,11 +44,8 @@ public class QuestCapabilityImpl implements IQuestCapability {
         
         // v1 → v2: 添加 DialogueProgress
         VERSION_MANAGER.addMigration(1, 2, tag -> {
-            // 如果存在旧的 NodeVisitHistory 等字段,迁移到 DialogueProgress
             if (tag.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
                 CompoundTag dialogueProgress = new CompoundTag();
-                // 迁移逻辑由 DialogueProgressStore.migrateFromLegacy 处理
-                // 这里只是标记需要迁移,实际在 deserializeNBT 中处理
                 tag.putInt("_needs_dialogue_migration", 1);
             } else if (!tag.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
                 tag.put("DialogueProgress", new CompoundTag());
@@ -53,7 +54,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
         
         // v2 → v3改用 _ArcQuestVer
         VERSION_MANAGER.addMigration(2, 3, tag -> {
-            // 复制旧的 _version 到 _ArcQuestVer
             if (tag.contains("_version", Tag.TAG_INT)) {
                 int oldVersion = tag.getInt("_version");
                 tag.putInt("_ArcQuestVer", Math.max(oldVersion, 3));
@@ -61,7 +61,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
             } else {
                 tag.putInt("_ArcQuestVer", 3);
             }
-            // 清理临时标记
             tag.remove("_needs_dialogue_migration");
         });
     }
@@ -73,15 +72,119 @@ public class QuestCapabilityImpl implements IQuestCapability {
     private final Map<String, Integer> variables = new HashMap<>();
 
     /**
-     * 统一对话进度存储
+     * 统一对话进度存储（包含节点访问、选项选择、对话访问）。
+     *  扩展：也用于存储交易冷却数据
      */
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
+
+    /**
+     * 交易数据：shopId -> entryId -> purchaseCount
+     */
+    private final Map<String, Map<String, Integer>> tradePurchases = new HashMap<>();
 
     private boolean isDirty = false;
 
     @Override
     public DialogueProgressStore getDialogueProgress() {
         return dialogueProgress;
+    }
+
+    // ════════════════════════════════════════
+    //  交易数据管理
+    // ════════════════════════════════════════
+
+    @Override
+    public int getTradePurchaseCount(String shopId, String entryId) {
+        return tradePurchases.computeIfAbsent(shopId, k -> new HashMap<>())
+                .getOrDefault(entryId, 0);
+    }
+
+    @Override
+    public void incrementTradePurchase(String shopId, String entryId) {
+        Map<String, Integer> shopData = tradePurchases.computeIfAbsent(shopId, k -> new HashMap<>());
+        shopData.merge(entryId, 1, Integer::sum);
+        isDirty = true;
+    }
+
+    @Override
+    public long getTradeLastPurchaseTime(String shopId, String entryId) {
+        ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
+        DialogueProgressStore.Entry entry = 
+                dialogueProgress.getChoiceSelection(key);
+        
+        LOGGER.debug("[Trade-Cooldown] getTradeLastPurchaseTime: shop={}, entry={}, key={}, exists={}, realTime={}",
+                shopId, entryId, key.toKeyString(), entry.exists(), entry.exists() ? entry.realTime() : 0);
+        
+        return entry.exists() ? entry.realTime() : 0L;
+    }
+
+    @Override
+    @Deprecated
+    public void recordTradePurchaseTime(String shopId, String entryId) {
+        LOGGER.warn("[QuestCap] Deprecated method called: recordTradePurchaseTime without gameTime/dayTime");
+    }
+
+    @Override
+    public void recordTradePurchaseTime(String shopId, String entryId, long gameTime, long dayTime) {
+        ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
+        long realTime = TimeSanitizer.getCurrentRealTime();
+        dialogueProgress.recordChoiceSelection(key, realTime, gameTime, dayTime);
+        isDirty = true;
+        
+        LOGGER.info("[Trade-Cooldown]  Recorded purchase time: shop={}, entry={}, key={}, realTime={}, gameTime={}, dayTime={}",
+                shopId, entryId, key.toKeyString(), realTime, gameTime, dayTime);
+    }
+
+    @Override
+    public boolean isTradeOnCooldown(String shopId, String entryId,
+                                     CooldownType cooldownType,
+                                     int cooldownValue, int resetTick,
+                                     long nowRealTime, long nowGameTime, long nowDayTime) {
+        ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
+        DialogueProgressStore.Entry entry = 
+                dialogueProgress.getChoiceSelection(key);
+        
+        LOGGER.debug("[Trade-Cooldown] isTradeOnCooldown: shop={}, entry={}, key={}, type={}, cooldownValue={}, resetTick={}",
+                shopId, entryId, key.toKeyString(), cooldownType, cooldownValue, resetTick);
+        LOGGER.debug("[Trade-Cooldown] Current time: realTime={}, gameTime={}, dayTime={}",
+                nowRealTime, nowGameTime, nowDayTime);
+        
+        if (!entry.exists()) {
+            LOGGER.debug("[Trade-Cooldown]  Entry does not exist → NOT on cooldown");
+            return false;
+        }
+        
+        if (cooldownType == CooldownType.NONE) {
+            LOGGER.debug("[Trade-Cooldown]  CooldownType is NONE → NOT on cooldown");
+            return false;
+        }
+        
+        LOGGER.debug("[Trade-Cooldown] Entry data: realTime={}, gameTime={}, dayTime={}",
+                entry.realTime(), entry.gameTime(), entry.dayTime());
+
+        boolean result = UnifiedCooldownManager.isOnCooldown(
+                entry, cooldownType, cooldownValue, resetTick,
+                nowRealTime, nowGameTime, nowDayTime
+        );
+        
+        LOGGER.info("[Trade-Cooldown] 🎯 Final result: onCooldown={}, entry={}, type={}",
+                result, entryId, cooldownType);
+        
+        return result;
+    }
+
+    @Override
+    public void resetTradePurchaseCount(String shopId, String entryId) {
+        Map<String, Integer> shopData = tradePurchases.get(shopId);
+        if (shopData != null) {
+            shopData.remove(entryId);
+            isDirty = true;
+        }
+        
+        ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
+        dialogueProgress.clearCooldownRecord(key);
+        
+        LOGGER.info("[QuestCap] Reset purchase count and cooldown for shop={}, entry={}", shopId, entryId);
     }
 
     // ═══════════════════════════════════════════════
@@ -212,7 +315,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
     public CompoundTag serializeNBT() {
         CompoundTag root = new CompoundTag();
 
-        // 任务
         ListTag activeList = new ListTag();
         for (QuestRuntimeData data : activeQuests.values()) {
             activeList.add(data.serializeNBT());
@@ -227,20 +329,26 @@ public class QuestCapabilityImpl implements IQuestCapability {
         for (String id : failedQuests) failedList.add(StringTag.valueOf(id));
         root.put("FailedQuests", failedList);
 
-        // Flag
         ListTag flagList = new ListTag();
         for (String f : flags) flagList.add(StringTag.valueOf(f));
         root.put("Flags", flagList);
 
-        // Variable
         CompoundTag varsTag = new CompoundTag();
         for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
         root.put("Variables", varsTag);
 
-        // 对话进度
         root.put("DialogueProgress", dialogueProgress.serialize());
 
-        // 设置版本号
+        CompoundTag tradePurchasesTag = new CompoundTag();
+        for (var shopEntry : tradePurchases.entrySet()) {
+            CompoundTag shopTag = new CompoundTag();
+            for (var entryData : shopEntry.getValue().entrySet()) {
+                shopTag.putInt(entryData.getKey(), entryData.getValue());
+            }
+            tradePurchasesTag.put(shopEntry.getKey(), shopTag);
+        }
+        root.put("TradePurchases", tradePurchasesTag);
+
         VERSION_MANAGER.setInitialVersion(root);
 
         return root;
@@ -248,7 +356,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
     @Override
     public void deserializeNBT(CompoundTag root) {
-        // 执行版本迁移
         VERSION_MANAGER.migrate(root);
         
         activeQuests.clear();
@@ -257,7 +364,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
         flags.clear();
         variables.clear();
 
-        // 任务
         ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
         for (int i = 0; i < activeList.size(); i++) {
             QuestRuntimeData data = QuestRuntimeData.deserializeNBT(activeList.getCompound(i));
@@ -276,14 +382,23 @@ public class QuestCapabilityImpl implements IQuestCapability {
         CompoundTag varsTag = root.getCompound("Variables");
         for (String key : varsTag.getAllKeys()) variables.put(key, varsTag.getInt(key));
 
-        // 对话进度 —— 自动检测新旧格式
         if (root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
-            // 新格式：直接反序列化
             dialogueProgress.deserialize(root.getCompound("DialogueProgress"));
         } else if (root.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
-            // 旧格式：迁移
             dialogueProgress.migrateFromLegacy(root);
         }
+
+        tradePurchases.clear();
+        CompoundTag tradePurchasesTag = root.getCompound("TradePurchases");
+        for (String shopId : tradePurchasesTag.getAllKeys()) {
+            CompoundTag shopTag = tradePurchasesTag.getCompound(shopId);
+            Map<String, Integer> shopData = new HashMap<>();
+            for (String entryId : shopTag.getAllKeys()) {
+                shopData.put(entryId, shopTag.getInt(entryId));
+            }
+            tradePurchases.put(shopId, shopData);
+        }
+
     }
 
     // ═══════════════════════════════════════════════
@@ -303,6 +418,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         flags.clear();
         variables.clear();
         dialogueProgress.clear();
+        tradePurchases.clear();
         isDirty = true;
     }
 

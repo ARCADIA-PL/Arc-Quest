@@ -22,6 +22,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addCommandTranslations();
         addDialogueTranslations();
         addEpicDialogueTranslations();
+        addTradeTranslations();
 
         // ── 任务链 ──
         addPrologueQuest();
@@ -202,6 +203,34 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "Quest '%1$s' not found in registry.");
         addCommandFeedback("error", "no_capability",
                 "Failed to access quest data for %1$s. Capability not attached.");
+
+        // ── Dialogue System Commands ──
+        add("arc_quest.command.dialogue.reset.all", "Reset all dialogue progress for player %1$s");
+        add("arc_quest.command.dialogue.reset.single", "Requested reset of dialogue tree %1$s for player %2$s (WIP)");
+        add("arc_quest.command.dialogue.status.header", "§e=== Dialogue Status ===");
+        add("arc_quest.command.dialogue.status.player", "§fPlayer: %1$s");
+        add("arc_quest.command.dialogue.status.work_in_progress", "§7(Detailed history feature WIP...)");
+
+        // ── Trade System Commands ──
+        add("arc_quest.command.trade.error.not_found", "Trade shop not found: %1$s");
+        add("arc_quest.command.trade.open.success", "Opened trade shop %1$s for %2$s");
+        add("arc_quest.command.trade.simple.success", "Opened simple trade %1$s for %2$s");
+        add("arc_quest.command.trade.list.header", "§e=== Trade Shop Registry (%1$s) ===");
+        add("arc_quest.command.trade.list.entry", "§f  %1$s §7- %2$s §8[%3$s entries%4$s]");
+        add("arc_quest.command.trade.list.empty", "§7  (No registered trade shops)");
+        add("arc_quest.command.trade.debug.header", "§e=== Trade Shop Debug: %1$s ===");
+        add("arc_quest.command.trade.debug.name", "§f  Name: %1$s");
+        add("arc_quest.command.trade.debug.description", "§7  Description: %1$s");
+        add("arc_quest.command.trade.debug.mode.simple", "§f  Mode: §aSimple Popup");
+        add("arc_quest.command.trade.debug.mode.full", "§f  Mode: §bFull Window");
+        add("arc_quest.command.trade.debug.categories", "§f  Categories: §7%1$s");
+        add("arc_quest.command.trade.debug.category_entry", "§d    %1$s §7- %2$s");
+        add("arc_quest.command.trade.debug.entries", "§f  Entries: §7%1$s");
+        add("arc_quest.command.trade.debug.entry_header", "§a    %1$s §7| %2$s");
+        add("arc_quest.command.trade.debug.costs", "§7      Costs: §c%1$s");
+        add("arc_quest.command.trade.debug.rewards", "§7      Rewards: §b%1$s");
+        add("arc_quest.command.trade.debug.limit", "§7      Limit: §e%1$s times");
+        add("arc_quest.command.trade.debug.cooldown", "§7      Cooldown: §e%1$s (%2$s)");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -241,6 +270,74 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "§fVery well... Should you change your mind, seek me out at any hour.");
         add("dialogue.test_villager.decline.choice1",
                 "Farewell");
+    }
+
+    /**
+     * Trade system translations.
+     */
+    private void addTradeTranslations() {
+        // ── Screen Titles ──
+        addTradeScreenTitle("screen", "Trade Matrix");
+        addTradeScreenTitle("quick", "Quick Trade");
+
+        // ── Common Labels ──
+        addTradeLabel("subtitle", "Select Goods");
+        addTradeLabel("closed", "Shop Closed");
+        addTradeLabel("unknown_shop", "Unknown Shop");
+        addTradeLabel("buy", "Buy");
+        addTradeLabel("sold_out", "Sold Out");
+        addTradeLabel("purchase", "Purchase");
+        addTradeLabel("maxed", "Maxed");
+        addTradeLabel("cooldown", "%ds");
+
+        // ── Categories ──
+        addTradeCategory("all", "All");
+
+        // ── Trade Offer Templates ──
+        addTradeOfferTemplate("item", "%s x%d");
+        addTradeOfferTemplate("effect", "%s%s %ds");
+        addTradeOfferTemplate("command", "Command: %s");
+        addTradeOfferTemplate("flag.require", "Requires: %s");
+        addTradeOfferTemplate("flag.reward", "Gain Flag: %s");
+
+        // ── Feedback Messages ──
+        addTradeFeedback("success", "Trade Successful!");
+        addTradeFeedback("error.cooldown", "On cooldown, wait %d seconds");
+        addTradeFeedback("error.limit", "Purchase limit reached");
+        addTradeFeedback("error.cannot_afford", "Insufficient resources");
+        addTradeFeedback("error.condition", "Conditions not met");
+
+        // ── Cooldown Hint Texts ──
+        addTradeCooldownText("game_day", "Resets tomorrow");
+        addTradeCooldownText("seconds_remaining", "Resets in %ds");
+        addTradeCooldownText("ticks_remaining", "Resets in %dt");
+
+        // ── Trade Shops ──
+        addTradeShop("blacksmith_shop", "Blacksmith Shop", "Sells various weapons, armor and tools");
+        addTradeShop("potion_shop", "Potion Merchant", "Sells various potion effects");
+        addTradeShop("quick_food_trade", "Quick Supplies", null);
+
+        // ── Categories ──
+        addTradeCategory("weapons", "Weapons");
+        addTradeCategory("armor", "Armor");
+        addTradeCategory("tools", "Tools");
+
+        // ── Trade Entries (Blacksmith) ──
+        addTradeEntry("iron_sword", "Iron Sword", null);
+        addTradeEntry("diamond_sword", "Diamond Sword", null);
+        addTradeEntry("iron_chestplate", "Iron Chestplate", null);
+        addTradeEntry("iron_helmet", "Iron Helmet", null);
+        addTradeEntry("iron_pickaxe", "Iron Pickaxe", null);
+
+        // ── Trade Entries (Potion Shop) ──
+        addTradeEntry("strength_potion", "Strength Potion", "Grants Strength I for 60 seconds");
+        addTradeEntry("speed_potion", "Speed Potion", "Grants Speed I for 120 seconds");
+        addTradeEntry("regen_potion", "Regeneration Potion", "Grants Regeneration II for 30 seconds");
+
+        // ── Trade Entries (Quick Trade) ──
+        addTradeEntry("buy_bread", "Bread x4", null);
+        addTradeEntry("buy_steak", "Steak x2", null);
+        addTradeEntry("buy_golden_apple", "Golden Apple", null);
     }
 
     /**

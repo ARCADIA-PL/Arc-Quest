@@ -31,9 +31,30 @@ public class S2COpenDialoguePacket {
     private final int entityId;
 
     /**
-     * 每个选项的冷却剩余时间（秒），0 = 无冷却或可用，-1 = 不显示冷却中选项
+     * 每个选项的最后选择时间戳（毫秒），0 = 未选择
      */
-    private final int[] choiceCooldowns;
+    private final long[] choiceLastSelectTimes;
+    
+    /**  每个选项选择时的 gameTime */
+    private final long[] choicePurchaseGameTimes;
+    
+    /**  每个选项选择时的 dayTime */
+    private final long[] choicePurchaseDayTimes;
+    
+    /**
+     * 每个选项的冷却类型（ordinal）
+     */
+    private final int[] choiceCooldownTypes;
+    
+    /**
+     * 每个选项的冷却值（秒或tick）
+     */
+    private final long[] choiceCooldownValues;
+    
+    /**
+     * 每个选项的重置刻（仅 GAME_TICK 有效）
+     */
+    private final int[] choiceResetTimeTicks;
 
     /**
      * 原有构造器（向后兼容，entityId = -1）。
@@ -51,7 +72,8 @@ public class S2COpenDialoguePacket {
                                  String text, String[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs,
                                  int entityId) {
-        this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId, null);
+        this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
+                null, null, null, null, null, null);
     }
 
     /**
@@ -60,7 +82,10 @@ public class S2COpenDialoguePacket {
     public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
                                  String text, String[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs,
-                                 int entityId, int[] choiceCooldowns) {
+                                 int entityId, long[] choiceLastSelectTimes,
+                                 long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
+                                 int[] choiceCooldownTypes, long[] choiceCooldownValues,
+                                 int[] choiceResetTimeTicks) {
         this.dialogueId = dialogueId;
         this.nodeId = nodeId;
         this.speaker = speaker;
@@ -71,7 +96,12 @@ public class S2COpenDialoguePacket {
         this.delayMs = delayMs;
         this.isClose = false;
         this.entityId = entityId;
-        this.choiceCooldowns = choiceCooldowns;
+        this.choiceLastSelectTimes = choiceLastSelectTimes;
+        this.choicePurchaseGameTimes = choicePurchaseGameTimes;
+        this.choicePurchaseDayTimes = choicePurchaseDayTimes;
+        this.choiceCooldownTypes = choiceCooldownTypes;
+        this.choiceCooldownValues = choiceCooldownValues;
+        this.choiceResetTimeTicks = choiceResetTimeTicks;
     }
 
     private S2COpenDialoguePacket() {
@@ -85,7 +115,12 @@ public class S2COpenDialoguePacket {
         this.delayMs = 0;
         this.isClose = true;
         this.entityId = -1;
-        this.choiceCooldowns = null;
+        this.choiceLastSelectTimes = null;
+        this.choicePurchaseGameTimes = null;
+        this.choicePurchaseDayTimes = null;
+        this.choiceCooldownTypes = null;
+        this.choiceCooldownValues = null;
+        this.choiceResetTimeTicks = null;
     }
 
     public static S2COpenDialoguePacket close() {
@@ -112,17 +147,35 @@ public class S2COpenDialoguePacket {
         int delay = buf.readVarInt();
         int entityId = buf.readInt();
 
-        // 反序列化冷却信息
-        int[] choiceCooldowns = null;
+        // 反序列化冷却原始数据
+        long[] lastSelectTimes = null;
+        long[] purchaseGTs = null;
+        long[] purchaseDTs = null;
+        int[] cooldownTypes = null;
+        long[] cooldownValues = null;
+        int[] resetTimeTicks = null;
+        
         if (buf.readBoolean()) {
             int cooldownCount = buf.readVarInt();
-            choiceCooldowns = new int[cooldownCount];
+            lastSelectTimes = new long[cooldownCount];
+            purchaseGTs = new long[cooldownCount];
+            purchaseDTs = new long[cooldownCount];
+            cooldownTypes = new int[cooldownCount];
+            cooldownValues = new long[cooldownCount];
+            resetTimeTicks = new int[cooldownCount];
+            
             for (int i = 0; i < cooldownCount; i++) {
-                choiceCooldowns[i] = buf.readVarInt();
+                lastSelectTimes[i] = buf.readLong();
+                purchaseGTs[i] = buf.readLong();
+                purchaseDTs[i] = buf.readLong();
+                cooldownTypes[i] = buf.readVarInt();
+                cooldownValues[i] = buf.readLong();
+                resetTimeTicks[i] = buf.readVarInt();
             }
         }
 
-        return new S2COpenDialoguePacket(dId, nId, spk, txt, choices, terminal, autoNext, delay, entityId, choiceCooldowns);
+        return new S2COpenDialoguePacket(dId, nId, spk, txt, choices, terminal, autoNext, delay, entityId,
+                lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks);
     }
 
     public static void handle(S2COpenDialoguePacket pkt,
@@ -139,13 +192,19 @@ public class S2COpenDialoguePacket {
             if (mc.screen instanceof DialogueScreen ds) {
                 // 更新现有对话界面
                 ds.updateNode(pkt.speaker, pkt.text, pkt.choices,
-                        pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs, pkt.choiceCooldowns);
+                        pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs,
+                        pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
+                        pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
+                        pkt.choiceCooldownValues, pkt.choiceResetTimeTicks);
                 ds.updateEntityId(pkt.entityId);
             } else {
                 // 打开新对话界面
                 mc.setScreen(new DialogueScreen(pkt.dialogueId, pkt.speaker,
                         pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext,
-                        pkt.delayMs, pkt.entityId, pkt.choiceCooldowns));  // 传入冷却信息
+                        pkt.delayMs, pkt.entityId,
+                        pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
+                        pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
+                        pkt.choiceCooldownValues, pkt.choiceResetTimeTicks));
             }
         });
         ctx.get().setPacketHandled(true);
@@ -167,12 +226,17 @@ public class S2COpenDialoguePacket {
             buf.writeVarInt(delayMs);
             buf.writeInt(entityId);
 
-            // 序列化冷却信息
-            if (choiceCooldowns != null && choiceCooldowns.length > 0) {
+            // 序列化冷却原始数据
+            if (choiceLastSelectTimes != null && choiceLastSelectTimes.length > 0) {
                 buf.writeBoolean(true);
-                buf.writeVarInt(choiceCooldowns.length);
-                for (int cooldown : choiceCooldowns) {
-                    buf.writeVarInt(cooldown);
+                buf.writeVarInt(choiceLastSelectTimes.length);
+                for (int i = 0; i < choiceLastSelectTimes.length; i++) {
+                    buf.writeLong(choiceLastSelectTimes[i]);
+                    buf.writeLong(choicePurchaseGameTimes != null ? choicePurchaseGameTimes[i] : 0);
+                    buf.writeLong(choicePurchaseDayTimes != null ? choicePurchaseDayTimes[i] : 0);
+                    buf.writeVarInt(choiceCooldownTypes[i]);
+                    buf.writeLong(choiceCooldownValues[i]);
+                    buf.writeVarInt(choiceResetTimeTicks[i]);
                 }
             } else {
                 buf.writeBoolean(false);

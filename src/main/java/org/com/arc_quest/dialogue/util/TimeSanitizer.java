@@ -1,5 +1,6 @@
 package org.com.arc_quest.dialogue.util;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import org.com.arc_quest.Arc_quest;
 
@@ -9,6 +10,93 @@ import org.com.arc_quest.Arc_quest;
 public final class TimeSanitizer {
 
     private TimeSanitizer() {
+    }
+
+    /**
+     * 获取当前真实时间戳（毫秒）
+     */
+    public static long getCurrentRealTime() {
+        return System.currentTimeMillis();
+    }
+    
+    /**
+     * 获取当前游戏总刻（gameTime）
+     * 
+     * @param level 世界对象
+     * @return 游戏总刻数
+     */
+    public static long getCurrentGameTime(Level level) {
+        if (level == null) {
+            Arc_quest.LOGGER.warn("[TimeSanitizer] Level is null, returning 0 for gameTime");
+            return 0;
+        }
+        return level.getGameTime();
+    }
+    
+    /**
+     * 获取当前游戏总刻（gameTime）- ServerPlayer重载
+     */
+    public static long getCurrentGameTime(ServerPlayer player) {
+        if (player == null) {
+            Arc_quest.LOGGER.warn("[TimeSanitizer] Player or level is null, returning 0 for gameTime");
+            return 0;
+        } else {
+            player.level();
+        }
+        return player.level().getGameTime();
+    }
+    
+    /**
+     * 获取当前当天刻（dayTime），已校准到 [0, 23999]
+     * 
+     * @param level 世界对象
+     * @return 当天刻数
+     */
+    public static long getCurrentDayTime(Level level) {
+        return sanitizeDayTime(level);
+    }
+    
+    /**
+     * 获取当前当天刻（dayTime）- ServerPlayer重载
+     */
+    public static long getCurrentDayTime(ServerPlayer player) {
+        if (player == null) {
+            Arc_quest.LOGGER.warn("[TimeSanitizer] Player or level is null, returning 0 for dayTime");
+            return 0;
+        } else {
+            player.level();
+        }
+        return sanitizeDayTime(player.level());
+    }
+    
+    /**
+     * 一次性获取所有时间数据（用于冷却检查等场景）
+     * 
+     * @param level 世界对象
+     * @return 时间数据数组 [realTime, gameTime, dayTime]
+     */
+    public static long[] getAllTimes(Level level) {
+        return new long[] {
+            getCurrentRealTime(),
+            getCurrentGameTime(level),
+            getCurrentDayTime(level)
+        };
+    }
+    
+    /**
+     * 一次性获取所有时间数据 - ServerPlayer重载
+     */
+    public static long[] getAllTimes(ServerPlayer player) {
+        if (player == null) {
+            return new long[] { getCurrentRealTime(), 0, 0 };
+        } else {
+            player.level();
+        }
+        return new long[] {
+            getCurrentRealTime(),
+            getCurrentGameTime(player),
+            getCurrentDayTime(player)
+        };
     }
 
     /**
@@ -87,7 +175,7 @@ public final class TimeSanitizer {
             Arc_quest.LOGGER.error("[TimeSanitizer] ⚠️ 时间判断异常！tick={}, morning={}, afternoon={}, night={}, matches={}",
                     t, morning, afternoon, night, matchCount);
         } else {
-            Arc_quest.LOGGER.debug("[TimeSanitizer] ✅ 时间判断正常: {}", getTimePeriodDescription(level));
+            Arc_quest.LOGGER.debug("[TimeSanitizer]  时间判断正常: {}", getTimePeriodDescription(level));
         }
     }
 }

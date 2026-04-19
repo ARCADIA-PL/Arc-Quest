@@ -1,6 +1,7 @@
 package org.com.arc_quest.quest.capability;
 
 import net.minecraft.nbt.CompoundTag;
+import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
 
 import javax.annotation.Nullable;
@@ -75,6 +76,94 @@ public interface IQuestCapability {
      * @return 对话进度存储实例
      */
     DialogueProgressStore getDialogueProgress();
+
+    /**
+     * 获取交易冷却存储（复用 DialogueProgressStore）。
+     * <p>
+     * 交易系统使用 ProgressKey.ofTrade() 创建 key，
+     * 然后调用 getDialogueProgress().recordChoiceSelection() 等方法。
+     *
+     * @return 统一的进度存储实例（与 getDialogueProgress() 相同）
+     */
+    default DialogueProgressStore getTradeCooldownStore() {
+        return getDialogueProgress();
+    }
+
+    // ════════════════════════════════════════
+    //  交易数据管理
+    // ════════════════════════════════════════
+
+    /**
+     * 获取某商店某商品的购买次数。
+     *
+     * @param shopId 商店 ID
+     * @param entryId 商品 ID
+     * @return 购买次数
+     */
+    int getTradePurchaseCount(String shopId, String entryId);
+
+    /**
+     * 增加购买次数。
+     *
+     * @param shopId 商店 ID
+     * @param entryId 商品 ID
+     */
+    void incrementTradePurchase(String shopId, String entryId);
+
+    /**
+     * 获取某商店某商品的上次购买时间（毫秒）。
+     *
+     * @param shopId 商店 ID
+     * @param entryId 商品 ID
+     * @return 上次购买时间戳，未购买过返回 0
+     */
+    long getTradeLastPurchaseTime(String shopId, String entryId);
+
+    /**
+     * 记录购买时间（旧版本，仅保存现实时间）。
+     *
+     * @param shopId 商店 ID
+     * @param entryId 商品 ID
+     * @deprecated 使用 {@link #recordTradePurchaseTime(String, String, long, long)}
+     */
+    @Deprecated
+    void recordTradePurchaseTime(String shopId, String entryId);
+
+    /**
+     * 记录购买时间（新版本，保存完整时间快照）。
+     *
+     * @param shopId    商店 ID
+     * @param entryId   商品 ID
+     * @param gameTime  游戏总刻数
+     * @param dayTime   游戏日内刻数
+     */
+    void recordTradePurchaseTime(String shopId, String entryId, long gameTime, long dayTime);
+
+    /**
+     * 检查交易项是否在冷却中（统一冷却 API）。
+     *
+     * @param shopId         商店 ID
+     * @param entryId        商品 ID
+     * @param cooldownType   冷却类型
+     * @param cooldownValue  冷却值（秒/tick）
+     * @param resetTick      重置刻（仅 GAME_TICK 有效）
+     * @param nowRealTime    当前真实时间
+     * @param nowGameTime    当前游戏总刻数
+     * @param nowDayTime     当前游戏日内刻数
+     * @return true = 仍在冷却中
+     */
+    boolean isTradeOnCooldown(String shopId, String entryId,
+                              CooldownType cooldownType,
+                              int cooldownValue, int resetTick,
+                              long nowRealTime, long nowGameTime, long nowDayTime);
+
+    /**
+     * 重置交易项的购买计数。
+     *
+     * @param shopId  商店 ID
+     * @param entryId 商品 ID
+     */
+    void resetTradePurchaseCount(String shopId, String entryId);
 
     default void clearAllData() {
         List<String> activeIds = new ArrayList<>(getAllActiveQuests().keySet());

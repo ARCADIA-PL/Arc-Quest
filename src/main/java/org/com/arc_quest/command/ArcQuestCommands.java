@@ -35,6 +35,12 @@ import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.ObjectiveTracker;
+import org.com.arc_quest.trade.api.ITradeOffer;
+import org.com.arc_quest.trade.api.TradeCategory;
+import org.com.arc_quest.trade.api.TradeEntry;
+import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -144,6 +150,38 @@ public class ArcQuestCommands {
                         .then(Commands.literal("resetall")
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .executes(ArcQuestCommands::cmdResetAll)))
+
+                        // trade
+                        .then(Commands.literal("trade")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                .suggests(ArcQuestCommands::suggestTradeShopIds)
+                                                .executes(ArcQuestCommands::cmdTradeOpen)))
+                                .then(Commands.literal("simple")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                        .suggests(ArcQuestCommands::suggestTradeShopIds)
+                                                        .executes(ArcQuestCommands::cmdTradeSimple))))
+                                .then(Commands.literal("list")
+                                        .executes(ArcQuestCommands::cmdTradeList))
+                                .then(Commands.literal("debug")
+                                        .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                .suggests(ArcQuestCommands::suggestTradeShopIds)
+                                                .executes(ArcQuestCommands::cmdTradeDebug)))
+                                // 重置交易状态
+                                .then(Commands.literal("reset")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                        .suggests(ArcQuestCommands::suggestTradeShopIds)
+                                                        .executes(ctx -> cmdTradeReset(ctx, null)))
+                                                .then(Commands.literal("all")
+                                                        .executes(ArcQuestCommands::cmdTradeResetAll)))
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                        .suggests(ArcQuestCommands::suggestTradeShopIds)
+                                                        .then(Commands.argument("entry_id", StringArgumentType.string())
+                                                                .suggests(ArcQuestCommands::suggestTradeEntryIds)
+                                                                .executes(ctx -> cmdTradeReset(ctx, StringArgumentType.getString(ctx, "entry_id"))))))))
         );
 
         LOGGER.info("[ArcQuest] Commands registered.");
@@ -159,9 +197,6 @@ public class ArcQuestCommands {
 
     private static IQuestCapability getCapOrError(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
         IQuestCapability cap = getCap(player);
-        if (cap == null) {
-            error(ctx, Component.translatable("arc_quest.command.error.no_capability", player.getName().getString()).getString());
-        }
         return cap;
     }
 
@@ -208,6 +243,26 @@ public class ArcQuestCommands {
         return SharedSuggestionProvider.suggest(DialogueRegistry.INSTANCE.getAllIds(), builder);
     }
 
+    private static CompletableFuture<Suggestions> suggestTradeShopIds(
+            CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+        return SharedSuggestionProvider.suggest(TradeRegistry.getAllIds(), builder);
+    }
+
+    private static CompletableFuture<Suggestions> suggestTradeEntryIds(
+            CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
+        try {
+            String shopId = StringArgumentType.getString(ctx, "shop_id");
+            TradeShopDefinition shop = TradeRegistry.get(shopId);
+            if (shop != null) {
+                return SharedSuggestionProvider.suggest(
+                        shop.getAllEntries().stream().map(TradeEntry::getEntryId), builder);
+            }
+        } catch (IllegalArgumentException ignored) {
+            // 参数尚未输入完毕，安全忽略
+        }
+        return Suggestions.empty();
+    }
+
     // ═══════════════════════════════════════════════════════
     //  /arcquest give
     // ═══════════════════════════════════════════════════════
@@ -219,7 +274,6 @@ public class ArcQuestCommands {
         if (resolveQuest(ctx, questId) == null) return 0;
 
         IQuestCapability cap = getCapOrError(ctx, player);
-        if (cap == null) return 0;
 
         if (cap.isQuestActive(questId)) {
             error(ctx, Component.translatable("arc_quest.command.give.error.already_active", questId, player.getName().getString()).getString());
@@ -255,7 +309,6 @@ public class ArcQuestCommands {
         if (def == null) return 0;
 
         IQuestCapability cap = getCapOrError(ctx, player);
-        if (cap == null) return 0;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) {
@@ -287,7 +340,6 @@ public class ArcQuestCommands {
         if (resolveQuest(ctx, questId) == null) return 0;
 
         IQuestCapability cap = getCapOrError(ctx, player);
-        if (cap == null) return 0;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null) {
@@ -333,7 +385,6 @@ public class ArcQuestCommands {
         }
 
         IQuestCapability cap = getCapOrError(ctx, player);
-        if (cap == null) return 0;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null) {
@@ -379,7 +430,6 @@ public class ArcQuestCommands {
         if (resolveQuest(ctx, questId) == null) return 0;
 
         IQuestCapability cap = getCapOrError(ctx, player);
-        if (cap == null) return 0;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) {
@@ -420,32 +470,27 @@ public class ArcQuestCommands {
         msg.append(Component.literal("\n"));
 
         IQuestCapability cap = getCap(player);
-        if (cap == null) {
-            msg.append(Component.translatable("arc_quest.command.list.no_capability"));
+        var allQuests = cap.getAllActiveQuests();
+        if (allQuests.isEmpty()) {
+            msg.append(Component.translatable("arc_quest.command.list.no_quests"));
             msg.append(Component.literal("\n"));
         } else {
-            var allQuests = cap.getAllActiveQuests();
-            if (allQuests.isEmpty()) {
-                msg.append(Component.translatable("arc_quest.command.list.no_quests"));
-                msg.append(Component.literal("\n"));
-            } else {
-                for (var entry : allQuests.entrySet()) {
-                    QuestRuntimeData data = entry.getValue();
-                    String stateColor = switch (data.getState()) {
-                        case LOCKED, AVAILABLE -> "§8";
-                        case ACTIVE -> "§a";
-                        case COMPLETED -> "§2";
-                        case FAILED -> "§c";
-                    };
-                    msg.append(Component.literal(stateColor + "  " + entry.getKey() + " §7[" + data.getState().name() + "]" + " §8phase=" + data.getCurrentPhaseId() + "\n"));
-                }
+            for (var entry : allQuests.entrySet()) {
+                QuestRuntimeData data = entry.getValue();
+                String stateColor = switch (data.getState()) {
+                    case LOCKED, AVAILABLE -> "§8";
+                    case ACTIVE -> "§a";
+                    case COMPLETED -> "§2";
+                    case FAILED -> "§c";
+                };
+                msg.append(Component.literal(stateColor + "  " + entry.getKey() + " §7[" + data.getState().name() + "]" + " §8phase=" + data.getCurrentPhaseId() + "\n"));
             }
+        }
 
-            var completed = cap.getCompletedQuestIds();
-            if (completed != null && !completed.isEmpty()) {
-                msg.append(Component.translatable("arc_quest.command.list.completed_history", String.join(", ", completed)));
-                msg.append(Component.literal("\n"));
-            }
+        var completed = cap.getCompletedQuestIds();
+        if (completed != null && !completed.isEmpty()) {
+            msg.append(Component.translatable("arc_quest.command.list.completed_history", String.join(", ", completed)));
+            msg.append(Component.literal("\n"));
         }
 
         ctx.getSource().sendSuccess(() -> msg, false);
@@ -481,26 +526,21 @@ public class ArcQuestCommands {
         }
 
         IQuestCapability cap = getCap(player);
-        if (cap != null) {
-            QuestRuntimeData data = cap.getActiveQuest(questId);
-            if (data != null) {
-                msg.append(Component.translatable("arc_quest.command.debug.runtime_header"));
-                msg.append(Component.literal("\n"));
-                msg.append(Component.translatable("arc_quest.command.debug.runtime_state", data.getState().name()));
-                msg.append(Component.literal("\n"));
-                msg.append(Component.translatable("arc_quest.command.debug.runtime_phase", data.getCurrentPhaseId()));
-                msg.append(Component.literal("\n"));
-                int[] progress = data.getAllProgress();
-                for (int i = 0; i < progress.length; i++) {
-                    msg.append(Component.translatable("arc_quest.command.debug.runtime_obj", i, progress[i]));
-                    msg.append(Component.literal("\n"));
-                }
-            } else {
-                msg.append(Component.translatable("arc_quest.command.debug.no_runtime"));
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data != null) {
+            msg.append(Component.translatable("arc_quest.command.debug.runtime_header"));
+            msg.append(Component.literal("\n"));
+            msg.append(Component.translatable("arc_quest.command.debug.runtime_state", data.getState().name()));
+            msg.append(Component.literal("\n"));
+            msg.append(Component.translatable("arc_quest.command.debug.runtime_phase", data.getCurrentPhaseId()));
+            msg.append(Component.literal("\n"));
+            int[] progress = data.getAllProgress();
+            for (int i = 0; i < progress.length; i++) {
+                msg.append(Component.translatable("arc_quest.command.debug.runtime_obj", i, progress[i]));
                 msg.append(Component.literal("\n"));
             }
         } else {
-            msg.append(Component.translatable("arc_quest.command.list.no_capability"));
+            msg.append(Component.translatable("arc_quest.command.debug.no_runtime"));
             msg.append(Component.literal("\n"));
         }
 
@@ -529,6 +569,12 @@ public class ArcQuestCommands {
         for (DialogueTree tree : dialogues) {
             msg.append(Component.literal("§f    " + tree.dialogueId() + " §7- " + tree.defaultNpc() + "\n"));
         }
+        var tradeShops = TradeRegistry.getAll();
+        msg.append(Component.literal("§e--- Trade Shops (" + tradeShops.size() + ") ---\n"));
+        for (TradeShopDefinition shop : tradeShops) {
+            msg.append(Component.literal("§f    " + shop.getShopId() + " §7- " + shop.getDisplayName().getString() + " §8[" + shop.getAllEntries().size() + " entries]\n"));
+        }
+
 
         ctx.getSource().sendSuccess(() -> msg, false);
         return 1;
@@ -577,15 +623,14 @@ public class ArcQuestCommands {
     private static int cmdDialogueReset(CommandContext<CommandSourceStack> ctx, String dialogueId) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         IQuestCapability cap = getCapOrError(ctx, player);
-        if (cap == null) return 0;
 
         if (dialogueId == null) {
             // 重置所有对话进度
             cap.clearAllData();
-            success(ctx, Component.literal("已重置玩家 " + player.getName().getString() + " 的所有对话进度").getString());
+            success(ctx, Component.translatable("arc_quest.command.dialogue.reset.all", player.getName().getString()).getString());
         } else {
             // 按对话树ID重置进度
-            success(ctx, Component.literal("已请求重置玩家 " + player.getName().getString() + " 的对话树 " + dialogueId + "（功能开发中）").getString());
+            success(ctx, Component.translatable("arc_quest.command.dialogue.reset.single", dialogueId, player.getName().getString()).getString());
         }
         return 1;
     }
@@ -597,11 +642,12 @@ public class ArcQuestCommands {
     private static int cmdDialogueStatus(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         IQuestCapability cap = getCapOrError(ctx, player);
-        if (cap == null) return 0;
 
-        MutableComponent msg = Component.literal("§e=== 对话状态 ===\n");
-        msg.append(Component.literal("§f玩家: " + player.getName().getString() + "\n"));
-        msg.append(Component.literal("§7(详细历史记录功能开发中...)\n"));
+        MutableComponent msg = Component.translatable("arc_quest.command.dialogue.status.header");
+        msg.append(Component.literal("\n"));
+        msg.append(Component.translatable("arc_quest.command.dialogue.status.player", player.getName().getString()));
+        msg.append(Component.literal("\n"));
+        msg.append(Component.translatable("arc_quest.command.dialogue.status.work_in_progress"));
 
         ctx.getSource().sendSuccess(() -> msg, false);
         return 1;
@@ -614,7 +660,6 @@ public class ArcQuestCommands {
     private static int cmdResetAll(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         IQuestCapability cap = getCapOrError(ctx, player);
-        if (cap == null) return 0;
 
         // 清空所有数据
         cap.clearAllData();
@@ -626,6 +671,211 @@ public class ArcQuestCommands {
         ArcQuestNetwork.syncFullData(player, cap);
 
         success(ctx, Component.translatable("arc_quest.command.resetall.success", player.getName().getString()).getString());
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  /arcquest trade <player> <shop_id>
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdTradeOpen(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        String shopId = StringArgumentType.getString(ctx, "shop_id");
+
+        TradeShopDefinition shop = TradeRegistry.get(shopId);
+        if (shop == null) {
+            error(ctx, Component.translatable("arc_quest.command.trade.error.not_found", shopId).getString());
+            return 0;
+        }
+
+        C2SRequestTradePacket.handleServerOpen(player, shop, false);
+        success(ctx, Component.translatable("arc_quest.command.trade.open.success", shopId, player.getName().getString()).getString());
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  /arcquest trade simple <player> <shop_id>
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdTradeSimple(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        String shopId = StringArgumentType.getString(ctx, "shop_id");
+
+        TradeShopDefinition shop = TradeRegistry.get(shopId);
+        if (shop == null) {
+            error(ctx, Component.translatable("arc_quest.command.trade.error.not_found", shopId).getString());
+            return 0;
+        }
+
+        C2SRequestTradePacket.handleServerOpen(player, shop, true);
+        success(ctx, Component.translatable("arc_quest.command.trade.simple.success", shopId, player.getName().getString()).getString());
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  /arcquest trade list
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdTradeList(CommandContext<CommandSourceStack> ctx) {
+        var shops = TradeRegistry.getAll();
+        MutableComponent msg = Component.translatable("arc_quest.command.trade.list.header", shops.size());
+        msg.append(Component.literal("\n"));
+
+        for (TradeShopDefinition shop : shops) {
+            String modeText = shop.isSimpleMode() ? ", simple" : "";
+            msg.append(Component.translatable("arc_quest.command.trade.list.entry",
+                    shop.getShopId(),
+                    shop.getDisplayName().getString(),
+                    shop.getAllEntries().size(),
+                    modeText));
+            msg.append(Component.literal("\n"));
+        }
+
+        if (shops.isEmpty()) {
+            msg.append(Component.translatable("arc_quest.command.trade.list.empty"));
+            msg.append(Component.literal("\n"));
+        }
+
+        ctx.getSource().sendSuccess(() -> msg, false);
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  /arcquest trade debug <shop_id>
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdTradeDebug(CommandContext<CommandSourceStack> ctx) {
+        String shopId = StringArgumentType.getString(ctx, "shop_id");
+        TradeShopDefinition shop = TradeRegistry.get(shopId);
+
+        if (shop == null) {
+            error(ctx, Component.translatable("arc_quest.command.trade.error.not_found", shopId).getString());
+            return 0;
+        }
+
+        MutableComponent msg = Component.translatable("arc_quest.command.trade.debug.header", shopId);
+        msg.append(Component.literal("\n"));
+        msg.append(Component.translatable("arc_quest.command.trade.debug.name", shop.getDisplayName().getString()));
+        msg.append(Component.literal("\n"));
+        if (shop.getDescription() != null) {
+            msg.append(Component.translatable("arc_quest.command.trade.debug.description", shop.getDescription().getString()));
+            msg.append(Component.literal("\n"));
+        }
+        String modeKey = shop.isSimpleMode() ? "arc_quest.command.trade.debug.mode.simple" : "arc_quest.command.trade.debug.mode.full";
+        msg.append(Component.translatable(modeKey));
+        msg.append(Component.literal("\n"));
+        msg.append(Component.translatable("arc_quest.command.trade.debug.categories", shop.getCategories().size()));
+        msg.append(Component.literal("\n"));
+
+        for (TradeCategory cat : shop.getCategories()) {
+            msg.append(Component.translatable("arc_quest.command.trade.debug.category_entry",
+                    cat.getId(), cat.getDisplayName().getString()));
+            msg.append(Component.literal("\n"));
+        }
+
+        msg.append(Component.translatable("arc_quest.command.trade.debug.entries", shop.getAllEntries().size()));
+        msg.append(Component.literal("\n"));
+
+        for (TradeEntry entry : shop.getAllEntries()) {
+            StringBuilder costStr = new StringBuilder();
+            for (ITradeOffer cost : entry.getCosts()) {
+                if (!costStr.isEmpty()) costStr.append(" + ");
+                costStr.append(cost.describe().getString());
+            }
+            StringBuilder rewardStr = new StringBuilder();
+            for (ITradeOffer reward : entry.getRewards()) {
+                if (!rewardStr.isEmpty()) rewardStr.append(" + ");
+                rewardStr.append(reward.describe().getString());
+            }
+
+            msg.append(Component.translatable("arc_quest.command.trade.debug.entry_header",
+                    entry.getEntryId(), entry.getDisplayName().getString()));
+            msg.append(Component.literal("\n"));
+            msg.append(Component.translatable("arc_quest.command.trade.debug.costs", costStr.toString()));
+            msg.append(Component.literal("\n"));
+            msg.append(Component.translatable("arc_quest.command.trade.debug.rewards", rewardStr.toString()));
+            msg.append(Component.literal("\n"));
+
+            if (entry.hasLimit()) {
+                msg.append(Component.translatable("arc_quest.command.trade.debug.limit", entry.getMaxPurchases()));
+                msg.append(Component.literal("\n"));
+            }
+            if (entry.hasCooldown()) {
+                msg.append(Component.translatable("arc_quest.command.trade.debug.cooldown",
+                        entry.getCooldownType().name(), entry.getCooldownValue()));
+                msg.append(Component.literal("\n"));
+            }
+        }
+
+        ctx.getSource().sendSuccess(() -> msg, false);
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  /arcquest trade reset <player> <shop_id> [entry_id]
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdTradeReset(CommandContext<CommandSourceStack> ctx, String entryId) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        String shopId = StringArgumentType.getString(ctx, "shop_id");
+        IQuestCapability cap = getCapOrError(ctx, player);
+
+        TradeShopDefinition shop = TradeRegistry.get(shopId);
+        if (shop == null) {
+            error(ctx, Component.translatable("arc_quest.command.trade.error.not_found", shopId).getString());
+            return 0;
+        }
+
+        if (entryId == null) {
+            // 重置整个商店的所有交易项
+            for (TradeEntry entry : shop.getAllEntries()) {
+                cap.resetTradePurchaseCount(shopId, entry.getEntryId());
+            }
+            success(ctx, Component.translatable("arc_quest.command.trade.reset.shop_success",
+                    shopId, player.getName().getString()).getString());
+        } else {
+            // 重置单个交易项
+            TradeEntry targetEntry = null;
+            for (TradeEntry entry : shop.getAllEntries()) {
+                if (entry.getEntryId().equals(entryId)) {
+                    targetEntry = entry;
+                    break;
+                }
+            }
+
+            if (targetEntry == null) {
+                error(ctx, Component.translatable("arc_quest.command.trade.reset.error.entry_not_found",
+                        entryId, shopId).getString());
+                return 0;
+            }
+
+            cap.resetTradePurchaseCount(shopId, entryId);
+            success(ctx, Component.translatable("arc_quest.command.trade.reset.entry_success",
+                    entryId, shopId, player.getName().getString()).getString());
+        }
+
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  /arcquest trade reset all <player>
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdTradeResetAll(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        IQuestCapability cap = getCapOrError(ctx, player);
+
+        // 遍历所有商店，重置所有交易项
+        int resetCount = 0;
+        for (TradeShopDefinition shop : TradeRegistry.getAll()) {
+            for (TradeEntry entry : shop.getAllEntries()) {
+                cap.resetTradePurchaseCount(shop.getShopId(), entry.getEntryId());
+                resetCount++;
+            }
+        }
+
+        success(ctx, Component.translatable("arc_quest.command.trade.reset.all_success",
+                player.getName().getString(), resetCount).getString());
         return 1;
     }
 

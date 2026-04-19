@@ -1,6 +1,6 @@
 # 常见问题 (FAQ)
 
-**最后更新**: 2026-04-17
+**最后更新**: 2026-04-20
 
 ---
 
@@ -335,7 +335,7 @@ if (!player.level().isClientSide()) {
     QuestSplashRenderer.INSTANCE.trigger(...);
 }
 
-// ✅ 正确：通过网络包触发
+//正确：通过网络包触发
 ArcQuestNetwork.syncQuestState(player, data);
 // 客户端接收后自动触发
 ```
@@ -465,7 +465,7 @@ for (int i = 0; i < 100; i++) {
     ArcQuestNetwork.syncQuestState(player, data);
 }
 
-// ✅ 正确：批量处理后同步一次
+//正确：批量处理后同步一次
 for (int i = 0; i < 100; i++) {
     data.incrementProgress(i, 1, 10);
 }
@@ -504,7 +504,7 @@ return def.getAllPhases().stream()
     .filter(p -> p.getPhaseId().equals(phaseId))
     .findFirst().orElse(null);
 
-// ✅ 正确：传统for循环
+//正确：传统for循环
 for (PhaseDefinition phase : def.getAllPhases()) {
     if (phase.getPhaseId().equals(phaseId)) {
         return phase;
@@ -530,7 +530,7 @@ count = 3
 
 **1. 使用 FastUtil 集合**
 ```java
-// ✅ 已优化：QuestRuntimeData 使用 FastUtil
+//已优化：QuestRuntimeData 使用 FastUtil
 private final Object2IntOpenHashMap<String> variables = new Object2IntOpenHashMap<>();
 ```
 

@@ -21,6 +21,8 @@ public final class PhaseDefinition {
     private final List<String> flagsToSetOnEnter;
     private final List<String> flagsToSetOnComplete;
     private final QuestVisualConfig visualConfig;
+    @org.jetbrains.annotations.Nullable
+    private final String tradeShopId;
 
     public PhaseDefinition(String phaseId,
                            Component displayName,
@@ -31,6 +33,20 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnEnter,
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig) {
+        this(phaseId, displayName, objectives, transitions, choices, phaseRewards,
+                flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null);
+    }
+
+    public PhaseDefinition(String phaseId,
+                           Component displayName,
+                           List<ObjectiveEntry> objectives,
+                           List<PhaseTransition> transitions,
+                           List<ChoiceOption> choices,
+                           List<IReward> phaseRewards,
+                           List<String> flagsToSetOnEnter,
+                           List<String> flagsToSetOnComplete,
+                           QuestVisualConfig visualConfig,
+                           @org.jetbrains.annotations.Nullable String tradeShopId) {
         Objects.requireNonNull(phaseId);
         Objects.requireNonNull(displayName);
         if (objectives.isEmpty()) {
@@ -45,6 +61,7 @@ public final class PhaseDefinition {
         this.flagsToSetOnEnter = Collections.unmodifiableList(flagsToSetOnEnter);
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
         this.visualConfig = visualConfig != null ? visualConfig : QuestVisualConfig.EMPTY;
+        this.tradeShopId = tradeShopId;
     }
 
     public String getPhaseId() {
@@ -113,6 +130,15 @@ public final class PhaseDefinition {
 
     public Optional<VisualAsset> getIconConfig(IconPosition position) {
         return this.visualConfig.getIcon(position);
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public String getTradeShopId() {
+        return this.tradeShopId;
+    }
+
+    public boolean hasTradeShop() {
+        return this.tradeShopId != null;
     }
 
     @Override

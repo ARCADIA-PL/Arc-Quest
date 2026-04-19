@@ -1,6 +1,7 @@
 package org.com.arc_quest.quest.condition;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.quest.api.ICondition;
 
 import java.util.Map;
@@ -15,7 +16,8 @@ public final class FlagSetCondition implements ICondition {
     }
 
     @Override
-    public boolean test(Set<ResourceLocation> completedQuests,
+    public boolean test(ServerPlayer player,
+                        Set<ResourceLocation> completedQuests,
                         Set<String> flags,
                         Map<String, Integer> variables) {
         return flags.contains(this.flag);

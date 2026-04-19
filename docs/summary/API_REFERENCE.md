@@ -2,7 +2,7 @@
 
 **版本**: 1.0.0  
 **适用对象**: 外部AI学习、开发者查阅、系统集成  
-**最后更新**: 2026-04-17
+**最后更新**: 2026-04-20
 
 ---
 
@@ -44,6 +44,14 @@ org.com.arc_quest
 │   ├── event/         → 事件总线
 │   ├── condition/     → 条件判断
 │   └── reward/        → 奖励发放
+│
+├── trade/ (交易系统)
+│   ├── api/           → 交易项和商店定义
+│   ├── builder/       → Builder API（链式调用）
+│   ├── registry/      → 交易注册表
+│   ├── runtime/       → 交易会话管理
+│   ├── offer/         → 交易选项(物品、命令、效果)
+│   └── network/       → 交易网络包
 │
 ├── dialogue/ (对话系统)
 │   ├── api/           → 对话树结构
@@ -1590,3 +1598,37 @@ src/main/java/org/com/arc_quest/
 **文档结束**
 
 *本API参考手册涵盖Arc Quest模组的所有公共接口、数据结构和使用方法，可供外部AI完整学习模组的架构设计和功能实现。*
+
+
+## 交易系统API
+
+### 1. 数据结构层 (trade/api/)
+
+#### TradeEntry - 交易项
+
+**类型**: `record` (不可变)  
+**位置**: `org.com.arc_quest.trade.api.TradeEntry`
+
+**核心字段**:
+- `String entryId`
+- `Component displayName`
+- `List<ITradeOffer> costs`
+- `List<ITradeOffer> rewards`
+- `ICondition condition` (解锁条件)
+- `int maxPurchases` (最大购买次数)
+- `CooldownType cooldownType` (冷却类型)
+
+#### TradeShopDefinition - 商店定义
+
+**位置**: `org.com.arc_quest.trade.api.TradeShopDefinition`
+
+**核心字段**:
+- `String shopId`
+- `List<TradeCategory> categories`
+- `LinkedHashMap<String, TradeEntry> entries`
+- `ICondition openCondition` (开启条件)
+- `boolean simpleMode` (简易模式)
+
+### 2. Builder API层 (trade/builder/)
+
+**TradeShopBuilder** 和 **TradeEntryBuilder** 用于代码驱动地创建商店和交易项。

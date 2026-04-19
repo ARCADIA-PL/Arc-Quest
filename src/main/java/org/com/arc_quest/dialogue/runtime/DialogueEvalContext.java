@@ -41,9 +41,9 @@ public record DialogueEvalContext(
                                          String namespace, DialogueProgressStore progress) {
         return new DialogueEvalContext(
                 player, npc, namespace, progress,
-                player.level().getDayTime(),    // 日夜周期（给时间条件用）
-                player.level().getGameTime(),   // 单调时钟（给冷却计时用）
-                System.currentTimeMillis()
+                TimeSanitizer.getCurrentDayTime(player),   // 日夜周期（给时间条件用）
+                TimeSanitizer.getCurrentGameTime(player),  // 单调时钟（给冷却计时用）
+                TimeSanitizer.getCurrentRealTime()         // 真实时间戳
         );
     }
 

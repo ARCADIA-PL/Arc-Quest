@@ -202,6 +202,96 @@ public abstract class ArcQuestLangProvider extends LanguageProvider {
     }
 
     // ════════════════════════════════════════════════════════
+    //  交易系统（对应 Trade API）
+    // ════════════════════════════════════════════════════════
+
+    /**
+     * 添加交易屏幕标题。
+     *
+     * @param screenType 屏幕类型（如 {@code "screen"}, {@code "quick"}）
+     * @param title      标题文本
+     */
+    protected void addTradeScreenTitle(String screenType, String title) {
+        add("arc_quest.trade." + screenType + ".title", title);
+    }
+
+    /**
+     * 添加交易界面通用标签。
+     *
+     * @param labelId 标签ID（如 {@code "subtitle"}, {@code "closed"}, {@code "buy"}）
+     * @param text    标签文本
+     */
+    protected void addTradeLabel(String labelId, String text) {
+        add("arc_quest.trade." + labelId, text);
+    }
+
+    /**
+     * 添加交易分类名称。
+     *
+     * @param categoryId 分类ID（如 {@code "all"}, {@code "weapons"}）
+     * @param name       分类名称
+     */
+    protected void addTradeCategory(String categoryId, String name) {
+        add("arc_quest.trade.category." + categoryId, name);
+    }
+
+    /**
+     * 添加交易物描述模板。
+     *
+     * @param offerType 交易物类型（如 {@code "item"}, {@code "effect"}, {@code "flag"}）
+     * @param template  描述模板（支持占位符）
+     */
+    protected void addTradeOfferTemplate(String offerType, String template) {
+        add("arc_quest.trade." + offerType, template);
+    }
+
+    /**
+     * 添加交易反馈消息。
+     *
+     * @param feedbackType 反馈类型（如 {@code "success"}, {@code "error.cooldown"}）
+     * @param message      反馈消息
+     */
+    protected void addTradeFeedback(String feedbackType, String message) {
+        add("arc_quest.trade.feedback." + feedbackType, message);
+    }
+
+    /**
+     * 添加交易冷却提示文本。
+     *
+     * @param cooldownType 冷却类型（如 {@code "game_day"}, {@code "seconds"}）
+     * @param text         提示文本（支持占位符）
+     */
+    protected void addTradeCooldownText(String cooldownType, String text) {
+        add("arc_quest.trade.cooldown." + cooldownType, text);
+    }
+
+    /**
+     * 添加交易商店名称和描述。
+     *
+     * @param shopId      商店 ID
+     * @param name        商店名称
+     * @param description 商店描述
+     */
+    protected void addTradeShop(String shopId, String name, String description) {
+        add("arc_quest.trade.shop." + shopId + ".name", name);
+        add("arc_quest.trade.shop." + shopId + ".desc", description);
+    }
+
+    /**
+     * 添加交易项名称和描述。
+     *
+     * @param entryId     交易项 ID
+     * @param name        交易项名称
+     * @param description 交易项描述（可选，可为 null）
+     */
+    protected void addTradeEntry(String entryId, String name, String description) {
+        add("arc_quest.trade.entry." + entryId + ".name", name);
+        if (description != null) {
+            add("arc_quest.trade.entry." + entryId + ".desc", description);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
     //  通用工具
     // ════════════════════════════════════════════════════════
 

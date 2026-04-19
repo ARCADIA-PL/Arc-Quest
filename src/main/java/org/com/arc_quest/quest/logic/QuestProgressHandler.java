@@ -72,7 +72,7 @@ public final class QuestProgressHandler {
                 .map(ResourceLocation::parse)
                 .collect(Collectors.toSet());
         for (ICondition cond : def.getUnlockConditions()) {
-            if (!cond.test(completedQuests, cap.getAllFlags(), cap.getAllVariables())) {
+            if (!cond.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables())) {
                 LOGGER.debug("[ArcQuest] Accept condition not met for quest: {}", questId);
                 return false;
             }
@@ -241,7 +241,7 @@ public final class QuestProgressHandler {
                     .map(ResourceLocation::parse)
                     .collect(Collectors.toSet());
             boolean conditionsMet = auto.getCondition() == null ||
-                    auto.getCondition().test(completedQuests, cap.getAllFlags(), cap.getAllVariables());
+                    auto.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
 
             if (conditionsMet) {
                 advanceToPhase(player, cap, data, def, auto.getTargetPhaseId());
@@ -333,7 +333,7 @@ public final class QuestProgressHandler {
                 .collect(Collectors.toSet());
         ICondition visibleCondition = chosen.getVisibleCondition();
         boolean conditionsMet = visibleCondition == null ||
-                visibleCondition.test(completedQuests, cap.getAllFlags(), cap.getAllVariables());
+                visibleCondition.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
         if (!conditionsMet) {
             LOGGER.debug("[ArcQuest] Choice conditions not met for index {}", choiceIndex);
             return;
@@ -381,9 +381,6 @@ public final class QuestProgressHandler {
         // 更新状态
         data.setState(QuestState.COMPLETED);
         cap.markCompleted(questId);
-        
-        //触发跨系统桥接事件
-        CrossSystemBridge.INSTANCE.onQuestCompleted(player, cap, questId);
 
         // 清理追踪
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
@@ -472,9 +469,6 @@ public final class QuestProgressHandler {
         // 更新状态
         data.setState(QuestState.COMPLETED);
         cap.markCompleted(questId);
-        
-        //触发跨系统桥接事件
-        CrossSystemBridge.INSTANCE.onQuestCompleted(player, cap, questId);
 
         // 清理追踪
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);

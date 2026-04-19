@@ -2,7 +2,7 @@
 
 **模块**: dialogue/  
 **适用对象**: 开发者、外部AI学习  
-**最后更新**: 2026-04-17  
+**最后更新**: 2026-04-20  
 **版本**: v3.3（新增CustomCondition、PresetActions、EntityDialogueExtension、VariableCheck）
 
 ---

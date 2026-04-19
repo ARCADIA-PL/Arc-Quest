@@ -61,6 +61,20 @@ public final class ProgressKey {
         return new ProgressKey(namespace, dialogueId, -1);
     }
 
+    /**
+     *  交易冷却 Key: "trade:shopId:entryId"
+     * <p>
+     * 交易系统使用此方法创建 key，然后调用 DialogueProgressStore.recordChoiceSelection() 记录冷却。
+     *
+     * @param shopId  商店 ID
+     * @param entryId 商品 ID
+     * @return 交易冷却的 ProgressKey
+     */
+    public static ProgressKey ofTrade(String shopId, String entryId) {
+        // 使用 "trade" 作为 namespace，避免与对话系统冲突
+        return new ProgressKey("trade", shopId + ":" + entryId, -1);
+    }
+
     // ═══════════════════════════════════════════════
     //  访问器
     // ═══════════════════════════════════════════════

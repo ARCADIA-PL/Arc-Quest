@@ -3,6 +3,7 @@ package org.com.arc_quest.dialogue.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.com.arc_quest.dialogue.api.RegisteredConditions;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.IQuestCapability;
@@ -228,7 +229,7 @@ public final class ConditionalTextEvaluator {
             // CUSTOM:name - 自定义条件
             if (conditionKey.startsWith("CUSTOM:")) {
                 String name = conditionKey.substring(7);
-                var predicate = org.com.arc_quest.dialogue.api.RegisteredConditions.get(name);
+                var predicate = RegisteredConditions.get(name);
                 if (predicate == null) {
                     LOGGER.warn("[ConditionalText] Custom condition '{}' is not registered", name);
                     return false;

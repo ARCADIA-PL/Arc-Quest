@@ -32,6 +32,7 @@ public final class PhaseBuilder {
     private Component displayName;
     private int transitionPriorityCounter = 0;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
+    private String tradeShopId = null;
 
     private PhaseBuilder(String phaseId) {
         Objects.requireNonNull(phaseId);
@@ -127,6 +128,18 @@ public final class PhaseBuilder {
 
     public PhaseBuilder setFlagOnComplete(String flag) {
         this.flagsOnComplete.add(flag);
+        return this;
+    }
+
+    // ── Phase 交易 ──
+
+    /**
+     * 为此阶段配置专属交易商店。
+     *
+     * @param shopId 交易商店注册 ID
+     */
+    public PhaseBuilder phaseTrade(String shopId) {
+        this.tradeShopId = shopId;
         return this;
     }
 
@@ -233,7 +246,8 @@ public final class PhaseBuilder {
                 new ArrayList<>(this.phaseRewards),
                 new ArrayList<>(this.flagsOnEnter),
                 new ArrayList<>(this.flagsOnComplete),
-                this.visualConfigBuilder.build()
+                this.visualConfigBuilder.build(),
+                this.tradeShopId
         );
     }
 }

@@ -537,6 +537,22 @@ public class DialogueTreeBuilder {
         }
 
         /**
+         * 打开完整交易窗口。
+         */
+        public ChoiceBuilder openTrade(String shopId) {
+            actions.add(new DialogueAction.OpenTrade(shopId));
+            return this;
+        }
+
+        /**
+         * 打开简易交易弹窗。
+         */
+        public ChoiceBuilder openSimpleTrade(String shopId) {
+            actions.add(new DialogueAction.OpenSimpleTrade(shopId));
+            return this;
+        }
+
+        /**
          * 给予玩家石剑（预设动作）。
          */
         public ChoiceBuilder presetStoneSword() {

@@ -3,50 +3,49 @@
 **版本**: 1.0.0  
 **Minecraft**: 1.20.1 Forge  
 **Java**: 17  
-**最后更新**: 2026-04-17  
-**最新版本**: v3.3（自定义条件、NPC扩展、跨系统桥接）
+**最后更新**: 2026-04-20
 
 ---
 
-## 📚 文档导航
+## 文档导航
 
-### 🚀 快速开始
+### 快速开始
 
-- [📘 项目概述与5分钟上手](guide/OVERVIEW.md) - 了解项目特性，快速创建第一个任务
+- [项目概述与5分钟上手](guide/OVERVIEW.md) - 了解项目特性，快速创建第一个任务
 
-### 🏗️ 架构设计
+### 架构设计
 
-- [🏛️ 核心架构设计](guide/ARCHITECTURE.md) - 模块结构、数据流、设计模式、性能优化
+- [核心架构设计](guide/ARCHITECTURE.md) - 模块结构、数据流、设计模式、性能优化
 
-### 📖 API参考
+### API参考
 
 #### 任务系统
-- [⚙️ 任务系统API](api/QUEST_API.md) - QuestDefinition, Builder API, Capability, ProgressHandler
+- [任务系统API](api/QUEST_API.md) - QuestDefinition, Builder API, Capability, ProgressHandler
 
 #### 对话系统
-- [💬 对话系统API](api/DIALOGUE_API.md) - DialogueTree, DialogueTreeBuilder, Session管理
+- [对话系统API](api/DIALOGUE_API.md) - DialogueTree, DialogueTreeBuilder, Session管理
 
 #### 视觉系统
-- [🎨 视觉系统API](api/VISUAL_API.md) - 立绘渲染器、图标渲染器、动画工具
+- [视觉系统API](api/VISUAL_API.md) - 立绘渲染器、图标渲染器、动画工具
 
 #### HUD系统
-- [📊 HUD系统API](api/HUD_API.md) - QuestHudOverlay, TrackerPanel, Toast通知
+- [HUD系统API](api/HUD_API.md) - QuestHudOverlay, TrackerPanel, Toast通知
 
 #### 网络同步
-- [🌐 网络同步API](api/NETWORK_API.md) - 网络包、客户端缓存、增量同步策略
+- [网络同步API](api/NETWORK_API.md) - 网络包、客户端缓存、增量同步策略
 
-### 🔧 开发指南
+### 开发指南
 
-- [⚙️ 任务系统详解](guide/QUEST_SYSTEM.md) - 任务生命周期、目标追踪、条件判断
-- [💭 对话系统详解](guide/DIALOGUE_SYSTEM.md) - 对话树设计、NPC交互、自定义条件、时间冷却
-- [✨ 视觉系统详解](guide/VISUAL_SYSTEM.md) - 立绘动画、图标配置、主题色
-- [❓ 常见问题](guide/FAQ.md) - 20+个常见问题解答
+- [任务系统详解](guide/QUEST_SYSTEM.md) - 任务生命周期、目标追踪、条件判断
+- [对话系统详解](guide/DIALOGUE_SYSTEM.md) - 对话树设计、NPC交互、自定义条件、时间冷却
+- [视觉系统详解](guide/VISUAL_SYSTEM.md) - 立绘动画、图标配置、主题色
+- [常见问题](guide/FAQ.md) - 常见问题解答
 
 ---
 
-## 🎯 按角色查阅
+## 按角色查阅
 
-### 👨‍💻 模组开发者
+### 模组开发者
 
 **推荐阅读顺序**:
 1. [项目概述](guide/OVERVIEW.md) - 了解项目
@@ -62,7 +61,10 @@ QuestBuilder.create("my_quest")
     .category(QuestCategory.ADVENTURE)
     .displayName(Component.translatable("quest.title"))
     .phase(PhaseBuilder.create("step1")
-        .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 5))
+        .displayName("收集木材")
+        .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 5)
+            .display("收集5个橡木原木"))
+        .thenGoTo("step2")
         .build())
     .reward(new ItemReward(Items.DIAMOND, 1))
     .buildAndRegister();
@@ -72,72 +74,41 @@ DialogueTreeBuilder.create("villager")
     .npc("村民")
     .node("start")
         .say("你好！")
-        .choice("接受任务", c -> c.startQuest("my_quest").close())
+        .choice("接受任务", c -> c.startQuest("arc_quest:my_quest").close())
     .buildAndRegister();
 ```
 
 ---
 
-### 🎨 UI设计师
+### 系统管理员
 
 **推荐阅读**:
-- [视觉系统API](api/VISUAL_API.md) - 立绘和图标配置
-- [HUD系统API](api/HUD_API.md) - UI布局和动画
-
-**关键概念**:
-- `SplashType` - 7种立绘类型
-- `IconPosition` - 6种图标位置
-- `QuestVisualConfig` - 统一视觉配置
-- 动画缓动函数 - easeOutCubic, easeInQuartic等
-
----
-
-### 🔧 系统管理员
-
-**推荐阅读**:
-- [命令系统](guide/OVERVIEW.md#管理员命令) - 10+个管理命令
+- [命令系统](guide/OVERVIEW.md#管理员命令)
 
 **常用命令**:
 ```bash
 # 给予任务
-/quest give @p arc_quest:my_quest
+/arcquest give @p arc_quest:my_quest
 
 # 强制完成
-/quest complete @p arc_quest:my_quest
+/arcquest complete @p arc_quest:my_quest
 
 # 重置任务
-/quest reset @p arc_quest:my_quest
+/arcquest reset @p arc_quest:my_quest
 
 # 查看注册表
-/quest registry
+/arcquest registry
 
 # 重载数据
-/quest reload
+/arcquest reload
+
+# 打开对话
+/arcquest dialogue @p test_villager
 ```
 
 ---
 
-### 🤖 外部AI学习
-
-**完整学习路径**:
-1. [项目概述](guide/OVERVIEW.md) - 整体了解
-2. [核心架构设计](guide/ARCHITECTURE.md) - 架构理解
-3. [任务系统API](api/QUEST_API.md) - 核心功能
-4. [对话系统API](api/DIALOGUE_API.md) - 扩展功能
-5. [视觉系统API](api/VISUAL_API.md) - 视觉表现
-6. [HUD系统API](api/HUD_API.md) - 用户界面
-7. [网络同步API](api/NETWORK_API.md) - 数据同步
-
-**关键设计模式**:
-- Builder模式 - 链式调用构建对象
-- 单例模式 - 全局唯一实例
-- 观察者模式 - 事件驱动
-- 策略模式 - 可扩展接口
-- 记录模式 - 不可变数据结构
-
----
-
-## 📂 文档结构
+## 文档结构
 
 ```
 docs/
@@ -148,27 +119,64 @@ docs/
 │   ├── VISUAL_API.md         # 视觉系统API
 │   ├── HUD_API.md            # HUD系统API
 │   └── NETWORK_API.md        # 网络同步API
-└── guide/                     # 开发指南
-    ├── OVERVIEW.md           # 项目概述
-    ├── ARCHITECTURE.md       # 核心架构
-    ├── QUEST_SYSTEM.md       # 任务系统详解
-    ├── DIALOGUE_SYSTEM.md    # 对话系统详解（含自定义条件、NPC扩展、时间冷却）
-    ├── VISUAL_SYSTEM.md      # 视觉系统详解
-    └── FAQ.md                # 常见问题
+├── guide/                     # 开发指南
+│   ├── OVERVIEW.md           # 项目概述
+│   ├── ARCHITECTURE.md       # 核心架构
+│   ├── QUEST_SYSTEM.md       # 任务系统详解
+│   ├── DIALOGUE_SYSTEM.md    # 对话系统详解
+│   ├── VISUAL_SYSTEM.md      # 视觉系统详解
+│   └── FAQ.md                # 常见问题
+└── summary/                   # 综合参考
+    ├── API_REFERENCE.md      # 完整API参考
+    └── PROJECT_DOCUMENTATION.md  # 项目技术文档
 ```
 
 ---
 
-## 🔗 历史文档
+## 核心枚举类型速查
 
-以下旧文档已拆分到上述模块化文档中，保留仅供参考：
+### QuestCategory（任务分类）
+| 值 | ID | 默认主题色 | 说明 |
+|----|-----|----------|------|
+| `ARCHON` | archon | 0xFFD700 (金色) | 主线/开拓任务 |
+| `COMPANION` | companion | 0x00BFFF (天蓝) | 同行任务 |
+| `DAILY` | daily | 0x90EE90 (浅绿) | 日常委托 |
+| `ADVENTURE` | adventure | 0xDDA0DD (浅紫) | 冒险任务 |
+| `EVENT` | event | 0xFF6347 (番茄红) | 活动任务 |
 
-- `API_REFERENCE.md` (1593行) → 拆分为5个API文档
-- `PROJECT_DOCUMENTATION.md` (1486行) → 拆分为架构设计和开发指南
+### QuestState（任务状态）
+| 值 | 说明 | 是否终态 |
+|----|------|---------|
+| `LOCKED` | 条件未满足，不可见/不可接 | 否 |
+| `AVAILABLE` | 条件满足，可以接取 | 否 |
+| `ACTIVE` | 进行中 | 否 |
+| `COMPLETED` | 已完成 | 是 |
+| `FAILED` | 已失败 | 是 |
+
+### ObjectiveType（目标类型）
+| 值 | 说明 | 是否累计计数 |
+|----|------|------------|
+| `KILL` | 击杀指定实体 | 是 |
+| `COLLECT` | 收集/持有指定物品 | 是 |
+| `TALK` | 与NPC对话 | 否 |
+| `INTERACT` | 右键交互方块/实体 | 否 |
+| `REACH_LOCATION` | 抵达指定区域 | 否 |
+| `DELIVER` | 提交物品给NPC | 是 |
+| `CRAFT` | 制作指定物品 | 否 |
+| `CUSTOM` | 纯代码自定义检测 | 否 |
 
 ---
 
-## 📝 文档维护
+## 历史文档
+
+以下旧文档已拆分到上述模块化文档中，保留仅供参考：
+
+- `summary/API_REFERENCE.md` → 完整API参考
+- `summary/PROJECT_DOCUMENTATION.md` → 项目技术文档
+
+---
+
+## 文档维护
 
 ### 更新原则
 
@@ -178,52 +186,22 @@ docs/
 4. **示例驱动** - 提供可运行的代码示例
 5. **及时更新** - 代码变更后同步更新文档
 
-### 贡献文档
-
-欢迎提交Pull Request改进文档：
-- 修正错误
-- 补充示例
-- 优化表述
-- 添加新章节
-
 ---
 
-## 🆕 最新版本特性 (v3.3)
-
-### ✨ 核心新功能
-
-- **自定义条件系统** - Lambda 表达式定义灵活条件，支持 `.sayIf()` 和 `.choiceIf()`
-- **NPC对话扩展** - 为特定实体添加自定义对话行为和交互逻辑
-- **跨系统桥接** - 任务和对话的双向联动，Flag/Variable 共享
-- **时间冷却机制** - 三种冷却类型（SECONDS/GAME_DAY/GAME_TICK），支持跨天区间
-
-**详细文档**: [对话系统详解](guide/DIALOGUE_SYSTEM.md)
-
----
-
-## 🆘 获取帮助
-
-### 遇到问题？
+## 获取帮助
 
 1. 查阅 [常见问题](guide/FAQ.md)
 2. 查看相关API文档
 3. 阅读核心架构设计
 4. 提交Issue
 
-### 联系方式
-
-- GitHub Issues: [提交问题](https://github.com/your-repo/Arc-Quest/issues)
-- Discord: [加入社区](https://discord.gg/your-server)
-
 ---
 
-## 📄 许可证
+## 许可证
 
 本项目采用 MIT 许可证。
 
 ---
 
-**最后更新**: 2026-04-17  
-**文档版本**: 1.1.0
-
-*祝使用愉快！🎉*
+**最后更新**: 2026-04-20  
+**文档版本**: 2.0.0

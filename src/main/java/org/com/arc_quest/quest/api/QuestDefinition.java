@@ -2,6 +2,7 @@ package org.com.arc_quest.quest.api;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -27,6 +28,9 @@ public final class QuestDefinition {
     private final List<IReward> completionRewards;
     private final List<String> flagsToSetOnAccept;
     private final List<String> flagsToSetOnComplete;
+    @Nullable
+    private final String chapterShopId;
+    private final boolean chapterShopPersistent;
 
     public QuestDefinition(ResourceLocation id,
                            QuestCategory category,
@@ -42,6 +46,27 @@ public final class QuestDefinition {
                            List<String> flagsToSetOnAccept,
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig) {
+        this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
+                unlockConditions, phases, initialPhaseId, completionRewards,
+                flagsToSetOnAccept, flagsToSetOnComplete, visualConfig, null, false);
+    }
+
+    public QuestDefinition(ResourceLocation id,
+                           QuestCategory category,
+                           Component displayName,
+                           Component description,
+                           @Nullable ResourceLocation iconTexture,
+                           int sortOrder,
+                           boolean repeatable,
+                           List<ICondition> unlockConditions,
+                           LinkedHashMap<String, PhaseDefinition> phases,
+                           String initialPhaseId,
+                           List<IReward> completionRewards,
+                           List<String> flagsToSetOnAccept,
+                           List<String> flagsToSetOnComplete,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String chapterShopId,
+                           boolean chapterShopPersistent) {
         Objects.requireNonNull(id, "Quest id must not be null");
         Objects.requireNonNull(category);
         Objects.requireNonNull(displayName);
@@ -67,6 +92,8 @@ public final class QuestDefinition {
         this.completionRewards = Collections.unmodifiableList(completionRewards);
         this.flagsToSetOnAccept = Collections.unmodifiableList(flagsToSetOnAccept);
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
+        this.chapterShopId = chapterShopId;
+        this.chapterShopPersistent = chapterShopPersistent;
     }
 
     // ── Getters ──
@@ -137,6 +164,19 @@ public final class QuestDefinition {
         return this.flagsToSetOnComplete;
     }
 
+    @Nullable
+    public String getChapterShopId() {
+        return this.chapterShopId;
+    }
+
+    public boolean isChapterShopPersistent() {
+        return this.chapterShopPersistent;
+    }
+
+    public boolean hasChapterShop() {
+        return this.chapterShopId != null;
+    }
+
 
     public QuestVisualConfig getVisualConfig() {
         return this.visualConfig;
@@ -174,11 +214,12 @@ public final class QuestDefinition {
     /**
      * 检测解锁条件是否全部满足
      */
-    public boolean canUnlock(Set<ResourceLocation> completedQuests,
+    public boolean canUnlock(ServerPlayer player,
+                             Set<ResourceLocation> completedQuests,
                              Set<String> flags,
                              Map<String, Integer> variables) {
         for (ICondition cond : this.unlockConditions) {
-            if (!cond.test(completedQuests, flags, variables)) {
+            if (!cond.test(player, completedQuests, flags, variables)) {
                 return false;
             }
         }
@@ -191,7 +232,8 @@ public final class QuestDefinition {
      * @return 下一阶段 ID，或 null 表示任务完成
      */
     @Nullable
-    public String evaluateNextPhase(PhaseDefinition currentPhase,
+    public String evaluateNextPhase(ServerPlayer player,
+                                    PhaseDefinition currentPhase,
                                     Set<ResourceLocation> completedQuests,
                                     Set<String> flags,
                                     Map<String, Integer> variables) {
@@ -205,7 +247,7 @@ public final class QuestDefinition {
 
         for (PhaseTransition transition : sorted) {
             ICondition cond = transition.getCondition();
-            if (cond == null || cond.test(completedQuests, flags, variables)) {
+            if (cond == null || cond.test(player, completedQuests, flags, variables)) {
                 return transition.getTargetPhaseId();
             }
         }

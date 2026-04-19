@@ -1,6 +1,7 @@
 package org.com.arc_quest.quest.api;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Map;
 import java.util.Set;
@@ -12,9 +13,10 @@ import java.util.Set;
  * - 任务解锁前置 (unlockConditions)
  * - 阶段跳转分支 (PhaseTransition.condition)
  * - 对话选项显示条件 (ChoiceOption.visibleCondition)
+ * - 交易商品可见性条件 (TradeEntry.condition)
  * <p>
  * 所有参数都从玩家的运行时存档中读取（Phase 2 的 Capability），
- * 此处的签名抽象为"只读快照"参数。
+ * 此处的签名抽象为"只读快照"参数 + ServerPlayer 对象。
  */
 @FunctionalInterface
 public interface ICondition {
@@ -23,16 +25,20 @@ public interface ICondition {
      * 永远为 true 的条件（无前置）
      */
     static ICondition always() {
-        return (cq, f, v) -> true;
+        return (player, cq, f, v) -> true;
     }
 
     /**
+     * 测试条件是否满足
+     *
+     * @param serverPlayer          当前玩家对象（可访问位置、维度、状态等实时信息）
      * @param completedQuests 玩家已完成的任务 ID 集合
      * @param flags           玩家已设置的全局 Flag 集合
      * @param variables       玩家全局变量表 (name → value)
      * @return true = 条件满足
      */
-    boolean test(Set<ResourceLocation> completedQuests,
+    boolean test(ServerPlayer serverPlayer,
+                 Set<ResourceLocation> completedQuests,
                  Set<String> flags,
                  Map<String, Integer> variables);
 
@@ -49,8 +55,8 @@ public interface ICondition {
         ICondition self = this;
         return new ICondition() {
             @Override
-            public boolean test(Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
-                return self.test(cq, f, v) && other.test(cq, f, v);
+            public boolean test(ServerPlayer serverPlayer, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
+                return self.test(serverPlayer, cq, f, v) && other.test(serverPlayer, cq, f, v);
             }
 
             @Override
@@ -64,8 +70,8 @@ public interface ICondition {
         ICondition self = this;
         return new ICondition() {
             @Override
-            public boolean test(Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
-                return self.test(cq, f, v) || other.test(cq, f, v);
+            public boolean test(ServerPlayer serverPlayer, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
+                return self.test(serverPlayer, cq, f, v) || other.test(serverPlayer, cq, f, v);
             }
 
             @Override
@@ -79,8 +85,8 @@ public interface ICondition {
         ICondition self = this;
         return new ICondition() {
             @Override
-            public boolean test(Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
-                return !self.test(cq, f, v);
+            public boolean test(ServerPlayer serverPlayer, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
+                return !self.test(serverPlayer, cq, f, v);
             }
 
             @Override

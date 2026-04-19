@@ -7,7 +7,6 @@ import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
-import org.com.arc_quest.quest.logic.CrossSystemBridge;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -124,7 +123,7 @@ public class DialogueSession {
                 if (entry.exists() && entry.dayTime() > ts.dayTime()) {
                     // 检测到时间回退，清除冷却记录
                     progress.clearCooldownRecord(choiceKey);
-                    LOGGER.warn("[Cooldown-Clear] ✅ Cleared choice cooldown in getChoiceCooldowns due to time regression: {}", choiceKey);
+                    LOGGER.warn("[Cooldown-Clear]  Cleared choice cooldown in getChoiceCooldowns due to time regression: {}", choiceKey);
                     cooldowns[i] = 0;
                     continue;
                 }
@@ -145,6 +144,91 @@ public class DialogueSession {
         }
 
         return cooldowns;
+    }
+
+    /**
+     * 获取选项的原始冷却数据（用于客户端实时计算）。
+     * <p>
+     * 返回四个数组，分别对应每个可见选项的：
+     * <ul>
+     *   <li>lastSelectTimes - 最后选择时间戳（毫秒）</li>
+     *   <li>cooldownTypes - 冷却类型 ordinal</li>
+     *   <li>cooldownValues - 冷却值</li>
+     *   <li>resetTimeTicks - 重置刻</li>
+     * </ul>
+     */
+    public record ChoiceCooldownData(
+            long[] lastSelectTimes,
+            long[] purchaseGameTimes,  //新增
+            long[] purchaseDayTimes,   //新增
+            int[] cooldownTypes,
+            long[] cooldownValues,
+            int[] resetTimeTicks
+    ) {}
+
+    public ChoiceCooldownData getChoiceCooldownRawData() {
+        if (visibleChoices.isEmpty()) {
+            return new ChoiceCooldownData(new long[0], new long[0], new long[0], new int[0], new long[0], new int[0]);
+        }
+
+        DialogueProgressStore.TimeSnapshot ts = snapshot();
+        int count = visibleChoices.size();
+        long[] lastSelectTimes = new long[count];
+        long[] purchaseGTs = new long[count];  //新增
+        long[] purchaseDTs = new long[count];  //新增
+        int[] cooldownTypes = new int[count];
+        long[] cooldownValues = new long[count];
+        int[] resetTimeTicks = new int[count];
+
+        for (int i = 0; i < count; i++) {
+            DialogueChoice choice = visibleChoices.get(i);
+            int originalIndex = currentNode.choices().indexOf(choice);
+
+            if (originalIndex == -1 || choice.cooldownType() == CooldownType.NONE) {
+                lastSelectTimes[i] = 0;
+                purchaseGTs[i] = 0;
+                purchaseDTs[i] = 0;
+                cooldownTypes[i] = CooldownType.NONE.ordinal();
+                cooldownValues[i] = 0;
+                resetTimeTicks[i] = 0;
+                continue;
+            }
+
+            ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
+            
+            // 检测时间回退
+            if (choice.cooldownType() == CooldownType.GAME_TICK) {
+                var entry = progress.getChoiceSelection(choiceKey);
+                if (entry.exists() && entry.dayTime() > ts.dayTime()) {
+                    progress.clearCooldownRecord(choiceKey);
+                    LOGGER.warn("[Cooldown-Clear]  Cleared choice cooldown in getChoiceCooldownRawData due to time regression: {}", choiceKey);
+                    lastSelectTimes[i] = 0;
+                    purchaseGTs[i] = 0;
+                    purchaseDTs[i] = 0;
+                    cooldownTypes[i] = CooldownType.NONE.ordinal();
+                    cooldownValues[i] = 0;
+                    resetTimeTicks[i] = 0;
+                    continue;
+                }
+            }
+
+            var entry = progress.getChoiceSelection(choiceKey);
+            if (entry.exists()) {
+                lastSelectTimes[i] = entry.realTime();
+                purchaseGTs[i] = entry.gameTime();  //新增
+                purchaseDTs[i] = entry.dayTime();   //新增
+            } else {
+                lastSelectTimes[i] = 0;
+                purchaseGTs[i] = 0;
+                purchaseDTs[i] = 0;
+            }
+            
+            cooldownTypes[i] = choice.cooldownType().ordinal();
+            cooldownValues[i] = choice.cooldownSeconds();
+            resetTimeTicks[i] = choice.resetTimeTicks();
+        }
+
+        return new ChoiceCooldownData(lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks);
     }
 
     /**
@@ -173,7 +257,7 @@ public class DialogueSession {
 
             case GAME_TICK -> {
                 // 用 tick 数除以 20 转秒
-                int remainTicks = progress.getGameTickCooldownRemainingTicks(
+                int remainTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
                         entry, choice.resetTimeTicks(), ts.gameTime(), ts.dayTime());
                 yield Math.max(1, remainTicks / 20);
             }
@@ -208,7 +292,7 @@ public class DialogueSession {
         // 一次性采样时间
         DialogueProgressStore.TimeSnapshot ts = snapshot();
 
-        if (!checkChoiceAvailable(choice, originalIndex, ts)) {
+        if (!DialogueActionExecutor.checkChoiceAvailable(this, choice, originalIndex, progress, ts)) {
             return currentNode;
         }
 
@@ -216,7 +300,7 @@ public class DialogueSession {
         String nextNodeId = choice.nextNodeId();
         if (nextNodeId != null) {
             DialogueNode nextNode = tree.getNode(nextNodeId);
-            if (nextNode != null && !checkNodeAvailable(nextNode, ts)) {
+            if (nextNode != null && !DialogueActionExecutor.checkNodeAvailable(this, nextNode, progress, ts)) {
                 LOGGER.debug("[Dialogue] Target node '{}' is on cooldown, blocking choice.", nextNodeId);
                 return currentNode;
             }
@@ -229,10 +313,8 @@ public class DialogueSession {
         LOGGER.info("[DEBUG-Record] Recorded choice: key={}, realTime={}, gameTime={}, dayTime={}",
                 choiceKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
-        // 执行动作
-        for (DialogueAction action : choice.actions()) {
-            executeAction(action);
-        }
+        // 执行动作 (转移给执行器)
+        DialogueActionExecutor.executeActions(player, this, choice);
 
         // 跳转
         if (choice.nextNodeId() == null) {
@@ -272,7 +354,7 @@ public class DialogueSession {
 
         DialogueProgressStore.TimeSnapshot ts = snapshot();
 
-        if (!checkNodeAvailable(currentNode, ts)) {
+        if (!DialogueActionExecutor.checkNodeAvailable(this, currentNode, progress, ts)) {
             return null;
         }
 
@@ -300,11 +382,6 @@ public class DialogueSession {
     public void end() {
         ended = true;
         LOGGER.debug("[Dialogue] Session {} ended.", sessionId);
-        
-        // 触发跨系统桥接事件
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
-        CrossSystemBridge.INSTANCE.onDialogueCompleted(player, cap, tree.dialogueId());
     }
 
     // ═══════════════════════════════════════════════
@@ -420,103 +497,6 @@ public class DialogueSession {
         } finally {
             //结束评估周期
             cache.endCycle();
-        }
-    }
-
-    // ═══════════════════════════════════════════════
-    //  内部：冷却检查（使用 TimeSnapshot）
-    // ═══════════════════════════════════════════════
-
-    private boolean checkNodeAvailable(DialogueNode node, DialogueProgressStore.TimeSnapshot ts) {
-        // 一次性检查
-        ProgressKey nodeKey = ProgressKey.ofNode(namespace, node.nodeId());
-        if (!node.repeatable() && progress.hasVisitedNode(nodeKey)) {
-            LOGGER.debug("[Dialogue] One-time node '{}' already visited.", node.nodeId());
-            return false;
-        }
-
-        // 冷却检查（传递三时钟）
-        if (node.cooldownType() != CooldownType.NONE) {
-            boolean onCooldown = progress.isNodeOnCooldown(
-                    namespace, node.nodeId(),
-                    node.cooldownType(), (int) node.cooldownSeconds(), node.resetTimeTicks(),
-                    ts.realTime(), ts.gameTime(), ts.dayTime());
-            if (onCooldown) {
-                LOGGER.debug("[Dialogue] Node '{}' on cooldown.", node.nodeId());
-                return false;
-            }
-        }
-
-        // 记录本次访问
-        progress.recordNodeVisit(namespace, node.nodeId(),
-                ts.realTime(), ts.gameTime(), ts.dayTime());
-        return true;
-    }
-
-    private boolean checkChoiceAvailable(DialogueChoice choice, int choiceIndex,
-                                         DialogueProgressStore.TimeSnapshot ts) {
-        LOGGER.info("[DEBUG-Cooldown] Checking choice: node={}, idx={}, type={}, seconds={}",
-                currentNode.nodeId(), choiceIndex, choice.cooldownType(), choice.cooldownSeconds());
-
-        // 一次性检查
-        if (!choice.repeatable() &&
-                progress.hasSelectedChoice(namespace, currentNode.nodeId(), choiceIndex)) {
-            LOGGER.debug("[Dialogue] One-time choice [{}/{}] already selected.",
-                    currentNode.nodeId(), choiceIndex);
-            return false;
-        }
-
-        // 冷却检查（传递三时钟）
-        if (choice.cooldownType() != CooldownType.NONE) {
-            ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), choiceIndex);
-            
-            // 先检测时间回退，如果检测到则清除记录
-            if (choice.cooldownType() == CooldownType.GAME_TICK) {
-                var entry = progress.getChoiceSelection(choiceKey);
-                if (entry.exists() && entry.dayTime() > ts.dayTime()) {
-                    // 检测到时间回退，清除冷却记录以避免UI不一致
-                    progress.clearCooldownRecord(choiceKey);
-                    LOGGER.warn("[Cooldown-Clear] Cleared cooldown record due to time regression: {}", choiceKey);
-                    // 清除后继续执行，不再检查冷却
-                } else {
-                    // 无时间回退，正常检查冷却
-                    boolean onCooldown = progress.isChoiceOnCooldown(
-                            namespace, currentNode.nodeId(), choiceIndex,
-                            choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
-                            ts.realTime(), ts.gameTime(), ts.dayTime());
-
-                    LOGGER.info("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}",
-                            currentNode.nodeId(), choiceIndex, onCooldown);
-
-                    if (onCooldown) return false;
-                }
-            } else {
-                // 非 GAME_TICK 类型，正常检查冷却
-                boolean onCooldown = progress.isChoiceOnCooldown(
-                        namespace, currentNode.nodeId(), choiceIndex,
-                        choice.cooldownType(), (int) choice.cooldownSeconds(), choice.resetTimeTicks(),
-                        ts.realTime(), ts.gameTime(), ts.dayTime());
-
-                LOGGER.info("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}",
-                        currentNode.nodeId(), choiceIndex, onCooldown);
-
-                return !onCooldown;
-            }
-        }
-
-        return true;
-    }
-
-    // ═══════════════════════════════════════════════
-    // 内部：动作执行
-    // ═══════════════════════════════════════════════
-
-    private void executeAction(DialogueAction action) {
-        try {
-            action.execute(player, this);
-        } catch (Exception e) {
-            LOGGER.error("[Dialogue] Error executing action {} in session {}",
-                    action.getClass().getSimpleName(), sessionId, e);
         }
     }
 }
