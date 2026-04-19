@@ -387,7 +387,7 @@ public class DialogueSession {
             return;
         }
 
-        // ⭐ v4: 开始评估周期,启用缓存
+        //开始评估周期,启用缓存
         EvalCache cache = EvalCache.current();
         cache.beginCycle();
 
@@ -418,7 +418,7 @@ public class DialogueSession {
                         .toList();
             }
         } finally {
-            // ⭐ v4: 结束评估周期
+            //结束评估周期
             cache.endCycle();
         }
     }

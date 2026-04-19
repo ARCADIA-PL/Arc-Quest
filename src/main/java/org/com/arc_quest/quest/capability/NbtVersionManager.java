@@ -34,7 +34,7 @@ import java.util.function.Consumer;
  *         tag.put("objectives", objectives);
  *     });
  *     
- *     // v2 → v3: 添加 variables 字段
+ *     // v2 →添加 variables 字段
  *     VERSION_MANAGER.addMigration(2, 3, tag -> {
  *         if (!tag.contains("variables")) {
  *             tag.put("variables", new CompoundTag());

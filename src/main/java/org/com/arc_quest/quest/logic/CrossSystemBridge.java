@@ -59,7 +59,7 @@ public final class CrossSystemBridge {
         }
         rules.add(Objects.requireNonNull(rule));
         
-        // ⭐ 建立索引
+        // 建立索引
         String source = rule.getTriggerSource();
         switch (rule.getTriggerType()) {
             case QUEST_COMPLETED, QUEST_FAILED, QUEST_STARTED ->

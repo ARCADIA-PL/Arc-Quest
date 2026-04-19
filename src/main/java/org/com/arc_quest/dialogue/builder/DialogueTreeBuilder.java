@@ -301,8 +301,8 @@ public class DialogueTreeBuilder {
                 visualConfig,
                 repeatable,
                 cooldownSeconds,
-                treeCooldownType,  // 对话树冷却类型
-                0  // resetTimeTicks（对话树级别暂不支持）
+                treeCooldownType,
+                0
         );
     }
 
@@ -393,7 +393,6 @@ public class DialogueTreeBuilder {
             }
             return sb.toString();
         } else if (condition instanceof DialogueCondition.CustomCondition cc) {
-            // ✅ CustomCondition 可以序列化（存储注册名称）
             return "CUSTOM:" + cc.nameOrPredicate();
         } else if (condition instanceof DialogueCondition.IsMorning) {
             return "IS_MORNING";

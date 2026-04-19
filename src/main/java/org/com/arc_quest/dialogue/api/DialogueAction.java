@@ -57,12 +57,10 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
             IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-            if (cap != null) {
-                QuestRuntimeData data = cap.getActiveQuest(questId);
-                if (data != null) {
-                    data.setState(QuestState.COMPLETED);
-                    cap.markCompleted(questId);
-                }
+            QuestRuntimeData data = cap.getActiveQuest(questId);
+            if (data != null) {
+                data.setState(QuestState.COMPLETED);
+                cap.markCompleted(questId);
             }
         }
     }
@@ -78,7 +76,6 @@ public sealed interface DialogueAction {
             if (def == null) return;
 
             IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-            if (cap == null) return;
 
             QuestRuntimeData data = cap.getActiveQuest(questId);
             if (data == null || data.getState() != QuestState.ACTIVE) return;
@@ -152,7 +149,8 @@ public sealed interface DialogueAction {
     record NotifyInteract(String targetId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
-            ResourceLocation rl = ResourceLocation.tryParse(targetId);
+            ResourceLocation rl;
+            rl = ResourceLocation.tryParse(targetId);
             if (rl != null) {
                 QuestEventManager.notifyInteract(player, rl);
             }
@@ -218,10 +216,8 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
             IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-            if (cap != null) {
-                cap.setFlag(flagName);
-                LOGGER.debug("[Dialogue] Set flag '{}' for {}", flagName, player.getName().getString());
-            }
+            cap.setFlag(flagName);
+            LOGGER.debug("[Dialogue] Set flag '{}' for {}", flagName, player.getName().getString());
         }
     }
 
@@ -236,11 +232,9 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
             IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-            if (cap != null) {
-                cap.setVariable(key, value);
-                LOGGER.debug("[Dialogue] Set variable '{}' = {} for {}",
-                        key, value, player.getName().getString());
-            }
+            cap.setVariable(key, value);
+            LOGGER.debug("[Dialogue] Set variable '{}' = {} for {}",
+                    key, value, player.getName().getString());
         }
     }
 

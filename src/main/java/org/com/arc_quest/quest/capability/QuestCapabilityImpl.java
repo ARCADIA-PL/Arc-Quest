@@ -51,7 +51,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
             }
         });
         
-        // v2 → v3: 改用 _ArcQuestVer
+        // v2 → v3改用 _ArcQuestVer
         VERSION_MANAGER.addMigration(2, 3, tag -> {
             // 复制旧的 _version 到 _ArcQuestVer
             if (tag.contains("_version", Tag.TAG_INT)) {
@@ -78,10 +78,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
 
     private boolean isDirty = false;
-
-    // ═══════════════════════════════════════════════
-    //  ⭐ v2 新增
-    // ═══════════════════════════════════════════════
 
     @Override
     public DialogueProgressStore getDialogueProgress() {

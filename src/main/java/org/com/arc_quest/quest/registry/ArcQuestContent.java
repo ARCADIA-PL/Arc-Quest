@@ -25,7 +25,7 @@ public final class ArcQuestContent {
 
         QuestRegistry.freeze();
         
-        // ⭐ v3: 注册跨系统桥接规则
+        //注册跨系统桥接规则
         registerCrossSystemRules();
         CrossSystemBridge.INSTANCE.freeze();
 

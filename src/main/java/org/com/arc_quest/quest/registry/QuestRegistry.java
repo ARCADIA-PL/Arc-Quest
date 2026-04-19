@@ -61,7 +61,7 @@ public final class QuestRegistry {
         // 验证跨任务引用的合法性
         validateCrossReferences();
         
-        // ⭐ 验证 CrossSystemBridge 中引用的任务 ID 是否存在
+        // 验证 CrossSystemBridge 中引用的任务 ID 是否存在
         validateCrossSystemBridgeReferences();
     }
 
