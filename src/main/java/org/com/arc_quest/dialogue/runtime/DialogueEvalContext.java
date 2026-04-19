@@ -9,20 +9,7 @@ import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import javax.annotation.Nullable;
 
 /**
- * 对话条件评估上下文 —— 替代 ThreadLocal&lt;String&gt; CURRENT_NAMESPACE。
- * <p>
- * <b>不可变</b>，在 DialogueSession 构造时创建，随 choose() 刷新。
- * 条件评估所需的一切信息都从这里显式获取，零隐式依赖。
- *
- * <h3>迁移指南</h3>
- * <pre>
- * // 重构前（DialogueCondition.test 内部）：
- * String ns = DialogueSession.getCurrentNamespace(); // ThreadLocal!
- * cap.hasVisitedNode(ns, nodeId);
- *
- * // 重构后：
- * ctx.progress().hasVisitedNode(ctx.namespace(), nodeId);
- * </pre>
+ * 对话条件评估上下文
  */
 public record DialogueEvalContext(
         /** 服务端玩家 */
