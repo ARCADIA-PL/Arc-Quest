@@ -27,8 +27,6 @@ public class Arc_quest {
     public static final String MOD_ID = "arc_quest";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    //TODO 优化商品栏，鼠标悬停其上1s后有ToolTip和desc描述, 以及补全限购数量显示
-    //TODO 商品栏区分购买条件和显示条件
     //TODO 完善任务系统的HUD，任务详情内可显示章节奖励和Phase奖励, Phase也可添加desc， 在任务追踪器和任务详情界面都可显示;如果是和实体相关的任务，任务详情界面可展示实体模型
     //TODO 任务系统HUD联动商店，新增章节商店按钮，每个章节可配置专属章节商店（可分为是否长期，长期则章节完成也可使用，非长期则不可，默认长期)
     public Arc_quest() {
