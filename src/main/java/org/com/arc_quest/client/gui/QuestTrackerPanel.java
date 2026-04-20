@@ -107,7 +107,7 @@ public class QuestTrackerPanel {
         if (mc.player == null || mc.options.hideGui) return;
 
         boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen ||
-                (mc.screen != null && mc.screen.getClass().getSimpleName().equals("DialogueScreen"));
+                mc.screen instanceof DialogueScreen;
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;

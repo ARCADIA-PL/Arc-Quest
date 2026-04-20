@@ -145,7 +145,7 @@ public final class NbtVersionManager {
             }
         }
         
-        // 更新版本号
+        // 保存版本号
         tag.putInt(VERSION_KEY, currentVersion);
         logger.info("[{}] Migration complete. Now at v{}.", capabilityName, currentVersion);
     }

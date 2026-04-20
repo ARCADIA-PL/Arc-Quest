@@ -52,24 +52,11 @@ public class C2SDialogueChoicePacket {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
 
-            LOGGER.info("[C2SDialogueChoicePacket] Received choiceIndex: {}", pkt.choiceIndex);
             switch (pkt.choiceIndex) {
-                case CLOSE -> {
-                    LOGGER.info("[C2SDialogueChoicePacket] Handling CLOSE");
-                    DialogueSessionManager.INSTANCE.endDialogue(player);
-                }
-                case AUTO_ADVANCE -> {
-                    LOGGER.info("[C2SDialogueChoicePacket] Handling AUTO_ADVANCE");
-                    DialogueSessionManager.INSTANCE.handleAutoAdvance(player);
-                }
-                case RESTORE_DIALOGUE -> {
-                    LOGGER.info("[C2SDialogueChoicePacket] Handling RESTORE_DIALOGUE");
-                    DialogueSessionManager.INSTANCE.handleRestoreDialogue(player);
-                }
-                default -> {
-                    LOGGER.info("[C2SDialogueChoicePacket] Handling regular choice: {}", pkt.choiceIndex);
-                    DialogueSessionManager.INSTANCE.handleChoice(player, pkt.choiceIndex);
-                }
+                case CLOSE -> DialogueSessionManager.INSTANCE.endDialogue(player);
+                case AUTO_ADVANCE -> DialogueSessionManager.INSTANCE.handleAutoAdvance(player);
+                case RESTORE_DIALOGUE -> DialogueSessionManager.INSTANCE.handleRestoreDialogue(player);
+                default -> DialogueSessionManager.INSTANCE.handleChoice(player, pkt.choiceIndex);
             }
         });
         ctx.get().setPacketHandled(true);

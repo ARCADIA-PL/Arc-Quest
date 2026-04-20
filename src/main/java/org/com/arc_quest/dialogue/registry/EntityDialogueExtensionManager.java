@@ -60,14 +60,14 @@ public class EntityDialogueExtensionManager {
     public void register(IEntityDialogueExtension<?> extension) {
         EntityType<?> entityType = extension.getEntityType();
 
-        // 添加到列表
+        // 注册到列表
         if (!extensions.contains(extension)) {
             extensions.add(extension);
             LOGGER.debug("[EntityDialogueExtensionManager] Registered extension for entity type: {}",
                     entityType.getDescriptionId());
         }
 
-        // 添加到映射表
+        // 注册到映射表
         extensionsByType.computeIfAbsent(entityType, k -> new ArrayList<>()).add(extension);
     }
 

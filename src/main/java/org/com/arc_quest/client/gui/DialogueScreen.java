@@ -38,8 +38,8 @@ import java.util.List;
 
     // ── 实时冷却（原始数据）───
     private long[] choiceLastSelectTimes;
-    private long[] choicePurchaseGameTimes;  //新增：选择时的 gameTime
-    private long[] choicePurchaseDayTimes;   //新增：选择时的 dayTime
+    private long[] choicePurchaseGameTimes;
+    private long[] choicePurchaseDayTimes;
     private int[] choiceCooldownTypes;
     private long[] choiceCooldownValues;
     private int[] choiceResetTimeTicks;

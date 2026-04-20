@@ -5,7 +5,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
-import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.slf4j.Logger;
 
@@ -60,11 +59,6 @@ public final class TradeEntryStateResolver {
                 nowRealTime, nowGameTime, nowDayTime
         );
         
-        LOGGER.debug("[Trade-State] Cooldown check: entry={}, hasLimit={}, count={}/{}, onCooldown={}",
-                entry.getEntryId(), entry.hasLimit(), 
-                cap.getTradePurchaseCount(shopId, entry.getEntryId()),
-                entry.getMaxPurchases(), onCooldown);
-        
         return onCooldown;
     }
     
@@ -109,9 +103,6 @@ public final class TradeEntryStateResolver {
                 cap.getAllVariables()
         );
         
-        LOGGER.debug("[Trade-State] Visibility check: entry={}, visible={}",
-                entry.getEntryId(), visible);
-        
         return visible;
     }
     
@@ -134,7 +125,6 @@ public final class TradeEntryStateResolver {
     public static boolean canPurchase(ServerPlayer player, IQuestCapability cap, String shopId, TradeEntry entry) {
         // 第一层：可见性检查（必须先可见才能购买）
         if (!isVisible(player, cap, entry)) {
-            LOGGER.debug("[Trade-State] Purchase blocked: not visible for {}", entry.getEntryId());
             return false;
         }
         

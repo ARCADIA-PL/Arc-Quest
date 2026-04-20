@@ -5,9 +5,9 @@ import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.runtime.DialogueEvalContext;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
+import org.com.arc_quest.quest.api.CompareOp;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
-import org.com.arc_quest.quest.api.CompareOp;
 
 import java.util.List;
 import java.util.function.BiPredicate;

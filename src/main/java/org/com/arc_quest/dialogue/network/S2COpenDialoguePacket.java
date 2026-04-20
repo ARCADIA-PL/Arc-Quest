@@ -189,17 +189,13 @@ public class S2COpenDialoguePacket {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.isClose) {
-                LOGGER.info("[S2COpenDialoguePacket] Received CLOSE packet");
                 if (mc.screen instanceof DialogueScreen ds) {
                     ds.startCloseAnimation();
                 }
                 return;
             }
 
-            LOGGER.info("[S2COpenDialoguePacket] Received dialogue data, nodeId: {}, isTerminal: {}", pkt.nodeId, pkt.isTerminal);
             if (mc.screen instanceof DialogueScreen ds) {
-                // 更新现有对话界面
-                LOGGER.info("[S2COpenDialoguePacket] Updating existing DialogueScreen");
                 ds.updateNode(pkt.speaker, pkt.text, pkt.choices,
                         pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs,
                         pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
@@ -210,11 +206,7 @@ public class S2COpenDialoguePacket {
                        (mc.screen instanceof TradeScreen || 
                         mc.screen instanceof SimpleTradePanel)) {
                 // 如果当前是商店界面，忽略此包（由商店动作触发，不应覆盖商店）
-                LOGGER.info("[S2COpenDialoguePacket] Ignoring dialogue update while TradeScreen is open");
             } else {
-                // 创建新对话界面
-                LOGGER.info("[S2COpenDialoguePacket] Creating new DialogueScreen, current screen: {}", 
-                        mc.screen != null ? mc.screen.getClass().getSimpleName() : "null");
                 mc.setScreen(new DialogueScreen(pkt.dialogueId, pkt.speaker,
                         pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext,
                         pkt.delayMs, pkt.entityId,

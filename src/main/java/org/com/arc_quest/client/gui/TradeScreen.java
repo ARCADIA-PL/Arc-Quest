@@ -59,15 +59,13 @@ public class TradeScreen extends AbstractTradeScreen {
         if (parentScreen != null) {
             Minecraft mc = Minecraft.getInstance();
             if (parentScreen instanceof DialogueScreen ds) {
-                LOGGER.info("[TradeScreen] Sending RESTORE_DIALOGUE request");
                 ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.restore());
                 ds.resetSelectionState();
                 ds.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-                LOGGER.info("[TradeScreen] Reset dialogue selection state and re-initialized");
             }
             mc.setScreen(parentScreen);
             parentScreen = null;
-            LOGGER.info("[TradeScreen] Restored parent screen");
+            LOGGER.info("[Trade] Restored dialogue after closing shop");
         } else {
             super.onClose();
         }

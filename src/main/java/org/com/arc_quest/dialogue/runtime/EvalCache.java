@@ -76,10 +76,7 @@ public final class EvalCache {
             return evaluator.get();
         }
         
-        return cache.computeIfAbsent(condition, k -> {
-            LOGGER.debug("[EvalCache] Cache miss for condition: {}", condition.getClass().getSimpleName());
-            return evaluator.get();
-        });
+        return cache.computeIfAbsent(condition, k -> evaluator.get());
     }
     
     /**

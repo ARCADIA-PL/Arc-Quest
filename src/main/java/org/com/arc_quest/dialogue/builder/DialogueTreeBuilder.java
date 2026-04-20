@@ -425,7 +425,7 @@ public class DialogueTreeBuilder {
 
         Map<String, String> map = new LinkedHashMap<>();
 
-        // 添加条件文本
+        // 条件文本
         for (ConditionalText ct : curConditionalTexts) {
             String key = ct.priority + "|" + serializeCondition(ct.condition);
             map.put(key, ct.text);

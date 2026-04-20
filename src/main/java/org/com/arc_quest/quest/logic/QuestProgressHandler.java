@@ -269,7 +269,7 @@ public final class QuestProgressHandler {
             return;
         }
 
-        // 更新运行时数据
+        // 设置新阶段
         data.setCurrentPhaseId(nextPhaseId);
         data.resetObjectives(nextPhase.getObjectives().size());
 
@@ -323,7 +323,7 @@ public final class QuestProgressHandler {
             return;
         }
 
-        // 更新运行时数据
+        // 设置标记
         String flagToSet = chosen.getFlagToSet();
         if (flagToSet != null && !flagToSet.isEmpty()) {
             cap.setFlag(flagToSet);
@@ -431,7 +431,7 @@ public final class QuestProgressHandler {
         // 设置完成时 Flag
         def.getFlagsToSetOnComplete().forEach(cap::setFlag);
 
-        // 更新状态
+        // 标记为已完成
         data.setState(QuestState.COMPLETED);
         cap.markCompleted(questId);
 

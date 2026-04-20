@@ -9,11 +9,7 @@ import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 单次对话会话（服务端状态）。
@@ -66,9 +62,6 @@ public class DialogueSession {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         this.progress = cap.getDialogueProgress();
-
-        LOGGER.debug("[Dialogue] Session created: tree={}, entityId={}, namespace={}",
-                tree.dialogueId(), entityId, namespace);
 
         evaluateVisibleChoices();
     }
@@ -163,8 +156,8 @@ public class DialogueSession {
      */
     public record ChoiceCooldownData(
             long[] lastSelectTimes,
-            long[] purchaseGameTimes,  //新增
-            long[] purchaseDayTimes,   //新增
+            long[] purchaseGameTimes,
+            long[] purchaseDayTimes,
             int[] cooldownTypes,
             long[] cooldownValues,
             int[] resetTimeTicks
@@ -178,8 +171,8 @@ public class DialogueSession {
         DialogueProgressStore.TimeSnapshot ts = snapshot();
         int count = visibleChoices.size();
         long[] lastSelectTimes = new long[count];
-        long[] purchaseGTs = new long[count];  //新增
-        long[] purchaseDTs = new long[count];  //新增
+        long[] purchaseGTs = new long[count];
+        long[] purchaseDTs = new long[count];
         int[] cooldownTypes = new int[count];
         long[] cooldownValues = new long[count];
         int[] resetTimeTicks = new int[count];
@@ -214,8 +207,8 @@ public class DialogueSession {
             var entry = progress.getChoiceSelection(choiceKey);
             if (entry.exists()) {
                 lastSelectTimes[i] = entry.realTime();
-                purchaseGTs[i] = entry.gameTime();  //新增
-                purchaseDTs[i] = entry.dayTime();   //新增
+                purchaseGTs[i] = entry.gameTime();
+                purchaseDTs[i] = entry.dayTime();
             } else {
                 lastSelectTimes[i] = 0;
                 purchaseGTs[i] = 0;
@@ -278,10 +271,7 @@ public class DialogueSession {
         }
 
         DialogueChoice choice = visibleChoices.get(choiceIndex);
-        int originalIndex = visibleChoiceOriginalIndices[choiceIndex];  // 直接使用预计算的索引
-
-        LOGGER.info("[DEBUG-Choose] Clicked choice: visibleIndex={}, originalIndex={}, text={}",
-                choiceIndex, originalIndex, choice.text());
+        int originalIndex = visibleChoiceOriginalIndices[choiceIndex];
 
         // 一次性采样时间
         DialogueProgressStore.TimeSnapshot ts = snapshot();
@@ -295,7 +285,6 @@ public class DialogueSession {
         if (nextNodeId != null) {
             DialogueNode nextNode = tree.getNode(nextNodeId);
             if (nextNode != null && !DialogueActionExecutor.checkNodeAvailable(this, nextNode, progress, ts)) {
-                LOGGER.debug("[Dialogue] Target node '{}' is on cooldown, blocking choice.", nextNodeId);
                 return currentNode;
             }
         }
@@ -303,9 +292,6 @@ public class DialogueSession {
         // 记录选项选择（使用 ProgressKey）
         ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
         progress.recordChoiceSelection(choiceKey, ts.realTime(), ts.gameTime(), ts.dayTime());
-
-        LOGGER.info("[DEBUG-Record] Recorded choice: key={}, realTime={}, gameTime={}, dayTime={}",
-                choiceKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
         // 执行动作 (转移给执行器)
         DialogueActionExecutor.executeActions(player, this, choice);
@@ -334,9 +320,6 @@ public class DialogueSession {
         // 记录目标节点访问（使用 ProgressKey）
         ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
         progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
-
-        LOGGER.info("[DEBUG-Record] Recorded node visit: key={}, dayTime={}",
-                nodeKey, ts.dayTime());
 
         currentNode = nextNode;
         evaluateVisibleChoices();
@@ -383,7 +366,6 @@ public class DialogueSession {
 
     public void end() {
         ended = true;
-        LOGGER.debug("[Dialogue] Session {} ended.", sessionId);
     }
 
     // ═══════════════════════════════════════════════
@@ -407,18 +389,13 @@ public class DialogueSession {
 
     private String resolveNamespace() {
         if (entityId == -1) {
-            LOGGER.info("[DEBUG-Namespace] entityId=-1, using tree ID: {}", tree.dialogueId());
             return tree.dialogueId();
         }
 
         Entity npc = player.level().getEntity(entityId);
         if (npc == null) {
-            LOGGER.warn("[DEBUG-Namespace] NPC entity not found for entityId={}", entityId);
             return tree.dialogueId();
         }
-
-        LOGGER.info("[DEBUG-Namespace] Resolving for entityId={}, type={}, uuid={}",
-                entityId, npc.getType().getDescriptionId(), npc.getStringUUID());
 
         var manager = EntityDialogueExtensionManager.INSTANCE;
         var extensions = manager.getExtensionsForEntityType(npc.getType());
@@ -430,8 +407,6 @@ public class DialogueSession {
             String dialogueId = ext.getDialogueTreeId(player, npc, null);
             if (dialogueId != null && dialogueId.equals(tree.dialogueId())) {
                 ProgressScope scope = ext.getProgressScope();
-                LOGGER.info("[DEBUG-Namespace] Matched ext={}, scope={}",
-                        ext.getClass().getSimpleName(), scope);
 
                 return switch (scope) {
                     case INSTANCE -> npc.getStringUUID();

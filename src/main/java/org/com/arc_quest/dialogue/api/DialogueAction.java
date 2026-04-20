@@ -25,7 +25,6 @@ import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 
 /**
  * 对话选择触发的服务端动作。

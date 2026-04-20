@@ -127,16 +127,11 @@ public class C2SRequestTradePacket {
      * 从对话中打开商店，确保不中断当前的对话会话。
      */
     public static void handleServerOpenFromDialogue(ServerPlayer player, TradeShopDefinition shop, boolean simple, String restoreNodeId) {
-        LOGGER.info("[C2SRequestTradePacket] Opening shop '{}' from dialogue, restoreNodeId: {}, simple: {}", 
-                shop.getShopId(), restoreNodeId, simple);
         handleOpen(player, shop, simple);
         
         DialogueSessionManager manager = DialogueSessionManager.INSTANCE;
         if (manager.isInDialogue(player)) {
             manager.setRestoreNodeId(player, restoreNodeId);
-            LOGGER.info("[C2SRequestTradePacket] Saved restoreNodeId for player {}", player.getName().getString());
-        } else {
-            LOGGER.warn("[C2SRequestTradePacket] Player {} is not in dialogue", player.getName().getString());
         }
     }
 
@@ -185,8 +180,6 @@ public class C2SRequestTradePacket {
      * 刷新交易界面数据（不重建会话，仅同步最新状态）。
      */
     private static void refreshTradeData(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
-        LOGGER.info("[Trade-Packet] Refreshing trade data: shop={}, screenType={}", shop.getShopId(), clientScreenType);
-
         TradeSession session = new TradeSession(player, shop);
         TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
 
@@ -200,7 +193,6 @@ public class C2SRequestTradePacket {
                         snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
                         snap.visibility(), snap.canBuyConditions());
 
-        LOGGER.info("[Trade-Packet] Sending refresh packet: {} entries, type={}", snap.purchases().length, clientScreenType);
         ArcQuestNetwork.CHANNEL.send(
                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
                 refreshPkt);

@@ -3,8 +3,6 @@ package org.com.arc_quest.quest.tracking;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.minecraft.resources.ResourceLocation;
-import org.com.arc_quest.quest.api.ObjectiveEntry;
 import org.slf4j.Logger;
 
 import java.util.*;
