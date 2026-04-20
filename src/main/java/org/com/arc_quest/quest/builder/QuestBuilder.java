@@ -133,12 +133,19 @@ public final class QuestBuilder {
     }
 
     /**
-     * 快捷：需要指定任务已完成
+     * 快捷：需要指定任务已完成（支持智能命名空间解析）
+     * <p>
+     * - 如果包含 ":"，则直接解析
+     * - 如果不包含 ":"，则自动添加 arc_quest: 前缀
      */
-    public QuestBuilder requiresQuest(String questPath) {
-        this.unlockConditions.add(
-                new QuestCompletedCondition(
-                        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, questPath)));
+    public QuestBuilder requiresQuest(String questId) {
+        ResourceLocation location;
+        if (questId.contains(":")) {
+            location = ResourceLocation.tryParse(questId);
+        } else {
+            location = ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, questId);
+        }
+        this.unlockConditions.add(new QuestCompletedCondition(location));
         return this;
     }
 
