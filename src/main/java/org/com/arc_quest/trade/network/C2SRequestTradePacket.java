@@ -72,6 +72,11 @@ public class C2SRequestTradePacket {
         return new C2SRequestTradePacket(Action.PURCHASE, shopId, entryId, screenType);
     }
 
+    /** 刷新请求（用于事件驱动的自动同步） */
+    public static C2SRequestTradePacket refresh(String shopId, ScreenType screenType) {
+        return new C2SRequestTradePacket(screenType == ScreenType.SIMPLE ? Action.OPEN_SIMPLE : Action.OPEN_FULL, shopId, null, screenType);
+    }
+
     // ── 序列化 ──
 
     public void encode(FriendlyByteBuf buf) {
@@ -138,6 +143,7 @@ public class C2SRequestTradePacket {
         long[] cooldownValues = new long[count];
         int[] resetTimeTicks = new int[count];
         boolean[] visibility = new boolean[count];
+        boolean[] canBuyConditions = new boolean[count];
 
         for (int i = 0; i < count; i++) {
             TradeEntry entry = allEntries.get(i);
@@ -167,15 +173,16 @@ public class C2SRequestTradePacket {
             }
             
             visibility[i] = session.isEntryVisible(entry);
+            canBuyConditions[i] = session.canPurchase(entry);
         }
 
         S2COpenTradePacket response = simple
                 ? S2COpenTradePacket.openSimple(shop.getShopId(), purchases, maxPurchases, lastPurchaseTimes,
                         purchaseGameTimes, purchaseDayTimes,
-                        cooldownTypes, cooldownValues, resetTimeTicks, visibility)
+                        cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions)
                 : S2COpenTradePacket.openFull(shop.getShopId(), purchases, maxPurchases, lastPurchaseTimes,
                         purchaseGameTimes, purchaseDayTimes,
-                        cooldownTypes, cooldownValues, resetTimeTicks, visibility);
+                        cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
 
         ArcQuestNetwork.CHANNEL.send(
                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
@@ -221,6 +228,7 @@ public class C2SRequestTradePacket {
         long[] cooldownValues = new long[count];
         int[] resetTimeTicks = new int[count];
         boolean[] visibility = new boolean[count];
+        boolean[] canBuyConditions = new boolean[count];
 
         for (int i = 0; i < count; i++) {
             TradeEntry entry = allEntries.get(i);
@@ -254,17 +262,18 @@ public class C2SRequestTradePacket {
             }
             
             visibility[i] = session.isEntryVisible(entry);
+            canBuyConditions[i] = session.canPurchase(entry);
         }
 
         S2COpenTradePacket refreshPkt;
         if (clientScreenType == ScreenType.SIMPLE) {
             refreshPkt = S2COpenTradePacket.openSimple(shop.getShopId(), purchases, maxPurchases, lastPurchaseTimes,
                     purchaseGameTimes, purchaseDayTimes,
-                    cooldownTypes, cooldownValues, resetTimeTicks, visibility);
+                    cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
         } else {
             refreshPkt = S2COpenTradePacket.openFull(shop.getShopId(), purchases, maxPurchases, lastPurchaseTimes,
                     purchaseGameTimes, purchaseDayTimes,
-                    cooldownTypes, cooldownValues, resetTimeTicks, visibility);
+                    cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
         }
 
         LOGGER.info("[Trade-Packet] 📤 Sending refresh packet: {} entries, type={}", count, clientScreenType);

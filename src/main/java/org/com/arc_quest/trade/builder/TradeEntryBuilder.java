@@ -43,7 +43,14 @@ public final class TradeEntryBuilder {
     private Component displayName;
     @Nullable private Component description;
     @Nullable private TradeCategory category;
-    @Nullable private ICondition condition;
+    /**
+     * 可见性条件：控制商品是否在 UI 中显示。
+     */
+    @Nullable private ICondition visibleCondition;
+    /**
+     * 购买资格条件：控制玩家是否可以购买商品。
+     */
+    @Nullable private ICondition canBuyCondition;
     private CooldownType cooldownType = CooldownType.NONE;
     private long cooldownValue = 0;
     private int resetTimeTicks = 0;
@@ -184,9 +191,43 @@ public final class TradeEntryBuilder {
     // ════════════════════════════════════════
     //  条件
     // ════════════════════════════════════════
-
+     
+    /**
+     * 设置可见性条件（控制商品是否显示）。
+     * <p>
+     * 客户端和服务端都会检查此条件，但仅用于渲染优化。
+     * 如果条件不满足，商品不会在 UI 中显示。
+     *
+     * @param cond 可见性条件
+     */
+    public TradeEntryBuilder visibleCondition(ICondition cond) {
+        this.visibleCondition = cond;
+        return this;
+    }
+    
+    /**
+     * 设置购买资格条件（控制商品是否可购买）。
+     * <p>
+     * 仅在服务端执行交易时检查，是权威的业务逻辑判断。
+     * 即使商品可见，如果此条件不满足，也无法购买。
+     *
+     * @param cond 购买资格条件
+     */
+    public TradeEntryBuilder canBuyCondition(ICondition cond) {
+        this.canBuyCondition = cond;
+        return this;
+    }
+    
+    /**
+     * 同时设置可见性和购买资格条件（两者相同）。
+     * <p>
+     * 便捷方法，适用于可见性和购买资格使用相同条件的场景。
+     *
+     * @param cond 条件（同时用于可见性和购买资格）
+     */
     public TradeEntryBuilder condition(ICondition cond) {
-        this.condition = cond;
+        this.visibleCondition = cond;
+        this.canBuyCondition = cond;
         return this;
     }
 
@@ -265,7 +306,7 @@ public final class TradeEntryBuilder {
         return new TradeEntry(
                 entryId, displayName, description,
                 List.copyOf(costs), List.copyOf(rewards),
-                category, condition,
+                category, visibleCondition, canBuyCondition,
                 cooldownType, cooldownValue, resetTimeTicks,
                 maxPurchases, iconOverride, sortOrder, themeColor,
                 purchaseResetCondition

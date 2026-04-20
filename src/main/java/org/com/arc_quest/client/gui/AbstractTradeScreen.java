@@ -32,6 +32,7 @@ public abstract class AbstractTradeScreen extends Screen {
     protected long[] cooldownValues;
     protected int[] resetTimeTicks;
     protected boolean[] visibility;
+    protected boolean[] canBuyConditions;  // 新增：购买资格条件状态
 
     protected float transitionAnim = 0f;
     protected boolean isClosing = false;
@@ -56,6 +57,14 @@ public abstract class AbstractTradeScreen extends Screen {
     public AbstractTradeScreen(String title, String shopId, int[] purchaseCounts, int[] maxPurchases,
                                long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
                                int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility) {
+        this(title, shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
+                cooldownTypes, cooldownValues, resetTimeTicks, visibility, new boolean[0]);
+    }
+
+    public AbstractTradeScreen(String title, String shopId, int[] purchaseCounts, int[] maxPurchases,
+                               long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
+                               int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility,
+                               boolean[] canBuyConditions) {
         super(Component.literal(title));
         this.shopId = shopId;
         this.shop = TradeRegistry.get(shopId);
@@ -68,6 +77,7 @@ public abstract class AbstractTradeScreen extends Screen {
         this.cooldownValues = cooldownValues;
         this.resetTimeTicks = resetTimeTicks;
         this.visibility = visibility;
+        this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
     }
 
     @Override
@@ -110,9 +120,14 @@ public abstract class AbstractTradeScreen extends Screen {
     public String getShopId() { return shopId; }
 
     public void updateData(int[] purchaseCounts, int[] maxPurchases, long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes, int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility) {
+        updateData(purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility, new boolean[0]);
+    }
+
+    public void updateData(int[] purchaseCounts, int[] maxPurchases, long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes, int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions) {
         this.purchaseCounts = purchaseCounts; this.maxPurchases = maxPurchases; this.lastPurchaseTimes = lastPurchaseTimes;
         this.purchaseGameTimes = purchaseGameTimes; this.purchaseDayTimes = purchaseDayTimes; this.cooldownTypes = cooldownTypes;
         this.cooldownValues = cooldownValues; this.resetTimeTicks = resetTimeTicks; this.visibility = visibility;
+        this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
     }
 
     @Override public void onClose() { if (!isClosing) isClosing = true; }

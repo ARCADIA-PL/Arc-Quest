@@ -29,13 +29,16 @@ public class TradeScreen extends AbstractTradeScreen {
 
     private float[] catHoverAnims;
     private float[] entryHoverAnims;
+    private boolean[] canBuyConditions;
 
     public TradeScreen(String shopId, int[] purchaseCounts, int[] maxPurchases,
                        long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
-                       int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility) {
+                       int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility,
+                       boolean[] canBuyConditions) {
         super("Trade Matrix", shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility);
         this.allEntries = shop != null ? new ArrayList<>(shop.getAllEntries()) : List.of();
         this.filteredEntries = new ArrayList<>(allEntries);
+        this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
     }
 
     @Override
@@ -158,7 +161,8 @@ public class TradeScreen extends AbstractTradeScreen {
 
             boolean onCd = gi >= 0 && gi < lastPurchaseTimes.length && ClientCooldownHelper.isOnCooldown(lastPurchaseTimes[gi], purchaseGameTimes[gi], purchaseDayTimes[gi], cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]);
             boolean maxed = !onCd && entry.hasLimit() && gi >= 0 && gi < purchaseCounts.length && purchaseCounts[gi] >= entry.getMaxPurchases();
-            boolean canBuy = !onCd && !maxed;
+            boolean conditionNotMet = !onCd && !maxed && gi >= 0 && gi < canBuyConditions.length && !canBuyConditions[gi];
+            boolean canBuy = !onCd && !maxed && !conditionNotMet;
 
             entryHoverAnims[i] = QuestAnimUtil.step(entryHoverAnims[i], hov && canBuy ? 1f : 0f, 6f, dt);
             float hEase = QuestAnimUtil.easeOutCubic(entryHoverAnims[i]);
@@ -189,10 +193,10 @@ public class TradeScreen extends AbstractTradeScreen {
                 else { ItemStack is = getIconStackForEntry(entry); if (!is.isEmpty()) { g.pose().pushPose(); g.pose().translate(cx + 12, cy + 16, 0); g.pose().scale(1.2f, 1.2f, 1f); g.renderItem(is, 0, 0); g.pose().popPose(); } }
 
 
-                if (onCd || maxed) {
+                if (onCd || maxed || conditionNotMet) {
                     float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5 + 0.5);
                     int pulseAlpha = (int) (255 * (0.6f + 0.4f * pulse) * effectiveAlpha);
-                    int pulseColor = onCd ? 0xFF6666 : 0xAAAAAA;
+                    int pulseColor = onCd ? 0xFF6666 : (maxed ? 0xAAAAAA : 0x4488CC);
 
                     g.fill(cx, cy, cx + cw, cy + ch, QuestAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.1f)));
                     
@@ -214,6 +218,9 @@ public class TradeScreen extends AbstractTradeScreen {
                 } else if (maxed) {
                     statusStr = "Maxed";
                     scColor = 0xAAAAAA;
+                } else if (conditionNotMet) {
+                    statusStr = "Locked";
+                    scColor = 0x4488CC;  // 深蓝色
                 }
 
                 String nameStr = entry.getDisplayName().getString();
@@ -240,11 +247,25 @@ public class TradeScreen extends AbstractTradeScreen {
                 
                 int btnW = 80, btnH = 24;
                 int btnX = cx + cw - btnW - 12, btnY = cy + (ch - btnH) / 2;
-                int btnC = canBuy ? ((hov && mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH) ? 0xFFFFFF : getThemeColorForEntry(entry)) : 0x888888;
+                String btnText;
+                int btnC;
+                if (canBuy) {
+                    btnText = "Purchase";
+                    btnC = (hov && mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH) ? 0xFFFFFF : getThemeColorForEntry(entry);
+                } else if (onCd) {
+                    btnText = "Wait";
+                    btnC = 0x888888;
+                } else if (conditionNotMet) {
+                    btnText = "Locked";
+                    btnC = 0x4488CC;
+                } else {
+                    btnText = "Empty";
+                    btnC = 0x888888;
+                }
 
                 g.fill(btnX, btnY, btnX + btnW, btnY + btnH, QuestAnimUtil.withAlpha(btnC, (int)(40 * effectiveAlpha)));
                 QuestAnimUtil.drawFrame(g, btnX, btnY, btnW, btnH, 1, QuestAnimUtil.withAlpha(btnC, (int)(200 * effectiveAlpha)));
-                g.drawCenteredString(font, canBuy ? "Purchase" : (onCd ? "Wait" : "Empty"), btnX + btnW / 2, btnY + 8, QuestAnimUtil.withAlpha(btnC, (int)(255*effectiveAlpha)));
+                g.drawCenteredString(font, btnText, btnX + btnW / 2, btnY + 8, QuestAnimUtil.withAlpha(btnC, (int)(255*effectiveAlpha)));
 
                 g.pose().popPose();
             }
@@ -314,7 +335,9 @@ public class TradeScreen extends AbstractTradeScreen {
     }
 
     @Override
-    public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis) {
-        super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis); filterEntries();
+    public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis, boolean[] canBuy) {
+        super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis);
+        this.canBuyConditions = canBuy != null ? canBuy : new boolean[0];
+        filterEntries();
     }
 }

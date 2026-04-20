@@ -47,26 +47,27 @@ public final class TradeSession {
             return TradeResult.fail("arc_quest.trade.error.not_found");
         }
 
-        // 检查条件
-        if (entry.getCondition() != null) {
-            IQuestCapability cap = getCap();
-            Set<ResourceLocation> completed = cap.getCompletedQuests().stream()
-                    .map(ResourceLocation::parse)
-                    .collect(Collectors.toSet());
-            if (!entry.getCondition().test(player, completed, cap.getAllFlags(), cap.getAllVariables())) {
-                return TradeResult.fail("arc_quest.trade.error.condition_not_met");
-            }
-        }
-
-        checkAndResetPurchases(entryId, entry);
-
         IQuestCapability cap = getCap();
+        
+        // 使用统一的状态解析器检查购买资格
         if (!TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry)) {
+            // 根据具体原因返回不同的错误信息
+            if (!TradeEntryStateResolver.isVisible(player, cap, entry)) {
+                return TradeResult.fail("arc_quest.trade.error.not_visible");
+            }
             if (TradeEntryStateResolver.isPurchaseLimitReached(cap, shop.getShopId(), entry)) {
                 return TradeResult.fail("arc_quest.trade.error.max_purchases");
             } else if (TradeEntryStateResolver.isOnCooldown(player, cap, shop.getShopId(), entry)) {
                 return TradeResult.fail("arc_quest.trade.error.on_cooldown");
             }
+            // 默认：购买资格条件不满足
+            return TradeResult.fail("arc_quest.trade.error.condition_not_met");
+        }
+
+        checkAndResetPurchases(entryId, entry);
+
+        // 再次检查（防止并发修改）
+        if (!TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry)) {
             return TradeResult.fail("arc_quest.trade.error.condition_not_met");
         }
 
@@ -100,23 +101,17 @@ public final class TradeSession {
     }
 
     /**
-     * 检查交易项是否对当前玩家可见（条件满足）
+     * 检查交易项是否对当前玩家可见（可见性条件满足）
      */
     public boolean isEntryVisible(TradeEntry entry) {
-        if (entry.getCondition() == null) return true;
         IQuestCapability cap = getCap();
-        Set<ResourceLocation> completed = cap.getCompletedQuests().stream()
-                .map(ResourceLocation::parse)
-                .collect(Collectors.toSet());
-        return entry.getCondition().test(player, completed, cap.getAllFlags(), cap.getAllVariables());
+        return TradeEntryStateResolver.isVisible(player, cap, entry);
     }
 
     /**
-     * 检查交易项是否可购买
+     * 检查交易项是否可购买（综合判断）
      */
     public boolean canPurchase(TradeEntry entry) {
-        if (!isEntryVisible(entry)) return false;
-        
         IQuestCapability cap = getCap();
         return TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry);
     }

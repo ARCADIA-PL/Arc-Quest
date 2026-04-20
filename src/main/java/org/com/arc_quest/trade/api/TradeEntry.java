@@ -27,8 +27,20 @@ public final class TradeEntry {
     private final List<ITradeOffer> rewards;
     @Nullable
     private final TradeCategory category;
+    /**
+     * 可见性条件：控制商品是否在 UI 中显示。
+     * <p>
+     * 客户端和服务端都会检查此条件，但仅用于渲染优化。
+     */
     @Nullable
-    private final ICondition condition;
+    private final ICondition visibleCondition;
+    /**
+     * 购买资格条件：控制玩家是否可以购买商品。
+     * <p>
+     * 仅在服务端执行交易时检查，是权威的业务逻辑判断。
+     */
+    @Nullable
+    private final ICondition canBuyCondition;
     private final CooldownType cooldownType;
     private final long cooldownValue;
     private final int resetTimeTicks;
@@ -51,7 +63,8 @@ public final class TradeEntry {
                       List<ITradeOffer> costs,
                       List<ITradeOffer> rewards,
                       @Nullable TradeCategory category,
-                      @Nullable ICondition condition,
+                      @Nullable ICondition visibleCondition,
+                      @Nullable ICondition canBuyCondition,
                       CooldownType cooldownType,
                       long cooldownValue,
                       int resetTimeTicks,
@@ -71,7 +84,8 @@ public final class TradeEntry {
         this.costs = Collections.unmodifiableList(costs);
         this.rewards = Collections.unmodifiableList(rewards);
         this.category = category;
-        this.condition = condition;
+        this.visibleCondition = visibleCondition;
+        this.canBuyCondition = canBuyCondition;
         this.cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
         this.cooldownValue = cooldownValue;
         this.resetTimeTicks = resetTimeTicks;
@@ -88,7 +102,18 @@ public final class TradeEntry {
     public List<ITradeOffer> getCosts() { return costs; }
     public List<ITradeOffer> getRewards() { return rewards; }
     @Nullable public TradeCategory getCategory() { return category; }
-    @Nullable public ICondition getCondition() { return condition; }
+    
+    /**
+     * 获取可见性条件（控制商品是否显示）。
+     * @return 可见性条件，null 表示始终可见
+     */
+    @Nullable public ICondition getVisibleCondition() { return visibleCondition; }
+    
+    /**
+     * 获取购买资格条件（控制商品是否可购买）。
+     * @return 购买资格条件，null 表示无额外限制
+     */
+    @Nullable public ICondition getCanBuyCondition() { return canBuyCondition; }
     public CooldownType getCooldownType() { return cooldownType; }
     public long getCooldownValue() { return cooldownValue; }
     public int getResetTimeTicks() { return resetTimeTicks; }

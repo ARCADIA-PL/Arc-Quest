@@ -81,19 +81,36 @@ public final class TradeContent {
                         .rewardItem(Items.IRON_PICKAXE, 1)
                         .category(tools)
                         .cooldownGameDay())
-                // 示例：高级物品 - 需要完成任务或拥有flag
+                // 示例1：高级物品 - 可见性和购买资格使用相同条件
                 .entry(TradeEntryBuilder.create("netherite_sword")
                         .displayName(Component.literal("§6下界合金剑"))
-                        .description(Component.literal("§7需要完成新手任务或拥有VIP权限"))
+                        .description(Component.literal("§7需要拥有村庄英雄效果"))
                         .costItem(Items.NETHERITE_INGOT, 3)
                         .costItem(Items.DIAMOND, 5)
                         .rewardItem(Items.NETHERITE_SWORD, 1)
                         .category(weapons)
                         .maxPurchases(1)
+                        // condition() 同时设置可见性和购买资格
                         .condition((serverPlayer, completedQuests, flags, variables) -> {
-                            return serverPlayer.hasEffect(MobEffects.HERO_OF_THE_VILLAGE);
+                            return serverPlayer != null && serverPlayer.hasEffect(MobEffects.HERO_OF_THE_VILLAGE);
                         })
                         .sortOrder(3))
+                // 示例2：特殊商品 - 可见性和购买资格分离
+                .entry(TradeEntryBuilder.create("mystery_box")
+                        .displayName(Component.literal("§d神秘宝箱"))
+                        .description(Component.literal("§7需拥有村庄英雄效果时可见，达到10级后可购买"))
+                        .costItem(Items.EMERALD, 15)
+                        .rewardItem(Items.DIAMOND, 3)
+                        .category(tools)
+                        .visibleCondition((serverPlayer, completedQuests, flags, variables) -> {
+                            return serverPlayer != null && serverPlayer.hasEffect(MobEffects.HERO_OF_THE_VILLAGE);
+                        })
+                        .canBuyCondition((serverPlayer, completedQuests, flags, variables) -> {
+                            return serverPlayer != null && serverPlayer.experienceLevel >= 10;
+                        })
+                        .cooldownGameDay()
+                        .maxPurchases(2)
+                        .sortOrder(4))
                 .buildAndRegister();
     }
 

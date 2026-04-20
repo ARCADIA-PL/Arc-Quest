@@ -20,8 +20,9 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
     public SimpleTradePanel(String shopId, int[] purchaseCounts, int[] maxPurchases,
                             long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
-                            int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility) {
-        super("Quick Trade", shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility);
+                            int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility,
+                            boolean[] canBuyConditions) {
+        super("Quick Trade", shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
         this.entries = new ArrayList<>();
         if (shop != null) {
             int i = 0;
@@ -117,7 +118,8 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                     lastPurchaseTimes[gi], gi >= 0 && gi < purchaseGameTimes.length ? purchaseGameTimes[gi] : 0,
                     gi >= 0 && gi < purchaseDayTimes.length ? purchaseDayTimes[gi] : 0, cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]);
             boolean maxed = !onCd && entry.hasLimit() && gi >= 0 && gi < purchaseCounts.length && purchaseCounts[gi] >= entry.getMaxPurchases();
-            boolean canBuy = !onCd && !maxed;
+            boolean conditionNotMet = !onCd && !maxed && gi >= 0 && gi < canBuyConditions.length && !canBuyConditions[gi];
+            boolean canBuy = !onCd && !maxed && !conditionNotMet;
 
             hoverAnims[i] = QuestAnimUtil.step(hoverAnims[i], hov && canBuy ? 1f : 0f, 10f, dt);
             float hEase = QuestAnimUtil.easeOutCubic(hoverAnims[i]);
@@ -150,11 +152,11 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                 if (entry.getIconOverride() != null) g.blit(entry.getIconOverride(), (int)drawX + 6, itemDrawY, 0, 0, 16, 16, 16, 16);
                 else { ItemStack icon = getIconStackForEntry(entry); if (!icon.isEmpty()) g.renderItem(icon, (int)drawX + 6, itemDrawY); }
 
-                if (onCd || maxed) {
+                if (onCd || maxed || conditionNotMet) {
                     int cardAlpha = (int) (255 * clampedEase * effectiveAlpha);
                     float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5 + 0.5);
                     int pulseAlpha = (int) (cardAlpha * (0.6f + 0.4f * pulse));
-                    int pulseColor = onCd ? 0xFF6666 : 0xAAAAAA;
+                    int pulseColor = onCd ? 0xFF6666 : (maxed ? 0xAAAAAA : 0x4488CC);
 
                     g.fill((int)drawX, (int)drawY, (int)(drawX + l.cardW()), (int)(drawY + l.cardH()),
                             QuestAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.12f)));
@@ -181,6 +183,9 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                 } else if (maxed) {
                     statusStr = "Maxed";
                     scColor = 0xAAAAAA;
+                } else if (conditionNotMet) {
+                    statusStr = "Locked";
+                    scColor = 0x4488CC;
                 }
 
                 int statusW = statusStr.isEmpty() ? 0 : font.width(statusStr);
@@ -248,7 +253,12 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
     @Override
     public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis) {
-        super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis);
+        updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis, new boolean[0]);
+    }
+
+    @Override
+    public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis, boolean[] canBuy) {
+        super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis, canBuy);
         this.entries.clear();
         if (shop != null) {
             List<TradeEntry> allEntries = new ArrayList<>(shop.getAllEntries());

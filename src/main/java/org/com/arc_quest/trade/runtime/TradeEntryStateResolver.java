@@ -1,11 +1,16 @@
 package org.com.arc_quest.trade.runtime;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.slf4j.Logger;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 交易商品状态解析器 - 统一判断和设置商品的各种状态
@@ -82,25 +87,93 @@ public final class TradeEntryStateResolver {
     }
     
     /**
-     * 检查商品是否可购买（综合判断）
-     * 
-     * @param player 玩家对象（用于获取时间）
+     * 检查商品是否对玩家可见（可见性条件）
+     * <p>
+     * 客户端和服务端都会调用此方法，用于 UI 渲染优化。
+     *
+     * @param player 玩家对象（可 null，客户端环境）
+     * @param cap 玩家能力数据
+     * @param entry 商品定义
+     * @return true 如果商品应该显示
+     */
+    public static boolean isVisible(ServerPlayer player, IQuestCapability cap, TradeEntry entry) {
+        if (entry.getVisibleCondition() == null) {
+            return true; // 无条件限制，始终可见
+        }
+        
+        Set<ResourceLocation> completed = cap.getCompletedQuests().stream()
+                .map(ResourceLocation::parse)
+                .collect(Collectors.toSet());
+        
+        boolean visible = entry.getVisibleCondition().test(
+                player,
+                completed,
+                cap.getAllFlags(),
+                cap.getAllVariables()
+        );
+        
+        LOGGER.debug("[Trade-State] Visibility check: entry={}, visible={}",
+                entry.getEntryId(), visible);
+        
+        return visible;
+    }
+    
+    /**
+     * 检查商品是否可购买（综合判断：可见性 + 购买资格 + 限购 + 冷却）
+     * <p>
+     * <b>核心原则：可购买的前提一定是可见</b>
+     * <ul>
+     *   <li>首先检查可见性条件</li>
+     *   <li>然后检查购买资格条件</li>
+     *   <li>最后检查限购和冷却状态</li>
+     * </ul>
+     *
+     * @param player 玩家对象（用于获取时间和条件判断）
      * @param cap 玩家能力数据
      * @param shopId 商店ID
      * @param entry 商品定义
      * @return true 如果可以购买
      */
     public static boolean canPurchase(ServerPlayer player, IQuestCapability cap, String shopId, TradeEntry entry) {
+        // 第一层：可见性检查（必须先可见才能购买）
+        if (!isVisible(player, cap, entry)) {
+            LOGGER.debug("[Trade-State] Purchase blocked: not visible for {}", entry.getEntryId());
+            return false;
+        }
+        
+        // 第二层：购买资格条件检查
+        if (entry.getCanBuyCondition() != null) {
+            Set<ResourceLocation> completed = cap.getCompletedQuests().stream()
+                    .map(ResourceLocation::parse)
+                    .collect(Collectors.toSet());
+            
+            boolean canBuy = entry.getCanBuyCondition().test(
+                    player,
+                    completed,
+                    cap.getAllFlags(),
+                    cap.getAllVariables()
+            );
+            
+            if (!canBuy) {
+                LOGGER.debug("[Trade-State] Purchase blocked: canBuyCondition not met for {}",
+                        entry.getEntryId());
+                return false;
+            }
+        }
+        
+        // 第三层：限购检查
         if (isPurchaseLimitReached(cap, shopId, entry)) {
             LOGGER.debug("[Trade-State] Purchase blocked: limit reached for {}", entry.getEntryId());
             return false;
         }
         
+        // 第四层：冷却检查
         if (isOnCooldown(player, cap, shopId, entry)) {
             LOGGER.debug("[Trade-State] Purchase blocked: on cooldown for {}", entry.getEntryId());
             return false;
         }
         
+        LOGGER.debug("[Trade-State] Purchase allowed: entry={}", entry.getEntryId());
         return true;
     }
     
