@@ -3,6 +3,7 @@ package org.com.arc_quest.quest.condition;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.quest.api.ICondition;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Objects;
@@ -26,7 +27,7 @@ public final class VariableCondition implements ICondition {
     }
 
     @Override
-    public boolean test(ServerPlayer player,
+    public boolean test(@Nullable ServerPlayer player,
                         Set<ResourceLocation> completedQuests,
                         Set<String> flags,
                         Map<String, Integer> variables) {
