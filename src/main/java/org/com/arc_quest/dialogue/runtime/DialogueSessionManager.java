@@ -68,7 +68,7 @@ public final class DialogueSessionManager {
      */
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                           DialogueTree tree, DialogueContext context) {
-        var cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        var cap = QuestCapabilityProvider.getOrNull(player);
 
         String dialogueId = tree.dialogueId();
         
@@ -226,9 +226,12 @@ public final class DialogueSessionManager {
                 ? session.getPlayer().level().getEntity(session.getEntityId()) 
                 : null;
         
-        var cap = session.getPlayer().getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
-        var progress = cap.getDialogueProgress();
-        
+        var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
+        DialogueProgressStore progress = null;
+        if (cap != null) {
+            progress = cap.getDialogueProgress();
+        }
+
         DialogueEvalContext ctx = DialogueEvalContext.of(
                 session.getPlayer(),
                 npc,

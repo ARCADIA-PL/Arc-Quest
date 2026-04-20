@@ -59,7 +59,7 @@ public sealed interface DialogueAction {
     record CompleteQuest(String questId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
-            IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
             QuestRuntimeData data = cap.getActiveQuest(questId);
             if (data != null) {
                 data.setState(QuestState.COMPLETED);
@@ -78,7 +78,7 @@ public sealed interface DialogueAction {
             QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
             if (def == null) return;
 
-            IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
             QuestRuntimeData data = cap.getActiveQuest(questId);
             if (data == null || data.getState() != QuestState.ACTIVE) return;
@@ -87,8 +87,7 @@ public sealed interface DialogueAction {
             if (currentPhase == null) return;
 
             String nextPhaseId = def.evaluateNextPhase(player, currentPhase,
-                    cap.getCompletedQuests().stream().map(ResourceLocation::parse)
-                            .collect(Collectors.toSet()),
+                    cap.getCompletedQuestLocations(),
                     cap.getAllFlags(), cap.getAllVariables());
 
             if (nextPhaseId != null) {
@@ -218,7 +217,7 @@ public sealed interface DialogueAction {
     record SetFlag(String flagName) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
-            IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
             cap.setFlag(flagName);
             LOGGER.debug("[Dialogue] Set flag '{}' for {}", flagName, player.getName().getString());
         }
@@ -234,7 +233,7 @@ public sealed interface DialogueAction {
     record SetVariable(String key, int value) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
-            IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
             cap.setVariable(key, value);
             LOGGER.debug("[Dialogue] Set variable '{}' = {} for {}",
                     key, value, player.getName().getString());

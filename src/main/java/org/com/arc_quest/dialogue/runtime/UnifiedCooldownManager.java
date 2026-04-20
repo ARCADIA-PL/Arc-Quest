@@ -129,4 +129,27 @@ public final class UnifiedCooldownManager {
             return (int) (resetTickNorm - currentDayTick);
         }
     }
+
+    /**
+     * 检测 GAME_TICK 类型冷却记录是否因游戏时间回退而失效，若失效则自动清除。
+     * <p>
+     * 时间回退场景：服务端执行 {@code /time set} 后 dayTime 减小，导致冷却记录中的
+     * dayTime 大于当前 dayTime，此时该记录应视为无效并清除。
+     * <p>
+     * 供对话系统（{@link DialogueActionExecutor}）和交易系统共用。
+     *
+     * @param store    进度存储
+     * @param key      冷却记录的 key
+     * @param nowDayTime 当前 dayTime
+     * @return true 表示检测到时间回退并已清除记录（调用方应跳过后续冷却检查）
+     */
+    public static boolean clearIfTimeRegressed(DialogueProgressStore store, ProgressKey key, long nowDayTime) {
+        Entry entry = store.getChoiceSelection(key);
+        if (entry.exists() && entry.dayTime() > nowDayTime) {
+            store.clearCooldownRecord(key);
+            LOGGER.warn("[Cooldown-Clear] Cleared cooldown record due to time regression: {}", key);
+            return true;
+        }
+        return false;
+    }
 }

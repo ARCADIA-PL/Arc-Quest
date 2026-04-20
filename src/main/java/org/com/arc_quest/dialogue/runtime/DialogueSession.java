@@ -60,8 +60,7 @@ public class DialogueSession {
         this.namespace = resolveNamespace();
 
         // 显式校验 Capability，避免创建临时实例导致数据丢失
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         this.progress = cap.getDialogueProgress();
 

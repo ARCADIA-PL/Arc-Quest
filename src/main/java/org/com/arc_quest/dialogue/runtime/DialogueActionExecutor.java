@@ -72,13 +72,10 @@ public final class DialogueActionExecutor {
         if (choice.cooldownType() != CooldownType.NONE) {
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, nodeId, choiceIndex);
 
-            // GAME_TICK 类型：先检测时间回退
+            // GAME_TICK 类型：先检测时间回退，若回退则清除记录并跳过冷却
             if (choice.cooldownType() == CooldownType.GAME_TICK) {
-                var entry = progress.getChoiceSelection(choiceKey);
-                if (entry.exists() && entry.dayTime() > ts.dayTime()) {
-                    progress.clearCooldownRecord(choiceKey);
-                    LOGGER.warn("[Cooldown-Clear] Cleared cooldown record due to time regression: {}", choiceKey);
-                    return true; // 清除后继续执行，不再检查冷却
+                if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
+                    return true;
                 }
             }
 

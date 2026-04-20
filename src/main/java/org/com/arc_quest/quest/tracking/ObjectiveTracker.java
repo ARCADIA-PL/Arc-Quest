@@ -5,9 +5,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.quest.api.ObjectiveEntry;
-import org.com.arc_quest.quest.api.PhaseDefinition;
-import org.com.arc_quest.quest.api.QuestDefinition;
-import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -43,74 +40,6 @@ public final class ObjectiveTracker {
     // ════════════════════════════════════════
     //  注册 / 注销
     // ════════════════════════════════════════
-
-    /**
-     * 当任务变为 ACTIVE 且进入某阶段时，注册该阶段的所有目标。
-     *
-     * @param playerId 玩家 UUID
-     * @param questId  任务 ID
-     * @param phaseId  阶段 ID
-     */
-    public void registerPhase(UUID playerId, ResourceLocation questId, String phaseId) {
-        QuestDefinition quest = QuestRegistry.get(questId);
-        if (quest == null) {
-            LOGGER.warn("[ObjTracker] Unknown quest: {}", questId);
-            return;
-        }
-        PhaseDefinition phase = quest.getPhase(phaseId);
-        if (phase == null) {
-            LOGGER.warn("[ObjTracker] Unknown phase '{}' in quest {}", phaseId, questId);
-            return;
-        }
-
-        List<ObjectiveEntry> objectives = phase.getObjectives();
-        for (int i = 0; i < objectives.size(); i++) {
-            ObjectiveEntry entry = objectives.get(i);
-            ObjectiveKey key = new ObjectiveKey(entry.getType(), entry.getTargetId());
-
-            TrackedObjective tracked = new TrackedObjective(
-                    playerId, questId, phaseId, i, key, entry.getRequiredCount());
-
-            this.index.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tracked);
-            this.byPlayer.computeIfAbsent(playerId, k -> new ObjectOpenHashSet<>()).add(tracked);
-        }
-
-        LOGGER.debug("[ObjTracker] Registered {} objectives for player {} quest {} phase {}",
-                objectives.size(), playerId, questId, phaseId);
-    }
-
-    /**
-     * 当阶段切换或任务结束时，注销该玩家+任务+阶段的所有目标。
-     */
-    public void unregisterPhase(UUID playerId, ResourceLocation questId, String phaseId) {
-        ObjectOpenHashSet<TrackedObjective> playerSet = this.byPlayer.get(playerId);
-        if (playerSet == null) return;
-
-        Iterator<TrackedObjective> it = playerSet.iterator();
-        int removed = 0;
-        while (it.hasNext()) {
-            TrackedObjective tracked = it.next();
-            if (tracked.getQuestId().equals(questId) && tracked.getPhaseId().equals(phaseId)) {
-                it.remove();
-                // 同步从主索引移除
-                ObjectOpenHashSet<TrackedObjective> keySet = this.index.get(tracked.getKey());
-                if (keySet != null) {
-                    keySet.remove(tracked);
-                    if (keySet.isEmpty()) {
-                        this.index.remove(tracked.getKey());
-                    }
-                }
-                removed++;
-            }
-        }
-
-        if (playerSet.isEmpty()) {
-            this.byPlayer.remove(playerId);
-        }
-
-        LOGGER.debug("[ObjTracker] Unregistered {} objectives for player {} quest {} phase {}",
-                removed, playerId, questId, phaseId);
-    }
 
     /**
      * 当玩家断开连接时，移除该玩家的所有追踪。

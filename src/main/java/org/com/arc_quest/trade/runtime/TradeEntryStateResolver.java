@@ -10,7 +10,6 @@ import org.com.arc_quest.trade.api.TradeEntry;
 import org.slf4j.Logger;
 
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 交易商品状态解析器 - 统一判断和设置商品的各种状态
@@ -101,9 +100,7 @@ public final class TradeEntryStateResolver {
             return true; // 无条件限制，始终可见
         }
         
-        Set<ResourceLocation> completed = cap.getCompletedQuests().stream()
-                .map(ResourceLocation::parse)
-                .collect(Collectors.toSet());
+        Set<ResourceLocation> completed = cap.getCompletedQuestLocations();
         
         boolean visible = entry.getVisibleCondition().test(
                 player,
@@ -143,9 +140,7 @@ public final class TradeEntryStateResolver {
         
         // 第二层：购买资格条件检查
         if (entry.getCanBuyCondition() != null) {
-            Set<ResourceLocation> completed = cap.getCompletedQuests().stream()
-                    .map(ResourceLocation::parse)
-                    .collect(Collectors.toSet());
+            Set<ResourceLocation> completed = cap.getCompletedQuestLocations();
             
             boolean canBuy = entry.getCanBuyCondition().test(
                     player,

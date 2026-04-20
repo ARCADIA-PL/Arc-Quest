@@ -18,7 +18,6 @@ import org.slf4j.Logger;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 任务进度推进的核心逻辑引擎。
@@ -54,8 +53,7 @@ public final class QuestProgressHandler {
             return false;
         }
 
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         // 检查：是否已经在进行或已完成
         if (cap.isQuestActive(questId)) {
@@ -68,9 +66,7 @@ public final class QuestProgressHandler {
         }
 
         // 检查前置条件
-        Set<ResourceLocation> completedQuests = cap.getCompletedQuests().stream()
-                .map(ResourceLocation::parse)
-                .collect(Collectors.toSet());
+        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
         for (ICondition cond : def.getUnlockConditions()) {
             if (!cond.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables())) {
                 LOGGER.debug("[ArcQuest] Accept condition not met for quest: {}", questId);
@@ -134,8 +130,7 @@ public final class QuestProgressHandler {
                                           int amount) {
         if (amount <= 0) return;
 
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) return;
@@ -198,13 +193,7 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName());
 
         // 发放阶段完成奖励
-        for (IReward reward : phase.getPhaseRewards()) {
-            try {
-                reward.grant(player);
-            } catch (Exception e) {
-                LOGGER.error("[ArcQuest] Error granting phase reward: {}", e.getMessage(), e);
-            }
-        }
+        grantRewards(player, phase.getPhaseRewards(), "phase");
 
         // 从追踪器中移除旧阶段目标
         unregisterPhaseObjectives(player, def, phase);
@@ -237,9 +226,7 @@ public final class QuestProgressHandler {
         if (transitions.size() == 1 && !transitions.get(0).requiresChoice()) {
             PhaseTransition auto = transitions.get(0);
 
-            Set<ResourceLocation> completedQuests = cap.getCompletedQuests().stream()
-                    .map(ResourceLocation::parse)
-                    .collect(Collectors.toSet());
+            Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
             boolean conditionsMet = auto.getCondition() == null ||
                     auto.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
 
@@ -306,8 +293,7 @@ public final class QuestProgressHandler {
     public static void handlePlayerChoice(ServerPlayer player,
                                           String questId,
                                           int choiceIndex) {
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null) return;
@@ -328,9 +314,7 @@ public final class QuestProgressHandler {
         ChoiceOption chosen = choices.get(choiceIndex);
 
         // 验证可见性条件
-        Set<ResourceLocation> completedQuests = cap.getCompletedQuests().stream()
-                .map(ResourceLocation::parse)
-                .collect(Collectors.toSet());
+        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
         ICondition visibleCondition = chosen.getVisibleCondition();
         boolean conditionsMet = visibleCondition == null ||
                 visibleCondition.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
@@ -366,13 +350,7 @@ public final class QuestProgressHandler {
         String questId = data.getQuestId();
 
         // 发放最终奖励
-        for (IReward reward : def.getCompletionRewards()) {
-            try {
-                reward.grant(player);
-            } catch (Exception e) {
-                LOGGER.error("[ArcQuest] Error granting completion reward: {}", e.getMessage(), e);
-            }
-        }
+        grantRewards(player, def.getCompletionRewards(), "completion");
 
         for (String flag : def.getFlagsToSetOnComplete()) {
             cap.setFlag(flag);
@@ -398,8 +376,7 @@ public final class QuestProgressHandler {
      * 使任务失败。
      */
     public static void failQuest(ServerPlayer player, String questId) {
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null) return;
@@ -419,8 +396,7 @@ public final class QuestProgressHandler {
      * 放弃任务。
      */
     public static void abandonQuest(ServerPlayer player, String questId) {
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         if (!cap.isQuestActive(questId)) return;
 
@@ -444,8 +420,7 @@ public final class QuestProgressHandler {
      * 强制完成任务（用于指令）。
      */
     public static void forceComplete(ServerPlayer player, String questId) {
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null) return;
@@ -454,13 +429,7 @@ public final class QuestProgressHandler {
         if (def == null) return;
 
         // 发放最终奖励
-        for (IReward reward : def.getCompletionRewards()) {
-            try {
-                reward.grant(player);
-            } catch (Exception e) {
-                LOGGER.error("[ArcQuest] Error granting completion reward: {}", e.getMessage(), e);
-            }
-        }
+        grantRewards(player, def.getCompletionRewards(), "completion");
 
         for (String flag : def.getFlagsToSetOnComplete()) {
             cap.setFlag(flag);
@@ -486,8 +455,7 @@ public final class QuestProgressHandler {
      * 同步指定任务到客户端（用于指令）。
      */
     public static void syncToClient(ServerPlayer player, String questId) {
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data != null) {
@@ -566,6 +534,23 @@ public final class QuestProgressHandler {
     // ═══════════════════════════════════════════════════════
     //  工具方法
     // ═══════════════════════════════════════════════════════
+
+    /**
+     * 安全发放奖励列表，单条失败不中断整体发放。
+     *
+     * @param player  目标玩家
+     * @param rewards 奖励列表
+     * @param context 日志上下文描述（如 "phase"、"completion"）
+     */
+    private static void grantRewards(ServerPlayer player, List<IReward> rewards, String context) {
+        for (IReward reward : rewards) {
+            try {
+                reward.grant(player);
+            } catch (Exception e) {
+                LOGGER.error("[ArcQuest] Error granting {} reward: {}", context, e.getMessage(), e);
+            }
+        }
+    }
 
     private static PhaseDefinition findPhase(QuestDefinition def, String phaseId) {
         return def.getAllPhases().stream()

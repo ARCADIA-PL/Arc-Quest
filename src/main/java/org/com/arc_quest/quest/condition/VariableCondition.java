@@ -2,6 +2,7 @@ package org.com.arc_quest.quest.condition;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.quest.api.CompareOp;
 import org.com.arc_quest.quest.api.ICondition;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,10 +16,10 @@ import java.util.Set;
 public final class VariableCondition implements ICondition {
 
     private final String variableName;
-    private final Op operator;
+    private final CompareOp operator;
     private final int expectedValue;
 
-    public VariableCondition(String variableName, Op operator, int expectedValue) {
+    public VariableCondition(String variableName, CompareOp operator, int expectedValue) {
         Objects.requireNonNull(variableName);
         Objects.requireNonNull(operator);
         this.variableName = variableName;
@@ -38,36 +39,5 @@ public final class VariableCondition implements ICondition {
     @Override
     public String describe() {
         return "Var(" + this.variableName + " " + this.operator + " " + this.expectedValue + ")";
-    }
-
-    public enum Op {
-        EQUAL("=="),
-        NOT_EQUAL("!="),
-        GREATER(">"),
-        GREATER_OR_EQUAL(">="),
-        LESS("<"),
-        LESS_OR_EQUAL("<=");
-
-        private final String symbol;
-
-        Op(String symbol) {
-            this.symbol = symbol;
-        }
-
-        public boolean evaluate(int actual, int expected) {
-            return switch (this) {
-                case EQUAL -> actual == expected;
-                case NOT_EQUAL -> actual != expected;
-                case GREATER -> actual > expected;
-                case GREATER_OR_EQUAL -> actual >= expected;
-                case LESS -> actual < expected;
-                case LESS_OR_EQUAL -> actual <= expected;
-            };
-        }
-
-        @Override
-        public String toString() {
-            return this.symbol;
-        }
     }
 }

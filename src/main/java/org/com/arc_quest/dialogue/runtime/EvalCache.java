@@ -4,8 +4,8 @@ import org.com.arc_quest.dialogue.api.DialogueCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 条件评估缓存。
@@ -32,7 +32,7 @@ public final class EvalCache {
     
     private static final ThreadLocal<EvalCache> CURRENT = ThreadLocal.withInitial(EvalCache::new);
     
-    private final Map<DialogueCondition, Boolean> cache = new ConcurrentHashMap<>();
+    private final Map<DialogueCondition, Boolean> cache = new HashMap<>();
     private boolean inCycle = false;
     
     private EvalCache() {}

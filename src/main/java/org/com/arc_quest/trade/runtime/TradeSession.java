@@ -303,7 +303,7 @@ public final class TradeSession {
     }
 
     private IQuestCapability getCap() {
-        return player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        return QuestCapabilityProvider.getOrNull(player);
     }
 
     public TradeShopDefinition getShop() { return shop; }

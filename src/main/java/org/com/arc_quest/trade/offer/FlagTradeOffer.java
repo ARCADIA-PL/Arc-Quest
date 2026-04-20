@@ -33,14 +33,14 @@ public final class FlagTradeOffer implements ITradeOffer {
     @Override
     public boolean canAfford(ServerPlayer player) {
         if (!isCost) return true;
-        IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         return cap != null && cap.hasFlag(flag);
     }
 
     @Override
     public void execute(ServerPlayer player) {
         if (!isCost) {
-            IQuestCapability cap = player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
             if (cap != null) {
                 cap.setFlag(flag);
             }

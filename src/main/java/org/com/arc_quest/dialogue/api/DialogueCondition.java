@@ -7,6 +7,7 @@ import org.com.arc_quest.dialogue.runtime.DialogueEvalContext;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
+import org.com.arc_quest.quest.api.CompareOp;
 
 import java.util.List;
 import java.util.function.BiPredicate;
@@ -219,15 +220,7 @@ public sealed interface DialogueCondition permits
         @Override
         public boolean test(DialogueEvalContext ctx) {
             int actual = ctx.questCap().getVariable(key);
-            return switch (op) {
-                case "==" -> actual == value;
-                case "!=" -> actual != value;
-                case ">" -> actual > value;
-                case ">=" -> actual >= value;
-                case "<" -> actual < value;
-                case "<=" -> actual <= value;
-                default -> false;
-            };
+            return CompareOp.fromSymbol(op).evaluate(actual, value);
         }
     }
 

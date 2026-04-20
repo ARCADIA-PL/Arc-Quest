@@ -2,6 +2,7 @@ package org.com.arc_quest.quest.capability;
 
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.CapabilityManager;
 import net.minecraftforge.common.capabilities.CapabilityToken;
@@ -15,7 +16,6 @@ import org.jetbrains.annotations.Nullable;
  */
 public class QuestCapabilityProvider implements ICapabilitySerializable<CompoundTag> {
 
-
     public static final Capability<IQuestCapability> QUEST_CAP =
             CapabilityManager.get(new CapabilityToken<>() {
             });
@@ -23,6 +23,16 @@ public class QuestCapabilityProvider implements ICapabilitySerializable<Compound
     private final QuestCapabilityImpl backend = new QuestCapabilityImpl();
     private final LazyOptional<IQuestCapability> optional = LazyOptional.of(() -> backend);
 
+    // ── 静态工具方法 ──────────────────────────────────
+
+    /**
+     * 从玩家身上安全地获取 Capability，不存在时返回 null。
+     * <p>
+     * 消除全项目散落的 {@code player.getCapability(QUEST_CAP).orElse(null)} 模板代码。
+     */
+    public static @NotNull IQuestCapability getOrNull(ServerPlayer player) {
+        return player.getCapability(QUEST_CAP).orElse(null);
+    }
 
     @Override
     public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap,
@@ -44,7 +54,6 @@ public class QuestCapabilityProvider implements ICapabilitySerializable<Compound
     public void deserializeNBT(CompoundTag nbt) {
         backend.deserializeNBT(nbt);
     }
-
 
     public void invalidate() {
         optional.invalidate();

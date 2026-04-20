@@ -1,6 +1,7 @@
 package org.com.arc_quest.quest.capability;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
 
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 玩家任务数据 Capability 接口。
@@ -43,6 +45,17 @@ public interface IQuestCapability {
 
     default List<String> getCompletedQuestIds() {
         return new ArrayList<>(getCompletedQuests());
+    }
+
+    /**
+     * 返回已完成任务的 ResourceLocation 集合。
+     * <p>
+     * 消除调用方重复的 {@code getCompletedQuests().stream().map(ResourceLocation::parse).collect(...)} 模板代码。
+     */
+    default Set<ResourceLocation> getCompletedQuestLocations() {
+        return getCompletedQuests().stream()
+                .map(ResourceLocation::parse)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     void setFlag(String flag);

@@ -1,13 +1,11 @@
 package org.com.arc_quest.quest.capability;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import org.com.arc_quest.quest.api.QuestState;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * 任务运行时数据，存储在 Capability 中。
@@ -15,13 +13,10 @@ import java.util.*;
 public final class QuestRuntimeData {
 
     private final String questId;
-    private final Set<String> localFlags;
-    private final List<String> completedPhases; // 已完成的 phase 历史
     private final long acceptedAtTick;
     private QuestState state;
     private String currentPhaseId;
     private int[] objectiveProgress;
-    // 脏标记，用于I/O防抖
     private boolean isDirty = false;
 
     // ── 构造 ──────────────────────────────────────────────
@@ -35,27 +30,19 @@ public final class QuestRuntimeData {
         this.currentPhaseId = Objects.requireNonNull(initialPhaseId);
         this.objectiveProgress = new int[objectiveCount];
         this.acceptedAtTick = acceptedAtTick;
-        this.localFlags = new HashSet<>();
-        this.completedPhases = new ArrayList<>();
     }
-
 
     private QuestRuntimeData(String questId,
                              QuestState state,
                              String currentPhaseId,
                              int[] objectiveProgress,
-                             long acceptedAtTick,
-                             Set<String> localFlags,
-                             List<String> completedPhases) {
+                             long acceptedAtTick) {
         this.questId = questId;
         this.state = state;
         this.currentPhaseId = currentPhaseId;
         this.objectiveProgress = objectiveProgress;
         this.acceptedAtTick = acceptedAtTick;
-        this.localFlags = localFlags;
-        this.completedPhases = completedPhases;
     }
-
 
     public static QuestRuntimeData deserializeNBT(CompoundTag tag) {
         String questId = tag.getString("QuestId");
@@ -69,20 +56,8 @@ public final class QuestRuntimeData {
         int[] progress = tag.getIntArray("Progress");
         long accepted = tag.getLong("AcceptedAt");
 
-        Set<String> flags = new HashSet<>();
-        ListTag flagList = tag.getList("LocalFlags", Tag.TAG_STRING);
-        for (int i = 0; i < flagList.size(); i++) {
-            flags.add(flagList.getString(i));
-        }
-
-        List<String> completedPhases = new ArrayList<>();
-        ListTag phaseList = tag.getList("CompletedPhases", Tag.TAG_STRING);
-        for (int i = 0; i < phaseList.size(); i++) {
-            completedPhases.add(phaseList.getString(i));
-        }
-
         return new QuestRuntimeData(questId, state, phaseId,
-                Arrays.copyOf(progress, progress.length), accepted, flags, completedPhases);
+                Arrays.copyOf(progress, progress.length), accepted);
     }
 
     public static QuestRuntimeData readFromNetwork(FriendlyByteBuf buf) {
@@ -95,58 +70,21 @@ public final class QuestRuntimeData {
             progress[i] = buf.readVarInt();
         }
         long accepted = buf.readLong();
-        int flagCount = buf.readVarInt();
-        Set<String> flags = new HashSet<>(flagCount);
-        for (int i = 0; i < flagCount; i++) {
-            flags.add(buf.readUtf(256));
-        }
-
-        int phaseCount = buf.readVarInt();
-        List<String> completedPhases = new ArrayList<>(phaseCount);
-        for (int i = 0; i < phaseCount; i++) {
-            completedPhases.add(buf.readUtf(256));
-        }
-
-        return new QuestRuntimeData(questId, state, phaseId, progress, accepted, flags, completedPhases);
+        return new QuestRuntimeData(questId, state, phaseId, progress, accepted);
     }
 
-    public String getQuestId() {
-        return questId;
-    }
-
-    public QuestState getState() {
-        return state;
-    }
+    public String getQuestId()          { return questId; }
+    public QuestState getState()        { return state; }
+    public String getCurrentPhaseId()   { return currentPhaseId; }
+    public int getObjectiveCount()      { return objectiveProgress.length; }
+    public long getAcceptedAtTick()     { return acceptedAtTick; }
 
     public void setState(QuestState state) {
         this.state = Objects.requireNonNull(state);
     }
 
-    public String getCurrentPhaseId() {
-        return currentPhaseId;
-    }
-
     public void setCurrentPhaseId(String phaseId) {
-        // 切换 phase 时，记录旧的 phase 为已完成
-        if (!this.currentPhaseId.equals(phaseId)) {
-            if (!completedPhases.contains(this.currentPhaseId)) {
-                completedPhases.add(this.currentPhaseId);
-            }
-        }
         this.currentPhaseId = Objects.requireNonNull(phaseId);
-    }
-
-    public int getObjectiveCount() {
-        return objectiveProgress.length;
-    }
-
-
-    public long getAcceptedAtTick() {
-        return acceptedAtTick;
-    }
-
-    public Set<String> getLocalFlags() {
-        return Collections.unmodifiableSet(localFlags);
     }
 
     public int getObjectiveProgress(int index) {
@@ -167,14 +105,14 @@ public final class QuestRuntimeData {
         if (clampMax > 0 && objectiveProgress[index] > clampMax) {
             objectiveProgress[index] = clampMax;
         }
-        this.isDirty = true; // 标记为脏数据
+        this.isDirty = true;
         return objectiveProgress[index];
     }
 
     public void setObjectiveProgress(int index, int value) {
         if (index >= 0 && index < objectiveProgress.length) {
             objectiveProgress[index] = value;
-            this.isDirty = true; // 标记为脏数据
+            this.isDirty = true;
         }
     }
 
@@ -185,43 +123,14 @@ public final class QuestRuntimeData {
         this.objectiveProgress = new int[newCount];
     }
 
-    public void addLocalFlag(String flag) {
-        localFlags.add(flag);
-    }
-
-    // ── NBT 序列化 ────────────────────────────────────────
-
-    public boolean hasLocalFlag(String flag) {
-        return localFlags.contains(flag);
-    }
-
-    public void removeLocalFlag(String flag) {
-        localFlags.remove(flag);
-    }
-
-    public List<String> getCompletedPhases() {
-        return Collections.unmodifiableList(completedPhases);
-    }
-
     // ════════════════════════════════════════
     //  脏标记管理
     // ════════════════════════════════════════
 
-    /**
-     * 检查数据是否为脏（需要保存/同步）。
-     */
-    public boolean isDirty() {
-        return isDirty;
-    }
+    public boolean isDirty()  { return isDirty; }
+    public void clearDirty()  { this.isDirty = false; }
 
-    /**
-     * 重置脏标记（在保存/同步后调用）。
-     */
-    public void clearDirty() {
-        this.isDirty = false;
-    }
-
-    // ── 网络序列化 ────────────────────────────────────────
+    // ── NBT 序列化 ────────────────────────────────────────
 
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
@@ -230,21 +139,10 @@ public final class QuestRuntimeData {
         tag.putString("PhaseId", currentPhaseId);
         tag.putIntArray("Progress", objectiveProgress);
         tag.putLong("AcceptedAt", acceptedAtTick);
-
-        ListTag flagList = new ListTag();
-        for (String f : localFlags) {
-            flagList.add(StringTag.valueOf(f));
-        }
-        tag.put("LocalFlags", flagList);
-
-        ListTag phaseList = new ListTag();
-        for (String p : completedPhases) {
-            phaseList.add(StringTag.valueOf(p));
-        }
-        tag.put("CompletedPhases", phaseList);
-
         return tag;
     }
+
+    // ── 网络序列化 ────────────────────────────────────────
 
     public void writeToNetwork(FriendlyByteBuf buf) {
         buf.writeUtf(questId);
@@ -255,14 +153,6 @@ public final class QuestRuntimeData {
             buf.writeVarInt(p);
         }
         buf.writeLong(acceptedAtTick);
-        buf.writeVarInt(localFlags.size());
-        for (String f : localFlags) {
-            buf.writeUtf(f);
-        }
-        buf.writeVarInt(completedPhases.size());
-        for (String p : completedPhases) {
-            buf.writeUtf(p);
-        }
     }
 
     // ── 深拷贝 ────────────────────────────────────────────
@@ -271,9 +161,7 @@ public final class QuestRuntimeData {
         return new QuestRuntimeData(
                 questId, state, currentPhaseId,
                 Arrays.copyOf(objectiveProgress, objectiveProgress.length),
-                acceptedAtTick,
-                new HashSet<>(localFlags),
-                new ArrayList<>(completedPhases));
+                acceptedAtTick);
     }
 
     @Override

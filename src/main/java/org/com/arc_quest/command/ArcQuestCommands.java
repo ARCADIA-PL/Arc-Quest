@@ -192,7 +192,7 @@ public class ArcQuestCommands {
     // ═══════════════════════════════════════════════════════
 
     private static IQuestCapability getCap(ServerPlayer player) {
-        return player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+        return QuestCapabilityProvider.getOrNull(player);
     }
 
     private static IQuestCapability getCapOrError(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {

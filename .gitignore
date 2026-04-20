@@ -156,3 +156,14 @@ build_output.txt
 build_log.txt
 src/generated/resources/.cache/2a65ee2815744be1ef1ffdae1c9a37f2a9cbe2ac
 src/generated/resources/.cache/c622617f6fabf890a00b9275cd5f643584a8a2c8
+logs/2026-04-20-1.log.gz
+logs/debug-1.log.gz
+run-data/logs/2026-04-18-2.log.gz
+run-data/logs/2026-04-18-3.log.gz
+run-data/logs/2026-04-20-1.log.gz
+run-data/logs/2026-04-20-2.log.gz
+run-data/logs/2026-04-20-3.log.gz
+run-data/logs/2026-04-20-4.log.gz
+run-data/logs/2026-04-20-5.log.gz
+run-data/logs/2026-04-20-6.log.gz
+src/test/java/org/com/arc_quest/test/TradeCooldownKeyTest.java
