@@ -2,6 +2,8 @@ package org.com.arc_quest.trade.builder;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
@@ -51,7 +53,32 @@ public final class TradeShopBuilder {
         this.shopId = Objects.requireNonNull(shopId);
     }
 
-    public static TradeShopBuilder create(String shopId) {
+    /**
+     * 创建 Builder，使用完整 ResourceLocation（推荐）。
+     * <p>
+     * 支持自定义命名空间，适合主模组和附属模组使用。
+     *
+     * @param id 完整的资源位置，如 "arc_quest:my_shop" 或 "my_mod:my_shop"
+     */
+    public static TradeShopBuilder create(ResourceLocation id) {
+        return new TradeShopBuilder(id.toString());
+    }
+
+    /**
+     * 创建 Builder，使用字符串 ID（自动解析命名空间）。
+     * <p>
+     * - 如果包含 ":"，则直接作为商店 ID
+     * - 如果不包含 ":"，则默认使用 arc_quest 命名空间
+     *
+     * @param id 资源 ID，如 "arc_quest:my_shop" 或 "my_shop"
+     */
+    public static TradeShopBuilder create(String id) {
+        String shopId;
+        if (id.contains(":")) {
+            shopId = id;
+        } else {
+            shopId = Arc_quest.MOD_ID + ":" + id;
+        }
         return new TradeShopBuilder(shopId);
     }
 

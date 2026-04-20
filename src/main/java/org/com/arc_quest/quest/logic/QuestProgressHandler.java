@@ -3,6 +3,10 @@ package org.com.arc_quest.quest.logic;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.common.MinecraftForge;
+import org.com.arc_quest.api.event.QuestAcceptedEvent;
+import org.com.arc_quest.api.event.QuestCompletedEvent;
+import org.com.arc_quest.api.event.QuestPhaseChangedEvent;
 import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -102,6 +106,9 @@ public final class QuestProgressHandler {
         ArcQuestNetwork.syncQuestState(player, data);
         ArcQuestNetwork.syncFlagsAndVars(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
+        
+        // 发布 Forge 事件（供附属模组监听）
+        MinecraftForge.EVENT_BUS.post(new QuestAcceptedEvent(player, ResourceLocation.parse(questId)));
 
         LOGGER.info("[ArcQuest] Player {} accepted quest: {}",
                 player.getGameProfile().getName(), questId);
@@ -283,6 +290,10 @@ public final class QuestProgressHandler {
         ArcQuestNetwork.syncQuestState(player, data);
         QuestEventBus.fire(QuestChangeEvent.phaseChanged(
                 def.getId(), data.getCurrentPhaseId(), nextPhaseId));
+        
+        // 发布 Forge 事件（供附属模组监听）
+        MinecraftForge.EVENT_BUS.post(new QuestPhaseChangedEvent(
+                player, def.getId(), data.getCurrentPhaseId(), nextPhaseId));
     }
 
     /**
@@ -445,6 +456,9 @@ public final class QuestProgressHandler {
         ArcQuestNetwork.syncQuestState(player, data);
         ArcQuestNetwork.syncFlagsAndVars(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
+        
+        // 发布 Forge 事件（供附属模组监听）
+        MinecraftForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
     }
 
     /**

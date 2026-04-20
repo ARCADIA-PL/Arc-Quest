@@ -53,17 +53,30 @@ public final class QuestBuilder {
     }
 
     /**
-     * 创建 Builder，ID 自动加 arc_quest 命名空间
-     */
-    public static QuestBuilder create(String path) {
-        return new QuestBuilder(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, path));
-    }
-
-    /**
-     * 创建 Builder，使用完整 ResourceLocation
+     * 创建 Builder，使用完整 ResourceLocation（推荐）。
+     * <p>
+     * 支持自定义命名空间，适合主模组和附属模组使用。
+     *
+     * @param id 完整的资源位置，如 "arc_quest:my_quest" 或 "my_mod:my_quest"
      */
     public static QuestBuilder create(ResourceLocation id) {
         return new QuestBuilder(id);
+    }
+
+    /**
+     * 创建 Builder，使用字符串 ID（自动解析命名空间）。
+     * <p>
+     * - 如果包含 ":"，则直接解析为 ResourceLocation
+     * - 如果不包含 ":"，则默认使用 arc_quest 命名空间
+     *
+     * @param id 资源 ID，如 "arc_quest:my_quest" 或 "my_quest"
+     */
+    public static QuestBuilder create(String id) {
+        if (id.contains(":")) {
+            return new QuestBuilder(ResourceLocation.tryParse(id));
+        } else {
+            return new QuestBuilder(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, id));
+        }
     }
 
     // ════════════════════════════════════════

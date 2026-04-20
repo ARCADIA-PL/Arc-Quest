@@ -1,7 +1,9 @@
 package org.com.arc_quest.dialogue.builder;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.registry.DialogueRegistry;
 import org.com.arc_quest.quest.api.QuestVisualConfig;
@@ -42,7 +44,32 @@ public class DialogueTreeBuilder {
         this.dialogueId = Objects.requireNonNull(dialogueId, "dialogueId must not be null");
     }
 
-    public static DialogueTreeBuilder create(String dialogueId) {
+    /**
+     * 创建 Builder，使用完整 ResourceLocation（推荐）。
+     * <p>
+     * 支持自定义命名空间，适合主模组和附属模组使用。
+     *
+     * @param id 完整的资源位置，如 "arc_quest:my_dialogue" 或 "my_mod:my_dialogue"
+     */
+    public static DialogueTreeBuilder create(ResourceLocation id) {
+        return new DialogueTreeBuilder(id.toString());
+    }
+
+    /**
+     * 创建 Builder，使用字符串 ID（自动解析命名空间）。
+     * <p>
+     * - 如果包含 ":"，则直接作为对话树 ID
+     * - 如果不包含 ":"，则默认使用 arc_quest 命名空间
+     *
+     * @param id 资源 ID，如 "arc_quest:my_dialogue" 或 "my_dialogue"
+     */
+    public static DialogueTreeBuilder create(String id) {
+        String dialogueId;
+        if (id.contains(":")) {
+            dialogueId = id;
+        } else {
+            dialogueId = Arc_quest.MOD_ID + ":" + id;
+        }
         return new DialogueTreeBuilder(dialogueId);
     }
 

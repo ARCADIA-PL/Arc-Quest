@@ -3,6 +3,9 @@ package org.com.arc_quest.dialogue.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraftforge.common.MinecraftForge;
+import org.com.arc_quest.api.event.DialogueEndedEvent;
+import org.com.arc_quest.api.event.DialogueStartedEvent;
 import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.capability.DialogueNpcPatch;
 import org.com.arc_quest.dialogue.network.S2COpenDialoguePacket;
@@ -123,6 +126,9 @@ public final class DialogueSessionManager {
         progress.recordDialogueVisit(namespace, dialogueId, nowReal, nowGame, nowDayTime);
 
         sendNodeToClient(session);
+        
+        // 发布 Forge 事件（供附属模组监听）
+        MinecraftForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
 
         return session;
     }
@@ -200,16 +206,24 @@ public final class DialogueSessionManager {
     public void endDialogue(ServerPlayer player) {
         DialogueSession session = sessions.remove(player.getUUID());
         if (session != null) {
+            String dialogueId = session.getTree().dialogueId();
+            Entity npcEntity = null;
+            
             if (session.getEntityId() != -1) {
-                Entity entity = player.level().getEntity(session.getEntityId());
-                if (entity instanceof IDialogueNpc) {
-                    DialogueNpcPatch patch = DialogueNpcPatch.get(entity);
+                npcEntity = player.level().getEntity(session.getEntityId());
+                if (npcEntity instanceof IDialogueNpc) {
+                    DialogueNpcPatch patch = DialogueNpcPatch.get(npcEntity);
                     patch.clearConversing();
                 }
             }
 
             if (!session.isEnded()) {
                 session.end();
+            }
+            
+            // 发布 Forge 事件（供附属模组监听）
+            if (npcEntity != null) {
+                MinecraftForge.EVENT_BUS.post(new DialogueEndedEvent(player, npcEntity, dialogueId));
             }
         }
     }

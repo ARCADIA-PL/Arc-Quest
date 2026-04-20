@@ -5,6 +5,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.Items;
+import org.com.arc_quest.api.ArcQuestAPI;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.builder.TradeEntryBuilder;
 import org.com.arc_quest.trade.builder.TradeShopBuilder;
@@ -12,6 +13,8 @@ import org.slf4j.Logger;
 
 /**
  * 示例交易商店注册 —— 展示交易系统的各种能力。
+ * <p>
+ * 展示如何使用 ArcQuestAPI 进行商店注册（Lib 模组标准实践）。
  */
 public final class TradeContent {
 
@@ -39,7 +42,8 @@ public final class TradeContent {
         TradeCategory armor = TradeCategory.ofTranslatedColor("armor", "arc_quest.trade.category.armor", 1, ChatFormatting.AQUA);
         TradeCategory tools = TradeCategory.ofTranslatedColor("tools", "arc_quest.trade.category.tools", 2, ChatFormatting.GREEN);
 
-        TradeShopBuilder.create("blacksmith_shop")
+        ArcQuestAPI.registerTradeShop(
+            TradeShopBuilder.create("arc_quest:blacksmith_shop")
                 .displayName(Component.translatable("arc_quest.trade.shop.blacksmith_shop.name"))
                 .description(Component.translatable("arc_quest.trade.shop.blacksmith_shop.desc"))
                 .category(weapons)
@@ -109,7 +113,8 @@ public final class TradeContent {
                         .cooldownGameDay()
                         .maxPurchases(2)
                         .sortOrder(4))
-                .buildAndRegister();
+                .build()
+        );
     }
 
     /**
@@ -118,7 +123,8 @@ public final class TradeContent {
     private static void registerMerchantShop() {
         TradeCategory supplies = TradeCategory.ofTranslatedColor("supplies", "arc_quest.trade.category.supplies", 0, ChatFormatting.GREEN);
 
-        TradeShopBuilder.create("merchant_shop")
+        ArcQuestAPI.registerTradeShop(
+            TradeShopBuilder.create("arc_quest:merchant_shop")
                 .displayName(Component.translatable("arc_quest.trade.shop.merchant_shop.name"))
                 .description(Component.translatable("arc_quest.trade.shop.merchant_shop.desc"))
                 .category(supplies)
@@ -135,7 +141,8 @@ public final class TradeContent {
                         .costItem(Items.EMERALD, 5)
                         .rewardItem(Items.TORCH, 32)
                         .category(supplies))
-                .buildAndRegister();
+                .build()
+        );
     }
 
     /**
@@ -144,7 +151,8 @@ public final class TradeContent {
     private static void registerWanderingTraderShop() {
         TradeCategory rare = TradeCategory.ofTranslatedColor("rare", "arc_quest.trade.category.rare", 0, ChatFormatting.AQUA);
 
-        TradeShopBuilder.create("wandering_trader_shop")
+        ArcQuestAPI.registerTradeShop(
+            TradeShopBuilder.create("arc_quest:wandering_trader_shop")
                 .displayName(Component.translatable("arc_quest.trade.shop.wandering_trader_shop.name"))
                 .description(Component.translatable("arc_quest.trade.shop.wandering_trader_shop.desc"))
                 .category(rare)
@@ -163,7 +171,8 @@ public final class TradeContent {
                         .rewardItem(Items.LAPIS_LAZULI, 4)
                         .rewardItem(Items.PINK_DYE, 4)
                         .category(rare))
-                .buildAndRegister();
+                .build()
+        );
     }
 
     /**
@@ -175,7 +184,8 @@ public final class TradeContent {
     private static void registerMysteriousMerchantShop() {
         TradeCategory rare = TradeCategory.ofTranslatedColor("rare", "arc_quest.trade.category.rare", 0, ChatFormatting.LIGHT_PURPLE);
 
-        TradeShopBuilder.create("mysterious_merchant_shop")
+        ArcQuestAPI.registerTradeShop(
+            TradeShopBuilder.create("arc_quest:mysterious_merchant_shop")
                 .displayName(Component.translatable("arc_quest.trade.shop.mysterious_merchant_shop.name"))
                 .description(Component.translatable("arc_quest.trade.shop.mysterious_merchant_shop.desc"))
                 .category(rare)
@@ -195,14 +205,16 @@ public final class TradeContent {
                         .category(rare)
                         .maxPurchases(1)
                         .cooldownGameDay())
-                .buildAndRegister();
+                .build()
+        );
     }
 
     /**
      * 快速补给 —— 简易交易弹窗示例 (匹配 Village Guard)
      */
     private static void registerQuickSupplies() {
-        TradeShopBuilder.create("quick_supplies")
+        ArcQuestAPI.registerTradeShop(
+            TradeShopBuilder.create("arc_quest:quick_supplies")
                 .displayName(Component.translatable("arc_quest.trade.shop.quick_supplies.name"))
                 .simpleMode() // 开启简易模式
                 .entry(TradeEntryBuilder.create("qs_bread")
@@ -213,6 +225,7 @@ public final class TradeContent {
                         .displayName(Component.translatable("arc_quest.trade.entry.qs_potion.name"))
                         .costItem(Items.EMERALD, 3)
                         .rewardEffect(MobEffects.HEAL, 1))
-                .buildAndRegister();
+                .build()
+        );
     }
 }

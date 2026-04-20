@@ -3,6 +3,9 @@ package org.com.arc_quest.trade.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.common.MinecraftForge;
+import org.com.arc_quest.api.event.TradeItemPurchasedEvent;
+import org.com.arc_quest.api.event.TradeOpenedEvent;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
@@ -158,6 +161,9 @@ public class C2SRequestTradePacket {
         ArcQuestNetwork.CHANNEL.send(
                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
                 response);
+        
+        // 发布 Forge 事件（供附属模组监听）
+        MinecraftForge.EVENT_BUS.post(new TradeOpenedEvent(player, shop.getShopId()));
     }
 
     private static void handlePurchase(ServerPlayer player, TradeShopDefinition shop,
@@ -172,6 +178,11 @@ public class C2SRequestTradePacket {
         ArcQuestNetwork.CHANNEL.send(
                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
                 response);
+        
+        // 发布 Forge 事件（供附属模组监听）
+        if (result.succeeded()) {
+            MinecraftForge.EVENT_BUS.post(new TradeItemPurchasedEvent(player, shop.getShopId(), entryId));
+        }
 
         refreshTradeData(player, shop, clientScreenType);
     }

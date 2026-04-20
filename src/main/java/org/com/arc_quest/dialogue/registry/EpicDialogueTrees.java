@@ -2,6 +2,7 @@ package org.com.arc_quest.dialogue.registry;
 
 import net.minecraft.network.chat.Component;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.api.ArcQuestAPI;
 import org.com.arc_quest.dialogue.api.DialogueCondition;
 import org.com.arc_quest.dialogue.builder.DialogueTreeBuilder;
 
@@ -9,6 +10,8 @@ import java.util.List;
 
 /**
  * 史诗主线任务配套对话树 —— 展示与 EpicMainlineDemo 的深度联动。
+ * <p>
+ * 展示如何使用 ArcQuestAPI 进行对话树注册（Lib 模组标准实践）。
  */
 public final class EpicDialogueTrees {
 
@@ -73,7 +76,8 @@ public final class EpicDialogueTrees {
      * </pre>
      */
     private static void registerVillageElder() {
-        DialogueTreeBuilder.create("epic_village_elder")
+        ArcQuestAPI.registerDialogueTree(
+            DialogueTreeBuilder.create("arc_quest:epic_village_elder")
                 .npc(Component.translatable("dialogue.epic_village_elder.npc_name").getString())
 
                 // ═══════════════════════════════════════════
@@ -89,19 +93,19 @@ public final class EpicDialogueTrees {
 
                 // 情况2：序章进行中 - gather_wood 阶段
                 .sayIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "gather_wood"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:gather_wood"),
                         Component.translatable("dialogue.epic_village_elder.start.phase_gather_wood").getString()
                 )
 
                 // 情况3：序章进行中 - talk_villager 阶段
                 .sayIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "talk_villager"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:talk_villager"),
                         Component.translatable("dialogue.epic_village_elder.start.phase_talk_villager").getString()
                 )
 
                 // 情况4：序章进行中 - defend_village 阶段
                 .sayIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "defend_village"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:defend_village"),
                         Component.translatable("dialogue.epic_village_elder.start.phase_defend").getString()
                 )
 
@@ -140,7 +144,7 @@ public final class EpicDialogueTrees {
                 )
 
                 .choiceIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "talk_villager"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:talk_villager"),
                         Component.translatable("dialogue.epic_village_elder.start.choice_accept_mission").getString(),
                         c -> c
                                 .notifyInteract("arc_quest:village_elder")
@@ -148,7 +152,7 @@ public final class EpicDialogueTrees {
                 )
 
                 .choiceIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "defend_village"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:defend_village"),
                         Component.translatable("dialogue.epic_village_elder.start.choice_encourage").getString(),
                         c -> c
                                 .giveItem("minecraft:potion{Potion:\"minecraft:strength\"}", 1)
@@ -254,7 +258,8 @@ public final class EpicDialogueTrees {
                 .choice(Component.translatable("dialogue.epic_village_elder.decline.choice1").getString(),
                         DialogueTreeBuilder.ChoiceBuilder::close)
 
-                .buildAndRegister();
+                .build()
+        );
 
         Arc_quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_village_elder");
     }
@@ -263,7 +268,8 @@ public final class EpicDialogueTrees {
      * 铁匠 —— 装备升级商人
      */
     private static void registerBlacksmith() {
-        DialogueTreeBuilder.create("epic_blacksmith")
+        ArcQuestAPI.registerDialogueTree(
+            DialogueTreeBuilder.create("arc_quest:epic_blacksmith")
                 .npc(Component.translatable("dialogue.epic_blacksmith.npc_name").getString())
 
                 .node("start")
@@ -291,35 +297,36 @@ public final class EpicDialogueTrees {
                 .choiceIf(
                         new DialogueCondition.QuestActive("arc_quest:epic_prologue"),
                         Component.translatable("dialogue.epic_blacksmith.start.choice_buy_stone_sword").getString(),
-                        c -> c.presetStoneSword().close()  // ← 使用预设动作
+                        c -> c.presetStoneSword().close()
                 )
 
                 .choiceIf(
                         new DialogueCondition.QuestActive("arc_quest:epic_chapter1"),
                         Component.translatable("dialogue.epic_blacksmith.start.choice_buy_iron_gear").getString(),
-                        c -> c.presetIronArmorSet().close()  // ← 使用预设动作
+                        c -> c.presetIronArmorSet().close()
                 )
 
                 .choiceIf(
                         new DialogueCondition.QuestCompleted("arc_quest:epic_chapter1"),
                         Component.translatable("dialogue.epic_blacksmith.start.choice_buy_diamond_gear").getString(),
-                        c -> c.presetDiamondArmorSet().close()  // ← 使用预设动作
+                        c -> c.presetDiamondArmorSet().close()
                 )
 
                 .choiceIf(
                         new DialogueCondition.QuestCompleted("arc_quest:epic_finale"),
                         Component.translatable("dialogue.epic_blacksmith.start.choice_buy_netherite").getString(),
-                        c -> c.presetNetheriteIngot().close()  // ← 使用预设动作
+                        c -> c.presetNetheriteIngot().close()
                 )
 
                 // 链接到铁匠铺商店
                 .choice(Component.translatable("dialogue.epic_blacksmith.start.choice_open_shop").getString(),
-                        c -> c.openTrade("blacksmith_shop"))
+                        c -> c.openTrade("arc_quest:blacksmith_shop"))
 
                 .choice(Component.translatable("dialogue.epic_blacksmith.start.choice_leave").getString(),
                         DialogueTreeBuilder.ChoiceBuilder::close)
 
-                .buildAndRegister();
+                .build()
+        );
 
         Arc_quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_blacksmith");
     }
@@ -328,18 +335,19 @@ public final class EpicDialogueTrees {
      * 商人 —— 物资供应商
      */
     private static void registerMerchant() {
-        DialogueTreeBuilder.create("epic_merchant")
+        ArcQuestAPI.registerDialogueTree(
+            DialogueTreeBuilder.create("arc_quest:epic_merchant")
                 .npc(Component.translatable("dialogue.epic_merchant.npc_name").getString())
 
                 .node("start")
 
                 // 使用 sayIf() 根据任务阶段显示不同文本
                 .sayIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "gather_wood"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:gather_wood"),
                         Component.translatable("dialogue.epic_merchant.start.phase_gather").getString()
                 )
                 .sayIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "defend_village"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:defend_village"),
                         Component.translatable("dialogue.epic_merchant.start.phase_defend").getString()
                 )
                 .sayIf(
@@ -350,13 +358,13 @@ public final class EpicDialogueTrees {
 
                 // 选项 - 使用预设动作
                 .choiceIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "gather_wood"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:gather_wood"),
                         Component.translatable("dialogue.epic_merchant.start.choice_buy_food").getString(),
-                        c -> c.presetBread().close()  // ← 使用预设动作
+                        c -> c.presetBread().close()
                 )
 
                 .choiceIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "defend_village"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:defend_village"),
                         Component.translatable("dialogue.epic_merchant.start.choice_buy_potions").getString(),
                         c -> c.giveItem("minecraft:potion{Potion:\"minecraft:healing\"}", 2).close()
                 )
@@ -364,7 +372,7 @@ public final class EpicDialogueTrees {
                 .choiceIf(
                         new DialogueCondition.QuestActive("arc_quest:epic_chapter1"),
                         Component.translatable("dialogue.epic_merchant.start.choice_buy_torches").getString(),
-                        c -> c.presetTorches().close()  // ← 使用预设动作
+                        c -> c.presetTorches().close()
                 )
 
                 .choice(Component.translatable("dialogue.epic_merchant.start.choice_browse").getString(),
@@ -380,11 +388,12 @@ public final class EpicDialogueTrees {
                         c -> c.giveItem("minecraft:iron_pickaxe", 1).giveItem("minecraft:iron_axe", 1).close())
                 // 链接到旅行商人商店
                 .choice(Component.translatable("dialogue.epic_merchant.shop_menu.choice_open_shop").getString(),
-                        c -> c.openTrade("merchant_shop"))
+                        c -> c.openTrade("arc_quest:merchant_shop"))
                 .choice(Component.translatable("dialogue.epic_merchant.shop_menu.choice_back").getString(),
                         c -> c.goTo("start"))
 
-                .buildAndRegister();
+                .build()
+        );
 
         Arc_quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_merchant");
     }
@@ -395,7 +404,8 @@ public final class EpicDialogueTrees {
      * 展示如何根据任务状态动态显示不同的对话文本。
      */
     private static void registerWanderingTrader() {
-        DialogueTreeBuilder.create("epic_wandering_trader")
+        ArcQuestAPI.registerDialogueTree(
+            DialogueTreeBuilder.create("arc_quest:epic_wandering_trader")
                 .npc(Component.translatable("dialogue.epic_wandering_trader.npc_name").getString())
 
                 // ═══════════════════════════════════════════
@@ -458,7 +468,7 @@ public final class EpicDialogueTrees {
                         c -> c.goTo("equipment_menu"))
                 // 链接到流浪商人商店
                 .choice(Component.translatable("dialogue.epic_wandering_trader.shop_menu.choice_open_shop").getString(),
-                        c -> c.openTrade("wandering_trader_shop"))
+                        c -> c.openTrade("arc_quest:wandering_trader_shop"))
                 .choice(Component.translatable("dialogue.epic_wandering_trader.shop_menu.choice_back").getString(),
                         c -> c.goTo("start"))
 
@@ -470,7 +480,7 @@ public final class EpicDialogueTrees {
 
                 // 根据任务阶段显示不同装备
                 .choiceIf(
-                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "gather_wood"),
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:gather_wood"),
                         Component.translatable("dialogue.epic_wandering_trader.equipment_menu.choice_stone").getString(),
                         c -> c.presetStoneSword().goTo("purchase_complete")
                 )
@@ -503,7 +513,8 @@ public final class EpicDialogueTrees {
                 .choice(Component.translatable("dialogue.epic_wandering_trader.rumors.choice_back").getString(),
                         c -> c.goTo("start"))
 
-                .buildAndRegister();
+                .build()
+        );
 
         Arc_quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_wandering_trader (with sayIf)");
     }
@@ -520,7 +531,8 @@ public final class EpicDialogueTrees {
      * </ul>
      */
     private static void registerVillageGuard() {
-        DialogueTreeBuilder.create("epic_village_guard")
+        ArcQuestAPI.registerDialogueTree(
+            DialogueTreeBuilder.create("arc_quest:epic_village_guard")
                 .npc(Component.translatable("dialogue.epic_village_guard.npc_name").getString())
 
                 // ═══════════════════════════════════════════
@@ -583,7 +595,7 @@ public final class EpicDialogueTrees {
 
                 // 选项5：快速补给（简易弹窗）
                 .choice(Component.translatable("dialogue.epic_village_guard.start.choice_quick_trade").getString(),
-                        c -> c.openSimpleTrade("quick_supplies"))
+                        c -> c.openSimpleTrade("arc_quest:quick_supplies"))
 
                 // 选项6：告别
                 .choice(
@@ -646,7 +658,8 @@ public final class EpicDialogueTrees {
                 .choice(Component.translatable("dialogue.epic_village_guard.chat.choice_back").getString(),
                         c -> c.goTo("start"))
 
-                .buildAndRegister();
+                .build()
+        );
 
         Arc_quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_village_guard (with time-based features)");
     }
@@ -663,7 +676,8 @@ public final class EpicDialogueTrees {
      * </ul>
      */
     private static void registerMysteriousMerchant() {
-        DialogueTreeBuilder.create("epic_mysterious_merchant")
+        ArcQuestAPI.registerDialogueTree(
+            DialogueTreeBuilder.create("arc_quest:epic_mysterious_merchant")
                 .npc(Component.translatable("dialogue.epic_mysterious_merchant.npc_name").getString())
 
                 // ═══════════════════════════════════════════
@@ -721,7 +735,7 @@ public final class EpicDialogueTrees {
 
                 // 选项2：询问身份（首次见面）
                 .choiceIf(
-                        new DialogueCondition.Not(new DialogueCondition.DialogueCompleted("epic_mysterious_merchant")),
+                        new DialogueCondition.Not(new DialogueCondition.DialogueCompleted("arc_quest:epic_mysterious_merchant")),
                         Component.translatable("dialogue.epic_mysterious_merchant.start.choice_identity").getString(),
                         c -> c.goTo("identity")
                 )
@@ -739,7 +753,7 @@ public final class EpicDialogueTrees {
                 // 链接到神秘商人商店（替代原本的直接给予物品）
                 .choice(
                         Component.translatable("dialogue.epic_mysterious_merchant.shop.choice_rare").getString(),
-                        c -> c.openTrade("mysterious_merchant_shop").close()
+                        c -> c.openTrade("arc_quest:mysterious_merchant_shop").close()
                 )
 
                 // 返回
@@ -754,7 +768,8 @@ public final class EpicDialogueTrees {
                 .choice(Component.translatable("dialogue.epic_mysterious_merchant.identity.choice_back").getString(),
                         c -> c.goTo("start"))
 
-                .buildAndRegister();
+                .build()
+        );
 
         Arc_quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_mysterious_merchant (with custom time ranges)");
     }

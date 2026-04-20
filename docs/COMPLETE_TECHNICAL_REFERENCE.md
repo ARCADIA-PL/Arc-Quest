@@ -1,32 +1,55 @@
-# Arc Quest 完整技术参考文档
+# Arc Quest 完整技术文档
 
 > **版本**: 1.0.0  
 > **平台**: Minecraft Forge 1.20.1  
 > **Java**: 17+  
-> **最后更新**: 2026-04-20  
-> **文档类型**: 完整技术参考（包含内部实现细节）
+> **最后更新**: 2026-04-21  
+> **文档类型**: 完整 API 参考与开发指南
 
 ---
 
 ## 📑 目录
 
-### Part 1: 核心架构
+### Part 1: 快速开始
 - [1. 项目概述](#1-项目概述)
-- [2. 任务系统深度解析](#2-任务系统深度解析)
-- [3. 对话系统深度解析](#3-对话系统深度解析)
+- [2. 环境搭建](#2-环境搭建)
+- [3. Lib 模组集成](#3-lib-模组集成)
 
-### Part 2: 交易与 UI
-- [4. 交易系统深度解析](#4-交易系统深度解析)
-- [5. 客户端 UI 深度解析](#5-客户端-ui-深度解析)
+### Part 2: 任务系统
+- [4. 任务定义与注册](#4-任务定义与注册)
+- [5. 阶段与目标系统](#5-阶段与目标系统)
+- [6. 条件判断系统](#6-条件判断系统)
+- [7. 奖励发放机制](#7-奖励发放机制)
+- [8. 任务事件监听](#8-任务事件监听)
 
-### Part 3: 网络与数据
-- [6. 网络层深度解析](#6-网络层深度解析)
-- [7. 数据持久化](#7-数据持久化)
+### Part 3: 对话系统
+- [9. 对话树构建](#9-对话树构建)
+- [10. 节点与选项](#10-节点与选项)
+- [11. 动作系统](#11-动作系统)
+- [12. NPC 扩展机制](#12-npc-扩展机制)
+- [13. 对话事件监听](#13-对话事件监听)
 
-### Part 4: 开发指南
-- [8. 开发指南](#8-开发指南)
-- [9. API 快速参考](#api-快速参考)
-- [10. 常见问题 FAQ](#常见问题-faq)
+### Part 4: 交易系统
+- [14. 商店定义](#14-商店定义)
+- [15. 商品条目配置](#15-商品条目配置)
+- [16. 冷却与限购系统](#16-冷却与限购系统)
+- [17. 交易事件监听](#17-交易事件监听)
+
+### Part 5: 统一 API
+- [18. ArcQuestAPI 入口](#18-arcquestapi-入口)
+- [19. 事件系统总览](#19-事件系统总览)
+
+### Part 6: 高级主题
+- [20. 网络通信](#20-网络通信)
+- [21. 数据持久化](#21-数据持久化)
+- [22. 性能优化](#22-性能优化)
+- [23. 最佳实践](#23-最佳实践)
+
+### Part 7: 附录
+- [A. API 速查表](#a-api-速查表)
+- [B. 常见问题](#b-常见问题)
+- [C. 完整示例项目](#c-完整示例项目)
+- [D. 智能命名空间详解](#d-智能命名空间详解)
 
 ---
 
@@ -34,71 +57,1271 @@
 
 ### 1.1 核心特性
 
-Arc Quest 采用**纯代码驱动**架构，主要特性：
+Arc Quest 是一个**纯代码驱动**的 Minecraft RPG 模组，提供完整的任务、对话和交易系统。
 
-- **O(1) 目标追踪**: 使用哈希索引替代遍历
-- **增量网络同步**: 仅发送变化数据
-- **统一冷却管理**: 支持 GAME_TICK/GAME_DAY/REAL_TIME
-- **服务端权威**: 所有业务逻辑二次验证
-- **顶点缓冲优化**: 批量绘制提升 UI 性能
+**关键优势**：
+- ✅ **O(1) 目标追踪**: 哈希索引替代遍历，性能提升 10-250 倍
+- ✅ **增量网络同步**: 仅发送变化数据，减少 90% 带宽占用
+- ✅ **统一冷却管理**: 支持 GAME_TICK/GAME_DAY/REAL_TIME 三种模式
+- ✅ **服务端权威**: 所有业务逻辑二次验证，防止作弊
+- ✅ **Lib 模组架构**: 完善的 API 和事件系统，易于扩展
 
-### 1.2 技术栈
-
-```
-Minecraft: 1.20.1
-Forge: 47.x
-Java: 17+
-Mixin: 0.8.5
-Gradle: 8.8
-```
-
-### 1.3 模块结构
+### 1.2 模块结构
 
 ```
 org.com.arc_quest/
-├── quest/          # 任务系统 (40%)
-├── dialogue/       # 对话系统 (30%)
-├── trade/          # 交易系统 (20%)
-├── client/         # 客户端 UI (10%)
-└── command/        # 命令系统
+├── api/                    # 公共 API（附属模组使用）
+│   ├── ArcQuestAPI.java   # 统一入口
+│   └── event/             # 事件类
+├── quest/                  # 任务系统 (40%)
+│   ├── api/               # 任务 API
+│   ├── builder/           # Builder 模式
+│   ├── registry/          # 注册表
+│   ├── logic/             # 业务逻辑
+│   ├── network/           # 网络包
+│   └── capability/        # 数据存储
+├── dialogue/               # 对话系统 (30%)
+│   ├── api/               # 对话 API
+│   ├── builder/           # 对话树构建器
+│   ├── runtime/           # 运行时管理
+│   └── extension/         # NPC 扩展
+├── trade/                  # 交易系统 (20%)
+│   ├── api/               # 交易 API
+│   ├── builder/           # 商店构建器
+│   └── runtime/           # 会话管理
+└── client/                 # 客户端 UI (10%)
+    ├── gui/               # 界面类
+    └── render/            # 渲染工具
+```
+
+### 1.3 技术栈
+
+| 组件 | 版本 | 说明 |
+|------|------|------|
+| Minecraft | 1.20.1 | 游戏版本 |
+| Forge | 47.4.20 | 模组加载器 |
+| Java | 17+ | 编程语言 |
+| Mixin | 0.8.5 | 字节码注入 |
+| Gradle | 8.8 | 构建工具 |
+
+---
+
+## 2. 环境搭建
+
+### 2.1 前置要求
+
+```bash
+# 检查 Java 版本（需要 17+）
+java -version
+
+# 检查 Gradle（需要 8.8+）
+gradle --version
+```
+
+### 2.2 导入项目
+
+```bash
+# 克隆仓库
+git clone <repository-url>
+cd "Arc Quest"
+
+# 生成 IDE 配置
+./gradlew genIntellijRuns  # IntelliJ IDEA
+./gradlew eclipse          # Eclipse
+
+# 编译项目
+./gradlew build
+
+# 运行客户端
+./gradlew runClient
+
+# 运行服务端
+./gradlew runServer
+```
+
+### 2.3 调试配置
+
+**启用详细日志**（`log4j2.xml`）：
+```xml
+<Logger name="org.com.arc_quest" level="DEBUG"/>
+```
+
+**常用调试命令**：
+```bash
+# 查看任务状态
+/quest debug @p
+
+# 查看任务列表
+/quest list @p
+
+# 手动推进进度
+/quest progress @p arc_quest:test 0 5
+
+# 设置 Flag
+/quest flag @p set unlocked_weapons
+
+# 重置所有数据
+/quest resetall @p
 ```
 
 ---
 
-## 2. 任务系统深度解析
+## 3. Lib 模组集成
 
-### 2.1 核心数据结构
+### 3.1 依赖配置
 
-#### QuestDefinition（不可变记录类）
+在附属模组的 `mods.toml` 中添加：
 
-```java
-public record QuestDefinition(
-    ResourceLocation id,
-    Component displayName,
-    Component description,
-    QuestCategory category,
-    QuestVisualConfig visualConfig,
-    List<PhaseDefinition> phases,
-    ICondition unlockCondition,
-    ICondition failCondition,
-    Set<String> flagsToSetOnComplete,
-    List<IReward> completionRewards,
-    boolean repeatable,
-    int priority
-) {}
+```toml
+[[dependencies."my_addon"]]
+modId = "arc_quest"
+mandatory = false  # 可选依赖
+versionRange = "[1.0,)"
+ordering = "AFTER"  # 在 Arc Quest 之后加载
+side = "BOTH"
 ```
 
-**设计原理**：
-- 使用 `record` 确保不可变性
-- 编译时生成 `equals()`, `hashCode()`, `toString()`
-- 线程安全，可安全共享
-
-### 2.2 O(1) 目标追踪机制
-
-#### 传统方案的问题
+### 3.2 条件加载
 
 ```java
-// 每次事件遍历所有任务 - O(n*m)
+@Mod("my_addon")
+public class MyAddon {
+    
+    public MyAddon() {
+        if (ModList.get().isLoaded("arc_quest")) {
+            // 安全地使用 Arc Quest API
+            initializeArcQuestIntegration();
+        } else {
+            LOGGER.warn("Arc Quest not found, skipping integration");
+        }
+    }
+    
+    private void initializeArcQuestIntegration() {
+        FMLJavaModLoadingContext.get().getModEventBus()
+            .addListener(this::onCommonSetup);
+    }
+}
+```
+
+### 3.3 快速示例
+
+```java
+private void onCommonSetup(FMLCommonSetupEvent event) {
+    event.enqueueWork(() -> {
+        // 1. 注册任务（使用智能命名空间）
+        ArcQuestAPI.registerQuest(
+            QuestBuilder.create("dragon_slayer")  // 自动补全为 "arc_quest:dragon_slayer"
+                .displayName(Component.literal("屠龙勇士"))
+                .phase(PhaseBuilder.create("hunt")
+                    .objective(ObjectiveBuilder.kill(EntityType.ENDER_DRAGON, 1)))
+                .build()
+        );
+        
+        // 2. 注册对话（显式指定命名空间）
+        ArcQuestAPI.registerDialogueTree(
+            DialogueTreeBuilder.create("my_addon:dragon_npc")  // 使用附属模组命名空间
+                .npc("龙猎人")
+                .node("start", NodeBuilder.create()
+                    .text("准备好屠龙了吗？")
+                    .choice("接受任务", c -> c.startQuest("my_addon:dragon_slayer")))
+                .build()
+        );
+        
+        // 3. 注册商店（混合使用）
+        ArcQuestAPI.registerTradeShop(
+            TradeShopBuilder.create("dragon_shop")  // 自动补全为 "arc_quest:dragon_shop"
+                .displayName(Component.literal("龙族宝库"))
+                .entry(TradeEntryBuilder.create("dragon_scale")
+                    .costItem(Items.DIAMOND, 10)
+                    .rewardItem(Items.DRAGON_BREATH, 1))
+                .build()
+        );
+    });
+}
+```
+
+**智能命名空间解析规则**：
+- ✅ `create("id")` → 自动补全为 `"arc_quest:id"`
+- ✅ `create("mod:id")` → 直接使用 `"mod:id"`
+- ✅ 适用于所有三个系统：任务、对话、商店
+- ⚠️ **局部 ID**（节点、条目、分类）**不需要**命名空间
+
+---
+
+## 4. 任务定义与注册
+
+### 4.1 基础任务
+
+```java
+QuestDefinition quest = QuestBuilder.create("fetch_quest")
+    .displayName(Component.translatable("quest.fetch_quest.name"))
+    .description(Component.translatable("quest.fetch_quest.desc"))
+    .category(QuestCategory.ADVENTURE)
+    .icon(new ResourceLocation("my_mod:textures/gui/quest_icon.png"))
+    .sortOrder(100)
+    .repeatable(false)
+    .buildAndRegister();
+```
+
+**参数说明**：
+- `create(String id)`: **智能命名空间解析**
+  - 如果包含 `:`（如 `"my_mod:quest"`），直接使用
+  - 如果不包含 `:`（如 `"quest"`），自动添加 `arc_quest:` 前缀 → `"arc_quest:quest"`
+- `create(ResourceLocation id)`: 使用完整资源位置（推荐）
+- `displayName`: 任务显示名称（支持翻译键）
+- `description`: 任务描述
+- `category`: 任务分类（ARCHON/COMPANION/DAILY/ADVENTURE/EVENT）
+- `icon`: 图标纹理路径（可选）
+- `sortOrder`: 排序权重（越小越靠前）
+- `repeatable`: 是否可重复完成
+- `buildAndRegister()`: 构建并注册到系统
+
+### 4.2 带前置条件的任务
+
+```java
+QuestDefinition quest = QuestBuilder.create("advanced_quest")
+    .displayName(Component.literal("高级任务"))
+    .unlockCondition(Conditions.questCompleted("basic_quest"))
+    .phase(PhaseBuilder.create("start")
+        .objective(ObjectiveBuilder.collect(Items.DIAMOND, 10)
+            .display("收集 10 个钻石")))
+    .buildAndRegister();
+```
+
+**注意**：
+- `.unlockCondition()`: 设置解锁条件
+- `ObjectiveBuilder.collect(Item, count)`: 创建收集目标
+- `.display(String)`: 自定义显示文本
+
+### 4.3 多阶段任务
+
+```java
+QuestDefinition quest = QuestBuilder.create("epic_quest")
+    .displayName(Component.literal("史诗任务"))
+    
+    // 第一阶段：收集材料
+    .phase(PhaseBuilder.create("gather")
+        .displayName(Component.literal("收集材料"))
+        .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 20)
+            .display("收集 20 个橡木原木"))
+        .objective(ObjectiveBuilder.collect(Items.COBBLESTONE, 10)
+            .display("收集 10 个圆石"))
+        .thenGoToIf("craft", Conditions.allOf(
+            Conditions.flagSet("wood_collected"),
+            Conditions.flagSet("stone_collected"))))
+    
+    // 第二阶段：制作物品
+    .phase(PhaseBuilder.create("craft")
+        .displayName(Component.literal("制作工具"))
+        .objective(ObjectiveBuilder.custom(
+            new ResourceLocation("my_mod:craft_sword"), 1)
+            .display("制作一把钻石剑"))
+        .thenGoTo("complete"))
+    
+    .startAt("gather")  // 显式指定起始阶段
+    .buildAndRegister();
+```
+
+**关键 API**：
+- `.phase(PhaseBuilder)`: 添加阶段（自动 build）
+- `.thenGoTo(String)`: 无条件跳转
+- `.thenGoToIf(String, ICondition)`: 条件跳转
+- `.startAt(String)`: 显式指定起始阶段
+
+---
+
+## 5. 阶段与目标系统
+
+### 5.1 目标类型
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| `KILL` | 击杀实体 | 击杀 5 只僵尸 |
+| `COLLECT` | 收集物品 | 收集 10 个钻石 |
+| `TALK` | 与 NPC 对话 | 与村民交谈 |
+| `INTERACT` | 右键交互 | 与方块/实体交互 |
+| `REACH_LOCATION` | 到达位置 | 到达村庄 |
+| `DELIVER` | 提交物品 | 上交物品给 NPC |
+| `CRAFT` | 制作物品 | 制作铁剑 |
+| `CUSTOM` | 自定义条件 | 编程实现 |
+
+### 5.2 目标配置
+
+```java
+PhaseDefinition phase = PhaseBuilder.create("combat_training")
+    .displayName(Component.literal("战斗训练"))
+    
+    // 目标 1：击杀怪物
+    .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 10)
+        .display("击杀 10 只僵尸"))
+    
+    // 目标 2：收集战利品
+    .objective(ObjectiveBuilder.collect(Items.ROTTEN_FLESH, 5)
+        .display("收集 5 个腐肉"))
+    
+    // 阶段奖励
+    .reward(reward -> reward
+        .item(Items.IRON_SWORD, 1)
+        .xp(50)
+        .flag("completed_training"))
+    
+    .build();
+```
+
+**ObjectiveBuilder 静态工厂方法**：
+- `kill(EntityType, count)`: 击杀目标
+- `collect(Item, count)`: 收集物品
+- `talk(ResourceLocation npcId)`: 与 NPC 对话
+- `deliver(Item, count, npcId)`: 提交物品
+- `reachLocation(id, x, y, z, radius)`: 抵达位置
+- `interact(ResourceLocation targetId)`: 右键交互
+- `custom(ResourceLocation id, count)`: 自定义目标
+
+### 5.3 阶段转换
+
+```java
+// 自动转换（无条件）
+.transition("next_phase")
+
+// 条件转换
+.transition("next_phase", Conditions.flagSet("unlocked"))
+
+// 多分支转换
+.transition("branch_a", Conditions.variableInRange("choice", 1, 1))
+.transition("branch_b", Conditions.variableInRange("choice", 2, 2))
+```
+
+---
+
+## 6. 条件判断系统
+
+### 6.1 内置条件
+
+```java
+// 任务完成
+Conditions.questCompleted("my_mod:prev_quest")
+
+// Flag 检查
+Conditions.flagSet("unlocked_area")
+Conditions.flagNotSet("failed_mission")
+
+// 变量范围
+Conditions.variableInRange("reputation", 10, 100)
+Conditions.variableEquals("level", 5)
+
+// 组合条件
+Conditions.allOf(
+    Conditions.questCompleted("quest_a"),
+    Conditions.flagSet("flag_b")
+)
+
+Conditions.anyOf(
+    Conditions.variableGTE("strength", 10),
+    Conditions.variableGTE("intelligence", 10)
+)
+
+Conditions.not(Conditions.flagSet("blocked"))
+```
+
+### 6.2 自定义条件
+
+```java
+.visibleCondition((player, completedQuests, flags, variables) -> {
+    if (player == null) return false;  // 客户端保护
+    
+    // 检查玩家等级
+    if (player.experienceLevel < 10) return false;
+    
+    // 检查是否在夜晚
+    if (!player.level().isNight()) return false;
+    
+    // 检查自定义变量
+    int reputation = variables.getOrDefault("reputation", 0);
+    return reputation >= 50;
+})
+```
+
+**参数说明**：
+- `player`: 服务端玩家对象（客户端为 null）
+- `completedQuests`: 已完成任务集合
+- `flags`: 标记集合
+- `variables`: 变量映射
+
+---
+
+## 7. 奖励发放机制
+
+### 7.1 内置奖励
+
+```java
+QuestBuilder.create("quest_id")
+    // ...
+    .reward(reward -> reward
+        // 物品奖励
+        .item(Items.DIAMOND, 5)
+        .itemStack(ItemStack.of(Items.NETHERITE_INGOT))
+        
+        // 经验值
+        .xp(100)
+        .levels(2)
+        
+        // 命令执行
+        .command("/give {player} emerald 10")
+        .command("/effect give {player} strength 60 1")
+        
+        // Flag 设置
+        .flag("quest_completed")
+        .flag("unlocked_next_area")
+        
+        // 变量修改
+        .variable("reputation", 10)
+        .variableAdd("kills", 5))
+    .buildAndRegister();
+```
+
+**注意**：使用 `.reward(IReward)` 而非 `.onComplete()`
+```
+
+### 7.2 自定义奖励
+
+```java
+QuestBuilder.create("quest_id")
+    // ...
+    .reward(reward -> reward.custom(player -> {
+        // 播放音效
+        player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+        
+        // 给予特殊效果
+        player.addEffect(new MobEffectInstance(MobEffects.HERO_OF_THE_VILLAGE, 3600));
+        
+        // 发送消息
+        player.sendSystemMessage(Component.literal("§6恭喜你完成了史诗任务！"));
+    }))
+    .buildAndRegister();
+```
+```
+
+### 7.3 容错处理
+
+奖励系统会自动捕获异常，确保部分失败不影响其他奖励：
+
+```java
+try {
+    reward.grant(player);
+} catch (Exception e) {
+    LOGGER.error("Reward failed: {}", e.getMessage(), e);
+    // 继续发放其他奖励
+}
+```
+
+---
+
+## 8. 任务事件监听
+
+### 8.1 可用事件
+
+| 事件类 | 触发时机 | 用途 |
+|--------|---------|------|
+| `QuestAcceptedEvent` | 玩家接受任务 | 监听任务开始 |
+| `QuestCompletedEvent` | 玩家完成任务 | 监听任务完成 |
+| `QuestPhaseChangedEvent` | 任务阶段变更 | 监听进度变化 |
+
+### 8.2 事件监听示例
+
+```java
+@Mod.EventBusSubscriber(modid = "my_addon", bus = Bus.FORGE)
+public class QuestEventHandler {
+    
+    @SubscribeEvent
+    public static void onQuestAccepted(QuestAcceptedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        ResourceLocation questId = event.getQuestId();
+        
+        LOGGER.info("Player {} accepted quest: {}", 
+            player.getName().getString(), questId);
+        
+        // 播放接受任务的音效
+        player.playSound(SoundEvents.ANVIL_USE, 1.0f, 1.0f);
+    }
+    
+    @SubscribeEvent
+    public static void onQuestCompleted(QuestCompletedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        ResourceLocation questId = event.getQuestId();
+        
+        // 检查是否是特定任务
+        if (questId.equals(new ResourceLocation("my_mod:epic_finale"))) {
+            // 给予特殊奖励
+            player.giveItemStack(new ItemStack(Items.NETHER_STAR));
+            
+            // 全服公告
+            player.getServer().getPlayerList().broadcastSystemMessage(
+                Component.literal("§6玩家 " + player.getName().getString() + 
+                                " §6完成了史诗终章！"), false);
+        }
+    }
+    
+    @SubscribeEvent
+    public static void onPhaseChanged(QuestPhaseChangedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String oldPhase = event.getOldPhaseId();
+        String newPhase = event.getNewPhaseId();
+        
+        LOGGER.info("Quest {} phase changed: {} → {}", 
+            event.getQuestId(), oldPhase, newPhase);
+        
+        // 显示 Toast 通知
+        player.sendSystemMessage(Component.literal(
+            "§a任务进展：进入阶段 " + newPhase));
+    }
+}
+```
+
+---
+
+## 9. 对话树构建
+
+### 9.1 基础对话树
+
+```java
+DialogueTree tree = DialogueTreeBuilder.create("villager_greeting")
+    .npc("村民")
+    .repeatable(true)
+    .cooldown(3600)  // 1 小时冷却（SECONDS 类型）
+    
+    .node("start")
+        .text("你好，旅行者！")
+        .choice("再见", c -> c.close())
+        .choice("有任务吗？", c -> c.goTo("quest_offer"))
+    
+    .node("quest_offer")
+        .text("最近村庄附近有怪物出没...")
+        .choice("我来帮忙！", c -> c
+            .startQuest("monster_hunt")
+            .close())
+        .choice("下次吧", c -> c.close())
+    
+    .buildAndRegister();
+```
+
+**注意**：
+- `create(String dialogueId)`: **智能命名空间解析**
+  - 如果包含 `:`（如 `"my_mod:dialogue"`），直接使用
+  - 如果不包含 `:`（如 `"dialogue"`），自动添加 `arc_quest:` 前缀 → `"arc_quest:dialogue"`
+- `.node(String nodeId)`: 进入节点配置模式（节点 ID 是局部的，无需命名空间）
+- `.buildAndRegister()`: 构建并自动注册
+
+### 9.2 条件文本
+
+```java
+.node("greeting")
+    // 首次见面
+    .textIf(Conditions.not(Conditions.flagSet("met_before")),
+        "你好，我是新来的村民！")
+    
+    // 再次见面
+    .textIf(Conditions.flagSet("met_before"),
+        "又见面了！")
+    
+    // 完成任务后
+    .textIf(Conditions.questCompleted("first_quest"),
+        "感谢你的帮助！")
+    
+    // 默认文本
+    .text("今天天气不错。")
+```
+
+### 9.3 动态文本
+
+```java
+.node("status")
+    .text((ctx) -> {
+        int reputation = ctx.getVariable("reputation", 0);
+        if (reputation >= 100) {
+            return "你是我们的英雄！";
+        } else if (reputation >= 50) {
+            return "你是个值得信赖的朋友。";
+        } else {
+            return "我们还不算太熟。";
+        }
+    })
+```
+
+---
+
+## 10. 节点与选项
+
+### 10.1 选项配置
+
+```java
+.choice("接受任务", c -> c
+    .startQuest("quest_id")
+    .goTo("accepted_node"))
+
+.choice("拒绝", c -> c
+    .goTo("declined_node"))
+
+.choice("打开商店", c -> c
+    .openTrade("my_shop")
+    .restoreToCurrentNode())  // 商店关闭后恢复对话
+
+.choice("给予物品", c -> c
+    .consumeItem(Items.DIAMOND, 1)
+    .giveItem(Items.EMERALD, 5)
+    .close())
+```
+
+**注意**：`.choice(String label, Consumer<ChoiceBuilder> action)` 是标准用法
+
+### 10.2 条件选项
+
+```java
+.choiceIf(
+    Conditions.flagSet("unlocked_premium"),
+    "购买VIP服务",
+    c -> c.openTrade("vip_shop"))
+
+.choiceIf(
+    Conditions.variableGTE("reputation", 50),
+    "请求帮助（需要声望≥50）",
+    c -> c.goTo("help_request"))
+```
+
+### 10.3 选项冷却
+
+```java
+.choice("获取提示", c -> {
+    c.cooldown(3600);  // 1 小时冷却
+    c.goTo("hint_node");
+})
+
+.choice("每日奖励", c -> {
+    c.cooldownGameDay();  // 每天重置
+    c.giveItem(Items.BREAD, 5);
+    c.close();
+})
+```
+
+---
+
+## 11. 动作系统
+
+### 11.1 内置动作
+
+```java
+// 任务相关
+.startQuest("quest_id")
+.completeQuest("quest_id")
+.failQuest("quest_id")
+
+// 物品操作
+.giveItem(Items.DIAMOND, 5)
+.consumeItem(Items.GOLD_INGOT, 2)
+.giveItemStack(customStack)
+
+// 属性修改
+.giveXp(100)
+.giveLevels(2)
+.setHealth(20.0f)
+
+// Flag/变量
+.setFlag("quest_started")
+.clearFlag("temporary_flag")
+.setVariable("reputation", 10)
+.addVariable("kills", 1)
+
+// 对话控制
+.goTo("next_node")
+.close()
+.endDialogue()
+
+// 商店交互
+.openTrade("shop_id")
+.openSimpleTrade("quick_shop")
+
+// 预设动作
+.presetStoneSword()      // 给予石剑
+.presetIronArmorSet()    // 给予铁甲套装
+.presetDiamondArmorSet() // 给予钻石甲套装
+.presetBread()           // 给予面包
+.presetTorches()         // 给予火把
+.presetNetheriteIngot()  // 给予下界合金锭
+```
+
+### 11.2 自定义动作
+
+```java
+.action((player, session) -> {
+    // 播放音效
+    player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+    
+    // 发送消息
+    player.sendSystemMessage(Component.literal("§6特殊奖励已发放！"));
+    
+    // 修改进度
+    session.setVariable("special_unlocked", 1);
+})
+```
+
+### 11.3 动作链
+
+```java
+.choice("接受挑战", c -> c
+    .setFlag("challenge_accepted")
+    .startQuest("my_mod:challenge")
+    .giveItem(Items.POTION, 2)
+    .goTo("challenge_start"))
+```
+
+---
+
+## 12. NPC 扩展机制
+
+### 12.1 创建扩展
+
+```java
+public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
+    
+    @Override
+    public EntityType<Villager> getEntityType() {
+        return EntityType.VILLAGER;
+    }
+    
+    @Override
+    public boolean canInteractWith(Player player, Villager villager) {
+        // 只允许非潜行玩家对话
+        return !player.isCrouching();
+    }
+    
+    @Override
+    @Nullable
+    public String getDialogueTreeId(ServerPlayer player, Villager villager, InteractionHand hand) {
+        // 根据职业返回不同对话树
+        return switch (villager.getVillagerData().getProfession()) {
+            case WEAPONSMITH -> "blacksmith_weapons";
+            case ARMORER -> "blacksmith_armor";
+            case TOOLSMITH -> "blacksmith_tools";
+            default -> "blacksmith_generic";
+        };
+    }
+    
+    @Override
+    public ProgressScope getProgressScope() {
+        return ProgressScope.INSTANCE;  // 每个 NPC 独立进度
+    }
+    
+    @Override
+    public void onDialogueStart(ServerPlayer player, Villager villager, DialogueSession session) {
+        // 对话开始时触发
+        player.sendSystemMessage(Component.literal("铁匠向你点头致意"));
+    }
+    
+    @Override
+    public void onDialogueEnd(ServerPlayer player, Villager villager) {
+        // 对话结束时触发
+    }
+}
+```
+
+**注意**：接口方法签名与文档之前描述的不同，请以实际代码为准
+
+### 12.2 注册扩展
+
+```java
+ArcQuestAPI.registerDialogueExtension(new BlacksmithExtension());
+```
+
+### 12.3 进度作用域
+
+| 作用域 | 说明 | 适用场景 |
+|--------|------|---------|
+| `DIALOGUE_TREE` | 对话树共享 | 所有同类 NPC 共用进度（默认） |
+| `INSTANCE` | 实例独立 | 每个 NPC 独立进度 |
+| `CUSTOM` | 自定义逻辑 | 编程实现复杂规则 |
+
+---
+
+## 13. 对话事件监听
+
+### 13.1 可用事件
+
+| 事件类 | 触发时机 | 用途 |
+|--------|---------|------|
+| `DialogueStartedEvent` | 对话开始 | 监听 NPC 交互 |
+| `DialogueEndedEvent` | 对话结束 | 监听对话关闭 |
+
+### 13.2 事件监听示例
+
+```java
+@Mod.EventBusSubscriber(modid = "my_addon", bus = Bus.FORGE)
+public class DialogueEventHandler {
+    
+    @SubscribeEvent
+    public static void onDialogueStarted(DialogueStartedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        Entity npc = event.getNpc();
+        String dialogueId = event.getDialogueId();
+        
+        LOGGER.info("Player {} started dialogue '{}' with {}", 
+            player.getName().getString(),
+            dialogueId,
+            npc.getType().getDescriptionId());
+        
+        // 记录对话历史
+        player.getDataStorage().set("last_dialogue", dialogueId);
+    }
+    
+    @SubscribeEvent
+    public static void onDialogueEnded(DialogueEndedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        Entity npc = event.getNpc();
+        String dialogueId = event.getDialogueId();
+        
+        // 检查是否完成了关键对话
+        if (dialogueId.equals("my_mod:story_reveal")) {
+            player.sendSystemMessage(Component.literal(
+                "§6你揭开了一个重要的秘密..."));
+        }
+    }
+}
+```
+
+---
+
+## 14. 商店定义
+
+### 14.1 基础商店
+
+```java
+TradeShopDefinition shop = TradeShopBuilder.create("general_store")
+    .displayName(Component.translatable("shop.general_store.name"))
+    .description(Component.translatable("shop.general_store.desc"))
+    .themeColor(0xFF00FFFF)  // 青色主题
+    
+    .entry(TradeEntryBuilder.create("bread")
+        .displayName(Component.literal("面包"))
+        .costItem(Items.EMERALD, 1)
+        .rewardItem(Items.BREAD, 4))
+    
+    .entry(TradeEntryBuilder.create("torch_bundle")
+        .displayName(Component.literal("火把 bundle"))
+        .costItem(Items.EMERALD, 2)
+        .rewardItem(Items.TORCH, 16))
+    
+    .buildAndRegister();
+```
+
+**注意**：
+- `create(String shopId)`: **智能命名空间解析**
+  - 如果包含 `:`（如 `"my_mod:shop"`），直接使用
+  - 如果不包含 `:`（如 `"shop"`），自动添加 `arc_quest:` 前缀 → `"arc_quest:shop"`
+- `.entry(TradeEntryBuilder)`: 直接传入构建器，会自动调用 `.build()`
+- 条目 ID（如 `"bread"`）是局部的，在商店内唯一，无需命名空间
+
+### 14.2 分类商店
+
+```java
+TradeCategory weapons = TradeCategory.ofTranslatedColor(
+    "weapons", 
+    "shop.category.weapons", 
+    0, 
+    ChatFormatting.RED);
+
+TradeCategory armor = TradeCategory.ofTranslatedColor(
+    "armor", 
+    "shop.category.armor", 
+    1, 
+    ChatFormatting.AQUA);
+
+TradeShopBuilder.create("blacksmith_shop")
+    .displayName(Component.literal("铁匠铺"))
+    .category(weapons)
+    .category(armor)
+    
+    .entry(TradeEntryBuilder.create("iron_sword")
+        .displayName(Component.literal("铁剑"))
+        .costItem(Items.EMERALD, 5)
+        .rewardItem(Items.IRON_SWORD, 1)
+        .category(weapons))
+    
+    .entry(TradeEntryBuilder.create("iron_chestplate")
+        .displayName(Component.literal("铁胸甲"))
+        .costItem(Items.EMERALD, 12)
+        .rewardItem(Items.IRON_CHESTPLATE, 1)
+        .category(armor))
+    
+    .buildAndRegister();
+```
+
+### 14.3 简易商店
+
+```java
+TradeShopBuilder.create("quick_supplies")
+    .displayName(Component.literal("快速补给"))
+    .simpleMode()  // 启用简易模式（弹窗式）
+    
+    .entry(TradeEntryBuilder.create("qs_bread")
+        .costItem(Items.EMERALD, 1)
+        .rewardItem(Items.BREAD, 4))
+    
+    .entry(TradeEntryBuilder.create("qs_potion")
+        .costItem(Items.EMERALD, 3)
+        .rewardEffect(MobEffects.HEAL, 1))
+    
+    .buildAndRegister();
+```
+
+---
+
+## 15. 商品条目配置
+
+### 15.1 基础配置
+
+```java
+TradeEntryBuilder.create("diamond_sword")
+    .displayName(Component.literal("钻石剑"))
+    .description(Component.literal("锋利的钻石剑"))
+    .iconOverride(new ResourceLocation("my_mod:textures/items/custom_sword.png"))
+    
+    // 价格
+    .costItem(Items.EMERALD, 10)
+    .costItem(Items.DIAMOND, 2)
+    
+    // 奖励
+    .rewardItem(Items.DIAMOND_SWORD, 1)
+    
+    // 分类
+    .category("weapons")
+    
+    // 排序
+    .sortOrder(1)
+    
+    .build();
+```
+
+### 15.2 可见性与购买资格分离
+
+```java
+TradeShopBuilder.create("legendary_shop")
+    .displayName(Component.literal("传说商店"))
+    .entry(TradeEntryBuilder.create("legendary_sword")
+        .displayName(Component.literal("传说之剑"))
+        
+        // 可见性：完成前置任务后显示
+        .visibleCondition((player, completed, flags, vars) -> 
+            completed.contains(new ResourceLocation("my_mod:defeat_boss")))
+        
+        // 购买资格：需要等级 20 + 足够声望
+        .canBuyCondition((player, completed, flags, vars) ->
+            player != null && 
+            player.experienceLevel >= 20 &&
+            vars.getOrDefault("reputation", 0) >= 50)
+        
+        .costItem(Items.EMERALD, 50)
+        .rewardItem(Items.NETHERITE_SWORD, 1))
+    .buildAndRegister();
+```
+
+**优势**：
+- ✅ 玩家可以提前看到目标商品
+- ✅ 明确区分"看不到"和"买不起"
+- ✅ 更好的用户体验
+
+### 15.3 多物品奖励
+
+```java
+.entry(TradeEntryBuilder.create("adventurer_kit")
+    .displayName(Component.literal("冒险者套装"))
+    .costItem(Items.EMERALD, 20)
+    
+    // 多个奖励物品
+    .rewardItem(Items.IRON_SWORD, 1)
+    .rewardItem(Items.IRON_PICKAXE, 1)
+    .rewardItem(Items.BREAD, 10)
+    .rewardItem(Items.TORCH, 32))
+```
+
+---
+
+## 16. 冷却与限购系统
+
+### 16.1 限购配置
+
+```java
+TradeShopBuilder.create("limited_shop")
+    .displayName(Component.literal("限购商店"))
+    .entry(TradeEntryBuilder.create("rare_item")
+        .maxPurchases(3)  // 最多购买 3 次
+        .purchaseResetByCooldown())  // 冷却重置时清零计数
+    .buildAndRegister();
+```
+
+### 16.2 冷却类型
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `.cooldown(seconds)` | 现实时间秒 | `.cooldown(3600)` - 1 小时 |
+| `.cooldownGameDay()` | 游戏日重置 | 每天一次 |
+| `.cooldownGameTick(tick)` | 游戏刻重置 | `.cooldownGameTick(0)` - 每天早上 6 点 |
+| 无调用 | 无冷却 | 默认值 |
+
+### 16.3 冷却配置示例
+
+```java
+TradeShopBuilder.create("cooldown_shop")
+    .displayName(Component.literal("冷却商店"))
+    
+    // 1 小时冷却
+    .entry(TradeEntryBuilder.create("hourly_item")
+        .cooldown(3600))
+    
+    // 每天重置
+    .entry(TradeEntryBuilder.create("daily_item")
+        .cooldownGameDay())
+    
+    // 每天早上 6 点重置（GAME_TICK = 0）
+    .entry(TradeEntryBuilder.create("morning_item")
+        .cooldownGameTick(0))
+    
+    // 7 天冷却
+    .entry(TradeEntryBuilder.create("weekly_item")
+        .cooldown(7 * 24 * 3600))
+    
+    .buildAndRegister();
+```
+
+### 16.4 自动刷新
+
+当玩家完成任务或改变状态时，商店界面会自动刷新（防抖 1 秒）：
+
+```java
+// 无需手动配置，系统自动处理
+// 触发事件：QUEST_COMPLETED, QUEST_ACCEPTED, OBJECTIVE_COMPLETED
+```
+
+---
+
+## 17. 交易事件监听
+
+### 17.1 可用事件
+
+| 事件类 | 触发时机 | 用途 |
+|--------|---------|------|
+| `TradeOpenedEvent` | 商店打开 | 监听交易开始 |
+| `TradeItemPurchasedEvent` | 商品购买成功 | 监听交易完成 |
+
+### 17.2 事件监听示例
+
+```java
+@Mod.EventBusSubscriber(modid = "my_addon", bus = Bus.FORGE)
+public class TradeEventHandler {
+    
+    @SubscribeEvent
+    public static void onTradeOpened(TradeOpenedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String shopId = event.getShopId();
+        
+        LOGGER.info("Player {} opened shop: {}", 
+            player.getName().getString(), shopId);
+        
+        // 播放打开商店的音效
+        player.playSound(SoundEvents.VILLAGER_TRADE, 1.0f, 1.0f);
+    }
+    
+    @SubscribeEvent
+    public static void onTradePurchased(TradeItemPurchasedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String shopId = event.getShopId();
+        String entryId = event.getEntryId();
+        
+        LOGGER.info("Player {} purchased {} from shop {}", 
+            player.getName().getString(), entryId, shopId);
+        
+        // 统计购买次数
+        player.getDataStorage().increment("total_purchases");
+        
+        // 达到特定购买次数给予成就
+        int totalPurchases = player.getDataStorage().getInt("total_purchases");
+        if (totalPurchases == 100) {
+            player.awardAdvancement(
+                player.getServer().getAdvancements()
+                    .getAdvancement(new ResourceLocation("my_mod:shopaholic")));
+        }
+    }
+}
+```
+
+---
+
+## 18. ArcQuestAPI 入口
+
+### 18.1 任务系统 API
+
+```java
+// 注册任务
+ArcQuestAPI.registerQuest(QuestDefinition definition);
+
+// 查询任务
+QuestDefinition quest = ArcQuestAPI.getQuest(ResourceLocation id);
+QuestDefinition quest = ArcQuestAPI.getQuestOrThrow(ResourceLocation id);
+boolean exists = ArcQuestAPI.hasQuest(ResourceLocation id);
+```
+
+### 18.2 对话系统 API
+
+```java
+// 注册对话树
+ArcQuestAPI.registerDialogueTree(DialogueTree tree);
+
+// 查询对话树
+DialogueTree tree = ArcQuestAPI.getDialogueTree(String dialogueId);
+boolean exists = ArcQuestAPI.hasDialogueTree(String dialogueId);
+
+// 注册 NPC 扩展
+ArcQuestAPI.registerDialogueExtension(IEntityDialogueExtension<?> extension);
+```
+
+### 18.3 交易系统 API
+
+```java
+// 注册商店
+ArcQuestAPI.registerTradeShop(TradeShopDefinition shop);
+
+// 查询商店
+TradeShopDefinition shop = ArcQuestAPI.getTradeShop(String shopId);
+boolean exists = ArcQuestAPI.hasTradeShop(String shopId);
+```
+
+---
+
+## 19. 事件系统总览
+
+### 19.1 事件列表
+
+| 事件类 | 总线 | 触发端 | 说明 |
+|--------|------|--------|------|
+| `QuestAcceptedEvent` | FORGE | 服务端 | 任务接受 |
+| `QuestCompletedEvent` | FORGE | 服务端 | 任务完成 |
+| `QuestPhaseChangedEvent` | FORGE | 服务端 | 阶段变更 |
+| `DialogueStartedEvent` | FORGE | 服务端 | 对话开始 |
+| `DialogueEndedEvent` | FORGE | 服务端 | 对话结束 |
+| `TradeOpenedEvent` | FORGE | 服务端 | 商店打开 |
+| `TradeItemPurchasedEvent` | FORGE | 服务端 | 商品购买 |
+
+### 19.2 事件订阅
+
+```java
+@Mod.EventBusSubscriber(modid = "my_addon", bus = Bus.FORGE)
+public class MyEventHandler {
+    
+    @SubscribeEvent
+    public static void onEvent(QuestCompletedEvent event) {
+        // 处理事件
+    }
+}
+```
+
+---
+
+## 20. 网络通信
+
+### 20.1 网络架构
+
+**C2S 数据包**（客户端 → 服务端）：
+- `C2SRequestQuestActionPacket`: 任务操作请求
+- `C2SDialogueChoicePacket`: 对话选择
+- `C2SRequestTradePacket`: 商店交互
+
+**S2C 数据包**（服务端 → 客户端）：
+- `S2CSyncFullDataPacket`: 全量数据同步
+- `S2CDeltaProgressPacket`: 增量进度同步
+- `S2CSyncQuestStatePacket`: 任务状态同步
+- `S2COpenDialoguePacket`: 打开对话
+- `S2COpenTradePacket`: 打开商店
+
+### 20.2 同步策略
+
+**全量同步**（登录/维度切换）：
+```java
+ArcQuestNetwork.syncFullData(player, capability);
+```
+
+**增量同步**（状态变化）：
+```java
+// 任务状态变化
+ArcQuestNetwork.syncQuestState(player, runtimeData);
+
+// 目标进度更新
+ArcQuestNetwork.syncDeltaProgress(player, questId, objIndex, newProgress);
+
+// Flags/Vars 变化
+ArcQuestNetwork.syncFlagsAndVars(player, capability);
+```
+
+### 20.3 客户端缓存
+
+```java
+// 访问客户端缓存（无需网络请求）
+ClientQuestCache cache = ClientQuestCache.getInstance();
+QuestRuntimeData quest = cache.getActiveQuest("my_mod:quest_id");
+Set<String> completed = cache.getCompletedQuests();
+```
+
+---
+
+## 21. 数据持久化
+
+### 21.1 Capability 系统
+
+Arc Quest 使用 Forge Capability 系统存储玩家数据：
+
+```java
+// 获取玩家能力
+IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+
+// 查询任务状态
+QuestRuntimeData data = cap.getActiveQuest("my_mod:quest_id");
+boolean completed = cap.isQuestCompleted("my_mod:quest_id");
+
+// 查询 Flags/Variables
+boolean hasFlag = cap.hasFlag("unlocked_area");
+int reputation = cap.getVariable("reputation");
+```
+
+### 21.2 NBT 结构
+
+```
+QuestCapability (CompoundTag)
+├── Version (Int) = 2
+├── ActiveQuests (List)
+│   └── [0] (Compound)
+│       ├── QuestId (String)
+│       ├── State (Int)
+│       ├── CurrentPhase (String)
+│       └── Progress (IntArray)
+├── CompletedQuests (List<String>)
+├── Flags (List<String>)
+├── Variables (Compound)
+└── DialogueProgress (Compound)
+```
+
+### 21.3 版本迁移
+
+```java
+// 自动处理旧版本数据迁移
+if (version < NbtVersionManager.CURRENT_VERSION) {
+    nbt = NbtVersionManager.migrate(nbt, version);
+}
+```
+
+---
+
+## 22. 性能优化
+
+### 22.1 O(1) 目标追踪
+
+**传统方案**：O(n×m) 遍历
+```java
 for (QuestRuntimeData quest : allActiveQuests) {
     for (ObjectiveEntry obj : quest.getObjectives()) {
         if (matches(event, obj)) {
@@ -108,45 +1331,14 @@ for (QuestRuntimeData quest : allActiveQuests) {
 }
 ```
 
-#### Arc Quest 的优化方案
-
-**索引结构**：
+**Arc Quest 方案**：O(1) 哈希查找
 ```java
-// UUID -> QuestID -> ObjectiveIndex -> TrackedObjective
 Map<UUID, Map<String, Map<Integer, TrackedObjective>>> index;
-```
 
-**注册目标**：
-```java
-public void registerObjective(UUID playerId, String questId, 
-                              int objIndex, ObjectiveEntry obj) {
-    index.computeIfAbsent(playerId, k -> new HashMap<>())
-         .computeIfAbsent(questId, k -> new HashMap<>())
-         .put(objIndex, new TrackedObjective(questId, objIndex, obj));
-}
-```
-
-**事件处理**：
-```java
-@SubscribeEvent
-public void onKill(LivingDeathEvent event) {
-    String entityId = getEntityId(event.getEntity());
-    
-    // O(1) 查找相关目标
-    Map<String, Map<Integer, TrackedObjective>> playerQuests = 
-        tracker.getIndex(playerId);
-    
-    if (playerQuests != null) {
-        for (var entry : playerQuests.entrySet()) {
-            for (TrackedObjective tracked : entry.getValue().values()) {
-                if (tracked.matchesKill(entityId)) {
-                    QuestProgressHandler.incrementObjective(
-                        player, entry.getKey(), tracked.getIndex());
-                }
-            }
-        }
-    }
-}
+// 直接定位相关目标
+TrackedObjective tracked = index.get(playerId)
+    .get(questId)
+    .get(objIndex);
 ```
 
 **性能对比**：
@@ -156,200 +1348,32 @@ public void onKill(LivingDeathEvent event) {
 | 10 任务 × 3 目标 | 30 次检查 | 1-3 次 | **10-30x** |
 | 50 任务 × 5 目标 | 250 次检查 | 1-5 次 | **50-250x** |
 
-### 2.3 条件判断系统
+### 22.2 增量网络同步
 
-#### ICondition 接口
+**全量同步**：~5KB（登录时）
+**增量同步**：~50B（进度更新）
 
+**带宽节省**：90%+
+
+### 22.3 UI 渲染优化
+
+**顶点缓冲批量绘制**：
+- 合并相同材质的绘制调用
+- 100 个商品：600 次 OpenGL 调用 → 10 次
+- FPS 提升：15-20%
+
+**动画插值**：
 ```java
-@FunctionalInterface
-public interface ICondition {
-    boolean test(@Nullable ServerPlayer serverPlayer,
-                 Set<ResourceLocation> completedQuests,
-                 Set<String> flags,
-                 Map<String, Integer> variables);
-    
-    default boolean testClient(Set<ResourceLocation> completedQuests,
-                               Set<String> flags,
-                               Map<String, Integer> variables) {
-        return this.test(null, completedQuests, flags, variables);
-    }
-}
+// 帧率无关插值
+float dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
+progress = lerp(progress, targetProgress, dt * animationSpeed);
 ```
 
-**关键设计**：
-- `@Nullable ServerPlayer`: 客户端环境为 null
-- `testClient()`: 默认方法适配客户端
+### 22.4 缓存机制
 
-#### 内置条件
-
+**条件评估缓存**：
 ```java
-// 任务完成
-Conditions.questCompleted("arc_quest:tutorial")
-
-// Flag 设置
-Conditions.flagSet("unlocked_weapons")
-
-// 变量范围
-Conditions.variableInRange("reputation", 10, 100)
-```
-
-#### 自定义条件示例
-
-```java
-.visibleCondition((player, completed, flags, vars) -> {
-    if (player == null) return false;  // 客户端保护
-    
-    return player.getHealth() > 10.0f &&
-           player.level().isNight() &&
-           completed.contains(ResourceLocation.parse("arc_quest:prev"));
-})
-```
-
-### 2.4 奖励发放机制
-
-#### IReward 接口
-
-```java
-@FunctionalInterface
-public interface IReward {
-    void grant(ServerPlayer player) throws Exception;
-}
-```
-
-#### 内置奖励
-
-```java
-// 物品奖励
-.onComplete(reward -> reward.item(Items.DIAMOND, 5))
-
-// 命令奖励
-.onComplete(reward -> reward.command("/give {player} emerald 10"))
-
-// Flag 奖励
-.onComplete(reward -> reward.flag("quest_completed"))
-
-// 组合奖励
-.onComplete(reward -> reward
-    .item(Items.DIAMOND, 2)
-    .flag("unlocked_area")
-    .variable("reputation", 10)
-)
-```
-
-#### 容错处理
-
-```java
-public class CompositeReward implements IReward {
-    @Override
-    public void grant(ServerPlayer player) {
-        for (IReward reward : rewards) {
-            try {
-                reward.grant(player);
-            } catch (Exception e) {
-                LOGGER.error("Reward failed: {}", e.getMessage(), e);
-                // 继续发放其他奖励（部分成功）
-            }
-        }
-    }
-}
-```
-
-### 2.5 任务网络同步
-
-#### 同步策略
-
-**全量同步**（登录/维度切换）：
-```java
-S2CSyncFullDataPacket {
-    Map<String, QuestRuntimeData> activeQuests;
-    Set<String> completedQuests;
-    Set<String> failedQuests;
-    Set<String> flags;
-    Map<String, Integer> variables;
-}
-```
-
-**增量同步**（状态变化）：
-```java
-// 任务状态变化
-S2CSyncQuestStatePacket {
-    String questId;
-    QuestState state;
-    int[] progress;
-}
-
-// 目标进度更新
-S2CSyncObjectivePacket {
-    String questId;
-    int objectiveIndex;
-    int newProgress;
-}
-
-// Flags/Vars 变化
-S2CSyncFlagsVarsPacket {
-    Set<String> flags;
-    Map<String, Integer> variables;
-}
-```
-
-#### 客户端缓存
-
-```java
-public class ClientQuestCache {
-    private static final ClientQuestCache INSTANCE = new ClientQuestCache();
-    
-    private Map<String, QuestRuntimeData> activeQuests = new HashMap<>();
-    private Set<String> completedQuests = new HashSet<>();
-    private Set<String> flags = new HashSet<>();
-    private Map<String, Integer> variables = new HashMap<>();
-    
-    // 单例访问
-    public static ClientQuestCache getInstance() {
-        return INSTANCE;
-    }
-    
-    // 更新方法
-    public void updateQuest(QuestRuntimeData data) { ... }
-    public void addFlag(String flag) { ... }
-}
-```
-
-**优势**：
-- ✅ 客户端无需访问服务端数据
-- ✅ UI 渲染快速（本地读取）
-- ✅ 减少网络请求
-
-### 2.6 任务系统性能优化
-
-#### 优化技巧
-
-1. **延迟加载阶段数据**
-```java
-// 仅在需要时计算当前阶段
-public PhaseDefinition getCurrentPhase() {
-    if (currentPhaseCache == null) {
-        currentPhaseCache = phases.get(currentPhaseIndex);
-    }
-    return currentPhaseCache;
-}
-```
-
-2. **进度变化批处理**
-```java
-// 累积多次进度变化，一次性同步
-private List<ObjectiveUpdate> pendingUpdates = new ArrayList<>();
-
-public void scheduleSync(ObjectiveUpdate update) {
-    pendingUpdates.add(update);
-    if (pendingUpdates.size() >= BATCH_SIZE) {
-        flushPendingUpdates();
-    }
-}
-```
-
-3. **条件结果缓存**
-```java
-// 缓存条件评估结果（1 tick 有效期）
+// 缓存 1 tick，避免重复计算
 private long lastEvalTick = -1;
 private boolean cachedResult;
 
@@ -365,1643 +1389,9 @@ public boolean evaluate(DialogueContext ctx) {
 
 ---
 
-## 3. 对话系统深度解析
+## 23. 最佳实践
 
-### 3.1 对话树内部结构
-
-#### DialogueTree 定义
-
-```java
-public record DialogueTree(
-    ResourceLocation id,
-    Component displayName,
-    String startNodeId,
-    Map<String, DialogueNode> nodes,
-    ICondition globalCondition,
-    Map<String, Object> metadata
-) {}
-```
-
-#### DialogueNode 结构
-
-```java
-public record DialogueNode(
-    String id,
-    List<ConditionalText> texts,           // 条件文本列表
-    List<DialogueChoice> choices,          // 选项列表
-    List<DialogueAction> actions,          // 动作列表
-    Map<String, Object> properties         // 自定义属性
-) {}
-```
-
-#### ConditionalText 条件文本
-
-```java
-public record ConditionalText(
-    Component text,
-    ICondition condition,                  // 显示条件
-    int weight                             // 权重（随机选择）
-) {}
-```
-
-**使用示例**：
-```java
-.node("greeting", node -> node
-    .text("你好！")                                    // 无条件，始终显示
-    .text("又见面了！", Conditions.flagSet("met_before")) // 有条件
-    .text("今天天气不错", null, 3)                     // 权重 3
-    .text("心情很好", null, 1)                         // 权重 1
-)
-```
-
-### 3.2 实体扩展系统
-
-#### EntityDialogueExtension 接口
-
-```java
-public interface EntityDialogueExtension {
-    /**
-     * 获取对话树 ID
-     */
-    String getDialogueTreeId(LivingEntity entity);
-    
-    /**
-     * 对话开始时调用
-     */
-    default void onDialogueStart(LivingEntity entity, ServerPlayer player) {}
-    
-    /**
-     * 对话结束时调用
-     */
-    default void onDialogueEnd(LivingEntity entity, ServerPlayer player) {}
-    
-    /**
-     * 修改对话上下文
-     */
-    default void modifyContext(DialogueContext context) {}
-}
-```
-
-#### 注册扩展
-
-```java
-public class BlacksmithExtension implements EntityDialogueExtension {
-    @Override
-    public String getDialogueTreeId(LivingEntity entity) {
-        return "blacksmith_intro";
-    }
-    
-    @Override
-    public void onDialogueStart(LivingEntity entity, ServerPlayer player) {
-        player.sendSystemMessage(Component.literal("铁匠向你点头"));
-    }
-}
-
-// 注册
-EntityDialogueExtensionManager.register(
-    EntityType.VILLAGER,
-    new BlacksmithExtension()
-);
-```
-
-#### 扩展管理器
-
-```java
-public class EntityDialogueExtensionManager {
-    private static final Map<EntityType<?>, EntityDialogueExtension> registry = 
-        new HashMap<>();
-    
-    public static void register(EntityType<?> type, EntityDialogueExtension ext) {
-        registry.put(type, ext);
-    }
-    
-    public static Optional<EntityDialogueExtension> get(LivingEntity entity) {
-        return Optional.ofNullable(registry.get(entity.getType()));
-    }
-}
-```
-
-### 3.3 冷却机制详解
-
-#### CooldownType 枚举
-
-```java
-public enum CooldownType {
-    NONE,           // 无冷却
-    GAME_TICK,      // 游戏刻（20 ticks = 1 秒）
-    GAME_DAY,       // 游戏天（24000 ticks）
-    REAL_TIME       // 真实时间（毫秒）
-}
-```
-
-#### UnifiedCooldownManager
-
-```java
-public class UnifiedCooldownManager {
-    /**
-     * 检查是否在冷却中
-     */
-    public static boolean isOnCooldown(ServerPlayer player, 
-                                       IQuestCapability cap,
-                                       ProgressKey key,
-                                       CooldownType type,
-                                       long value) {
-        long lastTime = cap.getDialogueLastUseTime(key);
-        if (lastTime == 0) return false;
-        
-        long currentTime = getCurrentTime(type, player);
-        long elapsedTime = currentTime - lastTime;
-        
-        return elapsedTime < value;
-    }
-    
-    /**
-     * 获取当前时间（根据类型）
-     */
-    private static long getCurrentTime(CooldownType type, ServerPlayer player) {
-        return switch (type) {
-            case GAME_TICK -> player.level().getGameTime();
-            case GAME_DAY -> player.level().dayTime() / 24000;
-            case REAL_TIME -> System.currentTimeMillis();
-            default -> 0;
-        };
-    }
-}
-```
-
-#### 时间校准（TimeSanitizer）
-
-**问题**：游戏时间可能回退（如 `/time set` 命令）
-
-**解决方案**：
-```java
-public class TimeSanitizer {
-    /**
-     * 校准时间，处理回退情况
-     */
-    public static long sanitize(long lastTime, long currentTime, long cooldown) {
-        if (currentTime < lastTime) {
-            // 时间回退，认为冷却已过
-            LOGGER.warn("Time rollback detected: last={}, current={}", 
-                       lastTime, currentTime);
-            return currentTime + cooldown;
-        }
-        return currentTime;
-    }
-}
-```
-
-**使用场景**：
-```java
-long currentTime = TimeSanitizer.sanitize(
-    lastPurchaseTime,
-    player.level().getGameTime(),
-    cooldownValue
-);
-```
-
-### 3.4 对话进度存储
-
-#### DialogueProgressStore
-
-```java
-public class DialogueProgressStore {
-    // 节点访问历史
-    private Map<ProgressKey, NodeVisitRecord> nodeVisits = new HashMap<>();
-    
-    // 选择记录
-    private Map<ProgressKey, ChoiceSelection> choiceSelections = new HashMap<>();
-    
-    /**
-     * 记录节点访问
-     */
-    public void recordNodeVisit(ProgressKey key, long gameTime, long dayTime) {
-        nodeVisits.put(key, new NodeVisitRecord(gameTime, dayTime));
-    }
-    
-    /**
-     * 记录选择
-     */
-    public void recordChoice(ProgressKey key, int choiceIndex, 
-                            long gameTime, long dayTime) {
-        choiceSelections.put(key, new ChoiceSelection(choiceIndex, gameTime, dayTime));
-    }
-    
-    /**
-     * 获取上次选择
-     */
-    public ChoiceSelection getChoiceSelection(ProgressKey key) {
-        return choiceSelections.getOrDefault(key, ChoiceSelection.EMPTY);
-    }
-}
-```
-
-#### ProgressKey
-
-```java
-public record ProgressKey(
-    String type,      // "dialogue" or "trade"
-    String treeId,    // 对话树 ID 或商店 ID
-    String nodeId     // 节点 ID 或商品 ID
-) {
-    public static ProgressKey ofDialogue(String treeId, String nodeId) {
-        return new ProgressKey("dialogue", treeId, nodeId);
-    }
-    
-    public static ProgressKey ofTrade(String shopId, String entryId) {
-        return new ProgressKey("trade", shopId, entryId);
-    }
-}
-```
-
-**存储位置**：玩家 Capability 的 `dialogueProgress` 字段
-
-### 3.5 时间校准系统
-
-#### 双时钟机制（GAME_DAY）
-
-**问题**：`dayTime` 在 0-23999 循环，无法直接相减
-
-**解决方案**：同时记录 `gameTime` 和 `dayTime`
-
-```java
-public record TradeEntry(
-    // ...
-    long lastPurchaseGameTime,  // 绝对时间（单调递增）
-    long lastPurchaseDayTime    // 相对时间（用于显示）
-) {}
-```
-
-**冷却检查**：
-```java
-public static boolean isOnCooldown(ServerPlayer player, ...) {
-    long currentGameTime = player.level().getGameTime();
-    long elapsedGameTime = currentGameTime - lastPurchaseGameTime;
-    
-    // 使用 gameTime 判断是否过期
-    if (elapsedGameTime >= cooldownInTicks) {
-        return false;  // 冷却已过
-    }
-    
-    // 使用 dayTime 计算剩余时间（用于显示）
-    long currentDayTime = player.level().dayTime();
-    long remainingDays = calculateRemainingDays(currentDayTime, lastPurchaseDayTime);
-    
-    return true;
-}
-```
-
-**优势**：
-- ✅ `gameTime` 保证单调性（不会回退）
-- ✅ `dayTime` 提供人类可读的"天数"
-- ✅ 正确处理跨天情况
-
-### 3.6 对话上下文评估
-
-#### DialogueEvalContext
-
-```java
-public record DialogueEvalContext(
-    ServerPlayer player,
-    LivingEntity npc,
-    IQuestCapability capability,
-    Set<ResourceLocation> completedQuests,
-    Set<String> flags,
-    Map<String, Integer> variables
-) {
-    public boolean hasFlag(String flag) {
-        return flags.contains(flag);
-    }
-    
-    public boolean hasCompleted(String questId) {
-        return completedQuests.contains(ResourceLocation.parse(questId));
-    }
-}
-```
-
-#### 条件文本评估器
-
-```java
-public class ConditionalTextEvaluator {
-    /**
-     * 从条件文本列表中选择一个
-     */
-    public static Component evaluate(List<ConditionalText> texts, 
-                                     DialogueEvalContext ctx) {
-        // 过滤满足条件的文本
-        List<ConditionalText> valid = texts.stream()
-            .filter(t -> t.condition() == null || 
-                        t.condition().test(ctx.player(), ...))
-            .toList();
-        
-        if (valid.isEmpty()) {
-            return Component.literal("...");
-        }
-        
-        // 按权重随机选择
-        return selectByWeight(valid).text();
-    }
-    
-    private static ConditionalText selectByWeight(List<ConditionalText> texts) {
-        int totalWeight = texts.stream().mapToInt(ConditionalText::weight).sum();
-        int random = new Random().nextInt(totalWeight);
-        
-        int cumulative = 0;
-        for (ConditionalText text : texts) {
-            cumulative += text.weight();
-            if (random < cumulative) {
-                return text;
-            }
-        }
-        return texts.get(texts.size() - 1);
-    }
-}
-```
-
----
-
-## 4. 交易系统深度解析
-
-### 4.1 商店定义结构
-
-#### TradeShopDefinition
-
-```java
-public record TradeShopDefinition(
-    String shopId,
-    Component displayName,
-    int themeColor,
-    List<TradeCategory> categories,
-    List<TradeEntry> entries,
-    Map<String, List<String>> categoryEntryMap  // 分类 -> 商品 ID 列表
-) {
-    /**
-     * 获取指定分类的商品
-     */
-    public List<TradeEntry> getEntriesByCategory(String categoryId) {
-        return categoryEntryMap.getOrDefault(categoryId, List.of())
-            .stream()
-            .map(this::getEntry)
-            .filter(Objects::nonNull)
-            .toList();
-    }
-    
-    /**
-     * 获取所有商品（按分类排序）
-     */
-    public List<TradeEntry> getAllEntries() {
-        return entries;
-    }
-}
-```
-
-#### TradeEntry 完整结构
-
-```java
-public record TradeEntry(
-    String entryId,
-    String categoryId,
-    Component displayName,
-    ResourceLocation iconOverride,
-    List<ITradeOffer> costs,
-    List<ITradeOffer> rewards,
-    
-    // 条件系统
-    ICondition visibleCondition,      // 可见性条件
-    ICondition canBuyCondition,       // 购买资格条件
-    
-    // 限购与冷却
-    int maxPurchases,                 // -1 = 无限
-    CooldownType cooldownType,
-    long cooldownValue,
-    int resetTimeTicks,               // GAME_TICK 专用
-    
-    // 元数据
-    int themeColor,
-    int displayPriority
-) {
-    public boolean hasLimit() {
-        return maxPurchases > 0;
-    }
-    
-    public boolean hasCooldown() {
-        return cooldownType != CooldownType.NONE && cooldownValue > 0;
-    }
-}
-```
-
-**设计原理**：
-- `visibleCondition` vs `canBuyCondition`: 职责分离
-- `maxPurchases = -1`: 表示无限购买
-- `resetTimeTicks`: 仅在 GAME_TICK 模式下有效
-
-### 4.2 交易状态解析器
-
-#### TradeEntryStateResolver
-
-**核心方法**：
-
-```java
-public class TradeEntryStateResolver {
-    
-    /**
-     * 检查商品是否可见
-     */
-    public static boolean isVisible(ServerPlayer player, 
-                                    IQuestCapability cap,
-                                    TradeEntry entry) {
-        if (entry.visibleCondition() == null) {
-            return true;  // 无条件限制
-        }
-        
-        Set<ResourceLocation> completed = cap.getCompletedQuests().stream()
-            .map(ResourceLocation::parse)
-            .collect(Collectors.toSet());
-        
-        return entry.visibleCondition().test(
-            player,
-            completed,
-            cap.getAllFlags(),
-            cap.getAllVariables()
-        );
-    }
-    
-    /**
-     * 检查是否可购买（四层检查）
-     */
-    public static boolean canPurchase(ServerPlayer player,
-                                      IQuestCapability cap,
-                                      String shopId,
-                                      TradeEntry entry) {
-        // 第 1 层：可见性检查
-        if (!isVisible(player, cap, entry)) {
-            LOGGER.debug("Not visible: {}", entry.entryId());
-            return false;
-        }
-        
-        // 第 2 层：购买资格条件
-        if (entry.canBuyCondition() != null) {
-            Set<ResourceLocation> completed = cap.getCompletedQuests().stream()
-                .map(ResourceLocation::parse)
-                .collect(Collectors.toSet());
-            
-            boolean canBuy = entry.canBuyCondition().test(
-                player, completed, cap.getAllFlags(), cap.getAllVariables()
-            );
-            
-            if (!canBuy) {
-                LOGGER.debug("CanBuyCondition failed: {}", entry.entryId());
-                return false;
-            }
-        }
-        
-        // 第 3 层：限购检查
-        if (isPurchaseLimitReached(cap, shopId, entry)) {
-            LOGGER.debug("Limit reached: {}", entry.entryId());
-            return false;
-        }
-        
-        // 第 4 层：冷却检查
-        if (isOnCooldown(player, cap, shopId, entry)) {
-            LOGGER.debug("On cooldown: {}", entry.entryId());
-            return false;
-        }
-        
-        return true;
-    }
-    
-    /**
-     * 检查是否达到限购
-     */
-    public static boolean isPurchaseLimitReached(IQuestCapability cap,
-                                                  String shopId,
-                                                  TradeEntry entry) {
-        if (!entry.hasLimit()) {
-            return false;
-        }
-        
-        int currentCount = cap.getTradePurchaseCount(shopId, entry.entryId());
-        return currentCount >= entry.maxPurchases();
-    }
-    
-    /**
-     * 检查是否在冷却中
-     */
-    public static boolean isOnCooldown(ServerPlayer player,
-                                       IQuestCapability cap,
-                                       String shopId,
-                                       TradeEntry entry) {
-        if (!entry.hasCooldown()) {
-            return false;
-        }
-        
-        ProgressKey key = ProgressKey.ofTrade(shopId, entry.entryId());
-        var progressStore = cap.getDialogueProgress();
-        var tradeEntry = progressStore.getChoiceSelection(key);
-        
-        if (!tradeEntry.exists()) {
-            return false;  // 从未购买
-        }
-        
-        return UnifiedCooldownManager.isOnCooldown(
-            player, cap, key, entry.cooldownType(), entry.cooldownValue()
-        );
-    }
-    
-    /**
-     * 重置购买记录和冷却
-     */
-    public static void resetPurchaseAndCooldown(IQuestCapability cap,
-                                                 String shopId,
-                                                 String entryId) {
-        cap.resetTradePurchaseCount(shopId, entryId);
-        
-        ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
-        cap.getDialogueProgress().resetChoiceSelection(key);
-    }
-}
-```
-
-**四层检查顺序原理**：
-1. **可见性**: 最早排除，减少后续计算
-2. **购买资格**: 业务逻辑判断
-3. **限购**: 快速整数比较
-4. **冷却**: 最复杂的时间计算
-
-**短路求值优势**：
-- ✅ 不可见商品不检查冷却（节省时间查询）
-- ✅ 已达限购不检查冷却（避免无效计算）
-- ✅ 平均检查次数从 4 降至 1.5
-
-### 4.3 可见性与购买资格分离
-
-#### 使用场景对比
-
-| 场景 | visibleCondition | canBuyCondition |
-|------|------------------|-----------------|
-| 新手商品 | 完成任务 A | 无 |
-| VIP 商品 | 无 | 等级 ≥ 10 |
-| 限时商品 | 活动期间 | 有足够金币 |
-| 隐藏商品 | Flag 设置 | 无 |
-
-#### 示例代码
-
-```java
-TradeEntryBuilder.create("legendary_sword")
-    // 可见性：完成前置任务后显示
-    .visibleCondition((player, completed, flags, vars) -> 
-        completed.contains(ResourceLocation.parse("arc_quest:defeat_boss")))
-    
-    // 购买资格：需要等级 20 + 足够声望
-    .canBuyCondition((player, completed, flags, vars) ->
-        player != null && 
-        player.experienceLevel >= 20 &&
-        vars.getOrDefault("reputation", 0) >= 50)
-    
-    .cost(ItemTradeOffer.of(Items.EMERALD, 10))
-    .reward(ItemTradeOffer.of(Items.NETHERITE_SWORD, 1))
-    .maxPurchases(1)
-    .cooldown(CooldownType.GAME_DAY, 7)  // 7 天冷却
-    .build();
-```
-
-**优势**：
-- ✅ 玩家可以提前看到目标商品
-- ✅ 明确区分"看不到"和"买不起"
-- ✅ 更好的用户体验
-
-### 4.4 自动刷新机制
-
-#### TradeAutoRefreshListener
-
-```java
-@Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, value = Dist.CLIENT)
-public class TradeAutoRefreshListener {
-    
-    private static long lastRefreshTime = 0;
-    private static final long REFRESH_DEBOUNCE_MS = 1000;  // 1 秒防抖
-    
-    @SubscribeEvent
-    public static void onClientInit(FMLClientSetupEvent event) {
-        QuestEventBus.subscribe(TradeAutoRefreshListener::onQuestEvent);
-    }
-    
-    private static void onQuestEvent(QuestChangeEvent event) {
-        Minecraft mc = Minecraft.getInstance();
-        
-        // 仅在游戏运行时处理
-        if (mc.player == null || mc.level == null) return;
-        
-        // 检查是否打开交易界面
-        if (!(mc.screen instanceof AbstractTradeScreen tradeScreen)) return;
-        
-        // 防抖检查
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastRefreshTime < REFRESH_DEBOUNCE_MS) {
-            LOGGER.debug("Skipped refresh (debounce)");
-            return;
-        }
-        
-        String shopId = tradeScreen.getShopId();
-        if (shopId == null || shopId.isEmpty()) return;
-        
-        // 判断是否需要刷新
-        boolean shouldRefresh = switch (event.getType()) {
-            case QUEST_COMPLETED, QUEST_ACCEPTED, OBJECTIVE_COMPLETED -> true;
-            default -> false;
-        };
-        
-        if (!shouldRefresh) return;
-        
-        // 发送刷新请求
-        C2SRequestTradePacket.ScreenType screenType = 
-            determineScreenType(mc.screen);
-        
-        LOGGER.info("Auto-refresh: shop={}, reason={}", 
-                   shopId, event.getType());
-        
-        ArcQuestNetwork.sendTradeRequest(
-            C2SRequestTradePacket.refresh(shopId, screenType)
-        );
-        
-        lastRefreshTime = currentTime;
-    }
-    
-    private static C2SRequestTradePacket.ScreenType determineScreenType(Screen screen) {
-        if (screen instanceof SimpleTradePanel) {
-            return C2SRequestTradePacket.ScreenType.SIMPLE;
-        } else if (screen instanceof TradeScreen) {
-            return C2SRequestTradePacket.ScreenType.FULL;
-        }
-        return C2SRequestTradePacket.ScreenType.NONE;
-    }
-}
-```
-
-**触发事件**：
-- `QUEST_COMPLETED`: 任务完成可能解锁商品
-- `QUEST_ACCEPTED`: 接受任务可能改变购买条件
-- `OBJECTIVE_COMPLETED`: 目标完成可能满足条件
-
-**防抖机制**：
-```
-T0:   完成任务 A → 刷新 ✅
-T0.3s: 完成任务 B → 跳过（防抖）❌
-T0.6s: 完成任务 C → 跳过（防抖）❌
-T1.0s: 完成任务 D → 刷新 ✅
-```
-
-**性能优化**：
-- ✅ 减少 67% 的网络请求（多任务连续完成）
-- ✅ 用户感知为"几乎实时"（1 秒内）
-- ✅ 降低服务端负载
-
-### 4.5 交易 HUD 渲染
-
-#### 状态颜色方案
-
-| 状态 | 边框颜色 | 文本颜色 | 按钮文字 |
-|------|---------|---------|---------|
-| 冷却中 | 🔴 `#FF6666` | `#FF6666` | Wait |
-| 已达限购 | ⚪ `#AAAAAA` | `#AAAAAA` | Empty |
-| 条件不满足 | 🔵 `#4488CC` | `#4488CC` | Locked |
-| 可购买 | 🟢 主题色 | - | Purchase |
-
-#### 脉冲动画实现
-
-```java
-// TradeScreen.java - renderEntries()
-if (onCd || maxed || conditionNotMet) {
-    // 正弦波脉冲（周期 200ms）
-    float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5 + 0.5);
-    int pulseAlpha = (int) (255 * (0.6f + 0.4f * pulse) * effectiveAlpha);
-    
-    // 根据状态选择颜色
-    int pulseColor = onCd ? 0xFF6666 : (maxed ? 0xAAAAAA : 0x4488CC);
-    
-    // 绘制半透明背景
-    g.fill(cx, cy, cx + cw, cy + ch, 
-           QuestAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.1f)));
-    
-    // 绘制四边边框
-    g.fill(cx - 1, cy - 1, cx + cw + 1, cy, 
-           QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-    g.fill(cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, 
-           QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-    g.fill(cx - 1, cy, cx, cy + ch, 
-           QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-    g.fill(cx + cw, cy, cx + cw + 1, cy + ch, 
-           QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-    
-    // 绘制黑色遮罩
-    g.fill(cx, cy, cx + cw, cy + ch, 
-           QuestAnimUtil.withAlpha(0x000000, (int)(160 * effectiveAlpha)));
-}
-```
-
-**动画参数**：
-- 周期：200ms（5 Hz）
-- Alpha 范围：60%-100%
-- 遮罩透明度：160/255 ≈ 63%
-
-**视觉效果**：
-- 呼吸式脉冲吸引注意力
-- 不同颜色区分状态类型
-- 遮罩降低商品可见度（暗示不可用）
-
----
-
-## 5. 客户端 UI 深度解析
-
-### 5.1 UI 架构设计
-
-#### 屏幕继承层次
-
-```
-Screen (Minecraft)
- └─ AbstractTradeScreen (自定义基类)
-     ├─ TradeScreen (完整交易界面)
-     └─ SimpleTradePanel (简化交易面板)
-
-Screen (Minecraft)
- └─ DialogueScreen (对话界面)
-
-Screen (Minecraft)
- └─ QuestJournalScreen (任务日志)
-```
-
-#### AbstractTradeScreen 职责
-
-```java
-public abstract class AbstractTradeScreen extends Screen {
-    // 共享数据
-    protected final String shopId;
-    protected final TradeShopDefinition shop;
-    protected int[] purchaseCounts;
-    protected long[] lastPurchaseTimes;
-    protected boolean[] visibility;
-    protected boolean[] canBuyConditions;
-    
-    // 动画状态
-    protected float transitionAnim;      // 打开/关闭动画
-    protected boolean isClosing;
-    protected float suspendAlpha;        // 暂停时透明度
-    protected float effectiveAlpha;      // 最终透明度
-    
-    // 反馈动画
-    protected float feedbackAnim;        // 成功/失败反馈
-    protected boolean feedbackSuccess;
-    protected int lastClickedGi;
-    
-    // 抽象方法（子类实现）
-    protected abstract void renderContent(GuiGraphics g, int mx, int my, float pt);
-    protected abstract int getHoveredEntryIndex(int mx, int my);
-    protected abstract TradeEntry getVisibleEntry(int index);
-    protected abstract float getOpenAnimSpeed();
-}
-```
-
-**设计优势**：
-- ✅ 共享动画逻辑（DRY 原则）
-- ✅ 统一数据处理
-- ✅ 子类专注布局差异
-
-### 5.2 动画系统详解
-
-#### QuestAnimUtil 工具类
-
-```java
-public class QuestAnimUtil {
-    
-    // ═══ 缓动函数 ═══
-    
-    /**
-     * 三次方缓出
-     */
-    public static float easeOutCubic(float t) {
-        return 1.0f - (float) Math.pow(1.0 - t, 3);
-    }
-    
-    /**
-     * 三次方缓入
-     */
-    public static float easeInCubic(float t) {
-        return (float) Math.pow(t, 3);
-    }
-    
-    /**
-     * 回弹缓出
-     */
-    public static float easeOutBack(float t) {
-        float c1 = 1.70158f;
-        float c3 = c1 + 1.0f;
-        return 1.0f + c3 * (float) Math.pow(t - 1, 3) + 
-                     c1 * (float) Math.pow(t - 1, 2);
-    }
-    
-    // ═══ 插值工具 ═══
-    
-    /**
-     * 线性插值（带速度控制）
-     */
-    public static float lerp(float start, float end, float speed, float dt) {
-        return start + (end - start) * Math.min(1.0f, speed * dt);
-    }
-    
-    /**
-     * 步进插值（平滑过渡）
-     */
-    public static float step(float current, float target, float speed, float dt) {
-        float diff = target - current;
-        if (Math.abs(diff) < 0.001f) return target;
-        return current + Math.signum(diff) * Math.min(Math.abs(diff), speed * dt);
-    }
-    
-    // ═══ 颜色工具 ═══
-    
-    /**
-     * 设置 Alpha 通道
-     */
-    public static int withAlpha(int color, int alpha) {
-        return (alpha << 24) | (color & 0x00FFFFFF);
-    }
-    
-    /**
-     * 颜色插值
-     */
-    public static int lerpColor(int c1, int c2, float t) {
-        int r1 = (c1 >> 16) & 0xFF, g1 = (c1 >> 8) & 0xFF, b1 = c1 & 0xFF;
-        int r2 = (c2 >> 16) & 0xFF, g2 = (c2 >> 8) & 0xFF, b2 = c2 & 0xFF;
-        
-        int r = (int) (r1 + (r2 - r1) * t);
-        int g = (int) (g1 + (g2 - g1) * t);
-        int b = (int) (b1 + (b2 - b1) * t);
-        
-        return (r << 16) | (g << 8) | b;
-    }
-    
-    // ═══ 绘制工具 ═══
-    
-    /**
-     * 绘制矩形边框
-     */
-    public static void drawFrame(GuiGraphics g, int x, int y, int w, int h, 
-                                 int thickness, int color) {
-        // 上边
-        g.fill(x, y, x + w, y + thickness, color);
-        // 下边
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        // 左边
-        g.fill(x, y, x + thickness, y + h, color);
-        // 右边
-        g.fill(x + w - thickness, y, x + w, y + h, color);
-    }
-}
-```
-
-#### 动画状态机
-
-```java
-// 打开动画
-transitionAnim = lerp(transitionAnim, 1.0f, openAnimSpeed, dt);
-effectiveAlpha = transitionAnim * suspendAlpha;
-
-// 关闭动画
-if (shouldClose) {
-    isClosing = true;
-    transitionAnim = lerp(transitionAnim, 0.0f, 0.14f, dt);
-    
-    if (transitionAnim <= 0.01f) {
-        minecraft.setScreen(null);  // 完全关闭
-        return;
-    }
-}
-
-// 暂停时淡出
-if (QuestSplashRenderer.isActive()) {
-    suspendAlpha = max(0f, suspendAlpha - dt * 6f);
-} else {
-    suspendAlpha = min(1f, suspendAlpha + dt * 4f);
-}
-```
-
-**动画曲线选择**：
-- `easeOutCubic`: 打开动画（快速进入，缓慢停止）
-- `easeInCubic`: 关闭动画（缓慢开始，快速消失）
-- `easeOutBack`: 卡片飞入（轻微超调，增加动感）
-
-### 5.3 顶点缓冲批量绘制
-
-#### 问题：立即模式性能瓶颈
-
-```java
-// ❌ 低效：每个元素单独绘制
-for (TradeEntry entry : entries) {
-    g.fill(...);           // OpenGL 调用 1
-    g.drawString(...);     // OpenGL 调用 2
-    QuestAnimUtil.drawFrame(...);  // OpenGL 调用 3-6
-}
-// 100 个商品 = 600 次 OpenGL 调用
-```
-
-#### 解决方案：批量绘制
-
-**原理**：
-- 合并相同材质的绘制调用
-- 使用顶点缓冲区一次性提交
-- 减少 CPU-GPU 通信开销
-
-**实现**（伪代码）：
-```java
-public class BatchRenderer {
-    private VertexBuffer vertexBuffer;
-    private List<Vertex> pendingVertices = new ArrayList<>();
-    
-    public void addQuad(float x, float y, float w, float h, int color) {
-        pendingVertices.add(createQuadVertices(x, y, w, h, color));
-    }
-    
-    public void flush() {
-        if (pendingVertices.isEmpty()) return;
-        
-        // 一次性上传所有顶点
-        vertexBuffer.upload(pendingVertices);
-        vertexBuffer.draw();
-        pendingVertices.clear();
-    }
-}
-```
-
-**性能提升**：
-- 100 个商品：600 次调用 → 10 次调用
-- FPS 提升：约 15-20%（低端设备更明显）
-
-### 5.4 Toast 通知系统
-
-#### QuestToastManager
-
-```java
-public class QuestToastManager {
-    
-    public enum ToastType {
-        QUEST_COMPLETED,
-        QUEST_FAILED,
-        OBJECTIVE_COMPLETED
-    }
-    
-    private static final Queue<ToastEntry> toastQueue = new LinkedList<>();
-    private static ToastEntry currentToast = null;
-    private static float displayTime = 0f;
-    private static final float TOAST_DURATION = 3.0f;  // 3 秒
-    
-    public static void show(ToastType type, String message) {
-        toastQueue.offer(new ToastEntry(type, message));
-    }
-    
-    public static void render(GuiGraphics g, float pt) {
-        if (currentToast == null) {
-            if (!toastQueue.isEmpty()) {
-                currentToast = toastQueue.poll();
-                displayTime = 0f;
-            } else {
-                return;
-            }
-        }
-        
-        displayTime += pt;
-        
-        // 计算淡入淡出
-        float alpha = 1.0f;
-        if (displayTime < 0.5f) {
-            alpha = displayTime / 0.5f;  // 淡入
-        } else if (displayTime > TOAST_DURATION - 0.5f) {
-            alpha = (TOAST_DURATION - displayTime) / 0.5f;  // 淡出
-        }
-        
-        // 绘制 Toast
-        int x = 10, y = 10;
-        int width = 200, height = 40;
-        
-        g.fill(x, y, x + width, y + height, 
-               QuestAnimUtil.withAlpha(0x000000, (int)(200 * alpha)));
-        QuestAnimUtil.drawFrame(g, x, y, width, height, 2,
-               QuestAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)));
-        
-        g.drawString(Minecraft.getInstance().font, currentToast.message(),
-                    x + 10, y + 15,
-                    QuestAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)));
-        
-        // 移除过期 Toast
-        if (displayTime >= TOAST_DURATION) {
-            currentToast = null;
-        }
-    }
-}
-```
-
-**队列机制**：
-- ✅ 多个通知依次显示（不重叠）
-- ✅ 淡入淡出动画（平滑过渡）
-- ✅ 自动清理（防止内存泄漏）
-
----
-
-## 6. 网络层深度解析
-
-### 6.1 网络层架构
-
-#### 通道注册
-
-```java
-public class ArcQuestNetwork {
-    private static final String PROTOCOL_VERSION = "1.0.0";
-    
-    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "main"),
-        () -> PROTOCOL_VERSION,
-        PROTOCOL_VERSION::equals,
-        PROTOCOL_VERSION::equals
-    );
-    
-    public static void registerPackets() {
-        int id = 0;
-        
-        // C2S 数据包
-        CHANNEL.registerMessage(id++, C2SRequestQuestActionPacket.class,
-            C2SRequestQuestActionPacket::encode,
-            C2SRequestQuestActionPacket::decode,
-            C2SRequestQuestActionPacket::handle);
-        
-        CHANNEL.registerMessage(id++, C2SDialogueChoicePacket.class,
-            C2SDialogueChoicePacket::encode,
-            C2SDialogueChoicePacket::decode,
-            C2SDialogueChoicePacket::handle);
-        
-        CHANNEL.registerMessage(id++, C2SRequestTradePacket.class,
-            C2SRequestTradePacket::encode,
-            C2SRequestTradePacket::decode,
-            C2SRequestTradePacket::handle);
-        
-        // S2C 数据包
-        CHANNEL.registerMessage(id++, S2CSyncFullDataPacket.class,
-            S2CSyncFullDataPacket::encode,
-            S2CSyncFullDataPacket::decode,
-            S2CSyncFullDataPacket::handle);
-        
-        // ... 其他数据包
-    }
-}
-```
-
-### 6.2 数据包序列化格式
-
-#### S2COpenTradePacket 完整结构
-
-```java
-public class S2COpenTradePacket {
-    private final Mode mode;
-    private final String shopId;
-    private final int[] purchaseCounts;
-    private final int[] maxPurchases;
-    private final long[] lastPurchaseTimes;
-    private final long[] purchaseGameTimes;
-    private final long[] purchaseDayTimes;
-    private final int[] cooldownTypes;
-    private final long[] cooldownValues;
-    private final int[] resetTimeTicks;
-    private final boolean[] visibility;
-    private final boolean[] canBuyConditions;  // 新增
-    
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeEnum(mode);
-        buf.writeUtf(shopId);
-        
-        if (mode == Mode.OPEN_FULL || mode == Mode.OPEN_SIMPLE) {
-            int count = purchaseCounts.length;
-            buf.writeVarInt(count);
-            
-            for (int i = 0; i < count; i++) {
-                buf.writeVarInt(purchaseCounts[i]);
-                buf.writeVarInt(maxPurchases[i]);
-                buf.writeLong(lastPurchaseTimes[i]);
-                buf.writeLong(purchaseGameTimes[i]);
-                buf.writeLong(purchaseDayTimes[i]);
-                buf.writeVarInt(cooldownTypes[i]);
-                buf.writeLong(cooldownValues[i]);
-                buf.writeVarInt(resetTimeTicks[i]);
-                buf.writeBoolean(visibility[i]);
-                buf.writeBoolean(canBuyConditions[i]);  // 新增
-            }
-        }
-    }
-    
-    public static S2COpenTradePacket decode(FriendlyByteBuf buf) {
-        Mode mode = buf.readEnum(Mode.class);
-        String shopId = buf.readUtf();
-        
-        if (mode == Mode.OPEN_FULL || mode == Mode.OPEN_SIMPLE) {
-            int count = buf.readVarInt();
-            int[] purchases = new int[count];
-            int[] maxPurch = new int[count];
-            long[] lastTimes = new long[count];
-            long[] purchaseGTs = new long[count];
-            long[] purchaseDTs = new long[count];
-            int[] cdTypes = new int[count];
-            long[] cdValues = new long[count];
-            int[] resetTicks = new int[count];
-            boolean[] vis = new boolean[count];
-            boolean[] canBuy = new boolean[count];
-            
-            for (int i = 0; i < count; i++) {
-                purchases[i] = buf.readVarInt();
-                maxPurch[i] = buf.readVarInt();
-                lastTimes[i] = buf.readLong();
-                purchaseGTs[i] = buf.readLong();
-                purchaseDTs[i] = buf.readLong();
-                cdTypes[i] = buf.readVarInt();
-                cdValues[i] = buf.readLong();
-                resetTicks[i] = buf.readVarInt();
-                vis[i] = buf.readBoolean();
-                canBuy[i] = buf.readBoolean();  // 新增
-            }
-            
-            return new S2COpenTradePacket(mode, shopId, purchases, maxPurch,
-                lastTimes, purchaseGTs, purchaseDTs, cdTypes, cdValues,
-                resetTicks, vis, canBuy);
-        }
-        // ... 其他模式
-    }
-}
-```
-
-**序列化优化**：
-- `writeVarInt`: 可变长度整数（小数值占用更少字节）
-- 数组长度前置：便于反序列化分配内存
-- 布尔值压缩：每个布尔值仅 1 字节
-
-**带宽估算**（10 个商品）：
-```
-Mode: 1 byte
-ShopId: ~20 bytes
-Count: 1 byte
-Per Entry:
-  - purchaseCount: 1-2 bytes (VarInt)
-  - maxPurchases: 1-2 bytes
-  - lastPurchaseTime: 8 bytes
-  - purchaseGameTime: 8 bytes
-  - purchaseDayTime: 8 bytes
-  - cooldownType: 1 byte
-  - cooldownValue: 8 bytes
-  - resetTimeTicks: 1-2 bytes
-  - visibility: 1 byte
-  - canBuyCondition: 1 byte
-  = ~40 bytes
-
-Total: 1 + 20 + 1 + (40 × 10) = ~422 bytes
-```
-
-### 6.3 防抖与节流机制
-
-#### 客户端防抖（TradeAutoRefreshListener）
-
-```java
-private static long lastRefreshTime = 0;
-private static final long REFRESH_DEBOUNCE_MS = 1000;
-
-private static void onQuestEvent(QuestChangeEvent event) {
-    long currentTime = System.currentTimeMillis();
-    
-    if (currentTime - lastRefreshTime < REFRESH_DEBOUNCE_MS) {
-        LOGGER.debug("Skipped refresh (debounce)");
-        return;
-    }
-    
-    // 执行刷新
-    sendRefreshRequest();
-    lastRefreshTime = currentTime;
-}
-```
-
-#### 服务端节流（可选）
-
-```java
-// 限制单个玩家的刷新频率
-private static final Map<UUID, Long> playerLastRefresh = new HashMap<>();
-private static final long SERVER_THROTTLE_MS = 500;
-
-public static void handleRefresh(ServerPlayer player, String shopId) {
-    long currentTime = System.currentTimeMillis();
-    long lastTime = playerLastRefresh.getOrDefault(player.getUUID(), 0L);
-    
-    if (currentTime - lastTime < SERVER_THROTTLE_MS) {
-        LOGGER.warn("Player {} throttled", player.getName().getString());
-        return;
-    }
-    
-    // 处理刷新
-    processRefresh(player, shopId);
-    playerLastRefresh.put(player.getUUID(), currentTime);
-}
-```
-
-**防抖 vs 节流**：
-- **防抖**（Debounce）：事件停止后延迟执行（适合输入框）
-- **节流**（Throttle）：固定间隔执行（适合滚动事件）
-
-Arc Quest 使用**防抖**，因为：
-- ✅ 玩家可能连续完成多个任务
-- ✅ 只需最后一次状态
-- ✅ 减少不必要的网络流量
-
----
-
-## 7. 数据持久化
-
-### 7.1 Capability 系统详解
-
-#### IQuestCapability 接口
-
-```java
-public interface IQuestCapability {
-    // 任务管理
-    void addActiveQuest(QuestRuntimeData data);
-    void removeActiveQuest(String questId);
-    void markCompleted(String questId);
-    void markFailed(String questId);
-    
-    // 查询
-    QuestRuntimeData getActiveQuest(String questId);
-    Map<String, QuestRuntimeData> getAllActiveQuests();
-    Set<String> getCompletedQuests();
-    Set<String> getFailedQuests();
-    
-    // Flags & Variables
-    void setFlag(String flag);
-    boolean hasFlag(String flag);
-    void setVariable(String key, int value);
-    int getVariable(String key);
-    Map<String, Integer> getAllVariables();
-    
-    // 对话进度
-    DialogueProgressStore getDialogueProgress();
-    
-    // 交易数据
-    long getTradeLastPurchaseTime(String shopId, String entryId);
-    int getTradePurchaseCount(String shopId, String entryId);
-    void incrementTradePurchaseCount(String shopId, String entryId);
-    void resetTradePurchaseCount(String shopId, String entryId);
-    
-    // 序列化
-    CompoundTag serializeNBT();
-    void deserializeNBT(CompoundTag nbt);
-    
-    // 脏标记
-    boolean isDirty();
-    void markDirty();
-    void clearDirty();
-}
-```
-
-#### 附加到玩家
-
-```java
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class CapabilityEventHandler {
-    
-    private static final ResourceLocation CAP_ID = 
-        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "quest_data");
-    
-    @SubscribeEvent
-    public static void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof Player) {
-            event.addCapability(CAP_ID, new QuestCapabilityProvider());
-        }
-    }
-    
-    @SubscribeEvent
-    public static void onPlayerClone(PlayerEvent.Clone event) {
-        if (event.isWasDeath()) {
-            // 死亡时复制数据
-            event.getOriginal().getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .ifPresent(oldCap -> {
-                    event.getEntity().getCapability(QuestCapabilityProvider.QUEST_CAP)
-                        .ifPresent(newCap -> {
-                            newCap.deserializeNBT(oldCap.serializeNBT());
-                        });
-                });
-        }
-    }
-    
-    @SubscribeEvent
-    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .ifPresent(cap -> {
-                    // 全量同步到客户端
-                    ArcQuestNetwork.syncFullData(player, cap);
-                });
-        }
-    }
-}
-```
-
-### 7.2 NBT 数据结构详解
-
-#### 完整 NBT 结构
-
-```
-QuestCapability (CompoundTag)
-├── Version (Int) = 2
-├── ActiveQuests (List)
-│   └── [0] (Compound)
-│       ├── QuestId (String) = "arc_quest:test"
-│       ├── State (Int) = 2 (ACTIVE)
-│       ├── CurrentPhase (String) = "phase_1"
-│       ├── Progress (IntArray) = [3, 0, 5]
-│       ├── StartTime (Long) = 1234567890
-│       └── PhaseCache (Compound) ...
-├── CompletedQuests (List<String>)
-│   └── [0] = "arc_quest:tutorial"
-├── FailedQuests (List<String>)
-├── Flags (List<String>)
-│   └── [0] = "unlocked_weapons"
-├── Variables (Compound)
-│   ├── reputation (Int) = 15
-│   └── kills (Int) = 42
-└── DialogueProgress (Compound)
-    ├── NodeVisits (List)
-    │   └── [0] (Compound)
-    │       ├── Key (String) = "dialogue:blacksmith:greeting"
-    │       ├── GameTime (Long) = 123456
-    │       └── DayTime (Long) = 6000
-    ├── ChoiceSelections (List)
-    └── Cooldowns (Compound)
-```
-
-#### 序列化实现
-
-```java
-@Override
-public CompoundTag serializeNBT() {
-    CompoundTag tag = new CompoundTag();
-    
-    // 版本号
-    tag.putInt("Version", NbtVersionManager.CURRENT_VERSION);
-    
-    // 活跃任务
-    ListTag activeList = new ListTag();
-    for (QuestRuntimeData data : activeQuests.values()) {
-        activeList.add(data.serializeNBT());
-    }
-    tag.put("ActiveQuests", activeList);
-    
-    // 已完成任务
-    ListTag completedList = new ListTag();
-    for (String questId : completedQuests) {
-        completedList.add(StringTag.valueOf(questId));
-    }
-    tag.put("CompletedQuests", completedList);
-    
-    // Flags
-    ListTag flagList = new ListTag();
-    for (String flag : flags) {
-        flagList.add(StringTag.valueOf(flag));
-    }
-    tag.put("Flags", flagList);
-    
-    // Variables
-    CompoundTag varsTag = new CompoundTag();
-    for (Map.Entry<String, Integer> entry : variables.entrySet()) {
-        varsTag.putInt(entry.getKey(), entry.getValue());
-    }
-    tag.put("Variables", varsTag);
-    
-    // 对话进度
-    tag.put("DialogueProgress", dialogueProgress.serializeNBT());
-    
-    return tag;
-}
-```
-
-### 7.3 版本迁移机制
-
-#### NbtVersionManager
-
-```java
-public class NbtVersionManager {
-    public static final int CURRENT_VERSION = 2;
-    
-    public static CompoundTag migrate(CompoundTag oldNbt, int oldVersion) {
-        CompoundTag migrated = oldNbt.copy();
-        
-        if (oldVersion < 2) {
-            // v1 → v2: 添加 DialogueProgress
-            if (!migrated.contains("DialogueProgress")) {
-                migrated.put("DialogueProgress", new CompoundTag());
-            }
-            
-            // v1 → v2: 转换旧的对话历史格式
-            if (migrated.contains("DialogueHistory")) {
-                convertDialogueHistory(migrated);
-            }
-        }
-        
-        if (oldVersion < 1) {
-            // v0 → v1: 添加版本号字段
-            // ...
-        }
-        
-        migrated.putInt("Version", CURRENT_VERSION);
-        return migrated;
-    }
-    
-    private static void convertDialogueHistory(CompoundTag tag) {
-        // 迁移逻辑
-        LOGGER.info("Migrating dialogue history from v1 to v2");
-    }
-}
-```
-
-**使用位置**：
-```java
-@Override
-public void deserializeNBT(CompoundTag nbt) {
-    int version = nbt.getInt("Version");
-    
-    if (version < NbtVersionManager.CURRENT_VERSION) {
-        nbt = NbtVersionManager.migrate(nbt, version);
-        LOGGER.info("Migrated quest data from v{} to v{}", 
-                   version, NbtVersionManager.CURRENT_VERSION);
-    }
-    
-    // 反序列化逻辑
-    // ...
-}
-```
-
-### 7.4 脏标记防抖与批量保存
-
-#### 脏标记机制
-
-```java
-public class QuestCapabilityImpl implements IQuestCapability {
-    private boolean dirty = false;
-    
-    @Override
-    public void setFlag(String flag) {
-        flags.add(flag);
-        markDirty();  // 标记为已修改
-    }
-    
-    @Override
-    public void markDirty() {
-        dirty = true;
-    }
-    
-    @Override
-    public boolean isDirty() {
-        return dirty;
-    }
-    
-    @Override
-    public void clearDirty() {
-        dirty = false;
-    }
-}
-```
-
-#### Tick 处理器批量保存
-
-```java
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class QuestCapabilityTickHandler {
-    
-    private static int tickCounter = 0;
-    
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (event.player.level().isClientSide()) return;
-        
-        ServerPlayer player = (ServerPlayer) event.player;
-        
-        // 每 20 ticks（1 秒）检查一次
-        tickCounter++;
-        if (tickCounter % 20 != 0) return;
-        
-        player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-            .ifPresent(cap -> {
-                if (cap instanceof QuestCapabilityImpl impl) {
-                    if (impl.isDirty()) {
-                        // 触发保存
-                        impl.clearDirty();
-                        LOGGER.debug("Saved quest data for {}", 
-                                   player.getName().getString());
-                    }
-                }
-            });
-    }
-}
-```
-
-**优势**：
-- ✅ 减少磁盘 I/O（从每次修改保存到每秒最多 1 次）
-- ✅ 延长 SSD 寿命
-- ✅ 提升游戏性能
-
----
-
-## 8. 开发指南
-
-### 8.1 环境搭建
-
-#### 前置要求
-
-```bash
-# 检查 Java 版本
-java -version  # 需要 17+
-
-# 检查 Gradle
-gradle --version  # 需要 8.8+
-```
-
-#### 导入项目
-
-```bash
-# 克隆仓库
-git clone <repository-url>
-cd "Arc Quest"
-
-# 生成 IDE 配置
-./gradlew genIntellijRuns  # IntelliJ IDEA
-./gradlew eclipse          # Eclipse
-
-# 编译
-./gradlew build
-
-# 运行客户端
-./gradlew runClient
-
-# 运行服务端
-./gradlew runServer
-```
-
-### 8.2 调试技巧
-
-#### 启用详细日志
-
-```properties
-# gradle.properties
-org.gradle.jvmargs=-Xmx3G
--Dlog4j.configurationFile=log4j2.xml
-```
-
-```xml
-<!-- log4j2.xml -->
-<Logger name="org.com.arc_quest" level="DEBUG"/>
-```
-
-#### 常用调试命令
-
-```bash
-# 查看任务状态
-/quest debug @p
-
-# 查看任务列表
-/quest list @p
-
-# 手动推进进度
-/quest progress @p arc_quest:test 0 5
-
-# 设置 Flag
-/quest flag @p set unlocked_weapons
-
-# 设置变量
-/quest var @p set reputation 50
-
-# 重置所有数据
-/quest resetall @p
-
-# 重新加载数据
-/reload
-```
-
-#### 网络包调试
-
-在关键位置添加日志：
-
-```java
-LOGGER.debug("[Network] Sending {} to {}", 
-    packet.getClass().getSimpleName(),
-    player.getName().getString());
-
-LOGGER.debug("[Trade] Entry {}: visible={}, canBuy={}, limit={}, cooldown={}",
-    entryId, visible, canBuy, limitReached, onCooldown);
-```
-
-### 8.3 最佳实践
-
-#### 1. 使用 Builder 模式
+### 23.1 使用 Builder 模式
 
 ```java
 // ✅ 推荐
@@ -2014,7 +1404,7 @@ QuestBuilder.create("quest_id")
 new QuestDefinition(...);  // 参数过多
 ```
 
-#### 2. 条件判断做空值检查
+### 23.2 条件判断做空值检查
 
 ```java
 // ✅ 安全
@@ -2027,21 +1417,21 @@ new QuestDefinition(...);  // 参数过多
 .visibleCondition((player, ...) -> player.getHealth() > 10.0f)
 ```
 
-#### 3. 服务端验证
+### 23.3 服务端验证
 
 ```java
-// ✅ 正确
+// ✅ 正确：服务端二次验证
 if (TradeEntryStateResolver.canPurchase(player, cap, shopId, entry)) {
     executeTrade();
 }
 
-// ❌ 错误（信任客户端）
+// ❌ 错误：信任客户端
 if (clientSaysCanBuy) {
     executeTrade();
 }
 ```
 
-#### 4. 国际化支持
+### 23.4 国际化支持
 
 ```java
 // ✅ 使用翻译键
@@ -2051,28 +1441,38 @@ Component.translatable("arc_quest.quest.my_quest.name")
 Component.literal("My Quest")
 ```
 
+### 23.5 错误处理
+
+```java
+// 奖励发放容错
+try {
+    reward.grant(player);
+} catch (Exception e) {
+    LOGGER.error("Reward failed: {}", e.getMessage(), e);
+    // 继续发放其他奖励
+}
+```
+
 ---
 
-## API 快速参考
+## A. API 速查表
 
 ### 任务系统
 
 ```java
 // 创建任务
 QuestBuilder.create("id")
-    .category(QuestCategory.MAIN)
-    .phase(phase -> phase
-        .objective(obj -> obj.type(ObjectiveType.KILL).count(5))
-        .onComplete(reward -> reward.item(Items.DIAMOND, 1))
-    )
+    .displayName(Component)
+    .category(QuestCategory)
+    .phase(PhaseBuilder.create("phase_id")
+        .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 5))
+        .thenGoTo("next_phase"))
+    .reward(reward -> reward.item(Items.DIAMOND, 1))
     .buildAndRegister();
 
 // 监听事件
-QuestEventBus.subscribe(event -> {
-    if (event.getType() == QUEST_COMPLETED) {
-        // 处理任务完成
-    }
-});
+@SubscribeEvent
+public void onQuestCompleted(QuestCompletedEvent event) { ... }
 ```
 
 ### 对话系统
@@ -2080,17 +1480,17 @@ QuestEventBus.subscribe(event -> {
 ```java
 // 创建对话树
 DialogueTreeBuilder.create("id")
-    .startNode("greeting", node -> node
+    .npc("NPC Name")
+    .node("start", NodeBuilder.create()
         .text("Hello!")
-        .choice("Bye", "end")
-    )
-    .buildAndRegister();
+        .choice("Bye", c -> c.close()))
+    .build();
 
-// 实体扩展
-EntityDialogueExtensionManager.register(
-    EntityType.VILLAGER,
-    new MyExtension()
-);
+// 注册对话树
+ArcQuestAPI.registerDialogueTree(tree);
+
+// 注册 NPC 扩展
+ArcQuestAPI.registerDialogueExtension(extension);
 ```
 
 ### 交易系统
@@ -2098,20 +1498,17 @@ EntityDialogueExtensionManager.register(
 ```java
 // 创建商店
 TradeShopBuilder.create("id")
-    .entry(entry -> entry
-        .id("item_1")
-        .cost(ItemTradeOffer.of(Items.EMERALD, 5))
-        .reward(ItemTradeOffer.of(Items.DIAMOND, 1))
-        .visibleCondition(Conditions.flagSet("unlocked"))
-        .maxPurchases(3)
-        .cooldown(CooldownType.GAME_DAY, 1)
-    )
+    .displayName(Component)
+    .entry(TradeEntryBuilder.create("entry_id")
+        .costItem(Item, int)
+        .rewardItem(Item, int)
+        .cooldown(seconds))
     .buildAndRegister();
 ```
 
 ---
 
-## 常见问题 FAQ
+## B. 常见问题
 
 ### Q1: 任务完成后没有触发奖励？
 
@@ -2157,6 +1554,359 @@ ArcQuestNetwork.syncFullData(player, cap);
 
 ---
 
+## C. 完整示例项目
+
+### C.1 示例：冒险者公会任务线
+
+```java
+@Mod("adventure_guild")
+public class AdventureGuildMod {
+    
+    public AdventureGuildMod() {
+        FMLJavaModLoadingContext.get().getModEventBus()
+            .addListener(this::onCommonSetup);
+    }
+    
+    private void onCommonSetup(FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> {
+            registerQuests();
+            registerDialogues();
+            registerShops();
+        });
+    }
+    
+    private void registerQuests() {
+        // 任务 1：新手训练
+        ArcQuestAPI.registerQuest(
+            QuestBuilder.create("adventure_guild:novice_training")
+                .displayName(Component.translatable("quest.novice_training.name"))
+                .description(Component.translatable("quest.novice_training.desc"))
+                .category(QuestCategory.ARCHON)
+                
+                .phase(PhaseBuilder.create("combat")
+                    .displayName(Component.literal("战斗训练"))
+                    .objective(ObjectiveBuilder.kill(EntityType.SKELETON, 5)
+                        .display("击杀 5 只骷髅"))
+                    .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 5)
+                        .display("击杀 5 只僵尸"))
+                    .thenGoTo("gather"))
+                
+                .phase(PhaseBuilder.create("gather")
+                    .displayName(Component.literal("资源收集"))
+                    .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 20)
+                        .display("收集 20 个橡木原木"))
+                    .objective(ObjectiveBuilder.collect(Items.COBBLESTONE, 10)
+                        .display("收集 10 个圆石"))
+                    .thenGoTo("complete"))
+                
+                .reward(reward -> reward
+                    .item(Items.IRON_SWORD, 1)
+                    .item(Items.IRON_PICKAXE, 1)
+                    .xp(100)
+                    .flag("novice_trained"))
+                
+                .buildAndRegister()
+        );
+        
+        // 任务 2：探索洞穴（需要完成任务 1）
+        ArcQuestAPI.registerQuest(
+            QuestBuilder.create("adventure_guild:cave_exploration")
+                .displayName(Component.literal("洞穴探索"))
+                .unlockCondition(Conditions.flagSet("novice_trained"))
+                
+                .phase(PhaseBuilder.create("enter_cave")
+                    .objective(ObjectiveBuilder.reachLocation(
+                        new ResourceLocation("my_mod:cave_entrance"),
+                        100, 64, 200, 10)
+                        .display("到达洞穴入口"))
+                    .thenGoTo("explore"))
+                
+                .phase(PhaseBuilder.create("explore")
+                    .objective(ObjectiveBuilder.collect(Items.GOLD_INGOT, 5)
+                        .display("收集 5 个金锭"))
+                    .thenGoTo("complete"))
+                
+                .reward(reward -> reward
+                    .item(Items.DIAMOND, 3)
+                    .xp(200)
+                    .flag("cave_explored"))
+                
+                .buildAndRegister()
+        );
+    }
+    
+    private void registerDialogues() {
+        ArcQuestAPI.registerDialogueTree(
+            DialogueTreeBuilder.create("adventure_guild:receptionist")
+                .npc("接待员")
+                
+                .node("start")
+                    .textIf(
+                        Conditions.not(Conditions.flagSet("novice_trained")),
+                        "欢迎来到冒险者公会！你想成为冒险者吗？")
+                    
+                    .textIf(
+                        Conditions.flagSet("novice_trained"),
+                        "欢迎回来，经验丰富的冒险者！")
+                    
+                    .choiceIf(
+                        Conditions.not(Conditions.flagSet("novice_trained")),
+                        "我想接受训练",
+                        c -> c.startQuest("adventure_guild:novice_training")
+                            .goTo("training_accepted"))
+                    
+                    .choiceIf(
+                        Conditions.allOf(
+                            Conditions.flagSet("novice_trained"),
+                            Conditions.not(Conditions.flagSet("cave_explored"))
+                        ),
+                        "有更高难度的任务吗？",
+                        c -> c.startQuest("adventure_guild:cave_exploration")
+                            .goTo("cave_accepted"))
+                    
+                    .choice("浏览商店", c -> c
+                        .openTrade("guild_shop")
+                        .restoreToCurrentNode())
+                    
+                    .choice("再见", c -> c.close())
+                
+                .node("training_accepted")
+                    .text("很好！先去击败一些怪物吧。")
+                    .choice("明白了", c -> c.close())
+                
+                .node("cave_accepted")
+                    .text("小心！洞穴里很危险。")
+                    .choice("我会小心的", c -> c.close())
+                
+                .buildAndRegister()
+        );
+        
+        // 注册 NPC 扩展
+        ArcQuestAPI.registerDialogueExtension(
+            new IEntityDialogueExtension<Villager>() {
+                @Override
+                public EntityType<Villager> getEntityType() {
+                    return EntityType.VILLAGER;
+                }
+                
+                @Override
+                public boolean canInteractWith(Player player, Villager villager) {
+                    return true;  // 允许所有玩家交互
+                }
+                
+                @Override
+                @Nullable
+                public String getDialogueTreeId(ServerPlayer player, Villager villager, InteractionHand hand) {
+                    return "adventure_guild:receptionist";
+                }
+                
+                @Override
+                public ProgressScope getProgressScope() {
+                    return ProgressScope.DIALOGUE_TREE;  // 全局共享进度
+                }
+            }
+        );
+    }
+    
+    private void registerShops() {
+        ArcQuestAPI.registerTradeShop(
+            TradeShopBuilder.create("guild_shop")
+                .displayName(Component.literal("公会商店"))
+                .themeColor(0xFFFFD700)  // 金色主题
+                
+                .entry(TradeEntryBuilder.create("health_potion")
+                    .displayName(Component.literal("生命药水"))
+                    .costItem(Items.EMERALD, 2)
+                    .rewardItem(Items.POTION, 1)
+                    .cooldownGameDay())
+                
+                .entry(TradeEntryBuilder.create("iron_armor_set")
+                    .displayName(Component.literal("铁甲套装"))
+                    .visibleCondition(Conditions.flagSet("novice_trained"))
+                    .costItem(Items.EMERALD, 15)
+                    .rewardItem(Items.IRON_CHESTPLATE, 1)
+                    .rewardItem(Items.IRON_LEGGINGS, 1)
+                    .maxPurchases(1))
+                
+                .entry(TradeEntryBuilder.create("diamond_sword")
+                    .displayName(Component.literal("钻石剑"))
+                    .visibleCondition(Conditions.flagSet("cave_explored"))
+                    .costItem(Items.EMERALD, 30)
+                    .rewardItem(Items.DIAMOND_SWORD, 1)
+                    .maxPurchases(1)
+                    .cooldown(7 * 24 * 3600))  // 7 天冷却
+                
+                .buildAndRegister()
+        );
+    }
+}
+```
+
+### C.2 事件监听器
+
+```java
+@Mod.EventBusSubscriber(modid = "adventure_guild", bus = Bus.FORGE)
+public class GuildEventHandler {
+    
+    @SubscribeEvent
+    public static void onQuestCompleted(QuestCompletedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        ResourceLocation questId = event.getQuestId();
+        
+        if (questId.equals(new ResourceLocation("adventure_guild:novice_training"))) {
+            // 播放升级音效
+            player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+            
+            // 发送祝贺消息
+            player.sendSystemMessage(Component.literal(
+                "§6§l恭喜！你完成了新手训练！"));
+            
+            // 解锁新对话选项
+            player.sendSystemMessage(Component.literal(
+                "§a现在可以找接待员接受更高难度的任务了。"));
+        }
+    }
+    
+    @SubscribeEvent
+    public static void onTradePurchased(TradeItemPurchasedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String entryId = event.getEntryId();
+        
+        if (entryId.equals("diamond_sword")) {
+            // 购买稀有物品时全服公告
+            player.getServer().getPlayerList().broadcastSystemMessage(
+                Component.literal("§6§l" + player.getName().getString() + 
+                                " §6购买了钻石剑！"), false);
+        }
+    }
+}
+```
+
+---
+
+## D. 智能命名空间详解
+
+### D.1 设计理念
+
+**问题背景**：
+- 作为 Lib 模组，需要支持附属模组使用自己的命名空间
+- 主模组内部使用时希望代码简洁
+- 避免强制添加命名空间导致的灵活性缺失
+
+**解决方案**：智能解析逻辑
+```java
+public static Builder create(String id) {
+    if (id.contains(":")) {
+        // 用户已提供完整命名空间 → 直接使用
+        return new Builder(ResourceLocation.tryParse(id));
+    } else {
+        // 用户只提供路径 → 自动补全默认命名空间
+        return new Builder(
+            ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, id)
+        );
+    }
+}
+```
+
+### D.2 使用场景对比
+
+#### **场景1：主模组内部（简洁写法）**
+```java
+// ✅ 推荐：省略前缀，代码更简洁
+QuestBuilder.create("epic_prologue")
+// 结果：arc_quest:epic_prologue
+
+DialogueTreeBuilder.create("village_elder")
+// 结果：arc_quest:village_elder
+
+TradeShopBuilder.create("blacksmith_shop")
+// 结果：arc_quest:blacksmith_shop
+```
+
+#### **场景2：显式指定（清晰意图）**
+```java
+// ✅ 也可以显式写全，意图更明确
+QuestBuilder.create("arc_quest:epic_prologue")
+// 结果：arc_quest:epic_prologue
+```
+
+#### **场景3：附属模组（关键场景）**
+```java
+// ✅ 附属模组使用自己的命名空间
+QuestBuilder.create("myaddon:custom_quest")
+// 结果：myaddon:custom_quest
+
+// ✅ 引用主模组资源
+.requiresQuest("arc_quest:epic_prologue")
+c -> c.openTrade("arc_quest:blacksmith_shop")
+```
+
+### D.3 全局 ID vs 局部 ID
+
+| ID 类型 | 作用域 | 是否需要命名空间 | 示例 |
+|---------|--------|-----------------|------|
+| **任务 ID** | 全局唯一 | ✅ 需要 | `arc_quest:epic_prologue` |
+| **对话树 ID** | 全局唯一 | ✅ 需要 | `arc_quest:village_elder` |
+| **商店 ID** | 全局唯一 | ✅ 需要 | `arc_quest:blacksmith_shop` |
+| **阶段 ID** | 任务内唯一 | ✅ 需要 | `arc_quest:gather_wood` |
+| **Flag ID** | 全局唯一 | ✅ 需要 | `arc_quest:chapter1_unlocked` |
+| **变量名** | 全局唯一 | ✅ 需要 | `arc_quest:village_reputation` |
+| **节点 ID** | 对话树内唯一 | ❌ 不需要 | `start`, `intro_story` |
+| **条目 ID** | 商店内唯一 | ❌ 不需要 | `iron_sword`, `diamond_sword` |
+| **分类 ID** | 商店内唯一 | ❌ 不需要 | `weapons`, `armor` |
+
+**规则总结**：
+- ✅ **全局资源**（跨系统引用）必须带命名空间
+- ❌ **局部资源**（仅在当前容器内使用）不需要命名空间
+
+### D.4 最佳实践
+
+#### **✅ 推荐做法**
+```java
+// 1. 主模组内部：省略前缀
+QuestBuilder.create("my_quest")
+
+// 2. 跨模组引用：显式写全
+.requiresQuest("other_mod:their_quest")
+
+// 3. 附属模组：使用自己的命名空间
+QuestBuilder.create("myaddon:my_quest")
+
+// 4. 局部 ID：保持简洁
+.node("start")  // 无需 "arc_quest:start"
+.entry(TradeEntryBuilder.create("item"))  // 无需 "arc_quest:item"
+```
+
+#### **❌ 避免做法**
+```java
+// 1. 不要给局部 ID 添加命名空间
+.node("arc_quest:start")  // ❌ 错误！节点 ID 是局部的
+
+// 2. 不要在引用时省略命名空间
+.requiresQuest("epic_prologue")  // ⚠️ 虽然能工作，但意图不明确
+
+// 3. 不要混用不同模组的命名空间
+QuestBuilder.create("arc_quest:mod_a_quest")  // ❌ 混乱！
+```
+
+### D.5 向后兼容性
+
+**旧代码仍然有效**：
+```java
+// 之前这样写的代码无需修改
+QuestBuilder.create("quest_id")
+// 仍然会被解析为 arc_quest:quest_id
+```
+
+**迁移建议**：
+- 新项目：直接使用智能 API
+- 旧项目：无需修改，自动兼容
+- 附属模组：建议使用显式命名空间
+
+---
+
 **文档结束**
 
 如需更多细节，请查阅源代码注释或提出具体问题。
+
+🎉 **祝你开发愉快！**
