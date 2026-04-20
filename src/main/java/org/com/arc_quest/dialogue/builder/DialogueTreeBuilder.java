@@ -208,7 +208,7 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder choice(String text, String nextNodeId) {
         ensureOpenNode();
-        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(), List.of()));
+        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, 0, null));
         return this;
     }
 
@@ -217,7 +217,7 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder choice(String text, String nextNodeId, int priority) {
         ensureOpenNode();
-        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, priority));
+        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, priority, null));
         return this;
     }
 
@@ -250,7 +250,7 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder choiceIf(DialogueCondition condition, String text, String nextNodeId, int priority) {
         ensureOpenNode();
-        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, priority));
+        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, priority, null));
         return this;
     }
 
@@ -354,12 +354,55 @@ public class DialogueTreeBuilder {
         // 序列化条件文本
         Map<String, String> conditionalTextsMap = serializeConditionalTexts();
 
+        // 处理 __CURRENT__ 标记，替换为实际节点 ID
+        List<DialogueChoice> resolvedChoices = new ArrayList<>();
+        for (DialogueChoice choice : curChoices) {
+            String resolvedRestoreId = choice.restoreNodeId();
+            if ("__CURRENT__".equals(resolvedRestoreId)) {
+                resolvedRestoreId = curNodeId;  // 替换为当前节点 ID
+            }
+            
+            // 如果选项有 restoreNodeId，但动作中的 OpenTrade/OpenSimpleTrade 没有，则同步
+            List<DialogueAction> resolvedActions = choice.actions();
+            if (resolvedRestoreId != null && !choice.actions().isEmpty()) {
+                List<DialogueAction> newActions = new ArrayList<>();
+                boolean needReplace = false;
+                for (DialogueAction action : choice.actions()) {
+                    if (action instanceof DialogueAction.OpenTrade ot && ot.restoreNodeId() == null) {
+                        newActions.add(new DialogueAction.OpenTrade(ot.shopId(), resolvedRestoreId));
+                        needReplace = true;
+                    } else if (action instanceof DialogueAction.OpenSimpleTrade ost && ost.restoreNodeId() == null) {
+                        newActions.add(new DialogueAction.OpenSimpleTrade(ost.shopId(), resolvedRestoreId));
+                        needReplace = true;
+                    } else {
+                        newActions.add(action);
+                    }
+                }
+                if (needReplace) {
+                    resolvedActions = List.copyOf(newActions);
+                }
+            }
+            
+            resolvedChoices.add(new DialogueChoice(
+                    choice.text(),
+                    choice.nextNodeId(),
+                    choice.conditions(),
+                    resolvedActions,
+                    choice.repeatable(),
+                    choice.cooldownSeconds(),
+                    choice.cooldownType(),
+                    choice.resetTimeTicks(),
+                    choice.priority(),
+                    resolvedRestoreId
+            ));
+        }
+
         DialogueNode node = new DialogueNode(
                 curNodeId,
                 speaker,
                 curText,
                 conditionalTextsMap,
-                List.copyOf(curChoices),
+                List.copyOf(resolvedChoices),
                 curAutoNextId,
                 curDelayMs,
                 curRepeatable,
@@ -471,6 +514,7 @@ public class DialogueTreeBuilder {
         private CooldownType cooldownType = CooldownType.NONE;
         private int resetTimeTicks = 0;
         private int priority = 0;
+        private String restoreNodeId = null;
 
         ChoiceBuilder(String text) {
             this.text = text;
@@ -538,17 +582,29 @@ public class DialogueTreeBuilder {
 
         /**
          * 打开完整交易窗口。
+         * <p>
+         * 默认启用 {@code restoreToCurrentNode()}，商店关闭后自动恢复对话。
          */
         public ChoiceBuilder openTrade(String shopId) {
-            actions.add(new DialogueAction.OpenTrade(shopId));
+            // 自动启用恢复到当前节点
+            if (this.restoreNodeId == null) {
+                this.restoreNodeId = "__CURRENT__";
+            }
+            actions.add(new DialogueAction.OpenTrade(shopId, restoreNodeId));
             return this;
         }
 
         /**
          * 打开简易交易弹窗。
+         * <p>
+         * 默认启用 {@code restoreToCurrentNode()}，商店关闭后自动恢复对话。
          */
         public ChoiceBuilder openSimpleTrade(String shopId) {
-            actions.add(new DialogueAction.OpenSimpleTrade(shopId));
+            // 自动启用恢复到当前节点
+            if (this.restoreNodeId == null) {
+                this.restoreNodeId = "__CURRENT__";
+            }
+            actions.add(new DialogueAction.OpenSimpleTrade(shopId, restoreNodeId));
             return this;
         }
 
@@ -740,6 +796,41 @@ public class DialogueTreeBuilder {
             return this;
         }
 
+        /**
+         * 配置从商店/界面退出后恢复的目标节点 ID。
+         * <p>
+         * 使用示例：
+         * <pre>{@code
+         * // 打开商店后，退出时回到当前节点（默认行为）
+         * .openTrade("blacksmith_shop")
+         * .restoreToCurrentNode()
+         *
+         * // 打开商店后，退出时跳转到指定节点
+         * .openTrade("blacksmith_shop")
+         * .restoreToNode("after_shop_node")
+         * }</pre>
+         *
+         * @param nodeId 目标节点 ID，null 表示不恢复（保持当前节点）
+         * @return 当前构建器
+         */
+        public ChoiceBuilder restoreToNode(String nodeId) {
+            this.restoreNodeId = nodeId;
+            return this;
+        }
+
+        /**
+         * 配置从商店/界面退出后恢复到当前节点（默认行为）。
+         * <p>
+         * 这是一个便捷方法，等价于 {@code restoreToNode(currentNodeId)}。
+         * 在调用此方法时，currentNodeId 会被自动设置为当前正在构建的节点 ID。
+         *
+         * @return 当前构建器
+         */
+        public ChoiceBuilder restoreToCurrentNode() {
+            this.restoreNodeId = "__CURRENT__";  // 特殊标记，在 build() 时替换为实际节点 ID
+            return this;
+        }
+
         DialogueChoice build() {
             return new DialogueChoice(
                     text,
@@ -749,8 +840,9 @@ public class DialogueTreeBuilder {
                     repeatable,
                     cooldownSeconds,
                     cooldownType,
-                    resetTimeTicks,  //  支持游戏时间刻冷却
-                    priority
+                    resetTimeTicks,
+                    priority,
+                    restoreNodeId
             );
         }
     }

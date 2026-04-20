@@ -33,6 +33,11 @@ public final class DialogueSessionManager {
      */
     private final Map<UUID, DialogueSession> sessions = new ConcurrentHashMap<>();
 
+    /**
+     * 玩家 UUID → 商店退出后恢复的目标节点 ID。
+     */
+    private final Map<UUID, String> restoreNodeMap = new ConcurrentHashMap<>();
+
     private DialogueSessionManager() {
     }
 
@@ -169,6 +174,40 @@ public final class DialogueSessionManager {
     }
 
     /**
+     * 处理恢复对话请求（从商店或其他界面返回时调用）。
+     */
+    public void handleRestoreDialogue(ServerPlayer player) {
+        LOGGER.info("[DialogueSessionManager] handleRestoreDialogue called for player {}", player.getName().getString());
+        DialogueSession session = getSession(player);
+        if (session != null && !session.isEnded()) {
+            // 检查是否有配置的恢复节点
+            String restoreNodeId = pollRestoreNodeId(player);
+            LOGGER.info("[DialogueSessionManager] Polled restoreNodeId: {}", restoreNodeId);
+            if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
+                // "__CURRENT__" 表示恢复到当前节点（不需要跳转）
+                if (!"__CURRENT__".equals(restoreNodeId)) {
+                    // 跳转到指定节点
+                    DialogueNode targetNode = session.getTree().getNode(restoreNodeId);
+                    if (targetNode != null) {
+                        session.setCurrentNode(targetNode);
+                        LOGGER.info("[DialogueSessionManager] Restored to node '{}' for player {}", restoreNodeId, player.getName().getString());
+                    } else {
+                        LOGGER.warn("[DialogueSessionManager] Restore node '{}' not found for player {}", restoreNodeId, player.getName().getString());
+                    }
+                } else {
+                    LOGGER.info("[DialogueSessionManager] Using current node for restoration");
+                }
+            }
+            // 重新发送当前节点数据，强制客户端刷新并显示对话界面
+            LOGGER.info("[DialogueSessionManager] Sending node data to client, current node: {}", session.getCurrentNode().nodeId());
+            sendNodeToClient(session);
+            LOGGER.info("[DialogueSessionManager] Restored dialogue for player {}", player.getName().getString());
+        } else {
+            LOGGER.warn("[DialogueSessionManager] No active session or session ended for player {}", player.getName().getString());
+        }
+    }
+
+    /**
      * 强制结束玩家的对话，清理关联实体的对话状态。
      */
     public void endDialogue(ServerPlayer player) {
@@ -282,5 +321,24 @@ public final class DialogueSessionManager {
     private void sendClose(ServerPlayer player) {
         S2COpenDialoguePacket closePacket = S2COpenDialoguePacket.close();
         ArcQuestNetwork.sendToPlayer(player, closePacket);
+    }
+
+    /**
+     * 设置玩家从商店退出后恢复的目标节点 ID。
+     */
+    public void setRestoreNodeId(ServerPlayer player, String restoreNodeId) {
+        if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
+            restoreNodeMap.put(player.getUUID(), restoreNodeId);
+        } else {
+            restoreNodeMap.remove(player.getUUID());
+        }
+    }
+
+    /**
+     * 获取玩家从商店退出后恢复的目标节点 ID，并清除缓存。
+     */
+    @Nullable
+    public String pollRestoreNodeId(ServerPlayer player) {
+        return restoreNodeMap.remove(player.getUUID());
     }
 }

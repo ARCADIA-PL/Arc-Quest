@@ -10,6 +10,8 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
+import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
+import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
@@ -32,7 +34,7 @@ public abstract class AbstractTradeScreen extends Screen {
     protected long[] cooldownValues;
     protected int[] resetTimeTicks;
     protected boolean[] visibility;
-    protected boolean[] canBuyConditions;  // 新增：购买资格条件状态
+    protected boolean[] canBuyConditions;
 
     protected float transitionAnim = 0f;
     protected boolean isClosing = false;
@@ -130,7 +132,14 @@ public abstract class AbstractTradeScreen extends Screen {
         this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
     }
 
-    @Override public void onClose() { if (!isClosing) isClosing = true; }
+    @Override 
+    public void onClose() { 
+        if (!isClosing) {
+            isClosing = true;
+            // 借鉴 Ponder 导航系统：在关闭前立即触发恢复逻辑
+            ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
+        }
+    }
     @Override public boolean isPauseScreen() { return false; }
 
     @Override
@@ -163,7 +172,9 @@ public abstract class AbstractTradeScreen extends Screen {
 
         transitionAnim = QuestAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.14f : getOpenAnimSpeed(), dt);
         if (isClosing && transitionAnim <= 0.01f) {
-            if (minecraft != null) minecraft.setScreen(null);
+            if (minecraft != null) {
+                minecraft.setScreen(null);
+            }
             return;
         }
 

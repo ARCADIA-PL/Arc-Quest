@@ -208,6 +208,16 @@ import java.util.List;
         }
     }
 
+    public void resetSelectionState() {
+        this.clickedIndex = -1;
+        this.clickSent = false;
+        if (this.clickAnim != null) {
+            for (int i = 0; i < this.clickAnim.length; i++) {
+                this.clickAnim[i] = 0f;
+            }
+        }
+    }
+
     @Nullable
     public Entity getNpcEntity() {
         if (cachedNpcEntity == null && entityId != -1 && minecraft != null && minecraft.level != null) {

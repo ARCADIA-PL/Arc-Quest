@@ -167,3 +167,4 @@ run-data/logs/2026-04-20-4.log.gz
 run-data/logs/2026-04-20-5.log.gz
 run-data/logs/2026-04-20-6.log.gz
 src/test/java/org/com/arc_quest/test/TradeCooldownKeyTest.java
+.lingma/rules/Mod.md

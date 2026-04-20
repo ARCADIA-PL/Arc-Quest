@@ -316,11 +316,17 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addTradeShop("blacksmith_shop", "Blacksmith Shop", "Sells various weapons, armor and tools");
         addTradeShop("potion_shop", "Potion Merchant", "Sells various potion effects");
         addTradeShop("quick_food_trade", "Quick Supplies", null);
+        addTradeShop("merchant_shop", "Traveling Merchant's Satchel", "Supplies from across the lands");
+        addTradeShop("wandering_trader_shop", "Wandering Trader's Treasures", "Rare goods updated daily");
+        addTradeShop("mysterious_merchant_shop", "Mysterious Midnight Shop", "A forbidden vault open only at night");
+        addTradeShop("quick_supplies", "Guard's Quick Supplies", "Convenient purchase without closing dialogue");
 
         // ── Categories ──
         addTradeCategory("weapons", "Weapons");
         addTradeCategory("armor", "Armor");
         addTradeCategory("tools", "Tools");
+        addTradeCategory("supplies", "Supplies");
+        addTradeCategory("rare", "Treasures");
 
         // ── Trade Entries (Blacksmith) ──
         addTradeEntry("iron_sword", "Iron Sword", null);
@@ -338,6 +344,22 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addTradeEntry("buy_bread", "Bread x4", null);
         addTradeEntry("buy_steak", "Steak x2", null);
         addTradeEntry("buy_golden_apple", "Golden Apple", null);
+
+        // ── Trade Entries (Quick Supplies) ──
+        addTradeEntry("qs_bread", "Bread x4", null);
+        addTradeEntry("qs_potion", "Healing Potion", null);
+
+        // ── Trade Entries (Merchant) ──
+        addTradeEntry("merchant_food_pack", "Emergency Rations", "Includes bread and baked potatoes");
+        addTradeEntry("merchant_torch_bundle", "Explorer's Torch Bundle", "Essential for deep mining");
+
+        // ── Trade Entries (Wandering Trader) ──
+        addTradeEntry("trader_exotic_plant", "Exotic Plant Seeds", "Strange seeds from distant lands");
+        addTradeEntry("trader_dye_set", "Dye Collection", "Colorful materials for creation");
+
+        // ── Trade Entries (Mysterious Merchant) ──
+        addTradeEntry("mystery_netherite", "Netherite Ingot", "Metal infused with destructive power");
+        addTradeEntry("mystery_totem", "Totem of Undying", "The last hope against death");
     }
 
     /**
@@ -521,6 +543,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "§fSpeak your needs. My craftsmanship is the finest in the village!");
         add("dialogue.epic_blacksmith.start.choice_leave",
                 "Perhaps next time");
+        add("dialogue.epic_blacksmith.start.choice_open_shop",
+                "§8View Full Inventory (Open Shop)");
 
         // ═══════════════════════════════════════════
         // Merchant
@@ -564,6 +588,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "⚒️ Tool Pack (10 gold)");
         add("dialogue.epic_merchant.shop_menu.choice_back",
                 "← Back");
+        add("dialogue.epic_merchant.shop_menu.choice_open_shop",
+                "§aView Full Satchel (Open Shop)");
 
         // ═══════════════════════════════════════════
         // Wandering Trader - sayIf() Example NPC
@@ -612,6 +638,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "⚔️ Weapons & Armor");
         add("dialogue.epic_wandering_trader.shop_menu.choice_back",
                 "← Back");
+        add("dialogue.epic_wandering_trader.shop_menu.choice_open_shop",
+                "§bView Daily Treasures (Open Shop)");
 
         // Equipment menu
         add("dialogue.epic_wandering_trader.equipment_menu.text",
@@ -674,6 +702,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "⚔️ Request Training (1h cooldown)");
         add("dialogue.epic_village_guard.start.choice_chat",
                 "Casual Chat");
+        add("dialogue.epic_village_guard.start.choice_quick_trade",
+                "§e🍞 Quick Buy Supplies (Simple Window)");
         add("dialogue.epic_village_guard.start.choice_bye",
                 "Farewell");
 

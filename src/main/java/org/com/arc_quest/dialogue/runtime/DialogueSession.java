@@ -10,7 +10,9 @@ import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -39,7 +41,7 @@ public class DialogueSession {
     private DialogueNode currentNode;
     private boolean ended = false;
     private List<DialogueChoice> visibleChoices = List.of();
-    private int[] visibleChoiceOriginalIndices = new int[0];  // 新增：记录每个可见选项的原始索引
+    private int[] visibleChoiceOriginalIndices = new int[0];
 
     // ═══════════════════════════════════════════════
     //  构造器
@@ -84,6 +86,14 @@ public class DialogueSession {
     public DialogueContext getContext() { return context; }
     public int getEntityId() { return entityId; }
     public String getNamespace() { return namespace; }
+
+    /**
+     * 设置当前节点（包级私有，仅供 DialogueSessionManager 调用）。
+     */
+    void setCurrentNode(DialogueNode node) {
+        this.currentNode = node;
+        evaluateVisibleChoices();
+    }
 
     /**
      * 一次性采样三个时钟，确保同一操作内的所有记录和检查使用一致的时间值。
@@ -302,8 +312,16 @@ public class DialogueSession {
 
         // 跳转
         if (choice.nextNodeId() == null) {
-            end();
-            return null;
+            // 如果动作中包含打开商店，不结束会话（等待商店关闭后恢复）
+            boolean hasShopAction = choice.actions().stream()
+                    .anyMatch(a -> a instanceof DialogueAction.OpenTrade || a instanceof DialogueAction.OpenSimpleTrade);
+            
+            if (!hasShopAction) {
+                end();
+                return null;
+            }
+            // 有商店动作，保持会话活跃，返回当前节点
+            return currentNode;
         }
 
         DialogueNode nextNode = tree.getNode(choice.nextNodeId());
@@ -482,7 +500,7 @@ public class DialogueSession {
                         .max().orElse(0);
                 
                 // 构建 choice -> originalIndex 的快速查找表
-                java.util.Map<DialogueChoice, Integer> choiceToIndexMap = new java.util.HashMap<>();
+                Map<DialogueChoice, Integer> choiceToIndexMap = new HashMap<>();
                 for (int i = 0; i < passing.size(); i++) {
                     choiceToIndexMap.put(passing.get(i), indices.get(i));
                 }

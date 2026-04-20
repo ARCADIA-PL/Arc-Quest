@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+import org.com.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -120,6 +121,23 @@ public class C2SRequestTradePacket {
      */
     public static void handleServerOpen(ServerPlayer player, TradeShopDefinition shop, boolean simple) {
         handleOpen(player, shop, simple);
+    }
+
+    /**
+     * 从对话中打开商店，确保不中断当前的对话会话。
+     */
+    public static void handleServerOpenFromDialogue(ServerPlayer player, TradeShopDefinition shop, boolean simple, String restoreNodeId) {
+        LOGGER.info("[C2SRequestTradePacket] Opening shop '{}' from dialogue, restoreNodeId: {}, simple: {}", 
+                shop.getShopId(), restoreNodeId, simple);
+        handleOpen(player, shop, simple);
+        
+        DialogueSessionManager manager = DialogueSessionManager.INSTANCE;
+        if (manager.isInDialogue(player)) {
+            manager.setRestoreNodeId(player, restoreNodeId);
+            LOGGER.info("[C2SRequestTradePacket] Saved restoreNodeId for player {}", player.getName().getString());
+        } else {
+            LOGGER.warn("[C2SRequestTradePacket] Player {} is not in dialogue", player.getName().getString());
+        }
     }
 
     private static void handleOpen(ServerPlayer player, TradeShopDefinition shop, boolean simple) {

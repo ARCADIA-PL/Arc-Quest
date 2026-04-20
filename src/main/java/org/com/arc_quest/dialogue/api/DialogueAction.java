@@ -258,7 +258,11 @@ public sealed interface DialogueAction {
      * <p>
      * 注意：此动作不支持序列化，仅用于代码驱动的对话树。
      */
-    record OpenTrade(String shopId) implements DialogueAction {
+    record OpenTrade(String shopId, String restoreNodeId) implements DialogueAction {
+        public OpenTrade(String shopId) {
+            this(shopId, null);
+        }
+
         @Override
         public void execute(ServerPlayer player) {
             TradeShopDefinition shop = TradeRegistry.get(shopId);
@@ -266,13 +270,19 @@ public sealed interface DialogueAction {
                 LOGGER.warn("[Dialogue] Unknown trade shop: {}", shopId);
                 return;
             }
-            C2SRequestTradePacket.handleServerOpen(player, shop, false);
+            C2SRequestTradePacket.handleServerOpenFromDialogue(player, shop, false, restoreNodeId);
         }
         @Override
-        public void execute(ServerPlayer player, DialogueSession session) { execute(player); }
+        public void execute(ServerPlayer player, DialogueSession session) { 
+            execute(player); 
+        }
     }
 
-    record OpenSimpleTrade(String shopId) implements DialogueAction {
+    record OpenSimpleTrade(String shopId, String restoreNodeId) implements DialogueAction {
+        public OpenSimpleTrade(String shopId) {
+            this(shopId, null);
+        }
+
         @Override
         public void execute(ServerPlayer player) {
             TradeShopDefinition shop = TradeRegistry.get(shopId);
@@ -280,10 +290,12 @@ public sealed interface DialogueAction {
                 LOGGER.warn("[Dialogue] Unknown trade shop: {}", shopId);
                 return;
             }
-            C2SRequestTradePacket.handleServerOpen(player, shop, true);
+            C2SRequestTradePacket.handleServerOpenFromDialogue(player, shop, true, restoreNodeId);
         }
         @Override
-        public void execute(ServerPlayer player, DialogueSession session) { execute(player); }
+        public void execute(ServerPlayer player, DialogueSession session) { 
+            execute(player); 
+        }
     }
     record LambdaAction(BiConsumer<ServerPlayer, Entity> handler, Entity target) implements DialogueAction {
 

@@ -316,11 +316,17 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addTradeShop("blacksmith_shop", "铁匠铺", "出售各类武器、护甲和工具");
         addTradeShop("potion_shop", "药水商人", "出售各类药水效果");
         addTradeShop("quick_food_trade", "快速补给", null);
+        addTradeShop("merchant_shop", "旅行商人的行囊", "周游各地的物资供应商");
+        addTradeShop("wandering_trader_shop", "流浪商人的珍品", "每日更新的稀有商品");
+        addTradeShop("mysterious_merchant_shop", "神秘商人的深夜小店", "仅在深夜开放的禁忌宝库");
+        addTradeShop("quick_supplies", "守卫的快速补给", "不关闭对话的便捷购买");
 
         // ── 分类名称 ──
         addTradeCategory("weapons", "武器");
         addTradeCategory("armor", "护甲");
         addTradeCategory("tools", "工具");
+        addTradeCategory("supplies", "物资");
+        addTradeCategory("rare", "珍宝");
 
         // ── 交易项（铁匠铺） ──
         addTradeEntry("iron_sword", "铁剑", null);
@@ -338,6 +344,22 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addTradeEntry("buy_bread", "面包 x4", null);
         addTradeEntry("buy_steak", "牛排 x2", null);
         addTradeEntry("buy_golden_apple", "金苹果", null);
+
+        // ── 交易项（快速补给） ──
+        addTradeEntry("qs_bread", "面包 x4", null);
+        addTradeEntry("qs_potion", "治疗药水", null);
+
+        // ── 交易项（旅行商人） ──
+        addTradeEntry("merchant_food_pack", "应急口粮包", "包含面包与烤马铃薯");
+        addTradeEntry("merchant_torch_bundle", "探险火把组", "深入矿洞的必备品");
+
+        // ── 交易项（流浪商人） ──
+        addTradeEntry("trader_exotic_plant", "异域植物种子", "来自远方的奇异种子");
+        addTradeEntry("trader_dye_set", "染料大礼包", "五颜六色的创作素材");
+
+        // ── 交易项（神秘商人） ──
+        addTradeEntry("mystery_netherite", "下界合金锭", "蕴含毁灭力量的金属");
+        addTradeEntry("mystery_totem", "不死图腾", "逆转生死的最后希望");
     }
 
     /**
@@ -521,6 +543,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "§f需要什么尽管说，我的手艺可是村里最好的！");
         add("dialogue.epic_blacksmith.start.choice_leave",
                 "下次再来");
+        add("dialogue.epic_blacksmith.start.choice_open_shop",
+                "§8查看完整货架 (打开商店)");
 
         // ═══════════════════════════════════════════
         // 商人
@@ -564,6 +588,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "⚒️ 工具包 (10金币)");
         add("dialogue.epic_merchant.shop_menu.choice_back",
                 "← 返回");
+        add("dialogue.epic_merchant.shop_menu.choice_open_shop",
+                "§a查看完整行囊 (打开商店)");
 
         // ═══════════════════════════════════════════
         // 流浪商人 - sayIf() 示例 NPC
@@ -612,6 +638,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "⚔️ 武器装备");
         add("dialogue.epic_wandering_trader.shop_menu.choice_back",
                 "← 返回");
+        add("dialogue.epic_wandering_trader.shop_menu.choice_open_shop",
+                "§b查看每日珍品 (打开商店)");
 
         // 装备菜单
         add("dialogue.epic_wandering_trader.equipment_menu.text",
@@ -674,6 +702,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "⚔️ 请求训练（1小时冷却）");
         add("dialogue.epic_village_guard.start.choice_chat",
                 "闲聊");
+        add("dialogue.epic_village_guard.start.choice_quick_trade",
+                "§e🍞 快速购买补给 (简易窗口)");
         add("dialogue.epic_village_guard.start.choice_bye",
                 "再见");
 

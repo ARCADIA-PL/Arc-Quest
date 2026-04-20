@@ -3,6 +3,7 @@ package org.com.arc_quest.trade.network;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import org.com.arc_quest.client.gui.DialogueScreen;
 import org.com.arc_quest.client.gui.SimpleTradePanel;
 import org.com.arc_quest.client.gui.TradeScreen;
 
@@ -206,6 +207,9 @@ public class S2COpenTradePacket {
             Minecraft mc = Minecraft.getInstance();
             switch (pkt.mode) {
                 case OPEN_FULL -> {
+                    if (mc.screen instanceof DialogueScreen) {
+                        TradeScreen.setParentScreen(mc.screen);
+                    }
                     
                     if (mc.screen instanceof TradeScreen ts && ts.getShopId().equals(pkt.shopId)) {
                         ts.updateData(pkt.purchaseCounts, pkt.maxPurchases, pkt.lastPurchaseTimes,
@@ -219,6 +223,9 @@ public class S2COpenTradePacket {
                     }
                 }
                 case OPEN_SIMPLE -> {
+                    if (mc.screen instanceof DialogueScreen) {
+                        SimpleTradePanel.setParentScreen(mc.screen);
+                    }
                     
                     if (mc.screen instanceof SimpleTradePanel sp && sp.getShopId().equals(pkt.shopId)) {
                         sp.updateData(pkt.purchaseCounts, pkt.maxPurchases, pkt.lastPurchaseTimes,
@@ -247,6 +254,8 @@ public class S2COpenTradePacket {
                 }
                 case CLOSE -> {
                     if (mc.screen instanceof TradeScreen || mc.screen instanceof SimpleTradePanel) {
+                        TradeScreen.setParentScreen(null);
+                        SimpleTradePanel.setParentScreen(null);
                         mc.setScreen(null);
                     }
                 }

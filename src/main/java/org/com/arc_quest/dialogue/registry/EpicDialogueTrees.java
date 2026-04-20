@@ -20,8 +20,8 @@ public final class EpicDialogueTrees {
         registerBlacksmith();
         registerMerchant();
         registerWanderingTrader();
-        registerVillageGuard();  // 新增：展示时间/冷却/历史状态/权重
-        registerMysteriousMerchant();  // 新增：展示自定义时间区间
+        registerVillageGuard();
+        registerMysteriousMerchant();
     }
 
     /**
@@ -312,6 +312,10 @@ public final class EpicDialogueTrees {
                         c -> c.presetNetheriteIngot().close()  // ← 使用预设动作
                 )
 
+                // 链接到铁匠铺商店
+                .choice(Component.translatable("dialogue.epic_blacksmith.start.choice_open_shop").getString(),
+                        c -> c.openTrade("blacksmith_shop"))
+
                 .choice(Component.translatable("dialogue.epic_blacksmith.start.choice_leave").getString(),
                         DialogueTreeBuilder.ChoiceBuilder::close)
 
@@ -374,6 +378,9 @@ public final class EpicDialogueTrees {
                         c -> c.presetBread().presetTorches().close())  // ← 使用预设动作
                 .choice(Component.translatable("dialogue.epic_merchant.shop_menu.choice_tools").getString(),
                         c -> c.giveItem("minecraft:iron_pickaxe", 1).giveItem("minecraft:iron_axe", 1).close())
+                // 链接到旅行商人商店
+                .choice(Component.translatable("dialogue.epic_merchant.shop_menu.choice_open_shop").getString(),
+                        c -> c.openTrade("merchant_shop"))
                 .choice(Component.translatable("dialogue.epic_merchant.shop_menu.choice_back").getString(),
                         c -> c.goTo("start"))
 
@@ -449,6 +456,9 @@ public final class EpicDialogueTrees {
                         c -> c.presetTorches().presetBread().goTo("purchase_complete"))
                 .choice(Component.translatable("dialogue.epic_wandering_trader.shop_menu.choice_equipment").getString(),
                         c -> c.goTo("equipment_menu"))
+                // 链接到流浪商人商店
+                .choice(Component.translatable("dialogue.epic_wandering_trader.shop_menu.choice_open_shop").getString(),
+                        c -> c.openTrade("wandering_trader_shop"))
                 .choice(Component.translatable("dialogue.epic_wandering_trader.shop_menu.choice_back").getString(),
                         c -> c.goTo("start"))
 
@@ -571,7 +581,11 @@ public final class EpicDialogueTrees {
                         c -> c.goTo("chat")
                 )
 
-                // 选项5：告别
+                // 选项5：快速补给（简易弹窗）
+                .choice(Component.translatable("dialogue.epic_village_guard.start.choice_quick_trade").getString(),
+                        c -> c.openSimpleTrade("quick_supplies"))
+
+                // 选项6：告别
                 .choice(
                         Component.translatable("dialogue.epic_village_guard.start.choice_bye").getString(),
                         DialogueTreeBuilder.ChoiceBuilder::close
@@ -722,24 +736,10 @@ public final class EpicDialogueTrees {
                 .node("shop")
                 .say(Component.translatable("dialogue.epic_mysterious_merchant.shop.text").getString())
 
-                // 稀有物品（权重高，优先显示）
+                // 链接到神秘商人商店（替代原本的直接给予物品）
                 .choice(
                         Component.translatable("dialogue.epic_mysterious_merchant.shop.choice_rare").getString(),
-                        c -> {
-                            c.priority(20);  // 高权重
-                            c.presetNetheriteIngot();
-                            c.close();
-                        }
-                )
-
-                // 普通物品
-                .choice(
-                        Component.translatable("dialogue.epic_mysterious_merchant.shop.choice_common").getString(),
-                        c -> {
-                            c.priority(10);
-                            c.presetDiamondArmorSet();
-                            c.close();
-                        }
+                        c -> c.openTrade("mysterious_merchant_shop").close()
                 )
 
                 // 返回

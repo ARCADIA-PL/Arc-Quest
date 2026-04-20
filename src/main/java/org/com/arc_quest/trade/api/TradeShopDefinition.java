@@ -1,6 +1,8 @@
 package org.com.arc_quest.trade.api;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.quest.api.ICondition;
 import org.jetbrains.annotations.Nullable;
 
@@ -98,8 +100,8 @@ public final class TradeShopDefinition {
     /**
      * 检查开启条件
      */
-    public boolean canOpen(net.minecraft.server.level.ServerPlayer player,
-                           Set<net.minecraft.resources.ResourceLocation> completedQuests,
+    public boolean canOpen(ServerPlayer player,
+                           Set<ResourceLocation> completedQuests,
                            Set<String> flags,
                            Map<String, Integer> variables) {
         if (openCondition == null) return true;

@@ -3,12 +3,8 @@ package org.com.arc_quest.trade.registry;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.Items;
-import org.com.arc_quest.quest.api.ICondition;
-import org.com.arc_quest.quest.condition.FlagSetCondition;
-import org.com.arc_quest.quest.condition.QuestCompletedCondition;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.builder.TradeEntryBuilder;
 import org.com.arc_quest.trade.builder.TradeShopBuilder;
@@ -27,8 +23,10 @@ public final class TradeContent {
         LOGGER.info("[ArcQuest] Registering trade shops...");
 
         registerBlacksmithShop();
-        registerPotionShop();
-        registerQuickTradePanel();
+        registerMerchantShop();
+        registerWanderingTraderShop();
+        registerMysteriousMerchantShop();
+        registerQuickSupplies();
 
         LOGGER.info("[ArcQuest] Total registered trade shops: {}", TradeRegistry.size());
     }
@@ -115,56 +113,106 @@ public final class TradeContent {
     }
 
     /**
-     * 示例2：药水商人 —— 售卖效果型交易物
+     * 旅行商人 —— 物资供应商 (匹配 epic_merchant)
      */
-    private static void registerPotionShop() {
-        TradeShopBuilder.create("potion_shop")
-                .displayName(Component.translatable("arc_quest.trade.shop.potion_shop.name"))
-                .description(Component.translatable("arc_quest.trade.shop.potion_shop.desc"))
-                .entry(TradeEntryBuilder.create("strength_potion")
-                        .displayName(Component.translatable("arc_quest.trade.entry.strength_potion.name"))
-                        .description(Component.translatable("arc_quest.trade.entry.strength_potion.desc"))
+    private static void registerMerchantShop() {
+        TradeCategory supplies = TradeCategory.ofTranslatedColor("supplies", "arc_quest.trade.category.supplies", 0, ChatFormatting.GREEN);
+
+        TradeShopBuilder.create("merchant_shop")
+                .displayName(Component.translatable("arc_quest.trade.shop.merchant_shop.name"))
+                .description(Component.translatable("arc_quest.trade.shop.merchant_shop.desc"))
+                .category(supplies)
+                .entry(TradeEntryBuilder.create("merchant_food_pack")
+                        .displayName(Component.translatable("arc_quest.trade.entry.merchant_food_pack.name"))
+                        .description(Component.translatable("arc_quest.trade.entry.merchant_food_pack.desc"))
                         .costItem(Items.EMERALD, 3)
-                        .rewardEffect(MobEffects.DAMAGE_BOOST, 60)
-                        .cooldown(120))
-                .entry(TradeEntryBuilder.create("speed_potion")
-                        .displayName(Component.translatable("arc_quest.trade.entry.speed_potion.name"))
-                        .description(Component.translatable("arc_quest.trade.entry.speed_potion.desc"))
-                        .costItem(Items.EMERALD, 4)
-                        .rewardEffect(MobEffects.MOVEMENT_SPEED, 120)
-                        .cooldown(180))
-                .entry(TradeEntryBuilder.create("regen_potion")
-                        .displayName(Component.translatable("arc_quest.trade.entry.regen_potion.name"))
-                        .description(Component.translatable("arc_quest.trade.entry.regen_potion.desc"))
-                        .costItem(Items.EMERALD, 8)
-                        .costItem(Items.GOLD_INGOT, 2)
-                        .rewardEffect(MobEffects.REGENERATION, 30, 1)
-                        .cooldownGameDay()
-                        .maxPurchases(3))
+                        .rewardItem(Items.BREAD, 4)
+                        .rewardItem(Items.BAKED_POTATO, 2)
+                        .category(supplies))
+                .entry(TradeEntryBuilder.create("merchant_torch_bundle")
+                        .displayName(Component.translatable("arc_quest.trade.entry.merchant_torch_bundle.name"))
+                        .description(Component.translatable("arc_quest.trade.entry.merchant_torch_bundle.desc"))
+                        .costItem(Items.EMERALD, 5)
+                        .rewardItem(Items.TORCH, 32)
+                        .category(supplies))
                 .buildAndRegister();
     }
 
     /**
-     * 示例3：快速交易弹窗 —— 简易模式
+     * 流浪商人 —— 稀有商品 (匹配 epic_wandering_trader)
      */
-    private static void registerQuickTradePanel() {
-        TradeShopBuilder.create("quick_food_trade")
-                .displayName(Component.translatable("arc_quest.trade.shop.quick_food_trade.name"))
-                .simpleMode()
-                .entry(TradeEntryBuilder.create("buy_bread")
-                        .displayName(Component.translatable("arc_quest.trade.entry.buy_bread.name"))
+    private static void registerWanderingTraderShop() {
+        TradeCategory rare = TradeCategory.ofTranslatedColor("rare", "arc_quest.trade.category.rare", 0, ChatFormatting.AQUA);
+
+        TradeShopBuilder.create("wandering_trader_shop")
+                .displayName(Component.translatable("arc_quest.trade.shop.wandering_trader_shop.name"))
+                .description(Component.translatable("arc_quest.trade.shop.wandering_trader_shop.desc"))
+                .category(rare)
+                .entry(TradeEntryBuilder.create("trader_exotic_plant")
+                        .displayName(Component.translatable("arc_quest.trade.entry.trader_exotic_plant.name"))
+                        .description(Component.translatable("arc_quest.trade.entry.trader_exotic_plant.desc"))
+                        .costItem(Items.EMERALD, 8)
+                        .rewardItem(Items.WARPED_FUNGUS, 1)
+                        .rewardItem(Items.CRIMSON_FUNGUS, 1)
+                        .category(rare)
+                        .cooldownGameDay())
+                .entry(TradeEntryBuilder.create("trader_dye_set")
+                        .displayName(Component.translatable("arc_quest.trade.entry.trader_dye_set.name"))
+                        .description(Component.translatable("arc_quest.trade.entry.trader_dye_set.desc"))
+                        .costItem(Items.EMERALD, 6)
+                        .rewardItem(Items.LAPIS_LAZULI, 4)
+                        .rewardItem(Items.PINK_DYE, 4)
+                        .category(rare))
+                .buildAndRegister();
+    }
+
+    /**
+     * 神秘商人 —— 深夜禁忌宝库 (匹配 epic_mysterious_merchant)
+     * <p>
+     * 注意：可见性控制已在对话树 (epic_mysterious_merchant) 的选项条件中处理，
+     * 此处仅负责定义商品内容、价格及购买限制。
+     */
+    private static void registerMysteriousMerchantShop() {
+        TradeCategory rare = TradeCategory.ofTranslatedColor("rare", "arc_quest.trade.category.rare", 0, ChatFormatting.LIGHT_PURPLE);
+
+        TradeShopBuilder.create("mysterious_merchant_shop")
+                .displayName(Component.translatable("arc_quest.trade.shop.mysterious_merchant_shop.name"))
+                .description(Component.translatable("arc_quest.trade.shop.mysterious_merchant_shop.desc"))
+                .category(rare)
+                .entry(TradeEntryBuilder.create("mystery_netherite")
+                        .displayName(Component.translatable("arc_quest.trade.entry.mystery_netherite.name"))
+                        .description(Component.translatable("arc_quest.trade.entry.mystery_netherite.desc"))
+                        .costItem(Items.DIAMOND, 10)
+                        .costItem(Items.GOLD_INGOT, 16)
+                        .rewardItem(Items.NETHERITE_INGOT, 1)
+                        .category(rare)
+                        .maxPurchases(1))
+                .entry(TradeEntryBuilder.create("mystery_totem")
+                        .displayName(Component.translatable("arc_quest.trade.entry.mystery_totem.name"))
+                        .description(Component.translatable("arc_quest.trade.entry.mystery_totem.desc"))
+                        .costItem(Items.EMERALD, 32)
+                        .rewardItem(Items.TOTEM_OF_UNDYING, 1)
+                        .category(rare)
+                        .maxPurchases(1)
+                        .cooldownGameDay())
+                .buildAndRegister();
+    }
+
+    /**
+     * 快速补给 —— 简易交易弹窗示例 (匹配 Village Guard)
+     */
+    private static void registerQuickSupplies() {
+        TradeShopBuilder.create("quick_supplies")
+                .displayName(Component.translatable("arc_quest.trade.shop.quick_supplies.name"))
+                .simpleMode() // 开启简易模式
+                .entry(TradeEntryBuilder.create("qs_bread")
+                        .displayName(Component.translatable("arc_quest.trade.entry.qs_bread.name"))
                         .costItem(Items.EMERALD, 1)
                         .rewardItem(Items.BREAD, 4))
-                .entry(TradeEntryBuilder.create("buy_steak")
-                        .displayName(Component.translatable("arc_quest.trade.entry.buy_steak.name"))
-                        .costItem(Items.EMERALD, 2)
-                        .rewardItem(Items.COOKED_BEEF, 2))
-                .entry(TradeEntryBuilder.create("buy_golden_apple")
-                        .displayName(Component.translatable("arc_quest.trade.entry.buy_golden_apple.name"))
-                        .costItem(Items.EMERALD, 10)
-                        .costItem(Items.GOLD_INGOT, 4)
-                        .rewardItem(Items.GOLDEN_APPLE, 1)
-                        .cooldownGameDay())
+                .entry(TradeEntryBuilder.create("qs_potion")
+                        .displayName(Component.translatable("arc_quest.trade.entry.qs_potion.name"))
+                        .costItem(Items.EMERALD, 3)
+                        .rewardEffect(MobEffects.HEAL, 1))
                 .buildAndRegister();
     }
 }

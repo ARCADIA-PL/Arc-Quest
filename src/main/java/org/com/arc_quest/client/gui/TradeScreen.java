@@ -1,20 +1,29 @@
 package org.com.arc_quest.client.gui;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
+import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class TradeScreen extends AbstractTradeScreen {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
+
+    private static Screen parentScreen;
 
     private static final int CARD_HEIGHT = 48;
     private static final int CAT_WIDTH = 130;
@@ -39,6 +48,29 @@ public class TradeScreen extends AbstractTradeScreen {
         this.allEntries = shop != null ? new ArrayList<>(shop.getAllEntries()) : List.of();
         this.filteredEntries = new ArrayList<>(allEntries);
         this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
+    }
+
+    public static void setParentScreen(Screen screen) {
+        parentScreen = screen;
+    }
+
+    @Override
+    public void onClose() {
+        if (parentScreen != null) {
+            Minecraft mc = Minecraft.getInstance();
+            if (parentScreen instanceof DialogueScreen ds) {
+                LOGGER.info("[TradeScreen] Sending RESTORE_DIALOGUE request");
+                ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.restore());
+                ds.resetSelectionState();
+                ds.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+                LOGGER.info("[TradeScreen] Reset dialogue selection state and re-initialized");
+            }
+            mc.setScreen(parentScreen);
+            parentScreen = null;
+            LOGGER.info("[TradeScreen] Restored parent screen");
+        } else {
+            super.onClose();
+        }
     }
 
     @Override

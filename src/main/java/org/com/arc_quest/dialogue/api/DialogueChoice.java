@@ -14,6 +14,7 @@ import java.util.List;
  * @param cooldownType    冷却类型（SECONDS=秒级, GAME_DAY=游戏日, GAME_TICK=固定时间刻）
  * @param resetTimeTicks  重置时间刻（Minecraft tick），仅当 cooldownType=GAME_TICK 时有效
  * @param priority        选项优先级（默认 0），高优先级会覆盖低优先级选项
+ * @param restoreNodeId   从商店/界面退出后恢复的目标节点 ID（null = 不恢复，保持当前节点）
  */
 public record DialogueChoice(
         String text,
@@ -24,22 +25,23 @@ public record DialogueChoice(
         long cooldownSeconds,
         CooldownType cooldownType,
         int resetTimeTicks,
-        int priority
+        int priority,
+        String restoreNodeId
 ) {
     /**
-     * 向后兼容构造器（默认可重复，无冷却，优先级 0）。
+     * 向后兼容构造器（默认可重复，无冷却，优先级 0，不恢复）。
      */
     public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
                           List<DialogueAction> actions) {
-        this(text, nextNodeId, conditions, actions, true, 0, CooldownType.NONE, 0, 0);
+        this(text, nextNodeId, conditions, actions, true, 0, CooldownType.NONE, 0, 0, null);
     }
 
     /**
-     * 完整构造器（带优先级和冷却类型）。
+     * 完整构造器（带优先级、冷却类型和恢复节点）。
      */
     public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
                           List<DialogueAction> actions, boolean repeatable, long cooldownSeconds,
-                          CooldownType cooldownType, int resetTimeTicks, int priority) {
+                          CooldownType cooldownType, int resetTimeTicks, int priority, String restoreNodeId) {
         this.text = text;
         this.nextNodeId = nextNodeId;
         this.conditions = conditions;
@@ -49,6 +51,7 @@ public record DialogueChoice(
         this.cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
         this.resetTimeTicks = resetTimeTicks;
         this.priority = priority;
+        this.restoreNodeId = restoreNodeId;
     }
 
     /**
@@ -77,7 +80,7 @@ public record DialogueChoice(
      * 便捷构造：带优先级。
      */
     public static DialogueChoice prioritized(String text, String nextNodeId, int priority) {
-        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, priority);
+        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, priority, null);
     }
 
     /**
@@ -85,20 +88,20 @@ public record DialogueChoice(
      */
     public static DialogueChoice prioritizedConditional(String text, String nextNodeId,
                                                         DialogueCondition condition, int priority) {
-        return new DialogueChoice(text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, priority);
+        return new DialogueChoice(text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, priority, null);
     }
 
     /**
      * 便捷构造：带游戏日冷却。
      */
     public static DialogueChoice gameDayCooldown(String text, String nextNodeId) {
-        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_DAY, 0, 0);
+        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_DAY, 0, 0, null);
     }
 
     /**
      * 便捷构造：带固定时间刻冷却。
      */
     public static DialogueChoice cooldownAtTick(String text, String nextNodeId, int tick) {
-        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_TICK, tick, 0);
+        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_TICK, tick, 0, null);
     }
 }

@@ -1,9 +1,13 @@
 package org.com.arc_quest.dialogue.network;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.client.gui.DialogueScreen;
+import org.com.arc_quest.client.gui.SimpleTradePanel;
+import org.com.arc_quest.client.gui.TradeScreen;
+import org.slf4j.Logger;
 
 import java.util.function.Supplier;
 
@@ -11,6 +15,8 @@ import java.util.function.Supplier;
  * 服务端→客户端：打开/更新/关闭对话界面。
  */
 public class S2COpenDialoguePacket {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     /**
      * 空 dialogueId = 关闭对话。
@@ -183,22 +189,32 @@ public class S2COpenDialoguePacket {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.isClose) {
+                LOGGER.info("[S2COpenDialoguePacket] Received CLOSE packet");
                 if (mc.screen instanceof DialogueScreen ds) {
                     ds.startCloseAnimation();
                 }
                 return;
             }
 
+            LOGGER.info("[S2COpenDialoguePacket] Received dialogue data, nodeId: {}, isTerminal: {}", pkt.nodeId, pkt.isTerminal);
             if (mc.screen instanceof DialogueScreen ds) {
                 // 更新现有对话界面
+                LOGGER.info("[S2COpenDialoguePacket] Updating existing DialogueScreen");
                 ds.updateNode(pkt.speaker, pkt.text, pkt.choices,
                         pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs,
                         pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
                         pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
                         pkt.choiceCooldownValues, pkt.choiceResetTimeTicks);
                 ds.updateEntityId(pkt.entityId);
+            } else if (mc.screen != null && 
+                       (mc.screen instanceof TradeScreen || 
+                        mc.screen instanceof SimpleTradePanel)) {
+                // 如果当前是商店界面，忽略此包（由商店动作触发，不应覆盖商店）
+                LOGGER.info("[S2COpenDialoguePacket] Ignoring dialogue update while TradeScreen is open");
             } else {
-                // 打开新对话界面
+                // 创建新对话界面
+                LOGGER.info("[S2COpenDialoguePacket] Creating new DialogueScreen, current screen: {}", 
+                        mc.screen != null ? mc.screen.getClass().getSimpleName() : "null");
                 mc.setScreen(new DialogueScreen(pkt.dialogueId, pkt.speaker,
                         pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext,
                         pkt.delayMs, pkt.entityId,
