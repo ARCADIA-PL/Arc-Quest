@@ -1,6 +1,7 @@
 package org.com.arc_quest.trade.registry;
 
 import com.mojang.logging.LogUtils;
+import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -35,9 +36,31 @@ public final class TradeRegistry {
                 id, definition.getAllEntries().size());
     }
 
+    /**
+     * 获取商店定义（支持智能命名空间解析）。
+     * <p>
+     * - 如果 shopId 包含 ":"，直接查找
+     * - 如果不包含 ":"，尝试添加 "arc_quest:" 前缀后查找
+     *
+     * @param shopId 商店 ID（可以是 "blacksmith_shop" 或 "arc_quest:blacksmith_shop"）
+     * @return 商店定义，未找到返回 null
+     */
     @Nullable
     public static TradeShopDefinition get(String shopId) {
-        return REGISTRY.get(shopId);
+        // 1. 直接查找
+        TradeShopDefinition shop = REGISTRY.get(shopId);
+        if (shop != null) {
+            return shop;
+        }
+
+        // 2. 如果不包含命名空间，尝试添加默认前缀
+        if (!shopId.contains(":")) {
+            String fullId = Arc_quest.MOD_ID + ":" + shopId;
+            shop = REGISTRY.get(fullId);
+            return shop;
+        }
+
+        return null;
     }
 
     public static Collection<TradeShopDefinition> getAll() {

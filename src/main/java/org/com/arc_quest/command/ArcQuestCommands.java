@@ -62,129 +62,132 @@ public class ArcQuestCommands {
                 Commands.literal("arcquest")
                         .requires(src -> src.hasPermission(2))
 
-                        // ═══ give ═══
-                        .then(Commands.literal("give")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(ArcQuestCommands::suggestQuestIds)
-                                                .executes(ArcQuestCommands::cmdGive))))
+                        // ═══ 任务管理子系统 ═══
+                        .then(Commands.literal("quest")
+                                // /arcquest quest give <player> <id>
+                                .then(Commands.literal("give")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                                        .suggests(ArcQuestCommands::suggestQuestIds)
+                                                        .executes(ArcQuestCommands::cmdGive))))
+                                // /arcquest quest complete <player> <id>
+                                .then(Commands.literal("complete")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                                        .suggests(ArcQuestCommands::suggestQuestIds)
+                                                        .executes(ArcQuestCommands::cmdComplete))))
+                                // /arcquest quest fail <player> <id>
+                                .then(Commands.literal("fail")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                                        .suggests(ArcQuestCommands::suggestQuestIds)
+                                                        .executes(ArcQuestCommands::cmdFail))))
+                                // /arcquest quest reset <player> <id>
+                                .then(Commands.literal("reset")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                                        .suggests(ArcQuestCommands::suggestQuestIds)
+                                                        .executes(ArcQuestCommands::cmdReset))))
+                                // /arcquest quest phase <player> <id> <phase>
+                                .then(Commands.literal("phase")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                                        .suggests(ArcQuestCommands::suggestQuestIds)
+                                                        .then(Commands.argument("phase_id", StringArgumentType.string())
+                                                                .suggests(ArcQuestCommands::suggestPhaseIds)
+                                                                .executes(ArcQuestCommands::cmdPhase)))))
+                                // /arcquest quest progress <player> <id> <index> <amount>
+                                .then(Commands.literal("progress")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                                        .suggests(ArcQuestCommands::suggestQuestIds)
+                                                        .then(Commands.argument("obj_index", IntegerArgumentType.integer(0))
+                                                                .then(Commands.argument("amount", IntegerArgumentType.integer(0))
+                                                                        .executes(ArcQuestCommands::cmdProgress))))))
+                                // /arcquest quest list [player]
+                                .then(Commands.literal("list")
+                                        .executes(ctx -> cmdList(ctx, null))
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .executes(ctx -> cmdList(ctx, EntityArgument.getPlayer(ctx, "player")))))
+                                // /arcquest quest debug <player> <id>
+                                .then(Commands.literal("debug")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                                        .suggests(ArcQuestCommands::suggestQuestIds)
+                                                        .executes(ArcQuestCommands::cmdDebug)))))
 
-                        // ═══ complete ═══
-                        .then(Commands.literal("complete")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(ArcQuestCommands::suggestQuestIds)
-                                                .executes(ArcQuestCommands::cmdComplete))))
-
-                        // ═══ fail ═══
-                        .then(Commands.literal("fail")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(ArcQuestCommands::suggestQuestIds)
-                                                .executes(ArcQuestCommands::cmdFail))))
-
-                        // ═══ reset ═══
-                        .then(Commands.literal("reset")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(ArcQuestCommands::suggestQuestIds)
-                                                .executes(ArcQuestCommands::cmdReset))))
-
-                        // ═══ phase ═══
-                        .then(Commands.literal("phase")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(ArcQuestCommands::suggestQuestIds)
-                                                .then(Commands.argument("phase_id", StringArgumentType.string())
-                                                        .suggests(ArcQuestCommands::suggestPhaseIds)
-                                                        .executes(ArcQuestCommands::cmdPhase)))))
-
-                        // ═══ progress ═══
-                        .then(Commands.literal("progress")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(ArcQuestCommands::suggestQuestIds)
-                                                .then(Commands.argument("obj_index", IntegerArgumentType.integer(0))
-                                                        .then(Commands.argument("amount", IntegerArgumentType.integer(0))
-                                                                .executes(ArcQuestCommands::cmdProgress))))))
-
-                        // ═══ list ═══
-                        .then(Commands.literal("list")
-                                .executes(ctx -> cmdList(ctx, null))
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .executes(ctx -> cmdList(ctx, EntityArgument.getPlayer(ctx, "player")))))
-
-                        // ═══ debug ═══
-                        .then(Commands.literal("debug")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(ArcQuestCommands::suggestQuestIds)
-                                                .executes(ArcQuestCommands::cmdDebug))))
-
-                        // ═══ registry ═══
-                        .then(Commands.literal("registry")
-                                .executes(ArcQuestCommands::cmdRegistry))
-
-                        // ═══ reload ═══
-                        .then(Commands.literal("reload")
-                                .executes(ArcQuestCommands::cmdReload))
-
-                        // ═══ dialogue ═══
+                        // ═══ 对话管理子系统 ═══
                         .then(Commands.literal("dialogue")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("dialogue_id", StringArgumentType.string())
-                                                .suggests(ArcQuestCommands::suggestDialogueIds)
-                                                .executes(ArcQuestCommands::cmdDialogue)))
-                                // 对话调试子命令
+                                // /arcquest dialogue start <player> <id>
+                                .then(Commands.literal("start")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("dialogue_id", StringArgumentType.string())
+                                                        .suggests(ArcQuestCommands::suggestDialogueIds)
+                                                        .executes(ArcQuestCommands::cmdDialogue))))
+                                // /arcquest dialogue reset <player> [id]
                                 .then(Commands.literal("reset")
                                         .then(Commands.argument("player", EntityArgument.player())
                                                 .executes(ctx -> cmdDialogueReset(ctx, null))
                                                 .then(Commands.argument("dialogue_id", StringArgumentType.string())
                                                         .suggests(ArcQuestCommands::suggestDialogueIds)
-                                                        .executes(ctx -> cmdDialogueReset(ctx, StringArgumentType.getString(ctx, "dialogue_id"))))))
+                                                        .executes(ctx -> cmdDialogueReset(ctx, StringArgumentType.getString(ctx, "dialogue_id")))))
+                                // /arcquest dialogue status <player>
                                 .then(Commands.literal("status")
                                         .then(Commands.argument("player", EntityArgument.player())
                                                 .executes(ArcQuestCommands::cmdDialogueStatus))))
 
-                        // ═══ resetall ═══
-                        .then(Commands.literal("resetall")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .executes(ArcQuestCommands::cmdResetAll)))
-
-                        // trade
+                        // ═══ 交易管理子系统 ═══
                         .then(Commands.literal("trade")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("shop_id", StringArgumentType.string())
-                                                .suggests(ArcQuestCommands::suggestTradeShopIds)
-                                                .executes(ArcQuestCommands::cmdTradeOpen)))
+                                // /arcquest trade open <player> <shop>
+                                .then(Commands.literal("open")
+                                        .then(Commands.argument("player", EntityArgument.player())
+                                                .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                        .suggests(ArcQuestCommands::suggestTradeShopIds)
+                                                        .executes(ArcQuestCommands::cmdTradeOpen))))
+                                // /arcquest trade simple <player> <shop>
                                 .then(Commands.literal("simple")
                                         .then(Commands.argument("player", EntityArgument.player())
                                                 .then(Commands.argument("shop_id", StringArgumentType.string())
                                                         .suggests(ArcQuestCommands::suggestTradeShopIds)
                                                         .executes(ArcQuestCommands::cmdTradeSimple))))
+                                // /arcquest trade list
                                 .then(Commands.literal("list")
                                         .executes(ArcQuestCommands::cmdTradeList))
+                                // /arcquest trade debug <shop>
                                 .then(Commands.literal("debug")
                                         .then(Commands.argument("shop_id", StringArgumentType.string())
                                                 .suggests(ArcQuestCommands::suggestTradeShopIds)
                                                 .executes(ArcQuestCommands::cmdTradeDebug)))
-                                // 重置交易状态
+                                // /arcquest trade reset ...
                                 .then(Commands.literal("reset")
-                                        .then(Commands.argument("player", EntityArgument.player())
-                                                .then(Commands.argument("shop_id", StringArgumentType.string())
-                                                        .suggests(ArcQuestCommands::suggestTradeShopIds)
-                                                        .executes(ctx -> cmdTradeReset(ctx, null)))
-                                                .then(Commands.literal("all")
-                                                        .executes(ArcQuestCommands::cmdTradeResetAll)))
-                                        .then(Commands.argument("player", EntityArgument.player())
-                                                .then(Commands.argument("shop_id", StringArgumentType.string())
-                                                        .suggests(ArcQuestCommands::suggestTradeShopIds)
-                                                        .then(Commands.argument("entry_id", StringArgumentType.string())
-                                                                .suggests(ArcQuestCommands::suggestTradeEntryIds)
-                                                                .executes(ctx -> cmdTradeReset(ctx, StringArgumentType.getString(ctx, "entry_id"))))))))
-        );
+                                        // /arcquest trade reset shop <player> <shop>
+                                        .then(Commands.literal("shop")
+                                                .then(Commands.argument("player", EntityArgument.player())
+                                                        .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                                .suggests(ArcQuestCommands::suggestTradeShopIds)
+                                                                .executes(ctx -> cmdTradeResetShop(ctx)))))
+                                        // /arcquest trade reset entry <player> <shop> <entry>
+                                        .then(Commands.literal("entry")
+                                                .then(Commands.argument("player", EntityArgument.player())
+                                                        .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                                .suggests(ArcQuestCommands::suggestTradeShopIds)
+                                                                .then(Commands.argument("entry_id", StringArgumentType.string())
+                                                                        .suggests(ArcQuestCommands::suggestTradeEntryIds)
+                                                                        .executes(ctx -> cmdTradeResetEntry(ctx)))))
+                                        // /arcquest trade reset all <player>
+                                        .then(Commands.literal("all")
+                                                .then(Commands.argument("player", EntityArgument.player())
+                                                        .executes(ArcQuestCommands::cmdTradeResetAll)))))))
+                        // ═══ 管理员功能 ═══
+                        .then(Commands.literal("admin")
+                                // /arcquest admin registry
+                                .then(Commands.literal("registry")
+                                        .executes(ArcQuestCommands::cmdRegistry))
+                                // /arcquest admin reload
+                                .then(Commands.literal("reload")
+                                        .executes(ArcQuestCommands::cmdReload))));
 
-        LOGGER.info("[ArcQuest] Commands registered.");
+        LOGGER.info("[ArcQuest] Commands registered with modular structure.");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -812,10 +815,10 @@ public class ArcQuestCommands {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  /arcquest trade reset <player> <shop_id> [entry_id]
+    //  /arcquest trade reset shop <player> <shop_id>
     // ═══════════════════════════════════════════════════════
 
-    private static int cmdTradeReset(CommandContext<CommandSourceStack> ctx, String entryId) throws CommandSyntaxException {
+    private static int cmdTradeResetShop(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         String shopId = StringArgumentType.getString(ctx, "shop_id");
         IQuestCapability cap = getCapOrError(ctx, player);
@@ -826,33 +829,50 @@ public class ArcQuestCommands {
             return 0;
         }
 
-        if (entryId == null) {
-            // 重置整个商店的所有交易项
-            for (TradeEntry entry : shop.getAllEntries()) {
-                cap.resetTradePurchaseCount(shopId, entry.getEntryId());
-            }
-            success(ctx, Component.translatable("arc_quest.command.trade.reset.shop_success",
-                    shopId, player.getName().getString()).getString());
-        } else {
-            // 重置单个交易项
-            TradeEntry targetEntry = null;
-            for (TradeEntry entry : shop.getAllEntries()) {
-                if (entry.getEntryId().equals(entryId)) {
-                    targetEntry = entry;
-                    break;
-                }
-            }
-
-            if (targetEntry == null) {
-                error(ctx, Component.translatable("arc_quest.command.trade.reset.error.entry_not_found",
-                        entryId, shopId).getString());
-                return 0;
-            }
-
-            cap.resetTradePurchaseCount(shopId, entryId);
-            success(ctx, Component.translatable("arc_quest.command.trade.reset.entry_success",
-                    entryId, shopId, player.getName().getString()).getString());
+        // 重置整个商店的所有交易项
+        for (TradeEntry entry : shop.getAllEntries()) {
+            cap.resetTradePurchaseCount(shopId, entry.getEntryId());
         }
+        success(ctx, Component.translatable("arc_quest.command.trade.reset.shop_success",
+                shopId, player.getName().getString()).getString());
+
+        return 1;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  /arcquest trade reset entry <player> <shop_id> <entry_id>
+    // ═══════════════════════════════════════════════════════
+
+    private static int cmdTradeResetEntry(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        String shopId = StringArgumentType.getString(ctx, "shop_id");
+        String entryId = StringArgumentType.getString(ctx, "entry_id");
+        IQuestCapability cap = getCapOrError(ctx, player);
+
+        TradeShopDefinition shop = TradeRegistry.get(shopId);
+        if (shop == null) {
+            error(ctx, Component.translatable("arc_quest.command.trade.error.not_found", shopId).getString());
+            return 0;
+        }
+
+        // 查找并重置单个交易项
+        TradeEntry targetEntry = null;
+        for (TradeEntry entry : shop.getAllEntries()) {
+            if (entry.getEntryId().equals(entryId)) {
+                targetEntry = entry;
+                break;
+            }
+        }
+
+        if (targetEntry == null) {
+            error(ctx, Component.translatable("arc_quest.command.trade.reset.error.entry_not_found",
+                    entryId, shopId).getString());
+            return 0;
+        }
+
+        cap.resetTradePurchaseCount(shopId, entryId);
+        success(ctx, Component.translatable("arc_quest.command.trade.reset.entry_success",
+                entryId, shopId, player.getName().getString()).getString());
 
         return 1;
     }

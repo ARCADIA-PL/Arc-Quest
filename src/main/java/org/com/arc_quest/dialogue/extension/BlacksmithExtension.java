@@ -45,7 +45,7 @@ public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
         if (villager.getPersistentData().contains("ArcQuestNpcId")) {
             String npcId = villager.getPersistentData().getString("ArcQuestNpcId");
             if ("blacksmith".equals(npcId)) {
-                return "epic_blacksmith";
+                return "arc_quest:epic_blacksmith";
             }
         }
 
@@ -55,7 +55,7 @@ public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
         if (fullNbt.contains("ArcQuestNpcId")) {
             String npcId = fullNbt.getString("ArcQuestNpcId");
             if ("blacksmith".equals(npcId)) {
-                return "epic_blacksmith";
+                return "arc_quest:epic_blacksmith";
             }
         }
 
@@ -63,7 +63,7 @@ public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
         if (villager.hasCustomName()) {
             String name = villager.getCustomName().getString();
             if (name.contains("铁匠") || name.contains("Blacksmith")) {
-                return "epic_blacksmith";
+                return "arc_quest:epic_blacksmith";
             }
         }
 

@@ -13,6 +13,8 @@ import org.com.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.com.arc_quest.dialogue.api.ProgressScope;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * 铁匠对话扩展 - 村民职业为 ARMORER 的 NPC。
  * <p>
@@ -46,7 +48,7 @@ public class GuardExtension implements IEntityDialogueExtension<Villager> {
         if (villager.getPersistentData().contains("ArcQuestNpcId")) {
             String npcId = villager.getPersistentData().getString("ArcQuestNpcId");
             if ("village_guard".equals(npcId)) {
-                return "epic_village_guard";
+                return "arc_quest:epic_village_guard";
             }
         }
 
@@ -56,15 +58,15 @@ public class GuardExtension implements IEntityDialogueExtension<Villager> {
         if (fullNbt.contains("ArcQuestNpcId")) {
             String npcId = fullNbt.getString("ArcQuestNpcId");
             if ("village_guard".equals(npcId)) {
-                return "epic_village_guard";
+                return "arc_quest:epic_village_guard";
             }
         }
 
         // 3. 通过自定义名称识别
         if (villager.hasCustomName()) {
-            String name = villager.getCustomName().getString();
+            String name = Objects.requireNonNull(villager.getCustomName()).getString();
             if (name.contains("村庄守卫") || name.contains("Village Guard")) {
-                return "epic_village_guard";
+                return "arc_quest:epic_village_guard";
             }
         }
 

@@ -45,7 +45,7 @@ public class VillageElderExtension implements IEntityDialogueExtension<Villager>
         if (villager.getPersistentData().contains("ArcQuestNpcId")) {
             String npcId = villager.getPersistentData().getString("ArcQuestNpcId");
             if ("village_elder".equals(npcId)) {
-                return "epic_village_elder";
+                return "arc_quest:epic_village_elder";
             }
         }
 
@@ -55,7 +55,7 @@ public class VillageElderExtension implements IEntityDialogueExtension<Villager>
         if (fullNbt.contains("ArcQuestNpcId")) {
             String npcId = fullNbt.getString("ArcQuestNpcId");
             if ("village_elder".equals(npcId)) {
-                return "epic_village_elder";
+                return "arc_quest:epic_village_elder";
             }
         }
 
@@ -63,7 +63,7 @@ public class VillageElderExtension implements IEntityDialogueExtension<Villager>
         if (villager.hasCustomName()) {
             String name = villager.getCustomName().getString();
             if (name.contains("长老") || name.contains("Elder")) {
-                return "epic_village_elder";
+                return "arc_quest:epic_village_elder";
             }
         }
 

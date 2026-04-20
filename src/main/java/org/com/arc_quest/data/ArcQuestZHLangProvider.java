@@ -121,6 +121,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // ── fail ──
         addCommandFeedback("fail", "success",
                 "已强制失败 %2$s 的任务 §e%1$s§f。");
+        addCommandFeedback("fail", "error.not_active",
+                "任务 '%1$s' 未处于激活状态。");
 
         // ── reset ──
         addCommandFeedback("reset", "success",
@@ -139,6 +141,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // ── progress ──
         addCommandFeedback("progress", "success",
                 "已设置任务 §e%3$s§f 的目标[%1$s] = %2$s。");
+        addCommandFeedback("progress", "error.not_active",
+                "任务 '%1$s' 未处于激活状态。");
         addCommandFeedback("progress", "error.out_of_range",
                 "目标索引 %1$s 超出范围（最大 %2$s）。");
 
@@ -231,6 +235,12 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.command.trade.debug.rewards", "§7      奖励: §b%1$s");
         add("arc_quest.command.trade.debug.limit", "§7      限购: §e%1$s 次");
         add("arc_quest.command.trade.debug.cooldown", "§7      冷却: §e%1$s (%2$s)");
+
+        // ── 交易重置命令 ──
+        add("arc_quest.command.trade.reset.shop_success", "已重置玩家 %2$s 的商店 %1$s 的所有交易项");
+        add("arc_quest.command.trade.reset.entry_success", "已重置玩家 %3$s 的商店 %2$s 中的交易项 %1$s");
+        add("arc_quest.command.trade.reset.all_success", "已重置玩家 %1$s 的所有交易数据（共 %2$s 个交易项）");
+        add("arc_quest.command.trade.reset.error.entry_not_found", "在商店 '%2$s' 中未找到交易项 '%1$s'");
     }
 
     // ═══════════════════════════════════════════════════════

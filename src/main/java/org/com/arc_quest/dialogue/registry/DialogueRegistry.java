@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.DialogueTree;
 import org.slf4j.Logger;
 
@@ -52,9 +53,33 @@ public final class DialogueRegistry {
         LOGGER.debug("[DialogueRegistry] Registered dialogue: {}", tree.dialogueId());
     }
 
+    /**
+     * 获取对话树（支持智能命名空间解析）。
+     * <p>
+     * - 如果 dialogueId 包含 ":"，直接查找
+     * - 如果不包含 ":"，尝试添加 "arc_quest:" 前缀后查找
+     *
+     * @param dialogueId 对话树 ID（可以是 "epic_blacksmith" 或 "arc_quest:epic_blacksmith"）
+     * @return 对话树，未找到返回 null
+     */
     @Nullable
     public DialogueTree get(String dialogueId) {
-        return trees.get(dialogueId);
+        // 1. 直接查找
+        DialogueTree tree = trees.get(dialogueId);
+        if (tree != null) {
+            return tree;
+        }
+
+        // 2. 如果不包含命名空间，尝试添加默认前缀
+        if (!dialogueId.contains(":")) {
+            String fullId = Arc_quest.MOD_ID + ":" + dialogueId;
+            tree = trees.get(fullId);
+            if (tree != null) {
+                return tree;
+            }
+        }
+
+        return null;
     }
 
     public Collection<DialogueTree> getAll() {

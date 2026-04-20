@@ -2,6 +2,7 @@ package org.com.arc_quest.quest.registry;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
+import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.QuestCategory;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.condition.QuestCompletedCondition;
@@ -64,15 +65,55 @@ public final class QuestRegistry {
     //  查询
     // ════════════════════════════════════════
 
+    /**
+     * 获取任务定义（直接查找）。
+     *
+     * @param id 完整的资源位置
+     * @return 任务定义，未找到返回 null
+     */
     @Nullable
     public static QuestDefinition get(ResourceLocation id) {
         return REGISTRY.get(id);
     }
 
+    /**
+     * 获取任务定义（支持智能命名空间解析）。
+     * <p>
+     * - 如果 questId 包含 ":"，直接解析并查找
+     * - 如果不包含 ":"，自动添加 "arc_quest:" 前缀后查找
+     *
+     * @param questId 任务 ID（可以是 "epic_prologue" 或 "arc_quest:epic_prologue"）
+     * @return 任务定义，未找到返回 null
+     */
+    @Nullable
+    public static QuestDefinition get(String questId) {
+        ResourceLocation location;
+        if (questId.contains(":")) {
+            location = ResourceLocation.tryParse(questId);
+        } else {
+            location = ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, questId);
+        }
+        return location != null ? REGISTRY.get(location) : null;
+    }
+
+    /**
+     * 获取任务定义，不存在则抛出异常。
+     */
     public static QuestDefinition getOrThrow(ResourceLocation id) {
         QuestDefinition def = REGISTRY.get(id);
         if (def == null) {
             throw new NoSuchElementException("Unknown quest: " + id);
+        }
+        return def;
+    }
+
+    /**
+     * 获取任务定义，不存在则抛出异常（支持智能命名空间解析）。
+     */
+    public static QuestDefinition getOrThrow(String questId) {
+        QuestDefinition def = get(questId);
+        if (def == null) {
+            throw new NoSuchElementException("Unknown quest: " + questId);
         }
         return def;
     }

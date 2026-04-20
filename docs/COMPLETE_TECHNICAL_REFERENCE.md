@@ -39,11 +39,14 @@
 - [18. ArcQuestAPI 入口](#18-arcquestapi-入口)
 - [19. 事件系统总览](#19-事件系统总览)
 
-### Part 6: 高级主题
-- [20. 网络通信](#20-网络通信)
-- [21. 数据持久化](#21-数据持久化)
-- [22. 性能优化](#22-性能优化)
-- [23. 最佳实践](#23-最佳实践)
+### Part 6: 管理员工具
+- [20. 命令系统](#20-命令系统)
+
+### Part 7: 高级主题
+- [21. 网络通信](#21-网络通信)
+- [22. 数据持久化](#22-数据持久化)
+- [23. 性能优化](#23-性能优化)
+- [24. 最佳实践](#24-最佳实践)
 
 ### Part 7: 附录
 - [A. API 速查表](#a-api-速查表)
@@ -149,19 +152,22 @@ cd "Arc Quest"
 **常用调试命令**：
 ```bash
 # 查看任务状态
-/quest debug @p
+/arcquest quest debug @p arc_quest:test
 
 # 查看任务列表
-/quest list @p
+/arcquest quest list @p
 
 # 手动推进进度
-/quest progress @p arc_quest:test 0 5
+/arcquest quest progress @p arc_quest:test 0 5
 
-# 设置 Flag
-/quest flag @p set unlocked_weapons
+# 给予任务
+/arcquest quest give @p arc_quest:test
+
+# 完成任务
+/arcquest quest complete @p arc_quest:test
 
 # 重置所有数据
-/quest resetall @p
+/arcquest admin registry  # 查看所有注册内容
 ```
 
 ---
@@ -1223,7 +1229,375 @@ public class MyEventHandler {
 
 ---
 
-## 20. 网络通信
+## 20. 命令系统
+
+Arc Quest 提供了一套完整的模块化命令系统，用于管理员调试、测试和数据管理。
+
+**权限要求**: 所有命令需要权限等级 ≥ 2（管理员）
+
+### 20.1 命令层级结构
+
+```
+/arcquest
+├── quest          # 任务管理子系统
+│   ├── give       # 给予任务
+│   ├── complete   # 完成任务
+│   ├── fail       # 失败任务
+│   ├── reset      # 重置任务
+│   ├── phase      # 切换阶段
+│   ├── progress   # 修改进度
+│   ├── list       # 列出任务
+│   └── debug      # 调试信息
+├── dialogue       # 对话管理子系统
+│   ├── start      # 开始对话
+│   ├── reset      # 重置进度
+│   └── status     # 查看状态
+├── trade          # 交易管理子系统
+│   ├── open       # 打开商店
+│   ├── simple     # 打开简易商店
+│   ├── list       # 列出商店
+│   ├── debug      # 调试商店
+│   └── reset      # 重置交易
+│       ├── shop   # 重置整个商店
+│       ├── entry  # 重置单个条目
+│       └── all    # 重置所有交易
+└── admin          # 管理员功能
+    ├── registry   # 查看注册表
+    └── reload     # 重载配置
+```
+
+### 20.2 任务管理命令
+
+#### `/arcquest quest give <player> <quest_id>`
+给予玩家指定任务。
+
+**示例**：
+```bash
+/arcquest quest give @p arc_quest:epic_prologue
+```
+
+**错误处理**：
+- 任务已激活 → 提示 `already_active`
+- 任务已完成且不可重复 → 提示 `already_completed`
+
+---
+
+#### `/arcquest quest complete <player> <quest_id>`
+强制完成指定任务（自动填满当前阶段所有目标）。
+
+**示例**：
+```bash
+/arcquest quest complete @p arc_quest:epic_prologue
+```
+
+**注意**：只会完成当前激活的阶段，不会跳过后续阶段。
+
+---
+
+#### `/arcquest quest fail <player> <quest_id>`
+使任务失败。
+
+**示例**：
+```bash
+/arcquest quest fail @p arc_quest:epic_prologue
+```
+
+---
+
+#### `/arcquest quest reset <player> <quest_id>`
+放弃任务并清除进度。
+
+**示例**：
+```bash
+/arcquest quest reset @p arc_quest:epic_prologue
+```
+
+---
+
+#### `/arcquest quest phase <player> <quest_id> <phase_id>`
+切换到指定阶段（如果任务未激活则自动激活）。
+
+**示例**：
+```bash
+/arcquest quest phase @p arc_quest:epic_prologue gather_wood
+```
+
+**Tab 补全**：支持自动补全可用阶段 ID。
+
+---
+
+#### `/arcquest quest progress <player> <quest_id> <obj_index> <amount>`
+手动设置目标进度。
+
+**示例**：
+```bash
+# 将第 0 个目标的进度设为 5
+/arcquest quest progress @p arc_quest:epic_prologue 0 5
+```
+
+**参数说明**：
+- `obj_index`: 目标索引（从 0 开始）
+- `amount`: 进度值
+
+---
+
+#### `/arcquest quest list [player]`
+列出玩家的所有活动任务。
+
+**示例**：
+```bash
+# 查看自己的任务
+/arcquest quest list
+
+# 查看指定玩家的任务
+/arcquest quest list Steve
+```
+
+**输出格式**：
+```
+=== Player Steve's Quests ===
+  arc_quest:epic_prologue [ACTIVE] phase=gather
+  arc_quest:daily_hunt [COMPLETED] phase=complete
+Completed History: arc_quest:tutorial
+```
+
+---
+
+#### `/arcquest quest debug <player> <quest_id>`
+显示任务的详细调试信息（定义 + 运行时状态）。
+
+**示例**：
+```bash
+/arcquest quest debug @p arc_quest:epic_prologue
+```
+
+**输出内容**：
+- 任务定义（显示名称、阶段数、可重复性）
+- 所有阶段的目标列表
+- 运行时状态（当前阶段、各目标进度）
+
+---
+
+### 20.3 对话管理命令
+
+#### `/arcquest dialogue start <player> <dialogue_id>`
+强制玩家与指定对话树开始对话。
+
+**示例**：
+```bash
+/arcquest dialogue start @p village_elder
+```
+
+**智能命名空间**：
+- 输入 `village_elder` → 自动解析为 `arc_quest:village_elder`
+- 输入 `my_mod:custom_dialogue` → 直接使用
+
+---
+
+#### `/arcquest dialogue reset <player> [dialogue_id]`
+重置对话进度。
+
+**示例**：
+```bash
+# 重置所有对话进度
+/arcquest dialogue reset @p
+
+# 重置指定对话树
+/arcquest dialogue reset @p village_elder
+```
+
+---
+
+#### `/arcquest dialogue status <player>`
+查看玩家的对话状态（开发中）。
+
+**示例**：
+```bash
+/arcquest dialogue status @p
+```
+
+---
+
+### 20.4 交易管理命令
+
+#### `/arcquest trade open <player> <shop_id>`
+为玩家打开完整模式商店界面。
+
+**示例**：
+```bash
+/arcquest trade open @p blacksmith_shop
+```
+
+---
+
+#### `/arcquest trade simple <player> <shop_id>`
+为玩家打开简易模式商店界面（弹窗式）。
+
+**示例**：
+```bash
+/arcquest trade simple @p quick_supplies
+```
+
+---
+
+#### `/arcquest trade list`
+列出所有注册的商店。
+
+**示例**：
+```bash
+/arcquest trade list
+```
+
+**输出格式**：
+```
+=== Trade Shops (3) ===
+blacksmith_shop - 铁匠铺 [12 entries]
+general_store - 杂货店 [8 entries], simple
+vip_shop - VIP 商店 [5 entries]
+```
+
+---
+
+#### `/arcquest trade debug <shop_id>`
+显示商店的详细调试信息。
+
+**示例**：
+```bash
+/arcquest trade debug blacksmith_shop
+```
+
+**输出内容**：
+- 商店基本信息（名称、描述、模式）
+- 分类列表
+- 所有条目详情（成本、奖励、限购、冷却）
+
+---
+
+#### `/arcquest trade reset shop <player> <shop_id>`
+重置玩家在指定商店的所有购买计数。
+
+**示例**：
+```bash
+/arcquest trade reset shop @p blacksmith_shop
+```
+
+**用途**：刷新所有限购商品的购买资格。
+
+---
+
+#### `/arcquest trade reset entry <player> <shop_id> <entry_id>`
+重置单个商品条目的购买计数。
+
+**示例**：
+```bash
+/arcquest trade reset entry @p blacksmith_shop diamond_sword
+```
+
+**Tab 补全**：支持自动补全商店内的条目 ID。
+
+---
+
+#### `/arcquest trade reset all <player>`
+重置玩家在所有商店的所有购买计数。
+
+**示例**：
+```bash
+/arcquest trade reset all @p
+```
+
+**输出**：显示重置的条目总数。
+
+---
+
+### 20.5 管理员功能
+
+#### `/arcquest admin registry`
+查看所有已注册的任务、对话树和商店。
+
+**示例**：
+```bash
+/arcquest admin registry
+```
+
+**输出格式**：
+```
+=== Arc Quest Registry ===
+--- Quests (5) ---
+    arc_quest:epic_prologue - 史诗序章
+    arc_quest:daily_hunt - 每日狩猎
+--- Dialogues (3) ---
+    arc_quest:village_elder - Village Elder
+    arc_quest:blacksmith - Blacksmith
+--- Trade Shops (2) ---
+    blacksmith_shop - 铁匠铺 [12 entries]
+    general_store - 杂货店 [8 entries]
+```
+
+---
+
+#### `/arcquest admin reload`
+重载游戏配置（调用原生的 `/reload` 命令）。
+
+**示例**：
+```bash
+/arcquest admin reload
+```
+
+---
+
+### 20.6 翻译键规范
+
+所有命令反馈均使用翻译键，支持多语言本地化。
+
+**翻译键前缀**：
+- `arc_quest.command.give.*` - 给予任务
+- `arc_quest.command.complete.*` - 完成任务
+- `arc_quest.command.fail.*` - 失败任务
+- `arc_quest.command.reset.*` - 重置任务
+- `arc_quest.command.phase.*` - 阶段切换
+- `arc_quest.command.progress.*` - 进度修改
+- `arc_quest.command.list.*` - 任务列表
+- `arc_quest.command.debug.*` - 调试信息
+- `arc_quest.command.dialogue.*` - 对话管理
+- `arc_quest.command.trade.*` - 交易管理
+- `arc_quest.command.registry.*` - 注册表查看
+- `arc_quest.command.reload.*` - 重载配置
+
+**自定义消息颜色**：
+- 成功消息：`§a[ArcQuest] §f<message>`
+- 错误消息：`§c[ArcQuest] §f<message>`
+
+---
+
+### 20.7 扩展命令（附属模组）
+
+附属模组可以通过 Forge 事件总线注册自己的命令：
+
+```java
+@Mod.EventBusSubscriber(modid = "my_addon", bus = Bus.FORGE)
+public class MyAddonCommands {
+    
+    @SubscribeEvent
+    public static void onRegisterCommands(RegisterCommandsEvent event) {
+        CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
+        
+        dispatcher.register(
+            Commands.literal("myaddon")
+                .requires(src -> src.hasPermission(2))
+                .then(Commands.literal("custom")
+                    .executes(ctx -> {
+                        ctx.getSource().sendSuccess(
+                            () -> Component.literal("Custom command!"), false);
+                        return 1;
+                    }))
+        );
+    }
+}
+```
+
+---
+
+## 21. 网络通信
 
 ### 20.1 网络架构
 
@@ -1269,7 +1643,7 @@ Set<String> completed = cache.getCompletedQuests();
 
 ---
 
-## 21. 数据持久化
+## 22. 数据持久化
 
 ### 21.1 Capability 系统
 
@@ -1316,7 +1690,7 @@ if (version < NbtVersionManager.CURRENT_VERSION) {
 
 ---
 
-## 22. 性能优化
+## 23. 性能优化
 
 ### 22.1 O(1) 目标追踪
 
@@ -1389,7 +1763,7 @@ public boolean evaluate(DialogueContext ctx) {
 
 ---
 
-## 23. 最佳实践
+## 24. 最佳实践
 
 ### 23.1 使用 Builder 模式
 

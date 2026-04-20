@@ -12,6 +12,8 @@ import org.com.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.com.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * 商人对话扩展 - 流浪商人。
  * <p>
@@ -46,10 +48,10 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
             if ("merchant".equals(npcId)) {
-                return "epic_merchant";
+                return "arc_quest:epic_merchant";
             }
             if ("wandering_trader".equals(npcId)) {
-                return "epic_wandering_trader";
+                return "arc_quest:epic_wandering_trader";
             }
         }
 
@@ -60,10 +62,10 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
             if (fullNbt.contains("ArcQuestNpcId")) {
                 String npcId = fullNbt.getString("ArcQuestNpcId");
                 if ("merchant".equals(npcId)) {
-                    return "epic_merchant";
+                    return "arc_quest:epic_merchant";
                 }
                 if ("wandering_trader".equals(npcId)) {
-                    return "epic_wandering_trader";
+                    return "arc_quest:epic_wandering_trader";
                 }
             }
         } catch (Exception e) {
@@ -72,12 +74,12 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
 
         // 3. 通过自定义名称识别（最简单）
         if (wanderingTrader.hasCustomName()) {
-            String name = wanderingTrader.getCustomName().getString();
+            String name = Objects.requireNonNull(wanderingTrader.getCustomName()).getString();
             if (name.contains("商人") || name.contains("Merchant")) {
-                return "epic_merchant";
+                return "arc_quest:epic_merchant";
             }
             if (name.contains("行商") || name.contains("WanderingTrader")) {
-                return "epic_wandering_trader";
+                return "arc_quest:epic_wandering_trader";
             }
         }
 

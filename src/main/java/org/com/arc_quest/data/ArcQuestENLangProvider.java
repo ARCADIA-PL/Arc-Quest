@@ -121,6 +121,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // ── fail ──
         addCommandFeedback("fail", "success",
                 "Force-failed quest §e%1$s§f for %2$s.");
+        addCommandFeedback("fail", "error.not_active",
+                "Quest '%1$s' is not active.");
 
         // ── reset ──
         addCommandFeedback("reset", "success",
@@ -139,6 +141,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // ── progress ──
         addCommandFeedback("progress", "success",
                 "Set objective[%1$s] = %2$s for quest §e%3$s§f.");
+        addCommandFeedback("progress", "error.not_active",
+                "Quest '%1$s' is not active.");
         addCommandFeedback("progress", "error.out_of_range",
                 "Objective index %1$s out of range (max %2$s).");
 
@@ -231,6 +235,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.command.trade.debug.rewards", "§7      Rewards: §b%1$s");
         add("arc_quest.command.trade.debug.limit", "§7      Limit: §e%1$s times");
         add("arc_quest.command.trade.debug.cooldown", "§7      Cooldown: §e%1$s (%2$s)");
+
+        // ── Trade Reset Commands ──
+        add("arc_quest.command.trade.reset.shop_success", "Reset all entries in shop %1$s for player %2$s");
+        add("arc_quest.command.trade.reset.entry_success", "Reset entry %1$s in shop %2$s for player %3$s");
+        add("arc_quest.command.trade.reset.all_success", "Reset all trade data for player %1$s (%2$s entries total)");
+        add("arc_quest.command.trade.reset.error.entry_not_found", "Entry '%1$s' not found in shop '%2$s'");
     }
 
     // ═══════════════════════════════════════════════════════

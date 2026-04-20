@@ -13,6 +13,8 @@ import org.com.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.com.arc_quest.dialogue.api.ProgressScope;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * 商人对话扩展 - 流浪商人。
  * <p>
@@ -47,7 +49,7 @@ public class MysteriousTraderExtension implements IEntityDialogueExtension<Wande
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
             if ("mysterious_merchant".equals(npcId)) {
-                return "epic_mysterious_merchant";
+                return "arc_quest:epic_mysterious_merchant";
             }
         }
 
@@ -58,7 +60,7 @@ public class MysteriousTraderExtension implements IEntityDialogueExtension<Wande
             if (fullNbt.contains("ArcQuestNpcId")) {
                 String npcId = fullNbt.getString("ArcQuestNpcId");
                 if ("mysterious_merchant".equals(npcId)) {
-                    return "epic_mysterious_merchant";
+                    return "arc_quest:epic_mysterious_merchant";
                 }
             }
         } catch (Exception e) {
@@ -67,9 +69,9 @@ public class MysteriousTraderExtension implements IEntityDialogueExtension<Wande
 
         // 3. 通过自定义名称识别（最简单）
         if (wanderingTrader.hasCustomName()) {
-            String name = wanderingTrader.getCustomName().getString();
+            String name = Objects.requireNonNull(wanderingTrader.getCustomName()).getString();
             if (name.contains("神秘人") || name.contains("MysteriousMerchant")) {
-                return "epic_mysterious_merchant";
+                return "arc_quest:epic_mysterious_merchant";
             }
         }
 
