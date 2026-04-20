@@ -127,6 +127,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // ── reset ──
         addCommandFeedback("reset", "success",
                 "Reset quest §e%1$s§f for %2$s.");
+        addCommandFeedback("reset", "all_success",
+                "Cleared all quest progress for %1$s.");
 
         // ── phase ──
         addCommandFeedback("phase", "success",

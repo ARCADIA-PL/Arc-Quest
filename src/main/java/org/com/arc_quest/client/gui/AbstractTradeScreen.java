@@ -1,5 +1,6 @@
 package org.com.arc_quest.client.gui;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -130,6 +131,9 @@ public abstract class AbstractTradeScreen extends Screen {
         this.purchaseGameTimes = purchaseGameTimes; this.purchaseDayTimes = purchaseDayTimes; this.cooldownTypes = cooldownTypes;
         this.cooldownValues = cooldownValues; this.resetTimeTicks = resetTimeTicks; this.visibility = visibility;
         this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
+        
+        // 重置 Tooltip 尺寸缓存，强制下一帧重新计算 Tooltip 大小和位置
+        animBgW = 0;
     }
 
     @Override 

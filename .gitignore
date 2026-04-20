@@ -1,28 +1,53 @@
-# User-specific stuff
-.idea/
+# =============================================================================
+# Arc Quest - Minecraft Forge Mod .gitignore
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# IDE & Editor Files
+# -----------------------------------------------------------------------------
+
+# IntelliJ IDEA
+.idea/
 *.iml
 *.ipr
 *.iws
-
-# IntelliJ
 out/
-# mpeltonen/sbt-idea plugin
 .idea_modules/
-
-# JIRA plugin
 atlassian-ide-plugin.xml
 
-# Compiled class file
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.code-workspace
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# -----------------------------------------------------------------------------
+# Build & Compilation
+# -----------------------------------------------------------------------------
+
+# Gradle
+.gradle/
+build/
+**/build/
+gradle-app.setting
+.gradletasknamecache
+!gradle-wrapper.jar
+
+# Compiled files
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -31,35 +56,64 @@ atlassian-ide-plugin.xml
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
+# -----------------------------------------------------------------------------
+# Runtime & Generated Data
+# -----------------------------------------------------------------------------
 
-*~
+# Minecraft runtime directories
+run/
+runs/
+run-data/
 
-# temporary files which can be created if a process still has a handle open of a deleted file
-.fuse_hidden*
+# Lingma AI configuration and skills
+.lingma/
 
-# KDE directory preferences
-.directory
+# Generated resources (Data Generator output)
+src/generated/resources/
 
-# Linux trash folder which might appear on any partition or disk
-.Trash-*
+# -----------------------------------------------------------------------------
+# Logs & Debug Files
+# -----------------------------------------------------------------------------
 
-# .nfs files are created when an open file is removed but is still being accessed
-.nfs*
+# Log files
+*.log
+*.log.gz
+logs/
+run/logs/
+run-data/logs/
 
-# General
+# Crash reports
+crash-reports/
+run/crash-reports/
+run-data/crash-reports/
+
+# Debug output files
+compile_output.txt
+compile_error.txt
+build_output.txt
+build_log.txt
+error.log
+
+# -----------------------------------------------------------------------------
+# OS-Specific Files
+# -----------------------------------------------------------------------------
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+
+# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
-
-# Icon must end with two \r
 Icon
-
-# Thumbnails
 ._*
-
-# Files that might appear in the root of a volume
 .DocumentRevisions-V100
 .fseventsd
 .Spotlight-V100
@@ -67,104 +121,111 @@ Icon
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
-
-# Directories potentially created on remote AFP share
 .AppleDB
 .AppleDesktop
 Network Trash Folder
 Temporary Items
 .apdisk
 
-# Windows thumbnail cache files
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
 
-# Dump file
-*.stackdump
+# -----------------------------------------------------------------------------
+# Test Files
+# -----------------------------------------------------------------------------
 
-# Folder config file
-[Dd]esktop.ini
+# Unit tests (test code should typically be committed, but exclude if desired)
+src/test/
 
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
+# -----------------------------------------------------------------------------
+# Temporary & Cache Files
+# -----------------------------------------------------------------------------
 
-# Windows Installer files
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
+# Java crash logs
+hs_err_pid*
+replay_pid*
 
-# Windows shortcuts
-*.lnk
+# Package manager caches
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-.gradle
-build/
+# Python (if used for scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
 
-# Ignore Gradle GUI config
-gradle-app.setting
+# -----------------------------------------------------------------------------
+# Documentation & Notes (Optional - uncomment if needed)
+# -----------------------------------------------------------------------------
 
-# Cache of project
-.gradletasknamecache
+# Personal notes (keep project docs)
+# *.md
+# TODO.md
+# NOTES.md
 
-**/build/
+# -----------------------------------------------------------------------------
+# Sensitive Data (NEVER commit these!)
+# -----------------------------------------------------------------------------
 
-# Common working directory
-run/
-runs/
+# Environment variables
+.env
+.env.local
+.env.*.local
 
-# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
-!gradle-wrapper.jar
-.vscode/launch.json
-.vscode/settings.json
-bin/main/arc_quest.mixins.json
-bin/main/pack.mcmeta
-bin/main/.cache/2a65ee2815744be1ef1ffdae1c9a37f2a9cbe2ac
-bin/main/.cache/c622617f6fabf890a00b9275cd5f643584a8a2c8
-bin/main/META-INF/mods.toml
-bin/main/assets/arc_quest/lang/en_us.json
-bin/main/assets/arc_quest/lang/zh_cn.json
-bin/main/assets/arc_quest/textures/gui/splash/chapter1_acquire.png
-bin/main/assets/arc_quest/textures/gui/splash/chapter1_complete.png
-bin/main/assets/arc_quest/textures/gui/splash/prologue_acquire.png
-bin/main/assets/arc_quest/textures/gui/splash/prologue_complete.png
-run-data/config/fml.toml
-run-data/config/moonlight-client.toml
-run-data/logs/2026-04-17-2.log.gz
-run-data/logs/2026-04-17-3.log.gz
-run-data/logs/2026-04-17-4.log.gz
-run-data/logs/2026-04-17-5.log.gz
-run-data/logs/2026-04-17-6.log.gz
-run-data/logs/2026-04-17-7.log.gz
-run-data/logs/2026-04-17-8.log.gz
-run-data/logs/2026-04-17-9.log.gz
-run-data/logs/2026-04-17-10.log.gz
-run-data/logs/2026-04-17-11.log.gz
-run-data/logs/2026-04-17-12.log.gz
-run-data/logs/2026-04-17-13.log.gz
-run-data/logs/2026-04-18-1.log.gz
-run-data/logs/debug-1.log.gz
-run-data/logs/debug-2.log.gz
-run-data/logs/debug-3.log.gz
-run-data/logs/debug-4.log.gz
-run-data/logs/debug-5.log.gz
-compile_output.txt
-compile_error.txt
-build_output.txt
-build_log.txt
-src/generated/resources/.cache/2a65ee2815744be1ef1ffdae1c9a37f2a9cbe2ac
-src/generated/resources/.cache/c622617f6fabf890a00b9275cd5f643584a8a2c8
-logs/2026-04-20-1.log.gz
-logs/debug-1.log.gz
-run-data/logs/2026-04-18-2.log.gz
-run-data/logs/2026-04-18-3.log.gz
-run-data/logs/2026-04-20-1.log.gz
-run-data/logs/2026-04-20-2.log.gz
-run-data/logs/2026-04-20-3.log.gz
-run-data/logs/2026-04-20-4.log.gz
-run-data/logs/2026-04-20-5.log.gz
-run-data/logs/2026-04-20-6.log.gz
-src/test/java/org/com/arc_quest/test/TradeCooldownKeyTest.java
-.lingma/rules/Mod.md
+# Credentials
+*.pem
+*.key
+*.p12
+*.keystore
+
+# API keys & secrets
+secrets/
+credentials/
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# Patch files
+*.patch
+*.diff
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Dependency directories (if using package managers)
+jspm_packages/
+typings/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity

@@ -1,5 +1,6 @@
 package org.com.arc_quest.trade.network;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -212,10 +213,15 @@ public class S2COpenTradePacket {
                     }
                     
                     if (mc.screen instanceof TradeScreen ts && ts.getShopId().equals(pkt.shopId)) {
+                        LogUtils.getLogger().info("[Trade-Packet] Updating existing TradeScreen for shop={}", pkt.shopId);
                         ts.updateData(pkt.purchaseCounts, pkt.maxPurchases, pkt.lastPurchaseTimes,
                                 pkt.purchaseGameTimes, pkt.purchaseDayTimes,
                                 pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
                     } else {
+                        LogUtils.getLogger().warn("[Trade-Packet] Creating new TradeScreen. Current screen={}, expected shop={}, packet shop={}",
+                            mc.screen != null ? mc.screen.getClass().getSimpleName() : "null",
+                            mc.screen instanceof TradeScreen ts ? ts.getShopId() : "N/A",
+                            pkt.shopId);
                         mc.setScreen(new TradeScreen(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
                                 pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
                                 pkt.cooldownTypes, pkt.cooldownValues,

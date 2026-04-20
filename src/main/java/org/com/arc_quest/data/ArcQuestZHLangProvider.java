@@ -127,6 +127,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // ── reset ──
         addCommandFeedback("reset", "success",
                 "已重置 %2$s 的任务 §e%1$s§f。");
+        addCommandFeedback("reset", "all_success",
+                "已清除 %1$s 的所有任务进度。");
 
         // ── phase ──
         addCommandFeedback("phase", "success",
