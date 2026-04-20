@@ -481,16 +481,21 @@ public class DialogueSession {
                         .mapToInt(DialogueChoice::priority)
                         .max().orElse(0);
                 
+                // 构建 choice -> originalIndex 的快速查找表
+                java.util.Map<DialogueChoice, Integer> choiceToIndexMap = new java.util.HashMap<>();
+                for (int i = 0; i < passing.size(); i++) {
+                    choiceToIndexMap.put(passing.get(i), indices.get(i));
+                }
+                
                 // 优先级过滤后同步更新 indices 数组
                 List<DialogueChoice> finalChoices = passing.stream()
                         .filter(c -> c.priority() == maxPriority)
                         .toList();
                 
-                // 根据最终选择的 choice 重新构建 indices 数组
+                // 根据最终选择的 choice 重新构建 indices 数组（O(1) 查找）
                 List<Integer> finalIndices = new ArrayList<>();
                 for (DialogueChoice fc : finalChoices) {
-                    int idx = passing.indexOf(fc);
-                    finalIndices.add(indices.get(idx));
+                    finalIndices.add(choiceToIndexMap.get(fc));
                 }
                 
                 visibleChoices = finalChoices;
