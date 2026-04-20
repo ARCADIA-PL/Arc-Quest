@@ -65,16 +65,7 @@ public class QuestTrackerPanel {
 
     private int currentThemeColor = COLOR_ACCENT_DEFAULT;
 
-    private static PhaseDefinition findPhase(QuestDefinition def, String phaseId) {
-        if (def == null || phaseId == null) return null;
-        // 使用传统for循环替代Stream，避免每帧创建对象
-        for (PhaseDefinition phase : def.getAllPhases()) {
-            if (phase.getPhaseId().equals(phaseId)) {
-                return phase;
-            }
-        }
-        return null;
-    }
+
 
     private static float lerp(float current, float target, float speed, float dt) {
         return current + (target - current) * Math.min(1f, speed * dt * 60f);
@@ -199,7 +190,7 @@ public class QuestTrackerPanel {
         if (panelReveal < 0.01f && !shouldShow) return;
 
         if (def == null) return;
-        PhaseDefinition phase = findPhase(def, displayedPhaseId);
+        PhaseDefinition phase = def.getPhase(displayedPhaseId);
         if (phase == null) return;
 
         List<ObjectiveEntry> objectives = phase.getObjectives();

@@ -123,6 +123,19 @@ public class DialogueProgressStore {
         return getDialogueVisit(key).exists();
     }
 
+    /**
+     * 统一查询入口（单 Map 后直接按 key 查找）。
+     * <p>
+     * 替代原有的分派逻辑（hasVisitedNode → getNodeVisit / getDialogueVisit），
+     * 因为单 Map 中所有类型的记录都存储在同一个 store 里，直接按 key 获取即可。
+     *
+     * @param key ProgressKey
+     * @return 对应的 Entry，不存在时返回 Entry.EMPTY
+     */
+    public Entry getEntry(ProgressKey key) {
+        return store.getOrDefault(key.toKeyString(), Entry.EMPTY);
+    }
+
     // ── 冷却判断 ──────────────────────────────────────────
 
     public boolean isOnCooldown(ProgressKey key, CooldownType cooldownType, int cooldownValue, int resetTick, TimeSnapshot ts) {

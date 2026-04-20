@@ -39,6 +39,7 @@ public class DialogueSession {
     private DialogueNode currentNode;
     private boolean ended = false;
     private List<DialogueChoice> visibleChoices = List.of();
+    private int[] visibleChoiceOriginalIndices = new int[0];  // 新增：记录每个可见选项的原始索引
 
     // ═══════════════════════════════════════════════
     //  构造器
@@ -106,9 +107,9 @@ public class DialogueSession {
 
         for (int i = 0; i < visibleChoices.size(); i++) {
             DialogueChoice choice = visibleChoices.get(i);
+            int originalIndex = visibleChoiceOriginalIndices[i];  // 直接使用预计算的索引
 
-            int originalIndex = currentNode.choices().indexOf(choice);
-            if (originalIndex == -1 || choice.cooldownType() == CooldownType.NONE) {
+            if (choice.cooldownType() == CooldownType.NONE) {
                 cooldowns[i] = 0;
                 continue;
             }
@@ -117,15 +118,9 @@ public class DialogueSession {
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
             
             // 先检测时间回退，如果检测到则清除记录
-            if (choice.cooldownType() == CooldownType.GAME_TICK) {
-                var entry = progress.getChoiceSelection(choiceKey);
-                if (entry.exists() && entry.dayTime() > ts.dayTime()) {
-                    // 检测到时间回退，清除冷却记录
-                    progress.clearCooldownRecord(choiceKey);
-                    LOGGER.warn("[Cooldown-Clear]  Cleared choice cooldown in getChoiceCooldowns due to time regression: {}", choiceKey);
-                    cooldowns[i] = 0;
-                    continue;
-                }
+            if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
+                cooldowns[i] = 0;
+                continue;
             }
             
             boolean onCooldown = progress.isOnCooldown(
@@ -181,9 +176,9 @@ public class DialogueSession {
 
         for (int i = 0; i < count; i++) {
             DialogueChoice choice = visibleChoices.get(i);
-            int originalIndex = currentNode.choices().indexOf(choice);
+            int originalIndex = visibleChoiceOriginalIndices[i];  // 直接使用预计算的索引
 
-            if (originalIndex == -1 || choice.cooldownType() == CooldownType.NONE) {
+            if (choice.cooldownType() == CooldownType.NONE) {
                 lastSelectTimes[i] = 0;
                 purchaseGTs[i] = 0;
                 purchaseDTs[i] = 0;
@@ -196,19 +191,14 @@ public class DialogueSession {
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
             
             // 检测时间回退
-            if (choice.cooldownType() == CooldownType.GAME_TICK) {
-                var entry = progress.getChoiceSelection(choiceKey);
-                if (entry.exists() && entry.dayTime() > ts.dayTime()) {
-                    progress.clearCooldownRecord(choiceKey);
-                    LOGGER.warn("[Cooldown-Clear]  Cleared choice cooldown in getChoiceCooldownRawData due to time regression: {}", choiceKey);
-                    lastSelectTimes[i] = 0;
-                    purchaseGTs[i] = 0;
-                    purchaseDTs[i] = 0;
-                    cooldownTypes[i] = CooldownType.NONE.ordinal();
-                    cooldownValues[i] = 0;
-                    resetTimeTicks[i] = 0;
-                    continue;
-                }
+            if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
+                lastSelectTimes[i] = 0;
+                purchaseGTs[i] = 0;
+                purchaseDTs[i] = 0;
+                cooldownTypes[i] = CooldownType.NONE.ordinal();
+                cooldownValues[i] = 0;
+                resetTimeTicks[i] = 0;
+                continue;
             }
 
             var entry = progress.getChoiceSelection(choiceKey);
@@ -278,12 +268,7 @@ public class DialogueSession {
         }
 
         DialogueChoice choice = visibleChoices.get(choiceIndex);
-
-        int originalIndex = currentNode.choices().indexOf(choice);
-        if (originalIndex == -1) {
-            LOGGER.error("[Dialogue] Choice not found in original list! Using visible index {}.", choiceIndex);
-            originalIndex = choiceIndex;
-        }
+        int originalIndex = visibleChoiceOriginalIndices[choiceIndex];  // 直接使用预计算的索引
 
         LOGGER.info("[DEBUG-Choose] Clicked choice: visibleIndex={}, originalIndex={}, text={}",
                 choiceIndex, originalIndex, choice.text());
@@ -369,7 +354,7 @@ public class DialogueSession {
             return null;
         }
 
-        // 记录访问（使用 ProgressKey）
+        // 确认要跳转后，记录目标节点的访问
         ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
         progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
@@ -460,6 +445,7 @@ public class DialogueSession {
     private void evaluateVisibleChoices() {
         if (currentNode == null || !currentNode.hasChoices()) {
             visibleChoices = List.of();
+            visibleChoiceOriginalIndices = new int[0];
             return;
         }
 
@@ -471,7 +457,10 @@ public class DialogueSession {
             DialogueEvalContext ctx = buildEvalContext();
 
             List<DialogueChoice> passing = new ArrayList<>();
-            for (DialogueChoice choice : currentNode.choices()) {
+            List<Integer> indices = new ArrayList<>();
+            List<DialogueChoice> allChoices = currentNode.choices();
+            for (int i = 0; i < allChoices.size(); i++) {
+                DialogueChoice choice = allChoices.get(i);
                 boolean pass = choice.conditions().isEmpty()
                         || choice.conditions().stream().allMatch(c -> 
                             cache.computeIfAbsent(c, () -> c.test(ctx)));
@@ -480,18 +469,32 @@ public class DialogueSession {
 
                 if (pass) {
                     passing.add(choice);
+                    indices.add(i);  // 记录原始索引
                 }
             }
 
             if (passing.isEmpty()) {
                 visibleChoices = List.of();
+                visibleChoiceOriginalIndices = new int[0];
             } else {
                 int maxPriority = passing.stream()
                         .mapToInt(DialogueChoice::priority)
                         .max().orElse(0);
-                visibleChoices = passing.stream()
+                
+                // 优先级过滤后同步更新 indices 数组
+                List<DialogueChoice> finalChoices = passing.stream()
                         .filter(c -> c.priority() == maxPriority)
                         .toList();
+                
+                // 根据最终选择的 choice 重新构建 indices 数组
+                List<Integer> finalIndices = new ArrayList<>();
+                for (DialogueChoice fc : finalChoices) {
+                    int idx = passing.indexOf(fc);
+                    finalIndices.add(indices.get(idx));
+                }
+                
+                visibleChoices = finalChoices;
+                visibleChoiceOriginalIndices = finalIndices.stream().mapToInt(Integer::intValue).toArray();
             }
         } finally {
             //结束评估周期

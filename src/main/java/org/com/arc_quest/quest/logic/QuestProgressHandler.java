@@ -141,7 +141,7 @@ public final class QuestProgressHandler {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
 
-        PhaseDefinition phase = findPhase(def, phaseId);
+        PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) return;
 
         if (objIndex < 0 || objIndex >= phase.getObjectives().size()) return;
@@ -263,7 +263,7 @@ public final class QuestProgressHandler {
                                       QuestRuntimeData data,
                                       QuestDefinition def,
                                       String nextPhaseId) {
-        PhaseDefinition nextPhase = findPhase(def, nextPhaseId);
+        PhaseDefinition nextPhase = def.getPhase(nextPhaseId);
         if (nextPhase == null) {
             LOGGER.error("[ArcQuest] Target phase not found: {}/{}", def.getId(), nextPhaseId);
             return;
@@ -301,7 +301,7 @@ public final class QuestProgressHandler {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
 
-        PhaseDefinition currentPhase = findPhase(def, data.getCurrentPhaseId());
+        PhaseDefinition currentPhase = def.getPhase(data.getCurrentPhaseId());
         if (currentPhase == null) return;
 
         // 从 choices 列表中获取（而不是 transitions）
@@ -347,29 +347,7 @@ public final class QuestProgressHandler {
                                       IQuestCapability cap,
                                       QuestRuntimeData data,
                                       QuestDefinition def) {
-        String questId = data.getQuestId();
-
-        // 发放最终奖励
-        grantRewards(player, def.getCompletionRewards(), "completion");
-
-        for (String flag : def.getFlagsToSetOnComplete()) {
-            cap.setFlag(flag);
-        }
-
-        // 更新状态
-        data.setState(QuestState.COMPLETED);
-        cap.markCompleted(questId);
-
-        // 清理追踪
-        ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
-
-        LOGGER.info("[ArcQuest] Player {} completed quest: {}",
-                player.getGameProfile().getName(), questId);
-
-        // 同步 & 事件
-        ArcQuestNetwork.syncQuestState(player, data);
-        ArcQuestNetwork.syncFlagsAndVars(player, cap);
-        QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
+        doCompleteQuest(player, cap, data, def, "completed");
     }
 
     /**
@@ -428,12 +406,30 @@ public final class QuestProgressHandler {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
 
+        doCompleteQuest(player, cap, data, def, "force-completed");
+    }
+
+    /**
+     * 执行任务完成的公共逻辑。
+     *
+     * @param player    目标玩家
+     * @param cap       玩家能力数据
+     * @param data      任务运行时数据
+     * @param def       任务定义
+     * @param logPrefix 日志前缀（"completed" 或 "force-completed"）
+     */
+    private static void doCompleteQuest(ServerPlayer player,
+                                        IQuestCapability cap,
+                                        QuestRuntimeData data,
+                                        QuestDefinition def,
+                                        String logPrefix) {
+        String questId = data.getQuestId();
+
         // 发放最终奖励
         grantRewards(player, def.getCompletionRewards(), "completion");
 
-        for (String flag : def.getFlagsToSetOnComplete()) {
-            cap.setFlag(flag);
-        }
+        // 设置完成时 Flag
+        def.getFlagsToSetOnComplete().forEach(cap::setFlag);
 
         // 更新状态
         data.setState(QuestState.COMPLETED);
@@ -442,8 +438,8 @@ public final class QuestProgressHandler {
         // 清理追踪
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
 
-        LOGGER.info("[ArcQuest] Player {} force-completed quest: {}",
-                player.getGameProfile().getName(), questId);
+        LOGGER.info("[ArcQuest] Player {} {} quest: {}",
+                player.getGameProfile().getName(), logPrefix, questId);
 
         // 同步 & 事件
         ArcQuestNetwork.syncQuestState(player, data);
@@ -481,7 +477,7 @@ public final class QuestProgressHandler {
             QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
             if (def == null) continue;
 
-            PhaseDefinition phase = findPhase(def, data.getCurrentPhaseId());
+            PhaseDefinition phase = def.getPhase(data.getCurrentPhaseId());
             if (phase == null) continue;
 
             registerPhaseObjectives(player, def, phase);
@@ -552,10 +548,5 @@ public final class QuestProgressHandler {
         }
     }
 
-    private static PhaseDefinition findPhase(QuestDefinition def, String phaseId) {
-        return def.getAllPhases().stream()
-                .filter(p -> p.getPhaseId().equals(phaseId))
-                .findFirst()
-                .orElse(null);
-    }
+
 }

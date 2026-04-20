@@ -78,8 +78,9 @@ public final class DialogueSessionManager {
         long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
         
         int entityId = npcEntity != null ? npcEntity.getId() : -1;
-        DialogueSession tempSession = new DialogueSession(player, tree, context, entityId);
-        String namespace = tempSession.getNamespace();
+        // 先构建会话以解析 namespace（namespace 依赖实体扩展查找，必须在此时完成）
+        DialogueSession session = new DialogueSession(player, tree, context, entityId);
+        String namespace = session.getNamespace();
         
         LOGGER.debug("[Dialogue] Resolved namespace='{}' for dialogue='{}'", namespace, dialogueId);
 
@@ -104,7 +105,7 @@ public final class DialogueSessionManager {
 
         endDialogue(player);
 
-        sessions.put(player.getUUID(), tempSession);
+        sessions.put(player.getUUID(), session);
 
         if (npcEntity instanceof IDialogueNpc) {
             DialogueNpcPatch patch = DialogueNpcPatch.get(npcEntity);
@@ -116,9 +117,9 @@ public final class DialogueSessionManager {
 
         progress.recordDialogueVisit(namespace, dialogueId, nowReal, nowGame, nowDayTime);
 
-        sendNodeToClient(tempSession);
+        sendNodeToClient(session);
 
-        return tempSession;
+        return session;
     }
 
     /**

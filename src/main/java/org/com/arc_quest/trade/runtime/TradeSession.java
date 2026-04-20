@@ -49,25 +49,24 @@ public final class TradeSession {
 
         IQuestCapability cap = getCap();
         
-        // 使用统一的状态解析器检查购买资格
+        // 第一步：尝试重置过期冷却（必须在 canPurchase 之前）
+        if (entry.hasLimit() || entry.hasCooldown()) {
+            checkAndResetPurchases(entryId, entry);
+        }
+        
+        // 第二步：综合判断
         if (!TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry)) {
-            // 根据具体原因返回不同的错误信息
+            // 细分错误原因
             if (!TradeEntryStateResolver.isVisible(player, cap, entry)) {
                 return TradeResult.fail("arc_quest.trade.error.not_visible");
             }
             if (TradeEntryStateResolver.isPurchaseLimitReached(cap, shop.getShopId(), entry)) {
                 return TradeResult.fail("arc_quest.trade.error.max_purchases");
-            } else if (TradeEntryStateResolver.isOnCooldown(player, cap, shop.getShopId(), entry)) {
+            }
+            if (TradeEntryStateResolver.isOnCooldown(player, cap, shop.getShopId(), entry)) {
                 return TradeResult.fail("arc_quest.trade.error.on_cooldown");
             }
             // 默认：购买资格条件不满足
-            return TradeResult.fail("arc_quest.trade.error.condition_not_met");
-        }
-
-        checkAndResetPurchases(entryId, entry);
-
-        // 再次检查（防止并发修改）
-        if (!TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry)) {
             return TradeResult.fail("arc_quest.trade.error.condition_not_met");
         }
 
@@ -195,69 +194,19 @@ public final class TradeSession {
     public String getCooldownText(String entryId, TradeEntry entry) {
         if (!entry.hasCooldown()) return "";
 
-        IQuestCapability cap = getCap();
+        int remaining = getCooldownRemaining(entryId, entry);
+        if (remaining <= 0) return "";
 
-        long lastPurchaseTime = cap.getTradeLastPurchaseTime(shop.getShopId(), entryId);
-        if (lastPurchaseTime == 0) return "";
+        // GAME_DAY 类型特殊处理（原来显示翻译文本）
+        if (entry.getCooldownType() == org.com.arc_quest.dialogue.api.CooldownType.GAME_DAY) {
+            return Component.translatable("arc_quest.trade.cooldown.game_day").getString();
+        }
 
-        return switch (entry.getCooldownType()) {
-            case NONE -> "";
-            case SECONDS -> {
-                long nowRealTime = TimeSanitizer.getCurrentRealTime();
-                long elapsed = (nowRealTime - lastPurchaseTime) / 1000;
-                long remaining = Math.max(0, entry.getCooldownValue() - elapsed);
-                yield remaining > 0 ? remaining + "s" : "";
-            }
-            case GAME_DAY -> {
-                // 使用 TimeSanitizer 统一获取时间
-                long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
-
-                ProgressKey key = ProgressKey.ofTrade(shop.getShopId(), entryId);
-                DialogueProgressStore.Entry storeEntry = cap.getDialogueProgress().getChoiceSelection(key);
-
-                if (!storeEntry.exists()) {
-                    yield "";
-                }
-
-                boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
-                        storeEntry, entry.getCooldownType(), (int) entry.getCooldownValue(),
-                        entry.getResetTimeTicks(),
-                        TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime
-                );
-
-                // 使用翻译键
-                yield onCooldown ? Component.translatable("arc_quest.trade.cooldown.game_day").getString() : "";
-            }
-            case GAME_TICK -> {
-                // 使用 TimeSanitizer 统一获取时间
-                long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
-
-                ProgressKey key = ProgressKey.ofTrade(shop.getShopId(), entryId);
-                DialogueProgressStore.Entry storeEntry = cap.getDialogueProgress().getChoiceSelection(key);
-
-                int remainingTicks = UnifiedCooldownManager
-                        .getGameTickCooldownRemainingTicks(
-                                storeEntry, entry.getResetTimeTicks(),
-                                nowGameTime, nowDayTime
-                        );
-
-                if (remainingTicks <= 0) {
-                    yield "";
-                }
-
-                if (remainingTicks < 60) {
-                    yield remainingTicks + "t";
-                } else if (remainingTicks < 1200) {
-                    yield (remainingTicks / 20) + "s";
-                } else {
-                    long minutes = remainingTicks / 1200;
-                    long seconds = (remainingTicks % 1200) / 20;
-                    yield String.format("%dm%ds", minutes, seconds);
-                }
-            }
-        };
+        // 统一的时间格式化
+        if (remaining < 60) return remaining + "s";
+        long minutes = remaining / 60;
+        long seconds = remaining % 60;
+        return String.format("%dm%ds", minutes, seconds);
     }
 
     /**

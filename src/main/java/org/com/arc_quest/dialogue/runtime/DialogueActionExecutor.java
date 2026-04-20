@@ -20,6 +20,8 @@ public final class DialogueActionExecutor {
 
     /**
      * 检查目标节点是否可用（包含一次性检查和冷却检查）。
+     * <p>
+     * <b>纯查询方法，不修改任何状态</b>。调用方在确认要跳转后自行记录访问。
      */
     public static boolean checkNodeAvailable(DialogueSession session, DialogueNode node,
                                              DialogueProgressStore progress,
@@ -45,8 +47,7 @@ public final class DialogueActionExecutor {
             }
         }
 
-        // 记录本次访问
-        progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
+        // 注意：不再在此处记录访问，由调用方确认跳转后自行记录
         return true;
     }
 

@@ -26,17 +26,13 @@ public final class UnifiedCooldownManager {
 
     /**
      * 统一冷却查询（核心入口）。
+     * <p>
+     * 单 Map 合并后简化：无论是节点、对话、选项，直接按 key 从 store 中查找。
      */
     public static boolean isOnCooldown(DialogueProgressStore store, ProgressKey key, CooldownType cooldownType,
                                        int cooldownValue, int resetTick, TimeSnapshot ts) {
-        Entry entry;
-        if (key.index() >= 0) {
-            entry = store.getChoiceSelection(key);
-        } else {
-            entry = store.hasVisitedNode(key)
-                    ? store.getNodeVisit(key)
-                    : store.getDialogueVisit(key);
-        }
+        // 单 Map 后：直接从 store 获取，无需分派逻辑
+        Entry entry = store.getEntry(key);
         return isOnCooldown(entry, cooldownType, cooldownValue, resetTick,
                 ts.realTime(), ts.gameTime(), ts.dayTime());
     }

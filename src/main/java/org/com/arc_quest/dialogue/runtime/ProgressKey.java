@@ -62,17 +62,22 @@ public final class ProgressKey {
     }
 
     /**
-     *  交易冷却 Key: "trade:shopId:entryId"
+     *  交易冷却 Key: "trade:shopId|entryId"
      * <p>
      * 交易系统使用此方法创建 key，然后调用 DialogueProgressStore.recordChoiceSelection() 记录冷却。
+     * <p>
+     * <b>使用 | 分隔符的原因</b>：避免与 ResourceLocation 格式的冒号冲突。
+     * 如果 shopId 或 entryId 使用 "namespace:id" 格式（如 arc_quest:blacksmith），
+     * 使用冒号会导致 key 格式从三段变成四段，破坏 serialize() 里通过计数冒号判断类型的逻辑。
      *
      * @param shopId  商店 ID
      * @param entryId 商品 ID
      * @return 交易冷却的 ProgressKey
      */
     public static ProgressKey ofTrade(String shopId, String entryId) {
-        // 使用 "trade" 作为 namespace，避免与对话系统冲突
-        return new ProgressKey("trade", shopId + ":" + entryId, -1);
+        // 用 | 分隔 shopId 和 entryId，避免与 ResourceLocation 的冒号歧义
+        return new ProgressKey("trade", shopId + "|" + entryId, -1);
+        // keyString = "trade:shopId|entryId"，格式稳定为两段冒号
     }
 
     // ═══════════════════════════════════════════════
