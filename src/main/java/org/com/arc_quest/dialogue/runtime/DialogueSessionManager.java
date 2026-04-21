@@ -7,7 +7,9 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.com.arc_quest.api.event.DialogueChoiceSelectedEvent;
 import org.com.arc_quest.api.event.DialogueEndedEvent;
+import org.com.arc_quest.api.event.DialogueNodeStartedEvent;
 import org.com.arc_quest.api.event.DialogueStartedEvent;
 import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.capability.DialogueNpcPatch;
@@ -150,6 +152,20 @@ public final class DialogueSessionManager {
             return;
         }
 
+        // 发布 Forge 事件：选项选择（供附属模组监听）
+        DialogueNode currentNode = session.getCurrentNode();
+        if (currentNode != null && choiceIndex >= 0 && choiceIndex < currentNode.choices().size()) {
+            Entity npc = (session.getEntityId() != -1)
+                    ? player.level().getEntity(session.getEntityId())
+                    : null;
+            var choice = currentNode.choices().get(choiceIndex);
+            MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(
+                    player, npc, session.getTree().dialogueId(),
+                    currentNode.nodeId(), choiceIndex,
+                    choice.choiceId(),  // Choice ID
+                    session.processText(choice.text())));
+        }
+
         DialogueNode next = session.choose(choiceIndex);
 
         if (session.isEnded() || next == null) {
@@ -265,16 +281,16 @@ public final class DialogueSessionManager {
         if (node == null) return;
 
         String speaker = node.speaker().isEmpty() ? session.getTree().defaultNpc() : node.speaker();
-
-        net.minecraft.world.entity.Entity npc = (session.getEntityId() != -1)
-                ? session.getPlayer().level().getEntity(session.getEntityId()) 
-                : null;
         
         var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
         DialogueProgressStore progress = null;
         if (cap != null) {
             progress = cap.getDialogueProgress();
         }
+
+        Entity npc = (session.getEntityId() != -1)
+                ? player.level().getEntity(session.getEntityId())
+                : null;
 
         DialogueEvalContext ctx = DialogueEvalContext.of(
                 session.getPlayer(),
@@ -283,22 +299,39 @@ public final class DialogueSessionManager {
                 progress
         );
         
-        String text = ConditionalTextEvaluator.evaluate(
+        // SayIf 条件评估（获取完整结果，包含 ID 和索引）
+        ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(
                 ctx,
                 node.conditionalTexts(),
                 node.text()
         );
         
-        // 获取匹配到的 SayIf 音效
-        SoundEvent matchedSaySound = ConditionalTextEvaluator.getMatchedSound(
-                ctx, node.conditionalTexts()
-        );
+        String text = sayIfResult.text;
+        SoundEvent matchedSaySound = sayIfResult.sound;
+        String selectedSayId = sayIfResult.sayId;
+        int selectedSayIfIndex = sayIfResult.selectedIndex;
 
+        // 变量替换
         text = session.processText(text);
+        
+        ResourceLocation saySoundId = null;
+        if (matchedSaySound != null) {
+            saySoundId = ForgeRegistries.SOUND_EVENTS.getKey(matchedSaySound);
+        }
+
+        // 发布 Forge 事件：节点开始（供附属模组监听）
+        // 包含 Say ID、最终文本和音效
+        MinecraftForge.EVENT_BUS.post(new DialogueNodeStartedEvent(
+                player, npc, session.getTree().dialogueId(), node.nodeId(),
+                selectedSayId,  // Say ID
+                text,
+                matchedSaySound,
+                saySoundId));
 
         var visibleChoices = session.getVisibleChoices();
         String[] choiceTexts = new String[visibleChoices.size()];
         ResourceLocation[] choiceSounds = new ResourceLocation[visibleChoices.size()];
+        String[] choiceIds = new String[visibleChoices.size()];
         
         for (int i = 0; i < visibleChoices.size(); i++) {
             choiceTexts[i] = session.processText(visibleChoices.get(i).text());
@@ -306,6 +339,7 @@ public final class DialogueSessionManager {
             if (sound != null) {
                 choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getKey(sound);
             }
+            choiceIds[i] = visibleChoices.get(i).choiceId();
         }
 
         boolean isTerminal = node.isTerminal();
@@ -318,10 +352,7 @@ public final class DialogueSessionManager {
             nodeSoundId = ForgeRegistries.SOUND_EVENTS.getKey(node.nodeEnterSound());
         }
 
-        ResourceLocation saySoundId = null;
-        if (matchedSaySound != null) {
-            saySoundId = ForgeRegistries.SOUND_EVENTS.getKey(matchedSaySound);
-        }
+        // saySoundId 已在事件触发前计算，直接使用
 
         S2COpenDialoguePacket packet = new S2COpenDialoguePacket(
                 session.getTree().dialogueId(),
@@ -340,7 +371,9 @@ public final class DialogueSessionManager {
                 cooldownData.cooldownValues(),
                 cooldownData.resetTimeTicks(),
                 choiceSounds,
-                saySoundId
+                saySoundId,
+                selectedSayId,  // SayIf ID
+                choiceIds       // Choice IDs
         );
 
         ArcQuestNetwork.sendToPlayer(player, packet);

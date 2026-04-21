@@ -8,6 +8,7 @@ import net.minecraftforge.eventbus.api.Event;
  * 对话选项选择事件。
  * <p>
  * 当玩家选择对话选项时触发（服务端）。
+ * <b>包含选项的唯一标识符（Choice ID）</b>。
  * </p>
  *
  * @since 1.0.0
@@ -19,15 +20,22 @@ public class DialogueChoiceSelectedEvent extends Event {
     private final String dialogueId;
     private final String nodeId;
     private final int choiceIndex;
+    
+    /**
+     * 选项的唯一标识符（带命名空间）。
+     */
+    private final String choiceId;
+    
     private final String choiceText;
 
     public DialogueChoiceSelectedEvent(ServerPlayer player, Entity npc, String dialogueId,
-                                       String nodeId, int choiceIndex, String choiceText) {
+                                       String nodeId, int choiceIndex, String choiceId, String choiceText) {
         this.player = player;
         this.npc = npc;
         this.dialogueId = dialogueId;
         this.nodeId = nodeId;
         this.choiceIndex = choiceIndex;
+        this.choiceId = choiceId;
         this.choiceText = choiceText;
     }
 
@@ -64,6 +72,15 @@ public class DialogueChoiceSelectedEvent extends Event {
      */
     public int getChoiceIndex() {
         return choiceIndex;
+    }
+    
+    /**
+     * 获取选项的唯一标识符。
+     * 
+     * @return Choice ID（guaranteed non-null）
+     */
+    public String getChoiceId() {
+        return choiceId;
     }
 
     /**
