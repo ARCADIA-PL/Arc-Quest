@@ -6,7 +6,11 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import org.com.arc_quest.api.event.QuestAcceptedEvent;
 import org.com.arc_quest.api.event.QuestCompletedEvent;
+import org.com.arc_quest.api.event.QuestFailedEvent;
 import org.com.arc_quest.api.event.QuestPhaseChangedEvent;
+import org.com.arc_quest.api.event.QuestPhaseCompletedEvent;
+import org.com.arc_quest.api.event.QuestProgressChangedEvent;
+import org.com.arc_quest.api.event.QuestStartedEvent;
 import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -109,6 +113,7 @@ public final class QuestProgressHandler {
         
         // 发布 Forge 事件（供附属模组监听）
         MinecraftForge.EVENT_BUS.post(new QuestAcceptedEvent(player, ResourceLocation.parse(questId)));
+        MinecraftForge.EVENT_BUS.post(new QuestStartedEvent(player, ResourceLocation.parse(questId)));
 
         LOGGER.info("[ArcQuest] Player {} accepted quest: {}",
                 player.getGameProfile().getName(), questId);
@@ -173,6 +178,11 @@ public final class QuestProgressHandler {
         // 触发事件
         QuestEventBus.fire(QuestChangeEvent.objectiveProgressed(
                 ResourceLocation.parse(questId), objIndex, newProgress, required));
+        
+        // 发布 Forge 事件（供附属模组监听）
+        MinecraftForge.EVENT_BUS.post(new QuestProgressChangedEvent(
+                player, ResourceLocation.parse(questId), phaseId,
+                objIndex, currentProgress, newProgress, required));
 
         // 检查阶段是否完成
         checkPhaseCompletion(player, cap, data, def, phase);
@@ -198,6 +208,10 @@ public final class QuestProgressHandler {
         LOGGER.info("[ArcQuest] Phase completed: {}/{} for player {}",
                 data.getQuestId(), phase.getPhaseId(),
                 player.getGameProfile().getName());
+
+        // 发布 Forge 事件（供附属模组监听）
+        MinecraftForge.EVENT_BUS.post(new QuestPhaseCompletedEvent(
+                player, ResourceLocation.parse(data.getQuestId()), phase.getPhaseId()));
 
         // 发放阶段完成奖励
         grantRewards(player, phase.getPhaseRewards(), "phase");
@@ -379,6 +393,9 @@ public final class QuestProgressHandler {
 
         ArcQuestNetwork.syncQuestState(player, data);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
+        
+        // 发布 Forge 事件（供附属模组监听）
+        MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
     }
 
     /**

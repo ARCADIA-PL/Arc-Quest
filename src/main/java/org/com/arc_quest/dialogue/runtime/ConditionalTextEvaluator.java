@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import net.minecraft.sounds.SoundEvent;
 import org.com.arc_quest.dialogue.api.ConditionalSay;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -213,7 +214,7 @@ public final class ConditionalTextEvaluator {
      */
     public static ConditionalSay evaluateWithSound(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts, String defaultText) {
         if (conditionalTexts == null || conditionalTexts.isEmpty()) {
-            return new ConditionalSay(defaultText, null);
+            return ConditionalSay.of("default", defaultText);
         }
 
         IQuestCapability cap = ctx.questCap();
@@ -241,7 +242,7 @@ public final class ConditionalTextEvaluator {
         }
 
         if (matches.isEmpty()) {
-            return new ConditionalSay(defaultText, null);
+            return ConditionalSay.of("default", defaultText);
         }
 
         int maxPriority = matches.stream().mapToInt(m -> m.priority).max().orElse(0);
@@ -250,7 +251,7 @@ public final class ConditionalTextEvaluator {
                 return match.say;
             }
         }
-        return new ConditionalSay(defaultText, null);
+        return ConditionalSay.of("default", defaultText);
     }
 
     /**
@@ -259,6 +260,93 @@ public final class ConditionalTextEvaluator {
     public static SoundEvent getMatchedSound(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts) {
         var result = evaluateWithSound(ctx, conditionalTexts, "");
         return result.soundEvent();
+    }
+    
+    /**
+     * SayIf 评估结果封装。
+     */
+    public static class SayIfResult {
+        /**
+         * 选中的 SayIf ID（可能为 null）。
+         */
+        @Nullable
+        public final String sayId;
+        
+        /**
+         * 选中的 SayIf 分支索引（从 0 开始，-1 表示无 SayIf）。
+         */
+        public final int selectedIndex;
+        
+        public final String text;
+        public final SoundEvent sound;
+        
+        public SayIfResult(@Nullable String sayId, int selectedIndex, String text, SoundEvent sound) {
+            this.sayId = sayId;
+            this.selectedIndex = selectedIndex;
+            this.text = text;
+            this.sound = sound;
+        }
+    }
+    
+    /**
+     * 评估 SayIf 条件并返回完整结果（包含选中索引）。
+     * <p>
+     * 此方法用于事件触发，让附属模组知道哪个 SayIf 分支被选中。
+     * </p>
+     *
+     * @param ctx              评估上下文
+     * @param conditionalTexts SayIf 映射表
+     * @param defaultText      默认文本
+     * @return 包含选中索引、文本和音效的结果对象
+     */
+    public static SayIfResult evaluateWithIndex(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts, String defaultText) {
+        if (conditionalTexts == null || conditionalTexts.isEmpty()) {
+            return new SayIfResult(null, -1, defaultText, null);
+        }
+
+        IQuestCapability cap = ctx.questCap();
+        List<SayMatch> matches = new ArrayList<>();
+        int matchIndex = -1;
+        String matchedSayId = null;
+        int currentIndex = 0;
+        
+        for (Map.Entry<String, ConditionalSay> entry : conditionalTexts.entrySet()) {
+            String key = entry.getKey();
+            ConditionalSay say = entry.getValue();
+
+            int priority = 0;
+            String conditionKey = key;
+            int separatorIndex = key.indexOf('|');
+            if (separatorIndex > 0) {
+                try {
+                    priority = Integer.parseInt(key.substring(0, separatorIndex));
+                    conditionKey = key.substring(separatorIndex + 1);
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("[ConditionalText] Failed to parse priority from key: {}", key);
+                }
+            }
+
+            if (matchesCondition(ctx, cap, conditionKey)) {
+                matches.add(new SayMatch(say, priority));
+                if (matchIndex == -1) {
+                    matchIndex = currentIndex;  // 记录第一个匹配的索引
+                    matchedSayId = say.sayId();  // 记录 SayIf ID
+                }
+            }
+            currentIndex++;
+        }
+
+        if (matches.isEmpty()) {
+            return new SayIfResult(null, -1, defaultText, null);
+        }
+
+        int maxPriority = matches.stream().mapToInt(m -> m.priority).max().orElse(0);
+        for (SayMatch match : matches) {
+            if (match.priority == maxPriority) {
+                return new SayIfResult(matchedSayId, matchIndex, match.say.text(), match.say.soundEvent());
+            }
+        }
+        return new SayIfResult(null, -1, defaultText, null);
     }
 
     /**
