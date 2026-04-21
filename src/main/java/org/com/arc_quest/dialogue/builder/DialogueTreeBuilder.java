@@ -10,6 +10,7 @@ import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.registry.DialogueRegistry;
 import org.com.arc_quest.quest.api.QuestVisualConfig;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -34,6 +35,7 @@ public class DialogueTreeBuilder {
     private String curNodeId;
     private String curSpeaker;
     private String curText;
+    private String curDefaultSayId;  // 普通 say 的 ID
     private String curAutoNextId;
     private int curDelayMs;
     private boolean hasOpenNode = false;
@@ -45,6 +47,26 @@ public class DialogueTreeBuilder {
 
     private DialogueTreeBuilder(String dialogueId) {
         this.dialogueId = Objects.requireNonNull(dialogueId, "dialogueId must not be null");
+    }
+
+    /**
+     * 智能解析资源 ID（支持附属模组自定义命名空间）。
+     * <p>
+     * - 如果包含 ":"，则直接作为完整 ID
+     * - 如果不包含 ":"，则自动使用本模组命名空间 (arc_quest)
+     *
+     * @param id 资源 ID，如 "arc_quest:my_id" 或 "my_id"
+     * @return 完整的资源 ID 字符串
+     */
+    private String resolveId(String id) {
+        if (id == null || id.isEmpty()) {
+            throw new IllegalArgumentException("ID cannot be null or empty");
+        }
+        if (id.contains(":")) {
+            return id;
+        } else {
+            return Arc_quest.MOD_ID + ":" + id;
+        }
     }
 
     /**
@@ -199,44 +221,58 @@ public class DialogueTreeBuilder {
     }
 
     /**
-     * 设置当前节点的对话文本。
+     * 设置当前节点的对话文本（必须提供 ID）。
      */
-    public DialogueTreeBuilder say(String text) {
+    public DialogueTreeBuilder say(String text, String sayId) {
         ensureOpenNode();
         this.curText = text != null ? text : "";
+        this.curDefaultSayId = resolveId(sayId);
         return this;
     }
 
     /**
      * 添加条件文本（根据条件动态显示不同文本）。
+     * <p>
+     * <b>SayIf 必须提供唯一 ID</b>
+     * </p>
      */
-    public DialogueTreeBuilder sayIf(DialogueCondition condition, String text) {
+    @SuppressWarnings("unchecked")
+    public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : ""));
+        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, null, resolveId(sayId)));
         return this;
     }
 
     /**
      * 添加带优先级的条件文本。
+     * <p>
+     * <b>SayIf 必须提供唯一 ID</b>
+     * </p>
      */
-    public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, int priority) {
+    @SuppressWarnings("unchecked")
+    public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, int priority, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", priority, null));
+        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", priority, null, resolveId(sayId)));
         return this;
     }
 
     /**
      * 添加带音效的条件文本。
+     * <p>
+     * <b>SayIf 必须提供唯一 ID</b>
+     * </p>
      */
-    public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, SoundEvent sound) {
+    @SuppressWarnings("unchecked")
+    public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, SoundEvent sound, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, sound));
+        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, sound, resolveId(sayId)));
         return this;
     }
 
-    public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, Holder.Reference<SoundEvent> sound) {
+    @SuppressWarnings("unchecked")
+    public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, Holder.Reference<SoundEvent> sound, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, sound.get()));
+        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, sound.get(), resolveId(sayId)));
         return this;
     }
 
@@ -276,28 +312,46 @@ public class DialogueTreeBuilder {
 
     /**
      * 添加一个选项（简单跳转，无动作）。
+     * <p>
+     * <b>Choice 必须提供唯一 ID</b>
+     * </p>
      */
-    public DialogueTreeBuilder choice(String text, String nextNodeId) {
+    public DialogueTreeBuilder choice(String choiceId, String text, String nextNodeId) {
         ensureOpenNode();
-        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, 0, null));
+        if (choiceId == null || choiceId.isEmpty()) {
+            throw new IllegalArgumentException("Choice ID cannot be null or empty");
+        }
+        curChoices.add(DialogueChoice.of(choiceId, text, nextNodeId));
         return this;
     }
 
     /**
      * 添加一个带优先级的选项（简单跳转，无动作）。
+     * <p>
+     * <b>Choice 必须提供唯一 ID</b>
+     * </p>
      */
-    public DialogueTreeBuilder choice(String text, String nextNodeId, int priority) {
+    public DialogueTreeBuilder choice(String choiceId, String text, String nextNodeId, int priority) {
         ensureOpenNode();
-        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, priority, null));
+        if (choiceId == null || choiceId.isEmpty()) {
+            throw new IllegalArgumentException("Choice ID cannot be null or empty");
+        }
+        curChoices.add(DialogueChoice.prioritized(choiceId, text, nextNodeId, priority));
         return this;
     }
 
     /**
      * 添加一个选项（通过 ChoiceBuilder 配置）。
+     * <p>
+     * <b>Choice 必须提供唯一 ID</b>
+     * </p>
      */
-    public DialogueTreeBuilder choice(String text, Consumer<ChoiceBuilder> configurator) {
+    public DialogueTreeBuilder choice(String choiceId, String text, Consumer<ChoiceBuilder> configurator) {
         ensureOpenNode();
-        ChoiceBuilder cb = new ChoiceBuilder(text);
+        if (choiceId == null || choiceId.isEmpty()) {
+            throw new IllegalArgumentException("Choice ID cannot be null or empty");
+        }
+        ChoiceBuilder cb = new ChoiceBuilder(choiceId, text);
         configurator.accept(cb);
         curChoices.add(cb.build());
         return this;
@@ -305,11 +359,17 @@ public class DialogueTreeBuilder {
 
     /**
      * 添加一个带前置条件的选项。
+     * <p>
+     * <b>Choice 必须提供唯一 ID</b>
+     * </p>
      */
-    public DialogueTreeBuilder choiceIf(DialogueCondition condition, String text,
+    public DialogueTreeBuilder choiceIf(String choiceId, DialogueCondition condition, String text,
                                         Consumer<ChoiceBuilder> configurator) {
         ensureOpenNode();
-        ChoiceBuilder cb = new ChoiceBuilder(text);
+        if (choiceId == null || choiceId.isEmpty()) {
+            throw new IllegalArgumentException("Choice ID cannot be null or empty");
+        }
+        ChoiceBuilder cb = new ChoiceBuilder(choiceId, text);
         cb.onlyIf(condition);
         configurator.accept(cb);
         curChoices.add(cb.build());
@@ -501,7 +561,7 @@ public class DialogueTreeBuilder {
         // 条件文本
         for (ConditionalText ct : curConditionalTexts) {
             String key = ct.priority + "|" + serializeCondition(ct.condition);
-            map.put(key, new ConditionalSay(ct.text, ct.soundEvent));
+            map.put(key, new ConditionalSay(ct.sayId, ct.text, ct.soundEvent));
         }
 
         return Map.copyOf(map);
@@ -561,20 +621,27 @@ public class DialogueTreeBuilder {
         final String text;
         final int priority;
         final net.minecraft.sounds.SoundEvent soundEvent;
+        @Nullable
+        final String sayId;
 
         ConditionalText(DialogueCondition condition, String text) {
-            this(condition, text, 0, null);
+            this(condition, text, 0, null, null);
         }
 
         ConditionalText(DialogueCondition condition, String text, int priority) {
-            this(condition, text, priority, null);
+            this(condition, text, priority, null, null);
         }
 
         ConditionalText(DialogueCondition condition, String text, int priority, net.minecraft.sounds.SoundEvent sound) {
+            this(condition, text, priority, sound, null);
+        }
+        
+        ConditionalText(DialogueCondition condition, String text, int priority, net.minecraft.sounds.SoundEvent sound, String sayId) {
             this.condition = condition;
             this.text = text;
             this.priority = priority;
             this.soundEvent = sound;
+            this.sayId = sayId;
         }
     }
 
@@ -584,6 +651,7 @@ public class DialogueTreeBuilder {
 
     public static class ChoiceBuilder {
 
+        private final String choiceId;  // 强制：选项 ID
         private final String text;
         private final List<DialogueCondition> conditions = new ArrayList<>();
         private final List<DialogueAction> actions = new ArrayList<>();
@@ -596,7 +664,11 @@ public class DialogueTreeBuilder {
         private String restoreNodeId = null;
         private SoundEvent selectSound = null;
 
-        ChoiceBuilder(String text) {
+        ChoiceBuilder(String choiceId, String text) {
+            if (choiceId == null || choiceId.isEmpty()) {
+                throw new IllegalArgumentException("Choice ID cannot be null or empty");
+            }
+            this.choiceId = choiceId;
             this.text = text;
         }
 
@@ -937,6 +1009,7 @@ public class DialogueTreeBuilder {
 
         DialogueChoice build() {
             return new DialogueChoice(
+                    choiceId,
                     text,
                     nextNodeId,
                     List.copyOf(conditions),
