@@ -23,7 +23,7 @@ import java.util.*;
  * GUI 渲染代码应从此处读取数据，而非直接访问 Capability（客户端 Capability 在 SP 模式可用，
  * 但在 MP 模式下必须通过网络同步）。
  * <p>
- * <b>线程安全</b>：所有更新通过 {@code enqueueWork} 在客户端主线程执行，
+ * <b>线程模型</b>：所有更新通过 {@code enqueueWork} 在客户端主线程执行，
  * 读取也在渲染线程（同一线程）进行，因此无需加锁。
  * <p>
  * <b>多任务支持</b>：使用 LinkedHashMap 存储所有活跃任务，支持同时追踪多个任务。
@@ -493,7 +493,7 @@ public final class ClientQuestCache {
             if (data != null) return data;
         }
 
-        // 2. 后备：返回第一个活跃任务
+        // 2. 后备：返回第一个活跃任务（LinkedHashMap 保证插入顺序，即最早激活的任务）
         if (!activeQuests.isEmpty()) {
             return activeQuests.values().iterator().next();
         }

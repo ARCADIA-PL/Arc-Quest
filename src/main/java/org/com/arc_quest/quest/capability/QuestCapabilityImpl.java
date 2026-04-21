@@ -94,13 +94,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
     // ════════════════════════════════════════
 
     @Override
-    public int getTradePurchaseCount(String shopId, String entryId) {
+    public synchronized int getTradePurchaseCount(String shopId, String entryId) {
         return tradePurchases.computeIfAbsent(shopId, k -> new HashMap<>())
                 .getOrDefault(entryId, 0);
     }
 
     @Override
-    public void incrementTradePurchase(String shopId, String entryId) {
+    public synchronized void incrementTradePurchase(String shopId, String entryId) {
         Map<String, Integer> shopData = tradePurchases.computeIfAbsent(shopId, k -> new HashMap<>());
         shopData.merge(entryId, 1, Integer::sum);
         isDirty = true;
@@ -125,7 +125,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     @Override
-    public void recordTradePurchaseTime(String shopId, String entryId, long gameTime, long dayTime) {
+    public synchronized void recordTradePurchaseTime(String shopId, String entryId, long gameTime, long dayTime) {
         ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
         long realTime = TimeSanitizer.getCurrentRealTime();
         dialogueProgress.recordChoiceSelection(key, realTime, gameTime, dayTime);
@@ -192,20 +192,20 @@ public class QuestCapabilityImpl implements IQuestCapability {
     // ═══════════════════════════════════════════════
 
     @Override
-    public void addActiveQuest(QuestRuntimeData data) {
+    public synchronized void addActiveQuest(QuestRuntimeData data) {
         Objects.requireNonNull(data);
         activeQuests.put(data.getQuestId(), data);
         isDirty = true;
     }
 
     @Override
-    public void removeActiveQuest(String questId) {
+    public synchronized void removeActiveQuest(String questId) {
         activeQuests.remove(questId);
         isDirty = true;
     }
 
     @Override
-    public void markCompleted(String questId) {
+    public synchronized void markCompleted(String questId) {
         activeQuests.remove(questId);
         completedQuests.add(questId);
         failedQuests.remove(questId);
@@ -213,7 +213,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     @Override
-    public void markFailed(String questId) {
+    public synchronized void markFailed(String questId) {
         activeQuests.remove(questId);
         failedQuests.add(questId);
         isDirty = true;

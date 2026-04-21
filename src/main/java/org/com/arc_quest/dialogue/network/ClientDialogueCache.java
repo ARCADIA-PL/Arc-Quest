@@ -12,6 +12,9 @@ import java.util.Map;
 /**
  * 客户端对话状态缓存（单例）。
  * <p>
+ * <b>线程模型</b>：仅在客户端主线程（Render Thread）访问，由 S2C 网络包更新。
+ * 所有更新通过 {@code ctx.get().enqueueWork()} 确保在主线程执行，因此无需同步保护。
+ * <p>
  * 负责统一管理对话系统的运行时状态，实现 UI 与逻辑解耦，
  * 并处理服务端权威的音效触发。
  */
@@ -109,9 +112,9 @@ public final class ClientDialogueCache {
         if (currentTreeId != null) {
             closeSession(currentTreeId);
         } else if (!activeSessions.isEmpty()) {
-            // 兜底：如果没有 currentTreeId，关闭第一个会话
-            String firstTreeId = activeSessions.keySet().iterator().next();
-            closeSession(firstTreeId);
+            // 兜底：如果没有 currentTreeId，记录警告并清除所有会话
+            LOGGER.warn("[DialogueCache] closeSession() called without currentTreeId, clearing all sessions");
+            activeSessions.clear();
         }
     }
 

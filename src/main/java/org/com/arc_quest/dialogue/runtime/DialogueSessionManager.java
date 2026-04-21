@@ -28,6 +28,9 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 管理所有活跃的对话会话（服务端全局单例）。
  * <p>
+ * <b>线程模型</b>：服务端多线程环境，使用 {@code ConcurrentHashMap} 保证并发安全。
+ * 每个玩家的会话独立存储，通过 UUID 精确访问，避免竞态条件。
+ * <p>
  * 每个玩家同时只能有一个活跃对话。
  */
 

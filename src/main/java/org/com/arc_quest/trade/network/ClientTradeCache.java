@@ -20,6 +20,9 @@ import java.util.Map;
 /**
  * 客户端交易数据镜像缓存。
  * <p>
+ * <b>线程模型</b>：仅在客户端主线程（Render Thread）访问，由 S2C 网络包更新。
+ * 所有更新通过 {@code ctx.get().enqueueWork()} 确保在主线程执行，因此无需同步保护。
+ * <p>
  * 负责统一管理交易相关的客户端状态和音效触发，确保听觉反馈与服务端权威状态同步。
  */
 public final class ClientTradeCache {
