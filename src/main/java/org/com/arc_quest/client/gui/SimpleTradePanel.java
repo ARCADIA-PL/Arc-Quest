@@ -5,6 +5,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
@@ -31,7 +32,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                             long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
                             int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility,
                             boolean[] canBuyConditions) {
-        super("Quick Trade", shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
+        super("arc_quest.gui.trade.quick_title", shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
         this.entries = new ArrayList<>();
         if (shop != null) {
             int i = 0;
@@ -105,7 +106,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
         g.pose().pushPose();
 
         if (shop == null) {
-            g.drawCenteredString(font, "Unknown Shop", width / 2, height / 2, QuestAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha)));
+            g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.unknown_shop").getString(), width / 2, height / 2, QuestAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha)));
             g.pose().popPose(); return;
         }
 
@@ -211,10 +212,10 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                     statusStr = ClientCooldownHelper.getCooldownText(lastPurchaseTimes[gi], gi >= 0 && gi < purchaseGameTimes.length ? purchaseGameTimes[gi] : 0, gi >= 0 && gi < purchaseDayTimes.length ? purchaseDayTimes[gi] : 0, cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]);
                     if (statusStr.isEmpty()) statusStr = "...";
                 } else if (maxed) {
-                    statusStr = "Maxed";
+                    statusStr = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
                     scColor = 0xAAAAAA;
                 } else if (conditionNotMet) {
-                    statusStr = "Locked";
+                    statusStr = Component.translatable("arc_quest.gui.trade.status.locked").getString();
                     scColor = 0x4488CC;
                 }
 
@@ -288,12 +289,25 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
     @Override
     public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis, boolean[] canBuy) {
+        TradeEntry hoveredEntry = (hoveredTooltipIndex != -1 && hoveredTooltipIndex < entries.size())
+                ? entries.get(hoveredTooltipIndex) : null;
+        
         super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis, canBuy);
+        
+        List<TradeEntry> oldEntries = new ArrayList<>(this.entries);
         this.entries.clear();
         if (shop != null) {
             List<TradeEntry> allEntries = new ArrayList<>(shop.getAllEntries());
             for (int i = 0; i < allEntries.size(); i++) if (i < vis.length && vis[i]) entries.add(allEntries.get(i));
         }
-        this.hoverAnims = new float[this.entries.size()];
+        
+        float[] newHoverAnims = new float[this.entries.size()];
+        if (hoveredEntry != null) {
+            int newIndex = entries.indexOf(hoveredEntry);
+            if (newIndex != -1) {
+                newHoverAnims[newIndex] = 1f;
+            }
+        }
+        this.hoverAnims = newHoverAnims;
     }
 }

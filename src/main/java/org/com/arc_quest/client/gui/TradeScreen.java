@@ -44,7 +44,7 @@ public class TradeScreen extends AbstractTradeScreen {
                        long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
                        int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility,
                        boolean[] canBuyConditions) {
-        super("Trade Matrix", shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility);
+        super("arc_quest.gui.trade.full_title", shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility);
         this.allEntries = shop != null ? new ArrayList<>(shop.getAllEntries()) : List.of();
         this.filteredEntries = new ArrayList<>(allEntries);
         this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
@@ -113,7 +113,7 @@ public class TradeScreen extends AbstractTradeScreen {
 
         g.pose().pushPose();
 
-        if (shop == null) { g.drawCenteredString(font, "Shop Closed", width/2, height/2, QuestAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha))); g.pose().popPose(); return; }
+        if (shop == null) { g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.shop_closed").getString(), width/2, height/2, QuestAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha))); g.pose().popPose(); return; }
 
         float titleScale = isClosing ? QuestAnimUtil.easeInCubic(transitionAnim) : (0.95f + 0.05f * easeProgress);
         if (titleScale > 0.01f) {
@@ -246,10 +246,10 @@ public class TradeScreen extends AbstractTradeScreen {
                     statusStr = ClientCooldownHelper.getCooldownText(lastPurchaseTimes[gi], purchaseGameTimes[gi], purchaseDayTimes[gi], cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]);
                     if (statusStr.isEmpty()) statusStr = "...";
                 } else if (maxed) {
-                    statusStr = "Maxed";
+                    statusStr = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
                     scColor = 0xAAAAAA;
                 } else if (conditionNotMet) {
-                    statusStr = "Locked";
+                    statusStr = Component.translatable("arc_quest.gui.trade.status.locked").getString();
                     scColor = 0x4488CC;  // 深蓝色
                 }
 
@@ -280,16 +280,16 @@ public class TradeScreen extends AbstractTradeScreen {
                 String btnText;
                 int btnC;
                 if (canBuy) {
-                    btnText = "Purchase";
+                    btnText = Component.translatable("arc_quest.gui.trade.btn.purchase").getString();
                     btnC = (hov && mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH) ? 0xFFFFFF : getThemeColorForEntry(entry);
                 } else if (onCd) {
-                    btnText = "Wait";
+                    btnText = Component.translatable("arc_quest.gui.trade.btn.wait").getString();
                     btnC = 0x888888;
                 } else if (conditionNotMet) {
-                    btnText = "Locked";
+                    btnText = Component.translatable("arc_quest.gui.trade.btn.locked").getString();
                     btnC = 0x4488CC;
                 } else {
-                    btnText = "Empty";
+                    btnText = Component.translatable("arc_quest.gui.trade.btn.empty").getString();
                     btnC = 0x888888;
                 }
 
@@ -366,8 +366,19 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis, boolean[] canBuy) {
-        super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis);
+        super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis, canBuy);
         this.canBuyConditions = canBuy != null ? canBuy : new boolean[0];
+        
+        TradeEntry hoveredEntry = (hoveredTooltipIndex != -1 && hoveredTooltipIndex < filteredEntries.size())
+                ? filteredEntries.get(hoveredTooltipIndex) : null;
+        
         filterEntries();
+        
+        if (hoveredEntry != null) {
+            int newIndex = filteredEntries.indexOf(hoveredEntry);
+            if (newIndex != -1 && entryHoverAnims != null && newIndex < entryHoverAnims.length) {
+                entryHoverAnims[newIndex] = 1f;
+            }
+        }
     }
 }

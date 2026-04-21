@@ -46,6 +46,29 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuiTranslations() {
+        // ── Trade Screen Titles ──
+        add("arc_quest.gui.trade.full_title", "交易矩阵");
+        add("arc_quest.gui.trade.quick_title", "快速交易");
+
+        // ── Trade Status Labels ──
+        addTradeGuiText("status", "maxed", "已达上限");
+        addTradeGuiText("status", "locked", "未解锁");
+        addTradeGuiText("status", "on_cooldown", "冷却中");
+
+        // ── Trade Buttons ──
+        addTradeGuiText("btn", "purchase", "购买");
+        addTradeGuiText("btn", "wait", "等待");
+        addTradeGuiText("btn", "locked", "锁定");
+        addTradeGuiText("btn", "empty", "暂无");
+
+        // ── Trade Tooltip ──
+        addTradeGuiText("tooltip", "limit", "限购 / Limit: %1$s / %2$s");
+        addTradeGuiText("tooltip", "cooldown", "冷却 / Cooldown: %1$s");
+
+        // ── Trade Error Messages ──
+        addTradeGuiText("error", "unknown_shop", "未知商店");
+        addTradeGuiText("error", "shop_closed", "商店已关闭");
+
         // ── Journal Tabs ──
         addGuiTab("journal", "active", "进行中");
         addGuiTab("journal", "completed", "已完成");
@@ -288,6 +311,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
      * 交易系统翻译。
      */
     private void addTradeTranslations() {
+        // ── Trade Categories ──
+        add("arc_quest.trade.category.all", "全部");
         // ── 屏幕标题 ──
         addTradeScreenTitle("screen", "交易矩阵");
         addTradeScreenTitle("quick", "快速交易");

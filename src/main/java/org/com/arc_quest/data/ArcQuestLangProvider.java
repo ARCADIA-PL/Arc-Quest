@@ -162,6 +162,17 @@ public abstract class ArcQuestLangProvider extends LanguageProvider {
     }
 
     /**
+     * 添加交易界面的通用文本。
+     *
+     * @param category 分类（如 {@code "btn"}, {@code "status"}, {@code "tooltip"}, {@code "error"}）
+     * @param key      键ID
+     * @param text     显示文本（支持占位符）
+     */
+    protected void addTradeGuiText(String category, String key, String text) {
+        add("arc_quest.gui.trade." + category + "." + key, text);
+    }
+
+    /**
      * 添加 Toast 提示文本。
      *
      * @param toastType Toast 类型

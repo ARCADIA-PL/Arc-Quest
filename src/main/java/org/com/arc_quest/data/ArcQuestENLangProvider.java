@@ -46,6 +46,29 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuiTranslations() {
+        // ── Trade Screen Titles ──
+        add("arc_quest.gui.trade.full_title", "Trade Matrix");
+        add("arc_quest.gui.trade.quick_title", "Quick Trade");
+
+        // ── Trade Status Labels ──
+        addTradeGuiText("status", "maxed", "Maxed");
+        addTradeGuiText("status", "locked", "Locked");
+        addTradeGuiText("status", "on_cooldown", "On Cooldown");
+
+        // ── Trade Buttons ──
+        addTradeGuiText("btn", "purchase", "Purchase");
+        addTradeGuiText("btn", "wait", "Wait");
+        addTradeGuiText("btn", "locked", "Locked");
+        addTradeGuiText("btn", "empty", "Empty");
+
+        // ── Trade Tooltip ──
+        addTradeGuiText("tooltip", "limit", "Limit: %1$s / %2$s");
+        addTradeGuiText("tooltip", "cooldown", "Cooldown: %1$s");
+
+        // ── Trade Error Messages ──
+        addTradeGuiText("error", "unknown_shop", "Unknown Shop");
+        addTradeGuiText("error", "shop_closed", "Shop Closed");
+
         // ── Journal Tabs ──
         addGuiTab("journal", "active", "ACTIVE");
         addGuiTab("journal", "completed", "COMPLETED");
@@ -288,6 +311,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
      * Trade system translations.
      */
     private void addTradeTranslations() {
+        // ── Trade Categories ──
+        add("arc_quest.trade.category.all", "All");
         // ── Screen Titles ──
         addTradeScreenTitle("screen", "Trade Matrix");
         addTradeScreenTitle("quick", "Quick Trade");

@@ -12,6 +12,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
@@ -40,7 +42,7 @@ public class DialogueCommands {
                         // /arcquest dialogue start <player> <id>
                         .then(Commands.literal("start")
                                 .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("dialogue_id", StringArgumentType.string())
+                                        .then(Commands.argument("dialogue_id", ResourceLocationArgument.id())
                                                 .suggests(DialogueCommands::suggestDialogueIds)
                                                 .executes(DialogueCommands::cmdDialogue))))
                         // /arcquest dialogue reset <player> [id]
@@ -87,16 +89,9 @@ public class DialogueCommands {
 
     private static int cmdDialogue(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String dialogueId = StringArgumentType.getString(ctx, "dialogue_id");
+        String dialogueId = ResourceLocationArgument.getId(ctx, "dialogue_id").toString();
 
-        // 尝试直接查找，如果找不到则自动添加命名空间前缀
         DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
-        if (tree == null && !dialogueId.contains(":")) {
-            // 自动添加 arc_quest 命名空间
-            String fullId = Arc_quest.MOD_ID + ":" + dialogueId;
-            tree = DialogueRegistry.INSTANCE.get(fullId);
-        }
-
         if (tree == null) {
             error(ctx, Component.translatable("arc_quest.command.dialogue.error.not_found", dialogueId).getString());
             return 0;

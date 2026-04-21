@@ -12,6 +12,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
@@ -42,13 +44,13 @@ public class TradeCommands {
                         // /arcquest trade open <player> <shop>
                         .then(Commands.literal("open")
                                 .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("shop_id", StringArgumentType.string())
+                                        .then(Commands.argument("shop_id", ResourceLocationArgument.id())
                                                 .suggests(TradeCommands::suggestTradeShopIds)
                                                 .executes(TradeCommands::cmdTradeOpen))))
                         // /arcquest trade simple <player> <shop>
                         .then(Commands.literal("simple")
                                 .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("shop_id", StringArgumentType.string())
+                                        .then(Commands.argument("shop_id", ResourceLocationArgument.id())
                                                 .suggests(TradeCommands::suggestTradeShopIds)
                                                 .executes(TradeCommands::cmdTradeSimple))))
                         // /arcquest trade list
@@ -56,7 +58,7 @@ public class TradeCommands {
                                 .executes(TradeCommands::cmdTradeList))
                         // /arcquest trade debug <shop>
                         .then(Commands.literal("debug")
-                                .then(Commands.argument("shop_id", StringArgumentType.string())
+                                .then(Commands.argument("shop_id", ResourceLocationArgument.id())
                                         .suggests(TradeCommands::suggestTradeShopIds)
                                         .executes(TradeCommands::cmdTradeDebug)))
                         // /arcquest trade reset ...
@@ -64,13 +66,13 @@ public class TradeCommands {
                                 // /arcquest trade reset shop <player> <shop>
                                 .then(Commands.literal("shop")
                                         .then(Commands.argument("player", EntityArgument.player())
-                                                .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                .then(Commands.argument("shop_id", ResourceLocationArgument.id())
                                                         .suggests(TradeCommands::suggestTradeShopIds)
                                                         .executes(TradeCommands::cmdTradeResetShop))))
                                 // /arcquest trade reset entry <player> <shop> <entry>
                                 .then(Commands.literal("entry")
                                         .then(Commands.argument("player", EntityArgument.player())
-                                                .then(Commands.argument("shop_id", StringArgumentType.string())
+                                                .then(Commands.argument("shop_id", ResourceLocationArgument.id())
                                                         .suggests(TradeCommands::suggestTradeShopIds)
                                                         .then(Commands.argument("entry_id", StringArgumentType.string())
                                                                 .suggests(TradeCommands::suggestTradeEntryIds)
@@ -127,7 +129,7 @@ public class TradeCommands {
 
     private static int cmdTradeOpen(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String shopId = StringArgumentType.getString(ctx, "shop_id");
+        String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
 
         TradeShopDefinition shop = TradeRegistry.get(shopId);
         if (shop == null) {
@@ -142,7 +144,7 @@ public class TradeCommands {
 
     private static int cmdTradeSimple(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String shopId = StringArgumentType.getString(ctx, "shop_id");
+        String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
 
         TradeShopDefinition shop = TradeRegistry.get(shopId);
         if (shop == null) {
@@ -180,7 +182,7 @@ public class TradeCommands {
     }
 
     private static int cmdTradeDebug(CommandContext<CommandSourceStack> ctx) {
-        String shopId = StringArgumentType.getString(ctx, "shop_id");
+        String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
         TradeShopDefinition shop = TradeRegistry.get(shopId);
 
         if (shop == null) {
@@ -248,7 +250,7 @@ public class TradeCommands {
 
     private static int cmdTradeResetShop(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String shopId = StringArgumentType.getString(ctx, "shop_id");
+        String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
         IQuestCapability cap = getCap(player);
 
         TradeShopDefinition shop = TradeRegistry.get(shopId);
@@ -269,7 +271,7 @@ public class TradeCommands {
 
     private static int cmdTradeResetEntry(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String shopId = StringArgumentType.getString(ctx, "shop_id");
+        String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
         String entryId = StringArgumentType.getString(ctx, "entry_id");
         IQuestCapability cap = getCap(player);
 
