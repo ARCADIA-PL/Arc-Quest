@@ -6,8 +6,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.com.arc_quest.api.event.TradeItemPurchasedEvent;
+import org.com.arc_quest.api.event.TradePurchasedSuccessEvent;
 import org.com.arc_quest.api.event.TradeOpenedEvent;
+import org.com.arc_quest.api.event.TradePurchaseFailedEvent;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
@@ -181,7 +182,8 @@ public class C2SRequestTradePacket {
                 response);
         
         // 发布 Forge 事件（供附属模组监听）
-        MinecraftForge.EVENT_BUS.post(new TradeOpenedEvent(player, shop.getShopId()));
+        // 注意：商店打开时没有 NPC 上下文，npc 参数为 null
+        MinecraftForge.EVENT_BUS.post(new TradeOpenedEvent(player, shop.getShopId(), null));
     }
 
     private static void handlePurchase(ServerPlayer player, TradeShopDefinition shop,
@@ -208,7 +210,18 @@ public class C2SRequestTradePacket {
         
         // 发布 Forge 事件（供附属模组监听）
         if (result.succeeded()) {
-            MinecraftForge.EVENT_BUS.post(new TradeItemPurchasedEvent(player, shop.getShopId(), entryId));
+            MinecraftForge.EVENT_BUS.post(new TradePurchasedSuccessEvent(player, shop.getShopId(), entryId));
+        } else {
+            // 转换失败原因
+            TradePurchaseFailedEvent.FailureReason failureReason = switch (reason) {
+                case COOLDOWN -> TradePurchaseFailedEvent.FailureReason.ON_COOLDOWN;
+                case LIMIT_REACHED -> TradePurchaseFailedEvent.FailureReason.MAX_PURCHASES_REACHED;
+                case CONDITION_FAIL -> TradePurchaseFailedEvent.FailureReason.CONDITION_NOT_MET;
+                case CANNOT_AFFORD -> TradePurchaseFailedEvent.FailureReason.INSUFFICIENT_FUNDS;
+                default -> TradePurchaseFailedEvent.FailureReason.UNKNOWN;
+            };
+            MinecraftForge.EVENT_BUS.post(new TradePurchaseFailedEvent(
+                    player, shop.getShopId(), entryId, failureReason));
         }
 
         refreshTradeData(player, shop, clientScreenType);
