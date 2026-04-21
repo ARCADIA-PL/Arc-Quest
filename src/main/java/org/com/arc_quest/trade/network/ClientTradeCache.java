@@ -276,6 +276,16 @@ public final class ClientTradeCache {
         LOGGER.debug("[TradeCache] Session closed for: {}", shopId);
     }
 
+    /**
+     * 关闭除指定商店外的所有会话（防止内存泄漏）。
+     *
+     * @param keepShopId 要保留的商店 ID
+     */
+    public void closeAllExcept(String keepShopId) {
+        activeSessions.keySet().removeIf(shopId -> !shopId.equals(keepShopId));
+        LOGGER.debug("[TradeCache] Closed all sessions except: {}", keepShopId);
+    }
+
     @Nullable
     public TradeSessionData getSession(String shopId) {
         return activeSessions.get(shopId);

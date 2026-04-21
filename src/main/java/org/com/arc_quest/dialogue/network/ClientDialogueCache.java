@@ -24,6 +24,12 @@ public final class ClientDialogueCache {
      * 支持嵌套场景：对话中打开商店再返回对话时保持状态
      */
     private final Map<String, DialogueSessionData> activeSessions = new HashMap<>();
+    
+    /**
+     * 当前正在显示的对话树 ID（用于 getCurrentSession()）
+     */
+    @Nullable
+    private String currentTreeId = null;
 
     private ClientDialogueCache() {
     }
@@ -37,6 +43,9 @@ public final class ClientDialogueCache {
                                  int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
                                  @Nullable SoundEvent matchedSaySound, @Nullable SoundEvent[] choiceSounds,
                                  @Nullable String matchedSayId, @Nullable String[] choiceIds) {
+        
+        // 更新当前活跃的对话树 ID
+        this.currentTreeId = treeId;
         
         DialogueSessionData session = activeSessions.computeIfAbsent(treeId, DialogueSessionData::new);
         session.updateNode(nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
@@ -86,6 +95,10 @@ public final class ClientDialogueCache {
         DialogueSessionData removed = activeSessions.remove(treeId);
         if (removed != null) {
             LOGGER.debug("[DialogueCache] Session closed for treeId: {}", treeId);
+            // 如果关闭的是当前会话，清除 currentTreeId
+            if (treeId.equals(currentTreeId)) {
+                currentTreeId = null;
+            }
         }
     }
 
@@ -93,9 +106,12 @@ public final class ClientDialogueCache {
      * 关闭当前最后一个活跃的会话（向后兼容）。
      */
     public void closeSession() {
-        if (!activeSessions.isEmpty()) {
-            String lastTreeId = activeSessions.keySet().iterator().next();
-            closeSession(lastTreeId);
+        if (currentTreeId != null) {
+            closeSession(currentTreeId);
+        } else if (!activeSessions.isEmpty()) {
+            // 兜底：如果没有 currentTreeId，关闭第一个会话
+            String firstTreeId = activeSessions.keySet().iterator().next();
+            closeSession(firstTreeId);
         }
     }
 
@@ -111,13 +127,16 @@ public final class ClientDialogueCache {
     }
 
     /**
-     * 获取当前最后一个活跃的会话数据（向后兼容）。
+     * 获取当前正在显示的对话会话数据。
      *
      * @return 会话数据，如果不存在则返回 null
      */
     @Nullable
     public DialogueSessionData getCurrentSession() {
-        return activeSessions.isEmpty() ? null : activeSessions.values().iterator().next();
+        if (currentTreeId == null) {
+            return null;
+        }
+        return activeSessions.get(currentTreeId);
     }
 
     /**

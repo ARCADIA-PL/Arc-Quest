@@ -235,6 +235,9 @@ public class S2COpenTradePacket {
             Minecraft mc = Minecraft.getInstance();
             switch (pkt.mode) {
                 case OPEN_FULL -> {
+                    // 关闭其他商店的会话，防止内存泄漏
+                    ClientTradeCache.INSTANCE.closeAllExcept(pkt.shopId);
+                    
                     ClientTradeCache.INSTANCE.updateSession(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
                             pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
                             pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
@@ -256,6 +259,9 @@ public class S2COpenTradePacket {
                 }
 
                 case OPEN_SIMPLE -> {
+                    // 关闭其他商店的会话，防止内存泄漏
+                    ClientTradeCache.INSTANCE.closeAllExcept(pkt.shopId);
+                    
                     ClientTradeCache.INSTANCE.updateSession(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
                             pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
                             pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
