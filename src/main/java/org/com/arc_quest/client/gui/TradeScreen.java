@@ -1,11 +1,13 @@
 package org.com.arc_quest.client.gui;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
@@ -208,7 +210,6 @@ public class TradeScreen extends AbstractTradeScreen {
 
             int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
 
-            
             g.fill(cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A);
             QuestAnimUtil.drawFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
 
@@ -219,9 +220,14 @@ public class TradeScreen extends AbstractTradeScreen {
                 g.pose().scale(animScale, animScale, 1f);
                 g.pose().translate(-(cx + cw/2f), -(cy + ch/2f), 0);
 
-                if (entry.getIconOverride() != null) g.blit(entry.getIconOverride(), cx + 7, cy + 16, 0, 0, 16, 16, 16, 16);
-                else { ItemStack is = getIconStackForEntry(entry); if (!is.isEmpty()) { g.pose().pushPose(); g.pose().translate(cx + 12, cy + 16, 0); g.pose().scale(1.2f, 1.2f, 1f); g.renderItem(is, 0, 0); g.pose().popPose(); } }
-
+                if (entry.getRewardIcon() != null) {
+                    drawAdaptiveIcon(g, entry.getRewardIcon(), cx + 7, cy + 16, 16, 16, effectiveAlpha);
+                } else {
+                    ItemStack is = getIconStackForEntry(entry);
+                    if (!is.isEmpty()) {
+                        g.pose().pushPose(); g.pose().translate(cx + 12, cy + 16, 0); g.pose().scale(1.2f, 1.2f, 1f); g.renderItem(is, 0, 0); g.pose().popPose();
+                    }
+                }
 
                 if (onCd || maxed || conditionNotMet) {
                     float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5 + 0.5);
@@ -229,12 +235,12 @@ public class TradeScreen extends AbstractTradeScreen {
                     int pulseColor = onCd ? 0xFF6666 : (maxed ? 0xAAAAAA : 0x4488CC);
 
                     g.fill(cx, cy, cx + cw, cy + ch, QuestAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.1f)));
-                    
+
                     g.fill(cx - 1, cy - 1, cx + cw + 1, cy, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
                     g.fill(cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
                     g.fill(cx - 1, cy, cx, cy + ch, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
                     g.fill(cx + cw, cy, cx + cw + 1, cy + ch, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-                    
+
                     g.fill(cx, cy, cx + cw, cy + ch, QuestAnimUtil.withAlpha(0x000000, (int)(160 * effectiveAlpha)));
                 }
 
@@ -250,7 +256,7 @@ public class TradeScreen extends AbstractTradeScreen {
                     scColor = 0xAAAAAA;
                 } else if (conditionNotMet) {
                     statusStr = Component.translatable("arc_quest.gui.trade.status.locked").getString();
-                    scColor = 0x4488CC;  // 深蓝色
+                    scColor = 0x4488CC;
                 }
 
                 String nameStr = entry.getDisplayName().getString();
@@ -265,16 +271,44 @@ public class TradeScreen extends AbstractTradeScreen {
                     g.drawString(font, statusStr, textX + nameDrawW + 6, cy + 10, QuestAnimUtil.withAlpha(scColor, (int)(255*effectiveAlpha)), true);
                 }
 
-                StringBuilder cs = new StringBuilder();
-                for (ITradeOffer c : entry.getCosts()) {
-                    if (!cs.isEmpty()) cs.append(" + ");
-                    cs.append(c.describe().getString());
-                }
-                String costStr = cs.toString();
-                if (font.width(costStr) > cw - 140) costStr = font.plainSubstrByWidth(costStr, cw - 148) + "...";
-                g.drawString(font, costStr, textX, cy + 26, QuestAnimUtil.withAlpha(canBuy ? 0xDDDDDD : 0x777777, (int)(255*effectiveAlpha)), true);
+                int currentCostX = textX;
+                int costY = cy + 26;
 
-                
+                for (int j = 0; j < entry.getCosts().size(); j++) {
+                    ITradeOffer cost = entry.getCosts().get(j);
+                    if (j > 0) {
+                        g.drawString(font, "+", currentCostX, costY, QuestAnimUtil.withAlpha(0x777777, (int)(255*effectiveAlpha)), true);
+                        currentCostX += font.width("+") + 2;
+                    }
+
+                    ResourceLocation costIconLoc = cost.getIcon();
+                    g.pose().pushPose();
+                    float iconScale = 0.6f;
+                    g.pose().translate(currentCostX, costY - 1, 0);
+                    g.pose().scale(iconScale, iconScale, 1f);
+
+                    if (costIconLoc != null) {
+                        drawAdaptiveIcon(g, costIconLoc, 0, 0, 16, 16, effectiveAlpha);
+                    } else {
+                        ItemStack costStack = getIconStackForOffer(cost);
+                        if (!costStack.isEmpty()) {
+                            g.renderItem(costStack, 0, 0);
+                        }
+                    }
+                    g.pose().popPose();
+
+                    currentCostX += 12;
+
+                    String costDesc = cost.describe().getString();
+                    g.drawString(font, costDesc, currentCostX, costY, QuestAnimUtil.withAlpha(canBuy ? 0xDDDDDD : 0x777777, (int)(255*effectiveAlpha)), true);
+                    currentCostX += font.width(costDesc) + 4;
+
+                    if (currentCostX > cx + cw - 100) {
+                        g.drawString(font, "...", currentCostX, costY, QuestAnimUtil.withAlpha(0x777777, (int)(255*effectiveAlpha)), true);
+                        break;
+                    }
+                }
+
                 int btnW = 80, btnH = 24;
                 int btnX = cx + cw - btnW - 12, btnY = cy + (ch - btnH) / 2;
                 String btnText;
@@ -368,12 +402,12 @@ public class TradeScreen extends AbstractTradeScreen {
     public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis, boolean[] canBuy) {
         super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis, canBuy);
         this.canBuyConditions = canBuy != null ? canBuy : new boolean[0];
-        
+
         TradeEntry hoveredEntry = (hoveredTooltipIndex != -1 && hoveredTooltipIndex < filteredEntries.size())
                 ? filteredEntries.get(hoveredTooltipIndex) : null;
-        
+
         filterEntries();
-        
+
         if (hoveredEntry != null) {
             int newIndex = filteredEntries.indexOf(hoveredEntry);
             if (newIndex != -1 && entryHoverAnims != null && newIndex < entryHoverAnims.length) {

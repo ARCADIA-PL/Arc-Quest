@@ -55,7 +55,8 @@ public final class TradeEntryBuilder {
     private long cooldownValue = 0;
     private int resetTimeTicks = 0;
     private int maxPurchases = -1;
-    @Nullable private ResourceLocation iconOverride;
+    @Nullable private ResourceLocation rewardIcon;
+    @Nullable private ResourceLocation costIcon;
     private int sortOrder = 0;
     private int themeColor = -1;  // -1 表示使用商店默认
     @Nullable private Predicate<ServerPlayer> purchaseResetCondition;
@@ -102,8 +103,16 @@ public final class TradeEntryBuilder {
         return this;
     }
 
-    public TradeEntryBuilder icon(ResourceLocation texture) {
-        this.iconOverride = texture;
+    public TradeEntryBuilder rewardIcon(ResourceLocation texture) {
+        this.rewardIcon = texture;
+        return this;
+    }
+
+    /**
+     * 设置货币/成本的自定义图标。
+     */
+    public TradeEntryBuilder costIcon(ResourceLocation texture) {
+        this.costIcon = texture;
         return this;
     }
 
@@ -146,6 +155,18 @@ public final class TradeEntryBuilder {
 
     public TradeEntryBuilder costItem(Item item, int count) {
         this.costs.add(ItemTradeOffer.cost(item, count));
+        return this;
+    }
+
+    /**
+     * 添加带有自定义图标的物品成本。
+     *
+     * @param item   物品
+     * @param count  数量
+     * @param icon   自定义图标路径
+     */
+    public TradeEntryBuilder costItem(Item item, int count, ResourceLocation icon) {
+        this.costs.add(new ItemTradeOffer(item, count, true, icon));
         return this;
     }
 
@@ -308,7 +329,7 @@ public final class TradeEntryBuilder {
                 List.copyOf(costs), List.copyOf(rewards),
                 category, visibleCondition, canBuyCondition,
                 cooldownType, cooldownValue, resetTimeTicks,
-                maxPurchases, iconOverride, sortOrder, themeColor,
+                maxPurchases, rewardIcon, costIcon, sortOrder, themeColor,
                 purchaseResetCondition
         );
     }

@@ -311,8 +311,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
      * 交易系统翻译。
      */
     private void addTradeTranslations() {
-        // ── Trade Categories ──
-        add("arc_quest.trade.category.all", "全部");
         // ── 屏幕标题 ──
         addTradeScreenTitle("screen", "交易矩阵");
         addTradeScreenTitle("quick", "快速交易");

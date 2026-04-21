@@ -46,7 +46,9 @@ public final class TradeEntry {
     private final int resetTimeTicks;
     private final int maxPurchases;
     @Nullable
-    private final ResourceLocation iconOverride;
+    private final ResourceLocation rewardIcon;
+    @Nullable
+    private final ResourceLocation costIcon;
     private final int sortOrder;
     private final int themeColor;  // 商品主题色（ARGB），-1 表示使用商店默认
     
@@ -69,7 +71,8 @@ public final class TradeEntry {
                       long cooldownValue,
                       int resetTimeTicks,
                       int maxPurchases,
-                      @Nullable ResourceLocation iconOverride,
+                      @Nullable ResourceLocation rewardIcon,
+                      @Nullable ResourceLocation costIcon,
                       int sortOrder,
                       int themeColor,
                       @Nullable Predicate<ServerPlayer> purchaseResetCondition) {
@@ -90,7 +93,8 @@ public final class TradeEntry {
         this.cooldownValue = cooldownValue;
         this.resetTimeTicks = resetTimeTicks;
         this.maxPurchases = maxPurchases;
-        this.iconOverride = iconOverride;
+        this.rewardIcon = rewardIcon;
+        this.costIcon = costIcon;
         this.sortOrder = sortOrder;
         this.themeColor = themeColor;
         this.purchaseResetCondition = purchaseResetCondition;
@@ -123,7 +127,8 @@ public final class TradeEntry {
      */
     public int getMaxPurchases() { return maxPurchases; }
 
-    @Nullable public ResourceLocation getIconOverride() { return iconOverride; }
+    @Nullable public ResourceLocation getRewardIcon() { return rewardIcon; }
+    @Nullable public ResourceLocation getCostIcon() { return costIcon; }
     public int getSortOrder() { return sortOrder; }
 
     /**

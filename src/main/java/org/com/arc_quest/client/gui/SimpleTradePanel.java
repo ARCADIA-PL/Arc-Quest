@@ -1,11 +1,13 @@
 package org.com.arc_quest.client.gui;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
@@ -180,8 +182,12 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                 g.pose().translate(-(drawX + l.cardW()/2f), -(drawY + l.cardH()/2f), 0);
 
                 int itemDrawY = (int)drawY + (l.cardH() - 16) / 2;
-                if (entry.getIconOverride() != null) g.blit(entry.getIconOverride(), (int)drawX + 6, itemDrawY, 0, 0, 16, 16, 16, 16);
-                else { ItemStack icon = getIconStackForEntry(entry); if (!icon.isEmpty()) g.renderItem(icon, (int)drawX + 6, itemDrawY); }
+                if (entry.getRewardIcon() != null) {
+                    drawAdaptiveIcon(g, entry.getRewardIcon(), (int)drawX + 6, itemDrawY, 16, 16, clampedEase * effectiveAlpha);
+                } else {
+                    ItemStack icon = getIconStackForEntry(entry);
+                    if (!icon.isEmpty()) g.renderItem(icon, (int)drawX + 6, itemDrawY);
+                }
 
                 if (onCd || maxed || conditionNotMet) {
                     int cardAlpha = (int) (255 * clampedEase * effectiveAlpha);
@@ -232,18 +238,52 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                     g.drawString(font, statusStr, (int)drawX + 26 + nameDrawW + 4, textY, QuestAnimUtil.withAlpha(scColor, (int)(255 * clampedEase * effectiveAlpha)), true);
                 }
 
-                StringBuilder costStrBuilder = new StringBuilder();
-                for (ITradeOffer c : entry.getCosts()) {
-                    if (!costStrBuilder.isEmpty()) costStrBuilder.append(" + ");
-                    costStrBuilder.append(c.describe().getString());
-                }
-                String costStr = costStrBuilder.toString();
-                int maxCostW = l.cardW() - 34;
-                if (font.width(costStr) > maxCostW) {
-                    costStr = font.plainSubstrByWidth(costStr, maxCostW - 8) + "...";
-                }
                 int costColor = canBuy ? QuestAnimUtil.withAlpha(getThemeColorForEntry(entry), (int)(255 * clampedEase * effectiveAlpha)) : QuestAnimUtil.withAlpha(0x777777, (int)(255 * clampedEase * effectiveAlpha));
-                g.drawString(font, costStr, (int)drawX + 26, textY + font.lineHeight + 4, costColor, true);
+                int currentCostX = (int)drawX + 26;
+                int costY = textY + font.lineHeight + 4;
+                int startCostX = currentCostX;
+                int maxCostWConstraint = l.cardW() - 34;
+
+                for (int j = 0; j < entry.getCosts().size(); j++) {
+                    ITradeOffer cost = entry.getCosts().get(j);
+
+                    if (currentCostX - startCostX > maxCostWConstraint - 15) {
+                        g.drawString(font, "...", currentCostX, costY, costColor, true);
+                        break;
+                    }
+
+                    if (j > 0) {
+                        g.drawString(font, "+", currentCostX, costY, QuestAnimUtil.withAlpha(0x777777, (int)(255 * clampedEase * effectiveAlpha)), true);
+                        currentCostX += font.width("+") + 2;
+                    }
+
+                    ResourceLocation costIconLoc = cost.getIcon();
+                    g.pose().pushPose();
+                    float iconScale = 0.6f;
+                    g.pose().translate(currentCostX, costY - 1, 0);
+                    g.pose().scale(iconScale, iconScale, 1f);
+
+                    if (costIconLoc != null) {
+                        drawAdaptiveIcon(g, costIconLoc, 0, 0, 16, 16, clampedEase * effectiveAlpha);
+                    } else {
+                        ItemStack costStack = getIconStackForOffer(cost);
+                        if (!costStack.isEmpty()) {
+                            g.renderItem(costStack, 0, 0);
+                        }
+                    }
+                    g.pose().popPose();
+
+                    currentCostX += 12;
+
+                    String costDesc = cost.describe().getString();
+                    int remainW = maxCostWConstraint - (currentCostX - startCostX);
+                    if (font.width(costDesc) > remainW) {
+                        costDesc = font.plainSubstrByWidth(costDesc, Math.max(1, remainW - 6)) + "..";
+                    }
+
+                    g.drawString(font, costDesc, currentCostX, costY, costColor, true);
+                    currentCostX += font.width(costDesc) + 4;
+                }
 
                 g.pose().popPose();
             }
@@ -291,16 +331,16 @@ public class SimpleTradePanel extends AbstractTradeScreen {
     public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis, boolean[] canBuy) {
         TradeEntry hoveredEntry = (hoveredTooltipIndex != -1 && hoveredTooltipIndex < entries.size())
                 ? entries.get(hoveredTooltipIndex) : null;
-        
+
         super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis, canBuy);
-        
+
         List<TradeEntry> oldEntries = new ArrayList<>(this.entries);
         this.entries.clear();
         if (shop != null) {
             List<TradeEntry> allEntries = new ArrayList<>(shop.getAllEntries());
             for (int i = 0; i < allEntries.size(); i++) if (i < vis.length && vis[i]) entries.add(allEntries.get(i));
         }
-        
+
         float[] newHoverAnims = new float[this.entries.size()];
         if (hoveredEntry != null) {
             int newIndex = entries.indexOf(hoveredEntry);

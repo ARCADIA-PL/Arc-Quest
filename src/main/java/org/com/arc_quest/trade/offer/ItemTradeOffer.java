@@ -23,6 +23,8 @@ public final class ItemTradeOffer implements ITradeOffer {
     private final Item item;
     private final int count;
     private final boolean isCost;
+    @Nullable
+    private final ResourceLocation customIcon;
 
     /**
      * @param item   物品类型
@@ -30,11 +32,22 @@ public final class ItemTradeOffer implements ITradeOffer {
      * @param isCost true=成本（扣除），false=奖励（给予）
      */
     public ItemTradeOffer(Item item, int count, boolean isCost) {
+        this(item, count, isCost, null);
+    }
+
+    /**
+     * @param item       物品类型
+     * @param count      数量
+     * @param isCost     true=成本（扣除），false=奖励（给予）
+     * @param customIcon 自定义图标路径
+     */
+    public ItemTradeOffer(Item item, int count, boolean isCost, @Nullable ResourceLocation customIcon) {
         Objects.requireNonNull(item);
         if (count < 1) throw new IllegalArgumentException("count must be >= 1");
         this.item = item;
         this.count = count;
         this.isCost = isCost;
+        this.customIcon = customIcon;
     }
 
     public static ItemTradeOffer cost(Item item, int count) {
@@ -90,7 +103,7 @@ public final class ItemTradeOffer implements ITradeOffer {
     @Nullable
     @Override
     public ResourceLocation getIcon() {
-        return null;
+        return customIcon;
     }
 
     @Override

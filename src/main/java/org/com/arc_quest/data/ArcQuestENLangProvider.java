@@ -311,8 +311,6 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
      * Trade system translations.
      */
     private void addTradeTranslations() {
-        // ── Trade Categories ──
-        add("arc_quest.trade.category.all", "All");
         // ── Screen Titles ──
         addTradeScreenTitle("screen", "Trade Matrix");
         addTradeScreenTitle("quick", "Quick Trade");

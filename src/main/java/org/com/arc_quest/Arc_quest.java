@@ -27,8 +27,11 @@ public class Arc_quest {
     public static final String MOD_ID = "arc_quest";
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    //TODO 在builder中添加 章节开始时音效 章节失败音效 章节完成音效 Phase开始音效 Phase完成音效 Say音效 choice音效 商品购买成功音效 商品购买失败音效 商品不可购买的音效
     //TODO 完善任务系统的HUD，任务详情内可显示章节奖励和Phase奖励, Phase也可添加desc， 在任务追踪器和任务详情界面都可显示;如果是和实体相关的任务，任务详情界面可展示实体模型
     //TODO 任务系统HUD联动商店，新增章节商店按钮，每个章节可配置专属章节商店（可分为是否长期，长期则章节完成也可使用，非长期则不可，默认长期)
+    //TODO 设计新的HUD模块 任务追踪标识模块
+    //TODO 传送罗盘模块 可用于传送任务相关地点
     public Arc_quest() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);

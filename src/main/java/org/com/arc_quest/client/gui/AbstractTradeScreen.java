@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
@@ -14,6 +15,7 @@ import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
@@ -124,7 +126,7 @@ public abstract class AbstractTradeScreen extends Screen {
     public void onTradeFail(String key) {
         feedbackSuccess = false;
         feedbackAnim = 1f;
-        feedbackShake = 6f; 
+        feedbackShake = 6f;
         if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.VILLAGER_NO, 1f));
     }
 
@@ -240,7 +242,7 @@ public abstract class AbstractTradeScreen extends Screen {
         }
     }
 
-    private class TooltipData {
+    private static class TooltipData {
         int x, y, w, h;
         List<FormattedCharSequence> descLines;
         boolean onCd;
@@ -305,7 +307,6 @@ public abstract class AbstractTradeScreen extends Screen {
             if (Math.abs(feedbackScale - 1.0f) < 0.01f) feedbackScale = 1.0f;
         }
 
-        
         int currentShake = 0;
         if (Math.abs(feedbackShake) > 0.1f) {
             currentShake = (int) (Math.sin(Util.getMillis() / 30.0) * feedbackShake);
@@ -317,7 +318,7 @@ public abstract class AbstractTradeScreen extends Screen {
         float scale = isClosing ? QuestAnimUtil.easeInCubic(tooltipAlpha) : QuestAnimUtil.easeOutCubic(tooltipAlpha);
         if (scale < 0.01f) return;
 
-        int drawX = (int)animBgX + currentShake; 
+        int drawX = (int)animBgX + currentShake;
         int drawY = (int)animBgY;
         int drawW = (int)animBgW;
         int drawH = (int)animBgH;
@@ -326,7 +327,6 @@ public abstract class AbstractTradeScreen extends Screen {
 
         g.pose().pushPose();
 
-        
         float centerX = drawX + drawW / 2f;
         float centerY = drawY + drawH / 2f;
         g.pose().translate(centerX, centerY, 0);
@@ -337,7 +337,6 @@ public abstract class AbstractTradeScreen extends Screen {
         int borderA = (int) (0xFF * tooltipAlpha);
         int currentThemeColor = animThemeColor;
 
-        
         if (feedbackAnim > 0 && gi == lastClickedGi) {
             borderA = Math.min(255, borderA + (int)(180 * feedbackAnim));
             currentThemeColor = lerpColor(animThemeColor, feedbackSuccess ? 0x55FF55 : 0xFF5555, feedbackAnim);
@@ -348,7 +347,6 @@ public abstract class AbstractTradeScreen extends Screen {
         g.fill(drawX, drawY, drawX + drawW, drawY + drawH, (bgA << 24) | 0x0A0A10);
         QuestAnimUtil.drawFrame(g, drawX, drawY, drawW, drawH, 1, borderColor);
 
-        
         boolean useScissor = Math.abs(finalScale - 1.0f) < 0.01f && currentShake == 0;
         if (useScissor) {
             g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
@@ -356,22 +354,22 @@ public abstract class AbstractTradeScreen extends Screen {
 
         int padding = 10;
         int currentY = drawY + padding;
-        ItemStack icon = getIconStackForEntry(entry);
+
         int safeAlpha = (int)(255 * scale);
         int titleColor = QuestAnimUtil.withAlpha(animThemeColor, safeAlpha);
 
-        if (entry.getIconOverride() != null || !icon.isEmpty()) {
-            if (entry.getIconOverride() != null) {
-                RenderSystem.enableBlend();
-                RenderSystem.setShaderColor(1f, 1f, 1f, isClosing ? 1f : tooltipAlpha);
-                g.blit(entry.getIconOverride(), drawX + padding, currentY, 0, 0, 16, 16, 16, 16);
-                RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-            } else {
-                g.renderItem(icon, drawX + padding, currentY);
-            }
+        ResourceLocation iconLoc = entry.getRewardIcon();
+        if (iconLoc != null) {
+            drawAdaptiveIcon(g, iconLoc, drawX + padding, currentY, 16, 16, scale);
             g.drawString(font, entry.getDisplayName(), drawX + padding + 22, currentY + 4, titleColor, true);
         } else {
-            g.drawString(font, entry.getDisplayName(), drawX + padding, currentY + 4, titleColor, true);
+            ItemStack stack = getIconStackForEntry(entry);
+            if (!stack.isEmpty()) {
+                g.renderItem(stack, drawX + padding, currentY);
+                g.drawString(font, entry.getDisplayName(), drawX + padding + 22, currentY + 4, titleColor, true);
+            } else {
+                g.drawString(font, entry.getDisplayName(), drawX + padding, currentY + 4, titleColor, true);
+            }
         }
         currentY += 20;
 
@@ -426,9 +424,22 @@ public abstract class AbstractTradeScreen extends Screen {
         g.pose().popPose();
     }
 
+
+    protected void drawAdaptiveIcon(GuiGraphics g, ResourceLocation loc, int x, int y, int w, int h, float alpha) {
+        RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(1f, 1f, 1f, alpha);
+        g.blit(loc, x, y, w, h, 0f, 0f, 1, 1, 1, 1);
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+    }
+
     protected ItemStack getIconStackForEntry(TradeEntry entry) {
         if (!entry.getRewards().isEmpty() && entry.getRewards().get(0) instanceof ItemTradeOffer ito) return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
         if (!entry.getCosts().isEmpty() && entry.getCosts().get(0) instanceof ItemTradeOffer ito) return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
+        return ItemStack.EMPTY;
+    }
+
+    protected ItemStack getIconStackForOffer(ITradeOffer offer) {
+        if (offer instanceof ItemTradeOffer ito) return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
         return ItemStack.EMPTY;
     }
 }
