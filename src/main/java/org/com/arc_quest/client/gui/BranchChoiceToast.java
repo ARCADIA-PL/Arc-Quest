@@ -5,9 +5,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
-import org.com.arc_quest.quest.api.QuestDefinition;
-import org.com.arc_quest.quest.registry.QuestRegistry;
+import org.com.arc_quest.quest.network.ClientQuestCache;
 
 public class BranchChoiceToast {
 
@@ -103,8 +101,8 @@ public class BranchChoiceToast {
         QuestRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H,
                 0x121212, bgA, themeColor, accentA, 4);
 
-        QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
-        String questName = def != null ? def.getDisplayName().getString() : questId;
+        // 使用缓存层获取任务名称
+        String questName = ClientQuestCache.INSTANCE.getQuestDisplayName(questId);
         Font font = Minecraft.getInstance().font;
 
         float contentX = baseX + 12 + textDriftX;

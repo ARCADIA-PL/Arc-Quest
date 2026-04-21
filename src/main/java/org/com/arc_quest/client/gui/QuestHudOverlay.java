@@ -56,9 +56,12 @@ public class QuestHudOverlay implements IGuiOverlay {
         Map<String, QuestRuntimeData> active = ClientQuestCache.INSTANCE.getAllActiveQuests();
         QuestRuntimeData tracked = resolveTrackedQuest(active);
 
-        ResourceLocation questRl = tracked != null ? ResourceLocation.tryParse(tracked.getQuestId()) : null;
-        QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-        int currentThemeColor = (def != null && def.getThemeColor() != 0xFFFFFFFF) ? def.getThemeColor() : 0xFF4FC3F7;
+        if (tracked == null) return;
+
+        String questId = tracked.getQuestId();
+        int currentThemeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, 0xFF4FC3F7);
+        QuestDefinition def = ClientQuestCache.INSTANCE.getCurrentPhase(questId) != null 
+            ? QuestRegistry.get(ResourceLocation.tryParse(questId)) : null;
 
         updatePhasePopup(tracked, def, currentThemeColor);
 
@@ -111,13 +114,8 @@ public class QuestHudOverlay implements IGuiOverlay {
         if (tracked != null) {
             String curPhaseId = tracked.getCurrentPhaseId();
             if (lastKnownPhaseId != null && !lastKnownPhaseId.equals(curPhaseId)) {
-                String phaseName = curPhaseId;
-                if (def != null) {
-                    PhaseDefinition currentPhase = def.getPhase(curPhaseId);
-                    if (currentPhase != null && currentPhase.getDisplayName() != null && !currentPhase.getDisplayName().getString().isEmpty()) {
-                        phaseName = currentPhase.getDisplayName().getString();
-                    }
-                }
+                // 使用缓存层提供的便捷方法获取阶段名称
+                String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), curPhaseId);
                 this.phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor);
             }
             lastKnownPhaseId = curPhaseId;
@@ -128,18 +126,18 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
         String trackedQuestId = trackerPanel.getTrackedQuestId();
-        if (trackedQuestId != null) {
-            QuestRuntimeData data = active.get(trackedQuestId);
-            if (data != null) return data;
+        QuestRuntimeData data = ClientQuestCache.INSTANCE.resolveTrackedQuest(trackedQuestId);
+        
+        // 如果返回的任务与追踪 ID 不匹配，清除追踪
+        if (data != null && trackedQuestId != null && !data.getQuestId().equals(trackedQuestId)) {
             trackerPanel.setTrackedQuest(null);
+        } else if (data == null && trackedQuestId != null) {
+            trackerPanel.setTrackedQuest(null);
+        } else if (data != null && trackedQuestId == null) {
+            trackerPanel.setTrackedQuest(data.getQuestId());
         }
-        if (!active.isEmpty()) {
-            var first = active.entrySet().iterator().next();
-            trackerPanel.setTrackedQuest(first.getKey());
-            return first.getValue();
-        }
-        trackerPanel.setTrackedQuest(null);
-        return null;
+        
+        return data;
     }
 
     public void showBranchChoiceToast(String questId) {

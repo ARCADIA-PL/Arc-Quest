@@ -397,7 +397,8 @@ import java.util.List;
         int maxTextWidth = (choices.length > 0)
                 ? (baseChoiceX - textBaseX - Math.max(20, (int) (this.width * 0.05f)))
                 : (this.width - textBaseX - Math.max(40, (int) (this.width * 0.1f)));
-        if (wrappedLines == null) wrappedLines = wrapText(fullText, maxTextWidth, font);
+        // 使用共享工具方法
+        if (wrappedLines == null) wrappedLines = QuestRenderUtil.wrapText(fullText, maxTextWidth, font);
 
         int lineHeight = font.lineHeight + 6;
         int totalTextHeight = wrappedLines.size() * lineHeight;
@@ -649,26 +650,5 @@ import java.util.List;
         RenderSystem.disableBlend();
     }
 
-    private static List<String> wrapText(String text, int maxWidth, Font font) {
-        List<String> lines = new ArrayList<>();
-        if (text == null || text.isEmpty()) return lines;
 
-        String[] paragraphs = text.split("\\n");
-        for (String paragraph : paragraphs) {
-            String[] words = paragraph.split(" ");
-            StringBuilder current = new StringBuilder();
-            for (String word : words) {
-                String test = current.isEmpty() ? word : current + " " + word;
-                if (font.width(test) > maxWidth && !current.isEmpty()) {
-                    lines.add(current.toString());
-                    current = new StringBuilder(word);
-                } else {
-                    if (!current.isEmpty()) current.append(" ");
-                    current.append(word);
-                }
-            }
-            if (!current.isEmpty()) lines.add(current.toString());
-        }
-        return lines;
-    }
 }

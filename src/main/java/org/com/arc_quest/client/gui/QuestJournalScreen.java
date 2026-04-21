@@ -81,25 +81,25 @@ public class QuestJournalScreen extends Screen {
         switch (currentTab) {
             case ACTIVE -> {
                 for (Map.Entry<String, QuestRuntimeData> e : ClientQuestCache.INSTANCE.getAllActiveQuests().entrySet()) {
+                    String name = ClientQuestCache.INSTANCE.getQuestDisplayName(e.getKey());
                     ResourceLocation questRl = ResourceLocation.tryParse(e.getKey());
                     QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-                    String name = def != null ? def.getDisplayName().getString() : e.getKey();
                     currentEntries.add(new QuestListEntry(e.getKey(), name, QuestState.ACTIVE, def));
                 }
             }
             case COMPLETED -> {
                 for (String id : ClientQuestCache.INSTANCE.getCompletedQuests()) {
+                    String name = ClientQuestCache.INSTANCE.getQuestDisplayName(id);
                     ResourceLocation questRl = ResourceLocation.tryParse(id);
                     QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-                    String name = def != null ? def.getDisplayName().getString() : id;
                     currentEntries.add(new QuestListEntry(id, name, QuestState.COMPLETED, def));
                 }
             }
             case FAILED -> {
                 for (String id : ClientQuestCache.INSTANCE.getFailedQuests()) {
+                    String name = ClientQuestCache.INSTANCE.getQuestDisplayName(id);
                     ResourceLocation questRl = ResourceLocation.tryParse(id);
                     QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-                    String name = def != null ? def.getDisplayName().getString() : id;
                     currentEntries.add(new QuestListEntry(id, name, QuestState.FAILED, def));
                 }
             }
@@ -142,7 +142,8 @@ public class QuestJournalScreen extends Screen {
 
     private boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime) {
         if (def == null || runtime == null) return false;
-        PhaseDefinition currentPhase = def.getPhase(runtime.getCurrentPhaseId());
+        // 使用缓存层获取当前阶段
+        PhaseDefinition currentPhase = ClientQuestCache.INSTANCE.getCurrentPhase(runtime.getQuestId());
         if (currentPhase == null || !currentPhase.hasChoices()) return false;
         int[] progress = runtime.getAllProgress();
         for (int i = 0; i < currentPhase.getObjectives().size(); i++) {
@@ -549,7 +550,8 @@ public class QuestJournalScreen extends Screen {
         QuestDefinition def = entry.def;
         if (def == null) return;
 
-        int activeTheme = def.getThemeColor() != 0xFFFFFFFF ? def.getThemeColor() : theme;
+        // 使用缓存层获取主题色
+        int activeTheme = ClientQuestCache.INSTANCE.getQuestThemeColor(entry.questId(), theme);
 
         detailReveal = lerp(detailReveal, 1f, 0.15f);
         float dAlpha = effectiveAlpha * QuestAnimUtil.easeOutCubic(Math.min(1f, detailReveal));
@@ -602,7 +604,8 @@ public class QuestJournalScreen extends Screen {
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.85f, 0.85f, 1f);
-            List<String> descLines = wrapText(def.getDescription().getString(), (int) ((scrollAreaW - 24) / 0.85f));
+            // 使用共享工具方法
+            List<String> descLines = QuestRenderUtil.wrapText(def.getDescription().getString(), (int) ((scrollAreaW - 24) / 0.85f), font);
             for (String line : descLines) {
                 g.drawString(font, line, 0, 0, QuestAnimUtil.withAlpha(0xAAAAAA, safeA), false);
                 g.pose().translate(0, font.lineHeight + 1, 0);
@@ -617,13 +620,8 @@ public class QuestJournalScreen extends Screen {
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
 
         if (entry.state() == QuestState.ACTIVE && runtime != null) {
-            PhaseDefinition phase = null;
-            for (PhaseDefinition p : def.getAllPhases()) {
-                if (p.getPhaseId().equals(runtime.getCurrentPhaseId())) {
-                    phase = p;
-                    break;
-                }
-            }
+            // 使用缓存层获取当前阶段定义
+            PhaseDefinition phase = ClientQuestCache.INSTANCE.getCurrentPhase(entry.questId());
             if (phase != null) {
                 g.pose().pushPose();
                 g.pose().translate(0, localY, 0);
@@ -637,7 +635,7 @@ public class QuestJournalScreen extends Screen {
 
                 List<ObjectiveEntry> objs = phase.getObjectives();
                 if (detailObjReveal.length != objs.size()) detailObjReveal = new float[objs.size()];
-
+                
                 for (int i = 0; i < objs.size(); i++) {
                     detailObjReveal[i] = lerp(detailObjReveal[i], 1f, 0.1f + i * 0.03f);
                     float oAlpha = dAlpha * QuestAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]));
@@ -646,14 +644,15 @@ public class QuestJournalScreen extends Screen {
                         localY += 22;
                         continue;
                     }
-
+                
                     int objX = (int) ((1f - QuestAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
                     int progress = runtime.getObjectiveProgress(i), required = objs.get(i).getRequiredCount();
                     boolean complete = progress >= required;
-
+                
                     String objText = (complete ? Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString() : Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString()) + objs.get(i).getDisplayText().getString();
-
-                    List<String> wrappedObjLines = wrapText(objText, scrollAreaW - 40 - objX);
+                
+                    // 使用共享工具方法
+                    List<String> wrappedObjLines = QuestRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
                     for (String line : wrappedObjLines) {
                         g.drawString(font, line, objX, localY, QuestAnimUtil.withAlpha(complete ? 0x88FF88 : 0xDDDDDD, oA), true);
                         localY += font.lineHeight + 1;
@@ -684,10 +683,8 @@ public class QuestJournalScreen extends Screen {
                 int completedCount = 0;
                 for (String phaseId : def.getPhaseIds()) {
                     if (phaseId.equals(runtime.getCurrentPhaseId())) break;
-                    PhaseDefinition completedPhase = def.getPhase(phaseId);
-                    String completedPhaseName = completedPhase != null && completedPhase.getDisplayName() != null && !completedPhase.getDisplayName().getString().isEmpty()
-                            ? completedPhase.getDisplayName().getString()
-                            : phaseId;
+                    // 使用缓存层获取阶段名称
+                    String completedPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(entry.questId(), phaseId);
                     g.pose().pushPose();
                     g.pose().translate(8, localY, 0);
                     g.pose().scale(0.75f, 0.75f, 1f);
@@ -718,18 +715,15 @@ public class QuestJournalScreen extends Screen {
                     localY += 14;
 
                     currentChoiceButtons.clear();
-                    List<ChoiceOption> choices = def.getPhase(runtime.getCurrentPhaseId()).getChoices();
+                    // 使用缓存层获取当前阶段的选项
+                    List<ChoiceOption> choices = ClientQuestCache.INSTANCE.getCurrentPhase(entry.questId()).getChoices();
                     for (int i = 0; i < choices.size(); i++) {
                         ChoiceOption choice = choices.get(i);
                         boolean isVisible = true;
                         if (choice.getVisibleCondition() != null) {
-                            Set<ResourceLocation> completedRL = new HashSet<>();
-                            for (String id : ClientQuestCache.INSTANCE.getCompletedQuests()) {
-                                ResourceLocation rl = ResourceLocation.tryParse(id);
-                                if (rl != null) completedRL.add(rl);
-                            }
+                            // 使用缓存层提供的便捷方法
                             isVisible = choice.getVisibleCondition().testClient(
-                                    completedRL,
+                                    ClientQuestCache.INSTANCE.getCompletedQuestsAsRL(),
                                     ClientQuestCache.INSTANCE.getAllFlags(),
                                     ClientQuestCache.INSTANCE.getAllVariables()
                             );
@@ -831,25 +825,6 @@ public class QuestJournalScreen extends Screen {
         }
     }
 
-    private List<String> wrapText(String text, int maxWidth) {
-        List<String> lines = new ArrayList<>();
-        String[] paragraphs = text.split("\\n");
-
-        for (String paragraph : paragraphs) {
-            StringBuilder current = new StringBuilder();
-            for (String word : paragraph.split(" ")) {
-                if (font.width(current.isEmpty() ? word : current + " " + word) > maxWidth && !current.isEmpty()) {
-                    lines.add(current.toString());
-                    current = new StringBuilder(word);
-                } else {
-                    if (!current.isEmpty()) current.append(" ");
-                    current.append(word);
-                }
-            }
-            if (!current.isEmpty()) lines.add(current.toString());
-        }
-        return lines;
-    }
 
     private enum Tab {ACTIVE, COMPLETED, FAILED}
 

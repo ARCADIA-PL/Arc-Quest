@@ -10,6 +10,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 共享渲染工具集。
  */
@@ -173,5 +176,38 @@ public final class QuestRenderUtil {
     public static void disableBlendWithDepth() {
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
+    }
+
+    /**
+     * 文本换行工具方法。
+     * <p>
+     * 将长文本按指定宽度分割为多行，支持段落分隔（\n）。
+     *
+     * @param text     原始文本
+     * @param maxWidth 最大宽度（像素）
+     * @param font     字体对象
+     * @return 换行后的文本列表
+     */
+    public static List<String> wrapText(String text, int maxWidth, Font font) {
+        List<String> lines = new ArrayList<>();
+        if (text == null || text.isEmpty()) return lines;
+
+        String[] paragraphs = text.split("\\n");
+        for (String paragraph : paragraphs) {
+            String[] words = paragraph.split(" ");
+            StringBuilder current = new StringBuilder();
+            for (String word : words) {
+                String test = current.isEmpty() ? word : current + " " + word;
+                if (font.width(test) > maxWidth && !current.isEmpty()) {
+                    lines.add(current.toString());
+                    current = new StringBuilder(word);
+                } else {
+                    if (!current.isEmpty()) current.append(" ");
+                    current.append(word);
+                }
+            }
+            if (!current.isEmpty()) lines.add(current.toString());
+        }
+        return lines;
     }
 }

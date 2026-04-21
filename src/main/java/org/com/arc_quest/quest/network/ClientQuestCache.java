@@ -25,13 +25,17 @@ import java.util.*;
  * <p>
  * <b>线程安全</b>：所有更新通过 {@code enqueueWork} 在客户端主线程执行，
  * 读取也在渲染线程（同一线程）进行，因此无需加锁。
+ * <p>
+ * <b>多任务支持</b>：使用 LinkedHashMap 存储所有活跃任务，支持同时追踪多个任务。
  */
 public final class ClientQuestCache {
 
     public static final ClientQuestCache INSTANCE = new ClientQuestCache();
     private static final Logger LOGGER = LogUtils.getLogger();
+
     /**
      * 活跃任务（客户端镜像）
+     * 使用 LinkedHashMap 保持插入顺序，支持多任务并发
      */
     private final Map<String, QuestRuntimeData> activeQuests = new LinkedHashMap<>();
 
@@ -185,7 +189,20 @@ public final class ClientQuestCache {
             LOGGER.warn("[ClientCache] Received objective update for unknown quest: {}", questId);
             return;
         }
+
+        // 边界检查
+        if (objIndex < 0) {
+            LOGGER.warn("[ClientCache] Invalid objective index: {} for quest: {}", objIndex, questId);
+            return;
+        }
+
         int oldProgress = data.getObjectiveProgress(objIndex);
+        
+        // 防止进度回退（除非服务端明确允许）
+        if (newProgress < oldProgress) {
+            LOGGER.debug("[ClientCache] Objective progress decreased: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
+        }
+        
         data.setObjectiveProgress(objIndex, newProgress);
 
         // 触发动画钩子：目标进度更新
@@ -300,7 +317,204 @@ public final class ClientQuestCache {
         failedQuests.clear();
         flags.clear();
         variables.clear();
-        LOGGER.debug("[ClientCache] Cache cleared.");
+        LOGGER.info("[ClientCache] Cache cleared.");
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  增强查询 API
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 获取任务的当前阶段定义。
+     *
+     * @param questId 任务 ID
+     * @return 阶段定义，如果任务不存在或阶段无效则返回 null
+     */
+    @Nullable
+    public PhaseDefinition getCurrentPhase(String questId) {
+        QuestRuntimeData data = activeQuests.get(questId);
+        if (data == null) return null;
+
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return null;
+
+        QuestDefinition def = QuestRegistry.get(rl);
+        if (def == null) return null;
+
+        return def.getPhase(data.getCurrentPhaseId());
+    }
+
+    /**
+     * 获取目标的剩余进度。
+     *
+     * @param questId  任务 ID
+     * @param objIndex 目标索引
+     * @return 剩余进度，如果任务或目标不存在则返回 -1
+     */
+    public int getObjectiveRemaining(String questId, int objIndex) {
+        QuestRuntimeData data = activeQuests.get(questId);
+        if (data == null) return -1;
+
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return -1;
+
+        QuestDefinition def = QuestRegistry.get(rl);
+        if (def == null) return -1;
+
+        PhaseDefinition phase = def.getPhase(data.getCurrentPhaseId());
+        if (phase == null || objIndex < 0 || objIndex >= phase.getObjectives().size()) {
+            return -1;
+        }
+
+        int current = data.getObjectiveProgress(objIndex);
+        int required = phase.getObjectives().get(objIndex).getRequiredCount();
+        return Math.max(0, required - current);
+    }
+
+    /**
+     * 获取任务的整体进度百分比（0-100）。
+     *
+     * @param questId 任务 ID
+     * @return 进度百分比，如果任务不存在则返回 -1
+     */
+    public int getQuestProgressPercent(String questId) {
+        QuestRuntimeData data = activeQuests.get(questId);
+        if (data == null) return -1;
+
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return -1;
+
+        QuestDefinition def = QuestRegistry.get(rl);
+        if (def == null) return -1;
+
+        PhaseDefinition phase = def.getPhase(data.getCurrentPhaseId());
+        if (phase == null || phase.getObjectives().isEmpty()) return 0;
+
+        int totalRequired = 0;
+        int totalCurrent = 0;
+
+        for (int i = 0; i < phase.getObjectives().size(); i++) {
+            int required = phase.getObjectives().get(i).getRequiredCount();
+            int current = Math.min(data.getObjectiveProgress(i), required);
+            totalRequired += required;
+            totalCurrent += current;
+        }
+
+        if (totalRequired == 0) return 100;
+        return (int) ((totalCurrent * 100.0) / totalRequired);
+    }
+
+    /**
+     * 按分类获取活跃任务。
+     *
+     * @param category 任务分类
+     * @return 匹配的任务 ID 列表
+     */
+    public List<String> getActiveQuestsByCategory(String category) {
+        List<String> result = new ArrayList<>();
+        for (Map.Entry<String, QuestRuntimeData> entry : activeQuests.entrySet()) {
+            ResourceLocation rl = ResourceLocation.tryParse(entry.getKey());
+            if (rl != null) {
+                QuestDefinition def = QuestRegistry.get(rl);
+                if (def != null && category.equals(def.getCategory().getId())) {
+                    result.add(entry.getKey());
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 获取任务的主题色（带默认值）。
+     *
+     * @param questId      任务 ID
+     * @param defaultColor 默认颜色（如果未配置则返回此值）
+     * @return 主题色 ARGB 值
+     */
+    public int getQuestThemeColor(String questId, int defaultColor) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return defaultColor;
+
+        QuestDefinition def = QuestRegistry.get(rl);
+        if (def == null) return defaultColor;
+
+        int themeColor = def.getThemeColor();
+        return (themeColor != 0xFFFFFFFF) ? themeColor : defaultColor;
+    }
+
+    /**
+     * 获取任务的显示名称。
+     *
+     * @param questId 任务 ID
+     * @return 显示名称，如果任务不存在则返回 questId
+     */
+    public String getQuestDisplayName(String questId) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return questId;
+
+        QuestDefinition def = QuestRegistry.get(rl);
+        return def != null ? def.getDisplayName().getString() : questId;
+    }
+
+    /**
+     * 获取阶段的可读名称（优先使用 displayName）。
+     *
+     * @param questId 任务 ID
+     * @param phaseId 阶段 ID
+     * @return 阶段名称，如果无效则返回 phaseId
+     */
+    public String getPhaseDisplayName(String questId, String phaseId) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return phaseId;
+
+        QuestDefinition def = QuestRegistry.get(rl);
+        if (def == null) return phaseId;
+
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null) return phaseId;
+
+        String displayName = phase.getDisplayName() != null ? phase.getDisplayName().getString() : "";
+        return !displayName.isEmpty() ? displayName : phaseId;
+    }
+
+    /**
+     * 解析追踪任务（自动选择第一个活跃任务作为后备）。
+     * <p>
+     * 这是 HUD 渲染常用的辅助方法，封装了追踪任务的 fallback 逻辑。
+     *
+     * @param trackedQuestId 当前追踪的任务 ID（可能为 null）
+     * @return 追踪任务的运行时数据，如果没有活跃任务则返回 null
+     */
+    @Nullable
+    public QuestRuntimeData resolveTrackedQuest(@Nullable String trackedQuestId) {
+        // 1. 尝试获取指定的追踪任务
+        if (trackedQuestId != null) {
+            QuestRuntimeData data = activeQuests.get(trackedQuestId);
+            if (data != null) return data;
+        }
+
+        // 2. 后备：返回第一个活跃任务
+        if (!activeQuests.isEmpty()) {
+            return activeQuests.values().iterator().next();
+        }
+
+        return null;
+    }
+
+    /**
+     * 获取已完成任务的 ResourceLocation 集合（用于条件检查）。
+     *
+     * @return 已完成任务的 RL 集合
+     */
+    public Set<ResourceLocation> getCompletedQuestsAsRL() {
+        Set<ResourceLocation> result = new HashSet<>();
+        for (String id : completedQuests) {
+            ResourceLocation rl = ResourceLocation.tryParse(id);
+            if (rl != null) {
+                result.add(rl);
+            }
+        }
+        return result;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -312,16 +526,24 @@ public final class ClientQuestCache {
      */
     private void onPhaseStarted(String questId, String phaseId) {
         ResourceLocation rl = ResourceLocation.tryParse(questId);
-        if (rl == null) return;
+        if (rl == null) {
+            LOGGER.warn("[AnimationHook] Invalid quest ID format: {}", questId);
+            return;
+        }
 
         QuestDefinition def = QuestRegistry.get(rl);
-        if (def == null) return;
+        if (def == null) {
+            LOGGER.warn("[AnimationHook] Quest definition not found: {}", questId);
+            return;
+        }
 
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase != null) {
             GuiSoundManager.play(phase.getPhaseStartSound());
+            LOGGER.info("[AnimationHook] Phase started: {}#{}", questId, phaseId);
+        } else {
+            LOGGER.warn("[AnimationHook] Phase not found: {}#{}", questId, phaseId);
         }
-        LOGGER.debug("[AnimationHook] Phase started: {}#{}", questId, phaseId);
     }
 
     /**
@@ -333,9 +555,13 @@ public final class ClientQuestCache {
             QuestDefinition def = QuestRegistry.get(rl);
             if (def != null) {
                 GuiSoundManager.play(def.getChapterStartSound());
+                LOGGER.info("[AnimationHook] Quest accepted: {}", questId);
+            } else {
+                LOGGER.warn("[AnimationHook] Quest definition not found for accepted quest: {}", questId);
             }
+        } else {
+            LOGGER.warn("[AnimationHook] Invalid quest ID format: {}", questId);
         }
-        LOGGER.info("[AnimationHook] Quest accepted: {}", questId);
     }
 
     /**
@@ -347,9 +573,13 @@ public final class ClientQuestCache {
             QuestDefinition def = QuestRegistry.get(rl);
             if (def != null) {
                 GuiSoundManager.play(def.getChapterCompleteSound());
+                LOGGER.info("[AnimationHook] Quest completed: {}", questId);
+            } else {
+                LOGGER.warn("[AnimationHook] Quest definition not found for completed quest: {}", questId);
             }
+        } else {
+            LOGGER.warn("[AnimationHook] Invalid quest ID format: {}", questId);
         }
-        LOGGER.info("[AnimationHook] Quest completed: {}", questId);
     }
 
     /**
@@ -361,9 +591,13 @@ public final class ClientQuestCache {
             QuestDefinition def = QuestRegistry.get(rl);
             if (def != null) {
                 GuiSoundManager.play(def.getChapterFailSound());
+                LOGGER.info("[AnimationHook] Quest failed: {}", questId);
+            } else {
+                LOGGER.warn("[AnimationHook] Quest definition not found for failed quest: {}", questId);
             }
+        } else {
+            LOGGER.warn("[AnimationHook] Invalid quest ID format: {}", questId);
         }
-        LOGGER.info("[AnimationHook] Quest failed: {}", questId);
     }
 
     /**

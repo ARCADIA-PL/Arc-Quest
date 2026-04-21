@@ -117,9 +117,10 @@ public class QuestTrackerPanel {
         Map<String, QuestRuntimeData> active = ClientQuestCache.INSTANCE.getAllActiveQuests();
         QuestRuntimeData tracked = resolveTrackedQuest(active);
 
-        ResourceLocation questRl = tracked != null ? ResourceLocation.tryParse(tracked.getQuestId()) : null;
-        QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-        currentThemeColor = (def != null && def.getThemeColor() != 0xFFFFFFFF) ? def.getThemeColor() : COLOR_ACCENT_DEFAULT;
+        if (tracked == null) return;
+
+        String questId = tracked.getQuestId();
+        currentThemeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, COLOR_ACCENT_DEFAULT);
 
         boolean isActive = tracked != null && tracked.getState() == QuestState.ACTIVE;
         boolean shouldShow = isActive && !isBlockingScreen;
@@ -189,8 +190,8 @@ public class QuestTrackerPanel {
 
         if (panelReveal < 0.01f && !shouldShow) return;
 
-        if (def == null) return;
-        PhaseDefinition phase = def.getPhase(displayedPhaseId);
+        // 使用缓存层获取 Phase 定义
+        PhaseDefinition phase = ClientQuestCache.INSTANCE.getCurrentPhase(questId);
         if (phase == null) return;
 
         List<ObjectiveEntry> objectives = phase.getObjectives();
@@ -229,10 +230,10 @@ public class QuestTrackerPanel {
         int textX = panelX + ACCENT_WIDTH + PADDING;
         int textY = panelY + PADDING;
 
-        renderTitle(g, def, textX, textY, alpha, wipeAlpha, font);
+        renderTitle(g, tracked, textX, textY, alpha, wipeAlpha, font);
         textY += TITLE_HEIGHT + GAP_AFTER_TITLE;
 
-        renderPhaseName(g, def, phase, textX + (int) wipeDrift, textY, alpha, wipeAlpha, font);
+        renderPhaseName(g, tracked, phase, textX + (int) wipeDrift, textY, alpha, wipeAlpha, font);
         textY += 16;
 
         renderObjectives(g, font, tracked, objectives, objCount, alpha, wipeAlpha, wipeDrift, panelX, textX, textY);
@@ -242,11 +243,14 @@ public class QuestTrackerPanel {
         RenderSystem.disableBlend();
     }
 
-    private void renderTitle(GuiGraphics g, QuestDefinition def, int textX, int textY, float alpha, float wipeAlpha, Font font) {
+    private void renderTitle(GuiGraphics g, QuestRuntimeData tracked, int textX, int textY, float alpha, float wipeAlpha, Font font) {
         int titleA = (int) (255 * alpha * wipeAlpha);
         if (titleA > 8) {
             int iconOffset = 0;
-            if (def.getVisualConfig().getIcon(IconPosition.HUD_TRACKER).isPresent()) {
+            
+            // 使用缓存层获取任务定义
+            QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(tracked.getQuestId()));
+            if (def != null && def.getVisualConfig().getIcon(IconPosition.HUD_TRACKER).isPresent()) {
                 int finalTextY = textY;
                 def.getVisualConfig().getIcon(IconPosition.HUD_TRACKER).ifPresent(icon -> {
                     RenderSystem.setShaderColor(1f, 1f, 1f, alpha * wipeAlpha);
@@ -256,12 +260,16 @@ public class QuestTrackerPanel {
                 iconOffset = 16;
             }
 
-            String title = font.plainSubstrByWidth(def.getDisplayName().getString(), PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - 4 - iconOffset);
+            // 使用缓存层获取任务名称
+            String title = font.plainSubstrByWidth(
+                ClientQuestCache.INSTANCE.getQuestDisplayName(tracked.getQuestId()), 
+                PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - 4 - iconOffset
+            );
             g.drawString(font, title, textX + iconOffset, textY, QuestAnimUtil.withAlpha(0xFFFFFF, titleA), true);
         }
     }
 
-    private void renderPhaseName(GuiGraphics g, QuestDefinition def, PhaseDefinition phase, int textX, int textY, float alpha, float wipeAlpha, Font font) {
+    private void renderPhaseName(GuiGraphics g, QuestRuntimeData tracked, PhaseDefinition phase, int textX, int textY, float alpha, float wipeAlpha, Font font) {
         int subA = (int) (255 * alpha * wipeAlpha);
         if (subA > 5) {
             g.fill(textX, textY + 1, textX + 2, textY + 10, QuestAnimUtil.withAlpha(currentThemeColor, subA));
@@ -270,11 +278,8 @@ public class QuestTrackerPanel {
             g.pose().translate(textX + 7, textY + 1, 0);
             g.pose().scale(0.95f, 0.95f, 1f);
 
-            String phaseName = displayedPhaseId;
-            if (phase != null && phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty()) {
-                phaseName = phase.getDisplayName().getString();
-            }
-
+            // 使用缓存层获取阶段名称
+            String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), displayedPhaseId);
             String phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName).getString();
             g.drawString(font, phasePrefix, 0, 0, QuestAnimUtil.withAlpha(0xEEEEEE, subA), true);
             g.pose().popPose();
@@ -372,25 +377,25 @@ public class QuestTrackerPanel {
     }
 
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
+        QuestRuntimeData data = ClientQuestCache.INSTANCE.resolveTrackedQuest(trackedQuestId);
+        
+        if (data != null) {
+            // 更新追踪 ID（如果之前为 null）
+            if (trackedQuestId == null) {
+                trackedQuestId = data.getQuestId();
+                resetObjectiveAnimations();
+            }
+            return data;
+        }
+        
+        // 没有活跃任务，清除状态
         if (trackedQuestId != null) {
-            QuestRuntimeData data = active.get(trackedQuestId);
-            if (data != null) return data;
             trackedQuestId = null;
             displayedPhaseId = null;
             targetPhaseId = null;
             currentPanelH = -1f;
             resetObjectiveAnimations();
         }
-        if (!active.isEmpty()) {
-            var first = active.entrySet().iterator().next();
-            trackedQuestId = first.getKey();
-            displayedPhaseId = null;
-            targetPhaseId = null;
-            currentPanelH = -1f;
-            resetObjectiveAnimations();
-            return first.getValue();
-        }
-        trackedQuestId = null;
         return null;
     }
 
