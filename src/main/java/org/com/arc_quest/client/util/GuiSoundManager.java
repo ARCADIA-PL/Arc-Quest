@@ -3,6 +3,7 @@ package org.com.arc_quest.client.util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.Sound;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -56,20 +57,13 @@ public final class GuiSoundManager {
      * @param soundEvent 音效事件
      */
     public static void play(SoundEvent soundEvent) {
-        if (MC.player == null || MC.getSoundManager() == null || soundEvent == null) return;
+        if (MC.player == null || soundEvent == null) return;
         MC.getSoundManager().play(SimpleSoundInstance.forUI(soundEvent, 1.0F));
     }
 
-    /**
-     * 播放带有自定义音调和音量的音效。
-     */
-    public static void play(String key, float pitch, float volume) {
-        if (MC.player == null || MC.getSoundManager() == null) return;
-
-        SoundEvent sound = SOUND_CACHE.get(key);
-        if (sound != null) {
-            MC.getSoundManager().play(SimpleSoundInstance.forUI(sound, pitch, volume));
-        }
+    public static void play(Holder.Reference<SoundEvent> soundEvent) {
+        if (MC.player == null || soundEvent == null) return;
+        MC.getSoundManager().play(SimpleSoundInstance.forUI(soundEvent, 1.0F));
     }
 
     // ════════════════════════════════════════

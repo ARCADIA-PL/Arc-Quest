@@ -9,6 +9,9 @@ import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.slf4j.Logger;
 
+import net.minecraft.sounds.SoundEvent;
+import org.com.arc_quest.dialogue.api.ConditionalSay;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,71 +30,13 @@ public final class ConditionalTextEvaluator {
      * 根据玩家状态评估条件文本，返回最高优先级的匹配文本。
      *
      * @param ctx              对话评估上下文（包含 player、npc、namespace 等信息）
-     * @param conditionalTexts 条件文本映射（格式："priority|condition" → 文本）
+     * @param conditionalTexts 条件文本映射（格式："priority|condition" → {@link ConditionalSay}）
      * @param defaultText      默认文本
      * @return 匹配的文本，或默认文本
      */
-    public static String evaluate(DialogueEvalContext ctx, Map<String, String> conditionalTexts, String defaultText) {
-        if (conditionalTexts == null || conditionalTexts.isEmpty()) {
-            return defaultText;
-        }
-
-        IQuestCapability cap = ctx.questCap();
-
-        // 收集所有匹配的条件文本及其优先级
-        List<TextMatch> matches = new ArrayList<>();
-        for (Map.Entry<String, String> entry : conditionalTexts.entrySet()) {
-            String key = entry.getKey();
-            String text = entry.getValue();
-
-            // 解析优先级
-            int priority = 0;
-            String conditionKey = key;
-            int separatorIndex = key.indexOf('|');
-            if (separatorIndex > 0) {
-                try {
-                    priority = Integer.parseInt(key.substring(0, separatorIndex));
-                    conditionKey = key.substring(separatorIndex + 1);
-                } catch (NumberFormatException e) {
-                    // 解析失败，使用默认优先级 0
-                    LOGGER.warn("[ConditionalText] Failed to parse priority from key: {}", key);
-                }
-            }
-
-            boolean matched = matchesCondition(ctx, cap, conditionKey);
-            LOGGER.debug("[ConditionalText] Key={}, Condition={}, Matched={}, Text={}", 
-                    key, conditionKey, matched, text.substring(0, Math.min(20, text.length())));
-            
-            if (matched) {
-                matches.add(new TextMatch(text, priority));
-            }
-        }
-
-        LOGGER.debug("[ConditionalText] Total matches: {}, Default text length: {}", 
-                matches.size(), defaultText != null ? defaultText.length() : 0);
-
-        // 如果没有匹配，返回默认文本
-        if (matches.isEmpty()) {
-            return defaultText;
-        }
-
-        // 找到最高优先级
-        int maxPriority = matches.stream()
-                .mapToInt(m -> m.priority)
-                .max()
-                .orElse(0);
-
-        // 返回第一个最高优先级的匹配（按定义顺序）
-        for (TextMatch match : matches) {
-            if (match.priority == maxPriority) {
-                LOGGER.debug("[ConditionalText] Selected text: {}", 
-                        match.text.substring(0, Math.min(30, match.text.length())));
-                return match.text;
-            }
-        }
-
-        // 理论上不会到达这里
-        return defaultText;
+    public static String evaluate(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts, String defaultText) {
+        var result = evaluateWithSound(ctx, conditionalTexts, defaultText);
+        return result.text();
     }
 
     /**
@@ -259,6 +204,71 @@ public final class ConditionalTextEvaluator {
 
         TextMatch(String text, int priority) {
             this.text = text;
+            this.priority = priority;
+        }
+    }
+
+    /**
+     * 根据玩家状态评估条件文本，返回匹配到的 {@link ConditionalSay}。
+     */
+    public static ConditionalSay evaluateWithSound(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts, String defaultText) {
+        if (conditionalTexts == null || conditionalTexts.isEmpty()) {
+            return new ConditionalSay(defaultText, null);
+        }
+
+        IQuestCapability cap = ctx.questCap();
+        List<SayMatch> matches = new ArrayList<>();
+        
+        for (Map.Entry<String, ConditionalSay> entry : conditionalTexts.entrySet()) {
+            String key = entry.getKey();
+            ConditionalSay say = entry.getValue();
+
+            int priority = 0;
+            String conditionKey = key;
+            int separatorIndex = key.indexOf('|');
+            if (separatorIndex > 0) {
+                try {
+                    priority = Integer.parseInt(key.substring(0, separatorIndex));
+                    conditionKey = key.substring(separatorIndex + 1);
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("[ConditionalText] Failed to parse priority from key: {}", key);
+                }
+            }
+
+            if (matchesCondition(ctx, cap, conditionKey)) {
+                matches.add(new SayMatch(say, priority));
+            }
+        }
+
+        if (matches.isEmpty()) {
+            return new ConditionalSay(defaultText, null);
+        }
+
+        int maxPriority = matches.stream().mapToInt(m -> m.priority).max().orElse(0);
+        for (SayMatch match : matches) {
+            if (match.priority == maxPriority) {
+                return match.say;
+            }
+        }
+        return new ConditionalSay(defaultText, null);
+    }
+
+    /**
+     * 获取匹配到的音效（便捷方法）。
+     */
+    public static SoundEvent getMatchedSound(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts) {
+        var result = evaluateWithSound(ctx, conditionalTexts, "");
+        return result.soundEvent();
+    }
+
+    /**
+     * 内部类：SayIf 匹配结果
+     */
+    private static class SayMatch {
+        final ConditionalSay say;
+        final int priority;
+        SayMatch(ConditionalSay say, int priority) {
+            this.say = say;
             this.priority = priority;
         }
     }

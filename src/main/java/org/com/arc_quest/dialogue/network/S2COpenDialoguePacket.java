@@ -3,12 +3,17 @@ package org.com.arc_quest.dialogue.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.client.gui.DialogueScreen;
 import org.com.arc_quest.client.gui.SimpleTradePanel;
 import org.com.arc_quest.client.gui.TradeScreen;
+import org.com.arc_quest.dialogue.network.ClientDialogueCache;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.function.Supplier;
 
 /**
@@ -63,6 +68,18 @@ public class S2COpenDialoguePacket {
     private final int[] choiceResetTimeTicks;
 
     /**
+     * 每个选项选择时的音效 ID 数组
+     */
+    @Nullable
+    private final ResourceLocation[] choiceSelectSoundIds;
+
+    /**
+     * 当前匹配到的 SayIf 音效 ID
+     */
+    @Nullable
+    private final ResourceLocation matchedSaySoundId;
+
+    /**
      * 原有构造器（向后兼容，entityId = -1）。
      */
     public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
@@ -92,6 +109,38 @@ public class S2COpenDialoguePacket {
                                  long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
                                  int[] choiceCooldownTypes, long[] choiceCooldownValues,
                                  int[] choiceResetTimeTicks) {
+        this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
+                choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
+                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks, null, null);
+    }
+
+    /**
+     * 完整构造器（带音效）。
+     */
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
+                                 String text, String[] choices,
+                                 boolean isTerminal, boolean hasAutoNext, int delayMs,
+                                 int entityId, long[] choiceLastSelectTimes,
+                                 long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
+                                 int[] choiceCooldownTypes, long[] choiceCooldownValues,
+                                 int[] choiceResetTimeTicks, @Nullable ResourceLocation[] choiceSelectSoundIds) {
+        this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
+                choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
+                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks, 
+                choiceSelectSoundIds, null);
+    }
+
+    /**
+     * 完整构造器（带 SayIf 音效）。
+     */
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
+                                 String text, String[] choices,
+                                 boolean isTerminal, boolean hasAutoNext, int delayMs,
+                                 int entityId, long[] choiceLastSelectTimes,
+                                 long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
+                                 int[] choiceCooldownTypes, long[] choiceCooldownValues,
+                                 int[] choiceResetTimeTicks, @Nullable ResourceLocation[] choiceSelectSoundIds,
+                                 @Nullable ResourceLocation matchedSaySoundId) {
         this.dialogueId = dialogueId;
         this.nodeId = nodeId;
         this.speaker = speaker;
@@ -108,6 +157,8 @@ public class S2COpenDialoguePacket {
         this.choiceCooldownTypes = choiceCooldownTypes;
         this.choiceCooldownValues = choiceCooldownValues;
         this.choiceResetTimeTicks = choiceResetTimeTicks;
+        this.choiceSelectSoundIds = choiceSelectSoundIds;
+        this.matchedSaySoundId = matchedSaySoundId;
     }
 
     private S2COpenDialoguePacket() {
@@ -127,6 +178,8 @@ public class S2COpenDialoguePacket {
         this.choiceCooldownTypes = null;
         this.choiceCooldownValues = null;
         this.choiceResetTimeTicks = null;
+        this.choiceSelectSoundIds = null;
+        this.matchedSaySoundId = null;
     }
 
     public static S2COpenDialoguePacket close() {
@@ -180,8 +233,22 @@ public class S2COpenDialoguePacket {
             }
         }
 
+        // 反序列化选项音效 ID
+        ResourceLocation[] choiceSounds = null;
+        if (buf.readBoolean()) {
+            int soundCount = buf.readVarInt();
+            choiceSounds = new ResourceLocation[soundCount];
+            for (int i = 0; i < soundCount; i++) {
+                choiceSounds[i] = buf.readBoolean() ? buf.readResourceLocation() : null;
+            }
+        }
+
+        // 反序列化 SayIf 音效 ID
+        ResourceLocation saySoundId = buf.readBoolean() ? buf.readResourceLocation() : null;
+
         return new S2COpenDialoguePacket(dId, nId, spk, txt, choices, terminal, autoNext, delay, entityId,
-                lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks);
+                lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks, 
+                choiceSounds, saySoundId);
     }
 
     public static void handle(S2COpenDialoguePacket pkt,
@@ -189,11 +256,31 @@ public class S2COpenDialoguePacket {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.isClose) {
+                ClientDialogueCache.INSTANCE.closeSession();
                 if (mc.screen instanceof DialogueScreen ds) {
                     ds.startCloseAnimation();
                 }
                 return;
             }
+
+            // 更新缓存
+            SoundEvent saySound = pkt.matchedSaySoundId != null ? 
+                    ForgeRegistries.SOUND_EVENTS.getValue(pkt.matchedSaySoundId) : null;
+            
+            SoundEvent[] choiceSounds = new SoundEvent[pkt.choiceSelectSoundIds.length];
+            for (int i = 0; i < pkt.choiceSelectSoundIds.length; i++) {
+                if (pkt.choiceSelectSoundIds[i] != null) {
+                    choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getValue(pkt.choiceSelectSoundIds[i]);
+                }
+            }
+
+            ClientDialogueCache.INSTANCE.updateFromPacket(
+                    pkt.dialogueId, pkt.nodeId, pkt.speaker, pkt.text, pkt.choices,
+                    pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs, pkt.entityId,
+                    pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes, pkt.choicePurchaseDayTimes,
+                    pkt.choiceCooldownTypes, pkt.choiceCooldownValues, pkt.choiceResetTimeTicks,
+                    saySound, choiceSounds
+            );
 
             if (mc.screen instanceof DialogueScreen ds) {
                 ds.updateNode(pkt.speaker, pkt.text, pkt.choices,
@@ -205,7 +292,7 @@ public class S2COpenDialoguePacket {
             } else if (mc.screen != null && 
                        (mc.screen instanceof TradeScreen || 
                         mc.screen instanceof SimpleTradePanel)) {
-                // 如果当前是商店界面，忽略此包（由商店动作触发，不应覆盖商店）
+                // 如果当前是商店界面，忽略此包
             } else {
                 mc.setScreen(new DialogueScreen(pkt.dialogueId, pkt.speaker,
                         pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext,
@@ -246,6 +333,29 @@ public class S2COpenDialoguePacket {
                     buf.writeLong(choiceCooldownValues[i]);
                     buf.writeVarInt(choiceResetTimeTicks[i]);
                 }
+            } else {
+                buf.writeBoolean(false);
+            }
+
+            // 序列化选项音效 ID 数组
+            if (choiceSelectSoundIds != null && choiceSelectSoundIds.length > 0) {
+                buf.writeBoolean(true);
+                buf.writeVarInt(choiceSelectSoundIds.length);
+                for (ResourceLocation rl : choiceSelectSoundIds) {
+                    if (rl != null) {
+                        buf.writeBoolean(true);
+                        buf.writeResourceLocation(rl);
+                    } else {
+                        buf.writeBoolean(false);
+                    }
+                }
+            } else {
+                buf.writeBoolean(false);
+            }
+            // 序列化 SayIf 音效 ID
+            if (matchedSaySoundId != null) {
+                buf.writeBoolean(true);
+                buf.writeResourceLocation(matchedSaySoundId);
             } else {
                 buf.writeBoolean(false);
             }

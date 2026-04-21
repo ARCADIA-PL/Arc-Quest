@@ -1,7 +1,9 @@
 package org.com.arc_quest.dialogue.builder;
 
+import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.*;
@@ -39,6 +41,7 @@ public class DialogueTreeBuilder {
     private long curCooldownSeconds = 0;
     private CooldownType curCooldownType = CooldownType.NONE;
     private int curResetTimeTicks = 0;  // GAME_TICK 类型的重置时间点
+    private SoundEvent curNodeEnterSound = null;
 
     private DialogueTreeBuilder(String dialogueId) {
         this.dialogueId = Objects.requireNonNull(dialogueId, "dialogueId must not be null");
@@ -177,6 +180,7 @@ public class DialogueTreeBuilder {
         this.curCooldownSeconds = 0;
         this.curCooldownType = CooldownType.NONE;
         this.curResetTimeTicks = 0;
+        this.curNodeEnterSound = null;
 
         if (startNodeId == null) {
             startNodeId = nodeId;
@@ -217,7 +221,47 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, int priority) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", priority));
+        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", priority, null));
+        return this;
+    }
+
+    /**
+     * 添加带音效的条件文本。
+     */
+    public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, SoundEvent sound) {
+        ensureOpenNode();
+        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, sound));
+        return this;
+    }
+
+    public DialogueTreeBuilder sayIf(DialogueCondition condition, String text, Holder.Reference<SoundEvent> sound) {
+        ensureOpenNode();
+        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, sound.get()));
+        return this;
+    }
+
+    /**
+     * 设置节点进入时的音效。
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * .node("start")
+     * .enterSound(SoundEvents.NOTE_BLOCK_CHIME.value())
+     * .say("欢迎来到这里！")
+     * }</pre>
+     *
+     * @param sound 音效事件
+     * @return 当前构建器
+     */
+    public DialogueTreeBuilder enterSound(SoundEvent sound) {
+        ensureOpenNode();
+        this.curNodeEnterSound = sound;
+        return this;
+    }
+
+    public DialogueTreeBuilder enterSound(Holder.Reference<SoundEvent> sound) {
+        ensureOpenNode();
+        this.curNodeEnterSound = sound.get();
         return this;
     }
 
@@ -379,7 +423,7 @@ public class DialogueTreeBuilder {
         String speaker = curSpeaker != null ? curSpeaker : "";
 
         // 序列化条件文本
-        Map<String, String> conditionalTextsMap = serializeConditionalTexts();
+        Map<String, ConditionalSay> conditionalTextsMap = serializeConditionalTexts();
 
         // 处理 __CURRENT__ 标记，替换为实际节点 ID
         List<DialogueChoice> resolvedChoices = new ArrayList<>();
@@ -420,7 +464,8 @@ public class DialogueTreeBuilder {
                     choice.cooldownType(),
                     choice.resetTimeTicks(),
                     choice.priority(),
-                    resolvedRestoreId
+                    resolvedRestoreId,
+                    choice.selectSound()
             ));
         }
 
@@ -435,7 +480,8 @@ public class DialogueTreeBuilder {
                 curRepeatable,
                 curCooldownSeconds,
                 curCooldownType,  // 使用当前冷却类型
-                curResetTimeTicks  // 使用当前重置时间点
+                curResetTimeTicks,  // 使用当前重置时间点
+                curNodeEnterSound
         );
 
         committedNodes.put(curNodeId, node);
@@ -443,19 +489,19 @@ public class DialogueTreeBuilder {
     }
 
     /**
-     * 序列化条件文本为 Map：条件标识 → 文本
+     * 序列化条件文本为 Map：条件标识 → {@link ConditionalSay}
      */
-    private Map<String, String> serializeConditionalTexts() {
+    private Map<String, ConditionalSay> serializeConditionalTexts() {
         if (curConditionalTexts.isEmpty()) {
             return Map.of();
         }
 
-        Map<String, String> map = new LinkedHashMap<>();
+        Map<String, ConditionalSay> map = new LinkedHashMap<>();
 
         // 条件文本
         for (ConditionalText ct : curConditionalTexts) {
             String key = ct.priority + "|" + serializeCondition(ct.condition);
-            map.put(key, ct.text);
+            map.put(key, new ConditionalSay(ct.text, ct.soundEvent));
         }
 
         return Map.copyOf(map);
@@ -514,15 +560,21 @@ public class DialogueTreeBuilder {
         final DialogueCondition condition;
         final String text;
         final int priority;
+        final net.minecraft.sounds.SoundEvent soundEvent;
 
         ConditionalText(DialogueCondition condition, String text) {
-            this(condition, text, 0);
+            this(condition, text, 0, null);
         }
 
         ConditionalText(DialogueCondition condition, String text, int priority) {
+            this(condition, text, priority, null);
+        }
+
+        ConditionalText(DialogueCondition condition, String text, int priority, net.minecraft.sounds.SoundEvent sound) {
             this.condition = condition;
             this.text = text;
             this.priority = priority;
+            this.soundEvent = sound;
         }
     }
 
@@ -542,6 +594,7 @@ public class DialogueTreeBuilder {
         private int resetTimeTicks = 0;
         private int priority = 0;
         private String restoreNodeId = null;
+        private SoundEvent selectSound = null;
 
         ChoiceBuilder(String text) {
             this.text = text;
@@ -858,6 +911,30 @@ public class DialogueTreeBuilder {
             return this;
         }
 
+        /**
+         * 设置选项选择时的音效。
+         * <p>
+         * 使用示例：
+         * <pre>{@code
+         * .choice("购买装备", c -> c
+         *     .sound(SoundEvents.UI_BUTTON_CLICK.get())
+         *     .openTrade("blacksmith_shop")
+         * )
+         * }</pre>
+         *
+         * @param sound 音效事件
+         * @return 当前构建器
+         */
+        public ChoiceBuilder selectSound(SoundEvent sound) {
+            this.selectSound = sound;
+            return this;
+        }
+
+        public ChoiceBuilder selectSound(Holder.Reference<SoundEvent> sound) {
+            this.selectSound = sound.get();
+            return this;
+        }
+
         DialogueChoice build() {
             return new DialogueChoice(
                     text,
@@ -869,7 +946,8 @@ public class DialogueTreeBuilder {
                     cooldownType,
                     resetTimeTicks,
                     priority,
-                    restoreNodeId
+                    restoreNodeId,
+                    selectSound
             );
         }
     }

@@ -1,9 +1,12 @@
 package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.api.event.DialogueEndedEvent;
 import org.com.arc_quest.api.event.DialogueStartedEvent;
 import org.com.arc_quest.dialogue.api.*;
@@ -285,18 +288,40 @@ public final class DialogueSessionManager {
                 node.conditionalTexts(),
                 node.text()
         );
+        
+        // 获取匹配到的 SayIf 音效
+        SoundEvent matchedSaySound = ConditionalTextEvaluator.getMatchedSound(
+                ctx, node.conditionalTexts()
+        );
+
         text = session.processText(text);
 
         var visibleChoices = session.getVisibleChoices();
         String[] choiceTexts = new String[visibleChoices.size()];
+        ResourceLocation[] choiceSounds = new ResourceLocation[visibleChoices.size()];
+        
         for (int i = 0; i < visibleChoices.size(); i++) {
             choiceTexts[i] = session.processText(visibleChoices.get(i).text());
+            var sound = visibleChoices.get(i).selectSound();
+            if (sound != null) {
+                choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getKey(sound);
+            }
         }
 
         boolean isTerminal = node.isTerminal();
         boolean hasAutoNext = !node.hasChoices() && node.autoNextId() != null;
 
         var cooldownData = session.getChoiceCooldownRawData();
+
+        ResourceLocation nodeSoundId = null;
+        if (node.nodeEnterSound() != null) {
+            nodeSoundId = ForgeRegistries.SOUND_EVENTS.getKey(node.nodeEnterSound());
+        }
+
+        ResourceLocation saySoundId = null;
+        if (matchedSaySound != null) {
+            saySoundId = ForgeRegistries.SOUND_EVENTS.getKey(matchedSaySound);
+        }
 
         S2COpenDialoguePacket packet = new S2COpenDialoguePacket(
                 session.getTree().dialogueId(),
@@ -313,7 +338,9 @@ public final class DialogueSessionManager {
                 cooldownData.purchaseDayTimes(),
                 cooldownData.cooldownTypes(),
                 cooldownData.cooldownValues(),
-                cooldownData.resetTimeTicks()
+                cooldownData.resetTimeTicks(),
+                choiceSounds,
+                saySoundId
         );
 
         ArcQuestNetwork.sendToPlayer(player, packet);

@@ -1,6 +1,7 @@
 package org.com.arc_quest.trade.builder;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -329,6 +330,11 @@ public final class TradeEntryBuilder {
         return this;
     }
 
+    public TradeEntryBuilder purchaseSuccessSound(Holder.Reference<SoundEvent> sound) {
+        this.purchaseSuccessSound = sound.get();
+        return this;
+    }
+
     /**
      * 设置购买失败/不可购买时的自定义音效。
      */
@@ -337,8 +343,18 @@ public final class TradeEntryBuilder {
         return this;
     }
 
+    public TradeEntryBuilder purchaseFailSound(Holder.Reference<SoundEvent> sound) {
+        this.purchaseFailSound = sound.get();
+        return this;
+    }
+
     public TradeEntryBuilder cooldownSound(SoundEvent sound) {
         this.cooldownSound = sound;
+        return this;
+    }
+
+    public TradeEntryBuilder cooldownSound(Holder.Reference<SoundEvent> sound) {
+        this.cooldownSound = sound.get();
         return this;
     }
 
@@ -347,8 +363,18 @@ public final class TradeEntryBuilder {
         return this;
     }
 
+    public TradeEntryBuilder limitReachedSound(Holder.Reference<SoundEvent> sound) {
+        this.limitReachedSound = sound.get();
+        return this;
+    }
+
     public TradeEntryBuilder conditionFailSound(SoundEvent sound) {
         this.conditionFailSound = sound;
+        return this;
+    }
+
+    public TradeEntryBuilder conditionFailSound(Holder.Reference<SoundEvent> sound) {
+        this.conditionFailSound = sound.get();
         return this;
     }
 

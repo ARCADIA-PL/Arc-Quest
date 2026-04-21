@@ -61,7 +61,7 @@ public final class ClientTradeCache {
             };
             GuiSoundManager.play(sound);
         }
-        LOGGER.debug("[TradeCache] Played sound for {} result: {}", success ? "success" : failReason, entryId);
+        LOGGER.debug("[TradeCache] Played selectSound for {} result: {}", success ? "success" : failReason, entryId);
     }
 
     /**

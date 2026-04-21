@@ -1,5 +1,8 @@
 package org.com.arc_quest.dialogue.api;
 
+import net.minecraft.sounds.SoundEvent;
+
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -9,7 +12,7 @@ import java.util.Map;
  * @param nodeId           节点唯一 ID（在树内唯一）
  * @param speaker          说话者名称（NPC 名 / "Narrator" 等）
  * @param text             对话文本（支持 §格式码 和 %player% 变量）
- * @param conditionalTexts 条件文本映射：条件序列化字符串 → 文本
+ * @param conditionalTexts 条件文本映射：条件序列化字符串 → {@link ConditionalSay}
  * @param choices          玩家可选择的回复列表
  * @param autoNextId       如果没有 choices，自动跳转的节点 ID（null = 结束）
  * @param delayMs          自动跳转前的延迟（毫秒），0 = 立即
@@ -18,25 +21,27 @@ import java.util.Map;
  * @param cooldownType     冷却类型（SECONDS=秒级, GAME_DAY=游戏日, GAME_TICK=固定时间刻）
  * @param resetTimeTicks   重置时间刻（Minecraft tick），仅当 cooldownType=GAME_TICK 时有效
  *                         <p>例如：6000=早上6点, 12000=中午12点, 18000=晚上6点
+ * @param nodeEnterSound   节点进入时播放的音效（可为 null）
  */
 public record DialogueNode(
         String nodeId,
         String speaker,
         String text,
-        Map<String, String> conditionalTexts,
+        Map<String, ConditionalSay> conditionalTexts,
         List<DialogueChoice> choices,
         String autoNextId,
         int delayMs,
         boolean repeatable,
         long cooldownSeconds,
         CooldownType cooldownType,
-        int resetTimeTicks
+        int resetTimeTicks,
+        @Nullable SoundEvent nodeEnterSound
 ) {
     /**
      * 向后兼容构造器（默认可重复，无冷却）。
      */
     public DialogueNode(String nodeId, String speaker, String text,
-                        Map<String, String> conditionalTexts,
+                        Map<String, ConditionalSay> conditionalTexts,
                         List<DialogueChoice> choices,
                         String autoNextId, int delayMs) {
         this(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs, true, 0, CooldownType.NONE, 0);
@@ -46,11 +51,25 @@ public record DialogueNode(
      * 完整构造器（带冷却类型和重置时间刻）。
      */
     public DialogueNode(String nodeId, String speaker, String text,
-                        Map<String, String> conditionalTexts,
+                        Map<String, ConditionalSay> conditionalTexts,
                         List<DialogueChoice> choices,
                         String autoNextId, int delayMs,
                         boolean repeatable, long cooldownSeconds,
                         CooldownType cooldownType, int resetTimeTicks) {
+        this(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs,
+                repeatable, cooldownSeconds, cooldownType, resetTimeTicks, null);
+    }
+
+    /**
+     * 完整构造器（带音效）。
+     */
+    public DialogueNode(String nodeId, String speaker, String text,
+                        Map<String, ConditionalSay> conditionalTexts,
+                        List<DialogueChoice> choices,
+                        String autoNextId, int delayMs,
+                        boolean repeatable, long cooldownSeconds,
+                        CooldownType cooldownType, int resetTimeTicks,
+                        @Nullable SoundEvent nodeEnterSound) {
         this.nodeId = nodeId;
         this.speaker = speaker;
         this.text = text;
@@ -62,6 +81,7 @@ public record DialogueNode(
         this.cooldownSeconds = cooldownSeconds;
         this.cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
         this.resetTimeTicks = resetTimeTicks;
+        this.nodeEnterSound = nodeEnterSound;
     }
 
     /**
@@ -89,7 +109,7 @@ public record DialogueNode(
         private final String nodeId;
         private String speaker = "";
         private String text = "";
-        private Map<String, String> conditionalTexts = Map.of();
+        private Map<String, ConditionalSay> conditionalTexts = Map.of();
         private List<DialogueChoice> choices = List.of();
         private String autoNextId = null;
         private int delayMs = 0;
@@ -97,6 +117,7 @@ public record DialogueNode(
         private long cooldownSeconds = 0;
         private CooldownType cooldownType = CooldownType.NONE;
         private int resetTimeTicks = 0;  // 重置时间刻
+        private SoundEvent nodeEnterSound = null;
 
         Builder(String nodeId) {
             this.nodeId = nodeId;
@@ -112,7 +133,7 @@ public record DialogueNode(
             return this;
         }
 
-        public Builder conditionalTexts(Map<String, String> ct) {
+        public Builder conditionalTexts(Map<String, ConditionalSay> ct) {
             this.conditionalTexts = ct;
             return this;
         }
@@ -183,9 +204,14 @@ public record DialogueNode(
             return this;
         }
 
+        public Builder enterSound(SoundEvent sound) {
+            this.nodeEnterSound = sound;
+            return this;
+        }
+
         public DialogueNode build() {
             return new DialogueNode(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs,
-                    repeatable, cooldownSeconds, cooldownType, resetTimeTicks);
+                    repeatable, cooldownSeconds, cooldownType, resetTimeTicks, nodeEnterSound);
         }
     }
 }

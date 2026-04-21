@@ -1,5 +1,8 @@
 package org.com.arc_quest.dialogue.api;
 
+import net.minecraft.sounds.SoundEvent;
+
+import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -15,6 +18,7 @@ import java.util.List;
  * @param resetTimeTicks  重置时间刻（Minecraft tick），仅当 cooldownType=GAME_TICK 时有效
  * @param priority        选项优先级（默认 0），高优先级会覆盖低优先级选项
  * @param restoreNodeId   从商店/界面退出后恢复的目标节点 ID（null = 不恢复，保持当前节点）
+ * @param selectSound     选择该选项时播放的音效（可为 null）
  */
 public record DialogueChoice(
         String text,
@@ -26,7 +30,8 @@ public record DialogueChoice(
         CooldownType cooldownType,
         int resetTimeTicks,
         int priority,
-        String restoreNodeId
+        String restoreNodeId,
+        @Nullable SoundEvent selectSound
 ) {
     /**
      * 向后兼容构造器（默认可重复，无冷却，优先级 0，不恢复）。
@@ -42,6 +47,16 @@ public record DialogueChoice(
     public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
                           List<DialogueAction> actions, boolean repeatable, long cooldownSeconds,
                           CooldownType cooldownType, int resetTimeTicks, int priority, String restoreNodeId) {
+        this(text, nextNodeId, conditions, actions, repeatable, cooldownSeconds, cooldownType, resetTimeTicks, priority, restoreNodeId, null);
+    }
+
+    /**
+     * 完整构造器（带音效）。
+     */
+    public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
+                          List<DialogueAction> actions, boolean repeatable, long cooldownSeconds,
+                          CooldownType cooldownType, int resetTimeTicks, int priority, String restoreNodeId,
+                          @Nullable SoundEvent selectSound) {
         this.text = text;
         this.nextNodeId = nextNodeId;
         this.conditions = conditions;
@@ -52,6 +67,7 @@ public record DialogueChoice(
         this.resetTimeTicks = resetTimeTicks;
         this.priority = priority;
         this.restoreNodeId = restoreNodeId;
+        this.selectSound = selectSound;
     }
 
     /**

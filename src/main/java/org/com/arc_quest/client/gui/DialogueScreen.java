@@ -11,7 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
-import org.com.arc_quest.client.util.ClientCooldownHelper;
+import org.com.arc_quest.dialogue.network.ClientDialogueCache;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
@@ -35,14 +35,6 @@ import java.util.List;
     private boolean isTerminal;
     private boolean hasAutoNext;
     private int delayMs;
-
-    // ── 实时冷却（原始数据）───
-    private long[] choiceLastSelectTimes;
-    private long[] choicePurchaseGameTimes;
-    private long[] choicePurchaseDayTimes;
-    private int[] choiceCooldownTypes;
-    private long[] choiceCooldownValues;
-    private int[] choiceResetTimeTicks;
 
     // ── 点击动画状态 ──
     private int clickedIndex = -1;
@@ -93,21 +85,7 @@ import java.util.List;
                           int[] choiceResetTimeTicks) {
         super(Component.translatable("screen.dialogue.title"));
         this.entityId = entityId;
-        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs,
-                choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
-                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks);
-    }
-
-    public void updateNode(String speaker, String text, String[] choices,
-                           boolean isTerminal, boolean hasAutoNext, int delayMs) {
-        updateNode(speaker, text, choices, isTerminal, hasAutoNext, delayMs, null);
-    }
-
-    public void updateNode(String speaker, String text, String[] choices,
-                           boolean isTerminal, boolean hasAutoNext, int delayMs, int[] choiceCooldowns) {
-        // 向后兼容，旧版本网络包仍可能传入 int[]
-        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs,
-                null, null, null, null, null, null);
+        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
     public void updateNode(String speaker, String text, String[] choices,
@@ -115,9 +93,7 @@ import java.util.List;
                            long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes,
                            long[] choicePurchaseDayTimes, int[] choiceCooldownTypes,
                            long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
-        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs,
-                choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
-                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks);
+        applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
     public void updateEntityId(int entityId) {
@@ -128,10 +104,7 @@ import java.util.List;
     }
 
     private void applyNodeData(String speaker, String text, String[] choices,
-                               boolean isTerminal, boolean hasAutoNext, int delayMs,
-                               long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes,
-                               long[] choicePurchaseDayTimes, int[] choiceCooldownTypes,
-                               long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
+                               boolean isTerminal, boolean hasAutoNext, int delayMs) {
         this.speaker = speaker;
         this.fullText = text;
         this.choices = choices != null ? choices : new String[0];
@@ -150,52 +123,39 @@ import java.util.List;
         this.choiceHover = new float[this.choices.length];
         this.wrappedLines = null;
 
-        //保存原始冷却数据（用于客户端实时计算）
-        this.choiceLastSelectTimes = (choiceLastSelectTimes != null) ? choiceLastSelectTimes.clone() : new long[this.choices.length];
-        this.choicePurchaseGameTimes = (choicePurchaseGameTimes != null) ? choicePurchaseGameTimes.clone() : new long[this.choices.length];
-        this.choicePurchaseDayTimes = (choicePurchaseDayTimes != null) ? choicePurchaseDayTimes.clone() : new long[this.choices.length];
-        this.choiceCooldownTypes = (choiceCooldownTypes != null) ? choiceCooldownTypes.clone() : new int[this.choices.length];
-        this.choiceCooldownValues = (choiceCooldownValues != null) ? choiceCooldownValues.clone() : new long[this.choices.length];
-        this.choiceResetTimeTicks = (choiceResetTimeTicks != null) ? choiceResetTimeTicks.clone() : new int[this.choices.length];
-
         this.clickedIndex = -1;
         this.clickSent = false;
         this.clickAnim = new float[this.choices.length];
     }
 
+    /**
+     * 从 ClientDialogueCache 获取当前会话。
+     */
+    @Nullable
+    private ClientDialogueCache.DialogueSessionData getCurrentSession() {
+        return ClientDialogueCache.INSTANCE.getCurrentSession();
+    }
+
     private boolean isChoiceOnCooldown(int index) {
-        if (index < 0 || index >= choiceLastSelectTimes.length) {
-            return false;
-        }
-        //使用客户端工具类实时计算
-        return ClientCooldownHelper.isOnCooldown(
-                choiceLastSelectTimes[index],
-                choicePurchaseGameTimes[index],
-                choicePurchaseDayTimes[index],
-                choiceCooldownTypes[index],
-                choiceCooldownValues[index],
-                choiceResetTimeTicks[index]
-        );
+        ClientDialogueCache.DialogueSessionData session = getCurrentSession();
+        return session != null && session.isChoiceOnCooldown(index);
     }
 
     private String getChoiceCooldownText(int index) {
-        if (index < 0 || index >= choiceLastSelectTimes.length) {
-            return "";
-        }
-        //使用客户端工具类实时获取格式化文本
-        return ClientCooldownHelper.getCooldownText(
-                choiceLastSelectTimes[index],
-                choicePurchaseGameTimes[index],
-                choicePurchaseDayTimes[index],
-                choiceCooldownTypes[index],
-                choiceCooldownValues[index],
-                choiceResetTimeTicks[index]
-        );
+        ClientDialogueCache.DialogueSessionData session = getCurrentSession();
+        return session != null ? session.getChoiceCooldownText(index) : "";
     }
 
     private void selectChoice(int index) {
         if (isClosing || clickedIndex >= 0) return;
         if (isChoiceOnCooldown(index)) return;
+        
+        // 播放选项个体化音效（通过缓存层）
+        ClientDialogueCache.DialogueSessionData session = getCurrentSession();
+        if (session != null) {
+            ClientDialogueCache.INSTANCE.playChoiceSound(session.treeId, index);
+        }
+        
         clickedIndex = index;
         clickSent = false;
         playClick();
