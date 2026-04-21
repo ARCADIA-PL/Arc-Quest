@@ -80,6 +80,18 @@ public class S2COpenDialoguePacket {
     private final ResourceLocation matchedSaySoundId;
 
     /**
+     * 当前匹配到的 SayIf ID
+     */
+    @Nullable
+    private final String matchedSayId;
+
+    /**
+     * 每个选项的 ID 数组
+     */
+    @Nullable
+    private final String[] choiceIds;
+
+    /**
      * 原有构造器（向后兼容，entityId = -1）。
      */
     public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
@@ -141,6 +153,25 @@ public class S2COpenDialoguePacket {
                                  int[] choiceCooldownTypes, long[] choiceCooldownValues,
                                  int[] choiceResetTimeTicks, @Nullable ResourceLocation[] choiceSelectSoundIds,
                                  @Nullable ResourceLocation matchedSaySoundId) {
+        this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
+                choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
+                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks, 
+                choiceSelectSoundIds, matchedSaySoundId, null, null);
+    }
+
+    /**
+     * 完整构造器（带 SayIf ID 和 Choice IDs）。
+     */
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
+                                 String text, String[] choices,
+                                 boolean isTerminal, boolean hasAutoNext, int delayMs,
+                                 int entityId, long[] choiceLastSelectTimes,
+                                 long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
+                                 int[] choiceCooldownTypes, long[] choiceCooldownValues,
+                                 int[] choiceResetTimeTicks, @Nullable ResourceLocation[] choiceSelectSoundIds,
+                                 @Nullable ResourceLocation matchedSaySoundId,
+                                 @Nullable String matchedSayId,
+                                 @Nullable String[] choiceIds) {
         this.dialogueId = dialogueId;
         this.nodeId = nodeId;
         this.speaker = speaker;
@@ -159,6 +190,8 @@ public class S2COpenDialoguePacket {
         this.choiceResetTimeTicks = choiceResetTimeTicks;
         this.choiceSelectSoundIds = choiceSelectSoundIds;
         this.matchedSaySoundId = matchedSaySoundId;
+        this.matchedSayId = matchedSayId;
+        this.choiceIds = choiceIds;
     }
 
     private S2COpenDialoguePacket() {
@@ -180,6 +213,8 @@ public class S2COpenDialoguePacket {
         this.choiceResetTimeTicks = null;
         this.choiceSelectSoundIds = null;
         this.matchedSaySoundId = null;
+        this.matchedSayId = null;
+        this.choiceIds = null;
     }
 
     public static S2COpenDialoguePacket close() {
@@ -246,9 +281,22 @@ public class S2COpenDialoguePacket {
         // 反序列化 SayIf 音效 ID
         ResourceLocation saySoundId = buf.readBoolean() ? buf.readResourceLocation() : null;
 
+        // 反序列化 SayIf ID
+        String matchedSayId = buf.readBoolean() ? buf.readUtf() : null;
+
+        // 反序列化 Choice IDs
+        String[] choiceIds = null;
+        if (buf.readBoolean()) {
+            int idCount = buf.readVarInt();
+            choiceIds = new String[idCount];
+            for (int i = 0; i < idCount; i++) {
+                choiceIds[i] = buf.readUtf();
+            }
+        }
+
         return new S2COpenDialoguePacket(dId, nId, spk, txt, choices, terminal, autoNext, delay, entityId,
                 lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks, 
-                choiceSounds, saySoundId);
+                choiceSounds, saySoundId, matchedSayId, choiceIds);
     }
 
     public static void handle(S2COpenDialoguePacket pkt,
@@ -279,7 +327,8 @@ public class S2COpenDialoguePacket {
                     pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs, pkt.entityId,
                     pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes, pkt.choicePurchaseDayTimes,
                     pkt.choiceCooldownTypes, pkt.choiceCooldownValues, pkt.choiceResetTimeTicks,
-                    saySound, choiceSounds
+                    saySound, choiceSounds,
+                    pkt.matchedSayId, pkt.choiceIds
             );
 
             if (mc.screen instanceof DialogueScreen ds) {
@@ -356,6 +405,25 @@ public class S2COpenDialoguePacket {
             if (matchedSaySoundId != null) {
                 buf.writeBoolean(true);
                 buf.writeResourceLocation(matchedSaySoundId);
+            } else {
+                buf.writeBoolean(false);
+            }
+            
+            // 序列化 SayIf ID
+            if (matchedSayId != null && !matchedSayId.isEmpty()) {
+                buf.writeBoolean(true);
+                buf.writeUtf(matchedSayId);
+            } else {
+                buf.writeBoolean(false);
+            }
+            
+            // 序列化 Choice IDs
+            if (choiceIds != null && choiceIds.length > 0) {
+                buf.writeBoolean(true);
+                buf.writeVarInt(choiceIds.length);
+                for (String id : choiceIds) {
+                    buf.writeUtf(id != null ? id : "");
+                }
             } else {
                 buf.writeBoolean(false);
             }

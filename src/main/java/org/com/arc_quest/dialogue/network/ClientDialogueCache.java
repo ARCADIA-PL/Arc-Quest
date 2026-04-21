@@ -31,22 +31,22 @@ public final class ClientDialogueCache {
     /**
      * 从网络包更新会话状态。
      */
-    public void updateFromPacket(String treeId, String nodeId, String speaker, String text,
-                                 String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs,
-                                 int entityId, long[] lastSelectTimes, long[] purchaseGTs, long[] purchaseDTs,
+    public void updateFromPacket(String treeId, String nodeId, String speaker, String text, String[] choices,
+                                 boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId,
+                                 long[] lastSelectTimes, long[] purchaseGTs, long[] purchaseDTs,
                                  int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
-                                 @Nullable SoundEvent matchedSaySound,
-                                 @Nullable SoundEvent[] choiceSounds) {
+                                 @Nullable SoundEvent matchedSaySound, @Nullable SoundEvent[] choiceSounds,
+                                 @Nullable String matchedSayId, @Nullable String[] choiceIds) {
         
         DialogueSessionData session = activeSessions.computeIfAbsent(treeId, DialogueSessionData::new);
         session.updateNode(nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
                 lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks,
-                choiceSounds);
+                choiceSounds, matchedSayId, choiceIds);
 
         // 播放 SayIf 匹配的个体化音效
         if (matchedSaySound != null) {
             GuiSoundManager.play(matchedSaySound);
-            LOGGER.debug("[DialogueCache] Played SayIf selectSound for node: {}", nodeId);
+            LOGGER.debug("[DialogueCache] Played SayIf selectSound for node: {}, sayId: {}", nodeId, matchedSayId);
         }
     }
 
@@ -151,6 +151,10 @@ public final class ClientDialogueCache {
         public long[] cooldownValues;
         public int[] resetTimeTicks;
         public SoundEvent[] choiceSounds;
+        
+        // Say/Choice IDs
+        public String matchedSayId;
+        public String[] choiceIds;
 
         public DialogueSessionData(String treeId) {
             this.treeId = treeId;
@@ -160,7 +164,7 @@ public final class ClientDialogueCache {
                                boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId,
                                long[] lastSelectTimes, long[] purchaseGTs, long[] purchaseDTs,
                                int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
-                               SoundEvent[] choiceSounds) {
+                               SoundEvent[] choiceSounds, String matchedSayId, String[] choiceIds) {
             this.nodeId = nodeId;
             this.speaker = speaker;
             this.text = text;
@@ -177,6 +181,10 @@ public final class ClientDialogueCache {
             this.cooldownValues = (cooldownValues != null) ? cooldownValues.clone() : new long[this.choices.length];
             this.resetTimeTicks = (resetTimeTicks != null) ? resetTimeTicks.clone() : new int[this.choices.length];
             this.choiceSounds = (choiceSounds != null) ? choiceSounds.clone() : new SoundEvent[this.choices.length];
+            
+            // 存储 ID
+            this.matchedSayId = matchedSayId;
+            this.choiceIds = (choiceIds != null) ? choiceIds.clone() : new String[this.choices.length];
         }
 
         /**
@@ -204,6 +212,23 @@ public final class ClientDialogueCache {
          */
         public int getChoiceCount() {
             return choices.length;
+        }
+
+        /**
+         * 获取当前匹配的 SayIf ID。
+         */
+        @Nullable
+        public String getMatchedSayId() {
+            return matchedSayId;
+        }
+
+        /**
+         * 获取指定索引的 Choice ID。
+         */
+        @Nullable
+        public String getChoiceId(int index) {
+            if (index < 0 || index >= choiceIds.length) return null;
+            return choiceIds[index];
         }
 
         /**
