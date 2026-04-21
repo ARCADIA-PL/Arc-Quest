@@ -2,12 +2,17 @@ package org.com.arc_quest.dialogue.api;
 
 import net.minecraft.sounds.SoundEvent;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 
 /**
  * 一个对话选择项。
+ * <p>
+ * <b>每个 Choice 必须有唯一的 ID</b>，用于事件监听、调试和网络同步。
+ * </p>
  *
+ * @param choiceId        选项唯一标识符（强制）
  * @param text            显示文本
  * @param nextNodeId      选择后跳转的节点 ID（null = 关闭对话）
  * @param conditions      可见性条件（全部满足才显示）
@@ -21,6 +26,7 @@ import java.util.List;
  * @param selectSound     选择该选项时播放的音效（可为 null）
  */
 public record DialogueChoice(
+        @Nonnull String choiceId,     // 强制：选项标识符
         String text,
         String nextNodeId,
         List<DialogueCondition> conditions,
@@ -33,91 +39,96 @@ public record DialogueChoice(
         String restoreNodeId,
         @Nullable SoundEvent selectSound
 ) {
+    
+    /**
+     * 验证 choiceId 不能为 null 或空。
+     */
+    public DialogueChoice {
+        if (choiceId == null || choiceId.isEmpty()) {
+            throw new IllegalArgumentException("DialogueChoice ID cannot be null or empty");
+        }
+    }
     /**
      * 向后兼容构造器（默认可重复，无冷却，优先级 0，不恢复）。
+     * @deprecated 使用带 choiceId 的构造器
      */
+    @Deprecated
     public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
                           List<DialogueAction> actions) {
-        this(text, nextNodeId, conditions, actions, true, 0, CooldownType.NONE, 0, 0, null);
+        this("legacy_" + System.identityHashCode(actions), text, nextNodeId, conditions, actions, true, 0, CooldownType.NONE, 0, 0, null, null);
     }
 
     /**
      * 完整构造器（带优先级、冷却类型和恢复节点）。
+     * @deprecated 使用带 choiceId 的构造器
      */
+    @Deprecated
     public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
                           List<DialogueAction> actions, boolean repeatable, long cooldownSeconds,
                           CooldownType cooldownType, int resetTimeTicks, int priority, String restoreNodeId) {
-        this(text, nextNodeId, conditions, actions, repeatable, cooldownSeconds, cooldownType, resetTimeTicks, priority, restoreNodeId, null);
+        this("legacy_" + System.identityHashCode(actions), text, nextNodeId, conditions, actions, repeatable, cooldownSeconds, cooldownType, resetTimeTicks, priority, restoreNodeId, null);
     }
 
     /**
      * 完整构造器（带音效）。
+     * @deprecated 使用带 choiceId 的构造器
      */
+    @Deprecated
     public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
                           List<DialogueAction> actions, boolean repeatable, long cooldownSeconds,
                           CooldownType cooldownType, int resetTimeTicks, int priority, String restoreNodeId,
                           @Nullable SoundEvent selectSound) {
-        this.text = text;
-        this.nextNodeId = nextNodeId;
-        this.conditions = conditions;
-        this.actions = actions;
-        this.repeatable = repeatable;
-        this.cooldownSeconds = cooldownSeconds;
-        this.cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
-        this.resetTimeTicks = resetTimeTicks;
-        this.priority = priority;
-        this.restoreNodeId = restoreNodeId;
-        this.selectSound = selectSound;
+        this("legacy_" + System.identityHashCode(actions), text, nextNodeId, conditions, actions, repeatable, cooldownSeconds, cooldownType, resetTimeTicks, priority, restoreNodeId, selectSound);
     }
 
     /**
-     * 便捷构造：无条件、无动作。
+     * 便捷构造：无条件、无动作（必须提供 ID）。
      */
-    public static DialogueChoice simple(String text, String nextNodeId) {
-        return new DialogueChoice(text, nextNodeId, List.of(), List.of());
+    public static DialogueChoice of(String choiceId, String text, String nextNodeId) {
+        return new DialogueChoice(choiceId, text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, 0, null, null);
     }
 
     /**
-     * 便捷构造：带单个动作。
+     * 便捷构造：带单个动作（必须提供 ID）。
      */
-    public static DialogueChoice withAction(String text, String nextNodeId, DialogueAction action) {
-        return new DialogueChoice(text, nextNodeId, List.of(), List.of(action));
+    public static DialogueChoice withAction(String choiceId, String text, String nextNodeId, DialogueAction action) {
+        return new DialogueChoice(choiceId, text, nextNodeId, List.of(), List.of(action), true, 0, CooldownType.NONE, 0, 0, null, null);
     }
 
     /**
-     * 便捷构造：带条件。
+     * 便捷构造：带条件（必须提供 ID）。
      */
-    public static DialogueChoice conditional(String text, String nextNodeId,
+    public static DialogueChoice conditional(String choiceId, String text, String nextNodeId,
                                              DialogueCondition condition) {
-        return new DialogueChoice(text, nextNodeId, List.of(condition), List.of());
+        return new DialogueChoice(choiceId, text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, 0, null, null);
     }
 
     /**
-     * 便捷构造：带优先级。
+     * 便捷构造：带优先级（必须提供 ID）。
      */
-    public static DialogueChoice prioritized(String text, String nextNodeId, int priority) {
-        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, priority, null);
+    public static DialogueChoice prioritized(String choiceId, String text, String nextNodeId, int priority) {
+        return new DialogueChoice(choiceId, text, nextNodeId, List.of(), List.of(), true, 0, CooldownType.NONE, 0, priority, null, null);
     }
 
     /**
-     * 便捷构造：带条件和优先级。
+     * 便捷构造：带条件和优先级（必须提供 ID）。
      */
-    public static DialogueChoice prioritizedConditional(String text, String nextNodeId,
+    public static DialogueChoice prioritizedConditional(String choiceId, String text, String nextNodeId,
                                                         DialogueCondition condition, int priority) {
-        return new DialogueChoice(text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, priority, null);
+        return new DialogueChoice(choiceId, text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, priority, null, null);
     }
 
     /**
-     * 便捷构造：带游戏日冷却。
+     * 便捷构造：带游戏日冷却（必须提供 ID）。
      */
-    public static DialogueChoice gameDayCooldown(String text, String nextNodeId) {
-        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_DAY, 0, 0, null);
+    public static DialogueChoice gameDayCooldown(String choiceId, String text, String nextNodeId) {
+        return new DialogueChoice(choiceId, text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_DAY, 0, 0, null, null);
     }
 
     /**
-     * 便捷构造：带固定时间刻冷却。
+     * 便捷构造：带固定时间刻冷却（必须提供 ID）。
      */
-    public static DialogueChoice cooldownAtTick(String text, String nextNodeId, int tick) {
-        return new DialogueChoice(text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_TICK, tick, 0, null);
+    public static DialogueChoice cooldownAtTick(String choiceId, String text, String nextNodeId, int tick) {
+        return new DialogueChoice(choiceId, text, nextNodeId, List.of(), List.of(), true, 1, CooldownType.GAME_TICK, tick, 0, null, null);
     }
 }
