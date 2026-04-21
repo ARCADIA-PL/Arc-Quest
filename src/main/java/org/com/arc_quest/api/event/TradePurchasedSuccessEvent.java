@@ -11,13 +11,13 @@ import net.minecraftforge.eventbus.api.Event;
  *
  * @since 1.0.0
  */
-public class TradeItemPurchasedEvent extends Event {
+public class TradePurchasedSuccessEvent extends Event {
 
     private final ServerPlayer player;
     private final String shopId;
     private final String entryId;
 
-    public TradeItemPurchasedEvent(ServerPlayer player, String shopId, String entryId) {
+    public TradePurchasedSuccessEvent(ServerPlayer player, String shopId, String entryId) {
         this.player = player;
         this.shopId = shopId;
         this.entryId = entryId;
