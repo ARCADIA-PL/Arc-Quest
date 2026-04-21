@@ -3,6 +3,9 @@ package org.com.arc_quest.trade.api;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvent;
+
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.quest.api.ICondition;
 import org.jetbrains.annotations.Nullable;
@@ -58,6 +61,18 @@ public final class TradeEntry {
      */
     @Nullable
     private final Predicate<ServerPlayer> purchaseResetCondition;
+    
+    // 音效配置
+    @Nullable
+    private final SoundEvent purchaseSuccessSound;
+    @Nullable
+    private final SoundEvent purchaseFailSound;
+    @Nullable
+    private final SoundEvent cooldownSound; // 冷却中音效
+    @Nullable
+    private final SoundEvent limitReachedSound; // 限购已满音效
+    @Nullable
+    private final SoundEvent conditionFailSound; // 条件不满足音效
 
     public TradeEntry(String entryId,
                       Component displayName,
@@ -75,7 +90,12 @@ public final class TradeEntry {
                       @Nullable ResourceLocation costIcon,
                       int sortOrder,
                       int themeColor,
-                      @Nullable Predicate<ServerPlayer> purchaseResetCondition) {
+                      @Nullable Predicate<ServerPlayer> purchaseResetCondition,
+                      @Nullable SoundEvent purchaseSuccessSound,
+                      @Nullable SoundEvent purchaseFailSound,
+                      @Nullable SoundEvent cooldownSound,
+                      @Nullable SoundEvent limitReachedSound,
+                      @Nullable SoundEvent conditionFailSound) {
         Objects.requireNonNull(entryId);
         Objects.requireNonNull(displayName);
         if (rewards.isEmpty()) {
@@ -98,6 +118,11 @@ public final class TradeEntry {
         this.sortOrder = sortOrder;
         this.themeColor = themeColor;
         this.purchaseResetCondition = purchaseResetCondition;
+        this.purchaseSuccessSound = purchaseSuccessSound;
+        this.purchaseFailSound = purchaseFailSound;
+        this.cooldownSound = cooldownSound;
+        this.limitReachedSound = limitReachedSound;
+        this.conditionFailSound = conditionFailSound;
     }
 
     public String getEntryId() { return entryId; }
@@ -144,6 +169,21 @@ public final class TradeEntry {
     public Predicate<ServerPlayer> getPurchaseResetCondition() { 
         return purchaseResetCondition; 
     }
+
+    @Nullable
+    public SoundEvent getPurchaseSuccessSound() { return purchaseSuccessSound; }
+
+    @Nullable
+    public SoundEvent getPurchaseFailSound() { return purchaseFailSound; }
+
+    @Nullable
+    public SoundEvent getCooldownSound() { return cooldownSound; }
+
+    @Nullable
+    public SoundEvent getLimitReachedSound() { return limitReachedSound; }
+
+    @Nullable
+    public SoundEvent getConditionFailSound() { return conditionFailSound; }
 
     /**
      * 是否有购买次数限制

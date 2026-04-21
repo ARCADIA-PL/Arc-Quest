@@ -4,8 +4,13 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+import org.com.arc_quest.client.util.GuiSoundManager;
+import org.com.arc_quest.quest.api.QuestDefinition;
+import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
+import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -108,10 +113,13 @@ public final class ClientQuestCache {
     public void updateQuest(QuestRuntimeData data) {
         String questId = data.getQuestId();
         QuestState oldState = null;
+        String oldPhaseId = null;
 
-        // 记录旧状态用于动画触发
+        // 记录旧状态用于动画和音效触发
         if (activeQuests.containsKey(questId)) {
-            oldState = activeQuests.get(questId).getState();
+            QuestRuntimeData oldData = activeQuests.get(questId);
+            oldState = oldData.getState();
+            oldPhaseId = oldData.getCurrentPhaseId();
         } else if (completedQuests.contains(questId)) {
             oldState = QuestState.COMPLETED;
         } else if (failedQuests.contains(questId)) {
@@ -127,6 +135,11 @@ public final class ClientQuestCache {
                 // 触发动画钩子：接取任务
                 if (oldState == null) {
                     onQuestAccepted(questId);
+                }
+
+                // 触发 Phase 开始音效（如果是新阶段）
+                if (oldPhaseId != null && !oldPhaseId.equals(data.getCurrentPhaseId())) {
+                    onPhaseStarted(questId, data.getCurrentPhaseId());
                 }
             }
             case COMPLETED -> {
@@ -148,7 +161,16 @@ public final class ClientQuestCache {
                     onQuestFailed(questId);
                 }
             }
-            default -> activeQuests.put(questId, data);
+            default -> {
+                // 处理阶段切换（即使状态没变，阶段也可能变了）
+                if (activeQuests.containsKey(questId)) {
+                    String curPhase = activeQuests.get(questId).getCurrentPhaseId();
+                    if (!curPhase.equals(data.getCurrentPhaseId())) {
+                        onPhaseStarted(questId, data.getCurrentPhaseId());
+                    }
+                }
+                activeQuests.put(questId, data);
+            }
         }
 
         LOGGER.debug("[ClientCache] Quest updated: {} → {}", questId, data.getState());
@@ -286,49 +308,94 @@ public final class ClientQuestCache {
     // ═══════════════════════════════════════════════════════
 
     /**
+     * 阶段开始时触发。
+     */
+    private void onPhaseStarted(String questId, String phaseId) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return;
+
+        QuestDefinition def = QuestRegistry.get(rl);
+        if (def == null) return;
+
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase != null) {
+            GuiSoundManager.play(phase.getPhaseStartSound());
+        }
+        LOGGER.debug("[AnimationHook] Phase started: {}#{}", questId, phaseId);
+    }
+
+    /**
      * 任务被接受时触发。
-     * <p>
-     * 示例对接你的动画引擎：<br>
-     * {@code SkinSplashRenderer.trigger("quest_accept", questId);}
-     *
-     * @param questId 任务 ID
      */
     private void onQuestAccepted(String questId) {
-        // 默认空实现，子类或外部监听器可覆盖
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl != null) {
+            QuestDefinition def = QuestRegistry.get(rl);
+            if (def != null) {
+                GuiSoundManager.play(def.getChapterStartSound());
+            }
+        }
         LOGGER.info("[AnimationHook] Quest accepted: {}", questId);
     }
 
     /**
      * 任务完成时触发。
-     * <p>
-     * 示例对接你的动画引擎：<br>
-     * {@code SkinSplashRenderer.trigger("quest_complete", questId);}
-     *
-     * @param questId 任务 ID
      */
     private void onQuestCompleted(String questId) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl != null) {
+            QuestDefinition def = QuestRegistry.get(rl);
+            if (def != null) {
+                GuiSoundManager.play(def.getChapterCompleteSound());
+            }
+        }
         LOGGER.info("[AnimationHook] Quest completed: {}", questId);
     }
 
     /**
      * 任务失败时触发。
-     *
-     * @param questId 任务 ID
      */
     private void onQuestFailed(String questId) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl != null) {
+            QuestDefinition def = QuestRegistry.get(rl);
+            if (def != null) {
+                GuiSoundManager.play(def.getChapterFailSound());
+            }
+        }
         LOGGER.info("[AnimationHook] Quest failed: {}", questId);
     }
 
     /**
-     * 目标进度更新时触发。
-     *
-     * @param questId     任务 ID
-     * @param objIndex    目标索引
-     * @param oldProgress 旧进度
-     * @param newProgress 新进度
+     * 目标进度更新时触发（检测 Phase 完成）。
      */
     private void onObjectiveProgressed(String questId, int objIndex, int oldProgress, int newProgress) {
-        LOGGER.debug("[AnimationHook] Objective progressed: {}#{} {}→{}",
-                questId, objIndex, oldProgress, newProgress);
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return;
+
+        QuestDefinition def = QuestRegistry.get(rl);
+        if (def == null) return;
+
+        QuestRuntimeData data = activeQuests.get(questId);
+        if (data == null) return;
+
+        String currentPhaseId = data.getCurrentPhaseId();
+        PhaseDefinition phase = def.getPhase(currentPhaseId);
+        if (phase == null) return;
+
+        // 检查当前阶段的所有目标是否都已达成
+        boolean allDone = true;
+        for (int i = 0; i < phase.getObjectives().size(); i++) {
+            if (data.getObjectiveProgress(i) < phase.getObjectives().get(i).getRequiredCount()) {
+                allDone = false;
+                break;
+            }
+        }
+
+        if (allDone) {
+            GuiSoundManager.play(phase.getPhaseCompleteSound());
+        }
+
+        LOGGER.debug("[AnimationHook] Objective progressed: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
     }
 }

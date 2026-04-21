@@ -3,6 +3,7 @@ package org.com.arc_quest.quest.builder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.condition.FlagSetCondition;
@@ -47,6 +48,11 @@ public final class QuestBuilder {
     @Nullable
     private String chapterShopId;
     private boolean chapterShopPersistent = true;
+    
+    // 音效配置
+    @Nullable private SoundEvent chapterStartSound;
+    @Nullable private SoundEvent chapterFailSound;
+    @Nullable private SoundEvent chapterCompleteSound;
 
     private QuestBuilder(ResourceLocation id) {
         this.id = id;
@@ -225,6 +231,25 @@ public final class QuestBuilder {
 
     public QuestBuilder chapterShop(String shopId) {
         return chapterShop(shopId, true);
+    }
+
+    // ════════════════════════════════════════
+    //  音效配置
+    // ════════════════════════════════════════
+
+    public QuestBuilder chapterStartSound(SoundEvent sound) {
+        this.chapterStartSound = sound;
+        return this;
+    }
+
+    public QuestBuilder chapterFailSound(SoundEvent sound) {
+        this.chapterFailSound = sound;
+        return this;
+    }
+
+    public QuestBuilder chapterCompleteSound(SoundEvent sound) {
+        this.chapterCompleteSound = sound;
+        return this;
     }
 
     // ════════════════════════════════════════
@@ -407,7 +432,10 @@ public final class QuestBuilder {
                 new ArrayList<>(this.flagsOnComplete),
                 this.visualConfigBuilder.build(),
                 this.chapterShopId,
-                this.chapterShopPersistent
+                this.chapterShopPersistent,
+                this.chapterStartSound,
+                this.chapterFailSound,
+                this.chapterCompleteSound
         );
     }
 

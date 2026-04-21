@@ -3,6 +3,7 @@ package org.com.arc_quest.quest.api;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -31,6 +32,11 @@ public final class QuestDefinition {
     @Nullable
     private final String chapterShopId;
     private final boolean chapterShopPersistent;
+    
+    // 音效配置
+    @Nullable private final SoundEvent chapterStartSound;
+    @Nullable private final SoundEvent chapterFailSound;
+    @Nullable private final SoundEvent chapterCompleteSound;
 
     public QuestDefinition(ResourceLocation id,
                            QuestCategory category,
@@ -67,6 +73,31 @@ public final class QuestDefinition {
                            QuestVisualConfig visualConfig,
                            @Nullable String chapterShopId,
                            boolean chapterShopPersistent) {
+        this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
+                unlockConditions, phases, initialPhaseId, completionRewards,
+                flagsToSetOnAccept, flagsToSetOnComplete, visualConfig, 
+                chapterShopId, chapterShopPersistent, null, null, null);
+    }
+
+    public QuestDefinition(ResourceLocation id,
+                           QuestCategory category,
+                           Component displayName,
+                           Component description,
+                           @Nullable ResourceLocation iconTexture,
+                           int sortOrder,
+                           boolean repeatable,
+                           List<ICondition> unlockConditions,
+                           LinkedHashMap<String, PhaseDefinition> phases,
+                           String initialPhaseId,
+                           List<IReward> completionRewards,
+                           List<String> flagsToSetOnAccept,
+                           List<String> flagsToSetOnComplete,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String chapterShopId,
+                           boolean chapterShopPersistent,
+                           @Nullable SoundEvent chapterStartSound,
+                           @Nullable SoundEvent chapterFailSound,
+                           @Nullable SoundEvent chapterCompleteSound) {
         Objects.requireNonNull(id, "Quest id must not be null");
         Objects.requireNonNull(category);
         Objects.requireNonNull(displayName);
@@ -94,6 +125,9 @@ public final class QuestDefinition {
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
         this.chapterShopId = chapterShopId;
         this.chapterShopPersistent = chapterShopPersistent;
+        this.chapterStartSound = chapterStartSound;
+        this.chapterFailSound = chapterFailSound;
+        this.chapterCompleteSound = chapterCompleteSound;
     }
 
     // ── Getters ──
@@ -176,6 +210,15 @@ public final class QuestDefinition {
     public boolean hasChapterShop() {
         return this.chapterShopId != null;
     }
+
+    @Nullable
+    public SoundEvent getChapterStartSound() { return chapterStartSound; }
+
+    @Nullable
+    public SoundEvent getChapterFailSound() { return chapterFailSound; }
+
+    @Nullable
+    public SoundEvent getChapterCompleteSound() { return chapterCompleteSound; }
 
 
     public QuestVisualConfig getVisualConfig() {

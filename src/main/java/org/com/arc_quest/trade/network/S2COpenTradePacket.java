@@ -4,9 +4,11 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import org.com.arc_quest.client.gui.AbstractTradeScreen;
 import org.com.arc_quest.client.gui.DialogueScreen;
 import org.com.arc_quest.client.gui.SimpleTradePanel;
 import org.com.arc_quest.client.gui.TradeScreen;
+import org.slf4j.Logger;
 
 import java.util.function.Supplier;
 
@@ -14,6 +16,8 @@ import java.util.function.Supplier;
  * 服务端→客户端：打开交易窗口 / 交易结果反馈。
  */
 public class S2COpenTradePacket {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     public enum Mode {
         OPEN_FULL,
@@ -23,34 +27,33 @@ public class S2COpenTradePacket {
         CLOSE
     }
 
+    public enum FailReason {
+        GENERIC,          // 通用错误
+        COOLDOWN,         // 冷却中
+        LIMIT_REACHED,    // 限购已满
+        CONDITION_FAIL,   // 条件不满足
+        CANNOT_AFFORD,    // 余额不足
+        NOT_VISIBLE       // 不可见
+    }
+
     private final Mode mode;
     private final String shopId;
+    private final String entryId;
+    private final FailReason failReason;
     private final String errorKey;
 
-    /** 每个交易项的购买次数 */
+    /** 各项数据数组（由于网络协议不变，保留接收逻辑，但 UI 不再直接消费它们） */
     private final int[] purchaseCounts;
-    /** 每个交易项的最大购买次数（-1=无限） */
     private final int[] maxPurchases;
-    /** 每个交易项的最后购买时间戳（毫秒） */
     private final long[] lastPurchaseTimes;
-    /**  每个交易项购买时的 gameTime */
     private final long[] purchaseGameTimes;
-    /**  每个交易项购买时的 dayTime */
     private final long[] purchaseDayTimes;
-    /** 每个交易项的冷却类型（ordinal） */
     private final int[] cooldownTypes;
-    /** 每个交易项的冷却值 */
     private final long[] cooldownValues;
-    /** 每个交易项的重置刻（仅 GAME_TICK 有效） */
     private final int[] resetTimeTicks;
-    /** 每个交易项是否可见 */
     private final boolean[] visibility;
-    /** 每个交易项是否满足购买资格条件（用于 HUD 显示） */
     private final boolean[] canBuyConditions;
 
-    /**
-     * 打开交易窗口
-     */
     public S2COpenTradePacket(Mode mode, String shopId,
                               int[] purchaseCounts, int[] maxPurchases,
                               long[] lastPurchaseTimes,
@@ -60,6 +63,8 @@ public class S2COpenTradePacket {
                               boolean[] canBuyConditions) {
         this.mode = mode;
         this.shopId = shopId;
+        this.entryId = null;
+        this.failReason = null;
         this.errorKey = null;
         this.purchaseCounts = purchaseCounts;
         this.maxPurchases = maxPurchases;
@@ -73,12 +78,11 @@ public class S2COpenTradePacket {
         this.canBuyConditions = canBuyConditions;
     }
 
-    /**
-     * 交易结果反馈
-     */
-    public S2COpenTradePacket(Mode mode, String shopId, String errorKey) {
+    public S2COpenTradePacket(Mode mode, String shopId, String entryId, FailReason failReason, String errorKey) {
         this.mode = mode;
         this.shopId = shopId;
+        this.entryId = entryId;
+        this.failReason = failReason;
         this.errorKey = errorKey;
         this.purchaseCounts = null;
         this.maxPurchases = null;
@@ -92,54 +96,37 @@ public class S2COpenTradePacket {
         this.canBuyConditions = null;
     }
 
-    /**
-     * 关闭交易窗口
-     */
     public static S2COpenTradePacket close() {
-        return new S2COpenTradePacket(Mode.CLOSE, "", null);
+        return new S2COpenTradePacket(Mode.CLOSE, "", null, null, null);
     }
 
     public static S2COpenTradePacket openFull(String shopId,
-                                               int[] purchaseCounts,
-                                               int[] maxPurchases,
-                                               long[] lastPurchaseTimes,
-                                               long[] purchaseGameTimes,
-                                               long[] purchaseDayTimes,
-                                               int[] cooldownTypes,
-                                               long[] cooldownValues,
-                                               int[] resetTimeTicks,
-                                               boolean[] visibility,
-                                               boolean[] canBuyConditions) {
+                                              int[] purchaseCounts, int[] maxPurchases,
+                                              long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
+                                              int[] cooldownTypes, long[] cooldownValues,
+                                              int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions) {
         return new S2COpenTradePacket(Mode.OPEN_FULL, shopId,
                 purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
                 cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
     }
 
     public static S2COpenTradePacket openSimple(String shopId,
-                                                 int[] purchaseCounts,
-                                                 int[] maxPurchases,
-                                                 long[] lastPurchaseTimes,
-                                                 long[] purchaseGameTimes,
-                                                 long[] purchaseDayTimes,
-                                                 int[] cooldownTypes,
-                                                 long[] cooldownValues,
-                                                 int[] resetTimeTicks,
-                                                 boolean[] visibility,
-                                                 boolean[] canBuyConditions) {
+                                                int[] purchaseCounts, int[] maxPurchases,
+                                                long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
+                                                int[] cooldownTypes, long[] cooldownValues,
+                                                int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions) {
         return new S2COpenTradePacket(Mode.OPEN_SIMPLE, shopId,
                 purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
                 cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
     }
 
-    public static S2COpenTradePacket tradeSuccess(String shopId) {
-        return new S2COpenTradePacket(Mode.TRADE_SUCCESS, shopId, null);
+    public static S2COpenTradePacket tradeSuccess(String shopId, String entryId) {
+        return new S2COpenTradePacket(Mode.TRADE_SUCCESS, shopId, entryId, null, null);
     }
 
-    public static S2COpenTradePacket tradeFail(String shopId, String errorKey) {
-        return new S2COpenTradePacket(Mode.TRADE_FAIL, shopId, errorKey);
+    public static S2COpenTradePacket tradeFail(String shopId, String entryId, FailReason reason, String errorKey) {
+        return new S2COpenTradePacket(Mode.TRADE_FAIL, shopId, entryId, reason, errorKey);
     }
-
-    
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeEnum(mode);
@@ -150,17 +137,37 @@ public class S2COpenTradePacket {
             buf.writeVarInt(count);
             for (int i = 0; i < count; i++) {
                 buf.writeVarInt(purchaseCounts[i]);
-                buf.writeVarInt(maxPurchases[i]);
-                buf.writeLong(lastPurchaseTimes[i]);
-                buf.writeLong(purchaseGameTimes[i]);  
-                buf.writeLong(purchaseDayTimes[i]);   
-                buf.writeVarInt(cooldownTypes[i]);
-                buf.writeLong(cooldownValues[i]);
-                buf.writeVarInt(resetTimeTicks[i]);
-                buf.writeBoolean(visibility[i]);
+                if (maxPurchases != null) {
+                    buf.writeVarInt(maxPurchases[i]);
+                }
+                if (lastPurchaseTimes != null) {
+                    buf.writeLong(lastPurchaseTimes[i]);
+                }
+                if (purchaseGameTimes != null) {
+                    buf.writeLong(purchaseGameTimes[i]);
+                }
+                if (purchaseDayTimes != null) {
+                    buf.writeLong(purchaseDayTimes[i]);
+                }
+                if (cooldownTypes != null) {
+                    buf.writeVarInt(cooldownTypes[i]);
+                }
+                if (cooldownValues != null) {
+                    buf.writeLong(cooldownValues[i]);
+                }
+                if (resetTimeTicks != null) {
+                    buf.writeVarInt(resetTimeTicks[i]);
+                }
+                if (visibility != null) {
+                    buf.writeBoolean(visibility[i]);
+                }
                 buf.writeBoolean(canBuyConditions != null && canBuyConditions[i]);
             }
-        } else if (mode == Mode.TRADE_FAIL) {
+        } else if (mode == Mode.TRADE_FAIL || mode == Mode.TRADE_SUCCESS) {
+            buf.writeUtf(entryId != null ? entryId : "");
+            if (mode == Mode.TRADE_FAIL) {
+                buf.writeEnum(failReason != null ? failReason : FailReason.GENERIC);
+            }
             buf.writeUtf(errorKey != null ? errorKey : "");
         }
     }
@@ -174,19 +181,20 @@ public class S2COpenTradePacket {
             int[] purchases = new int[count];
             int[] maxPurch = new int[count];
             long[] lastTimes = new long[count];
-            long[] purchaseGTs = new long[count];  
-            long[] purchaseDTs = new long[count];  
+            long[] purchaseGTs = new long[count];
+            long[] purchaseDTs = new long[count];
             int[] cdTypes = new int[count];
             long[] cdValues = new long[count];
             int[] resetTicks = new int[count];
             boolean[] vis = new boolean[count];
             boolean[] canBuy = new boolean[count];
+
             for (int i = 0; i < count; i++) {
                 purchases[i] = buf.readVarInt();
                 maxPurch[i] = buf.readVarInt();
                 lastTimes[i] = buf.readLong();
-                purchaseGTs[i] = buf.readLong();  
-                purchaseDTs[i] = buf.readLong();  
+                purchaseGTs[i] = buf.readLong();
+                purchaseDTs[i] = buf.readLong();
                 cdTypes[i] = buf.readVarInt();
                 cdValues[i] = buf.readLong();
                 resetTicks[i] = buf.readVarInt();
@@ -196,70 +204,68 @@ public class S2COpenTradePacket {
             return new S2COpenTradePacket(mode, shopId, purchases, maxPurch, lastTimes,
                     purchaseGTs, purchaseDTs, cdTypes, cdValues, resetTicks, vis, canBuy);
         } else if (mode == Mode.TRADE_FAIL) {
-            return new S2COpenTradePacket(mode, shopId, buf.readUtf());
+            return new S2COpenTradePacket(mode, shopId, buf.readUtf(), buf.readEnum(FailReason.class), buf.readUtf());
+        } else if (mode == Mode.TRADE_SUCCESS) {
+            return new S2COpenTradePacket(mode, shopId, buf.readUtf(), null, buf.readUtf());
         } else {
-            return new S2COpenTradePacket(mode, shopId, (String) null);
+            return new S2COpenTradePacket(mode, shopId, null, null, null);
         }
     }
 
-    public static void handle(S2COpenTradePacket pkt,
-                               Supplier<NetworkEvent.Context> ctx) {
+    public static void handle(S2COpenTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             switch (pkt.mode) {
                 case OPEN_FULL -> {
+                    ClientTradeCache.INSTANCE.updateSession(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
+                            pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
+                            pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
+
                     if (mc.screen instanceof DialogueScreen) {
                         TradeScreen.setParentScreen(mc.screen);
                     }
-                    
+
                     if (mc.screen instanceof TradeScreen ts && ts.getShopId().equals(pkt.shopId)) {
-                        LogUtils.getLogger().info("[Trade-Packet] Updating existing TradeScreen for shop={}", pkt.shopId);
-                        ts.updateData(pkt.purchaseCounts, pkt.maxPurchases, pkt.lastPurchaseTimes,
-                                pkt.purchaseGameTimes, pkt.purchaseDayTimes,
-                                pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
+                        LOGGER.info("[Trade-Packet] Updating existing TradeScreen for shop={}", pkt.shopId);
+                        ts.refreshData();
                     } else {
-                        LogUtils.getLogger().warn("[Trade-Packet] Creating new TradeScreen. Current screen={}, expected shop={}, packet shop={}",
-                            mc.screen != null ? mc.screen.getClass().getSimpleName() : "null",
-                            mc.screen instanceof TradeScreen ts ? ts.getShopId() : "N/A",
-                            pkt.shopId);
-                        mc.setScreen(new TradeScreen(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
-                                pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
-                                pkt.cooldownTypes, pkt.cooldownValues,
-                                pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions));
+                        LOGGER.warn("[Trade-Packet] Creating new TradeScreen for shop={}", pkt.shopId);
+                        mc.setScreen(new TradeScreen(pkt.shopId));
                     }
                 }
+
                 case OPEN_SIMPLE -> {
+                    ClientTradeCache.INSTANCE.updateSession(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
+                            pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
+                            pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
+
                     if (mc.screen instanceof DialogueScreen) {
                         SimpleTradePanel.setParentScreen(mc.screen);
                     }
-                    
+
                     if (mc.screen instanceof SimpleTradePanel sp && sp.getShopId().equals(pkt.shopId)) {
-                        sp.updateData(pkt.purchaseCounts, pkt.maxPurchases, pkt.lastPurchaseTimes,
-                                pkt.purchaseGameTimes, pkt.purchaseDayTimes,
-                                pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
+                        sp.refreshData();
                     } else {
-                        mc.setScreen(new SimpleTradePanel(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
-                                pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
-                                pkt.cooldownTypes, pkt.cooldownValues,
-                                pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions));
+                        mc.setScreen(new SimpleTradePanel(pkt.shopId));
                     }
                 }
+
                 case TRADE_SUCCESS -> {
-                    if (mc.screen instanceof TradeScreen ts) {
+                    ClientTradeCache.INSTANCE.handlePurchaseResult(pkt.shopId, pkt.entryId, true, null);
+                    if (mc.screen instanceof AbstractTradeScreen ts) {
                         ts.onTradeSuccess();
-                    } else if (mc.screen instanceof SimpleTradePanel sp) {
-                        sp.onTradeSuccess();
                     }
                 }
+
                 case TRADE_FAIL -> {
-                    if (mc.screen instanceof TradeScreen ts) {
+                    ClientTradeCache.INSTANCE.handlePurchaseResult(pkt.shopId, pkt.entryId, false, pkt.failReason);
+                    if (mc.screen instanceof AbstractTradeScreen ts) {
                         ts.onTradeFail(pkt.errorKey);
-                    } else if (mc.screen instanceof SimpleTradePanel sp) {
-                        sp.onTradeFail(pkt.errorKey);
                     }
                 }
+
                 case CLOSE -> {
-                    if (mc.screen instanceof TradeScreen || mc.screen instanceof SimpleTradePanel) {
+                    if (mc.screen instanceof AbstractTradeScreen) {
                         TradeScreen.setParentScreen(null);
                         SimpleTradePanel.setParentScreen(null);
                         mc.setScreen(null);
@@ -270,7 +276,6 @@ public class S2COpenTradePacket {
         ctx.get().setPacketHandled(true);
     }
 
-    
     public Mode getMode() { return mode; }
     public String getShopId() { return shopId; }
 }

@@ -171,9 +171,18 @@ public class C2SRequestTradePacket {
         TradeSession session = new TradeSession(player, shop);
         TradeSession.TradeResult result = session.executeTrade(entryId);
 
+        S2COpenTradePacket.FailReason reason = S2COpenTradePacket.FailReason.GENERIC;
+        String errorKey = result.errorKey();
+        if (errorKey != null) {
+            if (errorKey.contains("cooldown")) reason = S2COpenTradePacket.FailReason.COOLDOWN;
+            else if (errorKey.contains("max_purchases") || errorKey.contains("limit")) reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
+            else if (errorKey.contains("condition") || errorKey.contains("visible")) reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
+            else if (errorKey.contains("afford")) reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
+        }
+
         S2COpenTradePacket response = result.succeeded()
-                ? S2COpenTradePacket.tradeSuccess(shop.getShopId())
-                : S2COpenTradePacket.tradeFail(shop.getShopId(), result.errorKey());
+                ? S2COpenTradePacket.tradeSuccess(shop.getShopId(), entryId)
+                : S2COpenTradePacket.tradeFail(shop.getShopId(), entryId, reason, errorKey);
 
         ArcQuestNetwork.CHANNEL.send(
                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),

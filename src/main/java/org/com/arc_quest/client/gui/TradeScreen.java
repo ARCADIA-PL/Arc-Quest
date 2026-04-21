@@ -9,13 +9,13 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.com.arc_quest.trade.network.ClientTradeCache;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -24,7 +24,6 @@ import java.util.List;
 public class TradeScreen extends AbstractTradeScreen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
     private static Screen parentScreen;
 
     private static final int CARD_HEIGHT = 48;
@@ -40,21 +39,14 @@ public class TradeScreen extends AbstractTradeScreen {
 
     private float[] catHoverAnims;
     private float[] entryHoverAnims;
-    private boolean[] canBuyConditions;
 
-    public TradeScreen(String shopId, int[] purchaseCounts, int[] maxPurchases,
-                       long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
-                       int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility,
-                       boolean[] canBuyConditions) {
-        super("arc_quest.gui.trade.full_title", shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility);
+    public TradeScreen(String shopId) {
+        super("arc_quest.gui.trade.full_title", shopId);
         this.allEntries = shop != null ? new ArrayList<>(shop.getAllEntries()) : List.of();
         this.filteredEntries = new ArrayList<>(allEntries);
-        this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
     }
 
-    public static void setParentScreen(Screen screen) {
-        parentScreen = screen;
-    }
+    public static void setParentScreen(Screen screen) { parentScreen = screen; }
 
     @Override
     public void onClose() {
@@ -67,7 +59,6 @@ public class TradeScreen extends AbstractTradeScreen {
             }
             mc.setScreen(parentScreen);
             parentScreen = null;
-            LOGGER.info("[Trade] Restored dialogue after closing shop");
         } else {
             super.onClose();
         }
@@ -87,11 +78,13 @@ public class TradeScreen extends AbstractTradeScreen {
         filteredEntries = new ArrayList<>();
         List<TradeCategory> cats = shop != null ? shop.getCategories() : List.of();
         TradeCategory selected = (selectedCategoryIndex == 0 || cats.isEmpty()) ? null : cats.get(selectedCategoryIndex - 1);
+
         for (int i = 0; i < allEntries.size(); i++) {
-            if (i < visibility.length && !visibility[i]) continue;
+            if (!ClientTradeCache.INSTANCE.isVisible(shopId, i)) continue;
             TradeEntry entry = allEntries.get(i);
             if (selected == null || selected.equals(entry.getCategory())) filteredEntries.add(entry);
         }
+
         targetScroll = 0; scrollOffset = 0;
         int catCount = shop != null ? shop.getCategories().size() + 1 : 1;
         if (catHoverAnims == null || catHoverAnims.length != catCount) catHoverAnims = new float[catCount];
@@ -183,17 +176,20 @@ public class TradeScreen extends AbstractTradeScreen {
         float fastClose = isClosing ? Math.max(0f, (transitionAnim - 0.4f) / 0.6f) : effectiveAlpha;
         float contentScale = isClosing ? QuestAnimUtil.easeInCubic(fastClose) : 1.0f;
 
+        ClientTradeCache cache = ClientTradeCache.INSTANCE;
+
         for (int i = 0; i < filteredEntries.size(); i++) {
             TradeEntry entry = filteredEntries.get(i);
-            int gi = allEntries.indexOf(entry);
+            int gi = cache.getGlobalIndex(shopId, entry.getEntryId());
+            if (gi == -1) continue;
             int drawY = ry + (int) (i * (CARD_HEIGHT + 8) - scrollOffset) + 8;
             if (drawY + CARD_HEIGHT < ry || drawY > ry + rh) continue;
 
             boolean hov = !isClosing && dt > 0 && mx >= rx && mx < rx + rw && my >= drawY && my < drawY + CARD_HEIGHT && my >= ry && my <= ry + rh;
 
-            boolean onCd = gi >= 0 && gi < lastPurchaseTimes.length && ClientCooldownHelper.isOnCooldown(lastPurchaseTimes[gi], purchaseGameTimes[gi], purchaseDayTimes[gi], cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]);
-            boolean maxed = !onCd && entry.hasLimit() && gi >= 0 && gi < purchaseCounts.length && purchaseCounts[gi] >= entry.getMaxPurchases();
-            boolean conditionNotMet = !onCd && !maxed && gi >= 0 && gi < canBuyConditions.length && !canBuyConditions[gi];
+            boolean onCd = cache.isOnCooldown(shopId, gi);
+            boolean maxed = !onCd && entry.hasLimit() && cache.getPurchaseCount(shopId, gi) >= entry.getMaxPurchases();
+            boolean conditionNotMet = !onCd && !maxed && !cache.canBuy(shopId, gi);
             boolean canBuy = !onCd && !maxed && !conditionNotMet;
 
             entryHoverAnims[i] = QuestAnimUtil.step(entryHoverAnims[i], hov && canBuy ? 1f : 0f, 6f, dt);
@@ -235,7 +231,6 @@ public class TradeScreen extends AbstractTradeScreen {
                     int pulseColor = onCd ? 0xFF6666 : (maxed ? 0xAAAAAA : 0x4488CC);
 
                     g.fill(cx, cy, cx + cw, cy + ch, QuestAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.1f)));
-
                     g.fill(cx - 1, cy - 1, cx + cw + 1, cy, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
                     g.fill(cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
                     g.fill(cx - 1, cy, cx, cy + ch, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
@@ -249,7 +244,7 @@ public class TradeScreen extends AbstractTradeScreen {
                 String statusStr = "";
                 int scColor = 0xFF5555;
                 if (onCd) {
-                    statusStr = ClientCooldownHelper.getCooldownText(lastPurchaseTimes[gi], purchaseGameTimes[gi], purchaseDayTimes[gi], cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]);
+                    statusStr = cache.getCooldownText(shopId, gi);
                     if (statusStr.isEmpty()) statusStr = "...";
                 } else if (maxed) {
                     statusStr = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
@@ -291,9 +286,7 @@ public class TradeScreen extends AbstractTradeScreen {
                         drawAdaptiveIcon(g, costIconLoc, 0, 0, 16, 16, effectiveAlpha);
                     } else {
                         ItemStack costStack = getIconStackForOffer(cost);
-                        if (!costStack.isEmpty()) {
-                            g.renderItem(costStack, 0, 0);
-                        }
+                        if (!costStack.isEmpty()) g.renderItem(costStack, 0, 0);
                     }
                     g.pose().popPose();
 
@@ -380,12 +373,15 @@ public class TradeScreen extends AbstractTradeScreen {
             int btnX = rx + (pw - CAT_WIDTH - 16) - 100, btnY = py + 36 + (int) (vi * (CARD_HEIGHT + 8) - scrollOffset) + 8 + (CARD_HEIGHT - 24) / 2;
             if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) {
                 TradeEntry e = filteredEntries.get(vi);
-                int gi = allEntries.indexOf(e);
+                int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, e.getEntryId());
                 lastClickedGi = gi;
-                if (!ClientCooldownHelper.isOnCooldown(lastPurchaseTimes[gi], purchaseGameTimes[gi], purchaseDayTimes[gi], cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]) && !(e.hasLimit() && purchaseCounts[gi] >= e.getMaxPurchases())) {
+
+                if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) {
                     ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.purchaseWithScreenType(shopId, e.getEntryId(), C2SRequestTradePacket.ScreenType.FULL));
                     playClick();
-                } else onTradeFail("blocked");
+                } else {
+                    onTradeFail("blocked");
+                }
                 return true;
             }
         }
@@ -399,9 +395,8 @@ public class TradeScreen extends AbstractTradeScreen {
     }
 
     @Override
-    public void updateData(int[] pc, int[] mp, long[] lpt, long[] pgt, long[] pdt, int[] ct, long[] cv, int[] rt, boolean[] vis, boolean[] canBuy) {
-        super.updateData(pc, mp, lpt, pgt, pdt, ct, cv, rt, vis, canBuy);
-        this.canBuyConditions = canBuy != null ? canBuy : new boolean[0];
+    public void refreshData() {
+        super.refreshData();
 
         TradeEntry hoveredEntry = (hoveredTooltipIndex != -1 && hoveredTooltipIndex < filteredEntries.size())
                 ? filteredEntries.get(hoveredTooltipIndex) : null;

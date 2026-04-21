@@ -3,11 +3,14 @@ package org.com.arc_quest.quest.builder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import org.com.arc_quest.quest.api.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import javax.annotation.Nullable;
 
 /**
  * 流式构建 PhaseDefinition。
@@ -33,6 +36,12 @@ public final class PhaseBuilder {
     private int transitionPriorityCounter = 0;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     private String tradeShopId = null;
+    
+    // 音效配置
+    @Nullable
+    private SoundEvent phaseStartSound;
+    @Nullable
+    private SoundEvent phaseCompleteSound;
 
     private PhaseBuilder(String phaseId) {
         Objects.requireNonNull(phaseId);
@@ -144,6 +153,20 @@ public final class PhaseBuilder {
     }
 
     // ════════════════════════════════════════
+    //  音效配置
+    // ════════════════════════════════════════
+
+    public PhaseBuilder phaseStartSound(SoundEvent sound) {
+        this.phaseStartSound = sound;
+        return this;
+    }
+
+    public PhaseBuilder phaseCompleteSound(SoundEvent sound) {
+        this.phaseCompleteSound = sound;
+        return this;
+    }
+
+    // ════════════════════════════════════════
     //  视觉配置（高可扩展 API）
     // ════════════════════════════════════════
 
@@ -247,7 +270,9 @@ public final class PhaseBuilder {
                 new ArrayList<>(this.flagsOnEnter),
                 new ArrayList<>(this.flagsOnComplete),
                 this.visualConfigBuilder.build(),
-                this.tradeShopId
+                this.tradeShopId,
+                this.phaseStartSound,
+                this.phaseCompleteSound
         );
     }
 }

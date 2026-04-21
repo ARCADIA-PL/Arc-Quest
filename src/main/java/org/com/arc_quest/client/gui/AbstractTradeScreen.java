@@ -1,7 +1,6 @@
 package org.com.arc_quest.client.gui;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -12,12 +11,12 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
-import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.network.ClientTradeCache;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
 import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
@@ -29,16 +28,6 @@ public abstract class AbstractTradeScreen extends Screen {
 
     protected final String shopId;
     protected final TradeShopDefinition shop;
-    protected int[] purchaseCounts;
-    protected int[] maxPurchases;
-    protected long[] lastPurchaseTimes;
-    protected long[] purchaseGameTimes;
-    protected long[] purchaseDayTimes;
-    protected int[] cooldownTypes;
-    protected long[] cooldownValues;
-    protected int[] resetTimeTicks;
-    protected boolean[] visibility;
-    protected boolean[] canBuyConditions;
 
     protected float transitionAnim = 0f;
     protected boolean isClosing = false;
@@ -63,30 +52,10 @@ public abstract class AbstractTradeScreen extends Screen {
     private float feedbackScale = 1.0f;
     private float feedbackShake = 0f;
 
-    public AbstractTradeScreen(String title, String shopId, int[] purchaseCounts, int[] maxPurchases,
-                               long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
-                               int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility) {
-        this(title, shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
-                cooldownTypes, cooldownValues, resetTimeTicks, visibility, new boolean[0]);
-    }
-
-    public AbstractTradeScreen(String title, String shopId, int[] purchaseCounts, int[] maxPurchases,
-                               long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
-                               int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility,
-                               boolean[] canBuyConditions) {
+    public AbstractTradeScreen(String title, String shopId) {
         super(Component.translatable(title));
         this.shopId = shopId;
         this.shop = TradeRegistry.get(shopId);
-        this.purchaseCounts = purchaseCounts;
-        this.maxPurchases = maxPurchases;
-        this.lastPurchaseTimes = lastPurchaseTimes;
-        this.purchaseGameTimes = purchaseGameTimes;
-        this.purchaseDayTimes = purchaseDayTimes;
-        this.cooldownTypes = cooldownTypes;
-        this.cooldownValues = cooldownValues;
-        this.resetTimeTicks = resetTimeTicks;
-        this.visibility = visibility;
-        this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
     }
 
     @Override
@@ -120,34 +89,23 @@ public abstract class AbstractTradeScreen extends Screen {
         feedbackSuccess = true;
         feedbackAnim = 1f;
         feedbackScale = 1.15f;
-        if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.2f));
     }
 
     public void onTradeFail(String key) {
         feedbackSuccess = false;
         feedbackAnim = 1f;
         feedbackShake = 6f;
-        if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.VILLAGER_NO, 1f));
     }
 
     public String getShopId() { return shopId; }
 
-    public void updateData(int[] purchaseCounts, int[] maxPurchases, long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes, int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility) {
-        updateData(purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility, new boolean[0]);
-    }
-
-    public void updateData(int[] purchaseCounts, int[] maxPurchases, long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes, int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions) {
-        this.purchaseCounts = purchaseCounts; this.maxPurchases = maxPurchases; this.lastPurchaseTimes = lastPurchaseTimes;
-        this.purchaseGameTimes = purchaseGameTimes; this.purchaseDayTimes = purchaseDayTimes; this.cooldownTypes = cooldownTypes;
-        this.cooldownValues = cooldownValues; this.resetTimeTicks = resetTimeTicks; this.visibility = visibility;
-        this.canBuyConditions = canBuyConditions != null ? canBuyConditions : new boolean[0];
-
+    public void refreshData() {
         if (activeTooltipIndex != -1 && tooltipAlpha > 0.1f) {
             TradeEntry entry = getVisibleEntry(activeTooltipIndex);
             if (entry != null) {
                 int gi = new ArrayList<>(shop.getAllEntries()).indexOf(entry);
                 TooltipData target = calcTooltipData(entry, gi, width / 2, height / 2);
-                animBgW = 0;
+                animBgW = 0; 
             }
         }
     }
@@ -159,6 +117,7 @@ public abstract class AbstractTradeScreen extends Screen {
             ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
         }
     }
+
     @Override public boolean isPauseScreen() { return false; }
 
     @Override
@@ -191,9 +150,7 @@ public abstract class AbstractTradeScreen extends Screen {
 
         transitionAnim = QuestAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.14f : getOpenAnimSpeed(), dt);
         if (isClosing && transitionAnim <= 0.01f) {
-            if (minecraft != null) {
-                minecraft.setScreen(null);
-            }
+            if (minecraft != null) minecraft.setScreen(null);
             return;
         }
 
@@ -253,12 +210,12 @@ public abstract class AbstractTradeScreen extends Screen {
     private TooltipData calcTooltipData(TradeEntry entry, int gi, int mx, int my) {
         TooltipData d = new TooltipData();
         d.themeColor = getThemeColorForEntry(entry);
+
+        
+        ClientTradeCache cache = ClientTradeCache.INSTANCE;
         d.maxP = entry.getMaxPurchases();
-        d.purchases = gi >= 0 && gi < purchaseCounts.length ? purchaseCounts[gi] : 0;
-        d.onCd = (gi >= 0) && (gi < lastPurchaseTimes.length) && ClientCooldownHelper.isOnCooldown(
-                lastPurchaseTimes[gi], gi >= 0 && gi < purchaseGameTimes.length ? purchaseGameTimes[gi] : 0,
-                gi >= 0 && gi < purchaseDayTimes.length ? purchaseDayTimes[gi] : 0,
-                cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]);
+        d.purchases = cache.getPurchaseCount(shopId, gi);
+        d.onCd = cache.isOnCooldown(shopId, gi);
 
         int padding = 10;
         d.descLines = entry.getDescription() != null ? font.split(entry.getDescription(), 180) : new ArrayList<>();
@@ -274,10 +231,14 @@ public abstract class AbstractTradeScreen extends Screen {
         if (d.onCd) totalH += font.lineHeight + 4;
         d.h = totalH;
 
-        d.x = mx + 10;
-        d.y = my + 14;
-        if (d.x + d.w > width) d.x = mx - d.w - 6;
-        if (d.y + d.h > height) d.y = my - d.h - 6;
+        int yOffset = 18;
+        d.x = mx - (d.w / 2);
+        if (d.x < 5) d.x = 5;
+        if (d.x + d.w > width - 5) d.x = width - d.w - 5;
+        d.y = my + yOffset;
+        if (d.y + d.h > height - 5) d.y = my - d.h - yOffset;
+        if (d.y < 5) d.y = 5;
+
         return d;
     }
 
@@ -326,6 +287,7 @@ public abstract class AbstractTradeScreen extends Screen {
         float finalScale = isClosing ? scale : (scale * feedbackScale);
 
         g.pose().pushPose();
+        g.pose().translate(0, 0, 400f);
 
         float centerX = drawX + drawW / 2f;
         float centerY = drawY + drawH / 2f;
@@ -333,7 +295,7 @@ public abstract class AbstractTradeScreen extends Screen {
         g.pose().scale(finalScale, finalScale, 1f);
         g.pose().translate(-centerX, -centerY, 0);
 
-        int bgA = (int) (0xDD * tooltipAlpha);
+        int baseA = (int) (0x99 * tooltipAlpha);
         int borderA = (int) (0xFF * tooltipAlpha);
         int currentThemeColor = animThemeColor;
 
@@ -344,13 +306,15 @@ public abstract class AbstractTradeScreen extends Screen {
 
         int borderColor = (borderA << 24) | (currentThemeColor & 0xFFFFFF);
 
-        g.fill(drawX, drawY, drawX + drawW, drawY + drawH, (bgA << 24) | 0x0A0A10);
+        g.fill(drawX, drawY, drawX + drawW, drawY + drawH, (baseA << 24) | 0x050508);
+        int glowTop = QuestAnimUtil.withAlpha(currentThemeColor, (int)(65 * tooltipAlpha));
+        int glowBot = QuestAnimUtil.withAlpha(currentThemeColor, 0);
+        g.fillGradient(drawX, drawY, drawX + drawW, drawY + drawH, glowTop, glowBot);
+
         QuestAnimUtil.drawFrame(g, drawX, drawY, drawW, drawH, 1, borderColor);
 
         boolean useScissor = Math.abs(finalScale - 1.0f) < 0.01f && currentShake == 0;
-        if (useScissor) {
-            g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
-        }
+        if (useScissor) g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
 
         int padding = 10;
         int currentY = drawY + padding;
@@ -396,10 +360,7 @@ public abstract class AbstractTradeScreen extends Screen {
             int barH = 3;
             g.fill(drawX + padding, currentY, drawX + padding + barW, currentY + barH, QuestAnimUtil.withAlpha(0x333333, safeAlpha));
 
-            int barColor;
-            if (progress >= 0.99f) barColor = 0xAA3333;
-            else if (progress >= 0.75f) barColor = 0xDD9933;
-            else barColor = 0x33AA33;
+            int barColor = (progress >= 0.99f) ? 0xAA3333 : (progress >= 0.75f ? 0xDD9933 : 0x33AA33);
 
             if (progress > 0.01f) {
                 int filledW = (int)(barW * progress);
@@ -412,18 +373,13 @@ public abstract class AbstractTradeScreen extends Screen {
         }
 
         if (target.onCd) {
-            String cdText = ClientCooldownHelper.getCooldownText(
-                    lastPurchaseTimes[gi], purchaseGameTimes[gi], purchaseDayTimes[gi],
-                    cooldownTypes[gi], cooldownValues[gi], resetTimeTicks[gi]);
+            String cdText = ClientTradeCache.INSTANCE.getCooldownText(shopId, gi);
             g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cdText).getString(), drawX + padding, currentY, QuestAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
         }
 
-        if (useScissor) {
-            g.disableScissor();
-        }
+        if (useScissor) g.disableScissor();
         g.pose().popPose();
     }
-
 
     protected void drawAdaptiveIcon(GuiGraphics g, ResourceLocation loc, int x, int y, int w, int h, float alpha) {
         RenderSystem.enableBlend();

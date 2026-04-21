@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.Item;
+import net.minecraft.sounds.SoundEvent;
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.trade.api.ITradeOffer;
@@ -60,6 +61,13 @@ public final class TradeEntryBuilder {
     private int sortOrder = 0;
     private int themeColor = -1;  // -1 表示使用商店默认
     @Nullable private Predicate<ServerPlayer> purchaseResetCondition;
+    
+    // 音效配置（支持自定义 SoundEvent，null 则使用全局默认）
+    @Nullable private SoundEvent purchaseSuccessSound;
+    @Nullable private SoundEvent purchaseFailSound;
+    @Nullable private SoundEvent cooldownSound;
+    @Nullable private SoundEvent limitReachedSound;
+    @Nullable private SoundEvent conditionFailSound;
 
     private TradeEntryBuilder(String entryId) {
         this.entryId = Objects.requireNonNull(entryId);
@@ -313,6 +321,37 @@ public final class TradeEntryBuilder {
         return this;
     }
 
+    /**
+     * 设置购买成功时的自定义音效。
+     */
+    public TradeEntryBuilder purchaseSuccessSound(SoundEvent sound) {
+        this.purchaseSuccessSound = sound;
+        return this;
+    }
+
+    /**
+     * 设置购买失败/不可购买时的自定义音效。
+     */
+    public TradeEntryBuilder purchaseFailSound(SoundEvent sound) {
+        this.purchaseFailSound = sound;
+        return this;
+    }
+
+    public TradeEntryBuilder cooldownSound(SoundEvent sound) {
+        this.cooldownSound = sound;
+        return this;
+    }
+
+    public TradeEntryBuilder limitReachedSound(SoundEvent sound) {
+        this.limitReachedSound = sound;
+        return this;
+    }
+
+    public TradeEntryBuilder conditionFailSound(SoundEvent sound) {
+        this.conditionFailSound = sound;
+        return this;
+    }
+
     // ════════════════════════════════════════
     //  构建
     // ════════════════════════════════════════
@@ -330,7 +369,8 @@ public final class TradeEntryBuilder {
                 category, visibleCondition, canBuyCondition,
                 cooldownType, cooldownValue, resetTimeTicks,
                 maxPurchases, rewardIcon, costIcon, sortOrder, themeColor,
-                purchaseResetCondition
+                purchaseResetCondition, purchaseSuccessSound, purchaseFailSound,
+                cooldownSound, limitReachedSound, conditionFailSound
         );
     }
 }

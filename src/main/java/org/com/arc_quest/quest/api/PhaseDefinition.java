@@ -1,11 +1,15 @@
 package org.com.arc_quest.quest.api;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import javax.annotation.Nullable;
 
 /**
  * 不可变阶段定义，任务由有序 Phase 构成。
@@ -21,8 +25,14 @@ public final class PhaseDefinition {
     private final List<String> flagsToSetOnEnter;
     private final List<String> flagsToSetOnComplete;
     private final QuestVisualConfig visualConfig;
-    @org.jetbrains.annotations.Nullable
+    @Nullable
     private final String tradeShopId;
+    
+    // 阶段音效
+    @Nullable
+    private final SoundEvent phaseStartSound;
+    @Nullable
+    private final SoundEvent phaseCompleteSound;
 
     public PhaseDefinition(String phaseId,
                            Component displayName,
@@ -47,6 +57,22 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig,
                            @org.jetbrains.annotations.Nullable String tradeShopId) {
+        this(phaseId, displayName, objectives, transitions, choices, phaseRewards,
+                flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null);
+    }
+
+    public PhaseDefinition(String phaseId,
+                           Component displayName,
+                           List<ObjectiveEntry> objectives,
+                           List<PhaseTransition> transitions,
+                           List<ChoiceOption> choices,
+                           List<IReward> phaseRewards,
+                           List<String> flagsToSetOnEnter,
+                           List<String> flagsToSetOnComplete,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String tradeShopId,
+                           @Nullable SoundEvent phaseStartSound,
+                           @Nullable SoundEvent phaseCompleteSound) {
         Objects.requireNonNull(phaseId);
         Objects.requireNonNull(displayName);
         if (objectives.isEmpty()) {
@@ -62,6 +88,8 @@ public final class PhaseDefinition {
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
         this.visualConfig = visualConfig != null ? visualConfig : QuestVisualConfig.EMPTY;
         this.tradeShopId = tradeShopId;
+        this.phaseStartSound = phaseStartSound;
+        this.phaseCompleteSound = phaseCompleteSound;
     }
 
     public String getPhaseId() {
@@ -136,6 +164,12 @@ public final class PhaseDefinition {
     public String getTradeShopId() {
         return this.tradeShopId;
     }
+
+    @Nullable
+    public SoundEvent getPhaseStartSound() { return phaseStartSound; }
+
+    @Nullable
+    public SoundEvent getPhaseCompleteSound() { return phaseCompleteSound; }
 
     public boolean hasTradeShop() {
         return this.tradeShopId != null;
