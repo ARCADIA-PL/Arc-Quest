@@ -53,6 +53,8 @@ public class S2COpenTradePacket {
     private final int[] resetTimeTicks;
     private final boolean[] visibility;
     private final boolean[] canBuyConditions;
+    private final String openSoundId;  // 商店打开音效 ID
+    private final String closeSoundId;  // 商店关闭音效 ID
 
     public S2COpenTradePacket(Mode mode, String shopId,
                               int[] purchaseCounts, int[] maxPurchases,
@@ -60,7 +62,8 @@ public class S2COpenTradePacket {
                               long[] purchaseGameTimes, long[] purchaseDayTimes,
                               int[] cooldownTypes, long[] cooldownValues,
                               int[] resetTimeTicks, boolean[] visibility,
-                              boolean[] canBuyConditions) {
+                              boolean[] canBuyConditions,
+                              String openSoundId, String closeSoundId) {
         this.mode = mode;
         this.shopId = shopId;
         this.entryId = null;
@@ -76,6 +79,8 @@ public class S2COpenTradePacket {
         this.resetTimeTicks = resetTimeTicks;
         this.visibility = visibility;
         this.canBuyConditions = canBuyConditions;
+        this.openSoundId = openSoundId;
+        this.closeSoundId = closeSoundId;
     }
 
     public S2COpenTradePacket(Mode mode, String shopId, String entryId, FailReason failReason, String errorKey) {
@@ -94,6 +99,8 @@ public class S2COpenTradePacket {
         this.resetTimeTicks = null;
         this.visibility = null;
         this.canBuyConditions = null;
+        this.openSoundId = null;
+        this.closeSoundId = null;
     }
 
     public static S2COpenTradePacket close() {
@@ -104,20 +111,24 @@ public class S2COpenTradePacket {
                                               int[] purchaseCounts, int[] maxPurchases,
                                               long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
                                               int[] cooldownTypes, long[] cooldownValues,
-                                              int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions) {
+                                              int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions,
+                                              String openSoundId, String closeSoundId) {
         return new S2COpenTradePacket(Mode.OPEN_FULL, shopId,
                 purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
-                cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
+                cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions,
+                openSoundId, closeSoundId);
     }
 
     public static S2COpenTradePacket openSimple(String shopId,
                                                 int[] purchaseCounts, int[] maxPurchases,
                                                 long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
                                                 int[] cooldownTypes, long[] cooldownValues,
-                                                int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions) {
+                                                int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions,
+                                                String openSoundId, String closeSoundId) {
         return new S2COpenTradePacket(Mode.OPEN_SIMPLE, shopId,
                 purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
-                cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
+                cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions,
+                openSoundId, closeSoundId);
     }
 
     public static S2COpenTradePacket tradeSuccess(String shopId, String entryId) {
@@ -163,6 +174,9 @@ public class S2COpenTradePacket {
                 }
                 buf.writeBoolean(canBuyConditions != null && canBuyConditions[i]);
             }
+            // 写入商店音效 ID
+            buf.writeUtf(openSoundId != null ? openSoundId : "");
+            buf.writeUtf(closeSoundId != null ? closeSoundId : "");
         } else if (mode == Mode.TRADE_FAIL || mode == Mode.TRADE_SUCCESS) {
             buf.writeUtf(entryId != null ? entryId : "");
             if (mode == Mode.TRADE_FAIL) {
@@ -201,8 +215,12 @@ public class S2COpenTradePacket {
                 vis[i] = buf.readBoolean();
                 canBuy[i] = buf.readBoolean();
             }
+            // 读取商店音效 ID
+            String openSoundId = buf.readUtf();
+            String closeSoundId = buf.readUtf();
             return new S2COpenTradePacket(mode, shopId, purchases, maxPurch, lastTimes,
-                    purchaseGTs, purchaseDTs, cdTypes, cdValues, resetTicks, vis, canBuy);
+                    purchaseGTs, purchaseDTs, cdTypes, cdValues, resetTicks, vis, canBuy,
+                    openSoundId, closeSoundId);
         } else if (mode == Mode.TRADE_FAIL) {
             return new S2COpenTradePacket(mode, shopId, buf.readUtf(), buf.readEnum(FailReason.class), buf.readUtf());
         } else if (mode == Mode.TRADE_SUCCESS) {
@@ -221,6 +239,9 @@ public class S2COpenTradePacket {
                             pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
                             pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
 
+                    // 播放商店打开音效
+                    ClientTradeCache.INSTANCE.playOpenSound(pkt.shopId, pkt.openSoundId);
+
                     if (mc.screen instanceof DialogueScreen) {
                         TradeScreen.setParentScreen(mc.screen);
                     }
@@ -238,6 +259,9 @@ public class S2COpenTradePacket {
                     ClientTradeCache.INSTANCE.updateSession(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
                             pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
                             pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
+
+                    // 播放商店打开音效
+                    ClientTradeCache.INSTANCE.playOpenSound(pkt.shopId, pkt.openSoundId);
 
                     if (mc.screen instanceof DialogueScreen) {
                         SimpleTradePanel.setParentScreen(mc.screen);
@@ -265,7 +289,10 @@ public class S2COpenTradePacket {
                 }
 
                 case CLOSE -> {
-                    if (mc.screen instanceof AbstractTradeScreen) {
+                    if (mc.screen instanceof AbstractTradeScreen tradeScreen) {
+                        // 播放商店关闭音效
+                        ClientTradeCache.INSTANCE.playCloseSound(tradeScreen.getShopId(), pkt.closeSoundId);
+                        
                         TradeScreen.setParentScreen(null);
                         SimpleTradePanel.setParentScreen(null);
                         mc.setScreen(null);

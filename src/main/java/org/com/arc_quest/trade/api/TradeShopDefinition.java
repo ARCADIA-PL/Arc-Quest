@@ -3,6 +3,7 @@ package org.com.arc_quest.trade.api;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import org.com.arc_quest.quest.api.ICondition;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,6 +27,10 @@ public final class TradeShopDefinition {
     private final ICondition openCondition;
     private final boolean simpleMode;
     private final int themeColor;  // 商店主题色（ARGB）
+    @Nullable
+    private final SoundEvent openSound;  // 商店打开音效
+    @Nullable
+    private final SoundEvent closeSound;  // 商店关闭音效
 
     public TradeShopDefinition(String shopId,
                                Component displayName,
@@ -34,7 +39,9 @@ public final class TradeShopDefinition {
                                LinkedHashMap<String, TradeEntry> entries,
                                @Nullable ICondition openCondition,
                                boolean simpleMode,
-                               int themeColor) {
+                               int themeColor,
+                               @Nullable SoundEvent openSound,
+                               @Nullable SoundEvent closeSound) {
         Objects.requireNonNull(shopId);
         Objects.requireNonNull(displayName);
         if (entries.isEmpty()) {
@@ -48,6 +55,8 @@ public final class TradeShopDefinition {
         this.openCondition = openCondition;
         this.simpleMode = simpleMode;
         this.themeColor = themeColor;
+        this.openSound = openSound;
+        this.closeSound = closeSound;
     }
 
     public String getShopId() { return shopId; }
@@ -96,6 +105,18 @@ public final class TradeShopDefinition {
      * 获取商店主题色（ARGB 整数）
      */
     public int getThemeColor() { return themeColor; }
+
+    /**
+     * 获取商店打开音效
+     */
+    @Nullable
+    public SoundEvent getOpenSound() { return openSound; }
+
+    /**
+     * 获取商店关闭音效
+     */
+    @Nullable
+    public SoundEvent getCloseSound() { return closeSound; }
 
     /**
      * 检查开启条件

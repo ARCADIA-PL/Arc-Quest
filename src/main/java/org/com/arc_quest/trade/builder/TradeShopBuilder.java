@@ -1,8 +1,10 @@
 package org.com.arc_quest.trade.builder;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.trade.api.TradeCategory;
@@ -48,6 +50,8 @@ public final class TradeShopBuilder {
     @Nullable private ICondition openCondition;
     private boolean simpleMode = false;
     private int themeColor = 0xE0C860;  // 默认金色
+    @Nullable private SoundEvent openSound;
+    @Nullable private SoundEvent closeSound;
 
     private TradeShopBuilder(String shopId) {
         this.shopId = Objects.requireNonNull(shopId);
@@ -162,6 +166,74 @@ public final class TradeShopBuilder {
     }
 
     // ════════════════════════════════════════
+    //  音效配置
+    // ════════════════════════════════════════
+
+    /**
+     * 设置商店打开时的音效。
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * .openSound(SoundEvents.UI_BUTTON_CLICK.get())
+     * }</pre>
+     *
+     * @param sound 音效事件
+     * @return 当前构建器
+     */
+    public TradeShopBuilder openSound(SoundEvent sound) {
+        this.openSound = sound;
+        return this;
+    }
+
+    /**
+     * 设置商店打开时的音效（支持 Holder.Reference）。
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * .openSound(SoundEvents.UI_BUTTON_CLICK)
+     * }</pre>
+     *
+     * @param sound 音效引用
+     * @return 当前构建器
+     */
+    public TradeShopBuilder openSound(Holder.Reference<SoundEvent> sound) {
+        this.openSound = sound.get();
+        return this;
+    }
+
+    /**
+     * 设置商店关闭时的音效。
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * .closeSound(SoundEvents.UI_BUTTON_CLICK.get())
+     * }</pre>
+     *
+     * @param sound 音效事件
+     * @return 当前构建器
+     */
+    public TradeShopBuilder closeSound(SoundEvent sound) {
+        this.closeSound = sound;
+        return this;
+    }
+
+    /**
+     * 设置商店关闭时的音效（支持 Holder.Reference）。
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * .closeSound(SoundEvents.UI_BUTTON_CLICK)
+     * }</pre>
+     *
+     * @param sound 音效引用
+     * @return 当前构建器
+     */
+    public TradeShopBuilder closeSound(Holder.Reference<SoundEvent> sound) {
+        this.closeSound = sound.get();
+        return this;
+    }
+
+    // ════════════════════════════════════════
     //  分类
     // ════════════════════════════════════════
 
@@ -250,7 +322,8 @@ public final class TradeShopBuilder {
                 shopId, displayName, description,
                 List.copyOf(categories),
                 new LinkedHashMap<>(entries),
-                openCondition, simpleMode, themeColor
+                openCondition, simpleMode, themeColor,
+                openSound, closeSound
         );
     }
 

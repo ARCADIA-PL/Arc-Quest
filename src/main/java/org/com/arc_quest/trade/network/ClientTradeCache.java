@@ -1,8 +1,10 @@
 package org.com.arc_quest.trade.network;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 
+import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.client.util.GuiSoundManager;
 import org.com.arc_quest.trade.api.TradeEntry;
@@ -31,6 +33,62 @@ public final class ClientTradeCache {
     private final Map<String, TradeSessionData> activeSessions = new HashMap<>();
 
     private ClientTradeCache() {
+    }
+
+    /**
+     * 播放商店打开音效。
+     *
+     * @param shopId 商店 ID
+     * @param openSoundId 打开音效的资源位置字符串
+     */
+    public void playOpenSound(String shopId, String openSoundId) {
+        if (openSoundId == null || openSoundId.isEmpty()) {
+            LOGGER.debug("[TradeCache] No open sound configured for shop: {}", shopId);
+            return;
+        }
+
+        try {
+            ResourceLocation rl = ResourceLocation.tryParse(openSoundId);
+            if (rl != null) {
+                SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(rl);
+                if (sound != null) {
+                    GuiSoundManager.play(sound);
+                    LOGGER.debug("[TradeCache] Played open sound for shop: {}", shopId);
+                } else {
+                    LOGGER.warn("[TradeCache] Open sound not found: {}", openSoundId);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("[TradeCache] Failed to play open sound: {}", openSoundId, e);
+        }
+    }
+
+    /**
+     * 播放商店关闭音效。
+     *
+     * @param shopId 商店 ID
+     * @param closeSoundId 关闭音效的资源位置字符串
+     */
+    public void playCloseSound(String shopId, String closeSoundId) {
+        if (closeSoundId == null || closeSoundId.isEmpty()) {
+            LOGGER.debug("[TradeCache] No close sound configured for shop: {}", shopId);
+            return;
+        }
+
+        try {
+            ResourceLocation rl = ResourceLocation.tryParse(closeSoundId);
+            if (rl != null) {
+                SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(rl);
+                if (sound != null) {
+                    GuiSoundManager.play(sound);
+                    LOGGER.debug("[TradeCache] Played close sound for shop: {}", shopId);
+                } else {
+                    LOGGER.warn("[TradeCache] Close sound not found: {}", closeSoundId);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("[TradeCache] Failed to play close sound: {}", closeSoundId, e);
+        }
     }
 
     /**

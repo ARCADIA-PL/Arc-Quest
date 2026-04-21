@@ -2,8 +2,10 @@ package org.com.arc_quest.trade.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.api.event.TradeItemPurchasedEvent;
 import org.com.arc_quest.api.event.TradeOpenedEvent;
 import net.minecraftforge.network.NetworkEvent;
@@ -21,6 +23,7 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -148,15 +151,30 @@ public class C2SRequestTradePacket {
         }
 
         TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
+        
+        // 获取商店音效 ID
+        String openSoundId = shop.getOpenSound() != null ? 
+                ResourceLocation.fromNamespaceAndPath(
+                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getNamespace(),
+                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getPath()
+                ).toString() : "";
+        String closeSoundId = shop.getCloseSound() != null ? 
+                ResourceLocation.fromNamespaceAndPath(
+                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getNamespace(),
+                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getPath()
+                ).toString() : "";
+        
         S2COpenTradePacket response = simple
                 ? S2COpenTradePacket.openSimple(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
                         snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
                         snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                        snap.visibility(), snap.canBuyConditions())
+                        snap.visibility(), snap.canBuyConditions(),
+                        openSoundId, closeSoundId)
                 : S2COpenTradePacket.openFull(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
                         snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
                         snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                        snap.visibility(), snap.canBuyConditions());
+                        snap.visibility(), snap.canBuyConditions(),
+                        openSoundId, closeSoundId);
 
         ArcQuestNetwork.CHANNEL.send(
                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
@@ -203,15 +221,29 @@ public class C2SRequestTradePacket {
         TradeSession session = new TradeSession(player, shop);
         TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
 
+        // 获取商店音效 ID
+        String openSoundId = shop.getOpenSound() != null ? 
+                ResourceLocation.fromNamespaceAndPath(
+                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getNamespace(),
+                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getPath()
+                ).toString() : "";
+        String closeSoundId = shop.getCloseSound() != null ? 
+                ResourceLocation.fromNamespaceAndPath(
+                    Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getNamespace(),
+                    Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getPath()
+                ).toString() : "";
+
         S2COpenTradePacket refreshPkt = (clientScreenType == ScreenType.SIMPLE)
                 ? S2COpenTradePacket.openSimple(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
                         snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
                         snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                        snap.visibility(), snap.canBuyConditions())
+                        snap.visibility(), snap.canBuyConditions(),
+                        openSoundId, closeSoundId)
                 : S2COpenTradePacket.openFull(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
                         snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
                         snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                        snap.visibility(), snap.canBuyConditions());
+                        snap.visibility(), snap.canBuyConditions(),
+                        openSoundId, closeSoundId);
 
         ArcQuestNetwork.CHANNEL.send(
                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
