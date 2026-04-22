@@ -7,6 +7,7 @@ import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.client.gui.gacha.GachaResultRenderer;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.SplashType;
@@ -21,6 +22,13 @@ public class ClientQuestEvents {
         QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
                 event.getWindow().getGuiScaledWidth(),
                 event.getWindow().getGuiScaledHeight());
+
+        if (GachaResultRenderer.INSTANCE.isActive()) {
+            GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(),
+                    event.getWindow().getGuiScaledWidth(),
+                    event.getWindow().getGuiScaledHeight(),
+                    event.getPartialTick());
+        }
     }
 
     @SubscribeEvent
@@ -30,21 +38,53 @@ public class ClientQuestEvents {
                     event.getScreen().width,
                     event.getScreen().height);
         }
+
+        if (GachaResultRenderer.INSTANCE.isActive()) {
+            GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(),
+                    event.getScreen().width,
+                    event.getScreen().height,
+                    event.getPartialTick());
+        }
     }
 
     @SubscribeEvent
     public static void onScreenMouseClickPre(ScreenEvent.MouseButtonPressed.Pre event) {
-        if (QuestSplashRenderer.isActive()) event.setCanceled(true);
+        if (QuestSplashRenderer.isActive()) {
+            event.setCanceled(true);
+            return;
+        }
+
+        if (GachaResultRenderer.INSTANCE.isActive()) {
+            event.setCanceled(true);
+            if (event.getButton() == 0) {
+                GachaResultRenderer.INSTANCE.mouseClicked();
+            }
+        }
     }
 
     @SubscribeEvent
     public static void onScreenKeyPressPre(ScreenEvent.KeyPressed.Pre event) {
-        if (QuestSplashRenderer.isActive()) event.setCanceled(true);
+        if (QuestSplashRenderer.isActive()) {
+            event.setCanceled(true);
+            return;
+        }
+
+        if (GachaResultRenderer.INSTANCE.isActive()) {
+            event.setCanceled(true);
+        }
     }
 
     @SubscribeEvent
     public static void onScreenScrollPre(ScreenEvent.MouseScrolled.Pre event) {
-        if (QuestSplashRenderer.isActive()) event.setCanceled(true);
+        if (QuestSplashRenderer.isActive()) {
+            event.setCanceled(true);
+            return;
+        }
+
+        // 【全局滚轮锁定】
+        if (GachaResultRenderer.INSTANCE.isActive()) {
+            event.setCanceled(true);
+        }
     }
 
     public static void handleVisualTrigger(QuestDefinition quest, SplashType type, String phaseName) {

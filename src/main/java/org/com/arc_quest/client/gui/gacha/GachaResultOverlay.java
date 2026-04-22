@@ -7,7 +7,6 @@ import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import org.lwjgl.glfw.GLFW;
 
 public class GachaResultOverlay implements IGuiOverlay {
 
@@ -37,7 +36,7 @@ public class GachaResultOverlay implements IGuiOverlay {
     @SubscribeEvent
     public void onMouseClick(InputEvent.MouseButton.Pre event) {
         if (GachaResultRenderer.INSTANCE.isActive() && event.getButton() == 0) {
-            if (GachaResultRenderer.INSTANCE.onClose()) {
+            if (GachaResultRenderer.INSTANCE.mouseClicked()) {
                 event.setCanceled(true);
             }
         }

@@ -9,6 +9,7 @@ import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class GachaPreviewPanel {
@@ -21,10 +22,18 @@ public class GachaPreviewPanel {
     private float[] hoverAnims;
 
     private float btnHoverAnim = 0f;
-
-    // 【新增】按钮反馈动画（对标商店系统）
     private float feedbackAnim = 0f;
     private boolean feedbackSuccess = false;
+
+    private int lastHoveredIndex = -1;
+    private float previewSwitchAnim = 0f;
+
+    private int lastHistorySize = -1;
+    private float logRollAnim = 0f;
+
+    // ★ 架构核心：本地视觉快照（防止网络包到达时直接产生剧透）
+    private int snapshotPityProgress = -1;
+    private List<ClientGachaCache.DrawRecord> snapshotHistory = new ArrayList<>();
 
     public GachaPreviewPanel(GachaScreen parent) {
         this.parent = parent;
@@ -36,211 +45,349 @@ public class GachaPreviewPanel {
         if (hoverAnims == null || hoverAnims.length != parent.getShopDef().getGachaPool().getItems().size()) {
             hoverAnims = new float[parent.getShopDef().getGachaPool().getItems().size()];
         }
+        // 初始化时立刻拉取一次最新数据作为底色
+        updateDataSnapshot();
     }
 
-    public void render(GuiGraphics g, int mx, int my, float dt, float alpha, boolean waiting) {
-        int pw = (int)(width * 0.8f);
-        int ph = (int)(height * 0.85f);
-        int px = (width - pw) / 2;
-        int py = (height - ph) / 2;
+    // ★ 同步核心接口：由 GachaScreen 严格把控调用时机！
+    public void updateDataSnapshot() {
+        this.snapshotPityProgress = ClientGachaCache.INSTANCE.getPityProgress(parent.getShopId());
+        // 必须深拷贝历史记录，防止渲染进程读取时发生并发异常或内容变动
+        this.snapshotHistory = new ArrayList<>(ClientGachaCache.INSTANCE.getDrawHistory(parent.getShopId()));
+    }
+
+    public void render(GuiGraphics g, int mx, int my, float dt, float easeProgress, float contentScale, boolean waiting, boolean isClosing, float rollTransition) {
+        if (contentScale <= 0.01f) return;
+
+        float collapseEase = HudAnimUtil.easeInCubic(rollTransition);
+        float globalAlphaMod = 1.0f - collapseEase;
+        easeProgress *= globalAlphaMod;
+
+        int bgAlpha = (int) (0x77 * easeProgress);
+        if (bgAlpha > 0) g.fill(0, 0, width, height, bgAlpha << 24);
+
+        if (easeProgress <= 0.01f) return;
 
         g.pose().pushPose();
-        g.pose().translate(0, (1f - alpha) * 40f, 0); // 丝滑上浮入场
 
-        // 1. 主背景板
-        g.fill(px, py, px + pw, py + ph, (int)(180 * alpha) << 24 | 0x0A0A10);
-        HudAnimUtil.drawFrame(g, px, py, pw, ph, 1, HudAnimUtil.withAlpha(parent.getShopDef().getThemeColor(), (int)(150 * alpha)));
+        if (rollTransition > 0) {
+            float shrink = 1.0f - collapseEase * 0.18f; // 加大一点坍缩深度
+            g.pose().translate(width / 2f, height / 2f, 0);
+            g.pose().scale(shrink, shrink, 1f);
+            g.pose().translate(-width / 2f, -height / 2f, 0);
+        }
 
-        // 2. 标题区
-        g.drawCenteredString(Minecraft.getInstance().font, parent.getShopDef().getDisplayName(), width / 2, py + 16, HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)));
+        float slideOffset = isClosing ? (1.0f - easeProgress) * 250f : 0f;
+        int mainCX = width / 2;
 
-        // 3. 保底进度区 (左侧)
-        renderPityInfo(g, px + 20, py + 40, pw / 3, ph - 100, alpha);
+        // ★ 尺寸自适应宽容度升级：留出合理空间，极限下允许重叠
+        int gridW = Math.min(520, width - 240);
+        if (gridW < 240) gridW = 240;
 
-        // 4. 奖池网格渲染 (右侧/中侧)
-        int gridX = px + pw / 3 + 40;
-        int gridY = py + 40;
-        int gridW = pw - (pw / 3 + 60);
-        int gridH = ph - 100;
-        renderPoolGrid(g, gridX, gridY, gridW, gridH, mx, my, dt, alpha);
+        int gridX = mainCX - (gridW / 2);
+        int gridY = (int) (height * 0.38f);
+        int gridH = (int) (height * 0.42f);
 
-        // 5. 抽奖按钮 (底侧居中)
-        renderDrawButton(g, px + pw/2 - 80, py + ph - 50, 160, 36, mx, my, dt, alpha, waiting);
+        // 1. 中心组件
+        g.pose().pushPose();
+        g.pose().translate(slideOffset, 0, 0);
+
+        renderTopPreview(g, mainCX, contentScale, easeProgress);
+        renderItemGrid(g, gridX, gridY, gridW, gridH, mx - (int)slideOffset, my, dt, easeProgress, contentScale);
+
+        int btnW = 220;
+        int btnX = mainCX - (btnW / 2);
+        int btnY = height - (int)(height * 0.12f) - 15;
+        renderGlassButton(g, btnX, btnY, btnW, 30, mx - (int)slideOffset, my, dt, easeProgress, contentScale, waiting);
+        g.pose().popPose();
+
+        // 2. 右翼终端
+        g.pose().pushPose();
+        g.pose().translate(-slideOffset, 0, 0);
+
+        // ★ 高级自适应：抛弃粗暴的隐藏，改为平滑缩放
+        int requiredTermW = 160;
+        int termX = width - 15 - requiredTermW; // 死死锚定右侧15像素边缘
+        int termH = height - 60;
+
+        float termScale = 1.0f;
+        if (width < 700) {
+            termScale = Math.max(0.6f, (float)width / 700f); // 极限压缩至 60% 保证可见
+        }
+
+        renderRightTerminalTracker(g, termX, 30, requiredTermW, termH, dt, easeProgress, contentScale * termScale);
+        g.pose().popPose();
 
         g.pose().popPose();
     }
 
-    private void renderPityInfo(GuiGraphics g, int x, int y, int w, int h, float alpha) {
-        var shopDef = parent.getShopDef();
-        int pityThreshold = shopDef.getPityConfig() != null ? shopDef.getPityConfig().getPityThreshold() : 0;
-        int progressPercent = ClientGachaCache.INSTANCE.getPityProgressPercent(parent.getShopId(), pityThreshold);
-        int remaining = ClientGachaCache.INSTANCE.getPityRemaining(parent.getShopId(), pityThreshold);
+    private void renderTopPreview(GuiGraphics g, int cx, float scale, float alpha) {
+        int topH = (int) (height * 0.3f);
+        int cy = topH / 2 + 10;
 
-        g.drawString(Minecraft.getInstance().font, "保底进度", x, y, HudAnimUtil.withAlpha(0xAAAAAA, (int)(255 * alpha)), true);
+        g.pose().pushPose();
+        g.pose().translate(cx, cy, 0);
+        g.pose().scale(scale, scale, 1f);
 
-        // 进度条背景
-        g.fill(x, y + 16, x + w - 20, y + 20, HudAnimUtil.withAlpha(0x333333, (int)(255 * alpha)));
-        // 进度条填充
-        int fillW = (int)((w - 20) * (progressPercent / 100f));
-        if (fillW > 0) {
-            g.fill(x, y + 16, x + fillW, y + 20, HudAnimUtil.withAlpha(shopDef.getThemeColor(), (int)(255 * alpha)));
-            g.fill(x + fillW - 2, y + 15, x + fillW, y + 21, HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha))); // 高光头
+        g.pose().pushPose();
+        g.pose().scale(1.5f, 1.5f, 1f);
+        g.drawCenteredString(Minecraft.getInstance().font, parent.getShopDef().getDisplayName(), 0, - (cy / 2), HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)));
+        g.pose().popPose();
+
+        List<GachaItem> items = parent.getShopDef().getGachaPool().getItems();
+        if (lastHoveredIndex >= 0 && lastHoveredIndex < items.size()) {
+            GachaItem item = items.get(lastHoveredIndex);
+            int themeC = parent.getShopDef().getEffectiveThemeColor(item);
+
+            previewSwitchAnim = HudAnimUtil.step(previewSwitchAnim, 1f, 10f, 0.016f);
+            float ease = HudAnimUtil.easeOutCubic(previewSwitchAnim);
+            int safeA = (int)(255 * alpha * ease);
+            float pulseScale = 1.0f + (float)Math.sin(Util.getMillis() / 600.0) * 0.02f;
+
+            float breatheAlpha = 0.6f + 0.4f * (float)Math.sin(Util.getMillis() / 250.0);
+            int glowA = (int)(120 * alpha * ease * breatheAlpha);
+
+            g.fill(-40, 25, 40, 27, HudAnimUtil.withAlpha(themeC, safeA));
+            g.fillGradient(-50, 0, 50, 25, 0x00000000, HudAnimUtil.withAlpha(themeC, glowA));
+
+            g.pose().pushPose();
+            g.pose().translate(0, 5, 0);
+            g.pose().scale(2.5f * pulseScale, 2.5f * pulseScale, 1f);
+            g.pose().translate(-8, -8, 0);
+            g.renderItem(item.getItemStack(), 0, 0);
+            g.pose().popPose();
+
+            g.drawCenteredString(Minecraft.getInstance().font, item.getItemStack().getHoverName().getString(), 0, 35, HudAnimUtil.withAlpha(themeC, safeA));
+            renderCompactPityBar(g, 0, 50, 100, 4, safeA, themeC);
+        } else {
+            g.drawCenteredString(Minecraft.getInstance().font, "// SELECT TARGET //", 0, 0, HudAnimUtil.withAlpha(0x555555, (int)(255 * alpha)));
         }
-
-        String countText = remaining > 0 ? "距离保底还剩: " + remaining + " 次" : (pityThreshold == 0 ? "无保底" : "下次必出！");
-        g.drawString(Minecraft.getInstance().font, countText, x, y + 28, HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)), true);
+        g.pose().popPose();
     }
 
-    private void renderPoolGrid(GuiGraphics g, int x, int y, int w, int h, int mx, int my, float dt, float alpha) {
-        List<GachaItem> items = parent.getShopDef().getGachaPool().getItems();
-        int cols = Math.max(1, w / 70);
-        int gap = 10;
-        int cardSize = (w - (cols - 1) * gap) / cols;
+    private void renderCompactPityBar(GuiGraphics g, int centerX, int y, int w, int h, int alpha, int themeC) {
+        var shopDef = parent.getShopDef();
+        int pityThreshold = shopDef.getPityConfig() != null ? shopDef.getPityConfig().getPityThreshold() : 0;
+        if (pityThreshold <= 0) return;
 
+        // ★ 核心改动：仅从快照中读取进度！
+        int current = this.snapshotPityProgress;
+        if (current < 0) current = 0;
+        float percent = (float) current / pityThreshold;
+
+        int startX = centerX - w / 2;
+        g.fill(startX, y, startX + w, y + h, HudAnimUtil.withAlpha(0x222222, alpha));
+        int fillW = (int) (w * percent);
+        g.fill(startX, y, startX + fillW, y + h, HudAnimUtil.withAlpha(themeC, alpha));
+
+        String text = current + "/" + pityThreshold;
+        g.pose().pushPose();
+        g.pose().scale(0.65f, 0.65f, 1f);
+        g.drawCenteredString(Minecraft.getInstance().font, text, (int)(centerX / 0.65f), (int)((y + h + 2) / 0.65f), HudAnimUtil.withAlpha(0xAAAAAA, alpha));
+        g.pose().popPose();
+    }
+
+    private void renderItemGrid(GuiGraphics g, int x, int y, int w, int h, int mx, int my, float dt, float alpha, float contentScale) {
+        List<GachaItem> items = parent.getShopDef().getGachaPool().getItems();
+
+        int gap = 8;
+        int cols = Math.max(4, (w + gap) / 80);
+        int cardW = (w - (cols - 1) * gap) / cols;
+        int cardH = (int) (cardW * 9.0f / 16.0f);
+
+        int totalRows = (int) Math.ceil((double) items.size() / cols);
+        int maxScroll = Math.max(0, totalRows * (cardH + gap) - h);
+
+        targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
         scrollOffset += (targetScroll - scrollOffset) * Math.min(1.0, dt * 15.0);
 
-        g.enableScissor(x, y, x + w, y + h);
+        g.enableScissor(x - 20, y - 10, x + w + 20, y + h + 10);
+        int currentHover = -1;
+
         for (int i = 0; i < items.size(); i++) {
             GachaItem item = items.get(i);
-            int row = i / cols;
             int col = i % cols;
-            int drawX = x + col * (cardSize + gap);
-            int drawY = y + row * (cardSize + gap) - (int)scrollOffset;
+            int row = i / cols;
 
-            if (drawY + cardSize < y || drawY > y + h) continue; // Culling
+            int drawX = x + col * (cardW + gap);
+            int drawY = y + row * (cardH + gap) - (int)scrollOffset;
 
-            boolean hov = mx >= drawX && mx < drawX + cardSize && my >= drawY && my < drawY + cardSize && my >= y && my <= y + h;
-            hoverAnims[i] = HudAnimUtil.step(hoverAnims[i], hov ? 1f : 0f, 10f, dt);
+            if (drawY + cardH < y - 20 || drawY > y + h + 20) continue;
+
+            boolean hov = contentScale >= 0.99f && mx >= drawX && mx < drawX + cardW && my >= drawY && my < drawY + cardH;
+            if (hov) currentHover = i;
+
+            hoverAnims[i] = HudAnimUtil.step(hoverAnims[i], hov ? 1f : 0f, 15f, dt);
             float hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
-
             int themeC = parent.getShopDef().getEffectiveThemeColor(item);
-            int bgA = (int) ((0x15 + 0x33 * hEase) * alpha);
-            int bdA = (int) ((0x44 + 0x88 * hEase) * alpha);
+            float cardScale = 1.0f + hEase * 0.05f;
 
-            float scale = 1.0f + hEase * 0.05f;
             g.pose().pushPose();
-            g.pose().translate(drawX + cardSize/2f, drawY + cardSize/2f, 0);
-            g.pose().scale(scale, scale, 1f);
-            g.pose().translate(-(drawX + cardSize/2f), -(drawY + cardSize/2f), 0);
+            g.pose().translate(drawX + cardW/2f, drawY + cardH/2f, 0);
+            g.pose().scale(cardScale * contentScale, cardScale * contentScale, 1f);
+            g.pose().translate(-(drawX + cardW/2f), -(drawY + cardH/2f), 0);
 
-            // 卡片底板
-            g.fill(drawX, drawY, drawX + cardSize, drawY + cardSize, (bgA << 24) | 0x05050A);
-            g.fillGradient(drawX, drawY, drawX + cardSize, drawY + cardSize, HudAnimUtil.withAlpha(themeC, (int)(80 * alpha * hEase)), 0);
-            HudAnimUtil.drawFrame(g, drawX, drawY, cardSize, cardSize, 1, (bdA << 24) | (themeC & 0xFFFFFF));
+            int safeA = (int)(255 * alpha);
+            int bgAlpha = (int) ((0x1A + 0x22 * hEase) * alpha);
+            float breatheAlpha = 1.0f + 0.5f * (float)Math.sin(Util.getMillis() / 200.0);
+            int pulseGlowA = (int)((30 + 50 * hEase * breatheAlpha) * alpha);
 
-            // 渲染物品 (居中放大)
+            g.fill(drawX, drawY, drawX + cardW, drawY + cardH, (bgAlpha << 24) | 0x05050A);
+            g.fill(drawX, drawY, drawX + 4, drawY + cardH, HudAnimUtil.withAlpha(themeC, safeA));
+            g.fillGradient(drawX + 4, drawY, drawX + cardW, drawY + cardH, HudAnimUtil.withAlpha(themeC, pulseGlowA), 0x00000000);
+
             g.pose().pushPose();
-            g.pose().translate(drawX + cardSize/2f - 8, drawY + cardSize/2f - 8, 0);
-            g.pose().scale(1.5f, 1.5f, 1f);
+            g.pose().translate(drawX + cardW/2f, drawY + cardH/2f - 4, 0);
+            g.pose().scale(1.3f, 1.3f, 1f);
+            g.pose().translate(-8, -8, 0);
             g.renderItem(item.getItemStack(), 0, 0);
+            g.pose().popPose();
+
+            g.pose().pushPose();
+            g.pose().translate(drawX + cardW - 4, drawY + cardH - 10, 0);
+            g.pose().scale(0.8f, 0.8f, 1f);
+            String name = item.getItemStack().getHoverName().getString();
+            String prefix = ">_";
+            int maxWidth = (int)((cardW - 12) / 0.8f);
+            name = Minecraft.getInstance().font.plainSubstrByWidth(name, maxWidth - Minecraft.getInstance().font.width(prefix));
+            g.drawString(Minecraft.getInstance().font, prefix + name, -Minecraft.getInstance().font.width(prefix + name), 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), true);
             g.pose().popPose();
 
             g.pose().popPose();
         }
         g.disableScissor();
 
-        // 简单限制滚动
-        int maxScroll = Math.max(0, ((items.size() + cols - 1) / cols) * (cardSize + gap) - h);
-        targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+        if (currentHover != -1 && currentHover != lastHoveredIndex) {
+            lastHoveredIndex = currentHover;
+            previewSwitchAnim = 0f;
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 0.5f));
+        }
     }
 
-    private void renderDrawButton(GuiGraphics g, int x, int y, int w, int h, int mx, int my, float dt, float alpha, boolean waiting) {
-        // 【修复】检查冷却和限购状态（对标商店系统）
+    private void renderRightTerminalTracker(GuiGraphics g, int x, int y, int contentW, int h, float dt, float alpha, float termScale) {
+        int safeA = (int)(255 * alpha);
+        if (safeA <= 5) return;
+        int termColor = HudAnimUtil.blend(parent.getShopDef().getThemeColor(), 0x00FFFF, 0.15f);
+
+        g.pose().pushPose();
+        int spineX = x + contentW;
+        g.pose().translate(spineX, y + h/2f, 0);
+        g.pose().scale(termScale, termScale, 1f);
+        g.pose().translate(-spineX, -(y + h/2f), 0);
+
+        g.fill(spineX, y, spineX + 1, y + h, HudAnimUtil.withAlpha(termColor, (int)(safeA * 0.4f)));
+        g.fill(spineX - 4, y, spineX + 2, y + 2, HudAnimUtil.withAlpha(termColor, safeA));
+        g.fill(spineX - 4, y, spineX - 1, y + 8, HudAnimUtil.withAlpha(termColor, (int)(safeA * 0.6f)));
+        g.fill(spineX - 4, y + h - 2, spineX + 2, y + h, HudAnimUtil.withAlpha(termColor, safeA));
+        g.fill(spineX - 4, y + h - 8, spineX - 1, y + h, HudAnimUtil.withAlpha(termColor, (int)(safeA * 0.6f)));
+        g.fill(spineX - 2, y + h/2 - 10, spineX + 2, y + h/2 + 10, HudAnimUtil.withAlpha(termColor, safeA));
+
+        for(int tick = y + 20; tick < y + h - 20; tick += 40) {
+            g.fill(spineX - 4, tick, spineX, tick + 1, HudAnimUtil.withAlpha(termColor, (int)(safeA * 0.2f)));
+        }
+
+        String title = "// UPLINK.LOG";
+        int titleW = Minecraft.getInstance().font.width(title);
+        int titleX = spineX - 10 - titleW;
+
+        g.drawString(Minecraft.getInstance().font, title, titleX, y, HudAnimUtil.withAlpha(termColor, safeA), true);
+
+        int textStartX = titleX + 4;
+        int maxTextW = (spineX - 10) - textStartX;
+
+        List<ClientGachaCache.DrawRecord> history = this.snapshotHistory;
+
+        if (lastHistorySize == -1) lastHistorySize = history.size();
+        if (history.size() > lastHistorySize) {
+            logRollAnim = 1.0f;
+            lastHistorySize = history.size();
+        }
+        if (logRollAnim > 0) logRollAnim = Math.max(0, logRollAnim - dt * 6.0f);
+
+        float rollEase = HudAnimUtil.easeOutCubic(1.0f - logRollAnim);
+        int startY = y + 22;
+        float lineHeight = 14f;
+        int maxRecords = Math.max(5, (int) ((h - 30) / lineHeight));
+        int limit = Math.min(maxRecords, history.size());
+
+        if (history.isEmpty()) {
+            String emptyMsg = "NO RECORDS YET.";
+            int emptyW = Minecraft.getInstance().font.width(emptyMsg);
+            int emptyX = spineX - 10 - emptyW;
+            g.drawString(Minecraft.getInstance().font, emptyMsg, emptyX, startY, HudAnimUtil.withAlpha(0x555555, safeA));
+        } else {
+            boolean isFull = history.size() >= maxRecords;
+            for (int i = 0; i < limit; i++) {
+                ClientGachaCache.DrawRecord rec = history.get(history.size() - 1 - i);
+
+                GachaItem gItem = parent.getShopDef().getGachaPool().getItems().stream().filter(itm -> itm.getItemId().equals(rec.itemId())).findFirst().orElse(null);
+                int itemColor = gItem != null ? parent.getShopDef().getEffectiveThemeColor(gItem) : 0xAAAAAA;
+                String itemName = gItem != null ? gItem.getItemStack().getHoverName().getString() : "Unknown";
+
+                String text = (rec.pityTriggered() ? "[PITY]" : "> ") + itemName + " x" + rec.actualCount();
+                text = Minecraft.getInstance().font.plainSubstrByWidth(text, maxTextW);
+
+                float targetY = startY + i * lineHeight;
+                float drawY = targetY - (1.0f - rollEase) * lineHeight;
+
+                float itemAlphaMod = 1.0f;
+                if (i == 0 && logRollAnim > 0) itemAlphaMod = rollEase;
+                else if (isFull && i == limit - 1 && logRollAnim > 0) itemAlphaMod = 1.0f - rollEase;
+
+                int finalA = (int)(safeA * itemAlphaMod);
+                if (finalA > 5) {
+                    g.drawString(Minecraft.getInstance().font, text, textStartX + 7, (int)drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
+                }
+            }
+        }
+        g.pose().popPose();
+    }
+
+    private void renderGlassButton(GuiGraphics g, int x, int y, int w, int h, int mx, int my, float dt, float alpha, float contentScale, boolean waiting) {
         boolean onCooldown = ClientGachaCache.INSTANCE.isOnCooldown(parent.getShopId());
-        int maxDraws = parent.getShopDef().getMaxDraws();
-        int currentDraws = ClientGachaCache.INSTANCE.getTotalDraws(parent.getShopId());
-        boolean limitReached = maxDraws > 0 && currentDraws >= maxDraws;
-        
-        // 【新增】检查成本是否充足（对标商店 canBuy）
-        boolean costInsufficient = !waiting && !onCooldown && !limitReached && !ClientGachaCache.INSTANCE.canDraw(parent.getShopId());
-        
-        boolean canDraw = !waiting && !onCooldown && !limitReached && !costInsufficient;
-        
+        boolean costInsufficient = !waiting && !onCooldown && !ClientGachaCache.INSTANCE.canDraw(parent.getShopId());
+        boolean canDraw = !waiting && !onCooldown && !costInsufficient;
+
         boolean hov = canDraw && mx >= x && mx < x + w && my >= y && my < y + h;
-        btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 12f, dt);
+        btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 15f, dt);
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
 
-        // 【新增】更新反馈动画
         if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
+        int baseColor = waiting || onCooldown ? 0x666666 : (costInsufficient ? 0xFF5555 : parent.getShopDef().getThemeColor());
 
-        int baseColor;
-        if (waiting || onCooldown || limitReached) {
-            baseColor = 0x555555; // 灰色：冷却/限购
-        } else if (costInsufficient) {
-            baseColor = 0xFF5555; // 红色：成本不足
-        } else {
-            baseColor = parent.getShopDef().getThemeColor(); // 主题色：可抽取
-        }
-        
-        // 【新增】反馈动画时增强边框亮度
-        int bgAlpha = (int)((0x33 + 0x55 * hEase) * alpha);
-        if (feedbackAnim > 0) {
-            bgAlpha = Math.min(255, bgAlpha + (int)(80 * feedbackAnim * alpha));
-        }
+        g.pose().pushPose();
+        g.pose().translate(x + w/2f, y + h/2f, 0);
+        g.pose().scale(contentScale, contentScale, 1f);
+        g.pose().translate(-(x + w/2f), -(y + h/2f), 0);
 
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(baseColor, bgAlpha));
-        
-        // 【新增】反馈动画时增强边框
-        int borderAlpha = (int)((0xAA + 0x55 * hEase) * alpha);
-        if (feedbackAnim > 0) {
-            borderAlpha = Math.min(255, borderAlpha + (int)(180 * feedbackAnim * alpha));
-            baseColor = feedbackSuccess ? 0x55FF55 : 0xFF5555; // 成功绿色 / 失败红色
-        }
-        HudAnimUtil.drawFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(baseColor, borderAlpha));
+        int shakeX = (feedbackAnim > 0 && !feedbackSuccess) ? (int)(Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0;
+        int drawX = x + shakeX;
 
-        // 显示冷却文本或正常文本
-        String text;
-        if (waiting) {
-            text = "请稍候...";
-        } else if (limitReached) {
-            text = "已达上限";
-        } else if (onCooldown) {
-            String cooldownText = ClientGachaCache.INSTANCE.getCooldownText(parent.getShopId());
-            text = cooldownText.isEmpty() ? "冷却中..." : cooldownText;
-        } else if (costInsufficient) {
-            text = "成本不足";
-        } else {
-            text = "抽取 1 次";
-        }
-        
-        // 【新增】反馈动画时抖动效果
-        int shakeX = 0;
-        if (feedbackAnim > 0 && !feedbackSuccess) {
-            shakeX = (int)(Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 6);
-        }
-        
-        g.drawCenteredString(Minecraft.getInstance().font, text, x + w/2 + shakeX, y + h/2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)));
+        g.fill(drawX, y, drawX + w, y + h, HudAnimUtil.withAlpha(0x151515, (int)(200 * alpha)));
+        g.fillGradient(drawX, y, drawX + w, y + h, HudAnimUtil.withAlpha(baseColor, (int)((40 + 60 * hEase) * alpha)), 0);
+        HudAnimUtil.drawFrame(g, drawX, y, w, h, 1, HudAnimUtil.withAlpha(baseColor, (int)((150 + 105 * hEase) * alpha)));
+
+        String text = waiting ? "DECRYPTING..." : (onCooldown ? "COOLDOWN" : (costInsufficient ? "INSUFFICIENT FUNDS" : "UNLOCK RECEPTACLE"));
+        g.drawCenteredString(Minecraft.getInstance().font, text, drawX + w/2, y + h/2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)));
+
+        g.pose().popPose();
     }
 
     public boolean mouseClicked(double mx, double my) {
-        int pw = (int)(width * 0.8f), ph = (int)(height * 0.85f);
-        int px = (width - pw) / 2, py = (height - ph) / 2;
-        int btnX = px + pw/2 - 80, btnY = py + ph - 50, btnW = 160, btnH = 36;
+        int mainCX = width / 2;
+        int btnW = 220;
+        int btnX = mainCX - (btnW / 2);
+        int btnY = height - (int)(height * 0.12f) - 15;
 
-        if (mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH) {
-            // 【修复】检查冷却和限购状态
+        if (mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + 30) {
             boolean onCooldown = ClientGachaCache.INSTANCE.isOnCooldown(parent.getShopId());
-            int maxDraws = parent.getShopDef().getMaxDraws();
-            int currentDraws = ClientGachaCache.INSTANCE.getTotalDraws(parent.getShopId());
-            boolean limitReached = maxDraws > 0 && currentDraws >= maxDraws;
-            
-            // 【新增】检查成本是否充足（对标商店 canBuy）
-            boolean costInsufficient = !onCooldown && !limitReached && !ClientGachaCache.INSTANCE.canDraw(parent.getShopId());
-            
-            if (onCooldown || limitReached || costInsufficient) {
-                // 【新增】触发失败反馈动画
-                feedbackSuccess = false;
-                feedbackAnim = 1f;
-                
-                // 播放失败音效
-                Minecraft.getInstance().getSoundManager().play(
-                    SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS, 0.8f)
-                );
-                return true; // 阻止抽奖
+            boolean costInsufficient = !onCooldown && !ClientGachaCache.INSTANCE.canDraw(parent.getShopId());
+            if (onCooldown || costInsufficient) {
+                feedbackSuccess = false; feedbackAnim = 1f;
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
+                return true;
             }
-            
-            // 状态正常，发送抽奖请求
-            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0f));
             parent.startDrawRequest();
             return true;
         }
@@ -248,7 +395,7 @@ public class GachaPreviewPanel {
     }
 
     public boolean mouseScrolled(double delta) {
-        targetScroll -= delta * 40;
+        targetScroll -= delta * 45;
         return true;
     }
 }

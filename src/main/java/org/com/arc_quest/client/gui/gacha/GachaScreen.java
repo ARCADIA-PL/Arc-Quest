@@ -9,6 +9,7 @@ import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.com.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
 import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
@@ -17,39 +18,34 @@ import org.slf4j.Logger;
 public class GachaScreen extends Screen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final long DRAW_REQUEST_TIMEOUT = 5000; // 5秒超时
+    private static final long DRAW_REQUEST_TIMEOUT = 5000;
 
     private final String shopId;
     private final GachaShopDefinition shopDef;
 
-    // 状态机
     public enum Phase { PREVIEW, WAITING_SERVER, ROLLING }
     private Phase currentPhase = Phase.PREVIEW;
 
-    // 面板组件
     private final GachaPreviewPanel previewPanel;
     private final GachaRollerPanel rollerPanel;
 
-    // 动画状态
     private float transitionAnim = 0f;
+    private float rollTransitionAnim = 0f;
+
     private boolean isClosing = false;
-    private boolean switchingToResult = false;  // 【新增】标记是否正在切换到结算界面
+    private boolean switchingToResult = false;
     private long lastRenderTime = 0;
     private float dt = 0f;
 
-    // 监听网络结果的锚点
-    private long lastDrawTimeAtOpen = 0;
-    private long requestTimestamp = 0; // 请求时间戳（用于超时检测）
-    
-    // 【优化】日志频率控制
-    private long lastLogTime = 0;
-    private static final long LOG_INTERVAL_MS = 500; // 每500ms最多输出一次诊断日志
+    private long requestTimestamp = 0;
+
+    // ★ 架构核心：全局未决交易追踪器
+    private boolean hasPendingDraw = false;
 
     public GachaScreen(String shopId) {
         super(Component.translatable("arc_quest.gui.gacha.title"));
         this.shopId = shopId;
         this.shopDef = GachaRegistry.get(shopId);
-
         this.previewPanel = new GachaPreviewPanel(this);
         this.rollerPanel = new GachaRollerPanel(this);
     }
@@ -60,29 +56,45 @@ public class GachaScreen extends Screen {
         if (lastRenderTime == 0) transitionAnim = 0f;
         this.previewPanel.init(width, height);
         this.rollerPanel.init(width, height);
-
-        // 【修复】不在这里初始化 lastDrawTimeAtOpen，而是在发送请求时记录
-        // 这样可以避免 S2COpenGachaPacket 更新缓存导致的时间戳冲突
-        this.lastDrawTimeAtOpen = 0;
     }
 
-    @Override
-    public boolean isPauseScreen() { return false; }
-
+    @Override public void renderBackground(GuiGraphics g) {}
+    @Override public boolean isPauseScreen() { return false; }
     public String getShopId() { return shopId; }
     public GachaShopDefinition getShopDef() { return shopDef; }
 
-    // 供 PreviewPanel 调用：向服务端发送抽奖请求
     public void startDrawRequest() {
         if (currentPhase != Phase.PREVIEW) return;
-        
-        // 【修复】在发送请求前记录当前最新的抽奖时间戳作为锚点
-        var lastResult = ClientGachaCache.INSTANCE.getLastDrawResult(shopId);
-        this.lastDrawTimeAtOpen = lastResult != null ? lastResult.drawTime() : 0;
-        
         currentPhase = Phase.WAITING_SERVER;
+        this.hasPendingDraw = true; // ★ 交易开始，挂起保护锁
         this.requestTimestamp = System.currentTimeMillis();
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SDrawGachaPacket(shopId));
+    }
+
+    public void triggerRollingAnimation(ClientGachaCache.DrawRecord result) {
+        if (this.currentPhase == Phase.WAITING_SERVER) {
+            this.currentPhase = Phase.ROLLING;
+            this.rollerPanel.startRoll(result);
+        }
+    }
+
+    public void onRollFinished(ClientGachaCache.DrawRecord result) {
+        if (!switchingToResult) {
+            switchingToResult = true;
+            // 将自身传给 Renderer，实现回调结算解耦
+            GachaResultRenderer.INSTANCE.showResult(this, shopDef, result);
+        }
+    }
+
+    // ★ 终极结算同步中心：无论是自然播放完毕，还是意外强制退出，全部走这里！
+    public void confirmDrawAndSync() {
+        if (hasPendingDraw) {
+            hasPendingDraw = false;
+            // 1. 发送服务端确认
+            ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(shopId));
+            // 2. 本地视觉快照严格跟随确认行为同步！绝不提前剧透！
+            previewPanel.updateDataSnapshot();
+        }
     }
 
     @Override
@@ -92,85 +104,57 @@ public class GachaScreen extends Screen {
         dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
         lastRenderTime = now;
 
-        // 全局进退场动画
         transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.15f : 0.1f, dt);
         if (isClosing && transitionAnim <= 0.01f) {
             minecraft.setScreen(null);
             return;
         }
 
-        // 暗色遮罩
-        g.fill(0, 0, width, height, ((int) (160 * transitionAnim) << 24));
-
         if (shopDef == null) return;
 
-        // 状态机流转与监听
-        checkServerResponse();
-
-        // 渲染分支
-        if (currentPhase == Phase.PREVIEW || currentPhase == Phase.WAITING_SERVER) {
-            float alpha = isClosing ? transitionAnim : HudAnimUtil.easeOutCubic(transitionAnim);
-            previewPanel.render(g, mx, my, dt, alpha, currentPhase == Phase.WAITING_SERVER);
-        } else if (currentPhase == Phase.ROLLING) {
-            rollerPanel.render(g, mx, my, dt);
-            if (rollerPanel.isFinished() && !switchingToResult) {
-                // 滚动结束，唤起 Overlay 结算层，并关闭当前 Screen
-                switchingToResult = true;  // 【新增】设置标记，防止 onClose() 重复确认
-                var finalResult = ClientGachaCache.INSTANCE.getLastDrawResult(shopId);
-                GachaResultRenderer.INSTANCE.showResult(shopDef, finalResult);
-                this.onClose();
-            }
-        }
-    }
-
-    private void checkServerResponse() {
-        if (currentPhase != Phase.WAITING_SERVER) return;
-        
-        // 超时保护：5秒无响应则返回预览界面
-        long elapsed = System.currentTimeMillis() - requestTimestamp;
-        if (elapsed > DRAW_REQUEST_TIMEOUT) {
+        if (currentPhase == Phase.WAITING_SERVER && System.currentTimeMillis() - requestTimestamp > DRAW_REQUEST_TIMEOUT) {
             currentPhase = Phase.PREVIEW;
-            return;
+            hasPendingDraw = false; // 超时释放锁
         }
-        
-        var latestResult = ClientGachaCache.INSTANCE.getLastDrawResult(shopId);
-        var session = ClientGachaCache.INSTANCE.getSession(shopId);
-        
-        if (latestResult != null && latestResult.drawTime() > lastDrawTimeAtOpen) {
-            // 检查是否为失败结果
-            String failReason = session.getLastFailReason();
-            if (failReason != null) {
-                // 抽奖失败，直接返回预览界面
-                currentPhase = Phase.PREVIEW;
-                return;
-            }
-            
-            // 服务端已返回成功结果，正式进入滚动阶段
-            currentPhase = Phase.ROLLING;
-            rollerPanel.startRoll(latestResult);
-        }
-    }
 
-    /**
-     * 【修复】由网络包直接触发滚动动画，避免tick轮询的时序问题
-     */
-    public void triggerRollingAnimation(String itemId, String rarityName, int count, boolean pityTriggered) {
-        if (isClosing) return;
-        
-        // 创建 DrawRecord
-        var result = new ClientGachaCache.DrawRecord(itemId, rarityName, count, pityTriggered, System.currentTimeMillis());
-        
-        // 直接进入 ROLLING 阶段
-        currentPhase = Phase.ROLLING;
-        rollerPanel.startRoll(result);
+        if (currentPhase == Phase.ROLLING) {
+            rollTransitionAnim = Math.min(1.0f, rollTransitionAnim + dt * 2.8f);
+        } else {
+            rollTransitionAnim = Math.max(0.0f, rollTransitionAnim - dt * 3.5f);
+        }
+
+        float easeProgress = isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim);
+        float contentScale = isClosing ? transitionAnim : (0.8f + 0.2f * easeProgress);
+
+        if (switchingToResult) {
+            if (GachaResultRenderer.INSTANCE.isActive()) {
+                GachaResultRenderer.INSTANCE.render(g, width, height, dt);
+                return;
+            } else {
+                switchingToResult = false;
+                currentPhase = Phase.PREVIEW;
+                rollTransitionAnim = 1.0f;
+                previewPanel.updateDataSnapshot(); // 确保安全归位
+            }
+        }
+
+        if (currentPhase == Phase.PREVIEW || currentPhase == Phase.WAITING_SERVER || rollTransitionAnim > 0) {
+            boolean panelWaiting = currentPhase == Phase.WAITING_SERVER || currentPhase == Phase.ROLLING;
+            previewPanel.render(g, mx, my, dt, easeProgress, contentScale, panelWaiting, isClosing, rollTransitionAnim);
+        }
+
+        if (currentPhase == Phase.ROLLING) {
+            rollerPanel.render(g, dt);
+        }
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
-        if (isClosing || btn != 0) return false;
-        if (currentPhase == Phase.PREVIEW) {
-            return previewPanel.mouseClicked(mx, my);
+        if (switchingToResult && GachaResultRenderer.INSTANCE.isActive()) {
+            return GachaResultRenderer.INSTANCE.mouseClicked();
         }
+        if (isClosing || btn != 0) return false;
+        if (currentPhase == Phase.PREVIEW) return previewPanel.mouseClicked(mx, my);
         return super.mouseClicked(mx, my, btn);
     }
 
@@ -184,14 +168,29 @@ public class GachaScreen extends Screen {
     public void onClose() {
         if (!isClosing) {
             isClosing = true;
-            
-            // 【新增】关闭时确保抽奖奖励已确认（防止玩家ESC关闭导致奖励丢失）
-            // 【防护】如果正在切换到结算界面，不发送确认包（由 GachaResultRenderer 负责）
+
+            // 1. 强制熔断动画
             if (currentPhase == Phase.ROLLING && rollerPanel != null && !switchingToResult) {
                 rollerPanel.onScreenClose();
+                // 等待0.35秒让EXIT动画播放完成后再确认
+                new Thread(() -> {
+                    try { Thread.sleep(350); } catch (InterruptedException e) {}
+                    minecraft.execute(this::confirmDrawAndSync);
+                }).start();
             }
-            
-            // 【修复】对标商店系统，关闭时恢复对话
+
+            // 2. 强制关闭结果弹窗
+            if (switchingToResult && GachaResultRenderer.INSTANCE.isActive()) {
+                GachaResultRenderer.INSTANCE.forceCloseAndConfirm();
+            }
+
+            // 3. 【三阶段终极兜底】如果处于等待、动画中，或有未结算的交易，强制触发保底确认！
+            if (hasPendingDraw || currentPhase == Phase.WAITING_SERVER || currentPhase == Phase.ROLLING) {
+                hasPendingDraw = true; // 强行激活锁
+                confirmDrawAndSync();  // 强行写入数据，同步本地缓存！
+            }
+
+            // 4. 【绝对强同步】只有在以上所有兜底和数据落盘完毕后，才允许向服务器发送恢复对话！
             ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
         }
     }

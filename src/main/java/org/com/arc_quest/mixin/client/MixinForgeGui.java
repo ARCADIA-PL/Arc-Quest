@@ -3,6 +3,7 @@ package org.com.arc_quest.mixin.client;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.gacha.GachaScreen;
 import org.com.arc_quest.client.gui.quest.QuestJournalScreen;
 import org.com.arc_quest.client.gui.shop.AbstractTradeScreen;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,7 +24,8 @@ public class MixinForgeGui {
 
         if (mc.screen instanceof QuestJournalScreen ||
             mc.screen instanceof DialogueScreen ||
-                mc.screen instanceof AbstractTradeScreen) {
+                mc.screen instanceof AbstractTradeScreen||
+                mc.screen instanceof GachaScreen) {
             cir.setReturnValue(false);
         }
     }
