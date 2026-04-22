@@ -2,6 +2,8 @@ package org.com.arc_quest;
 
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -28,6 +30,7 @@ public class Arc_quest {
     public static final String MOD_ID = "arc_quest";
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    //TODO 商店加入抽奖模块, 记得抽奖HUD和商店HUD一样支持返回对话
     //TODO 完善任务系统的HUD，任务详情内可显示章节奖励和Phase奖励, Phase也可添加desc， 在任务追踪器和任务详情界面都可显示;如果是和实体相关的任务，任务详情界面可展示实体模型
     //TODO 任务系统HUD联动商店，新增章节商店按钮，每个章节可配置专属章节商店（可分为是否长期，长期则章节完成也可使用，非长期则不可，默认长期)
     //TODO 设计新的HUD模块 任务追踪标识模块
@@ -61,14 +64,14 @@ public class Arc_quest {
         }
 
         @SubscribeEvent
-        public static void onRegisterOverlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
+        public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
             event.registerAboveAll("quest_hud", QuestHudOverlay.INSTANCE);
             event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
             LOGGER.info("[ArcQuest] Overlays registered.");
         }
 
         @SubscribeEvent
-        public static void onRegisterKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
+        public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
             event.register(ClientEventHandler.KEY_OPEN_JOURNAL);
         }
     }

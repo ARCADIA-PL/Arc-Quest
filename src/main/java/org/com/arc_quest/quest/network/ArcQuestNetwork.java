@@ -12,6 +12,9 @@ import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.S2COpenTradePacket;
+import org.com.arc_quest.trade.network.C2SDrawGachaPacket;
+import org.com.arc_quest.trade.network.S2COpenGachaPacket;
+import org.com.arc_quest.trade.network.S2CDrawResultPacket;
 
 /**
  * Arc Quest 网络通信中心。
@@ -126,6 +129,33 @@ public final class ArcQuestNetwork {
                 C2SRequestTradePacket::encode,
                 C2SRequestTradePacket::decode,
                 C2SRequestTradePacket::handle
+        );
+
+        // --- C2S: Gacha draw request ---
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SDrawGachaPacket.class,
+                C2SDrawGachaPacket::encode,
+                C2SDrawGachaPacket::decode,
+                C2SDrawGachaPacket::handle
+        );
+
+        // --- S2C: Open gacha ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2COpenGachaPacket.class,
+                S2COpenGachaPacket::encode,
+                S2COpenGachaPacket::decode,
+                S2COpenGachaPacket::handle
+        );
+
+        // --- S2C: Gacha draw result ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CDrawResultPacket.class,
+                S2CDrawResultPacket::encode,
+                S2CDrawResultPacket::decode,
+                S2CDrawResultPacket::handle
         );
     }
 

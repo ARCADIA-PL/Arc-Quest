@@ -124,6 +124,28 @@ public interface IQuestCapability {
     void incrementTradePurchase(String shopId, String entryId);
 
     /**
+     * 获取某抽奖商店的总抽奖次数。
+     *
+     * @param shopId 商店 ID
+     * @return 总抽奖次数
+     */
+    int getGachaDrawCount(String shopId);
+    
+    /**
+     * 增加抽奖次数。
+     *
+     * @param shopId 商店 ID
+     */
+    void incrementGachaDrawCount(String shopId);
+    
+    /**
+     * 重置抽奖次数。
+     *
+     * @param shopId 商店 ID
+     */
+    void resetGachaDrawCount(String shopId);
+
+    /**
      * 获取某商店某商品的上次购买时间（毫秒）。
      *
      * @param shopId 商店 ID

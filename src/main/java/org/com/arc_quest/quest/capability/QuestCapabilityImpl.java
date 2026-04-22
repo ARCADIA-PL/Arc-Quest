@@ -81,6 +81,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
      * 交易数据：shopId -> entryId -> purchaseCount
      */
     private final Map<String, Map<String, Integer>> tradePurchases = new HashMap<>();
+    
+    /**
+     * 抽奖数据：shopId -> drawCount
+     */
+    private final Map<String, Integer> gachaDrawCounts = new HashMap<>();
 
     private boolean isDirty = false;
 
@@ -103,6 +108,27 @@ public class QuestCapabilityImpl implements IQuestCapability {
     public synchronized void incrementTradePurchase(String shopId, String entryId) {
         Map<String, Integer> shopData = tradePurchases.computeIfAbsent(shopId, k -> new HashMap<>());
         shopData.merge(entryId, 1, Integer::sum);
+        isDirty = true;
+    }
+    
+    // ════════════════════════════════════════
+    //  抽奖系统 API
+    // ════════════════════════════════════════
+    
+    @Override
+    public synchronized int getGachaDrawCount(String shopId) {
+        return gachaDrawCounts.getOrDefault(shopId, 0);
+    }
+    
+    @Override
+    public synchronized void incrementGachaDrawCount(String shopId) {
+        gachaDrawCounts.merge(shopId, 1, Integer::sum);
+        isDirty = true;
+    }
+    
+    @Override
+    public synchronized void resetGachaDrawCount(String shopId) {
+        gachaDrawCounts.remove(shopId);
         isDirty = true;
     }
 
