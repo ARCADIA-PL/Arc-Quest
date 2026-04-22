@@ -5,6 +5,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.client.gui.gacha.GachaScreen;
+import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.network.ClientGachaCache;
 import org.slf4j.Logger;
 
@@ -103,6 +105,12 @@ public class S2CDrawResultPacket {
             );
             
             // 【权威】2. 同步服务端计算的最新状态（canDraw, remainingDraws）
+            // 【修复】从 GachaRegistry 获取冷却配置，而不是硬编码为0
+            GachaShopDefinition gachaShop = GachaRegistry.get(pkt.shopId);
+            int cooldownType = gachaShop != null ? gachaShop.getCooldownType().ordinal() : 0;
+            long cooldownValue = gachaShop != null ? gachaShop.getCooldownValue() : 0;
+            int resetTimeTicks = gachaShop != null ? gachaShop.getResetTimeTicks() : 0;
+            
             ClientGachaCache.INSTANCE.updateSession(
                 pkt.shopId,
                 pkt.newPityCounter,
@@ -110,9 +118,9 @@ public class S2CDrawResultPacket {
                 pkt.lastDrawRealTime,
                 pkt.lastDrawGameTime,
                 pkt.lastDrawDayTime,
-                0,  // cooldownType 从 GachaShopDefinition 获取，这里简化处理
-                0,  // cooldownValue
-                0   // resetTimeTicks
+                cooldownType,
+                cooldownValue,
+                resetTimeTicks
             );
             
             // 【权威】3. 如果当前正在显示该奖池的界面，直接触发滚动动画
