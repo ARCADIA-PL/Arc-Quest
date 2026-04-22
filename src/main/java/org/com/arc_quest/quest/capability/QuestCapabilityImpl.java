@@ -86,6 +86,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
      * 抽奖数据：shopId -> drawCount
      */
     private final Map<String, Integer> gachaDrawCounts = new HashMap<>();
+    
+    /**
+     * 抽奖保底计数：shopId -> pityCounter
+     */
+    private final Map<String, Integer> gachaPityCounters = new HashMap<>();
 
     private boolean isDirty = false;
 
@@ -129,6 +134,21 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public synchronized void resetGachaDrawCount(String shopId) {
         gachaDrawCounts.remove(shopId);
+        isDirty = true;
+    }
+    
+    @Override
+    public synchronized int getGachaPityCounter(String shopId) {
+        return gachaPityCounters.getOrDefault(shopId, 0);
+    }
+    
+    @Override
+    public synchronized void setGachaPityCounter(String shopId, int count) {
+        if (count <= 0) {
+            gachaPityCounters.remove(shopId);
+        } else {
+            gachaPityCounters.put(shopId, count);
+        }
         isDirty = true;
     }
 
@@ -374,6 +394,19 @@ public class QuestCapabilityImpl implements IQuestCapability {
             tradePurchasesTag.put(shopEntry.getKey(), shopTag);
         }
         root.put("TradePurchases", tradePurchasesTag);
+        
+        // 序列化抽奖数据
+        CompoundTag gachaDrawCountsTag = new CompoundTag();
+        for (var entry : gachaDrawCounts.entrySet()) {
+            gachaDrawCountsTag.putInt(entry.getKey(), entry.getValue());
+        }
+        root.put("GachaDrawCounts", gachaDrawCountsTag);
+        
+        CompoundTag gachaPityCountersTag = new CompoundTag();
+        for (var entry : gachaPityCounters.entrySet()) {
+            gachaPityCountersTag.putInt(entry.getKey(), entry.getValue());
+        }
+        root.put("GachaPityCounters", gachaPityCountersTag);
 
         VERSION_MANAGER.setInitialVersion(root);
 
@@ -423,6 +456,19 @@ public class QuestCapabilityImpl implements IQuestCapability {
                 shopData.put(entryId, shopTag.getInt(entryId));
             }
             tradePurchases.put(shopId, shopData);
+        }
+        
+        // 反序列化抽奖数据
+        gachaDrawCounts.clear();
+        CompoundTag gachaDrawCountsTag = root.getCompound("GachaDrawCounts");
+        for (String shopId : gachaDrawCountsTag.getAllKeys()) {
+            gachaDrawCounts.put(shopId, gachaDrawCountsTag.getInt(shopId));
+        }
+        
+        gachaPityCounters.clear();
+        CompoundTag gachaPityCountersTag = root.getCompound("GachaPityCounters");
+        for (String shopId : gachaPityCountersTag.getAllKeys()) {
+            gachaPityCounters.put(shopId, gachaPityCountersTag.getInt(shopId));
         }
 
     }

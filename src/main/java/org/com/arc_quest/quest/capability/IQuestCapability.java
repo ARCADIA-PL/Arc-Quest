@@ -144,6 +144,22 @@ public interface IQuestCapability {
      * @param shopId 商店 ID
      */
     void resetGachaDrawCount(String shopId);
+    
+    /**
+     * 获取某抽奖商店的保底计数。
+     *
+     * @param shopId 商店 ID
+     * @return 当前保底计数（已抽多少次未出保底）
+     */
+    int getGachaPityCounter(String shopId);
+    
+    /**
+     * 设置保底计数。
+     *
+     * @param shopId 商店 ID
+     * @param count 保底计数值
+     */
+    void setGachaPityCounter(String shopId, int count);
 
     /**
      * 获取某商店某商品的上次购买时间（毫秒）。

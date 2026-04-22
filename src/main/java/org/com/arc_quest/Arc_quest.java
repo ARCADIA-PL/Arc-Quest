@@ -15,12 +15,14 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.com.arc_quest.client.events.ClientEventHandler;
 import org.com.arc_quest.client.gui.QuestHudOverlay;
+import org.com.arc_quest.client.gui.gacha.GachaResultOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.client.util.GuiSoundManager;
 import org.com.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.registry.ArcQuestContent;
+import org.com.arc_quest.trade.gacha.registry.DemoGachaShops;
 import org.com.arc_quest.trade.registry.TradeContent;
 import org.slf4j.Logger;
 
@@ -46,6 +48,11 @@ public class Arc_quest {
             ArcQuestContent.registerAll();
             EpicDialogueTrees.registerAll();
             TradeContent.registerAll();
+            
+            // 注册示范抽奖商店
+            DemoGachaShops.registerDemoShops();
+            LOGGER.info("[ArcQuest] Demo gacha shops registered.");
+            
             ArcQuestNetwork.register();
         });
     }
@@ -67,6 +74,7 @@ public class Arc_quest {
         public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
             event.registerAboveAll("quest_hud", QuestHudOverlay.INSTANCE);
             event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
+            event.registerAboveAll("gacha_result", GachaResultOverlay.INSTANCE);
             LOGGER.info("[ArcQuest] Overlays registered.");
         }
 
