@@ -50,7 +50,6 @@ public class GachaRollerPanel {
         // 1. 生成伪随机滚动序列 (总共约 50 个元素)
         List<GachaItem> pool = parent.getShopDef().getGachaPool().getItems();
         if (pool.isEmpty()) {
-            LOGGER.warn("[Gacha] Empty pool for shop: {}", parent.getShopId());
             return;
         }
         
@@ -67,7 +66,6 @@ public class GachaRollerPanel {
             }
         }
         if (targetItem == null) {
-            LOGGER.warn("[Gacha] Target item not found in pool: {}, using fallback", result.itemId());
             targetItem = pool.get(0); // Fallback
         }
 
@@ -84,8 +82,6 @@ public class GachaRollerPanel {
         this.targetX = itemCenterX - centerScreenX + randomOffset;
         this.velocity = 2000f; // 极高初速
         this.lastPassedIndex = -1; // 重置音效计数器
-        
-        LOGGER.debug("[Gacha] Started roll animation for item: {} ({})", result.itemId(), result.rarityName());
     }
 
     public void render(GuiGraphics g, int mx, int my, float dt) {

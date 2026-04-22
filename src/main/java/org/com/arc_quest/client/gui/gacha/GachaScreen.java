@@ -77,12 +77,10 @@ public class GachaScreen extends Screen {
         // 【修复】在发送请求前记录当前最新的抽奖时间戳作为锚点
         var lastResult = ClientGachaCache.INSTANCE.getLastDrawResult(shopId);
         this.lastDrawTimeAtOpen = lastResult != null ? lastResult.drawTime() : 0;
-        LOGGER.debug("[Gacha] startDrawRequest: lastDrawTimeAtOpen={}", lastDrawTimeAtOpen);
         
         currentPhase = Phase.WAITING_SERVER;
         this.requestTimestamp = System.currentTimeMillis();
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SDrawGachaPacket(shopId));
-        LOGGER.debug("[Gacha] Sent draw request for shop: {}", shopId);
     }
 
     @Override
@@ -128,7 +126,6 @@ public class GachaScreen extends Screen {
         // 超时保护：5秒无响应则返回预览界面
         long elapsed = System.currentTimeMillis() - requestTimestamp;
         if (elapsed > DRAW_REQUEST_TIMEOUT) {
-            LOGGER.warn("[Gacha] Draw request timeout after {}ms for shop: {}", elapsed, shopId);
             currentPhase = Phase.PREVIEW;
             return;
         }
@@ -136,27 +133,16 @@ public class GachaScreen extends Screen {
         var latestResult = ClientGachaCache.INSTANCE.getLastDrawResult(shopId);
         var session = ClientGachaCache.INSTANCE.getSession(shopId);
         
-        // 【优化】限制诊断日志频率，避免每帧刷屏
-        long now = System.currentTimeMillis();
-        if (now - lastLogTime >= LOG_INTERVAL_MS) {
-            LOGGER.debug("[Gacha] Waiting for server response... session={}, result={}",
-                session != null ? "exists" : "null",
-                latestResult != null ? "exists" : "null");
-            lastLogTime = now;
-        }
-        
         if (latestResult != null && latestResult.drawTime() > lastDrawTimeAtOpen) {
             // 检查是否为失败结果
             String failReason = session.getLastFailReason();
             if (failReason != null) {
                 // 抽奖失败，直接返回预览界面
-                LOGGER.info("[Gacha] Draw failed: {} for shop: {}", failReason, shopId);
                 currentPhase = Phase.PREVIEW;
                 return;
             }
             
             // 服务端已返回成功结果，正式进入滚动阶段
-            LOGGER.info("[Gacha] Entering ROLLING phase for shop: {}, item: {}", shopId, latestResult.itemId());
             currentPhase = Phase.ROLLING;
             rollerPanel.startRoll(latestResult);
         }
@@ -172,7 +158,6 @@ public class GachaScreen extends Screen {
         var result = new ClientGachaCache.DrawRecord(itemId, rarityName, count, pityTriggered, System.currentTimeMillis());
         
         // 直接进入 ROLLING 阶段
-        LOGGER.info("[Gacha] Direct trigger ROLLING phase for shop: {}, item: {}", shopId, itemId);
         currentPhase = Phase.ROLLING;
         rollerPanel.startRoll(result);
     }

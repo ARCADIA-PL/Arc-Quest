@@ -273,14 +273,6 @@ public class C2SRequestTradePacket {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         List<TradeEntry> allEntries = new ArrayList<>(shop.getAllEntries());
         int count = allEntries.size();
-        
-        // 调试：输出服务端商品顺序
-        if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("[Trade-Snapshot] Shop={}, total entries={}", shop.getShopId(), count);
-            for (int i = 0; i < count; i++) {
-                LOGGER.info("[Trade-Snapshot]   Entry {}: id={}", i, allEntries.get(i).getEntryId());
-            }
-        }
 
         int[] purchases      = new int[count];
         int[] maxPurchases   = new int[count];

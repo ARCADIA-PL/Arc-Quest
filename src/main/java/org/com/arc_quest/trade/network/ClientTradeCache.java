@@ -47,7 +47,6 @@ public final class ClientTradeCache {
      */
     public void playOpenSound(String shopId, String openSoundId) {
         if (openSoundId == null || openSoundId.isEmpty()) {
-            LOGGER.debug("[TradeCache] No open sound configured for shop: {}", shopId);
             return;
         }
 
@@ -57,7 +56,6 @@ public final class ClientTradeCache {
                 SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(rl);
                 if (sound != null) {
                     GuiSoundManager.play(sound);
-                    LOGGER.debug("[TradeCache] Played open sound for shop: {}", shopId);
                 } else {
                     LOGGER.warn("[TradeCache] Open sound not found: {}", openSoundId);
                 }
@@ -75,7 +73,6 @@ public final class ClientTradeCache {
      */
     public void playCloseSound(String shopId, String closeSoundId) {
         if (closeSoundId == null || closeSoundId.isEmpty()) {
-            LOGGER.debug("[TradeCache] No close sound configured for shop: {}", shopId);
             return;
         }
 
@@ -85,7 +82,6 @@ public final class ClientTradeCache {
                 SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(rl);
                 if (sound != null) {
                     GuiSoundManager.play(sound);
-                    LOGGER.debug("[TradeCache] Played close sound for shop: {}", shopId);
                 } else {
                     LOGGER.warn("[TradeCache] Close sound not found: {}", closeSoundId);
                 }
@@ -123,7 +119,6 @@ public final class ClientTradeCache {
             };
             GuiSoundManager.play(sound);
         }
-        LOGGER.debug("[TradeCache] Played selectSound for {} result: {}", success ? "success" : failReason, entryId);
     }
 
     /**
@@ -277,7 +272,6 @@ public final class ClientTradeCache {
      */
     public void closeSession(String shopId) {
         activeSessions.remove(shopId);
-        LOGGER.debug("[TradeCache] Session closed for: {}", shopId);
     }
 
     /**
@@ -287,7 +281,6 @@ public final class ClientTradeCache {
      */
     public void closeAllExcept(String keepShopId) {
         activeSessions.keySet().removeIf(shopId -> !shopId.equals(keepShopId));
-        LOGGER.debug("[TradeCache] Closed all sessions except: {}", keepShopId);
     }
 
     @Nullable
@@ -297,7 +290,6 @@ public final class ClientTradeCache {
 
     public void clear() {
         activeSessions.clear();
-        LOGGER.debug("[TradeCache] Cache cleared.");
     }
 
     /**

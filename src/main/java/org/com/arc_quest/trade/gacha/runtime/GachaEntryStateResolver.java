@@ -190,8 +190,6 @@ public final class GachaEntryStateResolver {
         ProgressKey key = ProgressKey.ofTrade(shopId, "draw");
         // 通过将时间戳设为 0 来清除冷却记录（表示从未抽过奖）
         cap.getDialogueProgress().recordChoiceSelection(key, 0, 0, 0);
-
-        LOGGER.info("[Gacha] Reset draw count and cooldown for shop={}", shopId);
     }
 
     /**
@@ -221,8 +219,5 @@ public final class GachaEntryStateResolver {
                 nowGameTime,
                 nowDayTime
         );
-
-        LOGGER.debug("[Gacha] Recorded cooldown for shop={} at realTime={}, gameTime={}, dayTime={}",
-                shopId, nowRealTime, nowGameTime, nowDayTime);
     }
 }

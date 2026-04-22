@@ -149,8 +149,6 @@ public class S2COpenGachaPacket {
         int resetTimeTicks = shop.getResetTimeTicks();
         
         // 发送网络包给客户端
-        Arc_quest.LOGGER.info("[Gacha-Diag] Sending S2COpenGachaPacket: shop={}, pity={}, draws={}, canDraw={}, remaining={}",
-            shop.getShopId(), pityCounter, totalDraws, canDraw, remainingDraws);
         ArcQuestNetwork.CHANNEL.send(
             PacketDistributor.PLAYER.with(() -> player),
             new S2COpenGachaPacket(
@@ -193,8 +191,6 @@ public class S2COpenGachaPacket {
             
             // 打开抽奖界面
             mc.setScreen(new GachaScreen(pkt.shopId));
-            
-            LOGGER.debug("[Gacha] Opened gacha screen for shop: {}", pkt.shopId);
         });
         ctx.get().setPacketHandled(true);
     }

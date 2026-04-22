@@ -44,8 +44,6 @@ public final class ClientGachaCache {
      */
     public void updateSession(String shopId, int pityCounter, int totalDraws) {
         gachaSessions.put(shopId, new GachaSessionData(pityCounter, totalDraws));
-        LOGGER.debug("[GachaCache] Updated session for {}: pity={}, draws={}", 
-                    shopId, pityCounter, totalDraws);
     }
 
     /**
@@ -86,8 +84,6 @@ public final class ClientGachaCache {
         newSession.lastFailReason = existingLastFailReason;
         
         gachaSessions.put(shopId, newSession);
-        LOGGER.debug("[GachaCache] Updated session with cooldown for {}: pity={}, draws={}, cooldownType={}, historySize={}", 
-                    shopId, pityCounter, totalDraws, cooldownType, newSession.drawHistory.size());
     }
 
     /**
@@ -130,9 +126,6 @@ public final class ClientGachaCache {
         if (session.drawHistory.size() > 50) {
             session.drawHistory.remove(0);
         }
-        
-        LOGGER.debug("[GachaCache] Recorded draw result: {} x{} ({}), historySize={}", 
-                    drawnItemId, actualCount, rarityName, session.drawHistory.size());
     }
 
     /**
@@ -153,8 +146,6 @@ public final class ClientGachaCache {
         // 记录最近一次失败信息
         session.lastFailReason = failReason;
         session.lastDrawTime = System.currentTimeMillis();
-        
-        LOGGER.debug("[GachaCache] Recorded draw failure: {} - {}", shopId, failReason);
     }
 
     /**
@@ -179,7 +170,6 @@ public final class ClientGachaCache {
                 default -> getDrawFailSound(shopId);
             };
             GuiSoundManager.play(sound);
-            LOGGER.debug("[GachaCache] Played draw fail sound for reason: {}", failReason);
             return;
         }
         
@@ -192,7 +182,6 @@ public final class ClientGachaCache {
         SoundEvent successSound = getDrawSuccessSound(shopId, itemId, rarityName);
         if (successSound != null) {
             GuiSoundManager.play(successSound);
-            LOGGER.debug("[GachaCache] Played draw success sound for item: {} ({})", itemId, rarityName);
         }
     }
 
@@ -209,7 +198,6 @@ public final class ClientGachaCache {
      */
     public void closeSession(String shopId) {
         gachaSessions.remove(shopId);
-        LOGGER.debug("[GachaCache] Session closed for: {}", shopId);
     }
 
     /**
@@ -217,7 +205,6 @@ public final class ClientGachaCache {
      */
     public void clear() {
         gachaSessions.clear();
-        LOGGER.debug("[GachaCache] Cache cleared.");
     }
 
     // ════════════════════════════════════════

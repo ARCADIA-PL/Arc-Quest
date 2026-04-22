@@ -120,9 +120,6 @@ public class S2CDrawResultPacket {
                     gachaScreen.triggerRollingAnimation(pkt.drawnItemId, pkt.rarityName, pkt.actualCount, pkt.pityTriggered);
                 }
             }
-            
-            LOGGER.info("[Gacha-Diag-Client] Received S2CDrawResultPacket: shop={}, item={}, count={}, pity={}, canDraw={}, remaining={}",
-                pkt.shopId, pkt.drawnItemId, pkt.actualCount, pkt.pityTriggered, pkt.canDraw, pkt.remainingDraws);
         });
         ctx.get().setPacketHandled(true);
     }

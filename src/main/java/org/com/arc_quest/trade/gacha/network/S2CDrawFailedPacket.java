@@ -43,8 +43,6 @@ public class S2CDrawFailedPacket {
             
             // 记录失败结果，触发 UI 状态切换
             ClientGachaCache.INSTANCE.recordDrawFailure(pkt.shopId, pkt.failReason);
-            
-            LOGGER.debug("[Gacha] Received draw failure: {} - {}", pkt.shopId, pkt.failReason);
         });
         ctx.get().setPacketHandled(true);
     }

@@ -250,10 +250,8 @@ public class S2COpenTradePacket {
                     }
 
                     if (mc.screen instanceof TradeScreen ts && ts.getShopId().equals(pkt.shopId)) {
-                        LOGGER.info("[Trade-Packet] Updating existing TradeScreen for shop={}", pkt.shopId);
                         ts.refreshData();
                     } else {
-                        LOGGER.warn("[Trade-Packet] Creating new TradeScreen for shop={}", pkt.shopId);
                         mc.setScreen(new TradeScreen(pkt.shopId));
                     }
                 }

@@ -69,8 +69,6 @@ public class C2SDrawGachaPacket {
                 
                 // 第二步：综合判断是否可以抽奖
                 if (!session.canDraw()) {
-                    Arc_quest.LOGGER.debug("[Gacha] Draw condition/cooldown/limit not met for player: {}", player.getName().getString());
-                    
                     // 触发失败事件，细分原因
                     GachaEvents.DrawFailedEvent.FailReason reason = mapFailReason(session.getFailReason());
                     var failedEvent = new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason);
@@ -92,7 +90,6 @@ public class C2SDrawGachaPacket {
                 MinecraftForge.EVENT_BUS.post(preEvent);
                 
                 if (preEvent.isCancelled()) {
-                    Arc_quest.LOGGER.debug("[Gacha] Draw cancelled by event for player: {}", player.getName().getString());
                     return;
                 }
                 

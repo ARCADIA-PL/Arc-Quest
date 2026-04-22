@@ -85,9 +85,6 @@ public final class GachaSession {
      */
     public void incrementDrawCount() {
         capability.incrementGachaDrawCount(shop.getShopId());
-        
-        LOGGER.info("[Gacha] Player {} draw count incremented for shop '{}'",
-                player.getName().getString(), shop.getShopId());
     }
 
     /**
@@ -207,9 +204,6 @@ public final class GachaSession {
                     capability.getCompletedQuestLocations(), 
                     capability.getAllFlags(), 
                     capability.getAllVariables());
-                if (shouldReset) {
-                    LOGGER.info("[Gacha] Draw limit reset by custom condition for shop={}", shop.getShopId());
-                }
             } catch (Exception e) {
                 LOGGER.warn("[Gacha] Error evaluating draw reset condition for shop={}: {}",
                         shop.getShopId(), e.getMessage());
@@ -219,8 +213,6 @@ public final class GachaSession {
         // 3. 执行重置
         if (shouldReset && currentCount > 0) {
             GachaEntryStateResolver.resetDrawAndCooldown(capability, shop.getShopId());
-            LOGGER.info("[Gacha] Draw count reset for player {} in shop {}",
-                    player.getName().getString(), shop.getShopId());
         }
     }
 
