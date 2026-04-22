@@ -115,6 +115,7 @@ public class S2CDrawResultPacket {
                 pkt.shopId,
                 pkt.newPityCounter,
                 ClientGachaCache.INSTANCE.getTotalDraws(pkt.shopId) + 1, // totalDraws+1
+                pkt.canDraw, // 【新增】同步 canDraw 状态
                 pkt.lastDrawRealTime,
                 pkt.lastDrawGameTime,
                 pkt.lastDrawDayTime,

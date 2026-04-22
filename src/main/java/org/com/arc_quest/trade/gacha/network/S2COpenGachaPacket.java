@@ -184,7 +184,7 @@ public class S2COpenGachaPacket {
             
             // 更新客户端缓存（含冷却数据，对标商店系统）
             ClientGachaCache.INSTANCE.updateSession(
-                pkt.shopId, pkt.pityCounter, pkt.totalDraws,
+                pkt.shopId, pkt.pityCounter, pkt.totalDraws, pkt.canDraw,
                 pkt.lastDrawRealTime, pkt.lastDrawGameTime, pkt.lastDrawDayTime,
                 pkt.cooldownType, pkt.cooldownValue, pkt.resetTimeTicks
             );

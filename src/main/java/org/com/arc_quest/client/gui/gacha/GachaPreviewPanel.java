@@ -1,5 +1,6 @@
 package org.com.arc_quest.client.gui.gacha;
 
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -20,6 +21,10 @@ public class GachaPreviewPanel {
     private float[] hoverAnims;
 
     private float btnHoverAnim = 0f;
+
+    // 【新增】按钮反馈动画（对标商店系统）
+    private float feedbackAnim = 0f;
+    private boolean feedbackSuccess = false;
 
     public GachaPreviewPanel(GachaScreen parent) {
         this.parent = parent;
@@ -146,17 +151,42 @@ public class GachaPreviewPanel {
         int currentDraws = ClientGachaCache.INSTANCE.getTotalDraws(parent.getShopId());
         boolean limitReached = maxDraws > 0 && currentDraws >= maxDraws;
         
-        boolean canDraw = !waiting && !onCooldown && !limitReached;
+        // 【新增】检查成本是否充足（对标商店 canBuy）
+        boolean costInsufficient = !waiting && !onCooldown && !limitReached && !ClientGachaCache.INSTANCE.canDraw(parent.getShopId());
+        
+        boolean canDraw = !waiting && !onCooldown && !limitReached && !costInsufficient;
         
         boolean hov = canDraw && mx >= x && mx < x + w && my >= y && my < y + h;
         btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 12f, dt);
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
 
-        int baseColor = (waiting || onCooldown || limitReached) ? 0x555555 : parent.getShopDef().getThemeColor();
+        // 【新增】更新反馈动画
+        if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
+
+        int baseColor;
+        if (waiting || onCooldown || limitReached) {
+            baseColor = 0x555555; // 灰色：冷却/限购
+        } else if (costInsufficient) {
+            baseColor = 0xFF5555; // 红色：成本不足
+        } else {
+            baseColor = parent.getShopDef().getThemeColor(); // 主题色：可抽取
+        }
+        
+        // 【新增】反馈动画时增强边框亮度
         int bgAlpha = (int)((0x33 + 0x55 * hEase) * alpha);
+        if (feedbackAnim > 0) {
+            bgAlpha = Math.min(255, bgAlpha + (int)(80 * feedbackAnim * alpha));
+        }
 
         g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(baseColor, bgAlpha));
-        HudAnimUtil.drawFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(baseColor, (int)((0xAA + 0x55 * hEase) * alpha)));
+        
+        // 【新增】反馈动画时增强边框
+        int borderAlpha = (int)((0xAA + 0x55 * hEase) * alpha);
+        if (feedbackAnim > 0) {
+            borderAlpha = Math.min(255, borderAlpha + (int)(180 * feedbackAnim * alpha));
+            baseColor = feedbackSuccess ? 0x55FF55 : 0xFF5555; // 成功绿色 / 失败红色
+        }
+        HudAnimUtil.drawFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(baseColor, borderAlpha));
 
         // 显示冷却文本或正常文本
         String text;
@@ -167,11 +197,19 @@ public class GachaPreviewPanel {
         } else if (onCooldown) {
             String cooldownText = ClientGachaCache.INSTANCE.getCooldownText(parent.getShopId());
             text = cooldownText.isEmpty() ? "冷却中..." : cooldownText;
+        } else if (costInsufficient) {
+            text = "成本不足";
         } else {
             text = "抽取 1 次";
         }
         
-        g.drawCenteredString(Minecraft.getInstance().font, text, x + w/2, y + h/2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)));
+        // 【新增】反馈动画时抖动效果
+        int shakeX = 0;
+        if (feedbackAnim > 0 && !feedbackSuccess) {
+            shakeX = (int)(Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 6);
+        }
+        
+        g.drawCenteredString(Minecraft.getInstance().font, text, x + w/2 + shakeX, y + h/2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * alpha)));
     }
 
     public boolean mouseClicked(double mx, double my) {
@@ -186,7 +224,14 @@ public class GachaPreviewPanel {
             int currentDraws = ClientGachaCache.INSTANCE.getTotalDraws(parent.getShopId());
             boolean limitReached = maxDraws > 0 && currentDraws >= maxDraws;
             
-            if (onCooldown || limitReached) {
+            // 【新增】检查成本是否充足（对标商店 canBuy）
+            boolean costInsufficient = !onCooldown && !limitReached && !ClientGachaCache.INSTANCE.canDraw(parent.getShopId());
+            
+            if (onCooldown || limitReached || costInsufficient) {
+                // 【新增】触发失败反馈动画
+                feedbackSuccess = false;
+                feedbackAnim = 1f;
+                
                 // 播放失败音效
                 Minecraft.getInstance().getSoundManager().play(
                     SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS, 0.8f)
