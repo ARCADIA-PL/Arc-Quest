@@ -53,10 +53,15 @@ public class S2CDrawResultPacket {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
             
-            // 更新客户端缓存
-            ClientTradeCache.INSTANCE.updateGachaSession(pkt.shopId, pkt.newPityCounter, 
-                                                         ClientTradeCache.INSTANCE.getGachaSession(pkt.shopId) != null ?
-                                                         ClientTradeCache.INSTANCE.getGachaSession(pkt.shopId).getTotalDraws() + 1 : 1);
+            // 记录抽奖结果
+            ClientTradeCache.INSTANCE.recordDrawResult(
+                pkt.shopId,
+                pkt.drawnItemId,
+                pkt.rarityName,
+                pkt.actualCount,
+                pkt.pityTriggered,
+                pkt.newPityCounter
+            );
             
             // TODO: 显示抽奖结果 HUD（由用户实现）
             // 可以播放音效、显示动画等

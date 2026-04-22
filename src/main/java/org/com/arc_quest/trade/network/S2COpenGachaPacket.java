@@ -2,9 +2,12 @@ package org.com.arc_quest.trade.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.trade.gacha.GachaShopDefinition;
-import org.com.arc_quest.trade.registry.TradeRegistry;
+import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.trade.gacha.GachaEvents;
+import org.com.arc_quest.trade.registry.GachaRegistry;
 
 import java.util.function.Supplier;
 
@@ -39,9 +42,17 @@ public class S2COpenGachaPacket {
             if (mc.player == null) return;
             
             // 验证商店存在
-            var shopDef = TradeRegistry.get(pkt.shopId);
+            var shopDef = GachaRegistry.get(pkt.shopId);
             if (shopDef == null) {
                 return;
+            }
+            
+            // 获取玩家能力并触发打开事件
+            var cap = mc.player.getCapability(QuestCapabilityProvider.QUEST_CAP).orElse(null);
+            if (cap != null) {
+                // 注意：客户端事件中 player 为 null，仅服务端事件有完整 player 信息
+                var openEvent = new GachaEvents.OpenedEvent(null, pkt.shopId, cap);
+                MinecraftForge.EVENT_BUS.post(openEvent);
             }
             
             // 更新客户端缓存
