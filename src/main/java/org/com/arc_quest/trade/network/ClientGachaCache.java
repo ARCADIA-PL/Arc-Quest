@@ -167,6 +167,7 @@ public final class ClientGachaCache {
                 case COOLDOWN -> getCooldownSound(shopId);
                 case LIMIT_REACHED -> getLimitReachedSound(shopId);
                 case CONDITION_FAIL -> getConditionFailSound(shopId);
+                case CANNOT_AFFORD -> getCannotAffordSound(shopId);  // 【新增】
                 default -> getDrawFailSound(shopId);
             };
             GuiSoundManager.play(sound);
@@ -530,6 +531,15 @@ public final class ClientGachaCache {
         var gachaShop = GachaRegistry.get(shopId);
         return gachaShop != null ? gachaShop.getDrawConditionFailSound() : null;
     }
+    
+    /**
+     * 【新增】获取无法支付成本音效。
+     */
+    @Nullable
+    private SoundEvent getCannotAffordSound(String shopId) {
+        // 复用条件失败音效，或可单独配置
+        return getConditionFailSound(shopId);
+    }
 
     /**
      * 获取抽奖通用失败音效。
@@ -551,6 +561,7 @@ public final class ClientGachaCache {
         COOLDOWN,           // 冷却中
         LIMIT_REACHED,      // 达到限购
         CONDITION_FAIL,     // 条件不满足
+        CANNOT_AFFORD,      // 【新增】无法支付成本
         GENERIC             // 通用失败
     }
 
