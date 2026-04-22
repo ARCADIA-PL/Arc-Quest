@@ -87,7 +87,7 @@ public final class DialogueActionExecutor {
 
             LOGGER.debug("[DEBUG-Cooldown] Choice [{}/{}] onCooldown={}", nodeId, choiceIndex, onCooldown);
 
-            if (onCooldown) return false;
+            return !onCooldown;
         }
 
         return true;

@@ -2,6 +2,7 @@ package org.com.arc_quest.dialogue.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.sounds.SoundEvent;
+import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.client.util.GuiSoundManager;
 import org.slf4j.Logger;
 
@@ -214,7 +215,7 @@ public final class ClientDialogueCache {
          */
         public boolean isChoiceOnCooldown(int index) {
             if (index < 0 || index >= choices.length) return false;
-            return org.com.arc_quest.client.util.ClientCooldownHelper.isOnCooldown(
+            return ClientCooldownHelper.isOnCooldown(
                     lastSelectTimes[index], purchaseGameTimes[index], purchaseDayTimes[index],
                     cooldownTypes[index], cooldownValues[index], resetTimeTicks[index]);
         }
@@ -224,7 +225,7 @@ public final class ClientDialogueCache {
          */
         public String getChoiceCooldownText(int index) {
             if (index < 0 || index >= choices.length) return "";
-            return org.com.arc_quest.client.util.ClientCooldownHelper.getCooldownText(
+            return ClientCooldownHelper.getCooldownText(
                     lastSelectTimes[index], purchaseGameTimes[index], purchaseDayTimes[index],
                     cooldownTypes[index], cooldownValues[index], resetTimeTicks[index]);
         }

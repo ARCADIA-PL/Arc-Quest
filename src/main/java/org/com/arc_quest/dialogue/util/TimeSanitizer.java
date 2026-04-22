@@ -47,7 +47,7 @@ public final class TimeSanitizer {
     }
     
     /**
-     * 获取当前当天刻（dayTime），已校准到 [0, 23999]
+     * 获取当前当天刻（dayTime），已校准到 [0, 24000]
      * 
      * @param level 世界对象
      * @return 当天刻数
@@ -100,7 +100,7 @@ public final class TimeSanitizer {
     }
 
     /**
-     * 校准游戏时间刻，确保在 [0, 23999] 范围内。
+     * 校准游戏时间刻，确保在 [0, 24000] 范围内。
      */
     public static long sanitizeDayTime(Level level) {
         if (level == null) {

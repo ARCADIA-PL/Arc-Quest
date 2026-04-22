@@ -256,8 +256,9 @@ public final class TradeEntryStateResolver {
      * @param entryId 商品ID
      */
     public static void recordCooldown(ServerPlayer player, IQuestCapability cap, String shopId, String entryId) {
-        long gameTime = player.level().getGameTime();
-        long dayTime = TimeSanitizer.sanitizeDayTime(player.level());
+        long[] times = TimeSanitizer.getAllTimes(player);
+        long gameTime = times[1];
+        long dayTime = times[2];
         
         LOGGER.info("[Trade-State] Recording cooldown: shop={}, entry={}, gameTime={}, dayTime={}",
                 shopId, entryId, gameTime, dayTime);

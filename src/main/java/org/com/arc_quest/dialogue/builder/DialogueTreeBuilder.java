@@ -164,14 +164,14 @@ public class DialogueTreeBuilder {
      * .cooldownGameTick(12000)
      * }</pre>
      *
-     * @param resetTick 重置时间点（0-23999），0=早上6点，6000=中午12点，12000=晚上6点，18000=凌晨0点
+     * @param resetTick 重置时间点（0-24000），0=早上6点，6000=中午12点，12000=晚上6点，18000=凌晨0点
      * @return 当前构建器
      */
     public DialogueTreeBuilder cooldownGameTick(int resetTick) {
         this.repeatable = true;
         this.cooldownSeconds = 0;
         this.treeCooldownType = CooldownType.GAME_TICK;
-        this.treeCooldownResetTicks = Math.max(0, Math.min(resetTick, 23999));
+        this.treeCooldownResetTicks = Math.max(0, Math.min(resetTick, 24000));
         return this;
     }
 
@@ -620,7 +620,7 @@ public class DialogueTreeBuilder {
         final DialogueCondition condition;
         final String text;
         final int priority;
-        final net.minecraft.sounds.SoundEvent soundEvent;
+        final SoundEvent soundEvent;
         @Nullable
         final String sayId;
 
@@ -632,11 +632,11 @@ public class DialogueTreeBuilder {
             this(condition, text, priority, null, null);
         }
 
-        ConditionalText(DialogueCondition condition, String text, int priority, net.minecraft.sounds.SoundEvent sound) {
+        ConditionalText(DialogueCondition condition, String text, int priority, SoundEvent sound) {
             this(condition, text, priority, sound, null);
         }
         
-        ConditionalText(DialogueCondition condition, String text, int priority, net.minecraft.sounds.SoundEvent sound, String sayId) {
+        ConditionalText(DialogueCondition condition, String text, int priority, SoundEvent sound, String sayId) {
             this.condition = condition;
             this.text = text;
             this.priority = priority;
@@ -929,14 +929,14 @@ public class DialogueTreeBuilder {
          * .cooldownGameTick(12000)
          * }</pre>
          *
-         * @param resetTick 重置时间点（0-23999），0=早上6点，6000=中午12点，12000=晚上6点，18000=凌晨0点
+         * @param resetTick 重置时间点（0-24000），0=早上6点，6000=中午12点，12000=晚上6点，18000=凌晨0点
          * @return 当前构建器
          */
         public ChoiceBuilder cooldownGameTick(int resetTick) {
             this.repeatable = true;
             this.cooldownSeconds = 0;  // GAME_TICK 类型不使用秒数
             this.cooldownType = CooldownType.GAME_TICK;
-            this.resetTimeTicks = Math.max(0, Math.min(resetTick, 23999));
+            this.resetTimeTicks = Math.max(0, Math.min(resetTick, 24000));
             return this;
         }
 

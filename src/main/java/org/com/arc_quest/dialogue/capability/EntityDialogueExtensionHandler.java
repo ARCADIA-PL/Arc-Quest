@@ -14,6 +14,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.DialogueContext;
 import org.com.arc_quest.dialogue.api.DialogueTree;
@@ -219,7 +220,7 @@ public class EntityDialogueExtensionHandler {
          * 模组加载完成时扫描并注册所有扩展
          */
         @SubscribeEvent
-        public static void onCommonSetup(net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent event) {
+        public static void onCommonSetup(FMLCommonSetupEvent event) {
             event.enqueueWork(() -> {
                 List<IEntityDialogueExtension<?>> extensions = AnnotatedInstanceUtil.getModEntityExtensions();
 

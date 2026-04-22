@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * 条件评估缓存。
@@ -20,7 +21,7 @@ import java.util.Map;
  * <h2>生命周期</h2>
  * <ul>
  *   <li>每次 evaluateVisibleChoices() 开始时调用 {@link #beginCycle()}</li>
- *   <li>评估过程中调用 {@link #computeIfAbsent(DialogueCondition, java.util.function.Supplier)}</li>
+ *   <li>评估过程中调用 {@link #computeIfAbsent(DialogueCondition, Supplier)}</li>
  *   <li>评估结束后自动清理(下次 beginCycle 时)</li>
  * </ul>
  * 
@@ -69,7 +70,7 @@ public final class EvalCache {
      * @return 评估结果
      */
     public boolean computeIfAbsent(DialogueCondition condition, 
-                                   java.util.function.Supplier<Boolean> evaluator) {
+                                   Supplier<Boolean> evaluator) {
         if (!inCycle) {
             // 如果不在周期内,直接评估(不缓存)
             LOGGER.warn("[EvalCache] Not in evaluation cycle, evaluating without cache.");

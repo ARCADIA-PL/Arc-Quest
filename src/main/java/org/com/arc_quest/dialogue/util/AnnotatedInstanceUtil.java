@@ -8,6 +8,7 @@ import org.com.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.objectweb.asm.Type;
 import org.slf4j.Logger;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 /**
@@ -71,7 +72,7 @@ public final class AnnotatedInstanceUtil {
                 instances.add(instance);
                 LOGGER.debug("[AnnotatedInstanceUtil] Loaded: {}", className);
             } catch (ClassNotFoundException | InstantiationException | IllegalAccessException |
-                     java.lang.reflect.InvocationTargetException | NoSuchMethodException | LinkageError e) {
+                     InvocationTargetException | NoSuchMethodException | LinkageError e) {
                 LOGGER.error("[AnnotatedInstanceUtil] Failed to load: {}", className, e);
             }
         }

@@ -74,9 +74,7 @@ public final class DialogueRegistry {
         if (!dialogueId.contains(":")) {
             String fullId = Arc_quest.MOD_ID + ":" + dialogueId;
             tree = trees.get(fullId);
-            if (tree != null) {
-                return tree;
-            }
+            return tree;
         }
 
         return null;

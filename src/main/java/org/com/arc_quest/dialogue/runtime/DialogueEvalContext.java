@@ -24,7 +24,7 @@ public record DialogueEvalContext(
         /** 统一进度存储 */
         DialogueProgressStore progress,
 
-        /** 日夜周期时钟 [0, 23999]，被 /time set 直接影响 */
+        /** 日夜周期时钟 [0, 24000]，被 /time set 直接影响 */
         long dayTime,
 
         /** 单调递增时钟，世界创建以来的总刻数，不受 /time set 影响 */

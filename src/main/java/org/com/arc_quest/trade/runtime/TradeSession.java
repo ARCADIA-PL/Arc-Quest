@@ -3,6 +3,8 @@ package org.com.arc_quest.trade.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+
+import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
@@ -194,7 +196,7 @@ public final class TradeSession {
         if (remaining <= 0) return "";
 
         // GAME_DAY 类型特殊处理（原来显示翻译文本）
-        if (entry.getCooldownType() == org.com.arc_quest.dialogue.api.CooldownType.GAME_DAY) {
+        if (entry.getCooldownType() == CooldownType.GAME_DAY) {
             return Component.translatable("arc_quest.trade.cooldown.game_day").getString();
         }
 
@@ -224,12 +226,8 @@ public final class TradeSession {
         int currentCount = cap.getTradePurchaseCount(shop.getShopId(), entryId);
         if (currentCount == 0) return;
         
-        boolean shouldReset = false;
-        
-        if (TradeEntryStateResolver.shouldResetByCooldown(player, cap, shop.getShopId(), entry)) {
-            shouldReset = true;
-        }
-        
+        boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, cap, shop.getShopId(), entry);
+
         if (!shouldReset) {
             try {
                 shouldReset = resetCondition.test(player);

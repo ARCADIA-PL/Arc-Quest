@@ -298,8 +298,8 @@ public sealed interface DialogueCondition permits
     /**
      * 游戏时间在指定刻区间内（支持跨天）。
      *
-     * @param startTick 起始刻 [0, 23999]
-     * @param endTick   结束刻 [0, 23999]；若 start > end 则视为跨天区间
+     * @param startTick 起始刻 [0, 24000]
+     * @param endTick   结束刻 [0, 24000]；若 start > end 则视为跨天区间
      */
     record GameTimeInRange(int startTick, int endTick) implements DialogueCondition {
         @Override

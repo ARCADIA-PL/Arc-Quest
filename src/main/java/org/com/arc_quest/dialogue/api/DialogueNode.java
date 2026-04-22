@@ -184,7 +184,7 @@ public record DialogueNode(
         public Builder cooldownAtTick(int tick) {
             this.cooldownSeconds = 1;
             this.cooldownType = CooldownType.GAME_TICK;
-            this.resetTimeTicks = Math.max(0, Math.min(tick, 23999));  // 限制在 0-23999
+            this.resetTimeTicks = Math.max(0, Math.min(tick, 24000));  // 限制在 0-24000
             return this;
         }
 
@@ -200,7 +200,7 @@ public record DialogueNode(
          * 设置重置时间刻（仅 GAME_TICK 有效）。
          */
         public Builder resetTimeTicks(int ticks) {
-            this.resetTimeTicks = Math.max(0, Math.min(ticks, 23999));
+            this.resetTimeTicks = Math.max(0, Math.min(ticks, 24000));
             return this;
         }
 

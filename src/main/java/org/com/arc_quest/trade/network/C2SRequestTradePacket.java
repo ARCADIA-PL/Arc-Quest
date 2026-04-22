@@ -5,6 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.api.event.TradePurchasedSuccessEvent;
 import org.com.arc_quest.api.event.TradeOpenedEvent;
@@ -178,7 +179,7 @@ public class C2SRequestTradePacket {
                         openSoundId, closeSoundId);
 
         ArcQuestNetwork.CHANNEL.send(
-                net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                PacketDistributor.PLAYER.with(() -> player),
                 response);
         
         // 发布 Forge 事件（供附属模组监听）
@@ -205,7 +206,7 @@ public class C2SRequestTradePacket {
                 : S2COpenTradePacket.tradeFail(shop.getShopId(), entryId, reason, errorKey);
 
         ArcQuestNetwork.CHANNEL.send(
-                net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                PacketDistributor.PLAYER.with(() -> player),
                 response);
         
         // 发布 Forge 事件（供附属模组监听）
@@ -259,7 +260,7 @@ public class C2SRequestTradePacket {
                         openSoundId, closeSoundId);
 
         ArcQuestNetwork.CHANNEL.send(
-                net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                PacketDistributor.PLAYER.with(() -> player),
                 refreshPkt);
     }
 

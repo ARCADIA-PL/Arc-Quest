@@ -318,7 +318,7 @@ public final class TradeEntryBuilder {
     public TradeEntryBuilder cooldownGameTick(int resetTick) {
         this.cooldownType = CooldownType.GAME_TICK;
         this.cooldownValue = 0;
-        this.resetTimeTicks = Math.max(0, Math.min(resetTick, 23999));
+        this.resetTimeTicks = Math.max(0, Math.min(resetTick, 24000));
         return this;
     }
 
