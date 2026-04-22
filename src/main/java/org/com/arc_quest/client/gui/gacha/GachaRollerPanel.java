@@ -6,8 +6,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
-import org.com.arc_quest.trade.network.ClientGachaCache;
+import org.com.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
+import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -28,6 +30,7 @@ public class GachaRollerPanel {
 
     private boolean isRolling = false;
     private boolean finished = false;
+    private boolean rewardConfirmed = false;  // 【新增】标记奖励是否已确认
 
     private static final int ITEM_W = 100;
     private static final int ITEM_GAP = 10;
@@ -45,6 +48,7 @@ public class GachaRollerPanel {
     public void startRoll(ClientGachaCache.DrawRecord result) {
         this.isRolling = true;
         this.finished = false;
+        this.rewardConfirmed = false;  // 【新增】重置确认状态
         this.rollingItems.clear();
 
         // 1. 生成伪随机滚动序列 (总共约 50 个元素)
@@ -138,4 +142,14 @@ public class GachaRollerPanel {
     }
 
     public boolean isFinished() { return finished; }
+    
+    /**
+     * 【新增】关闭界面时确保奖励已确认（防止玩家ESC关闭导致奖励丢失）。
+     */
+    public void onScreenClose() {
+        if (isRolling && !rewardConfirmed) {
+            rewardConfirmed = true;
+            ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(parent.getShopId()));
+        }
+    }
 }

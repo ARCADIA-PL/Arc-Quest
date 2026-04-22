@@ -10,8 +10,8 @@ import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
-import org.com.arc_quest.trade.network.ClientGachaCache;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
 import org.slf4j.Logger;
 
 public class GachaScreen extends Screen {
@@ -33,6 +33,7 @@ public class GachaScreen extends Screen {
     // 动画状态
     private float transitionAnim = 0f;
     private boolean isClosing = false;
+    private boolean switchingToResult = false;  // 【新增】标记是否正在切换到结算界面
     private long lastRenderTime = 0;
     private float dt = 0f;
 
@@ -112,8 +113,9 @@ public class GachaScreen extends Screen {
             previewPanel.render(g, mx, my, dt, alpha, currentPhase == Phase.WAITING_SERVER);
         } else if (currentPhase == Phase.ROLLING) {
             rollerPanel.render(g, mx, my, dt);
-            if (rollerPanel.isFinished()) {
+            if (rollerPanel.isFinished() && !switchingToResult) {
                 // 滚动结束，唤起 Overlay 结算层，并关闭当前 Screen
+                switchingToResult = true;  // 【新增】设置标记，防止 onClose() 重复确认
                 var finalResult = ClientGachaCache.INSTANCE.getLastDrawResult(shopId);
                 GachaResultRenderer.INSTANCE.showResult(shopDef, finalResult);
                 this.onClose();
@@ -182,6 +184,13 @@ public class GachaScreen extends Screen {
     public void onClose() {
         if (!isClosing) {
             isClosing = true;
+            
+            // 【新增】关闭时确保抽奖奖励已确认（防止玩家ESC关闭导致奖励丢失）
+            // 【防护】如果正在切换到结算界面，不发送确认包（由 GachaResultRenderer 负责）
+            if (currentPhase == Phase.ROLLING && rollerPanel != null && !switchingToResult) {
+                rollerPanel.onScreenClose();
+            }
+            
             // 【修复】对标商店系统，关闭时恢复对话
             ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
         }

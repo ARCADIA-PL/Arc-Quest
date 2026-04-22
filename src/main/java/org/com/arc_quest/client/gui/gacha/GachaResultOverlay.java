@@ -1,13 +1,13 @@
 package org.com.arc_quest.client.gui.gacha;
 
 import net.minecraft.Util;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.lwjgl.glfw.GLFW;
 
 public class GachaResultOverlay implements IGuiOverlay {
 
@@ -16,7 +16,6 @@ public class GachaResultOverlay implements IGuiOverlay {
     private long lastRenderTime = 0;
 
     private GachaResultOverlay() {
-        // 注册鼠标事件监听
         MinecraftForge.EVENT_BUS.register(this);
     }
 
@@ -38,7 +37,7 @@ public class GachaResultOverlay implements IGuiOverlay {
     @SubscribeEvent
     public void onMouseClick(InputEvent.MouseButton.Pre event) {
         if (GachaResultRenderer.INSTANCE.isActive() && event.getButton() == 0) {
-            if (GachaResultRenderer.INSTANCE.onClick()) {
+            if (GachaResultRenderer.INSTANCE.onClose()) {
                 event.setCanceled(true);
             }
         }

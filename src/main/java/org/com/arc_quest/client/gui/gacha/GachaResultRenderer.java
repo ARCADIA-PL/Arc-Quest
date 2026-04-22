@@ -8,8 +8,9 @@ import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.com.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
 import org.com.arc_quest.trade.gacha.network.C2SOpenGachaPacket;
-import org.com.arc_quest.trade.network.ClientGachaCache;
+import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
 
 public class GachaResultRenderer {
 
@@ -21,6 +22,7 @@ public class GachaResultRenderer {
 
     private float appearAnim = 0f;
     private float particleRot = 0f;
+    private boolean rewardConfirmed = false;  // 【新增】标记奖励是否已确认
 
     private GachaResultRenderer() {}
 
@@ -29,6 +31,7 @@ public class GachaResultRenderer {
         this.result = result;
         this.active = true;
         this.appearAnim = 0f;
+        this.rewardConfirmed = false;  // 【新增】重置确认状态
         Minecraft.getInstance().mouseHandler.releaseMouse(); // 释放鼠标供点击
     }
 
@@ -74,6 +77,13 @@ public class GachaResultRenderer {
             g.pose().pushPose();
             g.pose().scale(5.0f, 5.0f, 1f); // 巨大化
             g.renderItem(targetItem.getItemStack(), -8, -12);
+            
+            // 【新增】物品渲染开始时确认并发放奖励（三阶段动画第二阶段结束）
+            if (!rewardConfirmed) {
+                rewardConfirmed = true;
+                ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(shopDef.getShopId()));
+            }
+            
             g.pose().popPose();
 
             String title = targetItem.getItemStack().getHoverName().getString() + " x" + result.actualCount();
@@ -89,22 +99,22 @@ public class GachaResultRenderer {
         g.pose().popPose();
     }
 
-    public boolean onClick() {
+    public boolean onClose() {
         if (!active || appearAnim < 0.8f) return false;
         active = false;
         
-        // 【修复】关闭结算后，无条件向服务端请求打开界面
-        // 所有状态校验都在服务端进行，客户端不预判
         Minecraft mc = Minecraft.getInstance();
         
-        // 避免重复创建：如果当前已经是 GachaScreen，则无需操作
         if (mc.screen instanceof GachaScreen) {
             return true;
         }
+
+        if (active && !rewardConfirmed && shopDef != null) {
+            rewardConfirmed = true;
+            ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(shopDef.getShopId()));
+        }
         
-        // 发送 C2S 请求，服务端校验后决定是否返回 S2COpenGachaPacket
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SOpenGachaPacket(shopDef.getShopId()));
-        // 恢复对话
         ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
         return true;
     }
