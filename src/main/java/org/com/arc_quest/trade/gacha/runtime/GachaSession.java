@@ -3,6 +3,8 @@ package org.com.arc_quest.trade.gacha.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.common.MinecraftForge;
+import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
@@ -187,31 +189,48 @@ public final class GachaSession {
      * 检查并重置过期的抽奖次数。
      */
     private void checkAndResetDrawCount() {
-        var resetCondition = shop.getResetCondition();
-        if (resetCondition == null) return;
-
         int currentCount = getDrawCount();
         if (currentCount == 0) return;
 
-        // 1. 检查冷却自动恢复
+        // 1. 检查冷却自动恢复（对标商店系统）
         boolean shouldReset = GachaEntryStateResolver.shouldResetByCooldown(
                 player, capability, shop.getShopId(), shop);
 
         // 2. 检查自定义条件恢复
         if (!shouldReset) {
-            try {
-                shouldReset = resetCondition.test(player, 
-                    capability.getCompletedQuestLocations(), 
-                    capability.getAllFlags(), 
-                    capability.getAllVariables());
-            } catch (Exception e) {
-                LOGGER.warn("[Gacha] Error evaluating draw reset condition for shop={}: {}",
-                        shop.getShopId(), e.getMessage());
+            var resetCondition = shop.getResetCondition();
+            if (resetCondition != null) {
+                try {
+                    shouldReset = resetCondition.test(player, 
+                        capability.getCompletedQuestLocations(), 
+                        capability.getAllFlags(), 
+                        capability.getAllVariables());
+                } catch (Exception e) {
+                    LOGGER.warn("[Gacha] Error evaluating draw reset condition for shop={}: {}",
+                            shop.getShopId(), e.getMessage());
+                }
             }
         }
 
         // 3. 执行重置
         if (shouldReset && currentCount > 0) {
+            // 【新增】确定重置原因
+            GachaEvents.DrawLimitResetEvent.ResetReason reason = 
+                GachaEntryStateResolver.shouldResetByCooldown(player, capability, shop.getShopId(), shop)
+                    ? GachaEvents.DrawLimitResetEvent.ResetReason.COOLDOWN_EXPIRED
+                    : GachaEvents.DrawLimitResetEvent.ResetReason.CUSTOM_CONDITION;
+            
+            // 【新增】触发限购重置事件
+            var resetEvent = new GachaEvents.DrawLimitResetEvent(
+                player,
+                shop.getShopId(),
+                capability,
+                reason,
+                currentCount  // 重置前的抽奖次数
+            );
+            MinecraftForge.EVENT_BUS.post(resetEvent);
+            
+            // 执行实际重置
             GachaEntryStateResolver.resetDrawAndCooldown(capability, shop.getShopId());
         }
     }
@@ -247,6 +266,10 @@ public final class GachaSession {
         /**
          * 条件不满足
          */
-        CONDITION_NOT_MET
+        CONDITION_NOT_MET,
+        /**
+         * 【新增】无法支付成本
+         */
+        CANNOT_AFFORD
     }
 }

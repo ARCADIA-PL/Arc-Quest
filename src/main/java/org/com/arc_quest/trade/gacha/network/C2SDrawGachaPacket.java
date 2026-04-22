@@ -17,6 +17,7 @@ import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.api.event.GachaEvents;
+import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.gacha.runtime.GachaEntryStateResolver;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.runtime.GachaSession;
@@ -95,6 +96,32 @@ public class C2SDrawGachaPacket {
                 
                 pityCounter = preEvent.getPityCounter();
                 
+                // 【修复】第四步：验证并扣除抽奖成本（对标商店系统）
+                ITradeOffer drawCost = gachaShop.getDrawCost();
+                if (drawCost != null) {
+                    // 检查是否能支付成本
+                    if (!drawCost.canAfford(player)) {
+                        Arc_quest.LOGGER.warn("[Gacha] Player {} cannot afford draw cost for shop: {}", 
+                            player.getName().getString(), pkt.shopId);
+                        
+                        // 触发失败事件
+                        var failedEvent = new GachaEvents.DrawFailedEvent(
+                            player, pkt.shopId, cap, GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD
+                        );
+                        MinecraftForge.EVENT_BUS.post(failedEvent);
+                        
+                        // 发送失败通知给客户端
+                        ArcQuestNetwork.CHANNEL.send(
+                            PacketDistributor.PLAYER.with(() -> player),
+                            new S2CDrawFailedPacket(pkt.shopId, GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name())
+                        );
+                        return;
+                    }
+                    
+                    // 扣除成本
+                    drawCost.execute(player);
+                }
+                
                 // 触发抽奖执行中事件（通知 HUD 播放动画）
                 var drawingEvent = new GachaEvents.DrawingEvent(player, pkt.shopId, cap, pityCounter);
                 MinecraftForge.EVENT_BUS.post(drawingEvent);
@@ -125,7 +152,51 @@ public class C2SDrawGachaPacket {
                 }
                 
                 // 更新保底计数
-                int newPityCounter = drawResult.pityTriggered() ? 0 : pityCounter + 1;
+                int newPityCounter;
+                boolean isEarlyTrigger = false;  // 标记是否提前触发保底
+                
+                if (drawResult.pityTriggered()) {
+                    // 触发保底，重置为0
+                    newPityCounter = 0;
+                } else if (gachaShop.shouldResetPityOnEarlyTrigger()) {
+                    // 【新增】检查是否抽中保底指定的物品/品质
+                    var pityConfig = gachaShop.getPityConfig();
+                    if (pityConfig != null) {
+                        // 检查是否抽中保底目标物品或品质
+                        String drawnRarity = drawResult.item().getRarity().getName();
+                        String targetRarity = pityConfig.getGuaranteedRarity() != null 
+                            ? pityConfig.getGuaranteedRarity().getName() : null;
+                        
+                        // 如果抽中的稀有度 >= 保底稀有度，视为提前触发
+                        if (targetRarity != null && drawnRarity.equals(targetRarity)) {
+                            isEarlyTrigger = true;
+                            newPityCounter = 0;  // 重置保底
+                        } else {
+                            newPityCounter = pityCounter + 1;
+                        }
+                    } else {
+                        newPityCounter = pityCounter + 1;
+                    }
+                } else {
+                    // 不重置，继续累加
+                    newPityCounter = pityCounter + 1;
+                }
+                
+                // 【新增】触发保底提前触发事件
+                if (isEarlyTrigger) {
+                    var pityConfig = gachaShop.getPityConfig();
+                    int pityThreshold = pityConfig != null ? pityConfig.getPityThreshold() : 0;
+                    
+                    var earlyTriggerEvent = new GachaEvents.PityEarlyTriggerEvent(
+                        player,
+                        pkt.shopId,
+                        drawResult.item(),
+                        pityCounter,      // 触发时的保底计数
+                        pityThreshold,    // 保底阈值
+                        true              // 会重置保底进度
+                    );
+                    MinecraftForge.EVENT_BUS.post(earlyTriggerEvent);
+                }
                 
                 // 记录抽奖冷却（通过 GachaEntryStateResolver）
                 if (GachaEntryStateResolver.shouldRecordCooldown(cap, pkt.shopId, gachaShop)) {
@@ -234,6 +305,7 @@ public class C2SDrawGachaPacket {
             case MAX_DRAWS_REACHED -> GachaEvents.DrawFailedEvent.FailReason.MAX_DRAWS_REACHED;
             case ON_COOLDOWN -> GachaEvents.DrawFailedEvent.FailReason.ON_COOLDOWN;
             case CONDITION_NOT_MET -> GachaEvents.DrawFailedEvent.FailReason.CONDITION_NOT_MET;
+            case CANNOT_AFFORD -> GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD;  // 【新增】
             default -> GachaEvents.DrawFailedEvent.FailReason.UNKNOWN;
         };
     }
