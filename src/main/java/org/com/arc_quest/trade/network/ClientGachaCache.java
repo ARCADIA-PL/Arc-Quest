@@ -66,8 +66,51 @@ public final class ClientGachaCache {
         long existingLastDrawTime = existingSession != null ? existingSession.lastDrawTime : 0;
         String existingLastFailReason = existingSession != null ? existingSession.lastFailReason : null;
         
+        // 【新增】保留 canDraw 状态
+        boolean existingCanDraw = existingSession != null ? existingSession.canDraw : true;
+        
         GachaSessionData newSession = new GachaSessionData(
-            pityCounter, totalDraws,
+            pityCounter, totalDraws, existingCanDraw,
+            lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+            cooldownType, cooldownValue, resetTimeTicks
+        );
+        
+        // 恢复历史记录
+        newSession.drawHistory.addAll(existingHistory);
+        
+        // 恢复最近抽奖结果字段
+        newSession.lastDrawnItemId = existingLastDrawnItemId;
+        newSession.lastRarityName = existingLastRarityName;
+        newSession.lastActualCount = existingLastActualCount;
+        newSession.lastPityTriggered = existingLastPityTriggered;
+        newSession.lastDrawTime = existingLastDrawTime;
+        newSession.lastFailReason = existingLastFailReason;
+        
+        gachaSessions.put(shopId, newSession);
+    }
+    
+    /**
+     * 更新抽奖会话数据（含冷却信息和 canDraw 状态，完整版本）。
+     */
+    public void updateSession(String shopId, int pityCounter, int totalDraws, boolean canDraw,
+                              long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
+                              int cooldownType, long cooldownValue, int resetTimeTicks) {
+        // 保留现有的 drawHistory 和最近抽奖结果字段，只更新其他字段
+        GachaSessionData existingSession = gachaSessions.get(shopId);
+        ArrayList<DrawRecord> existingHistory = existingSession != null 
+            ? new ArrayList<>(existingSession.drawHistory) 
+            : new ArrayList<>();
+        
+        // 保留最近抽奖结果字段
+        String existingLastDrawnItemId = existingSession != null ? existingSession.lastDrawnItemId : null;
+        String existingLastRarityName = existingSession != null ? existingSession.lastRarityName : null;
+        int existingLastActualCount = existingSession != null ? existingSession.lastActualCount : 0;
+        boolean existingLastPityTriggered = existingSession != null ? existingSession.lastPityTriggered : false;
+        long existingLastDrawTime = existingSession != null ? existingSession.lastDrawTime : 0;
+        String existingLastFailReason = existingSession != null ? existingSession.lastFailReason : null;
+        
+        GachaSessionData newSession = new GachaSessionData(
+            pityCounter, totalDraws, canDraw,
             lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
             cooldownType, cooldownValue, resetTimeTicks
         );
@@ -274,6 +317,38 @@ public final class ClientGachaCache {
     public int getTotalDraws(String shopId) {
         var session = gachaSessions.get(shopId);
         return session != null ? session.getTotalDraws() : 0;
+    }
+    
+    /**
+     * 【新增】检查是否可以抽奖（对标商店 canBuy）。
+     * <p>
+     * 此方法综合判断：
+     * <ul>
+     *   <li>服务端同步的 canDraw 状态</li>
+     *   <li>客户端本地计算的冷却状态</li>
+     *   <li>限购状态</li>
+     * </ul>
+     * 
+     * @param shopId 商店 ID
+     * @return true = 可以抽奖
+     */
+    public boolean canDraw(String shopId) {
+        var session = gachaSessions.get(shopId);
+        if (session == null) return false;
+        
+        // 1. 检查服务端同步的 canDraw 状态
+        if (!session.canDraw()) return false;
+        
+        // 2. 检查冷却状态
+        if (isOnCooldown(shopId)) return false;
+        
+        // 3. 检查限购状态
+        var shopDef = GachaRegistry.get(shopId);
+        if (shopDef != null && shopDef.hasLimit() && shopDef.getMaxDraws() > 0) {
+            if (session.getTotalDraws() >= shopDef.getMaxDraws()) return false;
+        }
+        
+        return true;
     }
 
     /**
@@ -572,6 +647,9 @@ public final class ClientGachaCache {
         private int pityCounter;
         private int totalDraws;
         
+        // 【新增】是否可以抽奖（对标商店 canBuyConditions）
+        private boolean canDraw;
+        
         // 冷却数据（对标 TradeSessionData）
         private long lastDrawRealTime;     // 真实时间戳
         private long lastDrawGameTime;     // 游戏时间
@@ -599,6 +677,7 @@ public final class ClientGachaCache {
         public GachaSessionData(int pityCounter, int totalDraws) {
             this.pityCounter = pityCounter;
             this.totalDraws = totalDraws;
+            this.canDraw = true; // 默认可抽奖
             this.lastDrawRealTime = 0;
             this.lastDrawGameTime = 0;
             this.lastDrawDayTime = 0;
@@ -608,11 +687,12 @@ public final class ClientGachaCache {
         }
         
         // 完整构造函数（用于网络包同步）
-        public GachaSessionData(int pityCounter, int totalDraws,
+        public GachaSessionData(int pityCounter, int totalDraws, boolean canDraw,
                                 long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
                                 int cooldownType, long cooldownValue, int resetTimeTicks) {
             this.pityCounter = pityCounter;
             this.totalDraws = totalDraws;
+            this.canDraw = canDraw;
             this.lastDrawRealTime = lastDrawRealTime;
             this.lastDrawGameTime = lastDrawGameTime;
             this.lastDrawDayTime = lastDrawDayTime;
@@ -623,6 +703,7 @@ public final class ClientGachaCache {
         
         public int getPityCounter() { return pityCounter; }
         public int getTotalDraws() { return totalDraws; }
+        public boolean canDraw() { return canDraw; }
         
         // 冷却数据 Getters
         public long getLastDrawRealTime() { return lastDrawRealTime; }
