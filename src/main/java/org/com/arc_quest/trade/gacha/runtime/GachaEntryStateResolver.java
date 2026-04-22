@@ -151,11 +151,29 @@ public final class GachaEntryStateResolver {
 
     /**
      * 判断是否应该因为冷却过期而重置抽奖次数。
+     * <p>
+     * 【修复】对标商店系统：先检查是否达到限购，再检查冷却是否过期。
+     * 【新增】支持 resetOnLimitReached 配置：
+     * - true: 达到限购后记录冷却，冷却过期自动重置
+     * - false: 达到限购后永久锁定，不检查冷却
      */
     public static boolean shouldResetByCooldown(ServerPlayer player, IQuestCapability cap,
                                                  String shopId, GachaShopDefinition shop) {
-        if (!shop.hasCooldown() || !shop.hasLimit()) {
-            return false;
+        if (!shop.hasCooldown()) {
+            return false; // 无冷却配置
+        }
+        
+        // 【关键】只有达到限购后才检查冷却是否过期
+        if (shop.hasLimit()) {
+            int currentCount = cap.getGachaDrawCount(shopId);
+            if (currentCount < shop.getMaxDraws()) {
+                return false; // 未达到限购，不检查冷却
+            }
+            
+            // 【新增】如果配置为不自动重置，则直接返回false
+            if (!shop.shouldResetOnLimitReached()) {
+                return false; // 永久锁定，不通过冷却重置
+            }
         }
 
         ProgressKey key = ProgressKey.ofTrade(shopId, "draw");
@@ -194,9 +212,32 @@ public final class GachaEntryStateResolver {
 
     /**
      * 判断是否应该记录冷却。
+     * <p>
+     * 【修复】对标商店系统：只有达到限购后才记录冷却时间戳。
+     * 【新增】支持 resetOnLimitReached 配置：
+     * - true: 达到限购后记录冷却
+     * - false: 不记录冷却（永久锁定）
      */
     public static boolean shouldRecordCooldown(IQuestCapability cap, String shopId, GachaShopDefinition shop) {
-        return shop.hasCooldown();
+        if (!shop.hasCooldown()) {
+            return false; // 无冷却配置
+        }
+        
+        // 只有达到限购后才需要记录冷却
+        if (shop.hasLimit()) {
+            int currentCount = cap.getGachaDrawCount(shopId);
+            if (currentCount < shop.getMaxDraws()) {
+                return false; // 未达到限购，不记录冷却
+            }
+            
+            // 【新增】如果配置为不自动重置，则不记录冷却
+            if (!shop.shouldResetOnLimitReached()) {
+                return false; // 永久锁定，不记录冷却
+            }
+        }
+        
+        // 无限购时，每次都记录冷却
+        return true;
     }
 
     /**

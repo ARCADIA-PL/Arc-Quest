@@ -41,13 +41,15 @@ public class DemoGachaShops {
             .description(Component.literal("抽取史诗级武器，10次必出LEGENDARY！"))
             
             // 抽奖成本：10个钻石
-            .drawCost(new ItemTradeOffer(Items.DIAMOND, 10, false))
+            .drawCost(new ItemTradeOffer(Items.DIAMOND, 10, true))
             
             // 冷却时间：10秒
             .cooldown(10)
             
             // 限购：每天5次
             .maxDraws(5)
+            .drawResetByCooldown()
+
             
             // 默认主题色：金色
             .themeColor(0xFFD700)
@@ -116,7 +118,7 @@ public class DemoGachaShops {
             .description(Component.literal("抽取建筑材料，完成任务可提升稀有材料概率！"))
             
             // 抽奖成本：5个绿宝石
-            .drawCost(new ItemTradeOffer(Items.EMERALD, 5, false))
+            .drawCost(new ItemTradeOffer(Items.EMERALD, 5, true))
             
             // 无限抽奖次数
             .maxDraws(-1)
@@ -183,13 +185,14 @@ public class DemoGachaShops {
             .description(Component.literal("§4§k!!!§r §c神秘宝箱，内含传说宝物！§4§k!!!§r"))
             
             // 抽奖成本：1个下界之星
-            .drawCost(new ItemTradeOffer(Items.NETHER_STAR, 1, false))
+            .drawCost(new ItemTradeOffer(Items.NETHER_STAR, 1, true))
             
             // 冷却：每个游戏日只能抽1次
             .cooldownGameDay()
             
             // 限购：总共只能抽100次
             .maxDraws(100)
+            .drawResetByCooldown()
             
             // 默认主题色：红色
             .themeColor(0xFF0000)

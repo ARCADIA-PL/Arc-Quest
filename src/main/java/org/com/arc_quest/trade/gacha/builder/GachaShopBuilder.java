@@ -69,6 +69,8 @@ public class GachaShopBuilder {
     private int maxDraws = -1;         // 最大抽奖次数（-1 为无限）
     @Nullable
     private ICondition resetCondition; // 次数重置条件
+    private boolean resetOnLimitReachedByCoolDown = true; // 达到限购后是否通过冷却自动重置（默认true）
+    private boolean resetPityOnEarlyTrigger = true; // 保底前提前抽中是否重置保底进度（默认true）
     private PityConfig pityConfig;
     private final List<GachaItem> poolItems = new ArrayList<>();
     
@@ -227,6 +229,46 @@ public class GachaShopBuilder {
      */
     public GachaShopBuilder resetCondition(@Nullable ICondition condition) {
         this.resetCondition = condition;
+        return this;
+    }
+    
+    /**
+     * 使用冷却机制自动恢复限购。
+     * <p>
+     * 【对标商店系统】这会自动设置一个基于冷却时间的重置条件。
+     * 实际逻辑在 GachaSession.checkAndResetDrawCount() 中处理：
+     * 1. 先检查冷却是否过期（shouldResetByCooldown）
+     * 2. 再检查自定义条件（如果配置了）
+     */
+    public GachaShopBuilder drawResetByCooldown() {
+        // 标记为需要基于冷却恢复，实际逻辑在 GachaSession 中处理
+        this.resetCondition = (player, completedQuests, flags, variables) -> false; // 占位
+        return this;
+    }
+    
+    /**
+     * 设置达到限购后是否通过冷却自动重置。
+     * <p>
+     * - true（默认）：达到限购后记录冷却，冷却过期自动重置（类似每日刷新）
+     * - false：达到限购后永久锁定，只能通过自定义条件重置
+     * 
+     * @param resetOnLimitReached 是否自动重置
+     */
+    public GachaShopBuilder resetOnLimitReached(boolean resetOnLimitReached) {
+        this.resetOnLimitReachedByCoolDown = resetOnLimitReached;
+        return this;
+    }
+    
+    /**
+     * 设置保底前提前抽中指定物品/品质时是否重置保底进度。
+     * <p>
+     * - true（默认）：抽中后重置保底计数（鼓励继续抽）
+     * - false：抽中后保留保底计数（防止浪费保底机会）
+     * 
+     * @param resetPityOnEarlyTrigger 是否重置保底进度
+     */
+    public GachaShopBuilder resetPityOnEarlyTrigger(boolean resetPityOnEarlyTrigger) {
+        this.resetPityOnEarlyTrigger = resetPityOnEarlyTrigger;
         return this;
     }
     
@@ -501,7 +543,7 @@ public class GachaShopBuilder {
             shopId, displayName, description, categories, entries,
             openCondition, simpleMode, themeColor, openSound, closeSound,
             pool, drawCost, cooldownType, cooldownValue, resetTimeTicks,
-            drawCondition, maxDraws, resetCondition, pityConfig,
+            drawCondition, maxDraws, resetCondition, resetOnLimitReachedByCoolDown, resetPityOnEarlyTrigger, pityConfig,
             drawCooldownSound, drawLimitReachedSound, drawConditionFailSound, drawFailSound
         );
         

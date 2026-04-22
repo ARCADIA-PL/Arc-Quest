@@ -45,6 +45,8 @@ public class GachaShopDefinition {
     private final int maxDraws;                   // 最大抽奖次数（-1 为无限）
     @Nullable
     private final ICondition resetCondition;      // 次数重置条件
+    private final boolean resetOnLimitReached;    // 达到限购后是否通过冷却自动重置
+    private final boolean resetPityOnEarlyTrigger; // 保底前提前抽中是否重置保底进度
     
     // === 抽奖失败音效配置（对标 TradeEntry）===
     @Nullable
@@ -99,6 +101,8 @@ public class GachaShopDefinition {
                                @Nullable ICondition drawCondition,
                                int maxDraws,
                                @Nullable ICondition resetCondition,
+                               boolean resetOnLimitReached,
+                               boolean resetPityOnEarlyTrigger,
                                PityConfig pityConfig,
                                @Nullable SoundEvent drawCooldownSound,
                                @Nullable SoundEvent drawLimitReachedSound,
@@ -116,6 +120,8 @@ public class GachaShopDefinition {
         this.drawCondition = drawCondition;
         this.maxDraws = maxDraws;
         this.resetCondition = resetCondition;
+        this.resetOnLimitReached = resetOnLimitReached;
+        this.resetPityOnEarlyTrigger = resetPityOnEarlyTrigger;
         this.pityConfig = pityConfig;
         this.drawCooldownSound = drawCooldownSound;
         this.drawLimitReachedSound = drawLimitReachedSound;
@@ -160,6 +166,8 @@ public class GachaShopDefinition {
     public int getMaxDraws() { return maxDraws; }
     @Nullable
     public ICondition getResetCondition() { return resetCondition; }
+    public boolean shouldResetOnLimitReached() { return resetOnLimitReached; }
+    public boolean shouldResetPityOnEarlyTrigger() { return resetPityOnEarlyTrigger; }
     
     /**
      * 获取可见性条件（代理自 shopDefinition.getOpenCondition()）。
