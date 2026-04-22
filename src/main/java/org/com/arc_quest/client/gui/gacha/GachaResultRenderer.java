@@ -4,6 +4,7 @@ import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -103,6 +104,8 @@ public class GachaResultRenderer {
         
         // 发送 C2S 请求，服务端校验后决定是否返回 S2COpenGachaPacket
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SOpenGachaPacket(shopDef.getShopId()));
+        // 恢复对话
+        ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
         return true;
     }
 }

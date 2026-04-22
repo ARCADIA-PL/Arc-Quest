@@ -17,7 +17,13 @@ import java.util.Set;
  * - 交易商品可见性条件 (TradeEntry.condition)
  * <p>
  * 所有参数都从玩家的运行时存档中读取（Phase 2 的 Capability），
- * 此处的签名抽象为"只读快照"参数 + ServerPlayer 对象。
+ * 此处的签名抽象为“只读快照”参数 + ServerPlayer 对象。
+ * <p>
+ * <b>重要：根据使用场景选择合适的方法：</b>
+ * <ul>
+ *   <li>服务端逻辑：使用 {@link #testServer(ServerPlayer, Set, Set, Map)}</li>
+ *   <li>客户端GUI：使用 {@link #testClient(Set, Set, Map)}</li>
+ * </ul>
  */
 @FunctionalInterface
 public interface ICondition {
@@ -30,16 +36,21 @@ public interface ICondition {
     }
 
     /**
-     * 测试条件是否满足（服务端完整版本）
+     * 测试条件是否满足。
+     * <p>
+     * <b>重要：</b>
+     * <ul>
+     *   <li>服务端逻辑：直接调用此方法，传入非 null 的 player</li>
+     *   <li>客户端GUI：使用 {@link #testClient(Set, Set, Map)}</li>
+     * </ul>
      *
-     * @param serverPlayer          当前玩家对象（可访问位置、维度、状态等实时信息）
-     *                              <b>注意：客户端环境下可能为 null，自定义条件需做空值检查</b>
+     * @param player          当前玩家对象（服务端不可为 null，客户端传 null）
      * @param completedQuests 玩家已完成的任务 ID 集合
      * @param flags           玩家已设置的全局 Flag 集合
      * @param variables       玩家全局变量表 (name → value)
      * @return true = 条件满足
      */
-    boolean test(@Nullable ServerPlayer serverPlayer,
+    boolean test(@Nullable ServerPlayer player,
                  Set<ResourceLocation> completedQuests,
                  Set<String> flags,
                  Map<String, Integer> variables);

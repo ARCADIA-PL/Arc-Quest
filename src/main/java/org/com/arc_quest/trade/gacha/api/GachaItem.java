@@ -201,12 +201,27 @@ public class GachaItem {
     public SoundEvent getDrawSuccessSound() { return drawSuccessSound; }
     
     /**
-     * 检查当前玩家是否可以看到此抽奖项。
+     * 检查当前玩家是否可以看到此抽奖项（服务端）。
+     * 
+     * @param player 玩家对象（不可为 null）
+     * @param cap 玩家能力数据
      */
-    public boolean isVisible(IQuestCapability cap) {
+    public boolean isVisible(ServerPlayer player, IQuestCapability cap) {
         if (visibleCondition == null) return true;
         
         var completedQuests = cap.getCompletedQuestLocations();
-        return visibleCondition.test(null, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+        return visibleCondition.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+    }
+    
+    /**
+     * 检查当前玩家是否可以看到此抽奖项（客户端）。
+     * 
+     * @param cap 玩家能力数据
+     */
+    public boolean isVisibleClient(IQuestCapability cap) {
+        if (visibleCondition == null) return true;
+        
+        var completedQuests = cap.getCompletedQuestLocations();
+        return visibleCondition.testClient(completedQuests, cap.getAllFlags(), cap.getAllVariables());
     }
 }

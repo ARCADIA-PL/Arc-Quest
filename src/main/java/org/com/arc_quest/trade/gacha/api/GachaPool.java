@@ -92,7 +92,7 @@ public class GachaPool {
         
         // 过滤出可见的抽奖项
         List<GachaItem> visibleItems = items.stream()
-            .filter(item -> item.isVisible(cap))
+            .filter(item -> item.isVisible(player, cap))
             .collect(Collectors.toList());
         
         if (visibleItems.isEmpty()) {
@@ -147,7 +147,7 @@ public class GachaPool {
         
         // 过滤出可见的抽奖项
         List<GachaItem> visibleCandidates = candidates.stream()
-            .filter(item -> item.isVisible(cap))
+            .filter(item -> item.isVisible(player, cap))
             .collect(Collectors.toList());
         
         if (visibleCandidates.isEmpty()) {
@@ -197,16 +197,16 @@ public class GachaPool {
     }
     
     /**
-     * 获取可见的抽奖项列表（用于 HUD 预览）。
+     * 获取可见的抽奖项列表（用于 HUD 预览，客户端）。
      */
     public List<GachaItem> getVisibleItems(IQuestCapability cap) {
         return items.stream()
-            .filter(item -> item.isVisible(cap))
+            .filter(item -> item.isVisibleClient(cap))
             .collect(Collectors.toList());
     }
     
     /**
-     * 计算指定抽奖项的抽取概率（百分比）。
+     * 计算指定抽奖项的抽取概率（百分比，客户端）。
      * 
      * @param itemId 抽奖项 ID
      * @param cap 玩家能力数据
@@ -214,13 +214,13 @@ public class GachaPool {
      */
     public double getDrawProbability(String itemId, IQuestCapability cap) {
         GachaItem targetItem = getItemById(itemId);
-        if (targetItem == null || !targetItem.isVisible(cap)) {
+        if (targetItem == null || !targetItem.isVisibleClient(cap)) {
             return 0.0;
         }
         
-        // 过滤出所有可见项
+        // 过滤出所有可见项（客户端）
         List<GachaItem> visibleItems = items.stream()
-            .filter(item -> item.isVisible(cap))
+            .filter(item -> item.isVisibleClient(cap))
             .collect(Collectors.toList());
         
         if (visibleItems.isEmpty()) {

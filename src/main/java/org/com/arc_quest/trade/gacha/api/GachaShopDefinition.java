@@ -274,40 +274,6 @@ public class GachaShopDefinition {
     }
     
     /**
-     * 检查并执行次数重置。
-     * 
-     * @param cap 玩家能力数据
-     * @param nowRealTime 当前真实时间
-     * @param nowGameTime 当前游戏刻
-     * @param nowDayTime 当前当天刻
-     * @return 是否执行了重置
-     */
-    public boolean checkAndResetDraws(IQuestCapability cap, 
-                                      long nowRealTime, 
-                                      long nowGameTime, 
-                                      long nowDayTime) {
-        // 【修复1】检测时间回退（对标 UnifiedCooldownManager.clearIfTimeRegressed）
-        ProgressKey drawKey = ProgressKey.ofTrade(shopDefinition.getShopId(), "draw");
-        if (cooldownType != CooldownType.NONE) {
-            UnifiedCooldownManager.clearIfTimeRegressed(
-                cap.getDialogueProgress(), drawKey, nowDayTime
-            );
-        }
-        
-        // 检查自定义重置条件
-        if (resetCondition == null) return false;
-        
-        var completedQuests = cap.getCompletedQuestLocations();
-        if (resetCondition.test(null, completedQuests, cap.getAllFlags(), cap.getAllVariables())) {
-            // 重置抽奖计数
-            cap.resetGachaDrawCount(shopDefinition.getShopId());
-            return true;
-        }
-        
-        return false;
-    }
-    
-    /**
      * 执行一次抽奖。
      * 
      * @param cap 玩家能力数据
