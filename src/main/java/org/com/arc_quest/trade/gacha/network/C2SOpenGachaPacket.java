@@ -13,6 +13,7 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.runtime.GachaSession;
+import org.com.arc_quest.trade.api.ITradeOffer;
 
 import java.util.function.Supplier;
 
@@ -91,6 +92,14 @@ public class C2SOpenGachaPacket {
                 );
                 
                 if (onCooldown) {
+                    canDraw = false;
+                }
+            }
+            
+            // 【新增】检查成本是否充足（对标商店系统）
+            if (canDraw) {
+                ITradeOffer drawCost = gachaShop.getDrawCost();
+                if (drawCost != null && !drawCost.canAfford(player)) {
                     canDraw = false;
                 }
             }
