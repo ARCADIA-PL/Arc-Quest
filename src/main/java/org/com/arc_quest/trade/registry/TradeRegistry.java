@@ -17,16 +17,21 @@ import java.util.*;
 public final class TradeRegistry {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Map<String, TradeShopDefinition> REGISTRY = new LinkedHashMap<>();
+    private static Map<String, TradeShopDefinition> REGISTRY = new LinkedHashMap<>();
+    private static boolean frozen = false;
 
     private TradeRegistry() {}
 
     /**
      * 注册商店定义。
      *
-     * @throws IllegalStateException ID 重复
+     * @throws IllegalStateException ID 重复或注册表已冻结
      */
     public static void register(TradeShopDefinition definition) {
+        if (frozen) {
+            throw new IllegalStateException("TradeRegistry is frozen — cannot register '" + definition.getShopId() + "'");
+        }
+        
         String id = definition.getShopId();
         if (REGISTRY.containsKey(id)) {
             throw new IllegalStateException("Duplicate trade shop ID: " + id);
@@ -34,6 +39,20 @@ public final class TradeRegistry {
         REGISTRY.put(id, definition);
         LOGGER.info("[ArcQuest] Registered trade shop: {} ({} entries)",
                 id, definition.getAllEntries().size());
+    }
+    
+    /**
+     * 冻结注册表。在 commonSetup 完成后调用。
+     * <p>
+     * 【并发安全】冻结后转换为不可变Map，确保多线程读取安全。
+     */
+    public static void freeze() {
+        frozen = true;
+        
+        // 【并发防护】转换为线程安全的不可变Map
+        REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(REGISTRY));
+        
+        LOGGER.info("[ArcQuest] TradeRegistry frozen. Total shops: {}", REGISTRY.size());
     }
 
     /**

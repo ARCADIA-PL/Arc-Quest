@@ -20,7 +20,7 @@ public final class QuestRegistry {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final Map<ResourceLocation, QuestDefinition> REGISTRY = new LinkedHashMap<>();
+    private static Map<ResourceLocation, QuestDefinition> REGISTRY = new LinkedHashMap<>();
     private static boolean frozen = false;
 
     private QuestRegistry() {
@@ -52,9 +52,15 @@ public final class QuestRegistry {
 
     /**
      * 冻结注册表。在 commonSetup 完成后调用。
+     * <p>
+     * 【并发安全】冻结后转换为不可变Map，确保多线程读取安全。
      */
     public static void freeze() {
         frozen = true;
+        
+        // 【并发防护】转换为线程安全的不可变Map
+        REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(REGISTRY));
+        
         LOGGER.info("[ArcQuest] QuestRegistry frozen. Total quests: {}", REGISTRY.size());
 
         // 验证跨任务引用的合法性

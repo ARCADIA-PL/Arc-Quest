@@ -2,16 +2,14 @@ package org.com.arc_quest.client.util;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.Arc_quest;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * GUI 音效管理器（涵盖交易、任务、对话）。
@@ -20,7 +18,7 @@ import java.util.Map;
  */
 public final class GuiSoundManager {
 
-    private static final Map<String, SoundEvent> SOUND_CACHE = new HashMap<>();
+    private static final Map<String, SoundEvent> SOUND_CACHE = new ConcurrentHashMap<>();
     private static final Minecraft MC = Minecraft.getInstance();
 
     // 默认音效路径前缀
