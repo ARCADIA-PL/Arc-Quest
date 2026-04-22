@@ -6,7 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.client.events.ClientQuestEvents;
 import org.com.arc_quest.client.gui.QuestHudOverlay;
-import org.com.arc_quest.client.gui.QuestToastManager;
+import org.com.arc_quest.client.gui.quest.QuestToastManager;
 import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.SplashType;

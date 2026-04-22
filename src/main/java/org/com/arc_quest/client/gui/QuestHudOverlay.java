@@ -6,8 +6,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.quest.*;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
-import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.network.ClientQuestCache;
@@ -89,8 +90,8 @@ public class QuestHudOverlay implements IGuiOverlay {
         if (currentBranchToastY < 0 || !isBranchActive) currentBranchToastY = targetBranchY;
 
         if (isPhaseActive || isBranchActive) {
-            currentPhasePopupY = QuestAnimUtil.lerp(currentPhasePopupY, targetPhaseY, 0.15f, dt);
-            currentBranchToastY = QuestAnimUtil.lerp(currentBranchToastY, targetBranchY, 0.15f, dt);
+            currentPhasePopupY = HudAnimUtil.lerp(currentPhasePopupY, targetPhaseY, 0.15f, dt);
+            currentBranchToastY = HudAnimUtil.lerp(currentBranchToastY, targetBranchY, 0.15f, dt);
         }
 
         // 渲染左侧Toast（保持不透明度，暂停动画）

@@ -1,9 +1,10 @@
-package org.com.arc_quest.trade.network;
+package org.com.arc_quest.trade.gacha.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import org.com.arc_quest.trade.network.ClientGachaCache;
 import org.slf4j.Logger;
 
 import java.util.function.Supplier;
@@ -41,7 +42,7 @@ public class S2CDrawFailedPacket {
             if (mc.player == null) return;
             
             // 记录失败结果，触发 UI 状态切换
-            ClientTradeCache.INSTANCE.recordDrawFailure(pkt.shopId, pkt.failReason);
+            ClientGachaCache.INSTANCE.recordDrawFailure(pkt.shopId, pkt.failReason);
             
             LOGGER.debug("[Gacha] Received draw failure: {} - {}", pkt.shopId, pkt.failReason);
         });

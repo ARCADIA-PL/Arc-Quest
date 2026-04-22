@@ -2,9 +2,9 @@ package org.com.arc_quest.mixin.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
-import org.com.arc_quest.client.gui.AbstractTradeScreen;
-import org.com.arc_quest.client.gui.DialogueScreen;
-import org.com.arc_quest.client.gui.QuestJournalScreen;
+import org.com.arc_quest.client.gui.shop.AbstractTradeScreen;
+import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.quest.QuestJournalScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,7 +22,7 @@ public class MixinForgeGui {
         Minecraft mc = Minecraft.getInstance();
 
         if (mc.screen instanceof QuestJournalScreen ||
-                mc.screen instanceof DialogueScreen ||
+            mc.screen instanceof DialogueScreen ||
                 mc.screen instanceof AbstractTradeScreen) {
             cir.setReturnValue(false);
         }

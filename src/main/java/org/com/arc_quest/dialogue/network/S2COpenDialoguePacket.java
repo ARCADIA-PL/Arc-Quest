@@ -7,9 +7,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.com.arc_quest.client.gui.DialogueScreen;
-import org.com.arc_quest.client.gui.SimpleTradePanel;
-import org.com.arc_quest.client.gui.TradeScreen;
+import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.shop.SimpleTradePanel;
+import org.com.arc_quest.client.gui.shop.TradeScreen;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;

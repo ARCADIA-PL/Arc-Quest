@@ -18,6 +18,7 @@ import org.slf4j.Logger;
  *   <li>{@link QuestCommands} - 任务管理命令</li>
  *   <li>{@link DialogueCommands} - 对话管理命令</li>
  *   <li>{@link TradeCommands} - 交易管理命令</li>
+ *   <li>{@link GachaCommands} - 抽奖管理命令</li>
  *   <li>{@link AdminCommands} - 管理员功能命令</li>
  * </ul>
  */
@@ -38,6 +39,7 @@ public class ArcQuestCommands {
                         .then(QuestCommands.registerSubtree(dispatcher))
                         .then(DialogueCommands.registerSubtree(dispatcher))
                         .then(TradeCommands.registerSubtree(dispatcher))
+                        .then(GachaCommands.registerSubtree(dispatcher))
                         .then(AdminCommands.registerSubtree(dispatcher))
         );
 
