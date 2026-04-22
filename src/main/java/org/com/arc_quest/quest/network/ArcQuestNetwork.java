@@ -12,9 +12,11 @@ import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.S2COpenTradePacket;
-import org.com.arc_quest.trade.network.C2SDrawGachaPacket;
-import org.com.arc_quest.trade.network.S2COpenGachaPacket;
-import org.com.arc_quest.trade.network.S2CDrawResultPacket;
+import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
+import org.com.arc_quest.trade.gacha.network.C2SOpenGachaPacket;
+import org.com.arc_quest.trade.gacha.network.S2COpenGachaPacket;
+import org.com.arc_quest.trade.gacha.network.S2CDrawFailedPacket;
+import org.com.arc_quest.trade.gacha.network.S2CDrawResultPacket;
 
 /**
  * Arc Quest 网络通信中心。
@@ -156,6 +158,24 @@ public final class ArcQuestNetwork {
                 S2CDrawResultPacket::encode,
                 S2CDrawResultPacket::decode,
                 S2CDrawResultPacket::handle
+        );
+        
+        // --- S2C: Gacha draw failed ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CDrawFailedPacket.class,
+                S2CDrawFailedPacket::encode,
+                S2CDrawFailedPacket::decode,
+                S2CDrawFailedPacket::handle
+        );
+        
+        // --- C2S: Request to open gacha screen ---
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SOpenGachaPacket.class,
+                C2SOpenGachaPacket::encode,
+                C2SOpenGachaPacket::decode,
+                C2SOpenGachaPacket::handle
         );
     }
 

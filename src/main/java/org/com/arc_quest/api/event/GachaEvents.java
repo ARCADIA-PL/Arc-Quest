@@ -1,8 +1,9 @@
-package org.com.arc_quest.trade.gacha;
+package org.com.arc_quest.api.event;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.Event;
 import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.trade.gacha.api.GachaItem;
 
 import java.util.Map;
 
