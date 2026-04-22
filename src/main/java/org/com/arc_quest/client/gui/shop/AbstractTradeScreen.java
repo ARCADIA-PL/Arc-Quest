@@ -1,4 +1,4 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.shop;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
+import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
@@ -148,7 +149,7 @@ public abstract class AbstractTradeScreen extends Screen {
             dt = realDt;
         }
 
-        transitionAnim = QuestAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.14f : getOpenAnimSpeed(), dt);
+        transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.14f : getOpenAnimSpeed(), dt);
         if (isClosing && transitionAnim <= 0.01f) {
             if (minecraft != null) minecraft.setScreen(null);
             return;
@@ -276,7 +277,7 @@ public abstract class AbstractTradeScreen extends Screen {
             feedbackShake = 0f;
         }
 
-        float scale = isClosing ? QuestAnimUtil.easeInCubic(tooltipAlpha) : QuestAnimUtil.easeOutCubic(tooltipAlpha);
+        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipAlpha) : HudAnimUtil.easeOutCubic(tooltipAlpha);
         if (scale < 0.01f) return;
 
         int drawX = (int)animBgX + currentShake;
@@ -307,11 +308,11 @@ public abstract class AbstractTradeScreen extends Screen {
         int borderColor = (borderA << 24) | (currentThemeColor & 0xFFFFFF);
 
         g.fill(drawX, drawY, drawX + drawW, drawY + drawH, (baseA << 24) | 0x050508);
-        int glowTop = QuestAnimUtil.withAlpha(currentThemeColor, (int)(65 * tooltipAlpha));
-        int glowBot = QuestAnimUtil.withAlpha(currentThemeColor, 0);
+        int glowTop = HudAnimUtil.withAlpha(currentThemeColor, (int)(65 * tooltipAlpha));
+        int glowBot = HudAnimUtil.withAlpha(currentThemeColor, 0);
         g.fillGradient(drawX, drawY, drawX + drawW, drawY + drawH, glowTop, glowBot);
 
-        QuestAnimUtil.drawFrame(g, drawX, drawY, drawW, drawH, 1, borderColor);
+        HudAnimUtil.drawFrame(g, drawX, drawY, drawW, drawH, 1, borderColor);
 
         boolean useScissor = Math.abs(finalScale - 1.0f) < 0.01f && currentShake == 0;
         if (useScissor) g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
@@ -320,7 +321,7 @@ public abstract class AbstractTradeScreen extends Screen {
         int currentY = drawY + padding;
 
         int safeAlpha = (int)(255 * scale);
-        int titleColor = QuestAnimUtil.withAlpha(animThemeColor, safeAlpha);
+        int titleColor = HudAnimUtil.withAlpha(animThemeColor, safeAlpha);
 
         ResourceLocation iconLoc = entry.getRewardIcon();
         if (iconLoc != null) {
@@ -338,13 +339,13 @@ public abstract class AbstractTradeScreen extends Screen {
         currentY += 20;
 
         if (!target.descLines.isEmpty() || target.maxP > 0 || target.onCd) {
-            g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, QuestAnimUtil.withAlpha(animThemeColor, (int)(safeAlpha * 0.3f)));
+            g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int)(safeAlpha * 0.3f)));
             currentY += 5;
         }
 
         if (!target.descLines.isEmpty()) {
             for (var line : target.descLines) {
-                g.drawString(font, line, drawX + padding, currentY, QuestAnimUtil.withAlpha(0xBBBBBB, safeAlpha), true);
+                g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, safeAlpha), true);
                 currentY += font.lineHeight;
             }
             currentY += 4;
@@ -352,21 +353,21 @@ public abstract class AbstractTradeScreen extends Screen {
 
         if (target.maxP > 0) {
             String limitStr = Component.translatable("arc_quest.gui.trade.tooltip.limit", target.purchases, target.maxP).getString();
-            g.drawString(font, limitStr, drawX + padding, currentY, QuestAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+            g.drawString(font, limitStr, drawX + padding, currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
             currentY += font.lineHeight + 2;
 
             float progress = animProgress;
             int barW = target.w - padding * 2;
             int barH = 3;
-            g.fill(drawX + padding, currentY, drawX + padding + barW, currentY + barH, QuestAnimUtil.withAlpha(0x333333, safeAlpha));
+            g.fill(drawX + padding, currentY, drawX + padding + barW, currentY + barH, HudAnimUtil.withAlpha(0x333333, safeAlpha));
 
             int barColor = (progress >= 0.99f) ? 0xAA3333 : (progress >= 0.75f ? 0xDD9933 : 0x33AA33);
 
             if (progress > 0.01f) {
                 int filledW = (int)(barW * progress);
-                g.fill(drawX + padding, currentY, drawX + padding + filledW, currentY + barH, QuestAnimUtil.withAlpha(barColor, safeAlpha));
+                g.fill(drawX + padding, currentY, drawX + padding + filledW, currentY + barH, HudAnimUtil.withAlpha(barColor, safeAlpha));
                 if (filledW > 2) {
-                    g.fill(drawX + padding + filledW - 2, currentY, drawX + padding + filledW, currentY + barH, QuestAnimUtil.withAlpha(0xFFFFFF, (int)(safeAlpha * 0.6f)));
+                    g.fill(drawX + padding + filledW - 2, currentY, drawX + padding + filledW, currentY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int)(safeAlpha * 0.6f)));
                 }
             }
             currentY += barH + 6;
@@ -374,7 +375,7 @@ public abstract class AbstractTradeScreen extends Screen {
 
         if (target.onCd) {
             String cdText = ClientTradeCache.INSTANCE.getCooldownText(shopId, gi);
-            g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cdText).getString(), drawX + padding, currentY, QuestAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
+            g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cdText).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
         }
 
         if (useScissor) g.disableScissor();

@@ -1,10 +1,12 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.quest;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 
 /**
  * 独立的阶段推进弹窗实体，掌管自身的生命周期与丝滑渲染。
@@ -54,7 +56,7 @@ public class PhaseUpdateToast {
 
         if (elapsed < PHASE_ENTER) {
             float t = elapsed / PHASE_ENTER;
-            float ease = QuestAnimUtil.easeOutQuintic(t);
+            float ease = HudAnimUtil.easeOutQuintic(t);
             revealProgress = ease;
             alpha = ease * parentAlpha;
             textDriftX = -(1f - ease) * PHASE_FLY;
@@ -67,7 +69,7 @@ public class PhaseUpdateToast {
             accentLineWidth = targetLineWidth;
         } else {
             float t = (elapsed - PHASE_ENTER - PHASE_HOLD) / PHASE_EXIT;
-            float ease = QuestAnimUtil.easeInQuartic(t);
+            float ease = HudAnimUtil.easeInQuartic(t);
             revealProgress = 1f;
             wipeProgress = ease;
             alpha = (1f - (float) Math.pow(t, 6)) * parentAlpha;
@@ -90,7 +92,7 @@ public class PhaseUpdateToast {
         // 使用共用渲染方法绘制磨砂玻璃面板
         int bgA = (int) (alpha * 0x88);
         int accentA = (int) (alpha * 255);
-        QuestRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H,
+        HudRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H,
                 0x121212, bgA, themeColor & 0x00FFFFFF, accentA, 4);
 
         float textBaseX = baseX + 12 + textDriftX;
@@ -101,15 +103,15 @@ public class PhaseUpdateToast {
             String title = font.plainSubstrByWidth(phaseName, POPUP_W - 30);
 
             // 使用共用方法绘制双行文本
-            int subColor = QuestAnimUtil.withAlpha(0xAAAAAA, accentA);
-            int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, accentA);
-            QuestRenderUtil.drawDualText(g, font, textBaseX, textBaseY,
+            int subColor = HudAnimUtil.withAlpha(0xAAAAAA, accentA);
+            int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, accentA);
+            HudRenderUtil.drawDualText(g, font, textBaseX, textBaseY,
                     subtitle, title, subColor, titleColor, 1.0f);
 
             // 绘制装饰线
             float lineWidth = targetLineWidth * (elapsed < PHASE_ENTER ? revealProgress : (elapsed >= PHASE_ENTER + PHASE_HOLD ? (1f - wipeProgress) : 1f));
-            QuestRenderUtil.drawTextWithLine(g, font, textBaseX, textBaseY + 10,
-                    "", QuestAnimUtil.withAlpha(activeTheme, accentA),
+            HudRenderUtil.drawTextWithLine(g, font, textBaseX, textBaseY + 10,
+                    "", HudAnimUtil.withAlpha(activeTheme, accentA),
                     lineWidth, 12);
         }
         g.disableScissor();

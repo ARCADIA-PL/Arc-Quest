@@ -5,9 +5,9 @@ import net.minecraft.client.gui.GuiGraphics;
 /**
  * 共享动画工具集。
  */
-public final class QuestAnimUtil {
+public final class HudAnimUtil {
 
-    private QuestAnimUtil() {
+    private HudAnimUtil() {
     }
 
     public static float lerp(float current, float target, float speedAt60Fps, float dt) {
@@ -145,6 +145,6 @@ public final class QuestAnimUtil {
             rects[idx++] = glowColor;
         }
 
-        QuestRenderUtil.drawBatchRects(g, rects, rectCount);
+        HudRenderUtil.drawBatchRects(g, rects, rectCount);
     }
 }

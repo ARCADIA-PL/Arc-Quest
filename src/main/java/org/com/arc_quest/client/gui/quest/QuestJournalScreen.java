@@ -1,4 +1,4 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.quest;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
@@ -9,6 +9,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.client.events.ClientEventHandler;
+import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.QuestHudOverlay;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.render.QuestIconRenderer;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.*;
@@ -121,11 +124,11 @@ public class QuestJournalScreen extends Screen {
     }
 
     private float lerp(float c, float t, float s) {
-        return QuestAnimUtil.lerp(c, t, s, dt);
+        return HudAnimUtil.lerp(c, t, s, dt);
     }
 
     private float step(float c, float t, float s) {
-        return QuestAnimUtil.step(c, t, s, dt);
+        return HudAnimUtil.step(c, t, s, dt);
     }
 
     private int themeColor() {
@@ -362,8 +365,8 @@ public class QuestJournalScreen extends Screen {
     }
 
     private float getEaseProgress() {
-        return (isClosing ? QuestAnimUtil.easeInCubic(transitionAlpha) : QuestAnimUtil.easeOutCubic(transitionAlpha))
-                * QuestAnimUtil.easeOutCubic(suspendAlpha);
+        return (isClosing ? HudAnimUtil.easeInCubic(transitionAlpha) : HudAnimUtil.easeOutCubic(transitionAlpha))
+                * HudAnimUtil.easeOutCubic(suspendAlpha);
     }
 
     @Override
@@ -407,7 +410,7 @@ public class QuestJournalScreen extends Screen {
             float titleScale = 0.95f + 0.05f * easeProgress;
             g.pose().scale(titleScale, titleScale, 1f);
             g.pose().translate(-this.width / 2f, -14, 0);
-            g.drawCenteredString(font, this.title, this.width / 2, 14, QuestAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
+            g.drawCenteredString(font, this.title, this.width / 2, 14, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
             g.pose().popPose();
         }
 
@@ -417,13 +420,13 @@ public class QuestJournalScreen extends Screen {
         int listY = 38 + TAB_HEIGHT + 6;
         int listH = this.height - 20 - listY;
 
-        QuestAnimUtil.drawFrame(g, listX, listY, LIST_WIDTH, listH, QuestAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), QuestAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
+        HudAnimUtil.drawFrame(g, listX, listY, LIST_WIDTH, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
         renderQuestList(g, listX, listY, LIST_WIDTH, listH, mouseX, mouseY, themeColor());
 
         int detailX = LIST_MARGIN + LIST_WIDTH + DETAIL_MARGIN + (int) slideOffset;
         int detailW = this.width - detailX - DETAIL_MARGIN;
 
-        QuestAnimUtil.drawFrame(g, detailX, listY, detailW, listH, QuestAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), QuestAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
+        HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
         renderDetailMatrixEngine(g, detailX, listY, detailW, listH, mouseX, mouseY, themeColor());
     }
 
@@ -453,14 +456,14 @@ public class QuestJournalScreen extends Screen {
             String label = getTabLabel(tab);
             int tw = font.width(label) + 16;
             boolean hovered = mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + TAB_HEIGHT;
-            int textColor = (tab == currentTab) ? QuestAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hovered ? QuestAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : QuestAnimUtil.withAlpha(0x888888, safeAlpha);
+            int textColor = (tab == currentTab) ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
             if (safeAlpha > 8)
                 g.drawString(font, label, (int) currentTabX + 8, tabY + (TAB_HEIGHT - font.lineHeight) / 2, textColor, true);
             currentTabX += tw + 4;
         }
 
         if ((int) (255 * effectiveAlpha) > 8) {
-            g.fill((int) tabSlideAnim, tabY + TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + TAB_HEIGHT, QuestAnimUtil.withAlpha(theme, (int) (255 * effectiveAlpha)));
+            g.fill((int) tabSlideAnim, tabY + TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + TAB_HEIGHT, HudAnimUtil.withAlpha(theme, (int) (255 * effectiveAlpha)));
         }
     }
 
@@ -478,8 +481,8 @@ public class QuestJournalScreen extends Screen {
                 if (defTheme != 0xFFFFFFFF) entryTheme = defTheme;
             }
 
-            g.fill(x + 2, hlY, x + w - 8, hlY + ENTRY_HEIGHT - 2, QuestAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
-            g.fill(x + 2, hlY, x + 5, hlY + ENTRY_HEIGHT - 2, QuestAnimUtil.withAlpha(entryTheme, (int) (0xFF * effectiveAlpha)));
+            g.fill(x + 2, hlY, x + w - 8, hlY + ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
+            g.fill(x + 2, hlY, x + 5, hlY + ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(entryTheme, (int) (0xFF * effectiveAlpha)));
         }
 
         for (int i = 0; i < currentEntries.size(); i++) {
@@ -492,15 +495,15 @@ public class QuestJournalScreen extends Screen {
 
             boolean hovered = mx >= x && mx <= x + w - 8 && my >= entryY && my <= entryY + ENTRY_HEIGHT && my >= y && my <= y + h;
             if (i < entryHoverAnim.length) entryHoverAnim[i] = step(entryHoverAnim[i], hovered ? 1f : 0f, 8f);
-            float eHover = QuestAnimUtil.easeOutCubic(i < entryHoverAnim.length ? entryHoverAnim[i] : 0f);
+            float eHover = HudAnimUtil.easeOutCubic(i < entryHoverAnim.length ? entryHoverAnim[i] : 0f);
 
             if (i != selectedIndex && eHover > 0.01f) {
-                g.fill(x + 2, entryY, x + w - 8, entryY + ENTRY_HEIGHT - 2, QuestAnimUtil.withAlpha(0xFFFFFF, (int) (eHover * 0x22 * effectiveAlpha)));
+                g.fill(x + 2, entryY, x + w - 8, entryY + ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (eHover * 0x22 * effectiveAlpha)));
             }
 
             if (effectiveAlpha > 0.05f) {
                 int baseGray = (int) (0xAA + 0x55 * eHover);
-                int nameColor = (i == selectedIndex) ? QuestAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)) : QuestAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray, (int) (255 * effectiveAlpha));
+                int nameColor = (i == selectedIndex) ? HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)) : HudAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray, (int) (255 * effectiveAlpha));
 
                 int textOffsetX = 10;
                 if (entry.def != null) {
@@ -554,7 +557,7 @@ public class QuestJournalScreen extends Screen {
         int activeTheme = ClientQuestCache.INSTANCE.getQuestThemeColor(entry.questId(), theme);
 
         detailReveal = lerp(detailReveal, 1f, 0.15f);
-        float dAlpha = effectiveAlpha * QuestAnimUtil.easeOutCubic(Math.min(1f, detailReveal));
+        float dAlpha = effectiveAlpha * HudAnimUtil.easeOutCubic(Math.min(1f, detailReveal));
         int safeA = (int) (255 * dAlpha);
         if (safeA <= 8) return;
 
@@ -596,7 +599,7 @@ public class QuestJournalScreen extends Screen {
         g.pose().pushPose();
         g.pose().translate(titleIconOffset, localY, 0);
         g.pose().scale(1.2f, 1.2f, 1f);
-        g.drawString(font, def.getDisplayName().getString(), 0, 0, QuestAnimUtil.withAlpha(0xFFFFFF, safeA), true);
+        g.drawString(font, def.getDisplayName().getString(), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
         localY += 18;
 
@@ -605,16 +608,16 @@ public class QuestJournalScreen extends Screen {
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.85f, 0.85f, 1f);
             // 使用共享工具方法
-            List<String> descLines = QuestRenderUtil.wrapText(def.getDescription().getString(), (int) ((scrollAreaW - 24) / 0.85f), font);
+            List<String> descLines = HudRenderUtil.wrapText(def.getDescription().getString(), (int) ((scrollAreaW - 24) / 0.85f), font);
             for (String line : descLines) {
-                g.drawString(font, line, 0, 0, QuestAnimUtil.withAlpha(0xAAAAAA, safeA), false);
+                g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
                 g.pose().translate(0, font.lineHeight + 1, 0);
             }
             g.pose().popPose();
             localY += descLines.size() * (int) (font.lineHeight * 0.85f + 1) + 8;
         }
 
-        g.fill(0, localY, scrollAreaW - 24, localY + 1, QuestAnimUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
+        g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
         localY += 10;
 
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
@@ -629,7 +632,7 @@ public class QuestJournalScreen extends Screen {
                 String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty()
                         ? phase.getDisplayName().getString()
                         : phase.getPhaseId();
-                g.drawString(font, Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString(), 0, 0, QuestAnimUtil.withAlpha(activeTheme, safeA), true);
+                g.drawString(font, Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString(), 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), true);
                 g.pose().popPose();
                 localY += 14;
 
@@ -638,45 +641,45 @@ public class QuestJournalScreen extends Screen {
                 
                 for (int i = 0; i < objs.size(); i++) {
                     detailObjReveal[i] = lerp(detailObjReveal[i], 1f, 0.1f + i * 0.03f);
-                    float oAlpha = dAlpha * QuestAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]));
+                    float oAlpha = dAlpha * HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]));
                     int oA = (int) (255 * oAlpha);
                     if (oA <= 4) {
                         localY += 22;
                         continue;
                     }
                 
-                    int objX = (int) ((1f - QuestAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
+                    int objX = (int) ((1f - HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
                     int progress = runtime.getObjectiveProgress(i), required = objs.get(i).getRequiredCount();
                     boolean complete = progress >= required;
                 
                     String objText = (complete ? Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString() : Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString()) + objs.get(i).getDisplayText().getString();
                 
                     // 使用共享工具方法
-                    List<String> wrappedObjLines = QuestRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
+                    List<String> wrappedObjLines = HudRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
                     for (String line : wrappedObjLines) {
-                        g.drawString(font, line, objX, localY, QuestAnimUtil.withAlpha(complete ? 0x88FF88 : 0xDDDDDD, oA), true);
+                        g.drawString(font, line, objX, localY, HudAnimUtil.withAlpha(complete ? 0x88FF88 : 0xDDDDDD, oA), true);
                         localY += font.lineHeight + 1;
                     }
 
                     int barW = scrollAreaW - 40 - objX;
-                    QuestAnimUtil.drawProgressBarGlow(g, objX, localY, barW, 3, required > 0 ? (float) progress / required : 0f, QuestAnimUtil.withAlpha(0xFFFFFF, (int) (0x30 * oAlpha)), QuestAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int) (0xCC * oAlpha)), QuestAnimUtil.withAlpha(0xFFFFFF, (int) (0xFF * oAlpha)));
+                    HudAnimUtil.drawProgressBarGlow(g, objX, localY, barW, 3, required > 0 ? (float) progress / required : 0f, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x30 * oAlpha)), HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int) (0xCC * oAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int) (0xFF * oAlpha)));
 
                     g.pose().pushPose();
                     g.pose().translate(objX + barW + 4, localY - 1, 0);
                     g.pose().scale(0.7f, 0.7f, 1f);
-                    g.drawString(font, progress + " / " + required, 0, 0, QuestAnimUtil.withAlpha(0x999999, oA), false);
+                    g.drawString(font, progress + " / " + required, 0, 0, HudAnimUtil.withAlpha(0x999999, oA), false);
                     g.pose().popPose();
                     localY += 12;
                 }
 
                 localY += 6;
-                g.fill(0, localY, scrollAreaW - 24, localY + 1, QuestAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
+                g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
                 localY += 10;
 
                 g.pose().pushPose();
                 g.pose().translate(0, localY, 0);
                 g.pose().scale(0.8f, 0.8f, 1f);
-                g.drawString(font, Component.translatable("arc_quest.gui.journal.section.completed_phases").getString(), 0, 0, QuestAnimUtil.withAlpha(0xAAAAAA, safeA), true);
+                g.drawString(font, Component.translatable("arc_quest.gui.journal.section.completed_phases").getString(), 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), true);
                 g.pose().popPose();
                 localY += 14;
 
@@ -688,7 +691,7 @@ public class QuestJournalScreen extends Screen {
                     g.pose().pushPose();
                     g.pose().translate(8, localY, 0);
                     g.pose().scale(0.75f, 0.75f, 1f);
-                    g.drawString(font, "§a✔ " + completedPhaseName, 0, 0, QuestAnimUtil.withAlpha(0x88FF88, (int) (200 * dAlpha)), false);
+                    g.drawString(font, "§a✔ " + completedPhaseName, 0, 0, HudAnimUtil.withAlpha(0x88FF88, (int) (200 * dAlpha)), false);
                     g.pose().popPose();
                     localY += 12;
                     completedCount++;
@@ -697,20 +700,20 @@ public class QuestJournalScreen extends Screen {
                     g.pose().pushPose();
                     g.pose().translate(8, localY, 0);
                     g.pose().scale(0.75f, 0.75f, 1f);
-                    g.drawString(font, Component.translatable("arc_quest.gui.journal.label.no_phases_completed").getString(), 0, 0, QuestAnimUtil.withAlpha(0x666666, safeA), false);
+                    g.drawString(font, Component.translatable("arc_quest.gui.journal.label.no_phases_completed").getString(), 0, 0, HudAnimUtil.withAlpha(0x666666, safeA), false);
                     g.pose().popPose();
                     localY += 12;
                 }
 
                 if (shouldShowBranchChoices(def, runtime)) {
                     localY += 8;
-                    g.fill(0, localY, scrollAreaW - 24, localY + 1, QuestAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
+                    g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
                     localY += 10;
 
                     g.pose().pushPose();
                     g.pose().translate(0, localY, 0);
                     g.pose().scale(0.8f, 0.8f, 1f);
-                    g.drawString(font, Component.translatable("arc_quest.gui.journal.section.choose_path").getString(), 0, 0, QuestAnimUtil.withAlpha(0xFFCC66, safeA), true);
+                    g.drawString(font, Component.translatable("arc_quest.gui.journal.section.choose_path").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), true);
                     g.pose().popPose();
                     localY += 14;
 
@@ -739,11 +742,11 @@ public class QuestJournalScreen extends Screen {
                         int borderColor = isHovered ? activeTheme : 0x666666;
                         int textColor = isHovered ? activeTheme : 0xCCCCCC;
 
-                        g.fill(0, localY, btnW, localY + btnH, QuestAnimUtil.withAlpha(0xFFFFFF, (int) ((isHovered ? 0x22 : 0x11) * dAlpha)));
-                        g.fill(0, localY, btnW, localY + 1, QuestAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                        g.fill(0, localY + btnH - 1, btnW, localY + btnH, QuestAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                        g.fill(0, localY, 1, localY + btnH, QuestAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                        g.fill(btnW - 1, localY, btnW, localY + btnH, QuestAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                        g.fill(0, localY, btnW, localY + btnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isHovered ? 0x22 : 0x11) * dAlpha)));
+                        g.fill(0, localY, btnW, localY + 1, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                        g.fill(0, localY + btnH - 1, btnW, localY + btnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                        g.fill(0, localY, 1, localY + btnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                        g.fill(btnW - 1, localY, btnW, localY + btnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
 
                         float textScale = 0.8f;
                         float textH = font.lineHeight * textScale;
@@ -755,7 +758,7 @@ public class QuestJournalScreen extends Screen {
 
                         String safeChoiceText = font.plainSubstrByWidth((i + 1) + ". " + choice.getDisplayText().getString(), (int) ((btnW - 16) / textScale));
 
-                        g.drawString(font, safeChoiceText, 0, 0, QuestAnimUtil.withAlpha(textColor, safeA), false);
+                        g.drawString(font, safeChoiceText, 0, 0, HudAnimUtil.withAlpha(textColor, safeA), false);
                         g.pose().popPose();
 
                         localY += btnH + 5;
@@ -763,10 +766,10 @@ public class QuestJournalScreen extends Screen {
                 }
             }
         } else if (entry.state() == QuestState.COMPLETED) {
-            g.drawString(font, Component.translatable("arc_quest.gui.journal.label.quest_completed").getString(), 0, localY, QuestAnimUtil.withAlpha(0x88FF88, safeA), true);
+            g.drawString(font, Component.translatable("arc_quest.gui.journal.label.quest_completed").getString(), 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), true);
             localY += 16;
         } else if (entry.state() == QuestState.FAILED) {
-            g.drawString(font, Component.translatable("arc_quest.gui.journal.label.quest_failed").getString(), 0, localY, QuestAnimUtil.withAlpha(0xFF6666, safeA), true);
+            g.drawString(font, Component.translatable("arc_quest.gui.journal.label.quest_failed").getString(), 0, localY, HudAnimUtil.withAlpha(0xFF6666, safeA), true);
             localY += 16;
         }
 
@@ -780,16 +783,16 @@ public class QuestJournalScreen extends Screen {
         if (currentTab == Tab.ACTIVE && runtime != null) {
             boolean tHover = mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH;
             trackBtnHover = step(trackBtnHover, tHover ? 1f : 0f, 8f);
-            drawButton(g, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.tracked").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, QuestAnimUtil.easeOutCubic(trackBtnHover), tHover);
+            drawButton(g, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.tracked").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
 
             boolean aHover = mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH;
             abandonBtnHover = step(abandonBtnHover, aHover ? 1f : 0f, 8f);
-            drawButton(g, abanX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.abandon").getString(), 0xFF4444, QuestAnimUtil.easeOutCubic(abandonBtnHover), aHover);
+            drawButton(g, abanX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.abandon").getString(), 0xFF4444, HudAnimUtil.easeOutCubic(abandonBtnHover), aHover);
         } else if (currentTab == Tab.FAILED && entry.state() == QuestState.FAILED) {
             int restartBtnW = 120, restartBtnX = x + w - restartBtnW - 8;
             boolean rHover = mx >= restartBtnX && mx <= restartBtnX + restartBtnW && my >= btnY && my <= btnY + btnH;
             failedRestartBtnHover = step(failedRestartBtnHover, rHover ? 1f : 0f, 8f);
-            drawButton(g, restartBtnX, btnY, restartBtnW, btnH, Component.translatable("arc_quest.gui.journal.button.restart").getString(), activeTheme, QuestAnimUtil.easeOutCubic(failedRestartBtnHover), rHover);
+            drawButton(g, restartBtnX, btnY, restartBtnW, btnH, Component.translatable("arc_quest.gui.journal.button.restart").getString(), activeTheme, HudAnimUtil.easeOutCubic(failedRestartBtnHover), rHover);
         }
     }
 
@@ -797,13 +800,13 @@ public class QuestJournalScreen extends Screen {
         if (maxScroll <= 0) return;
         int thumbH = Math.max(16, (int) (((float) viewH / contentH) * viewH));
         int thumbY = y + (int) ((currentScroll / maxScroll) * (viewH - thumbH));
-        g.fill(x, y, x + 4, y + viewH, QuestAnimUtil.withAlpha(0x000000, (int) (40 * effectiveAlpha)));
-        g.fill(x, thumbY, x + 4, thumbY + thumbH, QuestAnimUtil.withAlpha(0xFFFFFF, (int) ((isDragging ? 180 : 120) * effectiveAlpha)));
+        g.fill(x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * effectiveAlpha)));
+        g.fill(x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isDragging ? 180 : 120) * effectiveAlpha)));
     }
 
     private void renderEmptyDetail(GuiGraphics g, int x, int y, int w, int h) {
         if (effectiveAlpha > 0.05f) {
-            g.drawCenteredString(font, Component.translatable("arc_quest.gui.journal.label.select_quest").getString(), x + w / 2, y + h / 2, QuestAnimUtil.withAlpha(0x666666, (int) (120 * effectiveAlpha)));
+            g.drawCenteredString(font, Component.translatable("arc_quest.gui.journal.label.select_quest").getString(), x + w / 2, y + h / 2, HudAnimUtil.withAlpha(0x666666, (int) (120 * effectiveAlpha)));
         }
     }
 
@@ -811,16 +814,16 @@ public class QuestJournalScreen extends Screen {
         int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * effectiveAlpha);
         int borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * effectiveAlpha);
         int borderRgb = hovered ? (themeColor & 0xFFFFFF) : 0xCCCCCC;
-        g.fill(x, y, x + w, y + h, QuestAnimUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(x, y, x + w, y + 1, QuestAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y + h - 1, x + w, y + h, QuestAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y, x + 1, y + h, QuestAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x + w - 1, y, x + w, y + h, QuestAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        g.fill(x, y, x + w, y + 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x, y + h - 1, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x, y, x + 1, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x + w - 1, y, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
         if (effectiveAlpha > 0.05f) {
             g.pose().pushPose();
             g.pose().translate(x + w / 2f, y + (h - font.lineHeight) / 2f + 1, 0);
             g.pose().scale(0.85f, 0.85f, 1f);
-            g.drawCenteredString(font, text, 0, 0, QuestAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)));
+            g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)));
             g.pose().popPose();
         }
     }

@@ -1,10 +1,12 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.quest;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 
 public class BranchChoiceToast {
@@ -64,7 +66,7 @@ public class BranchChoiceToast {
 
         if (!isDismissing && elapsedEnter < TIME_ENTER) {
             float t = elapsedEnter / TIME_ENTER;
-            float ease = QuestAnimUtil.easeOutQuintic(t);
+            float ease = HudAnimUtil.easeOutQuintic(t);
             alpha = ease;
             revealProgress = ease;
             textDriftX = -(1f - ease) * FLY_DIST;
@@ -75,7 +77,7 @@ public class BranchChoiceToast {
             long elapsedExit = now - dismissStartTime;
             if (elapsedExit >= TIME_EXIT) return false;
             float t = elapsedExit / TIME_EXIT;
-            float ease = QuestAnimUtil.easeInQuartic(t);
+            float ease = HudAnimUtil.easeInQuartic(t);
             wipeProgress = ease;
             alpha = 1f - (float) Math.pow(t, 6);
             textDriftX = ease * FLY_DIST;
@@ -98,7 +100,7 @@ public class BranchChoiceToast {
         int bgA = (int) (finalAlpha * 0x88);
         int accentA = (int) (finalAlpha * 255);
         int themeColor = COLOR_ACCENT & 0xFFFFFF;
-        QuestRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H,
+        HudRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H,
                 0x121212, bgA, themeColor, accentA, 4);
 
         // 使用缓存层获取任务名称
@@ -114,13 +116,13 @@ public class BranchChoiceToast {
             String cutName = font.plainSubstrByWidth(questName, POPUP_W - 30 - font.width(prefix));
             String title = prefix + cutName;
 
-            int subColor = QuestAnimUtil.withAlpha(0xAAAAAA, accentA);
-            int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, accentA);
-            QuestRenderUtil.drawDualText(g, font, contentX, contentY,
+            int subColor = HudAnimUtil.withAlpha(0xAAAAAA, accentA);
+            int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, accentA);
+            HudRenderUtil.drawDualText(g, font, contentX, contentY,
                     subtitle, title, subColor, titleColor, 1.0f);
 
-            QuestRenderUtil.drawTextWithLine(g, font, contentX, contentY + 10,
-                    "", QuestAnimUtil.withAlpha(themeColor, accentA),
+            HudRenderUtil.drawTextWithLine(g, font, contentX, contentY + 10,
+                    "", HudAnimUtil.withAlpha(themeColor, accentA),
                     lineWidth, 12);
         }
 

@@ -1,9 +1,11 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.quest;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 
 /**
  * 右侧精美弹幕实体类，独立负责自身的缓动、存活期与渲染。
@@ -47,7 +49,7 @@ public class QuestNotificationToast {
 
         if (elapsed < ENTER) {
             float t = elapsed / ENTER;
-            float ease = QuestAnimUtil.easeOutQuintic(t);
+            float ease = HudAnimUtil.easeOutQuintic(t);
             alpha = ease;
             slideX = (1f - ease) * (TOAST_WIDTH + marginRight + 30);
         } else if (elapsed < ENTER + HOLD) {
@@ -55,7 +57,7 @@ public class QuestNotificationToast {
             slideX = 0f;
         } else {
             float t = Math.min(1f, (elapsed - ENTER - HOLD) / EXIT);
-            float ease = QuestAnimUtil.easeInQuartic(t);
+            float ease = HudAnimUtil.easeInQuartic(t);
             alpha = 1f - (float) Math.pow(t, 6);
             slideX = ease * (TOAST_WIDTH + marginRight + 30);
         }
@@ -72,7 +74,7 @@ public class QuestNotificationToast {
         int bgAlpha = (int) (0x88 * alpha);
         int accentAlpha = (int) (255 * alpha);
         int lineAlpha = (int) (80 * alpha);
-        QuestRenderUtil.drawToastPanel(g, toastX, slotY, TOAST_WIDTH, TOAST_HEIGHT,
+        HudRenderUtil.drawToastPanel(g, toastX, slotY, TOAST_WIDTH, TOAST_HEIGHT,
                 0x121212, bgAlpha,
                 type.accentColor & 0x00FFFFFF, accentAlpha, 3,
                 lineAlpha);
@@ -83,9 +85,9 @@ public class QuestNotificationToast {
             String nameStr = font.plainSubstrByWidth(text, TOAST_WIDTH - 16);
 
             // 使用共用方法绘制双行文本
-            int subColor = QuestAnimUtil.withAlpha(type.accentColor, textAlpha);
-            int titleColor = QuestAnimUtil.withAlpha(0xFFFFFF, textAlpha);
-            QuestRenderUtil.drawDualText(g, font, toastX + 8, slotY + 4,
+            int subColor = HudAnimUtil.withAlpha(type.accentColor, textAlpha);
+            int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, textAlpha);
+            HudRenderUtil.drawDualText(g, font, toastX + 8, slotY + 4,
                     subtitle, nameStr, subColor, titleColor, 1.0f);
         }
 

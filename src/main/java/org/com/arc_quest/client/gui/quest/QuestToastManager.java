@@ -1,4 +1,4 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.quest;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;

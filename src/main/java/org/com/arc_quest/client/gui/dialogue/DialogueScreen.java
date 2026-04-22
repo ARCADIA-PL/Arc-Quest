@@ -1,4 +1,4 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.dialogue;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
@@ -10,6 +10,8 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
+import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.dialogue.network.ClientDialogueCache;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
@@ -17,7 +19,6 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
 import java.util.List;
 
     public class DialogueScreen extends Screen {
@@ -273,7 +274,7 @@ import java.util.List;
                 if (isChoiceOnCooldown(i)) continue;
 
                 int cy = choiceStartY + i * (choiceH + gap);
-                int expand = (int) (15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
+                int expand = (int) (15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
                 int currentX = choiceX - expand, currentW = choiceW + expand;
                 if (mx >= currentX && mx <= currentX + currentW && my >= cy && my <= cy + choiceH) {
                     selectChoice(i);
@@ -361,7 +362,7 @@ import java.util.List;
             return;
         }
 
-        float easeMaster = QuestAnimUtil.easeOutCubic(masterAnim) * QuestAnimUtil.easeOutCubic(suspendAlpha);
+        float easeMaster = HudAnimUtil.easeOutCubic(masterAnim) * HudAnimUtil.easeOutCubic(suspendAlpha);
         float masterAlpha = Math.max(0f, Math.min(1f, easeMaster)) * suspendAlpha;
 
         if (!typewriterDone && masterAnim > 0.1f) {
@@ -385,7 +386,7 @@ import java.util.List;
                 float speed = (i == clickedIndex)
                         ? CLICK_ANIM_SPEED_SELECTED
                         : CLICK_ANIM_SPEED_OTHERS;
-                clickAnim[i] = QuestAnimUtil.step(clickAnim[i], 1f, speed, dt);
+                clickAnim[i] = HudAnimUtil.step(clickAnim[i], 1f, speed, dt);
             }
             if (!clickSent && clickAnim[clickedIndex] >= CLICK_SEND_THRESHOLD) {
                 commitChoice();
@@ -398,7 +399,7 @@ import java.util.List;
                 ? (baseChoiceX - textBaseX - Math.max(20, (int) (this.width * 0.05f)))
                 : (this.width - textBaseX - Math.max(40, (int) (this.width * 0.1f)));
         // 使用共享工具方法
-        if (wrappedLines == null) wrappedLines = QuestRenderUtil.wrapText(fullText, maxTextWidth, font);
+        if (wrappedLines == null) wrappedLines = HudRenderUtil.wrapText(fullText, maxTextWidth, font);
 
         int lineHeight = font.lineHeight + 6;
         int totalTextHeight = wrappedLines.size() * lineHeight;
@@ -425,7 +426,7 @@ import java.util.List;
         if (safeAlpha > 2) {
             g.fillGradient(0, gradientTop, this.width, this.height - barHeight,
                     0x00000000,
-                    QuestAnimUtil.withAlpha(0x050505, Math.round(220 * masterAlpha)));
+                    HudAnimUtil.withAlpha(0x050505, Math.round(220 * masterAlpha)));
         }
 
         int yOffsetAnim = Math.round((1f - easeMaster) * 15f);
@@ -436,11 +437,11 @@ import java.util.List;
             g.pose().translate(textBaseX, textBaseY, 0);
             g.pose().scale(1.1f, 1.1f, 1f);
             g.drawString(font, speaker, 0, 0,
-                    QuestAnimUtil.withAlpha(0xFFFFFFFF, safeAlpha), true);
+                    HudAnimUtil.withAlpha(0xFFFFFFFF, safeAlpha), true);
             g.pose().popPose();
             int spkW = (int) (font.width(speaker) * 1.1f);
             g.fill(textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13,
-                    QuestAnimUtil.withAlpha(0x44FFFFFF, safeAlpha));
+                    HudAnimUtil.withAlpha(0x44FFFFFF, safeAlpha));
             textBaseY += 28;
         } else {
             textBaseY += 10;
@@ -456,7 +457,7 @@ import java.util.List;
                 int lineVisible = Math.min(line.length(), visibleChars - charCount);
                 String renderLine = line.substring(0, lineVisible);
                 g.drawString(font, renderLine, 0, 0,
-                        QuestAnimUtil.withAlpha(0xFFDDDDDD, safeAlpha), true);
+                        HudAnimUtil.withAlpha(0xFFDDDDDD, safeAlpha), true);
                 g.pose().translate(0, lineHeight, 0);
                 charCount += line.length();
             }
@@ -481,10 +482,10 @@ import java.util.List;
                 boolean isClickTarget = (clickedIndex == i);
                 boolean hasClickSelection = (clickedIndex >= 0);
                 float cAnim = (clickAnim != null && i < clickAnim.length) ? clickAnim[i] : 0f;
-                float cEase = QuestAnimUtil.easeOutCubic(cAnim);
+                float cEase = HudAnimUtil.easeOutCubic(cAnim);
 
                 // ── 悬浮检测 ──
-                int currentExpand = Math.round(15 * QuestAnimUtil.easeOutCubic(choiceHover[i]));
+                int currentExpand = Math.round(15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
                 boolean hovered = !isClosing && !splashActive && !onCooldown && !hasClickSelection
                         && mouseX >= choiceX - currentExpand && mouseX <= choiceX + choiceW
                         && mouseY >= cy && mouseY <= cy + choiceH;
@@ -493,10 +494,10 @@ import java.util.List;
                 float staggerDelay = 0.05f + (i * 0.08f);
                 float targetReveal = (!isClosing && timeSinceTextDone >= staggerDelay) ? 1f : 0f;
                 float revealSpeed = isClosing ? 15f : 5.0f;
-                choiceReveal[i] = QuestAnimUtil.step(choiceReveal[i], targetReveal, revealSpeed, dt);
+                choiceReveal[i] = HudAnimUtil.step(choiceReveal[i], targetReveal, revealSpeed, dt);
 
                 float progress = choiceReveal[i];
-                float revealEase = QuestAnimUtil.easeOutCubic(progress);
+                float revealEase = HudAnimUtil.easeOutCubic(progress);
                 float slideEase = progress * progress * (3f - 2f * progress);
 
                 // ── Hover 动画 ──
@@ -508,8 +509,8 @@ import java.util.List;
                 } else {
                     hoverTarget = hovered ? 1f : 0f;
                 }
-                choiceHover[i] = QuestAnimUtil.step(choiceHover[i], hoverTarget, 10f, dt);
-                float hEase = QuestAnimUtil.easeOutCubic(choiceHover[i]);
+                choiceHover[i] = HudAnimUtil.step(choiceHover[i], hoverTarget, 10f, dt);
+                float hEase = HudAnimUtil.easeOutCubic(choiceHover[i]);
 
                 if (progress < 0.01f) continue;
 
@@ -565,11 +566,11 @@ import java.util.List;
                     int lineCol = (lineBright << 16) | (lineBright << 8) | lineBright;
                     int lineW = 2 + Math.round(2 * cEase);
                     g.fill(currentX, cy, currentX + lineW, cy + choiceH,
-                            QuestAnimUtil.withAlpha(lineCol, baseAlpha));
+                            HudAnimUtil.withAlpha(lineCol, baseAlpha));
                 } else {
                     int lineCol = (lineGray << 16) | (lineGray << 8) | lineGray;
                     g.fill(currentX, cy, currentX + 2, cy + choiceH,
-                            QuestAnimUtil.withAlpha(lineCol, baseAlpha));
+                            HudAnimUtil.withAlpha(lineCol, baseAlpha));
                 }
 
                 // ════════════════════════════════════════════════
@@ -583,13 +584,13 @@ import java.util.List;
                     if (arrowAlpha > 2) {
                         g.drawString(font, ">", currentX + 8,
                                 cy + (choiceH - font.lineHeight) / 2 + 1,
-                                QuestAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
+                                HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
                     }
                 } else if (hEase > 0.01f) {
                     int arrowAlpha = Math.round(baseAlpha * hEase);
                     g.drawString(font, ">", currentX + 8,
                             cy + (choiceH - font.lineHeight) / 2 + 1,
-                            QuestAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
+                            HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
                 }
 
                 // ── 文本 ──
@@ -617,14 +618,14 @@ import java.util.List;
                 int finalTextColor;
                 if (onCooldown) {
                     int coolGray = (textGray << 16) | (textGray << 8) | textGray;
-                    finalTextColor = QuestAnimUtil.withAlpha(coolGray, Math.round(baseAlpha * 0.5f));
+                    finalTextColor = HudAnimUtil.withAlpha(coolGray, Math.round(baseAlpha * 0.5f));
                 } else if (isClickTarget) {
                     int bright = Math.round(textGray + (255 - textGray) * cEase);
                     int brightCol = (bright << 16) | (bright << 8) | bright;
-                    finalTextColor = QuestAnimUtil.withAlpha(brightCol, baseAlpha);
+                    finalTextColor = HudAnimUtil.withAlpha(brightCol, baseAlpha);
                 } else {
                     int texCol = (textGray << 16) | (textGray << 8) | textGray;
-                    finalTextColor = QuestAnimUtil.withAlpha(texCol, baseAlpha);
+                    finalTextColor = HudAnimUtil.withAlpha(texCol, baseAlpha);
                 }
 
                 g.drawString(font, safeChoice, currentX + textOffsetX,
@@ -644,7 +645,7 @@ import java.util.List;
             g.pose().translate(indX, indY, 0);
             g.pose().scale(0.8f, 0.8f, 1f);
             g.drawString(font, "▼", 0, 0,
-                    QuestAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeAlpha * pulseA)), true);
+                    HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeAlpha * pulseA)), true);
             g.pose().popPose();
         }
         RenderSystem.disableBlend();

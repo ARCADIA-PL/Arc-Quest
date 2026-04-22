@@ -1,6 +1,5 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.shop;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -9,6 +8,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
@@ -101,20 +102,20 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     protected void renderContent(GuiGraphics g, int mx, int my, float pt) {
-        float easeProgress = (isClosing ? QuestAnimUtil.easeInCubic(transitionAnim) : QuestAnimUtil.easeOutCubic(transitionAnim)) * QuestAnimUtil.easeOutCubic(suspendAlpha);
+        float easeProgress = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim)) * HudAnimUtil.easeOutCubic(suspendAlpha);
         int pw = panelW(), ph = panelH();
         int px = (width - pw) / 2, py = (height - ph) / 2;
         float slideOffset = (1f - easeProgress) * 200f;
 
         g.pose().pushPose();
 
-        if (shop == null) { g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.shop_closed").getString(), width/2, height/2, QuestAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha))); g.pose().popPose(); return; }
+        if (shop == null) { g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.shop_closed").getString(), width/2, height/2, HudAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha))); g.pose().popPose(); return; }
 
-        float titleScale = isClosing ? QuestAnimUtil.easeInCubic(transitionAnim) : (0.95f + 0.05f * easeProgress);
+        float titleScale = isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : (0.95f + 0.05f * easeProgress);
         if (titleScale > 0.01f) {
             g.pose().pushPose();
             g.pose().translate(width / 2f, py + 16, 0); g.pose().scale(titleScale, titleScale, 1f); g.pose().translate(-width / 2f, -(py + 16), 0);
-            g.drawCenteredString(font, shop.getDisplayName(), width / 2, py, QuestAnimUtil.withAlpha(shop.getThemeColor(), (int)(255*effectiveAlpha)));
+            g.drawCenteredString(font, shop.getDisplayName(), width / 2, py, HudAnimUtil.withAlpha(shop.getThemeColor(), (int)(255*effectiveAlpha)));
             g.pose().popPose();
         }
 
@@ -124,11 +125,11 @@ public class TradeScreen extends AbstractTradeScreen {
         int lx = px - (int) slideOffset, ly = py + 36, lw = CAT_WIDTH, lh = ph - 36;
         int rx = px + CAT_WIDTH + 16 + (int) slideOffset, ry = py + 36, rw = pw - CAT_WIDTH - 16, rh = ph - 36;
 
-        g.fill(lx, ly, lx + lw, ly + lh, QuestAnimUtil.withAlpha(0x05050A, (int)(120 * effectiveAlpha)));
-        QuestAnimUtil.drawFrame(g, lx, ly, lw, lh, 1, QuestAnimUtil.withAlpha(0xFFFFFF, (int)(100 * effectiveAlpha)));
+        g.fill(lx, ly, lx + lw, ly + lh, HudAnimUtil.withAlpha(0x05050A, (int)(120 * effectiveAlpha)));
+        HudAnimUtil.drawFrame(g, lx, ly, lw, lh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(100 * effectiveAlpha)));
 
-        g.fill(rx, ry, rx + rw, ry + rh, QuestAnimUtil.withAlpha(0x05050A, (int)(120 * effectiveAlpha)));
-        QuestAnimUtil.drawFrame(g, rx, ry, rw, rh, 1, QuestAnimUtil.withAlpha(0xFFFFFF, (int)(100 * effectiveAlpha)));
+        g.fill(rx, ry, rx + rw, ry + rh, HudAnimUtil.withAlpha(0x05050A, (int)(120 * effectiveAlpha)));
+        HudAnimUtil.drawFrame(g, rx, ry, rw, rh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(100 * effectiveAlpha)));
 
         renderCategories(g, lx, ly, lw, lh, mx, my);
         renderEntries(g, rx, ry, rw, rh, mx, my);
@@ -136,9 +137,9 @@ public class TradeScreen extends AbstractTradeScreen {
     }
 
     private void renderCategories(GuiGraphics g, int lx, int ly, int lw, int lh, int mx, int my) {
-        selectedCatSlide = QuestAnimUtil.lerp(selectedCatSlide, selectedCategoryIndex, 0.2f, dt);
+        selectedCatSlide = HudAnimUtil.lerp(selectedCatSlide, selectedCategoryIndex, 0.2f, dt);
         int hlY = ly + 10 + (int)(selectedCatSlide * 36);
-        g.fill(lx + 4, hlY, lx + 7, hlY + 28, QuestAnimUtil.withAlpha(selectedCategoryIndex == 0 ? shop.getThemeColor() : (shop.getCategories().isEmpty() ? shop.getThemeColor() : shop.getCategories().get(Math.max(0, selectedCategoryIndex-1)).getThemeColor()), (int)(255 * effectiveAlpha)));
+        g.fill(lx + 4, hlY, lx + 7, hlY + 28, HudAnimUtil.withAlpha(selectedCategoryIndex == 0 ? shop.getThemeColor() : (shop.getCategories().isEmpty() ? shop.getThemeColor() : shop.getCategories().get(Math.max(0, selectedCategoryIndex-1)).getThemeColor()), (int)(255 * effectiveAlpha)));
 
         int cy = ly + 10;
         drawCatRow(g, lx, cy, lw, Component.translatable("arc_quest.trade.category.all").getString(), selectedCategoryIndex == 0, 0, mx, my);
@@ -151,11 +152,11 @@ public class TradeScreen extends AbstractTradeScreen {
 
     private void drawCatRow(GuiGraphics g, int x, int y, int w, String text, boolean sel, int idx, int mx, int my) {
         boolean hov = !isClosing && dt > 0 && mx >= x && mx < x + w && my >= y && my < y + 28;
-        catHoverAnims[idx] = QuestAnimUtil.step(catHoverAnims[idx], hov ? 1f : 0f, 8f, dt);
-        float hEase = QuestAnimUtil.easeOutCubic(catHoverAnims[idx]);
+        catHoverAnims[idx] = HudAnimUtil.step(catHoverAnims[idx], hov ? 1f : 0f, 8f, dt);
+        float hEase = HudAnimUtil.easeOutCubic(catHoverAnims[idx]);
 
         float fastClose = isClosing ? Math.max(0f, (transitionAnim - 0.4f) / 0.6f) : 1.0f;
-        float contentScale = isClosing ? QuestAnimUtil.easeInCubic(fastClose) : 1.0f;
+        float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
 
         int textX = x + 16 + (sel ? 6 : (int)(4 * hEase));
         int c = sel ? 0xFFFFFF : Math.round(150 + 105 * hEase);
@@ -165,7 +166,7 @@ public class TradeScreen extends AbstractTradeScreen {
             g.pose().translate(x + w/2f, y + 14, 0);
             g.pose().scale(contentScale, contentScale, 1f);
             g.pose().translate(-(x + w/2f), -(y + 14), 0);
-            g.drawString(font, text, textX, y + 10, QuestAnimUtil.withAlpha((c<<16)|(c<<8)|c, (int)(255*effectiveAlpha)), true);
+            g.drawString(font, text, textX, y + 10, HudAnimUtil.withAlpha((c<<16)|(c<<8)|c, (int)(255*effectiveAlpha)), true);
             g.pose().popPose();
         }
     }
@@ -174,7 +175,7 @@ public class TradeScreen extends AbstractTradeScreen {
         g.enableScissor(rx, ry, rx + rw, ry + rh);
 
         float fastClose = isClosing ? Math.max(0f, (transitionAnim - 0.4f) / 0.6f) : effectiveAlpha;
-        float contentScale = isClosing ? QuestAnimUtil.easeInCubic(fastClose) : 1.0f;
+        float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
 
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
 
@@ -192,8 +193,8 @@ public class TradeScreen extends AbstractTradeScreen {
             boolean conditionNotMet = !onCd && !maxed && !cache.canBuy(shopId, gi);
             boolean canBuy = !onCd && !maxed && !conditionNotMet;
 
-            entryHoverAnims[i] = QuestAnimUtil.step(entryHoverAnims[i], hov && canBuy ? 1f : 0f, 6f, dt);
-            float hEase = QuestAnimUtil.easeOutCubic(entryHoverAnims[i]);
+            entryHoverAnims[i] = HudAnimUtil.step(entryHoverAnims[i], hov && canBuy ? 1f : 0f, 6f, dt);
+            float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
 
             int bgA = (int) ((0x22 + 0x33 * hEase) * effectiveAlpha);
             int bdA = (int) ((0x44 + 0x66 * hEase) * effectiveAlpha);
@@ -207,7 +208,7 @@ public class TradeScreen extends AbstractTradeScreen {
             int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
 
             g.fill(cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A);
-            QuestAnimUtil.drawFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            HudAnimUtil.drawFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
 
             if (contentScale > 0.01f) {
                 g.pose().pushPose();
@@ -230,13 +231,13 @@ public class TradeScreen extends AbstractTradeScreen {
                     int pulseAlpha = (int) (255 * (0.6f + 0.4f * pulse) * effectiveAlpha);
                     int pulseColor = onCd ? 0xFF6666 : (maxed ? 0xAAAAAA : 0x4488CC);
 
-                    g.fill(cx, cy, cx + cw, cy + ch, QuestAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.1f)));
-                    g.fill(cx - 1, cy - 1, cx + cw + 1, cy, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-                    g.fill(cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-                    g.fill(cx - 1, cy, cx, cy + ch, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-                    g.fill(cx + cw, cy, cx + cw + 1, cy + ch, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
+                    g.fill(cx, cy, cx + cw, cy + ch, HudAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.1f)));
+                    g.fill(cx - 1, cy - 1, cx + cw + 1, cy, HudAnimUtil.withAlpha(pulseColor, pulseAlpha));
+                    g.fill(cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, HudAnimUtil.withAlpha(pulseColor, pulseAlpha));
+                    g.fill(cx - 1, cy, cx, cy + ch, HudAnimUtil.withAlpha(pulseColor, pulseAlpha));
+                    g.fill(cx + cw, cy, cx + cw + 1, cy + ch, HudAnimUtil.withAlpha(pulseColor, pulseAlpha));
 
-                    g.fill(cx, cy, cx + cw, cy + ch, QuestAnimUtil.withAlpha(0x000000, (int)(160 * effectiveAlpha)));
+                    g.fill(cx, cy, cx + cw, cy + ch, HudAnimUtil.withAlpha(0x000000, (int)(160 * effectiveAlpha)));
                 }
 
                 int textX = cx + 52 + (int)(4 * hEase);
@@ -260,10 +261,10 @@ public class TradeScreen extends AbstractTradeScreen {
                 if (font.width(nameStr) > maxNameW) nameStr = font.plainSubstrByWidth(nameStr, maxNameW - 8) + "...";
                 int nameDrawW = font.width(nameStr);
 
-                g.drawString(font, nameStr, textX, cy + 10, QuestAnimUtil.withAlpha(canBuy ? 0xFFFFFF : 0x999999, (int)(255*effectiveAlpha)), true);
+                g.drawString(font, nameStr, textX, cy + 10, HudAnimUtil.withAlpha(canBuy ? 0xFFFFFF : 0x999999, (int)(255*effectiveAlpha)), true);
 
                 if (!statusStr.isEmpty()) {
-                    g.drawString(font, statusStr, textX + nameDrawW + 6, cy + 10, QuestAnimUtil.withAlpha(scColor, (int)(255*effectiveAlpha)), true);
+                    g.drawString(font, statusStr, textX + nameDrawW + 6, cy + 10, HudAnimUtil.withAlpha(scColor, (int)(255*effectiveAlpha)), true);
                 }
 
                 int currentCostX = textX;
@@ -272,7 +273,7 @@ public class TradeScreen extends AbstractTradeScreen {
                 for (int j = 0; j < entry.getCosts().size(); j++) {
                     ITradeOffer cost = entry.getCosts().get(j);
                     if (j > 0) {
-                        g.drawString(font, "+", currentCostX, costY, QuestAnimUtil.withAlpha(0x777777, (int)(255*effectiveAlpha)), true);
+                        g.drawString(font, "+", currentCostX, costY, HudAnimUtil.withAlpha(0x777777, (int)(255*effectiveAlpha)), true);
                         currentCostX += font.width("+") + 2;
                     }
 
@@ -293,11 +294,11 @@ public class TradeScreen extends AbstractTradeScreen {
                     currentCostX += 12;
 
                     String costDesc = cost.describe().getString();
-                    g.drawString(font, costDesc, currentCostX, costY, QuestAnimUtil.withAlpha(canBuy ? 0xDDDDDD : 0x777777, (int)(255*effectiveAlpha)), true);
+                    g.drawString(font, costDesc, currentCostX, costY, HudAnimUtil.withAlpha(canBuy ? 0xDDDDDD : 0x777777, (int)(255*effectiveAlpha)), true);
                     currentCostX += font.width(costDesc) + 4;
 
                     if (currentCostX > cx + cw - 100) {
-                        g.drawString(font, "...", currentCostX, costY, QuestAnimUtil.withAlpha(0x777777, (int)(255*effectiveAlpha)), true);
+                        g.drawString(font, "...", currentCostX, costY, HudAnimUtil.withAlpha(0x777777, (int)(255*effectiveAlpha)), true);
                         break;
                     }
                 }
@@ -320,9 +321,9 @@ public class TradeScreen extends AbstractTradeScreen {
                     btnC = 0x888888;
                 }
 
-                g.fill(btnX, btnY, btnX + btnW, btnY + btnH, QuestAnimUtil.withAlpha(btnC, (int)(40 * effectiveAlpha)));
-                QuestAnimUtil.drawFrame(g, btnX, btnY, btnW, btnH, 1, QuestAnimUtil.withAlpha(btnC, (int)(200 * effectiveAlpha)));
-                g.drawCenteredString(font, btnText, btnX + btnW / 2, btnY + 8, QuestAnimUtil.withAlpha(btnC, (int)(255*effectiveAlpha)));
+                g.fill(btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(btnC, (int)(40 * effectiveAlpha)));
+                HudAnimUtil.drawFrame(g, btnX, btnY, btnW, btnH, 1, HudAnimUtil.withAlpha(btnC, (int)(200 * effectiveAlpha)));
+                g.drawCenteredString(font, btnText, btnX + btnW / 2, btnY + 8, HudAnimUtil.withAlpha(btnC, (int)(255*effectiveAlpha)));
 
                 g.pose().popPose();
             }
@@ -333,14 +334,14 @@ public class TradeScreen extends AbstractTradeScreen {
         if (maxScroll > 0) {
             int th = Math.max(16, (int) (((float) rh / (filteredEntries.size() * (CARD_HEIGHT + 8))) * rh));
             int ty = ry + (int) ((scrollOffset / maxScroll) * (rh - th));
-            g.fill(rx + rw - 6, ty, rx + rw - 4, ty + th, QuestAnimUtil.withAlpha(0xFFFFFF, (int) (180 * effectiveAlpha)));
+            g.fill(rx + rw - 6, ty, rx + rw - 4, ty + th, HudAnimUtil.withAlpha(0xFFFFFF, (int) (180 * effectiveAlpha)));
         }
     }
 
     @Override
     protected int getHoveredEntryIndex(int mx, int my) {
         int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
-        int rx = px + CAT_WIDTH + 16 + (int)((1f - (QuestAnimUtil.easeOutCubic(transitionAnim)*QuestAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
+        int rx = px + CAT_WIDTH + 16 + (int)((1f - (HudAnimUtil.easeOutCubic(transitionAnim)* HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
         int ry = py + 36, rw = pw - CAT_WIDTH - 16, rh = ph - 36;
 
         if (mx >= rx && mx < rx + rw && my >= ry && my <= ry + rh) {
@@ -355,7 +356,7 @@ public class TradeScreen extends AbstractTradeScreen {
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) return super.mouseClicked(mx, my, btn);
 
         int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
-        float slide = (1f - (QuestAnimUtil.easeOutCubic(transitionAnim)*QuestAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
+        float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim)* HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
 
         if (mx >= px - (int)slide && mx < px - (int)slide + CAT_WIDTH) {
             int cy = py + 46;

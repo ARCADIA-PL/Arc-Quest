@@ -1,4 +1,4 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.quest;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
@@ -7,6 +7,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.render.QuestIconRenderer;
 import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
@@ -225,7 +227,7 @@ public class QuestTrackerPanel {
         int bgAlpha = (int) (0x55 * alpha);
         int accentAlpha = (int) (0xFF * alpha);
 
-        QuestAnimUtil.drawAccentPanel(g, panelX, panelY, PANEL_WIDTH, panelH, bgAlpha << 24, (accentAlpha << 24) | (currentThemeColor & 0x00FFFFFF), ACCENT_WIDTH);
+        HudAnimUtil.drawAccentPanel(g, panelX, panelY, PANEL_WIDTH, panelH, bgAlpha << 24, (accentAlpha << 24) | (currentThemeColor & 0x00FFFFFF), ACCENT_WIDTH);
 
         int textX = panelX + ACCENT_WIDTH + PADDING;
         int textY = panelY + PADDING;
@@ -265,14 +267,14 @@ public class QuestTrackerPanel {
                 ClientQuestCache.INSTANCE.getQuestDisplayName(tracked.getQuestId()), 
                 PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - 4 - iconOffset
             );
-            g.drawString(font, title, textX + iconOffset, textY, QuestAnimUtil.withAlpha(0xFFFFFF, titleA), true);
+            g.drawString(font, title, textX + iconOffset, textY, HudAnimUtil.withAlpha(0xFFFFFF, titleA), true);
         }
     }
 
     private void renderPhaseName(GuiGraphics g, QuestRuntimeData tracked, PhaseDefinition phase, int textX, int textY, float alpha, float wipeAlpha, Font font) {
         int subA = (int) (255 * alpha * wipeAlpha);
         if (subA > 5) {
-            g.fill(textX, textY + 1, textX + 2, textY + 10, QuestAnimUtil.withAlpha(currentThemeColor, subA));
+            g.fill(textX, textY + 1, textX + 2, textY + 10, HudAnimUtil.withAlpha(currentThemeColor, subA));
 
             g.pose().pushPose();
             g.pose().translate(textX + 7, textY + 1, 0);
@@ -281,7 +283,7 @@ public class QuestTrackerPanel {
             // 使用缓存层获取阶段名称
             String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), displayedPhaseId);
             String phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName).getString();
-            g.drawString(font, phasePrefix, 0, 0, QuestAnimUtil.withAlpha(0xEEEEEE, subA), true);
+            g.drawString(font, phasePrefix, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, subA), true);
             g.pose().popPose();
         }
     }
@@ -337,11 +339,11 @@ public class QuestTrackerPanel {
             String objText = prefix + obj.getDisplayText().getString();
             String progressText = progress + "/" + required;
 
-            int textColor = complete ? QuestAnimUtil.withAlpha(0x88FF88, aInt) : QuestAnimUtil.withAlpha(0xCCCCCC, aInt);
+            int textColor = complete ? HudAnimUtil.withAlpha(0x88FF88, aInt) : HudAnimUtil.withAlpha(0xCCCCCC, aInt);
             if (objPulse[i] > 0.05f)
-                textColor = QuestAnimUtil.lerpColor(textColor, QuestAnimUtil.withAlpha(0xFFFFFF, (int) (255 * objPulse[i] * objAlpha)), objPulse[i]);
+                textColor = HudAnimUtil.lerpColor(textColor, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * objPulse[i] * objAlpha)), objPulse[i]);
             if (cGlow > 0)
-                textColor = QuestAnimUtil.lerpColor(textColor, QuestAnimUtil.withAlpha(0xFFFFFF, cGlow), objCompleteAnim[i] * 0.7f);
+                textColor = HudAnimUtil.lerpColor(textColor, HudAnimUtil.withAlpha(0xFFFFFF, cGlow), objCompleteAnim[i] * 0.7f);
 
             int numW = (int) (font.width(progressText) * 0.8f);
             int numX = panelX + PANEL_WIDTH - PADDING - numW + (int) wipeDrift;
@@ -365,13 +367,13 @@ public class QuestTrackerPanel {
 
             int barW = PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - (int) rowSlide;
             int barBg = ((int) (0x40 * objAlpha) << 24) | 0xFFFFFF;
-            int barFill = complete ? QuestAnimUtil.withAlpha(0x66FF66, (int) (0xCC * objAlpha)) : QuestAnimUtil.withAlpha(currentThemeColor, (int) (0xCC * objAlpha));
-            int barGlow = QuestAnimUtil.withAlpha(0xFFFFFF, (int) (0xFF * objAlpha));
+            int barFill = complete ? HudAnimUtil.withAlpha(0x66FF66, (int) (0xCC * objAlpha)) : HudAnimUtil.withAlpha(currentThemeColor, (int) (0xCC * objAlpha));
+            int barGlow = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0xFF * objAlpha));
 
             if (objPulse[i] > 0.05f)
-                barFill = QuestAnimUtil.lerpColor(barFill, QuestAnimUtil.withAlpha(0xFFFFFF, (int) (200 * objPulse[i] * objAlpha)), objPulse[i] * 0.5f);
+                barFill = HudAnimUtil.lerpColor(barFill, HudAnimUtil.withAlpha(0xFFFFFF, (int) (200 * objPulse[i] * objAlpha)), objPulse[i] * 0.5f);
 
-            QuestAnimUtil.drawProgressBarGlow(g, rowX, textY, barW, PROGRESS_BAR_H, displayRatio, barBg, barFill, barGlow);
+            HudAnimUtil.drawProgressBarGlow(g, rowX, textY, barW, PROGRESS_BAR_H, displayRatio, barBg, barFill, barGlow);
             textY += PROGRESS_BAR_H + 6;
         }
     }

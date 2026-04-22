@@ -1,6 +1,5 @@
-package org.com.arc_quest.client.gui;
+package org.com.arc_quest.client.gui.shop;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -9,6 +8,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
@@ -96,20 +97,20 @@ public class SimpleTradePanel extends AbstractTradeScreen {
     @Override
     protected void renderContent(GuiGraphics g, int mx, int my, float pt) {
         if (!isClosing && dt > 0) openAnimTime += dt;
-        float easeProgress = (isClosing ? QuestAnimUtil.easeInCubic(transitionAnim) : QuestAnimUtil.easeOutCubic(transitionAnim)) * QuestAnimUtil.easeOutCubic(suspendAlpha);
+        float easeProgress = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim)) * HudAnimUtil.easeOutCubic(suspendAlpha);
 
         Layout l = computeLayout();
         g.pose().pushPose();
 
         if (shop == null) {
-            g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.unknown_shop").getString(), width / 2, height / 2, QuestAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha)));
+            g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.unknown_shop").getString(), width / 2, height / 2, HudAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha)));
             g.pose().popPose(); return;
         }
 
         float titleYSlide = (1f - easeProgress) * -30f;
         g.pose().pushPose();
         g.pose().translate(0, titleYSlide, 0);
-        g.drawCenteredString(font, shop.getDisplayName(), width / 2, l.startY() - 24, QuestAnimUtil.withAlpha(shop.getThemeColor(), (int)(255*effectiveAlpha)));
+        g.drawCenteredString(font, shop.getDisplayName(), width / 2, l.startY() - 24, HudAnimUtil.withAlpha(shop.getThemeColor(), (int)(255*effectiveAlpha)));
         g.pose().popPose();
 
         List<TradeEntry> allE = new ArrayList<>(shop.getAllEntries());
@@ -148,12 +149,12 @@ public class SimpleTradePanel extends AbstractTradeScreen {
             boolean conditionNotMet = !onCd && !maxed && !ClientTradeCache.INSTANCE.canBuy(shopId, gi);
             boolean canBuy = !onCd && !maxed && !conditionNotMet;
 
-            hoverAnims[i] = QuestAnimUtil.step(hoverAnims[i], hov && canBuy ? 1f : 0f, 10f, dt);
-            float hEase = QuestAnimUtil.easeOutCubic(hoverAnims[i]);
+            hoverAnims[i] = HudAnimUtil.step(hoverAnims[i], hov && canBuy ? 1f : 0f, 10f, dt);
+            float hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
             float clampedEase = Math.max(0f, Math.min(1f, flyEase));
 
             float bgScale = (isClosing ? 1.0f : flyEase) + hEase * 0.06f;
-            float contentScale = isClosing ? QuestAnimUtil.easeInCubic(Math.max(0f, (transitionAnim - 0.4f) / 0.6f)) : bgScale;
+            float contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (transitionAnim - 0.4f) / 0.6f)) : bgScale;
             int bRgb = (gi == lastClickedGi && feedbackAnim > 0) ? (feedbackSuccess ? 0x55FF55 : 0xFF5555) : getThemeColorForEntry(entry);
 
             g.pose().pushPose();
@@ -166,7 +167,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
             if (gi == lastClickedGi && feedbackAnim > 0) bdA = Math.min(255, bdA + (int)(170 * feedbackAnim * effectiveAlpha));
 
             g.fill((int)drawX, (int)drawY, (int)(drawX + l.cardW()), (int)(drawY + l.cardH()), (bgA << 24) | 0x05050A);
-            QuestAnimUtil.drawFrame(g, (int)drawX, (int)drawY, l.cardW(), l.cardH(), 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            HudAnimUtil.drawFrame(g, (int)drawX, (int)drawY, l.cardW(), l.cardH(), 1, (bdA << 24) | (bRgb & 0xFFFFFF));
             g.pose().popPose();
 
             if (contentScale > 0.01f) {
@@ -189,12 +190,12 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                     int pulseAlpha = (int) (cardAlpha * (0.6f + 0.4f * pulse));
                     int pulseColor = onCd ? 0xFF6666 : (maxed ? 0xAAAAAA : 0x4488CC);
 
-                    g.fill((int)drawX, (int)drawY, (int)(drawX + l.cardW()), (int)(drawY + l.cardH()), QuestAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.12f)));
-                    g.fill((int)drawX - 1, (int)drawY - 1, (int)(drawX + l.cardW()) + 1, (int)drawY, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-                    g.fill((int)drawX - 1, (int)(drawY + l.cardH()), (int)(drawX + l.cardW()) + 1, (int)(drawY + l.cardH()) + 1, QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-                    g.fill((int)drawX - 1, (int)drawY, (int)drawX, (int)(drawY + l.cardH()), QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-                    g.fill((int)(drawX + l.cardW()), (int)drawY, (int)(drawX + l.cardW()) + 1, (int)(drawY + l.cardH()), QuestAnimUtil.withAlpha(pulseColor, pulseAlpha));
-                    g.fill((int)drawX, (int)drawY, (int)(drawX + l.cardW()), (int)(drawY + l.cardH()), QuestAnimUtil.withAlpha(0x000000, (int)(160 * clampedEase * effectiveAlpha)));
+                    g.fill((int)drawX, (int)drawY, (int)(drawX + l.cardW()), (int)(drawY + l.cardH()), HudAnimUtil.withAlpha(pulseColor, (int)(pulseAlpha * 0.12f)));
+                    g.fill((int)drawX - 1, (int)drawY - 1, (int)(drawX + l.cardW()) + 1, (int)drawY, HudAnimUtil.withAlpha(pulseColor, pulseAlpha));
+                    g.fill((int)drawX - 1, (int)(drawY + l.cardH()), (int)(drawX + l.cardW()) + 1, (int)(drawY + l.cardH()) + 1, HudAnimUtil.withAlpha(pulseColor, pulseAlpha));
+                    g.fill((int)drawX - 1, (int)drawY, (int)drawX, (int)(drawY + l.cardH()), HudAnimUtil.withAlpha(pulseColor, pulseAlpha));
+                    g.fill((int)(drawX + l.cardW()), (int)drawY, (int)(drawX + l.cardW()) + 1, (int)(drawY + l.cardH()), HudAnimUtil.withAlpha(pulseColor, pulseAlpha));
+                    g.fill((int)drawX, (int)drawY, (int)(drawX + l.cardW()), (int)(drawY + l.cardH()), HudAnimUtil.withAlpha(0x000000, (int)(160 * clampedEase * effectiveAlpha)));
                 }
 
                 int textY = (int)drawY + (l.cardH() - font.lineHeight * 2 - 4) / 2;
@@ -219,13 +220,13 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                 if (font.width(nameStr) > maxNameW) nameStr = font.plainSubstrByWidth(nameStr, maxNameW - 8) + "...";
                 int nameDrawW = font.width(nameStr);
 
-                g.drawString(font, nameStr, (int)drawX + 26, textY, QuestAnimUtil.withAlpha(canBuy ? 0xFFFFFF : 0x999999, (int)(255 * clampedEase * effectiveAlpha)), true);
+                g.drawString(font, nameStr, (int)drawX + 26, textY, HudAnimUtil.withAlpha(canBuy ? 0xFFFFFF : 0x999999, (int)(255 * clampedEase * effectiveAlpha)), true);
 
                 if (!statusStr.isEmpty()) {
-                    g.drawString(font, statusStr, (int)drawX + 26 + nameDrawW + 4, textY, QuestAnimUtil.withAlpha(scColor, (int)(255 * clampedEase * effectiveAlpha)), true);
+                    g.drawString(font, statusStr, (int)drawX + 26 + nameDrawW + 4, textY, HudAnimUtil.withAlpha(scColor, (int)(255 * clampedEase * effectiveAlpha)), true);
                 }
 
-                int costColor = canBuy ? QuestAnimUtil.withAlpha(getThemeColorForEntry(entry), (int)(255 * clampedEase * effectiveAlpha)) : QuestAnimUtil.withAlpha(0x777777, (int)(255 * clampedEase * effectiveAlpha));
+                int costColor = canBuy ? HudAnimUtil.withAlpha(getThemeColorForEntry(entry), (int)(255 * clampedEase * effectiveAlpha)) : HudAnimUtil.withAlpha(0x777777, (int)(255 * clampedEase * effectiveAlpha));
                 int currentCostX = (int)drawX + 26;
                 int costY = textY + font.lineHeight + 4;
                 int startCostX = currentCostX;
@@ -240,7 +241,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                     }
 
                     if (j > 0) {
-                        g.drawString(font, "+", currentCostX, costY, QuestAnimUtil.withAlpha(0x777777, (int)(255 * clampedEase * effectiveAlpha)), true);
+                        g.drawString(font, "+", currentCostX, costY, HudAnimUtil.withAlpha(0x777777, (int)(255 * clampedEase * effectiveAlpha)), true);
                         currentCostX += font.width("+") + 2;
                     }
 

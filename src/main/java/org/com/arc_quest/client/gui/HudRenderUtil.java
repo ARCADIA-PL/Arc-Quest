@@ -16,9 +16,9 @@ import java.util.List;
 /**
  * 共享渲染工具集。
  */
-public final class QuestRenderUtil {
+public final class HudRenderUtil {
 
-    private QuestRenderUtil() {
+    private HudRenderUtil() {
     }
 
     public static void drawBatchRects(GuiGraphics g, int[] rects, int rectCount) {
@@ -112,7 +112,7 @@ public final class QuestRenderUtil {
             g.pose().pushPose();
             g.pose().translate((int) x, (int) y, 0);
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, subtitle, 0, 0, QuestAnimUtil.withAlpha(subtitleColor & 0x00FFFFFF, subA), true);
+            g.drawString(font, subtitle, 0, 0, HudAnimUtil.withAlpha(subtitleColor & 0x00FFFFFF, subA), true);
             g.pose().popPose();
         }
 
@@ -120,7 +120,7 @@ public final class QuestRenderUtil {
             g.pose().pushPose();
             g.pose().translate((int) x, (int) (y + 10), 0);
             g.pose().scale(1.0f, 1.0f, 1f);
-            g.drawString(font, title, 0, 0, QuestAnimUtil.withAlpha(titleColor & 0x00FFFFFF, titleA), true);
+            g.drawString(font, title, 0, 0, HudAnimUtil.withAlpha(titleColor & 0x00FFFFFF, titleA), true);
             g.pose().popPose();
         }
     }
@@ -139,7 +139,7 @@ public final class QuestRenderUtil {
 
         if (lineWidth > 2) {
             int lineY = (int) (y + lineYOffset);
-            int lineColor = QuestAnimUtil.withAlpha(color & 0x00FFFFFF, alpha);
+            int lineColor = HudAnimUtil.withAlpha(color & 0x00FFFFFF, alpha);
             g.fill((int) x, lineY, (int) (x + lineWidth), lineY + 1, lineColor);
 
             if (lineWidth > 10) {
