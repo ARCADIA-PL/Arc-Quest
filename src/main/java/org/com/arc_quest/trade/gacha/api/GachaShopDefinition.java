@@ -4,8 +4,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+
+import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
+import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.trade.api.ITradeOffer;
@@ -159,6 +162,15 @@ public class GachaShopDefinition {
     public int getMaxDraws() { return maxDraws; }
     @Nullable
     public ICondition getResetCondition() { return resetCondition; }
+    
+    /**
+     * 获取可见性条件（代理自 shopDefinition.getOpenCondition()）。
+     */
+    @Nullable
+    public ICondition getVisibleCondition() {
+        return shopDefinition.getOpenCondition();
+    }
+    
     public PityConfig getPityConfig() { return pityConfig; }
     
     /**
@@ -231,38 +243,6 @@ public class GachaShopDefinition {
     public SoundEvent getDrawFailSound() { return drawFailSound; }
     
     /**
-     * 检查是否可以执行抽奖（条件 + 冷却 + 限购）。
-     */
-    public boolean canDraw(IQuestCapability cap, long nowRealTime, long nowGameTime, long nowDayTime) {
-        // 检查条件
-        if (drawCondition != null) {
-            var completedQuests = cap.getCompletedQuestLocations();
-            
-            if (!drawCondition.test(null, completedQuests, cap.getAllFlags(), cap.getAllVariables())) {
-                return false;
-            }
-        }
-        
-        // 检查冷却（使用 UnifiedCooldownManager）
-        if (cooldownType != CooldownType.NONE) {
-            var progress = cap.getDialogueProgress();
-            var entry = progress.getEntry(ProgressKey.ofTrade(shopDefinition.getShopId(), "draw"));
-            if (progress.isOnCooldown(entry, cooldownType, (int)cooldownValue, resetTimeTicks, 
-                                     nowRealTime, nowGameTime, nowDayTime)) {
-                return false;
-            }
-        }
-        
-        // 检查限购
-        if (maxDraws > 0) {
-            int totalDraws = getTotalDraws(cap);
-            return totalDraws < maxDraws;
-        }
-        
-        return true;
-    }
-    
-    /**
      * 获取当前总抽奖次数。
      */
     public int getTotalDraws(IQuestCapability cap) {
@@ -300,6 +280,15 @@ public class GachaShopDefinition {
                                       long nowRealTime, 
                                       long nowGameTime, 
                                       long nowDayTime) {
+        // 【修复1】检测时间回退（对标 UnifiedCooldownManager.clearIfTimeRegressed）
+        ProgressKey drawKey = ProgressKey.ofTrade(shopDefinition.getShopId(), "draw");
+        if (cooldownType != CooldownType.NONE) {
+            UnifiedCooldownManager.clearIfTimeRegressed(
+                cap.getDialogueProgress(), drawKey, nowDayTime
+            );
+        }
+        
+        // 检查自定义重置条件
         if (resetCondition == null) return false;
         
         var completedQuests = cap.getCompletedQuestLocations();
@@ -353,5 +342,23 @@ public class GachaShopDefinition {
         }
         
         return new DrawResult(drawnItem, isPityTriggered);
+    }
+
+    /**
+     * 检查是否有抽奖次数限制。
+     *
+     * @return true 如果设置了 maxDraws > 0
+     */
+    public boolean hasLimit() {
+        return maxDraws > 0;
+    }
+
+    /**
+     * 检查是否有冷却时间。
+     *
+     * @return true 如果 cooldownType != NONE
+     */
+    public boolean hasCooldown() {
+        return cooldownType != CooldownType.NONE;
     }
 }

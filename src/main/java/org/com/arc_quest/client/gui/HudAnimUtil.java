@@ -67,6 +67,11 @@ public final class QuestAnimUtil {
         return (alpha << 24) | (rgb & 0x00FFFFFF);
     }
 
+    public static float easeOutElastic(float t) {
+        float c4 = (2f * (float)Math.PI) / 3f;
+        return t == 0 ? 0 : t == 1 ? 1 : (float)Math.pow(2, -10 * t) * (float)Math.sin((t * 10f - 0.75f) * c4) + 1f;
+    }
+
     public static int lerpColor(int c1, int c2, float t) {
         t = Math.max(0f, Math.min(1f, t));
         int a1 = (c1 >> 24) & 0xFF, r1 = (c1 >> 16) & 0xFF, g1 = (c1 >> 8) & 0xFF, b1 = c1 & 0xFF;
@@ -77,7 +82,6 @@ public final class QuestAnimUtil {
         int b = (int) (b1 + (b2 - b1) * t);
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
-
 
     public static void drawFrame(GuiGraphics g, int x, int y, int w, int h,
                                  int bgColor, int borderColor) {

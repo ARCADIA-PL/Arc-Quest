@@ -163,6 +163,10 @@ public class GachaEvents {
          */
         public enum FailReason {
             /**
+             * 不可见（可见性条件不满足）
+             */
+            NOT_VISIBLE,
+            /**
              * 条件不满足（前置任务、等级等）
              */
             CONDITION_NOT_MET,
