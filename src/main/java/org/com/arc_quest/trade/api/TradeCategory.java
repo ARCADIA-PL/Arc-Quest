@@ -2,11 +2,12 @@ package org.com.arc_quest.trade.api;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import org.com.arc_quest.client.gui.shop.TradeScreen;
 
 import java.util.Objects;
 
 /**
- * 商品分类。在完整交易窗口 ({@link org.com.arc_quest.client.gui.TradeScreen})
+ * 商品分类。在完整交易窗口 ({@link TradeScreen})
  * 中用于左侧分类标签页。
  */
 public final class TradeCategory {

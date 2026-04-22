@@ -44,9 +44,7 @@ public final class TradeShopDefinition {
                                @Nullable SoundEvent closeSound) {
         Objects.requireNonNull(shopId);
         Objects.requireNonNull(displayName);
-        if (entries.isEmpty()) {
-            throw new IllegalArgumentException("TradeShop '" + shopId + "' must have at least one entry");
-        }
+        // 注意：抽奖商店（GachaShopDefinition）可能没有传统交易项，因此不强制要求 entries 非空
         this.shopId = shopId;
         this.displayName = displayName;
         this.description = description;
