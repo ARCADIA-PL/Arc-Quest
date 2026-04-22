@@ -160,6 +160,27 @@ public interface IQuestCapability {
      * @param count 保底计数值
      */
     void setGachaPityCounter(String shopId, int count);
+    
+    /**
+     * 添加抽奖历史记录。
+     *
+     * @param shopId 商店 ID
+     * @param itemId 物品 ID
+     * @param rarityName 稀有度名称
+     * @param actualCount 实际数量
+     * @param pityTriggered 是否触发保底
+     * @param drawTime 抽奖时间戳
+     */
+    void addGachaDrawHistory(String shopId, String itemId, String rarityName, 
+                             int actualCount, boolean pityTriggered, long drawTime);
+    
+    /**
+     * 获取抽奖历史记录列表。
+     *
+     * @param shopId 商店 ID
+     * @return 历史记录列表（最多50条）
+     */
+    List<GachaDrawRecord> getGachaDrawHistory(String shopId);
 
     /**
      * 获取某商店某商品的上次购买时间（毫秒）。
@@ -223,4 +244,15 @@ public interface IQuestCapability {
         }
         getDialogueProgress().clear();
     }
+    
+    /**
+     * 抽奖历史记录（内部记录类）。
+     */
+    record GachaDrawRecord(
+        String itemId,
+        String rarityName,
+        int actualCount,
+        boolean pityTriggered,
+        long drawTime
+    ) {}
 }

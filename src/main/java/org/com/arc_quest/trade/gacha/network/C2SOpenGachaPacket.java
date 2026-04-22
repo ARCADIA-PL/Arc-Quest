@@ -15,6 +15,7 @@ import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.runtime.GachaSession;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -120,6 +121,9 @@ public class C2SOpenGachaPacket {
                 lastDrawDayTime = entry.dayTime();
             }
             
+            // 【新增】获取抽奖历史记录（对标商店系统）
+            List<IQuestCapability.GachaDrawRecord> drawHistory = cap.getGachaDrawHistory(pkt.shopId);
+            
             ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
                 new S2COpenGachaPacket(
@@ -133,7 +137,8 @@ public class C2SOpenGachaPacket {
                     lastDrawDayTime,
                     gachaShop.getCooldownType().ordinal(),
                     gachaShop.getCooldownValue(),
-                    gachaShop.getResetTimeTicks()
+                    gachaShop.getResetTimeTicks(),
+                    drawHistory
                 )
             );
             

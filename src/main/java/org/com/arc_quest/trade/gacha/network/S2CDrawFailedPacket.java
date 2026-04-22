@@ -40,6 +40,9 @@ public class S2CDrawFailedPacket {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
             
+            LOGGER.info("[Gacha-Failed] Player {} draw failed for shop {}: reason={}",
+                mc.player.getName().getString(), pkt.shopId, pkt.failReason);
+            
             // 记录失败结果，触发 UI 状态切换
             ClientGachaCache.INSTANCE.recordDrawFailure(pkt.shopId, pkt.failReason);
         });

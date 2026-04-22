@@ -64,36 +64,52 @@ public class GachaScreen extends Screen {
     public GachaShopDefinition getShopDef() { return shopDef; }
 
     public void startDrawRequest() {
-        if (currentPhase != Phase.PREVIEW) return;
+        if (currentPhase != Phase.PREVIEW) {
+            LOGGER.debug("[Gacha-Client] Draw request ignored: currentPhase={}", currentPhase);
+            return;
+        }
+        
+        LOGGER.info("[Gacha-Client] Starting draw request for shop: {}", shopId);
         currentPhase = Phase.WAITING_SERVER;
-        this.hasPendingDraw = true; // ★ 交易开始，挂起保护锁
+        this.hasPendingDraw = true;
         this.requestTimestamp = System.currentTimeMillis();
+        LOGGER.debug("[Gacha-Client] Phase changed to WAITING_SERVER, hasPendingDraw=true, timestamp={}", requestTimestamp);
+        
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SDrawGachaPacket(shopId));
+        LOGGER.debug("[Gacha-Client] C2SDrawGachaPacket sent to server");
     }
 
     public void triggerRollingAnimation(ClientGachaCache.DrawRecord result) {
         if (this.currentPhase == Phase.WAITING_SERVER) {
+            LOGGER.info("[Gacha-Client] Triggering rolling animation for item: {}", result.itemId());
             this.currentPhase = Phase.ROLLING;
             this.rollerPanel.startRoll(result);
+        } else {
+            LOGGER.warn("[Gacha-Client] Cannot trigger animation: currentPhase={}, expected WAITING_SERVER", this.currentPhase);
         }
     }
 
     public void onRollFinished(ClientGachaCache.DrawRecord result) {
         if (!switchingToResult) {
+            LOGGER.info("[Gacha-Client] Roll finished, switching to result renderer for item: {}", result.itemId());
             switchingToResult = true;
-            // 将自身传给 Renderer，实现回调结算解耦
             GachaResultRenderer.INSTANCE.showResult(this, shopDef, result);
+        } else {
+            LOGGER.warn("[Gacha-Client] onRollFinished called but already switching to result");
         }
     }
 
     // ★ 终极结算同步中心：无论是自然播放完毕，还是意外强制退出，全部走这里！
     public void confirmDrawAndSync() {
         if (hasPendingDraw) {
+            LOGGER.info("[Gacha-Client] Confirming draw and syncing for shop: {}", shopId);
             hasPendingDraw = false;
-            // 1. 发送服务端确认
             ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(shopId));
-            // 2. 本地视觉快照严格跟随确认行为同步！绝不提前剧透！
+            LOGGER.debug("[Gacha-Client] C2SConfirmDrawPacket sent, hasPendingDraw=false");
             previewPanel.updateDataSnapshot();
+            LOGGER.debug("[Gacha-Client] Preview panel data snapshot updated");
+        } else {
+            LOGGER.debug("[Gacha-Client] confirmDrawAndSync called but no pending draw");
         }
     }
 
@@ -167,10 +183,13 @@ public class GachaScreen extends Screen {
     @Override
     public void onClose() {
         if (!isClosing) {
+            LOGGER.info("[Gacha-Client] Screen closing: phase={}, hasPendingDraw={}, switchingToResult={}", 
+                currentPhase, hasPendingDraw, switchingToResult);
             isClosing = true;
 
             // 1. 强制熔断动画
             if (currentPhase == Phase.ROLLING && rollerPanel != null && !switchingToResult) {
+                LOGGER.info("[Gacha-Client] Forcing roller panel exit animation");
                 rollerPanel.onScreenClose();
                 // 等待0.35秒让EXIT动画播放完成后再确认
                 new Thread(() -> {
@@ -181,17 +200,20 @@ public class GachaScreen extends Screen {
 
             // 2. 强制关闭结果弹窗
             if (switchingToResult && GachaResultRenderer.INSTANCE.isActive()) {
+                LOGGER.info("[Gacha-Client] Forcing result renderer close and confirm");
                 GachaResultRenderer.INSTANCE.forceCloseAndConfirm();
             }
 
             // 3. 【三阶段终极兜底】如果处于等待、动画中，或有未结算的交易，强制触发保底确认！
             if (hasPendingDraw || currentPhase == Phase.WAITING_SERVER || currentPhase == Phase.ROLLING) {
+                LOGGER.info("[Gacha-Client] Emergency fallback: forcing draw confirmation");
                 hasPendingDraw = true; // 强行激活锁
                 confirmDrawAndSync();  // 强行写入数据，同步本地缓存！
             }
 
             // 4. 【绝对强同步】只有在以上所有兜底和数据落盘完毕后，才允许向服务器发送恢复对话！
             ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
+            LOGGER.debug("[Gacha-Client] RESTORE_DIALOGUE packet sent");
         }
     }
 }

@@ -5,6 +5,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
 
@@ -105,6 +107,20 @@ public class PendingDrawManager {
         
         // 真正发放奖励
         grantReward(player, data.drawnItem);
+        
+        // 【新增】记录抽奖历史到服务端能力（持久化）
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap != null) {
+            cap.addGachaDrawHistory(
+                data.shopId,
+                data.drawnItem.getItemId(),
+                data.drawnItem.getRarity().getName(),
+                data.drawnItem.calculateActualCount(),
+                data.pityTriggered,
+                System.currentTimeMillis()
+            );
+        }
+        
         Arc_quest.LOGGER.info(
             "[PendingDraw] Granted reward to player {}: {} x{}",
             player.getName().getString(),

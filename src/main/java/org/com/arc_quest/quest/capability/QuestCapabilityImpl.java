@@ -91,6 +91,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
      * 抽奖保底计数：shopId -> pityCounter
      */
     private final Map<String, Integer> gachaPityCounters = new HashMap<>();
+    
+    /**
+     * 抽奖历史记录：shopId -> List<GachaDrawRecord>
+     */
+    private final Map<String, List<IQuestCapability.GachaDrawRecord>> gachaDrawHistories = new HashMap<>();
 
     private boolean isDirty = false;
 
@@ -150,6 +155,29 @@ public class QuestCapabilityImpl implements IQuestCapability {
             gachaPityCounters.put(shopId, count);
         }
         isDirty = true;
+    }
+    
+    @Override
+    public synchronized void addGachaDrawHistory(String shopId, String itemId, String rarityName,
+                                                  int actualCount, boolean pityTriggered, long drawTime) {
+        List<IQuestCapability.GachaDrawRecord> history =
+            gachaDrawHistories.computeIfAbsent(shopId, k -> new ArrayList<>());
+        
+        history.add(new IQuestCapability.GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime));
+        
+        // 限制历史记录大小（最多50条）
+        if (history.size() > 50) {
+            history.remove(0);
+        }
+        
+        isDirty = true;
+    }
+    
+    @Override
+    public synchronized List<IQuestCapability.GachaDrawRecord> getGachaDrawHistory(String shopId) {
+        return Collections.unmodifiableList(
+            gachaDrawHistories.getOrDefault(shopId, Collections.emptyList())
+        );
     }
 
     @Override
@@ -407,6 +435,23 @@ public class QuestCapabilityImpl implements IQuestCapability {
             gachaPityCountersTag.putInt(entry.getKey(), entry.getValue());
         }
         root.put("GachaPityCounters", gachaPityCountersTag);
+        
+        // 序列化抽奖历史记录
+        CompoundTag gachaHistoriesTag = new CompoundTag();
+        for (var shopEntry : gachaDrawHistories.entrySet()) {
+            ListTag historyList = new ListTag();
+            for (IQuestCapability.GachaDrawRecord record : shopEntry.getValue()) {
+                CompoundTag recordTag = new CompoundTag();
+                recordTag.putString("itemId", record.itemId());
+                recordTag.putString("rarityName", record.rarityName());
+                recordTag.putInt("actualCount", record.actualCount());
+                recordTag.putBoolean("pityTriggered", record.pityTriggered());
+                recordTag.putLong("drawTime", record.drawTime());
+                historyList.add(recordTag);
+            }
+            gachaHistoriesTag.put(shopEntry.getKey(), historyList);
+        }
+        root.put("GachaDrawHistories", gachaHistoriesTag);
 
         VERSION_MANAGER.setInitialVersion(root);
 
@@ -469,6 +514,26 @@ public class QuestCapabilityImpl implements IQuestCapability {
         CompoundTag gachaPityCountersTag = root.getCompound("GachaPityCounters");
         for (String shopId : gachaPityCountersTag.getAllKeys()) {
             gachaPityCounters.put(shopId, gachaPityCountersTag.getInt(shopId));
+        }
+        
+        // 反序列化抽奖历史记录
+        gachaDrawHistories.clear();
+        CompoundTag gachaHistoriesTag = root.getCompound("GachaDrawHistories");
+        for (String shopId : gachaHistoriesTag.getAllKeys()) {
+            ListTag historyList = gachaHistoriesTag.getList(shopId, Tag.TAG_COMPOUND);
+            List<IQuestCapability.GachaDrawRecord> history = new ArrayList<>();
+            for (int i = 0; i < historyList.size(); i++) {
+                CompoundTag recordTag = historyList.getCompound(i);
+                IQuestCapability.GachaDrawRecord record = new IQuestCapability.GachaDrawRecord(
+                    recordTag.getString("itemId"),
+                    recordTag.getString("rarityName"),
+                    recordTag.getInt("actualCount"),
+                    recordTag.getBoolean("pityTriggered"),
+                    recordTag.getLong("drawTime")
+                );
+                history.add(record);
+            }
+            gachaDrawHistories.put(shopId, history);
         }
 
     }

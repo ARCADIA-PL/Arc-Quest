@@ -124,6 +124,35 @@ public final class ClientGachaCache {
         
         gachaSessions.put(shopId, newSession);
     }
+    
+    /**
+     * 【新增】更新抽奖会话并替换完整历史记录（用于重启后全量同步）。
+     */
+    public void updateSessionWithHistory(String shopId, int pityCounter, int totalDraws, boolean canDraw,
+                                         long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
+                                         int cooldownType, long cooldownValue, int resetTimeTicks,
+                                         List<DrawRecord> fullHistory) {
+        GachaSessionData newSession = new GachaSessionData(
+            pityCounter, totalDraws, canDraw,
+            lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+            cooldownType, cooldownValue, resetTimeTicks
+        );
+        
+        // 直接设置完整历史记录（不保留旧的）
+        newSession.drawHistory.addAll(fullHistory);
+        
+        // 如果有历史记录，恢复最近一次的结果
+        if (!fullHistory.isEmpty()) {
+            DrawRecord lastRecord = fullHistory.get(fullHistory.size() - 1);
+            newSession.lastDrawnItemId = lastRecord.itemId();
+            newSession.lastRarityName = lastRecord.rarityName();
+            newSession.lastActualCount = lastRecord.actualCount();
+            newSession.lastPityTriggered = lastRecord.pityTriggered();
+            newSession.lastDrawTime = lastRecord.drawTime();
+        }
+        
+        gachaSessions.put(shopId, newSession);
+    }
 
     /**
      * 记录抽奖结果（由网络包调用）。

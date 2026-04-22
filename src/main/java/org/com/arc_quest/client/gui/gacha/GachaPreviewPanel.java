@@ -1,5 +1,6 @@
 package org.com.arc_quest.client.gui.gacha;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -380,13 +381,67 @@ public class GachaPreviewPanel {
         int btnY = height - (int)(height * 0.12f) - 15;
 
         if (mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + 30) {
-            boolean onCooldown = ClientGachaCache.INSTANCE.isOnCooldown(parent.getShopId());
-            boolean costInsufficient = !onCooldown && !ClientGachaCache.INSTANCE.canDraw(parent.getShopId());
-            if (onCooldown || costInsufficient) {
+            String shopId = parent.getShopId();
+            var session = ClientGachaCache.INSTANCE.getSession(shopId);
+            
+            // 检查冷却状态
+            boolean onCooldown = ClientGachaCache.INSTANCE.isOnCooldown(shopId);
+            String cooldownText = ClientGachaCache.INSTANCE.getCooldownText(shopId);
+            
+            // 检查是否可以抽奖
+            boolean canDraw = ClientGachaCache.INSTANCE.canDraw(shopId);
+            
+            // 检查限购状态
+            var shopDef = parent.getShopDef();
+            int totalDraws = session != null ? session.getTotalDraws() : 0;
+            int maxDraws = shopDef.hasLimit() ? shopDef.getMaxDraws() : -1;
+            boolean limitReached = maxDraws > 0 && totalDraws >= maxDraws;
+            
+            // 检查成本（通过 canDraw 间接判断）
+            boolean costInsufficient = !canDraw && !onCooldown && !limitReached;
+            
+            LogUtils.getLogger().info(
+                "[Gacha-Click] Button clicked: shop={}, canDraw={}, onCooldown={}, limitReached={}/{}",
+                shopId, canDraw, onCooldown, totalDraws, maxDraws > 0 ? maxDraws : "∞"
+            );
+            
+            if (onCooldown) {
+                LogUtils.getLogger().warn(
+                    "[Gacha-Click] Draw BLOCKED - COOLDOWN: shop={}, remaining={}",
+                    shopId, cooldownText
+                );
                 feedbackSuccess = false; feedbackAnim = 1f;
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
                 return true;
             }
+            
+            if (limitReached) {
+                LogUtils.getLogger().warn(
+                    "[Gacha-Click] Draw BLOCKED - LIMIT REACHED: shop={}, draws={}/{},",
+                    shopId, totalDraws, maxDraws
+                );
+                feedbackSuccess = false; feedbackAnim = 1f;
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
+                return true;
+            }
+            
+            if (costInsufficient) {
+                LogUtils.getLogger().warn(
+                    "[Gacha-Click] Draw BLOCKED - INSUFFICIENT FUNDS: shop={}, canDraw={}, pityCounter={}",
+                    shopId, canDraw, session != null ? session.getPityCounter() : 0
+                );
+                feedbackSuccess = false; feedbackAnim = 1f;
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
+                return true;
+            }
+            
+            // 成功启动抽奖
+            LogUtils.getLogger().info(
+                "[Gacha-Click] Draw STARTED: shop={}, pityCounter={}, totalDraws={}",
+                shopId,
+                session != null ? session.getPityCounter() : 0,
+                totalDraws
+            );
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0f));
             parent.startDrawRequest();
             return true;

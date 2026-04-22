@@ -19,7 +19,11 @@ import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.Supplier;
+
 
 /**
  * 服务端通知客户端打开抽奖界面。
@@ -43,10 +47,14 @@ public class S2COpenGachaPacket {
     private final long cooldownValue;
     private final int resetTimeTicks;
     
+    // 【新增】抽奖历史记录（最多50条）
+    private final List<IQuestCapability.GachaDrawRecord> drawHistory;
+    
     public S2COpenGachaPacket(String shopId, int pityCounter, int totalDraws,
                                boolean canDraw, int remainingDraws,
                                long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
-                               int cooldownType, long cooldownValue, int resetTimeTicks) {
+                               int cooldownType, long cooldownValue, int resetTimeTicks,
+                               List<IQuestCapability.GachaDrawRecord> drawHistory) {
         this.shopId = shopId;
         this.pityCounter = pityCounter;
         this.totalDraws = totalDraws;
@@ -58,6 +66,7 @@ public class S2COpenGachaPacket {
         this.cooldownType = cooldownType;
         this.cooldownValue = cooldownValue;
         this.resetTimeTicks = resetTimeTicks;
+        this.drawHistory = drawHistory != null ? drawHistory : Collections.emptyList();
     }
     
     public static void encode(S2COpenGachaPacket pkt, FriendlyByteBuf buf) {
@@ -72,21 +81,50 @@ public class S2COpenGachaPacket {
         buf.writeInt(pkt.cooldownType);
         buf.writeLong(pkt.cooldownValue);
         buf.writeInt(pkt.resetTimeTicks);
+        
+        // 序列化历史记录
+        buf.writeInt(pkt.drawHistory.size());
+        for (IQuestCapability.GachaDrawRecord record : pkt.drawHistory) {
+            buf.writeUtf(record.itemId());
+            buf.writeUtf(record.rarityName());
+            buf.writeInt(record.actualCount());
+            buf.writeBoolean(record.pityTriggered());
+            buf.writeLong(record.drawTime());
+        }
     }
     
     public static S2COpenGachaPacket decode(FriendlyByteBuf buf) {
+        String shopId = buf.readUtf();
+        int pityCounter = buf.readInt();
+        int totalDraws = buf.readInt();
+        boolean canDraw = buf.readBoolean();
+        int remainingDraws = buf.readInt();
+        long lastDrawRealTime = buf.readLong();
+        long lastDrawGameTime = buf.readLong();
+        long lastDrawDayTime = buf.readLong();
+        int cooldownType = buf.readInt();
+        long cooldownValue = buf.readLong();
+        int resetTimeTicks = buf.readInt();
+        
+        // 反序列化历史记录
+        int historySize = buf.readInt();
+        List<IQuestCapability.GachaDrawRecord> history = new ArrayList<>();
+        for (int i = 0; i < historySize; i++) {
+            IQuestCapability.GachaDrawRecord record = new IQuestCapability.GachaDrawRecord(
+                buf.readUtf(),
+                buf.readUtf(),
+                buf.readInt(),
+                buf.readBoolean(),
+                buf.readLong()
+            );
+            history.add(record);
+        }
+        
         return new S2COpenGachaPacket(
-            buf.readUtf(),
-            buf.readInt(),
-            buf.readInt(),
-            buf.readBoolean(),
-            buf.readInt(),
-            buf.readLong(),
-            buf.readLong(),
-            buf.readLong(),
-            buf.readInt(),
-            buf.readLong(),
-            buf.readInt()
+            shopId, pityCounter, totalDraws, canDraw, remainingDraws,
+            lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+            cooldownType, cooldownValue, resetTimeTicks,
+            history
         );
     }
     
@@ -154,6 +192,9 @@ public class S2COpenGachaPacket {
         long cooldownValue = shop.getCooldownValue();
         int resetTimeTicks = shop.getResetTimeTicks();
         
+        // 【新增】获取抽奖历史记录
+        List<IQuestCapability.GachaDrawRecord> drawHistory = cap.getGachaDrawHistory(shop.getShopId());
+        
         // 发送网络包给客户端
         ArcQuestNetwork.CHANNEL.send(
             PacketDistributor.PLAYER.with(() -> player),
@@ -161,7 +202,8 @@ public class S2COpenGachaPacket {
                 shop.getShopId(), pityCounter, totalDraws,
                 canDraw, remainingDraws,
                 lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
-                cooldownType, cooldownValue, resetTimeTicks
+                cooldownType, cooldownValue, resetTimeTicks,
+                drawHistory
             )
         );
         
@@ -188,11 +230,23 @@ public class S2COpenGachaPacket {
                 MinecraftForge.EVENT_BUS.post(openEvent);
             }
             
-            // 更新客户端缓存（含冷却数据，对标商店系统）
-            ClientGachaCache.INSTANCE.updateSession(
+            // 【新增】更新客户端缓存并同步完整历史记录（一次性替换）
+            List<ClientGachaCache.DrawRecord> historyRecords = new ArrayList<>();
+            for (var record : pkt.drawHistory) {
+                historyRecords.add(new ClientGachaCache.DrawRecord(
+                    record.itemId(),
+                    record.rarityName(),
+                    record.actualCount(),
+                    record.pityTriggered(),
+                    record.drawTime()
+                ));
+            }
+            
+            ClientGachaCache.INSTANCE.updateSessionWithHistory(
                 pkt.shopId, pkt.pityCounter, pkt.totalDraws, pkt.canDraw,
                 pkt.lastDrawRealTime, pkt.lastDrawGameTime, pkt.lastDrawDayTime,
-                pkt.cooldownType, pkt.cooldownValue, pkt.resetTimeTicks
+                pkt.cooldownType, pkt.cooldownValue, pkt.resetTimeTicks,
+                historyRecords
             );
             
             // 打开抽奖界面
