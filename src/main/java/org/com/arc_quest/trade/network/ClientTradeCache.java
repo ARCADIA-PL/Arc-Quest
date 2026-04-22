@@ -419,7 +419,7 @@ public final class ClientTradeCache {
     }
     
     // ════════════════════════════════════════════
-    //  HUD 支持 API
+    //  HUD 支持 API - 抽奖系统
     // ════════════════════════════════════════════
     
     /**
@@ -607,6 +607,36 @@ public final class ClientTradeCache {
         return Math.min(100, (totalDraws * 100) / maxDraws);
     }
     
+    /**
+     * 获取各稀有度的分布统计（用于饼图/柱状图）。
+     * 
+     * @param shopId 商店 ID
+     * @return Map<稀有度名称, 抽取次数>
+     */
+    public Map<String, Integer> getRarityDistribution(String shopId) {
+        var session = gachaSessions.get(shopId);
+        if (session == null || session.drawHistory.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        
+        Map<String, Integer> distribution = new HashMap<>();
+        for (DrawRecord record : session.drawHistory) {
+            distribution.merge(record.rarityName(), 1, Integer::sum);
+        }
+        
+        return Collections.unmodifiableMap(distribution);
+    }
+    
+    /**
+     * 获取距离下次保底的预计抽奖次数。
+     * 
+     * @param shopId 商店 ID
+     * @param pityThreshold 保底阈值
+     * @return 预计次数，如果数据无效则返回 -1
+     */
+    public int getEstimatedDrawsToPity(String shopId, int pityThreshold) {
+        return getPityRemaining(shopId, pityThreshold);
+    }
     // ════════════════════════════════════════════
     //  抽奖音效辅助方法
     // ════════════════════════════════════════════
