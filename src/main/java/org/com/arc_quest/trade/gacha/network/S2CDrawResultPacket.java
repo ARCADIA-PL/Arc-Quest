@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import org.com.arc_quest.client.gui.gacha.GachaScreen;
 import org.com.arc_quest.trade.network.ClientGachaCache;
 import org.slf4j.Logger;
 
@@ -115,7 +116,7 @@ public class S2CDrawResultPacket {
             );
             
             // 【权威】3. 如果当前正在显示该奖池的界面，直接触发滚动动画
-            if (mc.screen instanceof org.com.arc_quest.client.gui.gacha.GachaScreen gachaScreen) {
+            if (mc.screen instanceof GachaScreen gachaScreen) {
                 if (gachaScreen.getShopId().equals(pkt.shopId)) {
                     gachaScreen.triggerRollingAnimation(pkt.drawnItemId, pkt.rarityName, pkt.actualCount, pkt.pityTriggered);
                 }
