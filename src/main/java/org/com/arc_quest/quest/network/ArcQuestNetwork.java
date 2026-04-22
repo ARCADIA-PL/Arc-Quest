@@ -10,13 +10,9 @@ import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
+import org.com.arc_quest.trade.gacha.network.*;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.S2COpenTradePacket;
-import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
-import org.com.arc_quest.trade.gacha.network.C2SOpenGachaPacket;
-import org.com.arc_quest.trade.gacha.network.S2COpenGachaPacket;
-import org.com.arc_quest.trade.gacha.network.S2CDrawFailedPacket;
-import org.com.arc_quest.trade.gacha.network.S2CDrawResultPacket;
 
 /**
  * Arc Quest 网络通信中心。
@@ -140,6 +136,15 @@ public final class ArcQuestNetwork {
                 C2SDrawGachaPacket::encode,
                 C2SDrawGachaPacket::decode,
                 C2SDrawGachaPacket::handle
+        );
+
+        // --- C2S: Confirm gacha draw (grant reward after animation) ---
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SConfirmDrawPacket.class,
+                C2SConfirmDrawPacket::encode,
+                C2SConfirmDrawPacket::decode,
+                C2SConfirmDrawPacket::handle
         );
 
         // --- S2C: Open gacha ---

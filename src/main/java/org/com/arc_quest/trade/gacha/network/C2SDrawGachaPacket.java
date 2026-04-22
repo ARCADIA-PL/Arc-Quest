@@ -2,27 +2,21 @@ package org.com.arc_quest.trade.gacha.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
-import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
-import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
-import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.trade.api.ITradeOffer;
-import org.com.arc_quest.trade.gacha.runtime.GachaEntryStateResolver;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
-import org.com.arc_quest.trade.gacha.runtime.GachaSession;
-import org.com.arc_quest.trade.offer.ItemTradeOffer;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.com.arc_quest.trade.gacha.runtime.GachaEntryStateResolver;
+import org.com.arc_quest.trade.gacha.runtime.GachaSession;
 
 import java.util.function.Supplier;
 
@@ -136,21 +130,6 @@ public class C2SDrawGachaPacket {
                 // 计算实际数量
                 int actualCount = drawResult.item().calculateActualCount();
                 
-                // 发放奖励（使用动态计算的数量）
-                var reward = drawResult.item().getReward();
-                if (reward != null && reward instanceof ItemTradeOffer itemReward) {
-                    // 对于物品奖励，使用实际计算的数量创建 ItemStack
-                    ItemStack rewardStack = new ItemStack(itemReward.getItem(), actualCount);
-                    if (!player.getInventory().add(rewardStack)) {
-                        player.drop(rewardStack, false);
-                    }
-                    player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                            SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.5F, 1.0F);
-                } else if (reward != null) {
-                    // 其他类型的奖励（命令、效果等），使用原有逻辑
-                    reward.execute(player);
-                }
-                
                 // 更新保底计数
                 int newPityCounter;
                 boolean isEarlyTrigger = false;  // 标记是否提前触发保底
@@ -180,6 +159,24 @@ public class C2SDrawGachaPacket {
                 } else {
                     // 不重置，继续累加
                     newPityCounter = pityCounter + 1;
+                }
+                
+                // 【修改】暂存抽奖结果，不立即发放奖励（等待客户端动画完成后确认）
+                boolean stored = PendingDrawManager.storePendingDraw(
+                    player,
+                    pkt.shopId,
+                    drawResult.item(),
+                    drawResult.pityTriggered(),
+                    newPityCounter
+                );
+                
+                if (!stored) {
+                    // 已有待确认数据，拒绝本次抽奖
+                    ArcQuestNetwork.CHANNEL.send(
+                        PacketDistributor.PLAYER.with(() -> player),
+                        new S2CDrawFailedPacket(pkt.shopId, "PENDING_DRAW_EXISTS")
+                    );
+                    return;
                 }
                 
                 // 【新增】触发保底提前触发事件

@@ -22,8 +22,10 @@ import org.com.arc_quest.client.util.GuiSoundManager;
 import org.com.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.registry.ArcQuestContent;
+import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.trade.gacha.registry.DemoGachaShops;
 import org.com.arc_quest.trade.registry.TradeContent;
+import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
 @SuppressWarnings("removal")
@@ -54,6 +56,10 @@ public class Arc_quest {
             LOGGER.info("[ArcQuest] Demo gacha shops registered.");
             
             ArcQuestNetwork.register();
+            
+            // 【并发安全】冻结所有注册表，转换为线程安全的不可变Map
+            QuestRegistry.freeze();
+            TradeRegistry.freeze();
         });
     }
 
