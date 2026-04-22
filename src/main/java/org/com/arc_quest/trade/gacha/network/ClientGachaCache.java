@@ -1,4 +1,4 @@
-package org.com.arc_quest.trade.network;
+package org.com.arc_quest.trade.gacha.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.sounds.SoundEvent;

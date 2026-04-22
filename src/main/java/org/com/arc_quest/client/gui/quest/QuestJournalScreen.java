@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.client.events.ClientEventHandler;
 import org.com.arc_quest.client.gui.HudAnimUtil;
-import org.com.arc_quest.client.gui.QuestHudOverlay;
 import org.com.arc_quest.client.gui.HudRenderUtil;
+import org.com.arc_quest.client.gui.QuestHudOverlay;
 import org.com.arc_quest.client.gui.render.QuestIconRenderer;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.*;
@@ -22,7 +22,9 @@ import org.com.arc_quest.quest.network.ClientQuestCache;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class QuestJournalScreen extends Screen {
 

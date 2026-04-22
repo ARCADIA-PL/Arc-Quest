@@ -4,8 +4,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
-import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.api.ICondition;
+import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.jetbrains.annotations.Nullable;
 

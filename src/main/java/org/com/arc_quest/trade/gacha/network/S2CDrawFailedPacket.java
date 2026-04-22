@@ -4,7 +4,6 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.trade.network.ClientGachaCache;
 import org.slf4j.Logger;
 
 import java.util.function.Supplier;

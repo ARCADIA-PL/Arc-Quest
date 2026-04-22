@@ -3,7 +3,6 @@ package org.com.arc_quest.trade.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;

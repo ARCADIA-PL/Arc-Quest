@@ -13,8 +13,8 @@ import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
-import org.com.arc_quest.dialogue.network.ClientDialogueCache;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
+import org.com.arc_quest.dialogue.network.ClientDialogueCache;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
 

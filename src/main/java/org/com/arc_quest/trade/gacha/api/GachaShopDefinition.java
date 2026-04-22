@@ -3,10 +3,7 @@ package org.com.arc_quest.trade.gacha.api;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
-
 import org.com.arc_quest.dialogue.api.CooldownType;
-import org.com.arc_quest.dialogue.runtime.ProgressKey;
-import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.trade.api.ITradeOffer;
@@ -15,11 +12,7 @@ import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 抽奖商店定义。

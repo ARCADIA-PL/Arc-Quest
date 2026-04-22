@@ -2,15 +2,14 @@ package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
+import org.com.arc_quest.dialogue.api.ConditionalSay;
 import org.com.arc_quest.dialogue.api.RegisteredConditions;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.slf4j.Logger;
-
-import net.minecraft.sounds.SoundEvent;
-import org.com.arc_quest.dialogue.api.ConditionalSay;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;

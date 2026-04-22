@@ -3,7 +3,6 @@ package org.com.arc_quest.trade.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-
 import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.client.util.GuiSoundManager;
@@ -13,7 +12,6 @@ import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

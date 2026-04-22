@@ -1,8 +1,8 @@
 package org.com.arc_quest.trade.gacha.registry;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.builder.GachaShopBuilder;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;

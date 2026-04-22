@@ -4,8 +4,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundEvent;
-
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.quest.api.ICondition;
 import org.jetbrains.annotations.Nullable;
