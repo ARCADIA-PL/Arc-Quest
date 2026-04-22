@@ -119,6 +119,9 @@ public final class ClientGachaCache {
         session.lastPityTriggered = pityTriggered;
         session.lastDrawTime = System.currentTimeMillis();
         
+        // 【修复】成功抽奖后清除失败原因标记
+        session.lastFailReason = null;
+        
         // 添加到历史记录
         session.drawHistory.add(new DrawRecord(drawnItemId, rarityName, actualCount, 
                                                pityTriggered, session.lastDrawTime));

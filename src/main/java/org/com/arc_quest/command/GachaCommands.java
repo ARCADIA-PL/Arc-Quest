@@ -15,14 +15,15 @@ import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
-import org.com.arc_quest.trade.gacha.GachaItem;
-import org.com.arc_quest.trade.gacha.GachaPool;
-import org.com.arc_quest.trade.gacha.GachaShopDefinition;
-import org.com.arc_quest.trade.gacha.PityConfig;
-import org.com.arc_quest.trade.network.S2COpenGachaPacket;
-import org.com.arc_quest.trade.registry.GachaRegistry;
+import org.com.arc_quest.trade.gacha.api.GachaItem;
+import org.com.arc_quest.trade.gacha.api.GachaPool;
+import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.com.arc_quest.trade.gacha.api.PityConfig;
+import org.com.arc_quest.trade.gacha.network.S2COpenGachaPacket;
+import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.slf4j.Logger;
 
 import java.util.Collection;
@@ -56,6 +57,17 @@ public class GachaCommands {
                                 .executes(GachaCommands::cmdGachaDebug)))
                 // /arcquest gacha reset draws <player> <shop>
                 .then(Commands.literal("reset")
+                        // 重置指定商店的所有数据
+                        .then(Commands.literal("shop")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .then(Commands.argument("shop_id", ResourceLocationArgument.id())
+                                                .suggests(GachaCommands::suggestGachaShopIds)
+                                                .executes(GachaCommands::cmdGachaResetShop))))
+                        // 重置玩家所有抽奖数据
+                        .then(Commands.literal("all")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .executes(GachaCommands::cmdGachaResetAll)))
+                        // 保留旧的 draws 命令（向后兼容）
                         .then(Commands.literal("draws")
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .then(Commands.argument("shop_id", ResourceLocationArgument.id())
@@ -222,7 +234,7 @@ public class GachaCommands {
 
     /**
      * /arcquest gacha reset draws <player> <shop>
-     * 重置玩家的抽奖次数
+     * 重置玩家的抽奖次数（向后兼容）
      */
     private static int cmdGachaResetDraws(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
@@ -240,6 +252,69 @@ public class GachaCommands {
         
         success(ctx, String.format("已重置 %s 在 %s 的抽奖次数", player.getName().getString(), shopId));
         LOGGER.info("[GachaCommand] Reset draw count for shop '{}' and player {}", shopId, player.getName().getString());
+        
+        return 1;
+    }
+    
+    /**
+     * /arcquest gacha reset shop <player> <shop>
+     * 重置指定商店的所有数据（次数、冷却、保底）
+     */
+    private static int cmdGachaResetShop(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
+        IQuestCapability cap = getCap(player);
+
+        GachaShopDefinition shop = GachaRegistry.get(shopId);
+        if (shop == null) {
+            error(ctx, "抽奖商店不存在: " + shopId);
+            return 0;
+        }
+
+        // 重置所有相关数据
+        cap.resetGachaDrawCount(shopId);           // 重置抽奖次数
+        cap.setGachaPityCounter(shopId, 0);        // 重置保底计数
+        cap.getDialogueProgress().clearCooldownRecord(
+            ProgressKey.ofTrade(shopId, "draw")
+        );                                         // 清除冷却记录
+        
+        success(ctx, String.format("已重置 %s 在 %s 的所有抽奖数据（次数、冷却、保底）", 
+            player.getName().getString(), shopId));
+        LOGGER.info("[GachaCommand] Reset all gacha data for shop '{}' and player {}", 
+            shopId, player.getName().getString());
+        
+        return 1;
+    }
+    
+    /**
+     * /arcquest gacha reset all <player>
+     * 重置玩家所有抽奖商店的数据
+     */
+    private static int cmdGachaResetAll(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
+        IQuestCapability cap = getCap(player);
+
+        // 获取所有注册的抽奖商店
+        Collection<GachaShopDefinition> allShops = GachaRegistry.getAllShops();
+        int resetCount = 0;
+        
+        for (GachaShopDefinition shop : allShops) {
+            String shopId = shop.getShopId();
+            
+            // 重置所有相关数据
+            cap.resetGachaDrawCount(shopId);
+            cap.setGachaPityCounter(shopId, 0);
+            cap.getDialogueProgress().clearCooldownRecord(
+                ProgressKey.ofTrade(shopId, "draw")
+            );
+            
+            resetCount++;
+        }
+        
+        success(ctx, String.format("已重置 %s 的所有 %d 个抽奖商店数据", 
+            player.getName().getString(), resetCount));
+        LOGGER.info("[GachaCommand] Reset all gacha data for {} shops and player {}", 
+            resetCount, player.getName().getString());
         
         return 1;
     }

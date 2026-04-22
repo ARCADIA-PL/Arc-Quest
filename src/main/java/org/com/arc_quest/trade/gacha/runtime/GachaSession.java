@@ -1,12 +1,14 @@
-package org.com.arc_quest.trade.gacha;
+package org.com.arc_quest.trade.gacha.runtime;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
+import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.slf4j.Logger;
 
 /**
@@ -170,8 +172,8 @@ public final class GachaSession {
         int remaining = getCooldownRemaining();
         if (remaining <= 0) return "";
 
-        if (shop.getCooldownType() == org.com.arc_quest.dialogue.api.CooldownType.GAME_DAY) {
-            return net.minecraft.network.chat.Component.translatable("arc_quest.trade.cooldown.game_day").getString();
+        if (shop.getCooldownType() == CooldownType.GAME_DAY) {
+            return Component.translatable("arc_quest.trade.cooldown.game_day").getString();
         }
 
         int minutes = remaining / 60;

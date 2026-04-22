@@ -1,13 +1,13 @@
-package org.com.arc_quest.trade.gacha;
+package org.com.arc_quest.trade.gacha.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
-import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.slf4j.Logger;
 
 /**
@@ -89,10 +89,21 @@ public final class GachaEntryStateResolver {
 
     /**
      * 检查是否在冷却中。
+     * <p>
+     * 对标 TradeEntryStateResolver.isOnCooldown()：
+     * 只有达到限购后才检查冷却，未达到限购时直接返回false。
      */
     public static boolean isOnCooldown(ServerPlayer player, IQuestCapability cap, String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) {
             return false; // 无冷却
+        }
+
+        // 【修复】对标商店系统：未达到限购时不检查冷却
+        if (shop.hasLimit()) {
+            int currentCount = cap.getGachaDrawCount(shopId);
+            if (currentCount < shop.getMaxDraws()) {
+                return false; // 未达到限购，不检查冷却
+            }
         }
 
         ProgressKey key = ProgressKey.ofTrade(shopId, "draw");
