@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
@@ -179,6 +180,10 @@ public class GachaScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (!isClosing) isClosing = true;
+        if (!isClosing) {
+            isClosing = true;
+            // 【修复】对标商店系统，关闭时恢复对话
+            ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
+        }
     }
 }
