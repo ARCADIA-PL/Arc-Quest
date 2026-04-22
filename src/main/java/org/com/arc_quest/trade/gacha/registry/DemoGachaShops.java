@@ -1,8 +1,10 @@
-package org.com.arc_quest.trade.gacha;
+package org.com.arc_quest.trade.gacha.registry;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
+import org.com.arc_quest.trade.gacha.api.GachaItem;
+import org.com.arc_quest.trade.gacha.builder.GachaShopBuilder;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
 
 /**
@@ -44,9 +46,8 @@ public class DemoGachaShops {
             // 冷却时间：10秒
             .cooldown(10)
             
-            // 限购：每天50次
+            // 限购：每天5次
             .maxDraws(5)
-            .cooldownGameDay() // 游戏日重置
             
             // 默认主题色：金色
             .themeColor(0xFFD700)

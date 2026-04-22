@@ -1,11 +1,9 @@
-package org.com.arc_quest.trade.gacha;
+package org.com.arc_quest.trade.gacha.api;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 
-import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;

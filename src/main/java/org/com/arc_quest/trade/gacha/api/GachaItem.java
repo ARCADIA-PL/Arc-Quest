@@ -1,4 +1,4 @@
-package org.com.arc_quest.trade.gacha;
+package org.com.arc_quest.trade.gacha.api;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;

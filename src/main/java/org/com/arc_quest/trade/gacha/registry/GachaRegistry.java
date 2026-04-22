@@ -1,8 +1,8 @@
-package org.com.arc_quest.trade.registry;
+package org.com.arc_quest.trade.gacha.registry;
 
 import com.mojang.logging.LogUtils;
 import org.com.arc_quest.Arc_quest;
-import org.com.arc_quest.trade.gacha.GachaShopDefinition;
+import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 

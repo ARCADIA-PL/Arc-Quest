@@ -1,4 +1,4 @@
-package org.com.arc_quest.trade.gacha;
+package org.com.arc_quest.trade.gacha.builder;
 
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
@@ -11,8 +11,12 @@ import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
+import org.com.arc_quest.trade.gacha.api.GachaItem;
+import org.com.arc_quest.trade.gacha.api.GachaPool;
+import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.com.arc_quest.trade.gacha.api.PityConfig;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
-import org.com.arc_quest.trade.registry.GachaRegistry;
+import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.Nullable;
 

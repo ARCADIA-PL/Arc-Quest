@@ -1,4 +1,4 @@
-package org.com.arc_quest.trade.gacha;
+package org.com.arc_quest.trade.gacha.api;
 
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.quest.api.ICondition;
