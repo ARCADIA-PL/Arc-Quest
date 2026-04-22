@@ -180,6 +180,10 @@ public class GachaEvents {
              */
             MAX_DRAWS_REACHED,
             /**
+             * 【新增】无法支付成本
+             */
+            CANNOT_AFFORD,
+            /**
              * 其他未知原因
              */
             UNKNOWN
@@ -221,6 +225,108 @@ public class GachaEvents {
          */
         public boolean isMaxDrawsReached() {
             return reason == FailReason.MAX_DRAWS_REACHED;
+        }
+    }
+    
+    /**
+     * 保底提前触发事件。
+     * <p>
+     * 当在保底计数未满时抽中保底目标物品/品质时触发。
+     * 可用于播放特殊音效、显示特效、成就解锁等。
+     */
+    public static class PityEarlyTriggerEvent extends Event {
+        private final ServerPlayer player;
+        private final String shopId;
+        private final GachaItem drawnItem;
+        private final int currentPityCounter;  // 触发时的保底计数
+        private final int pityThreshold;       // 保底阈值
+        private final boolean willResetPity;   // 是否会重置保底进度
+        
+        public PityEarlyTriggerEvent(ServerPlayer player, String shopId,
+                                    GachaItem drawnItem,
+                                    int currentPityCounter,
+                                    int pityThreshold,
+                                    boolean willResetPity) {
+            this.player = player;
+            this.shopId = shopId;
+            this.drawnItem = drawnItem;
+            this.currentPityCounter = currentPityCounter;
+            this.pityThreshold = pityThreshold;
+            this.willResetPity = willResetPity;
+        }
+        
+        public ServerPlayer getPlayer() { return player; }
+        public String getShopId() { return shopId; }
+        public GachaItem getDrawnItem() { return drawnItem; }
+        public int getCurrentPityCounter() { return currentPityCounter; }
+        public int getPityThreshold() { return pityThreshold; }
+        public boolean willResetPity() { return willResetPity; }
+        
+        /**
+         * 获取保底进度百分比（0-100）。
+         */
+        public int getPityProgressPercent() {
+            if (pityThreshold <= 0) return 0;
+            return Math.min(100, (currentPityCounter * 100) / pityThreshold);
+        }
+    }
+    
+    /**
+     * 抽奖限购重置事件。
+     * <p>
+     * 当冷却过期或自定义条件满足导致限购重置时触发。
+     */
+    public static class DrawLimitResetEvent extends Event {
+        
+        /**
+         * 重置原因枚举。
+         */
+        public enum ResetReason {
+            /**
+             * 冷却过期自动重置
+             */
+            COOLDOWN_EXPIRED,
+            /**
+             * 自定义条件满足重置
+             */
+            CUSTOM_CONDITION
+        }
+        
+        private final ServerPlayer player;
+        private final String shopId;
+        private final IQuestCapability capability;
+        private final ResetReason reason;
+        private final int previousDrawCount;  // 重置前的抽奖次数
+        
+        public DrawLimitResetEvent(ServerPlayer player, String shopId,
+                                  IQuestCapability capability,
+                                  ResetReason reason,
+                                  int previousDrawCount) {
+            this.player = player;
+            this.shopId = shopId;
+            this.capability = capability;
+            this.reason = reason;
+            this.previousDrawCount = previousDrawCount;
+        }
+        
+        public ServerPlayer getPlayer() { return player; }
+        public String getShopId() { return shopId; }
+        public IQuestCapability getCapability() { return capability; }
+        public ResetReason getReason() { return reason; }
+        public int getPreviousDrawCount() { return previousDrawCount; }
+        
+        /**
+         * 检查是否因为冷却过期而重置。
+         */
+        public boolean isCooldownExpired() {
+            return reason == ResetReason.COOLDOWN_EXPIRED;
+        }
+        
+        /**
+         * 检查是否因为自定义条件而重置。
+         */
+        public boolean isCustomCondition() {
+            return reason == ResetReason.CUSTOM_CONDITION;
         }
     }
 }
