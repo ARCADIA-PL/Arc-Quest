@@ -241,10 +241,9 @@ public class DialogueSession {
             }
 
             case GAME_DAY -> {
-                // 距离现实午夜的秒数（粗略估计）
-                long nowMs = ts.realTime() % (24 * 60 * 60 * 1000L);
-                long remainMs = (24 * 60 * 60 * 1000L) - nowMs;
-                yield (int) Math.max(1, remainMs / 1000);
+                long currentDayTick = ts.dayTime() % 24000;
+                int remainingTicks = (int) (24000 - currentDayTick);
+                yield Math.max(1, remainingTicks / 20);
             }
 
             case GAME_TICK -> {
