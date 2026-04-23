@@ -16,6 +16,7 @@ public final class PhaseDefinition {
 
     private final String phaseId;
     private final Component displayName;
+    private final Component description;
     private final List<ObjectiveEntry> objectives;
     private final List<PhaseTransition> transitions;
     private final List<ChoiceOption> choices;
@@ -25,8 +26,6 @@ public final class PhaseDefinition {
     private final QuestVisualConfig visualConfig;
     @Nullable
     private final String tradeShopId;
-    
-    // 阶段音效
     @Nullable
     private final SoundEvent phaseStartSound;
     @Nullable
@@ -41,8 +40,8 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnEnter,
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig) {
-        this(phaseId, displayName, objectives, transitions, choices, phaseRewards,
-                flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null);
+        this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
+                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null, null, null);
     }
 
     public PhaseDefinition(String phaseId,
@@ -54,13 +53,32 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnEnter,
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig,
-                           @org.jetbrains.annotations.Nullable String tradeShopId) {
-        this(phaseId, displayName, objectives, transitions, choices, phaseRewards,
-                flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null);
+                           @Nullable String tradeShopId) {
+        this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
+                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null);
     }
 
     public PhaseDefinition(String phaseId,
                            Component displayName,
+                           List<ObjectiveEntry> objectives,
+                           List<PhaseTransition> transitions,
+                           List<ChoiceOption> choices,
+                           List<IReward> phaseRewards,
+                           List<String> flagsToSetOnEnter,
+                           List<String> flagsToSetOnComplete,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String tradeShopId,
+                           @Nullable SoundEvent phaseStartSound,
+                           @Nullable SoundEvent phaseCompleteSound) {
+        this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
+                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig,
+                tradeShopId, phaseStartSound, phaseCompleteSound);
+    }
+
+    /** 完整构造器（含 description）。所有其他构造器委托至此。 */
+    public PhaseDefinition(String phaseId,
+                           Component displayName,
+                           Component description,
                            List<ObjectiveEntry> objectives,
                            List<PhaseTransition> transitions,
                            List<ChoiceOption> choices,
@@ -78,6 +96,7 @@ public final class PhaseDefinition {
         }
         this.phaseId = phaseId;
         this.displayName = displayName;
+        this.description = description != null ? description : Component.empty();
         this.objectives = Collections.unmodifiableList(objectives);
         this.transitions = Collections.unmodifiableList(transitions);
         this.choices = Collections.unmodifiableList(choices);
@@ -90,18 +109,17 @@ public final class PhaseDefinition {
         this.phaseCompleteSound = phaseCompleteSound;
     }
 
-    public String getPhaseId() {
-        return this.phaseId;
+    public String getPhaseId() { return this.phaseId; }
+
+    public Component getDisplayName() { return this.displayName; }
+
+    public Component getDescription() { return this.description; }
+
+    public boolean hasDescription() {
+        return !this.description.getString().isEmpty();
     }
 
-    public Component getDisplayName() {
-        return this.displayName;
-    }
-
-    public List<ObjectiveEntry> getObjectives() {
-        return this.objectives;
-    }
-
+    public List<ObjectiveEntry> getObjectives() { return this.objectives; }
 
     public int getRequiredObjectiveCount() {
         int count = 0;
@@ -111,57 +129,35 @@ public final class PhaseDefinition {
         return count;
     }
 
+    public List<PhaseTransition> getTransitions() { return this.transitions; }
 
-    public List<PhaseTransition> getTransitions() {
-        return this.transitions;
-    }
+    public List<ChoiceOption> getChoices() { return this.choices; }
 
+    public boolean hasChoices() { return !this.choices.isEmpty(); }
 
-    public List<ChoiceOption> getChoices() {
-        return this.choices;
-    }
+    public List<IReward> getPhaseRewards() { return this.phaseRewards; }
 
-    public boolean hasChoices() {
-        return !this.choices.isEmpty();
-    }
+    public List<String> getFlagsToSetOnEnter() { return this.flagsToSetOnEnter; }
 
-    public List<IReward> getPhaseRewards() {
-        return this.phaseRewards;
-    }
+    public List<String> getFlagsToSetOnComplete() { return this.flagsToSetOnComplete; }
 
-    public List<String> getFlagsToSetOnEnter() {
-        return this.flagsToSetOnEnter;
-    }
-
-    public List<String> getFlagsToSetOnComplete() {
-        return this.flagsToSetOnComplete;
-    }
-
-
-    public QuestVisualConfig getVisualConfig() {
-        return this.visualConfig;
-    }
-
+    public QuestVisualConfig getVisualConfig() { return this.visualConfig; }
 
     public int getThemeColor(int parentQuestThemeColor) {
         int phaseColor = this.visualConfig.getThemeColor();
         return (phaseColor != 0xFFFFFFFF) ? phaseColor : parentQuestThemeColor;
     }
 
-
     public Optional<VisualAsset> getSplashConfig(SplashType type) {
         return this.visualConfig.getSplash(type);
     }
-
 
     public Optional<VisualAsset> getIconConfig(IconPosition position) {
         return this.visualConfig.getIcon(position);
     }
 
-    @org.jetbrains.annotations.Nullable
-    public String getTradeShopId() {
-        return this.tradeShopId;
-    }
+    @Nullable
+    public String getTradeShopId() { return this.tradeShopId; }
 
     @Nullable
     public SoundEvent getPhaseStartSound() { return phaseStartSound; }
@@ -169,9 +165,7 @@ public final class PhaseDefinition {
     @Nullable
     public SoundEvent getPhaseCompleteSound() { return phaseCompleteSound; }
 
-    public boolean hasTradeShop() {
-        return this.tradeShopId != null;
-    }
+    public boolean hasTradeShop() { return this.tradeShopId != null; }
 
     @Override
     public String toString() {

@@ -32,6 +32,7 @@ public final class PhaseBuilder {
     private final List<String> flagsOnEnter = new ArrayList<>();
     private final List<String> flagsOnComplete = new ArrayList<>();
     private Component displayName;
+    private Component description = Component.empty();
     private int transitionPriorityCounter = 0;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     private String tradeShopId = null;
@@ -60,6 +61,16 @@ public final class PhaseBuilder {
 
     public PhaseBuilder displayName(Component component) {
         this.displayName = component;
+        return this;
+    }
+
+    public PhaseBuilder description(String literal) {
+        this.description = Component.literal(literal);
+        return this;
+    }
+
+    public PhaseBuilder description(Component component) {
+        this.description = component;
         return this;
     }
 
@@ -262,6 +273,7 @@ public final class PhaseBuilder {
         return new PhaseDefinition(
                 this.phaseId,
                 this.displayName,
+                this.description,
                 new ArrayList<>(this.objectives),
                 new ArrayList<>(this.transitions),
                 new ArrayList<>(this.choices),
