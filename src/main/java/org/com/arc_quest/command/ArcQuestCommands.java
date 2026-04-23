@@ -43,6 +43,8 @@ public class ArcQuestCommands {
                         .then(AdminCommands.registerSubtree(dispatcher))
         );
 
+        MarkerTestCommand.register(event.getDispatcher());
+
         LOGGER.info("[ArcQuest] Commands registered with modular structure.");
     }
 }

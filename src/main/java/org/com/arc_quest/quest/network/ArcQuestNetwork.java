@@ -182,6 +182,15 @@ public final class ArcQuestNetwork {
                 C2SOpenGachaPacket::decode,
                 C2SOpenGachaPacket::handle
         );
+
+        // --- S2C: Sync quest markers ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CSyncMarkersPacket.class,
+                S2CSyncMarkersPacket::encode,
+                S2CSyncMarkersPacket::decode,
+                S2CSyncMarkersPacket::handle
+        );
     }
 
     // ═══════════════════════════════════════════════════════
