@@ -22,8 +22,8 @@ public class GachaResultRenderer {
     private enum State { ENTER, HOLD, EXIT }
     private State currentState = State.ENTER;
 
-    private static final float TIME_ENTER = 700f;
-    private static final float TIME_EXIT = 450f;
+    private static final float TIME_ENTER = 800f;
+    private static final float TIME_EXIT = 600f;
 
     private long startTime = 0;
     private long exitStartTime = 0;
@@ -78,15 +78,15 @@ public class GachaResultRenderer {
 
         if (currentState == State.ENTER) {
             float t = Math.min(1.0f, elapsed / TIME_ENTER);
-            float easeOut = HudAnimUtil.easeOutCubic(t);
-            revealProgress = easeOut;
-            driftX = -25f * (1f - easeOut);
-            alpha = easeOut;
+            float easeInOut = t < 0.5f ? 4f * t * t * t : 1f - (float)Math.pow(-2f * t + 2f, 3f) / 2f;
+            revealProgress = easeInOut;
+            driftX = -25f * (1f - easeInOut);
+            alpha = easeInOut;
         } else if (currentState == State.EXIT) {
             float t = Math.min(1.0f, (now - exitStartTime) / TIME_EXIT);
-            float easeIn = (float) Math.pow(t, 4.0);
-            wipeProgress = easeIn;
-            driftX = 40f * easeIn;
+            float easeInOut = t < 0.5f ? 4f * t * t * t : 1f - (float)Math.pow(-2f * t + 2f, 3f) / 2f;
+            wipeProgress = easeInOut;
+            driftX = 50f * easeInOut;
             alpha = 1.0f - (float) Math.pow(t, 2.0);
         }
 
@@ -120,7 +120,6 @@ public class GachaResultRenderer {
         g.fill(0, 0, frameW, frameH, bgBase);
         g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * 0.3f)), 0x00000000);
 
-        // ★ 3A级高级渐变彩条注入结算界面
         int coreColor = themeC & 0xFFFFFF;
         int topAlpha = safeAlpha;
         int botAlpha = (int)(safeAlpha * 0.15f);
@@ -162,7 +161,9 @@ public class GachaResultRenderer {
                 g.pose().popPose();
             }
 
-            int blinkA = (int)(safeAlpha * (0.4f + 0.6f * Math.sin(now / 150.0)));
+            float wave = (float) (Math.sin(now / 200.0) * 0.5 + 0.5);
+            int blinkA = (int)(safeAlpha * (0.3f + 0.7f * wave));
+
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
             g.drawString(Minecraft.getInstance().font, "CLICK TO ACKNOWLEDGE", (int)(textX / 0.7f), (int)((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(themeC, blinkA), true);

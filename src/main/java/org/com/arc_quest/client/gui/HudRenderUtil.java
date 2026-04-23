@@ -149,6 +149,36 @@ public final class HudRenderUtil {
         }
     }
 
+    /**
+     * 渲染机能风高级晶体侧边栏 (Cybernetic Edge)
+     * 拥有顶部极高亮度的白光耀斑和柔和向下的消散渐变。
+     *
+     * @param g          GuiGraphics
+     * @param x          起始 X
+     * @param y          起始 Y
+     * @param height     总高度
+     * @param themeColor 主题色
+     * @param alpha      整体透明度 (0-255)
+     */
+    public static void drawCyberneticEdge(GuiGraphics g, int x, int y, int height, int themeColor, int alpha) {
+        if (alpha < 5) return;
+
+        int coreColor = themeColor & 0xFFFFFF;
+        int topAlpha = alpha;
+        int botAlpha = (int) (alpha * 0.15f);
+
+        int colorTop = coreColor | (topAlpha << 24);
+        int colorBot = coreColor | (botAlpha << 24);
+
+        // 主体 3px 宽的深层消散渐变
+        g.fillGradient(x, y, x + 3, y + height, colorTop, colorBot);
+
+        // 核心 1px 宽的极度高亮白色耀斑
+        int glowAlpha = (int) (topAlpha * 0.8f);
+        int colorGlow = 0xFFFFFF | (glowAlpha << 24);
+        g.fillGradient(x, y, x + 1, y + (height / 2), colorGlow, colorTop);
+    }
+
     public static void applyDynamicScissor(GuiGraphics g, int baseX, int baseY,
                                            int width, int height,
                                            float revealProgress, float wipeProgress,
