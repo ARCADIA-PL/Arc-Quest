@@ -26,7 +26,7 @@ import java.util.List;
  * @param selectSound     选择该选项时播放的音效（可为 null）
  */
 public record DialogueChoice(
-        @Nonnull String choiceId,     // 强制：选项标识符
+        @Nonnull String choiceId,
         String text,
         String nextNodeId,
         List<DialogueCondition> conditions,
@@ -39,7 +39,7 @@ public record DialogueChoice(
         String restoreNodeId,
         @Nullable SoundEvent selectSound
 ) {
-    
+
     /**
      * 验证 choiceId 不能为 null 或空。
      */
@@ -47,38 +47,6 @@ public record DialogueChoice(
         if (choiceId == null || choiceId.isEmpty()) {
             throw new IllegalArgumentException("DialogueChoice ID cannot be null or empty");
         }
-    }
-    /**
-     * 向后兼容构造器（默认可重复，无冷却，优先级 0，不恢复）。
-     * @deprecated 使用带 choiceId 的构造器
-     */
-    @Deprecated
-    public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
-                          List<DialogueAction> actions) {
-        this("legacy_" + System.identityHashCode(actions), text, nextNodeId, conditions, actions, true, 0, CooldownType.NONE, 0, 0, null, null);
-    }
-
-    /**
-     * 完整构造器（带优先级、冷却类型和恢复节点）。
-     * @deprecated 使用带 choiceId 的构造器
-     */
-    @Deprecated
-    public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
-                          List<DialogueAction> actions, boolean repeatable, long cooldownSeconds,
-                          CooldownType cooldownType, int resetTimeTicks, int priority, String restoreNodeId) {
-        this("legacy_" + System.identityHashCode(actions), text, nextNodeId, conditions, actions, repeatable, cooldownSeconds, cooldownType, resetTimeTicks, priority, restoreNodeId, null);
-    }
-
-    /**
-     * 完整构造器（带音效）。
-     * @deprecated 使用带 choiceId 的构造器
-     */
-    @Deprecated
-    public DialogueChoice(String text, String nextNodeId, List<DialogueCondition> conditions,
-                          List<DialogueAction> actions, boolean repeatable, long cooldownSeconds,
-                          CooldownType cooldownType, int resetTimeTicks, int priority, String restoreNodeId,
-                          @Nullable SoundEvent selectSound) {
-        this("legacy_" + System.identityHashCode(actions), text, nextNodeId, conditions, actions, repeatable, cooldownSeconds, cooldownType, resetTimeTicks, priority, restoreNodeId, selectSound);
     }
 
     /**

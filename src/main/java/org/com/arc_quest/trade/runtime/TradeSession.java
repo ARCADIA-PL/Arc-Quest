@@ -113,7 +113,7 @@ public final class TradeSession {
 
     public int getPurchaseCount(String entryId) {
         IQuestCapability cap = getCap();
-        return cap.getTradePurchaseCount(shop.getShopId(), entryId);
+        return cap.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
     }
 
     public int getRemainingPurchases(TradeEntry entry) {
@@ -198,7 +198,7 @@ public final class TradeSession {
         if (resetCondition == null) return;
         
         IQuestCapability cap = getCap();
-        int currentCount = cap.getTradePurchaseCount(shop.getShopId(), entryId);
+        int currentCount = cap.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
         if (currentCount == 0) return;
         
         boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, cap, shop.getShopId(), entry);

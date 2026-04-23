@@ -8,10 +8,10 @@ import net.minecraft.world.item.Items;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.api.ArcQuestAPI;
 import org.com.arc_quest.quest.api.QuestCategory;
+import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.quest.builder.ObjectiveBuilder;
 import org.com.arc_quest.quest.builder.PhaseBuilder;
 import org.com.arc_quest.quest.builder.QuestBuilder;
-import org.com.arc_quest.quest.condition.FlagSetCondition;
 import org.com.arc_quest.quest.reward.FlagReward;
 import org.com.arc_quest.quest.reward.ItemReward;
 import org.com.arc_quest.quest.reward.VariableReward;
@@ -316,7 +316,7 @@ public final class EpicMainlineDemo {
                         .choice(Component.translatable("arc_quest.choice.epic_branch_choice.gather_info.0"), "arc_quest:chose_combat_path", "arc_quest:path_combat")
                         .choice(Component.translatable("arc_quest.choice.epic_branch_choice.gather_info.1"), "arc_quest:chose_exploration_path", "arc_quest:path_exploration")
                         .choice(Component.translatable("arc_quest.choice.epic_branch_choice.gather_info.2"), "arc_quest:chose_both_paths", "arc_quest:path_both",
-                                new FlagSetCondition("arc_quest:village_reputation_high")))
+                                ICondition.flagSet("arc_quest:village_reputation_high")))
                 // 分支 A：战斗路线
                 .phase(PhaseBuilder.create("arc_quest:path_combat")
                         .displayName(Component.translatable("arc_quest.phase.epic_branch_choice.path_combat"))

@@ -377,11 +377,14 @@ public class DialogueTreeBuilder {
     }
 
     /**
-     * 添加一个带前置条件和优先级的选项。
+     * 添加一个带前置条件和优先级的选项（必须提供 ID）。
      */
-    public DialogueTreeBuilder choiceIf(DialogueCondition condition, String text, String nextNodeId, int priority) {
+    public DialogueTreeBuilder choiceIf(String choiceId, DialogueCondition condition, String text, String nextNodeId, int priority) {
         ensureOpenNode();
-        curChoices.add(new DialogueChoice(text, nextNodeId, List.of(condition), List.of(), true, 0, CooldownType.NONE, 0, priority, null));
+        if (choiceId == null || choiceId.isEmpty()) {
+            throw new IllegalArgumentException("Choice ID cannot be null or empty");
+        }
+        curChoices.add(DialogueChoice.prioritizedConditional(choiceId, text, nextNodeId, condition, priority));
         return this;
     }
 
@@ -515,6 +518,7 @@ public class DialogueTreeBuilder {
             }
             
             resolvedChoices.add(new DialogueChoice(
+                    choice.choiceId(),
                     choice.text(),
                     choice.nextNodeId(),
                     choice.conditions(),

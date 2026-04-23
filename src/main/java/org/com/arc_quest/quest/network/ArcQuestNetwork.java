@@ -57,15 +57,6 @@ public final class ArcQuestNetwork {
                 S2CSyncQuestStatePacket::handle
         );
 
-        // ─── S2C：单目标进度同步 ───
-        CHANNEL.registerMessage(
-                packetId++,
-                S2CSyncObjectivePacket.class,
-                S2CSyncObjectivePacket::encode,
-                S2CSyncObjectivePacket::decode,
-                S2CSyncObjectivePacket::handle
-        );
-
         // ─── S2C：增量进度同步 ───
         CHANNEL.registerMessage(
                 packetId++,
@@ -213,19 +204,6 @@ public final class ArcQuestNetwork {
                 new S2CSyncQuestStatePacket(data));
     }
 
-    /**
-     * 单目标进度同步（轻量级，高频）- 已废弃，使用syncDeltaProgress替代
-     *
-     * @deprecated 使用 {@link #syncDeltaProgress(ServerPlayer, String, int, int)} 以获得更好的性能
-     */
-    @Deprecated
-    public static void syncObjectiveProgress(ServerPlayer player,
-                                             String questId,
-                                             int objIndex,
-                                             int newProgress) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncObjectivePacket(questId, objIndex, newProgress));
-    }
 
     /**
      * 增量进度同步 - 仅同步变化的字段，体积极小。

@@ -5,7 +5,6 @@ import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.QuestCategory;
 import org.com.arc_quest.quest.api.QuestDefinition;
-import org.com.arc_quest.quest.condition.QuestCompletedCondition;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -158,8 +157,8 @@ public final class QuestRegistry {
         int warnings = 0;
         for (QuestDefinition quest : REGISTRY.values()) {
             for (var cond : quest.getUnlockConditions()) {
-                if (cond instanceof QuestCompletedCondition qcc) {
-                    ResourceLocation ref = qcc.getRequiredQuestId();
+                if (cond instanceof org.com.arc_quest.quest.api.ICondition.WithRequiredQuest wrq) {
+                    ResourceLocation ref = wrq.getRequiredQuestId();
                     if (!REGISTRY.containsKey(ref)) {
                         LOGGER.warn("[ArcQuest] Quest '{}' requires unknown quest '{}' as prerequisite",
                                 quest.getId(), ref);

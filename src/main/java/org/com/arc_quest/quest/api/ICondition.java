@@ -55,7 +55,19 @@ public interface ICondition {
      * <p>推荐替代 {@code new QuestCompletedCondition(questId)}。
      */
     static ICondition questCompleted(ResourceLocation questId) {
-        return (player, cq, f, v) -> cq.contains(questId);
+        return new WithRequiredQuest() {
+            @Override
+            public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
+                return cq.contains(questId);
+            }
+            @Override
+            public ResourceLocation getRequiredQuestId() { return questId; }
+        };
+    }
+
+    /** 允许注册表在冻结时对 questCompleted 条件做交叉引用验证。 */
+    interface WithRequiredQuest extends ICondition {
+        ResourceLocation getRequiredQuestId();
     }
 
     /**
