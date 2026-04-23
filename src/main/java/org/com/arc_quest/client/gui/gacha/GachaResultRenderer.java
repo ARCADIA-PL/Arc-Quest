@@ -17,7 +17,7 @@ public class GachaResultRenderer {
     private boolean active = false;
     private GachaShopDefinition shopDef;
     private ClientGachaCache.DrawRecord result;
-    private GachaScreen parentScreen; // ★ 接入代理
+    private GachaScreen parentScreen;
 
     private enum State { ENTER, HOLD, EXIT }
     private State currentState = State.ENTER;
@@ -43,7 +43,6 @@ public class GachaResultRenderer {
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.2f));
     }
 
-
     public boolean isActive() { return active; }
 
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float dt) {
@@ -54,7 +53,6 @@ public class GachaResultRenderer {
 
         if (currentState == State.ENTER && elapsed >= TIME_ENTER) {
             currentState = State.HOLD;
-            // ★ 正常流程：弹窗稳住瞬间，触发中心结算
             if (!rewardConfirmed && parentScreen != null) {
                 rewardConfirmed = true;
                 parentScreen.confirmDrawAndSync();
@@ -71,25 +69,24 @@ public class GachaResultRenderer {
 
         int frameW = 200;
         int frameH = 100;
-        float baseScale = 1.3f; // 整体放大，更有冲击力
+        float baseScale = 1.3f;
 
         float revealProgress = 1.0f;
         float wipeProgress = 0.0f;
         float driftX = 0f;
         float alpha = 1.0f;
 
-        // 【核心动效注入】：复刻 GenesisSkinScreen 的进出场与水平漂移逻辑
         if (currentState == State.ENTER) {
             float t = Math.min(1.0f, elapsed / TIME_ENTER);
             float easeOut = HudAnimUtil.easeOutCubic(t);
             revealProgress = easeOut;
-            driftX = -25f * (1f - easeOut); // 从左侧微微滑入
+            driftX = -25f * (1f - easeOut);
             alpha = easeOut;
         } else if (currentState == State.EXIT) {
             float t = Math.min(1.0f, (now - exitStartTime) / TIME_EXIT);
-            float easeIn = (float) Math.pow(t, 4.0); // 锐利的二次加速退出
+            float easeIn = (float) Math.pow(t, 4.0);
             wipeProgress = easeIn;
-            driftX = 40f * easeIn; // 向右滑动同时被擦除
+            driftX = 40f * easeIn;
             alpha = 1.0f - (float) Math.pow(t, 2.0);
         }
 
@@ -97,7 +94,6 @@ public class GachaResultRenderer {
         float cx = screenWidth / 2f + driftX;
         float cy = screenHeight / 2f;
 
-        // 计算 Scissor 裁剪矩阵
         int scX1 = (int) (cx - scaledW / 2f - 5);
         int scX2 = (int) (cx + scaledW / 2f + 5);
 
@@ -107,13 +103,11 @@ public class GachaResultRenderer {
             scX1 = (int) (cx - scaledW / 2f + scaledW * wipeProgress);
         }
 
-        // 极限防越界
         if (scX2 <= scX1) return;
 
         GachaItem targetItem = shopDef.getGachaPool().getItems().stream().filter(i -> i.getItemId().equals(result.itemId())).findFirst().orElse(null);
         int themeC = targetItem != null ? shopDef.getEffectiveThemeColor(targetItem) : 0xFFFFFF;
 
-        // 开启底层裁剪！这才是 3A 的浪漫！
         g.enableScissor(scX1, -1000, scX2, 10000);
 
         g.pose().pushPose();
@@ -122,12 +116,20 @@ public class GachaResultRenderer {
         g.pose().translate(-frameW / 2f, -frameH / 2f, 0);
 
         int safeAlpha = Math.max(0, Math.min(255, (int)(alpha * 255)));
-
-        // 极简机能风底板
-        int bgBase = ((int)(safeAlpha * 0.6f) << 24) | 0x05050A; // 加深一点不透明度，防透
+        int bgBase = ((int)(safeAlpha * 0.6f) << 24) | 0x05050A;
         g.fill(0, 0, frameW, frameH, bgBase);
         g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * 0.3f)), 0x00000000);
-        g.fill(0, 0, 4, frameH, HudAnimUtil.withAlpha(themeC, safeAlpha));
+
+        // ★ 3A级高级渐变彩条注入结算界面
+        int coreColor = themeC & 0xFFFFFF;
+        int topAlpha = safeAlpha;
+        int botAlpha = (int)(safeAlpha * 0.15f);
+        int colorTop = coreColor | (topAlpha << 24);
+        int colorBot = coreColor | (botAlpha << 24);
+        g.fillGradient(0, 0, 4, frameH, colorTop, colorBot);
+        int glowAlpha = (int)(topAlpha * 0.8f);
+        int colorGlow = 0xFFFFFF | (glowAlpha << 24);
+        g.fillGradient(0, 0, 1, frameH / 2, colorGlow, colorTop);
 
         if (targetItem != null) {
             g.pose().pushPose();
@@ -140,7 +142,6 @@ public class GachaResultRenderer {
 
         if (safeAlpha > 10 && targetItem != null) {
             int textX = 90;
-
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
             g.drawString(Minecraft.getInstance().font, "// DECRYPTED", (int)(textX / 0.7f), (int)(15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), true);
@@ -169,8 +170,6 @@ public class GachaResultRenderer {
         }
 
         g.pose().popPose();
-
-        // 关闭裁剪
         g.disableScissor();
     }
 
@@ -186,7 +185,6 @@ public class GachaResultRenderer {
 
     public void forceCloseAndConfirm() {
         active = false;
-        // ★ 异常退出流程：强制触发中心结算
         if (!rewardConfirmed && parentScreen != null) {
             rewardConfirmed = true;
             parentScreen.confirmDrawAndSync();

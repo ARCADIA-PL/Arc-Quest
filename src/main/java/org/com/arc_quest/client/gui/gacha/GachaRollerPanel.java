@@ -24,8 +24,11 @@ public class GachaRollerPanel {
     private State currentState = State.ENTER;
 
     private float masterAnim = 0f;
-    private float exitProgress = 0f; // 专用于终极交接退场
-    private long stateStartTime = 0;
+
+    private float rollElapsed = 0f;
+    private float holdElapsed = 0f;
+    private float exitElapsed = 0f;
+    private float rollSpeedMult = 1.0f;
 
     private double scrollX = 0;
     private double targetStopX = 0;
@@ -35,7 +38,7 @@ public class GachaRollerPanel {
     private final List<GachaItem> rollStrip = new ArrayList<>();
     private int targetItemIndex = -1;
     private ClientGachaCache.DrawRecord confirmedResult;
-    private int targetThemeHighContrast; // 高对比度准星颜色
+    private int targetThemeHighContrast;
 
     private final int cardW = 70;
     private final int cardH = 55;
@@ -54,11 +57,13 @@ public class GachaRollerPanel {
     public void startRoll(ClientGachaCache.DrawRecord result) {
         this.confirmedResult = result;
         this.isRolling = true;
-
         this.currentState = State.ENTER;
+
         this.masterAnim = 0f;
-        this.exitProgress = 0f;
-        this.stateStartTime = Util.getMillis();
+        this.rollElapsed = 0f;
+        this.holdElapsed = 0f;
+        this.exitElapsed = 0f;
+        this.rollSpeedMult = 1.0f;
 
         generateRollStrip(result.itemId());
     }
@@ -74,7 +79,6 @@ public class GachaRollerPanel {
         GachaItem targetItem = pool.stream().filter(i -> i.getItemId().equals(targetItemId)).findFirst().orElse(pool.get(0));
         rollStrip.set(targetItemIndex, targetItem);
 
-        // 获取并强化准星对比度，掺入 15% 白色以确保在高暗度下极度亮眼
         int rawTheme = parent.getShopDef().getEffectiveThemeColor(targetItem);
         this.targetThemeHighContrast = HudAnimUtil.blend(rawTheme, 0xFFFFFF, 0.15f);
 
@@ -89,58 +93,50 @@ public class GachaRollerPanel {
         if (!isRolling) return;
 
         long now = Util.getMillis();
-        long elapsed = now - stateStartTime;
 
-        // 【重构的无缝交接状态机】
         switch (currentState) {
             case ENTER:
                 masterAnim = Math.min(1.0f, masterAnim + dt * 1.25f);
                 if (masterAnim >= 1.0f) {
                     currentState = State.ROLLING;
-                    stateStartTime = now;
                 }
                 break;
             case ROLLING:
-                if (elapsed >= rollDuration) {
+                rollElapsed += (dt * 1000f) * rollSpeedMult;
+                if (rollElapsed >= rollDuration) {
+                    rollElapsed = rollDuration;
                     currentState = State.HOLD;
-                    stateStartTime = now;
-                    // 锁定的清脆音效
                     Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
+                    if (rollSpeedMult > 1.0f) {
+                        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ANVIL_LAND, 1.2f, 1.0f));
+                    }
                 }
                 break;
             case HOLD:
-                // 停顿 0.8s 给玩家定格震撼
-                if (elapsed >= 800) {
+                holdElapsed += (dt * 1000f);
+                if (holdElapsed >= 800) {
                     currentState = State.EXIT;
-                    stateStartTime = now;
                 }
                 break;
             case EXIT:
-                // 极速撕裂退场 (0.35s 完美交接)
-                exitProgress = Math.min(1.0f, elapsed / 350.0f);
-                if (exitProgress >= 1.0f) {
+                exitElapsed += (dt * 1000f);
+                if (exitElapsed >= 350.0f) {
                     isRolling = false;
-                    // 彻底坍缩的瞬间呼叫 ResultRenderer，它会无缝从这一条线展开！
                     parent.onRollFinished(confirmedResult);
                     return;
                 }
                 break;
         }
 
+        float exitProgress = Math.min(1.0f, exitElapsed / 350.0f);
         float easeMaster = masterAnim < 0.5f ?
                 2.0f * masterAnim * masterAnim : 1.0f - (float)Math.pow(-2.0f * masterAnim + 2.0f, 2.0) / 2.0f;
-
-        // EXIT 阶段独有的指数级撕裂剥离感
         float wipeOut = (currentState == State.EXIT) ? (float)Math.pow(exitProgress, 3.0) : 0f;
 
-        // 【环境光收敛】：最大 55% (0x8C)，并在 EXIT 阶段极速褪去
         int bgAlpha = (int)(0x8C * easeMaster * (1.0f - wipeOut));
-        if (bgAlpha > 0) {
-            g.fill(0, 0, width, height, bgAlpha << 24);
-        }
+        if (bgAlpha > 0) g.fill(0, 0, width, height, bgAlpha << 24);
 
         int targetBarHeight = (int) (this.height * 0.10f);
-        // 电影黑边在 EXIT 时向上下缩回
         int barHeight = Math.round(targetBarHeight * easeMaster * (1.0f - wipeOut));
 
         if (barHeight > 0) {
@@ -152,7 +148,7 @@ public class GachaRollerPanel {
         if (safeAlpha < 10) return;
 
         if (currentState == State.ROLLING || currentState == State.ENTER) {
-            float t = Math.min(1.0f, (float)elapsed / rollDuration);
+            float t = Math.min(1.0f, rollElapsed / rollDuration);
             float rollEase = 1.0f - (float)Math.pow(1.0f - t, 4.0);
             scrollX = targetStopX * rollEase;
 
@@ -162,10 +158,12 @@ public class GachaRollerPanel {
                 lastTickCard = currentCard;
                 float pitch = 1.2f - (t * 0.4f);
                 float volume = 0.6f + (t * 0.4f);
+                // 快进时降低音量，形成低沉极速的摩擦音，保护耳朵且更带感
+                if (rollSpeedMult > 1.0f) volume *= 0.35f;
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), pitch, volume));
             }
         } else {
-            scrollX = targetStopX; // HOLD 和 EXIT 锁定视角
+            scrollX = targetStopX;
         }
 
         int cx = width / 2;
@@ -190,9 +188,7 @@ public class GachaRollerPanel {
             if (currentState == State.EXIT) {
                 if (i == targetItemIndex) {
                     float centerWipe = Math.min(1.0f, exitProgress * 2.5f);
-
                     float implode = 1.0f - (float)Math.pow(centerWipe, 0.5);
-
                     iconScale *= implode;
                     cardScale *= implode;
                     cardAlpha = (int)(safeAlpha * (1.0f - centerWipe));
@@ -210,15 +206,26 @@ public class GachaRollerPanel {
             g.pose().scale(cardScale, cardScale, 1f);
             g.pose().translate(-(drawX + cardW/2f), -centerY, 0);
 
-            // 卡片底板渲染
-            g.fill((int)drawX, centerY - cardH/2, (int)drawX + cardW, centerY + cardH/2, HudAnimUtil.withAlpha(0x111111, (int)(cardAlpha * 0.8f)));
-            g.fillGradient((int)drawX, centerY - cardH/2, (int)drawX + cardW, centerY + cardH/2, HudAnimUtil.withAlpha(themeC, (int)(cardAlpha * 0.2f)), 0);
+            int drawCardX = (int)drawX;
+            int drawCardY = centerY - cardH/2;
+
+            g.fill(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(0x111111, (int)(cardAlpha * 0.8f)));
+            g.fillGradient(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(themeC, (int)(cardAlpha * 0.2f)), 0);
+
+            int coreColor = themeC & 0xFFFFFF;
+            int topAlpha = cardAlpha;
+            int botAlpha = (int)(cardAlpha * 0.15f);
+            int colorTop = coreColor | (topAlpha << 24);
+            int colorBot = coreColor | (botAlpha << 24);
+            g.fillGradient(drawCardX, drawCardY, drawCardX + 4, drawCardY + cardH, colorTop, colorBot);
+            int glowAlpha = (int)(topAlpha * 0.8f);
+            int colorGlow = 0xFFFFFF | (glowAlpha << 24);
+            g.fillGradient(drawCardX, drawCardY, drawCardX + 1, drawCardY + (cardH / 2), colorGlow, colorTop);
 
             if (popFactor > 0.1f && currentState != State.EXIT) {
-                HudAnimUtil.drawFrame(g, (int)drawX, centerY - cardH/2, cardW, cardH, 1, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * popFactor * 0.8f)));
+                HudAnimUtil.drawFrame(g, drawCardX, drawCardY, cardW, cardH, 1, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * popFactor * 0.8f)));
             }
 
-            // 图标渲染
             g.pose().pushPose();
             g.pose().translate(drawX + cardW/2f, centerY, 0);
             g.pose().scale(iconScale, iconScale, 1f);
@@ -229,20 +236,16 @@ public class GachaRollerPanel {
             g.pose().popPose();
         }
 
-        // 【阻尼收缩准星系统】
         float aimW = (cardW * 1.15f) + 8;
         float aimH = (cardH * 1.15f) + 8;
 
-        // HOLD 阶段给准星一个“相机对焦”的回弹锁定手感
         if (currentState == State.HOLD || currentState == State.EXIT) {
-            float holdT = Math.min(1.0f, (now - stateStartTime) / 400f);
-            // 阻尼弹簧：过冲 -> 回弹 -> 锁死
+            float holdT = Math.min(1.0f, (holdElapsed + exitElapsed) / 400f);
             float spring = 1.0f + 0.4f * (float)Math.exp(-holdT * 8f) * (float)Math.cos(holdT * 25f);
             aimW *= spring;
             aimH *= spring;
         }
 
-        // EXIT 阶段，准星向四周炸开散去
         if (currentState == State.EXIT) {
             aimW += wipeOut * 300f;
             aimH += wipeOut * 300f;
@@ -252,11 +255,9 @@ public class GachaRollerPanel {
         if (currentState == State.EXIT) pulseA = (int)(pulseA * (1.0f - wipeOut));
 
         if (pulseA > 5) {
-            int crossColor = HudAnimUtil.withAlpha(targetThemeHighContrast, pulseA); // 高对比度主题色准星
-
+            int crossColor = HudAnimUtil.withAlpha(targetThemeHighContrast, pulseA);
             int len = 10;
             int thick = 2;
-
             g.fill((int)(cx - aimW/2), (int)(centerY - aimH/2), (int)(cx - aimW/2 + len), (int)(centerY - aimH/2 + thick), crossColor);
             g.fill((int)(cx - aimW/2), (int)(centerY - aimH/2), (int)(cx - aimW/2 + thick), (int)(centerY - aimH/2 + len), crossColor);
             g.fill((int)(cx + aimW/2 - len), (int)(centerY - aimH/2), (int)(cx + aimW/2), (int)(centerY - aimH/2 + thick), crossColor);
@@ -270,8 +271,27 @@ public class GachaRollerPanel {
         g.disableScissor();
     }
 
+    public boolean mouseClicked() {
+        if (!isRolling) return false;
+        if (currentState == State.ENTER || currentState == State.ROLLING) {
+            if (rollSpeedMult == 1.0f) {
+                rollSpeedMult = 8.0f;
+                if (currentState == State.ENTER) masterAnim = 1.0f;
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
+            } else {
+                currentState = State.HOLD;
+                rollElapsed = rollDuration;
+                scrollX = targetStopX;
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ANVIL_LAND, 1.2f, 2.0f));
+            }
+            return true;
+        }
+        return false;
+    }
+
     public void onScreenClose() {
         this.currentState = State.EXIT;
-        this.stateStartTime = Util.getMillis();
+        this.exitElapsed = 0f;
     }
 }

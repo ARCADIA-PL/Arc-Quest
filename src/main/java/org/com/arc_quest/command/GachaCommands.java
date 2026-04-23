@@ -258,7 +258,7 @@ public class GachaCommands {
     
     /**
      * /arcquest gacha reset shop <player> <shop>
-     * 重置指定商店的所有数据（次数、冷却、保底）
+     * 重置指定商店的所有数据（次数、冷却、保底、历史）
      */
     private static int cmdGachaResetShop(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
@@ -274,11 +274,12 @@ public class GachaCommands {
         // 重置所有相关数据
         cap.resetGachaDrawCount(shopId);           // 重置抽奖次数
         cap.setGachaPityCounter(shopId, 0);        // 重置保底计数
+        cap.clearGachaDrawHistory(shopId);         // 【新增】清除抽奖历史
         cap.getDialogueProgress().clearCooldownRecord(
             ProgressKey.ofTrade(shopId, "draw")
         );                                         // 清除冷却记录
         
-        success(ctx, String.format("已重置 %s 在 %s 的所有抽奖数据（次数、冷却、保底）", 
+        success(ctx, String.format("已重置 %s 在 %s 的所有抽奖数据（次数、冷却、保底、历史）", 
             player.getName().getString(), shopId));
         LOGGER.info("[GachaCommand] Reset all gacha data for shop '{}' and player {}", 
             shopId, player.getName().getString());
@@ -288,7 +289,7 @@ public class GachaCommands {
     
     /**
      * /arcquest gacha reset all <player>
-     * 重置玩家所有抽奖商店的数据
+     * 重置玩家所有抽奖商店的数据（次数、冷却、保底、历史）
      */
     private static int cmdGachaResetAll(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
@@ -304,6 +305,7 @@ public class GachaCommands {
             // 重置所有相关数据
             cap.resetGachaDrawCount(shopId);
             cap.setGachaPityCounter(shopId, 0);
+            cap.clearGachaDrawHistory(shopId);     // 【新增】清除抽奖历史
             cap.getDialogueProgress().clearCooldownRecord(
                 ProgressKey.ofTrade(shopId, "draw")
             );
@@ -311,7 +313,7 @@ public class GachaCommands {
             resetCount++;
         }
         
-        success(ctx, String.format("已重置 %s 的所有 %d 个抽奖商店数据", 
+        success(ctx, String.format("已重置 %s 的所有 %d 个抽奖商店数据（次数、冷却、保底、历史）", 
             player.getName().getString(), resetCount));
         LOGGER.info("[GachaCommand] Reset all gacha data for {} shops and player {}", 
             resetCount, player.getName().getString());

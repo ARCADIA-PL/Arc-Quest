@@ -102,10 +102,11 @@ public class S2CDrawResultPacket {
             long cooldownValue = gachaShop != null ? gachaShop.getCooldownValue() : 0;
             int resetTimeTicks = gachaShop != null ? gachaShop.getResetTimeTicks() : 0;
 
+            // 【修复】不再手动+1，recordDrawResult()已经更新了totalDraws
             ClientGachaCache.INSTANCE.updateSession(
                     pkt.shopId,
                     pkt.newPityCounter,
-                    ClientGachaCache.INSTANCE.getTotalDraws(pkt.shopId) + 1,
+                    ClientGachaCache.INSTANCE.getTotalDraws(pkt.shopId),  // 直接使用当前值
                     pkt.canDraw,
                     pkt.lastDrawRealTime,
                     pkt.lastDrawGameTime,
