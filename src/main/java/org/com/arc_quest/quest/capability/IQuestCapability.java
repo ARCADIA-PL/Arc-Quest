@@ -181,6 +181,13 @@ public interface IQuestCapability {
      * @return 历史记录列表（最多50条）
      */
     List<GachaDrawRecord> getGachaDrawHistory(String shopId);
+    
+    /**
+     * 清除指定商店的抽奖历史记录。
+     *
+     * @param shopId 商店 ID
+     */
+    void clearGachaDrawHistory(String shopId);
 
     /**
      * 获取某商店某商品的上次购买时间（毫秒）。

@@ -179,6 +179,12 @@ public class QuestCapabilityImpl implements IQuestCapability {
             gachaDrawHistories.getOrDefault(shopId, Collections.emptyList())
         );
     }
+    
+    @Override
+    public synchronized void clearGachaDrawHistory(String shopId) {
+        gachaDrawHistories.remove(shopId);
+        isDirty = true;
+    }
 
     @Override
     public long getTradeLastPurchaseTime(String shopId, String entryId) {

@@ -43,14 +43,11 @@ public class DemoGachaShops {
             // 抽奖成本：10个钻石
             .drawCost(new ItemTradeOffer(Items.DIAMOND, 10, true))
             
-            // 冷却时间：10秒
-            .cooldown(10)
-            
-            // 限购：每天5次
+            // 限购：每天5次（6点刷新）
             .maxDraws(5)
+            .cooldownGameTick(0)
             .drawResetByCooldown()
 
-            
             // 默认主题色：金色
             .themeColor(0xFFD700)
             
