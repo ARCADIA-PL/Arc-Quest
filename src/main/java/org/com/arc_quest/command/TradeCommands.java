@@ -260,7 +260,7 @@ public class TradeCommands {
 
         // 重置整个商店的所有交易项
         for (TradeEntry entry : shop.getAllEntries()) {
-            cap.resetTradePurchaseCount(shopId, entry.getEntryId());
+            cap.getTradeDataStore().resetEntry(shopId, entry.getEntryId());
         }
         success(ctx, Component.translatable("arc_quest.command.trade.reset.shop_success",
                 shopId, player.getName().getString()).getString());
@@ -295,7 +295,7 @@ public class TradeCommands {
             return 0;
         }
 
-        cap.resetTradePurchaseCount(shopId, entryId);
+        cap.getTradeDataStore().resetEntry(shopId, entryId);
         success(ctx, Component.translatable("arc_quest.command.trade.reset.entry_success",
                 entryId, shopId, player.getName().getString()).getString());
 
@@ -310,7 +310,7 @@ public class TradeCommands {
         int resetCount = 0;
         for (TradeShopDefinition shop : TradeRegistry.getAll()) {
             for (TradeEntry entry : shop.getAllEntries()) {
-                cap.resetTradePurchaseCount(shop.getShopId(), entry.getEntryId());
+                cap.getTradeDataStore().resetEntry(shop.getShopId(), entry.getEntryId());
                 resetCount++;
             }
         }

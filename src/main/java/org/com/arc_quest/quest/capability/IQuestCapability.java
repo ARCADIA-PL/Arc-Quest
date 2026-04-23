@@ -4,6 +4,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
+import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
+import org.com.arc_quest.dialogue.util.TimeSanitizer;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -15,8 +17,9 @@ import java.util.stream.Collectors;
 /**
  * 玩家任务数据 Capability 接口。
  * <p>
- * <b>v2 变更</b>: 对话历史统一通过 {@link #getDialogueProgress()} 访问，
- * 旧的 {@code recordNodeVisit / hasVisitedNode} 等方法标记为 {@code @Deprecated}。
+ * <b>v2 变更</b>: 对话历史统一通过 {@link #getDialogueProgress()} 访问。
+ * <b>v5 变更</b>: 交易数据统一通过 {@link #getTradeDataStore()} 访问，旧的 8 个交易方法
+ * 改为 {@code default} 委托实现（保留向后兼容，不删除）。
  */
 public interface IQuestCapability {
 
@@ -49,8 +52,6 @@ public interface IQuestCapability {
 
     /**
      * 返回已完成任务的 ResourceLocation 集合。
-     * <p>
-     * 消除调用方重复的 {@code getCompletedQuests().stream().map(ResourceLocation::parse).collect(...)} 模板代码。
      */
     default Set<ResourceLocation> getCompletedQuestLocations() {
         return getCompletedQuests().stream()
@@ -82,29 +83,23 @@ public interface IQuestCapability {
 
     /**
      * 获取对话进度统一存储。
-     * <p>
-     * 替代之前散落在接口中的 recordNodeVisit、hasVisitedNode、
-     * recordChoiceSelection、getLastDialogueTime 等 20+ 个方法。
-     *
-     * @return 对话进度存储实例
      */
     DialogueProgressStore getDialogueProgress();
 
     /**
      * 获取抽奖数据存储（抽奖次数、保底计数、历史记录、冷却时间戳）。
-     * <p>
-     * 抽奖冷却时间戳已从 {@code DialogueProgressStore} 迁移至 {@link GachaDataStore}，
-     * 使抽奖数据完全自治。
-     *
-     * @return 抽奖数据存储实例
      */
     GachaDataStore getGachaDataStore();
 
     /**
-     * 获取交易冷却存储（复用 DialogueProgressStore）。
-     *
-     * @deprecated 直接使用 {@link #getDialogueProgress()} 配合 {@code ProgressKey.ofTrade()} 操作。
-     *             抽奖冷却请使用 {@link #getGachaDataStore()}。
+     * 获取交易数据存储（购买次数 + 冷却时间戳）。
+     * <p>
+     * 替代旧有的 8 个分散交易方法，使交易数据完全自治。
+     */
+    TradeDataStore getTradeDataStore();
+
+    /**
+     * @deprecated 使用 {@link #getTradeDataStore()} + {@link #getDialogueProgress()}。
      */
     @Deprecated
     default DialogueProgressStore getTradeCooldownStore() {
@@ -112,146 +107,94 @@ public interface IQuestCapability {
     }
 
     // ════════════════════════════════════════
-    //  交易数据管理
+    //  抽奖系统 API
+    // ════════════════════════════════════════
+
+    int getGachaDrawCount(String shopId);
+
+    void incrementGachaDrawCount(String shopId);
+
+    void resetGachaDrawCount(String shopId);
+
+    int getGachaPityCounter(String shopId);
+
+    void setGachaPityCounter(String shopId, int count);
+
+    void addGachaDrawHistory(String shopId, String itemId, String rarityName,
+                             int actualCount, boolean pityTriggered, long drawTime);
+
+    List<GachaDrawRecord> getGachaDrawHistory(String shopId);
+
+    void clearGachaDrawHistory(String shopId);
+
+    // ════════════════════════════════════════
+    //  交易数据管理（向后兼容 default 方法）
     // ════════════════════════════════════════
 
     /**
-     * 获取某商店某商品的购买次数。
-     *
-     * @param shopId 商店 ID
-     * @param entryId 商品 ID
-     * @return 购买次数
+     * @deprecated 使用 {@code getTradeDataStore().getPurchaseCount(shopId, entryId)}
      */
-    int getTradePurchaseCount(String shopId, String entryId);
+    @Deprecated
+    default int getTradePurchaseCount(String shopId, String entryId) {
+        return getTradeDataStore().getPurchaseCount(shopId, entryId);
+    }
 
     /**
-     * 增加购买次数。
-     *
-     * @param shopId 商店 ID
-     * @param entryId 商品 ID
+     * @deprecated 使用 {@code getTradeDataStore().incrementPurchase(shopId, entryId)}
      */
-    void incrementTradePurchase(String shopId, String entryId);
+    @Deprecated
+    default void incrementTradePurchase(String shopId, String entryId) {
+        getTradeDataStore().incrementPurchase(shopId, entryId);
+    }
 
     /**
-     * 获取某抽奖商店的总抽奖次数。
-     *
-     * @param shopId 商店 ID
-     * @return 总抽奖次数
+     * @deprecated 使用 {@code getTradeDataStore().getCooldown(shopId, entryId).realTime()}
      */
-    int getGachaDrawCount(String shopId);
-    
-    /**
-     * 增加抽奖次数。
-     *
-     * @param shopId 商店 ID
-     */
-    void incrementGachaDrawCount(String shopId);
-    
-    /**
-     * 重置抽奖次数。
-     *
-     * @param shopId 商店 ID
-     */
-    void resetGachaDrawCount(String shopId);
-    
-    /**
-     * 获取某抽奖商店的保底计数。
-     *
-     * @param shopId 商店 ID
-     * @return 当前保底计数（已抽多少次未出保底）
-     */
-    int getGachaPityCounter(String shopId);
-    
-    /**
-     * 设置保底计数。
-     *
-     * @param shopId 商店 ID
-     * @param count 保底计数值
-     */
-    void setGachaPityCounter(String shopId, int count);
-    
-    /**
-     * 添加抽奖历史记录。
-     *
-     * @param shopId 商店 ID
-     * @param itemId 物品 ID
-     * @param rarityName 稀有度名称
-     * @param actualCount 实际数量
-     * @param pityTriggered 是否触发保底
-     * @param drawTime 抽奖时间戳
-     */
-    void addGachaDrawHistory(String shopId, String itemId, String rarityName, 
-                             int actualCount, boolean pityTriggered, long drawTime);
-    
-    /**
-     * 获取抽奖历史记录列表。
-     *
-     * @param shopId 商店 ID
-     * @return 历史记录列表（最多50条）
-     */
-    List<GachaDrawRecord> getGachaDrawHistory(String shopId);
-    
-    /**
-     * 清除指定商店的抽奖历史记录。
-     *
-     * @param shopId 商店 ID
-     */
-    void clearGachaDrawHistory(String shopId);
+    @Deprecated
+    default long getTradeLastPurchaseTime(String shopId, String entryId) {
+        return getTradeDataStore().getCooldown(shopId, entryId).realTime();
+    }
 
     /**
-     * 获取某商店某商品的上次购买时间（毫秒）。
-     *
-     * @param shopId 商店 ID
-     * @param entryId 商品 ID
-     * @return 上次购买时间戳，未购买过返回 0
-     */
-    long getTradeLastPurchaseTime(String shopId, String entryId);
-
-    /**
-     * 记录购买时间（旧版本，仅保存现实时间）。
-     *
-     * @param shopId 商店 ID
-     * @param entryId 商品 ID
      * @deprecated 使用 {@link #recordTradePurchaseTime(String, String, long, long)}
      */
     @Deprecated
-    void recordTradePurchaseTime(String shopId, String entryId);
+    default void recordTradePurchaseTime(String shopId, String entryId) {
+        // 无法提供完整三时钟，仅记录真实时间（历史兼容）
+        long realTime = TimeSanitizer.getCurrentRealTime();
+        getTradeDataStore().recordCooldown(shopId, entryId, realTime, -1L, -1L);
+    }
 
     /**
-     * 记录购买时间（新版本，保存完整时间快照）。
-     *
-     * @param shopId    商店 ID
-     * @param entryId   商品 ID
-     * @param gameTime  游戏总刻数
-     * @param dayTime   游戏日内刻数
+     * @deprecated 使用 {@code getTradeDataStore().recordCooldown(shopId, entryId, ...)}
      */
-    void recordTradePurchaseTime(String shopId, String entryId, long gameTime, long dayTime);
+    @Deprecated
+    default void recordTradePurchaseTime(String shopId, String entryId, long gameTime, long dayTime) {
+        long realTime = TimeSanitizer.getCurrentRealTime();
+        getTradeDataStore().recordCooldown(shopId, entryId, realTime, gameTime, dayTime);
+    }
 
     /**
-     * 检查交易项是否在冷却中（统一冷却 API）。
-     *
-     * @param shopId         商店 ID
-     * @param entryId        商品 ID
-     * @param cooldownType   冷却类型
-     * @param cooldownValue  冷却值（秒/tick）
-     * @param resetTick      重置刻（仅 GAME_TICK 有效）
-     * @param nowRealTime    当前真实时间
-     * @param nowGameTime    当前游戏总刻数
-     * @param nowDayTime     当前游戏日内刻数
-     * @return true = 仍在冷却中
+     * @deprecated 使用 {@link UnifiedCooldownManager} + {@code getTradeDataStore().getCooldown()}
      */
-    boolean isTradeOnCooldown(String shopId, String entryId,
-                              CooldownType cooldownType,
-                              int cooldownValue, int resetTick,
-                              long nowRealTime, long nowGameTime, long nowDayTime);
+    @Deprecated
+    default boolean isTradeOnCooldown(String shopId, String entryId,
+                                      CooldownType cooldownType,
+                                      int cooldownValue, int resetTick,
+                                      long nowRealTime, long nowGameTime, long nowDayTime) {
+        TradeDataStore.TradeCooldownEntry record = getTradeDataStore().getCooldown(shopId, entryId);
+        if (!record.exists() || cooldownType == CooldownType.NONE) return false;
+        return UnifiedCooldownManager.isOnCooldown(record, cooldownType, cooldownValue, resetTick,
+                nowRealTime, nowGameTime, nowDayTime);
+    }
 
     /**
-     * 重置交易项的购买计数。
-     *
-     * @param shopId  商店 ID
-     * @param entryId 商品 ID
+     * @deprecated 使用 {@code getTradeDataStore().resetEntry(shopId, entryId)}
      */
-    void resetTradePurchaseCount(String shopId, String entryId);
+    @Deprecated
+    default void resetTradePurchaseCount(String shopId, String entryId) {
+        getTradeDataStore().resetEntry(shopId, entryId);
+    }
 
     default void clearAllData() {
         List<String> activeIds = new ArrayList<>(getAllActiveQuests().keySet());
@@ -260,7 +203,7 @@ public interface IQuestCapability {
         }
         getDialogueProgress().clear();
     }
-    
+
     /**
      * 抽奖历史记录（内部记录类）。
      */

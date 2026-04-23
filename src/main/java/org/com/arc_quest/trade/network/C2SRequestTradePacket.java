@@ -291,7 +291,7 @@ public class C2SRequestTradePacket {
             maxPurchases[i] = entry.getMaxPurchases();
 
             if (entry.hasCooldown()) {
-                lastPurchaseTimes[i] = cap.getTradeLastPurchaseTime(shop.getShopId(), entry.getEntryId());
+                lastPurchaseTimes[i] = cap.getTradeDataStore().getCooldown(shop.getShopId(), entry.getEntryId()).realTime();
                 ProgressKey key = ProgressKey.ofTrade(shop.getShopId(), entry.getEntryId());
                 var storeEntry = cap.getDialogueProgress().getChoiceSelection(key);
                 purchaseGameTimes[i] = storeEntry.exists() ? storeEntry.gameTime() : 0;

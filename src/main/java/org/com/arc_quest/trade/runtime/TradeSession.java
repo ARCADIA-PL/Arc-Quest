@@ -3,9 +3,8 @@ package org.com.arc_quest.trade.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.com.arc_quest.dialogue.api.CooldownType;
-import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
-import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
@@ -123,62 +122,39 @@ public final class TradeSession {
     }
 
     /**
-     * 获取冷却剩余秒数（用于客户端显示）
+     * 获取冷却剩余秒数（用于客户端显示）。
+     * <p>
+     * 冷却时间戳从 TradeDataStore 读取，通过 UnifiedCooldownManager 统一计算。
      */
     public int getCooldownRemaining(String entryId, TradeEntry entry) {
         if (!entry.hasCooldown()) return 0;
 
         IQuestCapability cap = getCap();
+        ICooldownRecord record = cap.getTradeDataStore().getCooldown(shop.getShopId(), entryId);
+        if (!record.exists()) return 0;
 
-        long lastPurchaseTime = cap.getTradeLastPurchaseTime(shop.getShopId(), entryId);
-        if (lastPurchaseTime == 0) return 0;
+        long nowRealTime = TimeSanitizer.getCurrentRealTime();
+        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
+        long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
 
         return switch (entry.getCooldownType()) {
             case NONE -> 0;
             case SECONDS -> {
-                long nowRealTime = TimeSanitizer.getCurrentRealTime();
-                long elapsed = (nowRealTime - lastPurchaseTime) / 1000;
-                yield Math.max(0, (int)(entry.getCooldownValue() - elapsed));
+                long elapsed = (nowRealTime - record.realTime()) / 1000;
+                yield Math.max(0, (int) (entry.getCooldownValue() - elapsed));
             }
             case GAME_DAY -> {
-                // 使用 TimeSanitizer 统一获取时间
-                long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
-
-                ProgressKey key = ProgressKey.ofTrade(shop.getShopId(), entryId);
-                DialogueProgressStore.Entry storeEntry = cap.getDialogueProgress().getChoiceSelection(key);
-
-                if (!storeEntry.exists() || storeEntry.dayTime() < 0) {
-                    yield 0;
-                }
-
+                if (record.dayTime() < 0) yield 0;
                 boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
-                        storeEntry, entry.getCooldownType(), (int) entry.getCooldownValue(),
-                        entry.getResetTimeTicks(),
-                        TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime
-                );
-
-                if (!onCooldown) {
-                    yield 0;
-                }
-
+                        record, entry.getCooldownType(), (int) entry.getCooldownValue(),
+                        entry.getResetTimeTicks(), nowRealTime, nowGameTime, nowDayTime);
+                if (!onCooldown) yield 0;
                 long currentDayTick = nowDayTime % 24000;
-                int remainingTicks = (int) (24000 - currentDayTick);
-                yield Math.max(1, remainingTicks / 20);
+                yield Math.max(1, (int) (24000 - currentDayTick) / 20);
             }
             case GAME_TICK -> {
-                // 使用 TimeSanitizer 统一获取时间
-                long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
-
-                ProgressKey key = ProgressKey.ofTrade(shop.getShopId(), entryId);
-                DialogueProgressStore.Entry storeEntry = cap.getDialogueProgress().getChoiceSelection(key);
-
-                int remainingTicks = UnifiedCooldownManager
-                        .getGameTickCooldownRemainingTicks(
-                                storeEntry, entry.getResetTimeTicks(),
-                                nowGameTime, nowDayTime
-                        );
+                int remainingTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
+                        record, entry.getResetTimeTicks(), nowGameTime, nowDayTime);
                 yield Math.max(0, remainingTicks / 20);
             }
         };
