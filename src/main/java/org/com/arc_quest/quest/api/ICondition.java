@@ -2,6 +2,7 @@ package org.com.arc_quest.quest.api;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.dialogue.api.DialogueCondition;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -83,7 +84,7 @@ public interface ICondition {
     }
 
     /**
-     * 将此 {@link ICondition} 包装为 {@link org.com.arc_quest.dialogue.api.DialogueCondition}，
+     * 将此 {@link ICondition} 包装为 {@link DialogueCondition}，
      * 使商店/任务条件可以直接用于对话选项的可见性判断。
      * <p>
      * 使用示例：
@@ -92,8 +93,8 @@ public interface ICondition {
      *     myCanBuyCondition.asDialogueCondition())
      * }</pre>
      */
-    default org.com.arc_quest.dialogue.api.DialogueCondition asDialogueCondition() {
-        return new org.com.arc_quest.dialogue.api.DialogueCondition.IConditionWrapper(this);
+    default DialogueCondition asDialogueCondition() {
+        return new DialogueCondition.IConditionWrapper(this);
     }
 
     /**

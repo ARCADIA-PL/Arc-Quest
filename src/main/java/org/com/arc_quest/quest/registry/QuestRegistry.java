@@ -3,6 +3,7 @@ package org.com.arc_quest.quest.registry;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.quest.api.QuestCategory;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.jetbrains.annotations.Nullable;
@@ -157,7 +158,7 @@ public final class QuestRegistry {
         int warnings = 0;
         for (QuestDefinition quest : REGISTRY.values()) {
             for (var cond : quest.getUnlockConditions()) {
-                if (cond instanceof org.com.arc_quest.quest.api.ICondition.WithRequiredQuest wrq) {
+                if (cond instanceof ICondition.WithRequiredQuest wrq) {
                     ResourceLocation ref = wrq.getRequiredQuestId();
                     if (!REGISTRY.containsKey(ref)) {
                         LOGGER.warn("[ArcQuest] Quest '{}' requires unknown quest '{}' as prerequisite",
