@@ -2,19 +2,18 @@ package org.com.arc_quest.quest.reward;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.quest.api.IReward;
+import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 
 /**
- * 设置/移除全局 Flag 的"奖励"。
- * 实际上是副作用，但用 IReward 管道统一处理最简洁。
- * 注意：真正的 flag 写入在 Phase 2 Capability 里实现，
- * 此处先定义好结构，grant() 中通过 Capability 写入。
+ * 设置或移除全局 Flag 的奖励。
  */
 public final class FlagReward implements IReward {
 
     private final String flag;
-    private final boolean set; // true = 设置, false = 移除
+    private final boolean set;
 
-    public FlagReward(String flag, boolean set) {
+    private FlagReward(String flag, boolean set) {
         this.flag = flag;
         this.set = set;
     }
@@ -37,7 +36,13 @@ public final class FlagReward implements IReward {
 
     @Override
     public void grant(ServerPlayer player) {
-        // 暂留接口
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap == null) return;
+        if (this.set) {
+            cap.setFlag(this.flag);
+        } else {
+            cap.removeFlag(this.flag);
+        }
     }
 
     @Override

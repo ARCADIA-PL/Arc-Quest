@@ -2,9 +2,11 @@ package org.com.arc_quest.quest.reward;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.quest.api.IReward;
+import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 
 /**
- * 修改全局变量的"奖励"。
+ * 修改全局变量的奖励（SET / ADD / SUBTRACT / MULTIPLY）。
  */
 public final class VariableReward implements IReward {
 
@@ -38,13 +40,10 @@ public final class VariableReward implements IReward {
         return this.value;
     }
 
-    /**
-     * 给定当前值，计算新值
-     */
     public int apply(int current) {
         return switch (this.operation) {
-            case SET -> this.value;
-            case ADD -> current + this.value;
+            case SET      -> this.value;
+            case ADD      -> current + this.value;
             case SUBTRACT -> current - this.value;
             case MULTIPLY -> current * this.value;
         };
@@ -52,7 +51,10 @@ public final class VariableReward implements IReward {
 
     @Override
     public void grant(ServerPlayer player) {
-        // Phase 2: Capability 接入
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap == null) return;
+        int current = cap.getVariable(this.variableName);
+        cap.setVariable(this.variableName, this.apply(current));
     }
 
     @Override
@@ -60,5 +62,5 @@ public final class VariableReward implements IReward {
         return "Var(" + this.variableName + " " + this.operation + " " + this.value + ")";
     }
 
-    public enum Op {SET, ADD, SUBTRACT, MULTIPLY}
+    public enum Op { SET, ADD, SUBTRACT, MULTIPLY }
 }
