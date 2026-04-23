@@ -18,6 +18,8 @@ import org.com.arc_quest.client.gui.QuestHudOverlay;
 import org.com.arc_quest.client.gui.gacha.GachaResultOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
+import org.com.arc_quest.client.questmarker.MarkerHudRenderer;
+import org.com.arc_quest.client.questmarker.MarkerWorldRenderer;
 import org.com.arc_quest.client.util.GuiSoundManager;
 import org.com.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
@@ -73,6 +75,8 @@ public class Arc_quest {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             GuiSoundManager.initDefaults();
+            MinecraftForge.EVENT_BUS.register(new MarkerHudRenderer());
+            MinecraftForge.EVENT_BUS.register(new MarkerWorldRenderer());
             LOGGER.info("[ArcQuest] Client setup complete.");
         }
 
