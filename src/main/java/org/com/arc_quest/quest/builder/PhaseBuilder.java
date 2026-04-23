@@ -4,6 +4,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
+import org.com.arc_quest.client.ponder.ArcQuestPonderHelper;
 import org.com.arc_quest.quest.api.*;
 
 import javax.annotation.Nullable;
@@ -36,12 +37,16 @@ public final class PhaseBuilder {
     private int transitionPriorityCounter = 0;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     private String tradeShopId = null;
-    
+
     // 音效配置
     @Nullable
     private SoundEvent phaseStartSound;
     @Nullable
     private SoundEvent phaseCompleteSound;
+
+    // Ponder 情报场景
+    @Nullable
+    private ResourceLocation intelSceneId = null;
 
     private PhaseBuilder(String phaseId) {
         Objects.requireNonNull(phaseId);
@@ -159,6 +164,46 @@ public final class PhaseBuilder {
      */
     public PhaseBuilder phaseTrade(String shopId) {
         this.tradeShopId = shopId;
+        return this;
+    }
+
+    // ── Ponder 情报场景 ──
+
+    /**
+     * 绑定一个 Ponder 情报场景，玩家在任务日志中可通过 [PHASE INTEL] 按钮打开。
+     *
+     * <p>推荐配合 {@link ArcQuestPonderHelper} 生成 sceneId：
+     * <pre>
+     *   // 本模组阶段
+     *   .intelScene(ArcQuestPonderHelper.questPhaseId("arc_quest:epic_prologue", "arc_quest:defend_village"))
+     *
+     *   // 附属模组阶段（自动编码命名空间，避免冲突）
+     *   .intelScene(ArcQuestPonderHelper.questPhaseId("addon:prologue", "addon:phase_1"))
+     * </pre>
+     *
+     * <p>对应的场景须已在 {@link org.com.arc_quest.client.ponder.ArcQuestPonderSceneRegistry} 中注册，
+     * 且结构文件（.nbt）已放置于 {@code assets/<modid>/ponder/} 目录。
+     *
+     * @param sceneId Ponder 场景 ID，由 {@code ArcQuestPonderHelper.questPhaseId()} 生成
+     */
+    public PhaseBuilder intelScene(ResourceLocation sceneId) {
+        this.intelSceneId = sceneId;
+        return this;
+    }
+
+    /**
+     * 快捷方法：直接传入 questId + phaseId，内部调用
+     * {@link ArcQuestPonderHelper#questPhaseId}。
+     *
+     * <p>支持带或不带命名空间的 ID：
+     * <pre>
+     *   .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
+     *   .intelScene("addon:prologue",          "addon:phase_1")
+     *   .intelScene("epic_prologue",           "defend_village")
+     * </pre>
+     */
+    public PhaseBuilder intelScene(String questId, String phaseId) {
+        this.intelSceneId = ArcQuestPonderHelper.questPhaseId(questId, phaseId);
         return this;
     }
 
@@ -283,7 +328,8 @@ public final class PhaseBuilder {
                 this.visualConfigBuilder.build(),
                 this.tradeShopId,
                 this.phaseStartSound,
-                this.phaseCompleteSound
+                this.phaseCompleteSound,
+                this.intelSceneId
         );
     }
 }

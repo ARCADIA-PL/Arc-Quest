@@ -1,6 +1,7 @@
 package org.com.arc_quest.quest.api;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 
 import javax.annotation.Nullable;
@@ -30,6 +31,9 @@ public final class PhaseDefinition {
     private final SoundEvent phaseStartSound;
     @Nullable
     private final SoundEvent phaseCompleteSound;
+    /** 该阶段关联的 Ponder 情报场景 ID，为 null 表示不显示 Intel 按钮。 */
+    @Nullable
+    private final ResourceLocation intelSceneId;
 
     public PhaseDefinition(String phaseId,
                            Component displayName,
@@ -41,7 +45,7 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig) {
         this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
-                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null, null, null);
+                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null, null, null, null);
     }
 
     public PhaseDefinition(String phaseId,
@@ -55,7 +59,7 @@ public final class PhaseDefinition {
                            QuestVisualConfig visualConfig,
                            @Nullable String tradeShopId) {
         this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
-                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null);
+                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null, null);
     }
 
     public PhaseDefinition(String phaseId,
@@ -72,10 +76,10 @@ public final class PhaseDefinition {
                            @Nullable SoundEvent phaseCompleteSound) {
         this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
                 phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig,
-                tradeShopId, phaseStartSound, phaseCompleteSound);
+                tradeShopId, phaseStartSound, phaseCompleteSound, null);
     }
 
-    /** 完整构造器（含 description）。所有其他构造器委托至此。 */
+    /** 旧的完整构造器（含 description），委托给带 intelSceneId 的新构造器。 */
     public PhaseDefinition(String phaseId,
                            Component displayName,
                            Component description,
@@ -89,6 +93,26 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound) {
+        this(phaseId, displayName, description, objectives, transitions, choices,
+                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig,
+                tradeShopId, phaseStartSound, phaseCompleteSound, null);
+    }
+
+    /** 含 intelSceneId 的最终构造器，所有其他构造器最终委托至此。 */
+    public PhaseDefinition(String phaseId,
+                           Component displayName,
+                           Component description,
+                           List<ObjectiveEntry> objectives,
+                           List<PhaseTransition> transitions,
+                           List<ChoiceOption> choices,
+                           List<IReward> phaseRewards,
+                           List<String> flagsToSetOnEnter,
+                           List<String> flagsToSetOnComplete,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String tradeShopId,
+                           @Nullable SoundEvent phaseStartSound,
+                           @Nullable SoundEvent phaseCompleteSound,
+                           @Nullable ResourceLocation intelSceneId) {
         Objects.requireNonNull(phaseId);
         Objects.requireNonNull(displayName);
         if (objectives.isEmpty()) {
@@ -107,6 +131,7 @@ public final class PhaseDefinition {
         this.tradeShopId = tradeShopId;
         this.phaseStartSound = phaseStartSound;
         this.phaseCompleteSound = phaseCompleteSound;
+        this.intelSceneId = intelSceneId;
     }
 
     public String getPhaseId() { return this.phaseId; }
@@ -166,6 +191,11 @@ public final class PhaseDefinition {
     public SoundEvent getPhaseCompleteSound() { return phaseCompleteSound; }
 
     public boolean hasTradeShop() { return this.tradeShopId != null; }
+
+    @Nullable
+    public ResourceLocation getIntelSceneId() { return this.intelSceneId; }
+
+    public boolean hasIntelScene() { return this.intelSceneId != null; }
 
     @Override
     public String toString() {
