@@ -8,6 +8,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * @deprecated 使用 {@link org.com.arc_quest.quest.api.ICondition#flagNotSet(String)}
+ */
+@Deprecated
 public final class FlagNotSetCondition implements ICondition {
 
     private final String flag;

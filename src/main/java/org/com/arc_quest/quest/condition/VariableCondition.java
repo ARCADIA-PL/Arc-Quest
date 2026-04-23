@@ -11,8 +11,9 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * 检测全局变量是否满足数值条件。
+ * @deprecated 使用 {@link org.com.arc_quest.quest.api.ICondition#variable(String, org.com.arc_quest.quest.api.CompareOp, int)}
  */
+@Deprecated
 public final class VariableCondition implements ICondition {
 
     private final String variableName;

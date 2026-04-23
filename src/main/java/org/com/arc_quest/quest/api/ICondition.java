@@ -34,6 +34,41 @@ public interface ICondition {
     static ICondition always() {
         return (player, cq, f, v) -> true;
     }
+    /**
+     * 条件：指定 Flag 已设置。
+     * <p>推荐替代 {@code new FlagSetCondition(flag)}。
+     */
+    static ICondition flagSet(String flag) {
+        return (player, cq, f, v) -> f.contains(flag);
+    }
+
+    /**
+     * 条件：指定 Flag 未设置。
+     * <p>推荐替代 {@code new FlagNotSetCondition(flag)}。
+     */
+    static ICondition flagNotSet(String flag) {
+        return (player, cq, f, v) -> !f.contains(flag);
+    }
+
+    /**
+     * 条件：指定任务已完成。
+     * <p>推荐替代 {@code new QuestCompletedCondition(questId)}。
+     */
+    static ICondition questCompleted(ResourceLocation questId) {
+        return (player, cq, f, v) -> cq.contains(questId);
+    }
+
+    /**
+     * 条件：全局变量满足数值比较。
+     * <p>推荐替代 {@code new VariableCondition(name, op, value)}。
+     *
+     * @param name  变量名
+     * @param op    比较操作符
+     * @param value 比较目标值
+     */
+    static ICondition variable(String name, CompareOp op, int value) {
+        return (player, cq, f, v) -> op.evaluate(v.getOrDefault(name, 0), value);
+    }
 
     /**
      * 将此 {@link ICondition} 包装为 {@link org.com.arc_quest.dialogue.api.DialogueCondition}，

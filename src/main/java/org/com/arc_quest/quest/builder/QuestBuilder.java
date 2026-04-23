@@ -6,8 +6,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.*;
-import org.com.arc_quest.quest.condition.FlagSetCondition;
-import org.com.arc_quest.quest.condition.QuestCompletedCondition;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.Nullable;
 
@@ -151,13 +149,12 @@ public final class QuestBuilder {
         } else {
             location = ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, questId);
         }
-        this.unlockConditions.add(new QuestCompletedCondition(location));
+        this.unlockConditions.add(ICondition.questCompleted(location));
         return this;
     }
 
     public QuestBuilder requiresQuest(ResourceLocation questId) {
-        this.unlockConditions.add(
-                new QuestCompletedCondition(questId));
+        this.unlockConditions.add(ICondition.questCompleted(questId));
         return this;
     }
 
@@ -165,8 +162,7 @@ public final class QuestBuilder {
      * 快捷：需要指定 Flag 已设置
      */
     public QuestBuilder requiresFlag(String flag) {
-        this.unlockConditions.add(
-                new FlagSetCondition(flag));
+        this.unlockConditions.add(ICondition.flagSet(flag));
         return this;
     }
 
