@@ -3,7 +3,6 @@ package org.com.arc_quest.dialogue.runtime;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
-import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 

@@ -23,8 +23,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addDialogueTranslations();
         addEpicDialogueTranslations();
         addTradeTranslations();
+        addGachaTranslations();
 
-        // ── 任务链 ──
+        // ── Quest Chains ──
         addPrologueQuest();
         addChapter1Quest();
         addChapter2CombatQuest();
@@ -114,6 +115,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     private void addToastTranslations() {
         addToast("branch_available", "Branch available: %s");
+        add("arc_quest.toast.branch.subtitle", "ARES SYSTEM // BRANCH AVAILABLE");
+        add("arc_quest.toast.branch.prefix", "New Path Unlocked: ");
         addToast("quest_accepted", "§aQuest Accepted");
         addToast("quest_completed", "§2Quest Completed");
         addToast("quest_failed", "§cQuest Failed");
@@ -395,6 +398,26 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // ── Trade Entries (Mysterious Merchant) ──
         addTradeEntry("mystery_netherite", "Netherite Ingot", "Metal infused with destructive power");
         addTradeEntry("mystery_totem", "Totem of Undying", "The last hope against death");
+    }
+
+    /**
+     * Gacha system translations.
+     */
+    private void addGachaTranslations() {
+        // ── Screen Titles ──
+        add("arc_quest.gui.gacha.title", "Gacha Matrix");
+
+        // ── Button Text ──
+        add("arc_quest.gui.gacha.btn.decrypting", "Decrypting...");
+        add("arc_quest.gui.gacha.btn.cooldown", "On Cooldown");
+        add("arc_quest.gui.gacha.btn.insufficient_funds", "Insufficient Funds");
+        add("arc_quest.gui.gacha.btn.unlock_receptacle", "Unlock Receptacle");
+
+        // ── Result Screen ──
+        add("arc_quest.gui.gacha.result.acknowledge", "Click to Acknowledge");
+
+        // ── Common Labels ──
+        add("arc_quest.gui.gacha.unknown_item", "Unknown Item");
     }
 
     /**

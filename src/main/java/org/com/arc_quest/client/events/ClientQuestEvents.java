@@ -2,15 +2,18 @@ package org.com.arc_quest.client.events;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.client.gui.gacha.GachaResultRenderer;
+import org.com.arc_quest.client.gui.render.QuestIntelRenderer;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.SplashType;
+import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, value = Dist.CLIENT)
 public class ClientQuestEvents {
@@ -75,13 +78,30 @@ public class ClientQuestEvents {
     }
 
     @SubscribeEvent
+    public static void onKeyInput(InputEvent.Key event) {
+        if (Minecraft.getInstance().screen != null) return;
+        if (QuestIntelRenderer.isActive() && event.getAction() == GLFW.GLFW_PRESS) {
+            if (event.getKey() == GLFW.GLFW_KEY_ESCAPE) {
+                QuestIntelRenderer.dismiss();
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onMouseInput(InputEvent.MouseButton event) {
+        if (Minecraft.getInstance().screen != null) return;
+        if (QuestIntelRenderer.isActive() && event.getAction() == GLFW.GLFW_PRESS) {
+            QuestIntelRenderer.dismiss();
+        }
+    }
+
+    @SubscribeEvent
     public static void onScreenScrollPre(ScreenEvent.MouseScrolled.Pre event) {
         if (QuestSplashRenderer.isActive()) {
             event.setCanceled(true);
             return;
         }
 
-        // 【全局滚轮锁定】
         if (GachaResultRenderer.INSTANCE.isActive()) {
             event.setCanceled(true);
         }

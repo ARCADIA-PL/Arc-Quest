@@ -8,11 +8,13 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.events.ClientEventHandler;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.QuestHudOverlay;
 import org.com.arc_quest.client.gui.render.QuestIconRenderer;
+import org.com.arc_quest.client.gui.render.QuestIntelRenderer;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
@@ -20,12 +22,14 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.network.C2SRequestQuestActionPacket;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 import org.com.arc_quest.quest.registry.QuestRegistry;
-import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.com.arc_quest.quest.reward.ItemReward;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static org.com.arc_quest.client.gui.HudRenderUtil.drawCyberneticEdge;
 
 public class QuestJournalScreen extends Screen {
 
@@ -69,6 +73,21 @@ public class QuestJournalScreen extends Screen {
     private float abandonBtnHover = 0f;
     private float failedRestartBtnHover = 0f;
     private float chapterShopBtnHover = 0f;
+    private float intelBtnHoverAnim = 0f;
+
+    // 独立情报 Overlay 触发相关状态
+    private ResourceLocation intelEntityId = null;
+    private int intelBtnLocalY = 0, intelBtnW = 0, intelBtnH = 0;
+    private int currentThemeColor = 0xFFFFFF;
+
+    // 用于在帧渲染最后统一绘制 Tooltip
+    private ItemStack hoveredRewardTooltip = null;
+
+    private ItemStack activeTooltipStack = null;
+    private float tooltipHoverTimer = 0f;
+    private float tooltipTipAlpha = 0f;
+    private float animTipX = 0, animTipY = 0, animTipW = 0, animTipH = 0;
+    private static final float TIP_HOVER_DELAY = 0.05f;
 
     public QuestJournalScreen() {
         super(Component.translatable("gui.arc_quest.journal.title"));
@@ -163,6 +182,13 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (QuestIntelRenderer.isActive()) {
+            if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) {
+                QuestIntelRenderer.dismiss();
+                return true;
+            }
+        }
+
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
             this.onClose();
             return true;
@@ -177,6 +203,11 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (QuestIntelRenderer.isActive()) {
+            QuestIntelRenderer.dismiss();
+            return true;
+        }
+
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
         float easeProgress = getEaseProgress();
@@ -191,6 +222,20 @@ public class QuestJournalScreen extends Screen {
         int detailW = this.width - detailX - DETAIL_MARGIN;
         int detailY = listY;
         int detailH = listH;
+        int scrollAreaH = detailH - 40;
+
+        if (intelEntityId != null) {
+            int intelBtnAbsX = LIST_MARGIN + LIST_WIDTH + DETAIL_MARGIN + (int) slideOffset + 12;
+            int intelBtnAbsY = (int) Math.round(detailY + 12 - detailScrollOffset + intelBtnLocalY);
+            boolean hitX = mx >= intelBtnAbsX && mx <= intelBtnAbsX + intelBtnW;
+            boolean hitY = my >= intelBtnAbsY && my <= intelBtnAbsY + intelBtnH;
+            boolean visible = intelBtnAbsY >= detailY && intelBtnAbsY < detailY + scrollAreaH;
+            if (hitX && hitY && visible) {
+                playClick();
+                QuestIntelRenderer.trigger(intelEntityId, currentThemeColor);
+                return true;
+            }
+        }
 
         int maxListScroll = Math.max(0, currentEntries.size() * ENTRY_HEIGHT - listH);
         int listScrollbarX = listX + LIST_WIDTH - 6;
@@ -207,7 +252,6 @@ public class QuestJournalScreen extends Screen {
             return true;
         }
 
-        int scrollAreaH = detailH - 40;
         int maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
         int detailScrollbarX = detailX + detailW - 6;
         if (maxDetailScroll > 0 && mx >= detailScrollbarX && mx <= detailScrollbarX + 6 && my >= detailY && my <= detailY + scrollAreaH) {
@@ -268,7 +312,6 @@ public class QuestJournalScreen extends Screen {
                 return true;
             }
         }
-        // =========================================================
 
         if (currentTab == Tab.ACTIVE && !currentChoiceButtons.isEmpty()) {
             for (ChoiceButtonRect rect : currentChoiceButtons) {
@@ -325,7 +368,9 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double delta) {
+        if (QuestIntelRenderer.isActive()) return true;
         if (isClosing) return false;
+
         float slideOffset = (1f - getEaseProgress()) * 200f;
         int listX = LIST_MARGIN - (int) slideOffset;
         int listY = 38 + TAB_HEIGHT + 6;
@@ -382,6 +427,8 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        this.hoveredRewardTooltip = null;
+
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
         float realDt = (now - lastRenderTime) / 1000f;
@@ -438,6 +485,40 @@ public class QuestJournalScreen extends Screen {
 
         HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
         renderDetailMatrixEngine(g, detailX, listY, detailW, listH, mouseX, mouseY, themeColor());
+
+        boolean isHoveringValid = hoveredRewardTooltip != null && !QuestIntelRenderer.isActive();
+
+        if (isHoveringValid) {
+            if (activeTooltipStack == null || !ItemStack.matches(activeTooltipStack, hoveredRewardTooltip)) {
+                if (tooltipTipAlpha > 0.5f) {
+                    tooltipHoverTimer = TIP_HOVER_DELAY;
+                    activeTooltipStack = hoveredRewardTooltip;
+                } else {
+                    tooltipHoverTimer += dt;
+                }
+            } else {
+                tooltipHoverTimer += dt;
+            }
+            if (tooltipHoverTimer >= TIP_HOVER_DELAY) {
+                activeTooltipStack = hoveredRewardTooltip;
+            }
+        } else {
+            tooltipHoverTimer = 0f;
+        }
+
+        float targetTipAlpha = (isHoveringValid && tooltipHoverTimer >= TIP_HOVER_DELAY && !isClosing) ? 1f : 0f;
+        tooltipTipAlpha += (targetTipAlpha - tooltipTipAlpha) * Math.min(1f, dt * 15f);
+
+        if (tooltipTipAlpha > 0.02f && activeTooltipStack != null) {
+            renderCustomItemTooltip(g, activeTooltipStack, mouseX, mouseY);
+        } else {
+            animTipW = 0;
+            activeTooltipStack = null;
+        }
+
+        if (QuestIntelRenderer.isActive()) {
+            QuestIntelRenderer.render(g, partialTick, this.width, this.height);
+        }
     }
 
     private void renderTabs(GuiGraphics g, int mx, int my, int safeAlpha, float slide, int theme) {
@@ -563,6 +644,7 @@ public class QuestJournalScreen extends Screen {
         if (def == null) return;
 
         int activeTheme = ClientQuestCache.INSTANCE.getQuestThemeColor(entry.questId(), theme);
+        currentThemeColor = activeTheme;
 
         detailReveal = lerp(detailReveal, 1f, 0.15f);
         float dAlpha = effectiveAlpha * HudAnimUtil.easeOutCubic(Math.min(1f, detailReveal));
@@ -642,7 +724,6 @@ public class QuestJournalScreen extends Screen {
                 g.pose().popPose();
                 localY += 14;
 
-                // Phase 描述
                 if (phase.hasDescription()) {
                     g.pose().pushPose();
                     g.pose().translate(4, localY, 0);
@@ -656,21 +737,14 @@ public class QuestJournalScreen extends Screen {
                     localY += phaseDescLines.size() * (font.lineHeight + 1) + 6;
                 }
 
-                // 实体模型预览（取第一个 KILL/INTERACT/TALK 目标的实体）
+                intelEntityId = null;
                 for (ObjectiveEntry obj : phase.getObjectives()) {
                     ObjectiveType ot = obj.getType();
                     if (ot == ObjectiveType.KILL || ot == ObjectiveType.INTERACT || ot == ObjectiveType.TALK) {
-                        ResourceLocation entityId = obj.getTargetId();
-                        if (QuestEntityModelRenderer.canRender(entityId)) {
-                            int modelSize = Math.min(56, scrollAreaW / 4);
-                            int modelX = x + scrollAreaW - modelSize / 2 - 12;
-                            int modelY = scrollAreaY + 64;
-                            g.pose().popPose();
-                            QuestEntityModelRenderer.render(g, entityId, modelX, modelY, modelSize, Math.min(1f, (float) dAlpha * 0.9f));
-                            g.pose().pushPose();
-                            g.pose().translate(x + 12, scrollAreaY + 12 - detailScrollOffset, 0);
+                        if (QuestEntityModelRenderer.canRender(obj.getTargetId())) {
+                            intelEntityId = obj.getTargetId();
+                            break;
                         }
-                        break;
                     }
                 }
 
@@ -699,7 +773,20 @@ public class QuestJournalScreen extends Screen {
                     }
 
                     int barW = scrollAreaW - 40 - objX;
-                    HudAnimUtil.drawProgressBarGlow(g, objX, localY, barW, 3, required > 0 ? (float) progress / required : 0f, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x30 * oAlpha)), HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int) (0xCC * oAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int) (0xFF * oAlpha)));
+                    float ratio = required > 0 ? (float) progress / required : 0f;
+                    int fillW = (int) (barW * ratio);
+
+                    int bgC = HudAnimUtil.withAlpha(0x333333, (int)(0x66 * oAlpha));
+                    int fgC = HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int)(0xCC * oAlpha));
+                    int tipC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0xFF * oAlpha));
+
+                    RenderSystem.enableBlend();
+                    g.fill(objX, localY, objX + barW, localY + 3, bgC);
+                    if (fillW > 0) {
+                        g.fill(objX, localY, objX + fillW, localY + 3, fgC);
+                        g.fill(objX + fillW - 2, localY - 1, objX + fillW, localY + 4, tipC);
+                    }
+                    RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
                     g.pose().pushPose();
                     g.pose().translate(objX + barW + 4, localY - 1, 0);
@@ -711,7 +798,22 @@ public class QuestJournalScreen extends Screen {
 
                 localY += 6;
 
-                // Phase 奖励
+
+                if (intelEntityId != null) {
+                    intelBtnW = Math.min(120, scrollAreaW - 24);
+                    intelBtnH = 20;
+                    intelBtnLocalY = localY;
+                    int intelBtnAbsX = x + 12;
+                    int intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset + localY);
+                    boolean btnHovered = mx >= intelBtnAbsX && mx <= intelBtnAbsX + intelBtnW && my >= intelBtnAbsY && my <= intelBtnAbsY + intelBtnH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
+
+                    intelBtnHoverAnim = step(intelBtnHoverAnim, btnHovered ? 1f : 0f, 8f);
+
+                    drawButton(g, 0, localY, intelBtnW, intelBtnH, "⚲ PHASE INTEL", activeTheme, HudAnimUtil.easeOutCubic(intelBtnHoverAnim), btnHovered);
+
+                    localY += intelBtnH + 12;
+                }
+
                 if (!phase.getPhaseRewards().isEmpty()) {
                     g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (50 * dAlpha)));
                     localY += 6;
@@ -818,23 +920,86 @@ public class QuestJournalScreen extends Screen {
                     }
                 }
 
-                // 章节完成奖励
+                // =====================================
+                // 【绝美重构】：彻底对齐主 HUD 透明高亮镂空底板的美术风格！
+                // =====================================
                 if (!def.getCompletionRewards().isEmpty()) {
-                    localY += 6;
-                    g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (50 * dAlpha)));
-                    localY += 6;
+                    localY += 12;
+                    int boxW = scrollAreaW - 24;
+                    int bA = (int) (255 * dAlpha);
+
+                    int tempX = 12;
+                    int rows = 1;
+                    for (IReward r : def.getCompletionRewards()) {
+                        int rWidth = (r instanceof ItemReward) ? 28 : (int)(font.width("✦ " + r.describe()) * 0.75f) + 12;
+                        if (tempX + rWidth > boxW - 16 && tempX > 12) {
+                            tempX = 12;
+                            rows++;
+                        }
+                        tempX += rWidth;
+                    }
+                    int boxH = 24 + rows * 28;
+
+                    // 彻底抛弃之前的实心灰块，直接复用最高级的半透明科幻拉丝框（HUD主体同款）
+                    HudAnimUtil.drawFrame(g, 0, localY, boxW, boxH, HudAnimUtil.withAlpha(0x000000, (int)(0x55 * dAlpha)), HudAnimUtil.withAlpha(activeTheme, (int)(0x66 * dAlpha)));
+
                     g.pose().pushPose();
-                    g.pose().translate(0, localY, 0);
+                    g.pose().translate(8, localY + 6, 0);
                     g.pose().scale(0.75f, 0.75f, 1f);
                     g.drawString(font, Component.translatable("arc_quest.gui.journal.section.chapter_rewards").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFDD88, safeA), true);
                     g.pose().popPose();
-                    localY += 11;
-                    g.pose().pushPose();
-                    g.pose().translate(6, localY, 0);
-                    g.pose().scale(0.85f, 0.85f, 1f);
-                    int chapRewardH = QuestRewardRenderer.render(g, def.getCompletionRewards(), (int) ((scrollAreaW - 24) / 0.85f), safeA);
-                    g.pose().popPose();
-                    localY += (int) (chapRewardH * 0.85f) + 4;
+
+                    int startX = 12;
+                    int startY = localY + 22;
+
+                    for (IReward r : def.getCompletionRewards()) {
+                        int rWidth = (r instanceof ItemReward) ? 28 : (int)(font.width("✦ " + r.describe()) * 0.75f) + 12;
+
+                        if (startX + rWidth > boxW - 16 && startX > 12) {
+                            startX = 12;
+                            startY += 28;
+                        }
+
+                        if (r instanceof ItemReward ir) {
+                            ItemStack stack = new ItemStack(ir.getItem(), ir.getCount());
+
+                            HudAnimUtil.drawFrame(g, startX - 2, startY - 2, 20, 20, HudAnimUtil.withAlpha(0x000000, (int)(0x33 * dAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x44 * dAlpha)));
+
+                            if (dAlpha > 0.01f) {
+                                g.pose().pushPose();
+                                float itemCenterX = startX + 8f;
+                                float itemCenterY = startY + 8f;
+
+                                g.pose().translate(itemCenterX, itemCenterY, 0);
+                                g.pose().scale(dAlpha, dAlpha, 1f);
+                                g.pose().translate(-itemCenterX, -itemCenterY, 0);
+
+                                g.renderItem(stack, startX, startY);
+
+                                g.pose().pushPose();
+                                g.pose().translate(0, 0, 200);
+                                g.renderItemDecorations(font, stack, startX, startY);
+                                g.pose().popPose();
+
+                                g.pose().popPose();
+                            }
+
+                            int absX = x + 12 + startX;
+                            int absY = scrollAreaY + 12 - (int)detailScrollOffset + startY;
+                            if (mx >= absX && mx <= absX + 16 && my >= absY && my <= absY + 16 && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
+                                g.fill(startX - 1, startY - 1, startX + 17, startY + 17, HudAnimUtil.withAlpha(0xFFFFFF, (int)(bA * 0.25f)));
+                                hoveredRewardTooltip = stack;
+                            }
+                        } else {
+                            g.pose().pushPose();
+                            g.pose().translate(startX, startY + 4, 0);
+                            g.pose().scale(0.75f, 0.75f, 1f);
+                            g.drawString(font, "✦ " + r.describe(), 0, 0, HudAnimUtil.withAlpha(0x88AAFF, safeA), false);
+                            g.pose().popPose();
+                        }
+                        startX += rWidth;
+                    }
+                    localY += boxH + 8;
                 }
             }
         } else if (entry.state() == QuestState.COMPLETED) {
@@ -854,7 +1019,6 @@ public class QuestJournalScreen extends Screen {
         int btnH = 20;
         int btnY = y + h - btnH - 8;
 
-        // 章节商店按钮
         if (def.hasChapterShop() && (currentTab == Tab.ACTIVE || (currentTab == Tab.COMPLETED && def.isChapterShopPersistent()))) {
             int shopBtnW = Math.min(110, w - 16);
             int shopBtnX = x + w - shopBtnW - 8;
@@ -883,7 +1047,6 @@ public class QuestJournalScreen extends Screen {
             failedRestartBtnHover = step(failedRestartBtnHover, rHover ? 1f : 0f, 8f);
             drawButton(g, restartBtnX, btnY, restartBtnW, btnH, Component.translatable("arc_quest.gui.journal.button.restart").getString(), activeTheme, HudAnimUtil.easeOutCubic(failedRestartBtnHover), rHover);
         }
-        // =========================================================
     }
 
     private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, double currentScroll, int maxScroll, boolean isDragging) {
@@ -925,6 +1088,95 @@ public class QuestJournalScreen extends Screen {
             g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)));
             g.pose().popPose();
         }
+    }
+
+    private void renderCustomItemTooltip(GuiGraphics g, ItemStack stack, int mouseX, int mouseY) {
+        if (this.minecraft == null || this.minecraft.player == null) return;
+
+        List<Component> tooltipLines = stack.getTooltipLines(
+                this.minecraft.player,
+                this.minecraft.options.advancedItemTooltips ?
+                        net.minecraft.world.item.TooltipFlag.Default.ADVANCED :
+                        net.minecraft.world.item.TooltipFlag.Default.NORMAL
+        );
+
+        if (tooltipLines.isEmpty()) return;
+
+        int padding = 6;
+        int cyberEdgeWidth = 3;
+        int textMaxWidth = 0;
+
+        for (Component line : tooltipLines) {
+            int lineWidth = font.width(line);
+            if (lineWidth > textMaxWidth) {
+                textMaxWidth = lineWidth;
+            }
+        }
+
+        int targetW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
+        int targetH = tooltipLines.size() * font.lineHeight + padding * 2;
+
+        int targetX = mouseX + 12;
+        int targetY = mouseY - 12;
+
+        if (targetX + targetW > this.width) targetX = mouseX - targetW - 8;
+        if (targetY + targetH > this.height) targetY = this.height - targetH - 2;
+        if (targetY < 0) targetY = 2;
+
+        if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
+            animTipX = targetX; animTipY = targetY;
+            animTipW = targetW; animTipH = targetH;
+        } else {
+            float morphSpeed = 15f;
+            animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
+            animTipY += (targetY - animTipY) * Math.min(1f, dt * morphSpeed);
+            animTipW += (targetW - animTipW) * Math.min(1f, dt * morphSpeed);
+            animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
+        }
+
+        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
+        if (scale < 0.01f) return;
+
+        int drawX = (int) animTipX;
+        int drawY = (int) animTipY;
+        int drawW = (int) animTipW;
+        int drawH = (int) animTipH;
+
+        float finalTipAlpha = tooltipTipAlpha * effectiveAlpha;
+        int bgAlpha = (int) (0xD0 * finalTipAlpha);
+        int borderAlpha = (int) (0x66 * finalTipAlpha);
+        int edgeAlpha = (int) (255 * finalTipAlpha);
+        int borderRgb = 0xCCCCCC;
+
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 400);
+
+        float centerX = drawX + drawW / 2f;
+        float centerY = drawY + drawH / 2f;
+        g.pose().translate(centerX, centerY, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.pose().translate(-centerX, -centerY, 0);
+
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+
+        drawCyberneticEdge(g, drawX, drawY, drawH, currentThemeColor, edgeAlpha);
+
+        g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+
+        int textX = drawX + cyberEdgeWidth + padding + 1;
+        int textY = drawY + padding;
+
+        for (Component line : tooltipLines) {
+            g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, edgeAlpha), true);
+            textY += font.lineHeight;
+        }
+
+        g.disableScissor();
+        g.pose().popPose();
     }
 
     private enum Tab {ACTIVE, COMPLETED, FAILED}

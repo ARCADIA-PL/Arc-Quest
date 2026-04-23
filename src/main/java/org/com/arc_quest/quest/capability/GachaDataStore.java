@@ -5,11 +5,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import org.com.arc_quest.dialogue.runtime.ICooldownRecord;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 抽奖系统的玩家数据存储。

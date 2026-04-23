@@ -4,6 +4,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
@@ -160,7 +161,8 @@ public class GachaResultRenderer {
 
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(Minecraft.getInstance().font, "CLICK TO ACKNOWLEDGE", (int)(textX / 0.7f), (int)((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(themeC, blinkA), true);
+            String acknowledgeText = Component.translatable("arc_quest.gui.gacha.result.acknowledge").getString();
+            g.drawString(Minecraft.getInstance().font, acknowledgeText, (int)(textX / 0.7f), (int)((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(themeC, blinkA), true);
             g.pose().popPose();
         }
 

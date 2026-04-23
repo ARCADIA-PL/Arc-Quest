@@ -1,10 +1,10 @@
 package org.com.arc_quest.client.gui.gacha;
 
-import com.mojang.logging.LogUtils;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
@@ -425,7 +425,7 @@ public class GachaPreviewPanel {
 
                 GachaItem gItem = parent.getShopDef().getGachaPool().getItems().stream().filter(itm -> itm.getItemId().equals(rec.itemId())).findFirst().orElse(null);
                 int itemColor = gItem != null ? parent.getShopDef().getEffectiveThemeColor(gItem) : 0xAAAAAA;
-                String itemName = gItem != null ? gItem.getItemStack().getHoverName().getString() : "Unknown";
+                String itemName = gItem != null ? gItem.getItemStack().getHoverName().getString() : Component.translatable("arc_quest.gui.gacha.unknown_item").getString();
 
                 String text = (rec.pityTriggered() ? "[PITY]" : "> ") + itemName + " x" + rec.actualCount();
                 text = Minecraft.getInstance().font.plainSubstrByWidth(text, maxTextW);
@@ -474,7 +474,16 @@ public class GachaPreviewPanel {
 
         int btnTextAlpha = (int)(255 * alpha);
         if (btnTextAlpha > 5) {
-            String text = waiting ? "DECRYPTING..." : (onCooldown ? "COOLDOWN" : (costInsufficient ? "INSUFFICIENT FUNDS" : "UNLOCK RECEPTACLE"));
+            String text;
+            if (waiting) {
+                text = Component.translatable("arc_quest.gui.gacha.btn.decrypting").getString();
+            } else if (onCooldown) {
+                text = Component.translatable("arc_quest.gui.gacha.btn.cooldown").getString();
+            } else if (costInsufficient) {
+                text = Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds").getString();
+            } else {
+                text = Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle").getString();
+            }
             g.drawCenteredString(Minecraft.getInstance().font, text, drawX + l.btnW()/2, l.btnY() + l.btnH()/2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, btnTextAlpha));
         }
     }

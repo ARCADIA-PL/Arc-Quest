@@ -5,6 +5,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.quest.network.ClientQuestCache;
@@ -111,8 +112,8 @@ public class BranchChoiceToast {
         float contentY = baseY + 6;
 
         if (accentA > 5) {
-            String subtitle = "ARES SYSTEM // BRANCH AVAILABLE";
-            String prefix = "New Path Unlocked: ";
+            String subtitle = Component.translatable("arc_quest.toast.branch.subtitle").getString();
+            String prefix = Component.translatable("arc_quest.toast.branch.prefix").getString();
             String cutName = font.plainSubstrByWidth(questName, POPUP_W - 30 - font.width(prefix));
             String title = prefix + cutName;
 

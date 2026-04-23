@@ -182,6 +182,17 @@ public abstract class ArcQuestLangProvider extends LanguageProvider {
         add("arc_quest.toast." + toastType, message);
     }
 
+    /**
+     * 添加 Toast 子分类文本。
+     *
+     * @param category 子分类（如 {@code "branch"}）
+     * @param key      键ID
+     * @param text     显示文本
+     */
+    protected void addToastText(String category, String key, String text) {
+        add("arc_quest.toast." + category + "." + key, text);
+    }
+
     // ════════════════════════════════════════════════════════
     //  命令反馈（对应 ArcQuestCommands）
     // ════════════════════════════════════════════════════════

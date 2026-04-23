@@ -1,7 +1,7 @@
 package org.com.arc_quest.client.questmarker;
 
-import com.mojang.blaze3d.vertex.*;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;

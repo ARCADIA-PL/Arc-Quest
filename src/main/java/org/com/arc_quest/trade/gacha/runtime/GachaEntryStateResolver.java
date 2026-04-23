@@ -2,7 +2,6 @@ package org.com.arc_quest.trade.gacha.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
-import org.com.arc_quest.dialogue.api.CooldownType;
 import org.com.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;

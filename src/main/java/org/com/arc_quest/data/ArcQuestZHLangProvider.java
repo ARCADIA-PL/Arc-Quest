@@ -23,6 +23,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addDialogueTranslations();
         addEpicDialogueTranslations();
         addTradeTranslations();
+        addGachaTranslations();
 
         // ── 任务链 ──
         addPrologueQuest();
@@ -114,6 +115,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     private void addToastTranslations() {
         addToast("branch_available", "分支可用: %s");
+        addToastText("branch", "subtitle", "ARES SYSTEM // 分支可用");
+        addToastText("branch", "prefix", "新路径解锁: ");
         addToast("quest_accepted", "§a任务已接受");
         addToast("quest_completed", "§2任务已完成");
         addToast("quest_failed", "§c任务失败");
@@ -395,6 +398,26 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // ── 交易项（神秘商人） ──
         addTradeEntry("mystery_netherite", "下界合金锭", "蕴含毁灭力量的金属");
         addTradeEntry("mystery_totem", "不死图腾", "逆转生死的最后希望");
+    }
+
+    /**
+     * 抽奖系统翻译。
+     */
+    private void addGachaTranslations() {
+        // ── 屏幕标题 ──
+        add("arc_quest.gui.gacha.title", "抽奖矩阵");
+
+        // ── 按钮文本 ──
+        add("arc_quest.gui.gacha.btn.decrypting", "解密中...");
+        add("arc_quest.gui.gacha.btn.cooldown", "冷却中");
+        add("arc_quest.gui.gacha.btn.insufficient_funds", "资金不足");
+        add("arc_quest.gui.gacha.btn.unlock_receptacle", "解锁容器");
+
+        // ── 结果界面 ──
+        add("arc_quest.gui.gacha.result.acknowledge", "点击确认");
+
+        // ── 通用标签 ──
+        add("arc_quest.gui.gacha.unknown_item", "未知物品");
     }
 
     /**
