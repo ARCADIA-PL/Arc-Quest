@@ -1,13 +1,14 @@
-{
+﻿{
   "required": true,
   "minVersion": "0.8",
   "package": "org.com.arc_quest.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "arc_quest.refmap.json",
-  "mixins": [
-  ],
+  "mixins": [],
   "client": [
-    "client.MixinForgeGui"
+    "client.MixinForgeGui",
+    "client.ponder.MixinPonderScene",
+    "client.ponder.MixinPonderUIStubAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
