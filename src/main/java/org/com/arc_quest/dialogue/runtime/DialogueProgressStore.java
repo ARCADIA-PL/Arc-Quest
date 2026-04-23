@@ -180,6 +180,8 @@ public class DialogueProgressStore {
         CompoundTag root = new CompoundTag();
         CompoundTag nodesTag     = new CompoundTag();
         CompoundTag choicesTag   = new CompoundTag();
+        // 节点访问 key 和对话访问 key 字符串格式相同（namespace:id），
+        // 无法仅靠字符串区分，均归入 nodesTag。Dialogues 分区留空以保持格式兼容。
         CompoundTag dialoguesTag = new CompoundTag();
         CompoundTag tradeTag     = new CompoundTag();
 

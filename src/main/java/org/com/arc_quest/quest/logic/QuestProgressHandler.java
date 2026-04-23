@@ -284,6 +284,9 @@ public final class QuestProgressHandler {
             return;
         }
 
+        // 保存旧阶段 ID，在更新前记录，供事件使用
+        String fromPhaseId = data.getCurrentPhaseId();
+
         // 设置新阶段
         data.setCurrentPhaseId(nextPhaseId);
         data.resetObjectives(nextPhase.getObjectives().size());
@@ -297,11 +300,11 @@ public final class QuestProgressHandler {
         // 同步 & 事件
         ArcQuestNetwork.syncQuestState(player, data);
         QuestEventBus.fire(QuestChangeEvent.phaseChanged(
-                def.getId(), data.getCurrentPhaseId(), nextPhaseId));
+                def.getId(), fromPhaseId, nextPhaseId));
         
         // 发布 Forge 事件（供附属模组监听）
         MinecraftForge.EVENT_BUS.post(new QuestPhaseChangedEvent(
-                player, def.getId(), data.getCurrentPhaseId(), nextPhaseId));
+                player, def.getId(), fromPhaseId, nextPhaseId));
     }
 
     /**

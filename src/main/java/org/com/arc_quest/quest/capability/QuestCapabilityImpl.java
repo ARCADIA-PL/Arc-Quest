@@ -18,41 +18,31 @@ import java.util.*;
 /**
  * IQuestCapability 的标准实现。
  * <p>
- * <b>v2 变更</b>: 对话历史从 6 个 Map 合并为 {@link DialogueProgressStore}。
- * <b>v3 变更</b>: 引入 {@link NbtVersionManager} 统一管理版本号,支持链式迁移。
+ * v2: 对话历史从 6 个 Map 合并为 {@link DialogueProgressStore}。
+ * v3: 引入 {@link NbtVersionManager} 统一管理版本号，支持链式迁移。
+ * v4: 抽奖数据抽取到 {@link GachaDataStore}。
  */
 public class QuestCapabilityImpl implements IQuestCapability {
-    
+
     private static final Logger LOGGER = LoggerFactory.getLogger(QuestCapabilityImpl.class);
-    
-    /**
-     * NBT 版本管理器
-     */
+
     private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
-        "arc_quest:player_data",
-        3,
-        LOGGER
+        "arc_quest:player_data", 3, LOGGER
     );
-    
+
     static {
-        // v0 → v1: 添加 Flags 字段
         VERSION_MANAGER.addMigration(0, 1, tag -> {
             if (!tag.contains("Flags", Tag.TAG_LIST)) {
                 tag.put("Flags", new ListTag());
             }
         });
-        
-        // v1 → v2: 添加 DialogueProgress
         VERSION_MANAGER.addMigration(1, 2, tag -> {
             if (tag.contains("NodeVisitHistory", Tag.TAG_COMPOUND)) {
-                CompoundTag dialogueProgress = new CompoundTag();
                 tag.putInt("_needs_dialogue_migration", 1);
             } else if (!tag.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
                 tag.put("DialogueProgress", new CompoundTag());
             }
         });
-        
-        // v2 → v3改用 _ArcQuestVer
         VERSION_MANAGER.addMigration(2, 3, tag -> {
             if (tag.contains("_version", Tag.TAG_INT)) {
                 int oldVersion = tag.getInt("_version");
@@ -71,31 +61,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
     private final Set<String> flags = new HashSet<>();
     private final Map<String, Integer> variables = new HashMap<>();
 
-    /**
-     * 统一对话进度存储（包含节点访问、选项选择、对话访问）。
-     *  扩展：也用于存储交易冷却数据
-     */
+    /** 统一对话/交易冷却进度存储 */
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
 
-    /**
-     * 交易数据：shopId -> entryId -> purchaseCount
-     */
+    /** 交易购买次数：shopId -> entryId -> purchaseCount */
     private final Map<String, Map<String, Integer>> tradePurchases = new HashMap<>();
-    
-    /**
-     * 抽奖数据：shopId -> drawCount
-     */
-    private final Map<String, Integer> gachaDrawCounts = new HashMap<>();
-    
-    /**
-     * 抽奖保底计数：shopId -> pityCounter
-     */
-    private final Map<String, Integer> gachaPityCounters = new HashMap<>();
-    
-    /**
-     * 抽奖历史记录：shopId -> List<GachaDrawRecord>
-     */
-    private final Map<String, List<IQuestCapability.GachaDrawRecord>> gachaDrawHistories = new HashMap<>();
+
+    /** 抽奖系统数据（次数、保底、历史记录） */
+    private final GachaDataStore gachaData = new GachaDataStore();
 
     private boolean isDirty = false;
 
@@ -116,85 +89,72 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
     @Override
     public synchronized void incrementTradePurchase(String shopId, String entryId) {
-        Map<String, Integer> shopData = tradePurchases.computeIfAbsent(shopId, k -> new HashMap<>());
-        shopData.merge(entryId, 1, Integer::sum);
+        tradePurchases.computeIfAbsent(shopId, k -> new HashMap<>())
+                .merge(entryId, 1, Integer::sum);
         isDirty = true;
     }
-    
+
     // ════════════════════════════════════════
-    //  抽奖系统 API
+    //  抽奖系统 API（委托给 GachaDataStore）
     // ════════════════════════════════════════
-    
+
     @Override
     public synchronized int getGachaDrawCount(String shopId) {
-        return gachaDrawCounts.getOrDefault(shopId, 0);
+        return gachaData.getDrawCount(shopId);
     }
-    
+
     @Override
     public synchronized void incrementGachaDrawCount(String shopId) {
-        gachaDrawCounts.merge(shopId, 1, Integer::sum);
-        isDirty = true;
-    }
-    
-    @Override
-    public synchronized void resetGachaDrawCount(String shopId) {
-        gachaDrawCounts.remove(shopId);
-        isDirty = true;
-    }
-    
-    @Override
-    public synchronized int getGachaPityCounter(String shopId) {
-        return gachaPityCounters.getOrDefault(shopId, 0);
-    }
-    
-    @Override
-    public synchronized void setGachaPityCounter(String shopId, int count) {
-        if (count <= 0) {
-            gachaPityCounters.remove(shopId);
-        } else {
-            gachaPityCounters.put(shopId, count);
-        }
-        isDirty = true;
-    }
-    
-    @Override
-    public synchronized void addGachaDrawHistory(String shopId, String itemId, String rarityName,
-                                                  int actualCount, boolean pityTriggered, long drawTime) {
-        List<IQuestCapability.GachaDrawRecord> history =
-            gachaDrawHistories.computeIfAbsent(shopId, k -> new ArrayList<>());
-        
-        history.add(new IQuestCapability.GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime));
-        
-        // 限制历史记录大小（最多50条）
-        if (history.size() > 50) {
-            history.remove(0);
-        }
-        
-        isDirty = true;
-    }
-    
-    @Override
-    public synchronized List<IQuestCapability.GachaDrawRecord> getGachaDrawHistory(String shopId) {
-        return Collections.unmodifiableList(
-            gachaDrawHistories.getOrDefault(shopId, Collections.emptyList())
-        );
-    }
-    
-    @Override
-    public synchronized void clearGachaDrawHistory(String shopId) {
-        gachaDrawHistories.remove(shopId);
+        gachaData.incrementDrawCount(shopId);
         isDirty = true;
     }
 
     @Override
+    public synchronized void resetGachaDrawCount(String shopId) {
+        gachaData.resetDrawCount(shopId);
+        isDirty = true;
+    }
+
+    @Override
+    public synchronized int getGachaPityCounter(String shopId) {
+        return gachaData.getPityCounter(shopId);
+    }
+
+    @Override
+    public synchronized void setGachaPityCounter(String shopId, int count) {
+        gachaData.setPityCounter(shopId, count);
+        isDirty = true;
+    }
+
+    @Override
+    public synchronized void addGachaDrawHistory(String shopId, String itemId, String rarityName,
+                                                  int actualCount, boolean pityTriggered, long drawTime) {
+        gachaData.addDrawHistory(shopId,
+                new IQuestCapability.GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime));
+        isDirty = true;
+    }
+
+    @Override
+    public synchronized List<IQuestCapability.GachaDrawRecord> getGachaDrawHistory(String shopId) {
+        return gachaData.getDrawHistory(shopId);
+    }
+
+    @Override
+    public synchronized void clearGachaDrawHistory(String shopId) {
+        gachaData.clearDrawHistory(shopId);
+        isDirty = true;
+    }
+
+    // ════════════════════════════════════════
+    //  交易冷却
+    // ════════════════════════════════════════
+
+    @Override
     public long getTradeLastPurchaseTime(String shopId, String entryId) {
         ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
-        DialogueProgressStore.Entry entry = 
-                dialogueProgress.getChoiceSelection(key);
-        
-        LOGGER.debug("[Trade-Cooldown] getTradeLastPurchaseTime: shop={}, entry={}, key={}, exists={}, realTime={}",
-                shopId, entryId, key.toKeyString(), entry.exists(), entry.exists() ? entry.realTime() : 0);
-        
+        DialogueProgressStore.Entry entry = dialogueProgress.getChoiceSelection(key);
+        LOGGER.debug("[Trade-Cooldown] getTradeLastPurchaseTime: shop={}, entry={}, exists={}",
+                shopId, entryId, entry.exists());
         return entry.exists() ? entry.realTime() : 0L;
     }
 
@@ -210,9 +170,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         long realTime = TimeSanitizer.getCurrentRealTime();
         dialogueProgress.recordChoiceSelection(key, realTime, gameTime, dayTime);
         isDirty = true;
-        
-        LOGGER.info("[Trade-Cooldown]  Recorded purchase time: shop={}, entry={}, key={}, realTime={}, gameTime={}, dayTime={}",
-                shopId, entryId, key.toKeyString(), realTime, gameTime, dayTime);
+        LOGGER.debug("[Trade-Cooldown] Recorded purchase time: shop={}, entry={}", shopId, entryId);
     }
 
     @Override
@@ -221,35 +179,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
                                      int cooldownValue, int resetTick,
                                      long nowRealTime, long nowGameTime, long nowDayTime) {
         ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
-        DialogueProgressStore.Entry entry = 
-                dialogueProgress.getChoiceSelection(key);
-        
-        LOGGER.debug("[Trade-Cooldown] isTradeOnCooldown: shop={}, entry={}, key={}, type={}, cooldownValue={}, resetTick={}",
-                shopId, entryId, key.toKeyString(), cooldownType, cooldownValue, resetTick);
-        LOGGER.debug("[Trade-Cooldown] Current time: realTime={}, gameTime={}, dayTime={}",
-                nowRealTime, nowGameTime, nowDayTime);
-        
-        if (!entry.exists()) {
-            LOGGER.debug("[Trade-Cooldown]  Entry does not exist → NOT on cooldown");
-            return false;
-        }
-        
-        if (cooldownType == CooldownType.NONE) {
-            LOGGER.debug("[Trade-Cooldown]  CooldownType is NONE → NOT on cooldown");
-            return false;
-        }
-        
-        LOGGER.debug("[Trade-Cooldown] Entry data: realTime={}, gameTime={}, dayTime={}",
-                entry.realTime(), entry.gameTime(), entry.dayTime());
+        DialogueProgressStore.Entry entry = dialogueProgress.getChoiceSelection(key);
+
+        if (!entry.exists() || cooldownType == CooldownType.NONE) return false;
 
         boolean result = UnifiedCooldownManager.isOnCooldown(
                 entry, cooldownType, cooldownValue, resetTick,
-                nowRealTime, nowGameTime, nowDayTime
-        );
-        
-        LOGGER.info("[Trade-Cooldown] 🎯 Final result: onCooldown={}, entry={}, type={}",
-                result, entryId, cooldownType);
-        
+                nowRealTime, nowGameTime, nowDayTime);
+        LOGGER.debug("[Trade-Cooldown] onCooldown={}, entry={}, type={}", result, entryId, cooldownType);
         return result;
     }
 
@@ -260,15 +197,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
             shopData.remove(entryId);
             isDirty = true;
         }
-        
         ProgressKey key = ProgressKey.ofTrade(shopId, entryId);
         dialogueProgress.clearCooldownRecord(key);
-        
         LOGGER.info("[QuestCap] Reset purchase count and cooldown for shop={}, entry={}", shopId, entryId);
     }
 
     // ═══════════════════════════════════════════════
-    // 任务管理
+    //  任务管理
     // ═══════════════════════════════════════════════
 
     @Override
@@ -311,70 +246,41 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     @Override
-    public Set<String> getCompletedQuests() {
-        return Collections.unmodifiableSet(completedQuests);
-    }
+    public Set<String> getCompletedQuests() { return Collections.unmodifiableSet(completedQuests); }
 
     @Override
-    public Set<String> getFailedQuests() {
-        return Collections.unmodifiableSet(failedQuests);
-    }
+    public Set<String> getFailedQuests() { return Collections.unmodifiableSet(failedQuests); }
 
     @Override
-    public boolean isQuestActive(String questId) {
-        return activeQuests.containsKey(questId);
-    }
+    public boolean isQuestActive(String questId) { return activeQuests.containsKey(questId); }
 
     @Override
-    public boolean isQuestCompleted(String questId) {
-        return completedQuests.contains(questId);
-    }
+    public boolean isQuestCompleted(String questId) { return completedQuests.contains(questId); }
 
     @Override
-    public boolean isQuestFailed(String questId) {
-        return failedQuests.contains(questId);
-    }
+    public boolean isQuestFailed(String questId) { return failedQuests.contains(questId); }
 
     // ═══════════════════════════════════════════════
-    // Flag
+    //  Flag / Variable
     // ═══════════════════════════════════════════════
 
     @Override
-    public void setFlag(String flag) {
-        flags.add(flag);
-        isDirty = true;
-    }
+    public void setFlag(String flag) { flags.add(flag); isDirty = true; }
 
     @Override
-    public boolean hasFlag(String flag) {
-        return flags.contains(flag);
-    }
+    public boolean hasFlag(String flag) { return flags.contains(flag); }
 
     @Override
-    public void removeFlag(String flag) {
-        flags.remove(flag);
-        isDirty = true;
-    }
+    public void removeFlag(String flag) { flags.remove(flag); isDirty = true; }
 
     @Override
-    public Set<String> getAllFlags() {
-        return Collections.unmodifiableSet(flags);
-    }
-
-    // ═══════════════════════════════════════════════
-    // Variable
-    // ═══════════════════════════════════════════════
+    public Set<String> getAllFlags() { return Collections.unmodifiableSet(flags); }
 
     @Override
-    public int getVariable(String key) {
-        return variables.getOrDefault(key, 0);
-    }
+    public int getVariable(String key) { return variables.getOrDefault(key, 0); }
 
     @Override
-    public void setVariable(String key, int value) {
-        variables.put(key, value);
-        isDirty = true;
-    }
+    public void setVariable(String key, int value) { variables.put(key, value); isDirty = true; }
 
     @Override
     public void incrementVariable(String key, int amount) {
@@ -383,9 +289,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     @Override
-    public Map<String, Integer> getAllVariables() {
-        return Collections.unmodifiableMap(variables);
-    }
+    public Map<String, Integer> getAllVariables() { return Collections.unmodifiableMap(variables); }
 
     // ═══════════════════════════════════════════════
     //  序列化
@@ -396,9 +300,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         CompoundTag root = new CompoundTag();
 
         ListTag activeList = new ListTag();
-        for (QuestRuntimeData data : activeQuests.values()) {
-            activeList.add(data.serializeNBT());
-        }
+        for (QuestRuntimeData data : activeQuests.values()) activeList.add(data.serializeNBT());
         root.put("ActiveQuests", activeList);
 
         ListTag completedList = new ListTag();
@@ -422,52 +324,21 @@ public class QuestCapabilityImpl implements IQuestCapability {
         CompoundTag tradePurchasesTag = new CompoundTag();
         for (var shopEntry : tradePurchases.entrySet()) {
             CompoundTag shopTag = new CompoundTag();
-            for (var entryData : shopEntry.getValue().entrySet()) {
-                shopTag.putInt(entryData.getKey(), entryData.getValue());
-            }
+            for (var entry : shopEntry.getValue().entrySet()) shopTag.putInt(entry.getKey(), entry.getValue());
             tradePurchasesTag.put(shopEntry.getKey(), shopTag);
         }
         root.put("TradePurchases", tradePurchasesTag);
-        
-        // 序列化抽奖数据
-        CompoundTag gachaDrawCountsTag = new CompoundTag();
-        for (var entry : gachaDrawCounts.entrySet()) {
-            gachaDrawCountsTag.putInt(entry.getKey(), entry.getValue());
-        }
-        root.put("GachaDrawCounts", gachaDrawCountsTag);
-        
-        CompoundTag gachaPityCountersTag = new CompoundTag();
-        for (var entry : gachaPityCounters.entrySet()) {
-            gachaPityCountersTag.putInt(entry.getKey(), entry.getValue());
-        }
-        root.put("GachaPityCounters", gachaPityCountersTag);
-        
-        // 序列化抽奖历史记录
-        CompoundTag gachaHistoriesTag = new CompoundTag();
-        for (var shopEntry : gachaDrawHistories.entrySet()) {
-            ListTag historyList = new ListTag();
-            for (IQuestCapability.GachaDrawRecord record : shopEntry.getValue()) {
-                CompoundTag recordTag = new CompoundTag();
-                recordTag.putString("itemId", record.itemId());
-                recordTag.putString("rarityName", record.rarityName());
-                recordTag.putInt("actualCount", record.actualCount());
-                recordTag.putBoolean("pityTriggered", record.pityTriggered());
-                recordTag.putLong("drawTime", record.drawTime());
-                historyList.add(recordTag);
-            }
-            gachaHistoriesTag.put(shopEntry.getKey(), historyList);
-        }
-        root.put("GachaDrawHistories", gachaHistoriesTag);
+
+        root.put("GachaData", gachaData.serialize());
 
         VERSION_MANAGER.setInitialVersion(root);
-
         return root;
     }
 
     @Override
     public void deserializeNBT(CompoundTag root) {
         VERSION_MANAGER.migrate(root);
-        
+
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();
@@ -503,45 +374,15 @@ public class QuestCapabilityImpl implements IQuestCapability {
         for (String shopId : tradePurchasesTag.getAllKeys()) {
             CompoundTag shopTag = tradePurchasesTag.getCompound(shopId);
             Map<String, Integer> shopData = new HashMap<>();
-            for (String entryId : shopTag.getAllKeys()) {
-                shopData.put(entryId, shopTag.getInt(entryId));
-            }
+            for (String entryId : shopTag.getAllKeys()) shopData.put(entryId, shopTag.getInt(entryId));
             tradePurchases.put(shopId, shopData);
         }
-        
-        // 反序列化抽奖数据
-        gachaDrawCounts.clear();
-        CompoundTag gachaDrawCountsTag = root.getCompound("GachaDrawCounts");
-        for (String shopId : gachaDrawCountsTag.getAllKeys()) {
-            gachaDrawCounts.put(shopId, gachaDrawCountsTag.getInt(shopId));
-        }
-        
-        gachaPityCounters.clear();
-        CompoundTag gachaPityCountersTag = root.getCompound("GachaPityCounters");
-        for (String shopId : gachaPityCountersTag.getAllKeys()) {
-            gachaPityCounters.put(shopId, gachaPityCountersTag.getInt(shopId));
-        }
-        
-        // 反序列化抽奖历史记录
-        gachaDrawHistories.clear();
-        CompoundTag gachaHistoriesTag = root.getCompound("GachaDrawHistories");
-        for (String shopId : gachaHistoriesTag.getAllKeys()) {
-            ListTag historyList = gachaHistoriesTag.getList(shopId, Tag.TAG_COMPOUND);
-            List<IQuestCapability.GachaDrawRecord> history = new ArrayList<>();
-            for (int i = 0; i < historyList.size(); i++) {
-                CompoundTag recordTag = historyList.getCompound(i);
-                IQuestCapability.GachaDrawRecord record = new IQuestCapability.GachaDrawRecord(
-                    recordTag.getString("itemId"),
-                    recordTag.getString("rarityName"),
-                    recordTag.getInt("actualCount"),
-                    recordTag.getBoolean("pityTriggered"),
-                    recordTag.getLong("drawTime")
-                );
-                history.add(record);
-            }
-            gachaDrawHistories.put(shopId, history);
-        }
 
+        if (root.contains("GachaData", Tag.TAG_COMPOUND)) {
+            gachaData.deserialize(root.getCompound("GachaData"));
+        } else {
+            gachaData.deserializeLegacy(root);
+        }
     }
 
     // ═══════════════════════════════════════════════
@@ -562,6 +403,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         variables.clear();
         dialogueProgress.clear();
         tradePurchases.clear();
+        gachaData.clear();
         isDirty = true;
     }
 
@@ -577,8 +419,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
     public void clearDirty() {
         isDirty = false;
         dialogueProgress.clearDirty();
-        for (QuestRuntimeData data : activeQuests.values()) {
-            data.clearDirty();
-        }
+        for (QuestRuntimeData data : activeQuests.values()) data.clearDirty();
     }
 }
