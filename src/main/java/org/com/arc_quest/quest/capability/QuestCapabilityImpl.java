@@ -77,6 +77,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return dialogueProgress;
     }
 
+    @Override
+    public GachaDataStore getGachaDataStore() {
+        return gachaData;
+    }
+
     // ════════════════════════════════════════
     //  交易数据管理
     // ════════════════════════════════════════

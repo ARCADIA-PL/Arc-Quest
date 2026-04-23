@@ -4,7 +4,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.runtime.DialogueEvalContext;
-import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.api.CompareOp;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
@@ -240,13 +239,8 @@ public sealed interface DialogueCondition permits
     record IsMorning() implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            long t = 0;
-            if (ctx.npc() != null) {
-                t = TimeSanitizer.sanitizeDayTime(ctx.npc().level());
-            }
-            boolean result = t >= 0 && t < 6000;
-            Arc_quest.LOGGER.debug("[DEBUG-Time] IsMorning: dayTimeTick={}, inRange=[0,6000), result={}", t, result);
-            return result;
+            long t = ctx.dayTimeTick();
+            return t >= 0 && t < 6000;
         }
     }
 
@@ -262,13 +256,8 @@ public sealed interface DialogueCondition permits
     record IsAfternoon() implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            long t = 0;
-            if (ctx.npc() != null) {
-                t = TimeSanitizer.sanitizeDayTime(ctx.npc().level());
-            }
-            boolean result = t >= 6000 && t < 12000;
-            Arc_quest.LOGGER.debug("[DEBUG-Time] IsAfternoon: dayTimeTick={}, inRange=[6000,12000), result={}", t, result);
-            return result;
+            long t = ctx.dayTimeTick();
+            return t >= 6000 && t < 12000;
         }
     }
 
@@ -285,13 +274,8 @@ public sealed interface DialogueCondition permits
     record IsNight() implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            long t = 0;
-            if (ctx.npc() != null) {
-                t = TimeSanitizer.sanitizeDayTime(ctx.npc().level());
-            }
-            boolean result = t >= 12000 && t < 24000;
-            Arc_quest.LOGGER.debug("[DEBUG-Time] IsNight: dayTimeTick={}, inRange=[12000,24000), result={}", t, result);
-            return result;
+            long t = ctx.dayTimeTick();
+            return t >= 12000 && t < 24000;
         }
     }
 

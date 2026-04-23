@@ -6,9 +6,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.dialogue.api.CooldownType;
-import org.com.arc_quest.dialogue.runtime.ProgressKey;
-import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
+import org.com.arc_quest.quest.capability.GachaDataStore;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.slf4j.Logger;
@@ -108,55 +107,51 @@ public final class GachaSession {
 
     /**
      * 获取冷却剩余秒数（用于客户端显示）。
+     * <p>
+     * 冷却时间戳从 {@link GachaDataStore} 读取，不再依赖 DialogueProgressStore。
      */
     public int getCooldownRemaining() {
         if (!shop.hasCooldown()) return 0;
 
-        // 从 DialogueProgressStore 获取最后抽奖时间
-        ProgressKey key = ProgressKey.ofTrade(shop.getShopId(), "draw");
-        var storeEntry = capability.getDialogueProgress().getChoiceSelection(key);
-        
-        if (!storeEntry.exists() || storeEntry.realTime() == 0) return 0;
-        long lastDrawTime = storeEntry.realTime();
+        GachaDataStore.CooldownEntry entry = capability.getGachaDataStore().getDrawCooldown(shop.getShopId());
+        if (!entry.exists()) return 0;
 
         return switch (shop.getCooldownType()) {
             case NONE -> 0;
             case SECONDS -> {
                 long nowRealTime = TimeSanitizer.getCurrentRealTime();
-                long elapsed = (nowRealTime - lastDrawTime) / 1000;
+                long elapsed = (nowRealTime - entry.realTime()) / 1000;
                 yield Math.max(0, (int) (shop.getCooldownValue() - elapsed));
             }
             case GAME_DAY -> {
                 long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+                long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
+                if (entry.dayTime() < 0) yield 0;
 
-                if (!storeEntry.exists() || storeEntry.dayTime() < 0) {
-                    yield 0;
-                }
-
-                boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
-                        storeEntry, shop.getCooldownType(), (int) shop.getCooldownValue(),
-                        shop.getResetTimeTicks(),
-                        TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime
-                );
-
-                if (!onCooldown) {
-                    yield 0;
-                }
+                boolean onCooldown = GachaEntryStateResolver.isOnCooldownPublic(
+                        entry, shop, TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime);
+                if (!onCooldown) yield 0;
 
                 long currentDayTick = nowDayTime % 24000;
-                int remainingTicks = (int) (24000 - currentDayTick);
-                yield Math.max(1, remainingTicks / 20);
+                yield Math.max(1, (int) (24000 - currentDayTick) / 20);
             }
             case GAME_TICK -> {
                 long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+                long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
+                if (entry.dayTime() < 0 || entry.gameTime() < 0) yield 0;
 
-                int remainingTicks = UnifiedCooldownManager
-                        .getGameTickCooldownRemainingTicks(
-                                storeEntry, shop.getResetTimeTicks(),
-                                nowGameTime, nowDayTime
-                        );
+                long gameTimeElapsed = nowGameTime - entry.gameTime();
+                if (gameTimeElapsed >= 24000) yield 0;
+
+                long recordedPeriod = Math.floorDiv(entry.dayTime() - shop.getResetTimeTicks(), 24000);
+                long currentPeriod  = Math.floorDiv(nowDayTime     - shop.getResetTimeTicks(), 24000);
+                if (recordedPeriod != currentPeriod) yield 0;
+
+                long currentDayTick = ((nowDayTime % 24000) + 24000) % 24000;
+                long resetTickNorm  = ((long) shop.getResetTimeTicks() % 24000 + 24000) % 24000;
+                int remainingTicks = (int) (currentDayTick >= resetTickNorm
+                        ? 24000 - currentDayTick + resetTickNorm
+                        : resetTickNorm - currentDayTick);
                 yield Math.max(0, remainingTicks / 20);
             }
         };
@@ -192,7 +187,7 @@ public final class GachaSession {
         int currentCount = getDrawCount();
         if (currentCount == 0) return;
 
-        // 1. 检查冷却自动恢复（对标商店系统）
+        // 1. 检查冷却自动恢复
         boolean shouldReset = GachaEntryStateResolver.shouldResetByCooldown(
                 player, capability, shop.getShopId(), shop);
 
@@ -201,9 +196,9 @@ public final class GachaSession {
             var resetCondition = shop.getResetCondition();
             if (resetCondition != null) {
                 try {
-                    shouldReset = resetCondition.test(player, 
-                        capability.getCompletedQuestLocations(), 
-                        capability.getAllFlags(), 
+                    shouldReset = resetCondition.test(player,
+                        capability.getCompletedQuestLocations(),
+                        capability.getAllFlags(),
                         capability.getAllVariables());
                 } catch (Exception e) {
                     LOGGER.warn("[Gacha] Error evaluating draw reset condition for shop={}: {}",
@@ -214,71 +209,42 @@ public final class GachaSession {
 
         // 3. 执行重置
         if (shouldReset && currentCount > 0) {
+            boolean isCooldownExpired = GachaEntryStateResolver.shouldResetByCooldown(
+                    player, capability, shop.getShopId(), shop);
+            String resetReason = isCooldownExpired ? "COOLDOWN_EXPIRED" : "CUSTOM_CONDITION";
             LOGGER.info("[Gacha-Reset] Triggering draw reset: shop={}, currentCount={}, reason={}",
-                shop.getShopId(), currentCount, 
-                GachaEntryStateResolver.shouldResetByCooldown(player, capability, shop.getShopId(), shop) 
-                    ? "COOLDOWN_EXPIRED" : "CUSTOM_CONDITION");
-            
-            // 【新增】确定重置原因
-            GachaEvents.DrawLimitResetEvent.ResetReason reason = 
-                GachaEntryStateResolver.shouldResetByCooldown(player, capability, shop.getShopId(), shop)
+                shop.getShopId(), currentCount, resetReason);
+
+            GachaEvents.DrawLimitResetEvent.ResetReason reason = isCooldownExpired
                     ? GachaEvents.DrawLimitResetEvent.ResetReason.COOLDOWN_EXPIRED
                     : GachaEvents.DrawLimitResetEvent.ResetReason.CUSTOM_CONDITION;
-            
-            // 【新增】触发限购重置事件
+
             var resetEvent = new GachaEvents.DrawLimitResetEvent(
-                player,
-                shop.getShopId(),
-                capability,
-                reason,
-                currentCount  // 重置前的抽奖次数
-            );
+                player, shop.getShopId(), capability, reason, currentCount);
             MinecraftForge.EVENT_BUS.post(resetEvent);
-            
-            // 执行实际重置
+
             int pityBefore = capability.getGachaPityCounter(shop.getShopId());
             GachaEntryStateResolver.resetDrawAndCooldown(capability, shop.getShopId());
-            
+
             LOGGER.info("[Gacha-Reset] Draw reset completed: shop={}, pityCounter before={}",
                 shop.getShopId(), pityBefore);
         }
     }
 
     /**
-     * 检查并重置过期的冷却。
+     * 检查并重置过期的冷却（保留方法以便未来扩展）。
      */
-    private void checkAndResetCooldown() {
-        // 冷却重置逻辑已整合到 checkAndResetDrawCount 中
-        // 这里保留方法以便未来扩展
-    }
+    private void checkAndResetCooldown() {}
 
     /**
      * 抽奖失败原因枚举。
      */
     public enum DrawFailReason {
-        /**
-         * 可以抽奖（无失败）
-         */
         NONE,
-        /**
-         * 不可见
-         */
         NOT_VISIBLE,
-        /**
-         * 已达抽奖次数上限
-         */
         MAX_DRAWS_REACHED,
-        /**
-         * 冷却中
-         */
         ON_COOLDOWN,
-        /**
-         * 条件不满足
-         */
         CONDITION_NOT_MET,
-        /**
-         * 【新增】无法支付成本
-         */
         CANNOT_AFFORD
     }
 }

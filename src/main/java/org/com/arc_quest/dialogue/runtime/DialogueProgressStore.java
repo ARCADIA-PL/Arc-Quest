@@ -12,11 +12,15 @@ import java.util.Map;
 
 /**
  * 对话进度统一存储。
- * 内部使用单一 Map<String, Entry> 存储所有进度数据，key 格式天然不冲突。
+ * <p>
+ * 内部使用单一 {@code Map<String, Entry>} 存储所有进度数据，并通过
+ * {@code keyTypes} 记录每条记录的 {@link ProgressKey.KeyType}，使序列化时能正确分区。
  */
 public class DialogueProgressStore {
 
     private final Map<String, Entry> store = new HashMap<>();
+    /** 记录每个 key 对应的语义类型，用于 serialize 分区（写入时同步维护）。 */
+    private final Map<String, ProgressKey.KeyType> keyTypes = new HashMap<>();
     private boolean dirty = false;
 
     // ── Key 构建 ──────────────────────────────────────────
@@ -36,17 +40,23 @@ public class DialogueProgressStore {
     // ── 写入（ProgressKey 版本） ──────────────────────────
 
     public void recordNodeVisit(ProgressKey key, long realTime, long gameTime, long dayTime) {
-        store.put(key.toKeyString(), new Entry(realTime, gameTime, dayTime));
+        String k = key.toKeyString();
+        store.put(k, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(k, key.keyType());
         dirty = true;
     }
 
     public void recordChoiceSelection(ProgressKey key, long realTime, long gameTime, long dayTime) {
-        store.put(key.toKeyString(), new Entry(realTime, gameTime, dayTime));
+        String k = key.toKeyString();
+        store.put(k, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(k, key.keyType());
         dirty = true;
     }
 
     public void recordDialogueVisit(ProgressKey key, long realTime, long gameTime, long dayTime) {
-        store.put(key.toKeyString(), new Entry(realTime, gameTime, dayTime));
+        String k = key.toKeyString();
+        store.put(k, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(k, key.keyType());
         dirty = true;
     }
 
@@ -125,12 +135,6 @@ public class DialogueProgressStore {
 
     /**
      * 统一查询入口（单 Map 后直接按 key 查找）。
-     * <p>
-     * 替代原有的分派逻辑（hasVisitedNode → getNodeVisit / getDialogueVisit），
-     * 因为单 Map 中所有类型的记录都存储在同一个 store 里，直接按 key 获取即可。
-     *
-     * @param key ProgressKey
-     * @return 对应的 Entry，不存在时返回 Entry.EMPTY
      */
     public Entry getEntry(ProgressKey key) {
         return store.getOrDefault(key.toKeyString(), Entry.EMPTY);
@@ -164,39 +168,58 @@ public class DialogueProgressStore {
 
     /**
      * 清除指定 key 的冷却记录（用于时间回退后的清理）。
-     * 单 Map 后直接按 key 删除，无需字符串前缀分派。
      */
     public void clearCooldownRecord(ProgressKey key) {
-        boolean removed = store.remove(key.toKeyString()) != null;
-        if (removed) {
-            Arc_quest.LOGGER.warn("[Cooldown-Clear] Removed cooldown record: {}", key);
-        }
+        String k = key.toKeyString();
+        store.remove(k);
+        keyTypes.remove(k);
         dirty = true;
     }
 
-    // ── 序列化（保持分区 NBT 格式兼容旧存档） ────────────
+    /**
+     * 移除指定 key 的进度记录（彻底删除，用于重置操作）。
+     */
+    public void removeRecord(ProgressKey key) {
+        String k = key.toKeyString();
+        store.remove(k);
+        keyTypes.remove(k);
+        dirty = true;
+    }
+
+    // ── 序列化（分区 NBT 格式，保持旧存档兼容） ──────────
 
     public CompoundTag serialize() {
         CompoundTag root = new CompoundTag();
         CompoundTag nodesTag     = new CompoundTag();
         CompoundTag choicesTag   = new CompoundTag();
-        // 节点访问 key 和对话访问 key 字符串格式相同（namespace:id），
-        // 无法仅靠字符串区分，均归入 nodesTag。Dialogues 分区留空以保持格式兼容。
         CompoundTag dialoguesTag = new CompoundTag();
         CompoundTag tradeTag     = new CompoundTag();
 
         for (var e : store.entrySet()) {
             String k = e.getKey();
             CompoundTag entryTag = e.getValue().toTag();
-            if (k.startsWith("trade:")) {
-                tradeTag.put(k, entryTag);
+            ProgressKey.KeyType type = keyTypes.get(k);
+
+            if (type != null) {
+                // 有精确类型信息时，按 KeyType 分区
+                switch (type) {
+                    case NODE     -> nodesTag.put(k, entryTag);
+                    case DIALOGUE -> dialoguesTag.put(k, entryTag);
+                    case CHOICE   -> choicesTag.put(k, entryTag);
+                    case TRADE    -> tradeTag.put(k, entryTag);
+                }
             } else {
-                int last = k.lastIndexOf(':');
-                boolean isChoice = last > 0 && isNumeric(k.substring(last + 1));
-                if (isChoice) {
-                    choicesTag.put(k, entryTag);
+                // 旧记录（通过 String 版本写入、无 KeyType 信息），退回字符串格式推断
+                if (k.startsWith("trade:")) {
+                    tradeTag.put(k, entryTag);
                 } else {
-                    nodesTag.put(k, entryTag);
+                    int last = k.lastIndexOf(':');
+                    boolean isChoice = last > 0 && isNumeric(k.substring(last + 1));
+                    if (isChoice) {
+                        choicesTag.put(k, entryTag);
+                    } else {
+                        nodesTag.put(k, entryTag);
+                    }
                 }
             }
         }
@@ -210,24 +233,26 @@ public class DialogueProgressStore {
 
     public void deserialize(CompoundTag root) {
         store.clear();
-        if (root.contains("Nodes",     Tag.TAG_COMPOUND)) loadMap(root.getCompound("Nodes"));
-        if (root.contains("Choices",   Tag.TAG_COMPOUND)) loadMap(root.getCompound("Choices"));
-        if (root.contains("Dialogues", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Dialogues"));
-        if (root.contains("Trade",     Tag.TAG_COMPOUND)) loadMap(root.getCompound("Trade"));
+        keyTypes.clear();
+        if (root.contains("Nodes",     Tag.TAG_COMPOUND)) loadMap(root.getCompound("Nodes"),     ProgressKey.KeyType.NODE);
+        if (root.contains("Choices",   Tag.TAG_COMPOUND)) loadMap(root.getCompound("Choices"),   ProgressKey.KeyType.CHOICE);
+        if (root.contains("Dialogues", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Dialogues"), ProgressKey.KeyType.DIALOGUE);
+        if (root.contains("Trade",     Tag.TAG_COMPOUND)) loadMap(root.getCompound("Trade"),     ProgressKey.KeyType.TRADE);
     }
 
-    private void loadMap(CompoundTag tag) {
+    private void loadMap(CompoundTag tag, ProgressKey.KeyType type) {
         for (String key : tag.getAllKeys()) {
             if (tag.contains(key, Tag.TAG_COMPOUND)) {
                 store.put(key, Entry.fromTag(tag.getCompound(key)));
+                keyTypes.put(key, type);
             }
         }
     }
 
     public void migrateFromLegacy(CompoundTag root) {
-        migrateLegacyPair(root, "NodeVisitHistory",      "NodeVisitGameTime");
-        migrateLegacyPair(root, "ChoiceSelectionHistory","ChoiceSelectionGameTime");
-        migrateLegacyPair(root, "DialogueHistory",       "DialogueGameTime");
+        migrateLegacyPair(root, "NodeVisitHistory",       "NodeVisitGameTime");
+        migrateLegacyPair(root, "ChoiceSelectionHistory", "ChoiceSelectionGameTime");
+        migrateLegacyPair(root, "DialogueHistory",        "DialogueGameTime");
         dirty = true;
     }
 
@@ -257,6 +282,7 @@ public class DialogueProgressStore {
 
     public void clear() {
         store.clear();
+        keyTypes.clear();
         dirty = true;
     }
 

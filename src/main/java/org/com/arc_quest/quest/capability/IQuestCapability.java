@@ -91,13 +91,22 @@ public interface IQuestCapability {
     DialogueProgressStore getDialogueProgress();
 
     /**
-     * 获取交易冷却存储（复用 DialogueProgressStore）。
+     * 获取抽奖数据存储（抽奖次数、保底计数、历史记录、冷却时间戳）。
      * <p>
-     * 交易系统使用 ProgressKey.ofTrade() 创建 key，
-     * 然后调用 getDialogueProgress().recordChoiceSelection() 等方法。
+     * 抽奖冷却时间戳已从 {@code DialogueProgressStore} 迁移至 {@link GachaDataStore}，
+     * 使抽奖数据完全自治。
      *
-     * @return 统一的进度存储实例（与 getDialogueProgress() 相同）
+     * @return 抽奖数据存储实例
      */
+    GachaDataStore getGachaDataStore();
+
+    /**
+     * 获取交易冷却存储（复用 DialogueProgressStore）。
+     *
+     * @deprecated 直接使用 {@link #getDialogueProgress()} 配合 {@code ProgressKey.ofTrade()} 操作。
+     *             抽奖冷却请使用 {@link #getGachaDataStore()}。
+     */
+    @Deprecated
     default DialogueProgressStore getTradeCooldownStore() {
         return getDialogueProgress();
     }
