@@ -182,10 +182,12 @@ public final class ClientQuestCache {
 
     /**
      * 单目标进度更新（来自 {@link S2CSyncObjectivePacket}）。
+     * <p>
+     * 【时序安全优化】使用深拷贝替换策略，避免UI层在读取过程中被网络包中断导致数据不一致。
      */
     public void updateObjectiveProgress(String questId, int objIndex, int newProgress) {
-        QuestRuntimeData data = activeQuests.get(questId);
-        if (data == null) {
+        QuestRuntimeData oldData = activeQuests.get(questId);
+        if (oldData == null) {
             LOGGER.warn("[ClientCache] Received objective update for unknown quest: {}", questId);
             return;
         }
@@ -196,14 +198,17 @@ public final class ClientQuestCache {
             return;
         }
 
-        int oldProgress = data.getObjectiveProgress(objIndex);
+        int oldProgress = oldData.getObjectiveProgress(objIndex);
         
         // 防止进度回退（除非服务端明确允许）
         if (newProgress < oldProgress) {
             LOGGER.debug("[ClientCache] Objective progress decreased: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
         }
         
-        data.setObjectiveProgress(objIndex, newProgress);
+        // 【修复】创建深拷贝并替换，确保原子性更新
+        QuestRuntimeData newData = oldData.copy();
+        newData.setObjectiveProgress(objIndex, newProgress);
+        activeQuests.put(questId, newData);
 
         // 触发动画钩子：目标进度更新
         if (newProgress > oldProgress) {

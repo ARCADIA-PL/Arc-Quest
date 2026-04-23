@@ -38,11 +38,8 @@ public class S2CDeltaProgressPacket {
 
     public static void handle(S2CDeltaProgressPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            // 更新客户端缓存中的进度
-            QuestRuntimeData cached = ClientQuestCache.INSTANCE.getActiveQuest(pkt.questId);
-            if (cached != null && pkt.objectiveIndex >= 0) {
-                cached.setObjectiveProgress(pkt.objectiveIndex, pkt.newProgress);
-            }
+            // 【统一】委托给 ClientQuestCache 处理，确保使用深拷贝替换策略
+            ClientQuestCache.INSTANCE.updateObjectiveProgress(pkt.questId, pkt.objectiveIndex, pkt.newProgress);
         });
         ctx.get().setPacketHandled(true);
     }

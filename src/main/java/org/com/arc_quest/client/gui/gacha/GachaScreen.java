@@ -104,8 +104,9 @@ public class GachaScreen extends Screen {
             hasPendingDraw = false;
             ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(shopId));
             LOGGER.debug("[Gacha-Client] C2SConfirmDrawPacket sent, hasPendingDraw=false");
-            previewPanel.updateDataSnapshot();
-            LOGGER.debug("[Gacha-Client] Preview panel data snapshot updated");
+            // 【修复】移除过早的快照更新，等待从结果渲染器返回时再统一更新
+            // 原因：ClientGachaCache 已在 S2CDrawResultPacket 中更新，此处更新可能读取到过时数据
+            LOGGER.debug("[Gacha-Client] Snapshot update deferred until returning to preview panel");
         } else {
             LOGGER.debug("[Gacha-Client] confirmDrawAndSync called but no pending draw");
         }
