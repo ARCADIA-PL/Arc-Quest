@@ -768,7 +768,7 @@ public class QuestJournalScreen extends Screen {
                     float ratio = required > 0 ? (float) progress / required : 0f;
                     int fillW = (int) (barW * ratio);
 
-                    int bgC = HudAnimUtil.withAlpha(0x333333, (int)(0x66 * oAlpha));
+                    int bgC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x33 * oAlpha));
                     int fgC = HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int)(0xCC * oAlpha));
                     int tipC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0xFF * oAlpha));
 

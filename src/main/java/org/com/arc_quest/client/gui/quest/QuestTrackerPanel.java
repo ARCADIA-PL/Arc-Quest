@@ -391,14 +391,23 @@ public class QuestTrackerPanel {
             textY += OBJ_ROW_HEIGHT;
 
             int barW = PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - (int) rowSlide;
-            int barBg = ((int) (0x40 * objAlpha) << 24) | 0xFFFFFF;
-            int barFill = complete ? HudAnimUtil.withAlpha(0x66FF66, (int) (0xCC * objAlpha)) : HudAnimUtil.withAlpha(currentThemeColor, (int) (0xCC * objAlpha));
-            int barGlow = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0xFF * objAlpha));
+            int fillW = (int) (barW * displayRatio);
+
+            int bgC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x33 * objAlpha));
+            int fgC = complete ? HudAnimUtil.withAlpha(0x66FF66, (int)(0xCC * objAlpha)) : HudAnimUtil.withAlpha(currentThemeColor, (int)(0xCC * objAlpha));
+            int tipC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0xFF * objAlpha));
 
             if (objPulse[i] > 0.05f)
-                barFill = HudAnimUtil.lerpColor(barFill, HudAnimUtil.withAlpha(0xFFFFFF, (int) (200 * objPulse[i] * objAlpha)), objPulse[i] * 0.5f);
+                fgC = HudAnimUtil.lerpColor(fgC, HudAnimUtil.withAlpha(0xFFFFFF, (int) (200 * objPulse[i] * objAlpha)), objPulse[i] * 0.5f);
 
-            HudAnimUtil.drawProgressBarGlow(g, rowX, textY, barW, PROGRESS_BAR_H, displayRatio, barBg, barFill, barGlow);
+            RenderSystem.enableBlend();
+            g.fill(rowX, textY, rowX + barW, textY + PROGRESS_BAR_H, bgC);
+            if (fillW > 0) {
+                g.fill(rowX, textY, rowX + fillW, textY + PROGRESS_BAR_H, fgC);
+                g.fill(rowX + fillW - 2, textY - 1, rowX + fillW, textY + PROGRESS_BAR_H + 1, tipC);
+            }
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+
             textY += PROGRESS_BAR_H + 6;
         }
     }

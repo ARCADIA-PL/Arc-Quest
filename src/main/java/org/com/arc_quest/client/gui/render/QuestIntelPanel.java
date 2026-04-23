@@ -254,7 +254,7 @@ public final class QuestIntelPanel {
 
         // 边框渲染
         int cyberEdgeWidth = 3;
-        int bgAlpha = (int) (0x90 * alphaF);
+        int bgAlpha = (int) (0xA0 * alphaF);
         int borderAlpha = (int) (0x66 * alphaF);
         int edgeAlpha = alpha;
         int borderRgb = 0xCCCCCC;
@@ -313,6 +313,7 @@ public final class QuestIntelPanel {
         lastSceneAreaW = sceneW;
         lastSceneAreaH = sceneH;
 
+        //思索渲染
         renderPonderScene(g, scene, sceneX, sceneY, sceneW, sceneH, pt);
 
         // ── 进度条 ────────────────────────────────────────────

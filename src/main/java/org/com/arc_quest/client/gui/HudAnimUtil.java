@@ -1,5 +1,6 @@
 package org.com.arc_quest.client.gui;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -128,39 +129,41 @@ public final class HudAnimUtil {
     }
 
 
+    /**
+     * 高级感机能风进度条 (提取自 Journal Screen 风格)
+     * 特点：通透克制的底槽 + 纯净实色填充 + 微微上下溢出的锐利高亮游标
+     */
     public static void drawProgressBarGlow(GuiGraphics g, int x, int y, int w, int h,
                                            float progress, int bgColor, int fillColor, int glowColor) {
-        // 使用批量绘制（最多3个矩形：背景+填充+发光）
         int fillW = (int) (w * Math.max(0f, Math.min(1f, progress)));
-        int rectCount = 1 + (fillW > 0 ? 1 : 0) + (fillW > 2 ? 1 : 0);
+
+        int rectCount = 1 + (fillW > 0 ? 2 : 0);
         int[] rects = new int[rectCount * 5];
 
         int idx = 0;
-        // 背景
+
         rects[idx++] = x;
         rects[idx++] = y;
         rects[idx++] = w;
         rects[idx++] = h;
         rects[idx++] = bgColor;
 
-        // 填充
         if (fillW > 0) {
             rects[idx++] = x;
             rects[idx++] = y;
             rects[idx++] = fillW;
             rects[idx++] = h;
             rects[idx++] = fillColor;
-        }
 
-        // 发光边缘
-        if (fillW > 2) {
             rects[idx++] = x + fillW - 2;
-            rects[idx++] = y;
+            rects[idx++] = y - 1;
             rects[idx++] = 2;
-            rects[idx++] = h;
+            rects[idx++] = h + 2;
             rects[idx++] = glowColor;
         }
 
+        RenderSystem.enableBlend();
         HudRenderUtil.drawBatchRects(g, rects, rectCount);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
     }
 }
