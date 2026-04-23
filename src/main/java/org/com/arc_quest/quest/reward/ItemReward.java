@@ -38,4 +38,18 @@ public final class ItemReward implements IReward {
     public String describe() {
         return "Item(" + ForgeRegistries.ITEMS.getKey(this.item) + " x" + this.count + ")";
     }
+
+    /**
+     * 获取奖励物品
+     */
+    public Item getItem() {
+        return item;
+    }
+
+    /**
+     * 获取奖励数量
+     */
+    public int getCount() {
+        return count;
+    }
 }
