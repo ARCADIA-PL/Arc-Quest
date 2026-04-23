@@ -220,7 +220,7 @@ public class GachaDataStore {
      * 对标 {@link org.com.arc_quest.dialogue.runtime.DialogueProgressStore.Entry}，
      * 但独立于对话进度存储，避免跨域耦合。
      */
-    public record CooldownEntry(long realTime, long gameTime, long dayTime) {
+    public record CooldownEntry(long realTime, long gameTime, long dayTime) implements org.com.arc_quest.dialogue.runtime.ICooldownRecord {
 
         public static final CooldownEntry EMPTY = new CooldownEntry(0L, -1L, -1L);
 

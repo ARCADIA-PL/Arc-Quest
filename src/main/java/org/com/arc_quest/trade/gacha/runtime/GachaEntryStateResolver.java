@@ -2,6 +2,8 @@ package org.com.arc_quest.trade.gacha.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.dialogue.api.CooldownType;
+import org.com.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.GachaDataStore;
@@ -17,6 +19,9 @@ import org.slf4j.Logger;
  * <p>
  * <b>冷却语义规则：</b>有限购时，冷却是限购的附属机制——限购未满时不检查冷却；
  * 无限购时，每次抽奖后均触发冷却计时。
+ * <p>
+ * 冷却判断统一委托 {@link UnifiedCooldownManager}，通过 {@link ICooldownRecord}
+ * 接口接收 {@link GachaDataStore.CooldownEntry}，不再维护独立的冷却判断逻辑。
  */
 public final class GachaEntryStateResolver {
 
@@ -28,8 +33,6 @@ public final class GachaEntryStateResolver {
      * 综合判断是否可以抽奖。
      * <p>
      * 优先级：可见性 > 限购 > 冷却 > 条件
-     *
-     * @return true 如果可以抽奖
      */
     public static boolean canDraw(ServerPlayer player, IQuestCapability cap, String shopId, GachaShopDefinition shop) {
         if (!isVisible(player, cap, shop)) return false;
@@ -68,7 +71,8 @@ public final class GachaEntryStateResolver {
     /**
      * 检查是否在冷却中。
      * <p>
-     * 冷却时间戳存储于 {@link GachaDataStore}，不再依赖 {@code DialogueProgressStore}。
+     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link UnifiedCooldownManager}
+     * 统一计算，不再维护独立的冷却 switch 逻辑。
      */
     public static boolean isOnCooldown(ServerPlayer player, IQuestCapability cap, String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return false;
@@ -77,14 +81,16 @@ public final class GachaEntryStateResolver {
             return false;
         }
 
-        GachaDataStore.CooldownEntry entry = cap.getGachaDataStore().getDrawCooldown(shopId);
-        if (!entry.exists()) return false;
+        ICooldownRecord record = cap.getGachaDataStore().getDrawCooldown(shopId);
+        if (!record.exists()) return false;
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
         long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
 
-        return isOnCooldown(entry, shop, nowRealTime, nowGameTime, nowDayTime);
+        return UnifiedCooldownManager.isOnCooldown(record, shop.getCooldownType(),
+                (int) shop.getCooldownValue(), shop.getResetTimeTicks(),
+                nowRealTime, nowGameTime, nowDayTime);
     }
 
     /**
@@ -120,20 +126,21 @@ public final class GachaEntryStateResolver {
         GachaDataStore gachaStore = cap.getGachaDataStore();
         long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
 
-        // 时间回退检测：记录的 dayTime 大于当前 dayTime，说明 /time set 回退了时间
-        GachaDataStore.CooldownEntry entry = gachaStore.getDrawCooldown(shopId);
-        if (entry.exists() && entry.dayTime() > nowDayTime) {
+        ICooldownRecord record = gachaStore.getDrawCooldown(shopId);
+        if (record.exists() && record.dayTime() > nowDayTime) {
             gachaStore.removeDrawCooldown(shopId);
             LOGGER.info("[Gacha-State] Cleared cooldown record due to time regression: shop={}", shopId);
             return true;
         }
 
-        if (!entry.exists()) return false;
+        if (!record.exists()) return false;
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
 
-        return !isOnCooldown(entry, shop, nowRealTime, nowGameTime, nowDayTime);
+        return !UnifiedCooldownManager.isOnCooldown(record, shop.getCooldownType(),
+                (int) shop.getCooldownValue(), shop.getResetTimeTicks(),
+                nowRealTime, nowGameTime, nowDayTime);
     }
 
     /**
@@ -170,58 +177,5 @@ public final class GachaEntryStateResolver {
         long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
 
         cap.getGachaDataStore().recordDrawCooldown(shopId, nowRealTime, nowGameTime, nowDayTime);
-    }
-
-    // ── 包内可见工具方法 ─────────────────────────────────
-
-    /**
-     * 基于 CooldownEntry 进行冷却判断（供 GachaSession 等同包类调用）。
-     */
-    static boolean isOnCooldownPublic(GachaDataStore.CooldownEntry entry, GachaShopDefinition shop,
-                                       long nowRealTime, long nowGameTime, long nowDayTime) {
-        return isOnCooldown(entry, shop, nowRealTime, nowGameTime, nowDayTime);
-    }
-
-    // ── 私有工具方法 ─────────────────────────────────────
-
-    /**
-     * 基于 CooldownEntry 进行冷却判断（复用 UnifiedCooldownManager 的逻辑）。
-     */
-    private static boolean isOnCooldown(GachaDataStore.CooldownEntry entry, GachaShopDefinition shop,
-                                         long nowRealTime, long nowGameTime, long nowDayTime) {
-        return switch (shop.getCooldownType()) {
-            case NONE -> false;
-            case SECONDS -> {
-                long cooldownMs = shop.getCooldownValue() * 1000L;
-                yield (nowRealTime - entry.realTime()) < cooldownMs;
-            }
-            case GAME_DAY -> {
-                long lastGameTime = entry.gameTime();
-                long lastDayTime  = entry.dayTime();
-                if (lastDayTime < 0 || lastGameTime < 0) yield false;
-
-                long gameTimeElapsed = nowGameTime - lastGameTime;
-                if (gameTimeElapsed >= 24000) yield false;
-
-                long lastDay = lastDayTime / 24000L;
-                long nowDay  = nowDayTime  / 24000L;
-                if (lastDay != nowDay) yield false;
-
-                yield nowDayTime >= lastDayTime || gameTimeElapsed <= 0;
-            }
-            case GAME_TICK -> {
-                long lastRawDayTime = entry.dayTime();
-                long lastGameTime   = entry.gameTime();
-                if (lastRawDayTime < 0 || lastGameTime < 0) yield false;
-
-                long gameTimeElapsed = nowGameTime - lastGameTime;
-                if (gameTimeElapsed >= 24000) yield false;
-                if (nowDayTime < lastRawDayTime && gameTimeElapsed > 0) yield false;
-
-                long recordedPeriod = Math.floorDiv(lastRawDayTime - shop.getResetTimeTicks(), 24000);
-                long currentPeriod  = Math.floorDiv(nowDayTime     - shop.getResetTimeTicks(), 24000);
-                yield recordedPeriod == currentPeriod;
-            }
-        };
     }
 }

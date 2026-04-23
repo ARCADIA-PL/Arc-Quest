@@ -310,7 +310,7 @@ public class DialogueProgressStore {
 
     // ── Entry ─────────────────────────────────────────────
 
-    public record Entry(long realTime, long gameTime, long dayTime) {
+    public record Entry(long realTime, long gameTime, long dayTime) implements ICooldownRecord {
 
         public static final Entry EMPTY = new Entry(0L, -1L, -1L);
 

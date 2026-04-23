@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.dialogue.api.CooldownType;
+import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.GachaDataStore;
 import org.com.arc_quest.quest.capability.IQuestCapability;
@@ -108,7 +109,8 @@ public final class GachaSession {
     /**
      * 获取冷却剩余秒数（用于客户端显示）。
      * <p>
-     * 冷却时间戳从 {@link GachaDataStore} 读取，不再依赖 DialogueProgressStore。
+     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link UnifiedCooldownManager}
+     * 统一计算，不再维护独立的冷却判断逻辑。
      */
     public int getCooldownRemaining() {
         if (!shop.hasCooldown()) return 0;
@@ -116,42 +118,28 @@ public final class GachaSession {
         GachaDataStore.CooldownEntry entry = capability.getGachaDataStore().getDrawCooldown(shop.getShopId());
         if (!entry.exists()) return 0;
 
+        long nowRealTime = TimeSanitizer.getCurrentRealTime();
+        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
+        long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
+
         return switch (shop.getCooldownType()) {
             case NONE -> 0;
             case SECONDS -> {
-                long nowRealTime = TimeSanitizer.getCurrentRealTime();
                 long elapsed = (nowRealTime - entry.realTime()) / 1000;
                 yield Math.max(0, (int) (shop.getCooldownValue() - elapsed));
             }
             case GAME_DAY -> {
-                long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-                long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
                 if (entry.dayTime() < 0) yield 0;
-
-                boolean onCooldown = GachaEntryStateResolver.isOnCooldownPublic(
-                        entry, shop, TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime);
+                boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
+                        entry, shop.getCooldownType(), (int) shop.getCooldownValue(),
+                        shop.getResetTimeTicks(), nowRealTime, nowGameTime, nowDayTime);
                 if (!onCooldown) yield 0;
-
                 long currentDayTick = nowDayTime % 24000;
                 yield Math.max(1, (int) (24000 - currentDayTick) / 20);
             }
             case GAME_TICK -> {
-                long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-                long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
-                if (entry.dayTime() < 0 || entry.gameTime() < 0) yield 0;
-
-                long gameTimeElapsed = nowGameTime - entry.gameTime();
-                if (gameTimeElapsed >= 24000) yield 0;
-
-                long recordedPeriod = Math.floorDiv(entry.dayTime() - shop.getResetTimeTicks(), 24000);
-                long currentPeriod  = Math.floorDiv(nowDayTime     - shop.getResetTimeTicks(), 24000);
-                if (recordedPeriod != currentPeriod) yield 0;
-
-                long currentDayTick = ((nowDayTime % 24000) + 24000) % 24000;
-                long resetTickNorm  = ((long) shop.getResetTimeTicks() % 24000 + 24000) % 24000;
-                int remainingTicks = (int) (currentDayTick >= resetTickNorm
-                        ? 24000 - currentDayTick + resetTickNorm
-                        : resetTickNorm - currentDayTick);
+                int remainingTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
+                        entry, shop.getResetTimeTicks(), nowGameTime, nowDayTime);
                 yield Math.max(0, remainingTicks / 20);
             }
         };

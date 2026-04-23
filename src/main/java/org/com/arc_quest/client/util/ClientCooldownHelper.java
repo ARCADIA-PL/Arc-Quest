@@ -3,12 +3,15 @@ package org.com.arc_quest.client.util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.com.arc_quest.dialogue.api.CooldownType;
-import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
+import org.com.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 
 /**
  * 客户端冷却文本计算工具类。
+ * <p>
+ * 冷却判断统一委托 {@link UnifiedCooldownManager}，通过 {@link ICooldownRecord}
+ * 接口传入三时钟快照，不再构造临时 {@code DialogueProgressStore.Entry}。
  */
 public final class ClientCooldownHelper {
 
@@ -35,6 +38,7 @@ public final class ClientCooldownHelper {
         }
 
         CooldownType type = CooldownType.values()[cooldownType];
+        ICooldownRecord record = makeRecord(lastPurchaseTime, purchaseGameTime, purchaseDayTime);
 
         return switch (type) {
             case NONE -> "";
@@ -47,43 +51,29 @@ public final class ClientCooldownHelper {
             }
 
             case GAME_DAY -> {
-                if (!isOnCooldown(lastPurchaseTime, purchaseGameTime, purchaseDayTime,
-                        cooldownType, cooldownValue, resetTimeTicks)) {
-                    yield "";
-                }
-                yield Component.translatable("arc_quest.trade.cooldown.game_day").getString();
+                Minecraft mc = Minecraft.getInstance();
+                if (mc.level == null) yield "";
+                long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
+                long nowDayTime  = TimeSanitizer.getCurrentDayTime(mc.level);
+                boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
+                        record, type, (int) cooldownValue, resetTimeTicks,
+                        TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime);
+                yield onCooldown ? Component.translatable("arc_quest.trade.cooldown.game_day").getString() : "";
             }
 
             case GAME_TICK -> {
                 Minecraft mc = Minecraft.getInstance();
-                if (mc.level == null) {
-                    yield "";
-                }
-
+                if (mc.level == null) yield "";
                 long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
-
-                DialogueProgressStore.Entry entry = new DialogueProgressStore.Entry(
-                        lastPurchaseTime, purchaseGameTime, purchaseDayTime
-                );
-
+                long nowDayTime  = TimeSanitizer.getCurrentDayTime(mc.level);
                 int remainingTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
-                        entry, resetTimeTicks, nowGameTime, nowDayTime
-                );
-
-                if (remainingTicks <= 0) {
-                    yield "";
-                }
-
-                if (remainingTicks < 60) {
-                    yield remainingTicks + "t";
-                } else if (remainingTicks < 1200) {
-                    yield (remainingTicks / 20) + "s";
-                } else {
-                    long minutes = remainingTicks / 1200;
-                    long seconds = (remainingTicks % 1200) / 20;
-                    yield String.format("%dm%ds", minutes, seconds);
-                }
+                        record, resetTimeTicks, nowGameTime, nowDayTime);
+                if (remainingTicks <= 0) yield "";
+                if (remainingTicks < 60)   yield remainingTicks + "t";
+                if (remainingTicks < 1200) yield (remainingTicks / 20) + "s";
+                long minutes = remainingTicks / 1200;
+                long seconds = (remainingTicks % 1200) / 20;
+                yield String.format("%dm%ds", minutes, seconds);
             }
         };
     }
@@ -106,53 +96,27 @@ public final class ClientCooldownHelper {
         }
 
         CooldownType type = CooldownType.values()[cooldownType];
+        ICooldownRecord record = makeRecord(lastPurchaseTime, purchaseGameTime, purchaseDayTime);
 
-        return switch (type) {
-            case NONE -> false;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return false;
 
-            case SECONDS -> {
-                long nowRealTime = TimeSanitizer.getCurrentRealTime();
-                long elapsed = (nowRealTime - lastPurchaseTime) / 1000;
-                yield elapsed < cooldownValue;
-            }
+        long nowRealTime = TimeSanitizer.getCurrentRealTime();
+        long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
+        long nowDayTime  = TimeSanitizer.getCurrentDayTime(mc.level);
 
-            case GAME_DAY -> {
-                Minecraft mc = Minecraft.getInstance();
-                if (mc.level == null) {
-                    yield false;
-                }
+        return UnifiedCooldownManager.isOnCooldown(record, type, (int) cooldownValue, resetTimeTicks,
+                nowRealTime, nowGameTime, nowDayTime);
+    }
 
-                long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
+    // ── 私有工具 ──────────────────────────────────────────
 
-                DialogueProgressStore.Entry entry = new DialogueProgressStore.Entry(
-                        lastPurchaseTime, purchaseGameTime, purchaseDayTime
-                );
-
-                yield UnifiedCooldownManager.isOnCooldown(
-                        entry, type, (int) cooldownValue, 0,
-                        TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime
-                );
-            }
-
-            case GAME_TICK -> {
-                Minecraft mc = Minecraft.getInstance();
-                if (mc.level == null) {
-                    yield false;
-                }
-
-                long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
-                long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
-
-                DialogueProgressStore.Entry entry = new DialogueProgressStore.Entry(
-                        lastPurchaseTime, purchaseGameTime, purchaseDayTime
-                );
-
-                yield UnifiedCooldownManager.isOnCooldown(
-                        entry, type, (int) cooldownValue, resetTimeTicks,
-                        TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime
-                );
-            }
+    private static ICooldownRecord makeRecord(long realTime, long gameTime, long dayTime) {
+        return new ICooldownRecord() {
+            @Override public long realTime() { return realTime; }
+            @Override public long gameTime() { return gameTime; }
+            @Override public long dayTime()  { return dayTime; }
+            @Override public boolean exists() { return realTime > 0; }
         };
     }
 }
