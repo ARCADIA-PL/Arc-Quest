@@ -5,6 +5,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.quest.api.IReward;
@@ -77,7 +78,7 @@ public final class QuestRewardRenderer {
     private static int renderItemReward(GuiGraphics g, ItemReward ir, Font font,
                                         int maxWidth, int alpha, int offsetY, int iconSize) {
         // 直接使用 getter 方法获取物品和数量
-        net.minecraft.world.item.Item item = ir.getItem();
+        Item item = ir.getItem();
         int count = ir.getCount();
         
         if (item == null || count < 1) {

@@ -20,6 +20,7 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.network.C2SRequestQuestActionPacket;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 import org.com.arc_quest.quest.registry.QuestRegistry;
+import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -67,6 +68,7 @@ public class QuestJournalScreen extends Screen {
     private float trackBtnHover = 0f;
     private float abandonBtnHover = 0f;
     private float failedRestartBtnHover = 0f;
+    private float chapterShopBtnHover = 0f;
 
     public QuestJournalScreen() {
         super(Component.translatable("gui.arc_quest.journal.title"));
@@ -124,6 +126,7 @@ public class QuestJournalScreen extends Screen {
         detailTargetScroll = 0;
         detailScrollOffset = 0;
         currentChoiceButtons.clear();
+        QuestEntityModelRenderer.clear();
     }
 
     private float lerp(float c, float t, float s) {
@@ -639,6 +642,38 @@ public class QuestJournalScreen extends Screen {
                 g.pose().popPose();
                 localY += 14;
 
+                // Phase 描述
+                if (phase.hasDescription()) {
+                    g.pose().pushPose();
+                    g.pose().translate(4, localY, 0);
+                    g.pose().scale(0.8f, 0.8f, 1f);
+                    List<String> phaseDescLines = HudRenderUtil.wrapText(phase.getDescription().getString(), (int) ((scrollAreaW - 28) / 0.8f), font);
+                    for (String line : phaseDescLines) {
+                        g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0x99BBFF, safeA), false);
+                        g.pose().translate(0, font.lineHeight + 1, 0);
+                    }
+                    g.pose().popPose();
+                    localY += phaseDescLines.size() * (font.lineHeight + 1) + 6;
+                }
+
+                // 实体模型预览（取第一个 KILL/INTERACT/TALK 目标的实体）
+                for (ObjectiveEntry obj : phase.getObjectives()) {
+                    ObjectiveType ot = obj.getType();
+                    if (ot == ObjectiveType.KILL || ot == ObjectiveType.INTERACT || ot == ObjectiveType.TALK) {
+                        ResourceLocation entityId = obj.getTargetId();
+                        if (QuestEntityModelRenderer.canRender(entityId)) {
+                            int modelSize = Math.min(56, scrollAreaW / 4);
+                            int modelX = x + scrollAreaW - modelSize / 2 - 12;
+                            int modelY = scrollAreaY + 64;
+                            g.pose().popPose();
+                            QuestEntityModelRenderer.render(g, entityId, modelX, modelY, modelSize, Math.min(1f, (float) dAlpha * 0.9f));
+                            g.pose().pushPose();
+                            g.pose().translate(x + 12, scrollAreaY + 12 - detailScrollOffset, 0);
+                        }
+                        break;
+                    }
+                }
+
                 List<ObjectiveEntry> objs = phase.getObjectives();
                 if (detailObjReveal.length != objs.size()) detailObjReveal = new float[objs.size()];
 
@@ -675,6 +710,25 @@ public class QuestJournalScreen extends Screen {
                 }
 
                 localY += 6;
+
+                // Phase 奖励
+                if (!phase.getPhaseRewards().isEmpty()) {
+                    g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (50 * dAlpha)));
+                    localY += 6;
+                    g.pose().pushPose();
+                    g.pose().translate(0, localY, 0);
+                    g.pose().scale(0.75f, 0.75f, 1f);
+                    g.drawString(font, Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), true);
+                    g.pose().popPose();
+                    localY += 11;
+                    g.pose().pushPose();
+                    g.pose().translate(6, localY, 0);
+                    g.pose().scale(0.85f, 0.85f, 1f);
+                    int phaseRewardH = QuestRewardRenderer.render(g, phase.getPhaseRewards(), (int) ((scrollAreaW - 24) / 0.85f), safeA);
+                    g.pose().popPose();
+                    localY += (int) (phaseRewardH * 0.85f) + 4;
+                }
+
                 g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
                 localY += 10;
 
@@ -763,6 +817,25 @@ public class QuestJournalScreen extends Screen {
                         localY += choiceBtnH + 5;
                     }
                 }
+
+                // 章节完成奖励
+                if (!def.getCompletionRewards().isEmpty()) {
+                    localY += 6;
+                    g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (50 * dAlpha)));
+                    localY += 6;
+                    g.pose().pushPose();
+                    g.pose().translate(0, localY, 0);
+                    g.pose().scale(0.75f, 0.75f, 1f);
+                    g.drawString(font, Component.translatable("arc_quest.gui.journal.section.chapter_rewards").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFDD88, safeA), true);
+                    g.pose().popPose();
+                    localY += 11;
+                    g.pose().pushPose();
+                    g.pose().translate(6, localY, 0);
+                    g.pose().scale(0.85f, 0.85f, 1f);
+                    int chapRewardH = QuestRewardRenderer.render(g, def.getCompletionRewards(), (int) ((scrollAreaW - 24) / 0.85f), safeA);
+                    g.pose().popPose();
+                    localY += (int) (chapRewardH * 0.85f) + 4;
+                }
             }
         } else if (entry.state() == QuestState.COMPLETED) {
             g.drawString(font, Component.translatable("arc_quest.gui.journal.label.quest_completed").getString(), 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), true);
@@ -780,6 +853,16 @@ public class QuestJournalScreen extends Screen {
 
         int btnH = 20;
         int btnY = y + h - btnH - 8;
+
+        // 章节商店按钮
+        if (def.hasChapterShop() && (currentTab == Tab.ACTIVE || (currentTab == Tab.COMPLETED && def.isChapterShopPersistent()))) {
+            int shopBtnW = Math.min(110, w - 16);
+            int shopBtnX = x + w - shopBtnW - 8;
+            int shopBtnY = btnY - btnH - 6;
+            boolean shopHover = mx >= shopBtnX && mx <= shopBtnX + shopBtnW && my >= shopBtnY && my <= shopBtnY + btnH;
+            chapterShopBtnHover = step(chapterShopBtnHover, shopHover ? 1f : 0f, 8f);
+            drawButton(g, shopBtnX, shopBtnY, shopBtnW, btnH, Component.translatable("arc_quest.gui.journal.button.chapter_shop").getString(), activeTheme, HudAnimUtil.easeOutCubic(chapterShopBtnHover), shopHover);
+        }
 
         if (currentTab == Tab.ACTIVE && runtime != null) {
             int btnW = Math.min(90, (w - 24) / 2);

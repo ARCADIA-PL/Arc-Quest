@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
 import org.com.arc_quest.client.gui.render.QuestIconRenderer;
 import org.com.arc_quest.quest.api.*;
@@ -200,7 +201,14 @@ public class QuestTrackerPanel {
         int objCount = objectives.size();
         ensureArraySize(objCount);
 
+        Font font = mc.font;
+
         int targetH = PADDING + TITLE_HEIGHT + GAP_AFTER_TITLE + 18 + (objCount * (OBJ_ROW_HEIGHT + PROGRESS_BAR_H + 6)) + PADDING;
+        if (phase.hasDescription()) {
+            List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(),
+                    (int) ((PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2) / 0.75f), font);
+            targetH += descLines.size() * (int) (font.lineHeight * 0.75f + 1) + 4;
+        }
         if (currentPanelH < 0) currentPanelH = targetH;
         currentPanelH = lerp(currentPanelH, targetH, 0.15f, dt);
 
@@ -214,7 +222,6 @@ public class QuestTrackerPanel {
         int panelY = (int) currentPanelY;
 
         float alpha = panelReveal;
-        Font font = mc.font;
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -237,6 +244,24 @@ public class QuestTrackerPanel {
 
         renderPhaseName(g, tracked, phase, textX + (int) wipeDrift, textY, alpha, wipeAlpha, font);
         textY += 16;
+
+        // Phase 描述（在阶段名称下方）
+        if (phase.hasDescription()) {
+            int descA = (int) (255 * alpha * wipeAlpha);
+            if (descA > 4) {
+                int maxW = (int) ((PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2) / 0.75f);
+                List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
+                for (String line : descLines) {
+                    g.pose().pushPose();
+                    g.pose().translate(textX + (int) wipeDrift + 7, textY, 0);
+                    g.pose().scale(0.75f, 0.75f, 1f);
+                    g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0x99BBFF, descA), false);
+                    g.pose().popPose();
+                    textY += (int) (font.lineHeight * 0.75f + 1);
+                }
+                textY += 4;
+            }
+        }
 
         renderObjectives(g, font, tracked, objectives, objCount, alpha, wipeAlpha, wipeDrift, panelX, textX, textY);
 
