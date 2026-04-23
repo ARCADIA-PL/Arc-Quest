@@ -840,7 +840,7 @@ public class QuestJournalScreen extends Screen {
                     g.pose().pushPose();
                     g.pose().translate(8, localY, 0);
                     g.pose().scale(0.75f, 0.75f, 1f);
-                    g.drawString(font, "§a�?" + completedPhaseName, 0, 0, HudAnimUtil.withAlpha(0x88FF88, (int) (200 * dAlpha)), false);
+                    g.drawString(font, "§a>" + completedPhaseName, 0, 0, HudAnimUtil.withAlpha(0x88FF88, (int) (200 * dAlpha)), false);
                     g.pose().popPose();
                     localY += 12;
                     completedCount++;
@@ -912,9 +912,6 @@ public class QuestJournalScreen extends Screen {
                     }
                 }
 
-                // =====================================
-                // 【绝美重构】：彻底对齐�?HUD 透明高亮镂空底板的美术风格！
-                // =====================================
                 if (!def.getCompletionRewards().isEmpty()) {
                     localY += 12;
                     int boxW = scrollAreaW - 24;
@@ -923,7 +920,7 @@ public class QuestJournalScreen extends Screen {
                     int tempX = 12;
                     int rows = 1;
                     for (IReward r : def.getCompletionRewards()) {
-                        int rWidth = (r instanceof ItemReward) ? 28 : (int)(font.width("�?" + r.describe()) * 0.75f) + 12;
+                        int rWidth = (r instanceof ItemReward) ? 28 : (int)(font.width(">" + r.describe()) * 0.75f) + 12;
                         if (tempX + rWidth > boxW - 16 && tempX > 12) {
                             tempX = 12;
                             rows++;
@@ -932,7 +929,6 @@ public class QuestJournalScreen extends Screen {
                     }
                     int boxH = 24 + rows * 28;
 
-                    // 彻底抛弃之前的实心灰块，直接复用最高级的半透明科幻拉丝框（HUD主体同款�?
                     HudAnimUtil.drawFrame(g, 0, localY, boxW, boxH, HudAnimUtil.withAlpha(0x000000, (int)(0x55 * dAlpha)), HudAnimUtil.withAlpha(activeTheme, (int)(0x66 * dAlpha)));
 
                     g.pose().pushPose();
@@ -945,7 +941,7 @@ public class QuestJournalScreen extends Screen {
                     int startY = localY + 22;
 
                     for (IReward r : def.getCompletionRewards()) {
-                        int rWidth = (r instanceof ItemReward) ? 28 : (int)(font.width("�?" + r.describe()) * 0.75f) + 12;
+                        int rWidth = (r instanceof ItemReward) ? 28 : (int)(font.width(">" + r.describe()) * 0.75f) + 12;
 
                         if (startX + rWidth > boxW - 16 && startX > 12) {
                             startX = 12;
@@ -986,7 +982,7 @@ public class QuestJournalScreen extends Screen {
                             g.pose().pushPose();
                             g.pose().translate(startX, startY + 4, 0);
                             g.pose().scale(0.75f, 0.75f, 1f);
-                            g.drawString(font, "�?" + r.describe(), 0, 0, HudAnimUtil.withAlpha(0x88AAFF, safeA), false);
+                            g.drawString(font, ">" + r.describe(), 0, 0, HudAnimUtil.withAlpha(0x88AAFF, safeA), false);
                             g.pose().popPose();
                         }
                         startX += rWidth;
