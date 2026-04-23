@@ -94,18 +94,6 @@ public final class UnifiedCooldownManager {
         };
     }
 
-    /**
-     * {@link Entry} 版本（向后兼容，委托给 ICooldownRecord 版本）。
-     *
-     * @deprecated 优先使用 {@link #isOnCooldown(ICooldownRecord, CooldownType, int, int, long, long, long)}
-     */
-    public static boolean isOnCooldown(Entry entry, CooldownType cooldownType,
-                                       int cooldownValue, int resetTick,
-                                       long nowRealTime, long nowGameTime, long nowDayTime) {
-        return isOnCooldown((ICooldownRecord) entry, cooldownType, cooldownValue, resetTick,
-                nowRealTime, nowGameTime, nowDayTime);
-    }
-
     // ── 剩余时间计算 ──────────────────────────────────────
 
     /**
@@ -130,16 +118,6 @@ public final class UnifiedCooldownManager {
         return (int) (currentDayTick >= resetTickNorm
                 ? 24000 - currentDayTick + resetTickNorm
                 : resetTickNorm - currentDayTick);
-    }
-
-    /**
-     * {@link Entry} 版本（向后兼容，委托给 ICooldownRecord 版本）。
-     *
-     * @deprecated 优先使用 {@link #getGameTickCooldownRemainingTicks(ICooldownRecord, int, long, long)}
-     */
-    public static int getGameTickCooldownRemainingTicks(Entry entry, int resetTick,
-                                                        long nowGameTime, long nowDayTime) {
-        return getGameTickCooldownRemainingTicks((ICooldownRecord) entry, resetTick, nowGameTime, nowDayTime);
     }
 
     // ── 时间回退检测 ──────────────────────────────────────
