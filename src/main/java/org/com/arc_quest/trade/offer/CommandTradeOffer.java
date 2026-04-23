@@ -1,15 +1,15 @@
 package org.com.arc_quest.trade.offer;
 
-import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.trade.api.ITradeOffer;
+import org.com.arc_quest.util.CommandExecutor;
 
 /**
- * 命令交易物 —— 以服务器权限执行命令。
+ * 命令交易物 —— 以服务器权限（op级别4）执行命令。
  * <p>
- * 通常仅作为奖励侧使用。支持 {player} 占位符。
+ * 通常仅作为奖励侧使用。支持 {@code {player}} 占位符。
+ * 命令执行委托 {@link CommandExecutor#runAsServer}。
  */
 public final class CommandTradeOffer implements ITradeOffer {
 
@@ -36,15 +36,7 @@ public final class CommandTradeOffer implements ITradeOffer {
 
     @Override
     public void execute(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
-        if (server == null) return;
-
-        String resolved = commandTemplate.replace("{player}", player.getGameProfile().getName());
-        String cmd = resolved.startsWith("/") ? resolved.substring(1) : resolved;
-        CommandSourceStack source = server.createCommandSourceStack()
-                .withSuppressedOutput()
-                .withPermission(4);
-        server.getCommands().performPrefixedCommand(source, cmd);
+        CommandExecutor.runAsServer(player, this.commandTemplate);
     }
 
     @Override

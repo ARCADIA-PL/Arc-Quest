@@ -1,13 +1,14 @@
 package org.com.arc_quest.quest.reward;
 
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.quest.api.IReward;
+import org.com.arc_quest.util.CommandExecutor;
 
 /**
- * 以服务器权限执行指令的奖励。
- * 支持占位符 {player} 会被替换为玩家名。
+ * 以服务器权限（op级别4）执行命令的奖励。
+ * <p>
+ * 支持 {@code {player}} 占位符，会被替换为玩家名称。
+ * 命令执行委托 {@link CommandExecutor#runAsServer}。
  */
 public final class CommandReward implements IReward {
 
@@ -19,15 +20,7 @@ public final class CommandReward implements IReward {
 
     @Override
     public void grant(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
-        if (server == null) return;
-
-        String resolved = this.commandTemplate.replace("{player}", player.getGameProfile().getName());
-        CommandSourceStack source = server.createCommandSourceStack()
-                .withSuppressedOutput()
-                .withPermission(4);
-
-        server.getCommands().performPrefixedCommand(source, resolved);
+        CommandExecutor.runAsServer(player, this.commandTemplate);
     }
 
     @Override

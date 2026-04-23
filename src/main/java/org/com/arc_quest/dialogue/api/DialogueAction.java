@@ -3,7 +3,6 @@ package org.com.arc_quest.dialogue.api;
 import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -22,6 +21,7 @@ import org.com.arc_quest.quest.tracking.QuestEventManager;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.registry.TradeRegistry;
+import org.com.arc_quest.util.CommandExecutor;
 import org.slf4j.Logger;
 
 import java.util.function.BiConsumer;
@@ -181,28 +181,15 @@ public sealed interface DialogueAction {
     record RunCommand(String command) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
-            MinecraftServer server = player.getServer();
-            if (server != null) {
-                String cmd = command.startsWith("/") ? command.substring(1) : command;
-                server.getCommands().performPrefixedCommand(
-                        player.createCommandSourceStack().withSuppressedOutput(), cmd);
-                LOGGER.debug("[Dialogue] Executed command '{}' for {}",
-                        cmd, player.getName().getString());
-            }
+            CommandExecutor.runAsPlayer(player, command);
+            LOGGER.debug("[Dialogue] Executed command '{}' for {}", command, player.getName().getString());
         }
 
         @Override
         public void execute(ServerPlayer player, DialogueSession session) {
-            MinecraftServer server = player.getServer();
-            if (server != null) {
-
-                String resolved = session != null ? session.processText(command) : command;
-                String cmd = resolved.startsWith("/") ? resolved.substring(1) : resolved;
-                server.getCommands().performPrefixedCommand(
-                        player.createCommandSourceStack().withSuppressedOutput(), cmd);
-                LOGGER.debug("[Dialogue] Executed command '{}' for {}",
-                        cmd, player.getName().getString());
-            }
+            String resolved = session != null ? session.processText(command) : command;
+            CommandExecutor.runAsPlayer(player, resolved);
+            LOGGER.debug("[Dialogue] Executed command '{}' for {}", resolved, player.getName().getString());
         }
     }
 
