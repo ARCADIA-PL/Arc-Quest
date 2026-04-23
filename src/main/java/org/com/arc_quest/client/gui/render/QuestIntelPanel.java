@@ -14,8 +14,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.Mth;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
+import org.com.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -23,50 +25,70 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * 嵌入式 Ponder 情报面板。
- *
- * <p>不依赖 Screen 或 Overlay，可直接在任意 GUI 的 render() 末尾调用，
- * 将 PonderScene 缩放渲染到指定矩形区域内，外层仅提供美术边框装饰。
- *
- * <p>调用方式：
- * <pre>
- *   // 触发
- *   QuestIntelPanel.trigger(sceneId, themeColor);
- *   // 每帧渲染（在 JournalScreen.render 末尾）
- *   QuestIntelPanel.render(g, screenW, screenH, partialTick);
- *   // 关闭
- *   QuestIntelPanel.dismiss();
- * </pre>
+ * Quest Intel Ponder 面板。
+ * 以全屏居中方式弹出，与 QuestSplashRenderer 风格对齐。
+ * 功能：多场景切换、进度条（含点击跳转）、暂停/恢复、重播、文字气泡。
  */
 public final class QuestIntelPanel {
 
-    private static final int FRAME_W = 320;
-    private static final int FRAME_H = 400;
+    // ── 面板尺寸（固定，参考 SplashRenderer 用屏高比例）──────────────
+    private static final int PANEL_W = 480;
+    private static final int PANEL_H = 340;
+
+    // 底部控制栏高度
+    private static final int CTRL_H = 36;
+    // 进度条区域
+    private static final int PROG_H   = 4;
+    private static final int PROG_PAD = 12;
+
+    // 按钮尺寸与位置（相对于面板坐标系）
+    private static final int BTN_Y   = PANEL_H - CTRL_H + 8;
+    private static final int BTN_SZ  = 18;
+
     private static final Vector3f DIFFUSE_0 = new Vector3f(-0.2F, 1.0F, 0.7F).normalize();
     private static final Vector3f DIFFUSE_1 = new Vector3f(0.2F, 1.0F, -0.7F).normalize();
 
-    @Nullable
-    private static List<PonderScene> activeScenes = null;
-    private static int sceneIndex = 0;
-    private static int themeColor = 0x4FC3F7;
+    // ── 状态 ──────────────────────────────────────────────────────────
+    @Nullable private static List<PonderScene> activeScenes = null;
+    private static int   sceneIndex   = 0;
+    private static int   themeColor   = 0x4FC3F7;
     private static float animProgress = 0f;
-    private static boolean isClosing = false;
-    private static long lastTime = 0;
+    private static boolean isClosing  = false;
+    private static long lastTime      = 0;
+    private static boolean isPaused   = false;
+
+    // 场景渲染区域尺寸（供 MixinPonderScene/IntelPonderUIStub 使用）
+    private static int lastSceneAreaW = PANEL_W;
+    private static int lastSceneAreaH = PANEL_H - CTRL_H;
+
+    // ── 弹出位置（全屏居中，每帧根据屏幕尺寸计算）────────────────────
+    private static int drawX = 0, drawY = 0;
 
     private QuestIntelPanel() {}
 
+    // ── 公开 API ─────────────────────────────────────────────────────
+
+    public static void trigger(ResourceLocation sceneId, int theme,
+                               int ax, int ay, int aw, int ah) {
+        trigger(sceneId, theme);
+    }
+
     public static void trigger(ResourceLocation sceneId, int theme) {
+        if (sceneId == null) return;
         List<PonderScene> scenes = PonderIndex.getSceneAccess().compile(sceneId);
-        if (scenes == null || scenes.isEmpty()) return;
-
+        if (scenes == null || scenes.isEmpty()) {
+            net.createmod.ponder.Ponder.LOGGER.warn("[ArcQuest] No Ponder scenes for: {}", sceneId);
+            return;
+        }
         activeScenes = scenes;
-        sceneIndex = 0;
-        themeColor = theme;
+        sceneIndex   = 0;
+        themeColor   = theme;
         animProgress = 0f;
-        isClosing = false;
-        lastTime = System.currentTimeMillis();
+        isClosing    = false;
+        isPaused     = false;
+        lastTime     = System.currentTimeMillis();
         scenes.get(0).begin();
-
+        IntelPonderUIStub.invalidate();
         Minecraft.getInstance().getSoundManager()
                 .play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_IN, 1.0F));
     }
@@ -79,157 +101,270 @@ public final class QuestIntelPanel {
         }
     }
 
-    public static boolean isActive() {
-        return activeScenes != null;
+    public static boolean isActive()  { return activeScenes != null; }
+
+    public static boolean hasScene(ResourceLocation sceneId) {
+        if (sceneId == null) return false;
+        return ArcQuestPonderSceneRegistry.hasScene(sceneId)
+                && PonderIndex.getSceneAccess().doScenesExistForId(sceneId);
     }
 
-    /** 驱动当前场景的 tick，需在游戏 tick 中调用（ClientEventHandler.onClientTick）。 */
+    /** 每 game-tick 调用一次（ClientEventHandler.onClientTick）。 */
     public static void tick() {
-        if (activeScenes == null || isClosing) return;
+        if (activeScenes == null || isClosing || isPaused) return;
         PonderUI.ponderTicks++;
         activeScenes.get(sceneIndex).tick();
     }
 
-    /** 切换到下一个场景。 */
     public static void scrollForward() {
         if (activeScenes == null || sceneIndex >= activeScenes.size() - 1) return;
         activeScenes.get(sceneIndex).fadeOut();
         sceneIndex++;
         activeScenes.get(sceneIndex).begin();
+        isPaused = false;
+        IntelPonderUIStub.invalidate();
     }
 
-    /** 切换到上一个场景。 */
     public static void scrollBack() {
         if (activeScenes == null || sceneIndex <= 0) return;
         activeScenes.get(sceneIndex).fadeOut();
         sceneIndex--;
         activeScenes.get(sceneIndex).begin();
+        isPaused = false;
+        IntelPonderUIStub.invalidate();
     }
 
-    /** 重播当前场景。 */
     public static void replay() {
         if (activeScenes == null) return;
         activeScenes.get(sceneIndex).begin();
+        isPaused = false;
     }
 
-    public static int getSceneIndex() { return sceneIndex; }
+    public static void togglePause() { isPaused = !isPaused; }
+    public static boolean isPaused()  { return isPaused; }
 
+    public static int getSceneIndex() { return sceneIndex; }
     public static int getSceneCount() { return activeScenes == null ? 0 : activeScenes.size(); }
 
-    /**
-     * 在屏幕居中渲染面板，需在 Journal render() 最后调用。
-     *
-     * @param g          GuiGraphics
-     * @param screenW    屏幕宽度
-     * @param screenH    屏幕高度
-     * @param partialTick 部分 tick
-     */
+    @Nullable
+    public static List<PonderScene> getActiveScenes() { return activeScenes; }
+
+    public static int getLastSceneAreaW() { return lastSceneAreaW; }
+    public static int getLastSceneAreaH() { return lastSceneAreaH; }
+
+    // ── 渲染 ──────────────────────────────────────────────────────────
+
     public static void render(GuiGraphics g, int screenW, int screenH, float partialTick) {
         if (activeScenes == null) return;
 
         long now = System.currentTimeMillis();
-        float dt = (now - lastTime) / 1000f;
+        float dt = Math.min((now - lastTime) / 1000f, 0.1f);
         lastTime = now;
-        if (dt > 0.1f) dt = 0.1f;
 
         if (isClosing) {
-            animProgress -= dt * 5f;
-            if (animProgress <= 0f) {
-                activeScenes = null;
-                return;
-            }
+            animProgress -= dt * 7f;
+            if (animProgress <= 0f) { activeScenes = null; return; }
         } else {
-            animProgress += (1f - animProgress) * Math.min(1f, dt * 10f);
+            animProgress = Mth.clamp(animProgress + dt * 10f, 0f, 1f);
         }
-
         if (animProgress < 0.01f) return;
 
-        float ease = HudAnimUtil.easeOutCubic(animProgress);
-        int alpha = (int) (255 * ease);
+        float ease  = HudAnimUtil.easeOutCubic(animProgress);
+        int   alpha = (int)(255 * ease);
 
-        int panelX = (screenW - FRAME_W) / 2;
-        int panelY = (screenH - FRAME_H) / 2;
+        // 全屏居中（参考 SplashRenderer：baseX = screenW/2 - frameW/2）
+        drawX = (screenW - PANEL_W) / 2;
+        drawY = (screenH - PANEL_H) / 2;
 
-        // 缩放动画：从屏幕中心弹出
-        float scale = 0.85f + 0.15f * ease;
-        int scaledW = (int) (FRAME_W * scale);
-        int scaledH = (int) (FRAME_H * scale);
-        int drawX = (screenW - scaledW) / 2;
-        int drawY = (screenH - scaledH) / 2;
-
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 500);
-
-        // 全屏暗化遮罩
-        g.fill(0, 0, screenW, screenH, (int) (180 * ease) << 24);
-
-        // Scissor 裁剪到面板区域（含少量边距）
-        g.enableScissor(drawX - 2, drawY - 2, drawX + scaledW + 2, drawY + scaledH + 2);
+        // 弹出缩放（从中心）
+        float scale = 0.90f + 0.10f * ease;
+        int sW = (int)(PANEL_W * scale), sH = (int)(PANEL_H * scale);
+        int ox = drawX + (PANEL_W - sW) / 2;
+        int oy = drawY + (PANEL_H - sH) / 2;
 
         g.pose().pushPose();
-        g.pose().translate(drawX, drawY, 0);
+        g.pose().translate(0, 0, 4500);  // 高于 Splash(4000)
+
+        // 全屏暗化
+        g.fill(0, 0, screenW, screenH, HudAnimUtil.withAlpha(0x000000, (int)(160 * ease)));
+
+        // Scissor 裁剪
+        g.enableScissor(ox - 2, oy - 2, ox + sW + 2, oy + sH + 2);
+        g.pose().pushPose();
+        g.pose().translate(ox, oy, 0);
         g.pose().scale(scale, scale, 1f);
 
-        // 深色半透明背景
-        int bgAlpha = (int) (0xCC * ease);
-        g.fill(0, 0, FRAME_W, FRAME_H, (bgAlpha << 24) | 0x050810);
-
-        // 机能边框（与 SplashRenderer 同款）
-        HudRenderUtil.drawCyberneticEdge(g, 0, 0, FRAME_H, themeColor, alpha);
-
-        // 四角折角装饰
-        int decAlpha = alpha;
-        int decColor = (decAlpha << 24) | 0xFFFFFF;
-        g.fill(0, 0, 20, 2, decColor);
-        g.fill(0, 0, 2, 20, decColor);
-        g.fill(FRAME_W - 20, FRAME_H - 2, FRAME_W, FRAME_H, decColor);
-        g.fill(FRAME_W - 2, FRAME_H - 20, FRAME_W, FRAME_H, decColor);
-
-        // 顶部标题栏
-        Font font = Minecraft.getInstance().font;
-        PonderScene scene = activeScenes.get(sceneIndex);
-        int titleAlpha = alpha;
-
-        g.pose().pushPose();
-        g.pose().scale(0.75f, 0.75f, 1f);
-        g.drawString(font, "SYS.ARC_QUEST // PHASE INTEL", (int) (16 / 0.75f), (int) (14 / 0.75f),
-                HudAnimUtil.withAlpha(0x888888, titleAlpha), true);
-        g.pose().popPose();
-
-        g.pose().pushPose();
-        g.pose().scale(1.1f, 1.1f, 1f);
-        g.drawString(font, scene.getTitle(), (int) (14 / 1.1f), (int) (26 / 1.1f),
-                HudAnimUtil.withAlpha(0xFFFFFF, titleAlpha), true);
-        g.pose().popPose();
-
-        // 标题分隔线
-        int lineColor = (alpha / 2 << 24) | (themeColor & 0xFFFFFF);
-        g.fill(12, 42, 180, 43, lineColor);
-
-        // Ponder 场景渲染区域（标题下方）
-        int sceneAreaY = 46;
-        int sceneAreaH = FRAME_H - sceneAreaY - 30;
-
-        renderPonderScene(g, scene, 0, sceneAreaY, FRAME_W, sceneAreaH, partialTick, ease);
-
-        // 底部操作提示
-        renderBottomBar(g, font, alpha, sceneAreaY + sceneAreaH);
+        renderPanel(g, Minecraft.getInstance().font, alpha, partialTick);
 
         g.pose().popPose();
         g.disableScissor();
         g.pose().popPose();
     }
 
+    private static void renderPanel(GuiGraphics g, Font font, int alpha, float pt) {
+        int PW = PANEL_W, PH = PANEL_H;
+        PonderScene scene = activeScenes.get(sceneIndex);
+
+        // ── 背景 ──────────────────────────────────────────────────────
+        g.fill(0, 0, PW, PH, HudAnimUtil.withAlpha(0x030609, alpha));
+
+        // ── 机能左侧竖线 ──────────────────────────────────────────────
+        HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, themeColor, alpha);
+
+        // ── 四角折角 ──────────────────────────────────────────────────
+        int dec = HudAnimUtil.withAlpha(0xFFFFFF, alpha);
+        g.fill(0,      0,      18,    2,  dec);
+        g.fill(0,      0,      2,     18, dec);
+        g.fill(PW-18,  PH-2,   PW,   PH,  dec);
+        g.fill(PW-2,   PH-18,  PW,   PH,  dec);
+
+        // ── 顶部小标签 ────────────────────────────────────────────────
+        int titleAreaH = 40;
+        g.pose().pushPose();
+        g.pose().scale(0.68f, 0.68f, 1f);
+        g.drawString(font, "SYS.ARC_QUEST // PHASE INTEL",
+                (int)(14/0.68f), (int)(10/0.68f),
+                HudAnimUtil.withAlpha(0x556677, alpha), false);
+        g.pose().popPose();
+
+        // ── 场景标题 ──────────────────────────────────────────────────
+        String title = scene.getTitle();
+        g.pose().pushPose();
+        g.pose().scale(1.05f, 1.05f, 1f);
+        g.drawString(font, title, (int)(14/1.05f), (int)(20/1.05f),
+                HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
+        g.pose().popPose();
+
+        // ── 场景计数 (1 / N) ─────────────────────────────────────────
+        if (activeScenes.size() > 1) {
+            String counter = (sceneIndex + 1) + " / " + activeScenes.size();
+            int cw = font.width(counter);
+            g.pose().pushPose();
+            g.pose().scale(0.72f, 0.72f, 1f);
+            g.drawString(font, counter,
+                    (int)((PW - 14 - cw * 0.72f) / 0.72f), (int)(22/0.72f),
+                    HudAnimUtil.withAlpha(0x4488AA, alpha), false);
+            g.pose().popPose();
+        }
+
+        // ── 分隔线 ────────────────────────────────────────────────────
+        g.fill(10, titleAreaH - 2, PW - 10, titleAreaH - 1,
+                HudAnimUtil.withAlpha(themeColor, alpha / 3));
+
+        // ── Ponder 3D 场景区 ──────────────────────────────────────────
+        int sceneY = titleAreaH;
+        int sceneH = PH - sceneY - CTRL_H;
+        lastSceneAreaW = PW;
+        lastSceneAreaH = sceneH;
+
+        renderPonderScene(g, scene, 0, sceneY, PW, sceneH, pt);
+
+        // ── 控制栏背景 ────────────────────────────────────────────────
+        int ctrlY = PH - CTRL_H;
+        g.fill(0, ctrlY, PW, PH, HudAnimUtil.withAlpha(0x010305, alpha));
+        g.fill(0, ctrlY, PW, ctrlY + 1, HudAnimUtil.withAlpha(themeColor, alpha / 5));
+
+        // ── 进度条 ────────────────────────────────────────────────────
+        renderProgressBar(g, scene, alpha, ctrlY);
+
+        // ── 控制按钮 ─────────────────────────────────────────────────
+        renderControlButtons(g, font, alpha, ctrlY);
+    }
+
+    // ── 进度条 ────────────────────────────────────────────────────────
+
+    private static void renderProgressBar(GuiGraphics g, PonderScene scene,
+                                          int alpha, int ctrlY) {
+        int barY  = ctrlY + 4;
+        int barX  = PROG_PAD;
+        int barW  = PANEL_W - PROG_PAD * 2;
+
+        float progress = scene.getTotalTime() > 0
+                ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
+
+        // 轨道
+        g.fill(barX, barY, barX + barW, barY + PROG_H,
+                HudAnimUtil.withAlpha(0x223344, alpha));
+
+        // 填充
+        int fillW = (int)(barW * Mth.clamp(progress, 0f, 1f));
+        if (fillW > 0) {
+            g.fill(barX, barY, barX + fillW, barY + PROG_H,
+                    HudAnimUtil.withAlpha(themeColor, alpha));
+            // 发光端点
+            if (fillW > 2) {
+                g.fill(barX + fillW - 2, barY - 1, barX + fillW, barY + PROG_H + 1,
+                        HudAnimUtil.withAlpha(0xFFFFFF, alpha / 2));
+            }
+        }
+
+        // 关键帧标记
+        for (int k = 0; k < scene.getKeyframeCount(); k++) {
+            float kf = scene.getTotalTime() > 0
+                    ? (float) scene.getKeyframeTime(k) / scene.getTotalTime() : 0f;
+            int kx = barX + (int)(barW * kf);
+            g.fill(kx - 1, barY - 1, kx + 1, barY + PROG_H + 1,
+                    HudAnimUtil.withAlpha(0xFFCC44, alpha));
+        }
+    }
+
+    // ── 控制按钮：◄  ‖/▶  ↺  ► ──────────────────────────────────────
+
+    private static void renderControlButtons(GuiGraphics g, Font font, int alpha, int ctrlY) {
+        int midX = PANEL_W / 2;
+        int bY   = ctrlY + PROG_H + 8;
+        int gap  = 26;
+
+        // 布局（相对面板坐标）：[◄ prev] [‖/▶ pause] [↺ replay] [► next]
+        int xPrev   = midX - gap * 2 - BTN_SZ / 2;
+        int xPause  = midX - gap     - BTN_SZ / 2;
+        int xReplay = midX + gap     - BTN_SZ / 2;
+        int xNext   = midX + gap * 2 - BTN_SZ / 2;
+
+        boolean canPrev = sceneIndex > 0;
+        boolean canNext = activeScenes != null && sceneIndex < activeScenes.size() - 1;
+
+        drawCtrlBtn(g, font, xPrev,   bY, "◄", canPrev  ? 0xAABBCC : 0x334455, alpha);
+        drawCtrlBtn(g, font, xPause,  bY, isPaused ? "▶" : "‖", 0xCCDDEE, alpha);
+        drawCtrlBtn(g, font, xReplay, bY, "↺", 0xCCDDEE, alpha);
+        drawCtrlBtn(g, font, xNext,   bY, "►", canNext  ? 0xAABBCC : 0x334455, alpha);
+
+        // 关闭提示
+        g.pose().pushPose();
+        g.pose().scale(0.65f, 0.65f, 1f);
+        String hint = "ESC / 点击背景关闭";
+        int hw = font.width(hint);
+        g.drawString(font, hint,
+                (int)((PANEL_W / 2f - hw * 0.65f / 2f) / 0.65f),
+                (int)((bY + BTN_SZ + 2) / 0.65f),
+                HudAnimUtil.withAlpha(0x334455, alpha), false);
+        g.pose().popPose();
+    }
+
+    private static void drawCtrlBtn(GuiGraphics g, Font font, int x, int y,
+                                    String icon, int color, int alpha) {
+        g.fill(x, y, x + BTN_SZ, y + BTN_SZ,
+                HudAnimUtil.withAlpha(0x0A1520, alpha));
+        g.fill(x, y, x + BTN_SZ, y + 1,
+                HudAnimUtil.withAlpha(color, alpha / 3));
+        int tw = font.width(icon);
+        int th = font.lineHeight;
+        g.drawString(font, icon,
+                x + (BTN_SZ - tw) / 2,
+                y + (BTN_SZ - th) / 2,
+                HudAnimUtil.withAlpha(color, alpha), false);
+    }
+
+    // ── Ponder 3D 场景渲染 ────────────────────────────────────────────
+
     private static void renderPonderScene(GuiGraphics g, PonderScene scene,
                                           int areaX, int areaY, int areaW, int areaH,
-                                          float partialTick, float ease) {
+                                          float pt) {
         SuperRenderTypeBuffer buffer = DefaultSuperRenderTypeBuffer.getInstance();
-
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();
         RenderSystem.backupProjectionMatrix();
 
-        // 修改投影矩阵（与 PonderUI 完全一致）
         Matrix4f proj = new Matrix4f(RenderSystem.getProjectionMatrix());
         proj.translate(0, 0, 800);
         RenderSystem.setProjectionMatrix(proj, VertexSorting.DISTANCE_TO_ORIGIN);
@@ -237,41 +372,89 @@ public final class QuestIntelPanel {
         PoseStack ms = g.pose();
         ms.pushPose();
         ms.translate(areaX, areaY, -800);
-
         RenderSystem.setupLevelDiffuseLighting(DIFFUSE_0, DIFFUSE_1, ms.last().pose());
 
-        // 告知场景其渲染区域大小，场景会在该尺寸内自动居中投影
         scene.getTransform().updateScreenParams(areaW, areaH, 0);
-        scene.getTransform().apply(ms, partialTick);
-        scene.getTransform().updateSceneRVE(partialTick);
-        scene.renderScene(buffer, g, partialTick);
+        scene.getTransform().apply(ms, pt);
+        scene.getTransform().updateSceneRVE(pt);
+        scene.renderScene(buffer, g, pt);
         buffer.draw();
 
         ms.popPose();
         RenderSystem.restoreProjectionMatrix();
         RenderSystem.disableDepthTest();
 
-        // 场景文字 Overlay（文字气泡等）
+        // 文字气泡 overlay（通过 MixinPonderScene + IntelPonderUIStub 提供 stub screen）
         ms.pushPose();
         ms.translate(areaX, areaY, 100);
-        scene.renderOverlay(null, g, partialTick);
+        scene.renderOverlay(null, g, pt);
         ms.popPose();
     }
 
-    private static void renderBottomBar(GuiGraphics g, Font font, int alpha, int y) {
-        // 导航提示
-        String navHint;
-        if (activeScenes != null && activeScenes.size() > 1) {
-            navHint = (sceneIndex + 1) + " / " + activeScenes.size() + "  ◄ ► 切换  |  点击关闭";
-        } else {
-            navHint = "点击任意处关闭";
+    // ── 鼠标点击转发（由 QuestJournalScreen.mouseClicked 调用）──────────
+
+    /**
+     * 处理面板内的鼠标点击。
+     * 坐标为屏幕坐标。返回 true 表示已消费。
+     */
+    public static boolean handleMouseClick(double mx, double my, int screenW, int screenH) {
+        if (activeScenes == null) return false;
+
+        // 背景区域点击关闭
+        int ox = (drawX == 0 && screenW > 0) ? (screenW - PANEL_W) / 2 : drawX;
+        int oy = (drawY == 0 && screenH > 0) ? (screenH - PANEL_H) / 2 : drawY;
+        float sc = 0.90f + 0.10f * HudAnimUtil.easeOutCubic(animProgress);
+        int sW = (int)(PANEL_W * sc), sH = (int)(PANEL_H * sc);
+        int aox = ox + (PANEL_W - sW) / 2;
+        int aoy = oy + (PANEL_H - sH) / 2;
+
+        if (mx < aox || mx > aox + sW || my < aoy || my > aoy + sH) {
+            dismiss(); return true;
         }
 
-        g.pose().pushPose();
-        g.pose().scale(0.75f, 0.75f, 1f);
-        int textX = (int) (FRAME_W / 2f / 0.75f);
-        int textY = (int) (y / 0.75f) + 6;
-        g.drawCenteredString(font, navHint, textX, textY, HudAnimUtil.withAlpha(0x555555, alpha));
-        g.pose().popPose();
+        // 转换到面板局部坐标
+        float lx = (float)((mx - aox) / sc);
+        float ly = (float)((my - aoy) / sc);
+
+        // 进度条点击
+        int ctrlY = PANEL_H - CTRL_H;
+        if (ly >= ctrlY + 2 && ly <= ctrlY + 4 + PROG_H + 2) {
+            int barX = PROG_PAD, barW = PANEL_W - PROG_PAD * 2;
+            if (lx >= barX && lx <= barX + barW) {
+                float t = (lx - barX) / barW;
+                PonderScene scene = activeScenes.get(sceneIndex);
+                if (scene.getTotalTime() > 0) {
+                    int target = (int)(t * scene.getTotalTime());
+                    if (target < scene.getCurrentTime()) scene.begin();
+                    scene.seekToTime(target);
+                }
+                return true;
+            }
+        }
+
+        // 控制按钮点击
+        int midX = PANEL_W / 2;
+        int bY   = ctrlY + PROG_H + 8;
+        int gap  = 26;
+        int[][] btns = {
+            { midX - gap*2 - BTN_SZ/2, bY },  // ◄ prev
+            { midX - gap   - BTN_SZ/2, bY },  // ‖/▶ pause
+            { midX + gap   - BTN_SZ/2, bY },  // ↺ replay
+            { midX + gap*2 - BTN_SZ/2, bY },  // ► next
+        };
+        for (int i = 0; i < btns.length; i++) {
+            int bx = btns[i][0], by = btns[i][1];
+            if (lx >= bx && lx <= bx + BTN_SZ && ly >= by && ly <= by + BTN_SZ) {
+                switch (i) {
+                    case 0 -> scrollBack();
+                    case 1 -> togglePause();
+                    case 2 -> replay();
+                    case 3 -> scrollForward();
+                }
+                return true;
+            }
+        }
+
+        return true; // 面板内部点击不穿透
     }
 }
