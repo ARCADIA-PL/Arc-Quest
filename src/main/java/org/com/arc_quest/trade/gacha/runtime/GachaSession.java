@@ -214,6 +214,11 @@ public final class GachaSession {
 
         // 3. 执行重置
         if (shouldReset && currentCount > 0) {
+            LOGGER.info("[Gacha-Reset] Triggering draw reset: shop={}, currentCount={}, reason={}",
+                shop.getShopId(), currentCount, 
+                GachaEntryStateResolver.shouldResetByCooldown(player, capability, shop.getShopId(), shop) 
+                    ? "COOLDOWN_EXPIRED" : "CUSTOM_CONDITION");
+            
             // 【新增】确定重置原因
             GachaEvents.DrawLimitResetEvent.ResetReason reason = 
                 GachaEntryStateResolver.shouldResetByCooldown(player, capability, shop.getShopId(), shop)
@@ -231,7 +236,11 @@ public final class GachaSession {
             MinecraftForge.EVENT_BUS.post(resetEvent);
             
             // 执行实际重置
+            int pityBefore = capability.getGachaPityCounter(shop.getShopId());
             GachaEntryStateResolver.resetDrawAndCooldown(capability, shop.getShopId());
+            
+            LOGGER.info("[Gacha-Reset] Draw reset completed: shop={}, pityCounter before={}",
+                shop.getShopId(), pityBefore);
         }
     }
 

@@ -177,7 +177,16 @@ public final class GachaEntryStateResolver {
         }
 
         ProgressKey key = ProgressKey.ofTrade(shopId, "draw");
-        DialogueProgressStore.Entry storeEntry = cap.getDialogueProgress().getChoiceSelection(key);
+        DialogueProgressStore store = cap.getDialogueProgress();
+        
+        // 【修复】对标对话系统：先检测并清除时间回退的冷却记录
+        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        if (UnifiedCooldownManager.clearIfTimeRegressed(store, key, nowDayTime)) {
+            LOGGER.info("[Gacha-State] Cleared cooldown record due to time regression: shop={}", shopId);
+            return true; // 记录已清除，应该重置
+        }
+        
+        DialogueProgressStore.Entry storeEntry = store.getChoiceSelection(key);
 
         if (!storeEntry.exists()) {
             return false;
@@ -185,7 +194,6 @@ public final class GachaEntryStateResolver {
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
 
         // 如果不在冷却中，说明已过期，应该重置
         return !UnifiedCooldownManager.isOnCooldown(
@@ -223,11 +231,12 @@ public final class GachaEntryStateResolver {
             return false; // 无冷却配置
         }
         
-        // 只有达到限购后才需要记录冷却
+        // 【修复】对标商店系统：检查购买后是否达到限购
         if (shop.hasLimit()) {
             int currentCount = cap.getGachaDrawCount(shopId);
-            if (currentCount < shop.getMaxDraws()) {
-                return false; // 未达到限购，不记录冷却
+            int newCount = currentCount + 1;
+            if (newCount < shop.getMaxDraws()) {
+                return false; // 购买后仍未达到限购，不记录冷却
             }
             
             // 【新增】如果配置为不自动重置，则不记录冷却

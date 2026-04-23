@@ -90,13 +90,15 @@ public final class UnifiedCooldownManager {
                     yield false;
                 }
 
-                if (nowDayTime < lastRawDayTime && gameTimeElapsed > 0) {
+                if (nowDayTime < lastRawDayTime && gameTimeElapsed > 0) {         
                     yield false;
                 }
 
                 long recordedPeriod = Math.floorDiv(lastRawDayTime - resetTick, 24000);
                 long currentPeriod = Math.floorDiv(nowDayTime - resetTick, 24000);
-                yield (recordedPeriod == currentPeriod);
+                boolean onCooldown = (recordedPeriod == currentPeriod);
+                
+                yield onCooldown;
             }
         };
     }
@@ -143,7 +145,6 @@ public final class UnifiedCooldownManager {
         Entry entry = store.getChoiceSelection(key);
         if (entry.exists() && entry.dayTime() > nowDayTime) {
             store.clearCooldownRecord(key);
-            LOGGER.warn("[Cooldown-Clear] Cleared cooldown record due to time regression: {}", key);
             return true;
         }
         return false;
