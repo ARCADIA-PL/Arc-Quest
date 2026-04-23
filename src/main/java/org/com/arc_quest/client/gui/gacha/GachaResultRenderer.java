@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
@@ -120,15 +121,8 @@ public class GachaResultRenderer {
         g.fill(0, 0, frameW, frameH, bgBase);
         g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * 0.3f)), 0x00000000);
 
-        int coreColor = themeC & 0xFFFFFF;
-        int topAlpha = safeAlpha;
-        int botAlpha = (int)(safeAlpha * 0.15f);
-        int colorTop = coreColor | (topAlpha << 24);
-        int colorBot = coreColor | (botAlpha << 24);
-        g.fillGradient(0, 0, 4, frameH, colorTop, colorBot);
-        int glowAlpha = (int)(topAlpha * 0.8f);
-        int colorGlow = 0xFFFFFF | (glowAlpha << 24);
-        g.fillGradient(0, 0, 1, frameH / 2, colorGlow, colorTop);
+        // 【统一】使用机能风高级晶体侧边栏
+        HudRenderUtil.drawCyberneticEdge(g, 0, 0, frameH, themeC, safeAlpha);
 
         if (targetItem != null) {
             g.pose().pushPose();

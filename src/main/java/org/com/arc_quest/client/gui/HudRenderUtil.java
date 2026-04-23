@@ -57,47 +57,28 @@ public final class HudRenderUtil {
     public static void drawGlassPanel(GuiGraphics g, int x, int y, int w, int h,
                                       int bgColor, int bgAlpha,
                                       int accentColor, int accentAlpha, int accentWidth) {
-        int[] rects = new int[10];
-        rects[0] = x;
-        rects[1] = y;
-        rects[2] = w;
-        rects[3] = h;
-        rects[4] = (bgAlpha << 24) | (bgColor & 0x00FFFFFF);
-        rects[5] = x;
-        rects[6] = y;
-        rects[7] = accentWidth;
-        rects[8] = h;
-        rects[9] = (accentAlpha << 24) | (accentColor & 0x00FFFFFF);
-        drawBatchRects(g, rects, 2);
+        // 【统一】背景
+        g.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
+        
+        // 【统一】使用机能风高级晶体侧边栏
+        drawCyberneticEdge(g, x, y, h, accentColor, accentAlpha);
     }
 
     public static void drawToastPanel(GuiGraphics g, int x, int y, int w, int h,
                                       int bgColor, int bgAlpha,
                                       int accentColor, int accentAlpha, int accentWidth,
                                       int lineAlpha) {
-        int rectCount = lineAlpha > 0 ? 3 : 2;
-        int[] rects = new int[rectCount * 5];
-
-        rects[0] = x;
-        rects[1] = y;
-        rects[2] = w;
-        rects[3] = h;
-        rects[4] = (bgAlpha << 24) | (bgColor & 0x00FFFFFF);
-        rects[5] = x;
-        rects[6] = y;
-        rects[7] = accentWidth;
-        rects[8] = h;
-        rects[9] = (accentAlpha << 24) | (accentColor & 0x00FFFFFF);
-
+        // 【统一】背景
+        g.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
+        
+        // 【统一】使用机能风高级晶体侧边栏
+        drawCyberneticEdge(g, x, y, h, accentColor, accentAlpha);
+        
+        // 底部线条（保留原有逻辑）
         if (lineAlpha > 0) {
-            rects[10] = x + accentWidth;
-            rects[11] = y + h - 1;
-            rects[12] = w - accentWidth;
-            rects[13] = 1;
-            rects[14] = (lineAlpha << 24) | (accentColor & 0x00FFFFFF);
+            g.fill(x + accentWidth, y + h - 1, x + w, y + h, 
+                   (lineAlpha << 24) | (accentColor & 0x00FFFFFF));
         }
-
-        drawBatchRects(g, rects, rectCount);
     }
 
     public static void drawDualText(GuiGraphics g, Font font, float x, float y,

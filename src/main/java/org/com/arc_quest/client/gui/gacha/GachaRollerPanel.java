@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
 
@@ -212,15 +213,8 @@ public class GachaRollerPanel {
             g.fill(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(0x111111, (int)(cardAlpha * 0.8f)));
             g.fillGradient(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(themeC, (int)(cardAlpha * 0.2f)), 0);
 
-            int coreColor = themeC & 0xFFFFFF;
-            int topAlpha = cardAlpha;
-            int botAlpha = (int)(cardAlpha * 0.15f);
-            int colorTop = coreColor | (topAlpha << 24);
-            int colorBot = coreColor | (botAlpha << 24);
-            g.fillGradient(drawCardX, drawCardY, drawCardX + 4, drawCardY + cardH, colorTop, colorBot);
-            int glowAlpha = (int)(topAlpha * 0.8f);
-            int colorGlow = 0xFFFFFF | (glowAlpha << 24);
-            g.fillGradient(drawCardX, drawCardY, drawCardX + 1, drawCardY + (cardH / 2), colorGlow, colorTop);
+            // 【统一】使用机能风高级晶体侧边栏
+            HudRenderUtil.drawCyberneticEdge(g, drawCardX, drawCardY, cardH, themeC, cardAlpha);
 
             if (popFactor > 0.1f && currentState != State.EXIT) {
                 HudAnimUtil.drawFrame(g, drawCardX, drawCardY, cardW, cardH, 1, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * popFactor * 0.8f)));

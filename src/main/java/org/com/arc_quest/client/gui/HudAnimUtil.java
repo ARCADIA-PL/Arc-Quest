@@ -112,7 +112,9 @@ public final class HudAnimUtil {
                                        int bgColor, int accentColor, int accentWidth) {
         int r = x + w, bottom = y + h;
         g.fill(x, y, r, bottom, bgColor);
-        g.fill(x, y, x + accentWidth, bottom, accentColor);
+        
+        // 【统一】使用机能风高级晶体侧边栏
+        HudRenderUtil.drawCyberneticEdge(g, x, y, h, accentColor, 255);
     }
 
 
