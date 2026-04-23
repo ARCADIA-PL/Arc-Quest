@@ -36,6 +36,20 @@ public interface ICondition {
     }
 
     /**
+     * 将此 {@link ICondition} 包装为 {@link org.com.arc_quest.dialogue.api.DialogueCondition}，
+     * 使商店/任务条件可以直接用于对话选项的可见性判断。
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * DialogueChoice.conditional("choice_id", "购买剑", "node_shop",
+     *     myCanBuyCondition.asDialogueCondition())
+     * }</pre>
+     */
+    default org.com.arc_quest.dialogue.api.DialogueCondition asDialogueCondition() {
+        return new org.com.arc_quest.dialogue.api.DialogueCondition.IConditionWrapper(this);
+    }
+
+    /**
      * 测试条件是否满足。
      * <p>
      * <b>重要：</b>

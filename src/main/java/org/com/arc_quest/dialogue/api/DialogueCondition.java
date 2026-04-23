@@ -5,6 +5,7 @@ import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.runtime.DialogueEvalContext;
 import org.com.arc_quest.quest.api.CompareOp;
+import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 
@@ -42,7 +43,9 @@ public sealed interface DialogueCondition permits
         // ── 冷却 ──
         DialogueCondition.NodeOnCooldown,
         DialogueCondition.ChoiceOnCooldown,
-        DialogueCondition.DialogueOnCooldown {
+        DialogueCondition.DialogueOnCooldown,
+        // ── 跨系统适配器 ──
+        DialogueCondition.IConditionWrapper {
 
     /**
      * 评估条件是否满足。
@@ -396,6 +399,29 @@ public sealed interface DialogueCondition permits
                     ctx.namespace(), dialogueId,
                     CooldownType.SECONDS, cooldownSeconds, 0,
                     ctx.nowRealTime(), ctx.gameTime(), ctx.dayTime());
+        }
+    }
+
+    /**
+     * 跨系统适配器：将 {@link ICondition}（商店/任务系统）包装为 {@link DialogueCondition}，
+     * 使商店条件、任务解锁条件等可以直接用于对话选项的可见性判断，无需重写。
+     * <p>
+     * 使用方式（推荐通过 {@link ICondition#asDialogueCondition(ICondition)} 工厂方法）：
+     * <pre>{@code
+     * DialogueChoice.conditional("choice_id", "购买剑", "node_shop",
+     *     myCanBuyCondition.asDialogueCondition())
+     * }</pre>
+     *
+     * @param condition 要包装的 {@link ICondition} 实例
+     */
+    record IConditionWrapper(ICondition condition) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            return condition.test(
+                    ctx.player(),
+                    ctx.questCap().getCompletedQuestLocations(),
+                    ctx.questCap().getAllFlags(),
+                    ctx.questCap().getAllVariables());
         }
     }
 }
