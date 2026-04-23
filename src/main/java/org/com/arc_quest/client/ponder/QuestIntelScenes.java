@@ -45,6 +45,8 @@ public final class QuestIntelScenes {
         scene.title("demo_quest_phase_1_overview", "Phase Overview: The Proving Ground");
 
         scene.configureBasePlate(0, 0, 5);
+        scene.scaleSceneView(0.7F);
+        scene.setSceneOffsetY(-1F);
         scene.showBasePlate();
         scene.idle(10);
 
@@ -81,6 +83,8 @@ public final class QuestIntelScenes {
         scene.title("demo_quest_phase_1_objective", "Objective: Activate the Beacon");
 
         scene.configureBasePlate(0, 0, 5);
+        scene.scaleSceneView(0.7F);
+        scene.setSceneOffsetY(-1F);
         scene.showBasePlate();
         scene.idle(5);
 

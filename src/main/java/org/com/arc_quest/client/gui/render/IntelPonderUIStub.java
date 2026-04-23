@@ -3,7 +3,6 @@ package org.com.arc_quest.client.gui.render;
 import net.createmod.ponder.foundation.PonderScene;
 import net.createmod.ponder.foundation.ui.PonderUI;
 import net.minecraft.client.gui.Font;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.mixin.client.ponder.MixinPonderUIStubAccessor;
 
