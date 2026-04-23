@@ -1,6 +1,7 @@
 package org.com.arc_quest;
 
 import com.mojang.logging.LogUtils;
+import net.createmod.ponder.foundation.PonderIndex;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -13,10 +14,10 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import org.com.arc_quest.client.ponder.QuestPonderPlugin;
 import org.com.arc_quest.client.events.ClientEventHandler;
 import org.com.arc_quest.client.gui.QuestHudOverlay;
 import org.com.arc_quest.client.gui.gacha.GachaResultOverlay;
-import org.com.arc_quest.client.gui.render.QuestIntelOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.client.questmarker.MarkerHudRenderer;
@@ -39,7 +40,7 @@ public class Arc_quest {
 
     // TODO: 设计新的HUD模块 任务追踪标识模块
     // TODO: 传送罗盘模块 可用于传送任务相关地点
-    
+
     public Arc_quest() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
@@ -51,14 +52,12 @@ public class Arc_quest {
             ArcQuestContent.registerAll();
             EpicDialogueTrees.registerAll();
             TradeContent.registerAll();
-            
-            // 注册示范抽奖商店
+
             DemoGachaShops.registerDemoShops();
             LOGGER.info("[ArcQuest] Demo gacha shops registered.");
-            
+
             ArcQuestNetwork.register();
-            
-            // 【并发安全】冻结所有注册表，转换为线程安全的不可变Map
+
             QuestRegistry.freeze();
             TradeRegistry.freeze();
         });
@@ -76,13 +75,13 @@ public class Arc_quest {
             GuiSoundManager.initDefaults();
             MinecraftForge.EVENT_BUS.register(new MarkerHudRenderer());
             MinecraftForge.EVENT_BUS.register(new MarkerWorldRenderer());
+            PonderIndex.addPlugin(new QuestPonderPlugin());
             LOGGER.info("[ArcQuest] Client setup complete.");
         }
 
         @SubscribeEvent
         public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
             event.registerAboveAll("quest_hud", QuestHudOverlay.INSTANCE);
-            event.registerAboveAll("quest_intel", QuestIntelOverlay.INSTANCE);
             event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
             event.registerAboveAll("gacha_result", GachaResultOverlay.INSTANCE);
             LOGGER.info("[ArcQuest] Overlays registered.");

@@ -75,6 +75,7 @@ public final class EpicMainlineDemo {
                         .thenGoTo("arc_quest:defend_village"))
                 // 阶段 3：防御村庄（击杀僵尸）
                 .phase(PhaseBuilder.create("arc_quest:defend_village")
+                        .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
                         .displayName(Component.translatable("arc_quest.phase.epic_prologue.defend_village"))
                         .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 10).display(Component.translatable("arc_quest.objective.epic_prologue.defend_village.0")))
                         .objective(ObjectiveBuilder.kill(EntityType.HUSK, 3).display(Component.translatable("arc_quest.objective.epic_prologue.defend_village.1")).optional())
