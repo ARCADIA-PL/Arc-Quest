@@ -9,7 +9,6 @@ import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.client.gui.gacha.GachaScreen;
-import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -17,6 +16,7 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -132,83 +132,8 @@ public class S2COpenGachaPacket {
      * 服务端打开抽奖界面（从命令或 NPC 调用）。
      */
     public static void handleServerOpen(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
-        // 触发打开事件
-        var openEvent = new GachaEvents.OpenedEvent(player, shop.getShopId(), cap);
-        MinecraftForge.EVENT_BUS.post(openEvent);
-        
-        // 获取当前保底计数和总抽奖次数
-        int pityCounter = cap.getGachaPityCounter(shop.getShopId());
-        int totalDraws = cap.getGachaDrawCount(shop.getShopId());
-        
-        // 【修复】服务端计算按钮状态（对标交易系统）
-        boolean canDraw = true;
-        int remainingDraws = -1; // -1 表示无限
-        
-        // 检查限购
-        if (shop.hasLimit() && shop.getMaxDraws() > 0) {
-            remainingDraws = Math.max(0, shop.getMaxDraws() - totalDraws);
-            if (remainingDraws <= 0) {
-                canDraw = false;
-            }
-        }
-        
-        // 检查冷却（只有在未达到限购时才检查）
-        if (canDraw && shop.hasCooldown()) {
-            ProgressKey drawKey = ProgressKey.ofTrade(shop.getShopId(), "draw");
-            var progressEntry = cap.getDialogueProgress().getChoiceSelection(drawKey);
-            
-            long lastDrawRealTime = progressEntry != null ? progressEntry.realTime() : 0;
-            long lastDrawGameTime = progressEntry != null ? progressEntry.gameTime() : 0;
-            long lastDrawDayTime = progressEntry != null ? progressEntry.dayTime() : 0;
-            
-            // 使用 ClientCooldownHelper 的服务端等效逻辑判断冷却
-            boolean onCooldown = ClientCooldownHelper.isOnCooldown(
-                lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
-                shop.getCooldownType().ordinal(), shop.getCooldownValue(), shop.getResetTimeTicks()
-            );
-            
-            if (onCooldown) {
-                canDraw = false;
-            }
-        }
-        
-        // 【新增】检查成本是否充足（对标商店系统）
-        if (canDraw) {
-            ITradeOffer drawCost = shop.getDrawCost();
-            if (drawCost != null && !drawCost.canAfford(player)) {
-                canDraw = false;
-            }
-        }
-        
-        // 获取冷却数据（对标商店系统）
-        ProgressKey drawKey = ProgressKey.ofTrade(shop.getShopId(), "draw");
-        var progressEntry = cap.getDialogueProgress().getChoiceSelection(drawKey);
-        
-        long lastDrawRealTime = progressEntry != null ? progressEntry.realTime() : 0;
-        long lastDrawGameTime = progressEntry != null ? progressEntry.gameTime() : 0;
-        long lastDrawDayTime = progressEntry != null ? progressEntry.dayTime() : 0;
-        
-        int cooldownType = shop.getCooldownType().ordinal();
-        long cooldownValue = shop.getCooldownValue();
-        int resetTimeTicks = shop.getResetTimeTicks();
-        
-        // 【新增】获取抽奖历史记录
-        List<IQuestCapability.GachaDrawRecord> drawHistory = cap.getGachaDrawHistory(shop.getShopId());
-        
-        // 发送网络包给客户端
-        ArcQuestNetwork.CHANNEL.send(
-            PacketDistributor.PLAYER.with(() -> player),
-            new S2COpenGachaPacket(
-                shop.getShopId(), pityCounter, totalDraws,
-                canDraw, remainingDraws,
-                lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
-                cooldownType, cooldownValue, resetTimeTicks,
-                drawHistory
-            )
-        );
-        
-        LOGGER.info("[Gacha] Server opened gacha '{}' for player {} (pity={}, draws={}, canDraw={})", 
-            shop.getShopId(), player.getName().getString(), pityCounter, totalDraws, canDraw);
+        // 【统一】使用 GachaScreenOpener 打开界面（自动处理重置和状态同步）
+        GachaScreenOpener.openGachaScreen(player, shop, cap);
     }
     
     public static void handle(S2COpenGachaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
