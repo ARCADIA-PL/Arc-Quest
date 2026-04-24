@@ -150,53 +150,59 @@ public class S2COpenGachaPacket {
      * 服务端打开抽奖界面（从命令或 NPC 调用）。
      */
     public static void handleServerOpen(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
-        // 【统一】使用 GachaScreenOpener 打开界面（自动处理重置和状态同步）
         GachaScreenOpener.openGachaScreen(player, shop, cap);
     }
-    
+
     public static void handle(S2COpenGachaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
-            
-            // 验证商店存在
+
             var shopDef = GachaRegistry.get(pkt.shopId);
             if (shopDef == null) {
                 return;
             }
-            
-            // 获取玩家能力并触发打开事件
+
             var cap = QuestCapabilityProvider.getOrNull(mc.player);
             if (cap != null) {
-                // 注意：客户端事件中 player 为 null，仅服务端事件有完整 player 信息
                 var openEvent = new GachaEvents.OpenedEvent(null, pkt.shopId, cap);
                 MinecraftForge.EVENT_BUS.post(openEvent);
             }
-            
-            // 【新增】更新客户端缓存并同步完整历史记录（一次性替换）
+
             List<ClientGachaCache.DrawRecord> historyRecords = new ArrayList<>();
             for (var record : pkt.drawHistory) {
                 historyRecords.add(new ClientGachaCache.DrawRecord(
-                    record.itemId(),
-                    record.rarityName(),
-                    record.actualCount(),
-                    record.pityTriggered(),
-                    record.drawTime()
+                        record.itemId(),
+                        record.rarityName(),
+                        record.actualCount(),
+                        record.pityTriggered(),
+                        record.drawTime()
                 ));
             }
-            
+
+            // 先用权威快照覆盖
             ClientGachaCache.INSTANCE.updateSessionWithHistory(
-                pkt.shopId, pkt.pityCounter, pkt.totalDraws, pkt.canDraw,
-                pkt.remainingDraws,
-                pkt.lastDrawRealTime, pkt.lastDrawGameTime, pkt.lastDrawDayTime,
-                pkt.cooldownType, pkt.cooldownValue, pkt.resetTimeTicks,
-                historyRecords
+                    pkt.shopId, pkt.pityCounter, pkt.totalDraws, pkt.canDraw,
+                    pkt.remainingDraws,
+                    pkt.lastDrawRealTime, pkt.lastDrawGameTime, pkt.lastDrawDayTime,
+                    pkt.cooldownType, pkt.cooldownValue, pkt.resetTimeTicks,
+                    historyRecords
             );
+
+            // 再显式写入“支付不足”失败态（如果有）
             if (!pkt.shortfallLines.isEmpty()) {
-                ClientGachaCache.INSTANCE.recordDrawFailure(pkt.shopId, GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name(), pkt.shortfallLines);
+                ClientGachaCache.INSTANCE.recordDrawFailure(
+                        pkt.shopId,
+                        GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name(),
+                        pkt.shortfallLines
+                );
             }
-            
-            // 打开抽奖界面
+
+            if (mc.screen instanceof GachaScreen gachaScreen && gachaScreen.getShopId().equals(pkt.shopId)) {
+                gachaScreen.getPreviewPanel().updateDataSnapshot();
+                return;
+            }
+
             mc.setScreen(new GachaScreen(pkt.shopId));
         });
         ctx.get().setPacketHandled(true);

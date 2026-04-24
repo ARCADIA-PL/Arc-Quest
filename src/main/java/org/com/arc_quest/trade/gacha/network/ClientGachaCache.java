@@ -108,6 +108,9 @@ public final class ClientGachaCache {
         newSession.drawHistory.addAll(fullHistory);
         applyLatestHistoryState(newSession, fullHistory);
 
+        newSession.lastFailReason = null;
+        newSession.lastShortfallLines = List.of();
+
         gachaSessions.put(shopId, newSession);
     }
 

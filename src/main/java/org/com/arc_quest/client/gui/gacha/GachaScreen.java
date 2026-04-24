@@ -62,6 +62,10 @@ public class GachaScreen extends Screen {
     public String getShopId() { return shopId; }
     public GachaShopDefinition getShopDef() { return shopDef; }
 
+    public GachaPreviewPanel getPreviewPanel() {
+        return previewPanel;
+    }
+
     public void startDrawRequest() {
         if (currentPhase != Phase.PREVIEW) {
             LOGGER.debug("[Gacha-Client] Draw request ignored: currentPhase={}", currentPhase);

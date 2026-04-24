@@ -4,6 +4,11 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 
 import java.util.function.Supplier;
 
@@ -15,7 +20,7 @@ import java.util.function.Supplier;
  */
 public class C2SConfirmDrawPacket {
 
-    private final String shopId;
+    final String shopId;
 
     public C2SConfirmDrawPacket(String shopId) {
         this.shopId = shopId;
@@ -39,9 +44,16 @@ public class C2SConfirmDrawPacket {
             if (!success) {
                 Arc_quest.LOGGER.warn("[Gacha] Player {} tried to confirm draw for shop '{}' but no matching pending data found or it expired",
                         player.getName().getString(), pkt.shopId);
-            } else {
-                Arc_quest.LOGGER.info("[Gacha] Confirmed and granted draw reward for player {} in shop {}",
-                        player.getName().getString(), pkt.shopId);
+                return;
+            }
+
+            Arc_quest.LOGGER.info("[Gacha] Confirmed and granted draw reward for player {} in shop {}",
+                    player.getName().getString(), pkt.shopId);
+
+            GachaShopDefinition shop = GachaRegistry.get(pkt.shopId);
+            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+            if (shop != null && cap != null) {
+                GachaScreenOpener.openGachaScreen(player, shop, cap);
             }
         });
         ctx.get().setPacketHandled(true);

@@ -63,20 +63,21 @@ public class GachaScreenOpener {
         // 触发打开事件
         var openEvent = new GachaEvents.OpenedEvent(player, shop.getShopId(), cap);
         MinecraftForge.EVENT_BUS.post(openEvent);
-        
-        // 【修复】使用统一的 canDraw() 方法计算按钮状态
-        boolean canDraw = session.canDraw();
+
+        boolean canDrawByRule = session.canDraw();
         int remainingDraws = session.getRemainingDraws();
         List<CostShortfallLine> shortfallLines = List.of();
-        
-        // 【新增】额外检查成本是否充足（对标商店系统）
-        if (canDraw) {
+
+        boolean canAfford = true;
+        if (canDrawByRule) {
             ITradeOffer drawCost = shop.getDrawCost();
             if (drawCost != null && !drawCost.canAfford(player)) {
-                canDraw = false;
+                canAfford = false;
                 shortfallLines = drawCost.buildShortfallLines(player);
             }
         }
+
+        boolean canDraw = canDrawByRule && canAfford;
         
         // 获取当前保底计数和总抽奖次数（使用重置后的值）
         int pityCounter = cap.getGachaPityCounter(shop.getShopId());

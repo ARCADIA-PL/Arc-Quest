@@ -574,19 +574,21 @@ public class GachaPreviewPanel {
 
     private void renderGlassButton(GuiGraphics g, Layout l, int mx, int my, float dt, float alpha, boolean waiting, boolean isWiping, boolean isClosing) {
         boolean onCooldown = snapshotCooldownText != null && !snapshotCooldownText.isEmpty();
-        boolean serverCanDraw = snapshotCanDraw;
         int remainingDraws = snapshotRemainingDraws;
         String cooldownText = snapshotCooldownText;
         String lastFailReason = snapshotFailReason;
         boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
 
-        boolean canDraw = !waiting && serverCanDraw && !onCooldown;
-        boolean unavailable = !waiting && !canDraw;
         boolean maxed = remainingDraws == 0;
-        boolean insufficientFunds = !onCooldown && unavailable && ("CANNOT_AFFORD".equals(lastFailReason) || hasShortfall);
-        boolean locked = !onCooldown && unavailable && !maxed && !insufficientFunds;
+        boolean insufficientFunds = "CANNOT_AFFORD".equals(lastFailReason) || hasShortfall;
+        boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
 
-        boolean hov = canDraw && mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH();
+        boolean canInteract = !waiting && !onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw;
+        boolean unavailable = !waiting && !canInteract;
+
+        boolean hov = canInteract
+                && mx >= l.btnX() && mx < l.btnX() + l.btnW()
+                && my >= l.btnY() && my < l.btnY() + l.btnH();
 
         if (!isWiping && !isClosing) {
             btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 10f, dt);
@@ -600,6 +602,7 @@ public class GachaPreviewPanel {
                 : onCooldown ? 0x777777
                 : maxed ? 0x8A5A5A
                 : locked ? 0x7A6A8A
+                : insufficientFunds ? 0x8A5A5A
                 : unavailable ? 0x888888
                 : parent.getShopDef().getThemeColor();
 
@@ -628,7 +631,14 @@ public class GachaPreviewPanel {
             } else {
                 text = Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle").getString();
             }
-            g.drawCenteredString(Minecraft.getInstance().font, text, drawX + l.btnW()/2, l.btnY() + l.btnH()/2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, btnTextAlpha));
+
+            g.drawCenteredString(
+                    Minecraft.getInstance().font,
+                    text,
+                    drawX + l.btnW() / 2,
+                    l.btnY() + l.btnH() / 2 - 4,
+                    HudAnimUtil.withAlpha(0xFFFFFF, btnTextAlpha)
+            );
         }
 
         renderShortfallTooltip(g, l, alpha, drawX);
@@ -684,19 +694,28 @@ public class GachaPreviewPanel {
         Layout l = getLayout();
         if (mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH()) {
             boolean onCooldown = snapshotCooldownText != null && !snapshotCooldownText.isEmpty();
-            boolean serverCanDraw = snapshotCanDraw;
+            boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
+            boolean insufficientFunds = "CANNOT_AFFORD".equals(snapshotFailReason) || hasShortfall;
+            boolean maxed = snapshotRemainingDraws == 0;
+            boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
 
-            if (onCooldown || !serverCanDraw) {
+            boolean canInteract = !onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw;
+
+            if (!canInteract) {
                 feedbackSuccess = false;
                 feedbackAnim = 1f;
-                if (!serverCanDraw && snapshotShortfall != null && !snapshotShortfall.isEmpty()) {
+                if (insufficientFunds) {
                     shortfallTooltipAnim = 1f;
                 }
-                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
+                Minecraft.getInstance().getSoundManager().play(
+                        SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f)
+                );
                 return true;
             }
 
-            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0f));
+            Minecraft.getInstance().getSoundManager().play(
+                    SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0f)
+            );
             parent.startDrawRequest();
             return true;
         }
