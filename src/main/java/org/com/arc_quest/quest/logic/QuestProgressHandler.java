@@ -311,26 +311,27 @@ public final class QuestProgressHandler {
      * 玩家选择分支过渡（由网络包 C2S 触发）。
      *
      * @param choiceIndex 玩家选择的 choice 索引
+     * @return true 选择并推进成功；false 被拒绝或无效
      */
-    public static void handlePlayerChoice(ServerPlayer player,
-                                          String questId,
-                                          int choiceIndex) {
+    public static boolean handlePlayerChoice(ServerPlayer player,
+                                             String questId,
+                                             int choiceIndex) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
-        if (data == null) return;
+        if (data == null) return false;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null) return;
+        if (def == null) return false;
 
         PhaseDefinition currentPhase = def.getPhase(data.getCurrentPhaseId());
-        if (currentPhase == null) return;
+        if (currentPhase == null) return false;
 
         // 从 choices 列表中获取（而不是 transitions）
         List<ChoiceOption> choices = currentPhase.getChoices();
         if (choiceIndex < 0 || choiceIndex >= choices.size()) {
             LOGGER.warn("[ArcQuest] Invalid choice index {} for quest {}", choiceIndex, questId);
-            return;
+            return false;
         }
 
         ChoiceOption chosen = choices.get(choiceIndex);
@@ -342,7 +343,7 @@ public final class QuestProgressHandler {
                 visibleCondition.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
         if (!conditionsMet) {
             LOGGER.debug("[ArcQuest] Choice conditions not met for index {}", choiceIndex);
-            return;
+            return false;
         }
 
         // 设置标记
@@ -356,9 +357,11 @@ public final class QuestProgressHandler {
         String targetPhaseId = chosen.getTargetPhaseId();
         if (targetPhaseId != null && !targetPhaseId.isEmpty()) {
             advanceToPhase(player, cap, data, def, targetPhaseId);
-        } else {
-            LOGGER.warn("[ArcQuest] Choice has no target phase: {}", choiceIndex);
+            return true;
         }
+
+        LOGGER.warn("[ArcQuest] Choice has no target phase: {}", choiceIndex);
+        return false;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -398,10 +401,10 @@ public final class QuestProgressHandler {
     /**
      * 放弃任务。
      */
-    public static void abandonQuest(ServerPlayer player, String questId) {
+    public static boolean abandonQuest(ServerPlayer player, String questId) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
-        if (!cap.isQuestActive(questId)) return;
+        if (!cap.isQuestActive(questId)) return false;
 
         // 先标记为 FAILED，再移除（这样会出现在 FAILED 标签页）
         QuestRuntimeData data = cap.getActiveQuest(questId);
@@ -417,6 +420,7 @@ public final class QuestProgressHandler {
 
         syncFullDataAndPush(player, cap); // 全量同步最安全
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
+        return true;
     }
 
     /**

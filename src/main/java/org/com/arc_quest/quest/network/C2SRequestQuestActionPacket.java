@@ -5,6 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
+import org.com.arc_quest.quest.network.SyncObservability.Reason;
 import org.slf4j.Logger;
 
 import java.util.function.Supplier;
@@ -74,19 +75,34 @@ public class C2SRequestQuestActionPacket {
 
             switch (pkt.action) {
                 case ACCEPT -> {
+                    SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
+                            SyncObservability.Stage.ACTION, Reason.QUEST_ACCEPT);
                     boolean success = QuestProgressHandler.acceptQuest(sender, pkt.questId);
+                    SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
+                            SyncObservability.Stage.RESULT,
+                            success ? Reason.QUEST_ACCEPT_SUCCESS : Reason.QUEST_ACCEPT_REJECTED);
                     LOGGER.debug("[ArcQuest] C2S ACCEPT quest={}, success={}, player={}",
                             pkt.questId, success, sender.getGameProfile().getName());
                 }
                 case ABANDON -> {
-                    QuestProgressHandler.abandonQuest(sender, pkt.questId);
-                    LOGGER.debug("[ArcQuest] C2S ABANDON quest={}, player={}",
-                            pkt.questId, sender.getGameProfile().getName());
+                    SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
+                            SyncObservability.Stage.ACTION, Reason.QUEST_ABANDON);
+                    boolean success = QuestProgressHandler.abandonQuest(sender, pkt.questId);
+                    SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
+                            SyncObservability.Stage.RESULT,
+                            success ? Reason.QUEST_ABANDON_SUCCESS : Reason.QUEST_ABANDON_REJECTED);
+                    LOGGER.debug("[ArcQuest] C2S ABANDON quest={}, success={}, player={}",
+                            pkt.questId, success, sender.getGameProfile().getName());
                 }
                 case CHOOSE -> {
-                    QuestProgressHandler.handlePlayerChoice(sender, pkt.questId, pkt.transitionIndex);
-                    LOGGER.debug("[ArcQuest] C2S CHOOSE quest={}, idx={}, player={}",
-                            pkt.questId, pkt.transitionIndex, sender.getGameProfile().getName());
+                    SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
+                            SyncObservability.Stage.ACTION, Reason.QUEST_CHOOSE);
+                    boolean success = QuestProgressHandler.handlePlayerChoice(sender, pkt.questId, pkt.transitionIndex);
+                    SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
+                            SyncObservability.Stage.RESULT,
+                            success ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED);
+                    LOGGER.debug("[ArcQuest] C2S CHOOSE quest={}, idx={}, success={}, player={}",
+                            pkt.questId, pkt.transitionIndex, success, sender.getGameProfile().getName());
                 }
             }
         });

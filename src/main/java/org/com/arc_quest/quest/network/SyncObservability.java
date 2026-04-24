@@ -31,6 +31,34 @@ public final class SyncObservability {
         }
     }
 
+    public enum Reason {
+        UNKNOWN("unknown"),
+        MANUAL_SYNC("manual_sync"),
+        PURCHASE_RESULT("purchase_result"),
+        DELTA_PROGRESS_SYNC("delta_progress_sync"),
+
+        QUEST_ACCEPT("quest_accept"),
+        QUEST_ABANDON("quest_abandon"),
+        QUEST_CHOOSE("quest_choose"),
+
+        QUEST_ACCEPT_SUCCESS("quest_accept_success"),
+        QUEST_ACCEPT_REJECTED("quest_accept_rejected"),
+        QUEST_ABANDON_SUCCESS("quest_abandon_success"),
+        QUEST_ABANDON_REJECTED("quest_abandon_rejected"),
+        QUEST_CHOOSE_SUCCESS("quest_choose_success"),
+        QUEST_CHOOSE_REJECTED("quest_choose_rejected");
+
+        private final String value;
+
+        Reason(String value) {
+            this.value = value;
+        }
+
+        public String value() {
+            return value;
+        }
+    }
+
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final boolean VERBOSE_LOG = Boolean.parseBoolean(
             System.getProperty("arcquest.sync.log.verbose", "false")
@@ -73,6 +101,14 @@ public final class SyncObservability {
     /**
      * 轻量链路追踪：用于串联 open -> sync -> action -> result。
      */
+    public static void trace(String domain,
+                             String shopId,
+                             String playerName,
+                             Stage stage,
+                             Reason reason) {
+        trace(domain, shopId, playerName, stage, reason != null ? reason.value() : null);
+    }
+
     public static void trace(String domain,
                              String shopId,
                              String playerName,
