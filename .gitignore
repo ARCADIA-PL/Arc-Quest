@@ -229,3 +229,4 @@ typings/
 
 # Yarn Integrity file
 .yarn-integrity
+.cursor/rules/mod.md

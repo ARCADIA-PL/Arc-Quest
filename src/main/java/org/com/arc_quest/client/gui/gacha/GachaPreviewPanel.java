@@ -451,9 +451,10 @@ public class GachaPreviewPanel {
 
         boolean onCooldown = ClientGachaCache.INSTANCE.isOnCooldown(shopId);
         boolean serverCanDraw = ClientGachaCache.INSTANCE.canDraw(shopId);
+        String lastFailReason = ClientGachaCache.INSTANCE.getLastFailReason(shopId);
 
         boolean canDraw = !waiting && serverCanDraw && !onCooldown;
-        boolean costInsufficient = !waiting && !serverCanDraw && !onCooldown;
+        boolean unavailable = !waiting && !canDraw;
 
         boolean hov = canDraw && mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH();
 
@@ -463,7 +464,9 @@ public class GachaPreviewPanel {
         }
 
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
-        int baseColor = waiting || onCooldown ? 0x666666 : (costInsufficient ? 0xFF5555 : parent.getShopDef().getThemeColor());
+        int baseColor = waiting || onCooldown
+                ? 0x666666
+                : (unavailable ? 0x888888 : parent.getShopDef().getThemeColor());
 
         int shakeX = (feedbackAnim > 0 && !feedbackSuccess) ? (int)(Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0;
         int drawX = l.btnX() + shakeX;
@@ -479,8 +482,13 @@ public class GachaPreviewPanel {
                 text = Component.translatable("arc_quest.gui.gacha.btn.decrypting").getString();
             } else if (onCooldown) {
                 text = Component.translatable("arc_quest.gui.gacha.btn.cooldown").getString();
-            } else if (costInsufficient) {
-                text = Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds").getString();
+            } else if (unavailable) {
+                text = switch (lastFailReason != null ? lastFailReason : "") {
+                    case "CANNOT_AFFORD" -> Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds").getString();
+                    case "MAX_DRAWS_REACHED" -> Component.translatable("arc_quest.gui.trade.btn.empty").getString();
+                    case "CONDITION_NOT_MET", "NOT_VISIBLE" -> Component.translatable("arc_quest.gui.trade.btn.locked").getString();
+                    default -> Component.translatable("arc_quest.gui.trade.btn.locked").getString();
+                };
             } else {
                 text = Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle").getString();
             }
