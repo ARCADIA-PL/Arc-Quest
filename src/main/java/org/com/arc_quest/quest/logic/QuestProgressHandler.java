@@ -101,8 +101,8 @@ public final class QuestProgressHandler {
         registerPhaseObjectives(player, def, firstPhase);
 
         // 同步 & 事件
-        ArcQuestNetwork.syncQuestState(player, data);
-        ArcQuestNetwork.syncFlagsAndVars(player, cap);
+        syncQuestStateAndPush(player, data);
+        syncFlagsVarsAndPush(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
         
         // 发布 Forge 事件（供附属模组监听）
@@ -167,7 +167,7 @@ public final class QuestProgressHandler {
                 objIndex, newProgress, required);
 
         // 使用增量同步替代全量同步，减少带宽占用
-        ArcQuestNetwork.syncDeltaProgress(player, questId, objIndex, newProgress);
+        syncDeltaProgressAndPush(player, questId, objIndex, newProgress);
 
         // 触发事件
         QuestEventBus.fire(QuestChangeEvent.objectiveProgressed(
@@ -229,7 +229,7 @@ public final class QuestProgressHandler {
                     data.getCurrentPhaseId()));
 
             // 同步状态并显示Toast
-            ArcQuestNetwork.syncQuestState(player, data);
+            syncQuestStateAndPush(player, data);
             return;
         }
 
@@ -263,7 +263,7 @@ public final class QuestProgressHandler {
                 data.getCurrentPhaseId(),
                 data.getCurrentPhaseId()));
 
-        ArcQuestNetwork.syncQuestState(player, data);
+        syncQuestStateAndPush(player, data);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -298,7 +298,7 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName(), def.getId(), nextPhaseId);
 
         // 同步 & 事件
-        ArcQuestNetwork.syncQuestState(player, data);
+        syncQuestStateAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.phaseChanged(
                 def.getId(), fromPhaseId, nextPhaseId));
         
@@ -388,7 +388,7 @@ public final class QuestProgressHandler {
         LOGGER.info("[ArcQuest] Player {} failed quest: {}",
                 player.getGameProfile().getName(), questId);
 
-        ArcQuestNetwork.syncQuestState(player, data);
+        syncQuestStateAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         
         // 发布 Forge 事件（供附属模组监听）
@@ -415,7 +415,7 @@ public final class QuestProgressHandler {
         LOGGER.info("[ArcQuest] Player {} abandoned quest: {}",
                 player.getGameProfile().getName(), questId);
 
-        ArcQuestNetwork.syncFullData(player, cap); // 全量同步最安全
+        syncFullDataAndPush(player, cap); // 全量同步最安全
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
     }
 
@@ -467,8 +467,8 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName(), logPrefix, questId);
 
         // 同步 & 事件
-        ArcQuestNetwork.syncQuestState(player, data);
-        ArcQuestNetwork.syncFlagsAndVars(player, cap);
+        syncQuestStateAndPush(player, data);
+        syncFlagsVarsAndPush(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
         
         // 发布 Forge 事件（供附属模组监听）
@@ -483,8 +483,24 @@ public final class QuestProgressHandler {
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data != null) {
-            ArcQuestNetwork.syncQuestState(player, data);
+            syncQuestStateAndPush(player, data);
         }
+    }
+
+    private static void syncQuestStateAndPush(ServerPlayer player, QuestRuntimeData data) {
+        ArcQuestNetwork.syncQuestState(player, data);
+    }
+
+    private static void syncFlagsVarsAndPush(ServerPlayer player, IQuestCapability cap) {
+        ArcQuestNetwork.syncFlagsAndVars(player, cap);
+    }
+
+    private static void syncFullDataAndPush(ServerPlayer player, IQuestCapability cap) {
+        ArcQuestNetwork.syncFullData(player, cap);
+    }
+
+    private static void syncDeltaProgressAndPush(ServerPlayer player, String questId, int objIndex, int newProgress) {
+        ArcQuestNetwork.syncDeltaProgress(player, questId, objIndex, newProgress);
     }
 
     // ═══════════════════════════════════════════════════════
