@@ -19,6 +19,9 @@ import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.QuestEventManager;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.com.arc_quest.util.CommandExecutor;
@@ -281,6 +284,31 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player, DialogueSession session) { 
             execute(player); 
+        }
+    }
+
+    record OpenGacha(String shopId, String restoreNodeId) implements DialogueAction {
+        public OpenGacha(String shopId) {
+            this(shopId, null);
+        }
+
+        @Override
+        public void execute(ServerPlayer player) {
+            GachaShopDefinition shop = GachaRegistry.get(shopId);
+            if (shop == null) {
+                LOGGER.warn("[Dialogue] Unknown gacha shop: {}", shopId);
+                return;
+            }
+            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+            if (cap == null) {
+                LOGGER.warn("[Dialogue] Missing quest capability while opening gacha: {}", shopId);
+                return;
+            }
+            GachaScreenOpener.openGachaScreen(player, shop, cap, restoreNodeId);
+        }
+        @Override
+        public void execute(ServerPlayer player, DialogueSession session) {
+            execute(player);
         }
     }
     record LambdaAction(BiConsumer<ServerPlayer, Entity> handler, Entity target) implements DialogueAction {

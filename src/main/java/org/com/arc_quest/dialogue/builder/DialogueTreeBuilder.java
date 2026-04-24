@@ -765,6 +765,19 @@ public class DialogueTreeBuilder {
         }
 
         /**
+         * 打开抽奖界面。
+         * <p>
+         * 默认启用 {@code restoreToCurrentNode()}，抽奖界面关闭后自动恢复对话。
+         */
+        public ChoiceBuilder openGacha(String shopId) {
+            if (this.restoreNodeId == null) {
+                this.restoreNodeId = "__CURRENT__";
+            }
+            actions.add(new DialogueAction.OpenGacha(shopId, restoreNodeId));
+            return this;
+        }
+
+        /**
          * 给予玩家石剑（预设动作）。
          */
         public ChoiceBuilder presetStoneSword() {
