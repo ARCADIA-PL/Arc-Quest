@@ -334,7 +334,7 @@ public final class ClientGachaCache {
      */
     public int getPityProgress(String shopId) {
         var session = gachaSessions.get(shopId);
-        return session != null ? session.getPityCounter() : -1;
+        return session != null ? session.authority().pityCounter() : -1;
     }
 
     /**
@@ -345,7 +345,7 @@ public final class ClientGachaCache {
      */
     public int getTotalDraws(String shopId) {
         var session = gachaSessions.get(shopId);
-        return session != null ? session.getTotalDraws() : 0;
+        return session != null ? session.authority().totalDraws() : 0;
     }
     
     /**
@@ -356,23 +356,23 @@ public final class ClientGachaCache {
      */
     public boolean canDraw(String shopId) {
         var session = gachaSessions.get(shopId);
-        return session != null && session.canDraw();
+        return session != null && session.authority().canDraw();
     }
 
     public int getRemainingDraws(String shopId) {
         var session = gachaSessions.get(shopId);
-        return session != null ? session.getRemainingDraws() : -1;
+        return session != null ? session.authority().remainingDraws() : -1;
     }
 
     @Nullable
     public String getLastFailReason(String shopId) {
         var session = gachaSessions.get(shopId);
-        return session != null ? session.getLastFailReason() : null;
+        return session != null ? session.feedback().failReason() : null;
     }
 
     public List<CostShortfallLine> getLastShortfall(String shopId) {
         var session = gachaSessions.get(shopId);
-        return session != null ? session.getLastShortfallLines() : List.of();
+        return session != null ? session.feedback().shortfallLines() : List.of();
     }
 
     /**
@@ -762,6 +762,42 @@ public final class ClientGachaCache {
         public List<DrawRecord> getDrawHistory() { 
             return Collections.unmodifiableList(drawHistory); 
         }
+
+        public AuthoritySnapshot authority() {
+            return new AuthoritySnapshot(
+                    pityCounter,
+                    totalDraws,
+                    canDraw,
+                    remainingDraws,
+                    lastDrawRealTime,
+                    lastDrawGameTime,
+                    lastDrawDayTime,
+                    cooldownType,
+                    cooldownValue,
+                    resetTimeTicks
+            );
+        }
+
+        public FeedbackSnapshot feedback() {
+            return new FeedbackSnapshot(lastFailReason, List.copyOf(lastShortfallLines));
+        }
+    }
+
+    public record AuthoritySnapshot(
+            int pityCounter,
+            int totalDraws,
+            boolean canDraw,
+            int remainingDraws,
+            long lastDrawRealTime,
+            long lastDrawGameTime,
+            long lastDrawDayTime,
+            int cooldownType,
+            long cooldownValue,
+            int resetTimeTicks
+    ) {
+    }
+
+    public record FeedbackSnapshot(@Nullable String failReason, List<CostShortfallLine> shortfallLines) {
     }
 
     /**
