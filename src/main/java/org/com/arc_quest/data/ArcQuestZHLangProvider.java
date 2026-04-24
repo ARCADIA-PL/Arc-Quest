@@ -65,6 +65,9 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // ── Trade Tooltip ──
         addTradeGuiText("tooltip", "limit", "限购 / Limit: %1$s / %2$s");
         addTradeGuiText("tooltip", "cooldown", "冷却 / Cooldown: %1$s");
+        addTradeGuiText("tooltip", "shortfall_summary", "// FUNDING ERROR");
+        addTradeGuiText("tooltip", "shortfall_line", "%1$s ×%2$s");
+        addTradeGuiText("tooltip", "shortfall_meta", "需 %1$s / 持有 %2$s");
 
         // ── Trade Error Messages ──
         addTradeGuiText("error", "unknown_shop", "未知商店");
@@ -411,6 +414,11 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.gacha.btn.decrypting", "解密中...");
         add("arc_quest.gui.gacha.btn.cooldown", "冷却中");
         add("arc_quest.gui.gacha.btn.insufficient_funds", "资金不足");
+        add("arc_quest.gui.gacha.tooltip.rarity", "稀有度 // %s");
+        add("arc_quest.gui.gacha.tooltip.count_fixed", "数量 // %s");
+        add("arc_quest.gui.gacha.tooltip.count_range", "数量区间 // %s - %s");
+        add("arc_quest.gui.gacha.tooltip.weight", "权重 // %s");
+        add("arc_quest.gui.gacha.tooltip.pity_enabled", "PITY // ENABLED");
         add("arc_quest.gui.gacha.btn.unlock_receptacle", "解锁容器");
 
         // ── 结果界面 ──

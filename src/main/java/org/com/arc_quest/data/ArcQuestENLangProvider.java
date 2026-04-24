@@ -65,6 +65,9 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // ── Trade Tooltip ──
         addTradeGuiText("tooltip", "limit", "Limit: %1$s / %2$s");
         addTradeGuiText("tooltip", "cooldown", "Cooldown: %1$s");
+        addTradeGuiText("tooltip", "shortfall_summary", "// FUNDING ERROR");
+        addTradeGuiText("tooltip", "shortfall_line", "%1$s x%2$s");
+        addTradeGuiText("tooltip", "shortfall_meta", "Need %1$s / Have %2$s");
 
         // ── Trade Error Messages ──
         addTradeGuiText("error", "unknown_shop", "Unknown Shop");
@@ -411,6 +414,11 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.gacha.btn.decrypting", "Decrypting...");
         add("arc_quest.gui.gacha.btn.cooldown", "On Cooldown");
         add("arc_quest.gui.gacha.btn.insufficient_funds", "Insufficient Funds");
+        add("arc_quest.gui.gacha.tooltip.rarity", "RARITY // %s");
+        add("arc_quest.gui.gacha.tooltip.count_fixed", "COUNT // %s");
+        add("arc_quest.gui.gacha.tooltip.count_range", "COUNT RANGE // %s - %s");
+        add("arc_quest.gui.gacha.tooltip.weight", "WEIGHT // %s");
+        add("arc_quest.gui.gacha.tooltip.pity_enabled", "PITY // ENABLED");
         add("arc_quest.gui.gacha.btn.unlock_receptacle", "Unlock Receptacle");
 
         // ── Result Screen ──

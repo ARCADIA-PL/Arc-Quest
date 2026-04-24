@@ -19,6 +19,7 @@ import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.com.arc_quest.trade.network.ClientTradeCache;
 import org.com.arc_quest.trade.network.S2COpenTradePacket;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
 import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
@@ -53,6 +54,8 @@ public abstract class AbstractTradeScreen extends Screen {
     private float animProgress = 0f;
     private float feedbackScale = 1.0f;
     private float feedbackShake = 0f;
+    private float shortfallTooltipTimer = 0f;
+    private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
 
     public AbstractTradeScreen(String title, String shopId) {
         super(Component.translatable(title));
@@ -97,6 +100,9 @@ public abstract class AbstractTradeScreen extends Screen {
         feedbackSuccess = false;
         feedbackAnim = 1f;
         feedbackShake = 6f;
+        if (_reason == S2COpenTradePacket.FailReason.CANNOT_AFFORD) {
+            shortfallTooltipTimer = SHORTFALL_TOOLTIP_DURATION;
+        }
     }
 
     public String getShopId() { return shopId; }
@@ -148,6 +154,10 @@ public abstract class AbstractTradeScreen extends Screen {
         } else {
             suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
             dt = realDt;
+        }
+
+        if (shortfallTooltipTimer > 0f && dt > 0f) {
+            shortfallTooltipTimer = Math.max(0f, shortfallTooltipTimer - dt);
         }
 
         transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.14f : getOpenAnimSpeed(), dt);
@@ -207,6 +217,10 @@ public abstract class AbstractTradeScreen extends Screen {
         boolean onCd;
         int purchases, maxP;
         int themeColor;
+        boolean showShortfall;
+        List<FormattedCharSequence> shortfallSummaryLines;
+        List<FormattedCharSequence> shortfallDetailLines;
+        List<FormattedCharSequence> shortfallMetaLines;
     }
 
     private TooltipData calcTooltipData(TradeEntry entry, int gi, int mx, int my) {
@@ -221,16 +235,47 @@ public abstract class AbstractTradeScreen extends Screen {
 
         int padding = 10;
         d.descLines = entry.getDescription() != null ? font.split(entry.getDescription(), 180) : new ArrayList<>();
+        d.shortfallSummaryLines = new ArrayList<>();
+        d.shortfallDetailLines = new ArrayList<>();
+        d.shortfallMetaLines = new ArrayList<>();
+        List<CostShortfallLine> shortfalls = ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId());
+        d.showShortfall = shortfallTooltipTimer > 0f && !shortfalls.isEmpty();
+        if (d.showShortfall) {
+            d.shortfallSummaryLines.addAll(font.split(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary"), 200));
+            for (CostShortfallLine shortfall : shortfalls) {
+                if (shortfall.missing() > 0) {
+                    d.shortfallDetailLines.addAll(font.split(Component.translatable(
+                            "arc_quest.gui.trade.tooltip.shortfall_line",
+                            shortfall.label(),
+                            shortfall.missing()), 200));
+                    d.shortfallMetaLines.addAll(font.split(Component.translatable(
+                            "arc_quest.gui.trade.tooltip.shortfall_meta",
+                            shortfall.required(),
+                            shortfall.owned()), 200));
+                } else {
+                    d.shortfallDetailLines.addAll(font.split(shortfall.label(), 200));
+                }
+            }
+        }
 
         int titleW = font.width(entry.getDisplayName());
-        int totalW = Math.max(140, titleW + 32);
-        for(var line : d.descLines) totalW = Math.max(totalW, font.width(line));
+        int totalW = Math.max(188, titleW + 40);
+        for (var line : d.descLines) totalW = Math.max(totalW, font.width(line));
+        for (var line : d.shortfallSummaryLines) totalW = Math.max(totalW, font.width(line));
+        for (var line : d.shortfallDetailLines) totalW = Math.max(totalW, font.width(line));
+        for (var line : d.shortfallMetaLines) totalW = Math.max(totalW, font.width(line) + 6);
         d.w = totalW + padding * 2;
 
         int totalH = padding * 2 + 16;
-        if (!d.descLines.isEmpty()) totalH += 6 + d.descLines.size() * font.lineHeight;
-        if (d.maxP > 0) totalH += 18;
-        if (d.onCd) totalH += font.lineHeight + 4;
+        if (d.showShortfall) {
+            if (!d.shortfallSummaryLines.isEmpty()) totalH += 8 + d.shortfallSummaryLines.size() * font.lineHeight;
+            if (!d.shortfallDetailLines.isEmpty()) totalH += 6 + d.shortfallDetailLines.size() * font.lineHeight;
+            if (!d.shortfallMetaLines.isEmpty()) totalH += 2 + d.shortfallMetaLines.size() * font.lineHeight;
+        } else {
+            if (!d.descLines.isEmpty()) totalH += 6 + d.descLines.size() * font.lineHeight;
+            if (d.maxP > 0) totalH += 18;
+            if (d.onCd) totalH += font.lineHeight + 4;
+        }
         d.h = totalH;
 
         int yOffset = 18;
@@ -339,12 +384,35 @@ public abstract class AbstractTradeScreen extends Screen {
         }
         currentY += 20;
 
-        if (!target.descLines.isEmpty() || target.maxP > 0 || target.onCd) {
+        if (!target.descLines.isEmpty() || target.maxP > 0 || target.onCd || target.showShortfall) {
             g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int)(safeAlpha * 0.3f)));
-            currentY += 5;
+            if (target.showShortfall) {
+                g.fill(drawX + padding, currentY - 4, drawX + padding + 52, currentY - 2, HudAnimUtil.withAlpha(0xFF5555, (int)(safeAlpha * 0.9f)));
+            }
+            currentY += 6;
         }
 
-        if (!target.descLines.isEmpty()) {
+        if (target.showShortfall) {
+            for (var line : target.shortfallSummaryLines) {
+                g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF8F8F, safeAlpha), true);
+                currentY += font.lineHeight;
+            }
+
+            if (!target.shortfallSummaryLines.isEmpty() && !target.shortfallDetailLines.isEmpty()) {
+                currentY += 4;
+            }
+
+            for (int i = 0; i < target.shortfallDetailLines.size(); i++) {
+                var line = target.shortfallDetailLines.get(i);
+                g.drawString(font, line, drawX + padding + 4, currentY, HudAnimUtil.withAlpha(0xF2F2F2, safeAlpha), true);
+                currentY += font.lineHeight;
+                if (i < target.shortfallMetaLines.size()) {
+                    g.drawString(font, target.shortfallMetaLines.get(i), drawX + padding + 12, currentY - 1, HudAnimUtil.withAlpha(0x8E8E8E, safeAlpha), false);
+                    currentY += font.lineHeight;
+                }
+            }
+            currentY += 2;
+        } else if (!target.descLines.isEmpty()) {
             for (var line : target.descLines) {
                 g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, safeAlpha), true);
                 currentY += font.lineHeight;
@@ -352,7 +420,7 @@ public abstract class AbstractTradeScreen extends Screen {
             currentY += 4;
         }
 
-        if (target.maxP > 0) {
+        if (!target.showShortfall && target.maxP > 0) {
             String limitStr = Component.translatable("arc_quest.gui.trade.tooltip.limit", target.purchases, target.maxP).getString();
             g.drawString(font, limitStr, drawX + padding, currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
             currentY += font.lineHeight + 2;
@@ -374,7 +442,7 @@ public abstract class AbstractTradeScreen extends Screen {
             currentY += barH + 6;
         }
 
-        if (target.onCd) {
+        if (!target.showShortfall && target.onCd) {
             String cdText = ClientTradeCache.INSTANCE.getCooldownText(shopId, gi);
             g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cdText).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
         }
