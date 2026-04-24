@@ -3,11 +3,9 @@ package org.com.arc_quest.trade.gacha.network;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.capability.IQuestCapability;
-import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
-import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 
 import java.util.function.Supplier;
@@ -53,24 +51,23 @@ public class C2SGachaControlPacket {
 
     public static void handle(C2SGachaControlPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
+            ServerPlayer sender = GachaRequestValidator.requirePlayer(ctx.get().getSender(), "gacha_control", pkt.shopId);
+            if (sender == null) return;
 
-            GachaShopDefinition shop = GachaRegistry.get(pkt.shopId);
-            if (shop == null) {
-                Arc_quest.LOGGER.warn("[Gacha] Unknown shop '{}' requested by {}", pkt.shopId, player.getName().getString());
-                return;
+            if (pkt.action == Action.SYNC) {
+                SyncObservability.recordRequest("gacha", pkt.shopId, sender.getName().getString());
+                SyncObservability.trace("gacha", pkt.shopId, sender.getName().getString(), SyncObservability.Stage.SYNC_REQUEST, "manual_sync");
             }
 
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-            if (cap == null) {
-                Arc_quest.LOGGER.warn("[Gacha] Player {} has no quest capability", player.getName().getString());
-                return;
-            }
+            GachaShopDefinition shop = GachaRequestValidator.requireShop(pkt.shopId, sender, "gacha_control");
+            if (shop == null) return;
+
+            IQuestCapability cap = GachaRequestValidator.requireCapability(sender, "gacha_control", pkt.shopId);
+            if (cap == null) return;
 
             switch (pkt.action) {
-                case OPEN -> GachaScreenOpener.openGachaScreen(player, shop, cap);
-                case SYNC -> GachaScreenOpener.syncGachaState(player, shop, cap);
+                case OPEN -> GachaScreenOpener.openGachaScreen(sender, shop, cap);
+                case SYNC -> GachaScreenOpener.syncGachaState(sender, shop, cap);
             }
         });
         ctx.get().setPacketHandled(true);

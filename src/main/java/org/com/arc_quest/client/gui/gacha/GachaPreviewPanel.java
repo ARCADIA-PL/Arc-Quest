@@ -710,7 +710,7 @@ public class GachaPreviewPanel {
         boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
 
         boolean maxed = remainingDraws == 0;
-        boolean insufficientFunds = "CANNOT_AFFORD".equals(lastFailReason) || hasShortfall;
+        boolean insufficientFunds = isCannotAffordFailure(lastFailReason) || hasShortfall;
         boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
 
         boolean canInteract = !waiting && !onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw;
@@ -745,22 +745,9 @@ public class GachaPreviewPanel {
 
         int btnTextAlpha = (int)(255 * alpha);
         if (btnTextAlpha > 5) {
-            String text;
-            if (waiting) {
-                text = Component.translatable("arc_quest.gui.gacha.btn.decrypting").getString();
-            } else if (onCooldown) {
-                text = cooldownText == null || cooldownText.isEmpty()
-                        ? Component.translatable("arc_quest.gui.gacha.btn.cooldown").getString()
-                        : Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cooldownText).getString();
-            } else if (maxed) {
-                text = Component.translatable("arc_quest.gui.trade.btn.empty").getString();
-            } else if (locked) {
-                text = Component.translatable("arc_quest.gui.trade.btn.locked").getString();
-            } else if (insufficientFunds) {
-                text = Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds").getString();
-            } else {
-                text = Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle").getString();
-            }
+            Component text = waiting
+                    ? Component.translatable("arc_quest.gui.gacha.btn.decrypting")
+                    : HudRenderUtil.resolveGachaFailButtonText(lastFailReason, onCooldown, maxed, locked, insufficientFunds, cooldownText);
 
             g.drawCenteredString(
                     Minecraft.getInstance().font,
@@ -779,7 +766,7 @@ public class GachaPreviewPanel {
         if (mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH()) {
             boolean onCooldown = snapshotCooldownText != null && !snapshotCooldownText.isEmpty();
             boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
-            boolean insufficientFunds = "CANNOT_AFFORD".equals(snapshotFailReason) || hasShortfall;
+            boolean insufficientFunds = isCannotAffordFailure(snapshotFailReason) || hasShortfall;
             boolean maxed = snapshotRemainingDraws == 0;
             boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
 
@@ -809,5 +796,16 @@ public class GachaPreviewPanel {
     public boolean mouseScrolled(double delta) {
         targetScroll -= delta * 45;
         return true;
+    }
+
+    private static boolean isCannotAffordFailure(String failReason) {
+        if (failReason == null || failReason.isEmpty()) {
+            return false;
+        }
+        String key = failReason.toLowerCase();
+        return "cannot_afford".equals(key)
+                || key.contains("cannot_afford")
+                || key.contains("insufficient")
+                || key.endsWith(".cannot_afford");
     }
 }

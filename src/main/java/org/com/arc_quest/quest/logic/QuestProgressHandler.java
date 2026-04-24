@@ -11,7 +11,8 @@ import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.event.QuestChangeEvent;
 import org.com.arc_quest.quest.event.QuestEventBus;
-import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.quest.network.QuestSyncCoordinator;
+import org.com.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.ObjectiveTracker;
 import org.com.arc_quest.quest.tracking.TrackedObjective;
@@ -49,10 +50,14 @@ public final class QuestProgressHandler {
      * @return true 如果成功接受
      */
     public static boolean acceptQuest(ServerPlayer player, String questId) {
+        return acceptQuestWithCode(player, questId) == QuestRejectCodeDictionary.Code.OK;
+    }
+
+    public static QuestRejectCodeDictionary.Code acceptQuestWithCode(ServerPlayer player, String questId) {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) {
             LOGGER.warn("[ArcQuest] Cannot accept unknown quest: {}", questId);
-            return false;
+            return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         }
 
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
@@ -60,11 +65,11 @@ public final class QuestProgressHandler {
         // 检查：是否已经在进行或已完成
         if (cap.isQuestActive(questId)) {
             LOGGER.debug("[ArcQuest] Quest already active: {}", questId);
-            return false;
+            return QuestRejectCodeDictionary.Code.ALREADY_ACTIVE;
         }
         if (cap.isQuestCompleted(questId) && !def.isRepeatable()) {
             LOGGER.debug("[ArcQuest] Quest already completed and not repeatable: {}", questId);
-            return false;
+            return QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE;
         }
 
         // 检查前置条件
@@ -72,7 +77,7 @@ public final class QuestProgressHandler {
         for (ICondition cond : def.getUnlockConditions()) {
             if (!cond.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables())) {
                 LOGGER.debug("[ArcQuest] Accept condition not met for quest: {}", questId);
-                return false;
+                return QuestRejectCodeDictionary.Code.UNLOCK_CONDITION_NOT_MET;
             }
         }
 
@@ -80,7 +85,7 @@ public final class QuestProgressHandler {
         PhaseDefinition firstPhase = def.getInitialPhase();
         if (firstPhase == null) {
             LOGGER.warn("[ArcQuest] Quest has no phases: {}", questId);
-            return false;
+            return QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE;
         }
 
         // 创建运行时数据
@@ -101,17 +106,17 @@ public final class QuestProgressHandler {
         registerPhaseObjectives(player, def, firstPhase);
 
         // 同步 & 事件
-        ArcQuestNetwork.syncQuestState(player, data);
-        ArcQuestNetwork.syncFlagsAndVars(player, cap);
+        syncQuestStateAndPush(player, data);
+        syncFlagsVarsAndPush(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
-        
+
         // 发布 Forge 事件（供附属模组监听）
         MinecraftForge.EVENT_BUS.post(new QuestAcceptedEvent(player, ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestStartedEvent(player, ResourceLocation.parse(questId)));
 
         LOGGER.info("[ArcQuest] Player {} accepted quest: {}",
                 player.getGameProfile().getName(), questId);
-        return true;
+        return QuestRejectCodeDictionary.Code.OK;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -167,7 +172,7 @@ public final class QuestProgressHandler {
                 objIndex, newProgress, required);
 
         // 使用增量同步替代全量同步，减少带宽占用
-        ArcQuestNetwork.syncDeltaProgress(player, questId, objIndex, newProgress);
+        syncDeltaProgressAndPush(player, questId, objIndex, newProgress);
 
         // 触发事件
         QuestEventBus.fire(QuestChangeEvent.objectiveProgressed(
@@ -229,7 +234,7 @@ public final class QuestProgressHandler {
                     data.getCurrentPhaseId()));
 
             // 同步状态并显示Toast
-            ArcQuestNetwork.syncQuestState(player, data);
+            syncQuestStateAndPush(player, data);
             return;
         }
 
@@ -263,7 +268,7 @@ public final class QuestProgressHandler {
                 data.getCurrentPhaseId(),
                 data.getCurrentPhaseId()));
 
-        ArcQuestNetwork.syncQuestState(player, data);
+        syncQuestStateAndPush(player, data);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -298,7 +303,7 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName(), def.getId(), nextPhaseId);
 
         // 同步 & 事件
-        ArcQuestNetwork.syncQuestState(player, data);
+        syncQuestStateAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.phaseChanged(
                 def.getId(), fromPhaseId, nextPhaseId));
         
@@ -311,26 +316,33 @@ public final class QuestProgressHandler {
      * 玩家选择分支过渡（由网络包 C2S 触发）。
      *
      * @param choiceIndex 玩家选择的 choice 索引
+     * @return true 选择并推进成功；false 被拒绝或无效
      */
-    public static void handlePlayerChoice(ServerPlayer player,
-                                          String questId,
-                                          int choiceIndex) {
+    public static boolean handlePlayerChoice(ServerPlayer player,
+                                             String questId,
+                                             int choiceIndex) {
+        return handlePlayerChoiceWithCode(player, questId, choiceIndex) == QuestRejectCodeDictionary.Code.OK;
+    }
+
+    public static QuestRejectCodeDictionary.Code handlePlayerChoiceWithCode(ServerPlayer player,
+                                                                             String questId,
+                                                                             int choiceIndex) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
-        if (data == null) return;
+        if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null) return;
+        if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
 
         PhaseDefinition currentPhase = def.getPhase(data.getCurrentPhaseId());
-        if (currentPhase == null) return;
+        if (currentPhase == null) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
 
         // 从 choices 列表中获取（而不是 transitions）
         List<ChoiceOption> choices = currentPhase.getChoices();
         if (choiceIndex < 0 || choiceIndex >= choices.size()) {
             LOGGER.warn("[ArcQuest] Invalid choice index {} for quest {}", choiceIndex, questId);
-            return;
+            return QuestRejectCodeDictionary.Code.INVALID_CHOICE_INDEX;
         }
 
         ChoiceOption chosen = choices.get(choiceIndex);
@@ -342,7 +354,7 @@ public final class QuestProgressHandler {
                 visibleCondition.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
         if (!conditionsMet) {
             LOGGER.debug("[ArcQuest] Choice conditions not met for index {}", choiceIndex);
-            return;
+            return QuestRejectCodeDictionary.Code.CHOICE_CONDITION_NOT_MET;
         }
 
         // 设置标记
@@ -356,9 +368,11 @@ public final class QuestProgressHandler {
         String targetPhaseId = chosen.getTargetPhaseId();
         if (targetPhaseId != null && !targetPhaseId.isEmpty()) {
             advanceToPhase(player, cap, data, def, targetPhaseId);
-        } else {
-            LOGGER.warn("[ArcQuest] Choice has no target phase: {}", choiceIndex);
+            return QuestRejectCodeDictionary.Code.OK;
         }
+
+        LOGGER.warn("[ArcQuest] Choice has no target phase: {}", choiceIndex);
+        return QuestRejectCodeDictionary.Code.CHOICE_TARGET_PHASE_MISSING;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -388,7 +402,7 @@ public final class QuestProgressHandler {
         LOGGER.info("[ArcQuest] Player {} failed quest: {}",
                 player.getGameProfile().getName(), questId);
 
-        ArcQuestNetwork.syncQuestState(player, data);
+        syncQuestStateAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         
         // 发布 Forge 事件（供附属模组监听）
@@ -398,10 +412,14 @@ public final class QuestProgressHandler {
     /**
      * 放弃任务。
      */
-    public static void abandonQuest(ServerPlayer player, String questId) {
+    public static boolean abandonQuest(ServerPlayer player, String questId) {
+        return abandonQuestWithCode(player, questId) == QuestRejectCodeDictionary.Code.OK;
+    }
+
+    public static QuestRejectCodeDictionary.Code abandonQuestWithCode(ServerPlayer player, String questId) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
-        if (!cap.isQuestActive(questId)) return;
+        if (!cap.isQuestActive(questId)) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
 
         // 先标记为 FAILED，再移除（这样会出现在 FAILED 标签页）
         QuestRuntimeData data = cap.getActiveQuest(questId);
@@ -415,8 +433,9 @@ public final class QuestProgressHandler {
         LOGGER.info("[ArcQuest] Player {} abandoned quest: {}",
                 player.getGameProfile().getName(), questId);
 
-        ArcQuestNetwork.syncFullData(player, cap); // 全量同步最安全
+        syncFullDataAndPush(player, cap); // 全量同步最安全
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
+        return QuestRejectCodeDictionary.Code.OK;
     }
 
     /**
@@ -467,8 +486,8 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName(), logPrefix, questId);
 
         // 同步 & 事件
-        ArcQuestNetwork.syncQuestState(player, data);
-        ArcQuestNetwork.syncFlagsAndVars(player, cap);
+        syncQuestStateAndPush(player, data);
+        syncFlagsVarsAndPush(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
         
         // 发布 Forge 事件（供附属模组监听）
@@ -483,8 +502,24 @@ public final class QuestProgressHandler {
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data != null) {
-            ArcQuestNetwork.syncQuestState(player, data);
+            syncQuestStateAndPush(player, data);
         }
+    }
+
+    private static void syncQuestStateAndPush(ServerPlayer player, QuestRuntimeData data) {
+        QuestSyncCoordinator.syncQuestStateAndPush(player, data);
+    }
+
+    private static void syncFlagsVarsAndPush(ServerPlayer player, IQuestCapability cap) {
+        QuestSyncCoordinator.syncFlagsVarsAndPush(player, cap);
+    }
+
+    private static void syncFullDataAndPush(ServerPlayer player, IQuestCapability cap) {
+        QuestSyncCoordinator.syncFullDataAndPush(player, cap);
+    }
+
+    private static void syncDeltaProgressAndPush(ServerPlayer player, String questId, int objIndex, int newProgress) {
+        QuestSyncCoordinator.syncDeltaProgressAndPush(player, questId, objIndex, newProgress);
     }
 
     // ═══════════════════════════════════════════════════════

@@ -71,10 +71,20 @@ public final class TradeEntryStateResolver {
     }
 
     /**
-     * 综合判断商品是否可购买（可见性 → 购买资格 → 限购 → 冷却）。
+     * 综合判断商品是否可购买（可见性 → 冷却 → 限购 → 购买资格）。
      */
     public static boolean canPurchase(ServerPlayer player, IQuestCapability cap, String shopId, TradeEntry entry) {
         if (!isVisible(player, cap, entry)) return false;
+
+        if (isOnCooldown(player, cap, shopId, entry)) {
+            LOGGER.debug("[Trade-State] Purchase blocked: on cooldown for {}", entry.getEntryId());
+            return false;
+        }
+
+        if (isPurchaseLimitReached(cap, shopId, entry)) {
+            LOGGER.debug("[Trade-State] Purchase blocked: limit reached for {}", entry.getEntryId());
+            return false;
+        }
 
         if (entry.getCanBuyCondition() != null) {
             Set<ResourceLocation> completed = cap.getCompletedQuestLocations();
@@ -83,16 +93,6 @@ public final class TradeEntryStateResolver {
                 LOGGER.debug("[Trade-State] Purchase blocked: canBuyCondition not met for {}", entry.getEntryId());
                 return false;
             }
-        }
-
-        if (isPurchaseLimitReached(cap, shopId, entry)) {
-            LOGGER.debug("[Trade-State] Purchase blocked: limit reached for {}", entry.getEntryId());
-            return false;
-        }
-
-        if (isOnCooldown(player, cap, shopId, entry)) {
-            LOGGER.debug("[Trade-State] Purchase blocked: on cooldown for {}", entry.getEntryId());
-            return false;
         }
 
         LOGGER.debug("[Trade-State] Purchase allowed: entry={}", entry.getEntryId());

@@ -8,10 +8,13 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.network.chat.Component;
 import org.joml.Matrix4f;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 共享渲染工具集。
@@ -220,5 +223,59 @@ public final class HudRenderUtil {
             if (!current.isEmpty()) lines.add(current.toString());
         }
         return lines;
+    }
+
+    public static Component resolveTradeFailMessage(@Nullable String errorKey, @Nullable String rawReason) {
+        String normalized = normalizeFailureKey(errorKey, rawReason);
+
+        if (containsAny(normalized, "cooldown", "on_cooldown")) {
+            return Component.translatable("arc_quest.gui.gacha.btn.cooldown");
+        }
+        if (containsAny(normalized, "limit", "max_purchase", "max_purchases", "maxed")) {
+            return Component.translatable("arc_quest.gui.trade.status.maxed");
+        }
+        if (containsAny(normalized, "condition", "locked", "requirement", "blocked")) {
+            return Component.translatable("arc_quest.gui.trade.status.locked");
+        }
+        if (containsAny(normalized, "cannot_afford", "insufficient", "shortfall", "not_enough")) {
+            return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
+        }
+
+        return Component.translatable("arc_quest.gui.trade.error.shop_closed");
+    }
+
+    public static Component resolveGachaFailButtonText(@Nullable String failReason, boolean onCooldown, boolean maxed,
+                                                       boolean locked, boolean insufficientFunds, @Nullable String cooldownText) {
+        if (onCooldown) {
+            return cooldownText == null || cooldownText.isEmpty()
+                    ? Component.translatable("arc_quest.gui.gacha.btn.cooldown")
+                    : Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cooldownText);
+        }
+        if (maxed) {
+            return Component.translatable("arc_quest.gui.trade.btn.empty");
+        }
+        if (locked) {
+            return Component.translatable("arc_quest.gui.trade.btn.locked");
+        }
+        if (insufficientFunds || containsAny(normalizeFailureKey(failReason, null), "cannot_afford", "insufficient", "shortfall")) {
+            return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
+        }
+        return Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle");
+    }
+
+    private static String normalizeFailureKey(@Nullable String primary, @Nullable String fallback) {
+        String key = primary;
+        if (key == null || key.isEmpty()) key = fallback;
+        if (key == null) return "";
+        return key.toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean containsAny(String source, String... needles) {
+        for (String needle : needles) {
+            if (source.contains(needle)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

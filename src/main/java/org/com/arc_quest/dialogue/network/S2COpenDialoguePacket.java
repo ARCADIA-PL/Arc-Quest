@@ -20,6 +20,12 @@ import java.util.function.Supplier;
  */
 public class S2COpenDialoguePacket {
 
+    public enum Mode {
+        OPEN,
+        UPDATE,
+        CLOSE
+    }
+
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**
@@ -34,6 +40,7 @@ public class S2COpenDialoguePacket {
     private final boolean hasAutoNext;
     private final int delayMs;
     private final boolean isClose;
+    private final Mode mode;
 
     /**
      * 关联的 NPC 实体网络 ID，-1 = 无实体。
@@ -171,6 +178,23 @@ public class S2COpenDialoguePacket {
                                  @Nullable ResourceLocation matchedSaySoundId,
                                  @Nullable String matchedSayId,
                                  @Nullable String[] choiceIds) {
+        this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs,
+                entityId, choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
+                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks,
+                choiceSelectSoundIds, matchedSaySoundId, matchedSayId, choiceIds, Mode.OPEN);
+    }
+
+    private S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
+                                  String text, String[] choices,
+                                  boolean isTerminal, boolean hasAutoNext, int delayMs,
+                                  int entityId, long[] choiceLastSelectTimes,
+                                  long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
+                                  int[] choiceCooldownTypes, long[] choiceCooldownValues,
+                                  int[] choiceResetTimeTicks, @Nullable ResourceLocation[] choiceSelectSoundIds,
+                                  @Nullable ResourceLocation matchedSaySoundId,
+                                  @Nullable String matchedSayId,
+                                  @Nullable String[] choiceIds,
+                                  Mode mode) {
         this.dialogueId = dialogueId;
         this.nodeId = nodeId;
         this.speaker = speaker;
@@ -179,7 +203,8 @@ public class S2COpenDialoguePacket {
         this.isTerminal = isTerminal;
         this.hasAutoNext = hasAutoNext;
         this.delayMs = delayMs;
-        this.isClose = false;
+        this.isClose = mode == Mode.CLOSE;
+        this.mode = mode;
         this.entityId = entityId;
         this.choiceLastSelectTimes = choiceLastSelectTimes;
         this.choicePurchaseGameTimes = choicePurchaseGameTimes;
@@ -203,6 +228,7 @@ public class S2COpenDialoguePacket {
         this.hasAutoNext = false;
         this.delayMs = 0;
         this.isClose = true;
+        this.mode = Mode.CLOSE;
         this.entityId = -1;
         this.choiceLastSelectTimes = null;
         this.choicePurchaseGameTimes = null;
@@ -220,11 +246,36 @@ public class S2COpenDialoguePacket {
         return new S2COpenDialoguePacket();
     }
 
+    public static S2COpenDialoguePacket updateFrom(S2COpenDialoguePacket source) {
+        return new S2COpenDialoguePacket(
+                source.dialogueId,
+                source.nodeId,
+                source.speaker,
+                source.text,
+                source.choices,
+                source.isTerminal,
+                source.hasAutoNext,
+                source.delayMs,
+                source.entityId,
+                source.choiceLastSelectTimes,
+                source.choicePurchaseGameTimes,
+                source.choicePurchaseDayTimes,
+                source.choiceCooldownTypes,
+                source.choiceCooldownValues,
+                source.choiceResetTimeTicks,
+                source.choiceSelectSoundIds,
+                source.matchedSaySoundId,
+                source.matchedSayId,
+                source.choiceIds,
+                Mode.UPDATE
+        );
+    }
+
     // ── 序列化 ──
 
     public static S2COpenDialoguePacket decode(FriendlyByteBuf buf) {
-        boolean close = buf.readBoolean();
-        if (close) return close();
+        Mode mode = buf.readEnum(Mode.class);
+        if (mode == Mode.CLOSE) return close();
 
         String dId = buf.readUtf();
         String nId = buf.readUtf();
@@ -294,15 +345,15 @@ public class S2COpenDialoguePacket {
         }
 
         return new S2COpenDialoguePacket(dId, nId, spk, txt, choices, terminal, autoNext, delay, entityId,
-                lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks, 
-                choiceSounds, saySoundId, matchedSayId, choiceIds);
+                lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks,
+                choiceSounds, saySoundId, matchedSayId, choiceIds, mode);
     }
 
     public static void handle(S2COpenDialoguePacket pkt,
                               Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
-            if (pkt.isClose) {
+            if (pkt.mode == Mode.CLOSE || pkt.isClose) {
                 ClientDialogueCache.INSTANCE.closeSession();
                 if (mc.screen instanceof DialogueScreen ds) {
                     ds.startCloseAnimation();
@@ -314,8 +365,8 @@ public class S2COpenDialoguePacket {
             SoundEvent saySound = pkt.matchedSaySoundId != null ? 
                     ForgeRegistries.SOUND_EVENTS.getValue(pkt.matchedSaySoundId) : null;
             
-            SoundEvent[] choiceSounds = new SoundEvent[pkt.choiceSelectSoundIds.length];
-            for (int i = 0; i < pkt.choiceSelectSoundIds.length; i++) {
+            SoundEvent[] choiceSounds = new SoundEvent[pkt.choiceSelectSoundIds != null ? pkt.choiceSelectSoundIds.length : 0];
+            for (int i = 0; i < choiceSounds.length; i++) {
                 if (pkt.choiceSelectSoundIds[i] != null) {
                     choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getValue(pkt.choiceSelectSoundIds[i]);
                 }
@@ -337,9 +388,11 @@ public class S2COpenDialoguePacket {
                         pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
                         pkt.choiceCooldownValues, pkt.choiceResetTimeTicks);
                 ds.updateEntityId(pkt.entityId);
-            } else if (mc.screen != null && 
-                       (mc.screen instanceof TradeScreen || 
-                        mc.screen instanceof SimpleTradePanel)) {
+            } else if (pkt.mode == Mode.UPDATE) {
+                LOGGER.debug("[Dialogue] Ignore UPDATE packet when no DialogueScreen is active: {}", pkt.dialogueId);
+            } else if (mc.screen != null &&
+                    (mc.screen instanceof TradeScreen ||
+                            mc.screen instanceof SimpleTradePanel)) {
                 // 如果当前是商店界面，忽略此包
             } else {
                 mc.setScreen(new DialogueScreen(pkt.dialogueId, pkt.speaker,
@@ -354,8 +407,8 @@ public class S2COpenDialoguePacket {
     }
 
     public void encode(FriendlyByteBuf buf) {
-        buf.writeBoolean(isClose);
-        if (!isClose) {
+        buf.writeEnum(mode);
+        if (mode != Mode.CLOSE && !isClose) {
             buf.writeUtf(dialogueId);
             buf.writeUtf(nodeId);
             buf.writeUtf(speaker);

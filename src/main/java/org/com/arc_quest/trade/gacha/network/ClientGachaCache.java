@@ -13,32 +13,22 @@ import java.util.*;
 
 /**
  * 客户端抽奖数据镜像缓存。
- * <p>
- * <b>线程模型</b>：仅在客户端主线程（Render Thread）访问，由 S2C 网络包更新。
- * 所有更新通过 {@code ctx.get().enqueueWork()} 确保在主线程执行，因此无需同步保护。
- * <p>
- * 负责统一管理抽奖相关的客户端状态、历史记录和音效触发，确保听觉反馈与服务端权威状态同步。
+ * 线程模型：仅客户端主线程访问（网络包通过 enqueueWork 切回主线程）。
  */
 public final class ClientGachaCache {
 
     public static final ClientGachaCache INSTANCE = new ClientGachaCache();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /**
-     * 抽奖会话数据映射 (shopId -> GachaSessionData)
-     */
     private final Map<String, GachaSessionData> gachaSessions = new HashMap<>();
 
     private ClientGachaCache() {
     }
 
     // ════════════════════════════════════════
-    //  核心会话管理 API
+    // 核心会话管理
     // ════════════════════════════════════════
 
-    /**
-     * 更新抽奖会话数据（基础版本）。
-     */
     public void updateSession(String shopId, int pityCounter, int totalDraws) {
         GachaSessionData newSession = createSessionSnapshot(
                 pityCounter, totalDraws, true, -1,
@@ -49,19 +39,16 @@ public final class ClientGachaCache {
         gachaSessions.put(shopId, newSession);
     }
 
-    /**
-     * 更新抽奖会话数据（含冷却信息，对标商店系统）。
-     */
     public void updateSession(String shopId, int pityCounter, int totalDraws,
                               long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
                               int cooldownType, long cooldownValue, int resetTimeTicks) {
-        GachaSessionData existingSession = gachaSessions.get(shopId);
+        GachaSessionData existing = gachaSessions.get(shopId);
 
         GachaSessionData newSession = createSessionSnapshot(
                 pityCounter,
                 totalDraws,
-                existingSession != null ? existingSession.canDraw : true,
-                existingSession != null ? existingSession.remainingDraws : -1,
+                existing != null ? existing.authority.canDraw : true,
+                existing != null ? existing.authority.remainingDraws : -1,
                 lastDrawRealTime,
                 lastDrawGameTime,
                 lastDrawDayTime,
@@ -70,13 +57,10 @@ public final class ClientGachaCache {
                 resetTimeTicks
         );
 
-        copyRetainedState(existingSession, newSession);
+        copyRetainedState(existing, newSession);
         gachaSessions.put(shopId, newSession);
     }
-    
-    /**
-     * 更新抽奖会话数据（含冷却信息和 canDraw 状态，完整版本）。
-     */
+
     public void updateSession(String shopId, int pityCounter, int totalDraws, boolean canDraw,
                               int remainingDraws,
                               long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
@@ -90,10 +74,7 @@ public final class ClientGachaCache {
         copyRetainedState(gachaSessions.get(shopId), newSession);
         gachaSessions.put(shopId, newSession);
     }
-    
-    /**
-     * 【新增】更新抽奖会话并替换完整历史记录（用于重启后全量同步）。
-     */
+
     public void updateSessionWithHistory(String shopId, int pityCounter, int totalDraws, boolean canDraw,
                                          int remainingDraws,
                                          long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
@@ -105,11 +86,12 @@ public final class ClientGachaCache {
                 cooldownType, cooldownValue, resetTimeTicks
         );
 
-        newSession.drawHistory.addAll(fullHistory);
+        newSession.history.drawHistory.addAll(fullHistory);
         applyLatestHistoryState(newSession, fullHistory);
 
-        newSession.lastFailReason = null;
-        newSession.lastShortfallLines = List.of();
+        // 全量权威快照覆盖后，清空旧反馈态
+        newSession.feedback.lastFailReason = null;
+        newSession.feedback.lastShortfallLines = List.of();
 
         gachaSessions.put(shopId, newSession);
     }
@@ -125,84 +107,61 @@ public final class ClientGachaCache {
         );
     }
 
-    private void copyRetainedState(@Nullable GachaSessionData existingSession, GachaSessionData newSession) {
-        if (existingSession == null) {
-            return;
-        }
+    /**
+     * 保留 UI 依赖态（历史和失败反馈），避免每次 state 包覆盖。
+     */
+    private void copyRetainedState(@Nullable GachaSessionData existing, GachaSessionData next) {
+        if (existing == null) return;
 
-        newSession.drawHistory.addAll(existingSession.drawHistory);
-        newSession.lastDrawnItemId = existingSession.lastDrawnItemId;
-        newSession.lastRarityName = existingSession.lastRarityName;
-        newSession.lastActualCount = existingSession.lastActualCount;
-        newSession.lastPityTriggered = existingSession.lastPityTriggered;
-        newSession.lastDrawTime = existingSession.lastDrawTime;
-        newSession.lastFailReason = existingSession.lastFailReason;
-        newSession.lastShortfallLines = existingSession.lastShortfallLines;
+        next.history.drawHistory.addAll(existing.history.drawHistory);
+        next.history.lastDrawnItemId = existing.history.lastDrawnItemId;
+        next.history.lastRarityName = existing.history.lastRarityName;
+        next.history.lastActualCount = existing.history.lastActualCount;
+        next.history.lastPityTriggered = existing.history.lastPityTriggered;
+        next.history.lastDrawTime = existing.history.lastDrawTime;
+
+        next.feedback.lastFailReason = existing.feedback.lastFailReason;
+        next.feedback.lastShortfallLines = existing.feedback.lastShortfallLines;
     }
 
     private void applyLatestHistoryState(GachaSessionData session, List<DrawRecord> fullHistory) {
-        if (fullHistory.isEmpty()) {
-            return;
-        }
-
-        DrawRecord lastRecord = fullHistory.get(fullHistory.size() - 1);
-        session.lastDrawnItemId = lastRecord.itemId();
-        session.lastRarityName = lastRecord.rarityName();
-        session.lastActualCount = lastRecord.actualCount();
-        session.lastPityTriggered = lastRecord.pityTriggered();
-        session.lastDrawTime = lastRecord.drawTime();
+        if (fullHistory.isEmpty()) return;
+        DrawRecord last = fullHistory.get(fullHistory.size() - 1);
+        session.history.lastDrawnItemId = last.itemId();
+        session.history.lastRarityName = last.rarityName();
+        session.history.lastActualCount = last.actualCount();
+        session.history.lastPityTriggered = last.pityTriggered();
+        session.history.lastDrawTime = last.drawTime();
     }
 
-    /**
-     * 记录抽奖结果（由网络包调用）。
-     * 
-     * @param shopId 商店 ID
-     * @param drawnItemId 抽中的物品 ID
-     * @param rarityName 稀有度名称
-     * @param actualCount 实际数量
-     * @param pityTriggered 是否触发保底
-     * @param newPityCounter 新的保底计数
-     */
     public void recordDrawResult(String shopId, String drawnItemId, String rarityName,
-                                  int actualCount, boolean pityTriggered, int newPityCounter) {
+                                 int actualCount, boolean pityTriggered, int newPityCounter) {
         GachaSessionData session = gachaSessions.get(shopId);
         if (session == null) {
             session = new GachaSessionData(newPityCounter, 1);
             gachaSessions.put(shopId, session);
         } else {
-            // 更新保底计数和总次数
-            session.pityCounter = newPityCounter;
-            session.totalDraws++;
+            session.authority.pityCounter = newPityCounter;
+            session.authority.totalDraws++;
         }
-        
-        // 记录最近一次抽奖结果
-        session.lastDrawnItemId = drawnItemId;
-        session.lastRarityName = rarityName;
-        session.lastActualCount = actualCount;
-        session.lastPityTriggered = pityTriggered;
-        session.lastDrawTime = System.currentTimeMillis();
-        
-        // 【修复】成功抽奖后清除失败原因标记
-        session.lastFailReason = null;
-        
-        // 添加到历史记录
-        session.drawHistory.add(new DrawRecord(drawnItemId, rarityName, actualCount, 
-                                               pityTriggered, session.lastDrawTime));
-        
-        // 限制历史记录大小（最多保留 50 条）
-        if (session.drawHistory.size() > 50) {
-            session.drawHistory.remove(0);
+
+        session.history.lastDrawnItemId = drawnItemId;
+        session.history.lastRarityName = rarityName;
+        session.history.lastActualCount = actualCount;
+        session.history.lastPityTriggered = pityTriggered;
+        session.history.lastDrawTime = System.currentTimeMillis();
+
+        session.feedback.lastFailReason = null;
+        session.feedback.lastShortfallLines = List.of();
+
+        session.history.drawHistory.add(new DrawRecord(
+                drawnItemId, rarityName, actualCount, pityTriggered, session.history.lastDrawTime
+        ));
+        if (session.history.drawHistory.size() > 50) {
+            session.history.drawHistory.remove(0);
         }
     }
 
-    /**
-     * 记录抽奖失败（冷却/限购/条件不满足）。
-     * <p>
-     * 用于触发 UI 状态切换，让客户端从 WAITING_SERVER 返回 PREVIEW。
-     *
-     * @param shopId 商店 ID
-     * @param failReason 失败原因字符串
-     */
     public void recordDrawFailure(String shopId, String failReason) {
         recordDrawFailure(shopId, failReason, List.of());
     }
@@ -213,188 +172,137 @@ public final class ClientGachaCache {
             session = new GachaSessionData(0, 0);
             gachaSessions.put(shopId, session);
         }
-        
-        // 记录最近一次失败信息
-        session.lastFailReason = failReason;
-        session.lastDrawTime = System.currentTimeMillis();
-        session.lastShortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
+
+        session.feedback.lastFailReason = failReason;
+        session.feedback.lastShortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
+        session.history.lastDrawTime = System.currentTimeMillis();
     }
 
-    /**
-     * 处理抽奖结果音效（由网络包调用）。
-     * <p>
-     * 对标商店系统的 handlePurchaseResult，支持成功和失败场景。
-     *
-     * @param shopId      商店 ID
-     * @param itemId      抽中的物品 ID（成功时有效）
-     * @param rarityName  稀有度名称（成功时有效）
-     * @param success     是否成功
-     * @param failReason  失败原因（仅当 success 为 false 时有效）
-     */
     public void handleDrawResult(String shopId, @Nullable String itemId, @Nullable String rarityName,
                                  boolean success, @Nullable FailReason failReason) {
         if (!success) {
-            // 失败场景：播放对应的失败音效
             SoundEvent sound = switch (failReason != null ? failReason : FailReason.GENERIC) {
                 case COOLDOWN -> getCooldownSound(shopId);
                 case LIMIT_REACHED -> getLimitReachedSound(shopId);
                 case CONDITION_FAIL -> getConditionFailSound(shopId);
-                case CANNOT_AFFORD -> getCannotAffordSound(shopId);  // 【新增】
+                case CANNOT_AFFORD -> getCannotAffordSound(shopId);
                 default -> getDrawFailSound(shopId);
             };
             GuiSoundManager.play(sound);
             return;
         }
-        
-        // 成功场景：播放抽中音效
+
         if (itemId == null || rarityName == null) {
             LOGGER.warn("[GachaCache] Draw success but missing item/rarity info");
             return;
         }
-        
+
         SoundEvent successSound = getDrawSuccessSound(shopId, itemId, rarityName);
         if (successSound != null) {
             GuiSoundManager.play(successSound);
         }
     }
 
-    /**
-     * 获取抽奖会话数据。
-     */
     @Nullable
     public GachaSessionData getSession(String shopId) {
         return gachaSessions.get(shopId);
     }
 
-    /**
-     * 关闭并清理指定商店的抽奖会话。
-     */
     public void closeSession(String shopId) {
         gachaSessions.remove(shopId);
     }
 
-    /**
-     * 清空所有缓存。
-     */
     public void clear() {
         gachaSessions.clear();
     }
 
     // ════════════════════════════════════════
-    //  冷却状态查询 API
+    // 状态查询（Authority）
     // ════════════════════════════════════════
 
-    /**
-     * 检查抽奖是否处于冷却中（对标商店系统 isOnCooldown）。
-     */
     public boolean isOnCooldown(String shopId) {
         GachaSessionData data = gachaSessions.get(shopId);
         if (data == null) return false;
-        
-        // 如果没有冷却配置，直接返回 false
-        if (data.getCooldownType() == 0) return false;
-        
-        // 委托给 ClientCooldownHelper 进行精确判断
+        if (data.authority.cooldownType == 0) return false;
+
         return ClientCooldownHelper.isOnCooldown(
-                data.getLastDrawRealTime(),
-                data.getLastDrawGameTime(),
-                data.getLastDrawDayTime(),
-                data.getCooldownType(),
-                data.getCooldownValue(),
-                data.getResetTimeTicks()
+                data.authority.lastDrawRealTime,
+                data.authority.lastDrawGameTime,
+                data.authority.lastDrawDayTime,
+                data.authority.cooldownType,
+                data.authority.cooldownValue,
+                data.authority.resetTimeTicks
         );
     }
 
-    /**
-     * 获取抽奖冷却剩余文本（对标商店系统 getCooldownText）。
-     */
     public String getCooldownText(String shopId) {
         GachaSessionData data = gachaSessions.get(shopId);
-        if (data == null || data.getCooldownType() == 0) return "";
-        
+        if (data == null || data.authority.cooldownType == 0) return "";
+
         return ClientCooldownHelper.getCooldownText(
-                data.getLastDrawRealTime(),
-                data.getLastDrawGameTime(),
-                data.getLastDrawDayTime(),
-                data.getCooldownType(),
-                data.getCooldownValue(),
-                data.getResetTimeTicks()
+                data.authority.lastDrawRealTime,
+                data.authority.lastDrawGameTime,
+                data.authority.lastDrawDayTime,
+                data.authority.cooldownType,
+                data.authority.cooldownValue,
+                data.authority.resetTimeTicks
         );
     }
 
-    // ════════════════════════════════════════
-    //  HUD 支持 API - 保底与统计
-    // ════════════════════════════════════════
-
-    /**
-     * 获取保底进度（用于 HUD 显示）。
-     * 
-     * @param shopId 商店 ID
-     * @return 当前保底计数，如果会话不存在则返回 -1
-     */
     public int getPityProgress(String shopId) {
-        var session = gachaSessions.get(shopId);
-        return session != null ? session.getPityCounter() : -1;
+        var s = gachaSessions.get(shopId);
+        return s != null ? s.authority.pityCounter : -1;
     }
 
-    /**
-     * 获取总抽奖次数。
-     * 
-     * @param shopId 商店 ID
-     * @return 总抽奖次数，如果会话不存在则返回 0
-     */
     public int getTotalDraws(String shopId) {
-        var session = gachaSessions.get(shopId);
-        return session != null ? session.getTotalDraws() : 0;
+        var s = gachaSessions.get(shopId);
+        return s != null ? s.authority.totalDraws : 0;
     }
-    
-    /**
-     * 获取服务端权威的可抽奖状态。
-     * <p>
-     * 客户端不再自行推导限购/条件，只消费服务端同步的业务结论。
-     * 冷却倒计时由独立方法负责实时展示。
-     */
+
     public boolean canDraw(String shopId) {
-        var session = gachaSessions.get(shopId);
-        return session != null && session.canDraw();
+        var s = gachaSessions.get(shopId);
+        return s != null && s.authority.canDraw;
     }
 
     public int getRemainingDraws(String shopId) {
-        var session = gachaSessions.get(shopId);
-        return session != null ? session.getRemainingDraws() : -1;
+        var s = gachaSessions.get(shopId);
+        return s != null ? s.authority.remainingDraws : -1;
     }
+
+    // ════════════════════════════════════════
+    // 反馈查询（Feedback）
+    // ════════════════════════════════════════
 
     @Nullable
     public String getLastFailReason(String shopId) {
-        var session = gachaSessions.get(shopId);
-        return session != null ? session.getLastFailReason() : null;
+        var s = gachaSessions.get(shopId);
+        return s != null ? s.feedback.lastFailReason : null;
     }
 
     public List<CostShortfallLine> getLastShortfall(String shopId) {
-        var session = gachaSessions.get(shopId);
-        return session != null ? session.getLastShortfallLines() : List.of();
+        var s = gachaSessions.get(shopId);
+        return s != null ? List.copyOf(s.feedback.lastShortfallLines) : List.of();
     }
 
-    /**
-     * 获取保底剩余次数（用于 HUD 进度条）。
-     * 
-     * @param shopId 商店 ID
-     * @param pityThreshold 保底阈值（从 GachaShopDefinition 获取）
-     * @return 剩余次数，如果会话不存在则返回 -1
-     */
+    public void clearFeedback(String shopId) {
+        var s = gachaSessions.get(shopId);
+        if (s == null) {
+            return;
+        }
+        s.feedback.lastFailReason = null;
+        s.feedback.lastShortfallLines = List.of();
+    }
+
+    // ════════════════════════════════════════
+    // 历史/统计（History）
+    // ════════════════════════════════════════
+
     public int getPityRemaining(String shopId, int pityThreshold) {
         int current = getPityProgress(shopId);
         if (current < 0) return -1;
         return Math.max(0, pityThreshold - current);
     }
 
-    /**
-     * 获取保底进度百分比（0-100）。
-     * 
-     * @param shopId 商店 ID
-     * @param pityThreshold 保底阈值
-     * @return 进度百分比，如果数据无效则返回 0
-     */
     public int getPityProgressPercent(String shopId, int pityThreshold) {
         if (pityThreshold <= 0) return 0;
         int current = getPityProgress(shopId);
@@ -402,247 +310,118 @@ public final class ClientGachaCache {
         return Math.min(100, (current * 100) / pityThreshold);
     }
 
-    /**
-     * 检查是否已触发保底。
-     * 
-     * @param shopId 商店 ID
-     * @param pityThreshold 保底阈值
-     * @return true 如果已达到或超过保底阈值
-     */
     public boolean isPityTriggered(String shopId, int pityThreshold) {
-        int current = getPityProgress(shopId);
-        return current >= pityThreshold;
+        return getPityProgress(shopId) >= pityThreshold;
     }
 
-    /**
-     * 获取最近一次抽奖结果。
-     * 
-     * @param shopId 商店 ID
-     * @return 抽奖记录，如果没有则返回 null
-     */
     @Nullable
     public DrawRecord getLastDrawResult(String shopId) {
-        var session = gachaSessions.get(shopId);
-        return session != null && !session.drawHistory.isEmpty() 
-            ? session.drawHistory.get(session.drawHistory.size() - 1) 
-            : null;
+        var s = gachaSessions.get(shopId);
+        if (s == null || s.history.drawHistory.isEmpty()) return null;
+        return s.history.drawHistory.get(s.history.drawHistory.size() - 1);
     }
 
-    /**
-     * 获取抽奖历史记录（不可变视图）。
-     * 
-     * @param shopId 商店 ID
-     * @return 历史记录列表
-     */
     public List<DrawRecord> getDrawHistory(String shopId) {
-        var session = gachaSessions.get(shopId);
-        return session != null 
-            ? Collections.unmodifiableList(session.drawHistory) 
-            : Collections.emptyList();
+        var s = gachaSessions.get(shopId);
+        return s != null ? Collections.unmodifiableList(s.history.drawHistory) : Collections.emptyList();
     }
 
-    /**
-     * 获取指定稀有度的抽取次数统计。
-     * 
-     * @param shopId 商店 ID
-     * @param rarityName 稀有度名称
-     * @return 该稀有度的抽取次数
-     */
     public int getRarityDrawCount(String shopId, String rarityName) {
-        var session = gachaSessions.get(shopId);
-        if (session == null) return 0;
-        
-        return (int) session.drawHistory.stream()
-            .filter(record -> rarityName.equals(record.rarityName()))
-            .count();
+        var s = gachaSessions.get(shopId);
+        if (s == null) return 0;
+        return (int) s.history.drawHistory.stream().filter(r -> rarityName.equals(r.rarityName())).count();
     }
 
-    /**
-     * 获取平均每次抽奖获得的物品数量。
-     * 
-     * @param shopId 商店 ID
-     * @return 平均数量，如果没有记录则返回 0
-     */
     public double getAverageItemCount(String shopId) {
-        var session = gachaSessions.get(shopId);
-        if (session == null || session.drawHistory.isEmpty()) return 0.0;
-        
-        return session.drawHistory.stream()
-            .mapToInt(DrawRecord::actualCount)
-            .average()
-            .orElse(0.0);
+        var s = gachaSessions.get(shopId);
+        if (s == null || s.history.drawHistory.isEmpty()) return 0.0;
+        return s.history.drawHistory.stream().mapToInt(DrawRecord::actualCount).average().orElse(0.0);
     }
 
-    /**
-     * 获取保底触发次数统计。
-     * 
-     * @param shopId 商店 ID
-     * @return 保底触发次数
-     */
     public int getPityTriggerCount(String shopId) {
-        var session = gachaSessions.get(shopId);
-        if (session == null) return 0;
-        
-        return (int) session.drawHistory.stream()
-            .filter(DrawRecord::pityTriggered)
-            .count();
+        var s = gachaSessions.get(shopId);
+        if (s == null) return 0;
+        return (int) s.history.drawHistory.stream().filter(DrawRecord::pityTriggered).count();
     }
 
-    /**
-     * 获取剩余可抽奖次数（对标商店系统的 getRemainingPurchases）。
-     * 
-     * @param shopId 商店 ID
-     * @param maxDraws 最大抽奖次数（从 GachaShopDefinition 获取，-1 表示无限）
-     * @return 剩余次数，-1 表示无限，-2 表示无数据
-     */
     public int getRemainingDraws(String shopId, int maxDraws) {
-        if (maxDraws < 0) return -1; // 无限
-        
-        var session = gachaSessions.get(shopId);
-        if (session == null) return -2; // 无数据
-        
-        int totalDraws = session.getTotalDraws();
-        return Math.max(0, maxDraws - totalDraws);
+        if (maxDraws < 0) return -1;
+        var s = gachaSessions.get(shopId);
+        if (s == null) return -2;
+        return Math.max(0, maxDraws - s.authority.totalDraws);
     }
 
-    /**
-     * 检查是否已达到抽奖次数上限（对标商店系统的 isPurchaseLimitReached）。
-     * 
-     * @param shopId 商店 ID
-     * @param maxDraws 最大抽奖次数
-     * @return true 如果已达到上限
-     */
     public boolean isDrawLimitReached(String shopId, int maxDraws) {
-        if (maxDraws < 0) return false; // 无限
-        
-        var session = gachaSessions.get(shopId);
-        if (session == null) return false;
-        
-        return session.getTotalDraws() >= maxDraws;
+        if (maxDraws < 0) return false;
+        var s = gachaSessions.get(shopId);
+        return s != null && s.authority.totalDraws >= maxDraws;
     }
 
-    /**
-     * 获取抽奖次数进度百分比（0-100）。
-     * 
-     * @param shopId 商店 ID
-     * @param maxDraws 最大抽奖次数
-     * @return 进度百分比，如果无限或无数据则返回 0
-     */
     public int getDrawProgressPercent(String shopId, int maxDraws) {
-        if (maxDraws <= 0) return 0; // 无限或无效
-        
-        var session = gachaSessions.get(shopId);
-        if (session == null) return 0;
-        
-        int totalDraws = session.getTotalDraws();
-        return Math.min(100, (totalDraws * 100) / maxDraws);
+        if (maxDraws <= 0) return 0;
+        var s = gachaSessions.get(shopId);
+        if (s == null) return 0;
+        return Math.min(100, (s.authority.totalDraws * 100) / maxDraws);
     }
 
-    /**
-     * 获取各稀有度的分布统计（用于饼图/柱状图）。
-     * 
-     * @param shopId 商店 ID
-     * @return Map<稀有度名称, 抽取次数>
-     */
     public Map<String, Integer> getRarityDistribution(String shopId) {
-        var session = gachaSessions.get(shopId);
-        if (session == null || session.drawHistory.isEmpty()) {
-            return Collections.emptyMap();
+        var s = gachaSessions.get(shopId);
+        if (s == null || s.history.drawHistory.isEmpty()) return Collections.emptyMap();
+
+        Map<String, Integer> m = new HashMap<>();
+        for (DrawRecord r : s.history.drawHistory) {
+            m.merge(r.rarityName(), 1, Integer::sum);
         }
-        
-        Map<String, Integer> distribution = new HashMap<>();
-        for (DrawRecord record : session.drawHistory) {
-            distribution.merge(record.rarityName(), 1, Integer::sum);
-        }
-        
-        return Collections.unmodifiableMap(distribution);
+        return Collections.unmodifiableMap(m);
     }
 
-    /**
-     * 获取距离下次保底的预计抽奖次数。
-     * 
-     * @param shopId 商店 ID
-     * @param pityThreshold 保底阈值
-     * @return 预计次数，如果数据无效则返回 -1
-     */
     public int getEstimatedDrawsToPity(String shopId, int pityThreshold) {
         return getPityRemaining(shopId, pityThreshold);
     }
 
     // ════════════════════════════════════════
-    //  抽奖音效辅助方法
+    // 音效辅助
     // ════════════════════════════════════════
 
-    /**
-     * 获取抽中物品的音效（优先级：项自定义 > 稀有度默认）。
-     * 
-     * @param shopId 商店 ID
-     * @param itemId 物品 ID
-     * @param rarityName 稀有度名称
-     * @return 音效事件，可能为 null
-     */
     @Nullable
     private SoundEvent getDrawSuccessSound(String shopId, String itemId, String rarityName) {
         var gachaShop = GachaRegistry.get(shopId);
         if (gachaShop == null) return null;
-        
-        // 查找对应的 GachaItem
+
         var pool = gachaShop.getGachaPool();
         for (var item : pool.getItems()) {
             if (item.getItemId().equals(itemId)) {
-                // 使用 GachaShopDefinition 的优先级链获取音效
                 return gachaShop.getEffectiveDrawSuccessSound(item);
             }
         }
-        
-        // 如果找不到具体物品，尝试使用稀有度默认音效
+
         var rarityConfig = gachaShop.getRarityConfig(rarityName);
-        if (rarityConfig != null) {
-            return rarityConfig.getDrawSuccessSound();
-        }
-        
-        return null;
+        return rarityConfig != null ? rarityConfig.getDrawSuccessSound() : null;
     }
 
-    /**
-     * 获取抽奖冷却音效。
-     */
     @Nullable
     private SoundEvent getCooldownSound(String shopId) {
         var gachaShop = GachaRegistry.get(shopId);
         return gachaShop != null ? gachaShop.getDrawCooldownSound() : null;
     }
 
-    /**
-     * 获取抽奖限购音效。
-     */
     @Nullable
     private SoundEvent getLimitReachedSound(String shopId) {
         var gachaShop = GachaRegistry.get(shopId);
         return gachaShop != null ? gachaShop.getDrawLimitReachedSound() : null;
     }
 
-    /**
-     * 获取抽奖条件失败音效。
-     */
     @Nullable
     private SoundEvent getConditionFailSound(String shopId) {
         var gachaShop = GachaRegistry.get(shopId);
         return gachaShop != null ? gachaShop.getDrawConditionFailSound() : null;
     }
-    
-    /**
-     * 【新增】获取无法支付成本音效。
-     */
+
     @Nullable
     private SoundEvent getCannotAffordSound(String shopId) {
-        // 复用条件失败音效，或可单独配置
         return getConditionFailSound(shopId);
     }
 
-    /**
-     * 获取抽奖通用失败音效。
-     */
     @Nullable
     private SoundEvent getDrawFailSound(String shopId) {
         var gachaShop = GachaRegistry.get(shopId);
@@ -650,73 +429,98 @@ public final class ClientGachaCache {
     }
 
     // ════════════════════════════════════════
-    //  内部数据结构
+    // 数据结构
     // ════════════════════════════════════════
 
-    /**
-     * 抽奖失败原因枚举（对标 S2COpenTradePacket.FailReason）。
-     */
     public enum FailReason {
-        COOLDOWN,           // 冷却中
-        LIMIT_REACHED,      // 达到限购
-        CONDITION_FAIL,     // 条件不满足
-        CANNOT_AFFORD,      // 【新增】无法支付成本
-        GENERIC             // 通用失败
+        COOLDOWN,
+        LIMIT_REACHED,
+        CONDITION_FAIL,
+        CANNOT_AFFORD,
+        GENERIC
     }
 
-    /**
-     * 抽奖会话数据容器（对标 TradeSessionData）。
-     */
     public static class GachaSessionData {
-        private int pityCounter;
-        private int totalDraws;
-        
-        // 【新增】是否可以抽奖（对标商店 canBuyConditions）
-        private boolean canDraw;
-        private int remainingDraws;
-        
-        // 冷却数据（对标 TradeSessionData）
-        private long lastDrawRealTime;     // 真实时间戳
-        private long lastDrawGameTime;     // 游戏时间
-        private long lastDrawDayTime;      // 天数时间
-        private int cooldownType;          // 冷却类型 (0=NONE, 1=SECONDS, 2=GAME_DAY, 3=GAME_TICK)
-        private long cooldownValue;        // 冷却值
-        private int resetTimeTicks;        // GAME_TICK 重置时间点
-        
-        // 最近一次抽奖结果
-        @Nullable
-        private String lastDrawnItemId;
-        @Nullable
-        private String lastRarityName;
-        private int lastActualCount;
-        private boolean lastPityTriggered;
-        private long lastDrawTime;
-        
-        // 最近一次失败原因（"COOLDOWN", "MAX_DRAWS_REACHED", "CONDITION_NOT_MET"）
-        @Nullable
-        private String lastFailReason;
-        private List<CostShortfallLine> lastShortfallLines = List.of();
-        
-        // 历史记录（最多 50 条）
-        private final ArrayList<DrawRecord> drawHistory = new ArrayList<>();
-        
+        final AuthorityState authority;
+        final FeedbackState feedback;
+        final HistoryState history;
+
         public GachaSessionData(int pityCounter, int totalDraws) {
-            this.pityCounter = pityCounter;
-            this.totalDraws = totalDraws;
-            this.canDraw = true; // 默认可抽奖
-            this.remainingDraws = -1;
-            this.lastDrawRealTime = 0;
-            this.lastDrawGameTime = 0;
-            this.lastDrawDayTime = 0;
-            this.cooldownType = 0;
-            this.cooldownValue = 0;
-            this.resetTimeTicks = 0;
+            this(pityCounter, totalDraws, true, -1, 0, 0, 0, 0, 0, 0);
         }
-        
-        // 完整构造函数（用于网络包同步）
+
         public GachaSessionData(int pityCounter, int totalDraws, boolean canDraw, int remainingDraws,
                                 long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
                                 int cooldownType, long cooldownValue, int resetTimeTicks) {
+            this.authority = new AuthorityState(
+                    pityCounter, totalDraws, canDraw, remainingDraws,
+                    lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+                    cooldownType, cooldownValue, resetTimeTicks
+            );
+            this.feedback = new FeedbackState();
+            this.history = new HistoryState();
+        }
+
+        // 兼容旧 API
+        public int getPityCounter() { return authority.pityCounter; }
+        public int getTotalDraws() { return authority.totalDraws; }
+        public boolean canDraw() { return authority.canDraw; }
+        public int getRemainingDraws() { return authority.remainingDraws; }
+
+        public long getLastDrawRealTime() { return authority.lastDrawRealTime; }
+        public long getLastDrawGameTime() { return authority.lastDrawGameTime; }
+        public long getLastDrawDayTime() { return authority.lastDrawDayTime; }
+        public int getCooldownType() { return authority.cooldownType; }
+        public long getCooldownValue() { return authority.cooldownValue; }
+        public int getResetTimeTicks() { return authority.resetTimeTicks; }
+
+        @Nullable public String getLastDrawnItemId() { return history.lastDrawnItemId; }
+        @Nullable public String getLastRarityName() { return history.lastRarityName; }
+        public int getLastActualCount() { return history.lastActualCount; }
+        public boolean isLastPityTriggered() { return history.lastPityTriggered; }
+        public long getLastDrawTime() { return history.lastDrawTime; }
+
+        @Nullable public String getLastFailReason() { return feedback.lastFailReason; }
+        public List<CostShortfallLine> getLastShortfallLines() { return List.copyOf(feedback.lastShortfallLines); }
+        public List<DrawRecord> getDrawHistory() { return Collections.unmodifiableList(history.drawHistory); }
+
+        // 新分层快照 API
+        public AuthoritySnapshot authority() {
+            return new AuthoritySnapshot(
+                    authority.pityCounter,
+                    authority.totalDraws,
+                    authority.canDraw,
+                    authority.remainingDraws,
+                    authority.lastDrawRealTime,
+                    authority.lastDrawGameTime,
+                    authority.lastDrawDayTime,
+                    authority.cooldownType,
+                    authority.cooldownValue,
+                    authority.resetTimeTicks
+            );
+        }
+
+        public FeedbackSnapshot feedback() {
+            return new FeedbackSnapshot(feedback.lastFailReason, List.copyOf(feedback.lastShortfallLines));
+        }
+    }
+
+    static final class AuthorityState {
+        int pityCounter;
+        int totalDraws;
+        boolean canDraw;
+        int remainingDraws;
+
+        long lastDrawRealTime;
+        long lastDrawGameTime;
+        long lastDrawDayTime;
+        int cooldownType;
+        long cooldownValue;
+        int resetTimeTicks;
+
+        AuthorityState(int pityCounter, int totalDraws, boolean canDraw, int remainingDraws,
+                       long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
+                       int cooldownType, long cooldownValue, int resetTimeTicks) {
             this.pityCounter = pityCounter;
             this.totalDraws = totalDraws;
             this.canDraw = canDraw;
@@ -728,50 +532,42 @@ public final class ClientGachaCache {
             this.cooldownValue = cooldownValue;
             this.resetTimeTicks = resetTimeTicks;
         }
-        
-        public int getPityCounter() { return pityCounter; }
-        public int getTotalDraws() { return totalDraws; }
-        /**
-         * 获取服务端权威的可抽奖状态。
-         * <p>
-         * 客户端不再自行推导限购、条件与冷却的业务结论，
-         * 这里只消费服务端同步下来的最终状态。
-         */
-        public boolean canDraw() { return canDraw; }
-
-        public int getRemainingDraws() { return remainingDraws; }
-        
-        // 冷却数据 Getters
-        public long getLastDrawRealTime() { return lastDrawRealTime; }
-        public long getLastDrawGameTime() { return lastDrawGameTime; }
-        public long getLastDrawDayTime() { return lastDrawDayTime; }
-        public int getCooldownType() { return cooldownType; }
-        public long getCooldownValue() { return cooldownValue; }
-        public int getResetTimeTicks() { return resetTimeTicks; }
-        
-        @Nullable
-        public String getLastDrawnItemId() { return lastDrawnItemId; }
-        @Nullable
-        public String getLastRarityName() { return lastRarityName; }
-        public int getLastActualCount() { return lastActualCount; }
-        public boolean isLastPityTriggered() { return lastPityTriggered; }
-        public long getLastDrawTime() { return lastDrawTime; }
-        @Nullable
-        public String getLastFailReason() { return lastFailReason; }
-        public List<CostShortfallLine> getLastShortfallLines() { return Collections.unmodifiableList(lastShortfallLines); }
-        public List<DrawRecord> getDrawHistory() { 
-            return Collections.unmodifiableList(drawHistory); 
-        }
     }
 
-    /**
-     * 单次抽奖记录。
-     */
+    static final class FeedbackState {
+        @Nullable String lastFailReason;
+        List<CostShortfallLine> lastShortfallLines = List.of();
+    }
+
+    static final class HistoryState {
+        @Nullable String lastDrawnItemId;
+        @Nullable String lastRarityName;
+        int lastActualCount;
+        boolean lastPityTriggered;
+        long lastDrawTime;
+        final ArrayList<DrawRecord> drawHistory = new ArrayList<>();
+    }
+
+    public record AuthoritySnapshot(
+            int pityCounter,
+            int totalDraws,
+            boolean canDraw,
+            int remainingDraws,
+            long lastDrawRealTime,
+            long lastDrawGameTime,
+            long lastDrawDayTime,
+            int cooldownType,
+            long cooldownValue,
+            int resetTimeTicks
+    ) {}
+
+    public record FeedbackSnapshot(@Nullable String failReason, List<CostShortfallLine> shortfallLines) {}
+
     public record DrawRecord(
-        String itemId,
-        String rarityName,
-        int actualCount,
-        boolean pityTriggered,
-        long drawTime
+            String itemId,
+            String rarityName,
+            int actualCount,
+            boolean pityTriggered,
+            long drawTime
     ) {}
 }

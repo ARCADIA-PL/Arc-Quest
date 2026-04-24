@@ -5,7 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
-import org.com.arc_quest.trade.registry.TradeRegistry;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.slf4j.Logger;
 
 import java.util.function.Supplier;
@@ -38,12 +38,14 @@ public class C2SRequestTradeSyncPacket {
 
     public static void handle(C2SRequestTradeSyncPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+            ServerPlayer player = TradeRequestValidator.requirePlayer(ctx.get().getSender(), "trade_sync", pkt.shopId, LOGGER);
             if (player == null) return;
 
-            TradeShopDefinition shop = TradeRegistry.get(pkt.shopId);
+            SyncObservability.recordRequest("trade", pkt.shopId, player.getName().getString());
+            SyncObservability.trace("trade", pkt.shopId, player.getName().getString(), SyncObservability.Stage.SYNC_REQUEST, "manual_sync");
+
+            TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_sync", LOGGER);
             if (shop == null) {
-                LOGGER.warn("[Trade] Unknown shop '{}' sync requested by {}", pkt.shopId, player.getName().getString());
                 return;
             }
 

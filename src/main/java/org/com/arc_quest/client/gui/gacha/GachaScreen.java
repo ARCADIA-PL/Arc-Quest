@@ -130,7 +130,8 @@ public class GachaScreen extends Screen {
             LOGGER.info("[Gacha-Client] Confirming draw and syncing for shop: {}", shopId);
             hasPendingDraw = false;
             ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(shopId));
-            LOGGER.debug("[Gacha-Client] C2SConfirmDrawPacket sent, hasPendingDraw=false");
+            ArcQuestNetwork.CHANNEL.sendToServer(C2SGachaControlPacket.sync(shopId));
+            LOGGER.debug("[Gacha-Client] C2SConfirmDrawPacket + immediate SYNC sent, hasPendingDraw=false");
         } else {
             LOGGER.debug("[Gacha-Client] confirmDrawAndSync called but no pending draw");
         }

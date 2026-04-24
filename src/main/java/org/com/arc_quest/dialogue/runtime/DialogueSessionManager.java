@@ -18,6 +18,8 @@ import org.com.arc_quest.dialogue.registry.DialogueRegistry;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.quest.network.SyncObservability;
+import org.com.arc_quest.quest.network.SyncObservability.Reason;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -95,7 +97,8 @@ public final class DialogueSessionManager {
 
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
         progress.recordDialogueVisit(namespace, dialogueId, nowReal, nowGame, nowDayTime);
-        sendNodeToClient(session);
+        sendNodeToClient(session, true);
+        SyncObservability.trace("dialogue", dialogueId, player.getName().getString(), SyncObservability.Stage.OPEN, Reason.DIALOGUE_OPEN);
         MinecraftForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
         return session;
     }
@@ -108,6 +111,9 @@ public final class DialogueSessionManager {
             return;
         }
 
+        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                SyncObservability.Stage.ACTION, Reason.DIALOGUE_CHOICE);
+
         DialogueNode currentNode = session.getCurrentNode();
         if (currentNode != null && choiceIndex >= 0 && choiceIndex < currentNode.choices().size()) {
             Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
@@ -119,9 +125,13 @@ public final class DialogueSessionManager {
         if (session.isEnded() || next == null) {
             endDialogue(player);
             sendClose(player);
+            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                    SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_END);
             return;
         }
-        sendNodeToClient(session);
+        sendNodeToClient(session, false);
+        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_NEXT_NODE);
     }
 
     public void handleAutoAdvance(ServerPlayer player) {
@@ -130,18 +140,26 @@ public final class DialogueSessionManager {
             sendClose(player);
             return;
         }
+        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                SyncObservability.Stage.ACTION, Reason.DIALOGUE_AUTO_ADVANCE);
         DialogueNode next = session.autoAdvance();
         if (session.isEnded() || next == null) {
             endDialogue(player);
             sendClose(player);
+            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                    SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_END);
             return;
         }
-        sendNodeToClient(session);
+        sendNodeToClient(session, false);
+        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_NEXT_NODE);
     }
 
     public void handleRestoreDialogue(ServerPlayer player) {
         DialogueSession session = getSession(player);
         if (session != null && !session.isEnded()) {
+            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                    SyncObservability.Stage.ACTION, Reason.DIALOGUE_RESTORE);
             String restoreNodeId = pollRestoreNodeId(player);
             if (restoreNodeId != null && !restoreNodeId.isEmpty() && !"__CURRENT__".equals(restoreNodeId)) {
                 DialogueNode targetNode = session.getTree().getNode(restoreNodeId);
@@ -151,10 +169,14 @@ public final class DialogueSessionManager {
                     LOGGER.warn("[Dialogue] Restore node '{}' not found for player {}", restoreNodeId, player.getName().getString());
                 }
             }
-            sendNodeToClient(session);
+            sendNodeToClient(session, false);
+            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                    SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
         } else {
             clearRestoreNodeState(player);
             LOGGER.warn("[Dialogue] No active session for player {}", player.getName().getString());
+            SyncObservability.trace("dialogue", "restore", player.getName().getString(),
+                    SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NO_SESSION);
         }
     }
 
@@ -194,7 +216,7 @@ public final class DialogueSessionManager {
         endDialogue(player);
     }
 
-    private void sendNodeToClient(DialogueSession session) {
+    private void sendNodeToClient(DialogueSession session, boolean openMode) {
         ServerPlayer player = session.getPlayer();
         DialogueNode node = session.getCurrentNode();
         if (node == null) return;
@@ -224,7 +246,17 @@ public final class DialogueSessionManager {
         }
 
         var cooldownData = session.getChoiceCooldownRawData();
-        ArcQuestNetwork.sendToPlayer(player, new S2COpenDialoguePacket(session.getTree().dialogueId(), node.nodeId(), speaker, text, choiceTexts, node.isTerminal(), !node.hasChoices() && node.autoNextId() != null, node.delayMs(), session.getEntityId(), cooldownData.lastSelectTimes(), cooldownData.purchaseGameTimes(), cooldownData.purchaseDayTimes(), cooldownData.cooldownTypes(), cooldownData.cooldownValues(), cooldownData.resetTimeTicks(), choiceSounds, saySoundId, selectedSayId, choiceIds));
+        S2COpenDialoguePacket packet = new S2COpenDialoguePacket(
+                session.getTree().dialogueId(), node.nodeId(), speaker, text, choiceTexts,
+                node.isTerminal(), !node.hasChoices() && node.autoNextId() != null, node.delayMs(),
+                session.getEntityId(), cooldownData.lastSelectTimes(), cooldownData.purchaseGameTimes(),
+                cooldownData.purchaseDayTimes(), cooldownData.cooldownTypes(), cooldownData.cooldownValues(),
+                cooldownData.resetTimeTicks(), choiceSounds, saySoundId, selectedSayId, choiceIds
+        );
+        if (!openMode) {
+            packet = S2COpenDialoguePacket.updateFrom(packet);
+        }
+        ArcQuestNetwork.sendToPlayer(player, packet);
     }
 
     private void sendClose(ServerPlayer player) {

@@ -31,12 +31,12 @@ public final class GachaEntryStateResolver {
     /**
      * 综合判断是否可以抽奖。
      * <p>
-     * 优先级：可见性 > 限购 > 冷却 > 条件
+     * 优先级：可见性 > 冷却 > 限购 > 条件
      */
     public static boolean canDraw(ServerPlayer player, IQuestCapability cap, String shopId, GachaShopDefinition shop) {
         if (!isVisible(player, cap, shop)) return false;
-        if (isMaxDrawsReached(cap, shopId, shop)) return false;
         if (isOnCooldown(player, cap, shopId, shop)) return false;
+        if (isMaxDrawsReached(cap, shopId, shop)) return false;
         if (!hasConditionMet(player, cap, shop)) return false;
         return true;
     }

@@ -21,6 +21,7 @@ public final class ClientTradeCache {
 
     public static final ClientTradeCache INSTANCE = new ClientTradeCache();
     private static final Logger LOGGER = LogUtils.getLogger();
+
     private final Map<String, TradeSessionData> activeSessions = new HashMap<>();
 
     private ClientTradeCache() {
@@ -54,7 +55,9 @@ public final class ClientTradeCache {
         }
     }
 
-    public void handlePurchaseResult(String shopId, String entryId, boolean success, S2COpenTradePacket.FailReason failReason) {
+    public void handlePurchaseResult(String shopId, String entryId, boolean success,
+                                     @Nullable S2COpenTradePacket.FailReason failReason,
+                                     @Nullable String errorKey) {
         if (entryId == null || entryId.isEmpty()) return;
         var shopDef = TradeRegistry.get(shopId);
         if (shopDef == null) return;
@@ -63,14 +66,18 @@ public final class ClientTradeCache {
 
         TradeSessionData data = activeSessions.computeIfAbsent(shopId, TradeSessionData::new);
         if (success) {
-            data.lastFailedEntryId = null;
-            data.lastShortfallLines = List.of();
+            data.feedback.lastFailedEntryId = null;
+            data.feedback.lastShortfallLines = List.of();
+            data.feedback.lastFailReason = null;
+            data.feedback.lastErrorKey = null;
             GuiSoundManager.play(entry.getPurchaseSuccessSound());
         } else {
             if (failReason != S2COpenTradePacket.FailReason.CANNOT_AFFORD) {
-                data.lastFailedEntryId = null;
-                data.lastShortfallLines = List.of();
+                data.feedback.lastFailedEntryId = null;
+                data.feedback.lastShortfallLines = List.of();
             }
+            data.feedback.lastFailReason = failReason;
+            data.feedback.lastErrorKey = errorKey;
             SoundEvent sound = switch (failReason != null ? failReason : S2COpenTradePacket.FailReason.GENERIC) {
                 case COOLDOWN -> entry.getCooldownSound();
                 case LIMIT_REACHED -> entry.getLimitReachedSound();
@@ -86,40 +93,54 @@ public final class ClientTradeCache {
                               int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
                               boolean[] visibility, boolean[] canBuyConditions) {
         TradeSessionData data = activeSessions.computeIfAbsent(shopId, TradeSessionData::new);
-        data.purchaseCounts = purchaseCounts;
-        data.maxPurchases = maxPurchases;
-        data.lastPurchaseTimes = lastPurchaseTimes;
-        data.purchaseGameTimes = purchaseGameTimes;
-        data.purchaseDayTimes = purchaseDayTimes;
-        data.cooldownTypes = cooldownTypes;
-        data.cooldownValues = cooldownValues;
-        data.resetTimeTicks = resetTimeTicks;
-        data.visibility = visibility;
-        data.canBuyConditions = canBuyConditions;
+        data.authority.purchaseCounts = purchaseCounts;
+        data.authority.maxPurchases = maxPurchases;
+        data.authority.lastPurchaseTimes = lastPurchaseTimes;
+        data.authority.purchaseGameTimes = purchaseGameTimes;
+        data.authority.purchaseDayTimes = purchaseDayTimes;
+        data.authority.cooldownTypes = cooldownTypes;
+        data.authority.cooldownValues = cooldownValues;
+        data.authority.resetTimeTicks = resetTimeTicks;
+        data.authority.visibility = visibility;
+        data.authority.canBuyConditions = canBuyConditions;
     }
 
     public boolean isOnCooldown(String shopId, int entryIndex) {
         TradeSessionData data = activeSessions.get(shopId);
-        if (data == null || entryIndex < 0 || entryIndex >= data.lastPurchaseTimes.length) return false;
-        return ClientCooldownHelper.isOnCooldown(data.lastPurchaseTimes[entryIndex], data.purchaseGameTimes[entryIndex], data.purchaseDayTimes[entryIndex], data.cooldownTypes[entryIndex], data.cooldownValues[entryIndex], data.resetTimeTicks[entryIndex]);
+        if (data == null || entryIndex < 0 || entryIndex >= data.authority.lastPurchaseTimes.length) return false;
+        return ClientCooldownHelper.isOnCooldown(
+                data.authority.lastPurchaseTimes[entryIndex],
+                data.authority.purchaseGameTimes[entryIndex],
+                data.authority.purchaseDayTimes[entryIndex],
+                data.authority.cooldownTypes[entryIndex],
+                data.authority.cooldownValues[entryIndex],
+                data.authority.resetTimeTicks[entryIndex]
+        );
     }
 
     public String getCooldownText(String shopId, int entryIndex) {
         TradeSessionData data = activeSessions.get(shopId);
-        if (data == null || entryIndex < 0 || entryIndex >= data.lastPurchaseTimes.length) return "";
-        return ClientCooldownHelper.getCooldownText(data.lastPurchaseTimes[entryIndex], data.purchaseGameTimes[entryIndex], data.purchaseDayTimes[entryIndex], data.cooldownTypes[entryIndex], data.cooldownValues[entryIndex], data.resetTimeTicks[entryIndex]);
+        if (data == null || entryIndex < 0 || entryIndex >= data.authority.lastPurchaseTimes.length) return "";
+        return ClientCooldownHelper.getCooldownText(
+                data.authority.lastPurchaseTimes[entryIndex],
+                data.authority.purchaseGameTimes[entryIndex],
+                data.authority.purchaseDayTimes[entryIndex],
+                data.authority.cooldownTypes[entryIndex],
+                data.authority.cooldownValues[entryIndex],
+                data.authority.resetTimeTicks[entryIndex]
+        );
     }
 
     public int getPurchaseCount(String shopId, int entryIndex) {
         TradeSessionData data = activeSessions.get(shopId);
-        if (data == null || entryIndex < 0 || entryIndex >= data.purchaseCounts.length) return 0;
-        return data.purchaseCounts[entryIndex];
+        if (data == null || entryIndex < 0 || entryIndex >= data.authority.purchaseCounts.length) return 0;
+        return data.authority.purchaseCounts[entryIndex];
     }
 
     public int getMaxPurchases(String shopId, int entryIndex) {
         TradeSessionData data = activeSessions.get(shopId);
-        if (data == null || entryIndex < 0 || entryIndex >= data.maxPurchases.length) return -1;
-        return data.maxPurchases[entryIndex];
+        if (data == null || entryIndex < 0 || entryIndex >= data.authority.maxPurchases.length) return -1;
+        return data.authority.maxPurchases[entryIndex];
     }
 
     public int getRemainingPurchases(String shopId, int entryIndex) {
@@ -130,14 +151,14 @@ public final class ClientTradeCache {
 
     public boolean isVisible(String shopId, int entryIndex) {
         TradeSessionData data = activeSessions.get(shopId);
-        if (data == null || entryIndex < 0 || entryIndex >= data.visibility.length) return true;
-        return data.visibility[entryIndex];
+        if (data == null || entryIndex < 0 || entryIndex >= data.authority.visibility.length) return true;
+        return data.authority.visibility[entryIndex];
     }
 
     public boolean canBuy(String shopId, int entryIndex) {
         TradeSessionData data = activeSessions.get(shopId);
-        if (data == null || entryIndex < 0 || entryIndex >= data.canBuyConditions.length) return false;
-        return data.canBuyConditions[entryIndex];
+        if (data == null || entryIndex < 0 || entryIndex >= data.authority.canBuyConditions.length) return false;
+        return data.authority.canBuyConditions[entryIndex];
     }
 
     public int getGlobalIndex(String shopId, String entryId) {
@@ -176,14 +197,14 @@ public final class ClientTradeCache {
 
     public void recordShortfall(String shopId, String entryId, List<CostShortfallLine> shortfallLines) {
         TradeSessionData data = activeSessions.computeIfAbsent(shopId, TradeSessionData::new);
-        data.lastFailedEntryId = entryId;
-        data.lastShortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
+        data.feedback.lastFailedEntryId = entryId;
+        data.feedback.lastShortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
     }
 
     public List<CostShortfallLine> getShortfall(String shopId, String entryId) {
         TradeSessionData data = activeSessions.get(shopId);
-        if (data == null || entryId == null || !entryId.equals(data.lastFailedEntryId)) return List.of();
-        return data.lastShortfallLines;
+        if (data == null || entryId == null || !entryId.equals(data.feedback.lastFailedEntryId)) return List.of();
+        return data.feedback.lastShortfallLines;
     }
 
     @Nullable
@@ -192,8 +213,48 @@ public final class ClientTradeCache {
         return shopDef != null ? new ArrayList<>(shopDef.getAllEntries()) : null;
     }
 
+    // 可选快照接口（给外层只读消费，后续治理会更稳）
+    @Nullable
+    public AuthoritySnapshot authoritySnapshot(String shopId) {
+        TradeSessionData data = activeSessions.get(shopId);
+        if (data == null) return null;
+        return new AuthoritySnapshot(
+                data.authority.purchaseCounts,
+                data.authority.maxPurchases,
+                data.authority.lastPurchaseTimes,
+                data.authority.purchaseGameTimes,
+                data.authority.purchaseDayTimes,
+                data.authority.cooldownTypes,
+                data.authority.cooldownValues,
+                data.authority.resetTimeTicks,
+                data.authority.visibility,
+                data.authority.canBuyConditions
+        );
+    }
+
+    @Nullable
+    public FeedbackSnapshot feedbackSnapshot(String shopId) {
+        TradeSessionData data = activeSessions.get(shopId);
+        if (data == null) return null;
+        return new FeedbackSnapshot(
+                data.feedback.lastFailedEntryId,
+                List.copyOf(data.feedback.lastShortfallLines),
+                data.feedback.lastFailReason,
+                data.feedback.lastErrorKey
+        );
+    }
+
     static final class TradeSessionData {
         final String shopId;
+        final AuthorityState authority = new AuthorityState();
+        final FeedbackState feedback = new FeedbackState();
+
+        TradeSessionData(String shopId) {
+            this.shopId = shopId;
+        }
+    }
+
+    static final class AuthorityState {
         int[] purchaseCounts = new int[0];
         int[] maxPurchases = new int[0];
         long[] lastPurchaseTimes = new long[0];
@@ -204,11 +265,37 @@ public final class ClientTradeCache {
         int[] resetTimeTicks = new int[0];
         boolean[] visibility = new boolean[0];
         boolean[] canBuyConditions = new boolean[0];
+    }
+
+    static final class FeedbackState {
+        @Nullable
         String lastFailedEntryId;
         List<CostShortfallLine> lastShortfallLines = List.of();
+        @Nullable
+        S2COpenTradePacket.FailReason lastFailReason;
+        @Nullable
+        String lastErrorKey;
+    }
 
-        TradeSessionData(String shopId) {
-            this.shopId = shopId;
-        }
+    public record AuthoritySnapshot(
+            int[] purchaseCounts,
+            int[] maxPurchases,
+            long[] lastPurchaseTimes,
+            long[] purchaseGameTimes,
+            long[] purchaseDayTimes,
+            int[] cooldownTypes,
+            long[] cooldownValues,
+            int[] resetTimeTicks,
+            boolean[] visibility,
+            boolean[] canBuyConditions
+    ) {
+    }
+
+    public record FeedbackSnapshot(
+            @Nullable String lastFailedEntryId,
+            List<CostShortfallLine> shortfallLines,
+            @Nullable S2COpenTradePacket.FailReason failReason,
+            @Nullable String errorKey
+    ) {
     }
 }

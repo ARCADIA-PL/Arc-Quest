@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
@@ -56,8 +57,6 @@ public abstract class AbstractTradeScreen extends Screen {
     private float animProgress = 0f;
     private float feedbackScale = 1.0f;
     private float feedbackShake = 0f;
-    protected float shortfallTooltipTimer = 0f;
-    private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
     private int authorityRefreshTicker = 0;
     private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 10;
 
@@ -100,13 +99,10 @@ public abstract class AbstractTradeScreen extends Screen {
         feedbackScale = 1.15f;
     }
 
-    public void onTradeFail(S2COpenTradePacket.FailReason _reason, String _errorKey) {
+    public void onTradeFail(S2COpenTradePacket.FailReason reason, String errorKey) {
         feedbackSuccess = false;
         feedbackAnim = 1f;
         feedbackShake = 6f;
-        if (_reason == S2COpenTradePacket.FailReason.CANNOT_AFFORD) {
-            shortfallTooltipTimer = SHORTFALL_TOOLTIP_DURATION;
-        }
     }
 
     public String getShopId() { return shopId; }
@@ -184,17 +180,6 @@ public abstract class AbstractTradeScreen extends Screen {
             dt = realDt;
         }
 
-        if (shortfallTooltipTimer > 0f && dt > 0f) {
-            shortfallTooltipTimer = Math.max(0f, shortfallTooltipTimer - dt);
-        }
-
-        transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.14f : getOpenAnimSpeed(), dt);
-        if (isClosing && transitionAnim <= 0.01f) {
-            if (minecraft != null) minecraft.setScreen(null);
-            return;
-        }
-
-        effectiveAlpha = transitionAnim * suspendAlpha;
         if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
 
         int safeAlpha = (int) (255 * effectiveAlpha);
@@ -203,6 +188,7 @@ public abstract class AbstractTradeScreen extends Screen {
         if (safeAlpha <= 5) return;
 
         renderContent(g, mx, my, pt);
+        renderTradeFailToast(g);
 
         int newHoveredIndex = getHoveredEntryIndex(mx, my);
 
@@ -239,6 +225,37 @@ public abstract class AbstractTradeScreen extends Screen {
         }
     }
 
+    private void renderTradeFailToast(GuiGraphics g) {
+        ClientTradeCache.FeedbackSnapshot feedback = ClientTradeCache.INSTANCE.feedbackSnapshot(shopId);
+        if (feedback == null || (feedback.errorKey() == null && feedback.failReason() == null)) {
+            return;
+        }
+
+        Component failMessage = HudRenderUtil.resolveTradeFailMessage(
+                feedback.errorKey(),
+                feedback.failReason() != null ? feedback.failReason().name() : null
+        );
+        String msg = failMessage.getString();
+        if (msg.isEmpty()) {
+            return;
+        }
+
+        int safeA = (int) (210 * effectiveAlpha);
+        if (safeA <= 5) {
+            return;
+        }
+
+        int padX = 10;
+        int w = font.width(msg) + padX * 2;
+        int h = 18;
+        int x = (width - w) / 2;
+        int y = Math.max(8, height / 2 - 90);
+
+        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x160A0A, safeA));
+        HudAnimUtil.drawFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(0xFF6666, safeA));
+        g.drawCenteredString(font, msg, x + w / 2, y + 5, HudAnimUtil.withAlpha(0xFFD0D0, safeA));
+    }
+
     private static class TooltipData {
         int x, y, w, h;
         List<FormattedCharSequence> descLines;
@@ -263,7 +280,11 @@ public abstract class AbstractTradeScreen extends Screen {
         d.descLines = entry.getDescription() != null ? font.split(entry.getDescription(), 180) : new ArrayList<>();
 
         d.shortfalls = ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId());
-        d.showShortfall = shortfallTooltipTimer > 0f && !d.shortfalls.isEmpty();
+        ClientTradeCache.FeedbackSnapshot feedback = ClientTradeCache.INSTANCE.feedbackSnapshot(shopId);
+        boolean thisEntryFailed = feedback != null
+                && feedback.lastFailedEntryId() != null
+                && feedback.lastFailedEntryId().equals(entry.getEntryId());
+        d.showShortfall = thisEntryFailed && !d.shortfalls.isEmpty();
 
         int titleW = font.width(entry.getDisplayName());
         int totalW = Math.max(188, titleW + 40);
