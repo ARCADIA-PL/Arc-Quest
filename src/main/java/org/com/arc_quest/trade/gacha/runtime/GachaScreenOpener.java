@@ -8,6 +8,7 @@ import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -68,6 +69,7 @@ public class GachaScreenOpener {
         GachaSnapshot snapshot = resolveSnapshot(player, shop, cap, true);
 
         if (!shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
+            SyncObservability.recordDropped("gacha", shop.getShopId(), player.getName().getString(), false);
             return;
         }
 
@@ -90,6 +92,7 @@ public class GachaScreenOpener {
         );
 
         LOGGER.debug("[Gacha] Sent S2CGachaStatePacket(SYNC) to {}", player.getName().getString());
+        SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
     }
 
     private static GachaSnapshot resolveSnapshot(ServerPlayer player, GachaShopDefinition shop,

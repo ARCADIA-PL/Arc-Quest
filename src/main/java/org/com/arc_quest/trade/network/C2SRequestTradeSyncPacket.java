@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.com.arc_quest.trade.registry.TradeRegistry;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.slf4j.Logger;
 
 import java.util.function.Supplier;
@@ -40,6 +41,8 @@ public class C2SRequestTradeSyncPacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
+
+            SyncObservability.recordRequest("trade", pkt.shopId, player.getName().getString());
 
             TradeShopDefinition shop = TradeRegistry.get(pkt.shopId);
             if (shop == null) {

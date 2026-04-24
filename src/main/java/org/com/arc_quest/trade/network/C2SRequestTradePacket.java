@@ -16,6 +16,7 @@ import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.com.arc_quest.trade.registry.TradeRegistry;
@@ -247,6 +248,7 @@ public class C2SRequestTradePacket {
         TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
 
         if (!shouldSendTradeSync(player, shop.getShopId(), snap)) {
+            SyncObservability.recordDropped("trade", shop.getShopId(), player.getName().getString(), false);
             return;
         }
 
@@ -268,6 +270,7 @@ public class C2SRequestTradePacket {
                 PacketDistributor.PLAYER.with(() -> player),
                 refreshPkt
         );
+        SyncObservability.recordSent("trade", shop.getShopId(), player.getName().getString(), true);
     }
 
     /**

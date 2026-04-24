@@ -6,6 +6,7 @@ import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
@@ -55,6 +56,10 @@ public class C2SGachaControlPacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
+
+            if (pkt.action == Action.SYNC) {
+                SyncObservability.recordRequest("gacha", pkt.shopId, player.getName().getString());
+            }
 
             GachaShopDefinition shop = GachaRegistry.get(pkt.shopId);
             if (shop == null) {
