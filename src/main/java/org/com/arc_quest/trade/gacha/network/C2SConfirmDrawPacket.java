@@ -53,7 +53,7 @@ public class C2SConfirmDrawPacket {
             GachaShopDefinition shop = GachaRegistry.get(pkt.shopId);
             IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
             if (shop != null && cap != null) {
-                GachaScreenOpener.openGachaScreen(player, shop, cap);
+                GachaScreenOpener.syncGachaState(player, shop, cap);
             }
         });
         ctx.get().setPacketHandled(true);
