@@ -9,10 +9,7 @@ import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
-import org.com.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
-import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
-import org.com.arc_quest.trade.gacha.network.C2SOpenGachaPacket;
-import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
+import org.com.arc_quest.trade.gacha.network.*;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.slf4j.Logger;
 
@@ -80,7 +77,7 @@ public class GachaScreen extends Screen {
         }
         authorityRefreshTicker = 0;
 
-        ArcQuestNetwork.CHANNEL.sendToServer(new C2SOpenGachaPacket(shopId));
+        ArcQuestNetwork.CHANNEL.sendToServer(C2SGachaControlPacket.sync(shopId));
     }
 
     public String getShopId() { return shopId; }

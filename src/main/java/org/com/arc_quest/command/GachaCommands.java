@@ -22,8 +22,8 @@ import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.api.GachaPool;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.api.PityConfig;
-import org.com.arc_quest.trade.gacha.network.S2COpenGachaPacket;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.slf4j.Logger;
 
 import java.util.Collection;
@@ -130,8 +130,8 @@ public class GachaCommands {
         }
 
         // 发送打开抽奖界面的网络包
-        S2COpenGachaPacket.handleServerOpen(player, shop, cap);
-        
+        GachaScreenOpener.openGachaScreen(player, shop, cap);
+
         success(ctx, String.format("已为 %s 打开抽奖界面: %s", player.getName().getString(), shopId));
         LOGGER.info("[GachaCommand] Opened gacha '{}' for player {}", shopId, player.getName().getString());
         

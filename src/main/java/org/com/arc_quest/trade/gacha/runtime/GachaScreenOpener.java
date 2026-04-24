@@ -11,30 +11,23 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
-import org.com.arc_quest.trade.gacha.network.S2COpenGachaPacket;
-import org.com.arc_quest.trade.gacha.network.S2CSyncGachaStatePacket;
+import org.com.arc_quest.trade.gacha.network.S2CGachaStatePacket;
 import org.slf4j.Logger;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 抽奖界面打开管理器。
- * 统一管理服务端打开抽奖界面的逻辑，确保 C2S 和 S2C 路径行为一致。
- */
 public class GachaScreenOpener {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Map<UUID, Map<String, Integer>> LAST_GACHA_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
 
-    /**
-     * 服务端打开抽奖界面（统一入口）。
-     */
     public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
         openGachaScreen(player, shop, cap, null);
     }
 
-    /**
-     * 从对话中打开抽奖界面，并记录对话恢复目标节点。
-     */
     public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop,
                                        IQuestCapability cap, String restoreNodeId) {
         if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
@@ -46,14 +39,11 @@ public class GachaScreenOpener {
 
         GachaSnapshot snapshot = resolveSnapshot(player, shop, cap, true);
 
-        var openEvent = new GachaEvents.OpenedEvent(player, shop.getShopId(), cap);
-        MinecraftForge.EVENT_BUS.post(openEvent);
-
-        var drawHistory = cap.getGachaDrawHistory(shop.getShopId());
+        MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(player, shop.getShopId(), cap));
 
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
-                new S2COpenGachaPacket(
+                S2CGachaStatePacket.open(
                         shop.getShopId(),
                         snapshot.pityCounter(),
                         snapshot.totalDraws(),
@@ -66,22 +56,24 @@ public class GachaScreenOpener {
                         snapshot.cooldownValue(),
                         snapshot.resetTimeTicks(),
                         snapshot.shortfallLines(),
-                        drawHistory
+                        cap.getGachaDrawHistory(shop.getShopId())
                 )
         );
 
-        LOGGER.debug("[Gacha] Sent S2COpenGachaPacket to player {}", player.getName().getString());
+        markGachaSynced(player, shop.getShopId(), snapshot);
+        LOGGER.debug("[Gacha] Sent S2CGachaStatePacket(OPEN) to {}", player.getName().getString());
     }
 
-    /**
-     * 仅同步当前抽奖界面的权威状态，不打开界面。
-     */
     public static void syncGachaState(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
         GachaSnapshot snapshot = resolveSnapshot(player, shop, cap, true);
 
+        if (!shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
+            return;
+        }
+
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncGachaStatePacket(
+                S2CGachaStatePacket.sync(
                         shop.getShopId(),
                         snapshot.pityCounter(),
                         snapshot.totalDraws(),
@@ -97,7 +89,7 @@ public class GachaScreenOpener {
                 )
         );
 
-        LOGGER.debug("[Gacha] Sent S2CSyncGachaStatePacket to player {}", player.getName().getString());
+        LOGGER.debug("[Gacha] Sent S2CGachaStatePacket(SYNC) to {}", player.getName().getString());
     }
 
     private static GachaSnapshot resolveSnapshot(ServerPlayer player, GachaShopDefinition shop,
@@ -105,26 +97,25 @@ public class GachaScreenOpener {
         GachaSession session = new GachaSession(player, shop, cap);
 
         if (applyReset) {
-            int drawCountBeforeReset = session.getDrawCount();
+            int before = session.getDrawCount();
             session.checkAndResetDraws();
-            int drawCountAfterReset = session.getDrawCount();
-
-            if (drawCountBeforeReset != drawCountAfterReset) {
-                LOGGER.info("[Gacha-Open] Draw count reset on open/sync: shop={}, before={}, after={}",
-                        shop.getShopId(), drawCountBeforeReset, drawCountAfterReset);
+            int after = session.getDrawCount();
+            if (before != after) {
+                LOGGER.info("[Gacha] Draw count reset: shop={}, before={}, after={}", shop.getShopId(), before, after);
             }
         }
 
         boolean canDrawByRule = session.canDraw();
         int remainingDraws = session.getRemainingDraws();
-        List<CostShortfallLine> shortfallLines = List.of();
 
+        List<CostShortfallLine> shortfalls = List.of();
         boolean canAfford = true;
+
         if (canDrawByRule) {
             ITradeOffer drawCost = shop.getDrawCost();
             if (drawCost != null && !drawCost.canAfford(player)) {
                 canAfford = false;
-                shortfallLines = drawCost.buildShortfallLines(player);
+                shortfalls = drawCost.buildShortfallLines(player);
             }
         }
 
@@ -135,30 +126,63 @@ public class GachaScreenOpener {
 
         var cooldownEntry = cap.getGachaDataStore().getDrawCooldown(shop.getShopId());
 
-        long lastDrawRealTime = cooldownEntry.realTime();
-        long lastDrawGameTime = cooldownEntry.gameTime();
-        long lastDrawDayTime = cooldownEntry.dayTime();
-
-        int cooldownType = shop.getCooldownType().ordinal();
-        long cooldownValue = shop.getCooldownValue();
-        int resetTimeTicks = shop.getResetTimeTicks();
-
-        LOGGER.info("[Gacha-Snapshot] shop={}, canDraw={}, remaining={}, totalDraws={}, pityCounter={}",
-                shop.getShopId(), canDraw, remainingDraws, totalDraws, pityCounter);
-
         return new GachaSnapshot(
                 pityCounter,
                 totalDraws,
                 canDraw,
                 remainingDraws,
-                lastDrawRealTime,
-                lastDrawGameTime,
-                lastDrawDayTime,
-                cooldownType,
-                cooldownValue,
-                resetTimeTicks,
-                shortfallLines
+                cooldownEntry.realTime(),
+                cooldownEntry.gameTime(),
+                cooldownEntry.dayTime(),
+                shop.getCooldownType().ordinal(),
+                shop.getCooldownValue(),
+                shop.getResetTimeTicks(),
+                shortfalls
         );
+    }
+
+    private static boolean shouldSendGachaSync(ServerPlayer player, String shopId, GachaSnapshot snapshot) {
+        int fp = buildGachaFingerprint(snapshot);
+        Map<String, Integer> map = LAST_GACHA_SYNC_FINGERPRINTS.computeIfAbsent(player.getUUID(), __ -> new ConcurrentHashMap<>());
+        Integer old = map.get(shopId);
+        if (old != null && old == fp) return false;
+        map.put(shopId, fp);
+        return true;
+    }
+
+    private static void markGachaSynced(ServerPlayer player, String shopId, GachaSnapshot snapshot) {
+        int fp = buildGachaFingerprint(snapshot);
+        LAST_GACHA_SYNC_FINGERPRINTS
+                .computeIfAbsent(player.getUUID(), __ -> new ConcurrentHashMap<>())
+                .put(shopId, fp);
+    }
+
+    private static int buildGachaFingerprint(GachaSnapshot s) {
+        int h = 1;
+        h = 31 * h + s.pityCounter();
+        h = 31 * h + s.totalDraws();
+        h = 31 * h + (s.canDraw() ? 1 : 0);
+        h = 31 * h + s.remainingDraws();
+        h = 31 * h + Long.hashCode(s.lastDrawRealTime());
+        h = 31 * h + Long.hashCode(s.lastDrawGameTime());
+        h = 31 * h + Long.hashCode(s.lastDrawDayTime());
+        h = 31 * h + s.cooldownType();
+        h = 31 * h + Long.hashCode(s.cooldownValue());
+        h = 31 * h + s.resetTimeTicks();
+        h = 31 * h + buildShortfallFingerprint(s.shortfallLines());
+        return h;
+    }
+
+    private static int buildShortfallFingerprint(List<CostShortfallLine> lines) {
+        int h = 1;
+        if (lines == null || lines.isEmpty()) return h;
+        for (CostShortfallLine line : lines) {
+            h = 31 * h + line.label().getString().hashCode();
+            h = 31 * h + line.required();
+            h = 31 * h + line.owned();
+            h = 31 * h + line.missing();
+        }
+        return h;
     }
 
     private record GachaSnapshot(

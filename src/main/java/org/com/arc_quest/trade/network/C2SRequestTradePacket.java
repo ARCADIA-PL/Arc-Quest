@@ -23,9 +23,8 @@ import org.com.arc_quest.trade.runtime.TradeEntryStateResolver;
 import org.com.arc_quest.trade.runtime.TradeSession;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
@@ -34,6 +33,9 @@ import java.util.function.Supplier;
 public class C2SRequestTradePacket {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    private static final Map<UUID, Map<String, Integer>> LAST_TRADE_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
+
     public static void syncState(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
         refreshTradeData(player, shop, clientScreenType);
     }
@@ -184,7 +186,9 @@ public class C2SRequestTradePacket {
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
                 response);
-        
+
+        markTradeSynced(player, shop.getShopId(), snap);
+
         // 发布 Forge 事件（供附属模组监听）
         // 注意：商店打开时没有 NPC 上下文，npc 参数为 null
         MinecraftForge.EVENT_BUS.post(new TradeOpenedEvent(player, shop.getShopId(), null));
@@ -234,11 +238,19 @@ public class C2SRequestTradePacket {
     /**
      * 刷新交易界面数据（不重建会话，仅同步最新状态）。
      */
+    /**
+     * 刷新交易界面数据（不重建会话，仅同步最新状态）。
+     * 启用变化检测：状态无变化时不发包。
+     */
     private static void refreshTradeData(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
         TradeSession session = new TradeSession(player, shop);
         TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
 
-        org.com.arc_quest.trade.network.S2CSyncTradeStatePacket refreshPkt = new org.com.arc_quest.trade.network.S2CSyncTradeStatePacket(
+        if (!shouldSendTradeSync(player, shop.getShopId(), snap)) {
+            return;
+        }
+
+        S2CSyncTradeStatePacket refreshPkt = new S2CSyncTradeStatePacket(
                 shop.getShopId(),
                 snap.purchases(),
                 snap.maxPurchases(),
@@ -349,5 +361,39 @@ public class C2SRequestTradePacket {
         if (shouldReset) {
             TradeEntryStateResolver.resetPurchaseAndCooldown(cap, session.getShop().getShopId(), entryId);
         }
+    }
+
+    private static boolean shouldSendTradeSync(ServerPlayer player, String shopId, TradeSnapshot snap) {
+        int fp = buildTradeFingerprint(snap);
+        Map<String, Integer> playerMap = LAST_TRADE_SYNC_FINGERPRINTS
+                .computeIfAbsent(player.getUUID(), __ -> new ConcurrentHashMap<>());
+        Integer old = playerMap.get(shopId);
+        if (old != null && old == fp) {
+            return false;
+        }
+        playerMap.put(shopId, fp);
+        return true;
+    }
+
+    private static void markTradeSynced(ServerPlayer player, String shopId, TradeSnapshot snap) {
+        int fp = buildTradeFingerprint(snap);
+        LAST_TRADE_SYNC_FINGERPRINTS
+                .computeIfAbsent(player.getUUID(), __ -> new ConcurrentHashMap<>())
+                .put(shopId, fp);
+    }
+
+    private static int buildTradeFingerprint(TradeSnapshot snap) {
+        int h = 1;
+        h = 31 * h + Arrays.hashCode(snap.purchases());
+        h = 31 * h + Arrays.hashCode(snap.maxPurchases());
+        h = 31 * h + Arrays.hashCode(snap.lastPurchaseTimes());
+        h = 31 * h + Arrays.hashCode(snap.purchaseGameTimes());
+        h = 31 * h + Arrays.hashCode(snap.purchaseDayTimes());
+        h = 31 * h + Arrays.hashCode(snap.cooldownTypes());
+        h = 31 * h + Arrays.hashCode(snap.cooldownValues());
+        h = 31 * h + Arrays.hashCode(snap.resetTimeTicks());
+        h = 31 * h + Arrays.hashCode(snap.visibility());
+        h = 31 * h + Arrays.hashCode(snap.canBuyConditions());
+        return h;
     }
 }

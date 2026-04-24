@@ -140,6 +140,24 @@ public final class ArcQuestNetwork {
                 C2SRequestTradeSyncPacket::handle
         );
 
+        // --- C2S: Gacha control (open/sync) ---
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SGachaControlPacket.class,
+                C2SGachaControlPacket::encode,
+                C2SGachaControlPacket::decode,
+                C2SGachaControlPacket::handle
+        );
+
+        // --- S2C: Gacha state (open/sync) ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CGachaStatePacket.class,
+                S2CGachaStatePacket::encode,
+                S2CGachaStatePacket::decode,
+                S2CGachaStatePacket::handle
+        );
+
         // --- C2S: Gacha draw request ---
         CHANNEL.registerMessage(
                 packetId++,
@@ -158,24 +176,6 @@ public final class ArcQuestNetwork {
                 C2SConfirmDrawPacket::handle
         );
 
-        // --- S2C: Open gacha ---
-        CHANNEL.registerMessage(
-                packetId++,
-                S2COpenGachaPacket.class,
-                S2COpenGachaPacket::encode,
-                S2COpenGachaPacket::decode,
-                S2COpenGachaPacket::handle
-        );
-
-        // --- S2C: Sync gacha state ---
-        CHANNEL.registerMessage(
-                packetId++,
-                S2CSyncGachaStatePacket.class,
-                S2CSyncGachaStatePacket::encode,
-                S2CSyncGachaStatePacket::decode,
-                S2CSyncGachaStatePacket::handle
-        );
-
         // --- S2C: Gacha draw result ---
         CHANNEL.registerMessage(
                 packetId++,
@@ -192,15 +192,6 @@ public final class ArcQuestNetwork {
                 S2CDrawFailedPacket::encode,
                 S2CDrawFailedPacket::decode,
                 S2CDrawFailedPacket::handle
-        );
-        
-        // --- C2S: Request to open gacha screen ---
-        CHANNEL.registerMessage(
-                packetId++,
-                C2SOpenGachaPacket.class,
-                C2SOpenGachaPacket::encode,
-                C2SOpenGachaPacket::decode,
-                C2SOpenGachaPacket::handle
         );
 
         // --- S2C: Sync quest markers ---
