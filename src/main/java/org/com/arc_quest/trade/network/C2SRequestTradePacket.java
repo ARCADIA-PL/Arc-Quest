@@ -139,23 +139,42 @@ public class C2SRequestTradePacket {
 
     public static void handle(C2SRequestTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+            ServerPlayer player = TradeRequestValidator.requirePlayer(ctx.get().getSender(), "trade_request", pkt.shopId, LOGGER);
             if (player == null) return;
 
-            TradeShopDefinition shop = TradeRegistry.get(pkt.shopId);
+            TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_request", LOGGER);
             if (shop == null) {
-                LOGGER.warn("[Trade] Unknown shop '{}' requested by {}",
-                        pkt.shopId, player.getName().getString());
+                sendGuardTradeFail(player, pkt, TradeRequestValidator.RejectCode.SHOP_NOT_FOUND);
+                return;
+            }
+
+            IQuestCapability cap = TradeRequestValidator.requireCapability(player, "trade_request", pkt.shopId, LOGGER);
+            if (cap == null) {
+                sendGuardTradeFail(player, pkt, TradeRequestValidator.RejectCode.CAPABILITY_MISSING);
                 return;
             }
 
             switch (pkt.action) {
-                case OPEN_FULL   -> handleOpen(player, shop, false);
+                case OPEN_FULL -> handleOpen(player, shop, false);
                 case OPEN_SIMPLE -> handleOpen(player, shop, true);
-                case PURCHASE    -> handlePurchase(player, shop, pkt.entryId, pkt.currentScreenType);
+                case PURCHASE -> handlePurchase(player, shop, pkt.entryId, pkt.currentScreenType);
             }
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    private static void sendGuardTradeFail(ServerPlayer player,
+                                           C2SRequestTradePacket pkt,
+                                           TradeRequestValidator.RejectCode code) {
+        ArcQuestNetwork.CHANNEL.send(
+                PacketDistributor.PLAYER.with(() -> player),
+                S2COpenTradePacket.tradeFail(
+                        pkt.shopId,
+                        pkt.entryId,
+                        S2COpenTradePacket.FailReason.GENERIC,
+                        TradeRequestValidator.toErrorKey(code)
+                )
+        );
     }
 
     /**
