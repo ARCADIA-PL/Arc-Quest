@@ -11,7 +11,7 @@ import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.event.QuestChangeEvent;
 import org.com.arc_quest.quest.event.QuestEventBus;
-import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.quest.network.QuestSyncCoordinator;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.ObjectiveTracker;
 import org.com.arc_quest.quest.tracking.TrackedObjective;
@@ -488,19 +488,19 @@ public final class QuestProgressHandler {
     }
 
     private static void syncQuestStateAndPush(ServerPlayer player, QuestRuntimeData data) {
-        ArcQuestNetwork.syncQuestState(player, data);
+        QuestSyncCoordinator.syncQuestStateAndPush(player, data);
     }
 
     private static void syncFlagsVarsAndPush(ServerPlayer player, IQuestCapability cap) {
-        ArcQuestNetwork.syncFlagsAndVars(player, cap);
+        QuestSyncCoordinator.syncFlagsVarsAndPush(player, cap);
     }
 
     private static void syncFullDataAndPush(ServerPlayer player, IQuestCapability cap) {
-        ArcQuestNetwork.syncFullData(player, cap);
+        QuestSyncCoordinator.syncFullDataAndPush(player, cap);
     }
 
     private static void syncDeltaProgressAndPush(ServerPlayer player, String questId, int objIndex, int newProgress) {
-        ArcQuestNetwork.syncDeltaProgress(player, questId, objIndex, newProgress);
+        QuestSyncCoordinator.syncDeltaProgressAndPush(player, questId, objIndex, newProgress);
     }
 
     // ═══════════════════════════════════════════════════════
