@@ -16,6 +16,7 @@ import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.registry.QuestRegistry;
+import org.com.arc_quest.trade.gacha.network.PendingDrawManager;
 import org.slf4j.Logger;
 
 /**
@@ -95,14 +96,12 @@ public final class CapabilityEventHandler {
         public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
             if (event.getEntity() instanceof ServerPlayer serverPlayer) {
                 serverPlayer.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
-                    // 验证并修复任务数据
                     validateAndFixQuestData(serverPlayer, cap);
-
-                    // 重建追踪索引
                     QuestProgressHandler.rebuildTrackingIndex(serverPlayer, cap);
-
-                    // 全量同步到客户端
                     ArcQuestNetwork.syncFullData(serverPlayer, cap);
+
+                    // 登录后尝试补偿未确认但仍有效的抽奖奖励，避免客户端掉线/崩溃导致吞奖励。
+                    PendingDrawManager.compensateAndGrant(serverPlayer);
 
                     LOGGER.debug("[ArcQuest] Login sync complete for: {}",
                             serverPlayer.getGameProfile().getName());

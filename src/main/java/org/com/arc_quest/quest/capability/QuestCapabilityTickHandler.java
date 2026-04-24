@@ -6,6 +6,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.slf4j.Logger;
 
 /**
@@ -31,15 +32,13 @@ public class QuestCapabilityTickHandler {
 
 
         player.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
-            if (cap instanceof QuestCapabilityImpl impl) {
+            if (cap instanceof QuestCapabilityImpl impl && impl.isDirty()) {
+                player.getPersistentData().put("ArcQuestAutosave", impl.serializeNBT().copy());
+                ArcQuestNetwork.syncFullData(player, impl);
+                impl.clearDirty();
 
-                if (impl.isDirty()) {
-
-                    impl.clearDirty();
-
-                    LOGGER.debug("[QuestSave] Player {} data saved (dirty flag cleared)",
-                            player.getGameProfile().getName());
-                }
+                LOGGER.debug("[QuestSave] Player {} data serialized and synced (dirty flag cleared)",
+                        player.getGameProfile().getName());
             }
         });
     }

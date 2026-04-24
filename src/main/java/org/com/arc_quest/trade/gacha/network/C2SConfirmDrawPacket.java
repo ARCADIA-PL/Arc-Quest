@@ -34,15 +34,14 @@ public class C2SConfirmDrawPacket {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
 
-            // 从管理器中取出暂存的抽奖结果并发放
-            boolean success = PendingDrawManager.confirmAndGrant(player);
+            boolean success = PendingDrawManager.confirmAndGrant(player, pkt.shopId);
 
             if (!success) {
-                Arc_quest.LOGGER.warn("[Gacha] Player {} tried to confirm draw but no pending data found or expired",
-                        player.getName().getString());
+                Arc_quest.LOGGER.warn("[Gacha] Player {} tried to confirm draw for shop '{}' but no matching pending data found or it expired",
+                        player.getName().getString(), pkt.shopId);
             } else {
-                Arc_quest.LOGGER.info("[Gacha] Confirmed and granted draw reward for player {}",
-                        player.getName().getString());
+                Arc_quest.LOGGER.info("[Gacha] Confirmed and granted draw reward for player {} in shop {}",
+                        player.getName().getString(), pkt.shopId);
             }
         });
         ctx.get().setPacketHandled(true);

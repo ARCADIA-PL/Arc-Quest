@@ -78,55 +78,82 @@ public class PendingDrawManager {
      * @param player 玩家
      * @return true = 成功发放，false = 无待确认数据或已过期
      */
-    public static boolean confirmAndGrant(ServerPlayer player) {
+    public static boolean confirmAndGrant(ServerPlayer player, String expectedShopId) {
         UUID playerId = player.getUUID();
-        
-        // 【原子操作】remove() 保证只有一个线程能拿到数据
         PendingDrawData data = PENDING_DRAWS.remove(playerId);
-        
+
         if (data == null) {
-            // 可能是重复确认或已过期被清理
             return false;
         }
-        
-        // 检查是否过期（30秒超时）
+
+        if (expectedShopId != null && !expectedShopId.isEmpty() && !expectedShopId.equals(data.shopId)) {
+            Arc_quest.LOGGER.warn(
+                    "[PendingDraw] Shop mismatch on confirm for player {}: expected={}, actual={}",
+                    player.getName().getString(), expectedShopId, data.shopId
+            );
+            return false;
+        }
+
         long elapsed = System.currentTimeMillis() - data.timestamp;
         if (elapsed > 30000) {
             Arc_quest.LOGGER.warn(
-                "[PendingDraw] Player {}'s pending draw expired ({}ms ago)",
-                player.getName().getString(), elapsed
+                    "[PendingDraw] Player {}'s pending draw expired ({}ms ago)",
+                    player.getName().getString(), elapsed
             );
             return false;
         }
-        
-        // 【性能优化】10%概率触发全量清理，避免内存泄漏
-        if (Math.random() < 0.1) {
-            cleanupExpired();
+
+        cleanupExpired();
+        grantAndRecord(player, data);
+        return true;
+    }
+
+    public static boolean compensateAndGrant(ServerPlayer player) {
+        UUID playerId = player.getUUID();
+        PendingDrawData data = PENDING_DRAWS.remove(playerId);
+        if (data == null) {
+            return false;
         }
-        
-        // 真正发放奖励
+
+        long elapsed = System.currentTimeMillis() - data.timestamp;
+        if (elapsed > 30000) {
+            Arc_quest.LOGGER.warn(
+                    "[PendingDraw] Dropping expired pending draw during compensation for player {} ({}ms ago)",
+                    player.getName().getString(), elapsed
+            );
+            return false;
+        }
+
+        Arc_quest.LOGGER.warn(
+                "[PendingDraw] Compensating unconfirmed draw reward for player {} in shop {}",
+                player.getName().getString(), data.shopId
+        );
+        cleanupExpired();
+        grantAndRecord(player, data);
+        return true;
+    }
+
+    private static void grantAndRecord(ServerPlayer player, PendingDrawData data) {
         grantReward(player, data.drawnItem, data.actualCount);
-        
-        // 【新增】记录抽奖历史到服务端能力（持久化）
+
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         if (cap != null) {
             cap.addGachaDrawHistory(
-                data.shopId,
-                data.drawnItem.getItemId(),
-                data.drawnItem.getRarity().getName(),
-                data.actualCount,
-                data.pityTriggered,
-                System.currentTimeMillis()
+                    data.shopId,
+                    data.drawnItem.getItemId(),
+                    data.drawnItem.getRarity().getName(),
+                    data.actualCount,
+                    data.pityTriggered,
+                    System.currentTimeMillis()
             );
         }
-        
+
         Arc_quest.LOGGER.info(
-            "[PendingDraw] Granted reward to player {}: {} x{}",
-            player.getName().getString(),
-            data.drawnItem.getItemId(),
-            data.actualCount
+                "[PendingDraw] Granted reward to player {}: {} x{}",
+                player.getName().getString(),
+                data.drawnItem.getItemId(),
+                data.actualCount
         );
-        return true;
     }
     
     /**
