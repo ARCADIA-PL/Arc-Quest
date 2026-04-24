@@ -36,9 +36,37 @@ public class C2SRequestTradePacket {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final Map<UUID, Map<String, Integer>> LAST_TRADE_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
+    private static final Map<UUID, ActiveTradeContext> ACTIVE_TRADE_CONTEXTS = new ConcurrentHashMap<>();
+    private static final long ACTIVE_TRADE_CONTEXT_TTL_MS = 20000L;
 
     public static void syncState(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
+        touchActiveTradeContext(player, shop.getShopId(), clientScreenType);
         refreshTradeData(player, shop, clientScreenType);
+    }
+
+    public static void pushSyncForActiveShop(ServerPlayer player, String reason) {
+        ActiveTradeContext context = ACTIVE_TRADE_CONTEXTS.get(player.getUUID());
+        if (context == null) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - context.lastSeenMs() > ACTIVE_TRADE_CONTEXT_TTL_MS) {
+            ACTIVE_TRADE_CONTEXTS.remove(player.getUUID());
+            return;
+        }
+
+        TradeShopDefinition shop = TradeRegistry.get(context.shopId());
+        if (shop == null) {
+            ACTIVE_TRADE_CONTEXTS.remove(player.getUUID());
+            return;
+        }
+
+        LOGGER.debug("[Trade-Push] Active shop sync push: player={}, shop={}, screenType={}, reason={}",
+                player.getName().getString(), context.shopId(), context.screenType(), reason);
+
+        refreshTradeData(player, shop, context.screenType());
+        touchActiveTradeContext(player, context.shopId(), context.screenType());
     }
 
     public enum Action {
@@ -189,6 +217,7 @@ public class C2SRequestTradePacket {
                 response);
 
         markTradeSynced(player, shop.getShopId(), snap);
+        touchActiveTradeContext(player, shop.getShopId(), simple ? ScreenType.SIMPLE : ScreenType.FULL);
 
         // 发布 Forge 事件（供附属模组监听）
         // 注意：商店打开时没有 NPC 上下文，npc 参数为 null
@@ -231,6 +260,10 @@ public class C2SRequestTradePacket {
             };
             MinecraftForge.EVENT_BUS.post(new TradePurchaseFailedEvent(
                     player, shop.getShopId(), entryId, failureReason));
+        }
+
+        if (clientScreenType != ScreenType.NONE) {
+            touchActiveTradeContext(player, shop.getShopId(), clientScreenType);
         }
 
         refreshTradeData(player, shop, clientScreenType);
@@ -364,6 +397,21 @@ public class C2SRequestTradePacket {
         if (shouldReset) {
             TradeEntryStateResolver.resetPurchaseAndCooldown(cap, session.getShop().getShopId(), entryId);
         }
+    }
+
+    private static void touchActiveTradeContext(ServerPlayer player, String shopId, ScreenType screenType) {
+        if (player == null || shopId == null || shopId.isEmpty()) {
+            return;
+        }
+        ScreenType effectiveType = screenType != null ? screenType : ScreenType.FULL;
+        if (effectiveType == ScreenType.NONE) {
+            effectiveType = ScreenType.FULL;
+        }
+        ACTIVE_TRADE_CONTEXTS.put(player.getUUID(),
+                new ActiveTradeContext(shopId, effectiveType, System.currentTimeMillis()));
+    }
+
+    private static record ActiveTradeContext(String shopId, ScreenType screenType, long lastSeenMs) {
     }
 
     private static boolean shouldSendTradeSync(ServerPlayer player, String shopId, TradeSnapshot snap) {

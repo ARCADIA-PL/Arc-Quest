@@ -222,6 +222,8 @@ public final class ArcQuestNetwork {
     public static void syncQuestState(ServerPlayer player, QuestRuntimeData data) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncQuestStatePacket(data));
+
+        C2SRequestTradePacket.pushSyncForActiveShop(player, "quest_state_sync");
     }
 
 
@@ -234,6 +236,8 @@ public final class ArcQuestNetwork {
                                          int newProgress) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CDeltaProgressPacket(questId, objectiveIndex, newProgress));
+
+        C2SRequestTradePacket.pushSyncForActiveShop(player, "delta_progress_sync");
     }
 
     /**
@@ -242,6 +246,8 @@ public final class ArcQuestNetwork {
     public static void syncFlagsAndVars(ServerPlayer player, IQuestCapability cap) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncFlagsVarsPacket(cap));
+
+        C2SRequestTradePacket.pushSyncForActiveShop(player, "flags_vars_sync");
     }
 
     // ═══════════════════════════════════════════════════════
