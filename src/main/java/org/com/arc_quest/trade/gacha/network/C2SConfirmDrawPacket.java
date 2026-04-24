@@ -5,9 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.capability.IQuestCapability;
-import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
-import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 
 import java.util.function.Supplier;
@@ -36,25 +34,32 @@ public class C2SConfirmDrawPacket {
 
     public static void handle(C2SConfirmDrawPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+            ServerPlayer player = GachaRequestValidator.requirePlayer(ctx.get().getSender(), "confirm_draw", pkt.shopId);
             if (player == null) return;
 
             boolean success = PendingDrawManager.confirmAndGrant(player, pkt.shopId);
 
             if (!success) {
-                Arc_quest.LOGGER.warn("[Gacha] Player {} tried to confirm draw for shop '{}' but no matching pending data found or it expired",
-                        player.getName().getString(), pkt.shopId);
+                GachaRequestValidator.reject(
+                        GachaRequestValidator.GachaRejectCode.PENDING_CONFIRM_MISSING,
+                        "confirm_draw",
+                        player,
+                        pkt.shopId,
+                        "no pending draw to confirm"
+                );
                 return;
             }
 
             Arc_quest.LOGGER.info("[Gacha] Confirmed and granted draw reward for player {} in shop {}",
                     player.getName().getString(), pkt.shopId);
 
-            GachaShopDefinition shop = GachaRegistry.get(pkt.shopId);
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-            if (shop != null && cap != null) {
-                GachaScreenOpener.syncGachaState(player, shop, cap);
-            }
+            GachaShopDefinition shop = GachaRequestValidator.requireShop(pkt.shopId, player, "confirm_draw");
+            if (shop == null) return;
+
+            IQuestCapability cap = GachaRequestValidator.requireCapability(player, "confirm_draw", pkt.shopId);
+            if (cap == null) return;
+
+            GachaScreenOpener.syncGachaState(player, shop, cap);
         });
         ctx.get().setPacketHandled(true);
     }

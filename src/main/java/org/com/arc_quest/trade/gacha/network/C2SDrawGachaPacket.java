@@ -9,13 +9,11 @@ import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.quest.capability.IQuestCapability;
-import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
-import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.runtime.GachaEntryStateResolver;
 import org.com.arc_quest.trade.gacha.runtime.GachaSession;
 
@@ -44,23 +42,27 @@ public class C2SDrawGachaPacket {
 
     public static void handle(C2SDrawGachaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
+            ServerPlayer player = GachaRequestValidator.requirePlayer(ctx.get().getSender(), "draw", pkt.shopId);
             if (player == null) return;
 
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+            IQuestCapability cap = GachaRequestValidator.requireCapability(player, "draw", pkt.shopId);
             if (cap == null) return;
 
-            GachaShopDefinition gachaShop = GachaRegistry.get(pkt.shopId);
-            if (gachaShop == null) {
-                Arc_quest.LOGGER.warn("[Gacha] Shop not found: {}", pkt.shopId);
-                return;
-            }
+            GachaShopDefinition gachaShop = GachaRequestValidator.requireShop(pkt.shopId, player, "draw");
+            if (gachaShop == null) return;
 
             // 0) PreDrawEvent（锁外，允许改 pityCounter）
             int basePityCounter = cap.getGachaPityCounter(pkt.shopId);
             GachaEvents.PreDrawEvent preEvent = new GachaEvents.PreDrawEvent(player, pkt.shopId, cap, basePityCounter);
             MinecraftForge.EVENT_BUS.post(preEvent);
             if (preEvent.isCancelled()) {
+                GachaRequestValidator.reject(
+                        GachaRequestValidator.GachaRejectCode.PRE_DRAW_CANCELLED,
+                        "draw",
+                        player,
+                        pkt.shopId,
+                        "pre draw event cancelled"
+                );
                 var reason = GachaEvents.DrawFailedEvent.FailReason.UNKNOWN;
                 MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
 
@@ -75,6 +77,13 @@ public class C2SDrawGachaPacket {
             // 1) 扣费预检查 + 扣费执行（锁外）
             ITradeOffer drawCost = gachaShop.getDrawCost();
             if (drawCost != null && !drawCost.canAfford(player)) {
+                GachaRequestValidator.reject(
+                        GachaRequestValidator.GachaRejectCode.CANNOT_AFFORD,
+                        "draw",
+                        player,
+                        pkt.shopId,
+                        "draw cost cannot afford"
+                );
                 var reason = GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD;
                 MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
 
@@ -98,6 +107,13 @@ public class C2SDrawGachaPacket {
             if (!resolution.succeeded()) {
                 GachaEvents.DrawFailedEvent.FailReason reason =
                         GachaEvents.DrawFailedEvent.FailReason.valueOf(resolution.failedReasonName());
+                GachaRequestValidator.reject(
+                        GachaRequestValidator.fromDrawFailedReasonName(resolution.failedReasonName()),
+                        "draw",
+                        player,
+                        pkt.shopId,
+                        "resolution failed"
+                );
 
                 MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
 
@@ -206,6 +222,13 @@ public class C2SDrawGachaPacket {
 
         var drawResult = gachaShop.performDraw(player, cap, pityCounter);
         if (drawResult.item() == null) {
+            GachaRequestValidator.reject(
+                    GachaRequestValidator.GachaRejectCode.DRAW_RESULT_EMPTY,
+                    "draw",
+                    player,
+                    shopId,
+                    "draw result item is null"
+            );
             return new DrawResolution(
                     false,
                     GachaEvents.DrawFailedEvent.FailReason.UNKNOWN.name(),
@@ -265,6 +288,13 @@ public class C2SDrawGachaPacket {
         );
 
         if (!stored) {
+            GachaRequestValidator.reject(
+                    GachaRequestValidator.GachaRejectCode.PENDING_STORE_FAILED,
+                    "draw",
+                    player,
+                    shopId,
+                    "pending draw store failed"
+            );
             return new DrawResolution(
                     false,
                     GachaEvents.DrawFailedEvent.FailReason.UNKNOWN.name(),
