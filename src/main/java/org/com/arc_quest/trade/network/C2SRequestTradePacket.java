@@ -251,10 +251,11 @@ public class C2SRequestTradePacket {
         S2COpenTradePacket.FailReason reason = S2COpenTradePacket.FailReason.GENERIC;
         String errorKey = result.errorKey();
         if (errorKey != null) {
-            if (errorKey.contains("cooldown")) reason = S2COpenTradePacket.FailReason.COOLDOWN;
-            else if (errorKey.contains("max_purchases") || errorKey.contains("limit")) reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
-            else if (errorKey.contains("condition") || errorKey.contains("visible")) reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
-            else if (errorKey.contains("afford")) reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
+            String normalizedKey = errorKey.toLowerCase(Locale.ROOT);
+            if (normalizedKey.contains("cooldown")) reason = S2COpenTradePacket.FailReason.COOLDOWN;
+            else if (normalizedKey.contains("max_purchases") || normalizedKey.contains("limit")) reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
+            else if (normalizedKey.contains("condition") || normalizedKey.contains("visible")) reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
+            else if (normalizedKey.contains("afford") || normalizedKey.contains("insufficient")) reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
         }
 
         S2COpenTradePacket response = result.succeeded()

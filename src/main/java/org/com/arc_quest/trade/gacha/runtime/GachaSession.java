@@ -37,7 +37,7 @@ public final class GachaSession {
     /**
      * 检查当前是否可以抽奖（综合判断）。
      * <p>
-     * 遵循优先级：可见性 > 限购 > 冷却 > 条件
+     * 遵循优先级：可见性 > 冷却 > 限购 > 条件
      *
      * @return true 如果可以抽奖
      */
@@ -54,11 +54,11 @@ public final class GachaSession {
         if (!GachaEntryStateResolver.isVisible(player, capability, shop)) {
             return DrawFailReason.NOT_VISIBLE;
         }
-        if (GachaEntryStateResolver.isMaxDrawsReached(capability, shop.getShopId(), shop)) {
-            return DrawFailReason.MAX_DRAWS_REACHED;
-        }
         if (GachaEntryStateResolver.isOnCooldown(player, capability, shop.getShopId(), shop)) {
             return DrawFailReason.ON_COOLDOWN;
+        }
+        if (GachaEntryStateResolver.isMaxDrawsReached(capability, shop.getShopId(), shop)) {
+            return DrawFailReason.MAX_DRAWS_REACHED;
         }
         if (!GachaEntryStateResolver.hasConditionMet(player, capability, shop)) {
             return DrawFailReason.CONDITION_NOT_MET;

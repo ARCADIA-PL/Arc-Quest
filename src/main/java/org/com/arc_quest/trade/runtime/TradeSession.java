@@ -56,15 +56,15 @@ public final class TradeSession {
         
         // 第二步：综合判断
         if (!TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry)) {
-            // 细分错误原因
+            // 细分错误原因（统一优先级：cooldown > limit > condition > afford）
             if (!TradeEntryStateResolver.isVisible(player, cap, entry)) {
                 return TradeResult.fail("arc_quest.trade.error.not_visible");
             }
-            if (TradeEntryStateResolver.isPurchaseLimitReached(cap, shop.getShopId(), entry)) {
-                return TradeResult.fail("arc_quest.trade.error.max_purchases");
-            }
             if (TradeEntryStateResolver.isOnCooldown(player, cap, shop.getShopId(), entry)) {
                 return TradeResult.fail("arc_quest.trade.error.on_cooldown");
+            }
+            if (TradeEntryStateResolver.isPurchaseLimitReached(cap, shop.getShopId(), entry)) {
+                return TradeResult.fail("arc_quest.trade.error.max_purchases");
             }
             // 默认：购买资格条件不满足
             return TradeResult.fail("arc_quest.trade.error.condition_not_met");

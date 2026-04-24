@@ -80,7 +80,37 @@ public class C2SDrawGachaPacket {
             }
             int pityCounter = preEvent.getPityCounter();
 
-            // 1) 扣费预检查 + 扣费执行（锁外）
+            // 1) 先判定状态门禁（统一优先级：cooldown > limit > condition > afford）
+            GachaSession preStateSession = new GachaSession(player, gachaShop, cap);
+            synchronized (cap) {
+                preStateSession.checkAndResetDraws();
+                if (!preStateSession.canDraw()) {
+                    GachaEvents.DrawFailedEvent.FailReason reason = mapFailReason(preStateSession.getFailReason());
+                    GachaRequestValidator.reject(
+                            GachaRequestValidator.fromDrawFailedReasonName(reason.name()),
+                            "draw",
+                            player,
+                            pkt.shopId,
+                            "pre-state gate failed"
+                    );
+                    MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
+
+                    ArcQuestNetwork.CHANNEL.send(
+                            PacketDistributor.PLAYER.with(() -> player),
+                            new S2CDrawFailedPacket(
+                                    pkt.shopId,
+                                    reason.name(),
+                                    GachaRequestValidator.toErrorKey(
+                                            GachaRequestValidator.fromDrawFailedReasonName(reason.name())
+                                    ),
+                                    List.of()
+                            )
+                    );
+                    return;
+                }
+            }
+
+            // 2) 扣费预检查 + 扣费执行（锁外）
             ITradeOffer drawCost = gachaShop.getDrawCost();
             if (drawCost != null && !drawCost.canAfford(player)) {
                 GachaRequestValidator.reject(
@@ -108,13 +138,13 @@ public class C2SDrawGachaPacket {
                 drawCost.execute(player);
             }
 
-            // 2) 锁内：只做状态推进 + 产出权威快照（不发包/不日志/不派发事件）
+            // 3) 锁内：只做状态推进 + 产出权威快照（不发包/不日志/不派发事件）
             DrawResolution resolution;
             synchronized (cap) {
                 resolution = resolveDrawStateUnderLock(player, cap, gachaShop, pkt.shopId, pityCounter);
             }
 
-            // 3) 锁外：事件派发、发包、日志（彻底移出锁）
+            // 4) 锁外：事件派发、发包、日志（彻底移出锁）
             if (!resolution.succeeded()) {
                 GachaEvents.DrawFailedEvent.FailReason reason =
                         GachaEvents.DrawFailedEvent.FailReason.valueOf(resolution.failedReasonName());

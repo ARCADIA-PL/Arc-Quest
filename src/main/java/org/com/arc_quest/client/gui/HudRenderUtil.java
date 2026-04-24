@@ -228,9 +228,6 @@ public final class HudRenderUtil {
     public static Component resolveTradeFailMessage(@Nullable String errorKey, @Nullable String rawReason) {
         String normalized = normalizeFailureKey(errorKey, rawReason);
 
-        if (containsAny(normalized, "cannot_afford", "insufficient", "shortfall", "not_enough")) {
-            return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
-        }
         if (containsAny(normalized, "cooldown", "on_cooldown")) {
             return Component.translatable("arc_quest.gui.gacha.btn.cooldown");
         }
@@ -239,6 +236,9 @@ public final class HudRenderUtil {
         }
         if (containsAny(normalized, "condition", "locked", "requirement", "blocked")) {
             return Component.translatable("arc_quest.gui.trade.status.locked");
+        }
+        if (containsAny(normalized, "cannot_afford", "insufficient", "shortfall", "not_enough")) {
+            return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
         }
 
         return Component.translatable("arc_quest.gui.trade.error.shop_closed");
@@ -254,11 +254,11 @@ public final class HudRenderUtil {
         if (maxed) {
             return Component.translatable("arc_quest.gui.trade.btn.empty");
         }
-        if (insufficientFunds || containsAny(normalizeFailureKey(failReason, null), "cannot_afford", "insufficient", "shortfall")) {
-            return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
-        }
         if (locked) {
             return Component.translatable("arc_quest.gui.trade.btn.locked");
+        }
+        if (insufficientFunds || containsAny(normalizeFailureKey(failReason, null), "cannot_afford", "insufficient", "shortfall")) {
+            return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
         }
         return Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle");
     }
