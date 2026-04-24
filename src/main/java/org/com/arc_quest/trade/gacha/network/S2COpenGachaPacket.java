@@ -165,6 +165,7 @@ public class S2COpenGachaPacket {
             
             ClientGachaCache.INSTANCE.updateSessionWithHistory(
                 pkt.shopId, pkt.pityCounter, pkt.totalDraws, pkt.canDraw,
+                pkt.remainingDraws,
                 pkt.lastDrawRealTime, pkt.lastDrawGameTime, pkt.lastDrawDayTime,
                 pkt.cooldownType, pkt.cooldownValue, pkt.resetTimeTicks,
                 historyRecords

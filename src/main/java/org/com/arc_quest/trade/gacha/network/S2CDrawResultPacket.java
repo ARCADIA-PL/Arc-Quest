@@ -108,6 +108,7 @@ public class S2CDrawResultPacket {
                     pkt.newPityCounter,
                     ClientGachaCache.INSTANCE.getTotalDraws(pkt.shopId),  // 直接使用当前值
                     pkt.canDraw,
+                    pkt.remainingDraws,
                     pkt.lastDrawRealTime,
                     pkt.lastDrawGameTime,
                     pkt.lastDrawDayTime,

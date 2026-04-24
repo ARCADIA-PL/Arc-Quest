@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.PacketDistributor;
 import org.com.arc_quest.api.event.GachaEvents;
-import org.com.arc_quest.dialogue.runtime.ProgressKey;
+import org.com.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
@@ -29,6 +29,22 @@ public class GachaScreenOpener {
      * @param cap 玩家能力数据
      */
     public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
+        openGachaScreen(player, shop, cap, null);
+    }
+
+    /**
+     * 从对话中打开抽奖界面，并记录对话恢复目标节点。
+     */
+    public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop,
+                                       IQuestCapability cap, String restoreNodeId) {
+        // 记录对话恢复节点（如果当前确实处于对话中）
+        if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
+            DialogueSessionManager manager = DialogueSessionManager.INSTANCE;
+            if (manager.isInDialogue(player)) {
+                manager.setRestoreNodeId(player, restoreNodeId);
+            }
+        }
+
         // 【关键】创建会话并执行重置逻辑
         GachaSession session = new GachaSession(player, shop, cap);
         
@@ -64,13 +80,12 @@ public class GachaScreenOpener {
         LOGGER.info("[Gacha-Open] State synced: shop={}, canDraw={}, remaining={}, totalDraws={}, pityCounter={}",
             shop.getShopId(), canDraw, remainingDraws, totalDraws, pityCounter);
         
-        // 获取冷却数据（对标商店系统）
-        ProgressKey drawKey = ProgressKey.ofTrade(shop.getShopId(), "draw");
-        var progressEntry = cap.getDialogueProgress().getChoiceSelection(drawKey);
-        
-        long lastDrawRealTime = progressEntry != null ? progressEntry.realTime() : 0;
-        long lastDrawGameTime = progressEntry != null ? progressEntry.gameTime() : 0;
-        long lastDrawDayTime = progressEntry != null ? progressEntry.dayTime() : 0;
+        // 获取冷却数据（统一从 GachaDataStore 读取，避免旧进度存储残留）
+        var cooldownEntry = cap.getGachaDataStore().getDrawCooldown(shop.getShopId());
+
+        long lastDrawRealTime = cooldownEntry.realTime();
+        long lastDrawGameTime = cooldownEntry.gameTime();
+        long lastDrawDayTime = cooldownEntry.dayTime();
         
         int cooldownType = shop.getCooldownType().ordinal();
         long cooldownValue = shop.getCooldownValue();

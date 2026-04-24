@@ -8,7 +8,6 @@ import net.minecraftforge.network.PacketDistributor;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
-import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
@@ -236,29 +235,22 @@ public class C2SDrawGachaPacket {
                     }
                     
                     // 检查冷却（只有在未达到限购时才检查）
-                    if (canDraw && gachaShop.hasCooldown()) {
-                        var progress = refreshedCap.getDialogueProgress();
-                        var entry = progress.getEntry(ProgressKey.ofTrade(gachaShop.getShopId(), "draw"));
-                        
-                        lastDrawRealTime = entry != null ? entry.realTime() : 0;
-                        lastDrawGameTime = entry != null ? entry.gameTime() : -1;
-                        lastDrawDayTime = entry != null ? entry.dayTime() : -1;
-                        
-                        boolean onCooldown = ClientCooldownHelper.isOnCooldown(
-                            lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
-                            gachaShop.getCooldownType().ordinal(), gachaShop.getCooldownValue(), gachaShop.getResetTimeTicks()
-                        );
-                        
-                        if (onCooldown) {
-                            canDraw = false;
+                    if (gachaShop.hasCooldown()) {
+                        var cooldownEntry = refreshedCap.getGachaDataStore().getDrawCooldown(gachaShop.getShopId());
+                        lastDrawRealTime = cooldownEntry.realTime();
+                        lastDrawGameTime = cooldownEntry.gameTime();
+                        lastDrawDayTime = cooldownEntry.dayTime();
+
+                        if (canDraw) {
+                            boolean onCooldown = ClientCooldownHelper.isOnCooldown(
+                                lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+                                gachaShop.getCooldownType().ordinal(), gachaShop.getCooldownValue(), gachaShop.getResetTimeTicks()
+                            );
+
+                            if (onCooldown) {
+                                canDraw = false;
+                            }
                         }
-                    } else if (gachaShop.hasCooldown()) {
-                        // 即使不检查冷却，也要获取冷却数据用于同步
-                        var progress = refreshedCap.getDialogueProgress();
-                        var entry = progress.getEntry(ProgressKey.ofTrade(gachaShop.getShopId(), "draw"));
-                        lastDrawRealTime = entry != null ? entry.realTime() : 0;
-                        lastDrawGameTime = entry != null ? entry.gameTime() : -1;
-                        lastDrawDayTime = entry != null ? entry.dayTime() : -1;
                     }
                 }
                 
