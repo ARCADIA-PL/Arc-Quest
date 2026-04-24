@@ -6,6 +6,7 @@ import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.com.arc_quest.trade.network.RejectCodeDictionary;
 
 import javax.annotation.Nullable;
 
@@ -21,7 +22,7 @@ public final class GachaRequestValidator {
         if (player != null) {
             return player;
         }
-        reject(GachaRejectCode.PLAYER_MISSING, action, null, shopId, "sender is null");
+        reject(RejectCodeDictionary.Code.PLAYER_MISSING, action, null, shopId, "sender is null");
         return null;
     }
 
@@ -30,7 +31,7 @@ public final class GachaRequestValidator {
         if (cap != null) {
             return cap;
         }
-        reject(GachaRejectCode.CAPABILITY_MISSING, action, player, shopId, "quest capability missing");
+        reject(RejectCodeDictionary.Code.CAPABILITY_MISSING, action, player, shopId, "quest capability missing");
         return null;
     }
 
@@ -39,11 +40,11 @@ public final class GachaRequestValidator {
         if (shop != null) {
             return shop;
         }
-        reject(GachaRejectCode.SHOP_NOT_FOUND, action, player, shopId, "shop not found");
+        reject(RejectCodeDictionary.Code.SHOP_NOT_FOUND, action, player, shopId, "shop not found");
         return null;
     }
 
-    public static void reject(GachaRejectCode code,
+    public static void reject(RejectCodeDictionary.Code code,
                               String action,
                               @Nullable ServerPlayer player,
                               String shopId,
@@ -53,36 +54,21 @@ public final class GachaRequestValidator {
                 code.name(), action, playerName, shopId, detail);
     }
 
-    public static GachaRejectCode fromDrawFailedReasonName(@Nullable String failedReasonName) {
+    public static RejectCodeDictionary.Code fromDrawFailedReasonName(@Nullable String failedReasonName) {
         if (failedReasonName == null || failedReasonName.isEmpty()) {
-            return GachaRejectCode.UNKNOWN;
+            return RejectCodeDictionary.Code.UNKNOWN;
         }
         return switch (failedReasonName) {
-            case "NOT_VISIBLE" -> GachaRejectCode.SESSION_NOT_VISIBLE;
-            case "MAX_DRAWS_REACHED" -> GachaRejectCode.SESSION_MAX_DRAWS_REACHED;
-            case "ON_COOLDOWN" -> GachaRejectCode.SESSION_ON_COOLDOWN;
-            case "CONDITION_NOT_MET" -> GachaRejectCode.SESSION_CONDITION_NOT_MET;
-            case "CANNOT_AFFORD" -> GachaRejectCode.CANNOT_AFFORD;
-            default -> GachaRejectCode.UNKNOWN;
+            case "NOT_VISIBLE" -> RejectCodeDictionary.Code.SESSION_NOT_VISIBLE;
+            case "MAX_DRAWS_REACHED" -> RejectCodeDictionary.Code.SESSION_MAX_DRAWS_REACHED;
+            case "ON_COOLDOWN" -> RejectCodeDictionary.Code.SESSION_ON_COOLDOWN;
+            case "CONDITION_NOT_MET" -> RejectCodeDictionary.Code.SESSION_CONDITION_NOT_MET;
+            case "CANNOT_AFFORD" -> RejectCodeDictionary.Code.CANNOT_AFFORD;
+            default -> RejectCodeDictionary.Code.UNKNOWN;
         };
     }
 
-    public enum GachaRejectCode {
-        PLAYER_MISSING,
-        CAPABILITY_MISSING,
-        SHOP_NOT_FOUND,
-
-        PRE_DRAW_CANCELLED,
-        CANNOT_AFFORD,
-        SESSION_NOT_VISIBLE,
-        SESSION_MAX_DRAWS_REACHED,
-        SESSION_ON_COOLDOWN,
-        SESSION_CONDITION_NOT_MET,
-
-        DRAW_RESULT_EMPTY,
-        PENDING_STORE_FAILED,
-        PENDING_CONFIRM_MISSING,
-
-        UNKNOWN
+    public static String toErrorKey(RejectCodeDictionary.Code code) {
+        return RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.GACHA, code);
     }
 }

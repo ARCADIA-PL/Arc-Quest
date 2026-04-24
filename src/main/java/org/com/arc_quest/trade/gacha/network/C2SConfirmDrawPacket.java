@@ -7,6 +7,7 @@ import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
+import org.com.arc_quest.trade.network.RejectCodeDictionary;
 
 import java.util.function.Supplier;
 
@@ -41,7 +42,7 @@ public class C2SConfirmDrawPacket {
 
             if (!success) {
                 GachaRequestValidator.reject(
-                        GachaRequestValidator.GachaRejectCode.PENDING_CONFIRM_MISSING,
+                        RejectCodeDictionary.Code.PENDING_CONFIRM_MISSING,
                         "confirm_draw",
                         player,
                         pkt.shopId,

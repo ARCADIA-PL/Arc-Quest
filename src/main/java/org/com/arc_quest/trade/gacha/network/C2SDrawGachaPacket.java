@@ -16,6 +16,7 @@ import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.runtime.GachaEntryStateResolver;
 import org.com.arc_quest.trade.gacha.runtime.GachaSession;
+import org.com.arc_quest.trade.network.RejectCodeDictionary;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -57,7 +58,7 @@ public class C2SDrawGachaPacket {
             MinecraftForge.EVENT_BUS.post(preEvent);
             if (preEvent.isCancelled()) {
                 GachaRequestValidator.reject(
-                        GachaRequestValidator.GachaRejectCode.PRE_DRAW_CANCELLED,
+                        RejectCodeDictionary.Code.PRE_DRAW_CANCELLED,
                         "draw",
                         player,
                         pkt.shopId,
@@ -68,7 +69,12 @@ public class C2SDrawGachaPacket {
 
                 ArcQuestNetwork.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> player),
-                        new S2CDrawFailedPacket(pkt.shopId, reason.name(), List.of())
+                        new S2CDrawFailedPacket(
+                                pkt.shopId,
+                                reason.name(),
+                                GachaRequestValidator.toErrorKey(RejectCodeDictionary.Code.PRE_DRAW_CANCELLED),
+                                List.of()
+                        )
                 );
                 return;
             }
@@ -78,7 +84,7 @@ public class C2SDrawGachaPacket {
             ITradeOffer drawCost = gachaShop.getDrawCost();
             if (drawCost != null && !drawCost.canAfford(player)) {
                 GachaRequestValidator.reject(
-                        GachaRequestValidator.GachaRejectCode.CANNOT_AFFORD,
+                        RejectCodeDictionary.Code.CANNOT_AFFORD,
                         "draw",
                         player,
                         pkt.shopId,
@@ -89,7 +95,12 @@ public class C2SDrawGachaPacket {
 
                 ArcQuestNetwork.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> player),
-                        new S2CDrawFailedPacket(pkt.shopId, reason.name(), drawCost.buildShortfallLines(player))
+                        new S2CDrawFailedPacket(
+                                pkt.shopId,
+                                reason.name(),
+                                GachaRequestValidator.toErrorKey(RejectCodeDictionary.Code.CANNOT_AFFORD),
+                                drawCost.buildShortfallLines(player)
+                        )
                 );
                 return;
             }
@@ -122,6 +133,9 @@ public class C2SDrawGachaPacket {
                         new S2CDrawFailedPacket(
                                 pkt.shopId,
                                 reason.name(),
+                                GachaRequestValidator.toErrorKey(
+                                        GachaRequestValidator.fromDrawFailedReasonName(resolution.failedReasonName())
+                                ),
                                 resolution.shortfallLines() != null ? resolution.shortfallLines() : List.of()
                         )
                 );
@@ -223,7 +237,7 @@ public class C2SDrawGachaPacket {
         var drawResult = gachaShop.performDraw(player, cap, pityCounter);
         if (drawResult.item() == null) {
             GachaRequestValidator.reject(
-                    GachaRequestValidator.GachaRejectCode.DRAW_RESULT_EMPTY,
+                    RejectCodeDictionary.Code.DRAW_RESULT_EMPTY,
                     "draw",
                     player,
                     shopId,
@@ -289,7 +303,7 @@ public class C2SDrawGachaPacket {
 
         if (!stored) {
             GachaRequestValidator.reject(
-                    GachaRequestValidator.GachaRejectCode.PENDING_STORE_FAILED,
+                    RejectCodeDictionary.Code.PENDING_STORE_FAILED,
                     "draw",
                     player,
                     shopId,

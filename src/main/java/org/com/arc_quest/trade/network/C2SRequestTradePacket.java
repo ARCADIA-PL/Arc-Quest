@@ -144,13 +144,13 @@ public class C2SRequestTradePacket {
 
             TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_request", LOGGER);
             if (shop == null) {
-                sendGuardTradeFail(player, pkt, TradeRequestValidator.RejectCode.SHOP_NOT_FOUND);
+                sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.SHOP_NOT_FOUND);
                 return;
             }
 
             IQuestCapability cap = TradeRequestValidator.requireCapability(player, "trade_request", pkt.shopId, LOGGER);
             if (cap == null) {
-                sendGuardTradeFail(player, pkt, TradeRequestValidator.RejectCode.CAPABILITY_MISSING);
+                sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.CAPABILITY_MISSING);
                 return;
             }
 
@@ -165,7 +165,7 @@ public class C2SRequestTradePacket {
 
     private static void sendGuardTradeFail(ServerPlayer player,
                                            C2SRequestTradePacket pkt,
-                                           TradeRequestValidator.RejectCode code) {
+                                           RejectCodeDictionary.Code code) {
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
                 S2COpenTradePacket.tradeFail(

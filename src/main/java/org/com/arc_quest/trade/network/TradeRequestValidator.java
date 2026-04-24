@@ -8,7 +8,6 @@ import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.Locale;
 
 /**
  * Trade C2S 请求统一校验与拒绝原因码。
@@ -25,7 +24,7 @@ public final class TradeRequestValidator {
         if (player != null) {
             return player;
         }
-        reject(RejectCode.PLAYER_MISSING, action, null, shopId, "sender is null", logger);
+        reject(RejectCodeDictionary.Code.PLAYER_MISSING, action, null, shopId, "sender is null", logger);
         return null;
     }
 
@@ -37,7 +36,7 @@ public final class TradeRequestValidator {
         if (cap != null) {
             return cap;
         }
-        reject(RejectCode.CAPABILITY_MISSING, action, player, shopId, "quest capability missing", logger);
+        reject(RejectCodeDictionary.Code.CAPABILITY_MISSING, action, player, shopId, "quest capability missing", logger);
         return null;
     }
 
@@ -49,11 +48,11 @@ public final class TradeRequestValidator {
         if (shop != null) {
             return shop;
         }
-        reject(RejectCode.SHOP_NOT_FOUND, action, player, shopId, "shop not found", logger);
+        reject(RejectCodeDictionary.Code.SHOP_NOT_FOUND, action, player, shopId, "shop not found", logger);
         return null;
     }
 
-    public static void reject(RejectCode code,
+    public static void reject(RejectCodeDictionary.Code code,
                               String action,
                               @Nullable ServerPlayer player,
                               String shopId,
@@ -64,14 +63,7 @@ public final class TradeRequestValidator {
                 code.name(), action, playerName, shopId, detail);
     }
 
-    public static String toErrorKey(RejectCode code) {
-        return "arcquest.trade.reject." + code.name().toLowerCase(Locale.ROOT);
-    }
-
-    public enum RejectCode {
-        PLAYER_MISSING,
-        CAPABILITY_MISSING,
-        SHOP_NOT_FOUND,
-        UNKNOWN
+    public static String toErrorKey(RejectCodeDictionary.Code code) {
+        return RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, code);
     }
 }
