@@ -42,6 +42,7 @@ public class C2SRequestTradeSyncPacket {
             if (player == null) return;
 
             SyncObservability.recordRequest("trade", pkt.shopId, player.getName().getString());
+            SyncObservability.trace("trade", pkt.shopId, player.getName().getString(), SyncObservability.Stage.SYNC_REQUEST, "manual_sync");
 
             TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_sync", LOGGER);
             if (shop == null) {

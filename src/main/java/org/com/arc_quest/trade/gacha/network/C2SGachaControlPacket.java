@@ -56,6 +56,7 @@ public class C2SGachaControlPacket {
 
             if (pkt.action == Action.SYNC) {
                 SyncObservability.recordRequest("gacha", pkt.shopId, sender.getName().getString());
+                SyncObservability.trace("gacha", pkt.shopId, sender.getName().getString(), SyncObservability.Stage.SYNC_REQUEST, "manual_sync");
             }
 
             GachaShopDefinition shop = GachaRequestValidator.requireShop(pkt.shopId, sender, "gacha_control");

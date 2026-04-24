@@ -12,6 +12,25 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class SyncObservability {
 
+    public enum Stage {
+        OPEN("open"),
+        SYNC_REQUEST("sync_request"),
+        SYNC_SENT("sync_sent"),
+        SYNC_DROPPED("sync_dropped"),
+        ACTION("action"),
+        RESULT("result");
+
+        private final String value;
+
+        Stage(String value) {
+            this.value = value;
+        }
+
+        public String value() {
+            return value;
+        }
+    }
+
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final boolean VERBOSE_LOG = Boolean.parseBoolean(
             System.getProperty("arcquest.sync.log.verbose", "false")
@@ -57,7 +76,7 @@ public final class SyncObservability {
     public static void trace(String domain,
                              String shopId,
                              String playerName,
-                             String stage,
+                             Stage stage,
                              String reason) {
         if (!TRACE_LOG) {
             return;
@@ -66,7 +85,37 @@ public final class SyncObservability {
                 domain,
                 shopId,
                 playerName,
-                stage,
+                stage != null ? stage.value() : "-",
+                reason == null ? "-" : reason);
+    }
+
+    public static void trace(String domain,
+                             String shopId,
+                             String playerName,
+                             String stage,
+                             String reason) {
+        Stage mapped = null;
+        if (stage != null) {
+            for (Stage s : Stage.values()) {
+                if (s.value().equals(stage)) {
+                    mapped = s;
+                    break;
+                }
+            }
+        }
+        if (mapped != null) {
+            trace(domain, shopId, playerName, mapped, reason);
+            return;
+        }
+
+        if (!TRACE_LOG) {
+            return;
+        }
+        LOGGER.info("[SyncTrace] domain={} shopId={} player={} stage={} reason={}",
+                domain,
+                shopId,
+                playerName,
+                stage == null ? "-" : stage,
                 reason == null ? "-" : reason);
     }
 

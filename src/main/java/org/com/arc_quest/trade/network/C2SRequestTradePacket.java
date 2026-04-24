@@ -238,6 +238,9 @@ public class C2SRequestTradePacket {
         markTradeSynced(player, shop.getShopId(), snap);
         touchActiveTradeContext(player, shop.getShopId(), simple ? ScreenType.SIMPLE : ScreenType.FULL);
 
+        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.OPEN,
+                simple ? "open_simple" : "open_full");
+
         // 发布 Forge 事件（供附属模组监听）
         // 注意：商店打开时没有 NPC 上下文，npc 参数为 null
         MinecraftForge.EVENT_BUS.post(new TradeOpenedEvent(player, shop.getShopId(), null));
@@ -303,7 +306,7 @@ public class C2SRequestTradePacket {
 
         if (!shouldSendTradeSync(player, shop.getShopId(), snap)) {
             SyncObservability.recordDropped("trade", shop.getShopId(), player.getName().getString(), false);
-            SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), "sync_dropped", reason);
+            SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_DROPPED, reason);
             return;
         }
 
@@ -326,7 +329,7 @@ public class C2SRequestTradePacket {
                 refreshPkt
         );
         SyncObservability.recordSent("trade", shop.getShopId(), player.getName().getString(), true);
-        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), "sync_sent", reason);
+        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_SENT, reason);
     }
 
     /**
