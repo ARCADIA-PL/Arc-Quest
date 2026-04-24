@@ -4,8 +4,11 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -16,23 +19,45 @@ public class S2CDrawFailedPacket {
     private static final Logger LOGGER = LogUtils.getLogger();
     
     private final String shopId;
-    private final String failReason; // "COOLDOWN", "MAX_DRAWS_REACHED", "CONDITION_NOT_MET"
+    private final String failReason;
+    private final List<CostShortfallLine> shortfallLines;
     
     public S2CDrawFailedPacket(String shopId, String failReason) {
+        this(shopId, failReason, List.of());
+    }
+
+    public S2CDrawFailedPacket(String shopId, String failReason, List<CostShortfallLine> shortfallLines) {
         this.shopId = shopId;
         this.failReason = failReason;
+        this.shortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
     }
     
     public static void encode(S2CDrawFailedPacket pkt, FriendlyByteBuf buf) {
         buf.writeUtf(pkt.shopId);
         buf.writeUtf(pkt.failReason);
+        buf.writeVarInt(pkt.shortfallLines.size());
+        for (CostShortfallLine line : pkt.shortfallLines) {
+            buf.writeComponent(line.label());
+            buf.writeVarInt(line.required());
+            buf.writeVarInt(line.owned());
+            buf.writeVarInt(line.missing());
+        }
     }
     
     public static S2CDrawFailedPacket decode(FriendlyByteBuf buf) {
-        return new S2CDrawFailedPacket(
-            buf.readUtf(),
-            buf.readUtf()
-        );
+        String shopId = buf.readUtf();
+        String failReason = buf.readUtf();
+        int shortfallCount = buf.readVarInt();
+        List<CostShortfallLine> shortfalls = new ArrayList<>(shortfallCount);
+        for (int i = 0; i < shortfallCount; i++) {
+            shortfalls.add(new CostShortfallLine(
+                buf.readComponent(),
+                buf.readVarInt(),
+                buf.readVarInt(),
+                buf.readVarInt()
+            ));
+        }
+        return new S2CDrawFailedPacket(shopId, failReason, shortfalls);
     }
     
     public static void handle(S2CDrawFailedPacket pkt, Supplier<NetworkEvent.Context> ctx) {
@@ -43,8 +68,7 @@ public class S2CDrawFailedPacket {
             LOGGER.info("[Gacha-Failed] Player {} draw failed for shop {}: reason={}",
                 mc.player.getName().getString(), pkt.shopId, pkt.failReason);
             
-            // 记录失败结果，触发 UI 状态切换
-            ClientGachaCache.INSTANCE.recordDrawFailure(pkt.shopId, pkt.failReason);
+            ClientGachaCache.INSTANCE.recordDrawFailure(pkt.shopId, pkt.failReason, pkt.shortfallLines);
         });
         ctx.get().setPacketHandled(true);
     }

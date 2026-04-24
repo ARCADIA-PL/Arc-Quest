@@ -8,10 +8,13 @@ import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.network.S2COpenGachaPacket;
 import org.slf4j.Logger;
+
+import java.util.List;
 
 /**
  * 抽奖界面打开管理器。
@@ -64,12 +67,14 @@ public class GachaScreenOpener {
         // 【修复】使用统一的 canDraw() 方法计算按钮状态
         boolean canDraw = session.canDraw();
         int remainingDraws = session.getRemainingDraws();
+        List<CostShortfallLine> shortfallLines = List.of();
         
         // 【新增】额外检查成本是否充足（对标商店系统）
         if (canDraw) {
             ITradeOffer drawCost = shop.getDrawCost();
             if (drawCost != null && !drawCost.canAfford(player)) {
                 canDraw = false;
+                shortfallLines = drawCost.buildShortfallLines(player);
             }
         }
         
@@ -102,6 +107,7 @@ public class GachaScreenOpener {
                 canDraw, remainingDraws,
                 lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
                 cooldownType, cooldownValue, resetTimeTicks,
+                shortfallLines,
                 drawHistory
             )
         );

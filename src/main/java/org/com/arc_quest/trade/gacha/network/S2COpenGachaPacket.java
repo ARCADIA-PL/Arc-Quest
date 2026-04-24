@@ -10,6 +10,7 @@ import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.client.gui.gacha.GachaScreen;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
@@ -42,6 +43,7 @@ public class S2COpenGachaPacket {
     private final int cooldownType;
     private final long cooldownValue;
     private final int resetTimeTicks;
+    private final List<CostShortfallLine> shortfallLines;
     
     // 【新增】抽奖历史记录（最多50条）
     private final List<IQuestCapability.GachaDrawRecord> drawHistory;
@@ -50,6 +52,7 @@ public class S2COpenGachaPacket {
                                boolean canDraw, int remainingDraws,
                                long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
                                int cooldownType, long cooldownValue, int resetTimeTicks,
+                               List<CostShortfallLine> shortfallLines,
                                List<IQuestCapability.GachaDrawRecord> drawHistory) {
         this.shopId = shopId;
         this.pityCounter = pityCounter;
@@ -62,6 +65,7 @@ public class S2COpenGachaPacket {
         this.cooldownType = cooldownType;
         this.cooldownValue = cooldownValue;
         this.resetTimeTicks = resetTimeTicks;
+        this.shortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
         this.drawHistory = drawHistory != null ? drawHistory : Collections.emptyList();
     }
     
@@ -77,6 +81,13 @@ public class S2COpenGachaPacket {
         buf.writeInt(pkt.cooldownType);
         buf.writeLong(pkt.cooldownValue);
         buf.writeInt(pkt.resetTimeTicks);
+        buf.writeVarInt(pkt.shortfallLines.size());
+        for (var line : pkt.shortfallLines) {
+            buf.writeComponent(line.label());
+            buf.writeVarInt(line.required());
+            buf.writeVarInt(line.owned());
+            buf.writeVarInt(line.missing());
+        }
         
         // 序列化历史记录
         buf.writeInt(pkt.drawHistory.size());
@@ -101,6 +112,16 @@ public class S2COpenGachaPacket {
         int cooldownType = buf.readInt();
         long cooldownValue = buf.readLong();
         int resetTimeTicks = buf.readInt();
+        int shortfallCount = buf.readVarInt();
+        List<CostShortfallLine> shortfallLines = new ArrayList<>();
+        for (int i = 0; i < shortfallCount; i++) {
+            shortfallLines.add(new CostShortfallLine(
+                buf.readComponent(),
+                buf.readVarInt(),
+                buf.readVarInt(),
+                buf.readVarInt()
+            ));
+        }
         
         // 反序列化历史记录
         int historySize = buf.readInt();
@@ -120,6 +141,7 @@ public class S2COpenGachaPacket {
             shopId, pityCounter, totalDraws, canDraw, remainingDraws,
             lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
             cooldownType, cooldownValue, resetTimeTicks,
+            shortfallLines,
             history
         );
     }
@@ -170,6 +192,9 @@ public class S2COpenGachaPacket {
                 pkt.cooldownType, pkt.cooldownValue, pkt.resetTimeTicks,
                 historyRecords
             );
+            if (!pkt.shortfallLines.isEmpty()) {
+                ClientGachaCache.INSTANCE.recordDrawFailure(pkt.shopId, GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name(), pkt.shortfallLines);
+            }
             
             // 打开抽奖界面
             mc.setScreen(new GachaScreen(pkt.shopId));

@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.sounds.SoundEvent;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.client.util.GuiSoundManager;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.slf4j.Logger;
 
@@ -208,6 +209,10 @@ public final class ClientGachaCache {
      * @param failReason 失败原因字符串
      */
     public void recordDrawFailure(String shopId, String failReason) {
+        recordDrawFailure(shopId, failReason, List.of());
+    }
+
+    public void recordDrawFailure(String shopId, String failReason, List<CostShortfallLine> shortfallLines) {
         GachaSessionData session = gachaSessions.get(shopId);
         if (session == null) {
             session = new GachaSessionData(0, 0);
@@ -217,6 +222,7 @@ public final class ClientGachaCache {
         // 记录最近一次失败信息
         session.lastFailReason = failReason;
         session.lastDrawTime = System.currentTimeMillis();
+        session.lastShortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
     }
 
     /**
@@ -358,10 +364,20 @@ public final class ClientGachaCache {
         return session != null && session.canDraw();
     }
 
+    public int getRemainingDraws(String shopId) {
+        var session = gachaSessions.get(shopId);
+        return session != null ? session.getRemainingDraws() : -1;
+    }
+
     @Nullable
     public String getLastFailReason(String shopId) {
         var session = gachaSessions.get(shopId);
         return session != null ? session.getLastFailReason() : null;
+    }
+
+    public List<CostShortfallLine> getLastShortfall(String shopId) {
+        var session = gachaSessions.get(shopId);
+        return session != null ? session.getLastShortfallLines() : List.of();
     }
 
     /**
@@ -684,6 +700,7 @@ public final class ClientGachaCache {
         // 最近一次失败原因（"COOLDOWN", "MAX_DRAWS_REACHED", "CONDITION_NOT_MET"）
         @Nullable
         private String lastFailReason;
+        private List<CostShortfallLine> lastShortfallLines = List.of();
         
         // 历史记录（最多 50 条）
         private final ArrayList<DrawRecord> drawHistory = new ArrayList<>();
@@ -739,6 +756,7 @@ public final class ClientGachaCache {
         public long getLastDrawTime() { return lastDrawTime; }
         @Nullable
         public String getLastFailReason() { return lastFailReason; }
+        public List<CostShortfallLine> getLastShortfallLines() { return Collections.unmodifiableList(lastShortfallLines); }
         public List<DrawRecord> getDrawHistory() { 
             return Collections.unmodifiableList(drawHistory); 
         }

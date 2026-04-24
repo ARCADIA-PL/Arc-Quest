@@ -106,7 +106,7 @@ public class C2SDrawGachaPacket {
                         // 发送失败通知给客户端
                         ArcQuestNetwork.CHANNEL.send(
                             PacketDistributor.PLAYER.with(() -> player),
-                            new S2CDrawFailedPacket(pkt.shopId, GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name())
+                            new S2CDrawFailedPacket(pkt.shopId, GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name(), drawCost.buildShortfallLines(player))
                         );
                         return;
                     }

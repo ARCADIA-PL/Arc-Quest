@@ -5,9 +5,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
 
@@ -32,11 +34,18 @@ public class GachaPreviewPanel {
     private float btnHoverAnim = 0f;
     private float feedbackAnim = 0f;
     private boolean feedbackSuccess = false;
+    private float shortfallTooltipAnim = 0f;
+    private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
 
     private int lastHoveredIndex = -1;
     private float previewSwitchAnim = 0f;
 
     private float previewAlphaAnim = 0f;
+    private int tooltipHoverIndex = -1;
+    private float tooltipHoverTimer = 0f;
+    private float tooltipTipAlpha = 0f;
+    private float animTipX = 0f, animTipY = 0f, animTipW = 0f, animTipH = 0f;
+    private static final float TIP_HOVER_DELAY = 0.05f;
 
     private int lastHistorySize = -1;
     private float logRollAnim = 0f;
@@ -361,7 +370,110 @@ public class GachaPreviewPanel {
                 previewSwitchAnim = 0f;
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 0.5f));
             }
+
+            if (currentHover != tooltipHoverIndex) {
+                tooltipHoverIndex = currentHover;
+                tooltipHoverTimer = 0f;
+            }
+            if (tooltipHoverIndex != -1) {
+                if (tooltipHoverTimer < TIP_HOVER_DELAY) {
+                    tooltipHoverTimer += dt;
+                }
+            } else {
+                tooltipHoverTimer = 0f;
+            }
+            float tooltipTarget = (tooltipHoverIndex != -1 && tooltipHoverTimer >= TIP_HOVER_DELAY) ? 1f : 0f;
+            tooltipTipAlpha += (tooltipTarget - tooltipTipAlpha) * Math.min(1f, dt * 15f);
         }
+
+        if (tooltipTipAlpha > 0.02f && tooltipHoverIndex >= 0 && tooltipHoverIndex < items.size() && !isWiping) {
+            renderItemTooltip(g, items.get(tooltipHoverIndex), mx, my, dt, alpha, isClosing);
+        } else if (tooltipTipAlpha <= 0.02f) {
+            animTipW = 0f;
+        }
+    }
+
+    private void renderItemTooltip(GuiGraphics g, GachaItem item, int mouseX, int mouseY, float dt, float alpha, boolean isClosing) {
+        List<Component> tooltipLines = new ArrayList<>();
+        tooltipLines.add(item.getItemStack().getHoverName().copy());
+        tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.rarity", item.getRarity().getName().toUpperCase()));
+        if (item.getMinCount() == item.getMaxCount()) {
+            tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.count_fixed", item.getMinCount()));
+        } else {
+            tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.count_range", item.getMinCount(), item.getMaxCount()));
+        }
+        tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.weight", item.getBaseWeight()));
+        if (item.countsTowardsPity()) {
+            tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.pity_enabled"));
+        }
+
+        int padding = 6;
+        int cyberEdgeWidth = 3;
+        int textMaxWidth = 0;
+        for (Component line : tooltipLines) {
+            textMaxWidth = Math.max(textMaxWidth, Minecraft.getInstance().font.width(line));
+        }
+
+        int targetW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
+        int targetH = tooltipLines.size() * Minecraft.getInstance().font.lineHeight + padding * 2;
+        int targetX = mouseX + 12;
+        int targetY = mouseY - 12;
+
+        if (targetX + targetW > width) targetX = mouseX - targetW - 8;
+        if (targetY + targetH > height) targetY = height - targetH - 2;
+        if (targetY < 0) targetY = 2;
+
+        if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
+            animTipX = targetX; animTipY = targetY;
+            animTipW = targetW; animTipH = targetH;
+        } else {
+            float morphSpeed = 15f;
+            animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
+            animTipY += (targetY - animTipY) * Math.min(1f, dt * morphSpeed);
+            animTipW += (targetW - animTipW) * Math.min(1f, dt * morphSpeed);
+            animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
+        }
+
+        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
+        if (scale < 0.01f) return;
+
+        int drawX = (int) animTipX;
+        int drawY = (int) animTipY;
+        int drawW = (int) animTipW;
+        int drawH = (int) animTipH;
+
+        float finalTipAlpha = tooltipTipAlpha * alpha;
+        int bgAlpha = (int) (0x96 * finalTipAlpha);
+        int borderAlpha = (int) (0x66 * finalTipAlpha);
+        int edgeAlpha = (int) (255 * finalTipAlpha);
+        int themeColor = parent.getShopDef().getEffectiveThemeColor(item);
+
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 400);
+
+        float centerX = drawX + drawW / 2f;
+        float centerY = drawY + drawH / 2f;
+        g.pose().translate(centerX, centerY, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.pose().translate(-centerX, -centerY, 0);
+
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+
+        HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, themeColor, edgeAlpha);
+
+        g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+        int textX = drawX + cyberEdgeWidth + padding + 1;
+        int textY = drawY + padding;
+        for (int i = 0; i < tooltipLines.size(); i++) {
+            int color = i == 0 ? 0xFFFFFF : (i == 1 ? themeColor : 0xD0D0D0);
+            g.drawString(Minecraft.getInstance().font, tooltipLines.get(i), textX, textY, HudAnimUtil.withAlpha(color, edgeAlpha), true);
+            textY += Minecraft.getInstance().font.lineHeight;
+        }
+        g.disableScissor();
+        g.pose().popPose();
     }
 
     private void renderRightTerminalTracker(GuiGraphics g, Layout l, float dt, float alpha, boolean isWiping, boolean isClosing) {
@@ -451,22 +563,33 @@ public class GachaPreviewPanel {
 
         boolean onCooldown = ClientGachaCache.INSTANCE.isOnCooldown(shopId);
         boolean serverCanDraw = ClientGachaCache.INSTANCE.canDraw(shopId);
+        int remainingDraws = ClientGachaCache.INSTANCE.getRemainingDraws(shopId);
+        String cooldownText = ClientGachaCache.INSTANCE.getCooldownText(shopId);
         String lastFailReason = ClientGachaCache.INSTANCE.getLastFailReason(shopId);
+        boolean hasShortfall = !ClientGachaCache.INSTANCE.getLastShortfall(shopId).isEmpty();
 
         boolean canDraw = !waiting && serverCanDraw && !onCooldown;
         boolean unavailable = !waiting && !canDraw;
+        boolean maxed = remainingDraws == 0;
+        boolean insufficientFunds = !onCooldown && unavailable && ("CANNOT_AFFORD".equals(lastFailReason) || hasShortfall);
+        boolean locked = !onCooldown && unavailable && !maxed && !insufficientFunds;
 
         boolean hov = canDraw && mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH();
 
         if (!isWiping && !isClosing) {
             btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 10f, dt);
             if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
+            if (shortfallTooltipAnim > 0) shortfallTooltipAnim = Math.max(0, shortfallTooltipAnim - dt / SHORTFALL_TOOLTIP_DURATION);
         }
 
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
-        int baseColor = waiting || onCooldown
+        int baseColor = waiting
                 ? 0x666666
-                : (unavailable ? 0x888888 : parent.getShopDef().getThemeColor());
+                : onCooldown ? 0x777777
+                : maxed ? 0x8A5A5A
+                : locked ? 0x7A6A8A
+                : unavailable ? 0x888888
+                : parent.getShopDef().getThemeColor();
 
         int shakeX = (feedbackAnim > 0 && !feedbackSuccess) ? (int)(Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0;
         int drawX = l.btnX() + shakeX;
@@ -481,18 +604,61 @@ public class GachaPreviewPanel {
             if (waiting) {
                 text = Component.translatable("arc_quest.gui.gacha.btn.decrypting").getString();
             } else if (onCooldown) {
-                text = Component.translatable("arc_quest.gui.gacha.btn.cooldown").getString();
-            } else if (unavailable) {
-                text = switch (lastFailReason != null ? lastFailReason : "") {
-                    case "CANNOT_AFFORD" -> Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds").getString();
-                    case "MAX_DRAWS_REACHED" -> Component.translatable("arc_quest.gui.trade.btn.empty").getString();
-                    case "CONDITION_NOT_MET", "NOT_VISIBLE" -> Component.translatable("arc_quest.gui.trade.btn.locked").getString();
-                    default -> Component.translatable("arc_quest.gui.trade.btn.locked").getString();
-                };
+                text = cooldownText == null || cooldownText.isEmpty()
+                        ? Component.translatable("arc_quest.gui.gacha.btn.cooldown").getString()
+                        : Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cooldownText).getString();
+            } else if (maxed) {
+                text = Component.translatable("arc_quest.gui.trade.btn.empty").getString();
+            } else if (locked) {
+                text = Component.translatable("arc_quest.gui.trade.btn.locked").getString();
+            } else if (insufficientFunds) {
+                text = Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds").getString();
             } else {
                 text = Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle").getString();
             }
             g.drawCenteredString(Minecraft.getInstance().font, text, drawX + l.btnW()/2, l.btnY() + l.btnH()/2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, btnTextAlpha));
+        }
+
+        renderShortfallTooltip(g, l, alpha, drawX);
+    }
+
+    private void renderShortfallTooltip(GuiGraphics g, Layout l, float alpha, int drawX) {
+        List<CostShortfallLine> shortfalls = ClientGachaCache.INSTANCE.getLastShortfall(parent.getShopId());
+        if (shortfallTooltipAnim <= 0f || shortfalls.isEmpty()) {
+            return;
+        }
+
+        float ease = HudAnimUtil.easeOutCubic(shortfallTooltipAnim);
+        int safeAlpha = (int)(220 * alpha * ease);
+        if (safeAlpha <= 5) {
+            return;
+        }
+
+        List<String> lines = new ArrayList<>();
+        lines.add(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary").getString());
+        for (CostShortfallLine line : shortfalls) {
+            lines.add(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_line", line.label(), line.missing(), line.required(), line.owned()).getString());
+        }
+
+        int padding = 8;
+        int boxW = 0;
+        for (String line : lines) {
+            boxW = Math.max(boxW, Minecraft.getInstance().font.width(line));
+        }
+        boxW += padding * 2;
+        int boxH = padding * 2 + lines.size() * Minecraft.getInstance().font.lineHeight + Math.max(0, lines.size() - 1) * 2;
+        int boxX = drawX + l.btnW() / 2 - boxW / 2;
+        int boxY = l.btnY() - boxH - 8;
+
+        g.fill(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
+        g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(parent.getShopDef().getThemeColor(), (int)(50 * alpha * ease)), 0);
+        HudAnimUtil.drawFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF5555, safeAlpha));
+
+        int y = boxY + padding;
+        for (int i = 0; i < lines.size(); i++) {
+            int color = i == 0 ? 0xFF8A8A : 0xFFB4B4;
+            g.drawString(Minecraft.getInstance().font, lines.get(i), boxX + padding, y, HudAnimUtil.withAlpha(color, safeAlpha), true);
+            y += Minecraft.getInstance().font.lineHeight + 2;
         }
     }
 
@@ -506,6 +672,9 @@ public class GachaPreviewPanel {
 
             if (onCooldown || !serverCanDraw) {
                 feedbackSuccess = false; feedbackAnim = 1f;
+                if (!serverCanDraw && !ClientGachaCache.INSTANCE.getLastShortfall(shopId).isEmpty()) {
+                    shortfallTooltipAnim = 1f;
+                }
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
                 return true;
             }
