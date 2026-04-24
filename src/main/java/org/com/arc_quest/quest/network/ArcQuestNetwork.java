@@ -94,6 +94,15 @@ public final class ArcQuestNetwork {
                 C2SRequestQuestActionPacket::handle
         );
 
+        // ─── S2C：任务动作结果（标准拒绝码）───
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CQuestActionResultPacket.class,
+                S2CQuestActionResultPacket::encode,
+                S2CQuestActionResultPacket::decode,
+                S2CQuestActionResultPacket::handle
+        );
+
         // ─── S2C：打开对话界面 ───
         CHANNEL.registerMessage(
                 packetId++,

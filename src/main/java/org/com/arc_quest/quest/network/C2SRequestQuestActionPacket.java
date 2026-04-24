@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.PacketDistributor;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.network.QuestRejectCodeDictionary.Code;
 import org.com.arc_quest.quest.network.SyncObservability.Reason;
@@ -83,6 +84,10 @@ public class C2SRequestQuestActionPacket {
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
                     LOGGER.debug("[ArcQuest] C2S ACCEPT quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
+                    ArcQuestNetwork.CHANNEL.send(
+                            PacketDistributor.PLAYER.with(() -> sender),
+                            new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
+                    );
                 }
                 case ABANDON -> {
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
@@ -92,6 +97,10 @@ public class C2SRequestQuestActionPacket {
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
                     LOGGER.debug("[ArcQuest] C2S ABANDON quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
+                    ArcQuestNetwork.CHANNEL.send(
+                            PacketDistributor.PLAYER.with(() -> sender),
+                            new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
+                    );
                 }
                 case CHOOSE -> {
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
@@ -101,6 +110,10 @@ public class C2SRequestQuestActionPacket {
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
                     LOGGER.debug("[ArcQuest] C2S CHOOSE quest={}, idx={}, code={}, player={}",
                             pkt.questId, pkt.transitionIndex, code, sender.getGameProfile().getName());
+                    ArcQuestNetwork.CHANNEL.send(
+                            PacketDistributor.PLAYER.with(() -> sender),
+                            new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
+                    );
                 }
             }
         });

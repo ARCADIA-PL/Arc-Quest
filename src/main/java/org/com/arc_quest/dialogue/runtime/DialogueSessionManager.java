@@ -18,6 +18,7 @@ import org.com.arc_quest.dialogue.registry.DialogueRegistry;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -96,6 +97,7 @@ public final class DialogueSessionManager {
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
         progress.recordDialogueVisit(namespace, dialogueId, nowReal, nowGame, nowDayTime);
         sendNodeToClient(session);
+        SyncObservability.trace("dialogue", dialogueId, player.getName().getString(), SyncObservability.Stage.OPEN, "dialogue_open");
         MinecraftForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
         return session;
     }
@@ -108,6 +110,9 @@ public final class DialogueSessionManager {
             return;
         }
 
+        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                SyncObservability.Stage.ACTION, "choice:" + choiceIndex);
+
         DialogueNode currentNode = session.getCurrentNode();
         if (currentNode != null && choiceIndex >= 0 && choiceIndex < currentNode.choices().size()) {
             Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
@@ -119,9 +124,13 @@ public final class DialogueSessionManager {
         if (session.isEnded() || next == null) {
             endDialogue(player);
             sendClose(player);
+            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                    SyncObservability.Stage.RESULT, "choice_end");
             return;
         }
         sendNodeToClient(session);
+        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                SyncObservability.Stage.RESULT, "choice_next_node");
     }
 
     public void handleAutoAdvance(ServerPlayer player) {
@@ -130,13 +139,19 @@ public final class DialogueSessionManager {
             sendClose(player);
             return;
         }
+        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                SyncObservability.Stage.ACTION, "auto_advance");
         DialogueNode next = session.autoAdvance();
         if (session.isEnded() || next == null) {
             endDialogue(player);
             sendClose(player);
+            SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                    SyncObservability.Stage.RESULT, "auto_advance_end");
             return;
         }
         sendNodeToClient(session);
+        SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                SyncObservability.Stage.RESULT, "auto_advance_next_node");
     }
 
     public void handleRestoreDialogue(ServerPlayer player) {
