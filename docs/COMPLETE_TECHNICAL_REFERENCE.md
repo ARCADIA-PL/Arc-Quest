@@ -60,7 +60,7 @@
 
 ### 1.1 核心特性
 
-Arc Quest 是一个**纯代码驱动**的 Minecraft RPG 模组，提供完整的任务、对话和交易系统。
+Arc Quest 是一个**纯代码驱动**的 Minecraft RPG 模组，提供完整的任务、对话、交易和抽奖系统。
 
 **关键优势**：
 - ✅ **O(1) 目标追踪**: 哈希索引替代遍历，性能提升 10-250 倍
@@ -68,6 +68,8 @@ Arc Quest 是一个**纯代码驱动**的 Minecraft RPG 模组，提供完整的
 - ✅ **统一冷却管理**: 支持 GAME_TICK/GAME_DAY/REAL_TIME 三种模式
 - ✅ **服务端权威**: 所有业务逻辑二次验证，防止作弊
 - ✅ **Lib 模组架构**: 完善的 API 和事件系统，易于扩展
+- ✅ **Ponder 引擎集成**: 可视化任务教程展示（2026-04-22 新增）
+- ✅ **抽奖系统**: 完整随机奖励机制，支持稀有度/保底/限购（2026-04-22 新增）
 
 ### 1.2 模块结构
 
@@ -76,25 +78,30 @@ org.com.arc_quest/
 ├── api/                    # 公共 API（附属模组使用）
 │   ├── ArcQuestAPI.java   # 统一入口
 │   └── event/             # 事件类
-├── quest/                  # 任务系统 (40%)
+├── quest/                  # 任务系统 (35%)
 │   ├── api/               # 任务 API
 │   ├── builder/           # Builder 模式
 │   ├── registry/          # 注册表
 │   ├── logic/             # 业务逻辑
 │   ├── network/           # 网络包
 │   └── capability/        # 数据存储
-├── dialogue/               # 对话系统 (30%)
+├── dialogue/               # 对话系统 (25%)
 │   ├── api/               # 对话 API
 │   ├── builder/           # 对话树构建器
 │   ├── runtime/           # 运行时管理
 │   └── extension/         # NPC 扩展
-├── trade/                  # 交易系统 (20%)
+├── trade/                  # 交易系统 (15%)
 │   ├── api/               # 交易 API
 │   ├── builder/           # 商店构建器
 │   └── runtime/           # 会话管理
+├── gacha/                  # 抽奖系统 (15%) [2026-04-22 新增]
+│   ├── api/               # 抽奖 API
+│   ├── builder/           # 奖池构建器
+│   ├── runtime/           # 会话管理
+│   └── network/           # 网络包
 └── client/                 # 客户端 UI (10%)
     ├── gui/               # 界面类
-    └── render/            # 渲染工具
+    └── render/            # 渲染工具（含 Ponder 集成）
 ```
 
 ### 1.3 技术栈
@@ -356,6 +363,7 @@ QuestDefinition quest = QuestBuilder.create("epic_quest")
 ```java
 PhaseDefinition phase = PhaseBuilder.create("combat_training")
     .displayName(Component.literal("战斗训练"))
+    .description(Component.literal("通过实战提升战斗技巧，掌握基础武器使用。"))  // ✅ 新增：阶段描述
     
     // 目标 1：击杀怪物
     .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 10)
@@ -371,8 +379,15 @@ PhaseDefinition phase = PhaseBuilder.create("combat_training")
         .xp(50)
         .flag("completed_training"))
     
+    // ✅ 新增：绑定 Ponder 情报场景
+    .ponderScene(new ResourceLocation("my_mod:combat_tutorial"))
+    
     .build();
 ```
+
+**新增字段说明**:
+- `.description(Component)`: 阶段的详细描述文本，显示在任务日志界面的阶段详情中
+- `.ponderScene(ResourceLocation)`: 绑定的 Ponder 场景 ID，点击 "PHASE INTEL" 按钮时播放教学动画
 
 **ObjectiveBuilder 静态工厂方法**：
 - `kill(EntityType, count)`: 击杀目标
@@ -401,35 +416,92 @@ PhaseDefinition phase = PhaseBuilder.create("combat_training")
 
 ## 6. 条件判断系统
 
-### 6.1 内置条件
+### 6.1 ICondition 静态工厂方法 (推荐)
+
+**2026-04-22 更新**: 引入 `ICondition` 接口的静态工厂方法，简化条件创建。
 
 ```java
-// 任务完成
-Conditions.questCompleted("my_mod:prev_quest")
-
-// Flag 检查
-Conditions.flagSet("unlocked_area")
-Conditions.flagNotSet("failed_mission")
-
-// 变量范围
-Conditions.variableInRange("reputation", 10, 100)
-Conditions.variableEquals("level", 5)
+// ✅ 推荐：使用静态工厂方法
+ICondition.flagSet("unlocked_area")
+ICondition.flagNotSet("failed_mission")
+ICondition.questCompleted(new ResourceLocation("my_mod:prev_quest"))
+ICondition.variableInRange("reputation", 10, 100)
+ICondition.variableEquals("level", 5)
+ICondition.variableGTE("strength", 10)
 
 // 组合条件
-Conditions.allOf(
-    Conditions.questCompleted("quest_a"),
-    Conditions.flagSet("flag_b")
+ICondition.allOf(
+    ICondition.questCompleted(new ResourceLocation("quest_a")),
+    ICondition.flagSet("flag_b")
 )
 
-Conditions.anyOf(
-    Conditions.variableGTE("strength", 10),
-    Conditions.variableGTE("intelligence", 10)
+ICondition.anyOf(
+    ICondition.variableGTE("strength", 10),
+    ICondition.variableGTE("intelligence", 10)
 )
 
-Conditions.not(Conditions.flagSet("blocked"))
+ICondition.not(ICondition.flagSet("blocked"))
 ```
 
-### 6.2 自定义条件
+**优势**:
+- ✅ 更简洁的 API（无需手动实例化具体类）
+- ✅ 类型推断支持
+- ✅ IDE 自动补全友好
+- ✅ 统一的条件接口
+
+### 6.2 IConditionWrapper 适配器 (跨系统复用)
+
+**用途**: 在不同系统间复用条件逻辑（任务/对话/交易）
+
+```java
+// 在对话中使用任务完成条件
+DialogueTreeBuilder.create("villager_dialogue")
+    .node("start")
+        .choiceIf(
+            ICondition.questCompleted(new ResourceLocation("arc_quest:epic_prologue"))
+                .asDialogueCondition(),  // ✅ 转换为对话条件
+            "接受新任务",
+            c -> c.startQuest("arc_quest:new_quest")
+        )
+
+// 在交易中使用 Flag 条件
+TradeShopBuilder.create("vip_shop")
+    .entry(TradeEntryBuilder.create("legendary_item")
+        .visibleCondition(
+            ICondition.flagSet("unlocked_vip")
+                .asTradeCondition()  // ✅ 转换为交易条件
+        )
+    )
+```
+
+**工厂方法**:
+```java
+ICondition.asDialogueCondition(ICondition condition)  // 转为对话条件
+ICondition.asTradeCondition(ICondition condition)     // 转为交易条件
+```
+
+### 6.3 旧版 Conditions 工具类 (已废弃)
+
+**⚠️ 废弃说明**: `Conditions` 工具类的方法已被 `ICondition` 静态工厂替代，但仍保留向后兼容。
+
+```java
+// ❌ 旧版（仍可用，但不推荐）
+Conditions.flagSet("unlocked_area")
+Conditions.questCompleted("my_mod:prev_quest")
+Conditions.variableInRange("reputation", 10, 100)
+
+// ✅ 新版（推荐）
+ICondition.flagSet("unlocked_area")
+ICondition.questCompleted(new ResourceLocation("my_mod:prev_quest"))
+ICondition.variableInRange("reputation", 10, 100)
+```
+
+**废弃的具体条件类**:
+- `FlagCondition` → 使用 `ICondition.flagSet()`
+- `QuestCompletedCondition` → 使用 `ICondition.questCompleted()`
+- `VariableRangeCondition` → 使用 `ICondition.variableInRange()`
+
+### 6.4 自定义条件
 
 ```java
 .visibleCondition((player, completedQuests, flags, variables) -> {
@@ -457,7 +529,7 @@ Conditions.not(Conditions.flagSet("blocked"))
 
 ## 7. 奖励发放机制
 
-### 7.1 内置奖励
+### 7.1 内置奖励类型
 
 ```java
 QuestBuilder.create("quest_id")
@@ -487,7 +559,125 @@ QuestBuilder.create("quest_id")
 
 **注意**：使用 `.reward(IReward)` 而非 `.onComplete()`
 
-### 7.2 自定义奖励
+### 7.2 核心奖励类详解
+
+#### 7.2.1 FlagReward - Flag 设置/清除
+
+```java
+// ✅ 推荐：使用静态工厂方法
+FlagReward.set("quest_started")      // 设置 Flag
+FlagReward.clear("temporary_flag")   // 清除 Flag
+
+// 访问器方法
+String flag = reward.getFlag();      // 获取 Flag 名称
+boolean isSet = reward.isSet();      // 是否为设置操作（true=设置，false=清除）
+```
+
+**实现原理**：
+```java
+@Override
+public void grant(ServerPlayer player) {
+    IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+    if (cap == null) return;
+    if (this.set) {
+        cap.setFlag(this.flag);       // 设置 Flag
+    } else {
+        cap.removeFlag(this.flag);    // 移除 Flag
+    }
+}
+```
+
+**关键特性**：
+- ✅ 已完整实现 `grant()` 方法（之前为空存根）
+- ✅ 自动处理 null 检查
+- ✅ 支持设置和清除两种操作
+
+#### 7.2.2 VariableReward - 变量修改
+
+```java
+// ✅ 推荐：使用静态工厂方法
+VariableReward.set("reputation", 100)         // 设置为固定值
+VariableReward.add("kills", 5)                // 增加
+// VariableReward.subtract("debt", 10)        // 减少（需手动构造）
+// VariableReward.multiply("multiplier", 2)   // 乘法（需手动构造）
+
+// 访问器方法
+String name = reward.getVariableName();  // 获取变量名
+Op op = reward.getOperation();           // 获取操作类型（SET/ADD/SUBTRACT/MULTIPLY）
+int value = reward.getValue();           // 获取操作值
+
+// 计算应用后的值
+int current = 50;
+int result = reward.apply(current);  // 根据 Op 类型计算结果
+```
+
+**实现原理**：
+```java
+@Override
+public void grant(ServerPlayer player) {
+    IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+    if (cap == null) return;
+    int current = cap.getVariable(this.variableName);
+    cap.setVariable(this.variableName, this.apply(current));
+}
+
+public int apply(int current) {
+    return switch (this.operation) {
+        case SET      -> this.value;              // 直接赋值
+        case ADD      -> current + this.value;    // 加法
+        case SUBTRACT -> current - this.value;    // 减法
+        case MULTIPLY -> current * this.value;    // 乘法
+    };
+}
+```
+
+**操作类型枚举**：
+```java
+public enum Op { 
+    SET,      // 设置为指定值
+    ADD,      // 增加
+    SUBTRACT, // 减少
+    MULTIPLY  // 乘法
+}
+```
+
+**关键特性**：
+- ✅ 已完整实现 `grant()` 方法（之前为空存根）
+- ✅ 支持四种运算操作（SET/ADD/SUBTRACT/MULTIPLY）
+- ✅ 基于当前值进行计算，避免覆盖已有数据
+
+#### 7.2.3 ItemReward - 物品奖励
+
+```java
+// 构造函数
+ItemReward reward = new ItemReward(Items.DIAMOND, 5);
+
+// ✅ 新增：访问器方法
+Item item = reward.getItem();     // 获取物品类型
+int count = reward.getCount();    // 获取数量
+```
+
+**实现原理**：
+```java
+@Override
+public void grant(ServerPlayer player) {
+    ItemStack stack = new ItemStack(this.item, this.count);
+    boolean added = player.getInventory().add(stack);
+    if (!added) {
+        // 背包满则掉落在地
+        player.drop(stack, false);
+    }
+    player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+            SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.5F, 1.0F);
+}
+```
+
+**关键特性**：
+- ✅ 自动处理背包满的情况（掉落物品）
+- ✅ 播放拾取音效
+- ✅ 新增 `getItem()` 和 `getCount()` 访问器（用于查询和调试）
+
+### 7.3 自定义奖励
 
 ```java
 QuestBuilder.create("quest_id")
@@ -505,8 +695,7 @@ QuestBuilder.create("quest_id")
     .buildAndRegister();
 ```
 
-
-### 7.3 容错处理
+### 7.4 容错处理
 
 奖励系统会自动捕获异常，确保部分失败不影响其他奖励：
 
@@ -946,7 +1135,76 @@ public static void onChoiceSelected(DialogueChoiceSelectedEvent event) {
 .presetNetheriteIngot()  // 给予下界合金锭
 ```
 
-### 11.2 自定义动作
+### 11.2 CommandExecutor - 统一命令执行工具
+
+**⚠️ 重要更新**：2026-04-22 后引入 `CommandExecutor` 工具类，统一所有命令执行逻辑。
+
+#### 11.2.1 权限模型
+
+```java
+// ✅ 以服务器权限执行（op级别4）
+// 适用于：奖励发放、交易购买等"系统赋予"场景
+CommandExecutor.runAsServer(player, "/give {player} diamond 5");
+
+// ✅ 以玩家自身权限执行
+// 适用于：对话选项、玩家主动触发等场景
+CommandExecutor.runAsPlayer(player, "/say 我完成了一个任务！");
+```
+
+**权限对比**：
+| 方法 | 权限级别 | 适用场景 | 示例 |
+|------|---------|---------|------|
+| `runAsServer()` | OP 4 | 奖励/交易/系统赋予 | `/give`, `/effect`, `/summon` |
+| `runAsPlayer()` | 玩家自身 | 对话/玩家触发 | `/say`, `/msg`, `/tell` |
+
+#### 11.2.2 占位符替换
+
+```java
+// ✅ 自动替换 {player} 为玩家名称
+String template = "/give {player} emerald 10";
+CommandExecutor.runAsServer(player, template);
+// 实际执行：/give Steve emerald 10
+
+// ✅ 支持额外预处理
+String customTemplate = session.replaceVariables("/tp {player} {x} {y} {z}");
+CommandExecutor.runAsPlayer(player, customTemplate);
+```
+
+**实现原理**：
+```java
+public static String resolvePlaceholders(ServerPlayer player, String template) {
+    return template.replace("{player}", player.getGameProfile().getName());
+}
+
+private static String stripSlash(String cmd) {
+    return cmd.startsWith("/") ? cmd.substring(1) : cmd;
+}
+```
+
+**关键特性**：
+- ✅ 自动去除前缀 `/`（兼容带或不带斜杠的命令）
+- ✅ 统一的 `{player}` 占位符替换
+- ✅ 抑制输出（`.withSuppressedOutput()`）避免刷屏
+- ✅ 替代原有的三处分散实现（`CommandReward`、`CommandTradeOffer`、`DialogueAction.RunCommand`）
+
+#### 11.2.3 迁移指南
+
+```java
+// ❌ 旧版：分散的实现（已废弃）
+// CommandReward.java
+player.getServer().getCommands().performPrefixedCommand(
+    player.createCommandSourceStack(), command);
+
+// DialogueAction.RunCommand.java  
+server.getCommands().performPrefixedCommand(
+    source, command.replace("{player}", playerName));
+
+// ✅ 新版：统一使用 CommandExecutor
+CommandExecutor.runAsServer(player, command);  // 奖励/交易场景
+CommandExecutor.runAsPlayer(player, command);  // 对话场景
+```
+
+### 11.3 自定义动作
 
 ```java
 .action((player, session) -> {
@@ -961,7 +1219,7 @@ public static void onChoiceSelected(DialogueChoiceSelectedEvent event) {
 })
 ```
 
-### 11.3 动作链
+### 11.4 动作链
 
 ```java
 .choice("接受挑战", c -> c
@@ -1166,6 +1424,192 @@ if (session.isPresent()) {
 
 ---
 
+## 13.5 QuestIntelPanel - Ponder 任务情报系统
+
+**⚠️ 重要更新**：2026-04-22 后 `QuestIntelPanel` 完全重写，集成 Ponder 引擎提供高级可视化任务情报。
+
+### 13.5.1 核心功能
+
+```java
+// ✅ 触发 Ponder 场景展示
+ResourceLocation sceneId = new ResourceLocation("my_mod:quest_tutorial");
+int themeColor = 0x4FC3F7;  // 青色主题
+
+QuestIntelPanel.trigger(sceneId, themeColor);
+
+// ✅ 关闭面板
+QuestIntelPanel.dismiss();
+
+// ✅ 检查是否活跃
+boolean active = QuestIntelPanel.isActive();
+
+// ✅ 检查场景是否存在
+boolean exists = QuestIntelPanel.hasScene(sceneId);
+```
+
+**设计特点**：
+- ✅ 完美移植 Genesis 的动画参数（进入/退出时间、缓动曲线）
+- ✅ 16:9 宽屏比例（400×225 像素）
+- ✅ 丝滑悬停放大效果（按钮交互反馈）
+- ✅ 独立时间轴动画状态（enterTimer/exitTimer）
+- ✅ 支持多场景滚动（scrollForward/scrollBack）
+
+### 13.5.2 动画控制
+
+```java
+// 播放下一个场景
+QuestIntelPanel.scrollForward();
+
+// 播放上一个场景
+QuestIntelPanel.scrollBack();
+
+// 重播当前场景
+QuestIntelPanel.replay();
+
+// 暂停/继续
+QuestIntelPanel.togglePause();
+boolean paused = QuestIntelPanel.isPaused();
+```
+
+**动画常量**：
+```java
+private static final float ENTER_TIME = 0.7f;  // 进入动画时长
+private static final float EXIT_TIME = 0.5f;   // 退出动画时长
+```
+
+### 13.5.3 与 PhaseDefinition 集成
+
+**在任务阶段中绑定 Ponder 场景**：
+
+```java
+PhaseDefinition phase = PhaseBuilder.create("combat_training")
+    .displayName(Component.literal("战斗训练"))
+    .description(Component.literal("通过实战提升战斗技巧，掌握基础武器使用。"))
+    
+    // ✅ 绑定 Ponder 情报场景
+    .ponderScene(new ResourceLocation("my_mod:combat_tutorial"))
+    
+    .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 5)
+        .display("击杀 5 只僵尸"))
+    .build();
+```
+
+**客户端自动检测**：
+```java
+// 当玩家查看任务阶段时，如果有绑定的 Ponder 场景
+if (QuestIntelPanel.hasScene(phase.getPonderSceneId())) {
+    // 显示“查看教程”按钮
+    // 点击后触发 QuestIntelPanel.trigger(sceneId, themeColor)
+}
+```
+
+### 13.5.4 渲染架构
+
+**关键技术点**：
+
+1. **双光源照明系统**：
+```java
+private static final Vector3f DIFFUSE_0 = new Vector3f(-0.2F, 1.0F, 0.7F).normalize();
+private static final Vector3f DIFFUSE_1 = new Vector3f(0.2F, 1.0F, -0.7F).normalize();
+```
+
+2. **动态缩放追踪**（用于点击事件检测）：
+```java
+private static float currentScale = 1.0f;
+private static float currentDrawX = 0;
+private static float currentDrawY = 0;
+```
+
+3. **悬停状态插值**（丝滑放大换色）：
+```java
+private static final Map<String, Float> buttonHoverStates = new HashMap<>();
+```
+
+4. **SuperRenderTypeBuffer 集成**：
+```java
+import net.createmod.catnip.render.SuperRenderTypeBuffer;
+import net.createmod.catnip.render.DefaultSuperRenderTypeBuffer;
+```
+
+### 13.5.5 Ponder 场景注册
+
+**创建自定义 Ponder 场景**：
+
+```java
+public class MyModPonderScenes {
+    public static void register() {
+        // 注册任务教程场景
+        ArcQuestPonderSceneRegistry.register(
+            new ResourceLocation("my_mod:quest_tutorial"),
+            scene -> {
+                // 配置场景内容
+                scene.showBasePlate();
+                scene.idle(10);
+                
+                // 添加演示元素
+                scene.world().showSection(...);
+                scene.overlay().showText(...);
+            }
+        );
+    }
+}
+```
+
+**场景编译**：
+```java
+List<PonderScene> scenes = PonderIndex.getSceneAccess().compile(sceneId);
+if (scenes == null || scenes.isEmpty()) {
+    Ponder.LOGGER.warn("[ArcQuest] No Ponder scenes for: {}", sceneId);
+    return;
+}
+```
+
+### 13.5.6 音效反馈
+
+```java
+// 打开面板时播放
+Minecraft.getInstance().getSoundManager().play(
+    SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_IN, 1.0F)
+);
+
+// 关闭面板时播放
+Minecraft.getInstance().getSoundManager().play(
+    SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_OUT, 1.0F)
+);
+```
+
+### 13.5.7 性能优化
+
+**防抖机制**：
+```java
+private static long lastTime = 0;
+
+public static void tick() {
+    if (activeScenes == null || isClosing || isPaused) return;
+    
+    long currentTime = System.currentTimeMillis();
+    if (currentTime - lastTime < 16) return;  // 限制 60 FPS
+    lastTime = currentTime;
+    
+    PonderUI.ponderTicks++;
+    activeScenes.get(sceneIndex).tick();
+}
+```
+
+**资源清理**：
+```java
+public static void dismiss() {
+    if (!isClosing && activeScenes != null) {
+        isClosing = true;
+        exitTimer = 0f;
+        buttonHoverStates.clear();  // 清空悬停状态
+        // ...
+    }
+}
+```
+
+---
+
 ## 14. 商店定义
 
 ### 14.1 基础商店
@@ -1323,7 +1767,44 @@ TradeShopBuilder.create("legendary_shop")
 
 ## 16. 冷却与限购系统
 
-### 16.1 限购配置
+### 16.1 ICooldownRecord 接口
+
+**⚠️ 重要更新**：2026-04-22 后引入 `ICooldownRecord` 接口，统一三种系统的冷却记录访问契约。
+
+```java
+/**
+ * 三时钟冷却快照接口。
+ * <p>
+ * 统一 DialogueProgressStore.Entry、GachaDataStore.CooldownEntry
+ * 以及 TradeDataStore.TradeCooldownEntry 的公共访问契约，
+ * 使 UnifiedCooldownManager 无需为每种记录类型单独重载。
+ */
+public interface ICooldownRecord {
+    /** 真实时间戳（毫秒），来自 System.currentTimeMillis()。 */
+    long realTime();
+    
+    /** 游戏总刻数（单调，不受 /time set 影响）。 */
+    long gameTime();
+    
+    /** 当日刻数 [0, 24000]（受 /time set 影响）。 */
+    long dayTime();
+    
+    /** 是否有有效记录（realTime > 0）。 */
+    boolean exists();
+}
+```
+
+**实现类**：
+- `DialogueProgressStore.Entry` - 对话进度冷却记录
+- `GachaDataStore.CooldownEntry` - 抽奖冷却记录
+- `TradeDataStore.TradeCooldownEntry` - 交易冷却记录
+
+**设计优势**：
+- ✅ 消除代码重复（UnifiedCooldownManager 不再需要三个重载方法）
+- ✅ 统一三时钟语义（realTime/gameTime/dayTime）
+- ✅ 便于扩展新系统的冷却功能
+
+### 16.2 限购配置
 
 ```java
 TradeShopBuilder.create("limited_shop")
@@ -1334,7 +1815,7 @@ TradeShopBuilder.create("limited_shop")
     .buildAndRegister();
 ```
 
-### 16.2 冷却类型
+### 16.3 冷却类型
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -1343,7 +1824,7 @@ TradeShopBuilder.create("limited_shop")
 | `.cooldownGameTick(tick)` | 游戏刻重置 | `.cooldownGameTick(0)` - 每天早上 6 点 |
 | 无调用 | 无冷却 | 默认值 |
 
-### 16.3 冷却配置示例
+### 16.4 冷却配置示例
 
 ```java
 TradeShopBuilder.create("cooldown_shop")
@@ -1368,7 +1849,91 @@ TradeShopBuilder.create("cooldown_shop")
     .buildAndRegister();
 ```
 
-### 16.4 自动刷新
+### 16.5 UnifiedCooldownManager 简化 API
+
+**⚠️ 重要更新**：引入 `ICooldownRecord` 后，`UnifiedCooldownManager` 的 API 大幅简化。
+
+```java
+// ✅ 新版：统一的判断方法（支持任意 ICooldownRecord 实现）
+boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
+    record,          // ICooldownRecord 实现
+    cooldownType,    // CooldownType 枚举
+    cooldownValue    // 冷却时长
+);
+
+// ❌ 旧版：需要三个重载方法（已废弃）
+// isOnCooldown(DialogueProgressStore.Entry, ...)
+// isOnCooldown(GachaDataStore.CooldownEntry, ...)
+// isOnCooldown(TradeDataStore.TradeCooldownEntry, ...)
+```
+
+**三时钟判断逻辑**：
+```java
+public static boolean isOnCooldown(ICooldownRecord record, 
+                                    CooldownType type, 
+                                    long value) {
+    if (!record.exists()) return false;
+    
+    return switch (type) {
+        case SECONDS -> {
+            long elapsed = System.currentTimeMillis() - record.realTime();
+            yield elapsed < value * 1000;
+        }
+        case GAME_DAY -> {
+            // 使用 dayTime 而非 gameTime，支持 /time set
+            long currentDayTime = Minecraft.getInstance().level.getDayTime() % 24000;
+            yield currentDayTime < record.dayTime();
+        }
+        case GAME_TICK -> {
+            long currentGameTime = Minecraft.getInstance().level.getGameTime();
+            yield currentGameTime < record.gameTime();
+        }
+    };
+}
+```
+
+**关键修复**：
+- ✅ GAME_DAY 冷却现在正确使用 `dayTime`（受 `/time set` 影响）
+- ✅ 消除了三处重复的判断逻辑
+- ✅ 支持未来扩展新的冷却记录类型
+
+### 16.6 废弃方法清理
+
+以下方法已被标记为 `@Deprecated`，将在未来版本中移除：
+
+```java
+// ❌ 已废弃：直接使用 ICooldownRecord 接口
+@Deprecated
+public static boolean isOnCooldown(DialogueProgressStore.Entry entry, ...) {
+    // 内部委托给统一方法
+    return isOnCooldown((ICooldownRecord) entry, type, value);
+}
+
+// ❌ 已废弃
+@Deprecated  
+public static boolean isOnCooldown(GachaDataStore.CooldownEntry entry, ...) {
+    return isOnCooldown((ICooldownRecord) entry, type, value);
+}
+
+// ❌ 已废弃
+@Deprecated
+public static boolean isOnCooldown(TradeDataStore.TradeCooldownEntry entry, ...) {
+    return isOnCooldown((ICooldownRecord) entry, type, value);
+}
+```
+
+**迁移建议**：
+```java
+// ❌ 旧版
+boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
+    (DialogueProgressStore.Entry) record, type, value);
+
+// ✅ 新版
+boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
+    record, type, value);  // record 实现 ICooldownRecord 即可
+```
+
+### 16.7 自动刷新
 
 当玩家完成任务或改变状态时，商店界面会自动刷新（防抖 1 秒）：
 
@@ -1454,11 +2019,11 @@ public class TradeEventHandler {
         
         // 根据失败原因播放不同音效
         switch (reason) {
-            case INSUFFICIENT_FUNDS ->
+            case CANNOT_AFFORD ->
                 player.playSound(SoundEvents.VILLAGER_NO, 1.0f, 0.8f);
-            case COOLDOWN_ACTIVE ->
+            case ON_COOLDOWN ->
                 player.playSound(SoundEvents.NOTE_BLOCK_BASS, 1.0f, 0.5f);
-            case PURCHASE_LIMIT_REACHED ->
+            case MAX_DRAWS_REACHED ->
                 player.playSound(SoundEvents.NOTE_BLOCK_HAT, 1.0f, 1.2f);
             default -> {}
         }
@@ -1562,6 +2127,12 @@ boolean exists = ArcQuestAPI.hasTradeShop(String shopId);
 | `TradeOpenedEvent` | FORGE | 服务端 | 商店打开（含 npc） |
 | `TradePurchasedSuccessEvent` | FORGE | 服务端 | 商品购买成功 |
 | `TradePurchaseFailedEvent` | FORGE | 服务端 | 商品购买失败 |
+| **`GachaOpenedEvent`** | **FORGE** | **服务端** | **抽奖界面打开** |
+| **`GachaPreDrawEvent`** | **FORGE** | **服务端** | **抽奖前（可取消）** |
+| **`GachaDrawingEvent`** | **FORGE** | **客户端** | **抽奖动画中** |
+| **`GachaDrawSuccessEvent`** | **FORGE** | **服务端** | **抽奖成功** |
+| **`GachaDrawFailedEvent`** | **FORGE** | **服务端** | **抽奖失败（含原因）** |
+| **`GachaPoolRefreshEvent`** | **FORGE** | **服务端** | **奖池刷新** |
 
 **新增事件**：
 - ✅ `QuestStartedEvent` - 任务开始
@@ -1571,6 +2142,12 @@ boolean exists = ArcQuestAPI.hasTradeShop(String shopId);
 - ✅ `DialogueNodeStartedEvent` - 节点显示（替代 DialogueSayIfEvaluatedEvent）
 - ✅ `DialogueChoiceSelectedEvent` - 选项选择
 - ✅ `TradePurchaseFailedEvent` - 交易失败
+- ✅ **`GachaOpenedEvent`** - 抽奖界面打开
+- ✅ **`GachaPreDrawEvent`** - 抽奖前（支持取消和修改保底计数）
+- ✅ **`GachaDrawingEvent`** - 抽奖动画中（客户端）
+- ✅ **`GachaDrawSuccessEvent`** - 抽奖成功
+- ✅ **`GachaDrawFailedEvent`** - 抽奖失败（包含详细 FailReason）
+- ✅ **`GachaPoolRefreshEvent`** - 奖池刷新
 
 **删除事件**：
 - ❌ `DialogueSayIfEvaluatedEvent` - 功能已被 `DialogueNodeStartedEvent` 覆盖
@@ -1578,7 +2155,211 @@ boolean exists = ArcQuestAPI.hasTradeShop(String shopId);
 **重命名事件**：
 - 🔄 `TradeItemPurchasedEvent` → `TradePurchasedSuccessEvent`
 
-### 19.2 事件订阅
+### 19.2 抽奖事件详解
+
+#### 19.2.1 GachaOpenedEvent
+
+```java
+@SubscribeEvent
+public static void onGachaOpened(GachaEvents.OpenedEvent event) {
+    ServerPlayer player = event.getPlayer();
+    String shopId = event.getShopId();
+    
+    LOGGER.info("Player {} opened gacha shop: {}", 
+        player.getName().getString(), shopId);
+    
+    // 播放特殊音效
+    player.playSound(SoundEvents.ANVIL_USE, 1.0f, 1.0f);
+}
+```
+
+**关键字段**：
+- `player`: 打开界面的玩家
+- `shopId`: 抽奖商店 ID
+
+#### 19.2.2 GachaPreDrawEvent（可取消）
+
+```java
+@SubscribeEvent
+public static void onPreDraw(GachaEvents.PreDrawEvent event) {
+    ServerPlayer player = event.getPlayer();
+    String shopId = event.getShopId();
+    int pityCount = event.getPityCount();
+    
+    LOGGER.info("Player {} attempting to draw from {}, pity count: {}",
+        player.getName().getString(), shopId, pityCount);
+    
+    // ✅ 可以取消抽奖
+    if (player.experienceLevel < 10) {
+        event.setCanceled(true);
+        player.sendSystemMessage(Component.literal("§c需要至少 10 级才能抽奖！"));
+        return;
+    }
+    
+    // ✅ 可以修改保底计数
+    if (pityCount >= 45 && pityCount < 50) {
+        event.setPityCount(50);  // 强制触发保底
+        player.sendSystemMessage(Component.literal("§6幸运加成！保底已激活！"));
+    }
+}
+```
+
+**关键字段**：
+- `player`: 执行抽奖的玩家
+- `shopId`: 抽奖商店 ID
+- `pityCount`: 当前保底计数
+- `canceled`: 是否取消（默认 false）
+
+**重要特性**：
+- ✅ 支持取消抽奖（`setCanceled(true)`）
+- ✅ 支持修改保底计数（`setPityCount(int)`）
+- ✅ 在服务端权威判断前触发
+
+#### 19.2.3 GachaDrawingEvent（客户端）
+
+```java
+@SubscribeEvent
+public static void onDrawing(GachaEvents.DrawingEvent event) {
+    // 客户端事件，用于触发动画
+    Minecraft mc = Minecraft.getInstance();
+    
+    // 播放滚动音效
+    mc.getSoundManager().play(
+        SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)
+    );
+    
+    LOGGER.debug("Gacha rolling animation started");
+}
+```
+
+**关键字段**：
+- 无额外字段（纯客户端事件）
+
+**用途**：
+- 触发 HUD 滚动动画
+- 播放滚动音效
+- 客户端视觉效果
+
+#### 19.2.4 GachaDrawSuccessEvent
+
+```java
+@SubscribeEvent
+public static void onDrawSuccess(GachaEvents.DrawSuccessEvent event) {
+    ServerPlayer player = event.getPlayer();
+    String shopId = event.getShopId();
+    Rarity rarity = event.getRarity();
+    ItemStack reward = event.getReward();
+    int pityCount = event.getPityCount();
+    boolean triggeredPity = event.isTriggeredPity();
+    
+    LOGGER.info("Player {} drew {} ({}) from {}, pity triggered: {}",
+        player.getName().getString(),
+        reward.getDisplayName().getString(),
+        rarity,
+        shopId,
+        triggeredPity);
+    
+    // 稀有物品全服公告
+    if (rarity == Rarity.LEGENDARY) {
+        player.getServer().getPlayerList().broadcastSystemMessage(
+            Component.literal("§6玩家 " + player.getName().getString() + 
+                            " §6抽到了传说物品：" + reward.getDisplayName().getString()),
+            false
+        );
+    }
+    
+    // 播放庆祝音效
+    player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f);
+}
+```
+
+**关键字段**：
+- `player`: 抽奖的玩家
+- `shopId`: 抽奖商店 ID
+- `rarity`: 物品稀有度（COMMON/RARE/EPIC/LEGENDARY）
+- `reward`: 获得的物品堆栈
+- `pityCount`: 抽奖后的保底计数
+- `triggeredPity`: 是否触发了保底
+
+#### 19.2.5 GachaDrawFailedEvent
+
+```java
+@SubscribeEvent
+public static void onDrawFailed(GachaEvents.DrawFailedEvent event) {
+    ServerPlayer player = event.getPlayer();
+    String shopId = event.getShopId();
+    FailReason reason = event.getFailReason();
+    
+    LOGGER.warn("Player {} failed to draw from {}: {}",
+        player.getName().getString(),
+        shopId,
+        reason);
+    
+    // 根据失败原因发送不同提示
+    switch (reason) {
+        case MAX_DRAWS_REACHED:
+            player.sendSystemMessage(Component.literal("§c已达到抽奖次数上限！"));
+            break;
+        case ON_COOLDOWN:
+            player.sendSystemMessage(Component.literal("§c冷却中，请稍后再试！"));
+            break;
+        case CONDITION_NOT_MET:
+            player.sendSystemMessage(Component.literal("§c未满足前置条件！"));
+            break;
+        case CANNOT_AFFORD:
+            player.sendSystemMessage(Component.literal("§c资源不足！"));
+            break;
+        case NOT_VISIBLE:
+            player.sendSystemMessage(Component.literal("§c该奖池项当前不可见！"));
+            break;
+        default:
+            player.sendSystemMessage(Component.literal("§c抽奖失败！"));
+            break;
+    }
+}
+```
+
+**关键字段**：
+- `player`: 尝试抽奖的玩家
+- `shopId`: 抽奖商店 ID
+- `failReason`: 失败原因枚举
+
+**FailReason 枚举**：
+```java
+public enum FailReason {
+    PURCHASE_LIMIT_REACHED,  // 达到限购次数
+    ON_COOLDOWN,             // 冷却中
+    CONDITION_NOT_MET,       // 条件不满足
+    INSUFFICIENT_FUNDS,      // 资源不足
+    SHOP_NOT_FOUND           // 商店不存在
+}
+```
+
+#### 19.2.6 GachaPoolRefreshEvent
+
+```java
+@SubscribeEvent
+public static void onPoolRefresh(GachaEvents.PoolRefreshEvent event) {
+    ServerPlayer player = event.getPlayer();
+    String shopId = event.getShopId();
+    
+    LOGGER.info("Gacha pool refreshed for player {} in shop {}",
+        player.getName().getString(), shopId);
+    
+    // 发送通知
+    player.sendSystemMessage(Component.literal("§a奖池已刷新！"));
+}
+```
+
+**关键字段**：
+- `player`: 关联的玩家
+- `shopId`: 抽奖商店 ID
+
+**触发时机**：
+- 冷却重置时自动刷新奖池
+- 手动调用 `/gacha reset` 命令
+
+### 19.3 事件订阅
 
 ```java
 @Mod.EventBusSubscriber(modid = "my_addon", bus = Bus.FORGE)
@@ -1625,6 +2406,13 @@ Arc Quest 提供了一套完整的模块化命令系统，用于管理员调试�
 │       ├── shop   # 重置整个商店
 │       ├── entry  # 重置单个条目
 │       └── all    # 重置所有交易
+├── gacha          # 抽奖管理子系统 (2026-04-22 新增)
+│   ├── open       # 打开抽奖界面
+│   ├── list       # 列出抽奖商店
+│   ├── debug      # 调试抽奖数据
+│   └── reset      # 重置抽奖进度
+│       ├── shop   # 重置指定商店
+│       └── all    # 重置所有抽奖数据
 └── admin          # 管理员功能
     ├── registry   # 查看注册表
     └── reload     # 重载配置
@@ -1961,14 +2749,139 @@ public class MyAddonCommands {
 
 ---
 
+### 20.5 抽奖管理命令 (2026-04-22 新增)
+
+#### `/arcquest gacha open <player> <shop_id>`
+打开抽奖界面。
+
+**示例**：
+```bash
+/arcquest gacha open @p daily_gacha
+```
+
+**权限检查**：需要权限等级 ≥ 2
+
+---
+
+#### `/arcquest gacha list [player]`
+列出玩家的抽奖历史记录。
+
+**示例**：
+```bash
+# 查看自己的抽奖记录
+/arcquest gacha list
+
+# 查看指定玩家的记录
+/arcquest gacha list Steve
+```
+
+**输出格式**：
+```
+=== Player Steve's Gacha History ===
+  daily_gacha: 5 draws, pity counter: 23
+  weapon_crate: 2 draws, pity counter: 8
+```
+
+---
+
+#### `/arcquest gacha debug <player> <shop_id>`
+显示抽奖的详细调试信息（定义 + 运行时状态）。
+
+**示例**：
+```bash
+/arcquest gacha debug @p daily_gacha
+```
+
+**输出内容**：
+- 商店定义（maxDraws、cooldownType、pityThreshold等）
+- 玩家当前状态（drawCount、pityCounter、cooldownTimestamp）
+- 奖池配置（稀有度分布、权重总和）
+
+---
+
+#### `/arcquest gacha reset <player> [shop_id|all]`
+重置抽奖进度（清空抽奖次数、冷却记录、保底计数）。
+
+**示例**：
+```bash
+# 重置指定商店
+/arcquest gacha reset @p daily_gacha
+
+# 重置所有抽奖数据
+/arcquest gacha reset @p all
+```
+
+**重置内容**：
+- ✅ 抽奖次数计数器（gachaDrawCounts）
+- ✅ 冷却时间戳（cooldownRecords）
+- ✅ 保底计数器（gachaPityCounters）
+
+**权限要求**：需要权限等级 ≥ 2
+
+**操作日志**：
+```java
+LOGGER.info("Admin {} reset gacha data for player {} [{}]",
+    admin.getName().getString(),
+    target.getName().getString(),
+    shopId != null ? shopId : "ALL"
+);
+```
+
+---
+
+### 20.6 命令翻译键规范
+
+所有命令反馈文本必须使用翻译键，禁止硬编码。
+
+**翻译键命名规范**：
+```
+arc_quest.commands.<subsystem>.<action>.<key>
+```
+
+**示例**：
+```properties
+# 中文 (ArcQuestZHLangProvider)
+arc_quest.commands.gacha.reset.success=已重置玩家 {0} 的抽奖数据 [{1}]
+arc_quest.commands.gacha.reset.all=已重置玩家 {0} 的所有抽奖数据
+arc_quest.commands.gacha.open.no_permission=你没有权限打开抽奖界面
+
+# 英文 (ArcQuestENLangProvider)
+arc_quest.commands.gacha.reset.success=Reset gacha data for player {0} [{1}]
+arc_quest.commands.gacha.reset.all=Reset all gacha data for player {0}
+arc_quest.commands.gacha.open.no_permission=You don't have permission to open gacha interface
+```
+
+**Data Generator 自动更新**：
+```java
+// ArcQuestZHLangProvider.java
+add("arc_quest.commands.gacha.reset.success", 
+    "已重置玩家 {0} 的抽奖数据 [{1}]");
+add("arc_quest.commands.gacha.reset.all", 
+    "已重置玩家 {0} 的所有抽奖数据");
+
+// ArcQuestENLangProvider.java
+add("arc_quest.commands.gacha.reset.success", 
+    "Reset gacha data for player {0} [{1}]");
+add("arc_quest.commands.gacha.reset.all", 
+    "Reset all gacha data for player {0}");
+```
+
+**运行 Data Generator**：
+```bash
+./gradlew runData
+```
+
+---
+
 ## 21. 网络通信
 
-### 20.1 网络架构
+### 21.1 网络架构
 
 **C2S 数据包**（客户端 → 服务端）：
 - `C2SRequestQuestActionPacket`: 任务操作请求
 - `C2SDialogueChoicePacket`: 对话选择
 - `C2SRequestTradePacket`: 商店交互
+- `C2SDrawGachaPacket`: 抽奖请求 (2026-04-22 新增)
 
 **S2C 数据包**（服务端 → 客户端）：
 - `S2CSyncFullDataPacket`: 全量数据同步
@@ -1976,8 +2889,232 @@ public class MyAddonCommands {
 - `S2CSyncQuestStatePacket`: 任务状态同步
 - `S2COpenDialoguePacket`: 打开对话
 - `S2COpenTradePacket`: 打开商店
+- `S2COpenGachaPacket`: 打开抽奖界面 (2026-04-22 新增)
+- `S2CDrawResultPacket`: 抽奖结果 (2026-04-22 新增)
+- `S2CSyncMarkersPacket`: 同步世界标记 (2026-04-22 新增)
 
-### 20.2 同步策略
+### 21.2 S2CSyncMarkersPacket - 世界标记系统 (2026-04-22 新增)
+
+**功能概述**：
+用于服务端向客户端同步任务相关的3D世界标记（Waypoints），支持添加、移除和清空操作。
+
+**三种操作类型**：
+```java
+public static final byte OP_CLEAR  = 0;  // 清空所有标记
+public static final byte OP_ADD    = 1;  // 批量添加标记
+public static final byte OP_REMOVE = 2;  // 移除单个标记
+```
+
+#### 21.2.1 数据结构
+
+**MarkerEntry 结构**：
+```java
+public record MarkerEntry(
+    String id,       // 唯一标识符
+    String type,     // 标记类型（QUEST/TARGET/CUSTOM等）
+    double x,        // X坐标
+    double y,        // Y坐标
+    double z,        // Z坐标
+    String label,    // 显示文本
+    int color        // ARGB颜色值
+) {}
+```
+
+#### 21.2.2 使用示例
+
+**清空所有标记**：
+```java
+// 服务端发送
+ArcQuestNetwork.sendToPlayer(new S2CSyncMarkersPacket(), player);
+
+// 客户端处理
+QuestMarkerManager.INSTANCE.clear();
+```
+
+**批量添加标记**：
+```java
+// 构建标记列表
+List<MarkerEntry> markers = List.of(
+    new MarkerEntry(
+        "quest_main_target",
+        "QUEST",
+        100.5, 64.0, 200.3,
+        "前往村庄",
+        0xFFFF0000  // 红色
+    ),
+    new MarkerEntry(
+        "quest_secondary",
+        "TARGET",
+        150.0, 70.0, 250.0,
+        "收集木材",
+        0xFF00FF00  // 绿色
+    )
+);
+
+// 服务端发送
+ArcQuestNetwork.sendToPlayer(new S2CSyncMarkersPacket(markers), player);
+
+// 客户端处理
+for (MarkerEntry e : pkt.entries) {
+    QuestMarkerType type;
+    try {
+        type = QuestMarkerType.valueOf(e.type);
+    } catch (IllegalArgumentException ex) {
+        type = QuestMarkerType.CUSTOM;  // 容错处理
+    }
+    
+    QuestMarkerData data = new QuestMarkerData.Builder(
+            e.id, e.x, e.y, e.z, e.label)
+            .type(type)
+            .color(e.color)
+            .build();
+    
+    QuestMarkerManager.INSTANCE.add(data);
+}
+```
+
+**移除单个标记**：
+```java
+// 服务端发送
+ArcQuestNetwork.sendToPlayer(
+    new S2CSyncMarkersPacket("quest_main_target"), 
+    player
+);
+
+// 客户端处理
+QuestMarkerManager.INSTANCE.remove(pkt.removeId);
+```
+
+#### 21.2.3 编码/解码
+
+**编码逻辑**：
+```java
+public static void encode(S2CSyncMarkersPacket pkt, FriendlyByteBuf buf) {
+    buf.writeByte(pkt.op);
+    if (pkt.op == OP_ADD) {
+        buf.writeInt(pkt.entries.size());
+        for (MarkerEntry e : pkt.entries) {
+            buf.writeUtf(e.id);
+            buf.writeUtf(e.type);
+            buf.writeDouble(e.x);
+            buf.writeDouble(e.y);
+            buf.writeDouble(e.z);
+            buf.writeUtf(e.label);
+            buf.writeInt(e.color);
+        }
+    } else if (pkt.op == OP_REMOVE) {
+        buf.writeUtf(pkt.removeId);
+    }
+    // OP_CLEAR 无需额外数据
+}
+```
+
+**解码逻辑**：
+```java
+public static S2CSyncMarkersPacket decode(FriendlyByteBuf buf) {
+    byte op = buf.readByte();
+    if (op == OP_ADD) {
+        int count = buf.readInt();
+        List<MarkerEntry> list = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            list.add(new MarkerEntry(
+                    buf.readUtf(), buf.readUtf(),
+                    buf.readDouble(), buf.readDouble(), buf.readDouble(),
+                    buf.readUtf(), buf.readInt()));
+        }
+        return new S2CSyncMarkersPacket(list);
+    } else if (op == OP_REMOVE) {
+        return new S2CSyncMarkersPacket(buf.readUtf());
+    }
+    return new S2CSyncMarkersPacket();  // OP_CLEAR
+}
+```
+
+#### 21.2.4 与任务系统集成
+
+**自动同步标记**：
+```java
+// 当任务阶段变更时，自动更新标记
+@SubscribeEvent
+public static void onPhaseChanged(QuestPhaseChangedEvent event) {
+    ServerPlayer player = event.getPlayer();
+    String newPhase = event.getNewPhaseId();
+    
+    // 从 PhaseDefinition 中读取标记配置
+    PhaseDefinition phase = quest.getPhase(newPhase);
+    if (phase.hasMarker()) {
+        MarkerConfig config = phase.getMarker();
+        
+        // 发送新标记
+        MarkerEntry entry = new MarkerEntry(
+            event.getQuestId().toString(),
+            "QUEST",
+            config.x(), config.y(), config.z(),
+            config.label(),
+            config.color()
+        );
+        
+        ArcQuestNetwork.sendToPlayer(
+            new S2CSyncMarkersPacket(List.of(entry)),
+            player
+        );
+    }
+}
+```
+
+**清除已完成任务的标记**：
+```java
+@SubscribeEvent
+public static void onQuestCompleted(QuestCompletedEvent event) {
+    ServerPlayer player = event.getPlayer();
+    String questId = event.getQuestId().toString();
+    
+    // 移除该任务的标记
+    ArcQuestNetwork.sendToPlayer(
+        new S2CSyncMarkersPacket(questId),
+        player
+    );
+}
+```
+
+#### 21.2.5 性能优化
+
+**批量操作减少网络包**：
+```java
+// ❌ 低效：多次发送单个标记
+for (Marker marker : markers) {
+    ArcQuestNetwork.sendToPlayer(
+        new S2CSyncMarkersPacket(List.of(marker)),
+        player
+    );
+}
+
+// ✅ 高效：一次性发送所有标记
+ArcQuestNetwork.sendToPlayer(
+    new S2CSyncMarkersPacket(markers),
+    player
+);
+```
+
+**防抖机制**：
+```java
+// 避免频繁更新同一标记
+private static final Map<String, Long> lastUpdateTimes = new HashMap<>();
+
+public static void updateMarker(String id, MarkerEntry entry) {
+    long now = System.currentTimeMillis();
+    Long lastTime = lastUpdateTimes.get(id);
+    
+    if (lastTime != null && now - lastTime < 1000) {
+        return;  // 1秒内不重复更新
+    }
+    
+    lastUpdateTimes.put(id, now);
+    // 发送更新...
+}
+```
+
+### 21.3 同步策略
 
 **全量同步**（登录/维度切换）：
 ```java
@@ -1996,7 +3133,7 @@ ArcQuestNetwork.syncDeltaProgress(player, questId, objIndex, newProgress);
 ArcQuestNetwork.syncFlagsAndVars(player, capability);
 ```
 
-### 20.3 客户端缓存
+### 21.4 客户端缓存
 
 ```java
 // 访问客户端缓存（无需网络请求）
@@ -2056,7 +3193,7 @@ if (version < NbtVersionManager.CURRENT_VERSION) {
 
 ## 23. 性能优化
 
-### 22.1 O(1) 目标追踪
+### 23.1 O(1) 目标追踪
 
 **传统方案**：O(n×m) 遍历
 ```java
@@ -2086,14 +3223,14 @@ TrackedObjective tracked = index.get(playerId)
 | 10 任务 × 3 目标 | 30 次检查 | 1-3 次 | **10-30x** |
 | 50 任务 × 5 目标 | 250 次检查 | 1-5 次 | **50-250x** |
 
-### 22.2 增量网络同步
+### 23.2 增量网络同步
 
 **全量同步**：~5KB（登录时）
 **增量同步**：~50B（进度更新）
 
 **带宽节省**：90%+
 
-### 22.3 UI 渲染优化
+### 23.3 UI 渲染优化
 
 **顶点缓冲批量绘制**：
 - 合并相同材质的绘制调用
@@ -2107,7 +3244,18 @@ float dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
 progress = lerp(progress, targetProgress, dt * animationSpeed);
 ```
 
-### 22.4 缓存机制
+**Ponder 场景渲染优化**（2026-04-22 新增）：
+- ✅ **双光源照明系统**: 避免单光源导致的阴影过暗
+- ✅ **动态缩放追踪**: 记录 currentScale/currentDrawX/currentDrawY 用于点击事件检测
+- ✅ **悬停状态插值**: HashMap 缓存按钮悬停状态，实现丝滑放大换色
+- ✅ **投影计算缓存**: 世界坐标到屏幕坐标的转换结果缓存，减少重复计算
+
+**标记系统投影优化**（2026-04-22 新增）：
+- ✅ **批量操作**: S2CSyncMarkersPacket 支持一次性发送多个标记，减少网络包数量
+- ✅ **防抖机制**: 短时间内多次标记更新合并为一次发送
+- ✅ **距离剔除**: 只渲染玩家视野范围内的标记，减少渲染开销
+
+### 23.4 缓存机制
 
 **条件评估缓存**：
 ```java
@@ -2125,11 +3273,16 @@ public boolean evaluate(DialogueContext ctx) {
 }
 ```
 
+**客户端缓存线程安全**：
+- ✅ ClientTradeCache 使用 ConcurrentHashMap 保证并发读取安全
+- ✅ GachaRegistry 使用 CopyOnWriteArrayList 支持并发遍历
+- ✅ QuestCapability 关键方法使用 synchronized 保证原子性
+
 ---
 
 ## 24. 最佳实践
 
-### 23.1 使用 Builder 模式
+### 24.1 使用 Builder 模式
 
 ```java
 // ✅ 推荐
@@ -2142,7 +3295,7 @@ QuestBuilder.create("quest_id")
 new QuestDefinition(...);  // 参数过多
 ```
 
-### 23.2 条件判断做空值检查
+### 24.2 条件判断做空值检查
 
 ```java
 // ✅ 安全
@@ -2155,7 +3308,7 @@ new QuestDefinition(...);  // 参数过多
 .visibleCondition((player, ...) -> player.getHealth() > 10.0f)
 ```
 
-### 23.3 服务端验证
+### 24.3 服务端验证
 
 ```java
 // ✅ 正确：服务端二次验证
@@ -2169,7 +3322,7 @@ if (clientSaysCanBuy) {
 }
 ```
 
-### 23.4 国际化支持
+### 24.4 国际化支持
 
 ```java
 // ✅ 使用翻译键
@@ -2179,7 +3332,7 @@ Component.translatable("arc_quest.quest.my_quest.name")
 Component.literal("My Quest")
 ```
 
-### 23.5 错误处理
+### 24.5 错误处理
 
 ```java
 // 奖励发放容错
@@ -2188,6 +3341,746 @@ try {
 } catch (Exception e) {
     LOGGER.error("Reward failed: {}", e.getMessage(), e);
     // 继续发放其他奖励
+}
+```
+
+### 24.6 抽奖系统设计模式（2026-04-22 新增）
+
+**服务端权威架构**：
+```java
+// ✅ 所有抽奖逻辑在服务端执行
+@SubscribeEvent
+public static void onDrawGacha(C2SDrawGachaPacket event) {
+    ServerPlayer player = event.getPlayer();
+    synchronized (player) {  // 原子操作
+        // 1. 检查条件（限购/冷却/前置条件）
+        // 2. 扣除成本
+        // 3. 执行抽奖算法
+        // 4. 发放奖励
+        // 5. 触发事件
+    }
+}
+```
+
+**GachaSession 临时对象**：
+```java
+// ✅ 每次请求创建新的会话对象，避免状态污染
+GachaSession session = new GachaSession(player, shopId);
+session.checkAndResetDraws();  // 重置逻辑
+session.incrementDrawCount();  // 计数递增
+```
+
+**Ponder 场景设计规范**：
+```java
+// ✅ 每个任务阶段绑定独立的 Ponder 场景
+PhaseDefinition phase = PhaseBuilder.create()
+    .ponderSceneId(new ResourceLocation("my_mod:quest_tutorial"))
+    .description(Component.translatable("quest.phase.description"))
+    .build();
+
+// ✅ 场景注册在 ModClientEvents.onRegisterScenes 中完成
+@SubscribeEvent
+public static void onRegisterScenes(RegisterScenesEvent event) {
+    event.register(new ResourceLocation("my_mod:quest_tutorial"), scene -> {
+        // 定义场景元素和动画
+    });
+}
+```
+
+---
+
+## 25. 抽奖系统 (Gacha System)
+
+### 25.1 核心概念
+
+抽奖系统是 Arc Quest 提供的一个**随机奖励获取机制**,允许玩家通过消耗资源从奖池中抽取物品。
+
+**关键特性**:
+- ✅ **服务端权威架构**: 所有抽奖逻辑在服务端执行,客户端仅负责渲染
+- ✅ **稀有度系统**: 支持 Common/Rare/Epic/Legendary 等多级稀有度配置
+- ✅ **保底机制**: 连续未中大奖时自动提升概率,确保公平性
+- ✅ **限购与冷却**: 支持每日/每周/自定义时间间隔的抽奖限制
+- ✅ **完整事件系统**: 7个Forge事件覆盖抽奖全流程
+- ✅ **三阶段HUD**: 预览 → 滚动动画 → 结算展示的流畅体验
+
+**与商店系统的对比**:
+| 特性 | 商店系统 | 抽奖系统 |
+|------|---------|----------|
+| 确定性 | 确定获得指定物品 | 随机抽取奖池物品 |
+| 限购粒度 | 商品级 (`TradeEntry`) | 商店级 (`GachaShopDefinition`) |
+| 会话管理 | `TradeSession` (多商品) | `GachaSession` (单奖池) |
+| 网络包 | `C2SRequestTradePacket` (Action枚举) | `C2SDrawGachaPacket` (单一操作) |
+| 客户端缓存 | `ClientTradeCache` (数组支持多商品) | `ClientGachaCache` (单值) |
+
+---
+
+### 25.2 Builder API 详解
+
+#### 25.2.1 GachaShopBuilder 基础用法
+
+```java
+GachaShopDefinition shop = GachaShopBuilder.create("daily_gacha")
+    .displayName(Component.translatable("gacha.daily_gacha.name"))
+    .description(Component.translatable("gacha.daily_gacha.desc"))
+    .themeColor(0xFFD700)  // 金色主题
+    .drawCostItem(Items.EMERALD, 5)  // 每次抽奖消耗5个绿宝石
+    .maxDraws(10)  // 最多抽奖10次(0表示无限制)
+    .cooldownGameDay()  // 每天重置限购计数
+    
+    // 添加奖池条目
+    .item(GachaItemBuilder.create("common_iron")
+        .rarity(Rarity.COMMON)  // 普通稀有度
+        .item(Items.IRON_INGOT, 1, 3)  // 1-3个铁锭
+        .weight(50))  // 权重50
+    
+    .item(GachaItemBuilder.create("rare_diamond")
+        .rarity(Rarity.RARE)
+        .item(Items.DIAMOND, 1, 2)
+        .weight(20))
+    
+    .item(GachaItemBuilder.create("epic_netherite")
+        .rarity(Rarity.EPIC)
+        .item(Items.NETHERITE_INGOT, 1)
+        .weight(5)
+        .pityTrigger(true))  // 触发保底计数
+    
+    .buildAndRegister();
+```
+
+**参数说明**:
+- `create(String shopId)`: **智能命名空间解析**
+  - 如果包含 `:` (如 `"my_mod:shop"`),直接使用
+  - 如果不包含 `:` (如 `"shop"`),自动添加 `arc_quest:` 前缀
+- `.drawCostItem(Item, count)`: 设置抽奖成本
+- `.maxDraws(int)`: 最大抽奖次数(0=无限制)
+- `.cooldown(seconds)`: 现实时间冷却(秒)
+- `.cooldownGameDay()`: 游戏日重置(每天凌晨6点)
+- `.cooldownGameTick(tick)`: 游戏刻重置(0-23999)
+- `.item(GachaItemBuilder)`: 添加奖池条目(自动build)
+- `.buildAndRegister()`: 构建并注册到系统
+
+#### 25.2.2 GachaItemBuilder 配置
+
+```java
+GachaItemBuilder.create("legendary_sword")
+    .rarity(Rarity.LEGENDARY)  // 传说稀有度
+    .item(Items.NETHERITE_SWORD, 1)  // 固定数量
+    .item(Items.ENCHANTED_GOLDEN_APPLE, 1, 3)  // 随机数量 1-3
+    .weight(2)  // 权重(越低越稀有)
+    .pityTrigger(true)  // 计入保底计数
+    .visibleCondition(ICondition.flagSet("unlocked_legendary"))  // 可见条件
+    .build();
+```
+
+**稀有度枚举**:
+```java
+public enum Rarity {
+    COMMON(0xFFFFFF, "Common"),      // 白色
+    UNCOMMON(0x00FF00, "Uncommon"),  // 绿色
+    RARE(0x0088FF, "Rare"),          // 蓝色
+    EPIC(0xAA00FF, "Epic"),          // 紫色
+    LEGENDARY(0xFFAA00, "Legendary"); // 金色
+}
+```
+
+**权重系统**:
+- 总权重 = 所有条目权重之和
+- 单个条目概率 = 条目权重 / 总权重
+- 示例: 权重50的条目在总权重100时概率为50%
+
+#### 25.2.3 保底机制配置
+
+```java
+GachaShopBuilder.create("pity_gacha")
+    .pityThreshold(50)  // 保底阈值:50次未中EPIC及以上必出
+    .pityResetOnTrigger(true)  // 触发保底后重置计数
+    .pityItems(Rarity.EPIC, Rarity.LEGENDARY)  // 保底判定稀有度
+    
+    .item(GachaItemBuilder.create("common_item")
+        .rarity(Rarity.COMMON)
+        .weight(80)
+        .pityTrigger(false))  // 不计入保底
+    
+    .item(GachaItemBuilder.create("epic_item")
+        .rarity(Rarity.EPIC)
+        .weight(5)
+        .pityTrigger(true))  // ✅ 计入保底
+    
+    .buildAndRegister();
+```
+
+**保底工作原理**:
+1. 每次抽奖未中 `pityItems` 指定的稀有度时,保底计数+1
+2. 当计数达到 `pityThreshold` 时,下次抽奖**必定**获得EPIC或LEGENDARY
+3. 触发保底后,计数重置为0(如果 `pityResetOnTrigger=true`)
+
+---
+
+### 25.3 网络通信
+
+#### 25.3.1 C2SDrawGachaPacket (客户端 → 服务端)
+
+**用途**: 请求执行一次抽奖
+
+**字段**:
+```java
+public class C2SDrawGachaPacket {
+    private final String shopId;  // 抽奖商店ID
+}
+```
+
+**服务端处理流程**:
+```java
+public static void handle(C2SDrawGachaPacket packet, Supplier<NetworkEvent.Context> ctx) {
+    ctx.get().enqueueWork(() -> {
+        ServerPlayer player = ctx.get().getSender();
+        if (player == null) return;
+        
+        // 1. 创建会话(对标商店系统)
+        GachaSession session = new GachaSession(player, packet.shopId());
+        
+        // 2. 前置检查(服务端权威)
+        synchronized (session) {
+            // 2.1 检查限购
+            if (!session.canDraw()) {
+                triggerFailedEvent(player, packet.shopId(), FailReason.PURCHASE_LIMIT_REACHED);
+                return;
+            }
+            
+            // 2.2 检查冷却
+            if (session.isOnCooldown()) {
+                triggerFailedEvent(player, packet.shopId(), FailReason.COOLDOWN_ACTIVE);
+                return;
+            }
+            
+            // 2.3 检查成本
+            if (!session.hasEnoughCost()) {
+                triggerFailedEvent(player, packet.shopId(), FailReason.INSUFFICIENT_FUNDS);
+                return;
+            }
+            
+            // 3. 执行抽奖(原子操作)
+            DrawResult result = session.executeDraw();
+            
+            // 4. 扣除成本
+            session.deductCost();
+            
+            // 5. 增加抽奖计数
+            session.incrementDrawCount();
+            
+            // 6. 发放奖励
+            result.grantRewards(player);
+            
+            // 7. 发送结果到客户端
+            ArcQuestNetwork.sendToPlayer(new S2CDrawResultPacket(result), player);
+            
+            // 8. 刷新客户端数据(更新冷却/限购状态)
+            ArcQuestNetwork.sendToPlayer(
+                S2COpenGachaPacket.buildSnapshot(player, packet.shopId()), 
+                player
+            );
+            
+            // 9. 触发成功事件
+            MinecraftForge.EVENT_BUS.post(new GachaEvents.PostDrawEvent(player, packet.shopId(), result));
+        }
+    });
+}
+```
+
+**关键点**:
+- ✅ 使用 `synchronized` 保证原子性(防止并发抽奖)
+- ✅ 遵循**先检查限购,再检查冷却**的优先级
+- ✅ 抽奖后立即刷新客户端数据(修复时序竞态)
+- ✅ 失败时触发 `DrawFailedEvent` 而非静默失败
+
+#### 25.3.2 S2COpenGachaPacket (服务端 → 客户端)
+
+**用途**: 打开抽奖界面,同步完整数据
+
+**字段**:
+```java
+public class S2COpenGachaPacket {
+    private final String shopId;
+    private final Component displayName;
+    private final Component description;
+    private final int themeColor;
+    private final ItemStack costItem;
+    private final int maxDraws;
+    private final int currentDraws;
+    private final long cooldownTimestamp;
+    private final int cooldownType;  // CooldownType枚举ordinal
+    private final List<GachaItemData> items;  // 奖池条目列表
+    private final int pityCounter;  // 当前保底计数
+    private final int pityThreshold;  // 保底阈值
+}
+```
+
+**客户端处理**:
+```java
+public static void handle(S2COpenGachaPacket packet, Supplier<NetworkEvent.Context> ctx) {
+    ctx.get().enqueueWork(() -> {
+        ClientGachaCache.INSTANCE.updateGachaSession(packet);
+        
+        // 打开GUI
+        Minecraft.getInstance().setScreen(new GachaScreen(packet));
+    });
+}
+```
+
+#### 25.3.3 S2CDrawResultPacket (服务端 → 客户端)
+
+**用途**: 通知客户端抽奖结果,触发动画
+
+**字段**:
+```java
+public class S2CDrawResultPacket {
+    private final GachaItemData wonItem;  // 中奖物品
+    private final int actualCount;  // 实际数量(随机范围)
+    private final boolean pityTriggered;  // 是否触发保底
+    private final int remainingDraws;  // 剩余抽奖次数
+    private final long cooldownRemaining;  // 冷却剩余时间(毫秒)
+}
+```
+
+**客户端处理**:
+```java
+public static void handle(S2CDrawResultPacket packet, Supplier<NetworkEvent.Context> ctx) {
+    ctx.get().enqueueWork(() -> {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof GachaScreen gachaScreen) {
+            // 触发第二阶段:滚动动画
+            gachaScreen.triggerRollingAnimation(packet);
+        }
+    });
+}
+```
+
+**三阶段HUD流程**:
+1. **Phase 1 - Preview**: `GachaPreviewPanel` 显示奖池预览
+2. **Phase 2 - Rolling**: `GachaRollerPanel` 播放滚动动画(由S2CDrawResultPacket触发)
+3. **Phase 3 - Result**: `GachaResultRenderer` 展示最终结果和确认按钮
+
+---
+
+### 25.4 客户端缓存 (ClientGachaCache)
+
+#### 25.4.1 核心API
+
+```java
+public class ClientGachaCache {
+    private static final ClientGachaCache INSTANCE = new ClientGachaCache();
+    
+    // 获取单例
+    public static ClientGachaCache getInstance() { return INSTANCE; }
+    
+    // 更新会话数据(由S2COpenGachaPacket调用)
+    public void updateGachaSession(S2COpenGachaPacket packet) { ... }
+    
+    // 检查是否在冷却中
+    public boolean isOnCooldown(String shopId) { ... }
+    
+    // 获取冷却倒计时文本(如 "23:45:12")
+    public String getCooldownText(String shopId) { ... }
+    
+    // 判断是否可以抽奖(综合检查:冷却/限购/成本)
+    public boolean canDraw(String shopId) { ... }
+    
+    // 获取剩余抽奖次数(-1表示无限制)
+    public int getRemainingDraws(String shopId) { ... }
+    
+    // 获取当前保底计数
+    public int getPityCounter(String shopId) { ... }
+    
+    // 获取奖池条目列表
+    public List<GachaItemData> getItems(String shopId) { ... }
+}
+```
+
+#### 25.4.2 使用示例
+
+**在GUI中检查按钮状态**:
+```java
+public class GachaPreviewPanel {
+    private void renderButton(GuiGraphics g, int x, int y) {
+        ClientGachaCache cache = ClientGachaCache.getInstance();
+        boolean onCooldown = cache.isOnCooldown(currentShopId);
+        boolean hasLimit = cache.getRemainingDraws(currentShopId) == 0;
+        boolean canAfford = hasEnoughCost();
+        
+        boolean enabled = !onCooldown && !hasLimit && canAfford;
+        
+        // 渲染按钮(禁用状态灰色显示)
+        drawButton(g, x, y, enabled ? themeColor : 0x666666);
+        
+        // Tooltip显示详细信息
+        if (isHovered) {
+            List<Component> tooltip = new ArrayList<>();
+            if (onCooldown) {
+                tooltip.add(Component.literal("§c冷却中: " + cache.getCooldownText(currentShopId)));
+            } else if (hasLimit) {
+                tooltip.add(Component.literal("§c已达到限购上限"));
+            } else if (!canAfford) {
+                tooltip.add(Component.literal("§c成本不足"));
+            } else {
+                tooltip.add(Component.literal("§a点击抽奖"));
+            }
+            g.renderComponentTooltip(font, tooltip, mouseX, mouseY);
+        }
+    }
+}
+```
+
+**查询保底进度**:
+```java
+ClientGachaCache cache = ClientGachaCache.getInstance();
+int pityCounter = cache.getPityCounter("arc_quest:daily_gacha");
+int pityThreshold = 50;  // 从配置读取
+float progress = (float) pityCounter / pityThreshold;
+
+// 渲染进度条
+int barW = 100;
+int fillW = (int) (barW * progress);
+g.fill(x, y, x + barW, y + 3, 0x333333);  // 背景
+g.fill(x, y, x + fillW, y + 3, 0xFFAA00);  // 填充(金色)
+```
+
+---
+
+### 25.5 事件系统
+
+#### 25.5.1 可用事件
+
+| 事件类 | 触发时机 | 关键字段 | 用途 |
+|--------|---------|----------|------|
+| `OpenedEvent` | 界面打开 | player, shopId | 监听抽奖界面开启 |
+| `PreDrawEvent` | 抽奖前 | player, shopId, **可取消** | 拦截抽奖/修改保底计数 |
+| `DrawingEvent` | 动画播放中 | player, shopId, wonItem | 监听滚动动画开始 |
+| `PostDrawEvent` | 抽奖成功 | player, shopId, result | 监听抽奖完成 |
+| `DrawFailedEvent` | 抽奖失败 | player, shopId, **FailReason** | 监听失败原因 |
+| `PityEarlyTriggerEvent` | 保底提前触发 | player, shopId, pityCounter, pityThreshold | 监听保底激活(含进度百分比) |
+| `DrawLimitResetEvent` | 限购重置 | player, shopId, previousDrawCount, ResetReason | 监听到期重置(COOLDOWN_EXPIRED/CUSTOM_CONDITION) |
+| `PoolRefreshEvent` | 奖池刷新 | player, shopId, oldWeights, newWeights | 监听动态权重变化 |
+
+**FailReason 枚举**:
+```java
+public enum FailReason {
+    NOT_VISIBLE,              // 可见性条件不满足(GachaItem.visibleCondition)
+    CONDITION_NOT_MET,        // 前置条件不满足(任务/等级等)
+    ON_COOLDOWN,              // 冷却中
+    MAX_DRAWS_REACHED,        // 达到抽奖次数上限
+    CANNOT_AFFORD,            // 无法支付成本
+    UNKNOWN                   // 未知错误(兜底)
+}
+```
+
+#### 25.5.2 事件监听示例
+
+```java
+@Mod.EventBusSubscriber(modid = "my_addon", bus = Bus.FORGE)
+public class GachaEventHandler {
+    
+    @SubscribeEvent
+    public static void onGachaOpened(GachaEvents.OpenedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String shopId = event.getShopId();
+        
+        LOGGER.info("Player {} opened gacha: {}", 
+            player.getName().getString(), shopId);
+        
+        // 播放打开音效
+        player.playSound(SoundEvents.ANVIL_USE, 1.0f, 1.0f);
+    }
+    
+    @SubscribeEvent
+    public static void onPreDraw(GachaEvents.PreDrawEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String shopId = event.getShopId();
+        
+        // 示例: VIP玩家保底计数减半
+        if (player.getTags().contains("vip")) {
+            int currentPity = event.getPityCounter();
+            event.setPityCounter(currentPity / 2);
+            LOGGER.info("VIP player {} pity counter halved: {} → {}", 
+                player.getName().getString(), currentPity, currentPity / 2);
+        }
+        
+        // 示例: 特殊日期禁止抽奖
+        if (isSpecialEventDay()) {
+            event.setCanceled(true);
+            player.sendSystemMessage(Component.literal("§c活动期间暂停抽奖!"));
+        }
+    }
+    
+    @SubscribeEvent
+    public static void onPostDraw(GachaEvents.PostDrawEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String shopId = event.getShopId();
+        DrawResult result = event.getResult();
+        
+        LOGGER.info("Player {} drew {} x{} from {}", 
+            player.getName().getString(),
+            result.getItem().getItemStack().getHoverName().getString(),
+            result.getActualCount(),
+            shopId);
+        
+        // 全服公告传说物品
+        if (result.getItem().getRarity() == Rarity.LEGENDARY) {
+            player.getServer().getPlayerList().broadcastSystemMessage(
+                Component.literal("§6§l[传说] " + player.getName().getString() + 
+                                " §6抽中了 " + result.getItem().getItemStack().getHoverName().getString() + "!"),
+                false
+            );
+        }
+    }
+    
+    @SubscribeEvent
+    public static void onDrawFailed(GachaEvents.DrawFailedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String shopId = event.getShopId();
+        FailReason reason = event.getReason();
+        
+        LOGGER.warn("Gacha failed for player {}: reason={}", 
+            player.getName().getString(), reason);
+        
+        // 根据失败原因播放不同音效
+        switch (reason) {
+            case CANNOT_AFFORD ->
+                player.playSound(SoundEvents.VILLAGER_NO, 1.0f, 0.8f);
+            case ON_COOLDOWN ->
+                player.playSound(SoundEvents.NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            case MAX_DRAWS_REACHED ->
+                player.playSound(SoundEvents.NOTE_BLOCK_HAT, 1.0f, 1.2f);
+            case NOT_VISIBLE ->
+                player.playSound(SoundEvents.NOTE_BLOCK_PLING, 1.0f, 0.6f);
+            default -> {}
+        }
+    }
+    
+    @SubscribeEvent
+    public static void onPityEarlyTrigger(GachaEvents.PityEarlyTriggerEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String shopId = event.getShopId();
+        int currentPityCounter = event.getCurrentPityCounter();
+        int pityThreshold = event.getPityThreshold();
+        boolean willResetPity = event.willResetPity();
+        
+        // 计算保底进度百分比
+        int progressPercent = event.getPityProgressPercent();
+        
+        player.sendSystemMessage(Component.literal(
+            "§6§l保底提前触发! 进度: " + progressPercent + "% (" + currentPityCounter + "/" + pityThreshold + ")"));
+        
+        if (willResetPity) {
+            player.sendSystemMessage(Component.literal("§e保底进度已重置"));
+        }
+        
+        // 播放特殊音效
+        player.playSound(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.5f);
+    }
+    
+    @SubscribeEvent
+    public static void onDrawLimitReset(GachaEvents.DrawLimitResetEvent event) {
+        ServerPlayer player = event.getPlayer();
+        String shopId = event.getShopId();
+        int previousDrawCount = event.getPreviousDrawCount();
+        GachaEvents.DrawLimitResetEvent.ResetReason reason = event.getReason();
+        
+        String reasonText = switch (reason) {
+            case COOLDOWN_EXPIRED -> "冷却过期";
+            case CUSTOM_CONDITION -> "自定义条件满足";
+        };
+        
+        LOGGER.info("Gacha limit reset for player {}: {} → 0 (原因: {})", 
+            player.getName().getString(), previousDrawCount, reasonText);
+        
+        // 发送通知
+        player.sendSystemMessage(Component.literal(
+            "§a抽奖限购已重置! 你现在可以再次抽奖了。"));
+    }
+}
+```
+
+---
+
+### 25.6 示例代码
+
+#### 25.6.1 示范商店配置
+
+```java
+public class DemoGachaShops {
+    
+    public static void registerAll() {
+        registerDailySupplies();
+        registerWeaponCrate();
+        registerLegendaryVault();
+    }
+    
+    /**
+     * 每日补给箱 - 低成本高频次
+     */
+    private static void registerDailySupplies() {
+        GachaShopBuilder.create("daily_supplies")
+            .displayName(Component.translatable("gacha.daily_supplies.name"))
+            .description(Component.translatable("gacha.daily_supplies.desc"))
+            .themeColor(0x00FF00)  // 绿色主题
+            .drawCostItem(Items.EMERALD, 1)  // 1个绿宝石
+            .maxDraws(5)  // 每天5次
+            .cooldownGameDay()  // 每天重置
+            .pityThreshold(20)  // 20次保底
+            .pityResetOnTrigger(true)
+            
+            // 普通物品(70%概率)
+            .item(GachaItemBuilder.create("bread")
+                .rarity(Rarity.COMMON)
+                .item(Items.BREAD, 3, 8)
+                .weight(40))
+            
+            .item(GachaItemBuilder.create("torch")
+                .rarity(Rarity.COMMON)
+                .item(Items.TORCH, 8, 16)
+                .weight(30))
+            
+            // 稀有物品(25%概率)
+            .item(GachaItemBuilder.create("iron_ingot")
+                .rarity(Rarity.RARE)
+                .item(Items.IRON_INGOT, 2, 5)
+                .weight(15)
+                .pityTrigger(true))
+            
+            .item(GachaItemBuilder.create("gold_ingot")
+                .rarity(Rarity.RARE)
+                .item(Items.GOLD_INGOT, 1, 3)
+                .weight(10)
+                .pityTrigger(true))
+            
+            // 史诗物品(5%概率,保底目标)
+            .item(GachaItemBuilder.create("diamond")
+                .rarity(Rarity.EPIC)
+                .item(Items.DIAMOND, 1, 2)
+                .weight(5)
+                .pityTrigger(true))
+            
+            .buildAndRegister();
+    }
+    
+    /**
+     * 武器宝箱 - 中成本高回报
+     */
+    private static void registerWeaponCrate() {
+        GachaShopBuilder.create("weapon_crate")
+            .displayName(Component.translatable("gacha.weapon_crate.name"))
+            .themeColor(0xFF4444)  // 红色主题
+            .drawCostItem(Items.DIAMOND, 3)
+            .maxDraws(3)
+            .cooldown(86400)  // 24小时现实时间
+            .pityThreshold(10)
+            
+            .item(GachaItemBuilder.create("stone_sword")
+                .rarity(Rarity.COMMON)
+                .item(Items.STONE_SWORD, 1)
+                .weight(50))
+            
+            .item(GachaItemBuilder.create("iron_sword")
+                .rarity(Rarity.UNCOMMON)
+                .item(Items.IRON_SWORD, 1)
+                .weight(30))
+            
+            .item(GachaItemBuilder.create("diamond_sword")
+                .rarity(Rarity.RARE)
+                .item(Items.DIAMOND_SWORD, 1)
+                .weight(15)
+                .pityTrigger(true))
+            
+            .item(GachaItemBuilder.create("netherite_sword")
+                .rarity(Rarity.LEGENDARY)
+                .item(Items.NETHERITE_SWORD, 1)
+                .weight(5)
+                .pityTrigger(true))
+            
+            .buildAndRegister();
+    }
+    
+    /**
+     * 传说宝库 - 高门槛极高回报
+     */
+    private static void registerLegendaryVault() {
+        GachaShopBuilder.create("legendary_vault")
+            .displayName(Component.translatable("gacha.legendary_vault.name"))
+            .themeColor(0xFFD700)  // 金色主题
+            .drawCostItem(Items.NETHERITE_INGOT, 1)
+            .maxDraws(1)  // 每周1次
+            .cooldown(7 * 86400)  // 7天
+            .pityThreshold(5)
+            .visibleCondition(ICondition.flagSet("unlocked_legendary_vault"))
+            
+            .item(GachaItemBuilder.create("enchanted_golden_apple")
+                .rarity(Rarity.EPIC)
+                .item(Items.ENCHANTED_GOLDEN_APPLE, 1)
+                .weight(40)
+                .pityTrigger(true))
+            
+            .item(GachaItemBuilder.create("totem_of_undying")
+                .rarity(Rarity.EPIC)
+                .item(Items.TOTEM_OF_UNDYING, 1)
+                .weight(30)
+                .pityTrigger(true))
+            
+            .item(GachaItemBuilder.create("elytra")
+                .rarity(Rarity.LEGENDARY)
+                .item(Items.ELYTRA, 1)
+                .weight(20)
+                .pityTrigger(true))
+            
+            .item(GachaItemBuilder.create("dragon_egg")
+                .rarity(Rarity.LEGENDARY)
+                .item(Items.DRAGON_EGG, 1)
+                .weight(10)
+                .pityTrigger(true))
+            
+            .buildAndRegister();
+    }
+}
+```
+
+#### 25.6.2 命令系统扩展
+
+附属模组可以通过以下方式注册自己的抽奖命令:
+
+```java
+@Mod.EventBusSubscriber(modid = "my_addon", bus = Bus.FORGE)
+public class MyAddonGachaCommands {
+    
+    @SubscribeEvent
+    public static void onRegisterCommands(RegisterCommandsEvent event) {
+        CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
+        
+        dispatcher.register(
+            Commands.literal("mygacha")
+                .requires(src -> src.hasPermission(2))
+                .then(Commands.literal("open")
+                    .then(Commands.argument("player", EntityArgument.player())
+                        .then(Commands.argument("shop_id", StringArgument.string())
+                            .executes(ctx -> {
+                                ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
+                                String shopId = StringArgument.getString(ctx, "shop_id");
+                                
+                                // 打开抽奖界面
+                                ArcQuestNetwork.sendToPlayer(
+                                    S2COpenGachaPacket.buildSnapshot(target, shopId),
+                                    target
+                                );
+                                
+                                ctx.getSource().sendSuccess(
+                                    () -> Component.literal("Opened gacha for " + target.getName().getString()),
+                                    true
+                                );
+                                return 1;
+                            })
+                        )
+                    )
+                )
+        );
+    }
 }
 ```
 
@@ -2242,6 +4135,53 @@ TradeShopBuilder.create("id")
         .rewardItem(Item, int)
         .cooldown(seconds))
     .buildAndRegister();
+```
+
+### 抽奖系统 (新增)
+
+```java
+// 创建抽奖商店
+GachaShopBuilder.create("daily_gacha")
+    .displayName(Component.translatable("gacha.daily.name"))
+    .drawCostItem(Items.EMERALD, 5)  // 每次消耗5绿宝石
+    .maxDraws(10)  // 最多10次
+    .cooldownGameDay()  // 每天重置
+    .pityThreshold(50)  // 50次保底
+    
+    // 添加奖池条目
+    .item(GachaItemBuilder.create("common_iron")
+        .rarity(Rarity.COMMON)
+        .item(Items.IRON_INGOT, 1, 3)  // 随机1-3个
+        .weight(50))
+    
+    .item(GachaItemBuilder.create("rare_diamond")
+        .rarity(Rarity.RARE)
+        .item(Items.DIAMOND, 1, 2)
+        .weight(20)
+        .pityTrigger(true))  // 计入保底
+    
+    .buildAndRegister();
+
+// 监听事件
+@SubscribeEvent
+public void onPostDraw(GachaEvents.PostDrawEvent event) {
+    ServerPlayer player = event.getPlayer();
+    DrawResult result = event.getResult();
+    
+    if (result.getItem().getRarity() == Rarity.LEGENDARY) {
+        // 全服公告传说物品
+        player.getServer().getPlayerList().broadcastSystemMessage(
+            Component.literal("§6§l" + player.getName().getString() + 
+                            " §6抽中了传说物品!"), false);
+    }
+}
+
+// 客户端查询API
+ClientGachaCache cache = ClientGachaCache.getInstance();
+boolean canDraw = cache.canDraw("arc_quest:daily_gacha");
+int remaining = cache.getRemainingDraws("arc_quest:daily_gacha");
+String cooldownText = cache.getCooldownText("arc_quest:daily_gacha");
+int pityCounter = cache.getPityCounter("arc_quest:daily_gacha");
 ```
 
 ---
