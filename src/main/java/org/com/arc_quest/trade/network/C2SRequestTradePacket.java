@@ -248,6 +248,9 @@ public class C2SRequestTradePacket {
 
     private static void handlePurchase(ServerPlayer player, TradeShopDefinition shop,
                                         String entryId, ScreenType clientScreenType) {
+        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(),
+                SyncObservability.Stage.ACTION, "purchase:" + entryId);
+
         TradeSession session = new TradeSession(player, shop);
         TradeSession.TradeResult result = session.executeTrade(entryId);
 
@@ -269,6 +272,10 @@ public class C2SRequestTradePacket {
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
                 response);
+
+        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(),
+                SyncObservability.Stage.RESULT,
+                result.succeeded() ? "purchase_success" : "purchase_failed:" + reason.name());
         
         // 发布 Forge 事件（供附属模组监听）
         if (result.succeeded()) {

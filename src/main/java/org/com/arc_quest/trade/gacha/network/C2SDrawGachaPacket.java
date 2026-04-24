@@ -10,6 +10,7 @@ import org.com.arc_quest.api.event.GachaEvents;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
@@ -52,6 +53,9 @@ public class C2SDrawGachaPacket {
             GachaShopDefinition gachaShop = GachaRequestValidator.requireShop(pkt.shopId, player, "draw");
             if (gachaShop == null) return;
 
+            SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                    SyncObservability.Stage.ACTION, "draw");
+
             // 0) PreDrawEvent（锁外，允许改 pityCounter）
             int basePityCounter = cap.getGachaPityCounter(pkt.shopId);
             GachaEvents.PreDrawEvent preEvent = new GachaEvents.PreDrawEvent(player, pkt.shopId, cap, basePityCounter);
@@ -76,6 +80,8 @@ public class C2SDrawGachaPacket {
                                 List.of()
                         )
                 );
+                SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                        SyncObservability.Stage.RESULT, "draw_failed:" + reason.name());
                 return;
             }
             int pityCounter = preEvent.getPityCounter();
@@ -106,6 +112,8 @@ public class C2SDrawGachaPacket {
                                     List.of()
                             )
                     );
+                    SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                            SyncObservability.Stage.RESULT, "draw_failed:" + reason.name());
                     return;
                 }
             }
@@ -132,6 +140,8 @@ public class C2SDrawGachaPacket {
                                 drawCost.buildShortfallLines(player)
                         )
                 );
+                SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                        SyncObservability.Stage.RESULT, "draw_failed:" + reason.name());
                 return;
             }
             if (drawCost != null) {
@@ -169,6 +179,8 @@ public class C2SDrawGachaPacket {
                                 resolution.shortfallLines() != null ? resolution.shortfallLines() : List.of()
                         )
                 );
+                SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                        SyncObservability.Stage.RESULT, "draw_failed:" + reason.name());
                 return;
             }
 
@@ -215,6 +227,9 @@ public class C2SDrawGachaPacket {
                             resolution.lastDrawDayTime()
                     )
             );
+
+            SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                    SyncObservability.Stage.RESULT, "draw_success");
 
             Arc_quest.LOGGER.info("[Gacha] Player {} drew {} x{} from {}",
                     player.getName().getString(),

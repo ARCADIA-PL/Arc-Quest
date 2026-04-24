@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.network.SyncObservability;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.com.arc_quest.trade.network.RejectCodeDictionary;
@@ -38,6 +39,9 @@ public class C2SConfirmDrawPacket {
             ServerPlayer player = GachaRequestValidator.requirePlayer(ctx.get().getSender(), "confirm_draw", pkt.shopId);
             if (player == null) return;
 
+            SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                    SyncObservability.Stage.ACTION, "confirm_draw");
+
             boolean success = PendingDrawManager.confirmAndGrant(player, pkt.shopId);
 
             if (!success) {
@@ -48,11 +52,15 @@ public class C2SConfirmDrawPacket {
                         pkt.shopId,
                         "no pending draw to confirm"
                 );
+                SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                        SyncObservability.Stage.RESULT, "confirm_draw_failed");
                 return;
             }
 
             Arc_quest.LOGGER.info("[Gacha] Confirmed and granted draw reward for player {} in shop {}",
                     player.getName().getString(), pkt.shopId);
+            SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                    SyncObservability.Stage.RESULT, "confirm_draw_success");
 
             GachaShopDefinition shop = GachaRequestValidator.requireShop(pkt.shopId, player, "confirm_draw");
             if (shop == null) return;
