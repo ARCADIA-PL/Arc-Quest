@@ -11,17 +11,23 @@ import org.com.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
-import org.com.arc_quest.trade.gacha.network.*;
+import org.com.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
+import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
+import org.com.arc_quest.trade.gacha.network.C2SGachaControlPacket;
+import org.com.arc_quest.trade.gacha.network.S2CDrawFailedPacket;
+import org.com.arc_quest.trade.gacha.network.S2CDrawResultPacket;
+import org.com.arc_quest.trade.gacha.network.S2CGachaStatePacket;
 import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.C2SRequestTradeSyncPacket;
 import org.com.arc_quest.trade.network.S2COpenTradePacket;
 import org.com.arc_quest.trade.network.S2CSyncTradeStatePacket;
 
+import javax.annotation.Nullable;
+
 /**
  * Arc Quest 网络通信中心。
- * <p>
- * 使用 Forge {@link SimpleChannel} 进行 S2C / C2S 数据包注册与发送。
+ * 使用 Forge SimpleChannel 进行 S2C / C2S 数据包注册与发送。
  */
 public final class ArcQuestNetwork {
 
@@ -186,7 +192,7 @@ public final class ArcQuestNetwork {
                 S2CDrawResultPacket::decode,
                 S2CDrawResultPacket::handle
         );
-        
+
         // --- S2C: Gacha draw failed ---
         CHANNEL.registerMessage(
                 packetId++,
@@ -207,11 +213,11 @@ public final class ArcQuestNetwork {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  便捷发送方法（服务端调用）
+    // 服务端便捷发送方法
     // ═══════════════════════════════════════════════════════
 
     /**
-     * 全量同步 — 登录/重生/维度切换时使用
+     * 全量同步（登录/重生/维度切换）
      */
     public static void syncFullData(ServerPlayer player, IQuestCapability cap) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
@@ -225,17 +231,11 @@ public final class ArcQuestNetwork {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncQuestStatePacket(data));
 
-        C2SRequestTradePacket.pushSyncForActiveShop(player, "quest_state_sync");
-
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        if (cap != null) {
-            GachaScreenOpener.pushSyncForActiveShop(player, cap, "quest_state_sync");
-        }
+        pushSyncForActiveUIs(player, null, "quest_state_sync");
     }
 
-
     /**
-     * 增量进度同步 - 仅同步变化的字段，体积极小。
+     * 增量进度同步（小包）
      */
     public static void syncDeltaProgress(ServerPlayer player,
                                          String questId,
@@ -244,12 +244,7 @@ public final class ArcQuestNetwork {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CDeltaProgressPacket(questId, objectiveIndex, newProgress));
 
-        C2SRequestTradePacket.pushSyncForActiveShop(player, "delta_progress_sync");
-
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        if (cap != null) {
-            GachaScreenOpener.pushSyncForActiveShop(player, cap, "delta_progress_sync");
-        }
+        pushSyncForActiveUIs(player, null, "delta_progress_sync");
     }
 
     /**
@@ -259,46 +254,80 @@ public final class ArcQuestNetwork {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncFlagsVarsPacket(cap));
 
-        C2SRequestTradePacket.pushSyncForActiveShop(player, "flags_vars_sync");
-        GachaScreenOpener.pushSyncForActiveShop(player, cap, "flags_vars_sync");
+        pushSyncForActiveUIs(player, cap, "flags_vars_sync");
+    }
+
+    /**
+     * Quest 同步后统一触发 Trade + Gacha 活跃界面 push-first。
+     */
+    private static void pushSyncForActiveUIs(ServerPlayer player,
+                                             @Nullable IQuestCapability cap,
+                                             String reason) {
+        C2SRequestTradePacket.pushSyncForActiveShop(player, reason);
+
+        IQuestCapability resolved = (cap != null) ? cap : QuestCapabilityProvider.getOrNull(player);
+        if (resolved != null) {
+            GachaScreenOpener.pushSync(player, resolved, reason);
+        }
     }
 
     // ═══════════════════════════════════════════════════════
-    //  便捷发送方法（客户端调用）
+    // 客户端便捷发送方法
     // ═══════════════════════════════════════════════════════
 
-    /**
-     * 客户端发送任务操作请求
-     */
     public static void sendQuestAction(C2SRequestQuestActionPacket packet) {
         CHANNEL.sendToServer(packet);
     }
 
-    /**
-     * 客户端发送对话选择
-     */
     public static void sendDialogueChoice(C2SDialogueChoicePacket packet) {
         CHANNEL.sendToServer(packet);
     }
 
-    /**
-     * 服务端发送对话打开包
-     */
-    public static void sendToPlayer(ServerPlayer player, S2COpenDialoguePacket packet) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
-    }
-
-    /**
-     * Client sends trade request
-     */
     public static void sendTradeRequest(C2SRequestTradePacket packet) {
         CHANNEL.sendToServer(packet);
     }
 
-    /**
-     * Server sends trade packet
-     */
+    public static void sendTradeSyncRequest(C2SRequestTradeSyncPacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
+
+    public static void sendGachaControl(C2SGachaControlPacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
+
+    public static void sendDrawGacha(C2SDrawGachaPacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
+
+    public static void sendConfirmDraw(C2SConfirmDrawPacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 服务端定向发送（S2C）
+    // ═══════════════════════════════════════════════════════
+
+    public static void sendToPlayer(ServerPlayer player, S2COpenDialoguePacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
     public static void sendTradePacket(ServerPlayer player, S2COpenTradePacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendTradeStatePacket(ServerPlayer player, S2CSyncTradeStatePacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendGachaStatePacket(ServerPlayer player, S2CGachaStatePacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendDrawResultPacket(ServerPlayer player, S2CDrawResultPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendDrawFailedPacket(ServerPlayer player, S2CDrawFailedPacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 }
