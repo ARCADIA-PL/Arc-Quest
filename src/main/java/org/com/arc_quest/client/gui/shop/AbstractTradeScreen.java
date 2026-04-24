@@ -17,6 +17,8 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.com.arc_quest.trade.network.C2SRequestTradeSyncPacket;
 import org.com.arc_quest.trade.network.ClientTradeCache;
 import org.com.arc_quest.trade.network.S2COpenTradePacket;
 import org.com.arc_quest.trade.api.CostShortfallLine;
@@ -56,6 +58,8 @@ public abstract class AbstractTradeScreen extends Screen {
     private float feedbackShake = 0f;
     protected float shortfallTooltipTimer = 0f;
     private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
+    private int authorityRefreshTicker = 0;
+    private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 10;
 
     public AbstractTradeScreen(String title, String shopId) {
         super(Component.translatable(title));
@@ -128,6 +132,30 @@ public abstract class AbstractTradeScreen extends Screen {
 
     @Override public boolean isPauseScreen() { return false; }
 
+    protected C2SRequestTradePacket.ScreenType getCurrentScreenType() {
+        return this instanceof SimpleTradePanel
+                ? C2SRequestTradePacket.ScreenType.SIMPLE
+                : C2SRequestTradePacket.ScreenType.FULL;
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+
+        if (isClosing || shop == null || minecraft == null || minecraft.player == null) {
+            return;
+        }
+
+        authorityRefreshTicker++;
+        if (authorityRefreshTicker < AUTHORITY_REFRESH_INTERVAL_TICKS) {
+            return;
+        }
+        authorityRefreshTicker = 0;
+
+        ArcQuestNetwork.CHANNEL.sendToServer(
+                new C2SRequestTradeSyncPacket(shopId, getCurrentScreenType())
+        );
+    }
     @Override
     public boolean keyPressed(int k, int s, int m) {
         if (QuestSplashRenderer.isActive()) return true;

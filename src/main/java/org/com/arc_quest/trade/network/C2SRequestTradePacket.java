@@ -34,6 +34,9 @@ import java.util.function.Supplier;
 public class C2SRequestTradePacket {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    public static void syncState(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
+        refreshTradeData(player, shop, clientScreenType);
+    }
 
     public enum Action {
         OPEN_FULL,
@@ -235,33 +238,24 @@ public class C2SRequestTradePacket {
         TradeSession session = new TradeSession(player, shop);
         TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
 
-        // 获取商店音效 ID
-        String openSoundId = shop.getOpenSound() != null ? 
-                ResourceLocation.fromNamespaceAndPath(
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getNamespace(),
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getPath()
-                ).toString() : "";
-        String closeSoundId = shop.getCloseSound() != null ? 
-                ResourceLocation.fromNamespaceAndPath(
-                    Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getNamespace(),
-                    Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getPath()
-                ).toString() : "";
-
-        S2COpenTradePacket refreshPkt = (clientScreenType == ScreenType.SIMPLE)
-                ? S2COpenTradePacket.openSimple(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
-                        snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
-                        snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                        snap.visibility(), snap.canBuyConditions(),
-                        openSoundId, closeSoundId)
-                : S2COpenTradePacket.openFull(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
-                        snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
-                        snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                        snap.visibility(), snap.canBuyConditions(),
-                        openSoundId, closeSoundId);
+        org.com.arc_quest.trade.network.S2CSyncTradeStatePacket refreshPkt = new org.com.arc_quest.trade.network.S2CSyncTradeStatePacket(
+                shop.getShopId(),
+                snap.purchases(),
+                snap.maxPurchases(),
+                snap.lastPurchaseTimes(),
+                snap.purchaseGameTimes(),
+                snap.purchaseDayTimes(),
+                snap.cooldownTypes(),
+                snap.cooldownValues(),
+                snap.resetTimeTicks(),
+                snap.visibility(),
+                snap.canBuyConditions()
+        );
 
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
-                refreshPkt);
+                refreshPkt
+        );
     }
 
     /**

@@ -11,6 +11,7 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
 import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
+import org.com.arc_quest.trade.gacha.network.C2SOpenGachaPacket;
 import org.com.arc_quest.trade.gacha.network.ClientGachaCache;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ public class GachaScreen extends Screen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final long DRAW_REQUEST_TIMEOUT = 5000;
+    private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 10;
 
     private final String shopId;
     private final GachaShopDefinition shopDef;
@@ -38,8 +40,9 @@ public class GachaScreen extends Screen {
     private float dt = 0f;
 
     private long requestTimestamp = 0;
-
     private boolean hasPendingDraw = false;
+
+    private int authorityRefreshTicker = 0;
 
     public GachaScreen(String shopId) {
         super(Component.translatable("arc_quest.gui.gacha.title"));
@@ -59,6 +62,27 @@ public class GachaScreen extends Screen {
 
     @Override public void renderBackground(GuiGraphics g) {}
     @Override public boolean isPauseScreen() { return false; }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (isClosing || shopDef == null || minecraft == null || minecraft.player == null) {
+            return;
+        }
+
+        if (currentPhase != Phase.PREVIEW) {
+            return;
+        }
+
+        authorityRefreshTicker++;
+        if (authorityRefreshTicker < AUTHORITY_REFRESH_INTERVAL_TICKS) {
+            return;
+        }
+        authorityRefreshTicker = 0;
+
+        ArcQuestNetwork.CHANNEL.sendToServer(new C2SOpenGachaPacket(shopId));
+    }
+
     public String getShopId() { return shopId; }
     public GachaShopDefinition getShopDef() { return shopDef; }
 
@@ -71,14 +95,14 @@ public class GachaScreen extends Screen {
             LOGGER.debug("[Gacha-Client] Draw request ignored: currentPhase={}", currentPhase);
             return;
         }
-        
+
         LOGGER.info("[Gacha-Client] Starting draw request for shop: {}", shopId);
         currentPhase = Phase.WAITING_SERVER;
         this.hasPendingDraw = true;
         this.requestTimestamp = System.currentTimeMillis();
+        this.authorityRefreshTicker = 0;
         previewPanel.updateDataSnapshot();
-        LOGGER.debug("[Gacha-Client] Phase changed to WAITING_SERVER, hasPendingDraw=true, timestamp={}", requestTimestamp);
-        
+
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SDrawGachaPacket(shopId));
         LOGGER.debug("[Gacha-Client] C2SDrawGachaPacket sent to server");
     }
@@ -87,6 +111,7 @@ public class GachaScreen extends Screen {
         if (this.currentPhase == Phase.WAITING_SERVER) {
             LOGGER.info("[Gacha-Client] Triggering rolling animation for item: {}", result.itemId());
             this.currentPhase = Phase.ROLLING;
+            this.authorityRefreshTicker = 0;
             this.rollerPanel.startRoll(result);
         } else {
             LOGGER.warn("[Gacha-Client] Cannot trigger animation: currentPhase={}, expected WAITING_SERVER", this.currentPhase);
@@ -99,7 +124,7 @@ public class GachaScreen extends Screen {
             switchingToResult = true;
             GachaResultRenderer.INSTANCE.showResult(this, shopDef, result);
         } else {
-            LOGGER.warn("[Gacha-Client] onRollFinished called but already switching to result");
+            LOGGER.warn("[Gacha-Client] onRollFinished called but already switchingToResult");
         }
     }
 
@@ -109,9 +134,6 @@ public class GachaScreen extends Screen {
             hasPendingDraw = false;
             ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(shopId));
             LOGGER.debug("[Gacha-Client] C2SConfirmDrawPacket sent, hasPendingDraw=false");
-            // 【修复】移除过早的快照更新，等待从结果渲染器返回时再统一更新
-            // 原因：ClientGachaCache 已在 S2CDrawResultPacket 中更新，此处更新可能读取到过时数据
-            LOGGER.debug("[Gacha-Client] Snapshot update deferred until returning to preview panel");
         } else {
             LOGGER.debug("[Gacha-Client] confirmDrawAndSync called but no pending draw");
         }
@@ -123,6 +145,7 @@ public class GachaScreen extends Screen {
             this.currentPhase = Phase.PREVIEW;
             this.hasPendingDraw = false;
             this.requestTimestamp = 0;
+            this.authorityRefreshTicker = 0;
             this.previewPanel.updateDataSnapshot();
         } else {
             this.previewPanel.updateDataSnapshot();
@@ -147,6 +170,7 @@ public class GachaScreen extends Screen {
         if (currentPhase == Phase.WAITING_SERVER && System.currentTimeMillis() - requestTimestamp > DRAW_REQUEST_TIMEOUT) {
             currentPhase = Phase.PREVIEW;
             hasPendingDraw = false;
+            authorityRefreshTicker = 0;
         }
 
         if (currentPhase == Phase.ROLLING) {
@@ -166,6 +190,7 @@ public class GachaScreen extends Screen {
                 switchingToResult = false;
                 currentPhase = Phase.PREVIEW;
                 rollTransitionAnim = 1.0f;
+                authorityRefreshTicker = 0;
                 previewPanel.updateDataSnapshot();
             }
         }
@@ -204,8 +229,8 @@ public class GachaScreen extends Screen {
     @Override
     public void onClose() {
         if (!isClosing) {
-            LOGGER.info("[Gacha-Client] Screen closing: phase={}, hasPendingDraw={}, switchingToResult={}", 
-                currentPhase, hasPendingDraw, switchingToResult);
+            LOGGER.info("[Gacha-Client] Screen closing: phase={}, hasPendingDraw={}, switchingToResult={}",
+                    currentPhase, hasPendingDraw, switchingToResult);
             isClosing = true;
 
             if (currentPhase == Phase.ROLLING && rollerPanel != null && !switchingToResult) {

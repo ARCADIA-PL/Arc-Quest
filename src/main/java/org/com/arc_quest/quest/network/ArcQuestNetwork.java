@@ -12,7 +12,9 @@ import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.trade.gacha.network.*;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.com.arc_quest.trade.network.C2SRequestTradeSyncPacket;
 import org.com.arc_quest.trade.network.S2COpenTradePacket;
+import org.com.arc_quest.trade.network.S2CSyncTradeStatePacket;
 
 /**
  * Arc Quest 网络通信中心。
@@ -111,6 +113,15 @@ public final class ArcQuestNetwork {
                 S2COpenTradePacket::handle
         );
 
+        // --- S2C: Trade state sync ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CSyncTradeStatePacket.class,
+                S2CSyncTradeStatePacket::encode,
+                S2CSyncTradeStatePacket::decode,
+                S2CSyncTradeStatePacket::handle
+        );
+
         // --- C2S: Trade request ---
         CHANNEL.registerMessage(
                 packetId++,
@@ -118,6 +129,15 @@ public final class ArcQuestNetwork {
                 C2SRequestTradePacket::encode,
                 C2SRequestTradePacket::decode,
                 C2SRequestTradePacket::handle
+        );
+
+        // --- C2S: Trade state sync request ---
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SRequestTradeSyncPacket.class,
+                C2SRequestTradeSyncPacket::encode,
+                C2SRequestTradeSyncPacket::decode,
+                C2SRequestTradeSyncPacket::handle
         );
 
         // --- C2S: Gacha draw request ---
@@ -145,6 +165,15 @@ public final class ArcQuestNetwork {
                 S2COpenGachaPacket::encode,
                 S2COpenGachaPacket::decode,
                 S2COpenGachaPacket::handle
+        );
+
+        // --- S2C: Sync gacha state ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CSyncGachaStatePacket.class,
+                S2CSyncGachaStatePacket::encode,
+                S2CSyncGachaStatePacket::decode,
+                S2CSyncGachaStatePacket::handle
         );
 
         // --- S2C: Gacha draw result ---
