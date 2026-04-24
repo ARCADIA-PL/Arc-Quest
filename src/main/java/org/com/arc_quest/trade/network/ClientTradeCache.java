@@ -156,12 +156,11 @@ public final class ClientTradeCache {
     }
 
     public boolean isPurchaseLimitReached(String shopId, int entryIndex, TradeEntry entry) {
-        int remaining = getRemainingPurchases(shopId, entryIndex);
-        return remaining == 0 && getMaxPurchases(shopId, entryIndex) >= 0;
+        return getMaxPurchases(shopId, entryIndex) >= 0 && getRemainingPurchases(shopId, entryIndex) == 0;
     }
 
     public boolean isConditionBlocked(String shopId, int entryIndex, TradeEntry entry) {
-        return !canBuy(shopId, entryIndex);
+        return isVisible(shopId, entryIndex) && !canBuy(shopId, entryIndex);
     }
 
     public boolean canPurchase(String shopId, int entryIndex) {

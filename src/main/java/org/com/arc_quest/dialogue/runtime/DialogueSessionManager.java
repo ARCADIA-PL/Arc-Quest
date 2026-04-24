@@ -56,6 +56,11 @@ public final class DialogueSessionManager {
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                           DialogueTree tree, DialogueContext context) {
         var cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap == null) {
+            LOGGER.warn("[Dialogue] Missing quest capability for player {}, cannot start dialogue '{}'",
+                    player.getName().getString(), tree.dialogueId());
+            return null;
+        }
         String dialogueId = tree.dialogueId();
         var progress = cap.getDialogueProgress();
         long nowReal = TimeSanitizer.getCurrentRealTime();
@@ -148,12 +153,12 @@ public final class DialogueSessionManager {
             }
             sendNodeToClient(session);
         } else {
+            clearRestoreNodeState(player);
             LOGGER.warn("[Dialogue] No active session for player {}", player.getName().getString());
         }
     }
 
     public void endDialogue(ServerPlayer player) {
-        restoreNodeMap.remove(player.getUUID());
         DialogueSession session = sessions.remove(player.getUUID());
         if (session == null) return;
 
@@ -185,6 +190,7 @@ public final class DialogueSessionManager {
     }
 
     public void onPlayerLogout(ServerPlayer player) {
+        clearRestoreNodeState(player);
         endDialogue(player);
     }
 
@@ -254,5 +260,9 @@ public final class DialogueSessionManager {
             restoreNodeMap.remove(playerId);
         }
         return restoreNodeId;
+    }
+
+    private void clearRestoreNodeState(ServerPlayer player) {
+        restoreNodeMap.remove(player.getUUID());
     }
 }

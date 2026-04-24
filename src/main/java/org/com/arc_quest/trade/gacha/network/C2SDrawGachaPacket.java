@@ -11,12 +11,16 @@ import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
+import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.com.arc_quest.trade.gacha.runtime.GachaEntryStateResolver;
 import org.com.arc_quest.trade.gacha.runtime.GachaSession;
 
+import javax.annotation.Nullable;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -37,253 +41,308 @@ public class C2SDrawGachaPacket {
     public static C2SDrawGachaPacket decode(FriendlyByteBuf buf) {
         return new C2SDrawGachaPacket(buf.readUtf());
     }
-    
+
     public static void handle(C2SDrawGachaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
-            
+
             IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
             if (cap == null) return;
-            
-            // 获取抽奖商店定义
+
             GachaShopDefinition gachaShop = GachaRegistry.get(pkt.shopId);
             if (gachaShop == null) {
                 Arc_quest.LOGGER.warn("[Gacha] Shop not found: {}", pkt.shopId);
                 return;
             }
-            
-            // 创建 GachaSession（对标 TradeSession）
-            GachaSession session = new GachaSession(player, gachaShop, cap);
-            
-            // 使用 synchronized 确保「检查-执行-更新」的原子性
+
+            DrawResolution resolution;
             synchronized (cap) {
-                // 第一步：尝试重置过期次数和冷却（对标商店系统的 checkAndResetPurchases）
-                session.checkAndResetDraws();
-                
-                // 第二步：综合判断是否可以抽奖
-                if (!session.canDraw()) {
-                    // 触发失败事件，细分原因
-                    GachaEvents.DrawFailedEvent.FailReason reason = mapFailReason(session.getFailReason());
-                    var failedEvent = new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason);
-                    MinecraftForge.EVENT_BUS.post(failedEvent);
-                    
-                    // 发送失败通知给客户端
-                    ArcQuestNetwork.CHANNEL.send(
+                resolution = resolveDrawUnderLock(player, cap, gachaShop, pkt.shopId);
+            }
+
+            if (!resolution.succeeded()) {
+                GachaEvents.DrawFailedEvent.FailReason reason = GachaEvents.DrawFailedEvent.FailReason.valueOf(resolution.failedReasonName());
+                var failedEvent = new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason);
+                MinecraftForge.EVENT_BUS.post(failedEvent);
+
+                ArcQuestNetwork.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> player),
-                        new S2CDrawFailedPacket(pkt.shopId, reason.name())
-                    );
-                    return;
-                }
-                
-                // 获取当前保底计数
-                int pityCounter = cap.getGachaPityCounter(pkt.shopId);
-                
-                // 第三步：触发抽奖前事件
-                var preEvent = new GachaEvents.PreDrawEvent(player, pkt.shopId, cap, pityCounter);
-                MinecraftForge.EVENT_BUS.post(preEvent);
-                
-                if (preEvent.isCancelled()) {
-                    return;
-                }
-                
-                pityCounter = preEvent.getPityCounter();
-                
-                // 【修复】第四步：验证并扣除抽奖成本（对标商店系统）
-                ITradeOffer drawCost = gachaShop.getDrawCost();
-                if (drawCost != null) {
-                    // 检查是否能支付成本
-                    if (!drawCost.canAfford(player)) {
-                        Arc_quest.LOGGER.warn("[Gacha] Player {} cannot afford draw cost for shop: {}", 
-                            player.getName().getString(), pkt.shopId);
-                        
-                        // 触发失败事件
-                        var failedEvent = new GachaEvents.DrawFailedEvent(
-                            player, pkt.shopId, cap, GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD
-                        );
-                        MinecraftForge.EVENT_BUS.post(failedEvent);
-                        
-                        // 发送失败通知给客户端
-                        ArcQuestNetwork.CHANNEL.send(
-                            PacketDistributor.PLAYER.with(() -> player),
-                            new S2CDrawFailedPacket(pkt.shopId, GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name(), drawCost.buildShortfallLines(player))
-                        );
-                        return;
-                    }
-                    
-                    // 扣除成本
-                    drawCost.execute(player);
-                }
-                
-                // 触发抽奖执行中事件（通知 HUD 播放动画）
-                var drawingEvent = new GachaEvents.DrawingEvent(player, pkt.shopId, cap, pityCounter);
-                MinecraftForge.EVENT_BUS.post(drawingEvent);
-                
-                // 执行抽奖
-                var drawResult = gachaShop.performDraw(player, cap, pityCounter);
-                if (drawResult.item() == null) {
-                    Arc_quest.LOGGER.warn("[Gacha] Failed to draw item for player: {}", player.getName().getString());
-                    return;
-                }
-                
-                // 计算实际数量
-                int actualCount = drawResult.item().calculateActualCount();
-                
-                // 更新保底计数
-                int newPityCounter;
-                boolean isEarlyTrigger = false;  // 标记是否提前触发保底
-                
-                if (drawResult.pityTriggered()) {
-                    // 触发保底，重置为0
-                    newPityCounter = 0;
-                } else if (gachaShop.shouldResetPityOnEarlyTrigger()) {
-                    // 【新增】检查是否抽中保底指定的物品/品质
-                    var pityConfig = gachaShop.getPityConfig();
-                    if (pityConfig != null) {
-                        // 检查是否抽中保底目标物品或品质
-                        String drawnRarity = drawResult.item().getRarity().getName();
-                        String targetRarity = pityConfig.getGuaranteedRarity() != null 
-                            ? pityConfig.getGuaranteedRarity().getName() : null;
-                        
-                        // 如果抽中的稀有度 >= 保底稀有度，视为提前触发
-                        if (targetRarity != null && drawnRarity.equals(targetRarity)) {
-                            isEarlyTrigger = true;
-                            newPityCounter = 0;  // 重置保底
-                        } else {
-                            newPityCounter = pityCounter + 1;
-                        }
-                    } else {
-                        newPityCounter = pityCounter + 1;
-                    }
-                } else {
-                    // 不重置，继续累加
-                    newPityCounter = pityCounter + 1;
-                }
-                
-                // 【修改】暂存抽奖结果，不立即发放奖励（等待客户端动画完成后确认）
-                boolean stored = PendingDrawManager.storePendingDraw(
-                    player,
-                    pkt.shopId,
-                    drawResult.item(),
-                    actualCount,
-                    drawResult.pityTriggered(),
-                    newPityCounter
+                        new S2CDrawFailedPacket(pkt.shopId, reason.name(),
+                                resolution.shortfallLines() != null ? resolution.shortfallLines() : java.util.List.of())
                 );
-                
-                if (!stored) {
-                    // 已有待确认数据，拒绝本次抽奖
-                    ArcQuestNetwork.CHANNEL.send(
-                        PacketDistributor.PLAYER.with(() -> player),
-                        new S2CDrawFailedPacket(pkt.shopId, "PENDING_DRAW_EXISTS")
-                    );
-                    return;
-                }
-                
-                // 【新增】触发保底提前触发事件
-                if (isEarlyTrigger) {
-                    var pityConfig = gachaShop.getPityConfig();
-                    int pityThreshold = pityConfig != null ? pityConfig.getPityThreshold() : 0;
-                    
-                    var earlyTriggerEvent = new GachaEvents.PityEarlyTriggerEvent(
+                return;
+            }
+
+            if (resolution.earlyTrigger()) {
+                var earlyTriggerEvent = new GachaEvents.PityEarlyTriggerEvent(
                         player,
                         pkt.shopId,
-                        drawResult.item(),
-                        pityCounter,      // 触发时的保底计数
-                        pityThreshold,    // 保底阈值
-                        true              // 会重置保底进度
-                    );
-                    MinecraftForge.EVENT_BUS.post(earlyTriggerEvent);
-                }
-                
-                // 记录抽奖冷却（通过 GachaEntryStateResolver）
-                if (GachaEntryStateResolver.shouldRecordCooldown(cap, pkt.shopId, gachaShop)) {
-                    GachaEntryStateResolver.recordCooldown(player, cap, pkt.shopId, gachaShop);
-                }
-                
-                // 增加抽奖次数计数（使用 session.incrementDrawCount()）
-                session.incrementDrawCount();
-                
-                // 更新保底计数
-                cap.setGachaPityCounter(pkt.shopId, newPityCounter);
-                
-                // 触发抽奖后事件
-                var postEvent = new GachaEvents.PostDrawEvent(
-                    player,
-                    pkt.shopId,
-                    drawResult.item(),
-                    drawResult.pityTriggered(),
-                    newPityCounter,
-                    cap
+                        resolution.item(),
+                        resolution.newPityCounter(),
+                        resolution.pityThreshold(),
+                        true
                 );
-                MinecraftForge.EVENT_BUS.post(postEvent);
-                
-                // 【权威】服务端计算抽奖后的最新状态（对标交易系统）
-                var refreshedCap = QuestCapabilityProvider.getOrNull(player);
-                boolean canDraw = true;
-                int remainingDraws = -1; // -1 表示无限
-                long lastDrawRealTime = 0;
-                long lastDrawGameTime = -1;
-                long lastDrawDayTime = -1;
-                
-                if (refreshedCap != null) {
-                    // 检查限购
-                    if (gachaShop.hasLimit() && gachaShop.getMaxDraws() > 0) {
-                        int totalDraws = gachaShop.getTotalDraws(refreshedCap);
-                        remainingDraws = Math.max(0, gachaShop.getMaxDraws() - totalDraws);
-                        if (remainingDraws <= 0) {
-                            canDraw = false;
-                        }
-                    }
-                    
-                    // 检查冷却（只有在未达到限购时才检查）
-                    if (gachaShop.hasCooldown()) {
-                        var cooldownEntry = refreshedCap.getGachaDataStore().getDrawCooldown(gachaShop.getShopId());
-                        lastDrawRealTime = cooldownEntry.realTime();
-                        lastDrawGameTime = cooldownEntry.gameTime();
-                        lastDrawDayTime = cooldownEntry.dayTime();
+                MinecraftForge.EVENT_BUS.post(earlyTriggerEvent);
+            }
 
-                        if (canDraw) {
-                            boolean onCooldown = ClientCooldownHelper.isOnCooldown(
-                                lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
-                                gachaShop.getCooldownType().ordinal(), gachaShop.getCooldownValue(), gachaShop.getResetTimeTicks()
-                            );
-
-                            if (onCooldown) {
-                                canDraw = false;
-                            }
-                        }
-                    }
-                }
-                
-                // 【修复】发送抽奖结果包到客户端
-                // 【权威】包含服务端计算的最新状态（canDraw, remainingDraws）
-                ArcQuestNetwork.CHANNEL.send(
+            ArcQuestNetwork.CHANNEL.send(
                     PacketDistributor.PLAYER.with(() -> player),
                     new S2CDrawResultPacket(
-                        pkt.shopId,
-                        drawResult.item().getItemId(),
-                        drawResult.item().getRarity().getName(),
-                        actualCount,
-                        drawResult.pityTriggered(),
-                        newPityCounter,
-                        // 【权威】服务端计算的最新状态
-                        canDraw,
-                        remainingDraws,
-                        lastDrawRealTime,
-                        lastDrawGameTime,
-                        lastDrawDayTime
+                            pkt.shopId,
+                            resolution.item().getItemId(),
+                            resolution.item().getRarity().getName(),
+                            resolution.actualCount(),
+                            resolution.pityTriggered(),
+                            resolution.newPityCounter(),
+                            resolution.canDraw(),
+                            resolution.remainingDraws(),
+                            resolution.lastDrawRealTime(),
+                            resolution.lastDrawGameTime(),
+                            resolution.lastDrawDayTime()
                     )
-                );
-                
-                Arc_quest.LOGGER.info("[Gacha] Player {} drew {} x{} from {}", 
+            );
+
+            Arc_quest.LOGGER.info("[Gacha] Player {} drew {} x{} from {}",
                     player.getName().getString(),
-                    drawResult.item().getItemId(),
-                    actualCount,
+                    resolution.item().getItemId(),
+                    resolution.actualCount(),
                     pkt.shopId
-                );
-            }
+            );
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    private static DrawResolution resolveDrawUnderLock(ServerPlayer player, IQuestCapability cap,
+                                                       GachaShopDefinition gachaShop, String shopId) {
+        GachaSession session = new GachaSession(player, gachaShop, cap);
+
+        session.checkAndResetDraws();
+
+        if (!session.canDraw()) {
+            GachaEvents.DrawFailedEvent.FailReason reason = mapFailReason(session.getFailReason());
+            java.util.List<org.com.arc_quest.trade.api.CostShortfallLine> shortfallLines = java.util.List.of();
+
+            ITradeOffer drawCost = gachaShop.getDrawCost();
+            if (reason == GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD && drawCost != null) {
+                shortfallLines = drawCost.buildShortfallLines(player);
+            }
+
+            return new DrawResolution(
+                    false,
+                    reason.name(),
+                    shortfallLines,
+                    null,
+                    0,
+                    false,
+                    0,
+                    false,
+                    -1,
+                    0,
+                    -1,
+                    -1,
+                    false,
+                    0
+            );
+        }
+
+        int pityCounter = cap.getGachaPityCounter(shopId);
+
+        var preEvent = new GachaEvents.PreDrawEvent(player, shopId, cap, pityCounter);
+        MinecraftForge.EVENT_BUS.post(preEvent);
+        if (preEvent.isCancelled()) {
+            return new DrawResolution(
+                    false,
+                    GachaEvents.DrawFailedEvent.FailReason.UNKNOWN.name(),
+                    java.util.List.of(),
+                    null,
+                    0,
+                    false,
+                    pityCounter,
+                    true,
+                    -1,
+                    0,
+                    -1,
+                    -1,
+                    false,
+                    0
+            );
+        }
+
+        pityCounter = preEvent.getPityCounter();
+
+        ITradeOffer drawCost = gachaShop.getDrawCost();
+        if (drawCost != null) {
+            if (!drawCost.canAfford(player)) {
+                return new DrawResolution(
+                        false,
+                        GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name(),
+                        drawCost.buildShortfallLines(player),
+                        null,
+                        0,
+                        false,
+                        pityCounter,
+                        true,
+                        -1,
+                        0,
+                        -1,
+                        -1,
+                        false,
+                        0
+                );
+            }
+            drawCost.execute(player);
+        }
+
+        var drawingEvent = new GachaEvents.DrawingEvent(player, shopId, cap, pityCounter);
+        MinecraftForge.EVENT_BUS.post(drawingEvent);
+
+        var drawResult = gachaShop.performDraw(player, cap, pityCounter);
+        if (drawResult.item() == null) {
+            return new DrawResolution(
+                    false,
+                    GachaEvents.DrawFailedEvent.FailReason.UNKNOWN.name(),
+                    java.util.List.of(),
+                    null,
+                    0,
+                    false,
+                    pityCounter,
+                    true,
+                    -1,
+                    0,
+                    -1,
+                    -1,
+                    false,
+                    0
+            );
+        }
+
+        int actualCount = drawResult.item().calculateActualCount();
+
+        int newPityCounter;
+        boolean isEarlyTrigger = false;
+        int pityThreshold = 0;
+
+        if (drawResult.pityTriggered()) {
+            newPityCounter = 0;
+        } else if (gachaShop.shouldResetPityOnEarlyTrigger()) {
+            var pityConfig = gachaShop.getPityConfig();
+            if (pityConfig != null) {
+                pityThreshold = pityConfig.getPityThreshold();
+                String drawnRarity = drawResult.item().getRarity().getName();
+                String targetRarity = pityConfig.getGuaranteedRarity() != null
+                        ? pityConfig.getGuaranteedRarity().getName() : null;
+
+                if (targetRarity != null && drawnRarity.equals(targetRarity)) {
+                    isEarlyTrigger = true;
+                    newPityCounter = 0;
+                } else {
+                    newPityCounter = pityCounter + 1;
+                }
+            } else {
+                newPityCounter = pityCounter + 1;
+            }
+        } else {
+            newPityCounter = pityCounter + 1;
+        }
+
+        boolean stored = PendingDrawManager.storePendingDraw(
+                player,
+                shopId,
+                drawResult.item(),
+                actualCount,
+                drawResult.pityTriggered(),
+                newPityCounter
+        );
+
+        if (!stored) {
+            return new DrawResolution(
+                    false,
+                    GachaEvents.DrawFailedEvent.FailReason.UNKNOWN.name(),
+                    java.util.List.of(),
+                    null,
+                    0,
+                    false,
+                    pityCounter,
+                    true,
+                    -1,
+                    0,
+                    -1,
+                    -1,
+                    false,
+                    pityThreshold
+            );
+        }
+
+        if (GachaEntryStateResolver.shouldRecordCooldown(cap, shopId, gachaShop)) {
+            GachaEntryStateResolver.recordCooldown(player, cap, shopId, gachaShop);
+        }
+
+        session.incrementDrawCount();
+        cap.setGachaPityCounter(shopId, newPityCounter);
+
+        var postEvent = new GachaEvents.PostDrawEvent(
+                player,
+                shopId,
+                drawResult.item(),
+                drawResult.pityTriggered(),
+                newPityCounter,
+                cap
+        );
+        MinecraftForge.EVENT_BUS.post(postEvent);
+
+        var refreshedCap = QuestCapabilityProvider.getOrNull(player);
+        boolean canDraw = true;
+        int remainingDraws = -1;
+        long lastDrawRealTime = 0;
+        long lastDrawGameTime = -1;
+        long lastDrawDayTime = -1;
+
+        if (refreshedCap != null) {
+            if (gachaShop.hasLimit() && gachaShop.getMaxDraws() > 0) {
+                int totalDraws = gachaShop.getTotalDraws(refreshedCap);
+                remainingDraws = Math.max(0, gachaShop.getMaxDraws() - totalDraws);
+                if (remainingDraws <= 0) {
+                    canDraw = false;
+                }
+            }
+
+            if (gachaShop.hasCooldown()) {
+                var cooldownEntry = refreshedCap.getGachaDataStore().getDrawCooldown(gachaShop.getShopId());
+                lastDrawRealTime = cooldownEntry.realTime();
+                lastDrawGameTime = cooldownEntry.gameTime();
+                lastDrawDayTime = cooldownEntry.dayTime();
+
+                if (canDraw) {
+                    boolean onCooldown = ClientCooldownHelper.isOnCooldown(
+                            lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+                            gachaShop.getCooldownType().ordinal(),
+                            gachaShop.getCooldownValue(),
+                            gachaShop.getResetTimeTicks()
+                    );
+                    if (onCooldown) {
+                        canDraw = false;
+                    }
+                }
+            }
+        }
+
+        return new DrawResolution(
+                true,
+                null,
+                java.util.List.of(),
+                drawResult.item(),
+                actualCount,
+                drawResult.pityTriggered(),
+                newPityCounter,
+                canDraw,
+                remainingDraws,
+                lastDrawRealTime,
+                lastDrawGameTime,
+                lastDrawDayTime,
+                isEarlyTrigger,
+                pityThreshold
+        );
     }
     
     /**
@@ -299,4 +358,21 @@ public class C2SDrawGachaPacket {
             default -> GachaEvents.DrawFailedEvent.FailReason.UNKNOWN;
         };
     }
+
+    private record DrawResolution(
+            boolean succeeded,
+            @Nullable String failedReasonName,
+            @Nullable List<CostShortfallLine> shortfallLines,
+            @Nullable GachaItem item,
+            int actualCount,
+            boolean pityTriggered,
+            int newPityCounter,
+            boolean canDraw,
+            int remainingDraws,
+            long lastDrawRealTime,
+            long lastDrawGameTime,
+            long lastDrawDayTime,
+            boolean earlyTrigger,
+            int pityThreshold
+    ) {}
 }

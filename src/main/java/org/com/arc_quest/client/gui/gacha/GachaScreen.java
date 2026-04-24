@@ -72,6 +72,7 @@ public class GachaScreen extends Screen {
         currentPhase = Phase.WAITING_SERVER;
         this.hasPendingDraw = true;
         this.requestTimestamp = System.currentTimeMillis();
+        previewPanel.updateDataSnapshot();
         LOGGER.debug("[Gacha-Client] Phase changed to WAITING_SERVER, hasPendingDraw=true, timestamp={}", requestTimestamp);
         
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SDrawGachaPacket(shopId));

@@ -728,7 +728,14 @@ public final class ClientGachaCache {
         
         public int getPityCounter() { return pityCounter; }
         public int getTotalDraws() { return totalDraws; }
+        /**
+         * 获取服务端权威的可抽奖状态。
+         * <p>
+         * 客户端不再自行推导限购、条件与冷却的业务结论，
+         * 这里只消费服务端同步下来的最终状态。
+         */
         public boolean canDraw() { return canDraw; }
+
         public int getRemainingDraws() { return remainingDraws; }
         
         // 冷却数据 Getters
