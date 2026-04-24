@@ -164,7 +164,10 @@ public class SimpleTradePanel extends AbstractTradeScreen {
             int bgA = (int) ((hov && canBuy ? 0x77 : 0x44) * clampedEase * effectiveAlpha);
             int bdA = (int) ((hov && canBuy ? 0xCC : 0x66) * clampedEase * effectiveAlpha);
             
-            boolean hasShortfall = shortfallTooltipTimer > 0f && !ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId()).isEmpty();
+            ClientTradeCache.FeedbackSnapshot feedback = ClientTradeCache.INSTANCE.feedbackSnapshot(shopId);
+            boolean hasShortfall = feedback != null
+                    && entry.getEntryId().equals(feedback.lastFailedEntryId())
+                    && !feedback.shortfallLines().isEmpty();
 
             if (gi == lastClickedGi) {
                 if (feedbackSuccess && feedbackAnim > 0) {

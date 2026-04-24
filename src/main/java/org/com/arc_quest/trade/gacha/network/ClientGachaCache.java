@@ -284,6 +284,15 @@ public final class ClientGachaCache {
         return s != null ? List.copyOf(s.feedback.lastShortfallLines) : List.of();
     }
 
+    public void clearFeedback(String shopId) {
+        var s = gachaSessions.get(shopId);
+        if (s == null) {
+            return;
+        }
+        s.feedback.lastFailReason = null;
+        s.feedback.lastShortfallLines = List.of();
+    }
+
     // ════════════════════════════════════════
     // 历史/统计（History）
     // ════════════════════════════════════════

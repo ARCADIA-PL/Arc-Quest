@@ -55,7 +55,9 @@ public final class ClientTradeCache {
         }
     }
 
-    public void handlePurchaseResult(String shopId, String entryId, boolean success, S2COpenTradePacket.FailReason failReason) {
+    public void handlePurchaseResult(String shopId, String entryId, boolean success,
+                                     @Nullable S2COpenTradePacket.FailReason failReason,
+                                     @Nullable String errorKey) {
         if (entryId == null || entryId.isEmpty()) return;
         var shopDef = TradeRegistry.get(shopId);
         if (shopDef == null) return;
@@ -66,12 +68,16 @@ public final class ClientTradeCache {
         if (success) {
             data.feedback.lastFailedEntryId = null;
             data.feedback.lastShortfallLines = List.of();
+            data.feedback.lastFailReason = null;
+            data.feedback.lastErrorKey = null;
             GuiSoundManager.play(entry.getPurchaseSuccessSound());
         } else {
             if (failReason != S2COpenTradePacket.FailReason.CANNOT_AFFORD) {
                 data.feedback.lastFailedEntryId = null;
                 data.feedback.lastShortfallLines = List.of();
             }
+            data.feedback.lastFailReason = failReason;
+            data.feedback.lastErrorKey = errorKey;
             SoundEvent sound = switch (failReason != null ? failReason : S2COpenTradePacket.FailReason.GENERIC) {
                 case COOLDOWN -> entry.getCooldownSound();
                 case LIMIT_REACHED -> entry.getLimitReachedSound();
@@ -230,7 +236,12 @@ public final class ClientTradeCache {
     public FeedbackSnapshot feedbackSnapshot(String shopId) {
         TradeSessionData data = activeSessions.get(shopId);
         if (data == null) return null;
-        return new FeedbackSnapshot(data.feedback.lastFailedEntryId, List.copyOf(data.feedback.lastShortfallLines));
+        return new FeedbackSnapshot(
+                data.feedback.lastFailedEntryId,
+                List.copyOf(data.feedback.lastShortfallLines),
+                data.feedback.lastFailReason,
+                data.feedback.lastErrorKey
+        );
     }
 
     static final class TradeSessionData {
@@ -260,6 +271,10 @@ public final class ClientTradeCache {
         @Nullable
         String lastFailedEntryId;
         List<CostShortfallLine> lastShortfallLines = List.of();
+        @Nullable
+        S2COpenTradePacket.FailReason lastFailReason;
+        @Nullable
+        String lastErrorKey;
     }
 
     public record AuthoritySnapshot(
@@ -278,7 +293,9 @@ public final class ClientTradeCache {
 
     public record FeedbackSnapshot(
             @Nullable String lastFailedEntryId,
-            List<CostShortfallLine> shortfallLines
+            List<CostShortfallLine> shortfallLines,
+            @Nullable S2COpenTradePacket.FailReason failReason,
+            @Nullable String errorKey
     ) {
     }
 }

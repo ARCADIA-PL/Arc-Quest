@@ -29,7 +29,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public abstract class AbstractTradeScreen extends Screen {
 
@@ -58,11 +57,6 @@ public abstract class AbstractTradeScreen extends Screen {
     private float animProgress = 0f;
     private float feedbackScale = 1.0f;
     private float feedbackShake = 0f;
-    protected float shortfallTooltipTimer = 0f;
-    private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
-    protected Component lastTradeFailMessage = Component.empty();
-    protected float tradeFailMessageTimer = 0f;
-    private static final float TRADE_FAIL_MESSAGE_DURATION = 1.8f;
     private int authorityRefreshTicker = 0;
     private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 10;
 
@@ -109,22 +103,6 @@ public abstract class AbstractTradeScreen extends Screen {
         feedbackSuccess = false;
         feedbackAnim = 1f;
         feedbackShake = 6f;
-        this.lastTradeFailMessage = HudRenderUtil.resolveTradeFailMessage(errorKey, reason != null ? reason.name() : null);
-        this.tradeFailMessageTimer = TRADE_FAIL_MESSAGE_DURATION;
-        if (isCannotAffordFailure(reason, errorKey)) {
-            shortfallTooltipTimer = SHORTFALL_TOOLTIP_DURATION;
-        }
-    }
-
-    private static boolean isCannotAffordFailure(S2COpenTradePacket.FailReason reason, String errorKey) {
-        if (reason == S2COpenTradePacket.FailReason.CANNOT_AFFORD) {
-            return true;
-        }
-        if (errorKey == null || errorKey.isEmpty()) {
-            return false;
-        }
-        String key = errorKey.toLowerCase(Locale.ROOT);
-        return key.contains("cannot_afford") || key.contains("afford") || key.contains("insufficient");
     }
 
     public String getShopId() { return shopId; }
@@ -202,20 +180,6 @@ public abstract class AbstractTradeScreen extends Screen {
             dt = realDt;
         }
 
-        if (shortfallTooltipTimer > 0f && dt > 0f) {
-            shortfallTooltipTimer = Math.max(0f, shortfallTooltipTimer - dt);
-        }
-        if (tradeFailMessageTimer > 0f && dt > 0f) {
-            tradeFailMessageTimer = Math.max(0f, tradeFailMessageTimer - dt);
-        }
-
-        transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.14f : getOpenAnimSpeed(), dt);
-        if (isClosing && transitionAnim <= 0.01f) {
-            if (minecraft != null) minecraft.setScreen(null);
-            return;
-        }
-
-        effectiveAlpha = transitionAnim * suspendAlpha;
         if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
 
         int safeAlpha = (int) (255 * effectiveAlpha);
@@ -262,17 +226,25 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     private void renderTradeFailToast(GuiGraphics g) {
-        if (tradeFailMessageTimer <= 0f || lastTradeFailMessage == null || lastTradeFailMessage.getString().isEmpty()) {
+        ClientTradeCache.FeedbackSnapshot feedback = ClientTradeCache.INSTANCE.feedbackSnapshot(shopId);
+        if (feedback == null || (feedback.errorKey() == null && feedback.failReason() == null)) {
             return;
         }
 
-        float alpha = Math.min(1f, tradeFailMessageTimer / TRADE_FAIL_MESSAGE_DURATION);
-        int safeA = (int) (210 * alpha * effectiveAlpha);
+        Component failMessage = HudRenderUtil.resolveTradeFailMessage(
+                feedback.errorKey(),
+                feedback.failReason() != null ? feedback.failReason().name() : null
+        );
+        String msg = failMessage.getString();
+        if (msg.isEmpty()) {
+            return;
+        }
+
+        int safeA = (int) (210 * effectiveAlpha);
         if (safeA <= 5) {
             return;
         }
 
-        String msg = lastTradeFailMessage.getString();
         int padX = 10;
         int w = font.width(msg) + padX * 2;
         int h = 18;
@@ -308,7 +280,11 @@ public abstract class AbstractTradeScreen extends Screen {
         d.descLines = entry.getDescription() != null ? font.split(entry.getDescription(), 180) : new ArrayList<>();
 
         d.shortfalls = ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId());
-        d.showShortfall = shortfallTooltipTimer > 0f && !d.shortfalls.isEmpty();
+        ClientTradeCache.FeedbackSnapshot feedback = ClientTradeCache.INSTANCE.feedbackSnapshot(shopId);
+        boolean thisEntryFailed = feedback != null
+                && feedback.lastFailedEntryId() != null
+                && feedback.lastFailedEntryId().equals(entry.getEntryId());
+        d.showShortfall = thisEntryFailed && !d.shortfalls.isEmpty();
 
         int titleW = font.width(entry.getDisplayName());
         int totalW = Math.max(188, titleW + 40);

@@ -41,7 +41,7 @@ public class C2SRequestTradePacket {
 
     public static void syncState(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
         touchActiveTradeContext(player, shop.getShopId(), clientScreenType);
-        refreshTradeData(player, shop, clientScreenType);
+        refreshTradeData(player, shop, clientScreenType, "manual_sync");
     }
 
     public static void pushSyncForActiveShop(ServerPlayer player, String reason) {
@@ -65,7 +65,7 @@ public class C2SRequestTradePacket {
         LOGGER.debug("[Trade-Push] Active shop sync push: player={}, shop={}, screenType={}, reason={}",
                 player.getName().getString(), context.shopId(), context.screenType(), reason);
 
-        refreshTradeData(player, shop, context.screenType());
+        refreshTradeData(player, shop, context.screenType(), reason);
         touchActiveTradeContext(player, context.shopId(), context.screenType());
     }
 
@@ -287,7 +287,7 @@ public class C2SRequestTradePacket {
             touchActiveTradeContext(player, shop.getShopId(), clientScreenType);
         }
 
-        refreshTradeData(player, shop, clientScreenType);
+        refreshTradeData(player, shop, clientScreenType, "purchase_result");
     }
 
     /**
@@ -297,12 +297,13 @@ public class C2SRequestTradePacket {
      * 刷新交易界面数据（不重建会话，仅同步最新状态）。
      * 启用变化检测：状态无变化时不发包。
      */
-    private static void refreshTradeData(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
+    private static void refreshTradeData(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType, String reason) {
         TradeSession session = new TradeSession(player, shop);
         TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
 
         if (!shouldSendTradeSync(player, shop.getShopId(), snap)) {
             SyncObservability.recordDropped("trade", shop.getShopId(), player.getName().getString(), false);
+            SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), "sync_dropped", reason);
             return;
         }
 
@@ -325,6 +326,7 @@ public class C2SRequestTradePacket {
                 refreshPkt
         );
         SyncObservability.recordSent("trade", shop.getShopId(), player.getName().getString(), true);
+        SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), "sync_sent", reason);
     }
 
     /**

@@ -318,14 +318,14 @@ public class S2COpenTradePacket {
                 }
 
                 case TRADE_SUCCESS -> {
-                    ClientTradeCache.INSTANCE.handlePurchaseResult(pkt.shopId, pkt.entryId, true, null);
+                    ClientTradeCache.INSTANCE.handlePurchaseResult(pkt.shopId, pkt.entryId, true, null, null);
                     if (mc.screen instanceof AbstractTradeScreen ts) {
                         ts.onTradeSuccess();
                     }
                 }
 
                 case TRADE_FAIL -> {
-                    ClientTradeCache.INSTANCE.handlePurchaseResult(pkt.shopId, pkt.entryId, false, pkt.failReason);
+                    ClientTradeCache.INSTANCE.handlePurchaseResult(pkt.shopId, pkt.entryId, false, pkt.failReason, pkt.errorKey);
                     ClientTradeCache.INSTANCE.recordShortfall(pkt.shopId, pkt.entryId, pkt.shortfallLines);
                     if (mc.screen instanceof AbstractTradeScreen ts) {
                         ts.onTradeFail(pkt.failReason, pkt.errorKey);

@@ -265,6 +265,8 @@ public class S2CGachaStatePacket {
                         GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD.name(),
                         pkt.shortfallLines
                 );
+            } else if (pkt.canDraw) {
+                ClientGachaCache.INSTANCE.clearFeedback(pkt.shopId);
             }
 
             if (mc.screen instanceof GachaScreen gachaScreen && gachaScreen.getShopId().equals(pkt.shopId)) {

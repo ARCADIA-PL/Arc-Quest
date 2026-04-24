@@ -199,8 +199,10 @@ public class TradeScreen extends AbstractTradeScreen {
             int bdA = (int) ((0x44 + 0x66 * hEase) * effectiveAlpha);
             int bRgb = hov && canBuy ? getThemeColorForEntry(entry) : 0xFFFFFF;
 
-            // 获取当前卡片是否处于"资金不足"警告期
-            boolean hasShortfall = shortfallTooltipTimer > 0f && !ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId()).isEmpty();
+            ClientTradeCache.FeedbackSnapshot feedback = ClientTradeCache.INSTANCE.feedbackSnapshot(shopId);
+            boolean hasShortfall = feedback != null
+                    && entry.getEntryId().equals(feedback.lastFailedEntryId())
+                    && !feedback.shortfallLines().isEmpty();
 
             // 完美的全局帧级同步
             if (gi == lastClickedGi) {
