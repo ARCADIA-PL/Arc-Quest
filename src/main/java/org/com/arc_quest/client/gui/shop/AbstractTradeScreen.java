@@ -28,6 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public abstract class AbstractTradeScreen extends Screen {
 
@@ -100,13 +101,24 @@ public abstract class AbstractTradeScreen extends Screen {
         feedbackScale = 1.15f;
     }
 
-    public void onTradeFail(S2COpenTradePacket.FailReason _reason, String _errorKey) {
+    public void onTradeFail(S2COpenTradePacket.FailReason reason, String errorKey) {
         feedbackSuccess = false;
         feedbackAnim = 1f;
         feedbackShake = 6f;
-        if (_reason == S2COpenTradePacket.FailReason.CANNOT_AFFORD) {
+        if (isCannotAffordFailure(reason, errorKey)) {
             shortfallTooltipTimer = SHORTFALL_TOOLTIP_DURATION;
         }
+    }
+
+    private static boolean isCannotAffordFailure(S2COpenTradePacket.FailReason reason, String errorKey) {
+        if (reason == S2COpenTradePacket.FailReason.CANNOT_AFFORD) {
+            return true;
+        }
+        if (errorKey == null || errorKey.isEmpty()) {
+            return false;
+        }
+        String key = errorKey.toLowerCase(Locale.ROOT);
+        return key.contains("cannot_afford") || key.contains("afford") || key.contains("insufficient");
     }
 
     public String getShopId() { return shopId; }

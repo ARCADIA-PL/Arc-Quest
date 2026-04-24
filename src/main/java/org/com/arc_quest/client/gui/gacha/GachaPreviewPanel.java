@@ -710,7 +710,7 @@ public class GachaPreviewPanel {
         boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
 
         boolean maxed = remainingDraws == 0;
-        boolean insufficientFunds = "CANNOT_AFFORD".equals(lastFailReason) || hasShortfall;
+        boolean insufficientFunds = isCannotAffordFailure(lastFailReason) || hasShortfall;
         boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
 
         boolean canInteract = !waiting && !onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw;
@@ -779,7 +779,7 @@ public class GachaPreviewPanel {
         if (mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH()) {
             boolean onCooldown = snapshotCooldownText != null && !snapshotCooldownText.isEmpty();
             boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
-            boolean insufficientFunds = "CANNOT_AFFORD".equals(snapshotFailReason) || hasShortfall;
+            boolean insufficientFunds = isCannotAffordFailure(snapshotFailReason) || hasShortfall;
             boolean maxed = snapshotRemainingDraws == 0;
             boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
 
@@ -809,5 +809,16 @@ public class GachaPreviewPanel {
     public boolean mouseScrolled(double delta) {
         targetScroll -= delta * 45;
         return true;
+    }
+
+    private static boolean isCannotAffordFailure(String failReason) {
+        if (failReason == null || failReason.isEmpty()) {
+            return false;
+        }
+        String key = failReason.toLowerCase();
+        return "cannot_afford".equals(key)
+                || key.contains("cannot_afford")
+                || key.contains("insufficient")
+                || key.endsWith(".cannot_afford");
     }
 }
