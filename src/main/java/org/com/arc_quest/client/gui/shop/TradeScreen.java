@@ -17,14 +17,13 @@ import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.ClientTradeCache;
-import org.slf4j.Logger;
+import org.com.arc_quest.trade.network.S2COpenTradePacket;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class TradeScreen extends AbstractTradeScreen {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static Screen parentScreen;
 
     private static final int CARD_HEIGHT = 48;
@@ -188,9 +187,9 @@ public class TradeScreen extends AbstractTradeScreen {
 
             boolean hov = !isClosing && dt > 0 && mx >= rx && mx < rx + rw && my >= drawY && my < drawY + CARD_HEIGHT && my >= ry && my <= ry + rh;
 
-            boolean onCd = cache.isOnCooldown(shopId, gi);
-            boolean maxed = !onCd && entry.hasLimit() && cache.getPurchaseCount(shopId, gi) >= entry.getMaxPurchases();
-            boolean conditionNotMet = !onCd && !maxed && !cache.canBuy(shopId, gi);
+            boolean onCd = cache.isEntryCoolingDown(shopId, gi, entry);
+            boolean maxed = cache.isPurchaseLimitReached(shopId, gi, entry);
+            boolean conditionNotMet = !onCd && !maxed && cache.isConditionBlocked(shopId, gi, entry);
             boolean canBuy = !onCd && !maxed && !conditionNotMet;
 
             entryHoverAnims[i] = HudAnimUtil.step(entryHoverAnims[i], hov && canBuy ? 1f : 0f, 6f, dt);
@@ -381,7 +380,7 @@ public class TradeScreen extends AbstractTradeScreen {
                     ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.purchaseWithScreenType(shopId, e.getEntryId(), C2SRequestTradePacket.ScreenType.FULL));
                     playClick();
                 } else {
-                    onTradeFail("blocked");
+                    onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
                 }
                 return true;
             }

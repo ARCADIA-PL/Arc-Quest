@@ -16,14 +16,13 @@ import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.ClientTradeCache;
-import org.slf4j.Logger;
+import org.com.arc_quest.trade.network.S2COpenTradePacket;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SimpleTradePanel extends AbstractTradeScreen {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static Screen parentScreen;
 
     private final List<TradeEntry> entries;
@@ -144,9 +143,9 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
             boolean hov = (!isClosing && transitionAnim >= 0.9f) && mx >= targetX && mx < targetX + l.cardW() && my >= targetY && my < targetY + l.cardH();
 
-            boolean onCd = ClientTradeCache.INSTANCE.isOnCooldown(shopId, gi);
-            boolean maxed = !onCd && entry.hasLimit() && ClientTradeCache.INSTANCE.getPurchaseCount(shopId, gi) >= entry.getMaxPurchases();
-            boolean conditionNotMet = !onCd && !maxed && !ClientTradeCache.INSTANCE.canBuy(shopId, gi);
+            boolean onCd = ClientTradeCache.INSTANCE.isEntryCoolingDown(shopId, gi, entry);
+            boolean maxed = ClientTradeCache.INSTANCE.isPurchaseLimitReached(shopId, gi, entry);
+            boolean conditionNotMet = !onCd && !maxed && ClientTradeCache.INSTANCE.isConditionBlocked(shopId, gi, entry);
             boolean canBuy = !onCd && !maxed && !conditionNotMet;
 
             hoverAnims[i] = HudAnimUtil.step(hoverAnims[i], hov && canBuy ? 1f : 0f, 10f, dt);
@@ -300,7 +299,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
                 ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.purchaseWithScreenType(shopId, entry.getEntryId(), C2SRequestTradePacket.ScreenType.SIMPLE));
                 playClick();
             } else {
-                onTradeFail("blocked");
+                onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
             }
             return true;
         }

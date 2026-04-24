@@ -248,9 +248,47 @@ public final class ClientTradeCache {
      * 综合判断是否可以购买（非冷却、非限购、条件满足）。
      */
     public boolean canPurchase(String shopId, int entryIndex) {
-        return !isOnCooldown(shopId, entryIndex) 
-            && getRemainingPurchases(shopId, entryIndex) != 0 
-            && canBuy(shopId, entryIndex);
+        TradeEntry entry = getEntry(shopId, entryIndex);
+        if (entry == null) {
+            return false;
+        }
+        return !isEntryCoolingDown(shopId, entryIndex, entry)
+            && !isPurchaseLimitReached(shopId, entryIndex, entry)
+            && !isConditionBlocked(shopId, entryIndex, entry);
+    }
+
+    /**
+     * 客户端显示语义：限购商品达到上限后，如果配置了冷却，则优先显示为冷却中。
+     * 这样才能与服务端“冷却结束后自动重置再可购买”的行为保持一致。
+     */
+    public boolean isEntryCoolingDown(String shopId, int entryIndex, TradeEntry entry) {
+        if (entry == null || !entry.hasCooldown()) {
+            return false;
+        }
+
+        if (entry.hasLimit()) {
+            int purchaseCount = getPurchaseCount(shopId, entryIndex);
+            if (purchaseCount < entry.getMaxPurchases()) {
+                return false;
+            }
+        }
+
+        return isOnCooldown(shopId, entryIndex);
+    }
+
+    public boolean isPurchaseLimitReached(String shopId, int entryIndex, TradeEntry entry) {
+        if (entry == null || !entry.hasLimit()) {
+            return false;
+        }
+        return !isEntryCoolingDown(shopId, entryIndex, entry)
+                && getPurchaseCount(shopId, entryIndex) >= entry.getMaxPurchases();
+    }
+
+    public boolean isConditionBlocked(String shopId, int entryIndex, TradeEntry entry) {
+        return entry != null
+                && !isEntryCoolingDown(shopId, entryIndex, entry)
+                && !isPurchaseLimitReached(shopId, entryIndex, entry)
+                && !canBuy(shopId, entryIndex);
     }
 
     /**
