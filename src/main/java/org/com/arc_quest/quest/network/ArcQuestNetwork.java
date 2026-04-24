@@ -9,8 +9,10 @@ import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.trade.gacha.network.*;
+import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.C2SRequestTradeSyncPacket;
 import org.com.arc_quest.trade.network.S2COpenTradePacket;
@@ -224,6 +226,11 @@ public final class ArcQuestNetwork {
                 new S2CSyncQuestStatePacket(data));
 
         C2SRequestTradePacket.pushSyncForActiveShop(player, "quest_state_sync");
+
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap != null) {
+            GachaScreenOpener.pushSyncForActiveShop(player, cap, "quest_state_sync");
+        }
     }
 
 
@@ -238,6 +245,11 @@ public final class ArcQuestNetwork {
                 new S2CDeltaProgressPacket(questId, objectiveIndex, newProgress));
 
         C2SRequestTradePacket.pushSyncForActiveShop(player, "delta_progress_sync");
+
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap != null) {
+            GachaScreenOpener.pushSyncForActiveShop(player, cap, "delta_progress_sync");
+        }
     }
 
     /**
@@ -248,6 +260,7 @@ public final class ArcQuestNetwork {
                 new S2CSyncFlagsVarsPacket(cap));
 
         C2SRequestTradePacket.pushSyncForActiveShop(player, "flags_vars_sync");
+        GachaScreenOpener.pushSyncForActiveShop(player, cap, "flags_vars_sync");
     }
 
     // ═══════════════════════════════════════════════════════

@@ -13,6 +13,7 @@ import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.com.arc_quest.trade.gacha.network.S2CGachaStatePacket;
+import org.com.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -24,6 +25,8 @@ public class GachaScreenOpener {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<UUID, Map<String, Integer>> LAST_GACHA_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
+    private static final Map<UUID, ActiveGachaContext> ACTIVE_GACHA_CONTEXTS = new ConcurrentHashMap<>();
+    private static final long ACTIVE_GACHA_CONTEXT_TTL_MS = 20000L;
 
     public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
         openGachaScreen(player, shop, cap, null);
@@ -62,10 +65,12 @@ public class GachaScreenOpener {
         );
 
         markGachaSynced(player, shop.getShopId(), snapshot);
+        touchActiveGachaContext(player, shop.getShopId());
         LOGGER.debug("[Gacha] Sent S2CGachaStatePacket(OPEN) to {}", player.getName().getString());
     }
 
     public static void syncGachaState(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
+        touchActiveGachaContext(player, shop.getShopId());
         GachaSnapshot snapshot = resolveSnapshot(player, shop, cap, true);
 
         if (!shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
@@ -93,6 +98,43 @@ public class GachaScreenOpener {
 
         LOGGER.debug("[Gacha] Sent S2CGachaStatePacket(SYNC) to {}", player.getName().getString());
         SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
+    }
+
+    public static void pushSyncForActiveShop(ServerPlayer player, IQuestCapability cap, String reason) {
+        if (cap == null) {
+            return;
+        }
+
+        ActiveGachaContext context = ACTIVE_GACHA_CONTEXTS.get(player.getUUID());
+        if (context == null) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - context.lastSeenMs() > ACTIVE_GACHA_CONTEXT_TTL_MS) {
+            ACTIVE_GACHA_CONTEXTS.remove(player.getUUID());
+            return;
+        }
+
+        GachaShopDefinition shop = GachaRegistry.get(context.shopId());
+        if (shop == null) {
+            ACTIVE_GACHA_CONTEXTS.remove(player.getUUID());
+            return;
+        }
+
+        LOGGER.debug("[Gacha-Push] Active shop sync push: player={}, shop={}, reason={}",
+                player.getName().getString(), context.shopId(), reason);
+        syncGachaState(player, shop, cap);
+    }
+
+    private static void touchActiveGachaContext(ServerPlayer player, String shopId) {
+        if (player == null || shopId == null || shopId.isEmpty()) {
+            return;
+        }
+        ACTIVE_GACHA_CONTEXTS.put(player.getUUID(), new ActiveGachaContext(shopId, System.currentTimeMillis()));
+    }
+
+    private static record ActiveGachaContext(String shopId, long lastSeenMs) {
     }
 
     private static GachaSnapshot resolveSnapshot(ServerPlayer player, GachaShopDefinition shop,
