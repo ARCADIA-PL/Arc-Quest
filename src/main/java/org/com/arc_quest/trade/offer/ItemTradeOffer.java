@@ -7,9 +7,11 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -61,15 +63,7 @@ public final class ItemTradeOffer implements ITradeOffer {
     @Override
     public boolean canAfford(ServerPlayer player) {
         if (!isCost) return true;
-        int found = 0;
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-            ItemStack stack = player.getInventory().getItem(i);
-            if (stack.is(item)) {
-                found += stack.getCount();
-                if (found >= count) return true;
-            }
-        }
-        return false;
+        return countOwned(player) >= count;
     }
 
     @Override
@@ -100,6 +94,19 @@ public final class ItemTradeOffer implements ITradeOffer {
                 item.getDescription(), count);
     }
 
+    @Override
+    public List<CostShortfallLine> buildShortfallLines(ServerPlayer player) {
+        if (!isCost) {
+            return List.of();
+        }
+        int owned = countOwned(player);
+        int missing = Math.max(0, count - owned);
+        if (missing <= 0) {
+            return List.of();
+        }
+        return List.of(new CostShortfallLine(item.getDescription(), count, owned, missing));
+    }
+
     @Nullable
     @Override
     public ResourceLocation getIcon() {
@@ -119,4 +126,18 @@ public final class ItemTradeOffer implements ITradeOffer {
     public Item getItem() { return item; }
     public int getCount() { return count; }
     public boolean isCost() { return isCost; }
+
+    private int countOwned(ServerPlayer player) {
+        int found = 0;
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack stack = player.getInventory().getItem(i);
+            if (stack.is(item)) {
+                found += stack.getCount();
+                if (found >= count) {
+                    return found;
+                }
+            }
+        }
+        return found;
+    }
 }

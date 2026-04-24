@@ -7,6 +7,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.client.util.ClientCooldownHelper;
 import org.com.arc_quest.client.util.GuiSoundManager;
 import org.com.arc_quest.trade.api.TradeEntry;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
@@ -106,9 +107,16 @@ public final class ClientTradeCache {
         TradeEntry entry = shopDef.getEntry(entryId);
         if (entry == null) return;
 
+        TradeSessionData data = activeSessions.computeIfAbsent(shopId, TradeSessionData::new);
         if (success) {
+            data.lastFailedEntryId = null;
+            data.lastShortfallLines = List.of();
             GuiSoundManager.play(entry.getPurchaseSuccessSound());
         } else {
+            if (failReason != S2COpenTradePacket.FailReason.CANNOT_AFFORD) {
+                data.lastFailedEntryId = null;
+                data.lastShortfallLines = List.of();
+            }
             SoundEvent sound = switch (failReason != null ? failReason : S2COpenTradePacket.FailReason.GENERIC) {
                 case COOLDOWN -> entry.getCooldownSound();
                 case LIMIT_REACHED -> entry.getLimitReachedSound();
@@ -126,6 +134,7 @@ public final class ClientTradeCache {
                               long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
                               int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
                               boolean[] visibility, boolean[] canBuyConditions) {
+        TradeSessionData existing = activeSessions.get(shopId);
         TradeSessionData data = new TradeSessionData(shopId);
         data.purchaseCounts = purchaseCounts;
         data.maxPurchases = maxPurchases;
@@ -137,6 +146,10 @@ public final class ClientTradeCache {
         data.resetTimeTicks = resetTimeTicks;
         data.visibility = visibility;
         data.canBuyConditions = canBuyConditions;
+        if (existing != null) {
+            data.lastFailedEntryId = existing.lastFailedEntryId;
+            data.lastShortfallLines = existing.lastShortfallLines;
+        }
         activeSessions.put(shopId, data);
     }
 
@@ -218,6 +231,20 @@ public final class ClientTradeCache {
         TradeSessionData data = activeSessions.get(shopId);
         if (data == null || entryIndex < 0 || entryIndex >= data.canBuyConditions.length) return false;
         return data.canBuyConditions[entryIndex];
+    }
+
+    public void recordShortfall(String shopId, String entryId, List<CostShortfallLine> shortfallLines) {
+        TradeSessionData data = activeSessions.computeIfAbsent(shopId, TradeSessionData::new);
+        data.lastFailedEntryId = entryId;
+        data.lastShortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
+    }
+
+    public List<CostShortfallLine> getShortfall(String shopId, String entryId) {
+        TradeSessionData data = activeSessions.get(shopId);
+        if (data == null || entryId == null || !entryId.equals(data.lastFailedEntryId)) {
+            return List.of();
+        }
+        return data.lastShortfallLines;
     }
 
     /**
@@ -343,6 +370,8 @@ public final class ClientTradeCache {
         private int[] resetTimeTicks;
         private boolean[] visibility;
         private boolean[] canBuyConditions;
+        private String lastFailedEntryId;
+        private List<CostShortfallLine> lastShortfallLines = List.of();
         
         public TradeSessionData(String shopId) {
             this.shopId = shopId;

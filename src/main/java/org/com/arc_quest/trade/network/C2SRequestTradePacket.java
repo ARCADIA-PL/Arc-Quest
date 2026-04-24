@@ -203,7 +203,7 @@ public class C2SRequestTradePacket {
 
         S2COpenTradePacket response = result.succeeded()
                 ? S2COpenTradePacket.tradeSuccess(shop.getShopId(), entryId)
-                : S2COpenTradePacket.tradeFail(shop.getShopId(), entryId, reason, errorKey);
+                : S2COpenTradePacket.tradeFail(shop.getShopId(), entryId, reason, errorKey, result.shortfallLines());
 
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),

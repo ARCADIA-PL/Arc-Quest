@@ -9,10 +9,14 @@ import org.com.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.com.arc_quest.dialogue.util.TimeSanitizer;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.slf4j.Logger;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 交易运行时会话 —— 管理玩家的交易状态、购买历史和冷却。
@@ -69,7 +73,7 @@ public final class TradeSession {
         for (ITradeOffer cost : entry.getCosts()) {
             if (!cost.canAfford(player)) {
                 LOGGER.warn("[Trade]  Cannot afford cost: entry={}, cost={}", entryId, cost);
-                return TradeResult.fail("arc_quest.trade.error.cannot_afford");
+                return TradeResult.fail("arc_quest.trade.error.cannot_afford", collectShortfallLines(entry.getCosts()));
             }
         }
 
@@ -227,13 +231,25 @@ public final class TradeSession {
     public TradeShopDefinition getShop() { return shop; }
     public ServerPlayer getPlayer() { return player; }
 
-    public record TradeResult(boolean succeeded, String errorKey) {
+    private List<CostShortfallLine> collectShortfallLines(List<ITradeOffer> costs) {
+        List<CostShortfallLine> lines = new ArrayList<>();
+        for (ITradeOffer cost : costs) {
+            lines.addAll(cost.buildShortfallLines(player));
+        }
+        return lines;
+    }
+
+    public record TradeResult(boolean succeeded, String errorKey, List<CostShortfallLine> shortfallLines) {
         public static TradeResult success() {
-            return new TradeResult(true, null);
+            return new TradeResult(true, null, List.of());
         }
         
         public static TradeResult fail(String errorKey) {
-            return new TradeResult(false, errorKey);
+            return new TradeResult(false, errorKey, List.of());
+        }
+
+        public static TradeResult fail(String errorKey, List<CostShortfallLine> shortfallLines) {
+            return new TradeResult(false, errorKey, shortfallLines != null ? List.copyOf(shortfallLines) : List.of());
         }
     }
 }

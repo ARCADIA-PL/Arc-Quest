@@ -5,6 +5,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+
 /**
  * 交易物抽象接口 —— 交易系统的原子单元。
  * <p>
@@ -60,6 +62,18 @@ public interface ITradeOffer {
      */
     default int getDisplayAmount() {
         return 0;
+    }
+
+    /**
+     * 构建余额不足时的缺口摘要行。
+     * <p>
+     * 默认实现仅在无法支付时回退到描述文本，不暴露具体差值。
+     */
+    default List<CostShortfallLine> buildShortfallLines(ServerPlayer player) {
+        if (canAfford(player)) {
+            return List.of();
+        }
+        return List.of(new CostShortfallLine(describe(), 0, 0, 0));
     }
 
     /**

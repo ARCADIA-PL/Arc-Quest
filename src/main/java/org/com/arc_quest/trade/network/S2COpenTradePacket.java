@@ -3,13 +3,17 @@ package org.com.arc_quest.trade.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
 import org.com.arc_quest.client.gui.shop.AbstractTradeScreen;
 import org.com.arc_quest.client.gui.shop.SimpleTradePanel;
 import org.com.arc_quest.client.gui.shop.TradeScreen;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -41,6 +45,7 @@ public class S2COpenTradePacket {
     private final String entryId;
     private final FailReason failReason;
     private final String errorKey;
+    private final List<CostShortfallLine> shortfallLines;
 
     /** 各项数据数组（由于网络协议不变，保留接收逻辑，但 UI 不再直接消费它们） */
     private final int[] purchaseCounts;
@@ -69,6 +74,7 @@ public class S2COpenTradePacket {
         this.entryId = null;
         this.failReason = null;
         this.errorKey = null;
+        this.shortfallLines = List.of();
         this.purchaseCounts = purchaseCounts;
         this.maxPurchases = maxPurchases;
         this.lastPurchaseTimes = lastPurchaseTimes;
@@ -84,11 +90,17 @@ public class S2COpenTradePacket {
     }
 
     public S2COpenTradePacket(Mode mode, String shopId, String entryId, FailReason failReason, String errorKey) {
+        this(mode, shopId, entryId, failReason, errorKey, List.of());
+    }
+
+    public S2COpenTradePacket(Mode mode, String shopId, String entryId, FailReason failReason,
+                              String errorKey, List<CostShortfallLine> shortfallLines) {
         this.mode = mode;
         this.shopId = shopId;
         this.entryId = entryId;
         this.failReason = failReason;
         this.errorKey = errorKey;
+        this.shortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
         this.purchaseCounts = null;
         this.maxPurchases = null;
         this.lastPurchaseTimes = null;
@@ -139,6 +151,11 @@ public class S2COpenTradePacket {
         return new S2COpenTradePacket(Mode.TRADE_FAIL, shopId, entryId, reason, errorKey);
     }
 
+    public static S2COpenTradePacket tradeFail(String shopId, String entryId, FailReason reason,
+                                               String errorKey, List<CostShortfallLine> shortfallLines) {
+        return new S2COpenTradePacket(Mode.TRADE_FAIL, shopId, entryId, reason, errorKey, shortfallLines);
+    }
+
     public void encode(FriendlyByteBuf buf) {
         buf.writeEnum(mode);
         buf.writeUtf(shopId);
@@ -183,6 +200,15 @@ public class S2COpenTradePacket {
                 buf.writeEnum(failReason != null ? failReason : FailReason.GENERIC);
             }
             buf.writeUtf(errorKey != null ? errorKey : "");
+            if (mode == Mode.TRADE_FAIL) {
+                buf.writeVarInt(shortfallLines.size());
+                for (CostShortfallLine line : shortfallLines) {
+                    buf.writeComponent(line.label());
+                    buf.writeVarInt(line.required());
+                    buf.writeVarInt(line.owned());
+                    buf.writeVarInt(line.missing());
+                }
+            }
         }
     }
 
@@ -222,7 +248,20 @@ public class S2COpenTradePacket {
                     purchaseGTs, purchaseDTs, cdTypes, cdValues, resetTicks, vis, canBuy,
                     openSoundId, closeSoundId);
         } else if (mode == Mode.TRADE_FAIL) {
-            return new S2COpenTradePacket(mode, shopId, buf.readUtf(), buf.readEnum(FailReason.class), buf.readUtf());
+            String entryId = buf.readUtf();
+            FailReason failReason = buf.readEnum(FailReason.class);
+            String errorKey = buf.readUtf();
+            int shortfallCount = buf.readVarInt();
+            List<CostShortfallLine> shortfalls = new ArrayList<>(shortfallCount);
+            for (int i = 0; i < shortfallCount; i++) {
+                shortfalls.add(new CostShortfallLine(
+                        buf.readComponent(),
+                        buf.readVarInt(),
+                        buf.readVarInt(),
+                        buf.readVarInt()
+                ));
+            }
+            return new S2COpenTradePacket(mode, shopId, entryId, failReason, errorKey, shortfalls);
         } else if (mode == Mode.TRADE_SUCCESS) {
             return new S2COpenTradePacket(mode, shopId, buf.readUtf(), null, buf.readUtf());
         } else {
@@ -287,6 +326,7 @@ public class S2COpenTradePacket {
 
                 case TRADE_FAIL -> {
                     ClientTradeCache.INSTANCE.handlePurchaseResult(pkt.shopId, pkt.entryId, false, pkt.failReason);
+                    ClientTradeCache.INSTANCE.recordShortfall(pkt.shopId, pkt.entryId, pkt.shortfallLines);
                     if (mc.screen instanceof AbstractTradeScreen ts) {
                         ts.onTradeFail(pkt.failReason, pkt.errorKey);
                     }

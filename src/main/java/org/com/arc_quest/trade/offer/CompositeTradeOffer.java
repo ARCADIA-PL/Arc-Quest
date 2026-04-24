@@ -2,8 +2,10 @@ package org.com.arc_quest.trade.offer;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -56,6 +58,15 @@ public final class CompositeTradeOffer implements ITradeOffer {
             builder.append(children.get(i).describe());
         }
         return builder;
+    }
+
+    @Override
+    public List<CostShortfallLine> buildShortfallLines(ServerPlayer player) {
+        List<CostShortfallLine> lines = new ArrayList<>();
+        for (ITradeOffer child : children) {
+            lines.addAll(child.buildShortfallLines(player));
+        }
+        return lines;
     }
 
     @Override
