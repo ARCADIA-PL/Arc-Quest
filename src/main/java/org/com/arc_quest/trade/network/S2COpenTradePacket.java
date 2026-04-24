@@ -288,7 +288,7 @@ public class S2COpenTradePacket {
                 case TRADE_FAIL -> {
                     ClientTradeCache.INSTANCE.handlePurchaseResult(pkt.shopId, pkt.entryId, false, pkt.failReason);
                     if (mc.screen instanceof AbstractTradeScreen ts) {
-                        ts.onTradeFail(pkt.errorKey);
+                        ts.onTradeFail(pkt.failReason, pkt.errorKey);
                     }
                 }
 

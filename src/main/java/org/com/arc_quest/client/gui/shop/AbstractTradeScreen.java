@@ -18,6 +18,7 @@ import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.com.arc_quest.trade.network.ClientTradeCache;
+import org.com.arc_quest.trade.network.S2COpenTradePacket;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
 import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
@@ -92,7 +93,7 @@ public abstract class AbstractTradeScreen extends Screen {
         feedbackScale = 1.15f;
     }
 
-    public void onTradeFail(String key) {
+    public void onTradeFail(S2COpenTradePacket.FailReason _reason, String _errorKey) {
         feedbackSuccess = false;
         feedbackAnim = 1f;
         feedbackShake = 6f;
