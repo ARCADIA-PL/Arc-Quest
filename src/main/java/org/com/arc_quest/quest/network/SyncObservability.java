@@ -16,6 +16,9 @@ public final class SyncObservability {
     private static final boolean VERBOSE_LOG = Boolean.parseBoolean(
             System.getProperty("arcquest.sync.log.verbose", "false")
     );
+    private static final boolean TRACE_LOG = Boolean.parseBoolean(
+            System.getProperty("arcquest.sync.trace", "false")
+    );
 
     private static final Map<String, AtomicLong> REQUEST_COUNTS = new ConcurrentHashMap<>();
     private static final Map<String, AtomicLong> SENT_COUNTS = new ConcurrentHashMap<>();
@@ -46,6 +49,25 @@ public final class SyncObservability {
         long sent = current(SENT_COUNTS, key);
         long dropped = increment(DROPPED_COUNTS, key);
         logVerbose("dropped", domain, shopId, playerName, fpChanged, req, sent, dropped);
+    }
+
+    /**
+     * 轻量链路追踪：用于串联 open -> sync -> action -> result。
+     */
+    public static void trace(String domain,
+                             String shopId,
+                             String playerName,
+                             String stage,
+                             String reason) {
+        if (!TRACE_LOG) {
+            return;
+        }
+        LOGGER.info("[SyncTrace] domain={} shopId={} player={} stage={} reason={}",
+                domain,
+                shopId,
+                playerName,
+                stage,
+                reason == null ? "-" : reason);
     }
 
     private static long increment(Map<String, AtomicLong> map, String key) {

@@ -78,6 +78,8 @@ public final class GachaScreenOpener {
                 )
         );
 
+        SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), "open", "open_gacha_screen");
+
         markGachaSynced(player, shop.getShopId(), snapshot);
         LOGGER.debug("[Gacha] OPEN push: player={}, shop={}", player.getName().getString(), shop.getShopId());
         SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
@@ -141,6 +143,7 @@ public final class GachaScreenOpener {
 
         if (dedupe && !shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
             SyncObservability.recordDropped("gacha", shop.getShopId(), player.getName().getString(), false);
+            SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), "sync_dropped", reason);
             LOGGER.debug("[Gacha] SYNC dropped by fingerprint: player={}, shop={}, reason={}",
                     player.getName().getString(), shop.getShopId(), reason);
             return;
@@ -163,6 +166,8 @@ public final class GachaScreenOpener {
                         snapshot.shortfallLines()
                 )
         );
+
+        SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), "sync_sent", reason);
 
         LOGGER.debug("[Gacha] SYNC push: player={}, shop={}, reason={}",
                 player.getName().getString(), shop.getShopId(), reason);

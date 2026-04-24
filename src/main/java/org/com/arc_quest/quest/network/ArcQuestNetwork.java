@@ -263,6 +263,7 @@ public final class ArcQuestNetwork {
     private static void pushSyncForActiveUIs(ServerPlayer player,
                                              @Nullable IQuestCapability cap,
                                              String reason) {
+        SyncObservability.trace("quest", "active_ui", player.getName().getString(), "quest_sync_trigger", reason);
         C2SRequestTradePacket.pushSyncForActiveShop(player, reason);
 
         IQuestCapability resolved = (cap != null) ? cap : QuestCapabilityProvider.getOrNull(player);
