@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import org.com.arc_quest.client.gui.gacha.GachaScreen;
 import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.slf4j.Logger;
 
@@ -59,16 +60,22 @@ public class S2CDrawFailedPacket {
         }
         return new S2CDrawFailedPacket(shopId, failReason, shortfalls);
     }
-    
+
     public static void handle(S2CDrawFailedPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
-            
+
             LOGGER.info("[Gacha-Failed] Player {} draw failed for shop {}: reason={}",
-                mc.player.getName().getString(), pkt.shopId, pkt.failReason);
-            
+                    mc.player.getName().getString(), pkt.shopId, pkt.failReason);
+
             ClientGachaCache.INSTANCE.recordDrawFailure(pkt.shopId, pkt.failReason, pkt.shortfallLines);
+
+            if (mc.screen instanceof GachaScreen gachaScreen) {
+                if (gachaScreen.getShopId().equals(pkt.shopId)) {
+                    gachaScreen.onDrawFailedAndReturnToPreview();
+                }
+            }
         });
         ctx.get().setPacketHandled(true);
     }

@@ -52,6 +52,11 @@ public class GachaPreviewPanel {
 
     private int snapshotPityProgress = -1;
     private List<ClientGachaCache.DrawRecord> snapshotHistory = new ArrayList<>();
+    private boolean snapshotCanDraw = true;
+    private int snapshotRemainingDraws = -1;
+    private String snapshotFailReason = null;
+    private List<CostShortfallLine> snapshotShortfall = new ArrayList<>();
+    private String snapshotCooldownText = "";
 
     public GachaPreviewPanel(GachaScreen parent) {
         this.parent = parent;
@@ -67,8 +72,17 @@ public class GachaPreviewPanel {
     }
 
     public void updateDataSnapshot() {
-        this.snapshotPityProgress = ClientGachaCache.INSTANCE.getPityProgress(parent.getShopId());
-        this.snapshotHistory = new ArrayList<>(ClientGachaCache.INSTANCE.getDrawHistory(parent.getShopId()));
+        String shopId = parent.getShopId();
+        ClientGachaCache cache = ClientGachaCache.INSTANCE;
+
+        this.snapshotPityProgress = cache.getPityProgress(shopId);
+        this.snapshotHistory = new ArrayList<>(cache.getDrawHistory(shopId));
+
+        this.snapshotCanDraw = cache.canDraw(shopId);
+        this.snapshotRemainingDraws = cache.getRemainingDraws(shopId);
+        this.snapshotFailReason = cache.getLastFailReason(shopId);
+        this.snapshotShortfall = new ArrayList<>(cache.getLastShortfall(shopId));
+        this.snapshotCooldownText = cache.getCooldownText(shopId);
     }
 
     private record Layout(int termW, int termX, int gridX, int gridW, int mainCX, int topH, int gridY, int gridH, int btnW, int btnH, int btnX, int btnY) {}

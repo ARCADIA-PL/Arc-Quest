@@ -113,6 +113,18 @@ public class GachaScreen extends Screen {
         }
     }
 
+    public void onDrawFailedAndReturnToPreview() {
+        if (this.currentPhase == Phase.WAITING_SERVER) {
+            LOGGER.info("[Gacha-Client] Draw failed, returning to preview: shop={}", shopId);
+            this.currentPhase = Phase.PREVIEW;
+            this.hasPendingDraw = false;
+            this.requestTimestamp = 0;
+            this.previewPanel.updateDataSnapshot();
+        } else {
+            this.previewPanel.updateDataSnapshot();
+        }
+    }
+
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
         long now = Util.getMillis();
