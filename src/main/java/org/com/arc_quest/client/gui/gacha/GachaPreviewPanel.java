@@ -745,22 +745,9 @@ public class GachaPreviewPanel {
 
         int btnTextAlpha = (int)(255 * alpha);
         if (btnTextAlpha > 5) {
-            String text;
-            if (waiting) {
-                text = Component.translatable("arc_quest.gui.gacha.btn.decrypting").getString();
-            } else if (onCooldown) {
-                text = cooldownText == null || cooldownText.isEmpty()
-                        ? Component.translatable("arc_quest.gui.gacha.btn.cooldown").getString()
-                        : Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cooldownText).getString();
-            } else if (maxed) {
-                text = Component.translatable("arc_quest.gui.trade.btn.empty").getString();
-            } else if (locked) {
-                text = Component.translatable("arc_quest.gui.trade.btn.locked").getString();
-            } else if (insufficientFunds) {
-                text = Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds").getString();
-            } else {
-                text = Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle").getString();
-            }
+            Component text = waiting
+                    ? Component.translatable("arc_quest.gui.gacha.btn.decrypting")
+                    : HudRenderUtil.resolveGachaFailButtonText(lastFailReason, onCooldown, maxed, locked, insufficientFunds, cooldownText);
 
             g.drawCenteredString(
                     Minecraft.getInstance().font,

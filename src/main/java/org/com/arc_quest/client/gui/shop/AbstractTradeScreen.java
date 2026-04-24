@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
@@ -59,6 +60,9 @@ public abstract class AbstractTradeScreen extends Screen {
     private float feedbackShake = 0f;
     protected float shortfallTooltipTimer = 0f;
     private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
+    protected Component lastTradeFailMessage = Component.empty();
+    protected float tradeFailMessageTimer = 0f;
+    private static final float TRADE_FAIL_MESSAGE_DURATION = 1.8f;
     private int authorityRefreshTicker = 0;
     private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 10;
 
@@ -105,6 +109,8 @@ public abstract class AbstractTradeScreen extends Screen {
         feedbackSuccess = false;
         feedbackAnim = 1f;
         feedbackShake = 6f;
+        this.lastTradeFailMessage = HudRenderUtil.resolveTradeFailMessage(errorKey, reason != null ? reason.name() : null);
+        this.tradeFailMessageTimer = TRADE_FAIL_MESSAGE_DURATION;
         if (isCannotAffordFailure(reason, errorKey)) {
             shortfallTooltipTimer = SHORTFALL_TOOLTIP_DURATION;
         }
@@ -199,6 +205,9 @@ public abstract class AbstractTradeScreen extends Screen {
         if (shortfallTooltipTimer > 0f && dt > 0f) {
             shortfallTooltipTimer = Math.max(0f, shortfallTooltipTimer - dt);
         }
+        if (tradeFailMessageTimer > 0f && dt > 0f) {
+            tradeFailMessageTimer = Math.max(0f, tradeFailMessageTimer - dt);
+        }
 
         transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.14f : getOpenAnimSpeed(), dt);
         if (isClosing && transitionAnim <= 0.01f) {
@@ -215,6 +224,7 @@ public abstract class AbstractTradeScreen extends Screen {
         if (safeAlpha <= 5) return;
 
         renderContent(g, mx, my, pt);
+        renderTradeFailToast(g);
 
         int newHoveredIndex = getHoveredEntryIndex(mx, my);
 
@@ -249,6 +259,29 @@ public abstract class AbstractTradeScreen extends Screen {
             animBgW = 0;
             activeTooltipIndex = -1;
         }
+    }
+
+    private void renderTradeFailToast(GuiGraphics g) {
+        if (tradeFailMessageTimer <= 0f || lastTradeFailMessage == null || lastTradeFailMessage.getString().isEmpty()) {
+            return;
+        }
+
+        float alpha = Math.min(1f, tradeFailMessageTimer / TRADE_FAIL_MESSAGE_DURATION);
+        int safeA = (int) (210 * alpha * effectiveAlpha);
+        if (safeA <= 5) {
+            return;
+        }
+
+        String msg = lastTradeFailMessage.getString();
+        int padX = 10;
+        int w = font.width(msg) + padX * 2;
+        int h = 18;
+        int x = (width - w) / 2;
+        int y = Math.max(8, height / 2 - 90);
+
+        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x160A0A, safeA));
+        HudAnimUtil.drawFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(0xFF6666, safeA));
+        g.drawCenteredString(font, msg, x + w / 2, y + 5, HudAnimUtil.withAlpha(0xFFD0D0, safeA));
     }
 
     private static class TooltipData {
