@@ -573,14 +573,12 @@ public class GachaPreviewPanel {
     }
 
     private void renderGlassButton(GuiGraphics g, Layout l, int mx, int my, float dt, float alpha, boolean waiting, boolean isWiping, boolean isClosing) {
-        String shopId = parent.getShopId();
-
-        boolean onCooldown = ClientGachaCache.INSTANCE.isOnCooldown(shopId);
-        boolean serverCanDraw = ClientGachaCache.INSTANCE.canDraw(shopId);
-        int remainingDraws = ClientGachaCache.INSTANCE.getRemainingDraws(shopId);
-        String cooldownText = ClientGachaCache.INSTANCE.getCooldownText(shopId);
-        String lastFailReason = ClientGachaCache.INSTANCE.getLastFailReason(shopId);
-        boolean hasShortfall = !ClientGachaCache.INSTANCE.getLastShortfall(shopId).isEmpty();
+        boolean onCooldown = snapshotCooldownText != null && !snapshotCooldownText.isEmpty();
+        boolean serverCanDraw = snapshotCanDraw;
+        int remainingDraws = snapshotRemainingDraws;
+        String cooldownText = snapshotCooldownText;
+        String lastFailReason = snapshotFailReason;
+        boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
 
         boolean canDraw = !waiting && serverCanDraw && !onCooldown;
         boolean unavailable = !waiting && !canDraw;
@@ -637,8 +635,8 @@ public class GachaPreviewPanel {
     }
 
     private void renderShortfallTooltip(GuiGraphics g, Layout l, float alpha, int drawX) {
-        List<CostShortfallLine> shortfalls = ClientGachaCache.INSTANCE.getLastShortfall(parent.getShopId());
-        if (shortfallTooltipAnim <= 0f || shortfalls.isEmpty()) {
+        List<CostShortfallLine> shortfalls = snapshotShortfall;
+        if (shortfallTooltipAnim <= 0f || shortfalls == null || shortfalls.isEmpty()) {
             return;
         }
 
@@ -651,7 +649,13 @@ public class GachaPreviewPanel {
         List<String> lines = new ArrayList<>();
         lines.add(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary").getString());
         for (CostShortfallLine line : shortfalls) {
-            lines.add(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_line", line.label(), line.missing(), line.required(), line.owned()).getString());
+            lines.add(Component.translatable(
+                    "arc_quest.gui.trade.tooltip.shortfall_line",
+                    line.label(),
+                    line.missing(),
+                    line.required(),
+                    line.owned()
+            ).getString());
         }
 
         int padding = 8;
@@ -679,14 +683,13 @@ public class GachaPreviewPanel {
     public boolean mouseClicked(double mx, double my) {
         Layout l = getLayout();
         if (mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH()) {
-            String shopId = parent.getShopId();
-
-            boolean onCooldown = ClientGachaCache.INSTANCE.isOnCooldown(shopId);
-            boolean serverCanDraw = ClientGachaCache.INSTANCE.canDraw(shopId);
+            boolean onCooldown = snapshotCooldownText != null && !snapshotCooldownText.isEmpty();
+            boolean serverCanDraw = snapshotCanDraw;
 
             if (onCooldown || !serverCanDraw) {
-                feedbackSuccess = false; feedbackAnim = 1f;
-                if (!serverCanDraw && !ClientGachaCache.INSTANCE.getLastShortfall(shopId).isEmpty()) {
+                feedbackSuccess = false;
+                feedbackAnim = 1f;
+                if (!serverCanDraw && snapshotShortfall != null && !snapshotShortfall.isEmpty()) {
                     shortfallTooltipAnim = 1f;
                 }
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
