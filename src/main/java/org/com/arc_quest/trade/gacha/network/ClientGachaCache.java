@@ -40,7 +40,13 @@ public final class ClientGachaCache {
      * 更新抽奖会话数据（基础版本）。
      */
     public void updateSession(String shopId, int pityCounter, int totalDraws) {
-        gachaSessions.put(shopId, new GachaSessionData(pityCounter, totalDraws));
+        GachaSessionData newSession = createSessionSnapshot(
+                pityCounter, totalDraws, true, -1,
+                0, 0, 0,
+                0, 0, 0
+        );
+        copyRetainedState(gachaSessions.get(shopId), newSession);
+        gachaSessions.put(shopId, newSession);
     }
 
     /**
@@ -49,41 +55,22 @@ public final class ClientGachaCache {
     public void updateSession(String shopId, int pityCounter, int totalDraws,
                               long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
                               int cooldownType, long cooldownValue, int resetTimeTicks) {
-        // 保留现有的 drawHistory 和最近抽奖结果字段，只更新其他字段
         GachaSessionData existingSession = gachaSessions.get(shopId);
-        ArrayList<DrawRecord> existingHistory = existingSession != null 
-            ? new ArrayList<>(existingSession.drawHistory) 
-            : new ArrayList<>();
-        
-        // 保留最近抽奖结果字段
-        String existingLastDrawnItemId = existingSession != null ? existingSession.lastDrawnItemId : null;
-        String existingLastRarityName = existingSession != null ? existingSession.lastRarityName : null;
-        int existingLastActualCount = existingSession != null ? existingSession.lastActualCount : 0;
-        boolean existingLastPityTriggered = existingSession != null ? existingSession.lastPityTriggered : false;
-        long existingLastDrawTime = existingSession != null ? existingSession.lastDrawTime : 0;
-        String existingLastFailReason = existingSession != null ? existingSession.lastFailReason : null;
-        
-        // 【新增】保留 canDraw 与 remainingDraws 状态
-        boolean existingCanDraw = existingSession != null ? existingSession.canDraw : true;
-        int existingRemainingDraws = existingSession != null ? existingSession.remainingDraws : -1;
-        
-        GachaSessionData newSession = new GachaSessionData(
-            pityCounter, totalDraws, existingCanDraw, existingRemainingDraws,
-            lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
-            cooldownType, cooldownValue, resetTimeTicks
+
+        GachaSessionData newSession = createSessionSnapshot(
+                pityCounter,
+                totalDraws,
+                existingSession != null ? existingSession.canDraw : true,
+                existingSession != null ? existingSession.remainingDraws : -1,
+                lastDrawRealTime,
+                lastDrawGameTime,
+                lastDrawDayTime,
+                cooldownType,
+                cooldownValue,
+                resetTimeTicks
         );
-        
-        // 恢复历史记录
-        newSession.drawHistory.addAll(existingHistory);
-        
-        // 恢复最近抽奖结果字段
-        newSession.lastDrawnItemId = existingLastDrawnItemId;
-        newSession.lastRarityName = existingLastRarityName;
-        newSession.lastActualCount = existingLastActualCount;
-        newSession.lastPityTriggered = existingLastPityTriggered;
-        newSession.lastDrawTime = existingLastDrawTime;
-        newSession.lastFailReason = existingLastFailReason;
-        
+
+        copyRetainedState(existingSession, newSession);
         gachaSessions.put(shopId, newSession);
     }
     
@@ -94,37 +81,13 @@ public final class ClientGachaCache {
                               int remainingDraws,
                               long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
                               int cooldownType, long cooldownValue, int resetTimeTicks) {
-        // 保留现有的 drawHistory 和最近抽奖结果字段，只更新其他字段
-        GachaSessionData existingSession = gachaSessions.get(shopId);
-        ArrayList<DrawRecord> existingHistory = existingSession != null 
-            ? new ArrayList<>(existingSession.drawHistory) 
-            : new ArrayList<>();
-        
-        // 保留最近抽奖结果字段
-        String existingLastDrawnItemId = existingSession != null ? existingSession.lastDrawnItemId : null;
-        String existingLastRarityName = existingSession != null ? existingSession.lastRarityName : null;
-        int existingLastActualCount = existingSession != null ? existingSession.lastActualCount : 0;
-        boolean existingLastPityTriggered = existingSession != null ? existingSession.lastPityTriggered : false;
-        long existingLastDrawTime = existingSession != null ? existingSession.lastDrawTime : 0;
-        String existingLastFailReason = existingSession != null ? existingSession.lastFailReason : null;
-        
-        GachaSessionData newSession = new GachaSessionData(
-            pityCounter, totalDraws, canDraw, remainingDraws,
-            lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
-            cooldownType, cooldownValue, resetTimeTicks
+        GachaSessionData newSession = createSessionSnapshot(
+                pityCounter, totalDraws, canDraw, remainingDraws,
+                lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+                cooldownType, cooldownValue, resetTimeTicks
         );
-        
-        // 恢复历史记录
-        newSession.drawHistory.addAll(existingHistory);
-        
-        // 恢复最近抽奖结果字段
-        newSession.lastDrawnItemId = existingLastDrawnItemId;
-        newSession.lastRarityName = existingLastRarityName;
-        newSession.lastActualCount = existingLastActualCount;
-        newSession.lastPityTriggered = existingLastPityTriggered;
-        newSession.lastDrawTime = existingLastDrawTime;
-        newSession.lastFailReason = existingLastFailReason;
-        
+
+        copyRetainedState(gachaSessions.get(shopId), newSession);
         gachaSessions.put(shopId, newSession);
     }
     
@@ -136,26 +99,55 @@ public final class ClientGachaCache {
                                          long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
                                          int cooldownType, long cooldownValue, int resetTimeTicks,
                                          List<DrawRecord> fullHistory) {
-        GachaSessionData newSession = new GachaSessionData(
-            pityCounter, totalDraws, canDraw, remainingDraws,
-            lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
-            cooldownType, cooldownValue, resetTimeTicks
+        GachaSessionData newSession = createSessionSnapshot(
+                pityCounter, totalDraws, canDraw, remainingDraws,
+                lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+                cooldownType, cooldownValue, resetTimeTicks
         );
-        
-        // 直接设置完整历史记录（不保留旧的）
+
         newSession.drawHistory.addAll(fullHistory);
-        
-        // 如果有历史记录，恢复最近一次的结果
-        if (!fullHistory.isEmpty()) {
-            DrawRecord lastRecord = fullHistory.get(fullHistory.size() - 1);
-            newSession.lastDrawnItemId = lastRecord.itemId();
-            newSession.lastRarityName = lastRecord.rarityName();
-            newSession.lastActualCount = lastRecord.actualCount();
-            newSession.lastPityTriggered = lastRecord.pityTriggered();
-            newSession.lastDrawTime = lastRecord.drawTime();
-        }
-        
+        applyLatestHistoryState(newSession, fullHistory);
+
         gachaSessions.put(shopId, newSession);
+    }
+
+    private GachaSessionData createSessionSnapshot(int pityCounter, int totalDraws, boolean canDraw,
+                                                   int remainingDraws,
+                                                   long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
+                                                   int cooldownType, long cooldownValue, int resetTimeTicks) {
+        return new GachaSessionData(
+                pityCounter, totalDraws, canDraw, remainingDraws,
+                lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
+                cooldownType, cooldownValue, resetTimeTicks
+        );
+    }
+
+    private void copyRetainedState(@Nullable GachaSessionData existingSession, GachaSessionData newSession) {
+        if (existingSession == null) {
+            return;
+        }
+
+        newSession.drawHistory.addAll(existingSession.drawHistory);
+        newSession.lastDrawnItemId = existingSession.lastDrawnItemId;
+        newSession.lastRarityName = existingSession.lastRarityName;
+        newSession.lastActualCount = existingSession.lastActualCount;
+        newSession.lastPityTriggered = existingSession.lastPityTriggered;
+        newSession.lastDrawTime = existingSession.lastDrawTime;
+        newSession.lastFailReason = existingSession.lastFailReason;
+        newSession.lastShortfallLines = existingSession.lastShortfallLines;
+    }
+
+    private void applyLatestHistoryState(GachaSessionData session, List<DrawRecord> fullHistory) {
+        if (fullHistory.isEmpty()) {
+            return;
+        }
+
+        DrawRecord lastRecord = fullHistory.get(fullHistory.size() - 1);
+        session.lastDrawnItemId = lastRecord.itemId();
+        session.lastRarityName = lastRecord.rarityName();
+        session.lastActualCount = lastRecord.actualCount();
+        session.lastPityTriggered = lastRecord.pityTriggered();
+        session.lastDrawTime = lastRecord.drawTime();
     }
 
     /**
