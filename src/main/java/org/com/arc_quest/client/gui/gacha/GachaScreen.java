@@ -194,18 +194,12 @@ public class GachaScreen extends Screen {
             if (currentPhase == Phase.ROLLING && rollerPanel != null && !switchingToResult) {
                 LOGGER.info("[Gacha-Client] Forcing roller panel exit animation");
                 rollerPanel.onScreenClose();
-                new Thread(() -> {
-                    try { Thread.sleep(350); } catch (InterruptedException e) {}
-                    minecraft.execute(this::confirmDrawAndSync);
-                }).start();
             }
 
             if (switchingToResult && GachaResultRenderer.INSTANCE.isActive()) {
                 LOGGER.info("[Gacha-Client] Forcing result renderer close and confirm");
                 GachaResultRenderer.INSTANCE.forceCloseAndConfirm();
-            }
-
-            if (hasPendingDraw || currentPhase == Phase.WAITING_SERVER || currentPhase == Phase.ROLLING) {
+            } else if (hasPendingDraw || currentPhase == Phase.WAITING_SERVER || currentPhase == Phase.ROLLING) {
                 LOGGER.info("[Gacha-Client] Emergency fallback: forcing draw confirmation");
                 hasPendingDraw = true;
                 confirmDrawAndSync();

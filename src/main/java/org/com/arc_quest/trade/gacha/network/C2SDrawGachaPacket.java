@@ -165,6 +165,7 @@ public class C2SDrawGachaPacket {
                     player,
                     pkt.shopId,
                     drawResult.item(),
+                    actualCount,
                     drawResult.pityTriggered(),
                     newPityCounter
                 );

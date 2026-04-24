@@ -32,12 +32,12 @@ public class PendingDrawManager {
     /**
      * 暂存抽奖结果（不发放奖励）。
      * <p>
-     * 【并发安全】如果该玩家已有待确认数据，拒绝新的抽奖请求，
-     * 防止玩家快速连点导致奖励被覆盖。
+     * 使用原子写入避免同一玩家的待确认结果被并发覆盖。
      * 
      * @param player 玩家
      * @param shopId 商店ID
      * @param drawnItem 抽中的物品
+     * @param actualCount 本次抽奖权威数量
      * @param pityTriggered 是否触发保底
      * @param newPityCounter 新的保底计数
      * @return true = 成功暂存，false = 已有待确认数据（拒绝）
@@ -46,28 +46,27 @@ public class PendingDrawManager {
         ServerPlayer player,
         String shopId,
         GachaItem drawnItem,
+        int actualCount,
         boolean pityTriggered,
         int newPityCounter
     ) {
         UUID playerId = player.getUUID();
-        
-        // 【并发防护】检查是否已有待确认数据
-        if (PENDING_DRAWS.containsKey(playerId)) {
+
+        PendingDrawData data = new PendingDrawData(
+            shopId,
+            drawnItem,
+            actualCount,
+            pityTriggered,
+            newPityCounter,
+            System.currentTimeMillis()
+        );
+        if (PENDING_DRAWS.putIfAbsent(playerId, data) != null) {
             Arc_quest.LOGGER.warn(
                 "[PendingDraw] Player {} already has pending draw, rejecting new request",
                 player.getName().getString()
             );
             return false;
         }
-        
-        PendingDrawData data = new PendingDrawData(
-            shopId,
-            drawnItem,
-            pityTriggered,
-            newPityCounter,
-            System.currentTimeMillis()
-        );
-        PENDING_DRAWS.put(playerId, data);
         return true;
     }
     
@@ -106,7 +105,7 @@ public class PendingDrawManager {
         }
         
         // 真正发放奖励
-        grantReward(player, data.drawnItem);
+        grantReward(player, data.drawnItem, data.actualCount);
         
         // 【新增】记录抽奖历史到服务端能力（持久化）
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
@@ -115,7 +114,7 @@ public class PendingDrawManager {
                 data.shopId,
                 data.drawnItem.getItemId(),
                 data.drawnItem.getRarity().getName(),
-                data.drawnItem.calculateActualCount(),
+                data.actualCount,
                 data.pityTriggered,
                 System.currentTimeMillis()
             );
@@ -125,7 +124,7 @@ public class PendingDrawManager {
             "[PendingDraw] Granted reward to player {}: {} x{}",
             player.getName().getString(),
             data.drawnItem.getItemId(),
-            data.drawnItem.calculateActualCount()
+            data.actualCount
         );
         return true;
     }
@@ -164,10 +163,9 @@ public class PendingDrawManager {
     /**
      * 发放奖励给玩家。
      */
-    private static void grantReward(ServerPlayer player, GachaItem item) {
+    private static void grantReward(ServerPlayer player, GachaItem item, int actualCount) {
         var reward = item.getReward();
         if (reward instanceof ItemTradeOffer itemReward) {
-            int actualCount = item.calculateActualCount();
             ItemStack rewardStack = new ItemStack(itemReward.getItem(), actualCount);
             
             if (!player.getInventory().add(rewardStack)) {
@@ -188,14 +186,16 @@ public class PendingDrawManager {
     public static class PendingDrawData {
         public final String shopId;
         public final GachaItem drawnItem;
+        public final int actualCount;
         public final boolean pityTriggered;
         public final int newPityCounter;
         public final long timestamp;
         
-        public PendingDrawData(String shopId, GachaItem drawnItem, 
+        public PendingDrawData(String shopId, GachaItem drawnItem, int actualCount,
                               boolean pityTriggered, int newPityCounter, long timestamp) {
             this.shopId = shopId;
             this.drawnItem = drawnItem;
+            this.actualCount = actualCount;
             this.pityTriggered = pityTriggered;
             this.newPityCounter = newPityCounter;
             this.timestamp = timestamp;
