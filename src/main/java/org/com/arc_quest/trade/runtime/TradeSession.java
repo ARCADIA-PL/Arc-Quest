@@ -13,6 +13,7 @@ import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.network.RejectCodeDictionary;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -44,7 +45,7 @@ public final class TradeSession {
     public TradeResult executeTrade(String entryId) {
         TradeEntry entry = shop.getEntry(entryId);
         if (entry == null) {
-            return TradeResult.fail("arc_quest.trade.error.not_found");
+            return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.UNKNOWN));
         }
 
         IQuestCapability cap = getCap();
@@ -58,22 +59,25 @@ public final class TradeSession {
         if (!TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry)) {
             // 细分错误原因（统一优先级：cooldown > limit > condition > afford）
             if (!TradeEntryStateResolver.isVisible(player, cap, entry)) {
-                return TradeResult.fail("arc_quest.trade.error.not_visible");
+                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_NOT_VISIBLE));
             }
             if (TradeEntryStateResolver.isOnCooldown(player, cap, shop.getShopId(), entry)) {
-                return TradeResult.fail("arc_quest.trade.error.on_cooldown");
+                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_ON_COOLDOWN));
             }
             if (TradeEntryStateResolver.isPurchaseLimitReached(cap, shop.getShopId(), entry)) {
-                return TradeResult.fail("arc_quest.trade.error.max_purchases");
+                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_MAX_DRAWS_REACHED));
             }
             // 默认：购买资格条件不满足
-            return TradeResult.fail("arc_quest.trade.error.condition_not_met");
+            return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_CONDITION_NOT_MET));
         }
 
         for (ITradeOffer cost : entry.getCosts()) {
             if (!cost.canAfford(player)) {
                 LOGGER.warn("[Trade]  Cannot afford cost: entry={}, cost={}", entryId, cost);
-                return TradeResult.fail("arc_quest.trade.error.cannot_afford", collectShortfallLines(entry.getCosts()));
+                return TradeResult.fail(
+                        RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.CANNOT_AFFORD),
+                        collectShortfallLines(entry.getCosts())
+                );
             }
         }
 

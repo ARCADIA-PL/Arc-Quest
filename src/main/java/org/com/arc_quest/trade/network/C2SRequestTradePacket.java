@@ -250,12 +250,13 @@ public class C2SRequestTradePacket {
 
         S2COpenTradePacket.FailReason reason = S2COpenTradePacket.FailReason.GENERIC;
         String errorKey = result.errorKey();
-        if (errorKey != null) {
-            String normalizedKey = errorKey.toLowerCase(Locale.ROOT);
-            if (normalizedKey.contains("cooldown")) reason = S2COpenTradePacket.FailReason.COOLDOWN;
-            else if (normalizedKey.contains("max_purchases") || normalizedKey.contains("limit")) reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
-            else if (normalizedKey.contains("condition") || normalizedKey.contains("visible")) reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
-            else if (normalizedKey.contains("afford") || normalizedKey.contains("insufficient")) reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
+        RejectCodeDictionary.Code mappedCode = RejectCodeDictionary.fromTradeErrorKey(errorKey);
+        switch (mappedCode) {
+            case SESSION_ON_COOLDOWN -> reason = S2COpenTradePacket.FailReason.COOLDOWN;
+            case SESSION_MAX_DRAWS_REACHED -> reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
+            case SESSION_NOT_VISIBLE, SESSION_CONDITION_NOT_MET -> reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
+            case CANNOT_AFFORD -> reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
+            default -> reason = S2COpenTradePacket.FailReason.GENERIC;
         }
 
         S2COpenTradePacket response = result.succeeded()

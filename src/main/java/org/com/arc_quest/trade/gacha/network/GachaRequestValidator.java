@@ -55,17 +55,7 @@ public final class GachaRequestValidator {
     }
 
     public static RejectCodeDictionary.Code fromDrawFailedReasonName(@Nullable String failedReasonName) {
-        if (failedReasonName == null || failedReasonName.isEmpty()) {
-            return RejectCodeDictionary.Code.UNKNOWN;
-        }
-        return switch (failedReasonName) {
-            case "NOT_VISIBLE" -> RejectCodeDictionary.Code.SESSION_NOT_VISIBLE;
-            case "MAX_DRAWS_REACHED" -> RejectCodeDictionary.Code.SESSION_MAX_DRAWS_REACHED;
-            case "ON_COOLDOWN" -> RejectCodeDictionary.Code.SESSION_ON_COOLDOWN;
-            case "CONDITION_NOT_MET" -> RejectCodeDictionary.Code.SESSION_CONDITION_NOT_MET;
-            case "CANNOT_AFFORD" -> RejectCodeDictionary.Code.CANNOT_AFFORD;
-            default -> RejectCodeDictionary.Code.UNKNOWN;
-        };
+        return RejectCodeDictionary.fromGachaFailReasonName(failedReasonName);
     }
 
     public static String toErrorKey(RejectCodeDictionary.Code code) {
