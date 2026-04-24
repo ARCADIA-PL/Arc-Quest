@@ -46,7 +46,18 @@ public final class SyncObservability {
         QUEST_ABANDON_SUCCESS("quest_abandon_success"),
         QUEST_ABANDON_REJECTED("quest_abandon_rejected"),
         QUEST_CHOOSE_SUCCESS("quest_choose_success"),
-        QUEST_CHOOSE_REJECTED("quest_choose_rejected");
+        QUEST_CHOOSE_REJECTED("quest_choose_rejected"),
+
+        DIALOGUE_OPEN("dialogue_open"),
+        DIALOGUE_CHOICE("dialogue_choice"),
+        DIALOGUE_CHOICE_NEXT_NODE("dialogue_choice_next_node"),
+        DIALOGUE_CHOICE_END("dialogue_choice_end"),
+        DIALOGUE_AUTO_ADVANCE("dialogue_auto_advance"),
+        DIALOGUE_AUTO_ADVANCE_NEXT_NODE("dialogue_auto_advance_next_node"),
+        DIALOGUE_AUTO_ADVANCE_END("dialogue_auto_advance_end"),
+        DIALOGUE_RESTORE("dialogue_restore"),
+        DIALOGUE_RESTORE_NEXT_NODE("dialogue_restore_next_node"),
+        DIALOGUE_RESTORE_NO_SESSION("dialogue_restore_no_session");
 
         private final String value;
 
