@@ -163,7 +163,21 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
             int bgA = (int) ((hov && canBuy ? 0x77 : 0x44) * clampedEase * effectiveAlpha);
             int bdA = (int) ((hov && canBuy ? 0xCC : 0x66) * clampedEase * effectiveAlpha);
-            if (gi == lastClickedGi && feedbackAnim > 0) bdA = Math.min(255, bdA + (int)(170 * feedbackAnim * effectiveAlpha));
+            
+            boolean hasShortfall = shortfallTooltipTimer > 0f && !ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId()).isEmpty();
+
+            if (gi == lastClickedGi) {
+                if (feedbackSuccess && feedbackAnim > 0) {
+                    bdA = Math.min(255, bdA + (int)(170 * feedbackAnim * effectiveAlpha));
+                    bRgb = lerpColor(bRgb, 0x55FF55, feedbackAnim);
+                } else if (!feedbackSuccess && (feedbackAnim > 0 || hasShortfall)) {
+                    float syncBreath = (float) (Math.sin(Util.getMillis() / 150.0) * 0.5 + 0.5);
+                    float intensity = Math.max(feedbackAnim, hasShortfall ? (syncBreath * 0.6f + 0.4f) : 0f);
+                    
+                    bdA = Math.min(255, bdA + (int)(170 * intensity * effectiveAlpha));
+                    bRgb = lerpColor(bRgb, 0xFF3333, intensity);
+                }
+            }
 
             g.fill((int)drawX, (int)drawY, (int)(drawX + l.cardW()), (int)(drawY + l.cardH()), (bgA << 24) | 0x05050A);
             HudAnimUtil.drawFrame(g, (int)drawX, (int)drawY, l.cardW(), l.cardH(), 1, (bdA << 24) | (bRgb & 0xFFFFFF));

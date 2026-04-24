@@ -195,13 +195,25 @@ public class TradeScreen extends AbstractTradeScreen {
             entryHoverAnims[i] = HudAnimUtil.step(entryHoverAnims[i], hov && canBuy ? 1f : 0f, 6f, dt);
             float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
 
-            int bgA = (int) ((0x22 + 0x33 * hEase) * effectiveAlpha);
+                        int bgA = (int) ((0x22 + 0x33 * hEase) * effectiveAlpha);
             int bdA = (int) ((0x44 + 0x66 * hEase) * effectiveAlpha);
             int bRgb = hov && canBuy ? getThemeColorForEntry(entry) : 0xFFFFFF;
 
-            if (gi == lastClickedGi && feedbackAnim > 0) {
-                bdA = Math.min(255, bdA + (int)(180 * feedbackAnim * effectiveAlpha));
-                bRgb = feedbackSuccess ? 0x55FF55 : 0xFF5555;
+            // 获取当前卡片是否处于"资金不足"警告期
+            boolean hasShortfall = shortfallTooltipTimer > 0f && !ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId()).isEmpty();
+
+            // 完美的全局帧级同步
+            if (gi == lastClickedGi) {
+                if (feedbackSuccess && feedbackAnim > 0) {
+                    bdA = Math.min(255, bdA + (int)(180 * feedbackAnim * effectiveAlpha));
+                    bRgb = lerpColor(bRgb, 0x55FF55, feedbackAnim);
+                } else if (!feedbackSuccess && (feedbackAnim > 0 || hasShortfall)) {
+                    float syncBreath = (float) (Math.sin(Util.getMillis() / 150.0) * 0.5 + 0.5);
+                    float intensity = Math.max(feedbackAnim, hasShortfall ? (syncBreath * 0.6f + 0.4f) : 0f);
+                    
+                    bdA = Math.min(255, bdA + (int)(180 * intensity * effectiveAlpha));
+                    bRgb = lerpColor(bRgb, 0xFF3333, intensity);
+                }
             }
 
             int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;

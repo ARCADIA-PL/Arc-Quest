@@ -396,40 +396,45 @@ public class GachaPreviewPanel {
             } else {
                 tooltipHoverTimer = 0f;
             }
-            float tooltipTarget = (tooltipHoverIndex != -1 && tooltipHoverTimer >= TIP_HOVER_DELAY) ? 1f : 0f;
-            tooltipTipAlpha += (tooltipTarget - tooltipTipAlpha) * Math.min(1f, dt * 15f);
+        } else {
+            tooltipHoverIndex = -1;
         }
 
-        if (tooltipTipAlpha > 0.02f && tooltipHoverIndex >= 0 && tooltipHoverIndex < items.size() && !isWiping) {
-            renderItemTooltip(g, items.get(tooltipHoverIndex), mx, my, dt, alpha, isClosing);
+        float tooltipTarget = (tooltipHoverIndex != -1 && tooltipHoverTimer >= TIP_HOVER_DELAY && !isClosing && !isWiping) ? 1f : 0f;
+        tooltipTipAlpha += (tooltipTarget - tooltipTipAlpha) * Math.min(1f, dt * 15f);
+
+        if (tooltipTipAlpha > 0.02f && lastHoveredIndex >= 0 && lastHoveredIndex < items.size()) {
+            renderItemTooltip(g, items.get(lastHoveredIndex), mx, my, dt, alpha, isClosing || isWiping);
         } else if (tooltipTipAlpha <= 0.02f) {
             animTipW = 0f;
         }
     }
 
     private void renderItemTooltip(GuiGraphics g, GachaItem item, int mouseX, int mouseY, float dt, float alpha, boolean isClosing) {
-        List<Component> tooltipLines = new ArrayList<>();
-        tooltipLines.add(item.getItemStack().getHoverName().copy());
-        tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.rarity", item.getRarity().getName().toUpperCase()));
-        if (item.getMinCount() == item.getMaxCount()) {
-            tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.count_fixed", item.getMinCount()));
-        } else {
-            tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.count_range", item.getMinCount(), item.getMaxCount()));
-        }
-        tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.weight", item.getBaseWeight()));
-        if (item.countsTowardsPity()) {
-            tooltipLines.add(Component.translatable("arc_quest.gui.gacha.tooltip.pity_enabled"));
-        }
-
-        int padding = 6;
+        var font = Minecraft.getInstance().font;
+        int padding = 10;
         int cyberEdgeWidth = 3;
-        int textMaxWidth = 0;
-        for (Component line : tooltipLines) {
-            textMaxWidth = Math.max(textMaxWidth, Minecraft.getInstance().font.width(line));
-        }
 
-        int targetW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
-        int targetH = tooltipLines.size() * Minecraft.getInstance().font.lineHeight + padding * 2;
+        // --- 1. 数据准备与排版计算 ---
+        String rarityVal = item.getRarity().getName().toUpperCase();
+        String countVal = (item.getMinCount() == item.getMaxCount()) ?
+                String.valueOf(item.getMinCount()) :
+                item.getMinCount() + " - " + item.getMaxCount();
+        String weightVal = String.valueOf(item.getBaseWeight());
+
+        // 标签硬编码为纯英文，极大提升机能风 UI 的视觉秩序感
+        String lblRarity = "RARITY";
+        String lblYield = "YIELD";
+        String lblWeight = "WEIGHT";
+
+        int nameW = font.width(item.getItemStack().getHoverName());
+        int maxKeyW = Math.max(font.width(lblRarity), Math.max(font.width(lblYield), font.width(lblWeight)));
+        int maxValW = Math.max(font.width(rarityVal), Math.max(font.width(countVal), font.width(weightVal)));
+
+        // 动态计算目标尺寸 (宽度: 物品名与键值对取最大值; 高度: 标题 + 分割线 + 3行数据 + 保底标识)
+        int targetW = Math.max(nameW, maxKeyW + maxValW + 40) + padding * 2 + cyberEdgeWidth;
+        int targetH = padding * 2 + 14 + 6 + (3 * 12) + (item.countsTowardsPity() ? 14 : 0);
+
         int targetX = mouseX + 12;
         int targetY = mouseY - 12;
 
@@ -437,6 +442,7 @@ public class GachaPreviewPanel {
         if (targetY + targetH > height) targetY = height - targetH - 2;
         if (targetY < 0) targetY = 2;
 
+        // --- 2. 丝滑形变计算 (保留原有逻辑) ---
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
             animTipX = targetX; animTipY = targetY;
             animTipW = targetW; animTipH = targetH;
@@ -459,9 +465,10 @@ public class GachaPreviewPanel {
         float finalTipAlpha = tooltipTipAlpha * alpha;
         int bgAlpha = (int) (0x96 * finalTipAlpha);
         int borderAlpha = (int) (0x66 * finalTipAlpha);
-        int edgeAlpha = (int) (255 * finalTipAlpha);
+        int safeAlpha = (int) (255 * finalTipAlpha);
         int themeColor = parent.getShopDef().getEffectiveThemeColor(item);
 
+        // --- 3. 背景与边框渲染 ---
         g.pose().pushPose();
         g.pose().translate(0, 0, 400);
 
@@ -471,23 +478,146 @@ public class GachaPreviewPanel {
         g.pose().scale(scale, scale, 1f);
         g.pose().translate(-centerX, -centerY, 0);
 
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x050508, bgAlpha));
         g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
         g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
         g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
 
-        HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, themeColor, edgeAlpha);
+        HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, themeColor, safeAlpha);
 
+        // --- 4. 高级机能风内部排版渲染 ---
         g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
-        int textX = drawX + cyberEdgeWidth + padding + 1;
-        int textY = drawY + padding;
-        for (int i = 0; i < tooltipLines.size(); i++) {
-            int color = i == 0 ? 0xFFFFFF : (i == 1 ? themeColor : 0xD0D0D0);
-            g.drawString(Minecraft.getInstance().font, tooltipLines.get(i), textX, textY, HudAnimUtil.withAlpha(color, edgeAlpha), true);
-            textY += Minecraft.getInstance().font.lineHeight;
+
+        int currentY = drawY + padding;
+        int leftX = drawX + cyberEdgeWidth + padding;
+        int rightX = drawX + drawW - padding;
+
+        // 物品标题
+        g.drawString(font, item.getItemStack().getHoverName(), leftX, currentY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+        currentY += 14;
+
+        // 主题色精美分割线
+        g.fill(leftX, currentY, rightX, currentY + 1, HudAnimUtil.withAlpha(themeColor, (int)(safeAlpha * 0.3f)));
+        g.fill(leftX, currentY, leftX + 20, currentY + 1, HudAnimUtil.withAlpha(themeColor, safeAlpha));
+        currentY += 6;
+
+        // RARITY
+        g.drawString(font, lblRarity, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
+        g.drawString(font, rarityVal, rightX - font.width(rarityVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+        currentY += 12;
+
+        // YIELD
+        g.drawString(font, lblYield, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
+        g.drawString(font, countVal, rightX - font.width(countVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+        currentY += 12;
+
+        // WEIGHT
+        g.drawString(font, lblWeight, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
+        g.drawString(font, weightVal, rightX - font.width(weightVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+        currentY += 12;
+
+        // 保底标识 (如果计入保底，添加醒目提示)
+        if (item.countsTowardsPity()) {
+            currentY += 2;
+            g.fill(leftX, currentY + 2, leftX + 2, currentY + 6, HudAnimUtil.withAlpha(themeColor, safeAlpha));
+            g.drawString(font, Component.translatable("arc_quest.gui.gacha.tooltip.pity_enabled"), leftX + 6, currentY, HudAnimUtil.withAlpha(themeColor, safeAlpha), true);
         }
+
         g.disableScissor();
         g.pose().popPose();
+    }
+
+
+
+    private void renderShortfallTooltip(GuiGraphics g, Layout l, float alpha, int drawX) {
+        var font = Minecraft.getInstance().font;
+        List<CostShortfallLine> shortfalls = snapshotShortfall;
+        if (shortfallTooltipAnim <= 0f || shortfalls == null || shortfalls.isEmpty()) {
+            return;
+        }
+
+        float ease = HudAnimUtil.easeOutCubic(shortfallTooltipAnim);
+        int safeAlpha = (int)(220 * alpha * ease);
+        if (safeAlpha <= 5) return;
+
+        // --- 1. 同步 TradeScreen 的排版尺寸计算 ---
+        int padding = 10;
+        Component summaryTitle = Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary");
+        int boxW = font.width(summaryTitle) + 40;
+
+        for (CostShortfallLine sf : shortfalls) {
+            int lineW = font.width(sf.label()) + font.width("-" + sf.missing()) + 50;
+            boxW = Math.max(boxW, lineW);
+        }
+        boxW += padding * 2;
+
+        // 警告顶部分割线与标题高度(18) + 每个短缺项高度(18)
+        int boxH = padding * 2 + 18 + (shortfalls.size() * 18);
+
+        int boxX = drawX + l.btnW() / 2 - boxW / 2;
+        int boxY = l.btnY() - boxH - 8;
+
+        // --- 2. 背景与边框 ---
+        g.fill(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
+        g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int)(40 * alpha * ease)), 0);
+        HudAnimUtil.drawFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
+
+        // --- 3. 核心可视化内容排版 ---
+        int currentY = boxY + padding;
+
+        // 机能风红色警告分割线
+        g.fill(boxX + padding, currentY, boxX + boxW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int)(safeAlpha * 0.2f)));
+        g.fill(boxX + padding, currentY, boxX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
+        currentY += 6;
+
+        // 摘要标题
+        g.drawString(font, summaryTitle, boxX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
+        currentY += 12;
+
+        // 短缺列表渲染 (完全复用高级数据可视化方案)
+        for (CostShortfallLine sf : shortfalls) {
+            // 左侧红点
+            g.fill(boxX + padding, currentY + 3, boxX + padding + 2, currentY + 7, HudAnimUtil.withAlpha(0xFF4444, safeAlpha));
+
+            // 物品名称
+            g.drawString(font, sf.label(), boxX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+
+            // 缺失数量 (右边缘对齐)
+            if (sf.missing() > 0) {
+                String missingTxt = "-" + sf.missing();
+                int mWidth = font.width(missingTxt);
+                g.drawString(font, missingTxt, boxX + boxW - padding - mWidth, currentY, HudAnimUtil.withAlpha(0xFF3333, safeAlpha), true);
+            }
+
+            currentY += 10;
+
+            // 微型进度条与库存状态
+            if (sf.required() > 0) {
+                String metaTxt = sf.owned() + " / " + sf.required();
+
+                g.pose().pushPose();
+                g.pose().translate(boxX + padding + 6, currentY, 0);
+                g.pose().scale(0.8f, 0.8f, 1f);
+                g.drawString(font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, safeAlpha), false);
+                g.pose().popPose();
+
+                int metaWidth = (int)(font.width(metaTxt) * 0.8f);
+                int barX = boxX + padding + 6 + metaWidth + 6;
+                int barW = boxW - padding * 2 - (barX - boxX) - 5;
+
+                if (barW > 10) {
+                    float pct = Math.min(1f, (float)sf.owned() / sf.required());
+                    int fillW = (int)(barW * pct);
+                    // 暗红底槽
+                    g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
+                    // 亮红填充
+                    if (fillW > 0) {
+                        g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
+                    }
+                }
+            }
+            currentY += 8;
+        }
     }
 
     private void renderRightTerminalTracker(GuiGraphics g, Layout l, float dt, float alpha, boolean isWiping, boolean isClosing) {
@@ -642,52 +772,6 @@ public class GachaPreviewPanel {
         }
 
         renderShortfallTooltip(g, l, alpha, drawX);
-    }
-
-    private void renderShortfallTooltip(GuiGraphics g, Layout l, float alpha, int drawX) {
-        List<CostShortfallLine> shortfalls = snapshotShortfall;
-        if (shortfallTooltipAnim <= 0f || shortfalls == null || shortfalls.isEmpty()) {
-            return;
-        }
-
-        float ease = HudAnimUtil.easeOutCubic(shortfallTooltipAnim);
-        int safeAlpha = (int)(220 * alpha * ease);
-        if (safeAlpha <= 5) {
-            return;
-        }
-
-        List<String> lines = new ArrayList<>();
-        lines.add(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary").getString());
-        for (CostShortfallLine line : shortfalls) {
-            lines.add(Component.translatable(
-                    "arc_quest.gui.trade.tooltip.shortfall_line",
-                    line.label(),
-                    line.missing(),
-                    line.required(),
-                    line.owned()
-            ).getString());
-        }
-
-        int padding = 8;
-        int boxW = 0;
-        for (String line : lines) {
-            boxW = Math.max(boxW, Minecraft.getInstance().font.width(line));
-        }
-        boxW += padding * 2;
-        int boxH = padding * 2 + lines.size() * Minecraft.getInstance().font.lineHeight + Math.max(0, lines.size() - 1) * 2;
-        int boxX = drawX + l.btnW() / 2 - boxW / 2;
-        int boxY = l.btnY() - boxH - 8;
-
-        g.fill(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
-        g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(parent.getShopDef().getThemeColor(), (int)(50 * alpha * ease)), 0);
-        HudAnimUtil.drawFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF5555, safeAlpha));
-
-        int y = boxY + padding;
-        for (int i = 0; i < lines.size(); i++) {
-            int color = i == 0 ? 0xFF8A8A : 0xFFB4B4;
-            g.drawString(Minecraft.getInstance().font, lines.get(i), boxX + padding, y, HudAnimUtil.withAlpha(color, safeAlpha), true);
-            y += Minecraft.getInstance().font.lineHeight + 2;
-        }
     }
 
     public boolean mouseClicked(double mx, double my) {

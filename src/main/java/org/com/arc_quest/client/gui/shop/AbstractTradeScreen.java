@@ -54,7 +54,7 @@ public abstract class AbstractTradeScreen extends Screen {
     private float animProgress = 0f;
     private float feedbackScale = 1.0f;
     private float feedbackShake = 0f;
-    private float shortfallTooltipTimer = 0f;
+    protected float shortfallTooltipTimer = 0f;
     private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
 
     public AbstractTradeScreen(String title, String shopId) {
@@ -217,17 +217,15 @@ public abstract class AbstractTradeScreen extends Screen {
         boolean onCd;
         int purchases, maxP;
         int themeColor;
+
         boolean showShortfall;
-        List<FormattedCharSequence> shortfallSummaryLines;
-        List<FormattedCharSequence> shortfallDetailLines;
-        List<FormattedCharSequence> shortfallMetaLines;
+        List<CostShortfallLine> shortfalls;
     }
 
     private TooltipData calcTooltipData(TradeEntry entry, int gi, int mx, int my) {
         TooltipData d = new TooltipData();
         d.themeColor = getThemeColorForEntry(entry);
 
-        
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
         d.maxP = entry.getMaxPurchases();
         d.purchases = cache.getPurchaseCount(shopId, gi);
@@ -235,42 +233,27 @@ public abstract class AbstractTradeScreen extends Screen {
 
         int padding = 10;
         d.descLines = entry.getDescription() != null ? font.split(entry.getDescription(), 180) : new ArrayList<>();
-        d.shortfallSummaryLines = new ArrayList<>();
-        d.shortfallDetailLines = new ArrayList<>();
-        d.shortfallMetaLines = new ArrayList<>();
-        List<CostShortfallLine> shortfalls = ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId());
-        d.showShortfall = shortfallTooltipTimer > 0f && !shortfalls.isEmpty();
-        if (d.showShortfall) {
-            d.shortfallSummaryLines.addAll(font.split(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary"), 200));
-            for (CostShortfallLine shortfall : shortfalls) {
-                if (shortfall.missing() > 0) {
-                    d.shortfallDetailLines.addAll(font.split(Component.translatable(
-                            "arc_quest.gui.trade.tooltip.shortfall_line",
-                            shortfall.label(),
-                            shortfall.missing()), 200));
-                    d.shortfallMetaLines.addAll(font.split(Component.translatable(
-                            "arc_quest.gui.trade.tooltip.shortfall_meta",
-                            shortfall.required(),
-                            shortfall.owned()), 200));
-                } else {
-                    d.shortfallDetailLines.addAll(font.split(shortfall.label(), 200));
-                }
-            }
-        }
+
+        d.shortfalls = ClientTradeCache.INSTANCE.getShortfall(shopId, entry.getEntryId());
+        d.showShortfall = shortfallTooltipTimer > 0f && !d.shortfalls.isEmpty();
 
         int titleW = font.width(entry.getDisplayName());
         int totalW = Math.max(188, titleW + 40);
-        for (var line : d.descLines) totalW = Math.max(totalW, font.width(line));
-        for (var line : d.shortfallSummaryLines) totalW = Math.max(totalW, font.width(line));
-        for (var line : d.shortfallDetailLines) totalW = Math.max(totalW, font.width(line));
-        for (var line : d.shortfallMetaLines) totalW = Math.max(totalW, font.width(line) + 6);
+
+        if (d.showShortfall) {
+            totalW = Math.max(totalW, font.width(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary")) + 40);
+            for (CostShortfallLine sf : d.shortfalls) {
+                int lineW = font.width(sf.label()) + font.width("-" + sf.missing()) + 50;
+                totalW = Math.max(totalW, lineW);
+            }
+        } else {
+            for (var line : d.descLines) totalW = Math.max(totalW, font.width(line));
+        }
         d.w = totalW + padding * 2;
 
         int totalH = padding * 2 + 16;
         if (d.showShortfall) {
-            if (!d.shortfallSummaryLines.isEmpty()) totalH += 8 + d.shortfallSummaryLines.size() * font.lineHeight;
-            if (!d.shortfallDetailLines.isEmpty()) totalH += 6 + d.shortfallDetailLines.size() * font.lineHeight;
-            if (!d.shortfallMetaLines.isEmpty()) totalH += 2 + d.shortfallMetaLines.size() * font.lineHeight;
+            totalH += 18 + (d.shortfalls.size() * 18);
         } else {
             if (!d.descLines.isEmpty()) totalH += 6 + d.descLines.size() * font.lineHeight;
             if (d.maxP > 0) totalH += 18;
@@ -346,9 +329,17 @@ public abstract class AbstractTradeScreen extends Screen {
         int borderA = (int) (0xFF * tooltipAlpha);
         int currentThemeColor = animThemeColor;
 
-        if (feedbackAnim > 0 && gi == lastClickedGi) {
-            borderA = Math.min(255, borderA + (int)(180 * feedbackAnim));
-            currentThemeColor = lerpColor(animThemeColor, feedbackSuccess ? 0x55FF55 : 0xFF5555, feedbackAnim);
+        if (gi == lastClickedGi) {
+            if (feedbackSuccess && feedbackAnim > 0) {
+                borderA = Math.min(255, borderA + (int)(180 * feedbackAnim));
+                currentThemeColor = lerpColor(animThemeColor, 0x55FF55, feedbackAnim);
+            } else if (!feedbackSuccess && (feedbackAnim > 0 || target.showShortfall)) {
+                float syncBreath = (float) (Math.sin(Util.getMillis() / 150.0) * 0.5 + 0.5);
+                float intensity = Math.max(feedbackAnim, target.showShortfall ? (syncBreath * 0.6f + 0.4f) : 0f);
+
+                borderA = Math.min(255, borderA + (int)(180 * intensity));
+                currentThemeColor = lerpColor(animThemeColor, 0xFF3333, intensity);
+            }
         }
 
         int borderColor = (borderA << 24) | (currentThemeColor & 0xFFFFFF);
@@ -384,41 +375,73 @@ public abstract class AbstractTradeScreen extends Screen {
         }
         currentY += 20;
 
+        // === 中间分隔线与警示头 ===
         if (!target.descLines.isEmpty() || target.maxP > 0 || target.onCd || target.showShortfall) {
-            g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int)(safeAlpha * 0.3f)));
             if (target.showShortfall) {
-                g.fill(drawX + padding, currentY - 4, drawX + padding + 52, currentY - 2, HudAnimUtil.withAlpha(0xFF5555, (int)(safeAlpha * 0.9f)));
+                // 机能风红色警告分割线：长暗红底槽 + 左侧亮红指示标
+                g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int)(safeAlpha * 0.2f)));
+                g.fill(drawX + padding, currentY, drawX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
+                currentY += 6;
+
+                // 提取摘要文本作为醒目标题
+                Component summaryTitle = Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary");
+                g.drawString(font, summaryTitle, drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
+                currentY += 12;
+            } else {
+                // 普通主题色分割线
+                g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int)(safeAlpha * 0.3f)));
+                currentY += 6;
             }
-            currentY += 6;
         }
 
         if (target.showShortfall) {
-            for (var line : target.shortfallSummaryLines) {
-                g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF8F8F, safeAlpha), true);
-                currentY += font.lineHeight;
-            }
+            for (CostShortfallLine sf : target.shortfalls) {
+                g.fill(drawX + padding, currentY + 3, drawX + padding + 2, currentY + 7, HudAnimUtil.withAlpha(0xFF4444, safeAlpha));
 
-            if (!target.shortfallSummaryLines.isEmpty() && !target.shortfallDetailLines.isEmpty()) {
-                currentY += 4;
-            }
+                g.drawString(font, sf.label(), drawX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
 
-            for (int i = 0; i < target.shortfallDetailLines.size(); i++) {
-                var line = target.shortfallDetailLines.get(i);
-                g.drawString(font, line, drawX + padding + 4, currentY, HudAnimUtil.withAlpha(0xF2F2F2, safeAlpha), true);
-                currentY += font.lineHeight;
-                if (i < target.shortfallMetaLines.size()) {
-                    g.drawString(font, target.shortfallMetaLines.get(i), drawX + padding + 12, currentY - 1, HudAnimUtil.withAlpha(0x8E8E8E, safeAlpha), false);
-                    currentY += font.lineHeight;
+                if (sf.missing() > 0) {
+                    String missingTxt = "-" + sf.missing();
+                    int mWidth = font.width(missingTxt);
+                    g.drawString(font, missingTxt, drawX + target.w - padding - mWidth, currentY, HudAnimUtil.withAlpha(0xFF3333, safeAlpha), true);
                 }
+
+                currentY += 10;
+
+                if (sf.required() > 0) {
+                    String metaTxt = sf.owned() + " / " + sf.required();
+
+                    g.pose().pushPose();
+                    g.pose().translate(drawX + padding + 6, currentY, 0);
+                    g.pose().scale(0.8f, 0.8f, 1f);
+                    g.drawString(font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, safeAlpha), false);
+                    g.pose().popPose();
+
+                    int metaWidth = (int)(font.width(metaTxt) * 0.8f);
+                    int barX = drawX + padding + 6 + metaWidth + 6;
+                    int barW = target.w - padding * 2 - (barX - drawX) - 5;
+
+                    if (barW > 10) {
+                        float pct = Math.min(1f, (float)sf.owned() / sf.required());
+                        int fillW = (int)(barW * pct);
+                        g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
+                        if (fillW > 0) {
+                            g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
+                        }
+                    }
+                }
+                currentY += 8;
             }
             currentY += 2;
-        } else if (!target.descLines.isEmpty()) {
+        }
+        else if (!target.descLines.isEmpty()) {
             for (var line : target.descLines) {
                 g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, safeAlpha), true);
                 currentY += font.lineHeight;
             }
             currentY += 4;
         }
+
 
         if (!target.showShortfall && target.maxP > 0) {
             String limitStr = Component.translatable("arc_quest.gui.trade.tooltip.limit", target.purchases, target.maxP).getString();
