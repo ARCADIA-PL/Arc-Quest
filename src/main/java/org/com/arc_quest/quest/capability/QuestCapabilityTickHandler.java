@@ -10,36 +10,62 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.slf4j.Logger;
 
 /**
- * 玩家Tick事件处理器，脏标记防抖与批量保存。
+ * 玩家Tick事件处理器：以固定节流频率执行“变更检测 -> 持久化快照 -> 网络同步”。
+ * <p>
+ * 注意：这里的“持久化”是写入 Player PersistentData 的运行时快照，
+ * 不等同于立即磁盘落盘。
  */
 @Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class QuestCapabilityTickHandler {
+public final class QuestCapabilityTickHandler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static int tickCounter = 0;
 
+    private QuestCapabilityTickHandler() {
+    }
+
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-
         if (event.phase != TickEvent.Phase.END) return;
         if (event.player.level().isClientSide()) return;
 
         ServerPlayer player = (ServerPlayer) event.player;
 
-
         tickCounter++;
         if (tickCounter % 20 != 0) return;
 
+        persistAndSyncIfChanged(player);
+    }
 
+    /**
+     * 统一语义入口：有变更才执行“快照持久化 + 客户端同步 + 清脏”。
+     */
+    private static void persistAndSyncIfChanged(ServerPlayer player) {
         player.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
-            if (cap instanceof QuestCapabilityImpl impl && impl.isDirty()) {
-                player.getPersistentData().put("ArcQuestAutosave", impl.serializeNBT().copy());
-                ArcQuestNetwork.syncFullData(player, impl);
-                impl.clearDirty();
-
-                LOGGER.debug("[QuestSave] Player {} data serialized and synced (dirty flag cleared)",
-                        player.getGameProfile().getName());
+            if (!(cap instanceof QuestCapabilityImpl impl) || !impl.isDirty()) {
+                return;
             }
+
+            persistSnapshot(player, impl);
+            syncSnapshot(player, impl);
+            impl.clearDirty();
+
+            LOGGER.debug("[QuestPersist] Player {} snapshot persisted and synced (dirty cleared)",
+                    player.getGameProfile().getName());
         });
+    }
+
+    /**
+     * 将能力快照写入玩家 PersistentData。
+     */
+    private static void persistSnapshot(ServerPlayer player, QuestCapabilityImpl impl) {
+        player.getPersistentData().put("ArcQuestAutosave", impl.serializeNBT().copy());
+    }
+
+    /**
+     * 将当前能力快照同步到客户端。
+     */
+    private static void syncSnapshot(ServerPlayer player, QuestCapabilityImpl impl) {
+        ArcQuestNetwork.syncFullData(player, impl);
     }
 }
