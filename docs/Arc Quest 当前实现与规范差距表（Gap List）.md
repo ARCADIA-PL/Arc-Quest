@@ -3,24 +3,25 @@
 基于《同步策略基线规范 v1》对当前代码状态进行差距评估。
 
 > 评估口径：已落地 / 部分落地 / 未落地  
-> 本次为 **SYNC-07 对齐版本**（含回归清单）
+> 本次为 **SYNC-09.2 对齐版本**（含回归清单与拒绝码治理进展）
 
 ---
 
 ## 一、总体结论（已对齐现状）
 
-当前 Arc Quest 在 Trade/Gacha 的同步治理已进入“可持续演进”阶段：
+当前 Arc Quest 在 Trade/Gacha 的同步治理已从“链路打通”进入“规范收口”阶段：
 
 - open/sync 语义已收口并稳定运行
-- Quest -> Trade/Gacha 的 push-first 链路已统一入口
-- 客户端缓存已完成 Authority / Feedback 分层（含兼容 API）
-- compile 验证通过，主链路可运行
+- Quest -> Trade/Gacha push-first 链路已统一并持续可观测
+- 客户端缓存分层（Authority / Feedback / History）已落地
+- SYNC-08 完成 Quest 持久化/同步语义收口（含协调器）
+- SYNC-09 ~ SYNC-09.2 完成 Trade/Gacha 请求校验模板化与统一拒绝码字典
 
-剩余差距已从“链路打通”转为“治理深化”：
+剩余差距已进一步聚焦为：
 
 1. 回归体系仍以人工为主，缺自动化同步专项
-2. 持久化语义与同步语义还未全域统一
-3. 权限/错误码规范化与跨模块统一抽象尚未完成
+2. 持久化语义统一已起步，但尚未覆盖到全域
+3. 可观测性缺 action/result 聚合报表与发布前自动检查脚本
 
 ---
 
@@ -56,9 +57,9 @@
 - 状态：**部分落地（核心已落地）**
 - 当前进展：
   - Trade 与 Gacha 均有 fingerprint 去重与无变化拦截
-  - 关键链路已接入 request/sent/dropped 观测
+  - request/sent/dropped 观测已接入关键链路
 - 仍有差距：
-  - baseline 生命周期策略（登录/切维度/断线）未形成统一规范
+  - baseline 生命周期策略（登录/切维度/断线）尚未制度化
 - 优先级：P0
 
 ---
@@ -68,10 +69,10 @@
 - 状态：**已落地（核心链路）**
 - 当前进展：
   - Quest 同步后统一触发 Trade/Gacha 活跃界面 push
-  - Gacha push 链路已统一入口（`GachaScreenOpener.pushSync(...)`）
-  - 周期拉取保留为兜底
+  - Gacha push 链路统一入口已稳定
+  - 周期拉取保留兜底
 - 仍有差距：
-  - 触发点治理仍可继续扩展（如背包/条件变化的系统化覆盖）
+  - 触发点覆盖可继续扩展（背包/条件变化等系统化触发）
 - 优先级：P0（持续增强）
 
 ---
@@ -80,34 +81,37 @@
 
 - 状态：**已落地（Trade/Gacha）**
 - 当前进展：
-  - `ClientTradeCache`：AuthorityState / FeedbackState 结构化分层
-  - `ClientGachaCache`：Authority / Feedback / History 分层，并保留兼容读取 API
+  - `ClientTradeCache`：AuthorityState / FeedbackState
+  - `ClientGachaCache`：Authority / Feedback / History，并保留兼容读取 API
 - 仍有差距：
-  - UI 读取面可继续向 snapshot/分层接口收敛
-- 优先级：P1（优化项）
+  - UI 读取面仍需进一步向 snapshot/分层接口收敛
+- 优先级：P1
 
 ---
 
 ## 6) 持久化与同步分离
 
-- 状态：**部分落地**
+- 状态：**部分落地（较 SYNC-07 明显推进）**
 - 当前进展：
-  - 已有 dirty 标记和同步调用链
+  - 已有 dirty 标记与同步调用链
+  - SYNC-08 已完成 Quest 侧语义入口收口（含 `QuestSyncCoordinator`）
 - 仍有差距：
-  - `markDirty / saveIfChanged / sync` 语义边界未在全模块统一
-  - “保存成功”与“已同步客户端”的状态语义仍可混淆
+  - `markDirty / saveIfChanged / sync` 尚未在全模块统一抽象
+  - “保存成功”与“已同步客户端”的状态语义仍可能被混用
 - 优先级：P1
 
 ---
 
 ## 7) 权限与安全校验
 
-- 状态：**部分落地**
+- 状态：**部分落地（接近完成）**
 - 当前进展：
-  - 关键 C2S 入口具备基本 shop/capability 校验
+  - SYNC-09：Gacha C2S 校验模板化
+  - SYNC-09.1：Trade C2S 校验模板化并透传守卫 errorKey
+  - SYNC-09.2：Trade/Gacha 统一拒绝码字典（`RejectCodeDictionary`）并统一映射
 - 仍有差距：
-  - 缺统一模板化校验流程
-  - 缺拒绝原因规范码（便于日志/前端提示/排障）
+  - 拒绝码 -> 客户端文案/提示策略尚未完全统一
+  - 跨模块（含 Dialogue）模板复用尚未完成
 - 优先级：P1
 
 ---
@@ -116,11 +120,12 @@
 
 - 状态：**部分落地**
 - 当前进展：
-  - 已接入 sync request/sent/dropped 指标
-  - 已补齐 trace 基础链路（可通过 `-Darcquest.sync.trace=true` 开启）
+  - sync request/sent/dropped 指标已落地
+  - trace 基础链路可开关（`-Darcquest.sync.trace=true`）
+  - 拒绝码日志已可用于排障归因
 - 仍有差距：
-  - action/result 覆盖率仍需继续扩展
-  - 缺按模块聚合报表化输出
+  - action/result 覆盖率仍需扩展
+  - 缺模块级聚合与报表化输出
 - 优先级：P0
 
 ---
@@ -129,7 +134,7 @@
 
 - 状态：**部分落地（人工清单已落地）**
 - 当前进展：
-  - 已形成可重复执行的人工同步专项回归清单
+  - 人工同步专项回归清单可重复执行
 - 仍有差距：
   - 缺自动化同步专项（断线重连、并发、状态回退）
 - 优先级：P0
@@ -145,8 +150,12 @@
 - SYNC-05：Quest -> Trade/Gacha 统一 push 入口收尾（已完成）
 - SYNC-06：Gap List 对齐 + trace 基础链路（已完成）
 - SYNC-07：同步专项回归清单（人工可执行版）（已完成）
+- SYNC-08：Quest 持久化/同步语义收口（协调器化）（已完成）
+- SYNC-09：Gacha 校验模板化 + 拒绝码治理起步（已完成）
+- SYNC-09.1：Trade 校验模板化 + 守卫 errorKey 透传（已完成）
+- SYNC-09.2：Trade/Gacha 统一拒绝码字典 + gacha errorKey 透传（已完成）
 
-当前阶段判定：**P0 主干已打通，进入 P0 回归收口 + P1 语义治理阶段**。
+当前阶段判定：**P0 主干稳定，进入“P0 自动化回归收口 + P1 全域语义治理”阶段**。
 
 ---
 
@@ -154,21 +163,21 @@
 
 ### P0（当前迭代继续完成）
 
-1. 扩展 trace 覆盖到 action/result 全链路
-2. 用回归清单持续守护 open/sync 不回退
-3. 固化一份最小“发布前同步检查”脚本
+1. 落地同步专项自动化回归（至少覆盖冷却边界/断线重连/并发）
+2. 固化发布前最小同步检查脚本（构建、关键日志、关键场景）
+3. 扩展 trace 到 action/result 全链路并输出聚合摘要
 
 ### P1（下一迭代完成）
 
-1. 持久化语义统一：`markDirty / saveIfChanged / sync`
-2. 权限校验模板化 + 拒绝原因规范码
+1. 持久化语义全域统一：`markDirty / saveIfChanged / sync`
+2. 拒绝码到客户端提示文案的统一映射（Trade/Gacha 一致）
 3. UI 读取进一步向分层 snapshot 收敛
 
 ### P2（中期优化）
 
 1. Trade/Gacha 刷新统一抽象
 2. Dialogue 纳入统一分层同步模型
-3. 跨模块统一命名与目录规范
+3. 跨模块命名与目录规范制度化
 
 ---
 
@@ -245,4 +254,4 @@
 
 当前 Arc Quest 已达到“同步主链路可持续演进”状态，但仍未达到“生产级同步治理完成”。
 
-建议按 **P0 回归收口 -> P1 语义治理 -> P2 统一抽象** 顺序推进，避免重新进入“先堆功能、后补同步”的返工循环。
+建议按 **P0 自动化回归收口 -> P1 全域语义治理 -> P2 统一抽象** 顺序推进，避免重新进入“先堆功能、后补同步”的返工循环。
