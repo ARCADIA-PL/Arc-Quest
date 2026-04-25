@@ -41,6 +41,13 @@ public class JournalDetailPanel {
     private float intelBtnHoverAnim = 0f;
 
     private final Map<String, Float> phaseCardReveal = new HashMap<>();
+    private final Map<String, Float> phaseCardHoverAnims = new HashMap<>();
+
+    private final Map<String, Double> phaseObjScrollOffsets = new HashMap<>();
+    private final Map<String, Double> phaseObjTargetScrolls = new HashMap<>();
+    private record ObjScrollArea(int absX, int absY, int w, int h, String phaseId, int maxScroll) {}
+    private final List<ObjScrollArea> objScrollAreas = new ArrayList<>();
+
     private String selectedPhaseId = null;
     private final List<JournalTypes.ChoiceButtonRect> currentChoiceButtons = new ArrayList<>();
     private final List<JournalTypes.PhaseTagRect> currentPhaseTags = new ArrayList<>();
@@ -61,6 +68,10 @@ public class JournalDetailPanel {
         currentPhaseTags.clear();
         selectedPhaseId = null;
         phaseCardReveal.clear();
+        phaseCardHoverAnims.clear();
+        phaseObjScrollOffsets.clear();
+        phaseObjTargetScrolls.clear();
+        objScrollAreas.clear();
     }
 
     public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
@@ -89,6 +100,8 @@ public class JournalDetailPanel {
         int scrollAreaH = h - 40;
         int scrollAreaW = w - 8;
         Font font = screen.getFont();
+
+        objScrollAreas.clear();
 
         g.enableScissor(x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
 
@@ -168,15 +181,47 @@ public class JournalDetailPanel {
                 int cardAreaW = scrollAreaW - 24;
                 int gap = 8;
                 int colW = (cardAreaW - gap) / 2;
-                int[] colY = new int[]{localY, localY};
 
-                for (String phaseId : activePhaseIds) {
+                int MAX_VISIBLE_OBJS = 2;
+                int OBJ_LINE_H = 14;
+                int FIXED_OBJ_VIEW_H = MAX_VISIBLE_OBJS * OBJ_LINE_H;
+
+                Map<String, Integer> rowAssignedHeights = new HashMap<>();
+
+                for (int i = 0; i < activePhaseIds.size(); i += 2) {
+                    String p1 = activePhaseIds.get(i);
+                    PhaseDefinition phase1 = def.getPhase(p1);
+                    int c1 = getChoicesHeight(phase1, def, runtime, p1);
+                    int h1 = 22 + 12 + 4 + FIXED_OBJ_VIEW_H + c1 + (c1 > 0 ? 4 : 0);
+
+                    int h2 = 0;
+                    if (i + 1 < activePhaseIds.size()) {
+                        String p2 = activePhaseIds.get(i + 1);
+                        PhaseDefinition phase2 = def.getPhase(p2);
+                        int c2 = getChoicesHeight(phase2, def, runtime, p2);
+                        h2 = 22 + 12 + 4 + FIXED_OBJ_VIEW_H + c2 + (c2 > 0 ? 4 : 0);
+                    }
+
+                    int maxH = Math.max(h1, h2);
+                    rowAssignedHeights.put(p1, maxH);
+                    if (i + 1 < activePhaseIds.size()) {
+                        rowAssignedHeights.put(activePhaseIds.get(i + 1), maxH);
+                    }
+                }
+
+                int currentY = localY;
+
+                for (int idx = 0; idx < activePhaseIds.size(); idx++) {
+                    int col = idx % 2;
+                    int rawCardX = col * (colW + gap);
+                    int rawCardY = currentY;
+
+                    String phaseId = activePhaseIds.get(idx);
                     PhaseDefinition phase = def.getPhase(phaseId);
                     if (phase == null) continue;
 
-                    int col = colY[0] <= colY[1] ? 0 : 1;
-                    int rawCardX = col * (colW + gap);
-                    int rawCardY = colY[col];
+                    int cardH = rowAssignedHeights.get(phaseId);
+                    int objViewH = FIXED_OBJ_VIEW_H;
 
                     float reveal = phaseCardReveal.getOrDefault(phaseId, 0f);
                     reveal = HudAnimUtil.lerp(reveal, 1f, 0.12f + (col * 0.02f), dt);
@@ -194,12 +239,16 @@ public class JournalDetailPanel {
                     int done = 0;
                     int total = phase.getObjectives().size();
                     for (int i = 0; i < total; i++) {
+                        ObjectiveEntry objective = phase.getObjectives().get(i);
+                        int required = Math.max(1, objective.getRequiredCount());
                         int p = runtime.getObjectiveProgress(phaseId, i);
-                        if (p >= phase.getObjectives().get(i).getRequiredCount()) done++;
+                        if (p >= required) done++;
                     }
 
                     boolean selected = phaseId.equals(resolveSelectedPhaseId(def, runtime));
                     boolean phaseDone = isPhaseObjectivesDone(runtime, phase, phaseId);
+
+                    float powerFactor = (selected && !phaseDone) ? 1.0f : 0.35f;
 
                     List<ChoiceOption> visibleChoices = new ArrayList<>();
                     if (shouldShowBranchChoices(def, runtime, phaseId)) {
@@ -213,8 +262,8 @@ public class JournalDetailPanel {
                         }
                     }
 
-                    int objShow = Math.min(total, 5);
-                    int cardH = 24 + 10 + objShow * 14 + 10 + (visibleChoices.isEmpty() ? 0 : visibleChoices.size() * 24 + 4) + 8;
+                    int objContentH = total * OBJ_LINE_H;
+                    int maxInnerScroll = Math.max(0, objContentH - objViewH);
 
                     int absCardX = x + 12 + cardX;
                     int absCardY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset + cardY);
@@ -222,65 +271,198 @@ public class JournalDetailPanel {
                             && my >= absCardY && my <= absCardY + cardH
                             && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
 
-                    HudAnimUtil.drawFrame(g, cardX, cardY, colW, cardH,
-                            HudAnimUtil.withAlpha(0x000000, (int) ((cardHovered ? 0x66 : 0x55) * dAlpha * cardAlphaMul)),
-                            HudAnimUtil.withAlpha(selected ? activeTheme : 0x666666, (int) (200 * dAlpha * cardAlphaMul)));
-
-                    g.fill(cardX, cardY, cardX + colW, cardY + 20, HudAnimUtil.withAlpha(selected ? activeTheme : 0xFFFFFF, (int) ((selected ? 0x33 : 0x14) * dAlpha * cardAlphaMul)));
-
-                    if (selected) {
-                        g.fill(cardX, cardY, cardX + colW, cardY + 2, HudAnimUtil.withAlpha(activeTheme, (int) (230 * dAlpha * cardAlphaMul)));
+                    // == 优化点1：滚轮判定区扩大到整张卡片 ==
+                    if (maxInnerScroll > 0) {
+                        objScrollAreas.add(new ObjScrollArea(absCardX, absCardY, colW, cardH, phaseId, maxInnerScroll));
                     }
+
+                    float hoverAnim = phaseCardHoverAnims.getOrDefault(phaseId, 0f);
+                    hoverAnim = HudAnimUtil.lerp(hoverAnim, cardHovered ? 1f : 0f, 0.2f, dt);
+                    phaseCardHoverAnims.put(phaseId, hoverAnim);
+                    float hoverEase = HudAnimUtil.easeOutCubic(hoverAnim);
+
+                    int contentShiftX = 0;
+                    int cyberEdgeWidth = 3;
+
+                    int baseBgAlpha = 0x44;
+                    int hoverBgAlphaOffset = (int) (0x22 * hoverEase);
+                    int bgAlpha = (int) ((baseBgAlpha + (selected ? 0x11 : hoverBgAlphaOffset)) * dAlpha * cardAlphaMul);
+
+                    int staticBorderColor = 0xFFFFFF;
+                    int staticBorderAlpha = (int) ((0x1A + 0x22 * hoverEase) * dAlpha * cardAlphaMul);
+
+                    int finalEdgeColor;
+                    int edgeAlpha;
+                    if (selected) {
+                        finalEdgeColor = activeTheme;
+                        edgeAlpha = (int) (255 * dAlpha * cardAlphaMul);
+                    } else {
+                        finalEdgeColor = HudAnimUtil.lerpColor(0x555555, 0xDDDDDD, hoverEase);
+                        edgeAlpha = (int) ((100 + 100 * hoverEase) * powerFactor * dAlpha * cardAlphaMul);
+                    }
+
+                    g.fill(cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + cardH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+                    g.fill(cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + 1, HudAnimUtil.withAlpha(staticBorderColor, staticBorderAlpha));
+                    g.fill(cardX + cyberEdgeWidth, cardY + cardH - 1, cardX + colW, cardY + cardH, HudAnimUtil.withAlpha(staticBorderColor, staticBorderAlpha));
+                    g.fill(cardX + colW - 1, cardY, cardX + colW, cardY + cardH, HudAnimUtil.withAlpha(staticBorderColor, staticBorderAlpha));
+                    HudRenderUtil.drawCyberneticEdge(g, cardX, cardY, cardH, finalEdgeColor, edgeAlpha);
 
                     currentPhaseTags.add(new JournalTypes.PhaseTagRect(absCardX, absCardY, colW, cardH, phaseId));
 
                     String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty() ? phase.getDisplayName().getString() : phase.getPhaseId();
-                    phaseName = font.plainSubstrByWidth(phaseName, colW - 54);
-                    g.drawString(font, phaseName, cardX + 6, cardY + 6, HudAnimUtil.withAlpha(0xFFFFFF, cardSafeA), false);
+                    phaseName = font.plainSubstrByWidth(phaseName, colW - 60);
+                    g.drawString(font, phaseName, cardX + 8 + contentShiftX, cardY + 6, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, cardSafeA), true);
 
-                    String badge = phaseDone ? "DONE" : (done + "/" + total);
-                    int badgeW = font.width(badge) + 6;
-                    g.fill(cardX + colW - badgeW - 4, cardY + 4, cardX + colW - 4, cardY + 16, HudAnimUtil.withAlpha(0x000000, (int) (0x88 * dAlpha * cardAlphaMul)));
-                    g.drawString(font, badge, cardX + colW - badgeW - 1, cardY + 6, HudAnimUtil.withAlpha(phaseDone ? 0x66FF66 : 0xCCCCCC, cardSafeA), false);
+                    String statusLabel = phaseDone ? "COMPLETED" : (selected ? "TRACKING" : "STANDBY");
+                    int statusColor = phaseDone ? 0x66FF66 : (selected ? activeTheme : 0x777777);
+                    g.pose().pushPose();
+                    g.pose().translate(cardX + colW - 6 - font.width(statusLabel)*0.7f, cardY + 8, 0);
+                    g.pose().scale(0.7f, 0.7f, 1f);
+                    g.drawString(font, statusLabel, 0, 0, HudAnimUtil.withAlpha(statusColor, cardSafeA), false);
+                    g.pose().popPose();
 
-                    int cy = cardY + 24;
-                    float laneRatio = total > 0 ? (float) done / total : 0f;
-                    int laneBarW = colW - 12;
-                    int laneFillW = (int) (laneBarW * laneRatio);
-                    g.fill(cardX + 6, cy, cardX + 6 + laneBarW, cy + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x2A * dAlpha * cardAlphaMul)));
-                    if (laneFillW > 0) g.fill(cardX + 6, cy, cardX + 6 + laneFillW, cy + 3, HudAnimUtil.withAlpha(phaseDone ? 0x66FF66 : activeTheme, (int) (0xCC * dAlpha * cardAlphaMul)));
-                    cy += 10;
+                    int cy = cardY + 22;
 
-                    for (int i = 0; i < objShow; i++) {
-                        ObjectiveEntry obj = phase.getObjectives().get(i);
-                        int progress = runtime.getObjectiveProgress(phaseId, i);
-                        int required = obj.getRequiredCount();
-                        boolean complete = progress >= required;
+                    int laneBarW = colW - 16;
+                    int barX = cardX + 8 + contentShiftX;
 
-                        String line = (complete ? "§a✔ " : "§7○ ") + obj.getDisplayText().getString();
-                        line = font.plainSubstrByWidth(line, colW - 14);
-                        g.drawString(font, line, cardX + 6, cy, HudAnimUtil.withAlpha(complete ? 0x88FF88 : 0xDDDDDD, cardSafeA), false);
+                    int baseThemeColor = phaseDone ? 0x66FF66 : activeTheme;
+                    int dimmedThemeColor = HudAnimUtil.lerpColor(0x000000, baseThemeColor, powerFactor);
+                    int emptyBgColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * powerFactor * dAlpha * cardAlphaMul));
+                    int fillColor = HudAnimUtil.withAlpha(dimmedThemeColor, (int) (0xCC * powerFactor * dAlpha * cardAlphaMul));
+                    int brightColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * powerFactor * dAlpha * cardAlphaMul));
 
-                        String pr = progress + "/" + required;
-                        g.drawString(font, pr, cardX + colW - 6 - font.width(pr), cy, HudAnimUtil.withAlpha(0x999999, cardSafeA), false);
-                        cy += 14;
+                    // == 优化点3：段落化分体多目标进度条引擎 ==
+                    if (total <= 1) {
+                        float singleRatio = 0f;
+                        if (total == 1) {
+                            ObjectiveEntry ob = phase.getObjectives().get(0);
+                            int req = Math.max(1, ob.getRequiredCount());
+                            int p = Math.max(0, Math.min(runtime.getObjectiveProgress(phaseId, 0), req));
+                            singleRatio = (float) p / req;
+                        }
+                        int laneFillW = (int) (laneBarW * singleRatio);
+                        g.fill(barX, cy, barX + laneBarW, cy + 2, emptyBgColor);
+                        if (laneFillW > 0) {
+                            g.fill(barX, cy, barX + laneFillW, cy + 2, fillColor);
+                            g.fill(barX + laneFillW - 2, cy - 1, barX + laneFillW, cy + 3, brightColor);
+                        }
+                    } else {
+                        int gapX = 2;
+                        int totalGaps = total - 1;
+                        float segW = (float)(laneBarW - totalGaps * gapX) / total;
+                        float cx = barX;
+                        for (int i = 0; i < total; i++) {
+                            ObjectiveEntry objective = phase.getObjectives().get(i);
+                            int required = Math.max(1, objective.getRequiredCount());
+                            int p = runtime.getObjectiveProgress(phaseId, i);
+                            int clamped = Math.max(0, Math.min(p, required));
+                            float ratio = (float) clamped / required;
+                            int sFill = (int)(segW * ratio);
+
+                            g.fill((int)cx, cy, (int)(cx + segW), cy + 2, emptyBgColor);
+                            if (sFill > 0) {
+                                g.fill((int)cx, cy, (int)(cx + sFill), cy + 2, fillColor);
+                                if (ratio >= 1.0f) {
+                                    g.fill((int)(cx + segW) - 2, cy - 1, (int)(cx + segW), cy + 3, brightColor);
+                                } else {
+                                    g.fill((int)(cx + sFill) - 2, cy - 1, (int)(cx + sFill), cy + 3, brightColor);
+                                }
+                            }
+                            cx += segW + gapX;
+                        }
+                    }
+                    // ========================================
+
+                    cy += 12;
+
+                    double currentInnerScroll = phaseObjScrollOffsets.getOrDefault(phaseId, 0.0);
+                    double targetInnerScroll = phaseObjTargetScrolls.getOrDefault(phaseId, 0.0);
+                    currentInnerScroll += (targetInnerScroll - currentInnerScroll) * Math.min(1.0, dt * 15.0);
+                    phaseObjScrollOffsets.put(phaseId, currentInnerScroll);
+
+                    int sX = x + 12 + cardX;
+                    int sY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset + cy);
+                    int sW = colW;
+                    int sH = objViewH;
+                    int intX1 = Math.max(x, sX);
+                    int intY1 = Math.max(scrollAreaY, sY);
+                    int intX2 = Math.min(x + w - 8, sX + sW);
+                    int intY2 = Math.min(scrollAreaY + scrollAreaH, sY + sH);
+
+                    if (intX2 > intX1 && intY2 > intY1 && total > 0) {
+                        g.disableScissor();
+                        g.enableScissor(intX1, intY1, intX2, intY2);
+
+                        g.pose().pushPose();
+                        g.pose().translate(0, -currentInnerScroll, 0);
+
+                        int objY = cy;
+                        for (int i = 0; i < total; i++) {
+                            ObjectiveEntry obj = phase.getObjectives().get(i);
+                            int progress = runtime.getObjectiveProgress(phaseId, i);
+                            int required = obj.getRequiredCount();
+                            boolean complete = progress >= required;
+
+                            int extraMargin = maxInnerScroll > 0 ? 8 : 0;
+                            String pr = progress + "/" + required;
+                            int prWidth = font.width(pr);
+
+                            int availableWidth = colW - 16 - contentShiftX - extraMargin - prWidth - 6;
+
+                            String line = (complete ? "§a✔ " : "§7○ ") + obj.getDisplayText().getString();
+                            line = font.plainSubstrByWidth(line, Math.max(5, availableWidth));
+
+                            int objColor = complete ? 0x88FF88 : 0xCCCCCC;
+                            int dimmedObjColor = HudAnimUtil.lerpColor(0x000000, objColor, Math.max(0.6f, powerFactor));
+
+                            g.drawString(font, line, cardX + 8 + contentShiftX, objY, HudAnimUtil.withAlpha(dimmedObjColor, cardSafeA), false);
+                            g.drawString(font, pr, cardX + colW - 8 - extraMargin - prWidth, objY, HudAnimUtil.withAlpha(0x888888, cardSafeA), false);
+
+                            objY += OBJ_LINE_H;
+                        }
+
+                        g.pose().popPose();
+
+                        g.disableScissor();
+                        g.enableScissor(x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
                     }
 
-                    if (total > objShow) {
-                        g.drawString(font, "+" + (total - objShow) + " more", cardX + 6, cy, HudAnimUtil.withAlpha(0x777777, cardSafeA), false);
-                        cy += 12;
+                    if (maxInnerScroll > 0) {
+                        int gradientW = colW - 8; // 优化点2：略微收窄避开滚动条
+                        if (currentInnerScroll > 1.0) {
+                            g.fillGradient(cardX + cyberEdgeWidth, cy, cardX + gradientW, cy + 6,
+                                    HudAnimUtil.withAlpha(0x000000, (int)(0xAA * dAlpha * cardAlphaMul)),
+                                    HudAnimUtil.withAlpha(0x000000, 0));
+                        }
+                        if (currentInnerScroll < maxInnerScroll - 1.0) {
+                            // 优化点2：底部阴影严格贴合视口底部
+                            g.fillGradient(cardX + cyberEdgeWidth, cy + objViewH - 6, cardX + gradientW, cy + objViewH,
+                                    HudAnimUtil.withAlpha(0x000000, 0),
+                                    HudAnimUtil.withAlpha(0x000000, (int)(0xAA * dAlpha * cardAlphaMul)));
+                        }
+
+                        int trackX = cardX + colW - 6;
+                        int trackY = cy;
+                        g.fill(trackX, trackY, trackX + 2, trackY + objViewH, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x11 * dAlpha * cardAlphaMul)));
+
+                        int thumbH = Math.max(8, (int)(((float)objViewH / objContentH) * objViewH));
+                        int thumbY = trackY + (int)((currentInnerScroll / maxInnerScroll) * (objViewH - thumbH));
+                        g.fill(trackX, thumbY, trackX + 2, thumbY + thumbH, HudAnimUtil.withAlpha(activeTheme, (int)(0xAA * dAlpha * cardAlphaMul)));
                     }
+
+                    cy += objViewH + 4;
 
                     if (phase.hasChoices() && !shouldShowBranchChoices(def, runtime, phaseId)) {
-                        g.drawString(font, "Choices locked: complete lane objectives first", cardX + 6, cy, HudAnimUtil.withAlpha(0x888888, cardSafeA), false);
+                        g.drawString(font, "Choices locked", cardX + 8 + contentShiftX, cy, HudAnimUtil.withAlpha(0x888888, cardSafeA), false);
                         cy += 14;
                     }
 
                     if (!visibleChoices.isEmpty()) {
-                        cy += 2;
+                        cy += 4;
                         for (int i = 0; i < visibleChoices.size(); i++) {
                             ChoiceOption choice = visibleChoices.get(i);
-                            int btnX = cardX + 6, btnY = cy, btnW = colW - 12, btnH = 20;
+                            int btnX = cardX + 8 + contentShiftX, btnY = cy, btnW = colW - 16, btnH = 20;
                             int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset + btnY);
 
                             boolean btnHover = mx >= absBtnX && mx <= absBtnX + btnW && my >= absBtnY && my <= absBtnY + btnH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
@@ -299,10 +481,12 @@ public class JournalDetailPanel {
                         }
                     }
 
-                    colY[col] = rawCardY + cardH + gap;
+                    if (col == 1 || idx == activePhaseIds.size() - 1) {
+                        currentY += cardH + gap;
+                    }
                 }
 
-                localY = Math.max(colY[0], colY[1]) + 6;
+                localY = currentY + 6;
 
                 g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
                 localY += 10;
@@ -525,6 +709,10 @@ public class JournalDetailPanel {
             for (JournalTypes.PhaseTagRect rect : currentPhaseTags) {
                 if (mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h) {
                     selectedPhaseId = rect.phaseId;
+                    QuestHudOverlay.INSTANCE.setTrackedFocus(
+                            screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(),
+                            rect.phaseId
+                    );
                     currentChoiceButtons.clear();
                     screen.playClick();
                     return true;
@@ -564,6 +752,16 @@ public class JournalDetailPanel {
     }
 
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
+        for (ObjScrollArea area : objScrollAreas) {
+            if (mx >= area.absX && mx <= area.absX + area.w && my >= area.absY && my <= area.absY + area.h) {
+                double target = phaseObjTargetScrolls.getOrDefault(area.phaseId, 0.0);
+                target -= delta * 14.0;
+                target = Math.max(0.0, Math.min(target, area.maxScroll));
+                phaseObjTargetScrolls.put(area.phaseId, target);
+                return true;
+            }
+        }
+
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
             detailTargetScroll -= delta * 25.0;
             clampScroll(h - 40);
@@ -582,6 +780,25 @@ public class JournalDetailPanel {
         detailTargetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragDetailYOffset) / (viewH - thumbH))) * maxScroll;
     }
 
+    private int getChoicesHeight(PhaseDefinition phase, QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
+        int choicesH = 0;
+        boolean showChoices = shouldShowBranchChoices(def, runtime, phaseId);
+        if (showChoices) {
+            int visibleCount = 0;
+            for (ChoiceOption choice : phase.getChoices()) {
+                if (choice.getVisibleCondition() == null || choice.getVisibleCondition().testClient(
+                        ClientQuestCache.INSTANCE.getCompletedQuestsAsRL(),
+                        ClientQuestCache.INSTANCE.getAllFlags(),
+                        ClientQuestCache.INSTANCE.getAllVariables())) {
+                    visibleCount++;
+                }
+            }
+            if (visibleCount > 0) choicesH = visibleCount * 24;
+        }
+        int lockedChoicesH = (phase.hasChoices() && !showChoices) ? 14 : 0;
+        return choicesH + lockedChoicesH;
+    }
+
     private boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
         if (def == null || runtime == null || phaseId == null || phaseId.isEmpty()) return false;
         PhaseDefinition phase = def.getPhase(phaseId);
@@ -595,10 +812,42 @@ public class JournalDetailPanel {
 
     private String resolveSelectedPhaseId(QuestDefinition def, QuestRuntimeData runtime) {
         if (def == null || runtime == null) return null;
-        if (selectedPhaseId != null && !selectedPhaseId.isEmpty() && runtime.isPhaseActive(selectedPhaseId) && def.getPhase(selectedPhaseId) != null) return selectedPhaseId;
+
+        if (selectedPhaseId != null
+                && !selectedPhaseId.isEmpty()
+                && runtime.isPhaseActive(selectedPhaseId)
+                && def.getPhase(selectedPhaseId) != null) {
+            return selectedPhaseId;
+        }
+
+        String trackerQuest = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        String trackerPhase = QuestHudOverlay.INSTANCE.getTrackedPhaseId();
+        if (trackerQuest != null
+                && trackerQuest.equals(runtime.getQuestId())
+                && trackerPhase != null
+                && !trackerPhase.isEmpty()
+                && runtime.isPhaseActive(trackerPhase)
+                && def.getPhase(trackerPhase) != null) {
+            selectedPhaseId = trackerPhase;
+            return selectedPhaseId;
+        }
+
         String current = runtime.getCurrentPhaseId();
-        if (current != null && !current.isEmpty() && runtime.isPhaseActive(current) && def.getPhase(current) != null) { selectedPhaseId = current; return selectedPhaseId; }
-        for (String pid : runtime.getActivePhaseIds()) if (def.getPhase(pid) != null) { selectedPhaseId = pid; return selectedPhaseId; }
+        if (current != null
+                && !current.isEmpty()
+                && runtime.isPhaseActive(current)
+                && def.getPhase(current) != null) {
+            selectedPhaseId = current;
+            return selectedPhaseId;
+        }
+
+        for (String pid : runtime.getActivePhaseIds()) {
+            if (def.getPhase(pid) != null) {
+                selectedPhaseId = pid;
+                return selectedPhaseId;
+            }
+        }
+
         return selectedPhaseId = null;
     }
 
