@@ -1,14 +1,19 @@
 package org.com.arc_quest.dialogue.api;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.dialogue.runtime.DialogueEvalContext;
 import org.com.arc_quest.quest.api.CompareOp;
 import org.com.arc_quest.quest.api.ICondition;
+import org.com.arc_quest.quest.api.PhaseDefinition;
+import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
+import org.com.arc_quest.quest.registry.QuestRegistry;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiPredicate;
 
@@ -27,7 +32,16 @@ public sealed interface DialogueCondition permits
         DialogueCondition.QuestActive,
         DialogueCondition.QuestCompleted,
         DialogueCondition.QuestFailed,
-        DialogueCondition.QuestPhase,
+        DialogueCondition.QuestPhase,              // 兼容旧语义（= Active）
+        DialogueCondition.QuestPhaseActive,
+        DialogueCondition.QuestPhaseCompleted,
+        DialogueCondition.QuestPhaseReached,
+        DialogueCondition.PhaseBefore,
+        DialogueCondition.PhaseAfter,
+        DialogueCondition.PhaseBetween,
+        DialogueCondition.AnyActiveInRange,
+        DialogueCondition.AllCompletedInRange,
+        DialogueCondition.PhaseEnterable,
         // ── Flag / Variable ──
         DialogueCondition.HasFlag,
         DialogueCondition.VariableCheck,
@@ -49,11 +63,43 @@ public sealed interface DialogueCondition permits
 
     /**
      * 评估条件是否满足。
-     *
-     * @param ctx 评估上下文（包含 player、npc、namespace、progress 等）
-     * @return true = 条件满足
      */
     boolean test(DialogueEvalContext ctx);
+
+    // ═══════════════════════════════════════════════
+    //  内部辅助
+    // ═══════════════════════════════════════════════
+
+    private static QuestRuntimeData getQuestData(DialogueEvalContext ctx, String questId) {
+        return ctx.questCap().getActiveQuest(questId);
+    }
+
+    private static QuestDefinition getQuestDef(String questId) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        if (rl == null) return null;
+        return QuestRegistry.get(rl);
+    }
+
+    private static boolean isPhaseReached(QuestRuntimeData data, String phaseId) {
+        return data.isPhaseActive(phaseId) || data.isPhaseCompleted(phaseId);
+    }
+
+    /**
+     * 返回 [from, to) 的有序区间（按声明顺序）。
+     * 若 from/to 不存在或区间为空，返回 null。
+     */
+    private static int[] resolveRange(QuestDefinition def, String fromPhaseId, String toPhaseId) {
+        List<String> ids = new ArrayList<>(def.getPhaseIds());
+        int a = ids.indexOf(fromPhaseId);
+        int b = ids.indexOf(toPhaseId);
+        if (a < 0 || b < 0) return null;
+
+        int from = Math.min(a, b);
+        int to = Math.max(a, b);
+
+        if (from == to) return null; // 空区间
+        return new int[]{from, to};  // [from, to)
+    }
 
     // ═══════════════════════════════════════════════
     //  逻辑组合
@@ -81,53 +127,17 @@ public sealed interface DialogueCondition permits
     }
 
     /**
-     * 自定义条件 - 支持 lambda 表达式，自动注册后可用于 .sayIf() 和 .choiceIf()。
-     * <p>
-     * 使用方式：
-     * <ol>
-     *   <li><b>直接内联</b>（推荐）：{@code CustomCondition.create((player, npc) -> ...)}</li>
-     *   <li><b>手动注册</b>：{@code RegisteredConditions.register("name", predicate)} + {@code new CustomCondition("name")}</li>
-     * </ol>
-     * <p>
-     * 使用示例：
-     * <pre>{@code
-     * // 方式1：直接内联（一步完成）
-     * .sayIf(
-     *     DialogueCondition.CustomCondition.create((player, npc) -> player.getHealth() > 10.0f),
-     *     "生命值充足"
-     * )
-     *
-     * // 方式2：手动注册（可复用）
-     * RegisteredConditions.register("has_diamond", (player, npc) -> {
-     *     return player.getInventory().contains(new ItemStack(Items.DIAMOND));
-     * });
-     * .sayIf(new DialogueCondition.CustomCondition("has_diamond"), "你有钻石")
-     * }</pre>
-     *
-     * @param nameOrPredicate 注册名称 或 lambda 表达式（通过 create() 工厂方法创建时自动注册）
+     * 自定义条件
      */
     record CustomCondition(String nameOrPredicate) implements DialogueCondition {
-        
+
         private static final String AUTO_PREFIX = "auto_";
-        
-        /**
-         * 便捷工厂方法：自动注册 lambda 并创建条件。
-         * <p>
-         * 这是推荐使用的方式，语法简洁
-         *
-         * @param predicate 条件判断函数
-         * @return 自动注册的自定义条件
-         */
+
         public static CustomCondition create(BiPredicate<ServerPlayer, Entity> predicate) {
             String name = RegisteredConditions.autoRegister(predicate);
             return new CustomCondition(name);
         }
-        
-        /**
-         * 构造函数：使用已注册的名称。
-         *
-         * @param nameOrPredicate 已注册的条件名称
-         */
+
         public CustomCondition {
             if (!nameOrPredicate.startsWith(AUTO_PREFIX)) {
                 if (!RegisteredConditions.isRegistered(nameOrPredicate)) {
@@ -135,7 +145,7 @@ public sealed interface DialogueCondition permits
                 }
             }
         }
-        
+
         @Override
         public boolean test(DialogueEvalContext ctx) {
             BiPredicate<ServerPlayer, Entity> predicate = RegisteredConditions.get(nameOrPredicate);
@@ -153,12 +163,9 @@ public sealed interface DialogueCondition permits
     }
 
     // ═══════════════════════════════════════════════
-    //  任务状态
+    //  任务状态（并行 phase 语义）
     // ═══════════════════════════════════════════════
 
-    /**
-     * 玩家是否拥有该任务（活跃 OR 已完成 OR 已失败）
-     */
     record HasQuest(String questId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
@@ -189,14 +196,171 @@ public sealed interface DialogueCondition permits
     }
 
     /**
-     * 任务处于指定阶段
+     * 向后兼容：旧 QuestPhase = 判断该 phase 是否 active
      */
     record QuestPhase(String questId, String phaseId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            QuestRuntimeData data = ctx.questCap().getActiveQuest(questId);
+            QuestRuntimeData data = getQuestData(ctx, questId);
             if (data == null) return false;
-            return phaseId.equals(data.getCurrentPhaseId());
+            return data.isPhaseActive(phaseId);
+        }
+    }
+
+    /**
+     * 原子条件：phase 是否 active
+     */
+    record QuestPhaseActive(String questId, String phaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            QuestRuntimeData data = getQuestData(ctx, questId);
+            if (data == null) return false;
+            return data.isPhaseActive(phaseId);
+        }
+    }
+
+    /**
+     * 原子条件：phase 是否 completed
+     */
+    record QuestPhaseCompleted(String questId, String phaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            QuestRuntimeData data = getQuestData(ctx, questId);
+            if (data == null) return false;
+            return data.isPhaseCompleted(phaseId);
+        }
+    }
+
+    /**
+     * 原子条件：phase 是否 reached（active 或 completed）
+     */
+    record QuestPhaseReached(String questId, String phaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            QuestRuntimeData data = getQuestData(ctx, questId);
+            if (data == null) return false;
+            return isPhaseReached(data, phaseId);
+        }
+    }
+
+    /**
+     * 区间语义（声明顺序 + 集合语义）
+     * PhaseBefore(target) => !isPhaseReached(target)
+     */
+    record PhaseBefore(String questId, String targetPhaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            QuestRuntimeData data = getQuestData(ctx, questId);
+            if (data == null) return false;
+            return !isPhaseReached(data, targetPhaseId);
+        }
+    }
+
+    /**
+     * 区间语义（声明顺序 + 集合语义）
+     * PhaseAfter(target) => isPhaseCompleted(target)
+     */
+    record PhaseAfter(String questId, String targetPhaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            QuestRuntimeData data = getQuestData(ctx, questId);
+            if (data == null) return false;
+            return data.isPhaseCompleted(targetPhaseId);
+        }
+    }
+
+    /**
+     * 区间语义（声明顺序 + 集合语义）
+     * PhaseBetween(start, end) => isPhaseReached(start) && !isPhaseReached(end)
+     */
+    record PhaseBetween(String questId, String startPhaseId, String endPhaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            QuestRuntimeData data = getQuestData(ctx, questId);
+            if (data == null) return false;
+            return isPhaseReached(data, startPhaseId) && !isPhaseReached(data, endPhaseId);
+        }
+    }
+
+    /**
+     * 严格增强：区间 [start, end)（按声明顺序）内，是否存在任意 active phase
+     */
+    record AnyActiveInRange(String questId, String startPhaseId, String endPhaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            QuestRuntimeData data = getQuestData(ctx, questId);
+            if (data == null) return false;
+
+            QuestDefinition def = getQuestDef(questId);
+            if (def == null) return false;
+
+            int[] r = resolveRange(def, startPhaseId, endPhaseId);
+            if (r == null) return false;
+
+            List<String> ids = new ArrayList<>(def.getPhaseIds());
+            for (int i = r[0]; i < r[1]; i++) {
+                if (data.isPhaseActive(ids.get(i))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    /**
+     * 严格增强：区间 [start, end)（按声明顺序）内，是否全部 completed
+     */
+    record AllCompletedInRange(String questId, String startPhaseId, String endPhaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            QuestRuntimeData data = getQuestData(ctx, questId);
+            if (data == null) return false;
+
+            QuestDefinition def = getQuestDef(questId);
+            if (def == null) return false;
+
+            int[] r = resolveRange(def, startPhaseId, endPhaseId);
+            if (r == null) return false;
+
+            List<String> ids = new ArrayList<>(def.getPhaseIds());
+            boolean hasAny = false;
+            for (int i = r[0]; i < r[1]; i++) {
+                hasAny = true;
+                if (!data.isPhaseCompleted(ids.get(i))) {
+                    return false;
+                }
+            }
+            return hasAny;
+        }
+    }
+
+    /**
+     * 当前是否“可进入某 phase”（受 enterCondition 约束）
+     */
+    record PhaseEnterable(String questId, String phaseId) implements DialogueCondition {
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            IQuestCapability cap = ctx.questCap();
+            QuestRuntimeData data = cap.getActiveQuest(questId);
+            if (data == null) return false;
+
+            if (data.isPhaseActive(phaseId) || data.isPhaseCompleted(phaseId)) {
+                return false;
+            }
+
+            QuestDefinition def = getQuestDef(questId);
+            if (def == null) return false;
+
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase == null) return false;
+
+            ICondition cond = phase.getEnterCondition();
+            return cond == null || cond.test(
+                    ctx.player(),
+                    cap.getCompletedQuestLocations(),
+                    cap.getAllFlags(),
+                    cap.getAllVariables()
+            );
         }
     }
 
@@ -211,13 +375,6 @@ public sealed interface DialogueCondition permits
         }
     }
 
-    /**
-     * 变量数值比较。
-     *
-     * @param key   变量名
-     * @param op    比较操作符: "==", "!=", ">", ">=", "<", "<="
-     * @param value 比较目标值
-     */
     record VariableCheck(String key, String op, int value) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
@@ -230,15 +387,6 @@ public sealed interface DialogueCondition permits
     //  时间条件
     // ═══════════════════════════════════════════════
 
-    /**
-     * 早晨：tick [0, 6000) = 游戏时间 6:00-12:00
-     * <p>
-     * Minecraft 时间映射：
-     * <ul>
-     *   <li>tick 0 = 早上6:00（日出）</li>
-     *   <li>tick 6000 = 中午12:00</li>
-     * </ul>
-     */
     record IsMorning() implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
@@ -247,15 +395,6 @@ public sealed interface DialogueCondition permits
         }
     }
 
-    /**
-     * 下午：tick [6000, 12000) = 游戏时间 12:00-18:00
-     * <p>
-     * Minecraft 时间映射：
-     * <ul>
-     *   <li>tick 6000 = 中午12:00</li>
-     *   <li>tick 12000 = 晚上18:00（日落）</li>
-     * </ul>
-     */
     record IsAfternoon() implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
@@ -264,16 +403,6 @@ public sealed interface DialogueCondition permits
         }
     }
 
-    /**
-     * 夜晚：tick [12000, 24000) = 游戏时间 18:00-次日6:00
-     * <p>
-     * Minecraft 时间映射：
-     * <ul>
-     *   <li>tick 12000 = 晚上18:00（日落）</li>
-     *   <li>tick 18000 = 凌晨0:00</li>
-     *   <li>tick 24000/0 = 次日早上6:00（日出）</li>
-     * </ul>
-     */
     record IsNight() implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
@@ -282,26 +411,14 @@ public sealed interface DialogueCondition permits
         }
     }
 
-    /**
-     * 游戏时间在指定刻区间内（支持跨天）。
-     *
-     * @param startTick 起始刻 [0, 24000]
-     * @param endTick   结束刻 [0, 24000]；若 start > end 则视为跨天区间
-     */
     record GameTimeInRange(int startTick, int endTick) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
             long t = ctx.dayTimeTick();
             if (startTick <= endTick) {
-                // 普通区间
                 return t >= startTick && t <= endTick;
             } else {
-                // 跨天区间
-                if (endTick == 0) {
-                    return t >= startTick;
-                } else {
-                    return t >= startTick || t < endTick;
-                }
+                return endTick == 0 ? t >= startTick : (t >= startTick || t < endTick);
             }
         }
     }
@@ -310,9 +427,6 @@ public sealed interface DialogueCondition permits
     //  对话历史（自动使用 context 中的 namespace）
     // ═══════════════════════════════════════════════
 
-    /**
-     * 节点是否已被访问过
-     */
     record NodeVisited(String nodeId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
@@ -320,16 +434,7 @@ public sealed interface DialogueCondition permits
         }
     }
 
-    /**
-     * 选项是否已被选择过。
-     *
-     * @param nodeId      节点 ID
-     * @param choiceIndex 选项索引
-     */
     record ChoiceSelected(String nodeId, int choiceIndex) implements DialogueCondition {
-        /**
-         * 向后兼容：旧格式 "nodeId:index"
-         */
         public ChoiceSelected(String legacyKey) {
             this(parseLegacyNode(legacyKey), parseLegacyIndex(legacyKey));
         }
@@ -344,7 +449,8 @@ public sealed interface DialogueCondition permits
             if (i >= 0 && i < key.length() - 1) {
                 try {
                     return Integer.parseInt(key.substring(i + 1));
-                } catch (NumberFormatException e) { /* ignore */ }
+                } catch (NumberFormatException ignored) {
+                }
             }
             return 0;
         }
@@ -355,9 +461,6 @@ public sealed interface DialogueCondition permits
         }
     }
 
-    /**
-     * 对话树是否已完成过
-     */
     record DialogueCompleted(String dialogueId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
@@ -375,8 +478,7 @@ public sealed interface DialogueCondition permits
         }
     }
 
-    record ChoiceOnCooldown(String nodeId, int choiceIndex, int cooldownSeconds)
-            implements DialogueCondition {
+    record ChoiceOnCooldown(String nodeId, int choiceIndex, int cooldownSeconds) implements DialogueCondition {
         public ChoiceOnCooldown(String legacyKey, int cooldownSeconds) {
             this(ChoiceSelected.parseLegacyNode(legacyKey),
                     ChoiceSelected.parseLegacyIndex(legacyKey),
@@ -403,16 +505,7 @@ public sealed interface DialogueCondition permits
     }
 
     /**
-     * 跨系统适配器：将 {@link ICondition}（商店/任务系统）包装为 {@link DialogueCondition}，
-     * 使商店条件、任务解锁条件等可以直接用于对话选项的可见性判断，无需重写。
-     * <p>
-     * 使用方式（推荐通过 {@link ICondition#asDialogueCondition(ICondition)} 工厂方法）：
-     * <pre>{@code
-     * DialogueChoice.conditional("choice_id", "购买剑", "node_shop",
-     *     myCanBuyCondition.asDialogueCondition())
-     * }</pre>
-     *
-     * @param condition 要包装的 {@link ICondition} 实例
+     * 跨系统适配器：将 ICondition 包装为 DialogueCondition
      */
     record IConditionWrapper(ICondition condition) implements DialogueCondition {
         @Override
@@ -421,7 +514,8 @@ public sealed interface DialogueCondition permits
                     ctx.player(),
                     ctx.questCap().getCompletedQuestLocations(),
                     ctx.questCap().getAllFlags(),
-                    ctx.questCap().getAllVariables());
+                    ctx.questCap().getAllVariables()
+            );
         }
     }
 }
