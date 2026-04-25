@@ -78,18 +78,29 @@ public final class EpicMainlineDemo {
                                 .objective(ObjectiveBuilder.collect(Items.STRING, 6)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.scout_forest.0")))
                                 .setFlagOnComplete("arc_quest:forest_scouted")
-                                .thenGoToIf("arc_quest:craft_sword", ICondition.flagSet("arc_quest:gate_reinforced")))
+                                // 手动转入汇合阶段（D）
+                                .thenGoTo("arc_quest:craft_sword"))
 
                         // 并行支线B：加固村门
                         .phase(PhaseBuilder.create("arc_quest:reinforce_gate")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.reinforce_gate"))
                                 .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
+                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
+                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
                                 .setFlagOnComplete("arc_quest:gate_reinforced")
-                                .thenGoToIf("arc_quest:craft_sword", ICondition.flagSet("arc_quest:forest_scouted")))
+                                // 手动转入汇合阶段（D）
+                                .thenGoTo("arc_quest:craft_sword"))
 
-                        // 汇合阶段：制作铁剑
+                        // 汇合阶段（D）：制作铁剑
                         .phase(PhaseBuilder.create("arc_quest:craft_sword")
+                                // 仅作为 condition 门禁，不自动跳转
+                                .enterWhen(
+                                        ICondition.flagSet("arc_quest:forest_scouted").and(ICondition.flagSet("arc_quest:gate_reinforced")),
+                                        false
+                                )
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.craft_sword"))
                                 .objective(ObjectiveBuilder.collect(Items.IRON_INGOT, 3)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.craft_sword.0")))
