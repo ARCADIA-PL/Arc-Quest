@@ -10,12 +10,18 @@ import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 import org.com.arc_quest.client.gui.render.QuestIconRenderer;
-import org.com.arc_quest.quest.api.*;
+import org.com.arc_quest.quest.api.IconPosition;
+import org.com.arc_quest.quest.api.ObjectiveEntry;
+import org.com.arc_quest.quest.api.PhaseDefinition;
+import org.com.arc_quest.quest.api.QuestDefinition;
+import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +32,7 @@ public class QuestTrackerPanel {
     // 布局常量
     private static final int PANEL_WIDTH = 175;
     private static final int MARGIN_RIGHT = 6;
-    private static final int MARGIN_TOP = 30; // 基础高度
+    private static final int MARGIN_TOP = 30;
     private static final int ACCENT_WIDTH = 3;
     private static final int TITLE_HEIGHT = 14;
     private static final int OBJ_ROW_HEIGHT = 11;
@@ -39,14 +45,18 @@ public class QuestTrackerPanel {
     private static final float TIME_WIPE_OUT = 250f;
     private static final float TIME_WIPE_IN = 350f;
 
+    // 并行摘要区
+    private static final int LANE_SUMMARY_MAX_ROWS = 3;
+    private static final int LANE_HEADER_H = 10;
+    private static final int LANE_ROW_H = 10;
+    private static final int LANE_BAR_H = 2;
+    private static final int LANE_ROW_GAP = 3;
+
     // 动画状态
     private float panelReveal = 0f;
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
-
-    // Y轴动态避让
     private float currentPanelY = MARGIN_TOP;
-
     private long lastRenderTime = 0;
     private float dt = 0f;
 
@@ -58,6 +68,9 @@ public class QuestTrackerPanel {
     private boolean phaseWipingOut = false;
     private long phaseTransitionStart = 0;
 
+    // 并行 phase 顺序缓存（稳定展示）
+    private List<String> activePhaseOrder = new ArrayList<>();
+
     private float[] objReveal = new float[0];
     private int[] lastKnownProgress = new int[0];
     private float[] objPulse = new float[0];
@@ -67,8 +80,6 @@ public class QuestTrackerPanel {
     private long completionDismissStart = 0;
 
     private int currentThemeColor = COLOR_ACCENT_DEFAULT;
-
-
 
     private static float lerp(float current, float target, float speed, float dt) {
         return current + (target - current) * Math.min(1f, speed * dt * 60f);
@@ -90,6 +101,7 @@ public class QuestTrackerPanel {
             this.displayedPhaseId = null;
             this.targetPhaseId = null;
             this.currentPanelH = -1f;
+            this.activePhaseOrder.clear();
             resetObjectiveAnimations();
         }
     }
@@ -109,8 +121,7 @@ public class QuestTrackerPanel {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) return;
 
-        boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen ||
-                mc.screen instanceof DialogueScreen;
+        boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen;
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -119,19 +130,22 @@ public class QuestTrackerPanel {
 
         Map<String, QuestRuntimeData> active = ClientQuestCache.INSTANCE.getAllActiveQuests();
         QuestRuntimeData tracked = resolveTrackedQuest(active);
-
         if (tracked == null) return;
 
         String questId = tracked.getQuestId();
         currentThemeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, COLOR_ACCENT_DEFAULT);
 
-        boolean isActive = tracked != null && tracked.getState() == QuestState.ACTIVE;
-        boolean shouldShow = isActive && !isBlockingScreen;
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
+        if (def == null) return;
 
+        syncActivePhaseOrder(tracked, def);
+
+        boolean isActive = tracked.getState() == QuestState.ACTIVE;
+        boolean shouldShow = isActive && !isBlockingScreen;
         handleDismiss(tracked, now, isActive);
 
         if (isActive) {
-            String actualPhaseId = tracked.getCurrentPhaseId();
+            String actualPhaseId = resolvePreferredPhaseId(tracked, def);
             if (shouldShow) {
                 if (displayedPhaseId == null) {
                     displayedPhaseId = actualPhaseId;
@@ -152,6 +166,7 @@ public class QuestTrackerPanel {
             displayedPhaseId = null;
             targetPhaseId = null;
             isPhaseTransitioning = false;
+            activePhaseOrder.clear();
         }
 
         float wipeReveal = 1f, wipeDrift = 0f, wipeAlpha = 1f;
@@ -193,16 +208,8 @@ public class QuestTrackerPanel {
 
         if (panelReveal < 0.01f && !shouldShow) return;
 
-        PhaseDefinition phase = ClientQuestCache.INSTANCE.getCurrentPhase(questId);
-        if (phase == null) {
-            var activePhaseIds = tracked.getActivePhaseIds();
-            if (activePhaseIds.isEmpty()) return;
-            String fallbackPhaseId = activePhaseIds.iterator().next();
-            QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
-            if (def == null) return;
-            phase = def.getPhase(fallbackPhaseId);
-            if (phase == null) return;
-        }
+        PhaseDefinition phase = resolveDisplayedPhase(def, tracked);
+        if (phase == null) return;
 
         List<ObjectiveEntry> objectives = phase.getObjectives();
         int objCount = objectives.size();
@@ -210,18 +217,25 @@ public class QuestTrackerPanel {
 
         Font font = mc.font;
 
-        int targetH = PADDING + TITLE_HEIGHT + GAP_AFTER_TITLE + 18 + (objCount * (OBJ_ROW_HEIGHT + PROGRESS_BAR_H + 6)) + PADDING;
+        int targetH = PADDING + TITLE_HEIGHT + GAP_AFTER_TITLE + 18;
+        targetH += computeLaneSummaryHeight();
+        targetH += objCount * (OBJ_ROW_HEIGHT + PROGRESS_BAR_H + 6);
+        targetH += PADDING;
+
         if (phase.hasDescription()) {
-            List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(),
-                    (int) ((PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2) / 0.75f), font);
+            List<String> descLines = HudRenderUtil.wrapText(
+                    phase.getDescription().getString(),
+                    (int) ((PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2) / 0.75f),
+                    font
+            );
             targetH += descLines.size() * (int) (font.lineHeight * 0.75f + 1) + 4;
         }
+
         if (currentPanelH < 0) currentPanelH = targetH;
         currentPanelH = lerp(currentPanelH, targetH, 0.15f, dt);
 
-        // 动态避让Toast队列
         float targetY = MARGIN_TOP + QuestToastManager.getPushDownOffset();
-        currentPanelY = lerp(currentPanelY, targetY, 0.12f, dt); // 使用缓动极其丝滑地下移或上移
+        currentPanelY = lerp(currentPanelY, targetY, 0.12f, dt);
 
         int panelH = (int) currentPanelH;
         float slideOffset = panelSlide * (PANEL_WIDTH + MARGIN_RIGHT + 20);
@@ -241,7 +255,12 @@ public class QuestTrackerPanel {
         int bgAlpha = (int) (0x55 * alpha);
         int accentAlpha = (int) (0xFF * alpha);
 
-        HudAnimUtil.drawAccentPanel(g, panelX, panelY, PANEL_WIDTH, panelH, bgAlpha << 24, (accentAlpha << 24) | (currentThemeColor & 0x00FFFFFF), ACCENT_WIDTH);
+        HudAnimUtil.drawAccentPanel(
+                g, panelX, panelY, PANEL_WIDTH, panelH,
+                bgAlpha << 24,
+                (accentAlpha << 24) | (currentThemeColor & 0x00FFFFFF),
+                ACCENT_WIDTH
+        );
 
         int textX = panelX + ACCENT_WIDTH + PADDING;
         int textY = panelY + PADDING;
@@ -252,7 +271,6 @@ public class QuestTrackerPanel {
         renderPhaseName(g, tracked, phase, textX + (int) wipeDrift, textY, alpha, wipeAlpha, font);
         textY += 16;
 
-        // Phase 描述（在阶段名称下方）
         if (phase.hasDescription()) {
             int descA = (int) (255 * alpha * wipeAlpha);
             if (descA > 4) {
@@ -270,6 +288,7 @@ public class QuestTrackerPanel {
             }
         }
 
+        textY = renderParallelSummary(g, font, tracked, def, textX + (int) wipeDrift, textY, alpha, wipeAlpha);
         renderObjectives(g, font, tracked, objectives, objCount, alpha, wipeAlpha, wipeDrift, panelX, textX, textY);
 
         g.disableScissor();
@@ -281,8 +300,6 @@ public class QuestTrackerPanel {
         int titleA = (int) (255 * alpha * wipeAlpha);
         if (titleA > 8) {
             int iconOffset = 0;
-            
-            // 使用缓存层获取任务定义
             QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(tracked.getQuestId()));
             if (def != null && def.getVisualConfig().getIcon(IconPosition.HUD_TRACKER).isPresent()) {
                 int finalTextY = textY;
@@ -294,10 +311,9 @@ public class QuestTrackerPanel {
                 iconOffset = 16;
             }
 
-            // 使用缓存层获取任务名称
             String title = font.plainSubstrByWidth(
-                ClientQuestCache.INSTANCE.getQuestDisplayName(tracked.getQuestId()), 
-                PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - 4 - iconOffset
+                    ClientQuestCache.INSTANCE.getQuestDisplayName(tracked.getQuestId()),
+                    PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - 4 - iconOffset
             );
             g.drawString(font, title, textX + iconOffset, textY, HudAnimUtil.withAlpha(0xFFFFFF, titleA), true);
         }
@@ -312,18 +328,79 @@ public class QuestTrackerPanel {
             g.pose().translate(textX + 7, textY + 1, 0);
             g.pose().scale(0.95f, 0.95f, 1f);
 
-            // 使用缓存层获取阶段名称
             String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), displayedPhaseId);
             String phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName).getString();
             g.drawString(font, phasePrefix, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, subA), true);
+
             g.pose().popPose();
         }
     }
 
+    private int renderParallelSummary(GuiGraphics g, Font font, QuestRuntimeData tracked, QuestDefinition def, int textX, int textY, float alpha, float wipeAlpha) {
+        if (activePhaseOrder.size() <= 1) return textY;
+
+        int a = (int) (255 * alpha * wipeAlpha);
+        if (a <= 8) return textY;
+
+        g.pose().pushPose();
+        g.pose().translate(textX + 7, textY, 0);
+        g.pose().scale(0.75f, 0.75f, 1f);
+        g.drawString(font, Component.translatable("arc_quest.hud.parallel_lanes").getString(), 0, 0, HudAnimUtil.withAlpha(0xA0C8FF, a), false);
+        g.pose().popPose();
+        textY += LANE_HEADER_H;
+
+        int rows = Math.min(LANE_SUMMARY_MAX_ROWS, activePhaseOrder.size());
+        for (int i = 0; i < rows; i++) {
+            String pid = activePhaseOrder.get(i);
+            PhaseDefinition p = def.getPhase(pid);
+            if (p == null) continue;
+
+            int done = 0;
+            int total = p.getObjectives().size();
+            for (int j = 0; j < total; j++) {
+                int prog = tracked.getObjectiveProgress(pid, j);
+                if (prog >= p.getObjectives().get(j).getRequiredCount()) done++;
+            }
+
+            String laneName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), pid);
+            String line = (Objects.equals(pid, displayedPhaseId) ? "▸ " : "· ")
+                    + font.plainSubstrByWidth(laneName, PANEL_WIDTH - 78)
+                    + " " + done + "/" + total;
+
+            int lineColor = Objects.equals(pid, displayedPhaseId) ? 0xD8EEFF : 0xAAB4C0;
+            g.drawString(font, line, textX + 7, textY, HudAnimUtil.withAlpha(lineColor, a), false);
+
+            int barX = textX + 7;
+            int barY = textY + LANE_ROW_H - 2;
+            int barW = PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - 12;
+            float ratio = total > 0 ? (float) done / total : 0f;
+            int fill = (int) (barW * ratio);
+
+            g.fill(barX, barY, barX + barW, barY + LANE_BAR_H, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x28 * alpha * wipeAlpha)));
+            if (fill > 0) {
+                int color = done >= total ? 0x66FF66 : currentThemeColor;
+                g.fill(barX, barY, barX + fill, barY + LANE_BAR_H, HudAnimUtil.withAlpha(color, (int) (0xC0 * alpha * wipeAlpha)));
+            }
+
+            textY += LANE_ROW_H + LANE_ROW_GAP;
+        }
+
+        int more = activePhaseOrder.size() - rows;
+        if (more > 0) {
+            g.drawString(font, Component.translatable("arc_quest.hud.parallel_more", more).getString(), textX + 7, textY, HudAnimUtil.withAlpha(0x888888, a), false);
+            textY += LANE_ROW_H;
+        }
+
+        textY += 2;
+        return textY;
+    }
+
     private void renderObjectives(GuiGraphics g, Font font, QuestRuntimeData tracked, List<ObjectiveEntry> objectives, int objCount, float alpha, float wipeAlpha, float wipeDrift, int panelX, int textX, int textY) {
+        String phaseId = displayedPhaseId != null ? displayedPhaseId : tracked.getCurrentPhaseId();
+
         for (int i = 0; i < objCount; i++) {
             ObjectiveEntry obj = objectives.get(i);
-            int progress = tracked.getObjectiveProgress(tracked.getCurrentPhaseId(), i);
+            int progress = tracked.getObjectiveProgress(phaseId, i);
             int required = obj.getRequiredCount();
             boolean complete = progress >= required;
 
@@ -367,15 +444,27 @@ public class QuestTrackerPanel {
                 cGlow = (int) (255 * t * objAlpha);
             }
 
-            String prefix = complete ? Component.translatable("arc_quest.hud.objective_complete_prefix").getString() : Component.translatable("arc_quest.hud.objective_active_prefix").getString();
+            String prefix = complete
+                    ? Component.translatable("arc_quest.hud.objective_complete_prefix").getString()
+                    : Component.translatable("arc_quest.hud.objective_active_prefix").getString();
             String objText = prefix + obj.getDisplayText().getString();
             String progressText = progress + "/" + required;
 
             int textColor = complete ? HudAnimUtil.withAlpha(0x88FF88, aInt) : HudAnimUtil.withAlpha(0xCCCCCC, aInt);
-            if (objPulse[i] > 0.05f)
-                textColor = HudAnimUtil.lerpColor(textColor, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * objPulse[i] * objAlpha)), objPulse[i]);
-            if (cGlow > 0)
-                textColor = HudAnimUtil.lerpColor(textColor, HudAnimUtil.withAlpha(0xFFFFFF, cGlow), objCompleteAnim[i] * 0.7f);
+            if (objPulse[i] > 0.05f) {
+                textColor = HudAnimUtil.lerpColor(
+                        textColor,
+                        HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * objPulse[i] * objAlpha)),
+                        objPulse[i]
+                );
+            }
+            if (cGlow > 0) {
+                textColor = HudAnimUtil.lerpColor(
+                        textColor,
+                        HudAnimUtil.withAlpha(0xFFFFFF, cGlow),
+                        objCompleteAnim[i] * 0.7f
+                );
+            }
 
             int numW = (int) (font.width(progressText) * 0.8f);
             int numX = panelX + PANEL_WIDTH - PADDING - numW + (int) wipeDrift;
@@ -400,12 +489,19 @@ public class QuestTrackerPanel {
             int barW = PANEL_WIDTH - ACCENT_WIDTH - PADDING * 2 - (int) rowSlide;
             int fillW = (int) (barW * displayRatio);
 
-            int bgC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x33 * objAlpha));
-            int fgC = complete ? HudAnimUtil.withAlpha(0x66FF66, (int)(0xCC * objAlpha)) : HudAnimUtil.withAlpha(currentThemeColor, (int)(0xCC * objAlpha));
-            int tipC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0xFF * objAlpha));
+            int bgC = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * objAlpha));
+            int fgC = complete
+                    ? HudAnimUtil.withAlpha(0x66FF66, (int) (0xCC * objAlpha))
+                    : HudAnimUtil.withAlpha(currentThemeColor, (int) (0xCC * objAlpha));
+            int tipC = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0xFF * objAlpha));
 
-            if (objPulse[i] > 0.05f)
-                fgC = HudAnimUtil.lerpColor(fgC, HudAnimUtil.withAlpha(0xFFFFFF, (int) (200 * objPulse[i] * objAlpha)), objPulse[i] * 0.5f);
+            if (objPulse[i] > 0.05f) {
+                fgC = HudAnimUtil.lerpColor(
+                        fgC,
+                        HudAnimUtil.withAlpha(0xFFFFFF, (int) (200 * objPulse[i] * objAlpha)),
+                        objPulse[i] * 0.5f
+                );
+            }
 
             RenderSystem.enableBlend();
             g.fill(rowX, textY, rowX + barW, textY + PROGRESS_BAR_H, bgC);
@@ -413,30 +509,73 @@ public class QuestTrackerPanel {
                 g.fill(rowX, textY, rowX + fillW, textY + PROGRESS_BAR_H, fgC);
                 g.fill(rowX + fillW - 2, textY - 1, rowX + fillW, textY + PROGRESS_BAR_H + 1, tipC);
             }
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
 
             textY += PROGRESS_BAR_H + 6;
         }
     }
 
+    private void syncActivePhaseOrder(QuestRuntimeData tracked, QuestDefinition def) {
+        List<String> next = new ArrayList<>();
+        for (String pid : def.getPhaseIds()) {
+            if (tracked.isPhaseActive(pid)) next.add(pid);
+        }
+        if (next.isEmpty()) {
+            next.addAll(tracked.getActivePhaseIds());
+        }
+        activePhaseOrder = next;
+    }
+
+    private String resolvePreferredPhaseId(QuestRuntimeData tracked, QuestDefinition def) {
+        String current = tracked.getCurrentPhaseId();
+        if (current != null && !current.isEmpty() && tracked.isPhaseActive(current) && def.getPhase(current) != null) {
+            return current;
+        }
+        for (String pid : activePhaseOrder) {
+            if (def.getPhase(pid) != null) return pid;
+        }
+        return "";
+    }
+
+    private PhaseDefinition resolveDisplayedPhase(QuestDefinition def, QuestRuntimeData tracked) {
+        if (displayedPhaseId != null && !displayedPhaseId.isEmpty()) {
+            PhaseDefinition p = def.getPhase(displayedPhaseId);
+            if (p != null) return p;
+        }
+
+        String fallback = resolvePreferredPhaseId(tracked, def);
+        if (!fallback.isEmpty()) {
+            displayedPhaseId = fallback;
+            return def.getPhase(fallback);
+        }
+        return null;
+    }
+
+    private int computeLaneSummaryHeight() {
+        if (activePhaseOrder.size() <= 1) return 0;
+        int rows = Math.min(LANE_SUMMARY_MAX_ROWS, activePhaseOrder.size());
+        int h = LANE_HEADER_H + rows * (LANE_ROW_H + LANE_ROW_GAP) + 2;
+        if (activePhaseOrder.size() > rows) h += LANE_ROW_H;
+        return h;
+    }
+
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
         QuestRuntimeData data = ClientQuestCache.INSTANCE.resolveTrackedQuest(trackedQuestId);
-        
+
         if (data != null) {
-            // 更新追踪 ID（如果之前为 null）
             if (trackedQuestId == null) {
                 trackedQuestId = data.getQuestId();
                 resetObjectiveAnimations();
             }
             return data;
         }
-        
-        // 没有活跃任务，清除状态
+
         if (trackedQuestId != null) {
             trackedQuestId = null;
             displayedPhaseId = null;
             targetPhaseId = null;
             currentPanelH = -1f;
+            activePhaseOrder.clear();
             resetObjectiveAnimations();
         }
         return null;
@@ -461,6 +600,7 @@ public class QuestTrackerPanel {
             int[] ni = new int[size];
             boolean[] nb = new boolean[size];
             Arrays.fill(ni, -1);
+
             int c = Math.min(objReveal.length, size);
             System.arraycopy(objReveal, 0, nr, 0, c);
             System.arraycopy(objPulse, 0, np, 0, c);
@@ -468,6 +608,7 @@ public class QuestTrackerPanel {
             System.arraycopy(objCompletedFlag, 0, nb, 0, Math.min(objCompletedFlag.length, size));
             System.arraycopy(objCompleteAnim, 0, nc, 0, Math.min(objCompleteAnim.length, size));
             System.arraycopy(animProgressRatio, 0, nRatio, 0, Math.min(animProgressRatio.length, size));
+
             objReveal = nr;
             objPulse = np;
             lastKnownProgress = ni;

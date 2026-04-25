@@ -65,7 +65,7 @@ public class S2CSyncQuestStatePacket {
                             }
 
                             if (allCompleted) {
-                                QuestHudOverlay.INSTANCE.showBranchChoiceToast(pkt.data.getQuestId());
+                                QuestHudOverlay.INSTANCE.showBranchChoiceToast(pkt.data.getQuestId(), phaseId);
                                 break;
                             }
                         }
