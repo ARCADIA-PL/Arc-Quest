@@ -110,6 +110,10 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("phase_prefix", "▸ %s");
         addHudText("objective_complete_prefix", "§a✔ ");
         addHudText("objective_active_prefix", "§7○ ");
+        addHudText("phase_switched", "ARC QUEST // 阶段切换");
+        addHudText("phase_completed", "ARC QUEST // 阶段完成");
+        addHudText("parallel_lanes", "并行线路");
+        addHudText("parallel_more", "+%s 条并行阶段…");
     }
 
     // ═══════════════════════════════════════════════════════

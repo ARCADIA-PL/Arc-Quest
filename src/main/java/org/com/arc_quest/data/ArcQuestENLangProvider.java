@@ -110,6 +110,10 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addHudText("phase_prefix", "▸ %s");
         addHudText("objective_complete_prefix", "§a✔ ");
         addHudText("objective_active_prefix", "§7○ ");
+        addHudText("phase_switched", "ARC QUEST // PHASE SWITCHED");
+        addHudText("phase_completed", "ARC QUEST // PHASE COMPLETED");
+        addHudText("parallel_lanes", "Parallel Lanes");
+        addHudText("parallel_more", "+%s more lanes...");
     }
 
     // ═══════════════════════════════════════════════════════

@@ -20,6 +20,8 @@ import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.trade.gacha.network.PendingDrawManager;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
+
 /**
  * 处理 Capability 的注册、附着、死亡克隆和登录同步。
  *
@@ -136,7 +138,7 @@ public final class CapabilityEventHandler {
                 }
 
                 // 并行phase校验：移除不存在的active phase
-                var activeIds = new java.util.ArrayList<>(data.getActivePhaseIds());
+                var activeIds = new ArrayList<>(data.getActivePhaseIds());
                 for (String phaseId : activeIds) {
                     if (!def.getPhaseIds().contains(phaseId)) {
                         LOGGER.warn("[ArcQuest] Phase '{}' not found in quest '{}'. Removing for player: {}",
