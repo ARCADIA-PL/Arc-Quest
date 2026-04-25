@@ -1,11 +1,14 @@
 package org.com.arc_quest.quest.network;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.client.util.GuiSoundManager;
+import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
+import org.com.arc_quest.client.gui.quest.QuestToastManager;
 import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.QuestState;
@@ -62,6 +65,8 @@ public final class ClientQuestCache {
     private ClientQuestCache() {
     }
 
+    private boolean hasAppliedFullSync = false;
+
     // ═══════════════════════════════════════════════════════
     //  网络包调用的更新方法
     // ═══════════════════════════════════════════════════════
@@ -70,6 +75,8 @@ public final class ClientQuestCache {
      * 全量同步（来自 {@link S2CSyncFullDataPacket}）。
      */
     public void applyFullSync(CompoundTag capData) {
+        Set<String> oldFailed = new LinkedHashSet<>(failedQuests);
+
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();
@@ -107,8 +114,19 @@ public final class ClientQuestCache {
             variables.put(key, varsTag.getInt(key));
         }
 
-        LOGGER.debug("[ClientCache] Full sync applied: {} active, {} completed, {} flags",
-                activeQuests.size(), completedQuests.size(), flags.size());
+        if (hasAppliedFullSync) {
+            for (String questId : failedQuests) {
+                if (!oldFailed.contains(questId)) {
+                    QuestToastManager.show(QuestToastManager.ToastType.QUEST_FAILED, getQuestDisplayName(questId));
+                }
+            }
+        }
+
+        hasAppliedFullSync = true;
+
+        LOGGER.debug("[ClientCache] Full sync applied: {} active, {} completed, {} failed, {} flags",
+                activeQuests.size(), completedQuests.size(), failedQuests.size(), flags.size());
+        refreshJournalIfOpen();
     }
 
     /**
@@ -178,6 +196,7 @@ public final class ClientQuestCache {
         }
 
         LOGGER.debug("[ClientCache] Quest updated: {} → {}", questId, data.getState());
+        refreshJournalIfOpen();
     }
 
     /**
@@ -351,6 +370,7 @@ public final class ClientQuestCache {
         failedQuests.clear();
         flags.clear();
         variables.clear();
+        hasAppliedFullSync = false;
         LOGGER.info("[ClientCache] Cache cleared.");
     }
 
@@ -675,5 +695,12 @@ public final class ClientQuestCache {
         }
 
         LOGGER.debug("[AnimationHook] Objective progressed: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
+    }
+
+    private void refreshJournalIfOpen() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof QuestJournalScreen journalScreen) {
+            journalScreen.rebuildEntries();
+        }
     }
 }

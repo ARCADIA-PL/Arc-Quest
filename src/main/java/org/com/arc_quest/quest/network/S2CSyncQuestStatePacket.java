@@ -76,7 +76,6 @@ public class S2CSyncQuestStatePacket {
                     if (def != null) ClientQuestEvents.handleVisualTrigger(def, SplashType.QUEST_COMPLETED, null);
                 }
                 case FAILED -> {
-                    QuestToastManager.show(QuestToastManager.ToastType.QUEST_FAILED, name);
                 }
             }
         });

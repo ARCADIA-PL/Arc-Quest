@@ -4,7 +4,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.client.gui.quest.QuestToastManager;
 
 import java.util.function.Supplier;
 
@@ -65,7 +64,6 @@ public class S2CQuestActionResultPacket {
 
             Component msg = toClientMessage(pkt.action, pkt.questId, code);
             mc.player.displayClientMessage(msg, true);
-            QuestToastManager.show(QuestToastManager.ToastType.QUEST_FAILED, msg.getString());
         });
         ctx.get().setPacketHandled(true);
     }

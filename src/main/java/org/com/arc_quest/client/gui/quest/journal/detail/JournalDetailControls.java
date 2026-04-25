@@ -57,7 +57,7 @@ public class JournalDetailControls {
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
-        if (QuestIntelPanel.isActive()) return false; // 双重保险拦截
+        if (QuestIntelPanel.isActive()) return false;
 
         if (screen.getSelectedIndex() < 0 || screen.getSelectedIndex() >= screen.getCurrentEntries().size()) return false;
         JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(screen.getSelectedIndex());
@@ -67,21 +67,22 @@ public class JournalDetailControls {
             int btnW = Math.min(90, (w - 24) / 2), trackX = x + w - btnW - 8, abanX = trackX - 8 - btnW;
             if (mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH) {
                 QuestHudOverlay.INSTANCE.setTrackedQuest(entry.questId());
-                screen.playClick(); return true;
+                screen.playClick();
+                return true;
             }
             if (mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH) {
                 ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.abandon(entry.questId()));
-                screen.playClick(); return true;
+                screen.playClick();
+                return true;
             }
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.FAILED && entry.state() == QuestState.FAILED) {
             int restartBtnW = Math.min(120, w - 16), restartBtnX = x + w - restartBtnW - 8;
             if (mx >= restartBtnX && mx <= restartBtnX + restartBtnW && my >= btnY && my <= btnY + btnH) {
-                String qid = entry.questId();
-                ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.abandon(qid));
-                screen.executeNetworkAction(() -> ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.accept(qid)));
-                screen.playClick(); return true;
+                ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.accept(entry.questId()));
+                screen.playClick();
+                return true;
             }
         }
         return false;

@@ -82,8 +82,9 @@ public final class QuestToastManager {
         Minecraft mc = Minecraft.getInstance();
 
         // 核心修复：如果 Splash 在播放，或者日志、对话在看，全盘冻结！
+        boolean isJournalVisible = mc.screen instanceof QuestJournalScreen;
         boolean isFrozen = QuestSplashRenderer.isActive() ||
-                mc.screen instanceof QuestJournalScreen ||
+                isJournalVisible ||
                 mc.screen instanceof DialogueScreen;
 
         // 1. 让存活的 Toast 更新冻结时间戳
