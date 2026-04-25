@@ -106,11 +106,39 @@ public final class EpicDialogueTrees {
                         "arc_quest:phase_talk_villager"
                 )
 
-                // 情况4：序章进行中 - defend_village 阶段
+                // 情况4：序章进行中 - scout_forest 并行阶段
+                .sayIf(
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:scout_forest"),
+                        Component.translatable("dialogue.epic_village_elder.start.phase_scout_forest").getString(),
+                        "arc_quest:phase_scout_forest"
+                )
+
+                // 情况5：序章进行中 - reinforce_gate 并行阶段
+                .sayIf(
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:reinforce_gate"),
+                        Component.translatable("dialogue.epic_village_elder.start.phase_reinforce_gate").getString(),
+                        "arc_quest:phase_reinforce_gate"
+                )
+
+                // 情况6：序章进行中 - craft_sword 汇合阶段
+                .sayIf(
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:craft_sword"),
+                        Component.translatable("dialogue.epic_village_elder.start.phase_craft_sword").getString(),
+                        "arc_quest:phase_craft_sword"
+                )
+
+                // 情况7：序章进行中 - defend_village 阶段
                 .sayIf(
                         new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:defend_village"),
                         Component.translatable("dialogue.epic_village_elder.start.phase_defend").getString(),
                         "arc_quest:phase_defend"
+                )
+
+                // 情况8：序章进行中 - gather_food 收尾阶段
+                .sayIf(
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:gather_food"),
+                        Component.translatable("dialogue.epic_village_elder.start.phase_gather_food").getString(),
+                        "arc_quest:phase_gather_food"
                 )
 
                 // 情况5：序章已完成，但第一章未完成
@@ -161,12 +189,40 @@ public final class EpicDialogueTrees {
                 )
 
                 .choiceIf(
+                        "arc_quest:choice_scout_tip",
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:scout_forest"),
+                        Component.translatable("dialogue.epic_village_elder.start.choice_scout_tip").getString(),
+                        c -> c.close()
+                )
+
+                .choiceIf(
+                        "arc_quest:choice_reinforce_tip",
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:reinforce_gate"),
+                        Component.translatable("dialogue.epic_village_elder.start.choice_reinforce_tip").getString(),
+                        c -> c.close()
+                )
+
+                .choiceIf(
+                        "arc_quest:choice_craft_tip",
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:craft_sword"),
+                        Component.translatable("dialogue.epic_village_elder.start.choice_craft_tip").getString(),
+                        c -> c.close()
+                )
+
+                .choiceIf(
                         "arc_quest:choice_encourage",
                         new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:defend_village"),
                         Component.translatable("dialogue.epic_village_elder.start.choice_encourage").getString(),
                         c -> c
                                 .giveItem("minecraft:potion{Potion:\"minecraft:strength\"}", 1)
                                 .close()
+                )
+
+                .choiceIf(
+                        "arc_quest:choice_food_tip",
+                        new DialogueCondition.QuestPhase("arc_quest:epic_prologue", "arc_quest:gather_food"),
+                        Component.translatable("dialogue.epic_village_elder.start.choice_food_tip").getString(),
+                        c -> c.close()
                 )
 
                 .choiceIf(
