@@ -70,7 +70,8 @@ public final class EpicMainlineDemo {
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))
                                 .setFlagOnComplete("arc_quest:elder_consulted")
                                 .thenGoTo("arc_quest:scout_forest")
-                                .thenGoTo("arc_quest:reinforce_gate"))
+                                .thenGoTo("arc_quest:reinforce_gate")
+                                .thenGoTo("arc_quest:reinforce_gate2"))
 
                         // 并行支线A：侦查森林
                         .phase(PhaseBuilder.create("arc_quest:scout_forest")
@@ -83,6 +84,18 @@ public final class EpicMainlineDemo {
 
                         // 并行支线B：加固村门
                         .phase(PhaseBuilder.create("arc_quest:reinforce_gate")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.reinforce_gate"))
+                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
+                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
+                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
+                                .setFlagOnComplete("arc_quest:gate_reinforced")
+                                // 手动转入汇合阶段（D）
+                                .thenGoTo("arc_quest:craft_sword"))
+
+                        .phase(PhaseBuilder.create("arc_quest:reinforce_gate2")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.reinforce_gate"))
                                 .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
