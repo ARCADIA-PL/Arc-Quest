@@ -176,6 +176,12 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "任务 '%1$s' 未处于激活状态。");
         addCommandFeedback("progress", "error.out_of_range",
                 "目标索引 %1$s 超出范围（最大 %2$s）。");
+        addCommandFeedback("progress", "error.invalid_expr",
+                "非法数量表达式 '%1$s'，请使用 +N、=N 或 N。");
+        addCommandFeedback("progress", "error.phase_not_active",
+                "阶段 '%1$s' 当前未激活。");
+        addCommandFeedback("progress", "success_mode",
+                "进度%1$s：任务=%2$s，阶段=%3$s，目标=%4$s，%5$s -> %6$s");
 
         // ── list ──
         addCommandFeedback("list", "header",
@@ -907,6 +913,16 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addPhase("epic_prologue", "talk_villager", "寻求建议");
         addObjective("epic_prologue", "talk_villager", 0,
                 "与§b村庄长老§r交谈");
+
+        // ── Phase: scout_forest ──
+        addPhase("epic_prologue", "scout_forest", "侦查森林");
+        addObjective("epic_prologue", "scout_forest", 0,
+                "收集线索：线 (0/6)");
+
+        // ── Phase: reinforce_gate ──
+        addPhase("epic_prologue", "reinforce_gate", "加固村门");
+        addObjective("epic_prologue", "reinforce_gate", 0,
+                "收集加固材料：橡木木板 (0/16)");
 
         // ── Phase: craft_sword ──
         addPhase("epic_prologue", "craft_sword", "打造武器");

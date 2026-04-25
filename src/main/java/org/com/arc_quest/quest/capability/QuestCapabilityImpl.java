@@ -23,7 +23,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     private static final Logger LOGGER = LoggerFactory.getLogger(QuestCapabilityImpl.class);
 
     private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
-        "arc_quest:player_data", 3, LOGGER
+            "arc_quest:player_data", 4, LOGGER
     );
 
     static {
@@ -48,6 +48,61 @@ public class QuestCapabilityImpl implements IQuestCapability {
                 tag.putInt("_ArcQuestVer", 3);
             }
             tag.remove("_needs_dialogue_migration");
+        });
+        VERSION_MANAGER.addMigration(3, 4, root -> {
+            if (!root.contains("ActiveQuests", Tag.TAG_LIST)) {
+                return;
+            }
+
+            ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
+            for (int i = 0; i < activeList.size(); i++) {
+                CompoundTag q = activeList.getCompound(i);
+
+                boolean hasNewStruct = q.contains("ActivePhases", Tag.TAG_LIST)
+                        || q.contains("CompletedPhases", Tag.TAG_LIST)
+                        || q.contains("PhaseProgress", Tag.TAG_COMPOUND);
+
+                if (!hasNewStruct) {
+                    String legacyPhaseId = q.getString("PhaseId");
+                    int[] legacyProgress = q.contains("Progress", Tag.TAG_INT_ARRAY)
+                            ? q.getIntArray("Progress")
+                            : new int[0];
+
+                    ListTag activePhases = new ListTag();
+                    ListTag completedPhases = new ListTag();
+                    CompoundTag phaseProgress = new CompoundTag();
+
+                    if (legacyPhaseId != null && !legacyPhaseId.isEmpty()) {
+                        activePhases.add(StringTag.valueOf(legacyPhaseId));
+                        phaseProgress.putIntArray(legacyPhaseId, legacyProgress);
+                    }
+
+                    q.put("ActivePhases", activePhases);
+                    q.put("CompletedPhases", completedPhases);
+                    q.put("PhaseProgress", phaseProgress);
+
+                    q.remove("PhaseId");
+                    q.remove("Progress");
+                    continue;
+                }
+
+                ListTag activePhases = q.getList("ActivePhases", Tag.TAG_STRING);
+                CompoundTag phaseProgress = q.contains("PhaseProgress", Tag.TAG_COMPOUND)
+                        ? q.getCompound("PhaseProgress")
+                        : new CompoundTag();
+
+                for (int j = 0; j < activePhases.size(); j++) {
+                    String pid = activePhases.getString(j);
+                    if (pid != null && !pid.isEmpty() && !phaseProgress.contains(pid, Tag.TAG_INT_ARRAY)) {
+                        phaseProgress.putIntArray(pid, new int[0]);
+                    }
+                }
+
+                q.put("PhaseProgress", phaseProgress);
+                if (!q.contains("CompletedPhases", Tag.TAG_LIST)) {
+                    q.put("CompletedPhases", new ListTag());
+                }
+            }
         });
     }
 

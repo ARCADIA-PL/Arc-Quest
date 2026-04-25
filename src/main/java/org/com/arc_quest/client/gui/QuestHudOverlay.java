@@ -115,7 +115,6 @@ public class QuestHudOverlay implements IGuiOverlay {
         if (tracked != null) {
             String curPhaseId = tracked.getCurrentPhaseId();
             if (lastKnownPhaseId != null && !lastKnownPhaseId.equals(curPhaseId)) {
-                // 使用缓存层提供的便捷方法获取阶段名称
                 String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), curPhaseId);
                 this.phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor);
             }

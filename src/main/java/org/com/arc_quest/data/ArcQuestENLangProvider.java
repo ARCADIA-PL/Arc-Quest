@@ -176,6 +176,12 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "Quest '%1$s' is not active.");
         addCommandFeedback("progress", "error.out_of_range",
                 "Objective index %1$s out of range (max %2$s).");
+        addCommandFeedback("progress", "error.invalid_expr",
+                "Invalid amount expression '%1$s'. Use +N, =N, or N.");
+        addCommandFeedback("progress", "error.phase_not_active",
+                "Phase '%1$s' is not active.");
+        addCommandFeedback("progress", "success_mode",
+                "Progress %1$s: quest=%2$s, phase=%3$s, obj=%4$s, %5$s -> %6$s");
 
         // ── list ──
         addCommandFeedback("list", "header",
@@ -907,6 +913,16 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addPhase("epic_prologue", "talk_villager", "Seek Counsel");
         addObjective("epic_prologue", "talk_villager", 0,
                 "Speak with the Village Elder");
+
+        // ── Phase: scout_forest ──
+        addPhase("epic_prologue", "scout_forest", "Scout the Forest");
+        addObjective("epic_prologue", "scout_forest", 0,
+                "Gather Clues: String (0/6)");
+
+        // ── Phase: reinforce_gate ──
+        addPhase("epic_prologue", "reinforce_gate", "Reinforce the Village Gate");
+        addObjective("epic_prologue", "reinforce_gate", 0,
+                "Gather Building Materials: Oak Planks (0/16)");
 
         // ── Phase: craft_sword ──
         addPhase("epic_prologue", "craft_sword", "Forge a Weapon");

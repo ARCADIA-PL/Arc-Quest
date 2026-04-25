@@ -80,13 +80,16 @@ public class QuestCommands {
                                                         .suggests(QuestCommands::suggestPhaseIds)
                                                         .executes(QuestCommands::cmdPhase)))))
                         // /arcquest quest progress <player> <id> <index> <amount>
-                        .then(Commands.literal("progress")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(QuestCommands::suggestQuestIds)
-                                                .then(Commands.argument("obj_index", IntegerArgumentType.integer(0))
-                                                        .then(Commands.argument("amount", IntegerArgumentType.integer(0))
-                                                                .executes(QuestCommands::cmdProgress))))))
+                .then(Commands.literal("progress")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                        .suggests(QuestCommands::suggestQuestIds)
+                                        .then(Commands.argument("obj_index", IntegerArgumentType.integer(0))
+                                                .then(Commands.argument("amount_expr", StringArgumentType.word())
+                                                        .executes(QuestCommands::cmdProgress)
+                                                        .then(Commands.argument("phase_id", StringArgumentType.string())
+                                                                .suggests(QuestCommands::suggestPhaseIds)
+                                                                .executes(QuestCommands::cmdProgress)))))))
                         // /arcquest quest list [player]
                         .then(Commands.literal("list")
                                 .executes(ctx -> cmdList(ctx, null))
@@ -202,11 +205,14 @@ public class QuestCommands {
             return 0;
         }
 
-        PhaseDefinition phase = def.getPhase(data.getCurrentPhaseId());
-        if (phase != null) {
+        // 并行 phase：把所有 active phase 目标补满
+        for (String phaseId : data.getActivePhaseIds()) {
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase == null) continue;
+
             List<ObjectiveEntry> objs = phase.getObjectives();
             for (int i = 0; i < objs.size(); i++) {
-                data.setObjectiveProgress(i, objs.get(i).getRequiredCount());
+                data.setObjectiveProgress(phaseId, i, objs.get(i).getRequiredCount());
             }
         }
 
@@ -285,12 +291,10 @@ public class QuestCommands {
 
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase != null) {
-            data.setCurrentPhaseId(phaseId);
-            data.resetObjectives(phase.getObjectives().size());
-
-            ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
-            QuestProgressHandler.registerPhaseObjectives(player, def, phase);
-
+            if (!data.isPhaseActive(phaseId)) {
+                data.activatePhase(phaseId, phase.getObjectives().size());
+                QuestProgressHandler.registerPhaseObjectives(player, def, phase);
+            }
             QuestProgressHandler.syncToClient(player, questId);
         }
 
@@ -302,28 +306,57 @@ public class QuestCommands {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         String questId = ResourceLocationArgument.getId(ctx, "quest_id").toString();
         int objIndex = IntegerArgumentType.getInteger(ctx, "obj_index");
-        int amount = IntegerArgumentType.getInteger(ctx, "amount");
+        String amountExpr = StringArgumentType.getString(ctx, "amount_expr");
+
+        String phaseId = null;
+        try {
+            phaseId = StringArgumentType.getString(ctx, "phase_id");
+        } catch (IllegalArgumentException ignored) {
+        }
 
         if (resolveQuest(ctx, questId) == null) return 0;
 
-        IQuestCapability cap = getCap(player);
+        ParsedProgress parsed;
+        try {
+            parsed = parseProgressExpr(amountExpr);
+        } catch (IllegalArgumentException e) {
+            error(ctx, Component.translatable("arc_quest.command.progress.error.invalid_expr", amountExpr).getString());
+            return 0;
+        }
 
+        IQuestCapability cap = getCap(player);
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) {
             error(ctx, Component.translatable("arc_quest.command.progress.error.not_active", questId).getString());
             return 0;
         }
 
-        int[] progress = data.getAllProgress();
+        String resolvedPhaseId = (phaseId == null || phaseId.isEmpty()) ? data.getCurrentPhaseId() : phaseId;
+        if (!data.isPhaseActive(resolvedPhaseId)) {
+            error(ctx, Component.translatable("arc_quest.command.progress.error.phase_not_active", resolvedPhaseId).getString());
+            return 0;
+        }
+
+        int[] progress = data.getAllProgress(resolvedPhaseId);
         if (objIndex >= progress.length) {
             error(ctx, Component.translatable("arc_quest.command.progress.error.out_of_range", objIndex, progress.length - 1).getString());
             return 0;
         }
 
-        data.setObjectiveProgress(objIndex, amount);
+        int oldValue = data.getObjectiveProgress(resolvedPhaseId, objIndex);
+        int newValue = switch (parsed.mode()) {
+            case ADD -> oldValue + parsed.value();
+            case SET -> parsed.value();
+        };
+
+        data.setObjectiveProgress(resolvedPhaseId, objIndex, newValue);
         QuestProgressHandler.syncToClient(player, questId);
 
-        success(ctx, Component.translatable("arc_quest.command.progress.success", objIndex, amount, questId).getString());
+        String modeText = parsed.mode() == ProgressMode.ADD ? "ADD" : "SET";
+        success(ctx, Component.translatable(
+                "arc_quest.command.progress.success_mode",
+                modeText, questId, resolvedPhaseId, objIndex, oldValue, newValue
+        ).getString());
         return 1;
     }
 
@@ -356,7 +389,20 @@ public class QuestCommands {
                     case COMPLETED -> "§2";
                     case FAILED -> "§c";
                 };
-                msg.append(Component.literal(stateColor + "  " + entry.getKey() + " §7[" + data.getState().name() + "]" + " §8phase=" + data.getCurrentPhaseId() + "\n"));
+
+                String activePhases = data.getActivePhaseIds().isEmpty()
+                        ? "-"
+                        : String.join(",", data.getActivePhaseIds());
+                String completedPhases = data.getCompletedPhaseIds().isEmpty()
+                        ? "-"
+                        : String.join(",", data.getCompletedPhaseIds());
+
+                msg.append(Component.literal(
+                        stateColor + "  " + entry.getKey()
+                                + " §7[" + data.getState().name() + "]"
+                                + " §8active=[" + activePhases + "]"
+                                + " §8completed=[" + completedPhases + "]\n"
+                ));
             }
         }
 
@@ -386,14 +432,26 @@ public class QuestCommands {
         msg.append(Component.translatable("arc_quest.command.debug.repeatable", def.isRepeatable()));
         msg.append(Component.literal("\n"));
 
+        // 完成策略定义输出
+        msg.append(Component.literal("CompletionPolicy: " + def.getCompletionPolicy().name() + "\n"));
+        msg.append(Component.literal("CompletionRequiredCount: " + def.getCompletionRequiredCount() + "\n"));
+        msg.append(Component.literal("CompletionTargetPhase: " +
+                (def.getCompletionTargetPhaseId() == null ? "-" : def.getCompletionTargetPhaseId()) + "\n"));
+
+        // 静态定义明细
         for (PhaseDefinition phase : def.getAllPhases()) {
-            msg.append("§d  Phase: " + phase.getPhaseId() + "\n");
+            msg.append(Component.literal("§d  Phase: " + phase.getPhaseId() + "\n"));
             for (int i = 0; i < phase.getObjectives().size(); i++) {
                 ObjectiveEntry obj = phase.getObjectives().get(i);
-                msg.append("§7    [" + i + "] " + obj.getType().name() + " target=" + obj.getTargetId() + " req=" + obj.getRequiredCount() + "\n");
+                msg.append(Component.literal(
+                        "§7    [" + i + "] " + obj.getType().name()
+                                + " target=" + obj.getTargetId()
+                                + " req=" + obj.getRequiredCount() + "\n"
+                ));
             }
         }
 
+        // 运行时明细（并行phase）
         IQuestCapability cap = getCap(player);
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data != null) {
@@ -401,12 +459,34 @@ public class QuestCommands {
             msg.append(Component.literal("\n"));
             msg.append(Component.translatable("arc_quest.command.debug.runtime_state", data.getState().name()));
             msg.append(Component.literal("\n"));
-            msg.append(Component.translatable("arc_quest.command.debug.runtime_phase", data.getCurrentPhaseId()));
-            msg.append(Component.literal("\n"));
-            int[] progress = data.getAllProgress();
-            for (int i = 0; i < progress.length; i++) {
-                msg.append(Component.translatable("arc_quest.command.debug.runtime_obj", i, progress[i]));
-                msg.append(Component.literal("\n"));
+            msg.append(Component.literal("RuntimeActivePhases: " +
+                    (data.getActivePhaseIds().isEmpty() ? "-" : String.join(",", data.getActivePhaseIds())) + "\n"));
+            msg.append(Component.literal("RuntimeCompletedPhases: " +
+                    (data.getCompletedPhaseIds().isEmpty() ? "-" : String.join(",", data.getCompletedPhaseIds())) + "\n"));
+
+            for (String phaseId : data.getActivePhaseIds()) {
+                msg.append(Component.literal("§b  RuntimePhase: " + phaseId + "\n"));
+                int[] progress = data.getAllProgress(phaseId);
+                PhaseDefinition phase = def.getPhase(phaseId);
+
+                if (phase == null) {
+                    for (int i = 0; i < progress.length; i++) {
+                        msg.append(Component.literal("§7    [" + i + "] progress=" + progress[i] + " / ?\n"));
+                    }
+                    continue;
+                }
+
+                int objSize = phase.getObjectives().size();
+                int len = Math.max(objSize, progress.length);
+                for (int i = 0; i < len; i++) {
+                    int p = i < progress.length ? progress[i] : 0;
+                    int req = i < objSize ? phase.getObjectives().get(i).getRequiredCount() : -1;
+                    if (req >= 0) {
+                        msg.append(Component.literal("§7    [" + i + "] progress=" + p + " / " + req + "\n"));
+                    } else {
+                        msg.append(Component.literal("§7    [" + i + "] progress=" + p + " / ?\n"));
+                    }
+                }
             }
         } else {
             msg.append(Component.translatable("arc_quest.command.debug.no_runtime"));
@@ -415,5 +495,38 @@ public class QuestCommands {
 
         ctx.getSource().sendSuccess(() -> msg, false);
         return 1;
+    }
+
+    private enum ProgressMode {
+        ADD, // +amount
+        SET  // =amount 或裸数字
+    }
+
+    private record ParsedProgress(ProgressMode mode, int value) {}
+
+    private static ParsedProgress parseProgressExpr(String expr) {
+        if (expr == null || expr.isEmpty()) {
+            throw new IllegalArgumentException("empty amount expression");
+        }
+
+        try {
+            if (expr.startsWith("+")) {
+                int v = Integer.parseInt(expr.substring(1));
+                if (v < 0) throw new IllegalArgumentException("increment must be >= 0");
+                return new ParsedProgress(ProgressMode.ADD, v);
+            }
+            if (expr.startsWith("=")) {
+                int v = Integer.parseInt(expr.substring(1));
+                if (v < 0) throw new IllegalArgumentException("set value must be >= 0");
+                return new ParsedProgress(ProgressMode.SET, v);
+            }
+
+            // 兼容旧写法：裸数字视为 SET
+            int v = Integer.parseInt(expr);
+            if (v < 0) throw new IllegalArgumentException("set value must be >= 0");
+            return new ParsedProgress(ProgressMode.SET, v);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("invalid amount expression: " + expr);
+        }
     }
 }

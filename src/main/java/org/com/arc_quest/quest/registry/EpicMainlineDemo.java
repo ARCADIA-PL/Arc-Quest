@@ -39,61 +39,91 @@ public final class EpicMainlineDemo {
      */
     private static void registerPrologue() {
         ArcQuestAPI.registerQuest(
-            QuestBuilder.create("arc_quest:epic_prologue")
-                .category(QuestCategory.ARCHON)
-                .displayName(Component.translatable("arc_quest.quest.epic_prologue.title"))
-                .description(Component.translatable("arc_quest.quest.epic_prologue.desc"))
-                .icon(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/quest/prologue.png"))
-                .sortOrder(0)
-                // 视觉配置
-                .acquisitionSplash(
-                        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
-                        1f
-                )
-                .completionSplash(
-                        ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_complete.png"),
-                        1f
-                )
-                .themeColor(ChatFormatting.GOLD)
-                // 阶段 1：收集木材制作武器
-                .phase(PhaseBuilder.create("arc_quest:gather_wood")
-                        .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood"))
-                        .setFlagOnEnter("arc_quest:prologue_started")
-                        .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 5).display(Component.translatable("arc_quest.objective.epic_prologue.gather_wood.0")))
-                        .thenGoTo("arc_quest:talk_villager"))
-                // 阶段：与村民对话
-                .phase(PhaseBuilder.create("arc_quest:talk_villager")
-                        .displayName(Component.translatable("arc_quest.phase.epic_prologue.talk_villager"))
-                        .objective(ObjectiveBuilder.interact(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "village_elder")).display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))
-                        .setFlagOnComplete("arc_quest:elder_consulted")
-                        .thenGoTo("arc_quest:craft_sword"))
-                // 阶段 2：制作铁剑
-                .phase(PhaseBuilder.create("arc_quest:craft_sword")
-                        .displayName(Component.translatable("arc_quest.phase.epic_prologue.craft_sword"))
-                        .objective(ObjectiveBuilder.collect(Items.IRON_INGOT, 3).display(Component.translatable("arc_quest.objective.epic_prologue.craft_sword.0")))
-                        .objective(ObjectiveBuilder.collect(Items.STICK, 2).display(Component.translatable("arc_quest.objective.epic_prologue.craft_sword.1")))
-                        .thenGoTo("arc_quest:defend_village"))
-                // 阶段 3：防御村庄（击杀僵尸）
-                .phase(PhaseBuilder.create("arc_quest:defend_village")
-                        .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
-                        .displayName(Component.translatable("arc_quest.phase.epic_prologue.defend_village"))
-                        .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 10).display(Component.translatable("arc_quest.objective.epic_prologue.defend_village.0")))
-                        .objective(ObjectiveBuilder.kill(EntityType.HUSK, 3).display(Component.translatable("arc_quest.objective.epic_prologue.defend_village.1")).optional())
-                        .setFlagOnComplete("arc_quest:village_defended")
-                        .thenGoTo("arc_quest:gather_food"))
-                // 阶段 4：收集食物奖励村民
-                .phase(PhaseBuilder.create("arc_quest:gather_food")
-                        .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_food"))
-                        .objective(ObjectiveBuilder.collect(Items.BREAD, 10).display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.0")))
-                        .objective(ObjectiveBuilder.collect(Items.COOKED_BEEF, 5).display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.1")))
-                        .setFlagOnComplete("arc_quest:prologue_completed"))
-                // 奖励
-                .reward(new ItemReward(Items.IRON_SWORD, 1))
-                .reward(new ItemReward(Items.SHIELD, 1))
-                .reward(new ItemReward(Items.BREAD, 16))
-                .reward(VariableReward.add("arc_quest:village_reputation", 50))
-                .setFlagOnComplete("arc_quest:chapter1_unlocked")
-                .build()
+                QuestBuilder.create("arc_quest:epic_prologue")
+                        .category(QuestCategory.ARCHON)
+                        .displayName(Component.translatable("arc_quest.quest.epic_prologue.title"))
+                        .description(Component.translatable("arc_quest.quest.epic_prologue.desc"))
+                        .icon(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/quest/prologue.png"))
+                        .sortOrder(0)
+                        .acquisitionSplash(
+                                ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
+                                1f
+                        )
+                        .completionSplash(
+                                ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/splash/prologue_complete.png"),
+                                1f
+                        )
+                        .themeColor(ChatFormatting.GOLD)
+
+                        // 阶段 1：收集木材制作武器
+                        .phase(PhaseBuilder.create("arc_quest:gather_wood")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood"))
+                                .setFlagOnEnter("arc_quest:prologue_started")
+                                .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 5)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.gather_wood.0")))
+                                .thenGoTo("arc_quest:talk_villager"))
+
+                        // 阶段 2：与村民对话 -> 同时开启两条并行支线
+                        .phase(PhaseBuilder.create("arc_quest:talk_villager")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.talk_villager"))
+                                .objective(ObjectiveBuilder.interact(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "village_elder"))
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))
+                                .setFlagOnComplete("arc_quest:elder_consulted")
+                                .thenGoTo("arc_quest:scout_forest")
+                                .thenGoTo("arc_quest:reinforce_gate"))
+
+                        // 并行支线A：侦查森林
+                        .phase(PhaseBuilder.create("arc_quest:scout_forest")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.scout_forest"))
+                                .objective(ObjectiveBuilder.collect(Items.STRING, 6)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.scout_forest.0")))
+                                .setFlagOnComplete("arc_quest:forest_scouted")
+                                .thenGoToIf("arc_quest:craft_sword", ICondition.flagSet("arc_quest:gate_reinforced")))
+
+                        // 并行支线B：加固村门
+                        .phase(PhaseBuilder.create("arc_quest:reinforce_gate")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.reinforce_gate"))
+                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
+                                .setFlagOnComplete("arc_quest:gate_reinforced")
+                                .thenGoToIf("arc_quest:craft_sword", ICondition.flagSet("arc_quest:forest_scouted")))
+
+                        // 汇合阶段：制作铁剑
+                        .phase(PhaseBuilder.create("arc_quest:craft_sword")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.craft_sword"))
+                                .objective(ObjectiveBuilder.collect(Items.IRON_INGOT, 3)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.craft_sword.0")))
+                                .objective(ObjectiveBuilder.collect(Items.STICK, 2)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.craft_sword.1")))
+                                .thenGoTo("arc_quest:defend_village"))
+
+                        // 阶段 3：防御村庄（击杀僵尸）
+                        .phase(PhaseBuilder.create("arc_quest:defend_village")
+                                .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.defend_village"))
+                                .objective(ObjectiveBuilder.kill(EntityType.ZOMBIE, 10)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.defend_village.0")))
+                                .objective(ObjectiveBuilder.kill(EntityType.HUSK, 3)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.defend_village.1")).optional())
+                                .setFlagOnComplete("arc_quest:village_defended")
+                                .thenGoTo("arc_quest:gather_food"))
+
+                        // 阶段 4：收集食物奖励村民
+                        .phase(PhaseBuilder.create("arc_quest:gather_food")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_food"))
+                                .objective(ObjectiveBuilder.collect(Items.BREAD, 10)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.0")))
+                                .objective(ObjectiveBuilder.collect(Items.COOKED_BEEF, 5)
+                                        .display(Component.translatable("arc_quest.objective.epic_prologue.gather_food.1")))
+                                .setFlagOnComplete("arc_quest:prologue_completed"))
+
+                        // 奖励
+                        .reward(new ItemReward(Items.IRON_SWORD, 1))
+                        .reward(new ItemReward(Items.SHIELD, 1))
+                        .reward(new ItemReward(Items.BREAD, 16))
+                        .reward(VariableReward.add("arc_quest:village_reputation", 50))
+                        .setFlagOnComplete("arc_quest:chapter1_unlocked")
+                        .build()
         );
     }
 

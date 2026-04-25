@@ -46,6 +46,11 @@ public final class QuestBuilder {
     @Nullable
     private String chapterShopId;
     private boolean chapterShopPersistent = true;
+
+    private QuestCompletionPolicy completionPolicy = QuestCompletionPolicy.ALL;
+    private int completionRequiredCount = 0;
+    @Nullable
+    private String completionTargetPhaseId = null;
     
     // 音效配置
     @Nullable private SoundEvent chapterStartSound;
@@ -124,6 +129,20 @@ public final class QuestBuilder {
 
     public QuestBuilder repeatable() {
         this.repeatable = true;
+        return this;
+    }
+
+    public QuestBuilder completionPolicy(QuestCompletionPolicy policy) {
+        this.completionPolicy = policy;
+        return this;
+    }
+    public QuestBuilder completionRequiredCount(int count) {
+        this.completionRequiredCount = count;
+        return this;
+    }
+
+    public QuestBuilder completionTargetPhase(String phaseId) {
+        this.completionTargetPhaseId = phaseId;
         return this;
     }
 
@@ -412,6 +431,47 @@ public final class QuestBuilder {
             }
         }
 
+        int phaseCount = this.phases.size();
+
+        if ((this.completionPolicy == QuestCompletionPolicy.ALL || this.completionPolicy == QuestCompletionPolicy.ANY)
+                && this.completionRequiredCount > 0) {
+            throw new IllegalStateException(
+                    "Quest '" + this.id + "': completionRequiredCount only valid for N_OF_M");
+        }
+
+        if (this.completionPolicy == QuestCompletionPolicy.N_OF_M) {
+            if (this.completionRequiredCount < 1 || this.completionRequiredCount > phaseCount) {
+                throw new IllegalStateException(
+                        "Quest '" + this.id + "': N_OF_M requires completionRequiredCount in [1," + phaseCount + "], got " + this.completionRequiredCount);
+            }
+            if (this.completionTargetPhaseId != null && !this.completionTargetPhaseId.isEmpty()) {
+                throw new IllegalStateException(
+                        "Quest '" + this.id + "': completionTargetPhase not allowed with N_OF_M");
+            }
+        }
+
+        if (this.completionPolicy == QuestCompletionPolicy.SPECIFIC_PHASE) {
+            if (this.completionTargetPhaseId == null || this.completionTargetPhaseId.isEmpty()) {
+                throw new IllegalStateException(
+                        "Quest '" + this.id + "': SPECIFIC_PHASE requires completionTargetPhase");
+            }
+            if (!this.phases.containsKey(this.completionTargetPhaseId)) {
+                throw new IllegalStateException(
+                        "Quest '" + this.id + "': completionTargetPhase '" + this.completionTargetPhaseId + "' not found");
+            }
+            if (this.completionRequiredCount > 0) {
+                throw new IllegalStateException(
+                        "Quest '" + this.id + "': completionRequiredCount not allowed with SPECIFIC_PHASE");
+            }
+        }
+
+        if (this.completionPolicy != QuestCompletionPolicy.SPECIFIC_PHASE
+                && this.completionTargetPhaseId != null
+                && !this.completionTargetPhaseId.isEmpty()) {
+            throw new IllegalStateException(
+                    "Quest '" + this.id + "': completionTargetPhase only valid for SPECIFIC_PHASE");
+        }
+
         return new QuestDefinition(
                 this.id,
                 this.category,
@@ -431,7 +491,10 @@ public final class QuestBuilder {
                 this.chapterShopPersistent,
                 this.chapterStartSound,
                 this.chapterFailSound,
-                this.chapterCompleteSound
+                this.chapterCompleteSound,
+                this.completionPolicy,
+                this.completionRequiredCount,
+                this.completionTargetPhaseId
         );
     }
 

@@ -218,6 +218,35 @@ public final class ClientQuestCache {
         LOGGER.debug("[ClientCache] Objective updated: {}#{}={}", questId, objIndex, newProgress);
     }
 
+    public void updateObjectiveProgress(String questId, String phaseId, int objIndex, int newProgress) {
+        QuestRuntimeData oldData = activeQuests.get(questId);
+        if (oldData == null) {
+            LOGGER.warn("[ClientCache] Received objective update for unknown quest: {}", questId);
+            return;
+        }
+
+        if (objIndex < 0) {
+            LOGGER.warn("[ClientCache] Invalid objective index: {} for quest: {}", objIndex, questId);
+            return;
+        }
+
+        int oldProgress = oldData.getObjectiveProgress(phaseId, objIndex);
+
+        if (newProgress < oldProgress) {
+            LOGGER.debug("[ClientCache] Objective progress decreased: {}/{}#{} {}→{}", questId, phaseId, objIndex, oldProgress, newProgress);
+        }
+
+        QuestRuntimeData newData = oldData.copy();
+        newData.setObjectiveProgress(phaseId, objIndex, newProgress);
+        activeQuests.put(questId, newData);
+
+        if (newProgress > oldProgress) {
+            onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);
+        }
+
+        LOGGER.debug("[ClientCache] Objective updated: {}/{}#{}={}", questId, phaseId, objIndex, newProgress);
+    }
+
     /**
      * Flags / Variables 更新（来自 {@link S2CSyncFlagsVarsPacket}）。
      */
@@ -346,7 +375,17 @@ public final class ClientQuestCache {
         QuestDefinition def = QuestRegistry.get(rl);
         if (def == null) return null;
 
-        return def.getPhase(data.getCurrentPhaseId());
+        for (String phaseId : data.getActivePhaseIds()) {
+            PhaseDefinition p = def.getPhase(phaseId);
+            if (p != null) return p;
+        }
+        return null;
+    }
+
+    public Set<String> getActivePhaseIds(String questId) {
+        QuestRuntimeData data = activeQuests.get(questId);
+        if (data == null) return Collections.emptySet();
+        return data.getActivePhaseIds();
     }
 
     /**

@@ -248,12 +248,20 @@ public final class ArcQuestNetwork {
      */
     public static void syncDeltaProgress(ServerPlayer player,
                                          String questId,
+                                         String phaseId,
                                          int objectiveIndex,
                                          int newProgress) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CDeltaProgressPacket(questId, objectiveIndex, newProgress));
+                new S2CDeltaProgressPacket(questId, phaseId, objectiveIndex, newProgress));
 
         pushSyncForActiveUIs(player, null, "delta_progress_sync");
+    }
+
+    public static void syncDeltaProgress(ServerPlayer player,
+                                         String questId,
+                                         int objectiveIndex,
+                                         int newProgress) {
+        syncDeltaProgress(player, questId, "", objectiveIndex, newProgress);
     }
 
     /**

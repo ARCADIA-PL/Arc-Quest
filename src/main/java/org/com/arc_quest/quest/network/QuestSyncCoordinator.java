@@ -34,6 +34,14 @@ public final class QuestSyncCoordinator {
 
     public static void syncDeltaProgressAndPush(ServerPlayer player,
                                                 String questId,
+                                                String phaseId,
+                                                int objectiveIndex,
+                                                int newProgress) {
+        ArcQuestNetwork.syncDeltaProgress(player, questId, phaseId, objectiveIndex, newProgress);
+    }
+
+    public static void syncDeltaProgressAndPush(ServerPlayer player,
+                                                String questId,
                                                 int objectiveIndex,
                                                 int newProgress) {
         ArcQuestNetwork.syncDeltaProgress(player, questId, objectiveIndex, newProgress);

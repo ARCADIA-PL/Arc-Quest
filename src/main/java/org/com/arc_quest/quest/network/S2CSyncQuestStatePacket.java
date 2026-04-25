@@ -13,6 +13,7 @@ import org.com.arc_quest.quest.api.SplashType;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 
+import java.util.Set;
 import java.util.function.Supplier;
 
 public class S2CSyncQuestStatePacket {
@@ -37,10 +38,8 @@ public class S2CSyncQuestStatePacket {
             QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
             String name = def != null ? def.getDisplayName().getString() : pkt.data.getQuestId();
 
-            // 在更新缓存前检查是否为新任务
             boolean isNewQuest = !ClientQuestCache.INSTANCE.isQuestActive(pkt.data.getQuestId());
 
-            // 更新客户端缓存
             ClientQuestCache.INSTANCE.updateQuest(pkt.data);
 
             switch (pkt.data.getState()) {
@@ -48,22 +47,27 @@ public class S2CSyncQuestStatePacket {
                     if (isNewQuest) {
                         QuestToastManager.show(QuestToastManager.ToastType.QUEST_ACCEPTED, name);
                         if (def != null) ClientQuestEvents.handleVisualTrigger(def, SplashType.QUEST_ACQUIRED, null);
-                    } else {
-                        /*QuestToastManager.show(QuestToastManager.ToastType.PHASE_ADVANCED, name);*/
                     }
 
                     if (def != null && Minecraft.getInstance().player != null) {
-                        PhaseDefinition currentPhase = def.getPhase(pkt.data.getCurrentPhaseId());
-                        if (currentPhase != null && currentPhase.hasChoices()) {
-                            int[] progress = pkt.data.getAllProgress();
+                        Set<String> activePhases = pkt.data.getActivePhaseIds();
+                        for (String phaseId : activePhases) {
+                            PhaseDefinition phase = def.getPhase(phaseId);
+                            if (phase == null || !phase.hasChoices()) continue;
+
+                            int[] progress = pkt.data.getAllProgress(phaseId);
                             boolean allCompleted = true;
-                            for (int i = 0; i < currentPhase.getObjectives().size(); i++) {
-                                if (i >= progress.length || progress[i] < currentPhase.getObjectives().get(i).getRequiredCount()) {
+                            for (int i = 0; i < phase.getObjectives().size(); i++) {
+                                if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) {
                                     allCompleted = false;
                                     break;
                                 }
                             }
-                            if (allCompleted) QuestHudOverlay.INSTANCE.showBranchChoiceToast(pkt.data.getQuestId());
+
+                            if (allCompleted) {
+                                QuestHudOverlay.INSTANCE.showBranchChoiceToast(pkt.data.getQuestId());
+                                break;
+                            }
                         }
                     }
                 }

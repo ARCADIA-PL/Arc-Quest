@@ -38,6 +38,11 @@ public final class QuestDefinition {
     @Nullable private final SoundEvent chapterFailSound;
     @Nullable private final SoundEvent chapterCompleteSound;
 
+    private final QuestCompletionPolicy completionPolicy;
+    private final int completionRequiredCount;
+    @Nullable
+    private final String completionTargetPhaseId;
+
     public QuestDefinition(ResourceLocation id,
                            QuestCategory category,
                            Component displayName,
@@ -76,7 +81,7 @@ public final class QuestDefinition {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
                 flagsToSetOnAccept, flagsToSetOnComplete, visualConfig, 
-                chapterShopId, chapterShopPersistent, null, null, null);
+                chapterShopId, chapterShopPersistent, null, null, null,QuestCompletionPolicy.ALL, 0, null);
     }
 
     public QuestDefinition(ResourceLocation id,
@@ -97,7 +102,10 @@ public final class QuestDefinition {
                            boolean chapterShopPersistent,
                            @Nullable SoundEvent chapterStartSound,
                            @Nullable SoundEvent chapterFailSound,
-                           @Nullable SoundEvent chapterCompleteSound) {
+                           @Nullable SoundEvent chapterCompleteSound,
+                           QuestCompletionPolicy completionPolicy,
+                           int completionRequiredCount,
+                           @Nullable String completionTargetPhaseId) {
         Objects.requireNonNull(id, "Quest id must not be null");
         Objects.requireNonNull(category);
         Objects.requireNonNull(displayName);
@@ -128,6 +136,46 @@ public final class QuestDefinition {
         this.chapterStartSound = chapterStartSound;
         this.chapterFailSound = chapterFailSound;
         this.chapterCompleteSound = chapterCompleteSound;
+        this.completionPolicy = completionPolicy != null ? completionPolicy : QuestCompletionPolicy.ALL;
+        this.completionRequiredCount = Math.max(0, completionRequiredCount);
+        this.completionTargetPhaseId = completionTargetPhaseId;
+        int phaseCount = this.phases.size();
+        switch (this.completionPolicy) {
+            case ALL, ANY -> {
+                if (this.completionRequiredCount > 0) {
+                    throw new IllegalArgumentException(
+                            "Quest '" + id + "': completionRequiredCount only valid for N_OF_M");
+                }
+                if (this.completionTargetPhaseId != null && !this.completionTargetPhaseId.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "Quest '" + id + "': completionTargetPhaseId only valid for SPECIFIC_PHASE");
+                }
+            }
+            case N_OF_M -> {
+                if (this.completionRequiredCount < 1 || this.completionRequiredCount > phaseCount) {
+                    throw new IllegalArgumentException(
+                            "Quest '" + id + "': N_OF_M requires completionRequiredCount in [1," + phaseCount + "], got " + this.completionRequiredCount);
+                }
+                if (this.completionTargetPhaseId != null && !this.completionTargetPhaseId.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "Quest '" + id + "': completionTargetPhaseId not allowed with N_OF_M");
+                }
+            }
+            case SPECIFIC_PHASE -> {
+                if (this.completionRequiredCount > 0) {
+                    throw new IllegalArgumentException(
+                            "Quest '" + id + "': completionRequiredCount not allowed with SPECIFIC_PHASE");
+                }
+                if (this.completionTargetPhaseId == null || this.completionTargetPhaseId.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "Quest '" + id + "': SPECIFIC_PHASE requires completionTargetPhaseId");
+                }
+                if (!this.phases.containsKey(this.completionTargetPhaseId)) {
+                    throw new IllegalArgumentException(
+                            "Quest '" + id + "': completionTargetPhaseId '" + this.completionTargetPhaseId + "' not found in phases");
+                }
+            }
+        }
     }
 
     // ── Getters ──
@@ -225,12 +273,23 @@ public final class QuestDefinition {
         return this.visualConfig;
     }
 
-
     @Nullable
     public ResourceLocation getLegacyIcon() {
         return this.iconTexture;
     }
 
+    public QuestCompletionPolicy getCompletionPolicy() {
+        return completionPolicy;
+    }
+
+    @Nullable
+    public String getCompletionTargetPhaseId() {
+        return completionTargetPhaseId;
+    }
+
+    public int getCompletionRequiredCount() {
+        return completionRequiredCount;
+    }
 
     @Nullable
     public ResourceLocation getIconFor(IconPosition position) {

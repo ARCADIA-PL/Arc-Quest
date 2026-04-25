@@ -175,7 +175,7 @@ public class QuestJournalScreen extends Screen {
         if (def == null || runtime == null) return false;
         PhaseDefinition currentPhase = ClientQuestCache.INSTANCE.getCurrentPhase(runtime.getQuestId());
         if (currentPhase == null || !currentPhase.hasChoices()) return false;
-        int[] progress = runtime.getAllProgress();
+        int[] progress = runtime.getAllProgress(runtime.getCurrentPhaseId());
         for (int i = 0; i < currentPhase.getObjectives().size(); i++) {
             if (i >= progress.length || progress[i] < currentPhase.getObjectives().get(i).getRequiredCount())
                 return false;
@@ -753,7 +753,8 @@ public class QuestJournalScreen extends Screen {
                     }
 
                     int objX = (int) ((1f - HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
-                    int progress = runtime.getObjectiveProgress(i), required = phase.getObjectives().get(i).getRequiredCount();
+                    int progress = runtime.getObjectiveProgress(runtime.getCurrentPhaseId(), i),
+                            required = phase.getObjectives().get(i).getRequiredCount();
                     boolean complete = progress >= required;
 
                     String objText = (complete ? Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString() : Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString()) + phase.getObjectives().get(i).getDisplayText().getString();

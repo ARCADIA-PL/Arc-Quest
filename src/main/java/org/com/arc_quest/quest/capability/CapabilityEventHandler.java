@@ -11,6 +11,7 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
+import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
@@ -127,7 +128,6 @@ public final class CapabilityEventHandler {
 
                 QuestDefinition def = QuestRegistry.get(rl);
                 if (def == null) {
-                    // 任务定义已被移除，标记为失败
                     LOGGER.warn("[ArcQuest] Quest '{}' no longer exists in registry. Marking as failed for player: {}",
                             questId, player.getName().getString());
                     data.setState(QuestState.FAILED);
@@ -135,16 +135,24 @@ public final class CapabilityEventHandler {
                     continue;
                 }
 
-                // 检查当前阶段是否存在
-                String currentPhase = data.getCurrentPhaseId();
-                if (!def.getPhaseIds().contains(currentPhase)) {
-                    // 阶段不存在，重置到第一个阶段
-                    String firstPhase = def.getPhaseIds().iterator().next();
-                    LOGGER.warn("[ArcQuest] Phase '{}' not found in quest '{}'. Resetting to phase '{}' for player: {}",
-                            currentPhase, questId, firstPhase, player.getName().getString());
-                    data.setCurrentPhaseId(firstPhase);
-                    data.resetObjectives(def.getPhase(firstPhase).getObjectives().size());
-                    needsSync = true;
+                // 并行phase校验：移除不存在的active phase
+                var activeIds = new java.util.ArrayList<>(data.getActivePhaseIds());
+                for (String phaseId : activeIds) {
+                    if (!def.getPhaseIds().contains(phaseId)) {
+                        LOGGER.warn("[ArcQuest] Phase '{}' not found in quest '{}'. Removing for player: {}",
+                                phaseId, questId, player.getName().getString());
+                        data.completePhase(phaseId);
+                        needsSync = true;
+                    }
+                }
+
+                // 若ACTIVE但没有active phase，自动补初始phase
+                if (data.getState() == QuestState.ACTIVE && data.getActivePhaseIds().isEmpty()) {
+                    PhaseDefinition init = def.getInitialPhase();
+                    if (init != null) {
+                        data.activatePhase(init.getPhaseId(), init.getObjectives().size());
+                        needsSync = true;
+                    }
                 }
             }
 

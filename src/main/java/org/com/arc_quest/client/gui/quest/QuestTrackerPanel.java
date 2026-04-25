@@ -193,9 +193,16 @@ public class QuestTrackerPanel {
 
         if (panelReveal < 0.01f && !shouldShow) return;
 
-        // 使用缓存层获取 Phase 定义
         PhaseDefinition phase = ClientQuestCache.INSTANCE.getCurrentPhase(questId);
-        if (phase == null) return;
+        if (phase == null) {
+            var activePhaseIds = tracked.getActivePhaseIds();
+            if (activePhaseIds.isEmpty()) return;
+            String fallbackPhaseId = activePhaseIds.iterator().next();
+            QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
+            if (def == null) return;
+            phase = def.getPhase(fallbackPhaseId);
+            if (phase == null) return;
+        }
 
         List<ObjectiveEntry> objectives = phase.getObjectives();
         int objCount = objectives.size();
@@ -316,7 +323,7 @@ public class QuestTrackerPanel {
     private void renderObjectives(GuiGraphics g, Font font, QuestRuntimeData tracked, List<ObjectiveEntry> objectives, int objCount, float alpha, float wipeAlpha, float wipeDrift, int panelX, int textX, int textY) {
         for (int i = 0; i < objCount; i++) {
             ObjectiveEntry obj = objectives.get(i);
-            int progress = tracked.getObjectiveProgress(i);
+            int progress = tracked.getObjectiveProgress(tracked.getCurrentPhaseId(), i);
             int required = obj.getRequiredCount();
             boolean complete = progress >= required;
 
