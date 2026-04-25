@@ -191,7 +191,9 @@ public class QuestJournalScreen extends Screen {
         float slideOffset = (1f - easeProgress) * 200f;
         int safeAlpha = (int) (255 * effectiveAlpha);
 
-        g.fill(0, 0, this.width, this.height, ((int) (160 * effectiveAlpha) << 24));
+        // 背景暗化，添加极微弱的主题色晕染
+        int bgTint = HudAnimUtil.lerpColor(0x000000, currentThemeColor, 0.05f);
+        g.fill(0, 0, this.width, this.height, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
 
         if (safeAlpha > 8) {
             g.pose().pushPose(); g.pose().translate(this.width / 2f, 14, 0);
@@ -208,13 +210,19 @@ public class QuestJournalScreen extends Screen {
         int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
         int listH = this.height - 20 - listY;
 
-        HudAnimUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
+        // 全息化 List 边框
+        HudAnimUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH,
+                HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)),
+                HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
         listPanel.render(g, listX, listY, JournalConstants.LIST_WIDTH, listH, mouseX, mouseY, theme, dt);
 
         int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = this.width - detailX - JournalConstants.DETAIL_MARGIN;
 
-        HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
+        // 全息化 Detail 边框，随主卡片颜色同步律动
+        HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH,
+                HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
+                HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
         detailPanel.render(g, detailX, listY, detailW, listH, mouseX, mouseY, theme, dt);
 
         updateAndRenderTooltip(g, mouseX, mouseY);
@@ -264,14 +272,14 @@ public class QuestJournalScreen extends Screen {
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
             animTipX = targetX; animTipY = targetY; animTipW = targetW; animTipH = targetH;
         } else {
-            float morphSpeed = 15f;
+            float morphSpeed = 18f; // 轻微调快了Tooltip的变形速度，响应更敏捷
             animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
             animTipY += (targetY - animTipY) * Math.min(1f, dt * morphSpeed);
             animTipW += (targetW - animTipW) * Math.min(1f, dt * morphSpeed);
             animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
         }
 
-        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
+        float scale =isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
         if (scale < 0.01f) return;
 
         int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;

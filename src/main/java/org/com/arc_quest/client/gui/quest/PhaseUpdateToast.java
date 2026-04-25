@@ -10,6 +10,7 @@ import org.com.arc_quest.client.gui.HudRenderUtil;
 
 /**
  * 阶段推进弹窗（支持并行语义类型）。
+ * 视觉效果全面升级为【机能风并行模块插槽】样式。
  */
 public class PhaseUpdateToast {
 
@@ -69,7 +70,6 @@ public class PhaseUpdateToast {
         if (elapsed >= totalTime) return false;
 
         float alpha, textDriftX, revealProgress, wipeProgress = 0f;
-        float targetLineWidth = POPUP_W - 20f;
 
         if (elapsed < PHASE_ENTER) {
             float t = elapsed / PHASE_ENTER;
@@ -109,34 +109,49 @@ public class PhaseUpdateToast {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int bgA = (int) (alpha * 0x88);
+        int bgA = (int) (alpha * 0xD0);
         int accentA = (int) (alpha * 255);
 
-        HudRenderUtil.drawGlassPanel(
-                g, baseX, baseY, POPUP_W, POPUP_H,
-                0x121212, bgA, activeTheme, accentA, 4
-        );
+        // ==========================================
+        // Toast 机能风背景重构
+        // ==========================================
+        // 底板
+        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0x0A0A0A, bgA));
+        // 上下发光细线
+        g.fill(baseX, baseY, baseX + POPUP_W, baseY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha)));
+        g.fill(baseX, baseY + POPUP_H - 1, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha)));
 
-        float textBaseX = baseX + 12 + textDriftX;
+        // 侧边指示光刃
+        HudRenderUtil.drawCyberneticEdge(g, baseX, baseY, POPUP_H, activeTheme, accentA);
+
+        // 右侧装饰性机能纹理阵列
+        int decorX = baseX + POPUP_W - 14;
+        g.fill(decorX, baseY + 6, decorX + 4, baseY + 10, HudAnimUtil.withAlpha(activeTheme, (int)(0xAA * alpha)));
+        g.fill(decorX, baseY + 12, decorX + 4, baseY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x33 * alpha)));
+        g.fill(decorX, baseY + 22, decorX + 4, baseY + 30, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x1A * alpha)));
+        // ==========================================
+
+        float textBaseX = baseX + 16 + textDriftX; // 稍微往右移一点避开光刃
         float textBaseY = baseY + 6;
 
         if (accentA > 5) {
             String subtitle = subtitleByKind();
-            String title = font.plainSubstrByWidth(phaseName, POPUP_W - 30);
+            String title = font.plainSubstrByWidth(phaseName, POPUP_W - 40);
 
-            int subColor = HudAnimUtil.withAlpha(0xAAAAAA, accentA);
+            int subColor = HudAnimUtil.withAlpha(0x888888, accentA);
             int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, accentA);
 
+            // 绘制文字
             HudRenderUtil.drawDualText(g, font, textBaseX, textBaseY, subtitle, title, subColor, titleColor, 1.0f);
 
+            // 绘制下方的细线框体分隔
+            float targetLineWidth = POPUP_W - 40f;
             float lineWidth = targetLineWidth * (elapsed < PHASE_ENTER
                     ? revealProgress
                     : (elapsed >= PHASE_ENTER + PHASE_HOLD ? (1f - wipeProgress) : 1f));
 
-            HudRenderUtil.drawTextWithLine(
-                    g, font, textBaseX, textBaseY + 10,
-                    "", HudAnimUtil.withAlpha(activeTheme, accentA), lineWidth, 12
-            );
+            g.fill((int)textBaseX, (int)textBaseY + 20, (int)(textBaseX + lineWidth), (int)textBaseY + 21, HudAnimUtil.withAlpha(activeTheme, accentA));
+            g.fill((int)textBaseX, (int)textBaseY + 20, (int)textBaseX + 1, (int)textBaseY + 24, HudAnimUtil.withAlpha(activeTheme, accentA));
         }
 
         g.disableScissor();
@@ -153,10 +168,11 @@ public class PhaseUpdateToast {
     }
 
     private String subtitleByKind() {
+        // 更具系统沉浸感的终端指令式副标题
         return switch (kind) {
-            case ADDED -> Component.translatable("arc_quest.hud.new_phase").getString();
-            case SWITCHED -> Component.translatable("arc_quest.hud.phase_switched").getString();
-            case COMPLETED -> Component.translatable("arc_quest.hud.phase_completed").getString();
+            case ADDED -> "[// PARALLEL LANE INITIATED ]";
+            case SWITCHED -> "[// FOCUS SHIFTED ]";
+            case COMPLETED -> "[// LANE SECURED ]";
         };
     }
 }

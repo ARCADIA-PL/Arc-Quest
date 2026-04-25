@@ -49,6 +49,14 @@ public class QuestHudOverlay implements IGuiOverlay {
         trackerPanel.setTrackedQuest(questId);
     }
 
+    public void setTrackedFocus(String questId, String phaseId) {
+        trackerPanel.setTrackedFocus(questId, phaseId);
+    }
+
+    public String getTrackedPhaseId() {
+        return trackerPanel.getTrackedPhaseId();
+    }
+
     public String getTrackedQuestId() {
         return trackerPanel.getTrackedQuestId();
     }
