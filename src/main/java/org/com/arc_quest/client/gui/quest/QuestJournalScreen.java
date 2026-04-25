@@ -45,6 +45,12 @@ public class QuestJournalScreen extends Screen {
     private static final int TAB_HEIGHT = 22;
     private final List<QuestListEntry> currentEntries = new ArrayList<>();
     private final List<ChoiceButtonRect> currentChoiceButtons = new ArrayList<>();
+    private final List<PhaseTagRect> currentPhaseTags = new ArrayList<>();
+
+    private final Map<String, Float> phaseCardReveal = new java.util.HashMap<>();
+    private String selectedPhaseId = null;
+    private long lastChoiceClickAt = 0L;
+    private static final long CHOICE_CLICK_COOLDOWN_MS = 220L;
     private float transitionAlpha = 0f;
     private boolean isClosing = false;
     private long lastRenderTime = 0;
@@ -148,7 +154,9 @@ public class QuestJournalScreen extends Screen {
         detailTargetScroll = 0;
         detailScrollOffset = 0;
         currentChoiceButtons.clear();
-        
+        currentPhaseTags.clear();
+        selectedPhaseId = null;
+        phaseCardReveal.clear();
     }
 
     private float lerp(float c, float t, float s) {
@@ -169,18 +177,6 @@ public class QuestJournalScreen extends Screen {
             case COMPLETED -> "arc_quest.gui.journal.tab.completed";
             case FAILED -> "arc_quest.gui.journal.tab.failed";
         }).getString();
-    }
-
-    private boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime) {
-        if (def == null || runtime == null) return false;
-        PhaseDefinition currentPhase = ClientQuestCache.INSTANCE.getCurrentPhase(runtime.getQuestId());
-        if (currentPhase == null || !currentPhase.hasChoices()) return false;
-        int[] progress = runtime.getAllProgress(runtime.getCurrentPhaseId());
-        for (int i = 0; i < currentPhase.getObjectives().size(); i++) {
-            if (i >= progress.length || progress[i] < currentPhase.getObjectives().get(i).getRequiredCount())
-                return false;
-        }
-        return true;
     }
 
     @Override
@@ -227,6 +223,7 @@ public class QuestJournalScreen extends Screen {
         int detailH = listH;
         int scrollAreaH = detailH - 40;
 
+        // Intel 按钮
         if (intelSceneId != null) {
             int intelBtnAbsX = LIST_MARGIN + LIST_WIDTH + DETAIL_MARGIN + (int) slideOffset + 12;
             int intelBtnAbsY = (int) Math.round(detailY + 12 - detailScrollOffset + intelBtnLocalY);
@@ -240,6 +237,7 @@ public class QuestJournalScreen extends Screen {
             }
         }
 
+        // 左侧列表滚动条
         int maxListScroll = Math.max(0, currentEntries.size() * ENTRY_HEIGHT - listH);
         int listScrollbarX = listX + LIST_WIDTH - 6;
         if (maxListScroll > 0 && mx >= listScrollbarX && mx <= listScrollbarX + 6 && my >= listY && my <= listBottom) {
@@ -255,6 +253,7 @@ public class QuestJournalScreen extends Screen {
             return true;
         }
 
+        // 右侧详情滚动条
         int maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
         int detailScrollbarX = detailX + detailW - 6;
         if (maxDetailScroll > 0 && mx >= detailScrollbarX && mx <= detailScrollbarX + 6 && my >= detailY && my <= detailY + scrollAreaH) {
@@ -270,6 +269,7 @@ public class QuestJournalScreen extends Screen {
             return true;
         }
 
+        // Tabs
         int tabY = 38, tabBaseX = LIST_MARGIN - (int) slideOffset;
         for (Tab tab : Tab.values()) {
             int tw = font.width(getTabLabel(tab)) + 16;
@@ -287,6 +287,7 @@ public class QuestJournalScreen extends Screen {
         int btnH = 20;
         int btnY = detailY + detailH - btnH - 8;
 
+        // 底部操作按钮（Track/Abandon）
         if (currentTab == Tab.ACTIVE && selectedIndex >= 0) {
             int btnW = Math.min(90, (detailW - 24) / 2);
             int trackX = detailX + detailW - btnW - 8;
@@ -303,24 +304,52 @@ public class QuestJournalScreen extends Screen {
                 return true;
             }
         }
+
+        // 底部操作按钮（Failed -> Restart）
         if (currentTab == Tab.FAILED && selectedIndex >= 0) {
             int restartBtnW = Math.min(120, detailW - 16);
             int restartBtnX = detailX + detailW - restartBtnW - 8;
             if (mx >= restartBtnX && mx <= restartBtnX + restartBtnW && my >= btnY && my <= btnY + btnH) {
                 String qid = currentEntries.get(selectedIndex).questId();
                 ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.abandon(qid));
-                if (minecraft != null)
+                if (minecraft != null) {
                     minecraft.execute(() -> ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.accept(qid)));
+                }
                 playClick();
                 return true;
             }
         }
 
+        // Kanban phase 卡片点击（切换 selectedPhaseId）
+        if (currentTab == Tab.ACTIVE && !currentPhaseTags.isEmpty()) {
+            for (PhaseTagRect rect : currentPhaseTags) {
+                if (mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h) {
+                    selectedPhaseId = rect.phaseId;
+                    currentChoiceButtons.clear();
+                    playClick();
+                    return true;
+                }
+            }
+        }
+
+        // Choice 按钮点击（带防抖 + 绑定 phaseId）
         if (currentTab == Tab.ACTIVE && !currentChoiceButtons.isEmpty()) {
             for (ChoiceButtonRect rect : currentChoiceButtons) {
                 if (mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h) {
                     if (my >= detailY && my <= detailY + scrollAreaH) {
-                        ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.choose(currentEntries.get(selectedIndex).questId(), rect.choiceIndex));
+                        long nowMs = Util.getMillis();
+                        if (nowMs - lastChoiceClickAt < CHOICE_CLICK_COOLDOWN_MS) {
+                            return true;
+                        }
+                        lastChoiceClickAt = nowMs;
+
+                        ArcQuestNetwork.sendQuestAction(
+                                C2SRequestQuestActionPacket.choose(
+                                        currentEntries.get(selectedIndex).questId(),
+                                        rect.phaseId,
+                                        rect.choiceIndex
+                                )
+                        );
                         QuestHudOverlay.INSTANCE.clearBranchChoiceToast();
                         playClick();
                         return true;
@@ -329,6 +358,7 @@ public class QuestJournalScreen extends Screen {
             }
         }
 
+        // 左侧列表点击选中
         if (mx >= listX && mx <= listX + LIST_WIDTH - 6 && my >= listY && my <= listBottom) {
             double relY = my - listY + scrollOffset;
             int idx = (int) (relY / ENTRY_HEIGHT);
@@ -341,6 +371,7 @@ public class QuestJournalScreen extends Screen {
                 return true;
             }
         }
+
         return super.mouseClicked(mx, my, button);
     }
 
@@ -715,114 +746,196 @@ public class QuestJournalScreen extends Screen {
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
 
         if (entry.state() == QuestState.ACTIVE && runtime != null) {
-            PhaseDefinition phase = ClientQuestCache.INSTANCE.getCurrentPhase(entry.questId());
-            if (phase != null) {
+            currentChoiceButtons.clear();
+            currentPhaseTags.clear();
+
+            List<String> activePhaseIds = new ArrayList<>();
+            for (String pid : def.getPhaseIds()) {
+                if (runtime.isPhaseActive(pid)) activePhaseIds.add(pid);
+            }
+            if (activePhaseIds.isEmpty()) activePhaseIds.addAll(runtime.getActivePhaseIds());
+
+            if (activePhaseIds.isEmpty()) {
+                g.drawString(font, "No active phase.", 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false);
+                localY += 16;
+            } else {
                 g.pose().pushPose();
                 g.pose().translate(0, localY, 0);
                 g.pose().scale(0.8f, 0.8f, 1f);
-                String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty()
-                        ? phase.getDisplayName().getString()
-                        : phase.getPhaseId();
-                g.drawString(font, Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString(), 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), true);
+                g.drawString(font, "ACTIVE LANES", 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), true);
                 g.pose().popPose();
                 localY += 14;
 
-                if (phase.hasDescription()) {
-                    g.pose().pushPose();
-                    g.pose().translate(4, localY, 0);
-                    g.pose().scale(0.8f, 0.8f, 1f);
-                    List<String> phaseDescLines = HudRenderUtil.wrapText(phase.getDescription().getString(), (int) ((scrollAreaW - 28) / 0.8f), font);
-                    for (String line : phaseDescLines) {
-                        g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0x99BBFF, safeA), false);
-                        g.pose().translate(0, font.lineHeight + 1, 0);
-                    }
-                    g.pose().popPose();
-                    localY += phaseDescLines.size() * (font.lineHeight + 1) + 6;
-                }
+                int cardAreaW = scrollAreaW - 24;
+                int gap = 8;
+                int colW = (cardAreaW - gap) / 2;
+                int[] colY = new int[]{localY, localY};
 
-                intelSceneId = phase.getIntelSceneId();
-                if (detailObjReveal.length != phase.getObjectives().size()) detailObjReveal = new float[phase.getObjectives().size()];
+                for (String phaseId : activePhaseIds) {
+                    PhaseDefinition phase = def.getPhase(phaseId);
+                    if (phase == null) continue;
 
-                for (int i = 0; i < phase.getObjectives().size(); i++) {
-                    detailObjReveal[i] = lerp(detailObjReveal[i], 1f, 0.1f + i * 0.03f);
-                    float oAlpha = dAlpha * HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]));
-                    int oA = (int) (255 * oAlpha);
-                    if (oA <= 4) {
-                        localY += 22;
-                        continue;
-                    }
+                    int col = colY[0] <= colY[1] ? 0 : 1;
+                    int rawCardX = col * (colW + gap);
+                    int rawCardY = colY[col];
 
-                    int objX = (int) ((1f - HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
-                    int progress = runtime.getObjectiveProgress(runtime.getCurrentPhaseId(), i),
-                            required = phase.getObjectives().get(i).getRequiredCount();
-                    boolean complete = progress >= required;
+                    float reveal = phaseCardReveal.getOrDefault(phaseId, 0f);
+                    reveal = lerp(reveal, 1f, 0.12f + (col * 0.02f));
+                    phaseCardReveal.put(phaseId, reveal);
 
-                    String objText = (complete ? Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString() : Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString()) + phase.getObjectives().get(i).getDisplayText().getString();
+                    float cardEase = HudAnimUtil.easeOutCubic(Math.min(1f, reveal));
+                    int cardSlideX = (int) ((1f - cardEase) * 18f);
+                    int cardSlideY = (int) ((1f - cardEase) * 10f);
+                    float cardAlphaMul = cardEase;
 
-                    List<String> wrappedObjLines = HudRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
-                    for (String line : wrappedObjLines) {
-                        g.drawString(font, line, objX, localY, HudAnimUtil.withAlpha(complete ? 0x88FF88 : 0xDDDDDD, oA), true);
-                        localY += font.lineHeight + 1;
+                    int cardX = rawCardX + cardSlideX;
+                    int cardY = rawCardY + cardSlideY;
+                    int cardSafeA = (int) (safeA * cardAlphaMul);
+
+                    int done = 0;
+                    int total = phase.getObjectives().size();
+                    for (int i = 0; i < total; i++) {
+                        int p = runtime.getObjectiveProgress(phaseId, i);
+                        if (p >= phase.getObjectives().get(i).getRequiredCount()) done++;
                     }
 
-                    int barW = scrollAreaW - 40 - objX;
-                    float ratio = required > 0 ? (float) progress / required : 0f;
-                    int fillW = (int) (barW * ratio);
+                    boolean selected = phaseId.equals(resolveSelectedPhaseId(def, runtime));
+                    boolean phaseDone = isPhaseObjectivesDone(runtime, phase, phaseId);
 
-                    int bgC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x33 * oAlpha));
-                    int fgC = HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int)(0xCC * oAlpha));
-                    int tipC = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0xFF * oAlpha));
-
-                    RenderSystem.enableBlend();
-                    g.fill(objX, localY, objX + barW, localY + 3, bgC);
-                    if (fillW > 0) {
-                        g.fill(objX, localY, objX + fillW, localY + 3, fgC);
-                        g.fill(objX + fillW - 2, localY - 1, objX + fillW, localY + 4, tipC);
+                    List<ChoiceOption> visibleChoices = new ArrayList<>();
+                    if (shouldShowBranchChoices(def, runtime, phaseId)) {
+                        for (ChoiceOption choice : phase.getChoices()) {
+                            boolean isVisible = true;
+                            if (choice.getVisibleCondition() != null) {
+                                isVisible = choice.getVisibleCondition().testClient(
+                                        ClientQuestCache.INSTANCE.getCompletedQuestsAsRL(),
+                                        ClientQuestCache.INSTANCE.getAllFlags(),
+                                        ClientQuestCache.INSTANCE.getAllVariables()
+                                );
+                            }
+                            if (isVisible) visibleChoices.add(choice);
+                        }
                     }
-                    RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
-                    g.pose().pushPose();
-                    g.pose().translate(objX + barW + 4, localY - 1, 0);
-                    g.pose().scale(0.7f, 0.7f, 1f);
-                    g.drawString(font, progress + " / " + required, 0, 0, HudAnimUtil.withAlpha(0x999999, oA), false);
-                    g.pose().popPose();
-                    localY += 12;
-                }
+                    int objShow = Math.min(total, 5);
+                    int cardH = 24 + 10 + objShow * 14 + 10 + (visibleChoices.isEmpty() ? 0 : visibleChoices.size() * 24 + 4) + 8;
 
-                localY += 6;
-
-
-                if (intelSceneId != null) {
-                    intelBtnLocalY = localY;
-                    int intelBtnAbsX = x + 12;
-                    int intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset + localY);
-                    boolean btnHovered = mx >= intelBtnAbsX && mx <= intelBtnAbsX + INTEL_BTN_W
-                            && my >= intelBtnAbsY && my <= intelBtnAbsY + INTEL_BTN_H
+                    int absCardX = x + 12 + cardX;
+                    int absCardY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset + cardY);
+                    boolean cardHovered = mx >= absCardX && mx <= absCardX + colW
+                            && my >= absCardY && my <= absCardY + cardH
                             && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
 
-                    intelBtnHoverAnim = step(intelBtnHoverAnim, btnHovered ? 1f : 0f, 8f);
+                    HudAnimUtil.drawFrame(
+                            g, cardX, cardY, colW, cardH,
+                            HudAnimUtil.withAlpha(0x000000, (int) ((cardHovered ? 0x66 : 0x55) * dAlpha * cardAlphaMul)),
+                            HudAnimUtil.withAlpha(selected ? activeTheme : 0x666666, (int) (200 * dAlpha * cardAlphaMul))
+                    );
 
-                    drawButton(g, 0, localY, INTEL_BTN_W, INTEL_BTN_H, "PHASE INTEL", activeTheme, HudAnimUtil.easeOutCubic(intelBtnHoverAnim), btnHovered);
+                    g.fill(cardX, cardY, cardX + colW, cardY + 20,
+                            HudAnimUtil.withAlpha(selected ? activeTheme : 0xFFFFFF, (int) ((selected ? 0x33 : 0x14) * dAlpha * cardAlphaMul)));
 
-                    localY += INTEL_BTN_H + 12;
+                    if (selected) {
+                        g.fill(cardX, cardY, cardX + colW, cardY + 2,
+                                HudAnimUtil.withAlpha(activeTheme, (int) (230 * dAlpha * cardAlphaMul)));
+                    }
+
+                    currentPhaseTags.add(new PhaseTagRect(absCardX, absCardY, colW, cardH, phaseId));
+
+                    String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty()
+                            ? phase.getDisplayName().getString()
+                            : phase.getPhaseId();
+                    phaseName = font.plainSubstrByWidth(phaseName, colW - 54);
+                    g.drawString(font, phaseName, cardX + 6, cardY + 6, HudAnimUtil.withAlpha(0xFFFFFF, cardSafeA), false);
+
+                    String badge = phaseDone ? "DONE" : (done + "/" + total);
+                    int badgeW = font.width(badge) + 6;
+                    g.fill(cardX + colW - badgeW - 4, cardY + 4, cardX + colW - 4, cardY + 16,
+                            HudAnimUtil.withAlpha(0x000000, (int) (0x88 * dAlpha * cardAlphaMul)));
+                    g.drawString(font, badge, cardX + colW - badgeW - 1, cardY + 6,
+                            HudAnimUtil.withAlpha(phaseDone ? 0x66FF66 : 0xCCCCCC, cardSafeA), false);
+
+                    int cy = cardY + 24;
+
+                    float laneRatio = total > 0 ? (float) done / total : 0f;
+                    int laneBarW = colW - 12;
+                    int laneFillW = (int) (laneBarW * laneRatio);
+                    g.fill(cardX + 6, cy, cardX + 6 + laneBarW, cy + 3,
+                            HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x2A * dAlpha * cardAlphaMul)));
+                    if (laneFillW > 0) {
+                        g.fill(cardX + 6, cy, cardX + 6 + laneFillW, cy + 3,
+                                HudAnimUtil.withAlpha(phaseDone ? 0x66FF66 : activeTheme, (int) (0xCC * dAlpha * cardAlphaMul)));
+                    }
+                    cy += 10;
+
+                    for (int i = 0; i < objShow; i++) {
+                        ObjectiveEntry obj = phase.getObjectives().get(i);
+                        int progress = runtime.getObjectiveProgress(phaseId, i);
+                        int required = obj.getRequiredCount();
+                        boolean complete = progress >= required;
+
+                        String line = (complete ? "§a✔ " : "§7○ ") + obj.getDisplayText().getString();
+                        line = font.plainSubstrByWidth(line, colW - 14);
+                        g.drawString(font, line, cardX + 6, cy,
+                                HudAnimUtil.withAlpha(complete ? 0x88FF88 : 0xDDDDDD, cardSafeA), false);
+
+                        String pr = progress + "/" + required;
+                        g.drawString(font, pr, cardX + colW - 6 - font.width(pr), cy,
+                                HudAnimUtil.withAlpha(0x999999, cardSafeA), false);
+                        cy += 14;
+                    }
+
+                    if (total > objShow) {
+                        String more = "+" + (total - objShow) + " more";
+                        g.drawString(font, more, cardX + 6, cy, HudAnimUtil.withAlpha(0x777777, cardSafeA), false);
+                        cy += 12;
+                    }
+
+                    if (phase.hasChoices() && !shouldShowBranchChoices(def, runtime, phaseId)) {
+                        g.drawString(font, "Choices locked: complete lane objectives first",
+                                cardX + 6, cy, HudAnimUtil.withAlpha(0x888888, cardSafeA), false);
+                        cy += 14;
+                    }
+
+                    if (!visibleChoices.isEmpty()) {
+                        cy += 2;
+                        for (int i = 0; i < visibleChoices.size(); i++) {
+                            ChoiceOption choice = visibleChoices.get(i);
+
+                            int btnX = cardX + 6;
+                            int btnY = cy;
+                            int btnW = colW - 12;
+                            int btnH = 20;
+
+                            int absBtnX = x + 12 + btnX;
+                            int absBtnY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset + btnY);
+
+                            boolean btnHover = mx >= absBtnX && mx <= absBtnX + btnW
+                                    && my >= absBtnY && my <= absBtnY + btnH
+                                    && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
+
+                            g.fill(btnX, btnY, btnX + btnW, btnY + btnH,
+                                    HudAnimUtil.withAlpha(0xFFFFFF, (int) ((btnHover ? 0x22 : 0x12) * dAlpha * cardAlphaMul)));
+                            g.fill(btnX, btnY, btnX + btnW, btnY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (170 * dAlpha * cardAlphaMul)));
+                            g.fill(btnX, btnY + btnH - 1, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * dAlpha * cardAlphaMul)));
+                            g.fill(btnX, btnY, btnX + 1, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * dAlpha * cardAlphaMul)));
+                            g.fill(btnX + btnW - 1, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * dAlpha * cardAlphaMul)));
+
+                            String cText = (i + 1) + ". " + choice.getDisplayText().getString();
+                            cText = font.plainSubstrByWidth(cText, btnW - 12);
+                            g.drawString(font, cText, btnX + 6, btnY + 6,
+                                    HudAnimUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD, cardSafeA), false);
+
+                            int originalIdx = phase.getChoices().indexOf(choice);
+                            currentChoiceButtons.add(new ChoiceButtonRect(absBtnX, absBtnY, btnW, btnH, originalIdx, phaseId));
+                            cy += 24;
+                        }
+                    }
+
+                    colY[col] = rawCardY + cardH + gap;
                 }
 
-                if (!phase.getPhaseRewards().isEmpty()) {
-                    g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (50 * dAlpha)));
-                    localY += 6;
-                    g.pose().pushPose();
-                    g.pose().translate(0, localY, 0);
-                    g.pose().scale(0.75f, 0.75f, 1f);
-                    g.drawString(font, Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), true);
-                    g.pose().popPose();
-                    localY += 11;
-                    g.pose().pushPose();
-                    g.pose().translate(6, localY, 0);
-                    g.pose().scale(0.85f, 0.85f, 1f);
-                    int phaseRewardH = QuestRewardRenderer.render(g, phase.getPhaseRewards(), (int) ((scrollAreaW - 24) / 0.85f), safeA);
-                    g.pose().popPose();
-                    localY += (int) (phaseRewardH * 0.85f) + 4;
-                }
+                localY = Math.max(colY[0], colY[1]) + 6;
 
                 g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
                 localY += 10;
@@ -835,8 +948,7 @@ public class QuestJournalScreen extends Screen {
                 localY += 14;
 
                 int completedCount = 0;
-                for (String phaseId : def.getPhaseIds()) {
-                    if (phaseId.equals(runtime.getCurrentPhaseId())) break;
+                for (String phaseId : runtime.getCompletedPhaseIds()) {
                     String completedPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(entry.questId(), phaseId);
                     g.pose().pushPose();
                     g.pose().translate(8, localY, 0);
@@ -855,73 +967,32 @@ public class QuestJournalScreen extends Screen {
                     localY += 12;
                 }
 
-                if (shouldShowBranchChoices(def, runtime)) {
+                String intelPhaseId = resolveSelectedPhaseId(def, runtime);
+                PhaseDefinition intelPhase = intelPhaseId == null ? null : def.getPhase(intelPhaseId);
+                intelSceneId = intelPhase != null ? intelPhase.getIntelSceneId() : null;
+                if (intelSceneId != null) {
                     localY += 8;
-                    g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
-                    localY += 10;
+                    intelBtnLocalY = localY;
+                    int intelBtnAbsX = x + 12;
+                    int intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - detailScrollOffset + localY);
+                    boolean btnHovered = mx >= intelBtnAbsX && mx <= intelBtnAbsX + INTEL_BTN_W
+                            && my >= intelBtnAbsY && my <= intelBtnAbsY + INTEL_BTN_H
+                            && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
 
-                    g.pose().pushPose();
-                    g.pose().translate(0, localY, 0);
-                    g.pose().scale(0.8f, 0.8f, 1f);
-                    g.drawString(font, Component.translatable("arc_quest.gui.journal.section.choose_path").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), true);
-                    g.pose().popPose();
-                    localY += 14;
-
-                    currentChoiceButtons.clear();
-                    List<ChoiceOption> choices = ClientQuestCache.INSTANCE.getCurrentPhase(entry.questId()).getChoices();
-                    for (int i = 0; i < choices.size(); i++) {
-                        ChoiceOption choice = choices.get(i);
-                        boolean isVisible = true;
-                        if (choice.getVisibleCondition() != null) {
-                            isVisible = choice.getVisibleCondition().testClient(
-                                    ClientQuestCache.INSTANCE.getCompletedQuestsAsRL(),
-                                    ClientQuestCache.INSTANCE.getAllFlags(),
-                                    ClientQuestCache.INSTANCE.getAllVariables()
-                            );
-                        }
-                        if (!isVisible) continue;
-
-                        int choiceBtnW = scrollAreaW - 24, choiceBtnH = 22;
-                        int absX = x + 12, absY = scrollAreaY + 12 - (int) detailScrollOffset + localY;
-                        currentChoiceButtons.add(new ChoiceButtonRect(absX, absY, choiceBtnW, choiceBtnH, i));
-
-                        boolean isHovered = mx >= absX && mx <= absX + choiceBtnW && my >= absY && my <= absY + choiceBtnH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
-
-                        int borderColor = isHovered ? activeTheme : 0x666666;
-                        int textColor = isHovered ? activeTheme : 0xCCCCCC;
-
-                        g.fill(0, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isHovered ? 0x22 : 0x11) * dAlpha)));
-                        g.fill(0, localY, choiceBtnW, localY + 1, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                        g.fill(0, localY + choiceBtnH - 1, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                        g.fill(0, localY, 1, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                        g.fill(choiceBtnW - 1, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-
-                        float textScale = 0.8f;
-                        float textH = font.lineHeight * textScale;
-                        float textYOffset = (choiceBtnH - textH) / 2f;
-
-                        g.pose().pushPose();
-                        g.pose().translate(8, localY + textYOffset + 1, 0);
-                        g.pose().scale(textScale, textScale, 1f);
-
-                        String safeChoiceText = font.plainSubstrByWidth((i + 1) + ". " + choice.getDisplayText().getString(), (int) ((choiceBtnW - 16) / textScale));
-
-                        g.drawString(font, safeChoiceText, 0, 0, HudAnimUtil.withAlpha(textColor, safeA), false);
-                        g.pose().popPose();
-
-                        localY += choiceBtnH + 5;
-                    }
+                    intelBtnHoverAnim = step(intelBtnHoverAnim, btnHovered ? 1f : 0f, 8f);
+                    drawButton(g, 0, localY, INTEL_BTN_W, INTEL_BTN_H, "PHASE INTEL", activeTheme, HudAnimUtil.easeOutCubic(intelBtnHoverAnim), btnHovered);
+                    localY += INTEL_BTN_H + 8;
                 }
 
                 if (!def.getCompletionRewards().isEmpty()) {
-                    localY += 12;
+                    localY += 8;
                     int boxW = scrollAreaW - 24;
                     int bA = (int) (255 * dAlpha);
 
                     int tempX = 12;
                     int rows = 1;
                     for (IReward r : def.getCompletionRewards()) {
-                        int rWidth = (r instanceof ItemReward) ? 28 : (int)(font.width(">" + r.describe()) * 0.75f) + 12;
+                        int rWidth = (r instanceof ItemReward) ? 28 : (int) (font.width(">" + r.describe()) * 0.75f) + 12;
                         if (tempX + rWidth > boxW - 16 && tempX > 12) {
                             tempX = 12;
                             rows++;
@@ -930,7 +1001,9 @@ public class QuestJournalScreen extends Screen {
                     }
                     int boxH = 24 + rows * 28;
 
-                    HudAnimUtil.drawFrame(g, 0, localY, boxW, boxH, HudAnimUtil.withAlpha(0x000000, (int)(0x55 * dAlpha)), HudAnimUtil.withAlpha(activeTheme, (int)(0x66 * dAlpha)));
+                    HudAnimUtil.drawFrame(g, 0, localY, boxW, boxH,
+                            HudAnimUtil.withAlpha(0x000000, (int) (0x55 * dAlpha)),
+                            HudAnimUtil.withAlpha(activeTheme, (int) (0x66 * dAlpha)));
 
                     g.pose().pushPose();
                     g.pose().translate(8, localY + 6, 0);
@@ -940,10 +1013,8 @@ public class QuestJournalScreen extends Screen {
 
                     int startX = 12;
                     int startY = localY + 22;
-
                     for (IReward r : def.getCompletionRewards()) {
-                        int rWidth = (r instanceof ItemReward) ? 28 : (int)(font.width(">" + r.describe()) * 0.75f) + 12;
-
+                        int rWidth = (r instanceof ItemReward) ? 28 : (int) (font.width(">" + r.describe()) * 0.75f) + 12;
                         if (startX + rWidth > boxW - 16 && startX > 12) {
                             startX = 12;
                             startY += 28;
@@ -951,32 +1022,21 @@ public class QuestJournalScreen extends Screen {
 
                         if (r instanceof ItemReward ir) {
                             ItemStack stack = new ItemStack(ir.getItem(), ir.getCount());
+                            HudAnimUtil.drawFrame(g, startX - 2, startY - 2, 20, 20,
+                                    HudAnimUtil.withAlpha(0x000000, (int) (0x33 * dAlpha)),
+                                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * dAlpha)));
 
-                            HudAnimUtil.drawFrame(g, startX - 2, startY - 2, 20, 20, HudAnimUtil.withAlpha(0x000000, (int)(0x33 * dAlpha)), HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x44 * dAlpha)));
-
-                            if (dAlpha > 0.01f) {
-                                g.pose().pushPose();
-                                float itemCenterX = startX + 8f;
-                                float itemCenterY = startY + 8f;
-
-                                g.pose().translate(itemCenterX, itemCenterY, 0);
-                                g.pose().scale(dAlpha, dAlpha, 1f);
-                                g.pose().translate(-itemCenterX, -itemCenterY, 0);
-
-                                g.renderItem(stack, startX, startY);
-
-                                g.pose().pushPose();
-                                g.pose().translate(0, 0, 200);
-                                g.renderItemDecorations(font, stack, startX, startY);
-                                g.pose().popPose();
-
-                                g.pose().popPose();
-                            }
+                            g.renderItem(stack, startX, startY);
+                            g.pose().pushPose();
+                            g.pose().translate(0, 0, 200);
+                            g.renderItemDecorations(font, stack, startX, startY);
+                            g.pose().popPose();
 
                             int absX = x + 12 + startX;
-                            int absY = scrollAreaY + 12 - (int)detailScrollOffset + startY;
-                            if (mx >= absX && mx <= absX + 16 && my >= absY && my <= absY + 16 && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
-                                g.fill(startX - 1, startY - 1, startX + 17, startY + 17, HudAnimUtil.withAlpha(0xFFFFFF, (int)(bA * 0.25f)));
+                            int absY = scrollAreaY + 12 - (int) detailScrollOffset + startY;
+                            if (mx >= absX && mx <= absX + 16 && my >= absY && my <= absY + 16
+                                    && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
+                                g.fill(startX - 1, startY - 1, startX + 17, startY + 17, HudAnimUtil.withAlpha(0xFFFFFF, (int) (bA * 0.25f)));
                                 hoveredRewardTooltip = stack;
                             }
                         } else {
@@ -986,6 +1046,7 @@ public class QuestJournalScreen extends Screen {
                             g.drawString(font, ">" + r.describe(), 0, 0, HudAnimUtil.withAlpha(0x88AAFF, safeA), false);
                             g.pose().popPose();
                         }
+
                         startX += rWidth;
                     }
                     localY += boxH + 8;
@@ -1024,7 +1085,10 @@ public class QuestJournalScreen extends Screen {
 
             boolean tHover = mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH;
             trackBtnHover = step(trackBtnHover, tHover ? 1f : 0f, 8f);
-            drawButton(g, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.tracked").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
+            drawButton(g, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId())
+                            ? Component.translatable("arc_quest.gui.journal.button.tracked").getString()
+                            : Component.translatable("arc_quest.gui.journal.button.track").getString(),
+                    activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
 
             boolean aHover = mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH;
             abandonBtnHover = step(abandonBtnHover, aHover ? 1f : 0f, 8f);
@@ -1172,9 +1236,76 @@ public class QuestJournalScreen extends Screen {
 
     private static class ChoiceButtonRect {
         int x, y, w, h, choiceIndex;
-        ChoiceButtonRect(int x, int y, int w, int h, int idx) {
-            this.x = x; this.y = y; this.w = w; this.h = h; this.choiceIndex = idx;
+        String phaseId;
+        ChoiceButtonRect(int x, int y, int w, int h, int idx, String phaseId) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
+            this.choiceIndex = idx;
+            this.phaseId = phaseId;
         }
+    }
+
+    private static class PhaseTagRect {
+        int x, y, w, h;
+        String phaseId;
+        PhaseTagRect(int x, int y, int w, int h, String phaseId) {
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
+            this.phaseId = phaseId;
+        }
+    }
+
+    private boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
+        if (def == null || runtime == null || phaseId == null || phaseId.isEmpty()) return false;
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null || !phase.hasChoices()) return false;
+
+        int[] progress = runtime.getAllProgress(phaseId);
+        for (int i = 0; i < phase.getObjectives().size(); i++) {
+            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String resolveSelectedPhaseId(QuestDefinition def, QuestRuntimeData runtime) {
+        if (def == null || runtime == null) return null;
+
+        if (selectedPhaseId != null
+                && !selectedPhaseId.isEmpty()
+                && runtime.isPhaseActive(selectedPhaseId)
+                && def.getPhase(selectedPhaseId) != null) {
+            return selectedPhaseId;
+        }
+
+        String current = runtime.getCurrentPhaseId();
+        if (current != null && !current.isEmpty() && runtime.isPhaseActive(current) && def.getPhase(current) != null) {
+            selectedPhaseId = current;
+            return selectedPhaseId;
+        }
+
+        for (String pid : runtime.getActivePhaseIds()) {
+            if (def.getPhase(pid) != null) {
+                selectedPhaseId = pid;
+                return selectedPhaseId;
+            }
+        }
+
+        selectedPhaseId = null;
+        return null;
+    }
+
+    private boolean isPhaseObjectivesDone(QuestRuntimeData runtime, PhaseDefinition phase, String phaseId) {
+        int[] progress = runtime.getAllProgress(phaseId);
+        for (int i = 0; i < phase.getObjectives().size(); i++) {
+            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
+        }
+        return true;
     }
 
     private record QuestListEntry(String questId, String displayName, QuestState state, QuestDefinition def) {}
