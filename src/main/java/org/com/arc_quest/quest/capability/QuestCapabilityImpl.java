@@ -196,7 +196,9 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public synchronized void addActiveQuest(QuestRuntimeData data) {
         Objects.requireNonNull(data);
-        activeQuests.put(data.getQuestId(), data);
+        String questId = data.getQuestId();
+        activeQuests.put(questId, data);
+        failedQuests.remove(questId);
         isDirty = true;
     }
 

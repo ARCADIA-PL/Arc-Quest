@@ -39,20 +39,30 @@ public final class QuestToastManager {
         String text = questName.trim();
         if (text.isEmpty()) return;
 
+        if (type == ToastType.QUEST_FAILED) {
+            cancelAcceptedToastForQuest(text);
+        }
+
         long now = System.currentTimeMillis();
         String key = buildKey(type, text);
 
-        if (key.equals(lastQueuedKey) && now - lastQueuedAt < DUPLICATE_WINDOW_MS) return;
+        if (key.equals(lastQueuedKey) && now - lastQueuedAt < DUPLICATE_WINDOW_MS) {
+            return;
+        }
 
         for (String activeKey : activeKeys) {
             if (key.equals(activeKey)) {
                 Long shownAt = recentShownAt.get(key);
-                if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) return;
+                if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) {
+                    return;
+                }
             }
         }
 
         Long shownAt = recentShownAt.get(key);
-        if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) return;
+        if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) {
+            return;
+        }
 
         pendingQueue.addLast(new PendingToast(type, text, key, now));
         lastQueuedKey = key;
@@ -139,6 +149,26 @@ public final class QuestToastManager {
     }
 
     private static String buildKey(ToastType type, String text) { return type.name() + "|" + text; }
+
+    private static void cancelAcceptedToastForQuest(String questName) {
+        String acceptedKey = buildKey(ToastType.QUEST_ACCEPTED, questName);
+
+        pendingQueue.removeIf(p -> p.type() == ToastType.QUEST_ACCEPTED && questName.equals(p.text()));
+
+        for (int i = 0; i < activeSlots.length; i++) {
+            if (acceptedKey.equals(activeKeys[i])) {
+                activeSlots[i] = null;
+                activeKeys[i] = null;
+            }
+        }
+
+        recentShownAt.remove(acceptedKey);
+        if (acceptedKey.equals(lastQueuedKey)) {
+            lastQueuedKey = null;
+            lastQueuedAt = 0L;
+        }
+    }
+
     private static void pruneRecentShown(long now) { recentShownAt.entrySet().removeIf(e -> now - e.getValue() > 5000L); }
     private record PendingToast(ToastType type, String text, String key, long queuedAt) {}
 

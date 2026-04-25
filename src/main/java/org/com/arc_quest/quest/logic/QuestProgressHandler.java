@@ -425,18 +425,21 @@ public final class QuestProgressHandler {
 
     public static QuestRejectCodeDictionary.Code abandonQuestWithCode(ServerPlayer player, String questId) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        if (!cap.isQuestActive(questId)) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        if (!cap.isQuestActive(questId)) {
+            return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        }
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data != null) {
             data.setState(QuestState.FAILED);
         }
+
         cap.markFailed(questId);
-        cap.removeActiveQuest(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
 
         syncFullDataAndPush(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
+        MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         return QuestRejectCodeDictionary.Code.OK;
     }
 

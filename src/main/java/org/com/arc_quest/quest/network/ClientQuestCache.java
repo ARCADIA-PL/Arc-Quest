@@ -117,7 +117,8 @@ public final class ClientQuestCache {
         if (hasAppliedFullSync) {
             for (String questId : failedQuests) {
                 if (!oldFailed.contains(questId)) {
-                    QuestToastManager.show(QuestToastManager.ToastType.QUEST_FAILED, getQuestDisplayName(questId));
+                    String name = getQuestDisplayName(questId);
+                    QuestToastManager.show(QuestToastManager.ToastType.QUEST_FAILED, name);
                 }
             }
         }

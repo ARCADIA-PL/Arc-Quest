@@ -67,6 +67,9 @@ public class QuestHudOverlay implements IGuiOverlay {
 
         if (tracked == null) {
             resetPhaseTrackingState();
+            if (!isSplashActive && !isBlockingScreen) {
+                QuestToastManager.render(g, screenWidth, screenHeight);
+            }
             return;
         }
 
