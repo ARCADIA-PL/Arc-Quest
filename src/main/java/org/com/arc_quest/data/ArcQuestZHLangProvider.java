@@ -466,12 +466,36 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.start.choice_accept_mission",
                 "我准备好了，请下达命令！");
 
+        add("dialogue.epic_village_elder.start.phase_scout_forest",
+                "§f很好，我们需要前线侦查。\n"
+                        + "收集足够的线，布置预警陷阱，提前发现敌人动向。");
+        add("dialogue.epic_village_elder.start.choice_scout_tip",
+                "明白，我去侦查森林线。");
+
+        add("dialogue.epic_village_elder.start.phase_reinforce_gate",
+                "§f村门是最后一道防线。\n"
+                        + "准备好橡木木板，把每一处薄弱点加固。");
+        add("dialogue.epic_village_elder.start.choice_reinforce_tip",
+                "村门防线交给我。");
+
+        add("dialogue.epic_village_elder.start.phase_craft_sword",
+                "§f两条支线都完成了，现在锻造一把真正的铁剑。\n"
+                        + "真正的守护者，必须握有真正的钢铁。");
+        add("dialogue.epic_village_elder.start.choice_craft_tip",
+                "我这就去锻造铁剑。");
+
         add("dialogue.epic_village_elder.start.phase_defend",
                 "§c§l警告！僵尸大军正在逼近！\n"
                         + "§f拿起你的武器，保卫我们的家园！\n"
                         + "§e（获得力量药水 x1）");
         add("dialogue.epic_village_elder.start.choice_encourage",
                 "为了村庄！");
+
+        add("dialogue.epic_village_elder.start.phase_gather_food",
+                "§f战斗结束了，但村民仍然饥饿。\n"
+                        + "带回面包和熟牛肉，让村庄恢复元气。");
+        add("dialogue.epic_village_elder.start.choice_food_tip",
+                "我马上去准备食物。");
 
         add("dialogue.epic_village_elder.start.prologue_done",
                 "§a§l干得漂亮，勇士！\n"

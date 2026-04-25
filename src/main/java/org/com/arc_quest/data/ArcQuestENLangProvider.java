@@ -466,12 +466,36 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("dialogue.epic_village_elder.start.choice_accept_mission",
                 "I am ready. Give the order!");
 
+        add("dialogue.epic_village_elder.start.phase_scout_forest",
+                "§fGood. We need eyes in the wilds.\n"
+                        + "Gather enough string so we can set warning snares around the village.");
+        add("dialogue.epic_village_elder.start.choice_scout_tip",
+                "Understood, I will scout the forest route.");
+
+        add("dialogue.epic_village_elder.start.phase_reinforce_gate",
+                "§fThe main gate is our last wall.\n"
+                        + "Prepare enough oak planks and reinforce every weak section.");
+        add("dialogue.epic_village_elder.start.choice_reinforce_tip",
+                "Leave the gate defense to me.");
+
+        add("dialogue.epic_village_elder.start.phase_craft_sword",
+                "§fBoth operations are done. Now forge a proper iron blade.\n"
+                        + "A true defender must carry real steel.");
+        add("dialogue.epic_village_elder.start.choice_craft_tip",
+                "I will forge the sword immediately.");
+
         add("dialogue.epic_village_elder.start.phase_defend",
                 "§c§lWARNING! The zombie army approaches!\n"
                         + "§fTake up your arms and defend our home!\n"
                         + "§e(Received Strength Potion x1)");
         add("dialogue.epic_village_elder.start.choice_encourage",
                 "For the village!");
+
+        add("dialogue.epic_village_elder.start.phase_gather_food",
+                "§fThe battle is won, but our people are starving.\n"
+                        + "Bring bread and cooked beef so the village can recover.");
+        add("dialogue.epic_village_elder.start.choice_food_tip",
+                "I will deliver food right away.");
 
         add("dialogue.epic_village_elder.start.prologue_done",
                 "§a§lWell done, warrior!\n"
