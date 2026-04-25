@@ -37,6 +37,9 @@ public final class PhaseBuilder {
     private int transitionPriorityCounter = 0;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     private String tradeShopId = null;
+    @Nullable
+    private ICondition enterCondition = null;
+    private boolean autoEnterByCondition = true;
 
     // 音效配置
     @Nullable
@@ -152,6 +155,18 @@ public final class PhaseBuilder {
 
     public PhaseBuilder setFlagOnComplete(String flag) {
         this.flagsOnComplete.add(flag);
+        return this;
+    }
+
+    public PhaseBuilder enterWhen(ICondition condition) {
+        this.enterCondition = condition;
+        this.autoEnterByCondition = true;
+        return this;
+    }
+
+    public PhaseBuilder enterWhen(ICondition condition, boolean autoEnterByCondition) {
+        this.enterCondition = condition;
+        this.autoEnterByCondition = autoEnterByCondition;
         return this;
     }
 
@@ -329,7 +344,9 @@ public final class PhaseBuilder {
                 this.tradeShopId,
                 this.phaseStartSound,
                 this.phaseCompleteSound,
-                this.intelSceneId
+                this.intelSceneId,
+                this.enterCondition,
+                this.autoEnterByCondition
         );
     }
 }

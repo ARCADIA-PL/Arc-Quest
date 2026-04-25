@@ -18,6 +18,7 @@ import org.com.arc_quest.quest.tracking.ObjectiveTracker;
 import org.com.arc_quest.quest.tracking.TrackedObjective;
 import org.slf4j.Logger;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +32,11 @@ public final class QuestProgressHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private QuestProgressHandler() {
+    }
+
+    private static final class ActivationContext {
+        int activatedCount = 0;
+        boolean flagsChanged = false;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -90,16 +96,29 @@ public final class QuestProgressHandler {
         );
         cap.addActiveQuest(data);
 
+        boolean flagsChanged = false;
         for (String flag : def.getFlagsToSetOnAccept()) {
             cap.setFlag(flag);
+            flagsChanged = true;
+        }
+        for (String flag : firstPhase.getFlagsToSetOnEnter()) {
+            cap.setFlag(flag);
+            flagsChanged = true;
         }
 
         registerPhaseObjectives(player, def, firstPhase);
 
-        syncQuestStateAndPush(player, data);
-        syncFlagsVarsAndPush(player, cap);
-        QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
+        // 仅对 autoEnterByCondition=true 的 phase 扫描自动入场
+        ActivationContext ctx = new ActivationContext();
+        tryAutoEnterPhases(player, cap, data, def, firstPhase.getPhaseId(), ctx);
+        flagsChanged = flagsChanged || ctx.flagsChanged;
 
+        syncQuestStateAndPush(player, data);
+        if (flagsChanged) {
+            syncFlagsVarsAndPush(player, cap);
+        }
+
+        QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestAcceptedEvent(player, ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestStartedEvent(player, ResourceLocation.parse(questId)));
 
@@ -171,32 +190,50 @@ public final class QuestProgressHandler {
         unregisterPhaseObjectives(player, def, phase);
         data.completePhase(phaseId);
 
-        // choices：该 phase 完成后等待玩家选路，不自动推进
+        ActivationContext ctx = new ActivationContext();
+        for (String flag : phase.getFlagsToSetOnComplete()) {
+            cap.setFlag(flag);
+            ctx.flagsChanged = true;
+        }
+
+        // choices：该 phase 完成后等待玩家选路，不自动推进 transition
         if (phase.hasChoices()) {
+            // 但允许 auto enter phase 扫描（如配置了 autoEnterByCondition=true）
+            tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+
+            if (shouldCompleteQuest(def, data)) {
+                completeQuest(player, cap, data, def);
+                return;
+            }
+
             syncQuestStateAndPush(player, data);
+            if (ctx.flagsChanged) {
+                syncFlagsVarsAndPush(player, cap);
+            }
             return;
         }
 
-        // 自动解锁后继（可多条）
         Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
+
+        // 自动解锁后继（可多条，支持 thenGoToIf）
         for (PhaseTransition tr : phase.getTransitions()) {
-            if (tr.requiresChoice()) continue;
-            boolean ok = tr.getCondition() == null ||
-                    tr.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+            boolean ok = tr.getCondition() == null
+                    || tr.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
             if (!ok) continue;
 
-            PhaseDefinition next = def.getPhase(tr.getTargetPhaseId());
-            if (next == null) continue;
-
-            data.activatePhase(next.getPhaseId(), next.getObjectives().size());
-            registerPhaseObjectives(player, def, next);
+            activatePhase(player, cap, data, def, phaseId, tr.getTargetPhaseId(), true, ctx);
         }
 
-        // 没有任何活跃 phase 才算 quest 完成
+        // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
+        tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+
         if (shouldCompleteQuest(def, data)) {
             completeQuest(player, cap, data, def);
         } else {
             syncQuestStateAndPush(player, data);
+            if (ctx.flagsChanged) {
+                syncFlagsVarsAndPush(player, cap);
+            }
         }
     }
 
@@ -209,20 +246,21 @@ public final class QuestProgressHandler {
                                       QuestRuntimeData data,
                                       QuestDefinition def,
                                       String nextPhaseId) {
-        PhaseDefinition nextPhase = def.getPhase(nextPhaseId);
-        if (nextPhase == null) {
-            LOGGER.error("[ArcQuest] Target phase not found: {}/{}", def.getId(), nextPhaseId);
+        String fromPhaseId = data.getCurrentPhaseId();
+
+        ActivationContext ctx = new ActivationContext();
+        boolean ok = activatePhase(player, cap, data, def, fromPhaseId, nextPhaseId, true, ctx);
+        if (!ok) {
+            LOGGER.warn("[ArcQuest] Target phase cannot be activated: {}/{}", def.getId(), nextPhaseId);
             return;
         }
 
-        String fromPhaseId = data.getCurrentPhaseId();
-
-        data.activatePhase(nextPhaseId, nextPhase.getObjectives().size());
-        registerPhaseObjectives(player, def, nextPhase);
+        tryAutoEnterPhases(player, cap, data, def, fromPhaseId, ctx);
 
         syncQuestStateAndPush(player, data);
-        QuestEventBus.fire(QuestChangeEvent.phaseChanged(def.getId(), fromPhaseId, nextPhaseId));
-        MinecraftForge.EVENT_BUS.post(new QuestPhaseChangedEvent(player, def.getId(), fromPhaseId, nextPhaseId));
+        if (ctx.flagsChanged) {
+            syncFlagsVarsAndPush(player, cap);
+        }
     }
 
     // ═══════════════════════════════════════════════════════
@@ -293,23 +331,67 @@ public final class QuestProgressHandler {
             return QuestRejectCodeDictionary.Code.CHOICE_CONDITION_NOT_MET;
         }
 
+        ActivationContext ctx = new ActivationContext();
+
         String flagToSet = chosen.getFlagToSet();
         if (flagToSet != null && !flagToSet.isEmpty()) {
             cap.setFlag(flagToSet);
+            ctx.flagsChanged = true;
             LOGGER.debug("[ArcQuest] Set flag '{}' from choice", flagToSet);
         }
 
         String targetPhaseId = chosen.getTargetPhaseId();
-        if (targetPhaseId != null && !targetPhaseId.isEmpty()) {
-            data.completePhase(resolvedPhaseId);
-            unregisterPhaseObjectives(player, def, currentPhase);
-
-            advanceToPhase(player, cap, data, def, targetPhaseId);
-            return QuestRejectCodeDictionary.Code.OK;
+        if (targetPhaseId == null || targetPhaseId.isEmpty()) {
+            LOGGER.warn("[ArcQuest] Choice has no target phase: {}", choiceIndex);
+            return QuestRejectCodeDictionary.Code.CHOICE_TARGET_PHASE_MISSING;
         }
 
-        LOGGER.warn("[ArcQuest] Choice has no target phase: {}", choiceIndex);
-        return QuestRejectCodeDictionary.Code.CHOICE_TARGET_PHASE_MISSING;
+        // 完成当前 choice phase
+        data.completePhase(resolvedPhaseId);
+        unregisterPhaseObjectives(player, def, currentPhase);
+        for (String flag : currentPhase.getFlagsToSetOnComplete()) {
+            cap.setFlag(flag);
+            ctx.flagsChanged = true;
+        }
+
+        // 并行增强：激活“选择目标 + 当前 phase 里其它满足条件的 transition”
+        Set<String> toActivate = new LinkedHashSet<>();
+        toActivate.add(targetPhaseId);
+
+        for (PhaseTransition tr : currentPhase.getTransitions()) {
+            String pid = tr.getTargetPhaseId();
+            if (pid == null || pid.isEmpty() || pid.equals(targetPhaseId)) continue;
+
+            ICondition cond = tr.getCondition();
+            boolean ok = cond == null || cond.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+            if (!ok) continue;
+
+            toActivate.add(pid);
+        }
+
+        for (String pid : toActivate) {
+            activatePhase(player, cap, data, def, resolvedPhaseId, pid, true, ctx);
+        }
+
+        // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
+        tryAutoEnterPhases(player, cap, data, def, resolvedPhaseId, ctx);
+
+        if (shouldCompleteQuest(def, data)) {
+            completeQuest(player, cap, data, def);
+        } else {
+            syncQuestStateAndPush(player, data);
+            if (ctx.flagsChanged) {
+                syncFlagsVarsAndPush(player, cap);
+            }
+        }
+
+        if (ctx.activatedCount == 0 && !shouldCompleteQuest(def, data)) {
+            LOGGER.warn("[ArcQuest] Choice resolved but no next phase activated: quest={}, phase={}, choice={}",
+                    questId, resolvedPhaseId, choiceIndex);
+            return QuestRejectCodeDictionary.Code.CHOICE_TARGET_PHASE_MISSING;
+        }
+
+        return QuestRejectCodeDictionary.Code.OK;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -485,5 +567,77 @@ public final class QuestProgressHandler {
                 LOGGER.error("[ArcQuest] Error granting {} reward: {}", context, e.getMessage(), e);
             }
         }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // enterCondition / 激活辅助
+    // ═══════════════════════════════════════════════════════
+
+    private static boolean canEnterPhase(ServerPlayer player,
+                                         IQuestCapability cap,
+                                         PhaseDefinition phase) {
+        ICondition cond = phase.getEnterCondition();
+        if (cond == null) return true;
+        return cond.test(player, cap.getCompletedQuestLocations(), cap.getAllFlags(), cap.getAllVariables());
+    }
+
+    private static boolean activatePhase(ServerPlayer player,
+                                         IQuestCapability cap,
+                                         QuestRuntimeData data,
+                                         QuestDefinition def,
+                                         String fromPhaseId,
+                                         String targetPhaseId,
+                                         boolean enforceEnterCondition,
+                                         ActivationContext ctx) {
+        PhaseDefinition next = def.getPhase(targetPhaseId);
+        if (next == null) return false;
+        if (data.isPhaseActive(targetPhaseId) || data.isPhaseCompleted(targetPhaseId)) return false;
+
+        if (enforceEnterCondition && !canEnterPhase(player, cap, next)) {
+            return false;
+        }
+
+        data.activatePhase(next.getPhaseId(), next.getObjectives().size());
+        registerPhaseObjectives(player, def, next);
+
+        for (String flag : next.getFlagsToSetOnEnter()) {
+            cap.setFlag(flag);
+            ctx.flagsChanged = true;
+        }
+
+        ctx.activatedCount++;
+
+        QuestEventBus.fire(QuestChangeEvent.phaseChanged(def.getId(), fromPhaseId, next.getPhaseId()));
+        MinecraftForge.EVENT_BUS.post(new QuestPhaseChangedEvent(player, def.getId(), fromPhaseId, next.getPhaseId()));
+        return true;
+    }
+
+    private static int tryAutoEnterPhases(ServerPlayer player,
+                                          IQuestCapability cap,
+                                          QuestRuntimeData data,
+                                          QuestDefinition def,
+                                          String fromPhaseId,
+                                          ActivationContext ctx) {
+        int before = ctx.activatedCount;
+        boolean changed;
+
+        do {
+            changed = false;
+
+            for (String pid : def.getPhaseIds()) {
+                if (data.isPhaseActive(pid) || data.isPhaseCompleted(pid)) continue;
+
+                PhaseDefinition phase = def.getPhase(pid);
+                if (phase == null) continue;
+                if (!phase.isAutoEnterByCondition()) continue;
+                if (phase.getEnterCondition() == null) continue;
+                if (!canEnterPhase(player, cap, phase)) continue;
+
+                boolean ok = activatePhase(player, cap, data, def, fromPhaseId, pid, false, ctx);
+                if (ok) changed = true;
+            }
+        } while (changed);
+
+        return ctx.activatedCount - before;
     }
 }

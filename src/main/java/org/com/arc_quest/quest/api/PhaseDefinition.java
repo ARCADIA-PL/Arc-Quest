@@ -26,6 +26,9 @@ public final class PhaseDefinition {
     private final List<String> flagsToSetOnComplete;
     private final QuestVisualConfig visualConfig;
     @Nullable
+    private final ICondition enterCondition;
+    private final boolean autoEnterByCondition;
+    @Nullable
     private final String tradeShopId;
     @Nullable
     private final SoundEvent phaseStartSound;
@@ -43,9 +46,9 @@ public final class PhaseDefinition {
                            List<IReward> phaseRewards,
                            List<String> flagsToSetOnEnter,
                            List<String> flagsToSetOnComplete,
-                           QuestVisualConfig visualConfig) {
+                           QuestVisualConfig visualConfig, boolean autoEnterByCondition) {
         this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
-                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null, null, null, null);
+                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null, null, null, null, null, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
@@ -57,9 +60,9 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnEnter,
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig,
-                           @Nullable String tradeShopId) {
+                           @Nullable String tradeShopId, boolean autoEnterByCondition) {
         this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
-                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null, null);
+                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null, null, null, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
@@ -73,10 +76,10 @@ public final class PhaseDefinition {
                            QuestVisualConfig visualConfig,
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
-                           @Nullable SoundEvent phaseCompleteSound) {
+                           @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
         this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
                 phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig,
-                tradeShopId, phaseStartSound, phaseCompleteSound, null);
+                tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
     }
 
     /** 旧的完整构造器（含 description），委托给带 intelSceneId 的新构造器。 */
@@ -92,10 +95,10 @@ public final class PhaseDefinition {
                            QuestVisualConfig visualConfig,
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
-                           @Nullable SoundEvent phaseCompleteSound) {
+                           @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
         this(phaseId, displayName, description, objectives, transitions, choices,
                 phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig,
-                tradeShopId, phaseStartSound, phaseCompleteSound, null);
+                tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
     }
 
     /** 含 intelSceneId 的最终构造器，所有其他构造器最终委托至此。 */
@@ -112,7 +115,8 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound,
-                           @Nullable ResourceLocation intelSceneId) {
+                           @Nullable ResourceLocation intelSceneId,
+                           @Nullable ICondition enterCondition, boolean autoEnterByCondition) {
         Objects.requireNonNull(phaseId);
         Objects.requireNonNull(displayName);
         if (objectives.isEmpty()) {
@@ -132,6 +136,8 @@ public final class PhaseDefinition {
         this.phaseStartSound = phaseStartSound;
         this.phaseCompleteSound = phaseCompleteSound;
         this.intelSceneId = intelSceneId;
+        this.enterCondition = enterCondition;
+        this.autoEnterByCondition = autoEnterByCondition;
     }
 
     public String getPhaseId() { return this.phaseId; }
@@ -161,6 +167,12 @@ public final class PhaseDefinition {
     public boolean hasChoices() { return !this.choices.isEmpty(); }
 
     public List<IReward> getPhaseRewards() { return this.phaseRewards; }
+
+    @Nullable
+    public ICondition getEnterCondition() { return enterCondition; }
+    public boolean isAutoEnterByCondition() { return autoEnterByCondition; }
+
+    public boolean hasEnterCondition() { return this.enterCondition != null; }
 
     public List<String> getFlagsToSetOnEnter() { return this.flagsToSetOnEnter; }
 
