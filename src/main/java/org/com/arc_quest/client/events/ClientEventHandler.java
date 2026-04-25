@@ -10,7 +10,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
-import org.com.arc_quest.client.gui.quest.QuestJournalScreen;
+import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 import org.com.arc_quest.client.gui.quest.QuestToastManager;
 import org.com.arc_quest.client.gui.render.QuestIntelPanel;
 import org.com.arc_quest.quest.network.ClientQuestCache;
