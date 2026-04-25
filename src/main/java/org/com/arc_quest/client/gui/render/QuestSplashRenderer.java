@@ -5,21 +5,31 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.SplashType;
 
 public class QuestSplashRenderer {
-    // 完美继承 Ares Genesis 的顶级时间轴配置
     private static final float TIME_ENTER = 700f;
     private static final float TIME_HOLD = 2900f;
     private static final float TIME_EXIT = 500f;
     private static final float MAX_DRIFT = 3.0f;
     private static final float FLY_DISTANCE = 4.0f;
+
     private static QuestDefinition activeQuest = null;
     private static SplashType activeType = null;
     private static ResourceLocation activeTexture = null;
+
+    private enum State { ENTER, HOLD, EXIT }
+    private static State currentState = State.ENTER;
+
     private static long startTime = 0;
+    private static long exitStartTime = 0;
+
+    private static float skipStartX = 0f;
+    private static float lastRenderX = 0f;
 
     public static void trigger(QuestDefinition quest, SplashType type, ResourceLocation texture) {
         if (quest != null && texture != null) {
@@ -27,6 +37,12 @@ public class QuestSplashRenderer {
             activeType = type;
             activeTexture = texture;
             startTime = Util.getMillis();
+
+            // 重置状态
+            currentState = State.ENTER;
+            exitStartTime = 0;
+            skipStartX = 0f;
+            lastRenderX = 0f;
         }
     }
 
@@ -34,22 +50,46 @@ public class QuestSplashRenderer {
         return activeQuest != null;
     }
 
+    public static boolean mouseClicked() {
+        if (!isActive() || currentState == State.EXIT) return false;
+
+        if (currentState == State.ENTER) return false;
+
+        currentState = State.EXIT;
+        exitStartTime = Util.getMillis();
+        skipStartX = lastRenderX;
+
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.5f));
+        return true;
+    }
+
     public static void render(GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
         if (activeQuest == null || activeTexture == null) return;
 
-        long elapsed = Util.getMillis() - startTime;
-        float totalTime = TIME_ENTER + TIME_HOLD + TIME_EXIT;
+        long now = Util.getMillis();
+        long elapsed = now - startTime;
 
-        if (elapsed >= totalTime) {
-            activeQuest = null;
-            return;
+        if (currentState == State.ENTER && elapsed >= TIME_ENTER) {
+            currentState = State.HOLD;
         }
 
-        // 采用 16:9 标准宽屏立绘比例
+        if (currentState == State.HOLD && elapsed >= TIME_ENTER + TIME_HOLD) {
+            currentState = State.EXIT;
+            exitStartTime = now;
+            skipStartX = lastRenderX;
+        }
+
+        if (currentState == State.EXIT) {
+            long exitElapsed = now - exitStartTime;
+            if (exitElapsed >= TIME_EXIT) {
+                activeQuest = null;
+                return;
+            }
+        }
+
         int frameW = 400;
         int frameH = 225;
 
-        // 动态缩放：占据屏幕高度的 70%
         float finalScale = (screenHeight * 0.70f) / (float) frameH;
 
         Font font = Minecraft.getInstance().font;
@@ -59,16 +99,13 @@ public class QuestSplashRenderer {
 
         float alpha = 1f;
 
-        // 精准锚定屏幕绝对正中央
         float baseX = (screenWidth / 2f) - ((frameW * finalScale) / 2f);
         float currentY = (screenHeight / 2f) - ((frameH * finalScale) / 2f);
 
-        float currentX;
-
+        float currentX = baseX;
         float scaleAnim = finalScale;
         float revealProgress = 1.0f;
         float wipeProgress = 0.0f;
-
         float textFade = 1f;
         float currentLineWidth = targetLineWidth;
         float textDriftX = 0f;
@@ -76,48 +113,47 @@ public class QuestSplashRenderer {
         float actualFlyDist = FLY_DISTANCE * finalScale;
         float actualDrift = MAX_DRIFT * finalScale;
 
-        // 1:1 移植 Genesis 的数学缓动曲线
-        if (elapsed < TIME_ENTER) {
+        if (currentState == State.ENTER) {
             float t = elapsed / TIME_ENTER;
             t = Math.min(1.0f, t);
-            float easeOut = (float) (1.0 - Math.pow(1.0 - t, 5)); // Ease Out Quint
+            float easeOut = (float) (1.0 - Math.pow(1.0 - t, 5));
 
             revealProgress = easeOut;
             alpha = easeOut;
-            scaleAnim = finalScale * (1.10f - 0.10f * easeOut); // 轻微缩放推镜
+            scaleAnim = finalScale * (1.10f - 0.10f * easeOut);
             currentX = baseX - (1.0f - easeOut) * actualFlyDist * 2f;
 
             textFade = easeOut;
             currentLineWidth *= easeOut;
             textDriftX = -(1.0f - easeOut) * 25f;
 
-        } else if (elapsed < TIME_ENTER + TIME_HOLD) {
+        } else if (currentState == State.HOLD) {
             float t = (elapsed - TIME_ENTER) / TIME_HOLD;
             t = Math.min(1.0f, t);
-            float driftEase = (float) Math.sin(t * (Math.PI / 2)); // 丝滑正弦漂移
+            float driftEase = (float) Math.sin(t * (Math.PI / 2));
 
             currentX = baseX + (driftEase * actualDrift);
             scaleAnim = finalScale;
 
-        } else {
-            float t = (elapsed - TIME_ENTER - TIME_HOLD) / TIME_EXIT;
+        } else if (currentState == State.EXIT) {
+            float t = (now - exitStartTime) / TIME_EXIT;
             t = Math.min(1.0f, t);
-            float easeIn = (float) Math.pow(t, 4.0); // Ease In Quart
+            float easeIn = (float) Math.pow(t, 4.0);
 
             wipeProgress = easeIn;
-            float startExitX = baseX + actualDrift;
-            currentX = startExitX + (easeIn * actualFlyDist * 1.5f);
+            currentX = skipStartX + (easeIn * actualFlyDist * 1.5f);
 
             alpha = 1.0f - (float) Math.pow(t, 8.0);
             textFade = 1f - easeIn;
             textDriftX = easeIn * 40f;
         }
 
+        lastRenderX = currentX;
+
         if (revealProgress <= 0.001f || wipeProgress >= 0.999f) return;
 
         int themeColor = activeType == SplashType.QUEST_FAILED ? 0xFF1111 : activeQuest.getVisualConfig().getThemeColor();
 
-        // 丝滑裁切 (Scissor Wipe) 逻辑
         float absoluteRightEdge = currentX + (frameW * scaleAnim);
         float lineRightEdge = currentX + (20 * scaleAnim) + targetLineWidth + 50f;
         float maxDrawWidth = Math.max(absoluteRightEdge, lineRightEdge);
@@ -125,29 +161,23 @@ public class QuestSplashRenderer {
         int scX1 = (int) (currentX - 50);
         int scX2 = (int) (maxDrawWidth + 50);
 
-        if (elapsed < TIME_ENTER) {
+        if (currentState == State.ENTER) {
             scX2 = (int) (currentX + (maxDrawWidth - currentX) * revealProgress);
-        } else if (elapsed >= TIME_ENTER + TIME_HOLD) {
+        } else if (currentState == State.EXIT) {
             scX2 = (int) (currentX + (maxDrawWidth - currentX) * (1.0f - wipeProgress));
         }
 
-        // ==========================================
-        // 0. 极其轻微的全局暗化 (仅仅 20% 的透明度)
-        // ==========================================
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(0, 0, 4000f);
         RenderSystem.disableDepthTest();
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int globalDimAlpha = (int) (alpha * 100); // 极限克制
+        int globalDimAlpha = (int) (alpha * 100);
         if (globalDimAlpha > 0) {
             guiGraphics.fill(0, 0, screenWidth, screenHeight, globalDimAlpha << 24);
         }
 
-        // ==========================================
-        // 1. 立绘渲染层
-        // ==========================================
         guiGraphics.enableScissor(scX1, -1000, scX2, 10000);
 
         guiGraphics.pose().pushPose();
@@ -157,17 +187,14 @@ public class QuestSplashRenderer {
         guiGraphics.pose().translate(currentX - scaleOffsetW, currentY - scaleOffsetH, 0);
         guiGraphics.pose().scale(scaleAnim, scaleAnim, 1f);
 
-        // 立绘本身
         guiGraphics.setColor(1f, 1f, 1f, alpha);
         guiGraphics.blit(activeTexture, 0, 0, 0, 0, frameW, frameH, frameW, frameH);
         guiGraphics.setColor(1f, 1f, 1f, 1f);
 
-        // 雕花：左侧的主题色机能线
         int borderAlpha = Math.max(0, Math.min(255, (int) (alpha * 255)));
         int borderColor = (borderAlpha << 24) | (themeColor & 0xFFFFFF);
         guiGraphics.fill(0, 0, 3, frameH, borderColor);
 
-        // 雕花：四个角的高级感边框折角 (Bracket Accents)
         int decColor = (borderAlpha << 24) | 0xFFFFFF;
         guiGraphics.fill(0, 0, 20, 2, decColor); // 左上横
         guiGraphics.fill(0, 0, 2, 20, decColor); // 左上竖
@@ -176,13 +203,10 @@ public class QuestSplashRenderer {
 
         guiGraphics.pose().popPose();
 
-        // ==========================================
-        // 2. 排版与装饰层 (贴紧立绘左下角，带视差漂移)
-        // ==========================================
         guiGraphics.pose().pushPose();
 
         float textStartX = currentX + (20 * finalScale) + textDriftX;
-        float textStartY = currentY + (frameH * finalScale) - 65; // 锚定在立绘内部靠下
+        float textStartY = currentY + (frameH * finalScale) - 65;
 
         guiGraphics.pose().translate(textStartX, textStartY, 50);
 
@@ -193,33 +217,40 @@ public class QuestSplashRenderer {
         int lineColor = (baseAlpha << 24) | (themeColor & 0xFFFFFF);
 
         if (baseAlpha > 5) {
-            // [雕花] 顶层小字：系统分类
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(0.85f, 0.85f, 1f);
             guiGraphics.drawString(font, "SYS.ARC_QUEST // " + activeQuest.getCategory().name(), 0, -22, subColor, true);
             guiGraphics.pose().popPose();
 
-            // [雕花] 状态高亮：ACCEPTED / COMPLETED / FAILED
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(1.1f, 1.1f, 1f);
             guiGraphics.drawString(font, activeType.name().replace("_", " "), 0, -8, statusColor, true);
             guiGraphics.pose().popPose();
 
-            // 主标题：任务名称
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(1.45f, 1.45f, 1f);
             guiGraphics.drawString(font, titleStr, 0, 6, titleColor, true);
             guiGraphics.pose().popPose();
         }
 
-        // [雕花] 底层机能拉线与游标
         currentLineWidth = Math.max(0f, currentLineWidth);
         int lineY = 28;
         if (baseAlpha > 5 && currentLineWidth > 0) {
             guiGraphics.fill(0, lineY, (int) currentLineWidth, lineY + 1, lineColor);
             if (currentLineWidth > 5) {
-                // 末尾的小方块游标
                 guiGraphics.fill((int) currentLineWidth, lineY - 2, (int) currentLineWidth + 4, lineY + 3, lineColor);
+            }
+
+            if (currentState == State.HOLD) {
+                float wave = (float) (Math.sin(now / 200.0) * 0.5 + 0.5);
+                int blinkA = (int)(baseAlpha * (0.3f + 0.7f * wave));
+                if (blinkA > 10) {
+                    guiGraphics.pose().pushPose();
+                    guiGraphics.pose().scale(0.7f, 0.7f, 1f);
+                    int promptColor = (blinkA << 24) | (themeColor & 0xFFFFFF);
+                    guiGraphics.drawString(font, "[ CLICK TO DISMISS ]", 0, (int)(40 / 0.7f), promptColor, true);
+                    guiGraphics.pose().popPose();
+                }
             }
         }
 

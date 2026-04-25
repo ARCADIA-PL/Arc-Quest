@@ -109,14 +109,14 @@ public class PhaseUpdateToast {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int bgA = (int) (alpha * 0xD0);
+        int bgA = (int) (alpha * 0x66);
         int accentA = (int) (alpha * 255);
 
         // ==========================================
         // Toast 机能风背景重构
         // ==========================================
         // 底板
-        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0x0A0A0A, bgA));
+        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0x151515, bgA));
         // 上下发光细线
         g.fill(baseX, baseY, baseX + POPUP_W, baseY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha)));
         g.fill(baseX, baseY + POPUP_H - 1, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha)));

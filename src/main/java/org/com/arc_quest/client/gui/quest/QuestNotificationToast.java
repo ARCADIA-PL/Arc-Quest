@@ -7,9 +7,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
 
-/**
- * 右侧精美弹幕实体类，独立负责自身的缓动、存活期与渲染。
- */
 public class QuestNotificationToast {
     public static final int TOAST_WIDTH = 220;
     public static final int TOAST_HEIGHT = 28;
@@ -21,30 +18,32 @@ public class QuestNotificationToast {
     private final QuestToastManager.ToastType type;
     private final String text;
     private long startTime;
-    private long lastRenderTime;
+    private long lastUpdateTime;
 
     public QuestNotificationToast(QuestToastManager.ToastType type, String text) {
         this.type = type;
         this.text = text;
-        this.startTime = Util.getMillis();
-        this.lastRenderTime = this.startTime;
+        long now = Util.getMillis();
+        this.startTime = now;
+        this.lastUpdateTime = now;
+    }
+
+    public void tick(boolean isFrozen) {
+        long now = Util.getMillis();
+        long dt = now - lastUpdateTime;
+        this.lastUpdateTime = now;
+
+        if (isFrozen) {
+            this.startTime += dt;
+        }
     }
 
     public boolean isExpired() {
         return (Util.getMillis() - startTime) >= (ENTER + HOLD + EXIT);
     }
 
-    public void render(GuiGraphics g, Font font, int screenWidth, int slotY, int marginRight, boolean isFrozen) {
-        long now = Util.getMillis();
-        long dt = now - lastRenderTime;
-        this.lastRenderTime = now;
-
-        if (isFrozen) {
-            this.startTime += dt;
-            return;
-        }
-
-        long elapsed = now - startTime;
+    public void render(GuiGraphics g, Font font, int screenWidth, int slotY, int marginRight) {
+        long elapsed = Util.getMillis() - startTime;
         float alpha, slideX;
 
         if (elapsed < ENTER) {
@@ -70,7 +69,6 @@ public class QuestNotificationToast {
 
         int toastX = (int) (screenWidth - TOAST_WIDTH - marginRight + slideX);
 
-        // 使用共用渲染方法绘制Toast面板
         int bgAlpha = (int) (0x88 * alpha);
         int accentAlpha = (int) (255 * alpha);
         int lineAlpha = (int) (80 * alpha);
@@ -84,7 +82,6 @@ public class QuestNotificationToast {
             String subtitle = type.prefix;
             String nameStr = font.plainSubstrByWidth(text, TOAST_WIDTH - 16);
 
-            // 使用共用方法绘制双行文本
             int subColor = HudAnimUtil.withAlpha(type.accentColor, textAlpha);
             int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, textAlpha);
             HudRenderUtil.drawDualText(g, font, toastX + 8, slotY + 4,

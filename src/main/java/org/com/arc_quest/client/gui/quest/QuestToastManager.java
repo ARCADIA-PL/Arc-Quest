@@ -3,6 +3,9 @@ package org.com.arc_quest.client.gui.quest;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
+import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -16,7 +19,6 @@ public final class QuestToastManager {
     private static final int MARGIN_RIGHT = 8;
     private static final int MARGIN_TOP = 8;
 
-    // 去重与节流窗口（毫秒）
     private static final long DUPLICATE_WINDOW_MS = 1200L;
     private static final long RECENT_SHOWN_WINDOW_MS = 1500L;
 
@@ -29,8 +31,7 @@ public final class QuestToastManager {
     private static String lastQueuedKey = null;
     private static long lastQueuedAt = 0L;
 
-    private QuestToastManager() {
-    }
+    private QuestToastManager() {}
 
     public static void show(ToastType type, String questName) {
         if (type == null || questName == null) return;
@@ -41,26 +42,17 @@ public final class QuestToastManager {
         long now = System.currentTimeMillis();
         String key = buildKey(type, text);
 
-        // 1) 与最近入队相同，短窗口内跳过
-        if (key.equals(lastQueuedKey) && now - lastQueuedAt < DUPLICATE_WINDOW_MS) {
-            return;
-        }
+        if (key.equals(lastQueuedKey) && now - lastQueuedAt < DUPLICATE_WINDOW_MS) return;
 
-        // 2) 已在 active 中，短窗口内跳过
         for (String activeKey : activeKeys) {
             if (key.equals(activeKey)) {
                 Long shownAt = recentShownAt.get(key);
-                if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) {
-                    return;
-                }
+                if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) return;
             }
         }
 
-        // 3) 近期刚显示过，且队列里又来同一条，跳过
         Long shownAt = recentShownAt.get(key);
-        if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) {
-            return;
-        }
+        if (shownAt != null && now - shownAt < RECENT_SHOWN_WINDOW_MS) return;
 
         pendingQueue.addLast(new PendingToast(type, text, key, now));
         lastQueuedKey = key;
@@ -87,29 +79,39 @@ public final class QuestToastManager {
 
     public static void tick() {
         long now = System.currentTimeMillis();
+        Minecraft mc = Minecraft.getInstance();
 
-        // 回收过期 active
+        // 核心修复：如果 Splash 在播放，或者日志、对话在看，全盘冻结！
+        boolean isFrozen = QuestSplashRenderer.isActive() ||
+                mc.screen instanceof QuestJournalScreen ||
+                mc.screen instanceof DialogueScreen;
+
+        // 1. 让存活的 Toast 更新冻结时间戳
         for (int i = 0; i < activeSlots.length; i++) {
-            if (activeSlots[i] != null && activeSlots[i].isExpired()) {
-                activeSlots[i] = null;
-                activeKeys[i] = null;
+            if (activeSlots[i] != null) {
+                activeSlots[i].tick(isFrozen);
+                if (activeSlots[i].isExpired()) {
+                    activeSlots[i] = null;
+                    activeKeys[i] = null;
+                }
             }
         }
 
-        // 填充空槽
-        for (int i = 0; i < activeSlots.length; i++) {
-            if (activeSlots[i] == null && !pendingQueue.isEmpty()) {
-                PendingToast p = pendingQueue.pollFirst();
-                activeSlots[i] = new QuestNotificationToast(p.type(), p.text());
-                activeKeys[i] = p.key();
-                recentShownAt.put(p.key(), now);
+        // 2. 只有在未冻结的状态下，才允许新 Toast 出队进入屏幕！
+        if (!isFrozen) {
+            for (int i = 0; i < activeSlots.length; i++) {
+                if (activeSlots[i] == null && !pendingQueue.isEmpty()) {
+                    PendingToast p = pendingQueue.pollFirst();
+                    activeSlots[i] = new QuestNotificationToast(p.type(), p.text());
+                    activeKeys[i] = p.key();
+                    recentShownAt.put(p.key(), now);
+                }
             }
         }
 
         pruneRecentShown(now);
     }
 
-    // 让追踪面板查询右上角占位高度
     public static int getPushDownOffset() {
         int highestSlotIndex = -1;
         for (int i = 0; i < activeSlots.length; i++) {
@@ -119,11 +121,9 @@ public final class QuestToastManager {
         return (highestSlotIndex + 1) * (QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP);
     }
 
-    public static void render(GuiGraphics guiGraphics, int screenWidth, int screenHeight, boolean isFrozen) {
+    public static void render(GuiGraphics guiGraphics, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
-
-        tick();
 
         int slotY = MARGIN_TOP;
         for (int i = 0; i < activeSlots.length; i++) {
@@ -132,21 +132,14 @@ public final class QuestToastManager {
                 slotY += QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP;
                 continue;
             }
-            toast.render(guiGraphics, mc.font, screenWidth, slotY, MARGIN_RIGHT, isFrozen);
+            toast.render(guiGraphics, mc.font, screenWidth, slotY, MARGIN_RIGHT);
             slotY += QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP;
         }
     }
 
-    private static String buildKey(ToastType type, String text) {
-        return type.name() + "|" + text;
-    }
-
-    private static void pruneRecentShown(long now) {
-        recentShownAt.entrySet().removeIf(e -> now - e.getValue() > 5000L);
-    }
-
-    private record PendingToast(ToastType type, String text, String key, long queuedAt) {
-    }
+    private static String buildKey(ToastType type, String text) { return type.name() + "|" + text; }
+    private static void pruneRecentShown(long now) { recentShownAt.entrySet().removeIf(e -> now - e.getValue() > 5000L); }
+    private record PendingToast(ToastType type, String text, String key, long queuedAt) {}
 
     public enum ToastType {
         QUEST_ACCEPTED(0x4FC3F7, "✦ QUEST ACCEPTED"),

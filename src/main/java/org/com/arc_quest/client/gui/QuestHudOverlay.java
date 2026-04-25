@@ -31,7 +31,6 @@ public class QuestHudOverlay implements IGuiOverlay {
     private long lastRenderTime = 0;
     private float dt = 0f;
 
-    // 追踪任务变化检测
     private String lastTrackedQuestId = null;
     private String lastKnownPhaseId = null;
     private Set<String> lastKnownActivePhaseIds = new LinkedHashSet<>();
@@ -42,32 +41,21 @@ public class QuestHudOverlay implements IGuiOverlay {
     private float currentPhasePopupY = -1;
     private float currentBranchToastY = -1;
 
-    private QuestHudOverlay() {
-    }
+    private QuestHudOverlay() {}
 
-    public void setTrackedQuest(String questId) {
-        trackerPanel.setTrackedQuest(questId);
-    }
-
-    public void setTrackedFocus(String questId, String phaseId) {
-        trackerPanel.setTrackedFocus(questId, phaseId);
-    }
-
-    public String getTrackedPhaseId() {
-        return trackerPanel.getTrackedPhaseId();
-    }
-
-    public String getTrackedQuestId() {
-        return trackerPanel.getTrackedQuestId();
-    }
+    public void setTrackedQuest(String questId) { trackerPanel.setTrackedQuest(questId); }
+    public void setTrackedFocus(String questId, String phaseId) { trackerPanel.setTrackedFocus(questId, phaseId); }
+    public String getTrackedPhaseId() { return trackerPanel.getTrackedPhaseId(); }
+    public String getTrackedQuestId() { return trackerPanel.getTrackedQuestId(); }
 
     @Override
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) return;
-        if (QuestSplashRenderer.isActive()) return;
 
-        boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen;
+        // 核心修复：就算 Splash 正在播放，也不能直接 return！我们必须接着计算冻结逻辑
+        boolean isSplashActive = QuestSplashRenderer.isActive();
+        boolean isBlockingScreen = isSplashActive || mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen;
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -114,7 +102,7 @@ public class QuestHudOverlay implements IGuiOverlay {
             currentBranchToastY = HudAnimUtil.lerp(currentBranchToastY, targetBranchY, 0.15f, dt);
         }
 
-        // 左侧 Toast
+        // 左侧 Toast (即使被遮挡也必须调用 render，内部如果收到 isBlockingScreen = true 会自动只计算冻结时间而不渲染)
         if (isPhaseActive) {
             if (!phaseUpdateToast.render(g, mc.font, LEFT_BASE_X, (int) currentPhasePopupY, 1f, isBlockingScreen)) {
                 phaseUpdateToast = null;
@@ -127,15 +115,15 @@ public class QuestHudOverlay implements IGuiOverlay {
             }
         }
 
-        // 右上追踪面板 + 通知队列
-        trackerPanel.render(g, screenWidth, screenHeight, partialTick);
-        QuestToastManager.render(g, screenWidth, screenHeight, isBlockingScreen);
+        if (!isSplashActive && !isBlockingScreen) {
+            trackerPanel.render(g, screenWidth, screenHeight, partialTick);
+            QuestToastManager.render(g, screenWidth, screenHeight);
+        }
     }
 
     private void updatePhasePopup(QuestRuntimeData tracked, int themeColor) {
         String questId = tracked.getQuestId();
 
-        // 追踪任务切换时重置快照，避免误报
         if (!questId.equals(lastTrackedQuestId)) {
             lastTrackedQuestId = questId;
             lastKnownPhaseId = tracked.getCurrentPhaseId();
@@ -146,7 +134,6 @@ public class QuestHudOverlay implements IGuiOverlay {
         String currentPhaseId = tracked.getCurrentPhaseId();
         Set<String> currentActive = new LinkedHashSet<>(tracked.getActivePhaseIds());
 
-        // 优先检测“新增并行 phase”
         String addedPhase = null;
         for (String pid : currentActive) {
             if (!lastKnownActivePhaseIds.contains(pid)) {
@@ -155,7 +142,6 @@ public class QuestHudOverlay implements IGuiOverlay {
             }
         }
 
-        // 检测“并行线完成/移除”
         String removedPhase = null;
         for (String pid : lastKnownActivePhaseIds) {
             if (!currentActive.contains(pid)) {
@@ -170,11 +156,7 @@ public class QuestHudOverlay implements IGuiOverlay {
         } else if (removedPhase != null && !removedPhase.isEmpty()) {
             String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, removedPhase);
             phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.COMPLETED);
-        } else if (lastKnownPhaseId != null
-                && !lastKnownPhaseId.equals(currentPhaseId)
-                && currentPhaseId != null
-                && !currentPhaseId.isEmpty()) {
-            // 主 phase 切换
+        } else if (lastKnownPhaseId != null && !lastKnownPhaseId.equals(currentPhaseId) && currentPhaseId != null && !currentPhaseId.isEmpty()) {
             String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, currentPhaseId);
             phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.SWITCHED);
         }
@@ -191,18 +173,14 @@ public class QuestHudOverlay implements IGuiOverlay {
             trackerPanel.setTrackedQuest(null);
             return null;
         }
-
         if (data == null && trackedQuestId != null) {
             trackerPanel.setTrackedQuest(null);
             return null;
         }
-
         if (data != null && trackedQuestId == null) {
             trackerPanel.setTrackedQuest(data.getQuestId());
             return data;
         }
-
-        // 兜底：缓存未给出时，直接从 active 里拿一个
         if (data == null && trackedQuestId == null && !active.isEmpty()) {
             QuestRuntimeData first = active.values().iterator().next();
             if (first != null) {
@@ -210,7 +188,6 @@ public class QuestHudOverlay implements IGuiOverlay {
                 return first;
             }
         }
-
         return data;
     }
 
@@ -220,31 +197,14 @@ public class QuestHudOverlay implements IGuiOverlay {
         lastKnownActivePhaseIds.clear();
     }
 
-    public void showBranchChoiceToast(String questId) {
-        showBranchChoiceToast(questId, null);
-    }
-
+    public void showBranchChoiceToast(String questId) { showBranchChoiceToast(questId, null); }
     public void showBranchChoiceToast(String questId, String phaseId) {
-        // 去重：同目标不重复创建
-        if (branchChoiceToast != null && branchChoiceToast.sameTarget(questId, phaseId)) {
-            return;
-        }
+        if (branchChoiceToast != null && branchChoiceToast.sameTarget(questId, phaseId)) return;
         this.branchChoiceToast = new BranchChoiceToast(questId, phaseId);
     }
-
-    public void clearBranchChoiceToast() {
-        if (this.branchChoiceToast != null) {
-            this.branchChoiceToast.dismiss();
-        }
-    }
-
+    public void clearBranchChoiceToast() { if (this.branchChoiceToast != null) this.branchChoiceToast.dismiss(); }
     public void clearBranchChoiceToast(String questId, String phaseId) {
-        if (this.branchChoiceToast != null && this.branchChoiceToast.sameTarget(questId, phaseId)) {
-            this.branchChoiceToast.dismiss();
-        }
+        if (this.branchChoiceToast != null && this.branchChoiceToast.sameTarget(questId, phaseId)) this.branchChoiceToast.dismiss();
     }
-
-    public String getBranchChoiceQuestId() {
-        return branchChoiceToast != null ? branchChoiceToast.getQuestId() : null;
-    }
+    public String getBranchChoiceQuestId() { return branchChoiceToast != null ? branchChoiceToast.getQuestId() : null; }
 }

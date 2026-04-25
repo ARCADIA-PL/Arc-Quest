@@ -12,6 +12,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import org.com.arc_quest.client.events.ClientEventHandler;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.quest.journal.detail.JournalDetailPanel;
 import org.com.arc_quest.client.gui.render.QuestIntelPanel;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.QuestDefinition;
@@ -98,8 +99,10 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // 全新：当 Intel 面板打开时，阻断底层按键检测，并只处理退出
         if (QuestIntelPanel.isActive()) {
             if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) { QuestIntelPanel.dismiss(); return true; }
+            return true;
         }
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) { this.onClose(); return true; }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -112,7 +115,12 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (QuestIntelPanel.isActive()) { QuestIntelPanel.dismiss(); return true; }
+        // 全新：将交互事件正确地向下移交到面板内部，以触发 Ponder 面板上的系统按钮
+        if (QuestIntelPanel.isActive()) {
+            QuestIntelPanel.handleMouseClick(mx, my, this.width, this.height);
+            return true;
+        }
+
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
@@ -131,6 +139,8 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
+        if (QuestIntelPanel.isActive()) return true; // 全新：强制阻断底层滑块和拖拽
+
         int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
         int listH = this.height - 20 - listY;
         if (listPanel.mouseDragged(mx, my, listY, listH)) return true;
@@ -140,6 +150,8 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
+        if (QuestIntelPanel.isActive()) return true; // 全新：强制阻断
+
         listPanel.mouseReleased(button);
         detailPanel.mouseReleased(button);
         return super.mouseReleased(mx, my, button);
@@ -147,7 +159,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double delta) {
-        if (QuestIntelPanel.isActive()) return true;
+        if (QuestIntelPanel.isActive()) return true; // 全新：强制阻断底层滚轮
         if (isClosing) return false;
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
@@ -177,10 +189,18 @@ public class QuestJournalScreen extends Screen {
         lastRenderTime = now;
         if (realDt > 0.1f) realDt = 0.1f;
 
-        if (QuestSplashRenderer.isActive()) { suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f); dt = 0f; }
-        else { suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f); dt = realDt; }
+        boolean intelActive = QuestIntelPanel.isActive();
 
-        transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, dt);
+        // 动画控制核心：若 Intel 面板激活，强制传递给底层的所有 dt = 0，实现【底层动画瞬间时间冻结】的效果！
+        if (QuestSplashRenderer.isActive()) {
+            suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
+            dt = 0f;
+        } else {
+            suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
+            dt = intelActive ? 0f : realDt;
+        }
+
+        transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
         if (isClosing && transitionAlpha <= 0.01f) {
             if (minecraft != null) minecraft.setScreen(null);
             return;
@@ -210,7 +230,6 @@ public class QuestJournalScreen extends Screen {
         int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
         int listH = this.height - 20 - listY;
 
-        // 全息化 List 边框
         HudAnimUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH,
                 HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)),
                 HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
@@ -219,7 +238,6 @@ public class QuestJournalScreen extends Screen {
         int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = this.width - detailX - JournalConstants.DETAIL_MARGIN;
 
-        // 全息化 Detail 边框，随主卡片颜色同步律动
         HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH,
                 HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
                 HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
@@ -272,14 +290,14 @@ public class QuestJournalScreen extends Screen {
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
             animTipX = targetX; animTipY = targetY; animTipW = targetW; animTipH = targetH;
         } else {
-            float morphSpeed = 18f; // 轻微调快了Tooltip的变形速度，响应更敏捷
+            float morphSpeed = 18f;
             animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
             animTipY += (targetY - animTipY) * Math.min(1f, dt * morphSpeed);
             animTipW += (targetW - animTipW) * Math.min(1f, dt * morphSpeed);
             animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
         }
 
-        float scale =isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
+        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
         if (scale < 0.01f) return;
 
         int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;
@@ -308,7 +326,6 @@ public class QuestJournalScreen extends Screen {
         g.pose().popPose();
     }
 
-    // --- Getters & Helpers ---
     public Font getFont() { return this.font; }
     public float getEffectiveAlpha() { return this.effectiveAlpha; }
     public float getDt() { return this.dt; }

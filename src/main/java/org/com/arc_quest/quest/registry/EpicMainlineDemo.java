@@ -76,6 +76,7 @@ public final class EpicMainlineDemo {
                         // 并行支线A：侦查森林
                         .phase(PhaseBuilder.create("arc_quest:scout_forest")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.scout_forest"))
+                                .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
                                 .objective(ObjectiveBuilder.collect(Items.STRING, 6)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.scout_forest.0")))
                                 .setFlagOnComplete("arc_quest:forest_scouted")

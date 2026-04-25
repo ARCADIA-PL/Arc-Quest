@@ -62,8 +62,9 @@ public class ClientQuestEvents {
         }
 
         if (QuestSplashRenderer.isActive()) {
-            event.setCanceled(true);
-            return;
+            if (QuestSplashRenderer.mouseClicked()) {
+                event.setCanceled(true);
+            }
         }
 
         if (GachaResultRenderer.INSTANCE.isActive()) {
@@ -107,7 +108,6 @@ public class ClientQuestEvents {
 
     @SubscribeEvent
     public static void onScreenScrollPre(ScreenEvent.MouseScrolled.Pre event) {
-        // Intel 面板：滚轮切换场景
         if (QuestIntelPanel.isActive()) {
             if (event.getScrollDelta() > 0) QuestIntelPanel.scrollBack();
             else if (event.getScrollDelta() < 0) QuestIntelPanel.scrollForward();
