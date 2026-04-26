@@ -100,8 +100,8 @@ public class MarkerHudRenderer {
                 }
 
                 float pSmooth = st.offscreenStable ? POSITION_SMOOTH_OFFSCREEN : POSITION_SMOOTH_ONSCREEN;
-                st.x = lerp(st.x, proj.x, pSmooth);
-                st.y = lerp(st.y, proj.y, pSmooth);
+                st.x = st.offscreenStable ? lerp(st.x, proj.x, pSmooth) : proj.x;
+                st.y = st.offscreenStable ? lerp(st.y, proj.y, pSmooth) : proj.y;
 
                 if (st.offscreenStable) {
                     st.angle = snapAngleToSectors(normalizeAngle(proj.edgeAngle), OFFSCREEN_ANGLE_SECTORS);
@@ -129,7 +129,7 @@ public class MarkerHudRenderer {
         int accentColor = withAlpha(color, alphaInt);
 
         gui.pose().pushPose();
-        gui.pose().translate((int) x, (int) y, 0);
+        gui.pose().translate(x, y, 0);
 
         // 呼吸计算 (0.0 -> 1.0)
         float breath = (float) (Math.sin(time * 3.5f) * 0.5 + 0.5);
@@ -162,7 +162,7 @@ public class MarkerHudRenderer {
         int accentColor = withAlpha(color, alphaInt);
 
         gui.pose().pushPose();
-        gui.pose().translate((int) x, (int) y, 0);
+        gui.pose().translate(x, y, 0);
 
         gui.pose().pushPose();
         float rotDeg = (float) Math.toDegrees(angle) + 90f;

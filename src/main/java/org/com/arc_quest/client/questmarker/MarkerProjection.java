@@ -51,10 +51,17 @@ public final class MarkerProjection {
         Vec3 worldUp = new Vec3(0.0, 1.0, 0.0);
 
         Vec3 right = forward.cross(worldUp);
+        if (right.lengthSqr() < 1.0e-6) {
+            // 抬头/低头接近垂直时，cross 可能退化；使用仅含 yaw 的朝向兜底，保持左右语义连续
+            Vec3 yawForward = Vec3.directionFromRotation(0.0f, camera.getYRot());
+            right = yawForward.cross(worldUp);
+        }
         if (right.lengthSqr() < 1.0e-6) right = new Vec3(1.0, 0.0, 0.0);
         else right = right.normalize();
 
-        Vec3 up = right.cross(forward).normalize();
+        Vec3 up = right.cross(forward);
+        if (up.lengthSqr() < 1.0e-6) up = worldUp;
+        else up = up.normalize();
 
         double xCam = toTarget.dot(right);
         double yCam = toTarget.dot(up);
@@ -74,8 +81,8 @@ public final class MarkerProjection {
         double aspect = (double) screenW / (double) screenH;
         double tanHalfFovX = tanHalfFovY * aspect;
 
-        // 仅真正位于玩家后方才算 behind，避免左右方向被误判
-        boolean behind = zCam < -0.08;
+        // 以前后符号划分 behind，避免阈值灰区导致左右结果突变
+        boolean behind = zCam < 0.0;
         boolean inFrontSafe = zCam > 0.08;
 
         // 屏内判断（仅对可靠的前方深度）
@@ -100,8 +107,8 @@ public final class MarkerProjection {
         float dirY;
 
         if (behind) {
-            // 背后：水平由 xCam 决定，垂直固定向下，避免出现在上半区误导
-            double hx = -xCam;
+            // 背后：水平沿用 xCam，垂直固定向下，避免出现在上半区误导
+            double hx = xCam;
             double hy = Math.max(0.35, Math.abs(zCam) * 0.12);
             double len = Math.sqrt(hx * hx + hy * hy);
             if (len < 1.0e-6) {
@@ -132,7 +139,6 @@ public final class MarkerProjection {
         }
 
         float[] edge = clampDirectionToEllipse(dirX, dirY, halfW, halfH, edgePadding, screenW, screenH);
-        // 后方：吸附到底部扇区，避免出现在上半区误导
         if (behind) {
             float minBottomY = halfH + Math.max(30f, screenH * 0.12f);
             if (edge[1] < minBottomY) {
