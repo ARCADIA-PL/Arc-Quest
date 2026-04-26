@@ -67,8 +67,11 @@ public class MarkerHudRenderer {
 
         stateMap.keySet().removeIf(id -> !QuestMarkerManager.INSTANCE.has(id));
 
+        String currentDim = player.level().dimension().location().toString();
+
         for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all()) {
             if (!marker.isActive()) continue;
+            if (!currentDim.equals(marker.getDimension())) continue;
 
             MarkerProjection.ScreenResult proj = MarkerProjection.project(
                     marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), EDGE_PADDING);

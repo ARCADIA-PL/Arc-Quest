@@ -76,9 +76,10 @@ public final class MarkerProjection {
 
         // 仅真正位于玩家后方才算 behind，避免左右方向被误判
         boolean behind = zCam < -0.08;
+        boolean inFrontSafe = zCam > 0.08;
 
-        // 屏内判断（只对前方）
-        if (!behind) {
+        // 屏内判断（仅对可靠的前方深度）
+        if (inFrontSafe && !behind) {
             double ndcX = xCam / (zCam * tanHalfFovX);
             double ndcY = yCam / (zCam * tanHalfFovY);
 
@@ -111,9 +112,10 @@ public final class MarkerProjection {
                 dirY = (float) (hy / len);
             }
         } else {
-            // 前方但离屏：沿屏幕中心射线方向夹边
-            double ndcX = xCam / (zCam * tanHalfFovX);
-            double ndcY = yCam / (zCam * tanHalfFovY);
+            // 前方但离屏：沿屏幕中心射线方向夹边（加入近裁面保护，防止 NaN/Infinity）
+            double safeZ = Math.max(zCam, 0.08);
+            double ndcX = xCam / (safeZ * tanHalfFovX);
+            double ndcY = yCam / (safeZ * tanHalfFovY);
             float rawX = (float) ((ndcX * 0.5 + 0.5) * screenW);
             float rawY = (float) ((-ndcY * 0.5 + 0.5) * screenH);
 
@@ -141,7 +143,15 @@ public final class MarkerProjection {
 
         float angle = (float) Math.atan2(dirY, dirX);
 
+        if (!isFinite(edge[0]) || !isFinite(edge[1]) || !isFinite(angle)) {
+            return new ScreenResult(halfW, halfH, false, behind, 0f);
+        }
+
         return new ScreenResult(edge[0], edge[1], false, behind, angle);
+    }
+
+    private static boolean isFinite(float v) {
+        return !Float.isNaN(v) && !Float.isInfinite(v);
     }
 
     private static float[] clampDirectionToEllipse(float dirX, float dirY,
