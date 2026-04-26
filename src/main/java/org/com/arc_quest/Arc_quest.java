@@ -21,7 +21,6 @@ import org.com.arc_quest.client.gui.render.QuestSplashOverlay;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.client.ponder.QuestPonderPlugin;
 import org.com.arc_quest.client.questmarker.MarkerHudRenderer;
-import org.com.arc_quest.client.questmarker.MarkerWorldRenderer;
 import org.com.arc_quest.client.util.GuiSoundManager;
 import org.com.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
@@ -74,7 +73,6 @@ public class Arc_quest {
         public static void onClientSetup(FMLClientSetupEvent event) {
             GuiSoundManager.initDefaults();
             MinecraftForge.EVENT_BUS.register(new MarkerHudRenderer());
-            MinecraftForge.EVENT_BUS.register(new MarkerWorldRenderer());
             PonderIndex.addPlugin(new QuestPonderPlugin());
             LOGGER.info("[ArcQuest] Client setup complete.");
         }
