@@ -1,11 +1,19 @@
 package org.com.arc_quest.client.questmarker;
 
-import com.mojang.math.Axis;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.GameRenderer;
+import org.joml.Matrix4f;
 
 /**
- * 视野内：对称、通透、极简的全息菱形。
- * 抛弃了不对称的高光(白帽子)，回归纯粹的几何美学与极佳的透明度。
+ * 视野内：机能高光全息菱形 - 顶点着色版
+ * 彻底抛弃贴片拼凑，采用原生 GPU 顶点着色。
+ * 光效直接在厚实的边框内部流淌：从顶端的白热化过曝，渐变过渡至主题色，再向下消散！
  */
 public final class MarkerRhombusRenderer {
 
@@ -13,34 +21,76 @@ public final class MarkerRhombusRenderer {
 
     public static void draw(GuiGraphics gui, int accentColor, float breath) {
         int baseAlpha = (accentColor >> 24) & 0xFF;
-        int rgb = accentColor & 0xFFFFFF;
+        int r = (accentColor >> 16) & 0xFF;
+        int g = (accentColor >> 8) & 0xFF;
+        int b = accentColor & 0xFF;
 
-        gui.pose().pushPose();
-        // 旋转45度，后续的矩形绘制将自动变为完美的菱形
-        gui.pose().mulPose(Axis.ZP.rotationDegrees(45f));
+        // 提取渐变节点 Alpha
+        int glowA = 255;                           // 顶部纯白高光
+        int fadeA = (int) (baseAlpha * 0.3f);      // 底部消散透明度
+        int glassA = (int) (baseAlpha * 0.2f);     // 玻璃舱体上半部
+        int glassFadeA = (int) (baseAlpha * 0.05f);// 玻璃舱体下半部
 
-        // 1. 极细的外层半透明全息边框 (均匀对称，没有突兀的高光)
-        int borderAlpha = (int) (baseAlpha * 0.5f);
-        int borderColor = rgb | (borderAlpha << 24);
-        gui.fill(-5, -5,  5, -4, borderColor); // 上
-        gui.fill(-5,  4,  5,  5, borderColor); // 下
-        gui.fill(-5, -4, -4,  4, borderColor); // 左
-        gui.fill( 4, -4,  5,  4, borderColor); // 右
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        // 2. 内部的通透玻璃质感 (极低的透明度，保证不遮挡游戏画面)
-        int glassAlpha = (int) (baseAlpha * 0.15f);
-        int glassColor = rgb | (glassAlpha << 24);
-        gui.fill(-4, -4, 4, 4, glassColor);
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder builder = tesselator.getBuilder();
+        Matrix4f matrix = gui.pose().last().pose();
 
-        // 3. 悬浮的机能核心 (随时间平滑呼吸)
-        // 核心底座 (主题色)
-        int coreBaseAlpha = (int) (baseAlpha * (0.4f + 0.3f * breath));
-        gui.fill(-2, -2, 2, 2, rgb | (coreBaseAlpha << 24));
+        // 开启四边形渲染
+        builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
-        // 核心点亮 (最中心的 2x2 纯白极点，克制且高级)
-        int coreWhiteAlpha = (int) (255 * (0.3f + 0.5f * breath));
-        gui.fill(-1, -1, 1, 1, 0xFFFFFF | (coreWhiteAlpha << 24));
+        // ==========================================================
+        // 1. 全息玻璃内舱 (单体渐变菱形)
+        // 同样具备光照方向感：上亮下暗
+        addVertex(builder, matrix,  0, -7, r, g, b, glassA);     // 顶部
+        addVertex(builder, matrix, -7,  0, r, g, b, glassA);     // 左部
+        addVertex(builder, matrix,  0,  7, r, g, b, glassFadeA); // 底部
+        addVertex(builder, matrix,  7,  0, r, g, b, glassA);     // 右部
 
-        gui.pose().popPose();
+        // ==========================================================
+        // 2. 外部主发光装甲带 (由 4 个梯形构建而成的空心菱形带)
+        // 顶点颜色将自动在这些几何体内形成极致平滑的自发光渐变！
+
+        // 边 1：右上段 (从纯白 -> 主题色)
+        addVertex(builder, matrix,  0, -10, 255, 255, 255, glowA);     // 外顶端 (白热)
+        addVertex(builder, matrix,  0,  -7, 255, 255, 255, glowA);     // 内顶端 (白热)
+        addVertex(builder, matrix,  7,   0,   r,   g,   b, baseAlpha); // 内右端 (主题色)
+        addVertex(builder, matrix, 10,   0,   r,   g,   b, baseAlpha); // 外右端 (主题色)
+
+        // 边 2：右下段 (从主题色 -> 半透消散)
+        addVertex(builder, matrix, 10,  0, r, g, b, baseAlpha);
+        addVertex(builder, matrix,  7,  0, r, g, b, baseAlpha);
+        addVertex(builder, matrix,  0,  7, r, g, b, fadeA);
+        addVertex(builder, matrix,  0, 10, r, g, b, fadeA);
+
+        // 边 3：左下段 (从半透消散 -> 主题色)
+        addVertex(builder, matrix,   0, 10, r, g, b, fadeA);
+        addVertex(builder, matrix,   0,  7, r, g, b, fadeA);
+        addVertex(builder, matrix,  -7,  0, r, g, b, baseAlpha);
+        addVertex(builder, matrix, -10,  0, r, g, b, baseAlpha);
+
+        // 边 4：左上段 (从主题色 -> 纯白)
+        addVertex(builder, matrix, -10,   0,   r,   g,   b, baseAlpha);
+        addVertex(builder, matrix,  -7,   0,   r,   g,   b, baseAlpha);
+        addVertex(builder, matrix,   0,  -7, 255, 255, 255, glowA);
+        addVertex(builder, matrix,   0, -10, 255, 255, 255, glowA);
+
+        // ==========================================================
+        // 3. 中央量子呼吸核心 (微型纯白菱形)
+        int coreA = (int) (255 * (0.4f + 0.6f * breath));
+        addVertex(builder, matrix,  0, -2, 255, 255, 255, coreA);
+        addVertex(builder, matrix, -2,  0, 255, 255, 255, coreA);
+        addVertex(builder, matrix,  0,  2, 255, 255, 255, coreA);
+        addVertex(builder, matrix,  2,  0, 255, 255, 255, coreA);
+
+        // 提交绘制
+        BufferUploader.drawWithShader(builder.end());
+    }
+
+    private static void addVertex(BufferBuilder b, Matrix4f m, float x, float y, int red, int green, int blue, int alpha) {
+        b.vertex(m, x, y, 0).color(red, green, blue, alpha).endVertex();
     }
 }
