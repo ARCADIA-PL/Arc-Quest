@@ -13,10 +13,6 @@ import org.com.arc_quest.questmarker.api.QuestMarkerData;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * 纯 2D 任务标记渲染：
- * 采用清澈透亮的机能风调色，调度独立的棱形和光标渲染器。
- */
 public class MarkerHudRenderer {
 
     private static final float EDGE_PADDING = 30f;
@@ -24,13 +20,16 @@ public class MarkerHudRenderer {
 
     private static final float POSITION_SMOOTH_ONSCREEN = 0.24f;
     private static final float POSITION_SMOOTH_OFFSCREEN = 0.14f;
+
+    // 动画速度提升：现在仅需 0.15秒 即可完成切换，非常干脆
+    private static final float ANIMATION_SPEED = 6.66f;
     private static final int OFFSCREEN_ANGLE_SECTORS = 8;
 
-    private static final long OFFSCREEN_ENTER_DELAY_MS = 70L;
-    private static final long OFFSCREEN_EXIT_DELAY_MS = 110L;
+    private static final long OFFSCREEN_ENTER_DELAY_MS = 60L;
+    private static final long OFFSCREEN_EXIT_DELAY_MS = 90L;
 
     private final Map<String, MarkerVisualState> stateMap = new HashMap<>();
-    private long startMillis = System.currentTimeMillis();
+    private long lastTimeMs = System.currentTimeMillis();
 
     private static class MarkerVisualState {
         float x;
@@ -38,6 +37,7 @@ public class MarkerHudRenderer {
         float angle;
         boolean offscreenStable;
         long switchTs;
+        float transitionProgress; // 0.0f = 视野内(菱形), 1.0f = 视野外(指针)
         boolean initialized;
     }
 
@@ -58,7 +58,11 @@ public class MarkerHudRenderer {
         double pz = player.getZ();
 
         long now = System.currentTimeMillis();
-        float time = (now - startMillis) / 1000.0f;
+        float dt = (now - lastTimeMs) / 1000.0f;
+        if (dt > 0.1f) dt = 0.1f;
+        lastTimeMs = now;
+
+        float time = now / 1000.0f;
 
         int sw = mc.getWindow().getGuiScaledWidth();
         int sh = mc.getWindow().getGuiScaledHeight();
@@ -66,7 +70,6 @@ public class MarkerHudRenderer {
         float cy = sh * 0.5f;
 
         stateMap.keySet().removeIf(id -> !QuestMarkerManager.INSTANCE.has(id));
-
         String currentDim = player.level().dimension().location().toString();
 
         for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all()) {
@@ -77,7 +80,6 @@ public class MarkerHudRenderer {
                     marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), EDGE_PADDING);
 
             double dist = marker.distanceTo(px, py, pz);
-
             MarkerVisualState st = stateMap.computeIfAbsent(marker.getId(), k -> new MarkerVisualState());
 
             if (!st.initialized) {
@@ -85,6 +87,7 @@ public class MarkerHudRenderer {
                 st.y = proj.y;
                 st.angle = normalizeAngle(proj.edgeAngle);
                 st.offscreenStable = !proj.onScreen;
+                st.transitionProgress = st.offscreenStable ? 1.0f : 0.0f;
                 st.switchTs = now;
                 st.initialized = true;
             } else {
@@ -99,78 +102,106 @@ public class MarkerHudRenderer {
                     st.switchTs = now;
                 }
 
-                float pSmooth = st.offscreenStable ? POSITION_SMOOTH_OFFSCREEN : POSITION_SMOOTH_ONSCREEN;
-                st.x = st.offscreenStable ? lerp(st.x, proj.x, pSmooth) : proj.x;
-                st.y = st.offscreenStable ? lerp(st.y, proj.y, pSmooth) : proj.y;
-
                 if (st.offscreenStable) {
-                    st.angle = snapAngleToSectors(normalizeAngle(proj.edgeAngle), OFFSCREEN_ANGLE_SECTORS);
+                    st.transitionProgress = Math.min(1.0f, st.transitionProgress + dt * ANIMATION_SPEED);
                 } else {
-                    st.angle = 0f;
+                    st.transitionProgress = Math.max(0.0f, st.transitionProgress - dt * ANIMATION_SPEED);
                 }
+
+                float[] anchor = insetFromEdge(proj.x, proj.y, cx, cy, OFFSCREEN_INSET);
+                float blendedTargetX = lerp(proj.x, anchor[0], st.transitionProgress);
+                float blendedTargetY = lerp(proj.y, anchor[1], st.transitionProgress);
+
+                float pSmooth = st.offscreenStable ? POSITION_SMOOTH_OFFSCREEN : POSITION_SMOOTH_ONSCREEN;
+                st.x = lerp(st.x, blendedTargetX, pSmooth);
+                st.y = lerp(st.y, blendedTargetY, pSmooth);
+
+                float targetAngle = st.offscreenStable ? snapAngleToSectors(normalizeAngle(proj.edgeAngle), OFFSCREEN_ANGLE_SECTORS) : 0f;
+                st.angle = lerpAngle(st.angle, targetAngle, dt * 15f);
             }
 
             int color = normalizeColor(marker.getColorARGB());
 
-            if (!st.offscreenStable) {
-                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time);
-            } else if (marker.isAllowOffscreenArrow()) {
-                float[] anchor = insetFromEdge(st.x, st.y, cx, cy, OFFSCREEN_INSET);
-                renderOffscreenMarker(gui, font, marker, anchor[0], anchor[1], color, dist, st.angle);
+            // --- 改进版光源计算 ---
+            // 基础光源：固定从正上方略微偏右打下
+            float baseLightX = 0.15f;
+            float baseLightY = -1.0f;
+            // 视差偏移：根据 UI 在屏幕上的相对位置产生最多 35% 的角度偏转，模拟真实的全息受光
+            float deflectX = (cx - st.x) / cx * 0.35f;
+            float deflectY = (cy - st.y) / cy * 0.35f;
+
+            float lx = baseLightX + deflectX;
+            float ly = baseLightY + deflectY;
+            float lightLen = (float)Math.sqrt(lx * lx + ly * ly);
+            lx = lightLen > 0 ? lx / lightLen : 0;
+            ly = lightLen > 0 ? ly / lightLen : -1;
+
+            if (st.transitionProgress < 0.99f) {
+                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly);
+            }
+            if (st.transitionProgress > 0.01f && marker.isAllowOffscreenArrow()) {
+                renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly);
             }
         }
     }
 
-    private void renderOnScreenMarker(GuiGraphics gui, Font font,
-                                      QuestMarkerData marker,
-                                      float x, float y,
-                                      int color, double dist, float time) {
-        int alphaInt = (color >> 24) & 0xFF;
-        int accentColor = withAlpha(color, alphaInt);
+    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY) {
+        float alphaFade = 1.0f - progress;
+        int originalAlpha = (color >> 24) & 0xFF;
+        int currentAlpha = (int) (originalAlpha * alphaFade);
+        if (currentAlpha <= 5) return;
+        int accentColor = withAlpha(color, currentAlpha);
 
         gui.pose().pushPose();
         gui.pose().translate(x, y, 0);
 
-        // 呼吸计算 (0.0 -> 1.0)
+        // 新动画：数码折叠 (Digital Fold)
+        // 消失时，横向压扁成一条线，纵向略微拉长
+        float ease = progress * progress; // 缓动增加打击感
+        float scaleX = 1.0f - ease;
+        float scaleY = 1.0f + ease * 0.8f;
+        gui.pose().scale(scaleX, scaleY, 1.0f);
+
         float breath = (float) (Math.sin(time * 3.5f) * 0.5 + 0.5);
+        MarkerRhombusRenderer.draw(gui, accentColor, breath, lightX, lightY);
 
-        // 绘制透亮机能菱形
-        MarkerRhombusRenderer.draw(gui, accentColor, breath);
-
-        // 绘制文本
         String name = marker.getLabel();
-        int nameW = font.width(name);
-        int textX = -nameW / 2;
-        int textY = -18;
-
-        drawTextWithBlackOutline(gui, font, name, textX, textY, accentColor, alphaInt);
-
+        drawTextWithBlackOutline(gui, font, name, -font.width(name) / 2, -18, accentColor, currentAlpha);
         if (marker.isShowDistance()) {
             String distText = String.format("%.0fm", dist);
-            int distW = font.width(distText);
-            drawTextWithBlackOutline(gui, font, distText, -distW / 2, 12, accentColor, alphaInt);
+            drawTextWithBlackOutline(gui, font, distText, -font.width(distText) / 2, 12, accentColor, currentAlpha);
         }
 
         gui.pose().popPose();
     }
 
-    private void renderOffscreenMarker(GuiGraphics gui, Font font,
-                                       QuestMarkerData marker,
-                                       float x, float y,
-                                       int color, double dist, float angle) {
-        int alphaInt = (color >> 24) & 0xFF;
-        int accentColor = withAlpha(color, alphaInt);
+    private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY) {
+        int originalAlpha = (color >> 24) & 0xFF;
+        int currentAlpha = (int) (originalAlpha * progress);
+        if (currentAlpha <= 5) return;
+        int accentColor = withAlpha(color, currentAlpha);
 
         gui.pose().pushPose();
         gui.pose().translate(x, y, 0);
-
         gui.pose().pushPose();
-        float rotDeg = (float) Math.toDegrees(angle) + 90f;
+
+        // 新动画：数码展开 (Digital Unfold)
+        // 出现时，从一条线横向展开
+        float ease = 1.0f - (1.0f - progress) * (1.0f - progress); // 缓出
+        float scaleX = ease;
+        float scaleY = 1.0f + (1.0f - ease) * 0.8f;
+        gui.pose().scale(scaleX, scaleY, 1.0f);
+
+        float rotRad = angle + (float)Math.PI / 2f;
+        float rotDeg = (float) Math.toDegrees(rotRad);
         gui.pose().mulPose(Axis.ZP.rotationDegrees(rotDeg));
 
-        // 绘制凌厉矢量光标
-        MarkerPointerRenderer.draw(gui, accentColor);
+        float cosA = (float)Math.cos(-rotRad);
+        float sinA = (float)Math.sin(-rotRad);
+        float localLightX = lightX * cosA - lightY * sinA;
+        float localLightY = lightX * sinA + lightY * cosA;
 
+        MarkerPointerRenderer.draw(gui, accentColor, localLightX, localLightY);
         gui.pose().popPose();
 
         String distText = String.format("%.0fm", dist);
@@ -179,27 +210,21 @@ public class MarkerHudRenderer {
 
         float txRel = -(float) Math.cos(angle) * textOffset;
         float tyRel = -(float) Math.sin(angle) * textOffset;
-
-        int drawX = (int) (txRel - distW / 2.0f);
-        int drawY = (int) (tyRel - font.lineHeight / 2.0f);
-
-        drawTextWithBlackOutline(gui, font, distText, drawX, drawY, accentColor, alphaInt);
+        drawTextWithBlackOutline(gui, font, distText, (int) (txRel - distW / 2.0f), (int) (tyRel - font.lineHeight / 2.0f), accentColor, currentAlpha);
 
         gui.pose().popPose();
     }
 
-    /**
-     * 绘制带纯黑半透明四向描边的文本（保证透亮背景下的可读性，不再使用突兀的色块底）
-     */
     private void drawTextWithBlackOutline(GuiGraphics gui, Font font, String text, int x, int y, int textColor, int alpha) {
-        // 描边保持和主题相同的透明度，保证融合感
+        if (alpha <= 5) return;
         int outlineColor = (alpha << 24) | 0x000000;
+        int mainColor = (alpha << 24) | (textColor & 0xFFFFFF);
 
         gui.drawString(font, text, x - 1, y, outlineColor, false);
         gui.drawString(font, text, x + 1, y, outlineColor, false);
         gui.drawString(font, text, x, y - 1, outlineColor, false);
         gui.drawString(font, text, x, y + 1, outlineColor, false);
-        gui.drawString(font, text, x, y, textColor, false);
+        gui.drawString(font, text, x, y, mainColor, false);
     }
 
     private static float[] insetFromEdge(float x, float y, float cx, float cy, float inset) {
@@ -207,13 +232,16 @@ public class MarkerHudRenderer {
         float dy = y - cy;
         float len = (float) Math.sqrt(dx * dx + dy * dy);
         if (len < 1.0e-6f) return new float[]{x, y};
-        float ux = dx / len;
-        float uy = dy / len;
-        return new float[]{x - ux * inset, y - uy * inset};
+        return new float[]{x - (dx / len) * inset, y - (dy / len) * inset};
     }
 
     private static float lerp(float from, float to, float t) {
         return from + (to - from) * t;
+    }
+
+    private static float lerpAngle(float from, float to, float t) {
+        float diff = normalizeAngle(to - from);
+        return from + diff * t;
     }
 
     private static float normalizeAngle(float a) {

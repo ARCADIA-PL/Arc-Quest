@@ -10,27 +10,11 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 
-/**
- * 视野内：机能高光全息菱形 - 顶点着色版
- * 彻底抛弃贴片拼凑，采用原生 GPU 顶点着色。
- * 光效直接在厚实的边框内部流淌：从顶端的白热化过曝，渐变过渡至主题色，再向下消散！
- */
 public final class MarkerRhombusRenderer {
 
     private MarkerRhombusRenderer() {}
 
-    public static void draw(GuiGraphics gui, int accentColor, float breath) {
-        int baseAlpha = (accentColor >> 24) & 0xFF;
-        int r = (accentColor >> 16) & 0xFF;
-        int g = (accentColor >> 8) & 0xFF;
-        int b = accentColor & 0xFF;
-
-        // 提取渐变节点 Alpha
-        int glowA = 255;                           // 顶部纯白高光
-        int fadeA = (int) (baseAlpha * 0.3f);      // 底部消散透明度
-        int glassA = (int) (baseAlpha * 0.2f);     // 玻璃舱体上半部
-        int glassFadeA = (int) (baseAlpha * 0.05f);// 玻璃舱体下半部
-
+    public static void draw(GuiGraphics gui, int accentColor, float breath, float lightX, float lightY) {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
@@ -39,58 +23,104 @@ public final class MarkerRhombusRenderer {
         BufferBuilder builder = tesselator.getBuilder();
         Matrix4f matrix = gui.pose().last().pose();
 
-        // 开启四边形渲染
         builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
-        // ==========================================================
-        // 1. 全息玻璃内舱 (单体渐变菱形)
-        // 同样具备光照方向感：上亮下暗
-        addVertex(builder, matrix,  0, -7, r, g, b, glassA);     // 顶部
-        addVertex(builder, matrix, -7,  0, r, g, b, glassA);     // 左部
-        addVertex(builder, matrix,  0,  7, r, g, b, glassFadeA); // 底部
-        addVertex(builder, matrix,  7,  0, r, g, b, glassA);     // 右部
+        int baseAlpha = (accentColor >> 24) & 0xFF;
 
-        // ==========================================================
-        // 2. 外部主发光装甲带 (由 4 个梯形构建而成的空心菱形带)
-        // 顶点颜色将自动在这些几何体内形成极致平滑的自发光渐变！
+        // 0. 边缘机能描边 (1px 灰色高透框，包裹在主装甲带距离10~11的位置)
+        int rimA = (int)(baseAlpha * 0.35f); // 35% 透明度
+        int rimColor = (rimA << 24) | 0x888888; // 灰色 #888888
 
-        // 边 1：右上段 (从纯白 -> 主题色)
-        addVertex(builder, matrix,  0, -10, 255, 255, 255, glowA);     // 外顶端 (白热)
-        addVertex(builder, matrix,  0,  -7, 255, 255, 255, glowA);     // 内顶端 (白热)
-        addVertex(builder, matrix,  7,   0,   r,   g,   b, baseAlpha); // 内右端 (主题色)
-        addVertex(builder, matrix, 10,   0,   r,   g,   b, baseAlpha); // 外右端 (主题色)
+        // 右上外框
+        addVertex(builder, matrix,  0, -11, rimColor);
+        addVertex(builder, matrix,  0, -10, rimColor);
+        addVertex(builder, matrix, 10,   0, rimColor);
+        addVertex(builder, matrix, 11,   0, rimColor);
+        // 右下外框
+        addVertex(builder, matrix, 11,   0, rimColor);
+        addVertex(builder, matrix, 10,   0, rimColor);
+        addVertex(builder, matrix,  0,  10, rimColor);
+        addVertex(builder, matrix,  0,  11, rimColor);
+        // 左下外框
+        addVertex(builder, matrix,   0,  11, rimColor);
+        addVertex(builder, matrix,   0,  10, rimColor);
+        addVertex(builder, matrix, -10,   0, rimColor);
+        addVertex(builder, matrix, -11,   0, rimColor);
+        // 左上外框
+        addVertex(builder, matrix, -11,   0, rimColor);
+        addVertex(builder, matrix, -10,   0, rimColor);
+        addVertex(builder, matrix,   0, -10, rimColor);
+        addVertex(builder, matrix,   0, -11, rimColor);
 
-        // 边 2：右下段 (从主题色 -> 半透消散)
-        addVertex(builder, matrix, 10,  0, r, g, b, baseAlpha);
-        addVertex(builder, matrix,  7,  0, r, g, b, baseAlpha);
-        addVertex(builder, matrix,  0,  7, r, g, b, fadeA);
-        addVertex(builder, matrix,  0, 10, r, g, b, fadeA);
+        // 1. 全息玻璃内舱
+        addVertex(builder, matrix,  0, -7, calcColor( 0, -7, lightX, lightY, accentColor, 0.2f));
+        addVertex(builder, matrix, -7,  0, calcColor(-7,  0, lightX, lightY, accentColor, 0.2f));
+        addVertex(builder, matrix,  0,  7, calcColor( 0,  7, lightX, lightY, accentColor, 0.2f));
+        addVertex(builder, matrix,  7,  0, calcColor( 7,  0, lightX, lightY, accentColor, 0.2f));
 
-        // 边 3：左下段 (从半透消散 -> 主题色)
-        addVertex(builder, matrix,   0, 10, r, g, b, fadeA);
-        addVertex(builder, matrix,   0,  7, r, g, b, fadeA);
-        addVertex(builder, matrix,  -7,  0, r, g, b, baseAlpha);
-        addVertex(builder, matrix, -10,  0, r, g, b, baseAlpha);
+        // 2. 外部主发光装甲带
+        int glow = accentColor;
+        addVertex(builder, matrix,  0, -10, calcColor( 0, -10, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,  0,  -7, calcColor( 0,  -7, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,  7,   0, calcColor( 7,   0, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix, 10,   0, calcColor(10,   0, lightX, lightY, glow, 1.0f));
 
-        // 边 4：左上段 (从主题色 -> 纯白)
-        addVertex(builder, matrix, -10,   0,   r,   g,   b, baseAlpha);
-        addVertex(builder, matrix,  -7,   0,   r,   g,   b, baseAlpha);
-        addVertex(builder, matrix,   0,  -7, 255, 255, 255, glowA);
-        addVertex(builder, matrix,   0, -10, 255, 255, 255, glowA);
+        addVertex(builder, matrix, 10,  0, calcColor(10,  0, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,  7,  0, calcColor( 7,  0, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,  0,  7, calcColor( 0,  7, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,  0, 10, calcColor( 0, 10, lightX, lightY, glow, 1.0f));
 
-        // ==========================================================
-        // 3. 中央量子呼吸核心 (微型纯白菱形)
-        int coreA = (int) (255 * (0.4f + 0.6f * breath));
-        addVertex(builder, matrix,  0, -2, 255, 255, 255, coreA);
-        addVertex(builder, matrix, -2,  0, 255, 255, 255, coreA);
-        addVertex(builder, matrix,  0,  2, 255, 255, 255, coreA);
-        addVertex(builder, matrix,  2,  0, 255, 255, 255, coreA);
+        addVertex(builder, matrix,   0, 10, calcColor( 0, 10, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,   0,  7, calcColor( 0,  7, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,  -7,  0, calcColor(-7,  0, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix, -10,  0, calcColor(-10, 0, lightX, lightY, glow, 1.0f));
 
-        // 提交绘制
+        addVertex(builder, matrix, -10,   0, calcColor(-10,   0, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,  -7,   0, calcColor( -7,   0, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,   0,  -7, calcColor(  0,  -7, lightX, lightY, glow, 1.0f));
+        addVertex(builder, matrix,   0, -10, calcColor(  0, -10, lightX, lightY, glow, 1.0f));
+
+        // 3. 中央量子呼吸核心
+        int coreA = (int) (baseAlpha * (0.4f + 0.6f * breath));
+        int coreColor = (coreA << 24) | 0xFFFFFF;
+        addVertex(builder, matrix,  0, -2, coreColor);
+        addVertex(builder, matrix, -2,  0, coreColor);
+        addVertex(builder, matrix,  0,  2, coreColor);
+        addVertex(builder, matrix,  2,  0, coreColor);
+
         BufferUploader.drawWithShader(builder.end());
     }
 
-    private static void addVertex(BufferBuilder b, Matrix4f m, float x, float y, int red, int green, int blue, int alpha) {
-        b.vertex(m, x, y, 0).color(red, green, blue, alpha).endVertex();
+    private static int calcColor(float vx, float vy, float lx, float ly, int baseColor, float alphaMul) {
+        int baseA = (int) (((baseColor >> 24) & 0xFF) * alphaMul);
+        int r = (baseColor >> 16) & 0xFF;
+        int g = (baseColor >> 8) & 0xFF;
+        int b = baseColor & 0xFF;
+
+        float len = (float)Math.sqrt(vx*vx + vy*vy);
+        float nx = len > 0 ? vx / len : 0;
+        float ny = len > 0 ? vy / len : 0;
+
+        float dot = nx * lx + ny * ly;
+
+        int outR = r, outG = g, outB = b;
+        int outA = baseA;
+
+        if (dot > 0.1f) {
+            float glow = (dot - 0.1f) / 0.9f;
+            outR = (int)(r + (255 - r) * glow);
+            outG = (int)(g + (255 - g) * glow);
+            outB = (int)(b + (255 - b) * glow);
+            outA = (int)Math.min(255, baseA + (255 - baseA) * (glow * 0.4f));
+        } else if (dot < -0.1f) {
+            float shadow = (-dot - 0.1f) / 0.9f;
+            outA = (int)(baseA * (1.0f - shadow * 0.8f));
+        }
+
+        return (outA << 24) | (outR << 16) | (outG << 8) | outB;
+    }
+
+    private static void addVertex(BufferBuilder b, Matrix4f m, float x, float y, int argb) {
+        b.vertex(m, x, y, 0).color(argb).endVertex();
     }
 }
