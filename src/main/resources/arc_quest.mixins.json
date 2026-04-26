@@ -8,6 +8,7 @@
   ],
   "client": [
     "client.MixinForgeGui",
+    "client.MixinGameRendererAccessor",
     "client.ponder.MixinPonderScene",
     "client.ponder.MixinPonderUIStubAccessor"
   ],
