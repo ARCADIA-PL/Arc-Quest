@@ -21,8 +21,11 @@ public class MarkerHudRenderer {
     private static final float POSITION_SMOOTH_ONSCREEN = 0.24f;
     private static final float POSITION_SMOOTH_OFFSCREEN = 0.14f;
 
-    // 动画速度提升：现在仅需 0.15秒 即可完成切换，非常干脆
     private static final float ANIMATION_SPEED = 6.66f;
+
+    // 【全新调整】形态切换的动画速度，数字越大越“迅速利落” (原为 2.5)
+    private static final float TIER_TRANSITION_SPEED = 18.0f;
+
     private static final int OFFSCREEN_ANGLE_SECTORS = 8;
 
     private static final long OFFSCREEN_ENTER_DELAY_MS = 60L;
@@ -31,13 +34,48 @@ public class MarkerHudRenderer {
     private final Map<String, MarkerVisualState> stateMap = new HashMap<>();
     private long lastTimeMs = System.currentTimeMillis();
 
+    // ==========================================
+    // 距离形态配置 API (供外部调用修改)
+    // ==========================================
+    private static double nearDistanceThreshold = 25.0;
+    private static double farDistanceThreshold = 50.0;
+
+    public static void setDistanceThresholds(double near, double far) {
+        nearDistanceThreshold = near;
+        farDistanceThreshold = Math.max(near, far);
+    }
+
+    public static double getNearDistanceThreshold() { return nearDistanceThreshold; }
+    public static double getFarDistanceThreshold() { return farDistanceThreshold; }
+
+    public enum DistanceTier {
+        NEAR(0.0f),    // 近距离：完全展开
+        MEDIUM(1.0f),  // 中距离：部分收缩
+        FAR(2.0f);     // 远距离：极简折叠
+
+        private final float targetValue;
+
+        DistanceTier(float targetValue) {
+            this.targetValue = targetValue;
+        }
+
+        public float getTargetValue() { return targetValue; }
+
+        public static DistanceTier getTierForDistance(double distance) {
+            if (distance < nearDistanceThreshold) return NEAR;
+            if (distance < farDistanceThreshold) return MEDIUM;
+            return FAR;
+        }
+    }
+
     private static class MarkerVisualState {
         float x;
         float y;
         float angle;
         boolean offscreenStable;
         long switchTs;
-        float transitionProgress; // 0.0f = 视野内(菱形), 1.0f = 视野外(指针)
+        float transitionProgress;
+        float distanceTier; // 当前距离形态插值 (0.0~2.0)
         boolean initialized;
     }
 
@@ -61,7 +99,6 @@ public class MarkerHudRenderer {
         float dt = (now - lastTimeMs) / 1000.0f;
         if (dt > 0.1f) dt = 0.1f;
         lastTimeMs = now;
-
         float time = now / 1000.0f;
 
         int sw = mc.getWindow().getGuiScaledWidth();
@@ -82,12 +119,16 @@ public class MarkerHudRenderer {
             double dist = marker.distanceTo(px, py, pz);
             MarkerVisualState st = stateMap.computeIfAbsent(marker.getId(), k -> new MarkerVisualState());
 
+            // 计算该目标的理想形态目标值
+            float targetTier = DistanceTier.getTierForDistance(dist).getTargetValue();
+
             if (!st.initialized) {
                 st.x = proj.x;
                 st.y = proj.y;
                 st.angle = normalizeAngle(proj.edgeAngle);
                 st.offscreenStable = !proj.onScreen;
                 st.transitionProgress = st.offscreenStable ? 1.0f : 0.0f;
+                st.distanceTier = targetTier;
                 st.switchTs = now;
                 st.initialized = true;
             } else {
@@ -108,6 +149,10 @@ public class MarkerHudRenderer {
                     st.transitionProgress = Math.max(0.0f, st.transitionProgress - dt * ANIMATION_SPEED);
                 }
 
+                // 【核心修改】计算多形态快速折叠插值，引入 Math.min 防止低帧率时越界闪烁
+                float tierLerpFactor = Math.min(1.0f, dt * TIER_TRANSITION_SPEED);
+                st.distanceTier = lerp(st.distanceTier, targetTier, tierLerpFactor);
+
                 float[] anchor = insetFromEdge(proj.x, proj.y, cx, cy, OFFSCREEN_INSET);
                 float blendedTargetX = lerp(proj.x, anchor[0], st.transitionProgress);
                 float blendedTargetY = lerp(proj.y, anchor[1], st.transitionProgress);
@@ -122,11 +167,9 @@ public class MarkerHudRenderer {
 
             int color = normalizeColor(marker.getColorARGB());
 
-            // --- 改进版光源计算 ---
-            // 基础光源：固定从正上方略微偏右打下
+            // 保留你的原始光源配置
             float baseLightX = 0.15f;
             float baseLightY = -1.0f;
-            // 视差偏移：根据 UI 在屏幕上的相对位置产生最多 35% 的角度偏转，模拟真实的全息受光
             float deflectX = (cx - st.x) / cx * 0.35f;
             float deflectY = (cy - st.y) / cy * 0.35f;
 
@@ -137,15 +180,15 @@ public class MarkerHudRenderer {
             ly = lightLen > 0 ? ly / lightLen : -1;
 
             if (st.transitionProgress < 0.99f) {
-                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly);
+                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier);
             }
             if (st.transitionProgress > 0.01f && marker.isAllowOffscreenArrow()) {
-                renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly);
+                renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier);
             }
         }
     }
 
-    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY) {
+    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier) {
         float alphaFade = 1.0f - progress;
         int originalAlpha = (color >> 24) & 0xFF;
         int currentAlpha = (int) (originalAlpha * alphaFade);
@@ -155,15 +198,13 @@ public class MarkerHudRenderer {
         gui.pose().pushPose();
         gui.pose().translate(x, y, 0);
 
-        // 新动画：数码折叠 (Digital Fold)
-        // 消失时，横向压扁成一条线，纵向略微拉长
-        float ease = progress * progress; // 缓动增加打击感
+        float ease = progress * progress;
         float scaleX = 1.0f - ease;
         float scaleY = 1.0f + ease * 0.8f;
         gui.pose().scale(scaleX, scaleY, 1.0f);
 
         float breath = (float) (Math.sin(time * 3.5f) * 0.5 + 0.5);
-        MarkerRhombusRenderer.draw(gui, accentColor, breath, lightX, lightY);
+        MarkerRhombusRenderer.draw(gui, accentColor, breath, lightX, lightY, tier);
 
         String name = marker.getLabel();
         drawTextWithBlackOutline(gui, font, name, -font.width(name) / 2, -18, accentColor, currentAlpha);
@@ -175,7 +216,7 @@ public class MarkerHudRenderer {
         gui.pose().popPose();
     }
 
-    private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY) {
+    private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY, float tier) {
         int originalAlpha = (color >> 24) & 0xFF;
         int currentAlpha = (int) (originalAlpha * progress);
         if (currentAlpha <= 5) return;
@@ -185,9 +226,7 @@ public class MarkerHudRenderer {
         gui.pose().translate(x, y, 0);
         gui.pose().pushPose();
 
-        // 新动画：数码展开 (Digital Unfold)
-        // 出现时，从一条线横向展开
-        float ease = 1.0f - (1.0f - progress) * (1.0f - progress); // 缓出
+        float ease = 1.0f - (1.0f - progress) * (1.0f - progress);
         float scaleX = ease;
         float scaleY = 1.0f + (1.0f - ease) * 0.8f;
         gui.pose().scale(scaleX, scaleY, 1.0f);
@@ -201,7 +240,7 @@ public class MarkerHudRenderer {
         float localLightX = lightX * cosA - lightY * sinA;
         float localLightY = lightX * sinA + lightY * cosA;
 
-        MarkerPointerRenderer.draw(gui, accentColor, localLightX, localLightY);
+        MarkerPointerRenderer.draw(gui, accentColor, localLightX, localLightY, tier);
         gui.pose().popPose();
 
         String distText = String.format("%.0fm", dist);
