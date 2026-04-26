@@ -55,6 +55,9 @@ public class S2CSyncMarkersPacket {
                 buf.writeDouble(e.z());
                 buf.writeUtf(e.label());
                 buf.writeUtf(e.dimension());
+                buf.writeUtf(e.questId());
+                buf.writeUtf(e.phaseId());
+                buf.writeInt(e.objectiveIndex());
                 buf.writeInt(e.color());
                 buf.writeUtf(e.state());
                 buf.writeBoolean(e.showDistance());
@@ -79,6 +82,9 @@ public class S2CSyncMarkersPacket {
                         buf.readDouble(),
                         buf.readUtf(),
                         buf.readUtf(),
+                        buf.readUtf(),
+                        buf.readUtf(),
+                        buf.readInt(),
                         buf.readInt(),
                         buf.readUtf(),
                         buf.readBoolean(),
@@ -102,7 +108,7 @@ public class S2CSyncMarkersPacket {
                         QuestMarkerState state;
 
                         try {
-                            type = QuestMarkerType.valueOf(e.type());
+                            type = QuestMarkerType.valueOf(e.type()).canonical();
                         } catch (IllegalArgumentException ex) {
                             type = QuestMarkerType.CUSTOM;
                         }
@@ -116,6 +122,9 @@ public class S2CSyncMarkersPacket {
                         QuestMarkerData data = new QuestMarkerData.Builder(
                                 e.id(), e.x(), e.y(), e.z(), e.label())
                                 .dimension(e.dimension())
+                                .bindQuest(e.questId())
+                                .bindPhase(e.phaseId())
+                                .bindObjective(e.objectiveIndex())
                                 .type(type)
                                 .state(state)
                                 .color(e.color())
@@ -139,6 +148,9 @@ public class S2CSyncMarkersPacket {
             double z,
             String label,
             String dimension,
+            String questId,
+            String phaseId,
+            int objectiveIndex,
             int color,
             String state,
             boolean showDistance,

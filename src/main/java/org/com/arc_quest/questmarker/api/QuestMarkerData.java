@@ -1,9 +1,10 @@
 package org.com.arc_quest.questmarker.api;
 
+import org.com.arc_quest.quest.api.QuestState;
+
 /**
  * 任务标记数据模型（API 层）。
- * <p>
- * 渲染层（HUD 和 3D 世界）统一读取此类，附属模组通过 {@link org.com.arc_quest.api.ArcQuestAPI} 注册。
+ * 支持直接绑定 Quest 运行时语义（questId / phaseId / objectiveIndex）。
  */
 public class QuestMarkerData {
 
@@ -13,6 +14,11 @@ public class QuestMarkerData {
     private final double worldZ;
     private final String label;
     private final String dimension;
+
+    private final String questId;
+    private final String phaseId;
+    private final int objectiveIndex;
+
     private final int colorARGB;
     private final QuestMarkerType type;
     private final QuestMarkerState state;
@@ -26,8 +32,13 @@ public class QuestMarkerData {
         this.worldZ = builder.worldZ;
         this.label = builder.label;
         this.dimension = builder.dimension;
+
+        this.questId = builder.questId;
+        this.phaseId = builder.phaseId;
+        this.objectiveIndex = builder.objectiveIndex;
+
         this.colorARGB = builder.colorARGB;
-        this.type = builder.type;
+        this.type = builder.type.canonical();
         this.state = builder.state;
         this.showDistance = builder.showDistance;
         this.allowOffscreenArrow = builder.allowOffscreenArrow;
@@ -55,22 +66,58 @@ public class QuestMarkerData {
         return new Builder(id, x, y, z, label).type(QuestMarkerType.LOCATION).color(0xFFAAAAAA).build();
     }
 
+    public static QuestMarkerData questObjective(
+            String id,
+            String questId,
+            String phaseId,
+            int objectiveIndex,
+            double x,
+            double y,
+            double z,
+            String label) {
+        return new Builder(id, x, y, z, label)
+                .bindQuest(questId)
+                .bindPhase(phaseId)
+                .bindObjective(objectiveIndex)
+                .type(QuestMarkerType.QUEST_OBJECTIVE)
+                .state(QuestMarkerState.ACTIVE)
+                .color(0xFFFFD700)
+                .build();
+    }
+
     // ── Getter ────────────────────────────────────────────
 
-    public String getId()                  { return id; }
-    public double getWorldX()              { return worldX; }
-    public double getWorldY()              { return worldY; }
-    public double getWorldZ()              { return worldZ; }
-    public String getLabel()               { return label; }
-    public String getDimension()           { return dimension; }
-    public int getColorARGB()              { return colorARGB; }
-    public QuestMarkerType getType()       { return type; }
-    public QuestMarkerState getState()     { return state; }
-    public boolean isShowDistance()        { return showDistance; }
+    public String getId() { return id; }
+    public double getWorldX() { return worldX; }
+    public double getWorldY() { return worldY; }
+    public double getWorldZ() { return worldZ; }
+    public String getLabel() { return label; }
+    public String getDimension() { return dimension; }
+
+    public String getQuestId() { return questId; }
+    public String getPhaseId() { return phaseId; }
+    public int getObjectiveIndex() { return objectiveIndex; }
+
+    public int getColorARGB() { return colorARGB; }
+    public QuestMarkerType getType() { return type; }
+    public QuestMarkerState getState() { return state; }
+    public boolean isShowDistance() { return showDistance; }
     public boolean isAllowOffscreenArrow() { return allowOffscreenArrow; }
 
+    public boolean hasQuestBinding() {
+        return questId != null && !questId.isEmpty();
+    }
+
+    public boolean hasPhaseBinding() {
+        return phaseId != null && !phaseId.isEmpty();
+    }
+
+    public boolean hasObjectiveBinding() {
+        return objectiveIndex >= 0;
+    }
+
     public boolean isActive() {
-        return state == QuestMarkerState.ACTIVE;
+        return state.isRenderable();
     }
 
     public double distanceTo(double px, double py, double pz) {
@@ -84,7 +131,12 @@ public class QuestMarkerData {
         private final String id;
         private final double worldX, worldY, worldZ;
         private final String label;
+
         private String dimension = "minecraft:overworld";
+        private String questId = "";
+        private String phaseId = "";
+        private int objectiveIndex = -1;
+
         private int colorARGB = 0xFFFFFFFF;
         private QuestMarkerType type = QuestMarkerType.CUSTOM;
         private QuestMarkerState state = QuestMarkerState.ACTIVE;
@@ -99,12 +151,21 @@ public class QuestMarkerData {
             this.label = label;
         }
 
-        public Builder color(int colorARGB)                        { this.colorARGB = colorARGB; return this; }
-        public Builder dimension(String dimension)                  { this.dimension = dimension; return this; }
-        public Builder type(QuestMarkerType type)                  { this.type = type; return this; }
-        public Builder state(QuestMarkerState state)               { this.state = state; return this; }
-        public Builder showDistance(boolean show)                  { this.showDistance = show; return this; }
-        public Builder allowOffscreenArrow(boolean allow)          { this.allowOffscreenArrow = allow; return this; }
+        public Builder dimension(String dimension) { this.dimension = dimension; return this; }
+        public Builder bindQuest(String questId) { this.questId = questId == null ? "" : questId; return this; }
+        public Builder bindPhase(String phaseId) { this.phaseId = phaseId == null ? "" : phaseId; return this; }
+        public Builder bindObjective(int objectiveIndex) { this.objectiveIndex = objectiveIndex; return this; }
+
+        public Builder bindQuestState(QuestState questState) {
+            this.state = QuestMarkerState.fromQuestState(questState);
+            return this;
+        }
+
+        public Builder color(int colorARGB) { this.colorARGB = colorARGB; return this; }
+        public Builder type(QuestMarkerType type) { this.type = type == null ? QuestMarkerType.CUSTOM : type; return this; }
+        public Builder state(QuestMarkerState state) { this.state = state == null ? QuestMarkerState.ACTIVE : state; return this; }
+        public Builder showDistance(boolean show) { this.showDistance = show; return this; }
+        public Builder allowOffscreenArrow(boolean allow) { this.allowOffscreenArrow = allow; return this; }
 
         public QuestMarkerData build() { return new QuestMarkerData(this); }
     }

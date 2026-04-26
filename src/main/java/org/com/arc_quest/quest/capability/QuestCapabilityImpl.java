@@ -345,6 +345,9 @@ public class QuestCapabilityImpl implements IQuestCapability {
             t.putDouble("z", m.getWorldZ());
             t.putString("label", m.getLabel());
             t.putString("dimension", m.getDimension());
+            t.putString("questId", m.getQuestId());
+            t.putString("phaseId", m.getPhaseId());
+            t.putInt("objectiveIndex", m.getObjectiveIndex());
             t.putInt("color", m.getColorARGB());
             t.putString("type", m.getType().name());
             t.putString("state", m.getState().name());
@@ -412,6 +415,9 @@ public class QuestCapabilityImpl implements IQuestCapability {
                     t.getString("label")
             )
                     .dimension(t.contains("dimension", Tag.TAG_STRING) ? t.getString("dimension") : "minecraft:overworld")
+                    .bindQuest(t.contains("questId", Tag.TAG_STRING) ? t.getString("questId") : "")
+                    .bindPhase(t.contains("phaseId", Tag.TAG_STRING) ? t.getString("phaseId") : "")
+                    .bindObjective(t.contains("objectiveIndex", Tag.TAG_INT) ? t.getInt("objectiveIndex") : -1)
                     .type(type)
                     .state(state)
                     .color(t.getInt("color"))
