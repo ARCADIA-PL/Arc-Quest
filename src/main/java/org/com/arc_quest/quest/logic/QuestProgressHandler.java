@@ -11,11 +11,15 @@ import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.event.QuestChangeEvent;
 import org.com.arc_quest.quest.event.QuestEventBus;
+import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.com.arc_quest.quest.network.QuestSyncCoordinator;
 import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.com.arc_quest.quest.tracking.ObjectiveTracker;
 import org.com.arc_quest.quest.tracking.TrackedObjective;
+import org.com.arc_quest.questmarker.api.QuestMarkerData;
+import org.com.arc_quest.questmarker.api.QuestMarkerState;
+import org.com.arc_quest.questmarker.api.QuestMarkerType;
 import org.slf4j.Logger;
 
 import java.util.LinkedHashSet;
@@ -107,6 +111,7 @@ public final class QuestProgressHandler {
         }
 
         registerPhaseObjectives(player, def, firstPhase);
+        refreshQuestMarkersForQuest(player, cap, data, def);
 
         // 仅对 autoEnterByCondition=true 的 phase 扫描自动入场
         ActivationContext ctx = new ActivationContext();
@@ -114,6 +119,7 @@ public final class QuestProgressHandler {
         flagsChanged = flagsChanged || ctx.flagsChanged;
 
         syncQuestStateAndPush(player, data);
+        ArcQuestNetwork.syncMarkers(player, cap);
         if (flagsChanged) {
             syncFlagsVarsAndPush(player, cap);
         }
@@ -206,7 +212,9 @@ public final class QuestProgressHandler {
                 return;
             }
 
+            refreshQuestMarkersForQuest(player, cap, data, def);
             syncQuestStateAndPush(player, data);
+            ArcQuestNetwork.syncMarkers(player, cap);
             if (ctx.flagsChanged) {
                 syncFlagsVarsAndPush(player, cap);
             }
@@ -257,7 +265,9 @@ public final class QuestProgressHandler {
 
         tryAutoEnterPhases(player, cap, data, def, fromPhaseId, ctx);
 
+        refreshQuestMarkersForQuest(player, cap, data, def);
         syncQuestStateAndPush(player, data);
+        ArcQuestNetwork.syncMarkers(player, cap);
         if (ctx.flagsChanged) {
             syncFlagsVarsAndPush(player, cap);
         }
@@ -379,7 +389,9 @@ public final class QuestProgressHandler {
         if (shouldCompleteQuest(def, data)) {
             completeQuest(player, cap, data, def);
         } else {
+            refreshQuestMarkersForQuest(player, cap, data, def);
             syncQuestStateAndPush(player, data);
+            ArcQuestNetwork.syncMarkers(player, cap);
             if (ctx.flagsChanged) {
                 syncFlagsVarsAndPush(player, cap);
             }
@@ -413,8 +425,10 @@ public final class QuestProgressHandler {
         data.setState(QuestState.FAILED);
         cap.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
+        clearQuestMarkers(cap, questId);
 
         syncQuestStateAndPush(player, data);
+        ArcQuestNetwork.syncMarkers(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
     }
@@ -436,8 +450,10 @@ public final class QuestProgressHandler {
 
         cap.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
+        clearQuestMarkers(cap, questId);
 
         syncFullDataAndPush(player, cap);
+        ArcQuestNetwork.syncMarkers(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         return QuestRejectCodeDictionary.Code.OK;
@@ -468,12 +484,14 @@ public final class QuestProgressHandler {
         cap.markCompleted(questId);
 
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
+        clearQuestMarkers(cap, questId);
 
         LOGGER.info("[ArcQuest] Player {} {} quest: {}",
                 player.getGameProfile().getName(), logPrefix, questId);
 
         syncQuestStateAndPush(player, data);
         syncFlagsVarsAndPush(player, cap);
+        ArcQuestNetwork.syncMarkers(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
     }
@@ -525,6 +543,8 @@ public final class QuestProgressHandler {
                 if (phase == null) continue;
                 registerPhaseObjectives(player, def, phase);
             }
+
+            refreshQuestMarkersForQuest(player, cap, data, def);
         }
     }
 
@@ -642,5 +662,88 @@ public final class QuestProgressHandler {
         } while (changed);
 
         return ctx.activatedCount - before;
+    }
+
+    private static void refreshQuestMarkersForQuest(ServerPlayer player,
+                                                    IQuestCapability cap,
+                                                    QuestRuntimeData data,
+                                                    QuestDefinition def) {
+        clearQuestMarkers(cap, data.getQuestId());
+
+        String dimension = player.level().dimension().location().toString();
+        QuestMarkerType questType = def.getCategory() == QuestCategory.ARCHON
+                ? QuestMarkerType.QUEST_MAIN
+                : QuestMarkerType.QUEST_SIDE;
+
+        for (String phaseId : data.getActivePhaseIds()) {
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase == null) continue;
+
+            List<ObjectiveEntry> objectives = phase.getObjectives();
+            for (int i = 0; i < objectives.size(); i++) {
+                ObjectiveEntry obj = objectives.get(i);
+                if (obj.isHidden()) continue;
+
+                if (obj.getType() != ObjectiveType.REACH_LOCATION) continue;
+
+                Double x = parseDouble(obj.getExtra("x"));
+                Double y = parseDouble(obj.getExtra("y"));
+                Double z = parseDouble(obj.getExtra("z"));
+                if (x == null || y == null || z == null) continue;
+
+                String markerDimension = firstNonEmpty(
+                        obj.getExtra("dimension"),
+                        obj.getExtra("dim"),
+                        obj.getExtra("world"),
+                        dimension
+                );
+
+                String markerId = markerId(data.getQuestId(), phaseId, i);
+                String label = obj.getDisplayText().getString();
+
+                QuestMarkerData marker = new QuestMarkerData.Builder(markerId, x, y, z, label)
+                        .dimension(markerDimension)
+                        .bindQuest(data.getQuestId())
+                        .bindPhase(phaseId)
+                        .bindObjective(i)
+                        .type(questType)
+                        .state(QuestMarkerState.fromQuestState(data.getState()))
+                        .color(0xFF000000 | def.getCategory().getThemeColor())
+                        .showDistance(true)
+                        .allowOffscreenArrow(true)
+                        .build();
+                cap.upsertMarker(marker);
+            }
+        }
+    }
+
+    private static void clearQuestMarkers(IQuestCapability cap, String questId) {
+        List<String> toRemove = cap.getAllMarkers().values().stream()
+                .filter(m -> m.hasQuestBinding() && questId.equals(m.getQuestId()))
+                .map(QuestMarkerData::getId)
+                .toList();
+        for (String id : toRemove) {
+            cap.removeMarker(id);
+        }
+    }
+
+    private static String markerId(String questId, String phaseId, int objectiveIndex) {
+        return "quest:" + questId + ":" + phaseId + ":" + objectiveIndex;
+    }
+
+    private static String firstNonEmpty(String... candidates) {
+        for (String s : candidates) {
+            if (s != null && !s.isEmpty()) return s;
+        }
+        return "";
+    }
+
+    private static Double parseDouble(String v) {
+        if (v == null || v.isEmpty()) return null;
+        try {
+            return Double.parseDouble(v);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }
