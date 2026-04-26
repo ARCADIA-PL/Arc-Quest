@@ -2,73 +2,98 @@ package org.com.arc_quest.client.questmarker;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.math.Axis;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
 
 /**
- * 纯代码绘制机能风视觉组件（极简修饰版）。
+ * 现代平滑机能风视觉组件（Vector / Smooth 版）。
+ * 彻底抛弃像素感，采用矩阵旋转与纯矢量三角形绘制，提供极致平滑的锐利 UI。
  */
 public final class MarkerRenderUtil {
 
     private MarkerRenderUtil() {}
 
-    private static float a(int c) { return ((c >> 24) & 0xFF) / 255.0f; }
-    private static float r(int c) { return ((c >> 16) & 0xFF) / 255.0f; }
-    private static float g(int c) { return ((c >>  8) & 0xFF) / 255.0f; }
-    private static float b(int c) { return ( c        & 0xFF) / 255.0f; }
+    /**
+     * 平滑暗色机能菱形 (包含柔和的呼吸核心)
+     */
+    public static void drawSmoothRhombus(GuiGraphics gui, int accentColor, int darkEdge, int darkFill, float breath) {
+        gui.pose().pushPose();
+        // 将正方形旋转45度形成完美的平滑菱形
+        gui.pose().mulPose(Axis.ZP.rotationDegrees(45f));
 
-    public static void drawRhombus(GuiGraphics gui, int coreColor, int brightColor, int bgColor) {
-        // 暗色底衬
-        gui.fill(-6, -6, 6, 6, bgColor);
-        // 四条锐利细线边框
-        gui.fill(-6, -6, 6, -5, brightColor);
-        gui.fill(-6, 5, 6, 6, brightColor);
-        gui.fill(-6, -5, -5, 5, brightColor);
-        gui.fill(5, -5, 6, 5, brightColor);
-        // 核心跳动点
-        gui.fill(-3, -3, 3, 3, coreColor);
+        // 1. 外部装甲边框 (深空灰)
+        gui.fill(-6, -6, 6, 6, darkEdge);
+
+        // 2. 主体内衬底板 (半透明黑灰)
+        gui.fill(-5, -5, 5, 5, darkFill);
+
+        // 3. 核心机能点缀
+        int alpha = (accentColor >> 24) & 0xFF;
+        int rgb = accentColor & 0x00FFFFFF;
+
+        // --- 外层：柔和呼吸光晕 (消除突兀感) ---
+        int haloAlpha = (int)(alpha * 0.3f * breath);
+        gui.fill(-4, -4, 4, 4, (haloAlpha << 24) | rgb);
+
+        // --- 内层：小巧的高亮核心 (旋转后呈现完美的锐利小菱形) ---
+        int coreAlpha = (int)(alpha * (0.6f + 0.4f * breath));
+        gui.fill(-2, -2, 2, 2, (coreAlpha << 24) | rgb);
+
+        gui.pose().popPose();
     }
 
-    public static void drawMinimalPointer(GuiGraphics gui, int color, int brightColor, int bgColor) {
+    /**
+     * 极度锐利的矢量 V 型机能游标 (Chevron)
+     */
+    public static void drawVectorPointer(GuiGraphics gui, int accentColor, int darkEdge, int darkFill) {
+        Matrix4f mat = gui.pose().last().pose();
+
+        // 开启抗锯齿混合模式
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.disableCull();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        Tesselator tess = Tesselator.getInstance();
-        BufferBuilder buf = tess.getBuilder();
-        Matrix4f pose = gui.pose().last().pose();
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder buffer = tesselator.getBuilder();
 
-        float ba = a(bgColor);
-        float ca = a(color), cr = r(color), cg = g(color), cb = b(color);
-        float hA = a(brightColor), hR = r(brightColor), hG = g(brightColor), hB = b(brightColor);
+        buffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
-        buf.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
-        buf.vertex(pose, 0, -7.5f, 0).color(0f, 0f, 0f, ba).endVertex(); // 顶尖
-        buf.vertex(pose, -4.5f, 5, 0).color(0f, 0f, 0f, ba).endVertex(); // 左下角
-        buf.vertex(pose, 0, 1.5f, 0).color(0f, 0f, 0f, ba).endVertex();  // 尾部内凹
+        // 1. 外部装甲翼轮廓 (深空灰)
+        // 参数：尖端Y，翼宽，翼尖Y，内凹底X，内凹底Y
+        buildChevron(buffer, mat, 0, -10, 7, 7, 0, 2, darkEdge);
 
-        buf.vertex(pose, 0, -7.5f, 0).color(0f, 0f, 0f, ba).endVertex(); // 顶尖
-        buf.vertex(pose, 0, 1.5f, 0).color(0f, 0f, 0f, ba).endVertex();  // 尾部内凹
-        buf.vertex(pose, 4.5f, 5, 0).color(0f, 0f, 0f, ba).endVertex();  // 右下角
-        BufferUploader.drawWithShader(buf.end());
+        // 2. 内部机翼填充 (半透黑灰)
+        buildChevron(buffer, mat, 0, -8, 5, 5, 0, 1, darkFill);
 
-        buf.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
-        buf.vertex(pose, 0, -6, 0).color(hR, hG, hB, hA).endVertex();  // 尖端使用亮白色
-        buf.vertex(pose, -3.5f, 4, 0).color(cr, cg, cb, ca).endVertex(); // 左翼
-        buf.vertex(pose, 0, 1, 0).color(cr, cg, cb, ca).endVertex();     // 尾部内凹
+        // 3. 核心机能亮色点缀 (极小、锋利的彩色指示尖端)
+        buildChevron(buffer, mat, 0, -8, 3, -1, 0, -3, accentColor);
 
-        buf.vertex(pose, 0, -6, 0).color(hR, hG, hB, hA).endVertex();  // 尖端使用亮白色
-        buf.vertex(pose, 0, 1, 0).color(cr, cg, cb, ca).endVertex();     // 尾部内凹
-        buf.vertex(pose, 3.5f, 4, 0).color(cr, cg, cb, ca).endVertex();  // 右翼
-        BufferUploader.drawWithShader(buf.end());
-
-        RenderSystem.enableCull();
+        tesselator.end();
         RenderSystem.disableBlend();
+    }
+
+    /**
+     * 辅助方法：构建平滑的 V 型机翼多边形
+     */
+    private static void buildChevron(BufferBuilder buffer, Matrix4f mat, float tipX, float tipY, float wingX, float wingY, float innerX, float innerY, int color) {
+        float a = (color >> 24 & 255) / 255.0F;
+        float r = (color >> 16 & 255) / 255.0F;
+        float g = (color >> 8 & 255) / 255.0F;
+        float b = (color & 255) / 255.0F;
+
+        // 左半翼
+        buffer.vertex(mat, tipX, tipY, 0).color(r, g, b, a).endVertex();
+        buffer.vertex(mat, -wingX, wingY, 0).color(r, g, b, a).endVertex();
+        buffer.vertex(mat, innerX, innerY, 0).color(r, g, b, a).endVertex();
+
+        // 右半翼
+        buffer.vertex(mat, tipX, tipY, 0).color(r, g, b, a).endVertex();
+        buffer.vertex(mat, innerX, innerY, 0).color(r, g, b, a).endVertex();
+        buffer.vertex(mat, wingX, wingY, 0).color(r, g, b, a).endVertex();
     }
 }
