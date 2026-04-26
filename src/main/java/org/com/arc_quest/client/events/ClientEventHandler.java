@@ -10,9 +10,10 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
-import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 import org.com.arc_quest.client.gui.quest.QuestToastManager;
+import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 import org.com.arc_quest.client.gui.render.QuestIntelPanel;
+import org.com.arc_quest.client.questmarker.QuestMarkerManager;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 import org.lwjgl.glfw.GLFW;
 
@@ -52,6 +53,7 @@ public final class ClientEventHandler {
     @SubscribeEvent
     public static void onLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientQuestCache.INSTANCE.clear();
+        QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
     }
 }

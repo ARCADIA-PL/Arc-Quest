@@ -4,6 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.client.questmarker.QuestMarkerManager;
 import org.com.arc_quest.questmarker.api.QuestMarkerData;
+import org.com.arc_quest.questmarker.api.QuestMarkerState;
 import org.com.arc_quest.questmarker.api.QuestMarkerType;
 
 import java.util.ArrayList;
@@ -12,34 +13,30 @@ import java.util.function.Supplier;
 
 /**
  * S2C：服务端向客户端同步 Marker 列表。
- * <p>
  * 支持三种操作：CLEAR（全清）、ADD（批量添加）、REMOVE（单个移除）。
  */
 public class S2CSyncMarkersPacket {
 
-    public static final byte OP_CLEAR  = 0;
-    public static final byte OP_ADD    = 1;
+    public static final byte OP_CLEAR = 0;
+    public static final byte OP_ADD = 1;
     public static final byte OP_REMOVE = 2;
 
     private final byte op;
     private final List<MarkerEntry> entries;
     private final String removeId;
 
-    /** 清空所有标记 */
     public S2CSyncMarkersPacket() {
         this.op = OP_CLEAR;
         this.entries = List.of();
         this.removeId = "";
     }
 
-    /** 批量添加标记 */
     public S2CSyncMarkersPacket(List<MarkerEntry> entries) {
         this.op = OP_ADD;
         this.entries = entries;
         this.removeId = "";
     }
 
-    /** 移除单个标记 */
     public S2CSyncMarkersPacket(String removeId) {
         this.op = OP_REMOVE;
         this.entries = List.of();
@@ -51,13 +48,17 @@ public class S2CSyncMarkersPacket {
         if (pkt.op == OP_ADD) {
             buf.writeInt(pkt.entries.size());
             for (MarkerEntry e : pkt.entries) {
-                buf.writeUtf(e.id);
-                buf.writeUtf(e.type);
-                buf.writeDouble(e.x);
-                buf.writeDouble(e.y);
-                buf.writeDouble(e.z);
-                buf.writeUtf(e.label);
-                buf.writeInt(e.color);
+                buf.writeUtf(e.id());
+                buf.writeUtf(e.type());
+                buf.writeDouble(e.x());
+                buf.writeDouble(e.y());
+                buf.writeDouble(e.z());
+                buf.writeUtf(e.label());
+                buf.writeUtf(e.dimension());
+                buf.writeInt(e.color());
+                buf.writeUtf(e.state());
+                buf.writeBoolean(e.showDistance());
+                buf.writeBoolean(e.allowOffscreenArrow());
             }
         } else if (pkt.op == OP_REMOVE) {
             buf.writeUtf(pkt.removeId);
@@ -71,9 +72,18 @@ public class S2CSyncMarkersPacket {
             List<MarkerEntry> list = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {
                 list.add(new MarkerEntry(
-                        buf.readUtf(), buf.readUtf(),
-                        buf.readDouble(), buf.readDouble(), buf.readDouble(),
-                        buf.readUtf(), buf.readInt()));
+                        buf.readUtf(),
+                        buf.readUtf(),
+                        buf.readDouble(),
+                        buf.readDouble(),
+                        buf.readDouble(),
+                        buf.readUtf(),
+                        buf.readUtf(),
+                        buf.readInt(),
+                        buf.readUtf(),
+                        buf.readBoolean(),
+                        buf.readBoolean()
+                ));
             }
             return new S2CSyncMarkersPacket(list);
         } else if (op == OP_REMOVE) {
@@ -89,15 +99,28 @@ public class S2CSyncMarkersPacket {
                 case OP_ADD -> {
                     for (MarkerEntry e : pkt.entries) {
                         QuestMarkerType type;
+                        QuestMarkerState state;
+
                         try {
-                            type = QuestMarkerType.valueOf(e.type);
+                            type = QuestMarkerType.valueOf(e.type());
                         } catch (IllegalArgumentException ex) {
                             type = QuestMarkerType.CUSTOM;
                         }
+
+                        try {
+                            state = QuestMarkerState.valueOf(e.state());
+                        } catch (IllegalArgumentException ex) {
+                            state = QuestMarkerState.ACTIVE;
+                        }
+
                         QuestMarkerData data = new QuestMarkerData.Builder(
-                                e.id, e.x, e.y, e.z, e.label)
+                                e.id(), e.x(), e.y(), e.z(), e.label())
+                                .dimension(e.dimension())
                                 .type(type)
-                                .color(e.color)
+                                .state(state)
+                                .color(e.color())
+                                .showDistance(e.showDistance())
+                                .allowOffscreenArrow(e.allowOffscreenArrow())
                                 .build();
                         QuestMarkerManager.INSTANCE.add(data);
                     }
@@ -108,5 +131,18 @@ public class S2CSyncMarkersPacket {
         ctx.get().setPacketHandled(true);
     }
 
-    public record MarkerEntry(String id, String type, double x, double y, double z, String label, int color) {}
+    public record MarkerEntry(
+            String id,
+            String type,
+            double x,
+            double y,
+            double z,
+            String label,
+            String dimension,
+            int color,
+            String state,
+            boolean showDistance,
+            boolean allowOffscreenArrow
+    ) {
+    }
 }

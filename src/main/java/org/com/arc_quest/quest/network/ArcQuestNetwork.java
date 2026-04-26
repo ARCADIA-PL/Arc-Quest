@@ -11,6 +11,7 @@ import org.com.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
+import org.com.arc_quest.questmarker.api.QuestMarkerData;
 import org.com.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
 import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
 import org.com.arc_quest.trade.gacha.network.C2SGachaControlPacket;
@@ -24,6 +25,7 @@ import org.com.arc_quest.trade.network.S2COpenTradePacket;
 import org.com.arc_quest.trade.network.S2CSyncTradeStatePacket;
 
 import javax.annotation.Nullable;
+import java.util.List;
 
 /**
  * Arc Quest 网络通信中心。
@@ -231,6 +233,7 @@ public final class ArcQuestNetwork {
     public static void syncFullData(ServerPlayer player, IQuestCapability cap) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncFullDataPacket(cap));
+        syncMarkers(player, cap);
     }
 
     /**
@@ -347,5 +350,33 @@ public final class ArcQuestNetwork {
 
     public static void sendDrawFailedPacket(ServerPlayer player, S2CDrawFailedPacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void syncMarkers(ServerPlayer player, IQuestCapability cap) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncMarkersPacket());
+
+        List<S2CSyncMarkersPacket.MarkerEntry> entries = cap.getAllMarkers().values().stream()
+                .map(ArcQuestNetwork::toMarkerEntry)
+                .toList();
+
+        if (!entries.isEmpty()) {
+            CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncMarkersPacket(entries));
+        }
+    }
+
+    private static S2CSyncMarkersPacket.MarkerEntry toMarkerEntry(QuestMarkerData m) {
+        return new S2CSyncMarkersPacket.MarkerEntry(
+                m.getId(),
+                m.getType().name(),
+                m.getWorldX(),
+                m.getWorldY(),
+                m.getWorldZ(),
+                m.getLabel(),
+                m.getDimension(),
+                m.getColorARGB(),
+                m.getState().name(),
+                m.isShowDistance(),
+                m.isAllowOffscreenArrow()
+        );
     }
 }

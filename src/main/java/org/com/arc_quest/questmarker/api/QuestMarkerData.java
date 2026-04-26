@@ -12,6 +12,7 @@ public class QuestMarkerData {
     private final double worldY;
     private final double worldZ;
     private final String label;
+    private final String dimension;
     private final int colorARGB;
     private final QuestMarkerType type;
     private final QuestMarkerState state;
@@ -24,6 +25,7 @@ public class QuestMarkerData {
         this.worldY = builder.worldY;
         this.worldZ = builder.worldZ;
         this.label = builder.label;
+        this.dimension = builder.dimension;
         this.colorARGB = builder.colorARGB;
         this.type = builder.type;
         this.state = builder.state;
@@ -60,6 +62,7 @@ public class QuestMarkerData {
     public double getWorldY()              { return worldY; }
     public double getWorldZ()              { return worldZ; }
     public String getLabel()               { return label; }
+    public String getDimension()           { return dimension; }
     public int getColorARGB()              { return colorARGB; }
     public QuestMarkerType getType()       { return type; }
     public QuestMarkerState getState()     { return state; }
@@ -81,6 +84,7 @@ public class QuestMarkerData {
         private final String id;
         private final double worldX, worldY, worldZ;
         private final String label;
+        private String dimension = "minecraft:overworld";
         private int colorARGB = 0xFFFFFFFF;
         private QuestMarkerType type = QuestMarkerType.CUSTOM;
         private QuestMarkerState state = QuestMarkerState.ACTIVE;
@@ -96,6 +100,7 @@ public class QuestMarkerData {
         }
 
         public Builder color(int colorARGB)                        { this.colorARGB = colorARGB; return this; }
+        public Builder dimension(String dimension)                  { this.dimension = dimension; return this; }
         public Builder type(QuestMarkerType type)                  { this.type = type; return this; }
         public Builder state(QuestMarkerState state)               { this.state = state; return this; }
         public Builder showDistance(boolean show)                  { this.showDistance = show; return this; }

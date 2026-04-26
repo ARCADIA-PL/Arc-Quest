@@ -3,6 +3,7 @@ package org.com.arc_quest.quest.capability;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
+import org.com.arc_quest.questmarker.api.QuestMarkerData;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -71,6 +72,18 @@ public interface IQuestCapability {
     void incrementVariable(String key, int amount);
 
     Map<String, Integer> getAllVariables();
+
+    // ════════════════════════════════════════
+    //  Marker 持久化 API
+    // ════════════════════════════════════════
+
+    void upsertMarker(QuestMarkerData marker);
+
+    void removeMarker(String markerId);
+
+    void clearMarkers();
+
+    Map<String, QuestMarkerData> getAllMarkers();
 
     CompoundTag serializeNBT();
 

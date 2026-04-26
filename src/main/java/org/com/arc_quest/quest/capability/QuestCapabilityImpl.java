@@ -5,6 +5,9 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import org.com.arc_quest.dialogue.runtime.DialogueProgressStore;
+import org.com.arc_quest.questmarker.api.QuestMarkerData;
+import org.com.arc_quest.questmarker.api.QuestMarkerState;
+import org.com.arc_quest.questmarker.api.QuestMarkerType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,6 +114,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     private final Set<String> failedQuests = new LinkedHashSet<>();
     private final Set<String> flags = new HashSet<>();
     private final Map<String, Integer> variables = new HashMap<>();
+    private final Map<String, QuestMarkerData> markers = new LinkedHashMap<>();
 
     /** 统一对话/冷却进度存储 */
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
@@ -280,6 +284,30 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public Map<String, Integer> getAllVariables() { return Collections.unmodifiableMap(variables); }
 
+    @Override
+    public synchronized void upsertMarker(QuestMarkerData marker) {
+        Objects.requireNonNull(marker);
+        markers.put(marker.getId(), marker);
+        isDirty = true;
+    }
+
+    @Override
+    public synchronized void removeMarker(String markerId) {
+        markers.remove(markerId);
+        isDirty = true;
+    }
+
+    @Override
+    public synchronized void clearMarkers() {
+        markers.clear();
+        isDirty = true;
+    }
+
+    @Override
+    public synchronized Map<String, QuestMarkerData> getAllMarkers() {
+        return Collections.unmodifiableMap(markers);
+    }
+
     // ═══════════════════════════════════════════════
     //  序列化
     // ═══════════════════════════════════════════════
@@ -308,6 +336,24 @@ public class QuestCapabilityImpl implements IQuestCapability {
         for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
         root.put("Variables", varsTag);
 
+        ListTag markerList = new ListTag();
+        for (QuestMarkerData m : markers.values()) {
+            CompoundTag t = new CompoundTag();
+            t.putString("id", m.getId());
+            t.putDouble("x", m.getWorldX());
+            t.putDouble("y", m.getWorldY());
+            t.putDouble("z", m.getWorldZ());
+            t.putString("label", m.getLabel());
+            t.putString("dimension", m.getDimension());
+            t.putInt("color", m.getColorARGB());
+            t.putString("type", m.getType().name());
+            t.putString("state", m.getState().name());
+            t.putBoolean("showDistance", m.isShowDistance());
+            t.putBoolean("allowOffscreenArrow", m.isAllowOffscreenArrow());
+            markerList.add(t);
+        }
+        root.put("Markers", markerList);
+
         root.put("DialogueProgress", dialogueProgress.serialize());
 
         root.put("TradeData", tradeData.serialize());
@@ -327,6 +373,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         failedQuests.clear();
         flags.clear();
         variables.clear();
+        markers.clear();
 
         ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
         for (int i = 0; i < activeList.size(); i++) {
@@ -345,6 +392,34 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
         CompoundTag varsTag = root.getCompound("Variables");
         for (String key : varsTag.getAllKeys()) variables.put(key, varsTag.getInt(key));
+
+        ListTag markerList = root.getList("Markers", Tag.TAG_COMPOUND);
+        for (int i = 0; i < markerList.size(); i++) {
+            CompoundTag t = markerList.getCompound(i);
+            String id = t.getString("id");
+            if (id == null || id.isEmpty()) continue;
+
+            QuestMarkerType type;
+            QuestMarkerState state;
+            try { type = QuestMarkerType.valueOf(t.getString("type")); } catch (Exception e) { type = QuestMarkerType.CUSTOM; }
+            try { state = QuestMarkerState.valueOf(t.getString("state")); } catch (Exception e) { state = QuestMarkerState.ACTIVE; }
+
+            QuestMarkerData marker = new QuestMarkerData.Builder(
+                    id,
+                    t.getDouble("x"),
+                    t.getDouble("y"),
+                    t.getDouble("z"),
+                    t.getString("label")
+            )
+                    .dimension(t.contains("dimension", Tag.TAG_STRING) ? t.getString("dimension") : "minecraft:overworld")
+                    .type(type)
+                    .state(state)
+                    .color(t.getInt("color"))
+                    .showDistance(!t.contains("showDistance", Tag.TAG_BYTE) || t.getBoolean("showDistance"))
+                    .allowOffscreenArrow(!t.contains("allowOffscreenArrow", Tag.TAG_BYTE) || t.getBoolean("allowOffscreenArrow"))
+                    .build();
+            markers.put(id, marker);
+        }
 
         if (root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
             dialogueProgress.deserialize(root.getCompound("DialogueProgress"));
@@ -385,6 +460,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
         dialogueProgress.clear();
         tradeData.clear();
         gachaData.clear();
+        markers.clear();
         isDirty = true;
     }
 

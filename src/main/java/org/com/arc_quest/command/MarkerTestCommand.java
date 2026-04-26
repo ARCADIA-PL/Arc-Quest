@@ -5,15 +5,12 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.PacketDistributor;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
-import org.com.arc_quest.quest.network.S2CSyncMarkersPacket;
-
-import java.util.List;
+import org.com.arc_quest.questmarker.api.QuestMarkerData;
+import org.com.arc_quest.questmarker.api.QuestMarkerType;
 
 public class MarkerTestCommand {
-
-    private static final String TYPE_MAIN = "QUEST_MAIN";
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
 
@@ -23,39 +20,41 @@ public class MarkerTestCommand {
                 .then(Commands.literal("clear")
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
-                            ArcQuestNetwork.CHANNEL.send(
-                                    PacketDistributor.PLAYER.with(() -> player),
-                                    new S2CSyncMarkersPacket());
+                            var cap = QuestCapabilityProvider.getOrNull(player);
+
+                            cap.clearMarkers();
+                            ArcQuestNetwork.syncMarkers(player, cap);
+
                             ctx.getSource().sendSuccess(
                                     () -> Component.literal("已清除所有标记"), false);
                             return 1;
                         }))
 
-                // /marker test — 只在玩家当前位置生成一个测试标记
+                // /marker test — 在玩家当前位置生成一个服务端持久化测试标记
                 .then(Commands.literal("test")
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
-                            var pos = player.position();
+                            var cap = QuestCapabilityProvider.getOrNull(player);
 
-                            ArcQuestNetwork.CHANNEL.send(
-                                    PacketDistributor.PLAYER.with(() -> player),
-                                    new S2CSyncMarkersPacket());
-                            ArcQuestNetwork.CHANNEL.send(
-                                    PacketDistributor.PLAYER.with(() -> player),
-                                    new S2CSyncMarkersPacket(List.of(
-                                            new S2CSyncMarkersPacket.MarkerEntry(
-                                                    "test_marker",
-                                                    TYPE_MAIN,
-                                                    pos.x,
-                                                    pos.y + 2.0,
-                                                    pos.z,
-                                                    "测试标记",
-                                                    0xFFFFD700
-                                            )
-                                    )));
+                            var pos = player.position();
+                            cap.clearMarkers();
+                            cap.upsertMarker(new QuestMarkerData.Builder(
+                                    "test_marker",
+                                    pos.x,
+                                    pos.y + 2.0,
+                                    pos.z,
+                                    "测试标记")
+                                    .dimension(player.level().dimension().location().toString())
+                                    .type(QuestMarkerType.QUEST_MAIN)
+                                    .color(0xFFFFD700)
+                                    .showDistance(true)
+                                    .allowOffscreenArrow(true)
+                                    .build());
+
+                            ArcQuestNetwork.syncMarkers(player, cap);
 
                             ctx.getSource().sendSuccess(
-                                    () -> Component.literal("已在玩家位置生成测试标记"), false);
+                                    () -> Component.literal("已生成服务端持久化测试标记"), false);
                             return 1;
                         }))
         );
