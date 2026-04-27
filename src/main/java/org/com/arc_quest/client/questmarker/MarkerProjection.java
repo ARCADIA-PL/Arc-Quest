@@ -10,6 +10,7 @@ import org.com.arc_quest.mixin.client.MixinGameRendererAccessor;
  * 1) 屏内精确投影
  * 2) 屏外稳定边缘锚点
  * 3) 背后目标强制落在下半区，避免误导
+ * 4) [新增] 屏幕底部物品栏避让区，避免 HUD 遮挡
  */
 public final class MarkerProjection {
 
@@ -139,6 +140,25 @@ public final class MarkerProjection {
         }
 
         float[] edge = clampDirectionToEllipse(dirX, dirY, halfW, halfH, edgePadding, screenW, screenH);
+
+        // === [新增] 快捷栏防遮挡区 (Hotbar Exclusion Zone) ===
+        // 物品栏左右半宽约 100 像素，留出安全余量
+        float hotbarHalfW = 100f;
+        float bottomYThreshold = screenH - edgePadding - 20f;
+
+        if (edge[1] > bottomYThreshold && Math.abs(edge[0] - halfW) < hotbarHalfW) {
+            // 强制将游标推挤到物品栏的两侧
+            if (edge[0] >= halfW) {
+                edge[0] = halfW + hotbarHalfW;
+            } else {
+                edge[0] = halfW - hotbarHalfW;
+            }
+            // 重新校准指向角方向，让游标优雅地指向被推挤后的新坐标
+            dirX = edge[0] - halfW;
+            dirY = edge[1] - halfH;
+        }
+        // ====================================================
+
         if (behind) {
             float minBottomY = halfH + Math.max(30f, screenH * 0.12f);
             if (edge[1] < minBottomY) {

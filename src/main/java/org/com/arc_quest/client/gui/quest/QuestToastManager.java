@@ -3,9 +3,9 @@ package org.com.arc_quest.client.gui.quest;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
 import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
+import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 
 import java.util.ArrayDeque;
 import java.util.Deque;

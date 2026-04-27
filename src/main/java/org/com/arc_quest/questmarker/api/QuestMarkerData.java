@@ -8,6 +8,11 @@ import org.com.arc_quest.quest.api.QuestState;
  */
 public class QuestMarkerData {
 
+    public enum EntityAttachPoint {
+        HEAD,
+        CENTER
+    }
+
     private final String id;
     private final double worldX;
     private final double worldY;
@@ -18,6 +23,12 @@ public class QuestMarkerData {
     private final String questId;
     private final String phaseId;
     private final int objectiveIndex;
+
+    /** 客户端实体ID，<0 表示非实体跟随。 */
+    private final int followEntityId;
+    private final String followEntityUuid;
+    private final String followEntityGuid;
+    private final EntityAttachPoint attachPoint;
 
     private final int colorARGB;
     private final QuestMarkerType type;
@@ -37,14 +48,17 @@ public class QuestMarkerData {
         this.phaseId = builder.phaseId;
         this.objectiveIndex = builder.objectiveIndex;
 
+        this.followEntityId = builder.followEntityId;
+        this.followEntityUuid = builder.followEntityUuid;
+        this.followEntityGuid = builder.followEntityGuid;
+        this.attachPoint = builder.attachPoint;
+
         this.colorARGB = builder.colorARGB;
         this.type = builder.type.canonical();
         this.state = builder.state;
         this.showDistance = builder.showDistance;
         this.allowOffscreenArrow = builder.allowOffscreenArrow;
     }
-
-    // ── 快捷工厂 ──────────────────────────────────────────
 
     public static QuestMarkerData mainQuest(String id, double x, double y, double z, String label) {
         return new Builder(id, x, y, z, label).type(QuestMarkerType.QUEST_MAIN).color(0xFFFFD700).build();
@@ -85,8 +99,6 @@ public class QuestMarkerData {
                 .build();
     }
 
-    // ── Getter ────────────────────────────────────────────
-
     public String getId() { return id; }
     public double getWorldX() { return worldX; }
     public double getWorldY() { return worldY; }
@@ -97,6 +109,11 @@ public class QuestMarkerData {
     public String getQuestId() { return questId; }
     public String getPhaseId() { return phaseId; }
     public int getObjectiveIndex() { return objectiveIndex; }
+
+    public int getFollowEntityId() { return followEntityId; }
+    public String getFollowEntityUuid() { return followEntityUuid; }
+    public String getFollowEntityGuid() { return followEntityGuid; }
+    public EntityAttachPoint getAttachPoint() { return attachPoint; }
 
     public int getColorARGB() { return colorARGB; }
     public QuestMarkerType getType() { return type; }
@@ -116,6 +133,18 @@ public class QuestMarkerData {
         return objectiveIndex >= 0;
     }
 
+    public boolean hasEntityBinding() {
+        return followEntityId >= 0 || hasEntityUuidBinding() || hasEntityGuidBinding();
+    }
+
+    public boolean hasEntityUuidBinding() {
+        return followEntityUuid != null && !followEntityUuid.isEmpty();
+    }
+
+    public boolean hasEntityGuidBinding() {
+        return followEntityGuid != null && !followEntityGuid.isEmpty();
+    }
+
     public boolean isActive() {
         return state.isRenderable();
     }
@@ -124,8 +153,6 @@ public class QuestMarkerData {
         double dx = worldX - px, dy = worldY - py, dz = worldZ - pz;
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
-
-    // ── Builder ───────────────────────────────────────────
 
     public static class Builder {
         private final String id;
@@ -136,6 +163,11 @@ public class QuestMarkerData {
         private String questId = "";
         private String phaseId = "";
         private int objectiveIndex = -1;
+
+        private int followEntityId = -1;
+        private String followEntityUuid = "";
+        private String followEntityGuid = "";
+        private EntityAttachPoint attachPoint = EntityAttachPoint.HEAD;
 
         private int colorARGB = 0xFFFFFFFF;
         private QuestMarkerType type = QuestMarkerType.CUSTOM;
@@ -155,6 +187,47 @@ public class QuestMarkerData {
         public Builder bindQuest(String questId) { this.questId = questId == null ? "" : questId; return this; }
         public Builder bindPhase(String phaseId) { this.phaseId = phaseId == null ? "" : phaseId; return this; }
         public Builder bindObjective(int objectiveIndex) { this.objectiveIndex = objectiveIndex; return this; }
+
+        public Builder followEntity(int entityId) {
+            this.followEntityId = entityId;
+            return this;
+        }
+
+        public Builder followEntityUuid(String entityUuid) {
+            this.followEntityUuid = entityUuid == null ? "" : entityUuid;
+            return this;
+        }
+
+        public Builder followEntityGuid(String entityGuid) {
+            this.followEntityGuid = entityGuid == null ? "" : entityGuid;
+            return this;
+        }
+
+        public Builder attachPoint(EntityAttachPoint attachPoint) {
+            this.attachPoint = attachPoint == null ? EntityAttachPoint.HEAD : attachPoint;
+            return this;
+        }
+
+        public Builder followEntity(int entityId, EntityAttachPoint attachPoint) {
+            this.followEntityId = entityId;
+            this.attachPoint = attachPoint == null ? EntityAttachPoint.HEAD : attachPoint;
+            return this;
+        }
+
+        public Builder followEntity(int entityId, String entityUuid, EntityAttachPoint attachPoint) {
+            this.followEntityId = entityId;
+            this.followEntityUuid = entityUuid == null ? "" : entityUuid;
+            this.attachPoint = attachPoint == null ? EntityAttachPoint.HEAD : attachPoint;
+            return this;
+        }
+
+        public Builder followEntity(int entityId, String entityUuid, String entityGuid, EntityAttachPoint attachPoint) {
+            this.followEntityId = entityId;
+            this.followEntityUuid = entityUuid == null ? "" : entityUuid;
+            this.followEntityGuid = entityGuid == null ? "" : entityGuid;
+            this.attachPoint = attachPoint == null ? EntityAttachPoint.HEAD : attachPoint;
+            return this;
+        }
 
         public Builder bindQuestState(QuestState questState) {
             this.state = QuestMarkerState.fromQuestState(questState);

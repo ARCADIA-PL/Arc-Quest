@@ -12,7 +12,6 @@ import org.com.arc_quest.api.event.TradeOpenedEvent;
 import org.com.arc_quest.api.event.TradePurchaseFailedEvent;
 import org.com.arc_quest.api.event.TradePurchasedSuccessEvent;
 import org.com.arc_quest.dialogue.runtime.DialogueSessionManager;
-import org.com.arc_quest.dialogue.runtime.ProgressKey;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;

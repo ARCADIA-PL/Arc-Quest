@@ -4,8 +4,8 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.com.arc_quest.quest.network.SyncObservability;
+import org.com.arc_quest.trade.api.TradeShopDefinition;
 import org.slf4j.Logger;
 
 import java.util.function.Supplier;

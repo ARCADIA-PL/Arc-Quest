@@ -353,6 +353,10 @@ public class QuestCapabilityImpl implements IQuestCapability {
             t.putString("state", m.getState().name());
             t.putBoolean("showDistance", m.isShowDistance());
             t.putBoolean("allowOffscreenArrow", m.isAllowOffscreenArrow());
+            t.putInt("followEntityId", m.getFollowEntityId());
+            t.putString("followEntityUuid", m.getFollowEntityUuid());
+            t.putString("followEntityGuid", m.getFollowEntityGuid());
+            t.putString("attachPoint", m.getAttachPoint().name());
             markerList.add(t);
         }
         root.put("Markers", markerList);
@@ -418,6 +422,12 @@ public class QuestCapabilityImpl implements IQuestCapability {
                     .bindQuest(t.contains("questId", Tag.TAG_STRING) ? t.getString("questId") : "")
                     .bindPhase(t.contains("phaseId", Tag.TAG_STRING) ? t.getString("phaseId") : "")
                     .bindObjective(t.contains("objectiveIndex", Tag.TAG_INT) ? t.getInt("objectiveIndex") : -1)
+                    .followEntity(
+                            t.contains("followEntityId", Tag.TAG_INT) ? t.getInt("followEntityId") : -1,
+                            t.contains("followEntityUuid", Tag.TAG_STRING) ? t.getString("followEntityUuid") : "",
+                            t.contains("followEntityGuid", Tag.TAG_STRING) ? t.getString("followEntityGuid") : "",
+                            parseAttachPoint(t.contains("attachPoint", Tag.TAG_STRING) ? t.getString("attachPoint") : "HEAD")
+                    )
                     .type(type)
                     .state(state)
                     .color(t.getInt("color"))
@@ -444,6 +454,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
             gachaData.deserialize(root.getCompound("GachaData"));
         } else {
             gachaData.deserializeLegacy(root);
+        }
+    }
+
+    private static QuestMarkerData.EntityAttachPoint parseAttachPoint(String value) {
+        try {
+            return QuestMarkerData.EntityAttachPoint.valueOf(value);
+        } catch (Exception ignored) {
+            return QuestMarkerData.EntityAttachPoint.HEAD;
         }
     }
 

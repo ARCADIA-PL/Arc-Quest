@@ -3,7 +3,6 @@ package org.com.arc_quest.trade.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
 import org.com.arc_quest.client.gui.shop.AbstractTradeScreen;

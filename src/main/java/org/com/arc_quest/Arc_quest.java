@@ -6,6 +6,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
+import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -37,7 +38,6 @@ public class Arc_quest {
     public static final String MOD_ID = "arc_quest";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // TODO: 设计新的HUD模块 任务追踪标识模块
     // TODO: 传送罗盘模块 可用于传送任务相关地点
 
     public Arc_quest() {
@@ -72,7 +72,6 @@ public class Arc_quest {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             GuiSoundManager.initDefaults();
-            MinecraftForge.EVENT_BUS.register(new MarkerHudRenderer());
             PonderIndex.addPlugin(new QuestPonderPlugin());
             LOGGER.info("[ArcQuest] Client setup complete.");
         }
@@ -82,6 +81,8 @@ public class Arc_quest {
             event.registerAboveAll("quest_hud", QuestHudOverlay.INSTANCE);
             event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
             event.registerAboveAll("gacha_result", GachaResultOverlay.INSTANCE);
+            event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), "quest_markers", MarkerHudRenderer.INSTANCE);
+
             LOGGER.info("[ArcQuest] Overlays registered.");
         }
 

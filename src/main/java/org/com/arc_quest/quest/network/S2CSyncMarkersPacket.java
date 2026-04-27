@@ -58,6 +58,10 @@ public class S2CSyncMarkersPacket {
                 buf.writeUtf(e.questId());
                 buf.writeUtf(e.phaseId());
                 buf.writeInt(e.objectiveIndex());
+                buf.writeInt(e.followEntityId());
+                buf.writeUtf(e.followEntityUuid());
+                buf.writeUtf(e.followEntityGuid());
+                buf.writeUtf(e.attachPoint());
                 buf.writeInt(e.color());
                 buf.writeUtf(e.state());
                 buf.writeBoolean(e.showDistance());
@@ -87,6 +91,10 @@ public class S2CSyncMarkersPacket {
                         buf.readInt(),
                         buf.readInt(),
                         buf.readUtf(),
+                        buf.readUtf(),
+                        buf.readUtf(),
+                        buf.readInt(),
+                        buf.readUtf(),
                         buf.readBoolean(),
                         buf.readBoolean()
                 ));
@@ -106,6 +114,7 @@ public class S2CSyncMarkersPacket {
                     for (MarkerEntry e : pkt.entries) {
                         QuestMarkerType type;
                         QuestMarkerState state;
+                        QuestMarkerData.EntityAttachPoint attachPoint;
 
                         try {
                             type = QuestMarkerType.valueOf(e.type()).canonical();
@@ -119,12 +128,19 @@ public class S2CSyncMarkersPacket {
                             state = QuestMarkerState.ACTIVE;
                         }
 
+                        try {
+                            attachPoint = QuestMarkerData.EntityAttachPoint.valueOf(e.attachPoint());
+                        } catch (IllegalArgumentException ex) {
+                            attachPoint = QuestMarkerData.EntityAttachPoint.HEAD;
+                        }
+
                         QuestMarkerData data = new QuestMarkerData.Builder(
                                 e.id(), e.x(), e.y(), e.z(), e.label())
                                 .dimension(e.dimension())
                                 .bindQuest(e.questId())
                                 .bindPhase(e.phaseId())
                                 .bindObjective(e.objectiveIndex())
+                                .followEntity(e.followEntityId(), e.followEntityUuid(), e.followEntityGuid(), attachPoint)
                                 .type(type)
                                 .state(state)
                                 .color(e.color())
@@ -151,6 +167,10 @@ public class S2CSyncMarkersPacket {
             String questId,
             String phaseId,
             int objectiveIndex,
+            int followEntityId,
+            String followEntityUuid,
+            String followEntityGuid,
+            String attachPoint,
             int color,
             String state,
             boolean showDistance,

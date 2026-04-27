@@ -4,7 +4,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
 

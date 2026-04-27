@@ -1,10 +1,10 @@
 package org.com.arc_quest.trade.network;
 
 import net.minecraft.server.level.ServerPlayer;
-import org.com.arc_quest.trade.api.TradeShopDefinition;
-import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;

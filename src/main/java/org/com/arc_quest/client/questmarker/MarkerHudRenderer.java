@@ -1,19 +1,24 @@
 package org.com.arc_quest.client.questmarker;
 
 import com.mojang.math.Axis;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.client.gui.overlay.ForgeGui;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.com.arc_quest.questmarker.api.QuestMarkerData;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
-public class MarkerHudRenderer {
+public class MarkerHudRenderer implements IGuiOverlay {
+
+    public static final MarkerHudRenderer INSTANCE = new MarkerHudRenderer();
 
     private static final float EDGE_PADDING = 30f;
     private static final float OFFSCREEN_INSET = 25f;
@@ -22,78 +27,86 @@ public class MarkerHudRenderer {
     private static final float POSITION_SMOOTH_OFFSCREEN = 0.14f;
 
     private static final float ANIMATION_SPEED = 6.66f;
-
-    // 【全新调整】形态切换的动画速度，数字越大越“迅速利落” (原为 2.5)
     private static final float TIER_TRANSITION_SPEED = 18.0f;
-
-    private static final int OFFSCREEN_ANGLE_SECTORS = 8;
+    private static final float OCCLUSION_TRANSITION_SPEED = 12.0f;
 
     private static final long OFFSCREEN_ENTER_DELAY_MS = 60L;
     private static final long OFFSCREEN_EXIT_DELAY_MS = 90L;
 
-    private final Map<String, MarkerVisualState> stateMap = new HashMap<>();
-    private long lastTimeMs = System.currentTimeMillis();
-
-    // ==========================================
-    // 距离形态配置 API (供外部调用修改)
-    // ==========================================
+    private static double closestDistanceThreshold = 3.0;
     private static double nearDistanceThreshold = 25.0;
     private static double farDistanceThreshold = 50.0;
 
-    public static void setDistanceThresholds(double near, double far) {
-        nearDistanceThreshold = near;
-        farDistanceThreshold = Math.max(near, far);
+    private final Map<String, MarkerVisualState> stateMap = new HashMap<>();
+    private long lastTimeMs = System.currentTimeMillis();
+
+    private static final String ENTITY_MARKER_GUID_KEY = "arc_quest.marker_guid";
+
+    private MarkerHudRenderer() {} // 私有构造函数
+
+    public static void setDistanceThresholds(double closest, double near, double far) {
+        closestDistanceThreshold = closest;
+        nearDistanceThreshold = Math.max(closest, near);
+        farDistanceThreshold = Math.max(nearDistanceThreshold, far);
     }
 
+    public static double getClosestDistanceThreshold() { return closestDistanceThreshold; }
     public static double getNearDistanceThreshold() { return nearDistanceThreshold; }
     public static double getFarDistanceThreshold() { return farDistanceThreshold; }
 
-    public enum DistanceTier {
-        NEAR(0.0f),    // 近距离：完全展开
-        MEDIUM(1.0f),  // 中距离：部分收缩
-        FAR(2.0f);     // 远距离：极简折叠
-
-        private final float targetValue;
-
-        DistanceTier(float targetValue) {
-            this.targetValue = targetValue;
-        }
-
-        public float getTargetValue() { return targetValue; }
-
-        public static DistanceTier getTierForDistance(double distance) {
-            if (distance < nearDistanceThreshold) return NEAR;
-            if (distance < farDistanceThreshold) return MEDIUM;
-            return FAR;
-        }
+    private static float[] insetFromEdge(float x, float y, float cx, float cy, float inset) {
+        float dx = x - cx;
+        float dy = y - cy;
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
+        if (len < 1.0e-6f) return new float[]{x, y};
+        return new float[]{x - (dx / len) * inset, y - (dy / len) * inset};
     }
 
-    private static class MarkerVisualState {
-        float x;
-        float y;
-        float angle;
-        boolean offscreenStable;
-        long switchTs;
-        float transitionProgress;
-        float distanceTier; // 当前距离形态插值 (0.0~2.0)
-        boolean initialized;
+    private static float lerp(float from, float to, float t) {
+        return from + (to - from) * t;
     }
 
-    @SubscribeEvent
-    public void onRenderHud(RenderGuiOverlayEvent.Post event) {
-        if (event.getOverlay() != VanillaGuiOverlay.CROSSHAIR.type()) return;
+    private static double lerp(double from, double to, float t) {
+        return from + (to - from) * t;
+    }
 
+    private static float lerpAngle(float from, float to, float t) {
+        float diff = normalizeAngle(to - from);
+        return from + diff * t;
+    }
+
+    private static float normalizeAngle(float a) {
+        while (a > Math.PI) a -= (float) (Math.PI * 2.0);
+        while (a < -Math.PI) a += (float) (Math.PI * 2.0);
+        return a;
+    }
+
+    private static int withAlpha(int rgb, int alpha) {
+        int a = Math.max(0, Math.min(255, alpha));
+        return (a << 24) | (rgb & 0x00FFFFFF);
+    }
+
+    private static int normalizeColor(int argb) {
+        int alpha = (argb >>> 24) & 0xFF;
+        return alpha == 0 ? 0xFFFFFFFF : argb;
+    }
+
+    @Override
+    public void render(ForgeGui forgeGui, GuiGraphics gui, float partialTick, int sw, int sh) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         if (mc.options.hideGui) return;
 
-        GuiGraphics gui = event.getGuiGraphics();
         Player player = mc.player;
         Font font = mc.font;
+        Camera camera = mc.gameRenderer.getMainCamera();
 
-        double px = player.getX();
-        double py = player.getEyeY();
-        double pz = player.getZ();
+        double px = lerp(player.xo, player.getX(), partialTick);
+        double py = lerp(player.yo, player.getY(), partialTick) + player.getEyeHeight();
+        double pz = lerp(player.zo, player.getZ(), partialTick);
+
+        Vec3 camPos = camera.getPosition();
+        boolean isFirstPerson = mc.options.getCameraType().isFirstPerson();
 
         long now = System.currentTimeMillis();
         float dt = (now - lastTimeMs) / 1000.0f;
@@ -101,26 +114,84 @@ public class MarkerHudRenderer {
         lastTimeMs = now;
         float time = now / 1000.0f;
 
-        int sw = mc.getWindow().getGuiScaledWidth();
-        int sh = mc.getWindow().getGuiScaledHeight();
         float cx = sw * 0.5f;
         float cy = sh * 0.5f;
 
         stateMap.keySet().removeIf(id -> !QuestMarkerManager.INSTANCE.has(id));
         String currentDim = player.level().dimension().location().toString();
 
+        List<String> staleMarkerIds = new ArrayList<>();
+        AABB playerOcclusionBox = player.getBoundingBox().inflate(0.15);
+
         for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all()) {
             if (!marker.isActive()) continue;
             if (!currentDim.equals(marker.getDimension())) continue;
+            if (marker.hasEntityBinding() && !marker.hasEntityGuidBinding() && !marker.hasEntityUuidBinding()) {
+                staleMarkerIds.add(marker.getId());
+                continue;
+            }
+            double targetX = marker.getWorldX();
+            double targetY = marker.getWorldY();
+            double targetZ = marker.getWorldZ();
+            if (marker.hasEntityBinding()) {
+                Entity entity = null;
+                if (marker.getFollowEntityId() >= 0) {
+                    Entity fast = mc.level.getEntity(marker.getFollowEntityId());
+                    if (matchesBinding(marker, fast)) {
+                        entity = fast;
+                    }
+                }
+
+                if (entity == null && marker.hasEntityGuidBinding()) {
+                    Entity byGuid = findEntityByGuid(mc.level, marker.getFollowEntityGuid());
+                    if (matchesBinding(marker, byGuid)) {
+                        entity = byGuid;
+                    }
+                }
+
+                if (entity == null && marker.hasEntityUuidBinding()) {
+                    Entity byUuid = findEntityByUuid(mc.level, marker.getFollowEntityUuid());
+                    if (matchesBinding(marker, byUuid)) {
+                        entity = byUuid;
+                    }
+                }
+
+                if (entity == null) {
+                    staleMarkerIds.add(marker.getId());
+                    continue;
+                }
+
+                targetX = lerp(entity.xo, entity.getX(), partialTick);
+                targetZ = lerp(entity.zo, entity.getZ(), partialTick);
+                double lerpedY = lerp(entity.yo, entity.getY(), partialTick);
+
+                targetY = lerpedY + (marker.getAttachPoint() == QuestMarkerData.EntityAttachPoint.HEAD
+                        ? entity.getEyeHeight() + entity.getBbHeight() * 0.7
+                        : entity.getBbHeight() * 0.5);
+            }
 
             MarkerProjection.ScreenResult proj = MarkerProjection.project(
-                    marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), EDGE_PADDING);
+                    targetX, targetY, targetZ, EDGE_PADDING);
 
-            double dist = marker.distanceTo(px, py, pz);
+            double dxDist = targetX - px;
+            double dyDist = targetY - py;
+            double dzDist = targetZ - pz;
+            double dist = Math.sqrt(dxDist * dxDist + dyDist * dyDist + dzDist * dzDist);
+
             MarkerVisualState st = stateMap.computeIfAbsent(marker.getId(), k -> new MarkerVisualState());
 
-            // 计算该目标的理想形态目标值
             float targetTier = DistanceTier.getTierForDistance(dist).getTargetValue();
+
+            boolean isOccluded = false;
+            if (!isFirstPerson && proj.onScreen) {
+                Vec3 markerPos = new Vec3(targetX, targetY, targetZ);
+                Optional<Vec3> hit = playerOcclusionBox.clip(camPos, markerPos);
+                if (hit.isPresent()) {
+                    isOccluded = true;
+                }
+            }
+
+            float targetOcclusionAlpha = isOccluded ? 0.15f : 1.0f;
 
             if (!st.initialized) {
                 st.x = proj.x;
@@ -129,6 +200,7 @@ public class MarkerHudRenderer {
                 st.offscreenStable = !proj.onScreen;
                 st.transitionProgress = st.offscreenStable ? 1.0f : 0.0f;
                 st.distanceTier = targetTier;
+                st.occlusionAlpha = targetOcclusionAlpha;
                 st.switchTs = now;
                 st.initialized = true;
             } else {
@@ -149,25 +221,54 @@ public class MarkerHudRenderer {
                     st.transitionProgress = Math.max(0.0f, st.transitionProgress - dt * ANIMATION_SPEED);
                 }
 
-                // 【核心修改】计算多形态快速折叠插值，引入 Math.min 防止低帧率时越界闪烁
                 float tierLerpFactor = Math.min(1.0f, dt * TIER_TRANSITION_SPEED);
                 st.distanceTier = lerp(st.distanceTier, targetTier, tierLerpFactor);
+
+                float occLerpFactor = Math.min(1.0f, dt * OCCLUSION_TRANSITION_SPEED);
+                st.occlusionAlpha = lerp(st.occlusionAlpha, targetOcclusionAlpha, occLerpFactor);
 
                 float[] anchor = insetFromEdge(proj.x, proj.y, cx, cy, OFFSCREEN_INSET);
                 float blendedTargetX = lerp(proj.x, anchor[0], st.transitionProgress);
                 float blendedTargetY = lerp(proj.y, anchor[1], st.transitionProgress);
 
-                float pSmooth = st.offscreenStable ? POSITION_SMOOTH_OFFSCREEN : POSITION_SMOOTH_ONSCREEN;
-                st.x = lerp(st.x, blendedTargetX, pSmooth);
-                st.y = lerp(st.y, blendedTargetY, pSmooth);
+                if (!st.offscreenStable && st.transitionProgress <= 0.01f) {
+                    st.x = proj.x;
+                    st.y = proj.y;
+                } else {
+                    float pSmooth = st.offscreenStable ? POSITION_SMOOTH_OFFSCREEN : POSITION_SMOOTH_ONSCREEN;
+                    st.x = lerp(st.x, blendedTargetX, pSmooth);
+                    st.y = lerp(st.y, blendedTargetY, pSmooth);
+                }
 
-                float targetAngle = st.offscreenStable ? snapAngleToSectors(normalizeAngle(proj.edgeAngle), OFFSCREEN_ANGLE_SECTORS) : 0f;
+                if (st.offscreenStable) {
+                    for (MarkerVisualState other : stateMap.values()) {
+                        if (other != st && other.offscreenStable && other.transitionProgress > 0.5f) {
+                            float dx = st.x - other.x;
+                            float dy = st.y - other.y;
+                            float distSqr = dx * dx + dy * dy;
+                            float minSpace = 32f;
+
+                            if (distSqr < minSpace * minSpace) {
+                                if (distSqr < 0.001f) {
+                                    dx = (float) Math.random() - 0.5f;
+                                    dy = (float) Math.random() - 0.5f;
+                                    distSqr = dx * dx + dy * dy;
+                                }
+                                float pDist = (float) Math.sqrt(distSqr);
+                                float push = (minSpace - pDist) * 0.15f;
+                                st.x += (dx / pDist) * push;
+                                st.y += (dy / pDist) * push;
+                            }
+                        }
+                    }
+                }
+
+                float targetAngle = st.offscreenStable ? normalizeAngle(proj.edgeAngle) : 0f;
                 st.angle = lerpAngle(st.angle, targetAngle, dt * 15f);
             }
 
             int color = normalizeColor(marker.getColorARGB());
 
-            // 保留你的原始光源配置
             float baseLightX = 0.15f;
             float baseLightY = -1.0f;
             float deflectX = (cx - st.x) / cx * 0.35f;
@@ -175,42 +276,74 @@ public class MarkerHudRenderer {
 
             float lx = baseLightX + deflectX;
             float ly = baseLightY + deflectY;
-            float lightLen = (float)Math.sqrt(lx * lx + ly * ly);
+            float lightLen = (float) Math.sqrt(lx * lx + ly * ly);
             lx = lightLen > 0 ? lx / lightLen : 0;
             ly = lightLen > 0 ? ly / lightLen : -1;
 
             if (st.transitionProgress < 0.99f) {
-                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier);
+                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha);
             }
             if (st.transitionProgress > 0.01f && marker.isAllowOffscreenArrow()) {
                 renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier);
             }
         }
+
+        if (!staleMarkerIds.isEmpty()) {
+            for (String id : staleMarkerIds) {
+                QuestMarkerManager.INSTANCE.remove(id);
+                stateMap.remove(id);
+            }
+        }
     }
 
-    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier) {
+    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha) {
         float alphaFade = 1.0f - progress;
         int originalAlpha = (color >> 24) & 0xFF;
-        int currentAlpha = (int) (originalAlpha * alphaFade);
+        int currentAlpha = (int) (originalAlpha * alphaFade * occlusionAlpha);
+
         if (currentAlpha <= 5) return;
+
         int accentColor = withAlpha(color, currentAlpha);
 
         gui.pose().pushPose();
         gui.pose().translate(x, y, 0);
 
+        float perspectiveScale = 1.0f;
+        if (dist > closestDistanceThreshold) {
+            float perspectiveFactor = 10.0f / (float) (dist + 10.0 - closestDistanceThreshold);
+            perspectiveScale = Math.max(0.6f, perspectiveFactor * 0.9F);
+        }
+
+        float finalScale;
+        if (tier <= 1.0f) {
+            finalScale = lerp(perspectiveScale, 0.7f, tier);
+        } else {
+            finalScale = lerp(0.8f, 1.0f, tier - 1.0f);
+        }
+
+        gui.pose().pushPose();
         float ease = progress * progress;
-        float scaleX = 1.0f - ease;
-        float scaleY = 1.0f + ease * 0.8f;
+        float scaleX = (1.0f - ease) * finalScale;
+        float scaleY = (1.0f + ease * 0.8f) * finalScale;
         gui.pose().scale(scaleX, scaleY, 1.0f);
 
         float breath = (float) (Math.sin(time * 3.5f) * 0.5 + 0.5);
         MarkerRhombusRenderer.draw(gui, accentColor, breath, lightX, lightY, tier);
 
+        gui.pose().popPose();
+
         String name = marker.getLabel();
-        drawTextWithBlackOutline(gui, font, name, -font.width(name) / 2, -18, accentColor, currentAlpha);
+
+        float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4f, tier - 1.0f);
+        float scaledRadius = baseRadius * finalScale;
+
+        int nameOffsetY = (int) (-scaledRadius - font.lineHeight);
+        int distOffsetY = (int) (scaledRadius + 2);
+
+        drawTextWithBlackOutline(gui, font, name, -font.width(name) / 2, nameOffsetY, accentColor, currentAlpha);
         if (marker.isShowDistance()) {
             String distText = String.format("%.0fm", dist);
-            drawTextWithBlackOutline(gui, font, distText, -font.width(distText) / 2, 12, accentColor, currentAlpha);
+            drawTextWithBlackOutline(gui, font, distText, -font.width(distText) / 2, distOffsetY, accentColor, currentAlpha);
         }
 
         gui.pose().popPose();
@@ -231,12 +364,12 @@ public class MarkerHudRenderer {
         float scaleY = 1.0f + (1.0f - ease) * 0.8f;
         gui.pose().scale(scaleX, scaleY, 1.0f);
 
-        float rotRad = angle + (float)Math.PI / 2f;
+        float rotRad = angle + (float) Math.PI / 2f;
         float rotDeg = (float) Math.toDegrees(rotRad);
         gui.pose().mulPose(Axis.ZP.rotationDegrees(rotDeg));
 
-        float cosA = (float)Math.cos(-rotRad);
-        float sinA = (float)Math.sin(-rotRad);
+        float cosA = (float) Math.cos(-rotRad);
+        float sinA = (float) Math.sin(-rotRad);
         float localLightX = lightX * cosA - lightY * sinA;
         float localLightY = lightX * sinA + lightY * cosA;
 
@@ -266,41 +399,81 @@ public class MarkerHudRenderer {
         gui.drawString(font, text, x, y, mainColor, false);
     }
 
-    private static float[] insetFromEdge(float x, float y, float cx, float cy, float inset) {
-        float dx = x - cx;
-        float dy = y - cy;
-        float len = (float) Math.sqrt(dx * dx + dy * dy);
-        if (len < 1.0e-6f) return new float[]{x, y};
-        return new float[]{x - (dx / len) * inset, y - (dy / len) * inset};
+    private static String getEntityMarkerGuid(Entity entity) {
+        if (entity == null) return "";
+        return entity.getPersistentData().getString(ENTITY_MARKER_GUID_KEY);
+    }
+    private static Entity findEntityByUuid(ClientLevel level, String uuidString) {
+        if (uuidString == null || uuidString.isEmpty()) return null;
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(uuidString);
+        } catch (Exception ignored) {
+            return null;
+        }
+        for (Entity e : level.entitiesForRendering()) {
+            if (uuid.equals(e.getUUID())) return e;
+        }
+        return null;
+    }
+    private static Entity findEntityByGuid(ClientLevel level, String guid) {
+        if (guid == null || guid.isEmpty()) return null;
+        for (Entity e : level.entitiesForRendering()) {
+            if (guid.equals(getEntityMarkerGuid(e))) return e;
+        }
+        return null;
+    }
+    private static boolean matchesBinding(QuestMarkerData marker, Entity entity) {
+        if (entity == null || !entity.isAlive()) return false;
+
+        boolean hasStableKey = marker.hasEntityGuidBinding() || marker.hasEntityUuidBinding();
+        if (!hasStableKey) return false;
+
+        if (marker.hasEntityGuidBinding()) {
+            String g = getEntityMarkerGuid(entity);
+            if (!marker.getFollowEntityGuid().equals(g)) return false;
+        }
+
+        if (marker.hasEntityUuidBinding()) {
+            if (!marker.getFollowEntityUuid().equals(entity.getUUID().toString())) return false;
+        }
+
+        return true;
     }
 
-    private static float lerp(float from, float to, float t) {
-        return from + (to - from) * t;
+    public enum DistanceTier {
+        CLOSEST(2.0f),
+        NEAR(0.0f),
+        MEDIUM(1.0f),
+        FAR(2.0f);
+
+        private final float targetValue;
+
+        DistanceTier(float targetValue) {
+            this.targetValue = targetValue;
+        }
+
+        public static DistanceTier getTierForDistance(double distance) {
+            if (distance <= closestDistanceThreshold) return CLOSEST;
+            if (distance < nearDistanceThreshold) return NEAR;
+            if (distance < farDistanceThreshold) return MEDIUM;
+            return FAR;
+        }
+
+        public float getTargetValue() {
+            return targetValue;
+        }
     }
 
-    private static float lerpAngle(float from, float to, float t) {
-        float diff = normalizeAngle(to - from);
-        return from + diff * t;
-    }
-
-    private static float normalizeAngle(float a) {
-        while (a > Math.PI) a -= (float) (Math.PI * 2.0);
-        while (a < -Math.PI) a += (float) (Math.PI * 2.0);
-        return a;
-    }
-
-    private static float snapAngleToSectors(float angle, int sectors) {
-        float step = (float) (Math.PI * 2.0 / sectors);
-        return Math.round(angle / step) * step;
-    }
-
-    private static int withAlpha(int rgb, int alpha) {
-        int a = Math.max(0, Math.min(255, alpha));
-        return (a << 24) | (rgb & 0x00FFFFFF);
-    }
-
-    private static int normalizeColor(int argb) {
-        int alpha = (argb >>> 24) & 0xFF;
-        return alpha == 0 ? 0xFFFFFFFF : argb;
+    private static class MarkerVisualState {
+        float x;
+        float y;
+        float angle;
+        boolean offscreenStable;
+        long switchTs;
+        float transitionProgress;
+        float distanceTier;
+        float occlusionAlpha = 1.0f;
+        boolean initialized;
     }
 }

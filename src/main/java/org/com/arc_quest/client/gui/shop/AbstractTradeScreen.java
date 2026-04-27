@@ -1,5 +1,6 @@
 package org.com.arc_quest.client.gui.shop;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -23,7 +24,6 @@ import org.com.arc_quest.trade.network.S2COpenTradePacket;
 import org.com.arc_quest.trade.offer.ItemTradeOffer;
 import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
-import com.mojang.blaze3d.systems.RenderSystem;
 
 public abstract class AbstractTradeScreen extends Screen {
 

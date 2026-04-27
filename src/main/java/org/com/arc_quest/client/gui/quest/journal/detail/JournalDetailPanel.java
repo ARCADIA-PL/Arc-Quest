@@ -8,11 +8,7 @@ import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.quest.journal.JournalTypes;
 import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 import org.com.arc_quest.client.gui.render.QuestIconRenderer;
-import org.com.arc_quest.quest.api.IconPosition;
-import org.com.arc_quest.quest.api.PhaseDefinition;
-import org.com.arc_quest.quest.api.QuestDefinition;
-import org.com.arc_quest.quest.api.QuestState;
-import org.com.arc_quest.quest.api.SplashType;
+import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 

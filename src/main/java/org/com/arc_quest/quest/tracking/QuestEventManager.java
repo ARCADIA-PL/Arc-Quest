@@ -21,14 +21,7 @@ import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 桥接层：Forge 游戏事件 → ObjectiveTracker O(1) 查找 → QuestProgressHandler 进度推进。

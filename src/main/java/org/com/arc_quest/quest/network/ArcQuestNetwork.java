@@ -12,12 +12,7 @@ import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.questmarker.api.QuestMarkerData;
-import org.com.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
-import org.com.arc_quest.trade.gacha.network.C2SDrawGachaPacket;
-import org.com.arc_quest.trade.gacha.network.C2SGachaControlPacket;
-import org.com.arc_quest.trade.gacha.network.S2CDrawFailedPacket;
-import org.com.arc_quest.trade.gacha.network.S2CDrawResultPacket;
-import org.com.arc_quest.trade.gacha.network.S2CGachaStatePacket;
+import org.com.arc_quest.trade.gacha.network.*;
 import org.com.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.C2SRequestTradeSyncPacket;
@@ -376,6 +371,10 @@ public final class ArcQuestNetwork {
                 m.getQuestId(),
                 m.getPhaseId(),
                 m.getObjectiveIndex(),
+                m.getFollowEntityId(),
+                m.getFollowEntityUuid(),
+                m.getFollowEntityGuid(),
+                m.getAttachPoint().name(),
                 m.getColorARGB(),
                 m.getState().name(),
                 m.isShowDistance(),

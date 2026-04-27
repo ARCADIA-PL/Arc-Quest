@@ -4,15 +4,11 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.gui.HudAnimUtil;
-import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeEntry;
-import org.com.arc_quest.trade.network.C2SRequestTradePacket;
 import org.com.arc_quest.trade.network.ClientTradeCache;
-import org.com.arc_quest.trade.network.S2COpenTradePacket;
 
 import java.util.List;
 
