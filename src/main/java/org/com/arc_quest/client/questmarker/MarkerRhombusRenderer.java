@@ -5,12 +5,13 @@ import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
+import org.com.arc_quest.questmarker.api.QuestMarkerState;
 
 public final class MarkerRhombusRenderer {
 
     private MarkerRhombusRenderer() {}
 
-    public static void draw(GuiGraphics gui, int accentColor, float breath, float lightX, float lightY, float tier) {
+    public static void draw(GuiGraphics gui, int accentColor, float time, QuestMarkerState state, float lightX, float lightY, float tier) {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
@@ -23,95 +24,108 @@ public final class MarkerRhombusRenderer {
 
         int baseAlpha = (accentColor >> 24) & 0xFF;
 
-        float phase1 = Math.max(0f, Math.min(1f, tier));        // 0.0 -> 1.0 (近 -> 中)
-        float phase2 = Math.max(0f, Math.min(1f, tier - 1f));   // 1.0 -> 2.0 (中 -> 远)
+        float phase1 = Math.max(0f, Math.min(1f, tier));
+        float phase2 = Math.max(0f, Math.min(1f, tier - 1f));
 
-        // 1. 尺寸：近距 10 -> 中距 5 -> 远距 3.5 (不再拉长，而是变成一个小巧的指示点)
+        // --- 核心动画逻辑计算 ---
+        boolean isTracking = (state == QuestMarkerState.ACTIVE);
+        boolean isStandby = (state == QuestMarkerState.AVAILABLE);
+        boolean isDead = !isTracking && !isStandby;
+
+        // 【修复 1】如果是死目标 (锁定/完成等)，褪去色彩变成机甲灰色
+        if (isDead) {
+            accentColor = (baseAlpha << 24) | 0x888888;
+        }
+
+        // 【修复 2】恢复全要素呼吸缩放
+        float breathSpeed = isTracking ? 5.0f : 2.0f;
+        float breathAmp = isTracking ? 0.15f : 0.04f;
+        float breathScale = isDead ? 1.0f : (1.0f + breathAmp * (float)Math.sin(time * breathSpeed));
+
+        // 【修复 3】真正的高光区域流转：生成虚拟旋转光照向量并混合环境偏转光
+        float flowSpeed = isTracking ? 4.0f : 1.5f;
+        float flowLx = isDead ? lightX : (float)Math.cos(time * flowSpeed);
+        float flowLy = isDead ? lightY : (float)Math.sin(time * flowSpeed);
+
+        float mixLx = lightX * 0.35f + flowLx * 0.65f;
+        float mixLy = lightY * 0.35f + flowLy * 0.65f;
+
+        // --- 几何与形变推导 ---
         float outSize = lerp(lerp(10f, 5f, phase1), 3.5f, phase2);
-        // 内部镂空：远距时压到 0，合拢成一个实心的小菱形
         float inSize  = lerp(lerp(7f,  3f, phase1), 0.0f, phase2);
-        // 装甲撕裂：炸开后，远距重新合拢
         float gap = lerp(lerp(0f, 3.5f, phase1), 0.0f, phase2);
 
-        // 【废弃巨丑拉伸】：保持 1.0，绝不扭曲你原本的形状比例
-        float scaleX = 1.0f;
-        float scaleY = 1.0f;
+        // 全局乘上呼吸系数，让它明显涨缩
+        float finalScaleX = breathScale;
+        float finalScaleY = breathScale;
 
-        // 【核心新增】：光照混合度。近/中距离=100%光照，远距平滑衰减到0(失去光照变成纯净色块)
         float lightBlend = 1.0f - phase2;
-
         float globalAlpha = lerp(lerp(1.0f, 0.8f, phase1), 0.75f, phase2);
 
-        // 内部玻璃和灰框在中/远距离淡出
         float glassAlphaMod = Math.max(0f, 1.0f - phase1 * 1.5f);
         float rimAlphaMod   = Math.max(0f, 1.0f - phase1 * 2.0f);
 
-        // 0. 边缘机能描边
         if (rimAlphaMod > 0.05f) {
             int rimA = (int)(baseAlpha * 0.35f * rimAlphaMod);
             int rimColor = (rimA << 24) | 0x888888;
             float rimOut = outSize + 1f;
             float rimIn = outSize;
 
-            addSolid(builder, matrix,  0, -rimOut, gap, -gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix,  0, -rimIn,  gap, -gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix, rimIn,   0,  gap, -gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix, rimOut,  0,  gap, -gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix, rimOut,  0,  gap, gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix, rimIn,   0,  gap, gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix,  0,  rimIn,  gap, gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix,  0, rimOut,  gap, gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix,   0, rimOut, -gap, gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix,   0,  rimIn, -gap, gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix, -rimIn,   0, -gap, gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix, -rimOut,  0, -gap, gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix, -rimOut,  0, -gap, -gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix, -rimIn,   0, -gap, -gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix,   0, -rimIn, -gap, -gap, scaleX, scaleY, rimColor);
-            addSolid(builder, matrix,   0,-rimOut, -gap, -gap, scaleX, scaleY, rimColor);
+            addSolid(builder, matrix,  0, -rimOut, gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix,  0, -rimIn,  gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, rimIn,   0,  gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, rimOut,  0,  gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, rimOut,  0,  gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, rimIn,   0,  gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix,  0,  rimIn,  gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix,  0, rimOut,  gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix,   0, rimOut, -gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix,   0,  rimIn, -gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, -rimIn,   0, -gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, -rimOut,  0, -gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, -rimOut,  0, -gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, -rimIn,   0, -gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix,   0, -rimIn, -gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix,   0,-rimOut, -gap, -gap, finalScaleX, finalScaleY, rimColor);
         }
 
-        // 1. 全息玻璃内舱
         if (glassAlphaMod > 0.05f && inSize > 0) {
-            addDyn(builder, matrix,  0, -inSize, 0, 0, scaleX, scaleY, lightX, lightY, accentColor, 0.2f * glassAlphaMod, lightBlend);
-            addDyn(builder, matrix, -inSize,  0, 0, 0, scaleX, scaleY, lightX, lightY, accentColor, 0.2f * glassAlphaMod, lightBlend);
-            addDyn(builder, matrix,  0,  inSize, 0, 0, scaleX, scaleY, lightX, lightY, accentColor, 0.2f * glassAlphaMod, lightBlend);
-            addDyn(builder, matrix,  inSize,  0, 0, 0, scaleX, scaleY, lightX, lightY, accentColor, 0.2f * glassAlphaMod, lightBlend);
+            addDyn(builder, matrix,  0, -inSize, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, 0.2f * glassAlphaMod, lightBlend);
+            addDyn(builder, matrix, -inSize,  0, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, 0.2f * glassAlphaMod, lightBlend);
+            addDyn(builder, matrix,  0,  inSize, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, 0.2f * glassAlphaMod, lightBlend);
+            addDyn(builder, matrix,  inSize,  0, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, 0.2f * glassAlphaMod, lightBlend);
         }
 
-        // 2. 外部主发光装甲带
-        int glow = accentColor;
-        addDyn(builder, matrix,  0, -outSize, gap, -gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix,  0,  -inSize, gap, -gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix,  inSize,   0, gap, -gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix, outSize,   0, gap, -gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
+        addDyn(builder, matrix,  0, -outSize, gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix,  0,  -inSize, gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix,  inSize,   0, gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix, outSize,   0, gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
 
-        addDyn(builder, matrix, outSize,  0, gap, gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix,  inSize,  0, gap, gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix,  0,  inSize, gap, gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix,  0, outSize, gap, gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
+        addDyn(builder, matrix, outSize,  0, gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix,  inSize,  0, gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix,  0,  inSize, gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix,  0, outSize, gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
 
-        addDyn(builder, matrix,   0, outSize, -gap, gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix,   0,  inSize, -gap, gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix, -inSize,   0, -gap, gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix, -outSize,  0, -gap, gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
+        addDyn(builder, matrix,   0, outSize, -gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix,   0,  inSize, -gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix, -inSize,   0, -gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix, -outSize,  0, -gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
 
-        addDyn(builder, matrix, -outSize,   0, -gap, -gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix, -inSize,    0, -gap, -gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix,   0,  -inSize, -gap, -gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
-        addDyn(builder, matrix,   0, -outSize, -gap, -gap, scaleX, scaleY, lightX, lightY, glow, globalAlpha, lightBlend);
+        addDyn(builder, matrix, -outSize,   0, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix, -inSize,    0, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix,   0,  -inSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
+        addDyn(builder, matrix,   0, -outSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, accentColor, globalAlpha, lightBlend);
 
-        // 3. 中央量子呼吸核心
         float coreSize = lerp(lerp(2.0f, 1.5f, phase1), 1.2f, phase2);
         float coreBaseA = lerp(lerp(1.0f, 0.7f, phase1), 0.9f, phase2);
-        int coreA = (int) (baseAlpha * coreBaseA * (0.4f + 0.6f * breath));
-        int coreColor = (coreA << 24) | 0xFFFFFF;
+        float coreAlphaPulse = (float) (Math.sin(time * 3.5f) * 0.5 + 0.5);
+        int coreA = (int) (baseAlpha * coreBaseA * (isDead ? 0.4f : (0.4f + 0.6f * coreAlphaPulse)));
+        int coreColor = (coreA << 24) | (isDead ? 0x999999 : 0xFFFFFF);
 
-        // 远距离时核心稍微缩小，融入实心菱形中
-        addSolid(builder, matrix,  0, -coreSize, 0, 0, scaleX, scaleY, coreColor);
-        addSolid(builder, matrix, -coreSize,  0, 0, 0, scaleX, scaleY, coreColor);
-        addSolid(builder, matrix,  0,  coreSize, 0, 0, scaleX, scaleY, coreColor);
-        addSolid(builder, matrix,  coreSize,  0, 0, 0, scaleX, scaleY, coreColor);
+        addSolid(builder, matrix,  0, -coreSize, 0, 0, finalScaleX, finalScaleY, coreColor);
+        addSolid(builder, matrix, -coreSize,  0, 0, 0, finalScaleX, finalScaleY, coreColor);
+        addSolid(builder, matrix,  0,  coreSize, 0, 0, finalScaleX, finalScaleY, coreColor);
+        addSolid(builder, matrix,  coreSize,  0, 0, 0, finalScaleX, finalScaleY, coreColor);
 
         BufferUploader.drawWithShader(builder.end());
     }
@@ -120,7 +134,6 @@ public final class MarkerRhombusRenderer {
         return a + (b - a) * t;
     }
 
-    // 新增传入 lightBlend
     private static void addDyn(BufferBuilder b, Matrix4f m, float baseX, float baseY, float gapX, float gapY, float scaleX, float scaleY, float lx, float ly, int color, float alphaMod, float lightBlend) {
         float finalX = (baseX + gapX) * scaleX;
         float finalY = (baseY + gapY) * scaleY;
@@ -134,7 +147,6 @@ public final class MarkerRhombusRenderer {
         b.vertex(m, finalX, finalY, 0).color(argb).endVertex();
     }
 
-    // 利用 lightBlend 控制阴影和高光的衰减
     private static int calcColor(float vx, float vy, float lx, float ly, int baseColor, float alphaMul, float lightBlend) {
         int baseA = (int) (((baseColor >> 24) & 0xFF) * alphaMul);
         int r = (baseColor >> 16) & 0xFF;
@@ -149,15 +161,14 @@ public final class MarkerRhombusRenderer {
         int outR = r, outG = g, outB = b;
         int outA = baseA;
 
+        // 面向高光光源时，产生光效流转提亮
         if (dot > 0.1f) {
-            // 光照受 lightBlend 限制，远距离归 0
             float glow = ((dot - 0.1f) / 0.9f) * lightBlend;
             outR = (int)(r + (255 - r) * glow);
             outG = (int)(g + (255 - g) * glow);
             outB = (int)(b + (255 - b) * glow);
             outA = (int)Math.min(255, baseA + (255 - baseA) * (glow * 0.4f));
         } else if (dot < -0.1f) {
-            // 阴影受 lightBlend 限制，远距离归 0
             float shadow = ((-dot - 0.1f) / 0.9f) * lightBlend;
             outA = (int)(baseA * (1.0f - shadow * 0.8f));
         }

@@ -26,6 +26,6 @@ public enum QuestMarkerState {
     }
 
     public boolean isRenderable() {
-        return this == AVAILABLE || this == ACTIVE;
+        return this != DISABLED;
     }
 }
