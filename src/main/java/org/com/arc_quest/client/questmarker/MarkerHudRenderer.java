@@ -13,6 +13,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.com.arc_quest.questmarker.api.QuestMarkerData;
+import org.com.arc_quest.questmarker.api.QuestMarkerState;
 
 import java.util.*;
 
@@ -38,11 +39,13 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private static double farDistanceThreshold = 50.0;
 
     private final Map<String, MarkerVisualState> stateMap = new HashMap<>();
-    private long lastTimeMs = System.currentTimeMillis();
+
+    private long lastTimeNs = System.nanoTime();
+    private double internalTime = 0.0;
 
     private static final String ENTITY_MARKER_GUID_KEY = "arc_quest.marker_guid";
 
-    private MarkerHudRenderer() {} // 私有构造函数
+    private MarkerHudRenderer() {}
 
     public static void setDistanceThresholds(double closest, double near, double far) {
         closestDistanceThreshold = closest;
@@ -109,10 +112,16 @@ public class MarkerHudRenderer implements IGuiOverlay {
         boolean isFirstPerson = mc.options.getCameraType().isFirstPerson();
 
         long now = System.currentTimeMillis();
-        float dt = (now - lastTimeMs) / 1000.0f;
+
+        long nowNs = System.nanoTime();
+        float dt = (nowNs - lastTimeNs) / 1_000_000_000.0f;
         if (dt > 0.1f) dt = 0.1f;
-        lastTimeMs = now;
-        float time = now / 1000.0f;
+        if (dt < 0.0f) dt = 0.0f;
+        lastTimeNs = nowNs;
+
+        internalTime += dt;
+        if (internalTime >= 3600.0) internalTime -= 3600.0;
+        float time = (float) internalTime;
 
         float cx = sw * 0.5f;
         float cy = sh * 0.5f;
@@ -124,8 +133,13 @@ public class MarkerHudRenderer implements IGuiOverlay {
         AABB playerOcclusionBox = player.getBoundingBox().inflate(0.15);
 
         for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all()) {
+            QuestMarkerState currentState = marker.getState();
+            if (currentState != null && !currentState.isRenderable()) continue;
             if (!marker.isActive()) continue;
             if (!currentDim.equals(marker.getDimension())) continue;
+
+            if (currentState == null) currentState = QuestMarkerState.ACTIVE;
+
             if (marker.hasEntityBinding() && !marker.hasEntityGuidBinding() && !marker.hasEntityUuidBinding()) {
                 staleMarkerIds.add(marker.getId());
                 continue;
@@ -281,10 +295,10 @@ public class MarkerHudRenderer implements IGuiOverlay {
             ly = lightLen > 0 ? ly / lightLen : -1;
 
             if (st.transitionProgress < 0.99f) {
-                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha);
+                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha, currentState);
             }
             if (st.transitionProgress > 0.01f && marker.isAllowOffscreenArrow()) {
-                renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier);
+                renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.angle, st.transitionProgress, lx, ly, st.distanceTier, currentState);
             }
         }
 
@@ -296,13 +310,12 @@ public class MarkerHudRenderer implements IGuiOverlay {
         }
     }
 
-    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha) {
+    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha, QuestMarkerState state) {
         float alphaFade = 1.0f - progress;
         int originalAlpha = (color >> 24) & 0xFF;
         int currentAlpha = (int) (originalAlpha * alphaFade * occlusionAlpha);
 
         if (currentAlpha <= 5) return;
-
         int accentColor = withAlpha(color, currentAlpha);
 
         gui.pose().pushPose();
@@ -327,16 +340,13 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float scaleY = (1.0f + ease * 0.8f) * finalScale;
         gui.pose().scale(scaleX, scaleY, 1.0f);
 
-        float breath = (float) (Math.sin(time * 3.5f) * 0.5 + 0.5);
-        MarkerRhombusRenderer.draw(gui, accentColor, breath, lightX, lightY, tier);
+        MarkerRhombusRenderer.draw(gui, accentColor, time, state, lightX, lightY, tier);
 
         gui.pose().popPose();
 
         String name = marker.getLabel();
-
         float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4f, tier - 1.0f);
         float scaledRadius = baseRadius * finalScale;
-
         int nameOffsetY = (int) (-scaledRadius - font.lineHeight);
         int distOffsetY = (int) (scaledRadius + 2);
 
@@ -349,7 +359,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
         gui.pose().popPose();
     }
 
-    private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY, float tier) {
+    private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float angle, float progress, float lightX, float lightY, float tier, QuestMarkerState state) {
         int originalAlpha = (color >> 24) & 0xFF;
         int currentAlpha = (int) (originalAlpha * progress);
         if (currentAlpha <= 5) return;
@@ -373,7 +383,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float localLightX = lightX * cosA - lightY * sinA;
         float localLightY = lightX * sinA + lightY * cosA;
 
-        MarkerPointerRenderer.draw(gui, accentColor, localLightX, localLightY, tier);
+        MarkerPointerRenderer.draw(gui, accentColor, time, state, localLightX, localLightY, tier);
         gui.pose().popPose();
 
         String distText = String.format("%.0fm", dist);
@@ -406,11 +416,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private static Entity findEntityByUuid(ClientLevel level, String uuidString) {
         if (uuidString == null || uuidString.isEmpty()) return null;
         UUID uuid;
-        try {
-            uuid = UUID.fromString(uuidString);
-        } catch (Exception ignored) {
-            return null;
-        }
+        try { uuid = UUID.fromString(uuidString); } catch (Exception ignored) { return null; }
         for (Entity e : level.entitiesForRendering()) {
             if (uuid.equals(e.getUUID())) return e;
         }
@@ -425,7 +431,6 @@ public class MarkerHudRenderer implements IGuiOverlay {
     }
     private static boolean matchesBinding(QuestMarkerData marker, Entity entity) {
         if (entity == null || !entity.isAlive()) return false;
-
         boolean hasStableKey = marker.hasEntityGuidBinding() || marker.hasEntityUuidBinding();
         if (!hasStableKey) return false;
 
@@ -433,11 +438,9 @@ public class MarkerHudRenderer implements IGuiOverlay {
             String g = getEntityMarkerGuid(entity);
             if (!marker.getFollowEntityGuid().equals(g)) return false;
         }
-
         if (marker.hasEntityUuidBinding()) {
             if (!marker.getFollowEntityUuid().equals(entity.getUUID().toString())) return false;
         }
-
         return true;
     }
 
@@ -459,10 +462,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
             if (distance < farDistanceThreshold) return MEDIUM;
             return FAR;
         }
-
-        public float getTargetValue() {
-            return targetValue;
-        }
+        public float getTargetValue() { return targetValue; }
     }
 
     private static class MarkerVisualState {

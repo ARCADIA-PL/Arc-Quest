@@ -5,12 +5,13 @@ import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
+import org.com.arc_quest.questmarker.api.QuestMarkerState;
 
 public final class MarkerPointerRenderer {
 
     private MarkerPointerRenderer() {}
 
-    public static void draw(GuiGraphics gui, int accentColor, float lightX, float lightY, float tier) {
+    public static void draw(GuiGraphics gui, int accentColor, float time, QuestMarkerState state, float lightX, float lightY, float tier) {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
@@ -21,55 +22,63 @@ public final class MarkerPointerRenderer {
 
         builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
-        // --- UX/UI 多阶段形变映射计算 ---
-        float phase1 = Math.max(0f, Math.min(1f, tier));        // 0.0 -> 1.0 (近距离变中距离)
-        float phase2 = Math.max(0f, Math.min(1f, tier - 1f));   // 1.0 -> 2.0 (中距离变远距离)
+        int baseAlpha = (accentColor >> 24) & 0xFF;
+        float phase1 = Math.max(0f, Math.min(1f, tier));
+        float phase2 = Math.max(0f, Math.min(1f, tier - 1f));
 
-        // 头部整流罩几何收缩
-        float cTop = lerp(lerp(-12f, -8f, phase1), -5f, phase2);
-        float cBot = lerp(lerp(-9f,  -6f, phase1), -3.5f, phase2);
-        float cX   = lerp(lerp(8f,    4f, phase1),  2f, phase2);
+        boolean isTracking = (state == QuestMarkerState.ACTIVE);
+        boolean isStandby = (state == QuestMarkerState.AVAILABLE);
+        boolean isDead = !isTracking && !isStandby;
 
-        // 两侧尾翼几何收缩
+        if (isDead) {
+            accentColor = (baseAlpha << 24) | 0x888888;
+        }
+
+        float breathSpeed = isTracking ? 6.0f : 2.5f;
+        float breathAmp = isTracking ? 0.15f : 0.04f;
+        float breathScale = isDead ? 1.0f : (1.0f + breathAmp * (float)Math.sin(time * breathSpeed));
+
+        float flowSpeed = isTracking ? 4.0f : 1.5f;
+        float flowLx = isDead ? lightX : (float)Math.cos(time * flowSpeed);
+        float flowLy = isDead ? lightY : (float)Math.sin(time * flowSpeed);
+
+        float mixLx = lightX * 0.35f + flowLx * 0.65f;
+        float mixLy = lightY * 0.35f + flowLy * 0.65f;
+
+        float cTop = lerp(lerp(-12f, -8f, phase1), -5f, phase2) * breathScale;
+        float cBot = lerp(lerp(-9f,  -6f, phase1), -3.5f, phase2) * breathScale;
+        float cX   = lerp(lerp(8f,    4f, phase1),  2f, phase2) * breathScale;
+
         float wTop = cBot;
-        float wBot = lerp(lerp(0f, -2f, phase1), -1f, phase2);
-        float wOut = lerp(lerp(8f,  5f, phase1),  2.5f, phase2);
-        float wIn  = lerp(lerp(6f,  3.5f, phase1), 1.5f, phase2);
+        float wBot = lerp(lerp(0f, -2f, phase1), -1f, phase2) * breathScale;
+        float wOut = lerp(lerp(8f,  5f, phase1),  2.5f, phase2) * breathScale;
+        float wIn  = lerp(lerp(6f,  3.5f, phase1), 1.5f, phase2) * breathScale;
+        float wingGap = lerp(lerp(0f, 2.5f, phase1), 1.0f, phase2) * breathScale;
 
-        // 两翼脱离度(Gap): 中距离时护翼向两侧扯开，远距离变为极小缝隙
-        float wingGap = lerp(lerp(0f, 2.5f, phase1), 1.0f, phase2);
-
-        // 距离衰减透明度控制 (代入到了 calcColor 的最后一位参数)
         float globalAlpha = lerp(lerp(1.0f, 0.6f, phase1), 0.25f, phase2);
         float coreAlphaMod = Math.max(0f, 1.0f - phase1 * 1.5f);
 
-        // 注: 这里为了完全保留你满意的打光效果，calcColor 参数里传过去的 (-8, -6), (8, -3) 这些是原有的假法线参数，不随着变形发生改变！
+        addVertex(builder, matrix, -cX, cTop, calcColor(-8, -6, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix, -cX, cBot, calcColor(-8, -3, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix,  cX, cBot, calcColor( 8, -3, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix,  cX, cTop, calcColor( 8, -6, mixLx, mixLy, accentColor, globalAlpha));
 
-        // 1. 前置雷达撞风盖板 (保留在中央，不加 Gap)
-        addVertex(builder, matrix, -cX, cTop, calcColor(-8, -6, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix, -cX, cBot, calcColor(-8, -3, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix,  cX, cBot, calcColor( 8, -3, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix,  cX, cTop, calcColor( 8, -6, lightX, lightY, accentColor, globalAlpha));
+        addVertex(builder, matrix, -cX - wingGap,   wTop, calcColor(-8, -3, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix, -wOut - wingGap, wBot, calcColor(-8,  6, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix, -wIn - wingGap,  wBot, calcColor(-6,  6, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix, -wIn - wingGap,  wTop, calcColor(-6, -3, mixLx, mixLy, accentColor, globalAlpha));
 
-        // 2. 左翼消散流线 (X轴偏移量叠加 -wingGap，向左扯开)
-        addVertex(builder, matrix, -cX - wingGap,   wTop, calcColor(-8, -3, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix, -wOut - wingGap, wBot, calcColor(-8,  6, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix, -wIn - wingGap,  wBot, calcColor(-6,  6, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix, -wIn - wingGap,  wTop, calcColor(-6, -3, lightX, lightY, accentColor, globalAlpha));
+        addVertex(builder, matrix, wIn + wingGap,  wTop, calcColor(6, -3, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix, wIn + wingGap,  wBot, calcColor(6,  6, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix, wOut + wingGap, wBot, calcColor(8,  6, mixLx, mixLy, accentColor, globalAlpha));
+        addVertex(builder, matrix, cX + wingGap,   wTop, calcColor(8, -3, mixLx, mixLy, accentColor, globalAlpha));
 
-        // 3. 右翼消散流线 (X轴偏移量叠加 +wingGap，向右扯开)
-        addVertex(builder, matrix, wIn + wingGap,  wTop, calcColor(6, -3, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix, wIn + wingGap,  wBot, calcColor(6,  6, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix, wOut + wingGap, wBot, calcColor(8,  6, lightX, lightY, accentColor, globalAlpha));
-        addVertex(builder, matrix, cX + wingGap,   wTop, calcColor(8, -3, lightX, lightY, accentColor, globalAlpha));
-
-        // 4. 中央微型机能锁扣 (中距离时完全消失，远距离不显示)
         if (coreAlphaMod > 0.05f) {
-            int dotColor = (int)(((accentColor >> 24) & 0xFF) * 0.8f) << 24 | (accentColor & 0xFFFFFF);
-            addVertex(builder, matrix, -2, -5, calcColor(-2, 1, lightX, lightY, dotColor, coreAlphaMod * globalAlpha));
-            addVertex(builder, matrix, -2, -3, calcColor(-2, 3, lightX, lightY, dotColor, coreAlphaMod * globalAlpha));
-            addVertex(builder, matrix,  2, -3, calcColor( 2, 3, lightX, lightY, dotColor, coreAlphaMod * globalAlpha));
-            addVertex(builder, matrix,  2, -5, calcColor( 2, 1, lightX, lightY, dotColor, coreAlphaMod * globalAlpha));
+            int dotColor = (int)(baseAlpha * 0.8f) << 24 | (isDead ? 0x999999 : (accentColor & 0xFFFFFF));
+            addVertex(builder, matrix, -2, -5, calcColor(-2, 1, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha));
+            addVertex(builder, matrix, -2, -3, calcColor(-2, 3, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha));
+            addVertex(builder, matrix,  2, -3, calcColor( 2, 3, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha));
+            addVertex(builder, matrix,  2, -5, calcColor( 2, 1, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha));
         }
 
         BufferUploader.drawWithShader(builder.end());
@@ -90,7 +99,6 @@ public final class MarkerPointerRenderer {
         float normY = len > 0 ? ny / len : 0;
 
         float dot = normX * lx + normY * ly;
-
         int outR = r, outG = g, outB = b;
         int outA = baseA;
 
