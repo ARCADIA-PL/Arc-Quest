@@ -5,13 +5,12 @@ import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
-import org.com.arc_quest.questmarker.api.QuestMarkerState;
 
 public final class MarkerRhombusRenderer {
 
     private MarkerRhombusRenderer() {}
 
-    public static void draw(GuiGraphics gui, int accentColor, float time, QuestMarkerState state, float lightX, float lightY, float tier) {
+    public static void draw(GuiGraphics gui, int accentColor, float breath, float lightX, float lightY, float tier) {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
@@ -27,25 +26,18 @@ public final class MarkerRhombusRenderer {
         float phase1 = Math.max(0f, Math.min(1f, tier));
         float phase2 = Math.max(0f, Math.min(1f, tier - 1f));
 
-        // --- 核心动画逻辑计算 ---
-        boolean isTracking = (state == QuestMarkerState.ACTIVE);
-        boolean isStandby = (state == QuestMarkerState.AVAILABLE);
-        boolean isDead = !isTracking && !isStandby;
+        float time = System.currentTimeMillis() / 1000.0f;
 
-        // 【修复 1】如果是死目标 (锁定/完成等)，褪去色彩变成机甲灰色
-        if (isDead) {
-            accentColor = (baseAlpha << 24) | 0x888888;
-        }
+        // 由于调用端传入的 breath 是 Math.sin(...) 算出来的 0 到 1 之间的浮动系数
+        // 映射为震幅用于替代旧逻辑的直接 sin 计算
+        float breathAmp = 0.15f;
+        float breathSine = breath * 2.0f - 1.0f;
+        float breathScale = 1.0f + breathAmp * breathSine;
 
-        // 【修复 2】恢复全要素呼吸缩放
-        float breathSpeed = isTracking ? 5.0f : 2.0f;
-        float breathAmp = isTracking ? 0.15f : 0.04f;
-        float breathScale = isDead ? 1.0f : (1.0f + breathAmp * (float)Math.sin(time * breathSpeed));
-
-        // 【修复 3】真正的高光区域流转：生成虚拟旋转光照向量并混合环境偏转光
-        float flowSpeed = isTracking ? 4.0f : 1.5f;
-        float flowLx = isDead ? lightX : (float)Math.cos(time * flowSpeed);
-        float flowLy = isDead ? lightY : (float)Math.sin(time * flowSpeed);
+        // 生成虚拟旋转光照向量并混合环境偏转光
+        float flowSpeed = 4.0f;
+        float flowLx = (float)Math.cos(time * flowSpeed);
+        float flowLy = (float)Math.sin(time * flowSpeed);
 
         float mixLx = lightX * 0.35f + flowLx * 0.65f;
         float mixLy = lightY * 0.35f + flowLy * 0.65f;
@@ -118,9 +110,10 @@ public final class MarkerRhombusRenderer {
 
         float coreSize = lerp(lerp(2.0f, 1.5f, phase1), 1.2f, phase2);
         float coreBaseA = lerp(lerp(1.0f, 0.7f, phase1), 0.9f, phase2);
-        float coreAlphaPulse = (float) (Math.sin(time * 3.5f) * 0.5 + 0.5);
-        int coreA = (int) (baseAlpha * coreBaseA * (isDead ? 0.4f : (0.4f + 0.6f * coreAlphaPulse)));
-        int coreColor = (coreA << 24) | (isDead ? 0x999999 : 0xFFFFFF);
+
+        // 直接复用 breath 实现中心的呼吸亮度明暗变化
+        int coreA = (int) (baseAlpha * coreBaseA * (0.4f + 0.6f * breath));
+        int coreColor = (coreA << 24) | 0xFFFFFF;
 
         addSolid(builder, matrix,  0, -coreSize, 0, 0, finalScaleX, finalScaleY, coreColor);
         addSolid(builder, matrix, -coreSize,  0, 0, 0, finalScaleX, finalScaleY, coreColor);
@@ -175,4 +168,5 @@ public final class MarkerRhombusRenderer {
 
         return (outA << 24) | (outR << 16) | (outG << 8) | outB;
     }
+
 }

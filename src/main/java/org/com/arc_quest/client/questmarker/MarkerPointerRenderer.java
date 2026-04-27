@@ -5,13 +5,12 @@ import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
 import org.joml.Matrix4f;
-import org.com.arc_quest.questmarker.api.QuestMarkerState;
 
 public final class MarkerPointerRenderer {
 
     private MarkerPointerRenderer() {}
 
-    public static void draw(GuiGraphics gui, int accentColor, float time, QuestMarkerState state, float lightX, float lightY, float tier) {
+    public static void draw(GuiGraphics gui, int accentColor, float lightX, float lightY, float tier) {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
@@ -26,21 +25,16 @@ public final class MarkerPointerRenderer {
         float phase1 = Math.max(0f, Math.min(1f, tier));
         float phase2 = Math.max(0f, Math.min(1f, tier - 1f));
 
-        boolean isTracking = (state == QuestMarkerState.ACTIVE);
-        boolean isStandby = (state == QuestMarkerState.AVAILABLE);
-        boolean isDead = !isTracking && !isStandby;
+        // 由于不再外部传入 time，采用系统时间保证光效继续流转
+        float time = System.currentTimeMillis() / 1000.0f;
 
-        if (isDead) {
-            accentColor = (baseAlpha << 24) | 0x888888;
-        }
+        float breathSpeed = 6.0f;
+        float breathAmp = 0.15f;
+        float breathScale = 1.0f + breathAmp * (float)Math.sin(time * breathSpeed);
 
-        float breathSpeed = isTracking ? 6.0f : 2.5f;
-        float breathAmp = isTracking ? 0.15f : 0.04f;
-        float breathScale = isDead ? 1.0f : (1.0f + breathAmp * (float)Math.sin(time * breathSpeed));
-
-        float flowSpeed = isTracking ? 4.0f : 1.5f;
-        float flowLx = isDead ? lightX : (float)Math.cos(time * flowSpeed);
-        float flowLy = isDead ? lightY : (float)Math.sin(time * flowSpeed);
+        float flowSpeed = 4.0f;
+        float flowLx = (float)Math.cos(time * flowSpeed);
+        float flowLy = (float)Math.sin(time * flowSpeed);
 
         float mixLx = lightX * 0.35f + flowLx * 0.65f;
         float mixLy = lightY * 0.35f + flowLy * 0.65f;
@@ -74,7 +68,7 @@ public final class MarkerPointerRenderer {
         addVertex(builder, matrix, cX + wingGap,   wTop, calcColor(8, -3, mixLx, mixLy, accentColor, globalAlpha));
 
         if (coreAlphaMod > 0.05f) {
-            int dotColor = (int)(baseAlpha * 0.8f) << 24 | (isDead ? 0x999999 : (accentColor & 0xFFFFFF));
+            int dotColor = (int)(baseAlpha * 0.8f) << 24 | (accentColor & 0xFFFFFF);
             addVertex(builder, matrix, -2, -5, calcColor(-2, 1, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha));
             addVertex(builder, matrix, -2, -3, calcColor(-2, 3, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha));
             addVertex(builder, matrix,  2, -3, calcColor( 2, 3, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha));
