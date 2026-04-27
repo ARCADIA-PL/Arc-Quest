@@ -4,12 +4,13 @@ import org.com.arc_quest.quest.api.QuestState;
 
 /**
  * Marker 生命周期状态。
- * 与 QuestState 同步，额外保留 DISABLED 作为渲染级关闭态。
+ * 与 QuestState 同步，额外保留 STANDBY / DISABLED 作为渲染级状态。
  */
 public enum QuestMarkerState {
     LOCKED,
     AVAILABLE,
     ACTIVE,
+    STANDBY,
     COMPLETED,
     FAILED,
     DISABLED;
@@ -23,6 +24,13 @@ public enum QuestMarkerState {
             case COMPLETED -> COMPLETED;
             case FAILED -> FAILED;
         };
+    }
+
+    /**
+     * 无 quest 绑定 marker 的基础状态映射：激活中 / 待机。
+     */
+    public static QuestMarkerState standalone(boolean active) {
+        return active ? ACTIVE : STANDBY;
     }
 
     public boolean isRenderable() {

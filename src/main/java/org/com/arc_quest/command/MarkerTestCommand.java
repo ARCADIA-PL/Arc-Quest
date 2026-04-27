@@ -68,7 +68,7 @@ public class MarkerTestCommand {
                                                     ctx.getSource(),
                                                     StringArgumentType.getString(ctx, "preset"),
                                                     active,
-                                                    active ? QuestMarkerState.ACTIVE : QuestMarkerState.DISABLED
+                                                    active ? QuestMarkerState.ACTIVE : QuestMarkerState.STANDBY
                                             );
                                         })))
                         .then(Commands.argument("active", BoolArgumentType.bool())
@@ -78,7 +78,7 @@ public class MarkerTestCommand {
                                             ctx.getSource(),
                                             "gold",
                                             active,
-                                            active ? QuestMarkerState.ACTIVE : QuestMarkerState.DISABLED
+                                            active ? QuestMarkerState.ACTIVE : QuestMarkerState.STANDBY
                                     );
                                 })))
 
@@ -118,7 +118,7 @@ public class MarkerTestCommand {
                                                             ctx.getSource(),
                                                             EntityArgument.getEntity(ctx, "entity_id"),
                                                             QuestMarkerData.EntityAttachPoint.HEAD,
-                                                            active ? QuestMarkerState.ACTIVE : QuestMarkerState.DISABLED
+                                                            active ? QuestMarkerState.ACTIVE : QuestMarkerState.STANDBY
                                                     );
                                                 })))
                                 .then(Commands.literal("center")
@@ -135,7 +135,7 @@ public class MarkerTestCommand {
                                                             ctx.getSource(),
                                                             EntityArgument.getEntity(ctx, "entity_id"),
                                                             QuestMarkerData.EntityAttachPoint.CENTER,
-                                                            active ? QuestMarkerState.ACTIVE : QuestMarkerState.DISABLED
+                                                            active ? QuestMarkerState.ACTIVE : QuestMarkerState.STANDBY
                                                     );
                                                 })))))
 
@@ -285,8 +285,9 @@ public class MarkerTestCommand {
             );
         }
 
-        cap.upsertMarker(builder.build());
-        ArcQuestNetwork.syncMarkers(player, cap);
+        QuestMarkerData updated = builder.build();
+        cap.upsertMarker(updated);
+        ArcQuestNetwork.syncMarkerDeltaUpsert(player, updated);
 
         source.sendSuccess(() -> Component.literal(
                 "已更新 marker 状态: " + markerId + " -> " + newState.name().toLowerCase(Locale.ROOT)

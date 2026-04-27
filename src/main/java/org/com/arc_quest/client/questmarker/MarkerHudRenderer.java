@@ -13,6 +13,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.com.arc_quest.questmarker.api.QuestMarkerData;
+import org.com.arc_quest.questmarker.api.QuestMarkerState;
 
 import java.util.*;
 
@@ -112,7 +113,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float dt = (now - lastTimeMs) / 1000.0f;
         if (dt > 0.1f) dt = 0.1f;
         lastTimeMs = now;
-        float time = now / 1000.0f;
+        float time = (now % 100000L) / 1000.0f;
 
         float cx = sw * 0.5f;
         float cy = sh * 0.5f;
@@ -179,6 +180,10 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
             float targetTier = DistanceTier.getTierForDistance(dist).getTargetValue();
 
+            // 计算 Active 状态用于播放高光和缩放动画的进度
+            boolean isQuestActive = marker.getState() == QuestMarkerState.ACTIVE;
+            float targetActive = isQuestActive ? 1.0f : 0.0f;
+
             boolean isOccluded = false;
             if (!isFirstPerson && proj.onScreen) {
                 Vec3 markerPos = new Vec3(targetX, targetY, targetZ);
@@ -198,6 +203,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
                 st.transitionProgress = st.offscreenStable ? 1.0f : 0.0f;
                 st.distanceTier = targetTier;
                 st.occlusionAlpha = targetOcclusionAlpha;
+                st.activeProgress = targetActive;
                 st.switchTs = now;
                 st.initialized = true;
             } else {
@@ -223,6 +229,9 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
                 float occLerpFactor = Math.min(1.0f, dt * OCCLUSION_TRANSITION_SPEED);
                 st.occlusionAlpha = lerp(st.occlusionAlpha, targetOcclusionAlpha, occLerpFactor);
+
+                // 平滑状态过渡
+                st.activeProgress = lerp(st.activeProgress, targetActive, dt * 5.0f);
 
                 float[] anchor = insetFromEdge(proj.x, proj.y, cx, cy, OFFSCREEN_INSET);
                 float blendedTargetX = lerp(proj.x, anchor[0], st.transitionProgress);
@@ -278,15 +287,15 @@ public class MarkerHudRenderer implements IGuiOverlay {
             ly = lightLen > 0 ? ly / lightLen : -1;
 
             if (st.transitionProgress < 0.99f) {
-                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha);
+                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha, st.activeProgress);
             }
             if (st.transitionProgress > 0.01f && marker.isAllowOffscreenArrow()) {
-                renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier);
+                renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier, time, st.activeProgress);
             }
         }
     }
 
-    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha) {
+    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha, float activeProgress) {
         float alphaFade = 1.0f - progress;
         int originalAlpha = (color >> 24) & 0xFF;
         int currentAlpha = (int) (originalAlpha * alphaFade * occlusionAlpha);
@@ -317,8 +326,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float scaleY = (1.0f + ease * 0.8f) * finalScale;
         gui.pose().scale(scaleX, scaleY, 1.0f);
 
-        float breath = (float) (Math.sin(time * 3.5f) * 0.5 + 0.5);
-        MarkerRhombusRenderer.draw(gui, accentColor, breath, lightX, lightY, tier);
+        MarkerRhombusRenderer.draw(gui, accentColor, time, activeProgress, lightX, lightY, tier);
 
         gui.pose().popPose();
 
@@ -339,7 +347,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
         gui.pose().popPose();
     }
 
-    private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY, float tier) {
+    private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY, float tier, float time, float activeProgress) {
         int originalAlpha = (color >> 24) & 0xFF;
         int currentAlpha = (int) (originalAlpha * progress);
         if (currentAlpha <= 5) return;
@@ -363,7 +371,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float localLightX = lightX * cosA - lightY * sinA;
         float localLightY = lightX * sinA + lightY * cosA;
 
-        MarkerPointerRenderer.draw(gui, accentColor, localLightX, localLightY, tier);
+        MarkerPointerRenderer.draw(gui, accentColor, time, activeProgress, localLightX, localLightY, tier);
         gui.pose().popPose();
 
         String distText = String.format("%.0fm", dist);
@@ -475,6 +483,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float transitionProgress;
         float distanceTier;
         float occlusionAlpha = 1.0f;
+        float activeProgress = 0.0f;
         boolean initialized;
     }
 }
