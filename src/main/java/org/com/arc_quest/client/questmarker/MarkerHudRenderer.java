@@ -120,14 +120,12 @@ public class MarkerHudRenderer implements IGuiOverlay {
         stateMap.keySet().removeIf(id -> !QuestMarkerManager.INSTANCE.has(id));
         String currentDim = player.level().dimension().location().toString();
 
-        List<String> staleMarkerIds = new ArrayList<>();
         AABB playerOcclusionBox = player.getBoundingBox().inflate(0.15);
 
         for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all()) {
             if (!marker.isActive()) continue;
             if (!currentDim.equals(marker.getDimension())) continue;
             if (marker.hasEntityBinding() && !marker.hasEntityGuidBinding() && !marker.hasEntityUuidBinding()) {
-                staleMarkerIds.add(marker.getId());
                 continue;
             }
             double targetX = marker.getWorldX();
@@ -157,7 +155,6 @@ public class MarkerHudRenderer implements IGuiOverlay {
                 }
 
                 if (entity == null) {
-                    staleMarkerIds.add(marker.getId());
                     continue;
                 }
 
@@ -285,13 +282,6 @@ public class MarkerHudRenderer implements IGuiOverlay {
             }
             if (st.transitionProgress > 0.01f && marker.isAllowOffscreenArrow()) {
                 renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier);
-            }
-        }
-
-        if (!staleMarkerIds.isEmpty()) {
-            for (String id : staleMarkerIds) {
-                QuestMarkerManager.INSTANCE.remove(id);
-                stateMap.remove(id);
             }
         }
     }
@@ -426,19 +416,30 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private static boolean matchesBinding(QuestMarkerData marker, Entity entity) {
         if (entity == null || !entity.isAlive()) return false;
 
-        boolean hasStableKey = marker.hasEntityGuidBinding() || marker.hasEntityUuidBinding();
-        if (!hasStableKey) return false;
+        boolean hasUuid = marker.hasEntityUuidBinding();
+        boolean hasGuid = marker.hasEntityGuidBinding();
 
-        if (marker.hasEntityGuidBinding()) {
-            String g = getEntityMarkerGuid(entity);
-            if (!marker.getFollowEntityGuid().equals(g)) return false;
+        if (hasUuid && !marker.getFollowEntityUuid().equals(entity.getUUID().toString())) {
+            return false;
         }
 
-        if (marker.hasEntityUuidBinding()) {
-            if (!marker.getFollowEntityUuid().equals(entity.getUUID().toString())) return false;
+        if (hasGuid) {
+            String entityGuid = getEntityMarkerGuid(entity);
+            if (hasUuid) {
+                if (entityGuid != null && !entityGuid.isEmpty() && !marker.getFollowEntityGuid().equals(entityGuid)) {
+                    return false;
+                }
+            } else {
+                if (entityGuid == null || entityGuid.isEmpty()) {
+                    return false;
+                }
+                if (!marker.getFollowEntityGuid().equals(entityGuid)) {
+                    return false;
+                }
+            }
         }
 
-        return true;
+        return hasUuid || hasGuid;
     }
 
     public enum DistanceTier {

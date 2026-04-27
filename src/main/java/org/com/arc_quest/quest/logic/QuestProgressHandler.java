@@ -119,7 +119,6 @@ public final class QuestProgressHandler {
         flagsChanged = flagsChanged || ctx.flagsChanged;
 
         syncQuestStateAndPush(player, data);
-        ArcQuestNetwork.syncMarkers(player, cap);
         if (flagsChanged) {
             syncFlagsVarsAndPush(player, cap);
         }
@@ -214,7 +213,6 @@ public final class QuestProgressHandler {
 
             refreshQuestMarkersForQuest(player, cap, data, def);
             syncQuestStateAndPush(player, data);
-            ArcQuestNetwork.syncMarkers(player, cap);
             if (ctx.flagsChanged) {
                 syncFlagsVarsAndPush(player, cap);
             }
@@ -267,7 +265,6 @@ public final class QuestProgressHandler {
 
         refreshQuestMarkersForQuest(player, cap, data, def);
         syncQuestStateAndPush(player, data);
-        ArcQuestNetwork.syncMarkers(player, cap);
         if (ctx.flagsChanged) {
             syncFlagsVarsAndPush(player, cap);
         }
@@ -391,7 +388,6 @@ public final class QuestProgressHandler {
         } else {
             refreshQuestMarkersForQuest(player, cap, data, def);
             syncQuestStateAndPush(player, data);
-            ArcQuestNetwork.syncMarkers(player, cap);
             if (ctx.flagsChanged) {
                 syncFlagsVarsAndPush(player, cap);
             }
@@ -428,7 +424,6 @@ public final class QuestProgressHandler {
         clearQuestMarkers(cap, questId);
 
         syncQuestStateAndPush(player, data);
-        ArcQuestNetwork.syncMarkers(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
     }
@@ -453,7 +448,6 @@ public final class QuestProgressHandler {
         clearQuestMarkers(cap, questId);
 
         syncFullDataAndPush(player, cap);
-        ArcQuestNetwork.syncMarkers(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         return QuestRejectCodeDictionary.Code.OK;
@@ -491,7 +485,6 @@ public final class QuestProgressHandler {
 
         syncQuestStateAndPush(player, data);
         syncFlagsVarsAndPush(player, cap);
-        ArcQuestNetwork.syncMarkers(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
     }
@@ -668,7 +661,10 @@ public final class QuestProgressHandler {
                                                     IQuestCapability cap,
                                                     QuestRuntimeData data,
                                                     QuestDefinition def) {
-        clearQuestMarkers(cap, data.getQuestId());
+        List<String> removedIds = clearQuestMarkers(cap, data.getQuestId());
+        for (String markerId : removedIds) {
+            ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId);
+        }
 
         String dimension = player.level().dimension().location().toString();
         QuestMarkerType questType = def.getCategory() == QuestCategory.ARCHON
@@ -713,11 +709,13 @@ public final class QuestProgressHandler {
                         .allowOffscreenArrow(true)
                         .build();
                 cap.upsertMarker(marker);
+                ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
+                ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
             }
         }
     }
 
-    private static void clearQuestMarkers(IQuestCapability cap, String questId) {
+    private static List<String> clearQuestMarkers(IQuestCapability cap, String questId) {
         List<String> toRemove = cap.getAllMarkers().values().stream()
                 .filter(m -> m.hasQuestBinding() && questId.equals(m.getQuestId()))
                 .map(QuestMarkerData::getId)
@@ -725,6 +723,7 @@ public final class QuestProgressHandler {
         for (String id : toRemove) {
             cap.removeMarker(id);
         }
+        return toRemove;
     }
 
     private static String markerId(String questId, String phaseId, int objectiveIndex) {

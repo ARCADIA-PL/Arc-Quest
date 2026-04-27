@@ -21,6 +21,9 @@ import org.com.arc_quest.trade.network.S2CSyncTradeStatePacket;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Arc Quest 网络通信中心。
@@ -38,6 +41,9 @@ public final class ArcQuestNetwork {
     );
 
     private static int packetId = 0;
+
+    private static final Map<UUID, Long> MARKER_EPOCH = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> MARKER_REVISION = new ConcurrentHashMap<>();
 
     private ArcQuestNetwork() {
     }
@@ -226,6 +232,8 @@ public final class ArcQuestNetwork {
      * 全量同步（登录/重生/维度切换）
      */
     public static void syncFullData(ServerPlayer player, IQuestCapability cap) {
+        resetMarkerStream(player);
+
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncFullDataPacket(cap));
         syncMarkers(player, cap);
@@ -348,15 +356,53 @@ public final class ArcQuestNetwork {
     }
 
     public static void syncMarkers(ServerPlayer player, IQuestCapability cap) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncMarkersPacket());
+        long epoch = currentMarkerEpoch(player);
+        long revision = nextMarkerRevision(player);
 
         List<S2CSyncMarkersPacket.MarkerEntry> entries = cap.getAllMarkers().values().stream()
                 .map(ArcQuestNetwork::toMarkerEntry)
                 .toList();
 
-        if (!entries.isEmpty()) {
-            CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncMarkersPacket(entries));
-        }
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                S2CSyncMarkersPacket.snapshot(epoch, revision, entries));
+    }
+
+    public static void syncMarkerDeltaClear(ServerPlayer player) {
+        long epoch = currentMarkerEpoch(player);
+        long revision = nextMarkerRevision(player);
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                S2CSyncMarkersPacket.deltaClear(epoch, revision));
+    }
+
+    public static void syncMarkerDeltaUpsert(ServerPlayer player, QuestMarkerData marker) {
+        long epoch = currentMarkerEpoch(player);
+        long revision = nextMarkerRevision(player);
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                S2CSyncMarkersPacket.deltaAdd(epoch, revision, List.of(toMarkerEntry(marker))));
+    }
+
+    public static void syncMarkerDeltaRemove(ServerPlayer player, String markerId) {
+        long epoch = currentMarkerEpoch(player);
+        long revision = nextMarkerRevision(player);
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                S2CSyncMarkersPacket.deltaRemove(epoch, revision, markerId));
+    }
+
+    public static void bumpMarkerEpoch(ServerPlayer player) {
+        resetMarkerStream(player);
+    }
+
+    private static long nextMarkerRevision(ServerPlayer player) {
+        return MARKER_REVISION.merge(player.getUUID(), 1L, Long::sum);
+    }
+
+    private static long currentMarkerEpoch(ServerPlayer player) {
+        return MARKER_EPOCH.computeIfAbsent(player.getUUID(), k -> System.currentTimeMillis());
+    }
+
+    private static void resetMarkerStream(ServerPlayer player) {
+        MARKER_EPOCH.put(player.getUUID(), System.currentTimeMillis());
+        MARKER_REVISION.put(player.getUUID(), 0L);
     }
 
     private static S2CSyncMarkersPacket.MarkerEntry toMarkerEntry(QuestMarkerData m) {

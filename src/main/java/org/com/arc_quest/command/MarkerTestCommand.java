@@ -27,7 +27,7 @@ public class MarkerTestCommand {
                             var cap = QuestCapabilityProvider.getOrNull(player);
 
                             cap.clearMarkers();
-                            ArcQuestNetwork.syncMarkers(player, cap);
+                            ArcQuestNetwork.syncMarkerDeltaClear(player);
 
                             ctx.getSource().sendSuccess(
                                     () -> Component.literal("已清除所有标记"), false);
@@ -71,7 +71,7 @@ public class MarkerTestCommand {
         var pos = player.position();
         String markerId = "test_marker_" + System.currentTimeMillis();
 
-        cap.upsertMarker(new QuestMarkerData.Builder(
+        QuestMarkerData marker = new QuestMarkerData.Builder(
                 markerId,
                 pos.x,
                 pos.y + 2.0,
@@ -82,9 +82,10 @@ public class MarkerTestCommand {
                 .color(color)
                 .showDistance(true)
                 .allowOffscreenArrow(true)
-                .build());
+                .build();
 
-        ArcQuestNetwork.syncMarkers(player, cap);
+        cap.upsertMarker(marker);
+        ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
 
         int total = cap.getAllMarkers().size();
         source.sendSuccess(
@@ -107,7 +108,7 @@ public class MarkerTestCommand {
 
         String guid = getOrCreateEntityMarkerGuid(target);
 
-        cap.upsertMarker(new QuestMarkerData.Builder(
+        QuestMarkerData marker = new QuestMarkerData.Builder(
                 markerId,
                 target.getX(),
                 target.getY(),
@@ -124,9 +125,10 @@ public class MarkerTestCommand {
                 )
                 .showDistance(true)
                 .allowOffscreenArrow(true)
-                .build());
+                .build();
 
-        ArcQuestNetwork.syncMarkers(player, cap);
+        cap.upsertMarker(marker);
+        ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
 
         int total = cap.getAllMarkers().size();
         source.sendSuccess(() -> Component.literal("已创建跟随标记: " + markerId
