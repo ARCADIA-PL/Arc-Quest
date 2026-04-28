@@ -6,30 +6,27 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.ObjectiveType;
+import org.com.arc_quest.quest.api.QuestState;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
+import org.com.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
 import java.util.*;
 
-/**
- * 桥接层：Forge 游戏事件 → ObjectiveTracker O(1) 查找 → QuestProgressHandler 进度推进。
- * <p>
- * 修复点：
- * 同一玩家、同一 quest+phase 下，若存在多个相同 ObjectiveKey 的目标，
- * 单次事件 amount 会在这些目标间按 objectiveIndex 顺序分配，而不是并行全部加满。
- */
 @Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class QuestEventManager {
 
@@ -37,10 +34,6 @@ public final class QuestEventManager {
 
     private QuestEventManager() {
     }
-
-    // ═══════════════════════════════════════════════════════
-    //  击杀检测
-    // ═══════════════════════════════════════════════════════
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onLivingDeath(LivingDeathEvent event) {
@@ -57,54 +50,97 @@ public final class QuestEventManager {
         processMatch(player, ObjectiveType.KILL, entityTypeId, 1);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  物品拾取检测
-    // ═══════════════════════════════════════════════════════
-
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onItemPickup(EntityItemPickupEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
 
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(
-                event.getItem().getItem().getItem());
+        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(event.getItem().getItem().getItem());
         if (itemId == null) return;
 
         int count = event.getItem().getItem().getCount();
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  合成检测
-    // ═══════════════════════════════════════════════════════
-
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public static void onItemCrafted(PlayerEvent.ItemCraftedEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
 
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(
-                event.getCrafting().getItem());
+        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(event.getCrafting().getItem());
         if (itemId == null) return;
 
         int count = event.getCrafting().getCount();
         processMatch(player, ObjectiveType.CRAFT, itemId, count);
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  玩家断开连接 — 清理追踪数据
-    // ═══════════════════════════════════════════════════════
+    @SubscribeEvent(priority = EventPriority.NORMAL)
+    public static void onRightClickEntity(PlayerInteractEvent.EntityInteract event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        Entity target = event.getTarget();
+        if (target == null) return;
+
+        ResourceLocation typeId = ForgeRegistries.ENTITY_TYPES.getKey(target.getType());
+        if (typeId != null) processMatch(player, ObjectiveType.INTERACT, typeId, 1);
+    }
+
+    @SubscribeEvent(priority = EventPriority.NORMAL)
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        var block = player.level().getBlockState(event.getPos()).getBlock();
+        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(block);
+        if (blockId != null) processMatch(player, ObjectiveType.INTERACT, blockId, 1);
+    }
+
+    @SubscribeEvent(priority = EventPriority.NORMAL)
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        if (!(event.player instanceof ServerPlayer player)) return;
+        if ((player.tickCount % 20) != 0) return;
+
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        for (QuestRuntimeData data : cap.getAllActiveQuests().values()) {
+            if (data.getState() != QuestState.ACTIVE) continue;
+
+            var def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
+            if (def == null) continue;
+
+            for (String phaseId : data.getActivePhaseIds()) {
+                var phase = def.getPhase(phaseId);
+                if (phase == null) continue;
+
+                var objs = phase.getObjectives();
+                for (int i = 0; i < objs.size(); i++) {
+                    var obj = objs.get(i);
+                    if (obj.getType() != ObjectiveType.REACH_LOCATION) continue;
+                    int required = QuestProgressHandler.resolveRequiredCount(player, obj, cap);
+                    if (data.getObjectiveProgress(phaseId, i) >= required) continue;
+
+                    Double x = parseDouble(obj.getExtra("x"));
+                    Double y = parseDouble(obj.getExtra("y"));
+                    Double z = parseDouble(obj.getExtra("z"));
+                    int radius = obj.getExtraInt("radius", 4);
+                    if (x == null || y == null || z == null) continue;
+
+                    String dim = firstNonEmpty(obj.getExtra("dimension"), obj.getExtra("dim"), obj.getExtra("world"));
+                    if (!dim.isEmpty() && !player.level().dimension().location().toString().equals(dim)) continue;
+
+                    double dx = player.getX() - x;
+                    double dy = player.getY() - y;
+                    double dz = player.getZ() - z;
+                    if ((dx * dx + dy * dy + dz * dz) <= (radius * radius)) {
+                        QuestProgressHandler.incrementObjective(player, data.getQuestId(), phaseId, i, 1);
+                    }
+                }
+            }
+        }
+    }
 
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
-            LOGGER.debug("[QuestEvent] Cleared tracking for: {}",
-                    player.getGameProfile().getName());
+            LOGGER.debug("[QuestEvent] Cleared tracking for: {}", player.getGameProfile().getName());
         }
     }
-
-    // ═══════════════════════════════════════════════════════
-    // 核心：统一匹配与推进
-    // ═══════════════════════════════════════════════════════
 
     private record PhaseGroupKey(String questId, String phaseId) {}
 
@@ -118,17 +154,12 @@ public final class QuestEventManager {
         Set<TrackedObjective> matches = ObjectiveTracker.INSTANCE.lookup(key);
         if (matches.isEmpty()) return;
 
-        // 先按 quest + phase 分组，避免同 phase 重复 objective 被一次事件并行加满
         Map<PhaseGroupKey, List<TrackedObjective>> grouped = new HashMap<>();
         UUID playerId = player.getUUID();
 
         for (TrackedObjective tracked : matches) {
             if (!tracked.getPlayerId().equals(playerId)) continue;
-
-            PhaseGroupKey groupKey = new PhaseGroupKey(
-                    tracked.getQuestId().toString(),
-                    tracked.getPhaseId()
-            );
+            PhaseGroupKey groupKey = new PhaseGroupKey(tracked.getQuestId().toString(), tracked.getPhaseId());
             grouped.computeIfAbsent(groupKey, k -> new ArrayList<>()).add(tracked);
         }
 
@@ -137,16 +168,11 @@ public final class QuestEventManager {
         for (Map.Entry<PhaseGroupKey, List<TrackedObjective>> entry : grouped.entrySet()) {
             PhaseGroupKey groupKey = entry.getKey();
             List<TrackedObjective> objectives = entry.getValue();
-
             objectives.sort(Comparator.comparingInt(TrackedObjective::getObjectiveIndex));
             distributeAmountInPhase(player, groupKey.questId(), groupKey.phaseId(), objectives, amount);
         }
     }
 
-    /**
-     * 将单次事件 amount 在同一 phase 的多个匹配目标之间顺序分配。
-     * 例如 3 个相同 collect x16，拾取 20 时会变成 [16,4,0]。
-     */
     private static void distributeAmountInPhase(ServerPlayer player,
                                                 String questId,
                                                 String phaseId,
@@ -173,21 +199,10 @@ public final class QuestEventManager {
             int need = required - current;
             int add = Math.min(remaining, need);
 
-            QuestProgressHandler.incrementObjective(
-                    player,
-                    questId,
-                    phaseId,
-                    idx,
-                    add
-            );
-
+            QuestProgressHandler.incrementObjective(player, questId, phaseId, idx, add);
             remaining -= add;
         }
     }
-
-    // ═══════════════════════════════════════════════════════
-    //  公开 API — 手动触发
-    // ═══════════════════════════════════════════════════════
 
     public static void notifyTalk(ServerPlayer player, ResourceLocation npcId) {
         Objects.requireNonNull(player);
@@ -226,6 +241,22 @@ public final class QuestEventManager {
         for (UUID uuid : players) {
             ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
             if (sp != null) notifyExplore(sp, locationId);
+        }
+    }
+
+    private static String firstNonEmpty(String... candidates) {
+        for (String s : candidates) {
+            if (s != null && !s.isEmpty()) return s;
+        }
+        return "";
+    }
+
+    private static Double parseDouble(String v) {
+        if (v == null || v.isEmpty()) return null;
+        try {
+            return Double.parseDouble(v);
+        } catch (NumberFormatException ignored) {
+            return null;
         }
     }
 }

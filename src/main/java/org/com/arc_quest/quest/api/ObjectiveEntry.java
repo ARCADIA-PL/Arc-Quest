@@ -2,26 +2,25 @@ package org.com.arc_quest.quest.api;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.ToIntFunction;
 
-/**
- * 不可变的单个目标定义。
- * <p>
- * 注意：这是"模板"而非运行时——运行时进度存储在 Capability 中 (Phase 2)。
- */
 public final class ObjectiveEntry {
 
     private final ObjectiveType type;
     private final ResourceLocation targetId;
     private final int requiredCount;
-    private final Component displayText;
+    private final QuestText displayText;
     private final boolean hidden;
     private final boolean optional;
     private final Map<String, String> extraData;
+    @Nullable
+    private final ToIntFunction<ServerPlayer> countModifier;
 
     public ObjectiveEntry(ObjectiveType type,
                           ResourceLocation targetId,
@@ -30,6 +29,17 @@ public final class ObjectiveEntry {
                           boolean hidden,
                           boolean optional,
                           Map<String, String> extraData) {
+        this(type, targetId, requiredCount, QuestText.component(displayText), hidden, optional, extraData, null);
+    }
+
+    public ObjectiveEntry(ObjectiveType type,
+                          ResourceLocation targetId,
+                          int requiredCount,
+                          QuestText displayText,
+                          boolean hidden,
+                          boolean optional,
+                          Map<String, String> extraData,
+                          @Nullable ToIntFunction<ServerPlayer> countModifier) {
         Objects.requireNonNull(type, "ObjectiveType must not be null");
         Objects.requireNonNull(targetId, "targetId must not be null");
         Objects.requireNonNull(displayText, "displayText must not be null");
@@ -43,60 +53,38 @@ public final class ObjectiveEntry {
         this.hidden = hidden;
         this.optional = optional;
         this.extraData = Collections.unmodifiableMap(extraData);
+        this.countModifier = countModifier;
     }
 
-    public ObjectiveType getType() {
-        return this.type;
-    }
+    public ObjectiveType getType() { return this.type; }
+    public ResourceLocation getTargetId() { return this.targetId; }
+    public int getRequiredCount() { return this.requiredCount; }
 
-    public ResourceLocation getTargetId() {
-        return this.targetId;
-    }
-
-    public int getRequiredCount() {
-        return this.requiredCount;
+    public int resolveRequiredCount(@Nullable ServerPlayer player) {
+        if (player == null || countModifier == null) return requiredCount;
+        return Math.max(1, countModifier.applyAsInt(player));
     }
 
     public Component getDisplayText() {
-        return this.displayText;
+        return this.displayText.resolve(null, QuestTextContext.empty());
     }
 
-    /**
-     * 隐藏目标——不在 HUD 上显示，直到完成后才揭示
-     */
-    public boolean isHidden() {
-        return this.hidden;
+    public Component getDisplayText(@Nullable ServerPlayer player, @Nullable QuestTextContext ctx) {
+        return this.displayText.resolve(player, ctx);
     }
 
-    /**
-     * 可选目标——不阻塞阶段完成
-     */
-    public boolean isOptional() {
-        return this.optional;
-    }
-
-    /**
-     * 扩展数据。
-     * 例如 REACH_LOCATION 可存 "x","y","z","radius"；
-     * CUSTOM 可存 "callback_class" 等。
-     */
-    public Map<String, String> getExtraData() {
-        return this.extraData;
-    }
+    public QuestText getDisplayQuestText() { return this.displayText; }
+    public boolean isHidden() { return this.hidden; }
+    public boolean isOptional() { return this.optional; }
+    public Map<String, String> getExtraData() { return this.extraData; }
 
     @Nullable
-    public String getExtra(String key) {
-        return this.extraData.get(key);
-    }
+    public String getExtra(String key) { return this.extraData.get(key); }
 
     public int getExtraInt(String key, int fallback) {
         String val = this.extraData.get(key);
         if (val == null) return fallback;
-        try {
-            return Integer.parseInt(val);
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
+        try { return Integer.parseInt(val); } catch (NumberFormatException e) { return fallback; }
     }
 
     @Override

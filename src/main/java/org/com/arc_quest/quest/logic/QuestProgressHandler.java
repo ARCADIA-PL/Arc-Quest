@@ -4,6 +4,9 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraft.tags.TagKey;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.Item;
 import org.com.arc_quest.api.event.*;
 import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.capability.IQuestCapability;
@@ -154,7 +157,7 @@ public final class QuestProgressHandler {
         if (objIndex < 0 || objIndex >= phase.getObjectives().size()) return;
 
         ObjectiveEntry objEntry = phase.getObjectives().get(objIndex);
-        int required = objEntry.getRequiredCount();
+        int required = resolveRequiredCount(player, objEntry, cap);
 
         int currentProgress = data.getObjectiveProgress(phaseId, objIndex);
         if (currentProgress >= required) return;
@@ -183,7 +186,7 @@ public final class QuestProgressHandler {
 
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int i = 0; i < objectives.size(); i++) {
-            if (data.getObjectiveProgress(phaseId, i) < objectives.get(i).getRequiredCount()) {
+            if (data.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objectives.get(i), cap)) {
                 return;
             }
         }
@@ -547,14 +550,18 @@ public final class QuestProgressHandler {
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int i = 0; i < objectives.size(); i++) {
             ObjectiveEntry obj = objectives.get(i);
-            TrackedObjective tracked = new TrackedObjective(
-                    player.getUUID(),
-                    def.getId(),
-                    phase.getPhaseId(),
-                    i,
-                    obj
-            );
-            ObjectiveTracker.INSTANCE.register(tracked);
+            List<ResourceLocation> keys = objectiveKeyTargets(obj);
+            for (ResourceLocation keyTarget : keys) {
+                TrackedObjective tracked = new TrackedObjective(
+                        player.getUUID(),
+                        def.getId(),
+                        phase.getPhaseId(),
+                        i,
+                        new org.com.arc_quest.quest.tracking.ObjectiveKey(obj.getType(), keyTarget),
+                        obj.getRequiredCount()
+                );
+                ObjectiveTracker.INSTANCE.register(tracked);
+            }
         }
     }
 
@@ -564,15 +571,65 @@ public final class QuestProgressHandler {
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int i = 0; i < objectives.size(); i++) {
             ObjectiveEntry obj = objectives.get(i);
-            TrackedObjective tracked = new TrackedObjective(
-                    player.getUUID(),
-                    def.getId(),
-                    phase.getPhaseId(),
-                    i,
-                    obj
-            );
-            ObjectiveTracker.INSTANCE.unregister(tracked);
+            List<ResourceLocation> keys = objectiveKeyTargets(obj);
+            for (ResourceLocation keyTarget : keys) {
+                TrackedObjective tracked = new TrackedObjective(
+                        player.getUUID(),
+                        def.getId(),
+                        phase.getPhaseId(),
+                        i,
+                        new org.com.arc_quest.quest.tracking.ObjectiveKey(obj.getType(), keyTarget),
+                        obj.getRequiredCount()
+                );
+                ObjectiveTracker.INSTANCE.unregister(tracked);
+            }
         }
+    }
+
+    public static int resolveRequiredCount(ServerPlayer player, ObjectiveEntry obj, IQuestCapability cap) {
+        int fromModifier = obj.resolveRequiredCount(player);
+
+        String mode = obj.getExtra("count_mode");
+        if (mode == null || mode.isEmpty()) return Math.max(1, fromModifier);
+
+        int base = obj.getExtraInt("count_base", fromModifier);
+        int min = obj.getExtraInt("count_min", 1);
+        int max = obj.getExtraInt("count_max", -1);
+
+        int computed = base;
+        if ("player_level".equals(mode)) {
+            int perLevel = obj.getExtraInt("count_per_level", 0);
+            computed = base + Math.max(0, player.experienceLevel) * perLevel;
+        } else if ("variable".equals(mode)) {
+            String var = obj.getExtra("count_var");
+            int perVar = obj.getExtraInt("count_per_var", 0);
+            int varVal = (var == null || var.isEmpty()) ? 0 : cap.getVariable(var);
+            computed = base + varVal * perVar;
+        }
+
+        computed = Math.max(min, computed);
+        if (max > 0) computed = Math.min(max, computed);
+        return Math.max(1, computed);
+    }
+
+    private static List<ResourceLocation> objectiveKeyTargets(ObjectiveEntry obj) {
+        String tag = obj.getExtra("target_tag");
+        if (tag == null || tag.isEmpty()) {
+            return List.of(obj.getTargetId());
+        }
+
+        ResourceLocation tagId = ResourceLocation.parse(tag);
+        TagKey<Item> key = TagKey.create(Registries.ITEM, tagId);
+        var named = net.minecraftforge.registries.ForgeRegistries.ITEMS.tags();
+        if (named == null) return List.of(obj.getTargetId());
+
+        List<ResourceLocation> ids = new java.util.ArrayList<>();
+        for (Item taggedItem : named.getTag(key)) {
+            ResourceLocation id = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(taggedItem);
+            if (id != null) ids.add(id);
+        }
+        if (ids.isEmpty()) ids.add(obj.getTargetId());
+        return ids;
     }
 
     private static void grantRewards(ServerPlayer player, List<IReward> rewards, String context) {

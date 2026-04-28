@@ -3,6 +3,7 @@ package org.com.arc_quest.quest.registry;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
 import org.com.arc_quest.Arc_quest;
@@ -59,7 +60,7 @@ public final class EpicMainlineDemo {
                         .phase(PhaseBuilder.create("arc_quest:gather_wood")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood"))
                                 .setFlagOnEnter("arc_quest:prologue_started")
-                                .objective(ObjectiveBuilder.collect(Items.OAK_LOG, 5)
+                                .objective(ObjectiveBuilder.collectTag(ItemTags.LOGS.location(), 5)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.gather_wood.0")))
                                 .thenGoTo("arc_quest:talk_villager"))
 
