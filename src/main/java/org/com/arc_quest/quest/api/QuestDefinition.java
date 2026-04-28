@@ -15,8 +15,8 @@ public final class QuestDefinition {
 
     private final ResourceLocation id;
     private final QuestCategory category;
-    private final Component displayName;
-    private final Component description;
+    private final QuestText displayName;
+    private final QuestText description;
     @Nullable
     private final ResourceLocation iconTexture;
     private final int sortOrder;
@@ -45,8 +45,8 @@ public final class QuestDefinition {
 
     public QuestDefinition(ResourceLocation id,
                            QuestCategory category,
-                           Component displayName,
-                           Component description,
+                           QuestText displayName,
+                           QuestText description,
                            @Nullable ResourceLocation iconTexture,
                            int sortOrder,
                            boolean repeatable,
@@ -64,8 +64,8 @@ public final class QuestDefinition {
 
     public QuestDefinition(ResourceLocation id,
                            QuestCategory category,
-                           Component displayName,
-                           Component description,
+                           QuestText displayName,
+                           QuestText description,
                            @Nullable ResourceLocation iconTexture,
                            int sortOrder,
                            boolean repeatable,
@@ -86,8 +86,8 @@ public final class QuestDefinition {
 
     public QuestDefinition(ResourceLocation id,
                            QuestCategory category,
-                           Component displayName,
-                           Component description,
+                           QuestText displayName,
+                           QuestText description,
                            @Nullable ResourceLocation iconTexture,
                            int sortOrder,
                            boolean repeatable,
@@ -120,7 +120,7 @@ public final class QuestDefinition {
         this.id = id;
         this.category = category;
         this.displayName = displayName;
-        this.description = description != null ? description : Component.empty();
+        this.description = description != null ? description : QuestText.component(Component.empty());
         this.iconTexture = iconTexture;
         this.sortOrder = sortOrder;
         this.repeatable = repeatable;
@@ -189,11 +189,19 @@ public final class QuestDefinition {
     }
 
     public Component getDisplayName() {
-        return this.displayName;
+        return this.displayName.resolve(null, QuestTextContext.empty());
+    }
+
+    public Component getDisplayName(ServerPlayer player, QuestTextContext context) {
+        return this.displayName.resolve(player, context);
     }
 
     public Component getDescription() {
-        return this.description;
+        return this.description.resolve(null, QuestTextContext.empty());
+    }
+
+    public Component getDescription(ServerPlayer player, QuestTextContext context) {
+        return this.description.resolve(player, context);
     }
 
     @Nullable

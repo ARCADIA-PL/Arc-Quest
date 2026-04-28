@@ -2,6 +2,7 @@ package org.com.arc_quest.quest.api;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 
 import javax.annotation.Nullable;
@@ -16,8 +17,8 @@ import java.util.Optional;
 public final class PhaseDefinition {
 
     private final String phaseId;
-    private final Component displayName;
-    private final Component description;
+    private final QuestText displayName;
+    private final QuestText description;
     private final List<ObjectiveEntry> objectives;
     private final List<PhaseTransition> transitions;
     private final List<ChoiceOption> choices;
@@ -39,7 +40,7 @@ public final class PhaseDefinition {
     private final ResourceLocation intelSceneId;
 
     public PhaseDefinition(String phaseId,
-                           Component displayName,
+                           QuestText displayName,
                            List<ObjectiveEntry> objectives,
                            List<PhaseTransition> transitions,
                            List<ChoiceOption> choices,
@@ -47,12 +48,12 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnEnter,
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig, boolean autoEnterByCondition) {
-        this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
+        this(phaseId, displayName, QuestText.component(Component.empty()), objectives, transitions, choices,
                 phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null, null, null, null, null, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
-                           Component displayName,
+                           QuestText displayName,
                            List<ObjectiveEntry> objectives,
                            List<PhaseTransition> transitions,
                            List<ChoiceOption> choices,
@@ -61,12 +62,12 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig,
                            @Nullable String tradeShopId, boolean autoEnterByCondition) {
-        this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
+        this(phaseId, displayName, QuestText.component(Component.empty()), objectives, transitions, choices,
                 phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null, null, null, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
-                           Component displayName,
+                           QuestText displayName,
                            List<ObjectiveEntry> objectives,
                            List<PhaseTransition> transitions,
                            List<ChoiceOption> choices,
@@ -77,15 +78,15 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
-        this(phaseId, displayName, Component.empty(), objectives, transitions, choices,
+        this(phaseId, displayName, QuestText.component(Component.empty()), objectives, transitions, choices,
                 phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig,
                 tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
     }
 
     /** 旧的完整构造器（含 description），委托给带 intelSceneId 的新构造器。 */
     public PhaseDefinition(String phaseId,
-                           Component displayName,
-                           Component description,
+                           QuestText displayName,
+                           QuestText description,
                            List<ObjectiveEntry> objectives,
                            List<PhaseTransition> transitions,
                            List<ChoiceOption> choices,
@@ -103,8 +104,8 @@ public final class PhaseDefinition {
 
     /** 含 intelSceneId 的最终构造器，所有其他构造器最终委托至此。 */
     public PhaseDefinition(String phaseId,
-                           Component displayName,
-                           Component description,
+                           QuestText displayName,
+                           QuestText description,
                            List<ObjectiveEntry> objectives,
                            List<PhaseTransition> transitions,
                            List<ChoiceOption> choices,
@@ -124,7 +125,7 @@ public final class PhaseDefinition {
         }
         this.phaseId = phaseId;
         this.displayName = displayName;
-        this.description = description != null ? description : Component.empty();
+        this.description = description != null ? description : QuestText.component(Component.empty());
         this.objectives = Collections.unmodifiableList(objectives);
         this.transitions = Collections.unmodifiableList(transitions);
         this.choices = Collections.unmodifiableList(choices);
@@ -142,12 +143,20 @@ public final class PhaseDefinition {
 
     public String getPhaseId() { return this.phaseId; }
 
-    public Component getDisplayName() { return this.displayName; }
+    public Component getDisplayName() { return this.displayName.resolve(null, QuestTextContext.empty()); }
 
-    public Component getDescription() { return this.description; }
+    public Component getDisplayName(ServerPlayer player, QuestTextContext context) {
+        return this.displayName.resolve(player, context);
+    }
+
+    public Component getDescription() { return this.description.resolve(null, QuestTextContext.empty()); }
+
+    public Component getDescription(ServerPlayer player, QuestTextContext context) {
+        return this.description.resolve(player, context);
+    }
 
     public boolean hasDescription() {
-        return !this.description.getString().isEmpty();
+        return !this.description.resolve(null, QuestTextContext.empty()).getString().isEmpty();
     }
 
     public List<ObjectiveEntry> getObjectives() { return this.objectives; }

@@ -35,8 +35,8 @@ public final class QuestBuilder {
     private final List<String> flagsOnAccept = new ArrayList<>();
     private final List<String> flagsOnComplete = new ArrayList<>();
     private QuestCategory category = QuestCategory.ADVENTURE;
-    private Component displayName;
-    private Component description = Component.empty();
+    private QuestText displayName;
+    private QuestText description = QuestText.component(Component.empty());
     @Nullable
     private ResourceLocation iconTexture;
     private int sortOrder = 0;
@@ -98,22 +98,32 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder displayName(String literal) {
-        this.displayName = Component.literal(literal);
+        this.displayName = QuestText.literal(literal);
         return this;
     }
 
     public QuestBuilder displayName(Component component) {
-        this.displayName = component;
+        this.displayName = QuestText.component(component);
+        return this;
+    }
+
+    public QuestBuilder displayName(QuestText text) {
+        this.displayName = text;
         return this;
     }
 
     public QuestBuilder description(String literal) {
-        this.description = Component.literal(literal);
+        this.description = QuestText.literal(literal);
         return this;
     }
 
     public QuestBuilder description(Component component) {
-        this.description = component;
+        this.description = QuestText.component(component);
+        return this;
+    }
+
+    public QuestBuilder description(QuestText text) {
+        this.description = text;
         return this;
     }
 
@@ -404,7 +414,7 @@ public final class QuestBuilder {
 
     public QuestDefinition build() {
         if (this.displayName == null) {
-            this.displayName = Component.literal(this.id.getPath());
+            this.displayName = QuestText.literal(this.id.getPath());
         }
         if (this.phases.isEmpty()) {
             throw new IllegalStateException("Quest '" + this.id + "' has no phases");

@@ -32,8 +32,8 @@ public final class PhaseBuilder {
     private final List<IReward> phaseRewards = new ArrayList<>();
     private final List<String> flagsOnEnter = new ArrayList<>();
     private final List<String> flagsOnComplete = new ArrayList<>();
-    private Component displayName;
-    private Component description = Component.empty();
+    private QuestText displayName;
+    private QuestText description = QuestText.component(Component.empty());
     private int transitionPriorityCounter = 0;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     private String tradeShopId = null;
@@ -63,22 +63,32 @@ public final class PhaseBuilder {
     // ── 显示名称 ──
 
     public PhaseBuilder displayName(String literal) {
-        this.displayName = Component.literal(literal);
+        this.displayName = QuestText.literal(literal);
         return this;
     }
 
     public PhaseBuilder displayName(Component component) {
-        this.displayName = component;
+        this.displayName = QuestText.component(component);
+        return this;
+    }
+
+    public PhaseBuilder displayName(QuestText text) {
+        this.displayName = text;
         return this;
     }
 
     public PhaseBuilder description(String literal) {
-        this.description = Component.literal(literal);
+        this.description = QuestText.literal(literal);
         return this;
     }
 
     public PhaseBuilder description(Component component) {
-        this.description = component;
+        this.description = QuestText.component(component);
+        return this;
+    }
+
+    public PhaseBuilder description(QuestText text) {
+        this.description = text;
         return this;
     }
 
@@ -324,7 +334,7 @@ public final class PhaseBuilder {
 
     public PhaseDefinition build() {
         if (this.displayName == null) {
-            this.displayName = Component.literal(this.phaseId);
+            this.displayName = QuestText.literal(this.phaseId);
         }
         if (this.objectives.isEmpty()) {
             throw new IllegalStateException(
