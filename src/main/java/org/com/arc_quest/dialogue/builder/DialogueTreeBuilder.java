@@ -33,8 +33,8 @@ public class DialogueTreeBuilder {
     private CooldownType treeCooldownType = CooldownType.NONE;
     private int treeCooldownResetTicks = 0; 
     private String curNodeId;
-    private String curSpeaker;
-    private String curText;
+    private DialogueText curSpeaker;
+    private DialogueText curText;
     private String curDefaultSayId;  // 普通 say 的 ID
     private String curAutoNextId;
     private int curDelayMs;
@@ -192,7 +192,7 @@ public class DialogueTreeBuilder {
 
         this.curNodeId = Objects.requireNonNull(nodeId);
         this.curSpeaker = null;
-        this.curText = "";
+        this.curText = DialogueText.literal("");
         this.curConditionalTexts.clear();
         this.curAutoNextId = null;
         this.curDelayMs = 0;
@@ -216,6 +216,12 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder speaker(String speaker) {
         ensureOpenNode();
+        this.curSpeaker = DialogueText.literal(speaker);
+        return this;
+    }
+
+    public DialogueTreeBuilder speaker(DialogueText speaker) {
+        ensureOpenNode();
         this.curSpeaker = speaker;
         return this;
     }
@@ -225,7 +231,14 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder say(String text, String sayId) {
         ensureOpenNode();
-        this.curText = text != null ? text : "";
+        this.curText = DialogueText.literal(text);
+        this.curDefaultSayId = resolveId(sayId);
+        return this;
+    }
+
+    public DialogueTreeBuilder say(DialogueText text, String sayId) {
+        ensureOpenNode();
+        this.curText = text == null ? DialogueText.literal("") : text;
         this.curDefaultSayId = resolveId(sayId);
         return this;
     }
@@ -239,7 +252,14 @@ public class DialogueTreeBuilder {
     @SuppressWarnings("unchecked")
     public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, null, resolveId(sayId)));
+        curConditionalTexts.add(new ConditionalText(condition, DialogueText.literal(text), 0, null, resolveId(sayId)));
+        return this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, DialogueText text, String sayId) {
+        ensureOpenNode();
+        curConditionalTexts.add(new ConditionalText(condition, text == null ? DialogueText.literal("") : text, 0, null, resolveId(sayId)));
         return this;
     }
 
@@ -252,7 +272,7 @@ public class DialogueTreeBuilder {
     @SuppressWarnings("unchecked")
     public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, int priority, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", priority, null, resolveId(sayId)));
+        curConditionalTexts.add(new ConditionalText(condition, DialogueText.literal(text), priority, null, resolveId(sayId)));
         return this;
     }
 
@@ -265,14 +285,14 @@ public class DialogueTreeBuilder {
     @SuppressWarnings("unchecked")
     public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, SoundEvent sound, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, sound, resolveId(sayId)));
+        curConditionalTexts.add(new ConditionalText(condition, DialogueText.literal(text), 0, sound, resolveId(sayId)));
         return this;
     }
 
     @SuppressWarnings("unchecked")
     public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, Holder.Reference<SoundEvent> sound, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, text != null ? text : "", 0, sound.get(), resolveId(sayId)));
+        curConditionalTexts.add(new ConditionalText(condition, DialogueText.literal(text), 0, sound.get(), resolveId(sayId)));
         return this;
     }
 
@@ -347,6 +367,17 @@ public class DialogueTreeBuilder {
      * </p>
      */
     public DialogueTreeBuilder choice(String choiceId, String text, Consumer<ChoiceBuilder> configurator) {
+        ensureOpenNode();
+        if (choiceId == null || choiceId.isEmpty()) {
+            throw new IllegalArgumentException("Choice ID cannot be null or empty");
+        }
+        ChoiceBuilder cb = new ChoiceBuilder(choiceId, text);
+        configurator.accept(cb);
+        curChoices.add(cb.build());
+        return this;
+    }
+
+    public DialogueTreeBuilder choice(String choiceId, DialogueText text, Consumer<ChoiceBuilder> configurator) {
         ensureOpenNode();
         if (choiceId == null || choiceId.isEmpty()) {
             throw new IllegalArgumentException("Choice ID cannot be null or empty");
@@ -483,7 +514,7 @@ public class DialogueTreeBuilder {
     private void commitCurrentNode() {
         if (!hasOpenNode) return;
 
-        String speaker = curSpeaker != null ? curSpeaker : "";
+        DialogueText speaker = curSpeaker != null ? curSpeaker : DialogueText.literal("");
 
         // 序列化条件文本
         Map<String, ConditionalSay> conditionalTextsMap = serializeConditionalTexts();
@@ -622,25 +653,25 @@ public class DialogueTreeBuilder {
      */
     private static class ConditionalText {
         final DialogueCondition condition;
-        final String text;
+        final DialogueText text;
         final int priority;
         final SoundEvent soundEvent;
         @Nullable
         final String sayId;
 
-        ConditionalText(DialogueCondition condition, String text) {
+        ConditionalText(DialogueCondition condition, DialogueText text) {
             this(condition, text, 0, null, null);
         }
 
-        ConditionalText(DialogueCondition condition, String text, int priority) {
+        ConditionalText(DialogueCondition condition, DialogueText text, int priority) {
             this(condition, text, priority, null, null);
         }
 
-        ConditionalText(DialogueCondition condition, String text, int priority, SoundEvent sound) {
+        ConditionalText(DialogueCondition condition, DialogueText text, int priority, SoundEvent sound) {
             this(condition, text, priority, sound, null);
         }
         
-        ConditionalText(DialogueCondition condition, String text, int priority, SoundEvent sound, String sayId) {
+        ConditionalText(DialogueCondition condition, DialogueText text, int priority, SoundEvent sound, String sayId) {
             this.condition = condition;
             this.text = text;
             this.priority = priority;
@@ -656,7 +687,7 @@ public class DialogueTreeBuilder {
     public static class ChoiceBuilder {
 
         private final String choiceId;  // 强制：选项 ID
-        private final String text;
+        private final DialogueText text;
         private final List<DialogueCondition> conditions = new ArrayList<>();
         private final List<DialogueAction> actions = new ArrayList<>();
         private String nextNodeId = null;
@@ -673,7 +704,15 @@ public class DialogueTreeBuilder {
                 throw new IllegalArgumentException("Choice ID cannot be null or empty");
             }
             this.choiceId = choiceId;
-            this.text = text;
+            this.text = DialogueText.literal(text);
+        }
+
+        ChoiceBuilder(String choiceId, DialogueText text) {
+            if (choiceId == null || choiceId.isEmpty()) {
+                throw new IllegalArgumentException("Choice ID cannot be null or empty");
+            }
+            this.choiceId = choiceId;
+            this.text = text == null ? DialogueText.literal("") : text;
         }
 
         public ChoiceBuilder goTo(String nodeId) {

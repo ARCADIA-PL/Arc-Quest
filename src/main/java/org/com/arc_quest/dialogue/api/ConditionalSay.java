@@ -12,45 +12,39 @@ import javax.annotation.Nullable;
  * </p>
  */
 public record ConditionalSay(
-        @Nonnull String sayId,      // 强制：分支标识符
-        String text, 
+        @Nonnull String sayId,
+        DialogueText text,
         @Nullable SoundEvent soundEvent
 ) {
-    
-    /**
-     * 创建 SayIf（必须提供 ID）。
-     * 
-     * @param sayId 分支标识符（不能为 null 或空）
-     * @param text 文本内容
-     * @return ConditionalSay 实例
-     * @throws IllegalArgumentException 如果 sayId 为 null 或空
-     */
-    public static ConditionalSay of(String sayId, String text) {
+
+    public static ConditionalSay of(String sayId, DialogueText text) {
         if (sayId == null || sayId.isEmpty()) {
             throw new IllegalArgumentException("SayIf ID cannot be null or empty");
+        }
+        if (text == null) {
+            throw new IllegalArgumentException("SayIf text cannot be null");
         }
         return new ConditionalSay(sayId, text, null);
     }
 
-    /**
-     * 创建带音效的 SayIf（必须提供 ID）。
-     * 
-     * @param sayId 分支标识符（不能为 null 或空）
-     * @param text 文本内容
-     * @param sound 音效
-     * @return ConditionalSay 实例
-     * @throws IllegalArgumentException 如果 sayId 为 null 或空
-     */
-    public static ConditionalSay of(String sayId, String text, SoundEvent sound) {
+    public static ConditionalSay of(String sayId, DialogueText text, SoundEvent sound) {
         if (sayId == null || sayId.isEmpty()) {
             throw new IllegalArgumentException("SayIf ID cannot be null or empty");
         }
+        if (text == null) {
+            throw new IllegalArgumentException("SayIf text cannot be null");
+        }
         return new ConditionalSay(sayId, text, sound);
     }
-    
-    /**
-     * 检查是否有有效的 SayIf ID。
-     */
+
+    public static ConditionalSay of(String sayId, String text) {
+        return of(sayId, DialogueText.literal(text));
+    }
+
+    public static ConditionalSay of(String sayId, String text, SoundEvent sound) {
+        return of(sayId, DialogueText.literal(text), sound);
+    }
+
     public boolean hasValidId() {
         return sayId != null && !sayId.isEmpty();
     }
