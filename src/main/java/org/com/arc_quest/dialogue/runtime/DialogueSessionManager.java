@@ -118,7 +118,7 @@ public final class DialogueSessionManager {
         if (currentNode != null && choiceIndex >= 0 && choiceIndex < currentNode.choices().size()) {
             Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
             var choice = currentNode.choices().get(choiceIndex);
-            MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(player, npc, session.getTree().dialogueId(), currentNode.nodeId(), choiceIndex, choice.choiceId(), session.processText(choice.text())));
+            MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(player, npc, session.getTree().dialogueId(), currentNode.nodeId(), choiceIndex, choice.choiceId(), session.processDialogueText(choice.text()).getString()));
         }
 
         DialogueNode next = session.choose(choiceIndex);
@@ -221,12 +221,12 @@ public final class DialogueSessionManager {
         DialogueNode node = session.getCurrentNode();
         if (node == null) return;
 
-        String speaker = node.speaker().isEmpty() ? session.getTree().defaultNpc() : node.speaker();
+        String speaker = session.processDialogueText(node.speaker()).getString();
         var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
         DialogueProgressStore progress = cap != null ? cap.getDialogueProgress() : null;
         Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
         DialogueEvalContext ctx = DialogueEvalContext.of(session.getPlayer(), npc, session.getNamespace(), progress);
-        ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(ctx, node.conditionalTexts(), node.text());
+        ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(ctx, node.conditionalTexts(), session.processDialogueText(node.text()).getString());
         String text = session.processText(sayIfResult.text);
         SoundEvent matchedSaySound = sayIfResult.sound;
         String selectedSayId = sayIfResult.sayId;
@@ -239,7 +239,7 @@ public final class DialogueSessionManager {
         ResourceLocation[] choiceSounds = new ResourceLocation[visibleChoices.size()];
         String[] choiceIds = new String[visibleChoices.size()];
         for (int i = 0; i < visibleChoices.size(); i++) {
-            choiceTexts[i] = session.processText(visibleChoices.get(i).text());
+            choiceTexts[i] = session.processDialogueText(visibleChoices.get(i).text()).getString();
             var sound = visibleChoices.get(i).selectSound();
             if (sound != null) choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getKey(sound);
             choiceIds[i] = visibleChoices.get(i).choiceId();

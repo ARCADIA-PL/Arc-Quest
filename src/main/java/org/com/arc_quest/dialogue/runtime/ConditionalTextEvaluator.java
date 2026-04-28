@@ -36,7 +36,7 @@ public final class ConditionalTextEvaluator {
      */
     public static String evaluate(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts, String defaultText) {
         var result = evaluateWithSound(ctx, conditionalTexts, defaultText);
-        return result.text();
+        return result.text().resolve(ctx.player(), ctx.npc()).getString();
     }
 
     /**
@@ -342,7 +342,7 @@ public final class ConditionalTextEvaluator {
         int maxPriority = matches.stream().mapToInt(m -> m.priority).max().orElse(0);
         for (SayMatch match : matches) {
             if (match.priority == maxPriority) {
-                return new SayIfResult(matchedSayId, matchIndex, match.say.text(), match.say.soundEvent());
+                return new SayIfResult(matchedSayId, matchIndex, match.say.text().resolve(ctx.player(), ctx.npc()).getString(), match.say.soundEvent());
             }
         }
         return new SayIfResult(null, -1, defaultText, null);

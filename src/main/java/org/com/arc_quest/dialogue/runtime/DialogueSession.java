@@ -1,6 +1,7 @@
 package org.com.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.com.arc_quest.dialogue.api.*;
@@ -380,6 +381,12 @@ public class DialogueSession {
             result = context.resolve(result);
         }
         return result;
+    }
+
+    public Component processDialogueText(DialogueText text) {
+        Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
+        Component resolved = (text == null ? DialogueText.literal("") : text).resolve(player, npc);
+        return Component.literal(processText(resolved.getString()));
     }
 
     // ═══════════════════════════════════════════════
