@@ -69,6 +69,14 @@ public class QuestJournalScreen extends Screen {
     }
 
     public void rebuildEntries() {
+        String lastSelectedQuestId = null;
+        List<String> lastActivePhases = null;
+        if (selectedIndex >= 0 && selectedIndex < currentEntries.size()) {
+            lastSelectedQuestId = currentEntries.get(selectedIndex).questId();
+            var rt = ClientQuestCache.INSTANCE.getActiveQuest(lastSelectedQuestId);
+            if (rt != null) lastActivePhases = new ArrayList<>(rt.getActivePhaseIds());
+        }
+
         currentEntries.clear();
         switch (currentTab) {
             case ACTIVE -> {
@@ -93,6 +101,31 @@ public class QuestJournalScreen extends Screen {
                 }
             }
         }
+
+        if (lastSelectedQuestId != null) {
+            for (int i = 0; i < currentEntries.size(); i++) {
+                if (currentEntries.get(i).questId().equals(lastSelectedQuestId)) {
+                    var rt = ClientQuestCache.INSTANCE.getActiveQuest(lastSelectedQuestId);
+                    List<String> currentPhases = rt != null ? new ArrayList<>(rt.getActivePhaseIds()) : null;
+
+                    boolean phasesChanged = false;
+                    if (lastActivePhases == null && currentPhases != null) phasesChanged = true;
+                    else if (lastActivePhases != null && currentPhases == null) phasesChanged = true;
+                    else if (lastActivePhases != null && currentPhases != null) {
+                        if (lastActivePhases.size() != currentPhases.size() || !lastActivePhases.containsAll(currentPhases)) {
+                            phasesChanged = true;
+                        }
+                    }
+
+                    if (!phasesChanged) {
+                        selectedIndex = i;
+                        return;
+                    }
+                    break;
+                }
+            }
+        }
+
         selectedIndex = currentEntries.isEmpty() ? -1 : 0;
         listPanel.resetState();
         detailPanel.resetState();
@@ -100,12 +133,13 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // 全新：当 Intel 面板打开时，阻断底层按键检测，并只处理退出
+        // 全面阻断键盘事件透传
         if (QuestIntelPanel.isActive()) {
             if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) { QuestIntelPanel.dismiss(); return true; }
             return true;
         }
-        if (QuestOfferPanel.isActive() && QuestOfferPanel.keyPressed(keyCode)) {
+        if (QuestOfferPanel.isActive()) {
+            QuestOfferPanel.keyPressed(keyCode);
             return true;
         }
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) { this.onClose(); return true; }
@@ -119,14 +153,14 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        // 全新：将交互事件正确地向下移交到面板内部，以触发 Ponder 面板上的系统按钮
+        // 全面阻断鼠标点击透传
         if (QuestIntelPanel.isActive()) {
             QuestIntelPanel.handleMouseClick(mx, my, this.width, this.height);
             return true;
         }
-
         if (QuestOfferPanel.isActive()) {
-            return QuestOfferPanel.mouseClicked(mx, my, button);
+            QuestOfferPanel.mouseClicked(mx, my, button);
+            return true;
         }
 
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
@@ -147,7 +181,8 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
-        if (QuestIntelPanel.isActive()) return true; // 全新：强制阻断底层滑块和拖拽
+        // 全面阻断拖拽透传
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
 
         int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
         int listH = this.height - 20 - listY;
@@ -158,7 +193,8 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
-        if (QuestIntelPanel.isActive()) return true; // 全新：强制阻断
+        // 全面阻断释放透传
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
 
         listPanel.mouseReleased(button);
         detailPanel.mouseReleased(button);
@@ -167,7 +203,9 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx, double my, double delta) {
-        if (QuestIntelPanel.isActive()) return true; // 全新：强制阻断底层滚轮
+        // 全面阻断滚轮透传
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
+
         if (isClosing) return false;
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
@@ -198,8 +236,8 @@ public class QuestJournalScreen extends Screen {
         if (realDt > 0.1f) realDt = 0.1f;
 
         boolean intelActive = QuestIntelPanel.isActive();
+        boolean offerActive = QuestOfferPanel.isActive();
 
-        // 动画控制核心：若 Intel 面板激活，强制传递给底层的所有 dt = 0，实现【底层动画瞬间时间冻结】的效果！
         if (QuestSplashRenderer.isActive()) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
             dt = 0f;
@@ -219,7 +257,6 @@ public class QuestJournalScreen extends Screen {
         float slideOffset = (1f - easeProgress) * 200f;
         int safeAlpha = (int) (255 * effectiveAlpha);
 
-        // 背景暗化，添加极微弱的主题色晕染
         int bgTint = HudAnimUtil.lerpColor(0x000000, currentThemeColor, 0.05f);
         g.fill(0, 0, this.width, this.height, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
 
@@ -253,17 +290,19 @@ public class QuestJournalScreen extends Screen {
 
         updateAndRenderTooltip(g, mouseX, mouseY);
 
-        if (QuestIntelPanel.isActive()) {
+        if (intelActive) {
             QuestIntelPanel.render(g, this.width, this.height, partialTick);
         }
 
-        if (QuestOfferPanel.isActive()) {
+        if (offerActive) {
             QuestOfferPanel.render(g, mouseX, mouseY, partialTick);
         }
     }
 
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
-        boolean isHoveringValid = hoveredRewardTooltip != null && !QuestIntelPanel.isActive();
+        // 核心修复：模态面板开启时，彻底屏蔽底层 Tooltip 渲染
+        boolean isHoveringValid = hoveredRewardTooltip != null && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive();
+
         if (isHoveringValid) {
             if (activeTooltipStack == null || !ItemStack.matches(activeTooltipStack, hoveredRewardTooltip)) {
                 if (tooltipTipAlpha > 0.5f) { tooltipHoverTimer = TIP_HOVER_DELAY; activeTooltipStack = hoveredRewardTooltip; }

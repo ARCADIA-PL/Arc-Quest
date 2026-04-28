@@ -206,7 +206,7 @@ public class JournalDetailPanel {
             updateScrollFromMouse(my, y, h - 40, Math.max(0, detailContentHeight - (h - 40)));
             return true;
         }
-        if (parallelPhaseRenderer.mouseDragged(mx)) return true;
+        if (parallelPhaseRenderer.mouseDragged(mx, my)) return true;
         return false;
     }
 

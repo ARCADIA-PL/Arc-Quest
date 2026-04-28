@@ -8,6 +8,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.client.gui.gacha.GachaResultRenderer;
+import org.com.arc_quest.client.gui.quest.offer.QuestOfferPanel;
 import org.com.arc_quest.client.gui.render.QuestIntelPanel;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.QuestDefinition;

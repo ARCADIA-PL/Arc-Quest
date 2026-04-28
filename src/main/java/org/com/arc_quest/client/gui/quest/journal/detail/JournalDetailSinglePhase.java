@@ -25,16 +25,16 @@ import org.com.arc_quest.quest.network.C2SRequestQuestActionPacket;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class JournalDetailSinglePhase {
     private final QuestJournalScreen screen;
     private final JournalDetailPanel parent;
 
     private float[] detailObjReveal = new float[0];
-    // 全新：用于存储每个目标进度条的平滑动画值
     private float[] objProgressAnims = new float[0];
-
     private final List<JournalTypes.ChoiceButtonRect> currentChoiceButtons = new ArrayList<>();
 
     private ResourceLocation intelSceneId = null;
@@ -42,9 +42,11 @@ public class JournalDetailSinglePhase {
     private float intelBtnHoverAnim = 0f;
     private long lastChoiceClickAt = 0L;
 
+    // 核心记录 Hover 和 呼吸动画
+    private final Map<Integer, Float> offerHoverAnims = new HashMap<>();
+
     private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {}
     private final List<OfferProgressRect> currentOfferProgressRects = new ArrayList<>();
-    private float offerPulse = 0f;
 
     public JournalDetailSinglePhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
@@ -57,7 +59,7 @@ public class JournalDetailSinglePhase {
         currentChoiceButtons.clear();
         intelSceneId = null;
         currentOfferProgressRects.clear();
-        offerPulse = 0f;
+        offerHoverAnims.clear();
     }
 
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, String phaseId, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
@@ -65,7 +67,6 @@ public class JournalDetailSinglePhase {
         Font font = screen.getFont();
         currentChoiceButtons.clear();
         currentOfferProgressRects.clear();
-        offerPulse += dt * 3.6f;
 
         g.pose().pushPose(); g.pose().translate(0, localY, 0); g.pose().scale(0.8f, 0.8f, 1f);
         String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty() ? phase.getDisplayName().getString() : phase.getPhaseId();
@@ -87,7 +88,6 @@ public class JournalDetailSinglePhase {
         intelSceneId = phase.getIntelSceneId();
         int objCount = phase.getObjectives().size();
 
-        // 动态初始化/扩容动画数组
         if (detailObjReveal.length != objCount) {
             detailObjReveal = new float[objCount];
             objProgressAnims = new float[objCount];
@@ -105,26 +105,60 @@ public class JournalDetailSinglePhase {
             boolean complete = progress >= required;
 
             String objText = (complete ? Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString() : Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString()) + phase.getObjectives().get(i).getDisplayText().getString();
+
+            int textStartY = localY;
             List<String> wrappedObjLines = HudRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
-            for (String line : wrappedObjLines) {
-                g.drawString(font, line, objX, localY, HudAnimUtil.withAlpha(complete ? 0x88FF88 : 0xDDDDDD, oA), true);
-                localY += font.lineHeight + 1;
+            int textBlockHeight = wrappedObjLines.size() * (font.lineHeight + 1);
+            int barW = scrollAreaW - 40 - objX;
+
+            boolean isOffer = phase.getObjectives().get(i).getType() == ObjectiveType.OFFER && progress < required;
+            boolean canSubmit = isOffer && screen.getCurrentTab() == JournalTypes.Tab.ACTIVE;
+            float hoverAnim = offerHoverAnims.getOrDefault(i, 0f);
+            boolean isHovered = false;
+
+            // --- 极限内缩判定框 (Inset Hitbox) ---
+            int hitX = objX + 2;
+            int hitY = textStartY + 1;
+            int hitW = Math.max(1, barW - 4);
+            int hitH = textBlockHeight + 4; // 只包裹文本行与进度条的紧凑区域
+
+            if (canSubmit) {
+                int absX = x + 12 + hitX;
+                int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + hitY;
+                // 改为严格的 <，切断边缘共享
+                isHovered = mx >= absX && mx < absX + hitW && my >= absY && my < absY + hitH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
+                hoverAnim = HudAnimUtil.lerp(hoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
+                offerHoverAnims.put(i, hoverAnim);
+                currentOfferProgressRects.add(new OfferProgressRect(absX, absY, hitW, hitH, phaseId, i));
             }
 
-            int barW = scrollAreaW - 40 - objX;
+            // --- 文本绘制及悬停矩阵变换 ---
+            g.pose().pushPose();
+            if (canSubmit && hoverAnim > 0.01f) {
+                float scale = 1.0f + 0.05f * hoverAnim;
+                float pivotX = objX;
+                float pivotY = textStartY + textBlockHeight / 2.0f;
+                g.pose().translate(pivotX, pivotY, 0);
+                g.pose().scale(scale, scale, 1f);
+                g.pose().translate(-pivotX, -pivotY, 0);
+            }
+
+            for (String line : wrappedObjLines) {
+                String cleanLine = line.replace("§7", "").replace("§a", "").replace("§f", "");
+                int baseColor = complete ? 0x88FF88 : 0xDDDDDD;
+                if (canSubmit) baseColor = HudAnimUtil.lerpColor(baseColor, activeTheme, hoverAnim);
+
+                g.drawString(font, cleanLine, objX, localY, HudAnimUtil.withAlpha(baseColor, oA), true);
+                localY += font.lineHeight + 1;
+            }
+            g.pose().popPose();
+            // --------------------------
+
             float targetRatio = required > 0 ? Math.max(0f, Math.min(1f, (float) progress / required)) : 0f;
             objProgressAnims[i] = HudAnimUtil.lerp(objProgressAnims[i], targetRatio, 0.15f, dt);
             int fillW = (int) (barW * objProgressAnims[i]);
 
-            boolean isOffer = phase.getObjectives().get(i).getType() == ObjectiveType.OFFER && progress < required;
-            int pulseA = isOffer ? (int)(48 + 40 * (0.5f + 0.5f * (float)Math.sin(offerPulse))) : 0;
-
             RenderSystem.enableBlend();
-
-            if (isOffer) {
-                g.fill(objX - 2, localY - 2, objX + barW + 2, localY + 4, HudAnimUtil.withAlpha(0x39C8FF, pulseA));
-            }
-
             int emptyBgColor = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * oAlpha));
             g.fill(objX, localY, objX + barW, localY + 2, emptyBgColor);
 
@@ -135,19 +169,25 @@ public class JournalDetailSinglePhase {
                 g.fill(objX + fillW - 2, localY - 1, objX + fillW, localY + 3, brightColor);
             }
 
+            if (canSubmit) {
+                float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
+                int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * oAlpha));
+                int hoverGlow = HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * hoverAnim * oAlpha));
+
+                g.fill(objX, localY, objX + barW, localY + 2, glowColor);
+                if (hoverAnim > 0.01f) {
+                    g.fill(objX, localY, objX + barW, localY + 2, hoverGlow);
+                }
+            }
             RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+
+            int pColor = canSubmit ? HudAnimUtil.lerpColor(0x999999, 0xFFFFFF, hoverAnim) : 0x999999;
 
             g.pose().pushPose();
             g.pose().translate(objX + barW + 4, localY - 1, 0);
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, progress + " / " + required, 0, 0, HudAnimUtil.withAlpha(0x999999, oA), false);
+            g.drawString(font, progress + " / " + required, 0, 0, HudAnimUtil.withAlpha(pColor, oA), false);
             g.pose().popPose();
-
-            if (isOffer && screen.getCurrentTab() == JournalTypes.Tab.ACTIVE) {
-                int absX = x + 12 + objX;
-                int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY - 2;
-                currentOfferProgressRects.add(new OfferProgressRect(absX, absY, barW, 6, phaseId, i));
-            }
 
             localY += 12;
         }
@@ -240,7 +280,7 @@ public class JournalDetailSinglePhase {
         int scrollAreaY = y, scrollAreaH = h - 40;
         if (intelSceneId != null) {
             int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + intelBtnLocalY);
-            if (mx >= intelBtnAbsX && mx <= intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my <= intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
+            if (mx >= intelBtnAbsX && mx < intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my < intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                 screen.playClick();
                 QuestIntelPanel.trigger(intelSceneId, screen.getCurrentThemeColor(), x, y, w, h);
                 return true;
@@ -248,17 +288,9 @@ public class JournalDetailSinglePhase {
         }
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentOfferProgressRects.isEmpty()) {
             for (OfferProgressRect rect : currentOfferProgressRects) {
-                if (mx >= rect.x && mx <= rect.x + rect.w
-                        && my >= rect.y && my <= rect.y + rect.h
-                        && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
-
+                if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                     String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
-                    QuestOfferPanel.trigger(
-                            qid,
-                            rect.phaseId,
-                            rect.objectiveIndex,
-                            (gg, stack, tx, ty) -> screen.renderTooltip(gg, stack, tx, ty)
-                    );
+                    QuestOfferPanel.trigger(qid, rect.phaseId, rect.objectiveIndex);
                     screen.playClick();
                     return true;
                 }
@@ -266,7 +298,7 @@ public class JournalDetailSinglePhase {
         }
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentChoiceButtons.isEmpty()) {
             for (JournalTypes.ChoiceButtonRect rect : currentChoiceButtons) {
-                if (mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
+                if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                     long nowMs = Util.getMillis();
                     if (nowMs - lastChoiceClickAt < JournalConstants.CHOICE_CLICK_COOLDOWN_MS) return true;
                     lastChoiceClickAt = nowMs;

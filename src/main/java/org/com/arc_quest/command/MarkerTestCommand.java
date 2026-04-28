@@ -3,6 +3,7 @@ package org.com.arc_quest.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
@@ -316,14 +317,14 @@ public class MarkerTestCommand {
     }
 
     private static CompletableFuture<Suggestions> suggestPresets(
-            com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            CommandContext<CommandSourceStack> ctx,
             SuggestionsBuilder builder
     ) {
         return SharedSuggestionProvider.suggest(PRESETS, builder);
     }
 
     private static CompletableFuture<Suggestions> suggestStates(
-            com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+            CommandContext<CommandSourceStack> ctx,
             SuggestionsBuilder builder
     ) {
         return SharedSuggestionProvider.suggest(STATES, builder);

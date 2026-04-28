@@ -9,10 +9,12 @@ import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
 import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
+import org.com.arc_quest.client.gui.quest.journal.detail.JournalDetailParallelPhase;
 import org.com.arc_quest.client.gui.quest.tracker.TrackerConstants;
 import org.com.arc_quest.client.gui.quest.tracker.TrackerObjectiveWidget;
 import org.com.arc_quest.client.gui.quest.tracker.TrackerParallelWidget;
 import org.com.arc_quest.client.gui.quest.tracker.TrackerTitleWidget;
+import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.ObjectiveEntry;
 import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestDefinition;
@@ -28,7 +30,6 @@ import java.util.Objects;
 
 public class QuestTrackerPanel {
 
-    // 状态机与动画数据
     private float panelReveal = 0f;
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
@@ -49,7 +50,6 @@ public class QuestTrackerPanel {
     private List<String> activePhaseOrder = new ArrayList<>();
     private int currentThemeColor = TrackerConstants.COLOR_ACCENT_DEFAULT;
 
-    // 分离出去的组件管理器
     private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
 
     public void setTrackedQuest(String questId) {
@@ -88,7 +88,8 @@ public class QuestTrackerPanel {
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float partialTick) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) return;
-        boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen;
+
+        boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen || QuestSplashRenderer.isActive();
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -164,7 +165,6 @@ public class QuestTrackerPanel {
         List<ObjectiveEntry> objectives = phase.getObjectives();
         Font font = mc.font;
 
-        // 模块化调用测算高度
         int targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
         if (activePhaseOrder.size() > 1) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
         else targetH += 16;
@@ -196,7 +196,6 @@ public class QuestTrackerPanel {
         int textX = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
         int textY = panelY + TrackerConstants.PADDING;
 
-        // 像拼积木一样调用分离出的渲染组件
         TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font);
         textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
 
@@ -215,10 +214,26 @@ public class QuestTrackerPanel {
         RenderSystem.disableBlend();
     }
 
+    // 【终极重构同步点】在此处完美读取硬盘持久化或内存缓存的顺序
     private void syncActivePhaseOrder(QuestRuntimeData tracked, QuestDefinition def) {
+        String questId = tracked.getQuestId();
+        List<String> customOrder = JournalDetailParallelPhase.getCustomOrder(questId);
         List<String> next = new ArrayList<>();
-        for (String pid : def.getPhaseIds()) if (tracked.isPhaseActive(pid)) next.add(pid);
-        if (next.isEmpty()) next.addAll(tracked.getActivePhaseIds());
+
+        if (customOrder != null && !customOrder.isEmpty()) {
+            for (String pid : customOrder) {
+                if (tracked.isPhaseActive(pid) && def.getPhase(pid) != null) next.add(pid);
+            }
+            // 兜底补齐：万一有没在缓存里的新激活 Phase，加在后面
+            for (String pid : tracked.getActivePhaseIds()) {
+                if (!next.contains(pid) && def.getPhase(pid) != null) next.add(pid);
+            }
+        } else {
+            // 默认顺序回退
+            for (String pid : def.getPhaseIds()) if (tracked.isPhaseActive(pid)) next.add(pid);
+            if (next.isEmpty()) next.addAll(tracked.getActivePhaseIds());
+        }
+
         activePhaseOrder = next;
     }
 

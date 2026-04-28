@@ -5,21 +5,23 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.quest.api.ObjectiveEntry;
 import org.com.arc_quest.quest.api.ObjectiveType;
-import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.network.C2SSubmitOfferPacket;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 import org.com.arc_quest.quest.registry.QuestRegistry;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,20 +29,23 @@ import java.util.List;
 
 public final class QuestOfferPanel {
 
-    public interface TooltipBridge {
-        void renderItemTooltip(GuiGraphics g, ItemStack stack, int mx, int my);
-    }
+    private static final int PANEL_W = 280;
+    private static final int PANEL_H = 140;
+
+    private static final float ENTER_TIME = 0.7f;
+    private static final float EXIT_TIME = 0.5f;
 
     private static boolean active = false;
     private static boolean closing = false;
     private static long lastRenderMs = 0L;
-    private static float dt = 0f;
-    private static float anim = 0f; // 0~1
-    private static float suspendAlpha = 1f;
+
+    private static float enterTimer = 0f;
+    private static float exitTimer = 0f;
 
     private static String questId;
     private static String phaseId;
     private static int objectiveIndex;
+    private static int themeColor = 0x5AD7FF;
 
     private static ItemStack hoveredStack = ItemStack.EMPTY;
     private static int iconCycleTicker = 0;
@@ -48,8 +53,6 @@ public final class QuestOfferPanel {
 
     private static long lastSubmitClickMs = 0L;
     private static final long SUBMIT_COOLDOWN_MS = 180L;
-
-    private static TooltipBridge tooltipBridge;
 
     private static float submitFeedbackAnim = 0f;
     private static boolean submitFeedbackSuccess = false;
@@ -60,19 +63,31 @@ public final class QuestOfferPanel {
     private static String cachedTagKey = "";
     private static List<ItemStack> cachedTagIcons = List.of();
 
+    private static float submitHoverAnim = 0f;
+    private static float itemSlotHoverAnim = 0f;
+    private static float currentProgressAnim = 0f;
+
+    private static boolean isDraggingSlider = false;
+    private static int sliderValue = 1;
+    private static float sliderHoverAnim = 0f;
+    private static float visualThumbX = -1f;
+
+    private static float currentScale = 1.0f;
+    private static float currentDrawX = 0;
+    private static float currentDrawY = 0;
+
     private QuestOfferPanel() {}
 
-    public static void trigger(String qid, String pid, int objIndex, TooltipBridge bridge) {
+    public static void trigger(String qid, String pid, int objIndex) {
         questId = qid;
         phaseId = pid;
         objectiveIndex = objIndex;
-        tooltipBridge = bridge;
-
+        themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(qid, 0x5AD7FF);
         active = true;
         closing = false;
-        anim = 0f;
-        suspendAlpha = 1f;
-        lastRenderMs = 0L;
+        enterTimer = 0f;
+        exitTimer = 0f;
+        lastRenderMs = System.currentTimeMillis();
         iconCycleTicker = 0;
         iconCycleIndex = 0;
         hoveredStack = ItemStack.EMPTY;
@@ -83,20 +98,28 @@ public final class QuestOfferPanel {
         pendingSubmitCheckAt = 0L;
         cachedTagKey = "";
         cachedTagIcons = List.of();
+        submitHoverAnim = 0f;
+        itemSlotHoverAnim = 0f;
+        isDraggingSlider = false;
+        sliderValue = 1;
+        sliderHoverAnim = 0f;
+        visualThumbX = -1f;
+
+        OfferVM initialVm = resolveOfferViewModel();
+        currentProgressAnim = initialVm != null ? initialVm.current : 0f;
     }
 
-    public static boolean isActive() {
-        return active;
-    }
+    public static boolean isActive() { return active; }
 
     public static void close() {
-        if (!active) return;
+        if (!active || closing) return;
         closing = true;
+        exitTimer = 0f;
     }
 
     public static boolean keyPressed(int keyCode) {
-        if (!active) return false;
-        if (keyCode == 256 || keyCode == 69) { // ESC / E
+        if (!active || closing) return false;
+        if (keyCode == 256 || keyCode == 69) {
             close();
             return true;
         }
@@ -104,257 +127,359 @@ public final class QuestOfferPanel {
     }
 
     public static boolean mouseClicked(double mx, double my, int button) {
-        if (!active || button != 0) return false;
+        if (!active || closing || button != 0) return false;
 
-        Layout l = computeLayout();
-        if (l == null) return true;
+        float scaledW = PANEL_W * currentScale;
+        float scaledH = PANEL_H * currentScale;
 
-        if (!inside(mx, my, l.panelX, l.panelY, l.panelW, l.panelH)) {
+        if (mx < currentDrawX || mx > currentDrawX + scaledW || my < currentDrawY || my > currentDrawY + scaledH) {
             close();
             return true;
         }
 
-        if (inside(mx, my, l.submitBtnX, l.submitBtnY, l.submitBtnW, l.submitBtnH)) {
-            OfferVM vm = resolveOfferViewModel();
-            if (vm == null) return true;
+        float lx = (float) ((mx - currentDrawX) / currentScale);
+        float ly = (float) ((my - currentDrawY) / currentScale);
 
-            int remain = Math.max(0, vm.required - vm.current);
-            int canSubmit = Math.max(0, vm.canSubmitNow);
-            int amount = Math.min(1, Math.min(remain, canSubmit));
-            if (amount <= 0) {
-                submitFeedbackSuccess = false;
-                submitFeedbackText = Component.translatable("arc_quest.gui.offer.submit_disabled").getString();
-                submitFeedbackAnim = 1f;
-                return true;
-            }
+        OfferVM vm = resolveOfferViewModel();
+        if (vm == null) return true;
 
-            long now = Util.getMillis();
-            if (now - lastSubmitClickMs < SUBMIT_COOLDOWN_MS) return true;
-            lastSubmitClickMs = now;
+        int remain = Math.max(0, vm.required - vm.current);
+        int canSubmit = Math.max(0, vm.canSubmitNow);
+        int maxSelectable = Math.max(0, Math.min(50, Math.min(remain, canSubmit)));
 
-            lastKnownProgress = vm.current;
-            pendingSubmitCheckAt = now + 220L;
-
-            ArcQuestNetwork.sendSubmitOffer(C2SSubmitOfferPacket.of(questId, phaseId, objectiveIndex, amount));
+        int sliderW = 160;
+        int sliderX = PANEL_W / 2 - sliderW / 2;
+        int sliderY = 95;
+        if (maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8) {
+            isDraggingSlider = true;
             return true;
         }
 
+        int btnW = 140;
+        int btnH = 16;
+        int btnX = PANEL_W / 2 - btnW / 2;
+        int btnY = PANEL_H - btnH - 10;
+
+        if (lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH) {
+            if (sliderValue <= 0 || maxSelectable <= 0) {
+                submitFeedbackSuccess = false;
+                submitFeedbackText = "NOT ENOUGH ITEMS";
+                submitFeedbackAnim = 1f;
+                return true;
+            }
+            long now = Util.getMillis();
+            if (now - lastSubmitClickMs < SUBMIT_COOLDOWN_MS) return true;
+            lastSubmitClickMs = now;
+            lastKnownProgress = vm.current;
+            pendingSubmitCheckAt = now + 220L;
+            ArcQuestNetwork.sendSubmitOffer(C2SSubmitOfferPacket.of(questId, phaseId, objectiveIndex, sliderValue));
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+            return true;
+        }
         return true;
     }
 
     public static void render(GuiGraphics g, int mx, int my, float partialTick) {
         if (!active) return;
-
-        long now = Util.getMillis();
-        if (lastRenderMs == 0L) lastRenderMs = now;
-        dt = Math.min(0.1f, (now - lastRenderMs) / 1000f);
+        Minecraft mc = Minecraft.getInstance();
+        int screenW = mc.getWindow().getGuiScaledWidth();
+        int screenH = mc.getWindow().getGuiScaledHeight();
+        long now = System.currentTimeMillis();
+        float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
 
-        suspendAlpha = Math.min(1f, suspendAlpha + dt * 3f);
+        float finalScale = (screenH * 0.55f) / (float) PANEL_H;
+        float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f);
+        float baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
+        float scaleAnim = finalScale;
+        float currentX = baseX;
+        float currentY = baseY;
+        float alphaF = 1.0f;
+        float revealProgress = 1.0f;
+        float wipeProgress = 0.0f;
+        float actualFlyDist = 4.0f * finalScale;
 
-        if (!closing) {
-            anim = Math.min(1f, anim + dt / 0.16f);
+        if (closing) {
+            exitTimer += dt;
+            if (exitTimer >= EXIT_TIME) { active = false; closing = false; return; }
+            float t = Math.min(1.0f, exitTimer / EXIT_TIME);
+            float easeIn = (float) Math.pow(t, 4.0);
+            wipeProgress = easeIn;
+            currentX = baseX - (easeIn * actualFlyDist * 1.5f);
+            alphaF = 1.0f - (float) Math.pow(t, 8.0);
         } else {
-            anim = Math.max(0f, anim - dt / 0.12f);
-            if (anim <= 0.001f) {
-                active = false;
-                closing = false;
-                return;
-            }
+            enterTimer = Math.min(ENTER_TIME, enterTimer + dt);
+            float t = Math.min(1.0f, enterTimer / ENTER_TIME);
+            float easeOut = (float) (1.0 - Math.pow(1.0 - t, 5));
+            revealProgress = easeOut;
+            alphaF = easeOut;
+            scaleAnim = finalScale * (1.10f - 0.10f * easeOut);
+            currentX = baseX - (1.0f - easeOut) * actualFlyDist * 2f;
         }
 
-        float ease = closing ? HudAnimUtil.easeInCubic(anim) : HudAnimUtil.easeOutCubic(anim);
-        float alpha = ease * HudAnimUtil.easeOutCubic(suspendAlpha);
+        if (revealProgress <= 0.001f || wipeProgress >= 0.999f) return;
 
-        Layout l = computeLayout();
-        if (l == null) return;
+        float drawWidth = PANEL_W * scaleAnim;
+        float drawHeight = PANEL_H * scaleAnim;
+        float scaleOffsetW = (drawWidth - PANEL_W * finalScale) / 2f;
+        float scaleOffsetH = (drawHeight - PANEL_H * finalScale) / 2f;
+        currentDrawX = currentX - scaleOffsetW;
+        currentDrawY = currentY - scaleOffsetH;
+        currentScale = scaleAnim;
+        int scX1 = (int) (currentDrawX - 10);
+        int scX2 = (int) (currentDrawX + drawWidth + 10);
+
+        if (closing) { scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress)); }
+        else if (enterTimer < ENTER_TIME) { scX2 = (int) (currentDrawX + drawWidth * revealProgress); }
 
         hoveredStack = ItemStack.EMPTY;
 
-        int dimA = (int) (145 * alpha);
-        g.fill(0, 0, l.screenW, l.screenH, dimA << 24);
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 4500);
+        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (100 * alphaF)));
+        g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        g.pose().pushPose();
+        g.pose().translate(currentDrawX, currentDrawY, 0);
+        g.pose().scale(scaleAnim, scaleAnim, 1f);
 
-        int panelBg = HudAnimUtil.withAlpha(0x101319, (int) (225 * alpha));
-        int border = HudAnimUtil.withAlpha(0x5AD7FF, (int) (220 * alpha));
-        g.fill(l.panelX, l.panelY, l.panelX + l.panelW, l.panelY + l.panelH, panelBg);
-        drawFrame(g, l.panelX, l.panelY, l.panelW, l.panelH, border);
+        int alphaInt = Math.max(0, Math.min(255, (int) (255 * alphaF)));
+        renderPanel(g, mc.font, alphaInt, alphaF, dt, mx, my);
 
-        Font font = Minecraft.getInstance().font;
-        g.drawString(font, Component.translatable("arc_quest.gui.offer.title"), l.panelX + 14, l.panelY + 10, HudAnimUtil.withAlpha(0xDDF6FF, (int)(255 * alpha)), false);
+        g.pose().popPose();
+        g.disableScissor();
+        g.pose().popPose();
+
+        if (!hoveredStack.isEmpty() && !closing) {
+            g.pose().pushPose();
+            g.pose().translate(0, 0, 5000);
+            g.renderTooltip(mc.font, hoveredStack, mx, my);
+            g.pose().popPose();
+        }
+    }
+
+    private static void renderPanel(GuiGraphics g, Font font, int alpha, float alphaF, float dt, int mx, int my) {
+        int PW = PANEL_W, PH = PANEL_H;
+        float lx = (float) ((mx - currentDrawX) / currentScale);
+        float ly = (float) ((my - currentDrawY) / currentScale);
+
+        int cyberEdgeWidth = 3;
+        int bgAlpha = (int) (0x99 * alphaF);
+        int borderAlpha = (int) (0x66 * alphaF);
+        int borderRgb = 0xCCCCCC;
+
+        g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        g.fill(cyberEdgeWidth, 0, PW, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(cyberEdgeWidth, PH - 1, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(PW - 1, 0, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, themeColor, alpha);
+
+        int topBarH = 22;
+        g.pose().pushPose();
+        g.pose().scale(0.8f, 0.8f, 1f);
+        g.drawString(font, "SYS.ARC_QUEST // UPLOAD PROTOCOL", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        g.pose().popPose();
+        g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
 
         OfferVM vm = resolveOfferViewModel();
-        updateSubmitFeedback(vm);
+
+        // 核心修复 1：如果由于提交导致 Phase 变动甚至完成任务，vm 会返回 null，此时强制关闭！
         if (vm == null) {
-            g.drawString(font, Component.translatable("arc_quest.gui.offer.invalid"), l.panelX + 14, l.panelY + 34, HudAnimUtil.withAlpha(0xFF7777, (int)(255 * alpha)), false);
+            if (active && !closing) close();
             return;
         }
 
-        renderOfferCard(g, font, l, vm, mx, my, alpha);
-        updateSubmitFeedback(vm);
+        updateSubmitFeedback(vm, dt);
 
-        if (!hoveredStack.isEmpty() && tooltipBridge != null) {
-            tooltipBridge.renderItemTooltip(g, hoveredStack, mx, my);
-        }
-    }
+        int contentY = topBarH + 12;
+        g.drawString(font, font.plainSubstrByWidth(vm.title, PW - 70), 50, contentY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
 
-    private static void updateSubmitFeedback(OfferVM vm) {
-        if (submitFeedbackAnim > 0f) {
-            submitFeedbackAnim = Math.max(0f, submitFeedbackAnim - dt * 2.2f);
-        }
+        String progressText = vm.current + " / " + vm.required;
+        g.pose().pushPose();
+        g.pose().scale(0.85f, 0.85f, 1f);
+        g.drawString(font, "STATUS: " + progressText, (int)(50 / 0.85f), (int)((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, alpha), false);
+        g.pose().popPose();
 
-        if (vm == null) return;
+        int iconX = 20, iconY = contentY;
+        boolean isHoverSlot = lx >= iconX - 2 && lx <= iconX + 20 && ly >= iconY - 2 && ly <= iconY + 20;
+        itemSlotHoverAnim = HudAnimUtil.step(itemSlotHoverAnim, isHoverSlot ? 1f : 0f, 15f, dt);
 
-        if (pendingSubmitCheckAt > 0L && Util.getMillis() >= pendingSubmitCheckAt) {
-            pendingSubmitCheckAt = 0L;
-
-            if (lastKnownProgress >= 0 && vm.current > lastKnownProgress) {
-                submitFeedbackSuccess = true;
-                submitFeedbackText = Component.translatable("arc_quest.gui.offer.submit_ok").getString();
-            } else {
-                submitFeedbackSuccess = false;
-                submitFeedbackText = Component.translatable("arc_quest.gui.offer.submit_fail").getString();
-            }
-            submitFeedbackAnim = 1f;
-        }
-    }
-
-    private static void renderOfferCard(GuiGraphics g, Font font, Layout l, OfferVM vm, int mx, int my, float alpha) {
-        int cardX = l.panelX + 14;
-        int cardY = l.panelY + 34;
-        int cardW = l.panelW - 28;
-        int cardH = l.panelH - 52;
-
-        int cardBg = HudAnimUtil.withAlpha(0x171C24, (int)(220 * alpha));
-        int cardBorder = HudAnimUtil.withAlpha(0x3E4D63, (int)(190 * alpha));
-        g.fill(cardX, cardY, cardX + cardW, cardY + cardH, cardBg);
-        drawFrame(g, cardX, cardY, cardW, cardH, cardBorder);
+        int slotBorderAlpha = (int) ((0x44 + 0x88 * itemSlotHoverAnim) * alphaF);
+        HudAnimUtil.drawFrame(g, iconX - 4, iconY - 4, 24, 24, HudAnimUtil.withAlpha(0x000000, (int)(0x55 * alphaF)), HudAnimUtil.withAlpha(themeColor, slotBorderAlpha));
 
         iconCycleTicker++;
-        if (iconCycleTicker >= 5) {
+        if (iconCycleTicker >= 60) {
             iconCycleTicker = 0;
-            if (vm.iconCandidates.size() > 1) {
-                iconCycleIndex = (iconCycleIndex + 1) % vm.iconCandidates.size();
-            }
+            if (vm.iconCandidates.size() > 1) iconCycleIndex = (iconCycleIndex + 1) % vm.iconCandidates.size();
         }
 
         ItemStack icon = vm.iconCandidates.isEmpty() ? ItemStack.EMPTY : vm.iconCandidates.get(iconCycleIndex % vm.iconCandidates.size());
-
-        int iconX = cardX + 10;
-        int iconY = cardY + 12;
-        if (!icon.isEmpty()) {
+        if (!icon.isEmpty() && alpha > 8) {
             g.renderItem(icon, iconX, iconY);
             g.renderItemDecorations(font, icon, iconX, iconY);
-            if (inside(mx, my, iconX, iconY, 16, 16)) {
-                hoveredStack = icon;
-            }
+            if (isHoverSlot) hoveredStack = icon;
         }
 
-        g.drawString(font, vm.title, cardX + 32, cardY + 12, 0xEAF7FF, false);
-
-        String progressText = vm.current + " / " + vm.required;
-        g.drawString(font, progressText, cardX + 32, cardY + 28, 0x9FC5D6, false);
-
-        int barX = cardX + 10;
-        int barY = cardY + 52;
-        int barW = cardW - 20;
-        int barH = 4;
-        float ratio = vm.required <= 0 ? 0f : Math.max(0f, Math.min(1f, (float) vm.current / vm.required));
+        currentProgressAnim += (vm.current - currentProgressAnim) * Math.min(1f, dt * 10f);
+        int barX = 20, barY = contentY + 36, barW = PW - 40, barH = 4;
+        float ratio = vm.required <= 0 ? 0f : Math.max(0f, Math.min(1f, currentProgressAnim / vm.required));
         int fillW = Math.max(0, (int)(barW * ratio));
 
-        g.fill(barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, 30));
+        g.fill(barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int)(20 * alphaF)));
+        HudAnimUtil.drawFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int)(40 * alphaF)));
+
         if (fillW > 0) {
-            g.fill(barX, barY, barX + fillW, barY + barH, HudAnimUtil.withAlpha(0x54D7FF, 220));
-            g.fill(barX + fillW - 1, barY - 1, barX + fillW + 1, barY + barH + 1, HudAnimUtil.withAlpha(0xE8FAFF, 230));
+            g.fill(barX, barY, barX + fillW, barY + barH, HudAnimUtil.withAlpha(themeColor, alpha));
+            g.fill(barX + fillW - 2, barY - 2, barX + fillW + 1, barY + barH + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
         }
 
         int remain = Math.max(0, vm.required - vm.current);
         int canSubmit = Math.max(0, vm.canSubmitNow);
-        int amount = Math.min(1, Math.min(remain, canSubmit));
-        boolean disabled = amount <= 0;
+        int maxSelectable = Math.max(0, Math.min(50, Math.min(remain, canSubmit)));
 
-        l.submitBtnX = cardX + 10;
-        l.submitBtnY = cardY + cardH - 30;
-        l.submitBtnW = cardW - 20;
-        l.submitBtnH = 20;
+        if (sliderValue > maxSelectable) sliderValue = Math.max(1, maxSelectable);
+        if (sliderValue < 1 && maxSelectable > 0) sliderValue = 1;
+        if (maxSelectable == 0) sliderValue = 0;
 
-        boolean hover = inside(l.mouseX, l.mouseY, l.submitBtnX, l.submitBtnY, l.submitBtnW, l.submitBtnH);
-        int btnBg = disabled
-                ? HudAnimUtil.withAlpha(0x3A3F47, 170)
-                : HudAnimUtil.withAlpha(hover ? 0x1FA7C8 : 0x1686A0, 210);
-        int btnText = disabled ? 0x89919C : 0xF1FBFF;
+        int sliderW = 160;
+        int sliderX = PW / 2 - sliderW / 2;
+        int sliderY = 95;
 
-        g.fill(l.submitBtnX, l.submitBtnY, l.submitBtnX + l.submitBtnW, l.submitBtnY + l.submitBtnH, btnBg);
-        drawFrame(g, l.submitBtnX, l.submitBtnY, l.submitBtnW, l.submitBtnH, HudAnimUtil.withAlpha(0xD5F6FF, disabled ? 70 : 170));
+        if (isDraggingSlider) {
+            if (GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS) {
+                isDraggingSlider = false;
+            } else if (maxSelectable > 1) {
+                float pct = (lx - sliderX) / (float) sliderW;
+                pct = Math.max(0f, Math.min(1f, pct));
+                sliderValue = 1 + Math.round(pct * (maxSelectable - 1));
+            }
+        }
 
-        String label = disabled
-                ? Component.translatable("arc_quest.gui.offer.submit_disabled").getString()
-                : Component.translatable("arc_quest.gui.offer.submit_one").getString();
-        int tw = font.width(label);
-        g.drawString(font, label, l.submitBtnX + (l.submitBtnW - tw) / 2, l.submitBtnY + 6, btnText, false);
+        boolean sliderHover = !isDraggingSlider && maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8;
+        sliderHoverAnim = HudAnimUtil.step(sliderHoverAnim, sliderHover ? 1f : 0f, 18f, dt);
 
-        if (disabled) {
-            String hint = Component.translatable("arc_quest.gui.offer.hint_need_more", remain, canSubmit).getString();
-            g.drawString(font, hint, cardX + 10, l.submitBtnY - 12, 0x92A8B6, false);
+        g.pose().pushPose();
+        g.pose().scale(0.85f, 0.85f, 1f);
+        String qtyText = "QUANTITY // " + (maxSelectable == 0 ? "0" : sliderValue);
+        int tW = font.width(qtyText);
+        g.drawString(font, qtyText, (int)((PW / 2f) / 0.85f) - tW / 2, (int)((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, alpha), false);
+        g.pose().popPose();
+
+        g.fill(sliderX, sliderY, sliderX + sliderW, sliderY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(30 * alphaF)));
+
+        if (maxSelectable > 0) {
+            float targetPct = maxSelectable > 1 ? (float)(sliderValue - 1) / (maxSelectable - 1) : 1f;
+            float targetThumbX = sliderX + (targetPct * sliderW);
+            if (visualThumbX < 0) visualThumbX = targetThumbX;
+            visualThumbX += (targetThumbX - visualThumbX) * Math.min(1f, dt * 25f);
+            g.fill(sliderX, sliderY, (int)visualThumbX, sliderY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
+            int tX = (int) visualThumbX;
+            int thumbActiveColor = isDraggingSlider ? 0xFFFFFF : HudAnimUtil.lerpColor(themeColor, 0xFFFFFF, sliderHoverAnim);
+            g.fill(tX - 1, sliderY - 2, tX + 1, sliderY + 3, HudAnimUtil.withAlpha(thumbActiveColor, alpha));
+        }
+
+        int btnW = 140;
+        int btnH = 16;
+        int btnX = PW / 2 - btnW / 2;
+        int btnY = PANEL_H - btnH - 10;
+
+        boolean disabled = sliderValue <= 0 || maxSelectable <= 0;
+        boolean hoverSubmit = !disabled && lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH;
+        submitHoverAnim = HudAnimUtil.step(submitHoverAnim, hoverSubmit ? 1f : 0f, 15f, dt);
+
+        drawCyberButton(g, font, btnX, btnY, btnW, btnH, "SUBMIT [ " + sliderValue + " ]", submitHoverAnim, disabled, alpha, alphaF);
+
+        if (disabled && remain > 0) {
+            String hint = "Insufficient items: need " + remain + ", have " + canSubmit;
+            g.pose().pushPose();
+            g.pose().scale(0.7f, 0.7f, 1f);
+            g.drawString(font, hint, (int)((btnX + btnW / 2f) / 0.7f) - font.width(hint) / 2, (int)((sliderY + 8) / 0.7f), HudAnimUtil.withAlpha(0xAA4444, alpha), false);
+            g.pose().popPose();
+        }
+
+        if (submitFeedbackAnim > 0.05f) {
+            g.pose().pushPose();
+            g.pose().scale(0.8f, 0.8f, 1f);
+            int fbColor = submitFeedbackSuccess ? 0x66FF66 : 0xFF6666;
+            g.drawString(font, submitFeedbackText, (int)((btnX + btnW) / 0.8f) + 6, (int)(btnY / 0.8f) + 2, HudAnimUtil.withAlpha(fbColor, (int)(alpha * submitFeedbackAnim)), false);
+            g.pose().popPose();
+        }
+    }
+
+    private static void drawCyberButton(GuiGraphics g, Font font, int x, int y, int w, int h, String text, float hoverAnim, boolean disabled, int alpha, float alphaF) {
+        int currentColor = disabled ? 0x444444 : HudAnimUtil.lerpColor(0x777777, themeColor, hoverAnim);
+        int finalBtnBg = HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF));
+        int finalBtnBorder = HudAnimUtil.withAlpha(currentColor, disabled ? (int)(100 * alphaF) : alpha);
+        g.fill(x, y, x + w, y + h, finalBtnBg);
+        g.fill(x, y, x + w, y + 1, finalBtnBorder);
+        g.fill(x, y + h - 1, x + w, y + h, finalBtnBorder);
+        g.fill(x, y, x + 1, y + h, finalBtnBorder);
+        g.fill(x + w - 1, y, x + w, y + h, finalBtnBorder);
+
+        g.pose().pushPose();
+        float btnTextScale = disabled ? 0.85f : 0.85f + (0.05f * hoverAnim);
+        g.pose().translate(x + w / 2f, y + h / 2f - (font.lineHeight * btnTextScale) / 2f + 1, 0);
+        g.pose().scale(btnTextScale, btnTextScale, 1f);
+        g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(disabled ? 0x888888 : 0xFFFFFF, alpha));
+        g.pose().popPose();
+    }
+
+    private static void updateSubmitFeedback(OfferVM vm, float dt) {
+        if (submitFeedbackAnim > 0f) submitFeedbackAnim = Math.max(0f, submitFeedbackAnim - dt * 2.2f);
+        if (vm == null) return;
+        if (vm.current >= vm.required && active && !closing) {
+            close();
+            return;
+        }
+        if (pendingSubmitCheckAt > 0L && Util.getMillis() >= pendingSubmitCheckAt) {
+            pendingSubmitCheckAt = 0L;
+            if (lastKnownProgress >= 0 && vm.current > lastKnownProgress) {
+                submitFeedbackSuccess = true;
+                submitFeedbackText = "✔ OK";
+            } else {
+                submitFeedbackSuccess = false;
+                submitFeedbackText = "✘ ERR";
+            }
+            submitFeedbackAnim = 1f;
         }
     }
 
     private static OfferVM resolveOfferViewModel() {
         var data = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (data == null || !data.isPhaseActive(phaseId)) return null;
-
         var def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return null;
-
         var phase = def.getPhase(phaseId);
         if (phase == null) return null;
         if (objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return null;
-
         ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
         if (obj.getType() != ObjectiveType.OFFER) return null;
-
         int required = Math.max(1, obj.getRequiredCount());
         int current = data.getObjectiveProgress(phaseId, objectiveIndex);
-
         List<ItemStack> candidates = resolveIconCandidates(obj);
         int canSubmitNow = resolveOfferableCount(obj);
-
-        return new OfferVM(
-                obj.getDisplayText().getString(),
-                required,
-                current,
-                canSubmitNow,
-                candidates
-        );
+        return new OfferVM(obj.getDisplayText().getString(), required, current, canSubmitNow, candidates);
     }
 
     private static List<ItemStack> resolveIconCandidates(ObjectiveEntry obj) {
         String targetTag = obj.getExtra("target_tag");
         if (targetTag != null && !targetTag.isEmpty()) {
-            if (targetTag.equals(cachedTagKey) && !cachedTagIcons.isEmpty()) {
-                return cachedTagIcons;
-            }
-
+            if (targetTag.equals(cachedTagKey) && !cachedTagIcons.isEmpty()) return cachedTagIcons;
             try {
                 ResourceLocation tagId = ResourceLocation.parse(targetTag);
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
-
                 List<ItemStack> list = new ArrayList<>();
                 for (Item i : ForgeRegistries.ITEMS.getValues()) {
                     ItemStack st = new ItemStack(i);
                     if (!st.isEmpty() && st.is(tag)) list.add(st);
                 }
                 if (list.isEmpty()) list = Collections.singletonList(ItemStack.EMPTY);
-
                 cachedTagKey = targetTag;
-                cachedTagIcons = list;
-                return list;
+                return cachedTagIcons = list;
             } catch (Exception ignored) {
                 cachedTagKey = targetTag;
-                cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
-                return cachedTagIcons;
+                return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
             }
         }
-
         Item item = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
         if (item == null) return Collections.singletonList(ItemStack.EMPTY);
         return Collections.singletonList(new ItemStack(item));
@@ -363,10 +488,8 @@ public final class QuestOfferPanel {
     private static int resolveOfferableCount(ObjectiveEntry obj) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return 0;
-
         String targetTag = obj.getExtra("target_tag");
         int total = 0;
-
         if (targetTag != null && !targetTag.isEmpty()) {
             try {
                 ResourceLocation tagId = ResourceLocation.parse(targetTag);
@@ -375,62 +498,15 @@ public final class QuestOfferPanel {
                     if (!st.isEmpty() && st.is(tag)) total += st.getCount();
                 }
                 return total;
-            } catch (Exception ignored) {
-                return 0;
-            }
+            } catch (Exception ignored) { return 0; }
         }
-
         Item target = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
         if (target == null) return 0;
-
         for (ItemStack st : mc.player.getInventory().items) {
             if (!st.isEmpty() && st.getItem() == target) total += st.getCount();
         }
         return total;
     }
 
-    private static Layout computeLayout() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc == null || mc.getWindow() == null) return null;
-
-        int sw = mc.getWindow().getGuiScaledWidth();
-        int sh = mc.getWindow().getGuiScaledHeight();
-
-        Layout l = new Layout();
-        l.screenW = sw;
-        l.screenH = sh;
-        l.panelW = Math.min(360, sw - 24);
-        l.panelH = Math.min(190, sh - 30);
-        l.panelX = (sw - l.panelW) / 2;
-        l.panelY = (sh - l.panelH) / 2;
-        l.mouseX = Minecraft.getInstance().mouseHandler.xpos() * sw / mc.getWindow().getScreenWidth();
-        l.mouseY = Minecraft.getInstance().mouseHandler.ypos() * sh / mc.getWindow().getScreenHeight();
-        return l;
-    }
-
-    private static boolean inside(double mx, double my, int x, int y, int w, int h) {
-        return mx >= x && mx <= x + w && my >= y && my <= y + h;
-    }
-
-    private static void drawFrame(GuiGraphics g, int x, int y, int w, int h, int color) {
-        g.fill(x, y, x + w, y + 1, color);
-        g.fill(x, y + h - 1, x + w, y + h, color);
-        g.fill(x, y, x + 1, y + h, color);
-        g.fill(x + w - 1, y, x + w, y + h, color);
-    }
-
-    private static final class Layout {
-        int screenW, screenH;
-        int panelX, panelY, panelW, panelH;
-        int submitBtnX, submitBtnY, submitBtnW, submitBtnH;
-        double mouseX, mouseY;
-    }
-
-    private record OfferVM(
-            String title,
-            int required,
-            int current,
-            int canSubmitNow,
-            List<ItemStack> iconCandidates
-    ) {}
+    private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {}
 }

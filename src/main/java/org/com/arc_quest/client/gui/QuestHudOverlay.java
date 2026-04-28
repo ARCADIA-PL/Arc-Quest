@@ -53,7 +53,6 @@ public class QuestHudOverlay implements IGuiOverlay {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) return;
 
-        // 核心修复：就算 Splash 正在播放，也不能直接 return！我们必须接着计算冻结逻辑
         boolean isSplashActive = QuestSplashRenderer.isActive();
         boolean isBlockingScreen = isSplashActive || mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen;
 
@@ -105,7 +104,6 @@ public class QuestHudOverlay implements IGuiOverlay {
             currentBranchToastY = HudAnimUtil.lerp(currentBranchToastY, targetBranchY, 0.15f, dt);
         }
 
-        // 左侧 Toast (即使被遮挡也必须调用 render，内部如果收到 isBlockingScreen = true 会自动只计算冻结时间而不渲染)
         if (isPhaseActive) {
             if (!phaseUpdateToast.render(g, mc.font, LEFT_BASE_X, (int) currentPhasePopupY, 1f, isBlockingScreen)) {
                 phaseUpdateToast = null;
@@ -118,8 +116,10 @@ public class QuestHudOverlay implements IGuiOverlay {
             }
         }
 
+        // 解除强行截断，让 TrackerPanel 内部处理状态机，从而触发滑出/滑入动画！
+        trackerPanel.render(g, screenWidth, screenHeight, partialTick);
+
         if (!isSplashActive && !isBlockingScreen) {
-            trackerPanel.render(g, screenWidth, screenHeight, partialTick);
             QuestToastManager.render(g, screenWidth, screenHeight);
         }
     }
