@@ -1,11 +1,15 @@
 package org.com.arc_quest.quest.registry;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.quest.api.ICondition;
+import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestCategory;
 import org.com.arc_quest.quest.api.QuestDefinition;
+import org.com.arc_quest.quest.api.QuestTextContext;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -144,6 +148,60 @@ public final class QuestRegistry {
 
     public static int size() {
         return REGISTRY.size();
+    }
+
+    public record QuestTextBundle(
+            Component questDisplayName,
+            Component questDescription,
+            Component phaseDisplayName,
+            Component phaseDescription
+    ) {}
+
+    /**
+     * 按 questId/phaseId 获取任务文本（支持动态 QuestText 解析）。
+     * <p>
+     * - questId 支持带/不带命名空间。
+     * - phaseId 允许为 null 或空，此时使用任务当前 initial phase。
+     * - player 为 null 时返回静态 fallback 文本。
+     */
+    @Nullable
+    public static QuestTextBundle getQuestTextById(@Nullable ServerPlayer player,
+                                                    String questId,
+                                                    @Nullable String phaseId) {
+        QuestDefinition quest = get(questId);
+        if (quest == null) {
+            return null;
+        }
+
+        String resolvedPhaseId = (phaseId == null || phaseId.isEmpty())
+                ? quest.getInitialPhaseId()
+                : phaseId;
+
+        PhaseDefinition phase = quest.getPhase(resolvedPhaseId);
+        if (phase == null) {
+            phase = quest.getInitialPhase();
+            resolvedPhaseId = phase != null ? phase.getPhaseId() : resolvedPhaseId;
+        }
+
+        QuestTextContext ctx = new QuestTextContext(quest, phase, resolvedPhaseId, Map.of());
+
+        Component questName = player != null
+                ? quest.getDisplayName(player, ctx)
+                : quest.getDisplayName();
+
+        Component questDesc = player != null
+                ? quest.getDescription(player, ctx)
+                : quest.getDescription();
+
+        Component phaseName = phase != null
+                ? (player != null ? phase.getDisplayName(player, ctx) : phase.getDisplayName())
+                : Component.empty();
+
+        Component phaseDesc = phase != null
+                ? (player != null ? phase.getDescription(player, ctx) : phase.getDescription())
+                : Component.empty();
+
+        return new QuestTextBundle(questName, questDesc, phaseName, phaseDesc);
     }
 
     public static boolean isFrozen() {
