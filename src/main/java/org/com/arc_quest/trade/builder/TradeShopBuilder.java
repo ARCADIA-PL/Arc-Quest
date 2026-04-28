@@ -10,6 +10,7 @@ import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.api.TradeText;
 import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,8 +46,8 @@ public final class TradeShopBuilder {
     private final String shopId;
     private final List<TradeCategory> categories = new ArrayList<>();
     private final LinkedHashMap<String, TradeEntry> entries = new LinkedHashMap<>();
-    private Component displayName;
-    @Nullable private Component description;
+    private TradeText displayName;
+    @Nullable private TradeText description;
     @Nullable private ICondition openCondition;
     private boolean simpleMode = false;
     private int themeColor = 0xE0C860;  // 默认金色
@@ -91,22 +92,22 @@ public final class TradeShopBuilder {
     // ════════════════════════════════════════
 
     public TradeShopBuilder displayName(String literal) {
-        this.displayName = Component.literal(literal);
+        this.displayName = TradeText.literal(literal);
         return this;
     }
 
     public TradeShopBuilder displayName(Component name) {
-        this.displayName = name;
+        this.displayName = TradeText.component(name);
         return this;
     }
 
     public TradeShopBuilder description(String literal) {
-        this.description = Component.literal(literal);
+        this.description = TradeText.literal(literal);
         return this;
     }
 
     public TradeShopBuilder description(Component desc) {
-        this.description = desc;
+        this.description = TradeText.component(desc);
         return this;
     }
 
@@ -313,7 +314,7 @@ public final class TradeShopBuilder {
 
     public TradeShopDefinition build() {
         if (displayName == null) {
-            displayName = Component.literal(shopId);
+            displayName = TradeText.literal(shopId);
         }
         if (entries.isEmpty()) {
             throw new IllegalStateException("TradeShop '" + shopId + "' has no entries");

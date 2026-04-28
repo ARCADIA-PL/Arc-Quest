@@ -536,7 +536,7 @@ public class GachaShopBuilder {
         
         GachaPool pool = new GachaPool(poolItems);
         GachaShopDefinition shop = new GachaShopDefinition(
-            shopId, displayName, description, categories, entries,
+            shopId, org.com.arc_quest.trade.api.TradeText.component(displayName), description == null ? null : org.com.arc_quest.trade.api.TradeText.component(description), categories, entries,
             openCondition, simpleMode, themeColor, openSound, closeSound,
             pool, drawCost, cooldownType, cooldownValue, resetTimeTicks,
             drawCondition, maxDraws, resetCondition, resetOnLimitReachedByCoolDown, resetPityOnEarlyTrigger, pityConfig,

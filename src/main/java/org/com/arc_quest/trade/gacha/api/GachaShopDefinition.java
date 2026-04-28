@@ -10,6 +10,7 @@ import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.api.TradeText;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -77,8 +78,8 @@ public class GachaShopDefinition {
     }
     
     public GachaShopDefinition(String shopId, 
-                               Component displayName,
-                               @Nullable Component description,
+                               TradeText displayName,
+                               @Nullable TradeText description,
                                List<TradeCategory> categories,
                                LinkedHashMap<String, TradeEntry> entries,
                                @Nullable ICondition openCondition,
