@@ -13,6 +13,7 @@ import net.minecraft.world.item.TooltipFlag;
 import org.com.arc_quest.client.events.ClientEventHandler;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.quest.journal.detail.JournalDetailPanel;
+import org.com.arc_quest.client.gui.quest.offer.QuestOfferPanel;
 import org.com.arc_quest.client.gui.render.QuestIntelPanel;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.QuestDefinition;
@@ -104,6 +105,9 @@ public class QuestJournalScreen extends Screen {
             if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) { QuestIntelPanel.dismiss(); return true; }
             return true;
         }
+        if (QuestOfferPanel.isActive() && QuestOfferPanel.keyPressed(keyCode)) {
+            return true;
+        }
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) { this.onClose(); return true; }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
@@ -119,6 +123,10 @@ public class QuestJournalScreen extends Screen {
         if (QuestIntelPanel.isActive()) {
             QuestIntelPanel.handleMouseClick(mx, my, this.width, this.height);
             return true;
+        }
+
+        if (QuestOfferPanel.isActive()) {
+            return QuestOfferPanel.mouseClicked(mx, my, button);
         }
 
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
@@ -248,6 +256,10 @@ public class QuestJournalScreen extends Screen {
         if (QuestIntelPanel.isActive()) {
             QuestIntelPanel.render(g, this.width, this.height, partialTick);
         }
+
+        if (QuestOfferPanel.isActive()) {
+            QuestOfferPanel.render(g, mouseX, mouseY, partialTick);
+        }
     }
 
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
@@ -264,14 +276,14 @@ public class QuestJournalScreen extends Screen {
         tooltipTipAlpha += (targetTipAlpha - tooltipTipAlpha) * Math.min(1f, dt * 15f);
 
         if (tooltipTipAlpha > 0.02f && activeTooltipStack != null) {
-            renderCustomItemTooltip(g, activeTooltipStack, mouseX, mouseY);
+            renderTooltip(g, activeTooltipStack, mouseX, mouseY);
         } else {
             animTipW = 0;
             activeTooltipStack = null;
         }
     }
 
-    private void renderCustomItemTooltip(GuiGraphics g, ItemStack stack, int mouseX, int mouseY) {
+    public void renderTooltip(GuiGraphics g, ItemStack stack, int mouseX, int mouseY) {
         if (this.minecraft == null || this.minecraft.player == null) return;
         List<Component> tooltipLines = stack.getTooltipLines(this.minecraft.player, this.minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
         if (tooltipLines.isEmpty()) return;

@@ -11,11 +11,9 @@ import org.com.arc_quest.client.gui.QuestHudOverlay;
 import org.com.arc_quest.client.gui.quest.journal.JournalConstants;
 import org.com.arc_quest.client.gui.quest.journal.JournalTypes;
 import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
+import org.com.arc_quest.client.gui.quest.offer.QuestOfferPanel;
 import org.com.arc_quest.client.gui.render.QuestIntelPanel;
-import org.com.arc_quest.quest.api.ChoiceOption;
-import org.com.arc_quest.quest.api.ObjectiveEntry;
-import org.com.arc_quest.quest.api.PhaseDefinition;
-import org.com.arc_quest.quest.api.QuestDefinition;
+import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.network.C2SRequestQuestActionPacket;
@@ -65,6 +63,10 @@ public class JournalDetailParallelPhase {
 
     private long lastChoiceClickAt = 0L;
 
+    private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {}
+    private final List<OfferProgressRect> currentOfferProgressRects = new ArrayList<>();
+    private float offerPulse = 0f;
+
     public JournalDetailParallelPhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
         this.parent = parent;
@@ -87,6 +89,8 @@ public class JournalDetailParallelPhase {
         currentPhaseTags.clear();
         currentIntelBtns.clear();
         selectedPhaseId = null;
+        currentOfferProgressRects.clear();
+        offerPulse = 0f;
     }
 
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, List<String> activePhaseIds, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
@@ -95,6 +99,8 @@ public class JournalDetailParallelPhase {
         currentChoiceButtons.clear();
         currentPhaseTags.clear();
         currentIntelBtns.clear();
+        currentOfferProgressRects.clear();
+        offerPulse += dt * 3.6f;
 
         phaseScrollOffset += Math.abs(phaseTargetScroll - phaseScrollOffset) > 0.5 ? (phaseTargetScroll - phaseScrollOffset) * Math.min(1.0, dt * 14.0) : (phaseTargetScroll - phaseScrollOffset);
 
@@ -315,6 +321,17 @@ public class JournalDetailParallelPhase {
                     boolean complete = progress >= required;
                     int extraMargin = maxInnerScroll > 0 ? 8 : 0;
                     String pr = progress + "/" + required;
+                    if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE
+                            && obj.getType() == ObjectiveType.OFFER
+                            && progress < required) {
+
+                        int pulseA = (int)(48 + 40 * (0.5f + 0.5f * (float)Math.sin(offerPulse)));
+                        g.fill(barX - 2, cy - 2, barX + laneBarW + 2, cy + 4, HudAnimUtil.withAlpha(0x39C8FF, pulseA));
+
+                        int absX = x + 12 + barX;
+                        int absY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + cy - 2);
+                        recordParallelOfferProgressRect(absX, absY, laneBarW, 6, phaseId, i);
+                    }
                     String line = font.plainSubstrByWidth((complete ? "§a✔ " : "§7○ ") + obj.getDisplayText().getString(), Math.max(5, colW - 16 - contentShiftX - extraMargin - font.width(pr) - 6));
 
                     int objColor = complete ? 0x88FF88 : 0xCCCCCC;
@@ -473,12 +490,21 @@ public class JournalDetailParallelPhase {
             }
         }
 
-        if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentPhaseTags.isEmpty()) {
-            for (JournalTypes.PhaseTagRect rect : currentPhaseTags) {
-                if (mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h) {
-                    selectedPhaseId = rect.phaseId;
-                    QuestHudOverlay.INSTANCE.setTrackedFocus(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId);
-                    screen.playClick(); return true;
+        if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentOfferProgressRects.isEmpty()) {
+            for (OfferProgressRect rect : currentOfferProgressRects) {
+                if (mx >= rect.x && mx <= rect.x + rect.w
+                        && my >= rect.y && my <= rect.y + rect.h
+                        && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
+
+                    String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
+                    QuestOfferPanel.trigger(
+                            qid,
+                            rect.phaseId,
+                            rect.objectiveIndex,
+                            (gg, stack, tx, ty) -> screen.renderTooltip(gg, stack, tx, ty)
+                    );
+                    screen.playClick();
+                    return true;
                 }
             }
         }
@@ -494,6 +520,17 @@ public class JournalDetailParallelPhase {
                 }
             }
         }
+
+        if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentPhaseTags.isEmpty()) {
+            for (JournalTypes.PhaseTagRect rect : currentPhaseTags) {
+                if (mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h) {
+                    selectedPhaseId = rect.phaseId;
+                    QuestHudOverlay.INSTANCE.setTrackedFocus(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId);
+                    screen.playClick(); return true;
+                }
+            }
+        }
+
         return false;
     }
 
@@ -545,5 +582,9 @@ public class JournalDetailParallelPhase {
         if (current != null && !current.isEmpty() && runtime.isPhaseActive(current) && def.getPhase(current) != null) return selectedPhaseId = current;
         for (String pid : runtime.getActivePhaseIds()) if (def.getPhase(pid) != null) return selectedPhaseId = pid;
         return selectedPhaseId = null;
+    }
+
+    private void recordParallelOfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {
+        currentOfferProgressRects.add(new OfferProgressRect(x, y, w, h, phaseId, objectiveIndex));
     }
 }
