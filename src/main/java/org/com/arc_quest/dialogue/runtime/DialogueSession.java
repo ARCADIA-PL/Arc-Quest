@@ -8,6 +8,7 @@ import org.com.arc_quest.dialogue.api.*;
 import org.com.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.com.arc_quest.quest.capability.QuestRuntimeData;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -385,8 +386,52 @@ public class DialogueSession {
 
     public Component processDialogueText(DialogueText text) {
         Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
-        Component resolved = (text == null ? DialogueText.literal("") : text).resolve(player, npc);
+        var cap = QuestCapabilityProvider.getOrNull(player);
+        Map<String, Object> vars = buildDialogueVars(cap);
+        DialogueTextContext ctx = new DialogueTextContext(
+                player,
+                npc,
+                tree.dialogueId(),
+                currentNode != null ? currentNode.nodeId() : null,
+                cap,
+                vars
+        );
+        Component resolved = (text == null ? DialogueText.literal("") : text).resolve(ctx);
         return Component.literal(processText(resolved.getString()));
+    }
+
+    private Map<String, Object> buildDialogueVars(IQuestCapability cap) {
+        Map<String, Object> vars = new LinkedHashMap<>();
+
+        if (cap == null) {
+            return Map.copyOf(vars);
+        }
+
+        QuestRuntimeData firstActive = cap.getAllActiveQuests().values().stream().findFirst().orElse(null);
+        if (firstActive == null) {
+            return Map.copyOf(vars);
+        }
+
+        vars.put("questId", firstActive.getQuestId());
+
+        String phaseId = firstActive.getActivePhaseIds().stream().findFirst().orElse(null);
+        if (phaseId != null) {
+            vars.put("phaseId", phaseId);
+
+            int[] progress = firstActive.getAllProgress(phaseId);
+            vars.put("objectiveCount", progress.length);
+            vars.put("currentObjectiveIndex", progress.length > 0 ? 0 : -1);
+            vars.put("currentObjectiveProgress", progress.length > 0 ? progress[0] : 0);
+            vars.put("objectiveProgressList", Arrays.toString(progress));
+        } else {
+            vars.put("phaseId", "");
+            vars.put("objectiveCount", 0);
+            vars.put("currentObjectiveIndex", -1);
+            vars.put("currentObjectiveProgress", 0);
+            vars.put("objectiveProgressList", "[]");
+        }
+
+        return Map.copyOf(vars);
     }
 
     // ═══════════════════════════════════════════════
