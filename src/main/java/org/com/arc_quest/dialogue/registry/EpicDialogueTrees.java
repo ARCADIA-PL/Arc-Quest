@@ -4,6 +4,7 @@ import net.minecraft.network.chat.Component;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.api.ArcQuestAPI;
 import org.com.arc_quest.dialogue.api.DialogueCondition;
+import org.com.arc_quest.dialogue.api.DialogueText;
 import org.com.arc_quest.dialogue.builder.DialogueTreeBuilder;
 
 import java.util.List;
@@ -17,6 +18,12 @@ public final class EpicDialogueTrees {
 
     private EpicDialogueTrees() {
     }
+
+    public static final DialogueText example = DialogueText.translatable(
+            "dialogue.epic_village_elder.start.newcomer",
+            DialogueText.DialogueArg.of((player, npc) -> npc.position()),
+            DialogueText.DialogueArg.of((player, npc) -> player.getMainHandItem().getHoverName())
+    );
 
     public static void registerAll() {
         registerVillageElder();
