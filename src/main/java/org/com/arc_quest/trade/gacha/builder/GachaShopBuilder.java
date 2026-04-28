@@ -11,6 +11,7 @@ import org.com.arc_quest.quest.api.ICondition;
 import org.com.arc_quest.trade.api.ITradeOffer;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
+import org.com.arc_quest.trade.api.TradeText;
 import org.com.arc_quest.trade.gacha.api.GachaItem;
 import org.com.arc_quest.trade.gacha.api.GachaPool;
 import org.com.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -39,9 +40,9 @@ import java.util.*;
 public class GachaShopBuilder {
     
     private final String shopId;
-    private final Component displayName;
+    private final TradeText displayName;
     @Nullable
-    private Component description;
+    private TradeText description;
     private final List<TradeCategory> categories = new ArrayList<>();
     private final LinkedHashMap<String, TradeEntry> entries = new LinkedHashMap<>();
     @Nullable
@@ -80,7 +81,7 @@ public class GachaShopBuilder {
     @Nullable
     private SoundEvent drawFailSound;          // 通用失败音效
     
-    private GachaShopBuilder(String shopId, Component displayName) {
+    private GachaShopBuilder(String shopId, TradeText displayName) {
         this.shopId = shopId;
         this.displayName = displayName;
     }
@@ -89,6 +90,10 @@ public class GachaShopBuilder {
      * 创建 Builder，使用完整 ResourceLocation（推荐）。
      */
     public static GachaShopBuilder create(ResourceLocation id, Component displayName) {
+        return new GachaShopBuilder(id.toString(), TradeText.component(displayName));
+    }
+
+    public static GachaShopBuilder create(ResourceLocation id, TradeText displayName) {
         return new GachaShopBuilder(id.toString(), displayName);
     }
     
@@ -102,12 +107,27 @@ public class GachaShopBuilder {
         } else {
             shopId = Arc_quest.MOD_ID + ":" + id;
         }
+        return new GachaShopBuilder(shopId, TradeText.component(displayName));
+    }
+
+    public static GachaShopBuilder create(String id, TradeText displayName) {
+        String shopId;
+        if (id.contains(":")) {
+            shopId = id;
+        } else {
+            shopId = Arc_quest.MOD_ID + ":" + id;
+        }
         return new GachaShopBuilder(shopId, displayName);
     }
     
     // === 基础商店配置（代理到 TradeShopBuilder）===
     
     public GachaShopBuilder description(@Nullable Component description) {
+        this.description = description == null ? null : TradeText.component(description);
+        return this;
+    }
+
+    public GachaShopBuilder description(@Nullable TradeText description) {
         this.description = description;
         return this;
     }
@@ -536,7 +556,7 @@ public class GachaShopBuilder {
         
         GachaPool pool = new GachaPool(poolItems);
         GachaShopDefinition shop = new GachaShopDefinition(
-            shopId, org.com.arc_quest.trade.api.TradeText.component(displayName), description == null ? null : org.com.arc_quest.trade.api.TradeText.component(description), categories, entries,
+            shopId, displayName, description, categories, entries,
             openCondition, simpleMode, themeColor, openSound, closeSound,
             pool, drawCost, cooldownType, cooldownValue, resetTimeTicks,
             drawCondition, maxDraws, resetCondition, resetOnLimitReachedByCoolDown, resetPityOnEarlyTrigger, pityConfig,

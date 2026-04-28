@@ -101,6 +101,11 @@ public final class TradeShopBuilder {
         return this;
     }
 
+    public TradeShopBuilder displayName(TradeText name) {
+        this.displayName = name;
+        return this;
+    }
+
     public TradeShopBuilder description(String literal) {
         this.description = TradeText.literal(literal);
         return this;
@@ -108,6 +113,11 @@ public final class TradeShopBuilder {
 
     public TradeShopBuilder description(Component desc) {
         this.description = TradeText.component(desc);
+        return this;
+    }
+
+    public TradeShopBuilder description(TradeText desc) {
+        this.description = desc;
         return this;
     }
 
