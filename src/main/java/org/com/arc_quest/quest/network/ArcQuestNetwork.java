@@ -97,6 +97,14 @@ public final class ArcQuestNetwork {
                 C2SRequestQuestActionPacket::handle
         );
 
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SSubmitOfferPacket.class,
+                C2SSubmitOfferPacket::encode,
+                C2SSubmitOfferPacket::decode,
+                C2SSubmitOfferPacket::handle
+        );
+
         // ─── S2C：任务动作结果（标准拒绝码）───
         CHANNEL.registerMessage(
                 packetId++,
@@ -302,6 +310,8 @@ public final class ArcQuestNetwork {
     public static void sendQuestAction(C2SRequestQuestActionPacket packet) {
         CHANNEL.sendToServer(packet);
     }
+
+    public static void sendSubmitOffer(C2SSubmitOfferPacket packet) {CHANNEL.sendToServer(packet);}
 
     public static void sendDialogueChoice(C2SDialogueChoicePacket packet) {
         CHANNEL.sendToServer(packet);

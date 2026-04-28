@@ -7,6 +7,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.com.arc_quest.api.event.*;
 import org.com.arc_quest.quest.api.*;
 import org.com.arc_quest.quest.capability.IQuestCapability;
@@ -18,6 +19,7 @@ import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.com.arc_quest.quest.network.QuestSyncCoordinator;
 import org.com.arc_quest.quest.registry.QuestRegistry;
+import org.com.arc_quest.quest.tracking.ObjectiveKey;
 import org.com.arc_quest.quest.tracking.ObjectiveTracker;
 import org.com.arc_quest.quest.tracking.TrackedObjective;
 import org.com.arc_quest.questmarker.api.QuestMarkerData;
@@ -25,6 +27,7 @@ import org.com.arc_quest.questmarker.api.QuestMarkerState;
 import org.com.arc_quest.questmarker.api.QuestMarkerType;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -557,7 +560,7 @@ public final class QuestProgressHandler {
                         def.getId(),
                         phase.getPhaseId(),
                         i,
-                        new org.com.arc_quest.quest.tracking.ObjectiveKey(obj.getType(), keyTarget),
+                        new ObjectiveKey(obj.getType(), keyTarget),
                         obj.getRequiredCount()
                 );
                 ObjectiveTracker.INSTANCE.register(tracked);
@@ -578,7 +581,7 @@ public final class QuestProgressHandler {
                         def.getId(),
                         phase.getPhaseId(),
                         i,
-                        new org.com.arc_quest.quest.tracking.ObjectiveKey(obj.getType(), keyTarget),
+                        new ObjectiveKey(obj.getType(), keyTarget),
                         obj.getRequiredCount()
                 );
                 ObjectiveTracker.INSTANCE.unregister(tracked);
@@ -620,12 +623,12 @@ public final class QuestProgressHandler {
 
         ResourceLocation tagId = ResourceLocation.parse(tag);
         TagKey<Item> key = TagKey.create(Registries.ITEM, tagId);
-        var named = net.minecraftforge.registries.ForgeRegistries.ITEMS.tags();
+        var named = ForgeRegistries.ITEMS.tags();
         if (named == null) return List.of(obj.getTargetId());
 
-        List<ResourceLocation> ids = new java.util.ArrayList<>();
+        List<ResourceLocation> ids = new ArrayList<>();
         for (Item taggedItem : named.getTag(key)) {
-            ResourceLocation id = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(taggedItem);
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(taggedItem);
             if (id != null) ids.add(id);
         }
         if (ids.isEmpty()) ids.add(obj.getTargetId());

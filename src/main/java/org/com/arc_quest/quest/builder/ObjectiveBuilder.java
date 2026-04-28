@@ -66,10 +66,6 @@ public final class ObjectiveBuilder {
         return b;
     }
 
-    public static ObjectiveBuilder collectLogs(int count) {
-        return collectTag(ItemTags.LOGS.location(), count);
-    }
-
     public static ObjectiveBuilder talk(ResourceLocation npcId) {
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.TALK);
         b.targetId = npcId;
@@ -115,6 +111,29 @@ public final class ObjectiveBuilder {
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.CUSTOM);
         b.targetId = customId;
         b.requiredCount = count;
+        return b;
+    }
+
+    public static ObjectiveBuilder offer(Item item, int count) {
+        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        Objects.requireNonNull(key, "Item not registered: " + item);
+        ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.OFFER);
+        b.targetId = key;
+        b.requiredCount = count;
+        b.displayText = QuestText.translatable("arc_quest.obj.deliver",
+                QuestText.Arg.of((p, c) -> item.getDescription()),
+                QuestText.Arg.of((p, c) -> count));
+        return b;
+    }
+
+    public static ObjectiveBuilder offerTag(ResourceLocation itemTagId, int count) {
+        ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.OFFER);
+        b.targetId = itemTagId;
+        b.requiredCount = count;
+        b.extraData.put("target_tag", itemTagId.toString());
+        b.displayText = QuestText.translatable("arc_quest.obj.deliver",
+                QuestText.Arg.of((p, c) -> Component.literal("#" + itemTagId)),
+                QuestText.Arg.of((p, c) -> count));
         return b;
     }
 

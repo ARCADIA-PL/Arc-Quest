@@ -41,6 +41,8 @@ public enum ObjectiveType {
      */
     CRAFT,
 
+    OFFER,
+
     /**
      * 纯代码自定义检测（回调驱动）
      */
