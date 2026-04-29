@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
+import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -48,7 +49,9 @@ public class QuestJournalScreen extends Screen {
 
     private int currentThemeColor = 0xFFFFFF;
     private ItemStack hoveredRewardTooltip = null;
+    private List<Component> hoveredCustomTooltip = null;
     private ItemStack activeTooltipStack = null;
+    private List<Component> activeCustomTooltip = null;
     private float tooltipHoverTimer = 0f;
     private float tooltipTipAlpha = 0f;
     private float animTipX = 0, animTipY = 0, animTipW = 0, animTipH = 0;
@@ -69,6 +72,7 @@ public class QuestJournalScreen extends Screen {
         this.tooltipHoverTimer = 0f;
         this.tooltipTipAlpha = 0f;
         this.hoveredRewardTooltip = null;
+        this.hoveredCustomTooltip = null;
         this.activeTooltipStack = null;
         this.animTipW = 0f;
     }
@@ -103,7 +107,6 @@ public class QuestJournalScreen extends Screen {
         float s = getUiScale();
         g.enableScissor((int)(x * s), (int)(y * s), (int)(x2 * s), (int)(y2 * s));
     }
-    // ===================================
 
     @Override
     protected void init() {
@@ -174,6 +177,8 @@ public class QuestJournalScreen extends Screen {
             return true;
         }
         if (QuestOfferPanel.isActive()) { QuestOfferPanel.keyPressed(keyCode); return true; }
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.keyPressed(keyCode); return true; } // 新增拦截
+
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) { this.onClose(); return true; }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
@@ -191,6 +196,8 @@ public class QuestJournalScreen extends Screen {
 
         if (QuestIntelPanel.isActive()) { QuestIntelPanel.handleMouseClick(smx, smy, sw, sh); return true; }
         if (QuestOfferPanel.isActive()) { QuestOfferPanel.mouseClicked(smx, smy, button); return true; }
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseClicked(smx, smy, button); return true; } // 新增拦截
+
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
@@ -214,6 +221,7 @@ public class QuestJournalScreen extends Screen {
         int sh = getScaledHeight();
 
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseDragged(smx, smy); return true; } // 新增拦截
 
         int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
         int listH = sh - 20 - listY;
@@ -225,6 +233,8 @@ public class QuestJournalScreen extends Screen {
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseReleased(button); return true; } // 新增拦截
+
         listPanel.mouseReleased(button);
         detailPanel.mouseReleased(button);
         return super.mouseReleased(mx, my, button);
@@ -237,6 +247,8 @@ public class QuestJournalScreen extends Screen {
         int sw = getScaledWidth(), sh = getScaledHeight();
 
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseScrolled(smx, smy, delta); return true; } // 新增拦截
+
         if (isClosing) return false;
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
@@ -259,6 +271,7 @@ public class QuestJournalScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         this.hoveredRewardTooltip = null;
+        this.hoveredCustomTooltip = null;
         float uiScale = getUiScale();
         int smx = (int) (mouseX / uiScale), smy = (int) (mouseY / uiScale);
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -271,13 +284,13 @@ public class QuestJournalScreen extends Screen {
 
         boolean intelActive = QuestIntelPanel.isActive();
         boolean offerActive = QuestOfferPanel.isActive();
+        boolean historyActive = QuestHistoryPanel.isActive(); // 捕获状态
 
         if (QuestSplashRenderer.isActive()) { suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f); dt = 0f; }
         else { suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f); dt = intelActive ? 0f : realDt; }
 
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
 
-        // 【架构师终极防断触补丁】：如果日志界面在商店背后作为背景淡出，绝对不能去调用 setScreen(null) 误杀商店屏幕！
         if (isClosing && transitionAlpha <= 0.01f) {
             if (minecraft != null && minecraft.screen == this) {
                 minecraft.setScreen(null);
@@ -320,31 +333,55 @@ public class QuestJournalScreen extends Screen {
         HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)), HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
         detailPanel.render(g, detailX, listY, detailW, listH, smx, smy, theme, dt);
 
-        updateAndRenderTooltip(g, smx, smy);
-
         if (intelActive) QuestIntelPanel.render(g, sw, sh, partialTick);
         if (offerActive) QuestOfferPanel.render(g, smx, smy, partialTick);
+        if (historyActive) QuestHistoryPanel.render(g, smx, smy, partialTick); // 渲染历史弹窗
+
+        updateAndRenderTooltip(g, smx, smy);
 
         g.pose().popPose();
     }
 
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
-        boolean isHoveringValid = hoveredRewardTooltip != null && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive();
+        boolean hasCustom = hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty();
+        boolean hasItem = hoveredRewardTooltip != null;
+
+        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive();
+
         if (isHoveringValid) {
-            if (activeTooltipStack == null || !ItemStack.matches(activeTooltipStack, hoveredRewardTooltip)) {
-                if (tooltipTipAlpha > 0.5f) { tooltipHoverTimer = TIP_HOVER_DELAY; activeTooltipStack = hoveredRewardTooltip; }
-                else tooltipHoverTimer += dt;
-            } else tooltipHoverTimer += dt;
-            if (tooltipHoverTimer >= TIP_HOVER_DELAY) activeTooltipStack = hoveredRewardTooltip;
-        } else tooltipHoverTimer = 0f;
+            if (hasCustom) {
+                activeCustomTooltip = hoveredCustomTooltip;
+                activeTooltipStack = null;
+                tooltipHoverTimer += dt;
+            } else {
+                activeCustomTooltip = null;
+                if (activeTooltipStack == null || !ItemStack.matches(activeTooltipStack, hoveredRewardTooltip)) {
+                    if (tooltipTipAlpha > 0.5f) {
+                        tooltipHoverTimer = TIP_HOVER_DELAY;
+                        activeTooltipStack = hoveredRewardTooltip;
+                    } else {
+                        tooltipHoverTimer += dt;
+                    }
+                } else {
+                    tooltipHoverTimer += dt;
+                }
+                if (tooltipHoverTimer >= TIP_HOVER_DELAY) activeTooltipStack = hoveredRewardTooltip;
+            }
+        } else {
+            tooltipHoverTimer = 0f;
+            activeCustomTooltip = null;
+        }
 
         float targetTipAlpha = (isHoveringValid && tooltipHoverTimer >= TIP_HOVER_DELAY && !isClosing) ? 1f : 0f;
         tooltipTipAlpha += (targetTipAlpha - tooltipTipAlpha) * Math.min(1f, dt * 15f);
 
-        if (tooltipTipAlpha > 0.02f && activeTooltipStack != null) {
-            renderTooltip(g, activeTooltipStack, mouseX, mouseY);
+        if (tooltipTipAlpha > 0.02f) {
+            if (activeCustomTooltip != null && !activeCustomTooltip.isEmpty()) renderTooltipLines(g, activeCustomTooltip, mouseX, mouseY);
+            else if (activeTooltipStack != null) renderTooltip(g, activeTooltipStack, mouseX, mouseY);
         } else {
-            animTipW = 0; activeTooltipStack = null;
+            animTipW = 0;
+            activeTooltipStack = null;
+            activeCustomTooltip = null;
         }
     }
 
@@ -352,7 +389,11 @@ public class QuestJournalScreen extends Screen {
         if (this.minecraft == null || this.minecraft.player == null) return;
         List<Component> tooltipLines = stack.getTooltipLines(this.minecraft.player, this.minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
         if (tooltipLines.isEmpty()) return;
+        renderTooltipLines(g, tooltipLines, mouseX, mouseY);
+    }
 
+    public void renderTooltipLines(GuiGraphics g, List<Component> tooltipLines, int mouseX, int mouseY) {
+        if (tooltipLines == null || tooltipLines.isEmpty()) return;
         int padding = 6, cyberEdgeWidth = 3, textMaxWidth = 0;
         for (Component line : tooltipLines) { int lineWidth = font.width(line); if (lineWidth > textMaxWidth) textMaxWidth = lineWidth; }
 
@@ -375,14 +416,14 @@ public class QuestJournalScreen extends Screen {
             animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
         }
 
-        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
+        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : (tooltipTipAlpha == 0 ? 1f : HudAnimUtil.easeOutCubic(tooltipTipAlpha));
         if (scale < 0.01f) return;
 
         int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;
-        float finalTipAlpha = tooltipTipAlpha * effectiveAlpha;
+        float finalTipAlpha = (tooltipTipAlpha == 0 ? 1f : tooltipTipAlpha) * effectiveAlpha;
         int bgAlpha = (int) (0xD0 * finalTipAlpha), borderAlpha = (int) (0x66 * finalTipAlpha), edgeAlpha = (int) (255 * finalTipAlpha);
 
-        g.pose().pushPose(); g.pose().translate(0, 0, 400);
+        g.pose().pushPose(); g.pose().translate(0, 0, 5000);
         float centerX = drawX + drawW / 2f, centerY = drawY + drawH / 2f;
         g.pose().translate(centerX, centerY, 0); g.pose().scale(scale, scale, 1f); g.pose().translate(-centerX, -centerY, 0);
 
@@ -416,6 +457,7 @@ public class QuestJournalScreen extends Screen {
     public void onEntrySelected(int idx) { if (this.selectedIndex != idx) { this.selectedIndex = idx; this.detailPanel.resetState(); playClick(); } }
     public void playClick() { if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)); }
     public void setHoveredRewardTooltip(ItemStack stack) { this.hoveredRewardTooltip = stack; }
+    public void setHoveredCustomTooltip(List<Component> lines) { this.hoveredCustomTooltip = lines; }
     public void setCurrentThemeColor(int color) { this.currentThemeColor = color; }
     public int getCurrentThemeColor() { return this.currentThemeColor; }
     public void executeNetworkAction(Runnable action) { if (minecraft != null) minecraft.execute(action); }

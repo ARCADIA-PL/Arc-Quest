@@ -3,10 +3,12 @@ package org.arcadia.arc_quest.quest.logic;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
+import net.minecraft.sounds.SoundSource;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.quest.*;
 import org.arcadia.arc_quest.quest.api.*;
@@ -132,6 +134,7 @@ public final class QuestProgressHandler {
         QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestAcceptedEvent(player, ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestStartedEvent(player, ResourceLocation.parse(questId)));
+        playChapterSound(player, def.getChapterStartSound());
 
         return QuestRejectCodeDictionary.Code.OK;
     }
@@ -441,6 +444,8 @@ public final class QuestProgressHandler {
         syncQuestStateAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def != null) playChapterSound(player, def.getChapterFailSound());
     }
 
     public static boolean abandonQuest(ServerPlayer player, String questId) {
@@ -466,6 +471,8 @@ public final class QuestProgressHandler {
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def != null) playChapterSound(player, def.getChapterFailSound());
         return QuestRejectCodeDictionary.Code.OK;
     }
 
@@ -503,6 +510,7 @@ public final class QuestProgressHandler {
         syncFlagsVarsAndPush(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
+        playChapterSound(player, def.getChapterCompleteSound());
     }
 
     public static void syncToClient(ServerPlayer player, String questId) {
@@ -513,6 +521,11 @@ public final class QuestProgressHandler {
         }
     }
 
+
+    private static void playChapterSound(ServerPlayer player, SoundEvent sound) {
+        if (player == null || sound == null) return;
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), sound, SoundSource.PLAYERS, 1.0f, 1.0f);
+    }
     private static void syncQuestStateAndPush(ServerPlayer player, QuestRuntimeData data) {
         QuestSyncCoordinator.syncQuestStateAndPush(player, data);
     }

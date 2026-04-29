@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -107,7 +108,7 @@ public class JournalDetailSinglePhase {
             int textStartY = localY;
             List<String> wrappedObjLines = HudRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
             int textBlockHeight = wrappedObjLines.size() * (font.lineHeight + 1);
-            int barW = scrollAreaW - 40 - objX;
+            int barW = Math.min(scrollAreaW - 40 - objX, 325);
 
             boolean isOffer = phase.getObjectives().get(i).getType() == ObjectiveType.OFFER && progress < required;
             boolean canSubmit = isOffer && screen.getCurrentTab() == JournalTypes.Tab.ACTIVE;
@@ -120,12 +121,18 @@ public class JournalDetailSinglePhase {
             int hitH = textBlockHeight + 4;
 
             if (canSubmit) {
-                int absX = x + 12 + hitX;
-                int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + hitY;
-                isHovered = mx >= absX && mx < absX + hitW && my >= absY && my < absY + hitH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
-                hoverAnim = HudAnimUtil.lerp(hoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
-                offerHoverAnims.put(i, hoverAnim);
-                currentOfferProgressRects.add(new OfferProgressRect(absX, absY, hitW, hitH, phaseId, i));
+                boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+                if (!panelsActive) {
+                    int absX = x + 12 + hitX;
+                    int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + hitY;
+                    isHovered = mx >= absX && mx < absX + hitW && my >= absY && my < absY + hitH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
+                    hoverAnim = HudAnimUtil.lerp(hoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
+                    offerHoverAnims.put(i, hoverAnim);
+                    currentOfferProgressRects.add(new OfferProgressRect(absX, absY, hitW, hitH, phaseId, i));
+                } else {
+                    offerHoverAnims.put(i, 0f);
+                    hoverAnim = 0f;
+                }
             }
 
             g.pose().pushPose();
@@ -163,15 +170,17 @@ public class JournalDetailSinglePhase {
             }
 
             if (canSubmit) {
-                float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
-                int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * oAlpha));
-                int hoverGlow = HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * hoverAnim * oAlpha));
-                g.fill(objX, localY, objX + barW, localY + 2, glowColor);
-                if (hoverAnim > 0.01f) {
-                    g.fill(objX, localY, objX + barW, localY + 2, hoverGlow);
+                boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+                if (!panelsActive) {
+                    float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
+                    int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * oAlpha));
+                    int hoverGlow = HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * hoverAnim * oAlpha));
+                    g.fill(objX, localY, objX + barW, localY + 2, glowColor);
+                    if (hoverAnim > 0.01f) {
+                        g.fill(objX, localY, objX + barW, localY + 2, hoverGlow);
+                    }
                 }
             }
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
             int pColor = canSubmit ? HudAnimUtil.lerpColor(0x999999, 0xFFFFFF, hoverAnim) : 0x999999;
 
@@ -188,7 +197,8 @@ public class JournalDetailSinglePhase {
         if (intelSceneId != null) {
             intelBtnLocalY = localY;
             int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + localY);
-            boolean btnHovered = mx >= intelBtnAbsX && mx <= intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my <= intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            boolean btnHovered = !panelsActive && mx >= intelBtnAbsX && mx <= intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my <= intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
             intelBtnHoverAnim = HudAnimUtil.step(intelBtnHoverAnim, btnHovered ? 1f : 0f, 8f, dt);
             JournalDetailPanel.drawCyberButton(g, screen, 0, localY, JournalConstants.INTEL_BTN_W, JournalConstants.INTEL_BTN_H, "PHASE INTEL", activeTheme, HudAnimUtil.easeOutCubic(intelBtnHoverAnim), btnHovered);
             localY += JournalConstants.INTEL_BTN_H + 12;
@@ -235,33 +245,42 @@ public class JournalDetailSinglePhase {
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
         int scrollAreaY = y, scrollAreaH = h - 40;
         if (intelSceneId != null) {
-            int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + intelBtnLocalY);
-            if (mx >= intelBtnAbsX && mx < intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my < intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                screen.playClick();
-                QuestIntelPanel.trigger(intelSceneId, screen.getCurrentThemeColor(), x, y, w, h);
-                return true;
-            }
-        }
-        if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentOfferProgressRects.isEmpty()) {
-            for (OfferProgressRect rect : currentOfferProgressRects) {
-                if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                    String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
-                    QuestOfferPanel.trigger(qid, rect.phaseId, rect.objectiveIndex);
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            if (!panelsActive) {
+                int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + intelBtnLocalY);
+                if (mx >= intelBtnAbsX && mx < intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my < intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                     screen.playClick();
+                    QuestIntelPanel.trigger(intelSceneId, screen.getCurrentThemeColor(), x, y, w, h);
                     return true;
                 }
             }
         }
+        if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentOfferProgressRects.isEmpty()) {
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            if (!panelsActive) {
+                for (OfferProgressRect rect : currentOfferProgressRects) {
+                    if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
+                        String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
+                        QuestOfferPanel.trigger(qid, rect.phaseId, rect.objectiveIndex);
+                        screen.playClick();
+                        return true;
+                    }
+                }
+            }
+        }
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentChoiceButtons.isEmpty()) {
-            for (JournalTypes.ChoiceButtonRect rect : currentChoiceButtons) {
-                if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                    long nowMs = Util.getMillis();
-                    if (nowMs - lastChoiceClickAt < JournalConstants.CHOICE_CLICK_COOLDOWN_MS) return true;
-                    lastChoiceClickAt = nowMs;
-                    ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.choose(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId, rect.choiceIndex));
-                    QuestHudOverlay.INSTANCE.clearBranchChoiceToast();
-                    screen.playClick();
-                    return true;
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            if (!panelsActive) {
+                for (JournalTypes.ChoiceButtonRect rect : currentChoiceButtons) {
+                    if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
+                        long nowMs = Util.getMillis();
+                        if (nowMs - lastChoiceClickAt < JournalConstants.CHOICE_CLICK_COOLDOWN_MS) return true;
+                        lastChoiceClickAt = nowMs;
+                        ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.choose(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId, rect.choiceIndex));
+                        QuestHudOverlay.INSTANCE.clearBranchChoiceToast();
+                        screen.playClick();
+                        return true;
+                    }
                 }
             }
         }

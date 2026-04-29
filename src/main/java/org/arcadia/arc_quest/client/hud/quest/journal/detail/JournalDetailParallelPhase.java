@@ -15,6 +15,7 @@ import net.minecraftforge.fml.loading.FMLPaths;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -316,9 +317,8 @@ public class JournalDetailParallelPhase {
                 float baseScale = 0.75f, rawTextW = font.width(btnText), rawTextH = font.lineHeight, textW = rawTextW * baseScale, textH = rawTextH * baseScale;
                 int btnW = (int)textW + 8, btnH = 10, btnX = rightEdgeX - btnW, btnY = cardY + 5;
                 int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
-                boolean btnHovered = !isBeingDragged && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
-
-                if (QuestIntelPanel.isActive()) btnHovered = false;
+                boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+                boolean btnHovered = !isBeingDragged && !panelsActive && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
 
                 float btnSelfHover = phaseIntelBtnHoverAnims.getOrDefault(phaseId, 0f);
                 btnSelfHover = HudAnimUtil.step(btnSelfHover, (btnHovered && intelAnim > 0.5f) ? 1f : 0f, 15f, dt);
@@ -337,7 +337,7 @@ public class JournalDetailParallelPhase {
                 g.drawString(font, btnText, -rawTextW / 2f, -rawTextH / 2f + 0.5f, finalColor, false);
                 g.pose().popPose();
 
-                if (easeIntel > 0.5f && draggingPhaseId == null) currentIntelBtns.add(new IntelBtnRect(absBtnX, absBtnY, btnW, btnH, pIntel));
+                if (easeIntel > 0.5f && draggingPhaseId == null && !panelsActive) currentIntelBtns.add(new IntelBtnRect(absBtnX, absBtnY, btnW, btnH, pIntel));
             }
 
             int cy = cardY + 22, laneBarW = colW - 16, barX = cardX + 8 + contentShiftX;
@@ -354,8 +354,6 @@ public class JournalDetailParallelPhase {
                 phaseObjProgressAnims.put(phaseId, pAnims);
             }
 
-            boolean[] objCombinedHover = new boolean[total];
-
             if (total > 0) {
                 float segW = total <= 1 ? laneBarW : (float)(laneBarW - (total - 1) * 2) / total;
                 float cx = barX;
@@ -371,23 +369,20 @@ public class JournalDetailParallelPhase {
                     boolean isOffer = obj.getType() == ObjectiveType.OFFER && progress < req;
                     boolean canUpload = screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && isOffer;
 
-                    if (canUpload) {
-                        int hitX = (int)cx, hitY = cy - 2, hitW = Math.max(1, (int)segW), hitH = 6;
-                        int absX = x + 12 + hitX, absY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY);
-                        boolean isHovered = !isBeingDragged && mx >= absX && mx < absX + hitW && my >= absY && my < absY + hitH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
-                        if (isHovered) objCombinedHover[i] = true;
-                    }
-
                     g.fill((int)cx, cy, (int)(cx + segW), cy + 2, emptyBgColor);
                     if (sFill > 0) {
                         g.fill((int)cx, cy, (int)(cx + sFill), cy + 2, fillColor);
                         g.fill((int)(cx + sFill) - 2, cy - 1, (int)(cx + sFill), cy + 3, brightColor);
                     }
                     if (canUpload) {
-                        float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
-                        int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * cardSafeA * (actualDAlpha/dAlpha) / 255f));
-                        g.fill((int)cx, cy, (int)(cx + segW), cy + 2, glowColor);
+                        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+                        if (!panelsActive) {
+                            float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
+                            int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * cardSafeA * (actualDAlpha/dAlpha) / 255f));
+                            g.fill((int)cx, cy, (int)(cx + segW), cy + 2, glowColor);
+                        }
                     }
+
                     cx += segW + 2;
                 }
             }
@@ -420,25 +415,24 @@ public class JournalDetailParallelPhase {
                     boolean isOffer = obj.getType() == ObjectiveType.OFFER && progress < required;
                     boolean canUpload = screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && isOffer;
                     String offerKey = phaseId + "_" + i;
+                    float hoverAnimOffer = offerHoverAnims.getOrDefault(offerKey, 0f);
 
                     String cleanObjText = obj.getDisplayText().getString().replace("§7", "").replace("§a", "").replace("§f", "");
                     String line = font.plainSubstrByWidth((complete ? "✔ " : "○ ") + cleanObjText, Math.max(5, colW - 16 - contentShiftX - extraMargin - font.width(pr) - 6));
 
                     if (canUpload) {
-                        int actualTextW = font.width(line), hitX2 = cardX + 8 + contentShiftX, hitY2 = objY, hitW2 = actualTextW, hitH2 = font.lineHeight;
-                        int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY2 - currentInnerScroll);
-                        boolean textHovered = !isBeingDragged && mx >= absX2 && mx < absX2 + hitW2 && my >= absY2 && my < absY2 + hitH2 && my >= intY1 && my < intY2 && mx >= intX1 && mx < intX2;
-                        if (textHovered) objCombinedHover[i] = true;
-                        if (draggingPhaseId == null) recordParallelOfferProgressRect(absX2, absY2, hitW2, hitH2, phaseId, i);
-                    }
-
-                    float hoverAnimOffer = offerHoverAnims.getOrDefault(offerKey, 0f);
-                    if (canUpload && !isBeingDragged) {
-                        hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, objCombinedHover[i] ? 1f : 0f, 0.2f, dt);
-                        offerHoverAnims.put(offerKey, hoverAnimOffer);
-                    } else if (isBeingDragged) {
-                        offerHoverAnims.put(offerKey, 0f);
-                        hoverAnimOffer = 0f;
+                        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+                        if (!panelsActive) {
+                            int actualTextW = font.width(line), hitX2 = cardX + 8 + contentShiftX, hitY2 = objY, hitW2 = actualTextW, hitH2 = font.lineHeight;
+                            int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY2 - currentInnerScroll);
+                            boolean textHovered = !isBeingDragged && mx >= absX2 && mx < absX2 + hitW2 && my >= absY2 && my < absY2 + hitH2 && my >= intY1 && my < intY2 && mx >= intX1 && mx < intX2;
+                            hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
+                            offerHoverAnims.put(offerKey, hoverAnimOffer);
+                            if (draggingPhaseId == null) recordParallelOfferProgressRect(absX2, absY2, hitW2, hitH2, phaseId, i);
+                        } else {
+                            offerHoverAnims.put(offerKey, 0f);
+                            hoverAnimOffer = 0f;
+                        }
                     }
 
                     int objColor = complete ? 0x88FF88 : 0xCCCCCC;
@@ -559,43 +553,55 @@ public class JournalDetailParallelPhase {
         }
 
         if (!currentIntelBtns.isEmpty()) {
-            for (IntelBtnRect rect : currentIntelBtns) {
-                if (mx >= rect.absX && mx < rect.absX + rect.w && my >= rect.absY && my < rect.absY + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                    screen.playClick(); QuestIntelPanel.trigger(rect.sceneId, screen.getCurrentThemeColor(), x, y, w, h); return true;
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            if (!panelsActive) {
+                for (IntelBtnRect rect : currentIntelBtns) {
+                    if (mx >= rect.absX && mx < rect.absX + rect.w && my >= rect.absY && my < rect.absY + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
+                        screen.playClick(); QuestIntelPanel.trigger(rect.sceneId, screen.getCurrentThemeColor(), x, y, w, h); return true;
+                    }
                 }
             }
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentOfferProgressRects.isEmpty()) {
-            for (OfferProgressRect rect : currentOfferProgressRects) {
-                if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                    String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
-                    QuestOfferPanel.trigger(qid, rect.phaseId, rect.objectiveIndex);
-                    screen.playClick(); return true;
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            if (!panelsActive) {
+                for (OfferProgressRect rect : currentOfferProgressRects) {
+                    if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
+                        String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
+                        QuestOfferPanel.trigger(qid, rect.phaseId, rect.objectiveIndex);
+                        screen.playClick(); return true;
+                    }
                 }
             }
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentChoiceButtons.isEmpty()) {
-            for (JournalTypes.ChoiceButtonRect rect : currentChoiceButtons) {
-                if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                    long nowMs = Util.getMillis();
-                    if (nowMs - lastChoiceClickAt < JournalConstants.CHOICE_CLICK_COOLDOWN_MS) return true;
-                    lastChoiceClickAt = nowMs;
-                    ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.choose(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId, rect.choiceIndex));
-                    QuestHudOverlay.INSTANCE.clearBranchChoiceToast(); screen.playClick(); return true;
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            if (!panelsActive) {
+                for (JournalTypes.ChoiceButtonRect rect : currentChoiceButtons) {
+                    if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
+                        long nowMs = Util.getMillis();
+                        if (nowMs - lastChoiceClickAt < JournalConstants.CHOICE_CLICK_COOLDOWN_MS) return true;
+                        lastChoiceClickAt = nowMs;
+                        ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.choose(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId, rect.choiceIndex));
+                        QuestHudOverlay.INSTANCE.clearBranchChoiceToast(); screen.playClick(); return true;
+                    }
                 }
             }
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentPhaseTags.isEmpty()) {
-            for (JournalTypes.PhaseTagRect rect : currentPhaseTags) {
-                if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                    selectedPhaseId = rect.phaseId;
-                    QuestHudOverlay.INSTANCE.setTrackedFocus(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId);
-                    screen.playClick();
-                    potentialDragPhaseId = rect.phaseId; potentialDragStartX = mx; potentialDragStartY = my; potentialDragStartTime = Util.getMillis();
-                    return true;
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            if (!panelsActive) {
+                for (JournalTypes.PhaseTagRect rect : currentPhaseTags) {
+                    if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
+                        selectedPhaseId = rect.phaseId;
+                        QuestHudOverlay.INSTANCE.setTrackedFocus(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId);
+                        screen.playClick();
+                        potentialDragPhaseId = rect.phaseId; potentialDragStartX = mx; potentialDragStartY = my; potentialDragStartTime = Util.getMillis();
+                        return true;
+                    }
                 }
             }
         }

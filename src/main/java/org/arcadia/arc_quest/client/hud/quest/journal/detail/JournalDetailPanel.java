@@ -1,13 +1,17 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.math.Axis;
+import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
+import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -22,7 +26,6 @@ public class JournalDetailPanel {
     public final JournalDetailParallelPhase parallelPhaseRenderer;
     public final JournalDetailRewards rewardsRenderer;
     public final JournalDetailControls controlsRenderer;
-    public final JournalDetailHistory historyRenderer; // 新增的历史组件
 
     private double detailScrollOffset = 0;
     private double detailTargetScroll = 0;
@@ -31,6 +34,8 @@ public class JournalDetailPanel {
     private int detailContentHeight = 0;
 
     private float detailReveal = 0f;
+    private float historyBtnHoverAnim = 0f;
+    private final int[] historyBtnRect = new int[]{0, 0, 0, 0};
 
     public JournalDetailPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -38,7 +43,6 @@ public class JournalDetailPanel {
         this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
         this.rewardsRenderer = new JournalDetailRewards(screen, this);
         this.controlsRenderer = new JournalDetailControls(screen, this);
-        this.historyRenderer = new JournalDetailHistory(screen); // 注入
     }
 
     public double getDetailScrollOffset() { return detailScrollOffset; }
@@ -101,10 +105,53 @@ public class JournalDetailPanel {
             titleIconOffset = 22;
         }
 
+        // =======================
+        // 渲染主标题
+        // =======================
         g.pose().pushPose();
         g.pose().translate(titleIconOffset, localY, 0); g.pose().scale(1.2f, 1.2f, 1f);
         g.drawString(screen.getFont(), def.getDisplayName().getString(), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
+
+        // =======================
+        // 精雕细琢的常态呼吸历史按钮！
+        // =======================
+        int titleW = (int) (screen.getFont().width(def.getDisplayName().getString()) * 1.2f);
+        int hBtnX = titleIconOffset + titleW + 10; // 间距拉长！
+        int hBtnY = localY + 5;
+        int hBtnR = 3;
+
+        int absBtnX = x + 12 + hBtnX;
+        int absBtnY = (int) (scrollAreaY + 12 - detailScrollOffset + hBtnY);
+        boolean hHover = mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
+
+        historyBtnHoverAnim = HudAnimUtil.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
+
+        g.pose().pushPose();
+        g.pose().translate(hBtnX, hBtnY, 0);
+        g.pose().mulPose(Axis.ZP.rotationDegrees(45));
+
+        // 常态呼吸正弦波注入！
+        int idleGlow = 35 + (int)(25 * Math.sin(Util.getMillis() / 300.0));
+        int glowA = (int) ((hHover ? 180 : idleGlow) * dAlpha);
+
+        if (glowA > 0) g.fill(-hBtnR - 2, -hBtnR - 2, hBtnR + 2, hBtnR + 2, HudAnimUtil.withAlpha(activeTheme, glowA));
+        g.fill(-hBtnR, -hBtnR, hBtnR, hBtnR, HudAnimUtil.withAlpha(0x222222, safeA));
+        g.fill(-hBtnR + 1, -hBtnR + 1, hBtnR - 1, hBtnR - 1, HudAnimUtil.withAlpha(activeTheme, (int) ((150 + 105 * historyBtnHoverAnim) * dAlpha)));
+        g.pose().popPose();
+
+        historyBtnRect[0] = absBtnX - hBtnR - 4;
+        historyBtnRect[1] = absBtnY - hBtnR - 4;
+        historyBtnRect[2] = hBtnR * 2 + 8;
+        historyBtnRect[3] = hBtnR * 2 + 8;
+
+        if (hHover && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
+            screen.setHoveredCustomTooltip(List.of(
+                    Component.literal("Topology MAP").withStyle(Style.EMPTY.withColor(activeTheme).withBold(true)),
+                    Component.literal("View node graph & history").withStyle(Style.EMPTY.withColor(0xAAAAAA))
+            ));
+        }
+
         localY += 18;
 
         if (!def.getDescription().getString().isEmpty()) {
@@ -147,8 +194,6 @@ public class JournalDetailPanel {
             localY += 16;
         }
 
-        localY = historyRenderer.render(g, entry, runtime, scrollAreaW, activeTheme, dAlpha, safeA, localY);
-
         localY = rewardsRenderer.render(g, def, selectedPhaseIdForRewards, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY);
 
         detailContentHeight = localY + 12;
@@ -188,6 +233,15 @@ public class JournalDetailPanel {
         }
 
         if (controlsRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
+
+        if (mx >= historyBtnRect[0] && mx <= historyBtnRect[0] + historyBtnRect[2] &&
+                my >= historyBtnRect[1] && my <= historyBtnRect[1] + historyBtnRect[3] && my >= y && my <= y + scrollAreaH) {
+            if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) {
+                QuestHistoryPanel.trigger(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId());
+                screen.playClick();
+                return true;
+            }
+        }
 
         if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) {
             JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(screen.getSelectedIndex());

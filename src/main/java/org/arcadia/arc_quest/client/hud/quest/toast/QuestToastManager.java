@@ -191,8 +191,8 @@ public final class QuestToastManager {
          * 获取翻译后的前缀文本。
          */
         public String getLocalizedPrefix() {
-            return net.minecraft.client.Minecraft.getInstance().player != null 
-                ? net.minecraft.network.chat.Component.translatable(translationKey).getString()
+            return Minecraft.getInstance().player != null
+                ? Component.translatable(translationKey).getString()
                 : translationKey;
         }
     }
