@@ -59,14 +59,13 @@ public final class EpicMainlineDemo {
 
                         // 阶段 1：收集木材制作武器
                         .phase(PhaseBuilder.create("arc_quest:gather_wood")
+                                .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood"))
                                 .setFlagOnEnter("arc_quest:prologue_started")
-                                .objective(ObjectiveBuilder.offerTag(ItemTags.LOGS.location(), 5)
+                                .objective(ObjectiveBuilder.offerTag(ItemTags.LOGS.location(), 20)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.gather_wood.0")))
-                                .objective(ObjectiveBuilder.offerTag(ItemTags.LOGS.location(), 5)
-                                        .display(Component.translatable("arc_quest.objective.epic_prologue.gather_wood.0")))
-                                .objective(ObjectiveBuilder.offerTag(ItemTags.LOGS.location(), 5)
-                                        .display(Component.translatable("arc_quest.objective.epic_prologue.gather_wood.0")))
+                                .reward(new ItemReward(Items.GOLDEN_APPLE, 1))
+                                .reward(new ItemReward(Items.IRON_PICKAXE, 1))
                                 .thenGoTo("arc_quest:talk_villager"))
 
                         // 阶段 2：与村民对话 -> 同时开启两条并行支线
@@ -75,6 +74,7 @@ public final class EpicMainlineDemo {
                                 .objective(ObjectiveBuilder.interact(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "village_elder"))
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))
                                 .setFlagOnComplete("arc_quest:elder_consulted")
+                                .reward(new ItemReward(Items.LEATHER_BOOTS, 1))
                                 .thenGoTo("arc_quest:scout_forest")
                                 .thenGoTo("arc_quest:reinforce_gate")
                                 .thenGoTo("arc_quest:reinforce_gate2"))
@@ -83,7 +83,7 @@ public final class EpicMainlineDemo {
                         .phase(PhaseBuilder.create("arc_quest:scout_forest")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.scout_forest"))
                                 .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
-                                .objective(ObjectiveBuilder.collect(Items.STRING, 6)
+                                .objective(ObjectiveBuilder.collect(Items.STRING, 10)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.scout_forest.0")))
                                 .setFlagOnComplete("arc_quest:forest_scouted")
                                 // 手动转入汇合阶段（D）
@@ -92,11 +92,11 @@ public final class EpicMainlineDemo {
                         // 并行支线B：加固村门
                         .phase(PhaseBuilder.create("arc_quest:reinforce_gate")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.reinforce_gate"))
-                                .objective(ObjectiveBuilder.offerTag(ItemTags.PLANKS.location(), 16)
+                                .objective(ObjectiveBuilder.offerTag(ItemTags.PLANKS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
-                                .objective(ObjectiveBuilder.offerTag(ItemTags.PLANKS.location(), 16)
+                                .objective(ObjectiveBuilder.offerTag(ItemTags.FENCES.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
-                                .objective(ObjectiveBuilder.offerTag(ItemTags.PLANKS.location(), 16)
+                                .objective(ObjectiveBuilder.offerTag(ItemTags.WALLS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
                                 .setFlagOnComplete("arc_quest:gate_reinforced")
                                 // 手动转入汇合阶段（D）
@@ -104,13 +104,13 @@ public final class EpicMainlineDemo {
 
                         .phase(PhaseBuilder.create("arc_quest:reinforce_gate2")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.reinforce_gate"))
-                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                .objective(ObjectiveBuilder.offerTag(ItemTags.DOORS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
-                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                .objective(ObjectiveBuilder.offerTag(ItemTags.STONE_BRICKS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
-                                .objective(ObjectiveBuilder.collect(Items.OAK_PLANKS, 16)
+                                .objective(ObjectiveBuilder.offerTag(ItemTags.BIRCH_LOGS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
-                                .setFlagOnComplete("arc_quest:gate_reinforced")
+                                .setFlagOnComplete("arc_quest:gate_reinforced2")
                                 // 手动转入汇合阶段（D）
                                 .thenGoTo("arc_quest:craft_sword"))
 

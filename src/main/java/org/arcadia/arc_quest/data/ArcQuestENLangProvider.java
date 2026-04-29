@@ -128,6 +128,13 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addToast("quest_completed", "§2Quest Completed");
         addToast("quest_failed", "§cQuest Failed");
         addToast("phase_advanced", "Phase Advanced");
+        
+        // Toast type prefixes
+        add("arc_quest.toast.prefix.quest_accepted", "✦ QUEST ACCEPTED");
+        add("arc_quest.toast.prefix.quest_completed", "★ QUEST COMPLETED");
+        add("arc_quest.toast.prefix.quest_failed", "✘ QUEST FAILED");
+        add("arc_quest.toast.prefix.phase_advanced", "▸ PHASE ADVANCED");
+        add("arc_quest.toast.prefix.objective_complete", "✔ OBJECTIVE DONE");
     }
 
     // ═══════════════════════════════════════════════════════

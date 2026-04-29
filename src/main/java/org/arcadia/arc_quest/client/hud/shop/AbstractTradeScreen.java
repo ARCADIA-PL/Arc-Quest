@@ -191,7 +191,12 @@ public abstract class AbstractTradeScreen extends Screen {
                 : HudAnimUtil.easeOutCubic(transitionAnim);
         effectiveAlpha = transEase * HudAnimUtil.easeOutCubic(suspendAlpha);
 
-        if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
+        if (feedbackAnim > 0) {
+            feedbackAnim = Math.max(0, feedbackAnim - dt * 0.5f);
+            if (feedbackAnim <= 0) {
+                ClientTradeCache.INSTANCE.clearFeedback(shopId);
+            }
+        }
 
         int safeAlpha = (int) (255 * effectiveAlpha);
 
@@ -200,7 +205,7 @@ public abstract class AbstractTradeScreen extends Screen {
         if (safeAlpha <= 5) return;
 
         renderContent(g, mx, my, pt);
-        renderTradeFailToast(g);
+        /*renderTradeFailToast(g);*/
 
         if (tooltipRenderer != null) {
             tooltipRenderer.updateAndRender(g, getHoveredEntry(mx, my), mx, my, dt, isClosing);

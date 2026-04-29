@@ -100,46 +100,36 @@ public class BranchChoiceToast {
         float finalAlpha = alpha * parentAlpha;
         if (finalAlpha < 0.01f) return true;
 
-        // 【终极注入】：调用全剧统一的 3A 级自适应缩放！
-        Minecraft mc = Minecraft.getInstance();
-        int screenWidth = mc.getWindow().getGuiScaledWidth();
-        int screenHeight = mc.getWindow().getGuiScaledHeight();
-
-        float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
-        float sw = screenWidth / uiScale;
-
-        int virtualMarginRight = 16;
-        int vBaseX = (int) sw - POPUP_W - virtualMarginRight;
-        int vBaseY = (int) (baseY / uiScale);
-
-        g.pose().pushPose();
-        g.pose().scale(uiScale, uiScale, 1f);
-
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int scLeft = vBaseX - 20;
-        int scRight = vBaseX + POPUP_W + 20;
+        // 直接使用父组件传来的 baseX 和 baseY！不要再自己瞎算了！
+        int scLeft = baseX - 20;
+        int scRight = baseX + POPUP_W + 20;
         if (!isDismissing && elapsedEnter < TIME_ENTER) {
-            scRight = vBaseX + (int) (POPUP_W * revealProgress);
+            scRight = baseX + (int) (POPUP_W * revealProgress);
         } else if (isDismissing) {
-            scRight = vBaseX + (int) (POPUP_W * (1f - wipeProgress));
+            scRight = baseX + (int) (POPUP_W * (1f - wipeProgress));
         }
 
-        g.enableScissor((int)(scLeft * uiScale), (int)((vBaseY - 10) * uiScale), (int)(scRight * uiScale), (int)((vBaseY + POPUP_H + 20) * uiScale));
+        // 仅在裁剪器（Scissor）计算时获取全局 uiScale（因为 Scissor 必须用物理像素/绝对 gui 缩放）
+        Minecraft mc = Minecraft.getInstance();
+        float uiScale = HudRenderUtil.getUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        g.enableScissor((int)(scLeft * uiScale), (int)((baseY - 10) * uiScale), (int)(scRight * uiScale), (int)((baseY + POPUP_H + 20) * uiScale));
 
         int bgA = (int) (finalAlpha * 0x88);
         int accentA = (int) (finalAlpha * 255);
         int themeColor = COLOR_ACCENT & 0xFFFFFF;
 
-        HudRenderUtil.drawGlassPanel(g, vBaseX, vBaseY, POPUP_W, POPUP_H, 0x121212, bgA, themeColor, accentA, 4);
+        // 直接用 baseX, baseY 渲染
+        HudRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H, 0x121212, bgA, themeColor, accentA, 4);
 
         String questName = ClientQuestCache.INSTANCE.getQuestDisplayName(questId);
         String phaseName = resolvePhaseDisplayName();
 
         Font font = Minecraft.getInstance().font;
-        float contentX = vBaseX + 12 + textDriftX;
-        float contentY = vBaseY + 6;
+        float contentX = baseX + 12 + textDriftX;
+        float contentY = baseY + 6;
 
         if (accentA > 5) {
             String subtitle = Component.translatable("arc_quest.toast.branch.subtitle").getString();
@@ -158,6 +148,7 @@ public class BranchChoiceToast {
             HudRenderUtil.drawDualText(g, font, contentX, contentY, subtitle, line1, subColor, titleColor, 1.0f);
 
             if (line2 != null) {
+                // 这个 push/pop 仅用于缩放副标题，是合法的局部变换
                 g.pose().pushPose();
                 g.pose().translate(contentX, contentY + 19, 0);
                 g.pose().scale(0.80f, 0.80f, 1f);
@@ -175,7 +166,6 @@ public class BranchChoiceToast {
 
         g.disableScissor();
         RenderSystem.disableBlend();
-        g.pose().popPose();
         return true;
     }
 

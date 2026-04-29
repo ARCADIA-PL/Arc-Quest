@@ -201,6 +201,15 @@ public final class ClientTradeCache {
         data.feedback.lastShortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
     }
 
+    public void clearFeedback(String shopId) {
+        TradeSessionData data = activeSessions.get(shopId);
+        if (data == null) return;
+        data.feedback.lastFailedEntryId = null;
+        data.feedback.lastShortfallLines = List.of();
+        data.feedback.lastFailReason = null;
+        data.feedback.lastErrorKey = null;
+    }
+
     public List<CostShortfallLine> getShortfall(String shopId, String entryId) {
         TradeSessionData data = activeSessions.get(shopId);
         if (data == null || entryId == null || !entryId.equals(data.feedback.lastFailedEntryId)) return List.of();

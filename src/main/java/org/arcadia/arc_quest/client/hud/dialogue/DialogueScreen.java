@@ -215,6 +215,9 @@ public class DialogueScreen extends Screen {
         this.lastRenderTime = 0;
         this.masterAnim = 0f;
         this.suspendAlpha = 1f;
+        this.isClosing = false;
+        this.autoAdvanceSent = false;
+        this.autoAdvanceTime = 0;
         this.cachedNpcEntity = null;
     }
 
@@ -390,8 +393,10 @@ public class DialogueScreen extends Screen {
         masterAnim = Math.max(0f, Math.min(1f, masterAnim));
 
         if (isClosing && masterAnim <= 0.0f) {
-            ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close());
-            if (minecraft != null) minecraft.setScreen(null);
+            if (minecraft != null && minecraft.screen == this) {
+                ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close());
+                minecraft.setScreen(null);
+            }
             return;
         }
 

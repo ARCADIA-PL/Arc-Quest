@@ -95,7 +95,7 @@ public class QuestNotificationToast {
 
         int textAlpha = (int) (255 * alpha);
         if (textAlpha > 8) {
-            String subtitle = type.prefix;
+            String subtitle = type.getLocalizedPrefix();
             String nameStr = font.plainSubstrByWidth(text, TOAST_WIDTH - 16);
 
             int subColor = HudAnimUtil.withAlpha(type.accentColor, textAlpha);

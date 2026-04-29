@@ -22,6 +22,7 @@ public class JournalDetailPanel {
     public final JournalDetailParallelPhase parallelPhaseRenderer;
     public final JournalDetailRewards rewardsRenderer;
     public final JournalDetailControls controlsRenderer;
+    public final JournalDetailHistory historyRenderer; // 新增的历史组件
 
     private double detailScrollOffset = 0;
     private double detailTargetScroll = 0;
@@ -37,6 +38,7 @@ public class JournalDetailPanel {
         this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
         this.rewardsRenderer = new JournalDetailRewards(screen, this);
         this.controlsRenderer = new JournalDetailControls(screen, this);
+        this.historyRenderer = new JournalDetailHistory(screen); // 注入
     }
 
     public double getDetailScrollOffset() { return detailScrollOffset; }
@@ -72,11 +74,8 @@ public class JournalDetailPanel {
         if (safeA <= 8) return;
 
         int scrollAreaY = y, scrollAreaH = h - 40, scrollAreaW = w - 8;
-
-        // 核心对接：重构自适应 Scissor
         screen.enableScissor(g, x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
 
-        // Header Background Watermark
         def.getSplashConfig(SplashType.QUEST_DETAIL).ifPresent(asset -> {
             RenderSystem.enableBlend();
             float watermarkAlpha = 0.15f * dAlpha;
@@ -123,6 +122,7 @@ public class JournalDetailPanel {
         localY += 10;
 
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
+        String selectedPhaseIdForRewards = null;
 
         if (entry.state() == QuestState.ACTIVE && runtime != null) {
             List<String> activePhaseIds = new ArrayList<>();
@@ -133,9 +133,11 @@ public class JournalDetailPanel {
                 g.drawString(screen.getFont(), "No active phase.", 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false);
                 localY += 16;
             } else if (activePhaseIds.size() == 1) {
+                selectedPhaseIdForRewards = activePhaseIds.get(0);
                 localY = singlePhaseRenderer.render(g, entry, def, runtime, activePhaseIds.get(0), x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
             } else {
                 localY = parallelPhaseRenderer.render(g, entry, def, runtime, activePhaseIds, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
+                selectedPhaseIdForRewards = parallelPhaseRenderer.getSelectedPhaseId();
             }
         } else if (entry.state() == QuestState.COMPLETED) {
             g.drawString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.quest_completed").getString(), 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), true);
@@ -145,7 +147,9 @@ public class JournalDetailPanel {
             localY += 16;
         }
 
-        localY = rewardsRenderer.render(g, def, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY);
+        localY = historyRenderer.render(g, entry, runtime, scrollAreaW, activeTheme, dAlpha, safeA, localY);
+
+        localY = rewardsRenderer.render(g, def, selectedPhaseIdForRewards, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY);
 
         detailContentHeight = localY + 12;
         g.pose().popPose();

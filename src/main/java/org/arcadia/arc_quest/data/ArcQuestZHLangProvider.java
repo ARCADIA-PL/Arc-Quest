@@ -128,6 +128,13 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addToast("quest_completed", "§2任务已完成");
         addToast("quest_failed", "§c任务失败");
         addToast("phase_advanced", "阶段推进");
+        
+        // Toast类型前缀
+        add("arc_quest.toast.prefix.quest_accepted", "✦ QUEST ACCEPTED");
+        add("arc_quest.toast.prefix.quest_completed", "★ QUEST COMPLETED");
+        add("arc_quest.toast.prefix.quest_failed", "✘ QUEST FAILED");
+        add("arc_quest.toast.prefix.phase_advanced", "▸ PHASE ADVANCED");
+        add("arc_quest.toast.prefix.objective_complete", "✔ OBJECTIVE DONE");
     }
 
     // ═══════════════════════════════════════════════════════

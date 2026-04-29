@@ -8,9 +8,17 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 
+/**
+ * 阶段推进弹窗（支持并行语义类型）。
+ * 视觉效果全面升级为【机能风并行模块插槽】样式。
+ */
 public class PhaseUpdateToast {
 
-    public enum Kind { ADDED, SWITCHED, COMPLETED }
+    public enum Kind {
+        ADDED,
+        SWITCHED,
+        COMPLETED
+    }
 
     private static final int POPUP_W = 220;
     private static final int POPUP_H = 36;
@@ -28,6 +36,9 @@ public class PhaseUpdateToast {
     private long startTime;
     private long lastRenderTime;
 
+    /**
+     * 兼容旧调用：默认 ADDED
+     */
     public PhaseUpdateToast(String phaseName, int themeColor) {
         this(phaseName, themeColor, Kind.ADDED);
     }
@@ -40,7 +51,9 @@ public class PhaseUpdateToast {
         this.lastRenderTime = this.startTime;
     }
 
-    public Kind getKind() { return kind; }
+    public Kind getKind() {
+        return kind;
+    }
 
     public boolean render(GuiGraphics g, Font font, int baseX, int baseY, float parentAlpha, boolean isFrozen) {
         long now = Util.getMillis();
@@ -80,32 +93,20 @@ public class PhaseUpdateToast {
 
         if (alpha < 0.01f) return true;
 
-        Minecraft mc = Minecraft.getInstance();
-        int screenWidth = mc.getWindow().getGuiScaledWidth();
-        int screenHeight = mc.getWindow().getGuiScaledHeight();
-
-        float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
-        float sw = screenWidth / uiScale;
-
-        int virtualMarginRight = 16;
-        int vBaseX = (int) sw - POPUP_W - virtualMarginRight;
-        int vBaseY = (int) (baseY / uiScale);
-
-        g.pose().pushPose();
-        g.pose().scale(uiScale, uiScale, 1f);
-
         int activeTheme = resolveThemeByKind();
-        int scLeft = vBaseX - 20;
+        int scLeft = baseX - 20;
         int scRight;
         if (elapsed < PHASE_ENTER) {
-            scRight = vBaseX + (int) (POPUP_W * revealProgress);
+            scRight = baseX + (int) (POPUP_W * revealProgress);
         } else if (elapsed >= PHASE_ENTER + PHASE_HOLD) {
-            scRight = vBaseX + (int) (POPUP_W * (1f - wipeProgress));
+            scRight = baseX + (int) (POPUP_W * (1f - wipeProgress));
         } else {
-            scRight = vBaseX + POPUP_W + 20;
+            scRight = baseX + POPUP_W + 20;
         }
 
-        g.enableScissor((int)(scLeft * uiScale), (int)((vBaseY - 10) * uiScale), (int)(scRight * uiScale), (int)((vBaseY + POPUP_H + 20) * uiScale));
+        Minecraft mc = Minecraft.getInstance();
+        float uiScale = HudRenderUtil.getUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        g.enableScissor((int)(scLeft * uiScale), (int)((baseY - 10) * uiScale), (int)(scRight * uiScale), (int)((baseY + POPUP_H + 20) * uiScale));
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -113,30 +114,39 @@ public class PhaseUpdateToast {
         int bgA = (int) (alpha * 0x66);
         int accentA = (int) (alpha * 255);
 
-        g.fill(vBaseX, vBaseY, vBaseX + POPUP_W, vBaseY + POPUP_H, HudAnimUtil.withAlpha(0x151515, bgA));
-        g.fill(vBaseX, vBaseY, vBaseX + POPUP_W, vBaseY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha)));
-        g.fill(vBaseX, vBaseY + POPUP_H - 1, vBaseX + POPUP_W, vBaseY + POPUP_H, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha)));
+        // 底板
+        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0x151515, bgA));
+        // 上下发光细线
+        g.fill(baseX, baseY, baseX + POPUP_W, baseY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha)));
+        g.fill(baseX, baseY + POPUP_H - 1, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha)));
 
-        HudRenderUtil.drawCyberneticEdge(g, vBaseX, vBaseY, POPUP_H, activeTheme, accentA);
+        // 侧边指示光刃
+        HudRenderUtil.drawCyberneticEdge(g, baseX, baseY, POPUP_H, activeTheme, accentA);
 
-        int decorX = vBaseX + POPUP_W - 14;
-        g.fill(decorX, vBaseY + 6, decorX + 4, vBaseY + 10, HudAnimUtil.withAlpha(activeTheme, (int)(0xAA * alpha)));
-        g.fill(decorX, vBaseY + 12, decorX + 4, vBaseY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x33 * alpha)));
-        g.fill(decorX, vBaseY + 22, decorX + 4, vBaseY + 30, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x1A * alpha)));
+        // 右侧装饰性机能纹理阵列
+        int decorX = baseX + POPUP_W - 14;
+        g.fill(decorX, baseY + 6, decorX + 4, baseY + 10, HudAnimUtil.withAlpha(activeTheme, (int)(0xAA * alpha)));
+        g.fill(decorX, baseY + 12, decorX + 4, baseY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x33 * alpha)));
+        g.fill(decorX, baseY + 22, decorX + 4, baseY + 30, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x1A * alpha)));
 
-        float textBaseX = vBaseX + 16 + textDriftX;
-        float textBaseY = vBaseY + 6;
+        float textBaseX = baseX + 16 + textDriftX; // 稍微往右移一点避开光刃
+        float textBaseY = baseY + 6;
 
         if (accentA > 5) {
             String subtitle = subtitleByKind();
             String title = font.plainSubstrByWidth(phaseName, POPUP_W - 40);
+
             int subColor = HudAnimUtil.withAlpha(0x888888, accentA);
             int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, accentA);
 
+            // 绘制文字
             HudRenderUtil.drawDualText(g, font, textBaseX, textBaseY, subtitle, title, subColor, titleColor, 1.0f);
 
+            // 绘制下方的细线框体分隔
             float targetLineWidth = POPUP_W - 40f;
-            float lineWidth = targetLineWidth * (elapsed < PHASE_ENTER ? revealProgress : (elapsed >= PHASE_ENTER + PHASE_HOLD ? (1f - wipeProgress) : 1f));
+            float lineWidth = targetLineWidth * (elapsed < PHASE_ENTER
+                    ? revealProgress
+                    : (elapsed >= PHASE_ENTER + PHASE_HOLD ? (1f - wipeProgress) : 1f));
 
             g.fill((int)textBaseX, (int)textBaseY + 20, (int)(textBaseX + lineWidth), (int)textBaseY + 21, HudAnimUtil.withAlpha(activeTheme, accentA));
             g.fill((int)textBaseX, (int)textBaseY + 20, (int)textBaseX + 1, (int)textBaseY + 24, HudAnimUtil.withAlpha(activeTheme, accentA));
@@ -144,7 +154,6 @@ public class PhaseUpdateToast {
 
         g.disableScissor();
         RenderSystem.disableBlend();
-        g.pose().popPose();
         return true;
     }
 

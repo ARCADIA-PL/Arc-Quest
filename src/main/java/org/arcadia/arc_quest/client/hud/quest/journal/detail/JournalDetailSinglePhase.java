@@ -9,7 +9,6 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
-import org.arcadia.arc_quest.client.hud.quest.QuestRewardRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -42,7 +41,6 @@ public class JournalDetailSinglePhase {
     private float intelBtnHoverAnim = 0f;
     private long lastChoiceClickAt = 0L;
 
-    // 核心记录 Hover 和 呼吸动画
     private final Map<Integer, Float> offerHoverAnims = new HashMap<>();
 
     private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {}
@@ -116,23 +114,20 @@ public class JournalDetailSinglePhase {
             float hoverAnim = offerHoverAnims.getOrDefault(i, 0f);
             boolean isHovered = false;
 
-            // --- 极限内缩判定框 (Inset Hitbox) ---
             int hitX = objX + 2;
             int hitY = textStartY + 1;
             int hitW = Math.max(1, barW - 4);
-            int hitH = textBlockHeight + 4; // 只包裹文本行与进度条的紧凑区域
+            int hitH = textBlockHeight + 4;
 
             if (canSubmit) {
                 int absX = x + 12 + hitX;
                 int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + hitY;
-                // 改为严格的 <，切断边缘共享
                 isHovered = mx >= absX && mx < absX + hitW && my >= absY && my < absY + hitH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
                 hoverAnim = HudAnimUtil.lerp(hoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
                 offerHoverAnims.put(i, hoverAnim);
                 currentOfferProgressRects.add(new OfferProgressRect(absX, absY, hitW, hitH, phaseId, i));
             }
 
-            // --- 文本绘制及悬停矩阵变换 ---
             g.pose().pushPose();
             if (canSubmit && hoverAnim > 0.01f) {
                 float scale = 1.0f + 0.05f * hoverAnim;
@@ -147,12 +142,10 @@ public class JournalDetailSinglePhase {
                 String cleanLine = line.replace("§7", "").replace("§a", "").replace("§f", "");
                 int baseColor = complete ? 0x88FF88 : 0xDDDDDD;
                 if (canSubmit) baseColor = HudAnimUtil.lerpColor(baseColor, activeTheme, hoverAnim);
-
                 g.drawString(font, cleanLine, objX, localY, HudAnimUtil.withAlpha(baseColor, oA), true);
                 localY += font.lineHeight + 1;
             }
             g.pose().popPose();
-            // --------------------------
 
             float targetRatio = required > 0 ? Math.max(0f, Math.min(1f, (float) progress / required)) : 0f;
             objProgressAnims[i] = HudAnimUtil.lerp(objProgressAnims[i], targetRatio, 0.15f, dt);
@@ -173,7 +166,6 @@ public class JournalDetailSinglePhase {
                 float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
                 int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * oAlpha));
                 int hoverGlow = HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * hoverAnim * oAlpha));
-
                 g.fill(objX, localY, objX + barW, localY + 2, glowColor);
                 if (hoverAnim > 0.01f) {
                     g.fill(objX, localY, objX + barW, localY + 2, hoverGlow);
@@ -200,42 +192,6 @@ public class JournalDetailSinglePhase {
             intelBtnHoverAnim = HudAnimUtil.step(intelBtnHoverAnim, btnHovered ? 1f : 0f, 8f, dt);
             JournalDetailPanel.drawCyberButton(g, screen, 0, localY, JournalConstants.INTEL_BTN_W, JournalConstants.INTEL_BTN_H, "PHASE INTEL", activeTheme, HudAnimUtil.easeOutCubic(intelBtnHoverAnim), btnHovered);
             localY += JournalConstants.INTEL_BTN_H + 12;
-        }
-
-        if (!phase.getPhaseRewards().isEmpty()) {
-            g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (50 * dAlpha)));
-            localY += 6;
-            g.pose().pushPose(); g.pose().translate(0, localY, 0); g.pose().scale(0.75f, 0.75f, 1f);
-            g.drawString(font, Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), true);
-            g.pose().popPose();
-            localY += 11;
-            g.pose().pushPose(); g.pose().translate(6, localY, 0); g.pose().scale(0.85f, 0.85f, 1f);
-            int phaseRewardH = QuestRewardRenderer.render(g, phase.getPhaseRewards(), (int) ((scrollAreaW - 24) / 0.85f), safeA);
-            g.pose().popPose();
-            localY += (int) (phaseRewardH * 0.85f) + 4;
-        }
-
-        g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
-        localY += 10;
-        g.pose().pushPose(); g.pose().translate(0, localY, 0); g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, Component.translatable("arc_quest.gui.journal.section.completed_phases").getString(), 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), true);
-        g.pose().popPose();
-        localY += 14;
-
-        int completedCount = 0;
-        for (String cPhaseId : runtime.getCompletedPhaseIds()) {
-            String completedPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(entry.questId(), cPhaseId);
-            g.pose().pushPose(); g.pose().translate(8, localY, 0); g.pose().scale(0.75f, 0.75f, 1f);
-            g.drawString(font, "§a>" + completedPhaseName, 0, 0, HudAnimUtil.withAlpha(0x88FF88, (int) (200 * dAlpha)), false);
-            g.pose().popPose();
-            localY += 12;
-            completedCount++;
-        }
-        if (completedCount == 0) {
-            g.pose().pushPose(); g.pose().translate(8, localY, 0); g.pose().scale(0.75f, 0.75f, 1f);
-            g.drawString(font, Component.translatable("arc_quest.gui.journal.label.no_phases_completed").getString(), 0, 0, HudAnimUtil.withAlpha(0x666666, safeA), false);
-            g.pose().popPose();
-            localY += 12;
         }
 
         if (JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {

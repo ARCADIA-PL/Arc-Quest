@@ -202,7 +202,6 @@ public class JournalDetailParallelPhase {
         int clipAbsY1 = scrollAreaY, clipAbsY2 = scrollAreaY + scrollAreaH;
 
         g.disableScissor();
-        // 核心对接：响应式 Scissor
         screen.enableScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
         dragScaleAnim = HudAnimUtil.lerp(dragScaleAnim, draggingPhaseId != null ? 1f : 0f, 0.2f, dt);
@@ -406,7 +405,6 @@ public class JournalDetailParallelPhase {
 
             if (intX2 > intX1 && intY2 > intY1 && total > 0) {
                 g.disableScissor();
-                // 核心对接：响应式 Scissor
                 screen.enableScissor(g, intX1, intY1, intX2, intY2);
 
                 g.pose().pushPose(); g.pose().translate(0, -currentInnerScroll, 0);
@@ -456,8 +454,6 @@ public class JournalDetailParallelPhase {
                     objY += OBJ_LINE_H;
                 }
                 g.pose().popPose(); g.disableScissor();
-
-                // 核心对接：响应式 Scissor
                 screen.enableScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
             }
 
@@ -501,8 +497,6 @@ public class JournalDetailParallelPhase {
         }
 
         g.disableScissor();
-
-        // 核心对接：响应式 Scissor
         screen.enableScissor(g, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
         localY = currentY + maxCardH + 8;
@@ -542,30 +536,6 @@ public class JournalDetailParallelPhase {
 
             localY += 12;
         } else currentScrollControls = null;
-
-        g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
-        localY += 10;
-
-        g.pose().pushPose(); g.pose().translate(0, localY, 0); g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, Component.translatable("arc_quest.gui.journal.section.completed_phases").getString(), 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), true);
-        g.pose().popPose();
-        localY += 14;
-
-        int completedCount = 0;
-        for (String cPhaseId : runtime.getCompletedPhaseIds()) {
-            String completedPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(entry.questId(), cPhaseId);
-            g.pose().pushPose(); g.pose().translate(8, localY, 0); g.pose().scale(0.75f, 0.75f, 1f);
-            g.drawString(font, "§a>" + completedPhaseName, 0, 0, HudAnimUtil.withAlpha(0x88FF88, (int) (200 * dAlpha)), false);
-            g.pose().popPose();
-            localY += 12;
-            completedCount++;
-        }
-        if (completedCount == 0) {
-            g.pose().pushPose(); g.pose().translate(8, localY, 0); g.pose().scale(0.75f, 0.75f, 1f);
-            g.drawString(font, Component.translatable("arc_quest.gui.journal.label.no_phases_completed").getString(), 0, 0, HudAnimUtil.withAlpha(0x666666, safeA), false);
-            g.pose().popPose();
-            localY += 12;
-        }
 
         return localY;
     }
@@ -697,6 +667,10 @@ public class JournalDetailParallelPhase {
         ScrollControls sc = currentScrollControls;
         double rawPercentage = (mx - dragPhaseXOffset - sc.trackX) / (sc.trackW - sc.thumbW);
         phaseTargetScroll = Math.max(0.0, Math.min(1.0, rawPercentage)) * maxPhaseScroll;
+    }
+
+    public String getSelectedPhaseId() {
+        return selectedPhaseId;
     }
 
     private int getChoicesHeight(PhaseDefinition phase, QuestDefinition def, QuestRuntimeData runtime, String phaseId) {

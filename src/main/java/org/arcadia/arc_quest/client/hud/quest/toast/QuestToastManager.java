@@ -173,18 +173,27 @@ public final class QuestToastManager {
     private record PendingToast(ToastType type, String text, String key, long queuedAt) {}
 
     public enum ToastType {
-        QUEST_ACCEPTED(0x4FC3F7, "✦ QUEST ACCEPTED"),
-        QUEST_COMPLETED(0x66FF66, "★ QUEST COMPLETED"),
-        QUEST_FAILED(0xFF6666, "✘ QUEST FAILED"),
-        PHASE_ADVANCED(0xFFCC44, "▸ PHASE ADVANCED"),
-        OBJECTIVE_COMPLETE(0x88DDFF, "✔ OBJECTIVE DONE");
+        QUEST_ACCEPTED(0x4FC3F7, "arc_quest.toast.prefix.quest_accepted"),
+        QUEST_COMPLETED(0x66FF66, "arc_quest.toast.prefix.quest_completed"),
+        QUEST_FAILED(0xFF6666, "arc_quest.toast.prefix.quest_failed"),
+        PHASE_ADVANCED(0xFFCC44, "arc_quest.toast.prefix.phase_advanced"),
+        OBJECTIVE_COMPLETE(0x88DDFF, "arc_quest.toast.prefix.objective_complete");
 
         public final int accentColor;
-        public final String prefix;
+        public final String translationKey;
 
-        ToastType(int color, String prefix) {
+        ToastType(int color, String translationKey) {
             this.accentColor = color;
-            this.prefix = prefix;
+            this.translationKey = translationKey;
+        }
+        
+        /**
+         * 获取翻译后的前缀文本。
+         */
+        public String getLocalizedPrefix() {
+            return net.minecraft.client.Minecraft.getInstance().player != null 
+                ? net.minecraft.network.chat.Component.translatable(translationKey).getString()
+                : translationKey;
         }
     }
 }

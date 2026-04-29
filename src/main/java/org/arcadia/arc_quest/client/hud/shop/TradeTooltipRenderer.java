@@ -176,11 +176,13 @@ public class TradeTooltipRenderer {
             if (screen.isFeedbackSuccess() && screen.getFeedbackAnim() > 0) {
                 borderA = Math.min(255, borderA + (int)(180 * screen.getFeedbackAnim()));
                 currentThemeColor = screen.lerpColor(animThemeColor, 0x55FF55, screen.getFeedbackAnim());
-            } else if (!screen.isFeedbackSuccess() && (screen.getFeedbackAnim() > 0 || target.showShortfall)) {
-                float syncBreath = (float) (Math.sin(Util.getMillis() / 150.0) * 0.5 + 0.5);
-                float intensity = Math.max(screen.getFeedbackAnim(), target.showShortfall ? (syncBreath * 0.6f + 0.4f) : 0f);
+            } else if (!screen.isFeedbackSuccess() && screen.getFeedbackAnim() > 0) {
+                float intensity = screen.getFeedbackAnim();
                 borderA = Math.min(255, borderA + (int)(180 * intensity));
                 currentThemeColor = screen.lerpColor(animThemeColor, 0xFF3333, intensity);
+            } else if (target.showShortfall) {
+                borderA = Math.min(255, borderA + (int)(40 * tooltipAlpha));
+                currentThemeColor = screen.lerpColor(animThemeColor, 0xAA4444, 0.35f);
             }
         }
 
