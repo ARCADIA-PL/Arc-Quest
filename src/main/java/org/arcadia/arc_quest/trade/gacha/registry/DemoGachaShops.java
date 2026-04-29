@@ -17,15 +17,25 @@ import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
  * - 冷却/限购系统
  * - 自定义主题色和音效
  */
-public class DemoGachaShops {
+public final class DemoGachaShops {
+
+    private DemoGachaShops() {
+    }
 
     /**
      * 注册所有示范抽奖商店。
      */
-    public static void registerDemoShops() {
+    public static void registerAll() {
         registerWeaponGacha();
         registerMaterialGacha();
         registerSpecialEventGacha();
+    }
+
+    /**
+     * 兼容旧调用名。
+     */
+    public static void registerDemoShops() {
+        registerAll();
     }
 
     /**

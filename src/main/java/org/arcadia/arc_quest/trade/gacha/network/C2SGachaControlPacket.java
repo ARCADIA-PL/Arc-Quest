@@ -2,7 +2,9 @@ package org.arcadia.arc_quest.trade.gacha.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
+import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -19,7 +21,8 @@ public class C2SGachaControlPacket {
 
     public enum Action {
         OPEN,
-        SYNC
+        SYNC,
+        CLOSE
     }
 
     private final Action action;
@@ -36,6 +39,10 @@ public class C2SGachaControlPacket {
 
     public static C2SGachaControlPacket sync(String shopId) {
         return new C2SGachaControlPacket(Action.SYNC, shopId);
+    }
+
+    public static C2SGachaControlPacket close(String shopId) {
+        return new C2SGachaControlPacket(Action.CLOSE, shopId);
     }
 
     public static void encode(C2SGachaControlPacket pkt, FriendlyByteBuf buf) {
@@ -59,6 +66,12 @@ public class C2SGachaControlPacket {
                 SyncObservability.trace("gacha", pkt.shopId, sender.getName().getString(), SyncObservability.Stage.SYNC_REQUEST, "manual_sync");
             }
 
+            if (pkt.action == Action.CLOSE) {
+                GachaScreenOpener.closeActiveShopContext(sender);
+                MinecraftForge.EVENT_BUS.post(new GachaEvents.ClosedEvent(sender, pkt.shopId));
+                return;
+            }
+
             GachaShopDefinition shop = GachaRequestValidator.requireShop(pkt.shopId, sender, "gacha_control");
             if (shop == null) return;
 
@@ -68,6 +81,8 @@ public class C2SGachaControlPacket {
             switch (pkt.action) {
                 case OPEN -> GachaScreenOpener.openGachaScreen(sender, shop, cap);
                 case SYNC -> GachaScreenOpener.syncGachaState(sender, shop, cap);
+                case CLOSE -> {
+                }
             }
         });
         ctx.get().setPacketHandled(true);

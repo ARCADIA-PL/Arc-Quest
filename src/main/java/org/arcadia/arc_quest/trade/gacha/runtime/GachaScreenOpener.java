@@ -4,7 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.PacketDistributor;
-import org.arcadia.arc_quest.api.event.GachaEvents;
+import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -144,6 +144,12 @@ public final class GachaScreenOpener {
         if (dedupe && !shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
             SyncObservability.recordDropped("gacha", shop.getShopId(), player.getName().getString(), false);
             SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_DROPPED, reason);
+            MinecraftForge.EVENT_BUS.post(new GachaEvents.StateSyncedEvent(
+                    player,
+                    shop.getShopId(),
+                    reason,
+                    GachaEvents.StateSyncedEvent.SyncResult.DROPPED
+            ));
             LOGGER.debug("[Gacha] SYNC dropped by fingerprint: player={}, shop={}, reason={}",
                     player.getName().getString(), shop.getShopId(), reason);
             return;
@@ -172,6 +178,12 @@ public final class GachaScreenOpener {
         LOGGER.debug("[Gacha] SYNC push: player={}, shop={}, reason={}",
                 player.getName().getString(), shop.getShopId(), reason);
         SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
+        MinecraftForge.EVENT_BUS.post(new GachaEvents.StateSyncedEvent(
+                player,
+                shop.getShopId(),
+                reason,
+                GachaEvents.StateSyncedEvent.SyncResult.SENT
+        ));
     }
 
     private static void touchActiveContext(ServerPlayer player, String shopId) {
