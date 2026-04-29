@@ -21,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nullable;
 import java.util.List;
 
-    public class DialogueScreen extends Screen {
+public class DialogueScreen extends Screen {
 
     private static final float CHARS_PER_SECOND = 45f;
 
@@ -89,6 +89,32 @@ import java.util.List;
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
+    public float getUiScale() {
+        if (this.minecraft == null) return 1.0f;
+        double guiScale = this.minecraft.getWindow().getGuiScale();
+        if (guiScale == 0) guiScale = 1.0;
+
+        float scale = (float) (3.0 / guiScale);
+        float sw = this.width / scale;
+        float sh = this.height / scale;
+
+        float minW = 480f;
+        float minH = 260f;
+
+        if (sw < minW) {
+            scale = this.width / minW;
+            sh = this.height / scale;
+        }
+        if (sh < minH) {
+            scale = this.height / minH;
+        }
+
+        return scale;
+    }
+
+    public int getScaledWidth() { return (int) (this.width / getUiScale()); }
+    public int getScaledHeight() { return (int) (this.height / getUiScale()); }
+
     public void updateNode(String speaker, String text, String[] choices,
                            boolean isTerminal, boolean hasAutoNext, int delayMs,
                            long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes,
@@ -129,9 +155,6 @@ import java.util.List;
         this.clickAnim = new float[this.choices.length];
     }
 
-    /**
-     * 从 ClientDialogueCache 获取当前会话。
-     */
     @Nullable
     private ClientDialogueCache.DialogueSessionData getCurrentSession() {
         return ClientDialogueCache.INSTANCE.getCurrentSession();
@@ -150,13 +173,12 @@ import java.util.List;
     private void selectChoice(int index) {
         if (isClosing || clickedIndex >= 0) return;
         if (isChoiceOnCooldown(index)) return;
-        
-        // 播放选项个体化音效（通过缓存层）
+
         ClientDialogueCache.DialogueSessionData session = getCurrentSession();
         if (session != null) {
             ClientDialogueCache.INSTANCE.playChoiceSound(session.treeId, index);
         }
-        
+
         clickedIndex = index;
         clickSent = false;
         playClick();
@@ -203,20 +225,21 @@ import java.util.List;
     }
 
     private int getChoiceWidth() {
-        return Math.max(200, Math.min(300, (int) (this.width * 0.28f)));
+        return Math.max(200, Math.min(300, (int) (getScaledWidth() * 0.28f)));
     }
 
     private int getChoiceRightMargin() {
-        return Math.max(16, (int) (this.width * 0.03f));
+        return Math.max(16, (int) (getScaledWidth() * 0.03f));
     }
 
     private int getChoiceX() {
-        return this.width - getChoiceWidth() - getChoiceRightMargin();
+        return getScaledWidth() - getChoiceWidth() - getChoiceRightMargin();
     }
 
     private int getChoiceStartY(int choiceH, int gap) {
         int totalChoiceHeight = choices.length * (choiceH + gap) - gap;
-        return (this.height - totalChoiceHeight) / 2 + (this.height / 10);
+        int sh = getScaledHeight();
+        return (sh - totalChoiceHeight) / 2 + (sh / 10);
     }
 
     @Override
@@ -257,8 +280,12 @@ import java.util.List;
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (QuestSplashRenderer.isActive()) return true;
-
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
+
+        float uiScale = getUiScale();
+        double smx = mx / uiScale;
+        double smy = my / uiScale;
+
         if (!typewriterDone) {
             typewriterProgress = fullText.length();
             typewriterDone = true;
@@ -276,7 +303,7 @@ import java.util.List;
                 int cy = choiceStartY + i * (choiceH + gap);
                 int expand = (int) (15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
                 int currentX = choiceX - expand, currentW = choiceW + expand;
-                if (mx >= currentX && mx <= currentX + currentW && my >= cy && my <= cy + choiceH) {
+                if (smx >= currentX && smx <= currentX + currentW && smy >= cy && smy <= cy + choiceH) {
                     selectChoice(i);
                     return true;
                 }
@@ -336,6 +363,12 @@ import java.util.List;
         lastRenderTime = now;
         if (realDt > 0.1f) realDt = 0.1f;
 
+        float uiScale = getUiScale();
+        int smx = (int) (mouseX / uiScale);
+        int smy = (int) (mouseY / uiScale);
+        int sw = getScaledWidth();
+        int sh = getScaledHeight();
+
         boolean splashActive = QuestSplashRenderer.isActive();
         if (splashActive) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
@@ -380,12 +413,9 @@ import java.util.List;
             if (now - autoAdvanceTime >= delayMs) sendAutoAdvance();
         }
 
-        // ── 推进点击动画 + 阈值发包 ──
         if (clickedIndex >= 0 && clickAnim != null) {
             for (int i = 0; i < choices.length; i++) {
-                float speed = (i == clickedIndex)
-                        ? CLICK_ANIM_SPEED_SELECTED
-                        : CLICK_ANIM_SPEED_OTHERS;
+                float speed = (i == clickedIndex) ? CLICK_ANIM_SPEED_SELECTED : CLICK_ANIM_SPEED_OTHERS;
                 clickAnim[i] = HudAnimUtil.step(clickAnim[i], 1f, speed, dt);
             }
             if (!clickSent && clickAnim[clickedIndex] >= CLICK_SEND_THRESHOLD) {
@@ -393,12 +423,15 @@ import java.util.List;
             }
         }
 
+        g.pose().pushPose();
+        g.pose().scale(uiScale, uiScale, 1f);
+
         int baseChoiceX = getChoiceX();
-        int textBaseX = Math.max(30, (int) (this.width * 0.05f));
+        int textBaseX = Math.max(30, (int) (sw * 0.05f));
         int maxTextWidth = (choices.length > 0)
-                ? (baseChoiceX - textBaseX - Math.max(20, (int) (this.width * 0.05f)))
-                : (this.width - textBaseX - Math.max(40, (int) (this.width * 0.1f)));
-        // 使用共享工具方法
+                ? (baseChoiceX - textBaseX - Math.max(20, (int) (sw * 0.05f)))
+                : (sw - textBaseX - Math.max(40, (int) (sw * 0.1f)));
+
         if (wrappedLines == null) wrappedLines = HudRenderUtil.wrapText(fullText, maxTextWidth, font);
 
         int lineHeight = font.lineHeight + 6;
@@ -409,22 +442,22 @@ import java.util.List;
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int targetBarHeight = Math.max(24, (int) (this.height * 0.08f));
+        int targetBarHeight = Math.max(24, (int) (sh * 0.08f));
         int barHeight = Math.round(targetBarHeight * easeMaster);
 
         if (barHeight > 0) {
-            g.fill(0, 0, this.width, barHeight, 0xFF000000);
-            g.fill(0, this.height - barHeight, this.width, this.height, 0xFF000000);
+            g.fill(0, 0, sw, barHeight, 0xFF000000);
+            g.fill(0, sh - barHeight, sw, sh, 0xFF000000);
         }
 
-        int bottomPadding = Math.max(30, (int) (this.height * 0.05f));
-        int contentBottomY = this.height - barHeight - bottomPadding;
+        int bottomPadding = Math.max(30, (int) (sh * 0.05f));
+        int contentBottomY = sh - barHeight - bottomPadding;
         int targetBaseY = contentBottomY - totalContentHeight;
 
         int gradientTop = targetBaseY - 60;
         int safeAlpha = Math.round(255 * masterAlpha);
         if (safeAlpha > 2) {
-            g.fillGradient(0, gradientTop, this.width, this.height - barHeight,
+            g.fillGradient(0, gradientTop, sw, sh - barHeight,
                     0x00000000,
                     HudAnimUtil.withAlpha(0x050505, Math.round(220 * masterAlpha)));
         }
@@ -436,8 +469,7 @@ import java.util.List;
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
             g.pose().scale(1.1f, 1.1f, 1f);
-            g.drawString(font, speaker, 0, 0,
-                    HudAnimUtil.withAlpha(0xFFFFFFFF, safeAlpha), true);
+            g.drawString(font, speaker, 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, safeAlpha), true);
             g.pose().popPose();
             int spkW = (int) (font.width(speaker) * 1.1f);
             g.fill(textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13,
@@ -456,17 +488,13 @@ import java.util.List;
                 if (charCount >= visibleChars) break;
                 int lineVisible = Math.min(line.length(), visibleChars - charCount);
                 String renderLine = line.substring(0, lineVisible);
-                g.drawString(font, renderLine, 0, 0,
-                        HudAnimUtil.withAlpha(0xFFDDDDDD, safeAlpha), true);
+                g.drawString(font, renderLine, 0, 0, HudAnimUtil.withAlpha(0xFFDDDDDD, safeAlpha), true);
                 g.pose().translate(0, lineHeight, 0);
                 charCount += line.length();
             }
             g.pose().popPose();
         }
 
-        // ═══════════════════════════════════════════════════
-        //  选项渲染
-        // ═══════════════════════════════════════════════════
         if (choicesVisible && choices.length > 0) {
             float timeSinceTextDone = (now - typewriterDoneTime) / 1000f;
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8;
@@ -476,21 +504,18 @@ import java.util.List;
             for (int i = 0; i < choices.length; i++) {
                 int cy = choiceStartY + i * (choiceH + gap);
 
-                //实时检查冷却状态（每帧刷新）
                 boolean onCooldown = isChoiceOnCooldown(i);
-
                 boolean isClickTarget = (clickedIndex == i);
                 boolean hasClickSelection = (clickedIndex >= 0);
                 float cAnim = (clickAnim != null && i < clickAnim.length) ? clickAnim[i] : 0f;
                 float cEase = HudAnimUtil.easeOutCubic(cAnim);
 
-                // ── 悬浮检测 ──
                 int currentExpand = Math.round(15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
+                // 碰撞检测已换用虚拟系鼠标 smx 和 smy
                 boolean hovered = !isClosing && !splashActive && !onCooldown && !hasClickSelection
-                        && mouseX >= choiceX - currentExpand && mouseX <= choiceX + choiceW
-                        && mouseY >= cy && mouseY <= cy + choiceH;
+                        && smx >= choiceX - currentExpand && smx <= choiceX + choiceW
+                        && smy >= cy && smy <= cy + choiceH;
 
-                // ── Reveal 动画 ──
                 float staggerDelay = 0.05f + (i * 0.08f);
                 float targetReveal = (!isClosing && timeSinceTextDone >= staggerDelay) ? 1f : 0f;
                 float revealSpeed = isClosing ? 15f : 5.0f;
@@ -500,15 +525,11 @@ import java.util.List;
                 float revealEase = HudAnimUtil.easeOutCubic(progress);
                 float slideEase = progress * progress * (3f - 2f * progress);
 
-                // ── Hover 动画 ──
                 float hoverTarget;
-                if (isClickTarget) {
-                    hoverTarget = 1f;
-                } else if (hasClickSelection) {
-                    hoverTarget = 0f;
-                } else {
-                    hoverTarget = hovered ? 1f : 0f;
-                }
+                if (isClickTarget) hoverTarget = 1f;
+                else if (hasClickSelection) hoverTarget = 0f;
+                else hoverTarget = hovered ? 1f : 0f;
+
                 choiceHover[i] = HudAnimUtil.step(choiceHover[i], hoverTarget, 10f, dt);
                 float hEase = HudAnimUtil.easeOutCubic(choiceHover[i]);
 
@@ -516,9 +537,6 @@ import java.util.List;
 
                 int baseAlpha = Math.round(255 * masterAlpha * revealEase);
 
-                // ════════════════════════════════════════════════
-                //  非选中项：纯粹淡出 + 向右滑出（无垂直位移）
-                // ════════════════════════════════════════════════
                 int clickSlideX = 0;
                 if (hasClickSelection && !isClickTarget) {
                     baseAlpha = Math.round(baseAlpha * (1f - cEase));
@@ -527,95 +545,55 @@ import java.util.List;
 
                 if (baseAlpha < 2) continue;
 
-                // ── 几何 ──
                 int expandAnim = Math.round(15 * hEase);
-
-                // ════════════════════════════════════════════════
-                //  选中项：平滑展开（纯 ease-out，无弹跳）
-                // ════════════════════════════════════════════════
                 int confirmExpand = 0;
-                if (isClickTarget) {
-                    confirmExpand = Math.round(6 * cEase);
-                }
+                if (isClickTarget) confirmExpand = Math.round(6 * cEase);
 
-                int currentX = choiceX - expandAnim - confirmExpand
-                        + clickSlideX
-                        + Math.round((1f - slideEase) * 60f);
+                int currentX = choiceX - expandAnim - confirmExpand + clickSlideX + Math.round((1f - slideEase) * 60f);
                 int currentW = choiceW + expandAnim + confirmExpand;
 
-                // ── 背景 ──
                 int bgAlphaVal = Math.round((120 + 40 * hEase) * masterAlpha * revealEase);
-                if (hasClickSelection && !isClickTarget) {
-                    bgAlphaVal = Math.round(bgAlphaVal * (1f - cEase));
-                }
-                // 选中项背景柔和变亮
+                if (hasClickSelection && !isClickTarget) bgAlphaVal = Math.round(bgAlphaVal * (1f - cEase));
+
                 int bgBright = isClickTarget ? Math.round(20 * cEase) : 0;
                 int bgGray = Math.round(15 + 25 * hEase + bgBright);
                 int finalBg = (Math.min(bgAlphaVal, 255) << 24) | (bgGray << 16) | (bgGray << 8) | bgGray;
                 g.fill(currentX, cy, currentX + currentW, cy + choiceH, finalBg);
 
-                // ════════════════════════════════════════════════
-                //  左侧指示线
-                //  选中项：宽度 2→4，颜色柔和变亮为纯白
-                //  普通项：宽度 2，正常灰色
-                // ════════════════════════════════════════════════
                 int lineGray = Math.round(85 + (255 - 85) * hEase);
-
                 if (isClickTarget) {
                     int lineBright = Math.round(lineGray + (255 - lineGray) * cEase);
                     int lineCol = (lineBright << 16) | (lineBright << 8) | lineBright;
                     int lineW = 2 + Math.round(2 * cEase);
-                    g.fill(currentX, cy, currentX + lineW, cy + choiceH,
-                            HudAnimUtil.withAlpha(lineCol, baseAlpha));
+                    g.fill(currentX, cy, currentX + lineW, cy + choiceH, HudAnimUtil.withAlpha(lineCol, baseAlpha));
                 } else {
                     int lineCol = (lineGray << 16) | (lineGray << 8) | lineGray;
-                    g.fill(currentX, cy, currentX + 2, cy + choiceH,
-                            HudAnimUtil.withAlpha(lineCol, baseAlpha));
+                    g.fill(currentX, cy, currentX + 2, cy + choiceH, HudAnimUtil.withAlpha(lineCol, baseAlpha));
                 }
 
-                // ════════════════════════════════════════════════
-                //  箭头 ">"
-                //  选中项：始终可见，平滑变亮
-                //  普通项：仅 hover 时显示
-                // ════════════════════════════════════════════════
                 if (isClickTarget) {
                     float arrowVis = Math.max(hEase, cEase);
                     int arrowAlpha = Math.round(baseAlpha * arrowVis);
                     if (arrowAlpha > 2) {
-                        g.drawString(font, ">", currentX + 8,
-                                cy + (choiceH - font.lineHeight) / 2 + 1,
-                                HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
+                        g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
                     }
                 } else if (hEase > 0.01f) {
                     int arrowAlpha = Math.round(baseAlpha * hEase);
-                    g.drawString(font, ">", currentX + 8,
-                            cy + (choiceH - font.lineHeight) / 2 + 1,
-                            HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
+                    g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
                 }
 
-                // ── 文本 ──
                 int textGray = Math.round(170 + (255 - 170) * hEase);
                 int textOffsetX = 12 + Math.round(10 * hEase);
-
                 String displayText = choices[i];
 
                 if (onCooldown) {
-                    //实时获取格式化的冷却文本（支持三种类型）
                     String cooldownText = getChoiceCooldownText(i);
-                    if (!cooldownText.isEmpty()) {
-                        displayText = choices[i] + " §7" + cooldownText;
-                    }
+                    if (!cooldownText.isEmpty()) displayText = choices[i] + " §7" + cooldownText;
                 }
 
                 String safeChoice = font.plainSubstrByWidth(displayText, currentW - textOffsetX - 10);
-
-                // ════════════════════════════════════════════════
-                //  文本颜色
-                //  选中项：平滑过渡到纯白
-                //  冷却项：半透明
-                //  普通项：正常灰
-                // ════════════════════════════════════════════════
                 int finalTextColor;
+
                 if (onCooldown) {
                     int coolGray = (textGray << 16) | (textGray << 8) | textGray;
                     finalTextColor = HudAnimUtil.withAlpha(coolGray, Math.round(baseAlpha * 0.5f));
@@ -628,28 +606,25 @@ import java.util.List;
                     finalTextColor = HudAnimUtil.withAlpha(texCol, baseAlpha);
                 }
 
-                g.drawString(font, safeChoice, currentX + textOffsetX,
-                        cy + (choiceH - font.lineHeight) / 2 + 1,
-                        finalTextColor, true);
+                g.drawString(font, safeChoice, currentX + textOffsetX, cy + (choiceH - font.lineHeight) / 2 + 1, finalTextColor, true);
             }
         }
 
-        // ── 终端/自动推进指示器 ──
         if (typewriterDone && choices.length == 0 && safeAlpha > 5 && !isClosing) {
             float timeSec = now / 1000f;
             float pulseA = 0.3f + 0.7f * (float) Math.abs(Math.sin(timeSec * 3f));
             float driftY = (float) Math.sin(timeSec * 5f) * 1.5f;
             int indX = textBaseX + font.width(wrappedLines.get(wrappedLines.size() - 1)) + 12;
             int indY = textBaseY + (wrappedLines.size() - 1) * lineHeight + yOffsetAnim + Math.round(driftY);
+
             g.pose().pushPose();
             g.pose().translate(indX, indY, 0);
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, "▼", 0, 0,
-                    HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeAlpha * pulseA)), true);
+            g.drawString(font, "▼", 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeAlpha * pulseA)), true);
             g.pose().popPose();
         }
+
         RenderSystem.disableBlend();
+        g.pose().popPose();
     }
-
-
 }

@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.client.events.ClientQuestEvents;
+import org.com.arc_quest.client.events.ClientHudEvents;
 import org.com.arc_quest.client.gui.QuestHudOverlay;
 import org.com.arc_quest.client.gui.quest.QuestToastManager;
 import org.com.arc_quest.quest.api.PhaseDefinition;
@@ -46,7 +46,7 @@ public class S2CSyncQuestStatePacket {
                 case ACTIVE -> {
                     if (isNewQuest) {
                         QuestToastManager.show(QuestToastManager.ToastType.QUEST_ACCEPTED, name);
-                        if (def != null) ClientQuestEvents.handleVisualTrigger(def, SplashType.QUEST_ACQUIRED, null);
+                        if (def != null) ClientHudEvents.handleVisualTrigger(def, SplashType.QUEST_ACQUIRED, null);
                     }
 
                     if (def != null && Minecraft.getInstance().player != null) {
@@ -73,7 +73,7 @@ public class S2CSyncQuestStatePacket {
                 }
                 case COMPLETED -> {
                     QuestToastManager.show(QuestToastManager.ToastType.QUEST_COMPLETED, name);
-                    if (def != null) ClientQuestEvents.handleVisualTrigger(def, SplashType.QUEST_COMPLETED, null);
+                    if (def != null) ClientHudEvents.handleVisualTrigger(def, SplashType.QUEST_COMPLETED, null);
                 }
                 case FAILED -> {
                 }

@@ -8,14 +8,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
 import org.com.arc_quest.client.gui.gacha.GachaResultRenderer;
-import org.com.arc_quest.client.gui.quest.offer.QuestOfferPanel;
 import org.com.arc_quest.client.gui.render.QuestIntelPanel;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.SplashType;
 
 @Mod.EventBusSubscriber(modid = Arc_quest.MOD_ID, value = Dist.CLIENT)
-public class ClientQuestEvents {
+public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {

@@ -11,6 +11,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
+import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
 import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
@@ -26,6 +28,9 @@ import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
 
 public abstract class AbstractTradeScreen extends Screen {
+
+    public static Screen pendingParentScreen = null;
+    public static void setParentScreen(Screen screen) { pendingParentScreen = screen; }
 
     protected final String shopId;
     protected final TradeShopDefinition shop;
@@ -44,6 +49,10 @@ public abstract class AbstractTradeScreen extends Screen {
     private int authorityRefreshTicker = 0;
     private TradeTooltipRenderer tooltipRenderer;
 
+    // 记录是否已触发父界面的联动进出场动画
+    protected boolean triggeredParentClose = false;
+    protected boolean triggeredParentReopen = false;
+
     public AbstractTradeScreen(String title, String shopId) {
         super(Component.translatable(title));
         this.shopId = shopId;
@@ -60,7 +69,6 @@ public abstract class AbstractTradeScreen extends Screen {
         if(tooltipRenderer == null) tooltipRenderer = new TradeTooltipRenderer(this, font);
     }
 
-    // --- 公共 API 及 Getter ---
     public String getShopId() { return shopId; }
     public TradeShopDefinition getShop() { return shop; }
     public float getTransitionAnim() { return transitionAnim; }
@@ -92,7 +100,6 @@ public abstract class AbstractTradeScreen extends Screen {
     public void onClose() {
         if (!isClosing) {
             isClosing = true;
-            ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
         }
     }
 
@@ -134,12 +141,47 @@ public abstract class AbstractTradeScreen extends Screen {
             dt = realDt;
         }
 
+        // ================= 【架构师 3A 级无缝交叉渐变矩阵】 =================
+        if (pendingParentScreen != null) {
+            if (pendingParentScreen instanceof QuestJournalScreen qjs) {
+                // 商店刚开启时，强制向背后默默渲染的日志界面下达“淡出”指令，避免穿模！
+                if (!triggeredParentClose && !isClosing) {
+                    qjs.onClose();
+                    triggeredParentClose = true;
+                }
+                // 商店开始退出时，提前向日志界面下达“入场”指令，这样商店消散时日志已经无缝显现！
+                if (isClosing && !triggeredParentReopen) {
+                    qjs.triggerEntranceAnimation();
+                    triggeredParentReopen = true;
+                }
+            } else if (pendingParentScreen instanceof DialogueScreen ds) {
+                if (!triggeredParentClose && !isClosing) {
+                    ds.startCloseAnimation();
+                    triggeredParentClose = true;
+                }
+            }
+            // 强行把父界面当作背景渲染，并通过传入 -999 阻断其任何鼠标判定！
+            pendingParentScreen.render(g, -999, -999, pt);
+        }
+        // ====================================================================
+
         if (!isClosing) {
-            transitionAnim = Math.min(1f, transitionAnim + dt / 0.18f);
+            transitionAnim = Math.min(1f, transitionAnim + dt / 0.35f);
         } else {
-            transitionAnim = Math.max(0f, transitionAnim - dt / 0.12f);
+            transitionAnim = Math.max(0f, transitionAnim - dt / 0.25f);
             if (transitionAnim <= 0.001f && minecraft != null) {
-                minecraft.setScreen(null);
+                if (pendingParentScreen != null) {
+                    if (pendingParentScreen instanceof DialogueScreen ds) {
+                        ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.restore());
+                        ds.resetSelectionState();
+                        ds.init(minecraft, minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight());
+                    }
+                    // QuestJournalScreen 已经被提前触发了入场动画，直接恢复为其为主界面！
+                    minecraft.setScreen(pendingParentScreen);
+                    pendingParentScreen = null;
+                } else {
+                    minecraft.setScreen(null);
+                }
                 return;
             }
         }
@@ -152,6 +194,8 @@ public abstract class AbstractTradeScreen extends Screen {
         if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
 
         int safeAlpha = (int) (255 * effectiveAlpha);
+
+        // 渲染商店自身半透明遮罩
         g.fill(0, 0, this.width, this.height, ((int) (140 * effectiveAlpha) << 24));
         if (safeAlpha <= 5) return;
 

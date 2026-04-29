@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
+import org.com.arc_quest.client.gui.gacha.GachaResultRenderer;
 import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 import org.com.arc_quest.client.gui.quest.journal.detail.JournalDetailParallelPhase;
 import org.com.arc_quest.client.gui.quest.tracker.TrackerConstants;
@@ -16,6 +17,7 @@ import org.com.arc_quest.client.gui.quest.tracker.TrackerObjectiveWidget;
 import org.com.arc_quest.client.gui.quest.tracker.TrackerParallelWidget;
 import org.com.arc_quest.client.gui.quest.tracker.TrackerTitleWidget;
 import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
+import org.com.arc_quest.client.gui.shop.AbstractTradeScreen;
 import org.com.arc_quest.quest.api.ObjectiveEntry;
 import org.com.arc_quest.quest.api.PhaseDefinition;
 import org.com.arc_quest.quest.api.QuestDefinition;
@@ -91,7 +93,7 @@ public class QuestTrackerPanel {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) return;
 
-        boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen || QuestSplashRenderer.isActive();
+        boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen || mc.screen instanceof AbstractTradeScreen || QuestSplashRenderer.isActive() || GachaResultRenderer.INSTANCE.isActive();
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;

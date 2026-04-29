@@ -30,11 +30,12 @@ public class JournalDetailControls {
 
     public void render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, int x, int y, int w, int h, int mx, int my, float dt, int activeTheme) {
         int btnH = 20, btnY = y + h - btnH - 8;
-
         boolean active = QuestIntelPanel.isActive() || QuestOfferPanel.isActive();
 
         if (def.hasChapterShop() && (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE || (screen.getCurrentTab() == JournalTypes.Tab.COMPLETED && def.isChapterShopPersistent()))) {
-            int shopBtnW = Math.min(110, w - 16), shopBtnX = x + w - shopBtnW - 8, shopBtnY = btnY - btnH - 6;
+            int shopBtnW = Math.min(110, w - 16);
+            int shopBtnX = x + 8;
+            int shopBtnY = btnY; // 【架构师修复】：去除多余的减法，完美和右侧追踪按钮处于同一水平线！
             boolean shopHover = !active && mx >= shopBtnX && mx <= shopBtnX + shopBtnW && my >= shopBtnY && my <= shopBtnY + btnH;
             chapterShopBtnHover = HudAnimUtil.step(chapterShopBtnHover, shopHover ? 1f : 0f, 8f, dt);
             JournalDetailPanel.drawCyberButton(g, screen, shopBtnX, shopBtnY, shopBtnW, btnH, Component.translatable("arc_quest.gui.journal.button.chapter_shop").getString(), activeTheme, HudAnimUtil.easeOutCubic(chapterShopBtnHover), shopHover);
@@ -58,21 +59,20 @@ public class JournalDetailControls {
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
-        if (QuestIntelPanel.isActive()) return false;
-        if (QuestOfferPanel.isActive()) return false;
-
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return false;
         if (screen.getSelectedIndex() < 0 || screen.getSelectedIndex() >= screen.getCurrentEntries().size()) return false;
+
         JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(screen.getSelectedIndex());
         int btnH = 20, btnY = y + h - btnH - 8;
-
         QuestDefinition def = entry.def();
+
         if (def != null && def.hasChapterShop()
                 && (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE
                 || (screen.getCurrentTab() == JournalTypes.Tab.COMPLETED && def.isChapterShopPersistent()))) {
 
             int shopBtnW = Math.min(110, w - 16);
-            int shopBtnX = x + w - shopBtnW - 8;
-            int shopBtnY = btnY - btnH - 6;
+            int shopBtnX = x + 8;
+            int shopBtnY = btnY; // 【架构师修复】：点击判定框也一并对齐
 
             if (mx >= shopBtnX && mx <= shopBtnX + shopBtnW && my >= shopBtnY && my <= shopBtnY + btnH) {
                 ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.openChapterShop(entry.questId()));

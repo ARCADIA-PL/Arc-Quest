@@ -1,12 +1,8 @@
 package org.com.arc_quest.client.gui.shop;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.com.arc_quest.client.gui.HudAnimUtil;
-import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
-import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.TradeCategory;
 import org.com.arc_quest.trade.api.TradeEntry;
@@ -19,7 +15,6 @@ import java.util.List;
 
 public class TradeScreen extends AbstractTradeScreen {
 
-    private static Screen parentScreen;
     private static final int CAT_WIDTH = 130;
 
     private final List<TradeEntry> allEntries;
@@ -34,20 +29,7 @@ public class TradeScreen extends AbstractTradeScreen {
         this.filteredEntries = new ArrayList<>(allEntries);
     }
 
-    public static void setParentScreen(Screen screen) { parentScreen = screen; }
     public List<TradeEntry> getFilteredEntries() { return filteredEntries; }
-
-    @Override
-    public void onClose() {
-        if (parentScreen != null) {
-            Minecraft mc = Minecraft.getInstance();
-            if (parentScreen instanceof DialogueScreen ds) {
-                ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.restore());
-                ds.resetSelectionState(); ds.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-            }
-            mc.setScreen(parentScreen); parentScreen = null;
-        } else super.onClose();
-    }
 
     @Override
     protected void init() {
@@ -75,7 +57,6 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     protected void renderContent(GuiGraphics g, int mx, int my, float pt) {
-        if (transitionAnim < 1.0f && !isClosing) transitionAnim += Math.min(1f, dt / 0.12f);
         float easeProgress = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim)) * HudAnimUtil.easeOutCubic(suspendAlpha);
         int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
         float slideOffset = (1f - easeProgress) * 200f;
@@ -121,8 +102,8 @@ public class TradeScreen extends AbstractTradeScreen {
         TradeEntry entry = getHoveredEntry((int)mx, (int)my);
         if (entry != null) {
             int rx = px + CAT_WIDTH + 16 + (int)slide, vi = filteredEntries.indexOf(entry);
-            int btnX = rx + (pw - CAT_WIDTH - 16) - 100, btnY = py + 36 + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - 0) + 8 + (TradeListPanel.CARD_HEIGHT - 24) / 2; // Offset handled in panel roughly
-            if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) { // simplified bounding box pass through
+            int btnX = rx + (pw - CAT_WIDTH - 16) - 100, btnY = py + 36 + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - 0) + 8 + (TradeListPanel.CARD_HEIGHT - 24) / 2;
+            if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) {
                 int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, entry.getEntryId());
                 lastClickedGi = gi;
                 if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) { ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.purchaseWithScreenType(shopId, entry.getEntryId(), C2SRequestTradePacket.ScreenType.FULL)); playClick(); }

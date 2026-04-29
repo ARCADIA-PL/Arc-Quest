@@ -61,6 +61,18 @@ public class QuestJournalScreen extends Screen {
         this.detailPanel = new JournalDetailPanel(this);
     }
 
+    public void triggerEntranceAnimation() {
+        this.transitionAlpha = 0f;
+        this.isClosing = false;
+        this.suspendAlpha = 1.0f;
+        this.lastRenderTime = 0;
+        this.tooltipHoverTimer = 0f;
+        this.tooltipTipAlpha = 0f;
+        this.hoveredRewardTooltip = null;
+        this.activeTooltipStack = null;
+        this.animTipW = 0f;
+    }
+
     public float getUiScale() {
         if (this.minecraft == null) return 1.0f;
         double guiScale = this.minecraft.getWindow().getGuiScale();
@@ -264,7 +276,14 @@ public class QuestJournalScreen extends Screen {
         else { suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f); dt = intelActive ? 0f : realDt; }
 
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
-        if (isClosing && transitionAlpha <= 0.01f) { if (minecraft != null) minecraft.setScreen(null); return; }
+
+        // 【架构师终极防断触补丁】：如果日志界面在商店背后作为背景淡出，绝对不能去调用 setScreen(null) 误杀商店屏幕！
+        if (isClosing && transitionAlpha <= 0.01f) {
+            if (minecraft != null && minecraft.screen == this) {
+                minecraft.setScreen(null);
+            }
+            return;
+        }
 
         effectiveAlpha = transitionAlpha * suspendAlpha;
         float easeProgress = getEaseProgress();
@@ -374,7 +393,6 @@ public class QuestJournalScreen extends Screen {
 
         drawCyberneticEdge(g, drawX, drawY, drawH, currentThemeColor, edgeAlpha);
 
-        // 核心修正：使用我们自制的自适应裁剪！
         enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
 
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;

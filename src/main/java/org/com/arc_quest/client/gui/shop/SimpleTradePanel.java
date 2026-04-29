@@ -1,11 +1,7 @@
 package org.com.arc_quest.client.gui.shop;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
 import org.com.arc_quest.client.gui.HudAnimUtil;
-import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
-import org.com.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.com.arc_quest.quest.network.ArcQuestNetwork;
 import org.com.arc_quest.trade.api.TradeEntry;
 import org.com.arc_quest.trade.network.C2SRequestTradePacket;
@@ -17,7 +13,6 @@ import java.util.List;
 
 public class SimpleTradePanel extends AbstractTradeScreen {
 
-    private static Screen parentScreen;
     private final List<TradeEntry> entries;
     private TradeGridPanel gridPanel;
 
@@ -33,20 +28,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
         }
     }
 
-    public static void setParentScreen(Screen screen) { parentScreen = screen; }
     public List<TradeEntry> getEntries() { return entries; }
-
-    @Override
-    public void onClose() {
-        if (parentScreen != null) {
-            Minecraft mc = Minecraft.getInstance();
-            if (parentScreen instanceof DialogueScreen ds) {
-                ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.restore());
-                ds.resetSelectionState(); ds.init(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-            }
-            mc.setScreen(parentScreen); parentScreen = null;
-        } else super.onClose();
-    }
 
     @Override
     protected void init() {
@@ -57,7 +39,6 @@ public class SimpleTradePanel extends AbstractTradeScreen {
     @Override
     protected void renderContent(GuiGraphics g, int mx, int my, float pt) {
         if (shop == null) return;
-        if (transitionAnim < 1.0f && !isClosing) transitionAnim += Math.min(1f, dt / 0.18f);
         float easeProgress = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim)) * HudAnimUtil.easeOutCubic(suspendAlpha);
         gridPanel.render(g, mx, my, pt, dt, easeProgress, isClosing);
     }
