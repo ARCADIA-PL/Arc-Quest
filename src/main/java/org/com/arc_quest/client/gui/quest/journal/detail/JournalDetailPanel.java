@@ -72,7 +72,9 @@ public class JournalDetailPanel {
         if (safeA <= 8) return;
 
         int scrollAreaY = y, scrollAreaH = h - 40, scrollAreaW = w - 8;
-        g.enableScissor(x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
+
+        // 核心对接：重构自适应 Scissor
+        screen.enableScissor(g, x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
 
         // Header Background Watermark
         def.getSplashConfig(SplashType.QUEST_DETAIL).ifPresent(asset -> {
@@ -238,7 +240,6 @@ public class JournalDetailPanel {
         detailTargetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragDetailYOffset) / (viewH - thumbH))) * maxScroll;
     }
 
-    // Shared Helper Methods for Sub-Panels
     public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
         int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * screen.getEffectiveAlpha());
         int borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * screen.getEffectiveAlpha());

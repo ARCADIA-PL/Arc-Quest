@@ -10,9 +10,6 @@ import org.com.arc_quest.client.gui.HudAnimUtil;
 import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.quest.network.ClientQuestCache;
 
-/**
- * 分支可选提示（支持绑定到具体 phase）。
- */
 public class BranchChoiceToast {
 
     public static final int POPUP_W = 220;
@@ -24,16 +21,13 @@ public class BranchChoiceToast {
     private static final float FLY_DIST = 10f;
 
     private final String questId;
-    private final String phaseId; // 允许为空（兼容旧调用）
+    private final String phaseId;
 
     private long startTime;
     private boolean isDismissing = false;
     private long dismissStartTime = 0;
     private long lastRenderTime = 0;
 
-    /**
-     * 兼容旧调用：仅 quest 级分支提示。
-     */
     public BranchChoiceToast(String questId) {
         this(questId, null);
     }
@@ -57,17 +51,9 @@ public class BranchChoiceToast {
         return Util.getMillis() - dismissStartTime >= TIME_EXIT;
     }
 
-    public String getQuestId() {
-        return questId;
-    }
+    public String getQuestId() { return questId; }
+    public String getPhaseId() { return phaseId; }
 
-    public String getPhaseId() {
-        return phaseId;
-    }
-
-    /**
-     * 用于去重：同 quest + phase 视为同一提示。
-     */
     public boolean sameTarget(String otherQuestId, String otherPhaseId) {
         if (otherQuestId == null) return false;
         if (!otherQuestId.equals(this.questId)) return false;
@@ -114,35 +100,49 @@ public class BranchChoiceToast {
         float finalAlpha = alpha * parentAlpha;
         if (finalAlpha < 0.01f) return true;
 
+        // 【终极注入】：调用全剧统一的 3A 级自适应缩放！
+        Minecraft mc = Minecraft.getInstance();
+        int screenWidth = mc.getWindow().getGuiScaledWidth();
+        int screenHeight = mc.getWindow().getGuiScaledHeight();
+
+        float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
+        float sw = screenWidth / uiScale;
+
+        int virtualMarginRight = 16;
+        int vBaseX = (int) sw - POPUP_W - virtualMarginRight;
+        int vBaseY = (int) (baseY / uiScale);
+
+        g.pose().pushPose();
+        g.pose().scale(uiScale, uiScale, 1f);
+
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        int scLeft = baseX - 20;
-        int scRight = baseX + POPUP_W + 20;
+        int scLeft = vBaseX - 20;
+        int scRight = vBaseX + POPUP_W + 20;
         if (!isDismissing && elapsedEnter < TIME_ENTER) {
-            scRight = baseX + (int) (POPUP_W * revealProgress);
+            scRight = vBaseX + (int) (POPUP_W * revealProgress);
         } else if (isDismissing) {
-            scRight = baseX + (int) (POPUP_W * (1f - wipeProgress));
+            scRight = vBaseX + (int) (POPUP_W * (1f - wipeProgress));
         }
 
-        g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
+        g.enableScissor((int)(scLeft * uiScale), (int)((vBaseY - 10) * uiScale), (int)(scRight * uiScale), (int)((vBaseY + POPUP_H + 20) * uiScale));
 
         int bgA = (int) (finalAlpha * 0x88);
         int accentA = (int) (finalAlpha * 255);
         int themeColor = COLOR_ACCENT & 0xFFFFFF;
 
-        HudRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H, 0x121212, bgA, themeColor, accentA, 4);
+        HudRenderUtil.drawGlassPanel(g, vBaseX, vBaseY, POPUP_W, POPUP_H, 0x121212, bgA, themeColor, accentA, 4);
 
         String questName = ClientQuestCache.INSTANCE.getQuestDisplayName(questId);
         String phaseName = resolvePhaseDisplayName();
 
         Font font = Minecraft.getInstance().font;
-        float contentX = baseX + 12 + textDriftX;
-        float contentY = baseY + 6;
+        float contentX = vBaseX + 12 + textDriftX;
+        float contentY = vBaseY + 6;
 
         if (accentA > 5) {
             String subtitle = Component.translatable("arc_quest.toast.branch.subtitle").getString();
-
             String prefix = Component.translatable("arc_quest.toast.branch.prefix").getString();
             String line1 = prefix + font.plainSubstrByWidth(questName, POPUP_W - 30 - font.width(prefix));
 
@@ -175,6 +175,7 @@ public class BranchChoiceToast {
 
         g.disableScissor();
         RenderSystem.disableBlend();
+        g.pose().popPose();
         return true;
     }
 

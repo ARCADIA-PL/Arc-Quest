@@ -30,7 +30,8 @@ public class JournalListPanel {
         clampScroll(h);
         scrollOffset += Math.abs(targetScroll - scrollOffset) > 0.5 ? (targetScroll - scrollOffset) * Math.min(1.0, dt * 14.0) : (targetScroll - scrollOffset);
 
-        g.enableScissor(x, y, x + w - 6, y + h);
+        // 核心对接：拦截并传递给全尺寸投影转换裁剪
+        screen.enableScissor(g, x, y, x + w - 6, y + h);
 
         int selectedIndex = screen.getSelectedIndex();
         float effectiveAlpha = screen.getEffectiveAlpha();
@@ -129,31 +130,21 @@ public class JournalListPanel {
             isDraggingListScrollbar = true;
             int thumbH = Math.max(16, (int) (((float) h / (screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT)) * h));
             int thumbY = y + (int) ((scrollOffset / maxListScroll) * (h - thumbH));
-            if (my >= thumbY && my <= thumbY + thumbH) {
-                dragListYOffset = my - thumbY;
-            } else {
-                dragListYOffset = thumbH / 2.0;
-                updateScrollFromMouse(my, y, h, maxListScroll);
-            }
+            if (my >= thumbY && my <= thumbY + thumbH) dragListYOffset = my - thumbY;
+            else { dragListYOffset = thumbH / 2.0; updateScrollFromMouse(my, y, h, maxListScroll); }
             return true;
         }
 
         if (mx >= x && mx <= x + w - 6 && my >= y && my <= y + h) {
             double relY = my - y + scrollOffset;
             int idx = (int) (relY / JournalConstants.ENTRY_HEIGHT);
-            if (idx >= 0 && idx < screen.getCurrentEntries().size()) {
-                screen.onEntrySelected(idx);
-                return true;
-            }
+            if (idx >= 0 && idx < screen.getCurrentEntries().size()) { screen.onEntrySelected(idx); return true; }
         }
         return false;
     }
 
     public boolean mouseDragged(double mx, double my, int y, int h) {
-        if (isDraggingListScrollbar) {
-            updateScrollFromMouse(my, y, h, Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - h));
-            return true;
-        }
+        if (isDraggingListScrollbar) { updateScrollFromMouse(my, y, h, Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - h)); return true; }
         return false;
     }
 
@@ -165,8 +156,7 @@ public class JournalListPanel {
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
             targetScroll -= delta * JournalConstants.ENTRY_HEIGHT;
-            clampScroll(h);
-            return true;
+            clampScroll(h); return true;
         }
         return false;
     }

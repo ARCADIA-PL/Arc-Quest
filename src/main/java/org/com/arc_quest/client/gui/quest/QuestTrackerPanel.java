@@ -7,6 +7,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.com.arc_quest.client.gui.HudAnimUtil;
+import org.com.arc_quest.client.gui.HudRenderUtil;
 import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
 import org.com.arc_quest.client.gui.quest.journal.QuestJournalScreen;
 import org.com.arc_quest.client.gui.quest.journal.detail.JournalDetailParallelPhase;
@@ -34,6 +35,7 @@ public class QuestTrackerPanel {
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
     private float currentPanelY = TrackerConstants.MARGIN_TOP;
+
     private long lastRenderTime = 0;
     private float dt = 0f;
 
@@ -165,6 +167,9 @@ public class QuestTrackerPanel {
         List<ObjectiveEntry> objectives = phase.getObjectives();
         Font font = mc.font;
 
+        float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
+        float virtualScreenWidth = screenWidth / uiScale;
+
         int targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
         if (activePhaseOrder.size() > 1) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
         else targetH += 16;
@@ -177,17 +182,27 @@ public class QuestTrackerPanel {
         currentPanelY = TrackerConstants.lerp(currentPanelY, TrackerConstants.MARGIN_TOP + QuestToastManager.getPushDownOffset(), 0.12f, dt);
 
         int panelH = (int) currentPanelH;
-        float slideOffset = panelSlide * (TrackerConstants.PANEL_WIDTH + TrackerConstants.MARGIN_RIGHT + 20);
-        int panelX = (int) (screenWidth - TrackerConstants.PANEL_WIDTH - TrackerConstants.MARGIN_RIGHT + slideOffset);
+        float slideOffset = panelSlide * (TrackerConstants.PANEL_WIDTH + TrackerConstants.MARGIN_RIGHT + 20f);
+        int panelX = (int) (virtualScreenWidth - TrackerConstants.PANEL_WIDTH - TrackerConstants.MARGIN_RIGHT + slideOffset);
         int panelY = (int) currentPanelY;
+
+        // 完美 Scissor 计算（完全对齐 Journal 逻辑）
+        float currentW = Math.max((float) TrackerConstants.ACCENT_WIDTH + 1f, TrackerConstants.PANEL_WIDTH * wipeReveal);
+        int scX1 = (int) ((panelX - 5) * uiScale);
+        int scY1 = (int) ((panelY - 5) * uiScale);
+        int scX2 = (int) ((panelX + currentW + 5) * uiScale);
+        int scY2 = (int) ((panelY + panelH + 5) * uiScale);
+
+        // 1. 在正确空间进行裁剪
+        g.enableScissor(scX1, scY1, scX2, scY2);
+
+        // 2. 推入矩阵，进行统一缩放
+        g.pose().pushPose();
+        g.pose().scale(uiScale, uiScale, 1.0f);
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableDepthTest();
-
-        int scX1 = panelX - 5;
-        int scX2 = panelX + Math.max(TrackerConstants.ACCENT_WIDTH + 1, (int) (TrackerConstants.PANEL_WIDTH * wipeReveal));
-        g.enableScissor(scX1, panelY - 5, scX2, panelY + panelH + 5);
 
         int bgAlpha = (int) (0x55 * panelReveal);
         int accentAlpha = (int) (0xFF * panelReveal);
@@ -209,12 +224,14 @@ public class QuestTrackerPanel {
         textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
         objectiveWidget.render(g, font, tracked, displayedPhaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
 
-        g.disableScissor();
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
+
+        g.pose().popPose();
+        // 3. 完美闭环
+        g.disableScissor();
     }
 
-    // 【终极重构同步点】在此处完美读取硬盘持久化或内存缓存的顺序
     private void syncActivePhaseOrder(QuestRuntimeData tracked, QuestDefinition def) {
         String questId = tracked.getQuestId();
         List<String> customOrder = JournalDetailParallelPhase.getCustomOrder(questId);
@@ -224,16 +241,13 @@ public class QuestTrackerPanel {
             for (String pid : customOrder) {
                 if (tracked.isPhaseActive(pid) && def.getPhase(pid) != null) next.add(pid);
             }
-            // 兜底补齐：万一有没在缓存里的新激活 Phase，加在后面
             for (String pid : tracked.getActivePhaseIds()) {
                 if (!next.contains(pid) && def.getPhase(pid) != null) next.add(pid);
             }
         } else {
-            // 默认顺序回退
             for (String pid : def.getPhaseIds()) if (tracked.isPhaseActive(pid)) next.add(pid);
             if (next.isEmpty()) next.addAll(tracked.getActivePhaseIds());
         }
-
         activePhaseOrder = next;
     }
 

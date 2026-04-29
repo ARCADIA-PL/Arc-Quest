@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.GameRenderer;
@@ -22,6 +23,31 @@ import java.util.Locale;
 public final class HudRenderUtil {
 
     private HudRenderUtil() {
+    }
+
+    //尺寸自适应工具
+    public static float getUniversalUiScale(int screenWidth, int screenHeight) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null) return 1.0f;
+        double guiScale = mc.getWindow().getGuiScale();
+        if (guiScale == 0) guiScale = 1.0;
+
+        float scale = (float) (3.0 / guiScale);
+        float sw = screenWidth / scale;
+        float sh = screenHeight / scale;
+
+        float minW = 480f;
+        float minH = 260f;
+
+        if (sw < minW) {
+            scale = screenWidth / minW;
+            sh = screenHeight / scale;
+        }
+        if (sh < minH) {
+            scale = screenHeight / minH;
+        }
+
+        return scale;
     }
 
     public static void drawBatchRects(GuiGraphics g, int[] rects, int rectCount) {
