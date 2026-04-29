@@ -24,6 +24,10 @@ public final class QuestRejectCodeDictionary {
         CHOICE_CONDITION_NOT_MET,
         CHOICE_TARGET_PHASE_MISSING,
 
+        CHAPTER_SHOP_NOT_CONFIGURED,
+        CHAPTER_SHOP_NOT_ACCESSIBLE,
+        CHAPTER_SHOP_DEFINITION_NOT_FOUND,
+
         UNKNOWN
     }
 

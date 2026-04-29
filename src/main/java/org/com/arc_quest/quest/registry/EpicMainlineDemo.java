@@ -42,6 +42,7 @@ public final class EpicMainlineDemo {
         ArcQuestAPI.registerQuest(
                 QuestBuilder.create("arc_quest:epic_prologue")
                         .category(QuestCategory.ARCHON)
+                        .chapterShop("arc_quest:blacksmith_shop")
                         .displayName(Component.translatable("arc_quest.quest.epic_prologue.title"))
                         .description(Component.translatable("arc_quest.quest.epic_prologue.desc"))
                         .icon(ResourceLocation.fromNamespaceAndPath(Arc_quest.MOD_ID, "textures/gui/quest/prologue.png"))

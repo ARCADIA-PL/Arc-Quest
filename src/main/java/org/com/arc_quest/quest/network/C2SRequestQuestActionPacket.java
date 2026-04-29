@@ -2,12 +2,19 @@ package org.com.arc_quest.quest.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
+import org.com.arc_quest.quest.capability.IQuestCapability;
+import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.quest.logic.QuestProgressHandler;
 import org.com.arc_quest.quest.network.QuestRejectCodeDictionary.Code;
 import org.com.arc_quest.quest.network.SyncObservability.Reason;
+import org.com.arc_quest.quest.registry.QuestRegistry;
+import org.com.arc_quest.trade.api.TradeShopDefinition;
+import org.com.arc_quest.trade.network.C2SRequestTradePacket;
+import org.com.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
 import java.util.function.Supplier;
@@ -47,6 +54,10 @@ public class C2SRequestQuestActionPacket {
     // 兼容旧调用：phaseId 为空
     public static C2SRequestQuestActionPacket choose(String questId, int transitionIndex) {
         return new C2SRequestQuestActionPacket(Action.CHOOSE, questId, transitionIndex, "");
+    }
+
+    public static C2SRequestQuestActionPacket openChapterShop(String questId) {
+        return new C2SRequestQuestActionPacket(Action.OPEN_CHAPTER_SHOP, questId, -1, "");
     }
 
     public static void encode(C2SRequestQuestActionPacket pkt, FriendlyByteBuf buf) {
@@ -111,6 +122,17 @@ public class C2SRequestQuestActionPacket {
                             new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
                     );
                 }
+                case OPEN_CHAPTER_SHOP -> {
+                    Code code = openChapterShopWithCode(sender, pkt.questId);
+                    SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
+                            SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
+                    LOGGER.debug("[ArcQuest] C2S OPEN_CHAPTER_SHOP quest={}, code={}, player={}",
+                            pkt.questId, code, sender.getGameProfile().getName());
+                    ArcQuestNetwork.CHANNEL.send(
+                            PacketDistributor.PLAYER.with(() -> sender),
+                            new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
+                    );
+                }
             }
         });
         ctx.get().setPacketHandled(true);
@@ -122,12 +144,39 @@ public class C2SRequestQuestActionPacket {
             case ACCEPT -> ok ? Reason.QUEST_ACCEPT_SUCCESS : Reason.QUEST_ACCEPT_REJECTED;
             case ABANDON -> ok ? Reason.QUEST_ABANDON_SUCCESS : Reason.QUEST_ABANDON_REJECTED;
             case CHOOSE -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
+            case OPEN_CHAPTER_SHOP -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
         };
+    }
+
+    private static Code openChapterShopWithCode(ServerPlayer player, String questId) {
+        ResourceLocation questRl = ResourceLocation.tryParse(questId);
+        if (questRl == null) return Code.QUEST_NOT_FOUND;
+
+        var def = QuestRegistry.get(questRl);
+        if (def == null) return Code.QUEST_NOT_FOUND;
+        if (!def.hasChapterShop()) return Code.CHAPTER_SHOP_NOT_CONFIGURED;
+
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap == null) return Code.NOT_ACTIVE;
+
+        boolean canAccess = cap.isQuestActive(questId)
+                || (def.isChapterShopPersistent() && cap.isQuestCompleted(questId));
+        if (!canAccess) return Code.CHAPTER_SHOP_NOT_ACCESSIBLE;
+
+        String shopId = def.getChapterShopId();
+        if (shopId == null || shopId.isEmpty()) return Code.CHAPTER_SHOP_NOT_CONFIGURED;
+
+        TradeShopDefinition shop = TradeRegistry.get(shopId);
+        if (shop == null) return Code.CHAPTER_SHOP_DEFINITION_NOT_FOUND;
+
+        C2SRequestTradePacket.handleServerOpen(player, shop, false);
+        return Code.OK;
     }
 
     public enum Action {
         ACCEPT,
         ABANDON,
-        CHOOSE
+        CHOOSE,
+        OPEN_CHAPTER_SHOP
     }
 }

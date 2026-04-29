@@ -75,6 +75,7 @@ public class S2CQuestActionResultPacket {
             case ACCEPT -> "接受任务";
             case ABANDON -> "放弃任务";
             case CHOOSE -> "选择分支";
+            case OPEN_CHAPTER_SHOP -> "打开章节商店";
         };
 
         String reason = switch (code) {
@@ -88,6 +89,11 @@ public class S2CQuestActionResultPacket {
             case INVALID_CHOICE_INDEX -> "分支索引无效";
             case CHOICE_CONDITION_NOT_MET -> "分支条件不满足";
             case CHOICE_TARGET_PHASE_MISSING -> "分支目标阶段缺失";
+
+            case CHAPTER_SHOP_NOT_CONFIGURED -> "该任务未配置章节商店";
+            case CHAPTER_SHOP_NOT_ACCESSIBLE -> "当前状态不可访问章节商店";
+            case CHAPTER_SHOP_DEFINITION_NOT_FOUND -> "章节商店定义不存在";
+
             default -> "未知原因";
         };
 

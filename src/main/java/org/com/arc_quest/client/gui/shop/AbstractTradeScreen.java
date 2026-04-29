@@ -126,8 +126,28 @@ public abstract class AbstractTradeScreen extends Screen {
         float realDt = Math.min(0.1f, (now - lastRenderTime) / 1000f);
         lastRenderTime = now;
 
-        if (QuestSplashRenderer.isActive()) { suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f); dt = 0f; }
-        else { suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f); dt = realDt; }
+        if (QuestSplashRenderer.isActive()) {
+            suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
+            dt = 0f;
+        } else {
+            suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
+            dt = realDt;
+        }
+
+        if (!isClosing) {
+            transitionAnim = Math.min(1f, transitionAnim + dt / 0.18f);
+        } else {
+            transitionAnim = Math.max(0f, transitionAnim - dt / 0.12f);
+            if (transitionAnim <= 0.001f && minecraft != null) {
+                minecraft.setScreen(null);
+                return;
+            }
+        }
+
+        float transEase = isClosing
+                ? HudAnimUtil.easeInCubic(transitionAnim)
+                : HudAnimUtil.easeOutCubic(transitionAnim);
+        effectiveAlpha = transEase * HudAnimUtil.easeOutCubic(suspendAlpha);
 
         if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
 
@@ -138,7 +158,9 @@ public abstract class AbstractTradeScreen extends Screen {
         renderContent(g, mx, my, pt);
         renderTradeFailToast(g);
 
-        if (tooltipRenderer != null) tooltipRenderer.updateAndRender(g, getHoveredEntry(mx, my), mx, my, dt, isClosing);
+        if (tooltipRenderer != null) {
+            tooltipRenderer.updateAndRender(g, getHoveredEntry(mx, my), mx, my, dt, isClosing);
+        }
     }
 
     private void renderTradeFailToast(GuiGraphics g) {

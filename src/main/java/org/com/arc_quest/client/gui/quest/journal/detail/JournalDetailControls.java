@@ -65,6 +65,22 @@ public class JournalDetailControls {
         JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(screen.getSelectedIndex());
         int btnH = 20, btnY = y + h - btnH - 8;
 
+        QuestDefinition def = entry.def();
+        if (def != null && def.hasChapterShop()
+                && (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE
+                || (screen.getCurrentTab() == JournalTypes.Tab.COMPLETED && def.isChapterShopPersistent()))) {
+
+            int shopBtnW = Math.min(110, w - 16);
+            int shopBtnX = x + w - shopBtnW - 8;
+            int shopBtnY = btnY - btnH - 6;
+
+            if (mx >= shopBtnX && mx <= shopBtnX + shopBtnW && my >= shopBtnY && my <= shopBtnY + btnH) {
+                ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.openChapterShop(entry.questId()));
+                screen.playClick();
+                return true;
+            }
+        }
+
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE) {
             int btnW = Math.min(90, (w - 24) / 2), trackX = x + w - btnW - 8, abanX = trackX - 8 - btnW;
             if (mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH) {

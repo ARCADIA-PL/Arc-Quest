@@ -273,17 +273,15 @@ public class S2COpenTradePacket {
             Minecraft mc = Minecraft.getInstance();
             switch (pkt.mode) {
                 case OPEN_FULL -> {
-                    // 关闭其他商店的会话，防止内存泄漏
                     ClientTradeCache.INSTANCE.closeAllExcept(pkt.shopId);
-                    
+
                     ClientTradeCache.INSTANCE.updateSession(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
                             pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
                             pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
 
-                    // 播放商店打开音效
                     ClientTradeCache.INSTANCE.playOpenSound(pkt.shopId, pkt.openSoundId);
 
-                    if (mc.screen instanceof DialogueScreen) {
+                    if (mc.screen != null && !(mc.screen instanceof AbstractTradeScreen)) {
                         TradeScreen.setParentScreen(mc.screen);
                     }
 
@@ -295,17 +293,15 @@ public class S2COpenTradePacket {
                 }
 
                 case OPEN_SIMPLE -> {
-                    // 关闭其他商店的会话，防止内存泄漏
                     ClientTradeCache.INSTANCE.closeAllExcept(pkt.shopId);
-                    
+
                     ClientTradeCache.INSTANCE.updateSession(pkt.shopId, pkt.purchaseCounts, pkt.maxPurchases,
                             pkt.lastPurchaseTimes, pkt.purchaseGameTimes, pkt.purchaseDayTimes,
                             pkt.cooldownTypes, pkt.cooldownValues, pkt.resetTimeTicks, pkt.visibility, pkt.canBuyConditions);
 
-                    // 播放商店打开音效
                     ClientTradeCache.INSTANCE.playOpenSound(pkt.shopId, pkt.openSoundId);
 
-                    if (mc.screen instanceof DialogueScreen) {
+                    if (mc.screen != null && !(mc.screen instanceof AbstractTradeScreen)) {
                         SimpleTradePanel.setParentScreen(mc.screen);
                     }
 
@@ -333,12 +329,8 @@ public class S2COpenTradePacket {
 
                 case CLOSE -> {
                     if (mc.screen instanceof AbstractTradeScreen tradeScreen) {
-                        // 播放商店关闭音效
                         ClientTradeCache.INSTANCE.playCloseSound(tradeScreen.getShopId(), pkt.closeSoundId);
-                        
-                        TradeScreen.setParentScreen(null);
-                        SimpleTradePanel.setParentScreen(null);
-                        mc.setScreen(null);
+                        tradeScreen.onClose();
                     }
                 }
             }
