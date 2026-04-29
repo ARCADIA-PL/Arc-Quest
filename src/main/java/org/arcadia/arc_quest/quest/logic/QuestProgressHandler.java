@@ -8,7 +8,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.arcadia.arc_quest.api.event.*;
+import org.arcadia.arc_quest.api.event.quest.*;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -386,6 +386,15 @@ public final class QuestProgressHandler {
             activatePhase(player, cap, data, def, resolvedPhaseId, pid, true, ctx);
         }
 
+        MinecraftForge.EVENT_BUS.post(new QuestChoiceResolvedEvent(
+                player,
+                ResourceLocation.parse(questId),
+                resolvedPhaseId,
+                choiceIndex,
+                chosen.getDisplayText().getString(),
+                targetPhaseId
+        ));
+
         // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
         tryAutoEnterPhases(player, cap, data, def, resolvedPhaseId, ctx);
 
@@ -456,6 +465,7 @@ public final class QuestProgressHandler {
         syncFullDataAndPush(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
+        MinecraftForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
         return QuestRejectCodeDictionary.Code.OK;
     }
 
@@ -530,9 +540,11 @@ public final class QuestProgressHandler {
     public static void rebuildTrackingIndex(ServerPlayer player, IQuestCapability cap) {
         ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
 
+        int activeQuestCount = 0;
         for (Map.Entry<String, QuestRuntimeData> entry : cap.getAllActiveQuests().entrySet()) {
             QuestRuntimeData data = entry.getValue();
             if (data.getState() != QuestState.ACTIVE) continue;
+            activeQuestCount++;
 
             QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
             if (def == null) continue;
@@ -545,6 +557,8 @@ public final class QuestProgressHandler {
 
             refreshQuestMarkersForQuest(player, cap, data, def);
         }
+
+        MinecraftForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
     }
 
     public static void registerPhaseObjectives(ServerPlayer player,
@@ -685,6 +699,7 @@ public final class QuestProgressHandler {
 
         QuestEventBus.fire(QuestChangeEvent.phaseChanged(def.getId(), fromPhaseId, next.getPhaseId()));
         MinecraftForge.EVENT_BUS.post(new QuestPhaseChangedEvent(player, def.getId(), fromPhaseId, next.getPhaseId()));
+        MinecraftForge.EVENT_BUS.post(new QuestPhaseActivatedEvent(player, def.getId(), fromPhaseId, next.getPhaseId(), !enforceEnterCondition));
         return true;
     }
 
@@ -770,9 +785,14 @@ public final class QuestProgressHandler {
                         .build();
                 cap.upsertMarker(marker);
                 ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
-                ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
             }
         }
+
+        MinecraftForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
+                player,
+                ResourceLocation.parse(data.getQuestId()),
+                data.getActivePhaseIds().size()
+        ));
     }
 
     private static List<String> clearQuestMarkers(IQuestCapability cap, String questId) {

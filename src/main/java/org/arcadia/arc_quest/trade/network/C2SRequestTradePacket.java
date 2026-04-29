@@ -8,9 +8,13 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.arcadia.arc_quest.api.event.TradeOpenedEvent;
-import org.arcadia.arc_quest.api.event.TradePurchaseFailedEvent;
-import org.arcadia.arc_quest.api.event.TradePurchasedSuccessEvent;
+import org.arcadia.arc_quest.api.event.trade.TradeClosedEvent;
+import org.arcadia.arc_quest.api.event.trade.TradeOpenRejectedEvent;
+import org.arcadia.arc_quest.api.event.trade.TradeOpenedEvent;
+import org.arcadia.arc_quest.api.event.trade.TradePurchaseFailedEvent;
+import org.arcadia.arc_quest.api.event.trade.TradePurchaseRejectedEvent;
+import org.arcadia.arc_quest.api.event.trade.TradePurchasedSuccessEvent;
+import org.arcadia.arc_quest.api.event.trade.TradeStateSyncedEvent;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -165,15 +169,21 @@ public class C2SRequestTradePacket {
     private static void sendGuardTradeFail(ServerPlayer player,
                                            C2SRequestTradePacket pkt,
                                            RejectCodeDictionary.Code code) {
+        String errorKey = TradeRequestValidator.toErrorKey(code);
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
                 S2COpenTradePacket.tradeFail(
                         pkt.shopId,
                         pkt.entryId,
                         S2COpenTradePacket.FailReason.GENERIC,
-                        TradeRequestValidator.toErrorKey(code)
+                        errorKey
                 )
         );
+        if (pkt.entryId == null || pkt.entryId.isEmpty()) {
+            MinecraftForge.EVENT_BUS.post(new TradeOpenRejectedEvent(player, pkt.shopId, errorKey));
+        } else {
+            MinecraftForge.EVENT_BUS.post(new TradePurchaseRejectedEvent(player, pkt.shopId, pkt.entryId, errorKey));
+        }
     }
 
     /**
@@ -290,6 +300,8 @@ public class C2SRequestTradePacket {
             };
             MinecraftForge.EVENT_BUS.post(new TradePurchaseFailedEvent(
                     player, shop.getShopId(), entryId, failureReason));
+            MinecraftForge.EVENT_BUS.post(new TradePurchaseRejectedEvent(
+                    player, shop.getShopId(), entryId, errorKey));
         }
 
         if (clientScreenType != ScreenType.NONE) {
@@ -313,6 +325,7 @@ public class C2SRequestTradePacket {
         if (!shouldSendTradeSync(player, shop.getShopId(), snap)) {
             SyncObservability.recordDropped("trade", shop.getShopId(), player.getName().getString(), false);
             SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_DROPPED, reason);
+            MinecraftForge.EVENT_BUS.post(new TradeStateSyncedEvent(player, shop.getShopId(), reason, TradeStateSyncedEvent.SyncResult.DROPPED));
             return;
         }
 
@@ -336,6 +349,7 @@ public class C2SRequestTradePacket {
         );
         SyncObservability.recordSent("trade", shop.getShopId(), player.getName().getString(), true);
         SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_SENT, reason);
+        MinecraftForge.EVENT_BUS.post(new TradeStateSyncedEvent(player, shop.getShopId(), reason, TradeStateSyncedEvent.SyncResult.SENT));
     }
 
     /**

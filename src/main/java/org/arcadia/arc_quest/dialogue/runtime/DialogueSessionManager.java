@@ -7,10 +7,13 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.arcadia.arc_quest.api.event.DialogueChoiceSelectedEvent;
-import org.arcadia.arc_quest.api.event.DialogueEndedEvent;
-import org.arcadia.arc_quest.api.event.DialogueNodeStartedEvent;
-import org.arcadia.arc_quest.api.event.DialogueStartedEvent;
+import org.arcadia.arc_quest.api.event.dialogue.DialogueChoiceSelectedEvent;
+import org.arcadia.arc_quest.api.event.dialogue.DialogueEndedEvent;
+import org.arcadia.arc_quest.api.event.dialogue.DialogueNodeAutoAdvancedEvent;
+import org.arcadia.arc_quest.api.event.dialogue.DialogueNodeStartedEvent;
+import org.arcadia.arc_quest.api.event.dialogue.DialogueRestoreAttemptEvent;
+import org.arcadia.arc_quest.api.event.dialogue.DialogueRestoreFailedEvent;
+import org.arcadia.arc_quest.api.event.dialogue.DialogueStartedEvent;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.capability.DialogueNpcPatch;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
@@ -142,6 +145,7 @@ public final class DialogueSessionManager {
         }
         SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                 SyncObservability.Stage.ACTION, Reason.DIALOGUE_AUTO_ADVANCE);
+        String fromNodeId = session.getCurrentNode() != null ? session.getCurrentNode().nodeId() : "";
         DialogueNode next = session.autoAdvance();
         if (session.isEnded() || next == null) {
             endDialogue(player);
@@ -150,6 +154,13 @@ public final class DialogueSessionManager {
                     SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_END);
             return;
         }
+        String toNodeId = next.nodeId();
+        MinecraftForge.EVENT_BUS.post(new DialogueNodeAutoAdvancedEvent(
+                player,
+                session.getTree().dialogueId(),
+                fromNodeId,
+                toNodeId
+        ));
         sendNodeToClient(session, false);
         SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                 SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_NEXT_NODE);
@@ -161,12 +172,29 @@ public final class DialogueSessionManager {
             SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                     SyncObservability.Stage.ACTION, Reason.DIALOGUE_RESTORE);
             String restoreNodeId = pollRestoreNodeId(player);
-            if (restoreNodeId != null && !restoreNodeId.isEmpty() && !"__CURRENT__".equals(restoreNodeId)) {
+            MinecraftForge.EVENT_BUS.post(new DialogueRestoreAttemptEvent(
+                    player,
+                    session.getTree().dialogueId(),
+                    restoreNodeId == null ? "" : restoreNodeId
+            ));
+            if (restoreNodeId != null && !restoreNodeId.isEmpty() && "__CURRENT__".equals(restoreNodeId)) {
+                sendNodeToClient(session, false);
+                SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
+                        SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
+                return;
+            }
+            if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
                 DialogueNode targetNode = session.getTree().getNode(restoreNodeId);
                 if (targetNode != null) {
                     session.setCurrentNode(targetNode);
                 } else {
                     LOGGER.warn("[Dialogue] Restore node '{}' not found for player {}", restoreNodeId, player.getName().getString());
+                    MinecraftForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
+                            player,
+                            session.getTree().dialogueId(),
+                            restoreNodeId,
+                            DialogueRestoreFailedEvent.FailureReason.NODE_NOT_FOUND
+                    ));
                 }
             }
             sendNodeToClient(session, false);
@@ -175,6 +203,12 @@ public final class DialogueSessionManager {
         } else {
             clearRestoreNodeState(player);
             LOGGER.warn("[Dialogue] No active session for player {}", player.getName().getString());
+            MinecraftForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
+                    player,
+                    "",
+                    "",
+                    DialogueRestoreFailedEvent.FailureReason.NO_SESSION
+            ));
             SyncObservability.trace("dialogue", "restore", player.getName().getString(),
                     SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NO_SESSION);
         }

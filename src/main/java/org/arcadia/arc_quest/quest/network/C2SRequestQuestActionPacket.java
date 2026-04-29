@@ -4,8 +4,10 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
+import org.arcadia.arc_quest.api.event.ChapterShopOpenEvent;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
@@ -128,6 +130,8 @@ public class C2SRequestQuestActionPacket {
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
                     LOGGER.debug("[ArcQuest] C2S OPEN_CHAPTER_SHOP quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
+                    String resolvedShopId = resolveChapterShopId(pkt.questId);
+                    MinecraftForge.EVENT_BUS.post(new ChapterShopOpenEvent(sender, pkt.questId, resolvedShopId, code));
                     ArcQuestNetwork.CHANNEL.send(
                             PacketDistributor.PLAYER.with(() -> sender),
                             new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
@@ -171,6 +175,14 @@ public class C2SRequestQuestActionPacket {
 
         C2SRequestTradePacket.handleServerOpen(player, shop, false);
         return Code.OK;
+    }
+
+    private static String resolveChapterShopId(String questId) {
+        ResourceLocation questRl = ResourceLocation.tryParse(questId);
+        if (questRl == null) return "";
+        var def = QuestRegistry.get(questRl);
+        if (def == null || !def.hasChapterShop() || def.getChapterShopId() == null) return "";
+        return def.getChapterShopId();
     }
 
     public enum Action {
