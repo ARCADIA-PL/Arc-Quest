@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.quest.api.ICondition;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeCategory;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
+import org.arcadia.arc_quest.trade.api.TradeText;
 import org.arcadia.arc_quest.trade.offer.CommandTradeOffer;
 import org.arcadia.arc_quest.trade.offer.EffectTradeOffer;
 import org.arcadia.arc_quest.trade.offer.FlagTradeOffer;
@@ -31,8 +32,8 @@ public final class TradeEntryBuilder {
     private final String entryId;
     private final List<ITradeOffer> costs = new ArrayList<>();
     private final List<ITradeOffer> rewards = new ArrayList<>();
-    private Component displayName;
-    @Nullable private Component description;
+    private TradeText displayNameText;
+    @Nullable private TradeText descriptionText;
     @Nullable private TradeCategory category;
     @Nullable private ICondition visibleCondition;
     @Nullable private ICondition canBuyCondition;
@@ -59,10 +60,12 @@ public final class TradeEntryBuilder {
         return new TradeEntryBuilder(entryId);
     }
 
-    public TradeEntryBuilder displayName(String literal) { this.displayName = Component.literal(literal); return this; }
-    public TradeEntryBuilder displayName(Component name) { this.displayName = name; return this; }
-    public TradeEntryBuilder description(String literal) { this.description = Component.literal(literal); return this; }
-    public TradeEntryBuilder description(Component desc) { this.description = desc; return this; }
+    public TradeEntryBuilder displayName(String literal) { this.displayNameText = TradeText.literal(literal); return this; }
+    public TradeEntryBuilder displayName(Component name) { this.displayNameText = TradeText.component(name); return this; }
+    public TradeEntryBuilder description(String literal) { this.descriptionText = TradeText.literal(literal); return this; }
+    public TradeEntryBuilder description(Component desc) { this.descriptionText = TradeText.component(desc); return this; }
+    public TradeEntryBuilder displayName(TradeText text) { this.displayNameText = text; return this; }
+    public TradeEntryBuilder description(TradeText text) { this.descriptionText = text; return this; }
     public TradeEntryBuilder category(TradeCategory cat) { this.category = cat; return this; }
     public TradeEntryBuilder sortOrder(int order) { this.sortOrder = order; return this; }
     public TradeEntryBuilder rewardIcon(ResourceLocation texture) { this.rewardIcon = texture; return this; }
@@ -155,10 +158,10 @@ public final class TradeEntryBuilder {
     public TradeEntryBuilder conditionFailSound(Holder.Reference<SoundEvent> sound) { this.conditionFailSound = sound.get(); return this; }
 
     public TradeEntry build() {
-        if (displayName == null) displayName = Component.literal(entryId);
+        if (displayNameText == null) displayNameText = TradeText.literal(entryId);
         if (rewards.isEmpty()) throw new IllegalStateException("TradeEntry '" + entryId + "' has no rewards defined");
         return new TradeEntry(
-                entryId, displayName, description,
+                entryId, displayNameText, descriptionText,
                 List.copyOf(costs), List.copyOf(rewards),
                 category, visibleCondition, canBuyCondition,
                 cooldownType, cooldownValue, resetTimeTicks,

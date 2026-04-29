@@ -21,9 +21,9 @@ import java.util.function.Predicate;
 public final class TradeEntry {
 
     private final String entryId;
-    private final Component displayName;
+    private final TradeText displayNameText;
     @Nullable
-    private final Component description;
+    private final TradeText descriptionText;
     private final List<ITradeOffer> costs;
     private final List<ITradeOffer> rewards;
     @Nullable
@@ -73,8 +73,8 @@ public final class TradeEntry {
     private final SoundEvent conditionFailSound; // 条件不满足音效
 
     public TradeEntry(String entryId,
-                      Component displayName,
-                      @Nullable Component description,
+                      TradeText displayNameText,
+                      @Nullable TradeText descriptionText,
                       List<ITradeOffer> costs,
                       List<ITradeOffer> rewards,
                       @Nullable TradeCategory category,
@@ -95,13 +95,13 @@ public final class TradeEntry {
                       @Nullable SoundEvent limitReachedSound,
                       @Nullable SoundEvent conditionFailSound) {
         Objects.requireNonNull(entryId);
-        Objects.requireNonNull(displayName);
+        Objects.requireNonNull(displayNameText);
         if (rewards.isEmpty()) {
             throw new IllegalArgumentException("TradeEntry '" + entryId + "' must have at least one reward");
         }
         this.entryId = entryId;
-        this.displayName = displayName;
-        this.description = description;
+        this.displayNameText = displayNameText;
+        this.descriptionText = descriptionText;
         this.costs = Collections.unmodifiableList(costs);
         this.rewards = Collections.unmodifiableList(rewards);
         this.category = category;
@@ -124,8 +124,12 @@ public final class TradeEntry {
     }
 
     public String getEntryId() { return entryId; }
-    public Component getDisplayName() { return displayName; }
-    @Nullable public Component getDescription() { return description; }
+    public Component getDisplayName() { return displayNameText.resolveFallback(); }
+    public Component getDisplayName(ServerPlayer player, TradeTextContext context) { return displayNameText.resolve(context); }
+    public TradeText getDisplayNameText() { return displayNameText; }
+    @Nullable public Component getDescription() { return descriptionText != null ? descriptionText.resolveFallback() : null; }
+    @Nullable public Component getDescription(ServerPlayer player, TradeTextContext context) { return descriptionText != null ? descriptionText.resolve(context) : null; }
+    @Nullable public TradeText getDescriptionText() { return descriptionText; }
     public List<ITradeOffer> getCosts() { return costs; }
     public List<ITradeOffer> getRewards() { return rewards; }
     @Nullable public TradeCategory getCategory() { return category; }
