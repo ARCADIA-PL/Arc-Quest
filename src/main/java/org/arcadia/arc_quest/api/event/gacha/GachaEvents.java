@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.api.event;
+package org.arcadia.arc_quest.api.event.gacha;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.Event;
@@ -328,5 +328,39 @@ public class GachaEvents {
         public boolean isCustomCondition() {
             return reason == ResetReason.CUSTOM_CONDITION;
         }
+    }
+
+    public static class StateSyncedEvent extends Event {
+        public enum SyncResult { SENT, DROPPED }
+
+        private final ServerPlayer player;
+        private final String shopId;
+        private final String reason;
+        private final SyncResult result;
+
+        public StateSyncedEvent(ServerPlayer player, String shopId, String reason, SyncResult result) {
+            this.player = player;
+            this.shopId = shopId;
+            this.reason = reason;
+            this.result = result;
+        }
+
+        public ServerPlayer getPlayer() { return player; }
+        public String getShopId() { return shopId; }
+        public String getReason() { return reason; }
+        public SyncResult getSyncResult() { return result; }
+    }
+
+    public static class ClosedEvent extends Event {
+        private final ServerPlayer player;
+        private final String shopId;
+
+        public ClosedEvent(ServerPlayer player, String shopId) {
+            this.player = player;
+            this.shopId = shopId;
+        }
+
+        public ServerPlayer getPlayer() { return player; }
+        public String getShopId() { return shopId; }
     }
 }

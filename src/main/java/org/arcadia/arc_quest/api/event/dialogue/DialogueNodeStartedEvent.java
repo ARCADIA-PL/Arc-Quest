@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.api.event;
+package org.arcadia.arc_quest.api.event.dialogue;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;

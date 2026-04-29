@@ -1,23 +1,23 @@
-package org.arcadia.arc_quest.api.event;
+package org.arcadia.arc_quest.api.event.quest;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.Event;
 
 /**
- * 任务失败事件。
+ * 任务完成事件。
  * <p>
- * 当任务失败时触发（服务端）。
+ * 当玩家完成任务时触发（服务端）。
  * </p>
  *
  * @since 1.0.0
  */
-public class QuestFailedEvent extends Event {
+public class QuestCompletedEvent extends Event {
 
     private final ServerPlayer player;
     private final ResourceLocation questId;
 
-    public QuestFailedEvent(ServerPlayer player, ResourceLocation questId) {
+    public QuestCompletedEvent(ServerPlayer player, ResourceLocation questId) {
         this.player = player;
         this.questId = questId;
     }

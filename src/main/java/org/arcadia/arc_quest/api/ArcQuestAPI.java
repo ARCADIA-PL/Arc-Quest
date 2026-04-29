@@ -8,6 +8,8 @@ import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
+import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.Nullable;
 
@@ -171,5 +173,39 @@ public final class ArcQuestAPI {
      */
     public static boolean hasTradeShop(String shopId) {
         return TradeRegistry.get(shopId) != null;
+    }
+    // ════════════════════════════════════════
+    //  抽奖系统 API
+    // ════════════════════════════════════════
+
+    /**
+     * 注册抽奖商店定义。
+     *
+     * @param shop 抽奖商店定义
+     * @throws IllegalStateException 如果 ID 重复
+     */
+    public static void registerGachaShop(GachaShopDefinition shop) {
+        GachaRegistry.register(shop);
+    }
+
+    /**
+     * 获取抽奖商店定义。
+     *
+     * @param shopId 抽奖商店 ID
+     * @return 抽奖商店定义，不存在则返回 null
+     */
+    @Nullable
+    public static GachaShopDefinition getGachaShop(String shopId) {
+        return GachaRegistry.get(shopId);
+    }
+
+    /**
+     * 检查抽奖商店是否存在。
+     *
+     * @param shopId 抽奖商店 ID
+     * @return true 如果抽奖商店存在
+     */
+    public static boolean hasGachaShop(String shopId) {
+        return GachaRegistry.get(shopId) != null;
     }
 }
