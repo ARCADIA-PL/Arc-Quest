@@ -97,6 +97,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         // ── Journal Buttons ──
         addGuiButton("journal", "track", "⊕ TRACK");
         addGuiButton("journal", "tracked", "§a⊕ TRACKED");
+        addGuiButton("journal", "chapter_shop", "Chapter Shop");
         addGuiButton("journal", "abandon", "✘ ABANDON");
         addGuiButton("journal", "restart", "↻ RESTART");
     }

@@ -98,6 +98,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiButton("journal", "track", "⊕ 追踪");
         addGuiButton("journal", "tracked", "§a⊕ 追踪中");
         addGuiButton("journal", "abandon", "✘ 放弃");
+        addGuiButton("journal", "chapter_shop", "章节商店");
         addGuiButton("journal", "restart", "↻ 重新开始");
     }
 
