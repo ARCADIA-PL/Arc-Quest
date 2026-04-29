@@ -5,7 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import org.com.arc_quest.api.event.GachaEvents;
-import org.com.arc_quest.client.gui.gacha.GachaScreen;
+import org.com.arc_quest.client.hud.gacha.GachaScreen;
 import org.com.arc_quest.quest.capability.IQuestCapability;
 import org.com.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.com.arc_quest.trade.api.CostShortfallLine;

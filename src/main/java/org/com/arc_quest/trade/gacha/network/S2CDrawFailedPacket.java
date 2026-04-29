@@ -4,7 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.client.gui.gacha.GachaScreen;
+import org.com.arc_quest.client.hud.gacha.GachaScreen;
 import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.slf4j.Logger;
 

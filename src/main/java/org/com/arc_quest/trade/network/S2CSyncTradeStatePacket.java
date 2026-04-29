@@ -3,8 +3,8 @@ package org.com.arc_quest.trade.network;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.client.gui.shop.SimpleTradePanel;
-import org.com.arc_quest.client.gui.shop.TradeScreen;
+import org.com.arc_quest.client.hud.shop.SimpleTradePanel;
+import org.com.arc_quest.client.hud.shop.TradeScreen;
 
 import java.util.function.Supplier;
 

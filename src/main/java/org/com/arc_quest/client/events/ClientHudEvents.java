@@ -7,9 +7,9 @@ import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.com.arc_quest.Arc_quest;
-import org.com.arc_quest.client.gui.gacha.GachaResultRenderer;
-import org.com.arc_quest.client.gui.render.QuestIntelPanel;
-import org.com.arc_quest.client.gui.render.QuestSplashRenderer;
+import org.com.arc_quest.client.hud.gacha.GachaResultRenderer;
+import org.com.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
+import org.com.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.com.arc_quest.quest.api.QuestDefinition;
 import org.com.arc_quest.quest.api.SplashType;
 

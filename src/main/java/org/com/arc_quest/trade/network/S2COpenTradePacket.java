@@ -4,10 +4,9 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.client.gui.dialogue.DialogueScreen;
-import org.com.arc_quest.client.gui.shop.AbstractTradeScreen;
-import org.com.arc_quest.client.gui.shop.SimpleTradePanel;
-import org.com.arc_quest.client.gui.shop.TradeScreen;
+import org.com.arc_quest.client.hud.shop.AbstractTradeScreen;
+import org.com.arc_quest.client.hud.shop.SimpleTradePanel;
+import org.com.arc_quest.client.hud.shop.TradeScreen;
 import org.com.arc_quest.trade.api.CostShortfallLine;
 import org.slf4j.Logger;
 

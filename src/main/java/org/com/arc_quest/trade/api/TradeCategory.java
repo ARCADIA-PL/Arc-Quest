@@ -2,7 +2,7 @@ package org.com.arc_quest.trade.api;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import org.com.arc_quest.client.gui.shop.TradeScreen;
+import org.com.arc_quest.client.hud.shop.TradeScreen;
 
 import java.util.Objects;
 

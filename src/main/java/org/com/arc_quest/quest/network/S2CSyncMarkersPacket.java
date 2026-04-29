@@ -2,7 +2,7 @@ package org.com.arc_quest.quest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.com.arc_quest.client.questmarker.QuestMarkerManager;
+import org.com.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.com.arc_quest.questmarker.api.QuestMarkerData;
 import org.com.arc_quest.questmarker.api.QuestMarkerState;
 import org.com.arc_quest.questmarker.api.QuestMarkerType;
