@@ -83,6 +83,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiSection("journal", "current_phase", "▸ PHASE: %s");
         addGuiSection("journal", "completed_phases", "▸ COMPLETED PHASES");
         addGuiSection("journal", "choose_path", "▸ CHOOSE YOUR PATH");
+        addGuiSection("journal", "phase_rewards", "▸ Phase Rewards");
+        addGuiSection("journal", "chapter_rewards", "▸ Chapter Rewards");
 
         // ── Journal Labels ──
         addGuiLabel("journal", "no_phases_completed",

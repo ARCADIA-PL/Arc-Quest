@@ -146,20 +146,14 @@ public class JournalDetailPanel {
             titleIconOffset = 22;
         }
 
-        // =======================
-        // 渲染主标题
-        // =======================
         g.pose().pushPose();
         g.pose().translate(titleIconOffset, localY, 0);
         g.pose().scale(1.2f, 1.2f, 1f);
         g.drawString(screen.getFont(), def.getDisplayName().getString(), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
 
-        // =======================
-        // 精雕细琢的常态呼吸历史按钮！
-        // =======================
         int titleW = (int) (screen.getFont().width(def.getDisplayName().getString()) * 1.2f);
-        int hBtnX = titleIconOffset + titleW + 10; // 间距拉长！
+        int hBtnX = titleIconOffset + titleW + 10;
         int hBtnY = localY + 5;
         int hBtnR = 3;
 
@@ -174,7 +168,6 @@ public class JournalDetailPanel {
         g.pose().translate(hBtnX, hBtnY, 0);
         g.pose().mulPose(Axis.ZP.rotationDegrees(45));
 
-        // 常态呼吸正弦波注入！
         int idleGlow = 35 + (int) (25 * Math.sin(Util.getMillis() / 300.0));
         int glowA = (int) ((hHover ? 180 : idleGlow) * dAlpha);
 
@@ -239,7 +232,7 @@ public class JournalDetailPanel {
             localY += 16;
         }
 
-        localY = rewardsRenderer.render(g, def, selectedPhaseIdForRewards, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY);
+        localY = rewardsRenderer.render(g, def, selectedPhaseIdForRewards, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY, dt);
 
         detailContentHeight = localY + 12;
         g.pose().popPose();
@@ -268,6 +261,8 @@ public class JournalDetailPanel {
         int scrollAreaH = h - 40;
         int maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
         boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+
+        if (!panelsActive && rewardsRenderer.mouseClicked(mx, my)) return true;
 
         if (!panelsActive && maxDetailScroll > 0 && mx >= x + w - 6 && mx <= x + w && my >= y && my <= y + scrollAreaH) {
             isDraggingDetailScrollbar = true;
@@ -311,6 +306,8 @@ public class JournalDetailPanel {
     }
 
     public boolean mouseDragged(double mx, double my, int y, int h) {
+        if (rewardsRenderer.mouseDragged(mx, my)) return true;
+
         if (isDraggingDetailScrollbar) {
             updateScrollFromMouse(my, y, h - 40, Math.max(0, detailContentHeight - (h - 40)));
             return true;
@@ -320,6 +317,8 @@ public class JournalDetailPanel {
     }
 
     public boolean mouseReleased(int button) {
+        if (rewardsRenderer.mouseReleased(button)) return true;
+
         if (button == 0) {
             isDraggingDetailScrollbar = false;
             parallelPhaseRenderer.onMouseReleased();
@@ -328,6 +327,8 @@ public class JournalDetailPanel {
     }
 
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
+        if (rewardsRenderer.mouseScrolled(mx, my, delta)) return true;
+
         if (parallelPhaseRenderer.mouseScrolled(mx, my, delta, x, y, h - 40)) return true;
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
             detailTargetScroll -= delta * 25.0;

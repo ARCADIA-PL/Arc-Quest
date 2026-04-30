@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -16,152 +17,269 @@ public class JournalDetailRewards {
     private final QuestJournalScreen screen;
     private final JournalDetailPanel parent;
 
+    private enum Tab { PHASE, CHAPTER }
+    private Tab activeTab = Tab.PHASE;
+
+    private double scrollX = 0;
+    private double targetScrollX = 0;
+    private boolean isDragging = false;
+    private double lastMouseX = 0;
+
+    // 动画状态
+    private float animTabX = -1;
+    private float animTabW = -1;
+    private float itemsAlphaAnim = 1f;
+
+    // 碰撞盒与父级裁剪区
+    private final int[] phaseTabRect = new int[4];
+    private final int[] chapterTabRect = new int[4];
+    private final int[] rewardAreaRect = new int[4];
+    private int parentClipY1 = 0;
+    private int parentClipY2 = 0;
+
     public JournalDetailRewards(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
         this.parent = parent;
     }
 
-    public int render(GuiGraphics g, QuestDefinition def, String selectedPhaseId, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, int activeTheme, float dAlpha, int safeA, int localY) {
+    private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
+        g.disableScissor();
+        if (x2 > x1 && y2 > y1) {
+            screen.enableScissor(g, x1, y1, x2, y2);
+        }
+    }
 
-        boolean hasPhaseRewards = false;
+    public int render(GuiGraphics g, QuestDefinition def, String selectedPhaseId, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, int activeTheme, float dAlpha, int safeA, int localY, float dt) {
+        this.parentClipY1 = scrollAreaY;
+        this.parentClipY2 = scrollAreaY + scrollAreaH;
+
         List<IReward> phaseRewards = null;
         if (selectedPhaseId != null && !selectedPhaseId.isEmpty()) {
             var phase = def.getPhase(selectedPhaseId);
             if (phase != null && !phase.getPhaseRewards().isEmpty()) {
-                hasPhaseRewards = true;
                 phaseRewards = phase.getPhaseRewards();
             }
         }
 
+        boolean hasPhaseRewards = phaseRewards != null && !phaseRewards.isEmpty();
         boolean hasChapterRewards = !def.getCompletionRewards().isEmpty();
-        if (!hasPhaseRewards && !hasChapterRewards) return localY;
 
-        localY += 12; // 顶部留白
-
-        int startY = localY;
-
-        // 渲染阶段奖励节点
-        if (hasPhaseRewards) {
-            localY = renderRewardGroup(g, Component.translatable("arc_quest.gui.journal.section.phase_rewards"),
-                    phaseRewards, 0xFFCC66, activeTheme, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dAlpha, safeA, localY, !hasChapterRewards);
+        if (!hasPhaseRewards && !hasChapterRewards) {
+            phaseTabRect[2] = 0; chapterTabRect[2] = 0; rewardAreaRect[2] = 0;
+            return localY;
         }
 
-        // 渲染最终章节奖励节点
-        if (hasChapterRewards) {
-            localY = renderRewardGroup(g, Component.translatable("arc_quest.gui.journal.section.chapter_rewards"),
-                    def.getCompletionRewards(), 0xFFDD88, activeTheme, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dAlpha, safeA, localY, true);
-        }
+        if (activeTab == Tab.PHASE && !hasPhaseRewards) activeTab = Tab.CHAPTER;
+        if (activeTab == Tab.CHAPTER && !hasChapterRewards) activeTab = Tab.PHASE;
 
-        // 绘制科幻主轴线 (连接上下两个节点，如果没有下节点则只画一点点)
-        if (dAlpha > 0.05f) {
-            int axisX = 8;
-            int axisStartY = startY;
-            int axisEndY = localY - 16; // 稍微不要画到底
-            int lineA = (int) (0x66 * dAlpha);
-            g.fill(axisX, axisStartY, axisX + 1, axisEndY, HudAnimUtil.withAlpha(activeTheme, lineA));
-        }
-
-        return localY + 4;
-    }
-
-    /**
-     * 统一的奖励节点渲染器，抽取重复逻辑，实现模块化绘制
-     */
-    private int renderRewardGroup(GuiGraphics g, Component title, List<IReward> rewards, int titleColor, int activeTheme,
-                                  int x, int scrollAreaY, int scrollAreaW, int scrollAreaH,
-                                  int mx, int my, float dAlpha, int safeA, int localY, boolean isLastNode) {
+        localY += 12;
         Font font = screen.getFont();
+        int localW = scrollAreaW - 24;
+        int currentY = localY;
 
-        // 分支节点横线
-        int axisX = 8;
-        int branchY = localY + 6;
-        g.fill(axisX, branchY, axisX + 8, branchY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (0x88 * dAlpha)));
+        String phaseTxt = Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString();
+        String chapTxt = Component.translatable("arc_quest.gui.journal.section.chapter_rewards").getString();
 
-        int boxMarginLeft = 16;
-        int boxW = scrollAreaW - boxMarginLeft - 16;
-        int bA = (int) (255 * dAlpha);
+        int totalTabW = 0;
+        int phaseTw = font.width(phaseTxt);
+        int chapTw = font.width(chapTxt);
 
-        // 预计算高度与换行
-        int tempX = 8, rows = 1;
-        for (IReward r : rewards) {
-            int rWidth = (r instanceof ItemReward) ? 28 : (int) (font.width(">" + r.describe()) * 0.75f) + 12;
-            if (tempX + rWidth > boxW - 8 && tempX > 8) {
-                tempX = 8;
-                rows++;
-            }
-            tempX += rWidth;
+        if (hasPhaseRewards) totalTabW += phaseTw;
+        if (hasChapterRewards) {
+            if (hasPhaseRewards) totalTabW += 20;
+            totalTabW += chapTw;
         }
-        int boxH = 20 + rows * 28;
 
-        // 绘制机能风科技面板背景
-        HudAnimUtil.drawFrame(g, boxMarginLeft, localY, boxW, boxH,
-                HudAnimUtil.withAlpha(0x000000, (int) (0x44 * dAlpha)),
-                HudAnimUtil.withAlpha(activeTheme, (int) (0x55 * dAlpha)));
+        int tabStartX = localW / 2 - totalTabW / 2;
+        int phaseTabX = tabStartX;
+        int chapTabX = tabStartX + (hasPhaseRewards ? phaseTw + 20 : 0);
 
-        // 节点标题
+        int absTopY = (int) (scrollAreaY + 12 - parent.getDetailScrollOffset() + currentY);
+        phaseTabRect[2] = 0; chapterTabRect[2] = 0;
+
+        // 渲染文本按钮
+        if (hasPhaseRewards) {
+            phaseTabRect[0] = x + 12 + phaseTabX - 4;
+            phaseTabRect[1] = absTopY - 4;
+            phaseTabRect[2] = phaseTw + 8;
+            phaseTabRect[3] = font.lineHeight + 8;
+            boolean hovered = isHovering(mx, my, phaseTabRect);
+            int color = (activeTab == Tab.PHASE) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
+            g.drawString(font, phaseTxt, phaseTabX, currentY, HudAnimUtil.withAlpha(color, safeA), true);
+        }
+
+        if (hasChapterRewards) {
+            chapterTabRect[0] = x + 12 + chapTabX - 4;
+            chapterTabRect[1] = absTopY - 4;
+            chapterTabRect[2] = chapTw + 8;
+            chapterTabRect[3] = font.lineHeight + 8;
+            boolean hovered = isHovering(mx, my, chapterTabRect);
+            int color = (activeTab == Tab.CHAPTER) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
+            g.drawString(font, chapTxt, chapTabX, currentY, HudAnimUtil.withAlpha(color, safeA), true);
+        }
+
+        // 处理丝滑滑块动画
+        int targetTabX = activeTab == Tab.PHASE ? phaseTabX : chapTabX;
+        int targetTabW = activeTab == Tab.PHASE ? phaseTw : chapTw;
+
+        if (animTabX < 0) {
+            animTabX = targetTabX;
+            animTabW = targetTabW;
+        } else {
+            animTabX = HudAnimUtil.lerp(animTabX, targetTabX, 0.2f, dt);
+            animTabW = HudAnimUtil.lerp(animTabW, targetTabW, 0.2f, dt);
+        }
+        g.fill((int)animTabX, currentY + font.lineHeight + 1, (int)(animTabX + animTabW), currentY + font.lineHeight + 2, HudAnimUtil.withAlpha(activeTheme, safeA));
+
+        currentY += 16;
+
+        // 处理物品淡入动画
+        itemsAlphaAnim = HudAnimUtil.lerp(itemsAlphaAnim, 1f, 0.15f, dt);
+        float itemDAlpha = dAlpha * itemsAlphaAnim;
+        int itemSafeA = (int) (safeA * itemsAlphaAnim);
+
+        List<IReward> currentRewards = activeTab == Tab.PHASE ? phaseRewards : def.getCompletionRewards();
+        int totalRewardsW = currentRewards.stream().mapToInt(r -> getRewardWidth(r, font)).sum() + (currentRewards.size() - 1) * 12;
+
+        int maxScroll = Math.max(0, totalRewardsW - localW);
+        targetScrollX = Math.max(0, Math.min(targetScrollX, maxScroll));
+        scrollX += (targetScrollX - scrollX) * Math.min(1.0, dt * 14.0);
+
+        int renderStartX = (totalRewardsW <= localW) ? (localW / 2 - totalRewardsW / 2) : (int) -scrollX;
+        int absItemsY = (int) (scrollAreaY + 12 - parent.getDetailScrollOffset() + currentY);
+
+        // 精准限制滚动碰撞盒：只覆盖实际渲染的物品区域
+        int renderWidth = Math.min(totalRewardsW, localW);
+        int hitStartX = (totalRewardsW <= localW) ? renderStartX : 0;
+        rewardAreaRect[0] = x + 12 + hitStartX;
+        rewardAreaRect[1] = absItemsY - 4;
+        rewardAreaRect[2] = renderWidth;
+        rewardAreaRect[3] = 32;
+
+        boolean needsScissor = totalRewardsW > localW;
+        // 使用安全裁剪替换原有的直接调用
+        if (needsScissor) safeScissor(g, x + 12, scrollAreaY, x + 12 + localW, scrollAreaY + scrollAreaH);
+
         g.pose().pushPose();
-        g.pose().translate(boxMarginLeft + 6, localY + 4, 0);
-        g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, title.getString(), 0, 0, HudAnimUtil.withAlpha(titleColor, safeA), true);
-        g.pose().popPose();
+        g.pose().translate(renderStartX, currentY, 0);
 
-        // 渲染内部奖励内容
-        int startX = 8, itemStartY = localY + 18;
-        for (IReward r : rewards) {
-            int rWidth = (r instanceof ItemReward) ? 28 : (int) (font.width(">" + r.describe()) * 0.75f) + 12;
-            if (startX + rWidth > boxW - 8 && startX > 8) {
-                startX = 8;
-                itemStartY += 28;
-            }
+        int itemX = 0;
+        for (IReward r : currentRewards) {
+            int rW = getRewardWidth(r, font);
+            int rH = 24;
+
+            int absHitX = x + 12 + renderStartX + itemX;
+            int absHitY = absItemsY;
+
+            boolean inBounds = true;
+            if (needsScissor && (absHitX + rW < x + 12 || absHitX > x + 12 + localW)) inBounds = false;
+
+            boolean hovered = inBounds && mx >= absHitX && mx <= absHitX + rW &&
+                    my >= absHitY && my <= absHitY + rH &&
+                    my >= parentClipY1 && my <= parentClipY2;
 
             if (r instanceof ItemReward ir) {
                 ItemStack stack = new ItemStack(ir.getItem(), ir.getCount());
-                int absDrawX = boxMarginLeft + startX;
+                int lineY = rH - 2;
 
-                // 物品框
-                HudAnimUtil.drawFrame(g, absDrawX - 2, itemStartY - 2, 20, 20,
-                        HudAnimUtil.withAlpha(0x000000, (int) (0x55 * dAlpha)),
-                        HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * dAlpha)));
-
-                // 悬停判定（严格按照原有的视口偏移计算逻辑）
-                int absPickX = x + 12 + absDrawX;
-                int absPickY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + itemStartY;
-                boolean isHovered = mx >= absPickX && mx <= absPickX + 16 && my >= absPickY && my <= absPickY + 16 && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
-
-                if (isHovered) {
-                    // 悬停时的赛博发光反馈
-                    HudAnimUtil.drawFrame(g, absDrawX - 2, itemStartY - 2, 20, 20,
-                            HudAnimUtil.withAlpha(activeTheme, (int) (0x44 * dAlpha)),
-                            HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * dAlpha)));
+                if (hovered && !isDragging) {
+                    g.fill(itemX + 2, lineY - 1, itemX + rW - 2, lineY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (255 * itemDAlpha)));
+                    g.fill(itemX + 2, 2, itemX + rW - 2, lineY, HudAnimUtil.withAlpha(activeTheme, (int) (0x1A * itemDAlpha)));
                     screen.setHoveredRewardTooltip(stack);
+                } else {
+                    g.fill(itemX + 4, lineY, itemX + rW - 4, lineY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * itemDAlpha)));
                 }
 
-                if (dAlpha > 0.01f) {
+                if (itemDAlpha > 0.01f) {
                     g.pose().pushPose();
-                    float itemCenterX = absDrawX + 8f, itemCenterY = itemStartY + 8f;
-                    g.pose().translate(itemCenterX, itemCenterY, 0);
-                    g.pose().scale(dAlpha, dAlpha, 1f);
-                    g.pose().translate(-itemCenterX, -itemCenterY, 0);
-                    g.renderItem(stack, absDrawX, itemStartY);
+                    float itemCx = itemX + rW / 2f, itemCy = rH / 2f - 2f;
+                    g.pose().translate(itemCx, itemCy, 0);
+                    g.pose().scale(itemDAlpha, itemDAlpha, 1f);
+                    g.pose().translate(-itemCx, -itemCy, 0);
 
+                    g.renderItem(stack, itemX + 4, 2);
                     g.pose().pushPose();
                     g.pose().translate(0, 0, 200);
-                    g.renderItemDecorations(font, stack, absDrawX, itemStartY);
+                    g.renderItemDecorations(font, stack, itemX + 4, 2);
                     g.pose().popPose();
-
                     g.pose().popPose();
                 }
             } else {
+                int tickY1 = 6, tickY2 = 18;
+                g.fill(itemX, tickY1, itemX + 2, tickY2, HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * itemDAlpha)));
                 g.pose().pushPose();
-                g.pose().translate(boxMarginLeft + startX, itemStartY + 4, 0);
-                g.pose().scale(0.75f, 0.75f, 1f);
-                g.drawString(font, "> " + r.describe(), 0, 0, HudAnimUtil.withAlpha(0x88AAFF, safeA), false);
+                g.pose().translate(itemX + 8, 8, 0);
+                g.pose().scale(0.85f, 0.85f, 1f);
+                g.drawString(font, r.describe(), 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, itemSafeA), true);
                 g.pose().popPose();
             }
-            startX += rWidth;
+            itemX += rW + 12;
         }
 
-        // 节点之间的间距
-        return localY + boxH + (isLastNode ? 0 : 12);
+        g.pose().popPose();
+
+        // 恢复父级裁剪时，也必须使用安全裁剪！
+        if (needsScissor) safeScissor(g, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+
+        currentY += 26;
+        drawHorizontalCyberBase(g, 20, localW - 20, currentY, activeTheme, dAlpha);
+        return currentY + 16;
+    }
+
+    private int getRewardWidth(IReward r, Font font) {
+        return (r instanceof ItemReward) ? 24 : (int) (font.width(r.describe()) * 0.85f) + 12;
+    }
+
+    private void switchToTab(Tab tab) {
+        if (activeTab != tab) {
+            activeTab = tab;
+            scrollX = 0;
+            targetScrollX = 0;
+            itemsAlphaAnim = 0f;
+            screen.playClick();
+        }
+    }
+
+    public boolean mouseClicked(double mx, double my) {
+        if (isHovering(mx, my, phaseTabRect)) { switchToTab(Tab.PHASE); return true; }
+        if (isHovering(mx, my, chapterTabRect)) { switchToTab(Tab.CHAPTER); return true; }
+        if (isHovering(mx, my, rewardAreaRect)) { isDragging = true; lastMouseX = mx; return true; }
+        return false;
+    }
+
+    public boolean mouseDragged(double mx, double my) {
+        if (isDragging) { targetScrollX += (lastMouseX - mx); lastMouseX = mx; return true; }
+        return false;
+    }
+
+    public boolean mouseReleased(int button) {
+        if (button == 0 && isDragging) { isDragging = false; return true; }
+        return false;
+    }
+
+    public boolean mouseScrolled(double mx, double my, double delta) {
+        if (isHovering(mx, my, rewardAreaRect)) { targetScrollX -= delta * 30.0; return true; }
+        return false;
+    }
+
+    private boolean isHovering(double mx, double my, int[] rect) {
+        if (rect[2] == 0) return false;
+        if (my < parentClipY1 || my > parentClipY2) return false;
+        return mx >= rect[0] && mx <= rect[0] + rect[2] && my >= rect[1] && my <= rect[1] + rect[3];
+    }
+
+    private void drawHorizontalCyberBase(GuiGraphics g, int startX, int endX, int bottomY, int themeColor, float alphaPercentage) {
+        if (alphaPercentage < 0.02f) return;
+        int alpha = (int) (255 * alphaPercentage);
+        if (alpha < 5) return;
+        long time = Util.getMillis();
+        float pulse = (float) (Math.sin(time / 600.0) * 0.5 + 0.5);
+        int coreColor = themeColor & 0xFFFFFF;
+
+        int glowHeight = 24;
+        int glowMaxA = (int) (alpha * (0.10f + 0.15f * pulse));
+        g.fillGradient(startX, bottomY - glowHeight, endX, bottomY, coreColor | (0 << 24), coreColor | (glowMaxA << 24));
+        g.fillGradient(startX, bottomY - 3, endX, bottomY, coreColor | ((int)(alpha * 0.15f) << 24), coreColor | (alpha << 24));
+        g.fillGradient(startX, bottomY - 1, endX, bottomY, coreColor | (alpha << 24), 0xFFFFFF | ((int)(alpha * 0.8f) << 24));
     }
 }

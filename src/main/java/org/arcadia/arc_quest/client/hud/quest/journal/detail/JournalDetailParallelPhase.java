@@ -97,11 +97,9 @@ public class JournalDetailParallelPhase {
         if (Files.exists(CACHE_FILE)) {
             try {
                 String json = Files.readString(CACHE_FILE);
-                Map<String, List<String>> loaded = GSON.fromJson(json, new TypeToken<Map<String, List<String>>>() {
-                }.getType());
+                Map<String, List<String>> loaded = GSON.fromJson(json, new TypeToken<Map<String, List<String>>>() {}.getType());
                 if (loaded != null) GLOBAL_PHASE_ORDER_CACHE.putAll(loaded);
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -111,10 +109,7 @@ public class JournalDetailParallelPhase {
             snapshot.put(entry.getKey(), new ArrayList<>(entry.getValue()));
         }
         CompletableFuture.runAsync(() -> {
-            try {
-                Files.writeString(CACHE_FILE, GSON.toJson(snapshot));
-            } catch (Exception ignored) {
-            }
+            try { Files.writeString(CACHE_FILE, GSON.toJson(snapshot)); } catch (Exception ignored) {}
         });
     }
 
@@ -124,29 +119,22 @@ public class JournalDetailParallelPhase {
     }
 
     public void reset() {
-        phaseScrollOffset = 0;
-        phaseTargetScroll = 0;
-        isDraggingPhaseScrollbar = false;
-        currentScrollControls = null;
-        phaseCardReveal.clear();
-        phaseCardHoverAnims.clear();
-        phaseObjScrollOffsets.clear();
-        phaseObjTargetScrolls.clear();
-        phaseObjProgressAnims.clear();
-        phaseIntelHoverAnims.clear();
-        phaseIntelBtnHoverAnims.clear();
-        objScrollAreas.clear();
-        currentChoiceButtons.clear();
-        currentPhaseTags.clear();
-        currentIntelBtns.clear();
-        selectedPhaseId = null;
-        currentOfferProgressRects.clear();
-        offerHoverAnims.clear();
-        customPhaseOrder.clear();
-        phaseVisualX.clear();
-        potentialDragPhaseId = null;
-        draggingPhaseId = null;
-        dragScaleAnim = 0f;
+        phaseScrollOffset = 0; phaseTargetScroll = 0; isDraggingPhaseScrollbar = false;
+        currentScrollControls = null; phaseCardReveal.clear(); phaseCardHoverAnims.clear();
+        phaseObjScrollOffsets.clear(); phaseObjTargetScrolls.clear(); phaseObjProgressAnims.clear();
+        phaseIntelHoverAnims.clear(); phaseIntelBtnHoverAnims.clear(); objScrollAreas.clear();
+        currentChoiceButtons.clear(); currentPhaseTags.clear(); currentIntelBtns.clear();
+        selectedPhaseId = null; currentOfferProgressRects.clear(); offerHoverAnims.clear();
+        customPhaseOrder.clear(); phaseVisualX.clear(); potentialDragPhaseId = null;
+        draggingPhaseId = null; dragScaleAnim = 0f;
+    }
+
+    // 核心修改：安全裁剪框，防止任何负数或倒错坐标摧毁 OpenGL 状态
+    private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
+        g.disableScissor();
+        if (x2 > x1 && y2 > y1) {
+            screen.enableScissor(g, x1, y1, x2, y2);
+        }
     }
 
     private void drawScrollingString(GuiGraphics g, Font font, String text, int localX, int localY, int maxWidth, int color, boolean dropShadow, int absX, int absY, int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
@@ -155,32 +143,20 @@ public class JournalDetailParallelPhase {
             g.drawString(font, text, localX, localY, color, dropShadow);
             return;
         }
-
         long time = Util.getMillis();
         double speed = 30.0;
         int pauseTime = 1500;
-
         double maxShift = textWidth - maxWidth;
         double totalScrollTime = (maxShift / speed) * 1000.0;
-
         double halfPeriod = pauseTime + totalScrollTime;
         double period = halfPeriod * 2.0;
         double t = time % period;
-
         double shift;
         if (t < halfPeriod) {
-            if (t <= pauseTime) {
-                shift = 0;
-            } else {
-                shift = ((t - pauseTime) / 1000.0) * speed;
-            }
+            shift = (t <= pauseTime) ? 0 : ((t - pauseTime) / 1000.0) * speed;
         } else {
             double tBack = t - halfPeriod;
-            if (tBack <= pauseTime) {
-                shift = maxShift;
-            } else {
-                shift = maxShift - (((tBack - pauseTime) / 1000.0) * speed);
-            }
+            shift = (tBack <= pauseTime) ? maxShift : maxShift - (((tBack - pauseTime) / 1000.0) * speed);
         }
 
         int cx1 = Math.max(parentClipX1, absX);
@@ -189,26 +165,20 @@ public class JournalDetailParallelPhase {
         int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
 
         if (cx1 < cx2 && cy1 < cy2) {
-            g.disableScissor();
-            screen.enableScissor(g, cx1, cy1, cx2, cy2);
+            safeScissor(g, cx1, cy1, cx2, cy2);
             g.drawString(font, text, localX - (int)shift, localY, color, dropShadow);
-            g.disableScissor();
-            screen.enableScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
+            safeScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
         }
     }
 
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, List<String> activePhaseIds, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
         Font font = screen.getFont();
-        objScrollAreas.clear();
-        currentChoiceButtons.clear();
-        currentPhaseTags.clear();
-        currentIntelBtns.clear();
-        currentOfferProgressRects.clear();
+        objScrollAreas.clear(); currentChoiceButtons.clear(); currentPhaseTags.clear();
+        currentIntelBtns.clear(); currentOfferProgressRects.clear();
 
         boolean orderModified = false;
         if (!entry.questId().equals(currentQuestId)) {
-            currentQuestId = entry.questId();
-            customPhaseOrder.clear();
+            currentQuestId = entry.questId(); customPhaseOrder.clear();
             List<String> saved = GLOBAL_PHASE_ORDER_CACHE.get(currentQuestId);
             if (saved != null) customPhaseOrder.addAll(saved);
         }
@@ -216,8 +186,7 @@ public class JournalDetailParallelPhase {
         if (customPhaseOrder.retainAll(activePhaseIds)) orderModified = true;
         for (String id : activePhaseIds) {
             if (!customPhaseOrder.contains(id)) {
-                customPhaseOrder.add(id);
-                orderModified = true;
+                customPhaseOrder.add(id); orderModified = true;
             }
         }
 
@@ -232,12 +201,9 @@ public class JournalDetailParallelPhase {
 
         int clipAbsX1 = x + 12, clipAbsX2 = clipAbsX1 + cardAreaW + 4;
         if (draggingPhaseId != null) {
-            int edgeZone = 40;
-            double autoScrollSpeed = 400.0 * dt;
-            if (mx >= clipAbsX1 && mx < clipAbsX1 + edgeZone)
-                phaseTargetScroll = Math.max(0, phaseTargetScroll - autoScrollSpeed);
-            else if (mx <= clipAbsX2 && mx > clipAbsX2 - edgeZone)
-                phaseTargetScroll = Math.min(maxPhaseScroll, phaseTargetScroll + autoScrollSpeed);
+            int edgeZone = 40; double autoScrollSpeed = 400.0 * dt;
+            if (mx >= clipAbsX1 && mx < clipAbsX1 + edgeZone) phaseTargetScroll = Math.max(0, phaseTargetScroll - autoScrollSpeed);
+            else if (mx <= clipAbsX2 && mx > clipAbsX2 - edgeZone) phaseTargetScroll = Math.min(maxPhaseScroll, phaseTargetScroll + autoScrollSpeed);
         }
 
         phaseScrollOffset += Math.abs(phaseTargetScroll - phaseScrollOffset) > 0.5 ? (phaseTargetScroll - phaseScrollOffset) * Math.min(1.0, dt * 14.0) : (phaseTargetScroll - phaseScrollOffset);
@@ -266,11 +232,10 @@ public class JournalDetailParallelPhase {
         int currentY = localY;
         int clipAbsY1 = scrollAreaY, clipAbsY2 = scrollAreaY + scrollAreaH;
 
-        g.disableScissor();
-        screen.enableScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
+        // 【应用安全裁剪】
+        safeScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
         dragScaleAnim = HudAnimUtil.lerp(dragScaleAnim, draggingPhaseId != null ? 1f : 0f, 0.2f, dt);
-
         List<String> renderOrder = new ArrayList<>(customPhaseOrder);
         if (draggingPhaseId != null) {
             renderOrder.remove(draggingPhaseId);
@@ -357,8 +322,7 @@ public class JournalDetailParallelPhase {
                 currentPhaseTags.add(new JournalTypes.PhaseTagRect(absCardX, absCardY, colW, maxCardH, phaseId));
 
             String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty() ? phase.getDisplayName().getString() : phase.getPhaseId();
-            int nameAbsX = absCardX + 8 + contentShiftX;
-            int nameAbsY = absCardY + 6;
+            int nameAbsX = absCardX + 8 + contentShiftX, nameAbsY = absCardY + 6;
             drawScrollingString(g, font, phaseName, cardX + 8 + contentShiftX, cardY + 6, colW - 60, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true, nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
             ResourceLocation pIntel = phase.getIntelSceneId();
@@ -384,7 +348,7 @@ public class JournalDetailParallelPhase {
 
             if (hasIntel && easeIntel > 0.01f) {
                 String btnText = "INTEL";
-                float baseScale = 0.75f, rawTextW = font.width(btnText), rawTextH = font.lineHeight, textW = rawTextW * baseScale, textH = rawTextH * baseScale;
+                float baseScale = 0.75f, rawTextW = font.width(btnText), rawTextH = font.lineHeight, textW = rawTextW * baseScale;
                 int btnW = (int) textW + 8, btnH = 10, btnX = rightEdgeX - btnW, btnY = cardY + 5;
                 int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
                 boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
@@ -421,18 +385,15 @@ public class JournalDetailParallelPhase {
             if (pAnims.length < total) {
                 float[] newAnims = new float[total];
                 System.arraycopy(pAnims, 0, newAnims, 0, pAnims.length);
-                pAnims = newAnims;
-                phaseObjProgressAnims.put(phaseId, pAnims);
+                pAnims = newAnims; phaseObjProgressAnims.put(phaseId, pAnims);
             }
 
             if (total > 0) {
                 float segW = total <= 1 ? laneBarW : (float) (laneBarW - (total - 1) * 2) / total;
                 float cx = barX;
-
                 for (int i = 0; i < total; i++) {
                     ObjectiveEntry obj = phase.getObjectives().get(i);
-                    int req = Math.max(1, obj.getRequiredCount());
-                    int progress = runtime.getObjectiveProgress(phaseId, i);
+                    int req = Math.max(1, obj.getRequiredCount()), progress = runtime.getObjectiveProgress(phaseId, i);
                     float targetRatio = (float) Math.max(0, Math.min(progress, req)) / req;
                     pAnims[i] = HudAnimUtil.lerp(pAnims[i], targetRatio, 0.15f, dt);
 
@@ -453,7 +414,6 @@ public class JournalDetailParallelPhase {
                             g.fill((int) cx, cy, (int) (cx + segW), cy + 2, glowColor);
                         }
                     }
-
                     cx += segW + 2;
                 }
             }
@@ -470,8 +430,8 @@ public class JournalDetailParallelPhase {
             int intY2 = Math.min(clipAbsY2, (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + cy) + FIXED_OBJ_VIEW_H);
 
             if (intX2 > intX1 && intY2 > intY1 && total > 0) {
-                g.disableScissor();
-                screen.enableScissor(g, intX1, intY1, intX2, intY2);
+                // 【应用安全裁剪】
+                safeScissor(g, intX1, intY1, intX2, intY2);
 
                 g.pose().pushPose();
                 g.pose().translate(0, -currentInnerScroll, 0);
@@ -503,46 +463,35 @@ public class JournalDetailParallelPhase {
                         boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
                         if (!panelsActive) {
                             offerHoverAnims.put(offerKey, hoverAnimOffer);
-                            if (draggingPhaseId == null)
-                                recordParallelOfferProgressRect(absX2, absY2, hitW2, hitH2, phaseId, i);
+                            if (draggingPhaseId == null) recordParallelOfferProgressRect(absX2, absY2, hitW2, hitH2, phaseId, i);
                         } else {
-                            offerHoverAnims.put(offerKey, 0f);
-                            hoverAnimOffer = 0f;
+                            offerHoverAnims.put(offerKey, 0f); hoverAnimOffer = 0f;
                         }
                     }
 
                     int objColor = complete ? 0x88FF88 : 0xCCCCCC;
                     if (canUpload) objColor = HudAnimUtil.lerpColor(objColor, activeTheme, hoverAnimOffer);
 
-                    String normalText = prefix + cleanObjText;
-                    String displayText = normalText;
-
+                    String displayText = prefix + cleanObjText;
                     if (canUpload && textHovered) {
                         String submitBase = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
                         String targetName = "";
-
-                        if (obj.hasTargetTag() && obj.getTargetTagTranslationKey() != null) {
-                            targetName = Component.translatable(obj.getTargetTagTranslationKey()).getString();
-                        } else {
+                        if (obj.hasTargetTag() && obj.getTargetTagTranslationKey() != null) targetName = Component.translatable(obj.getTargetTagTranslationKey()).getString();
+                        else {
                             Item targetItem = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
-                            if (targetItem != null && targetItem != Items.AIR) {
-                                targetName = new ItemStack(targetItem).getHoverName().getString();
-                            }
+                            if (targetItem != null && targetItem != Items.AIR) targetName = new ItemStack(targetItem).getHoverName().getString();
                         }
-
                         displayText = targetName.isEmpty() ? submitBase : submitBase + " - " + targetName;
                     }
 
                     int objMaxWidth = colW - 16 - contentShiftX - extraMargin - font.width(pr) - 6;
-                    // ----- 替换结束 -----
 
                     g.pose().pushPose();
                     if (hoverAnimOffer > 0.01f) {
                         g.pose().translate(hoverAnimOffer * 4.0f, 0, 0);
                         if (canUpload) {
                             float scale = 1.0f + 0.05f * hoverAnimOffer;
-                            float pivotX = cardX + 8 + contentShiftX;
-                            float pivotY = objY + font.lineHeight / 2.0f;
+                            float pivotX = cardX + 8 + contentShiftX, pivotY = objY + font.lineHeight / 2.0f;
                             g.pose().translate(pivotX, pivotY, 0);
                             g.pose().scale(scale, scale, 1f);
                             g.pose().translate(-pivotX, -pivotY, 0);
@@ -550,15 +499,15 @@ public class JournalDetailParallelPhase {
                     }
 
                     drawScrollingString(g, font, displayText, cardX + 8 + contentShiftX, objY, objMaxWidth, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, objColor, Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absX2, absY2, intX1, intY1, intX2, intY2);
-
                     g.drawString(font, pr, cardX + colW - 8 - extraMargin - font.width(pr), objY, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
 
                     g.pose().popPose();
                     objY += OBJ_LINE_H;
                 }
                 g.pose().popPose();
-                g.disableScissor();
-                screen.enableScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
+
+                // 【应用安全裁剪】
+                safeScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
             }
 
             if (maxInnerScroll > 0) {
@@ -597,16 +546,15 @@ public class JournalDetailParallelPhase {
                     String choiceText = (i + 1) + ". " + choice.getDisplayText().getString();
                     drawScrollingString(g, font, choiceText, btnX + 6, btnY + 6, btnW - 12, HudAnimUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absBtnX + 6, absBtnY + 6, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
-                    if (draggingPhaseId == null)
-                        currentChoiceButtons.add(new JournalTypes.ChoiceButtonRect(absBtnX, absBtnY, btnW, btnH, phase.getChoices().indexOf(choice), phaseId));
+                    if (draggingPhaseId == null) currentChoiceButtons.add(new JournalTypes.ChoiceButtonRect(absBtnX, absBtnY, btnW, btnH, phase.getChoices().indexOf(choice), phaseId));
                     cy += 24;
                 }
             }
             g.pose().popPose();
         }
 
-        g.disableScissor();
-        screen.enableScissor(g, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+        // 【应用安全裁剪：恢复父级全局状态】
+        safeScissor(g, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
         localY = currentY + maxCardH + 8;
 
@@ -654,22 +602,15 @@ public class JournalDetailParallelPhase {
         if (maxPhaseScroll > 0 && currentScrollControls != null) {
             ScrollControls sc = currentScrollControls;
             if (mx >= sc.leftX && mx < sc.leftX + sc.leftW && my >= sc.leftY && my < sc.leftY + sc.leftH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                screen.playClick();
-                phaseTargetScroll = Math.max(0, phaseTargetScroll - scrollStep);
-                return true;
+                screen.playClick(); phaseTargetScroll = Math.max(0, phaseTargetScroll - scrollStep); return true;
             }
             if (mx >= sc.rightX && mx < sc.rightX + sc.rightW && my >= sc.rightY && my < sc.rightY + sc.rightH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                screen.playClick();
-                phaseTargetScroll = Math.min(maxPhaseScroll, phaseTargetScroll + scrollStep);
-                return true;
+                screen.playClick(); phaseTargetScroll = Math.min(maxPhaseScroll, phaseTargetScroll + scrollStep); return true;
             }
             if (mx >= sc.trackX && mx < sc.trackX + sc.trackW && my >= sc.trackY - 2 && my < sc.trackY + 12 && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                 isDraggingPhaseScrollbar = true;
                 if (mx >= sc.thumbX && mx < sc.thumbX + sc.thumbW) dragPhaseXOffset = mx - sc.thumbX;
-                else {
-                    dragPhaseXOffset = sc.thumbW / 2.0;
-                    updatePhaseScrollFromAbsoluteMouse(mx);
-                }
+                else { dragPhaseXOffset = sc.thumbW / 2.0; updatePhaseScrollFromAbsoluteMouse(mx); }
                 return true;
             }
         }
@@ -679,9 +620,7 @@ public class JournalDetailParallelPhase {
             if (!panelsActive) {
                 for (IntelBtnRect rect : currentIntelBtns) {
                     if (mx >= rect.absX && mx < rect.absX + rect.w && my >= rect.absY && my < rect.absY + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
-                        screen.playClick();
-                        QuestIntelPanel.trigger(rect.sceneId, screen.getCurrentThemeColor(), x, y, w, h);
-                        return true;
+                        screen.playClick(); QuestIntelPanel.trigger(rect.sceneId, screen.getCurrentThemeColor(), x, y, w, h); return true;
                     }
                 }
             }
@@ -693,9 +632,7 @@ public class JournalDetailParallelPhase {
                 for (OfferProgressRect rect : currentOfferProgressRects) {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                         String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
-                        QuestOfferPanel.trigger(qid, rect.phaseId, rect.objectiveIndex);
-                        screen.playClick();
-                        return true;
+                        QuestOfferPanel.trigger(qid, rect.phaseId, rect.objectiveIndex); screen.playClick(); return true;
                     }
                 }
             }
@@ -710,9 +647,7 @@ public class JournalDetailParallelPhase {
                         if (nowMs - lastChoiceClickAt < JournalConstants.CHOICE_CLICK_COOLDOWN_MS) return true;
                         lastChoiceClickAt = nowMs;
                         ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.choose(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId, rect.choiceIndex));
-                        QuestHudOverlay.INSTANCE.clearBranchChoiceToast();
-                        screen.playClick();
-                        return true;
+                        QuestHudOverlay.INSTANCE.clearBranchChoiceToast(); screen.playClick(); return true;
                     }
                 }
             }
@@ -725,12 +660,8 @@ public class JournalDetailParallelPhase {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                         selectedPhaseId = rect.phaseId;
                         QuestHudOverlay.INSTANCE.setTrackedFocus(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId);
-                        screen.playClick();
-                        potentialDragPhaseId = rect.phaseId;
-                        potentialDragStartX = mx;
-                        potentialDragStartY = my;
-                        potentialDragStartTime = Util.getMillis();
-                        return true;
+                        screen.playClick(); potentialDragPhaseId = rect.phaseId; potentialDragStartX = mx; potentialDragStartY = my;
+                        potentialDragStartTime = Util.getMillis(); return true;
                     }
                 }
             }
@@ -740,31 +671,26 @@ public class JournalDetailParallelPhase {
 
     public boolean mouseDragged(double mx, double my) {
         if (isDraggingPhaseScrollbar && maxPhaseScroll > 0 && currentScrollControls != null) {
-            updatePhaseScrollFromAbsoluteMouse(mx);
-            return true;
+            updatePhaseScrollFromAbsoluteMouse(mx); return true;
         }
         if (potentialDragPhaseId != null && draggingPhaseId == null) {
             boolean thresholdMet = Math.abs(mx - potentialDragStartX) > 5 || Math.abs(my - potentialDragStartY) > 5 || (Util.getMillis() - potentialDragStartTime > 250);
             if (thresholdMet) {
-                draggingPhaseId = potentialDragPhaseId;
-                dragMouseStartX = mx;
+                draggingPhaseId = potentialDragPhaseId; dragMouseStartX = mx;
                 dragCardStartX = phaseVisualX.getOrDefault(draggingPhaseId, 0.0);
-                dragScrollStartX = phaseScrollOffset;
-                currentDragCardX = dragCardStartX;
+                dragScrollStartX = phaseScrollOffset; currentDragCardX = dragCardStartX;
             }
         }
         if (draggingPhaseId != null) {
             currentDragCardX = dragCardStartX + (mx - dragMouseStartX) + (phaseScrollOffset - dragScrollStartX);
             int cardAreaW = currentScrollControls != null ? currentScrollControls.trackW : 100, gap = 8, colW = (cardAreaW - gap) / 2;
-            updateDragSwap(colW, gap);
-            return true;
+            updateDragSwap(colW, gap); return true;
         }
         return false;
     }
 
     public void onMouseReleased() {
-        isDraggingPhaseScrollbar = false;
-        potentialDragPhaseId = null;
+        isDraggingPhaseScrollbar = false; potentialDragPhaseId = null;
         if (draggingPhaseId != null) {
             draggingPhaseId = null;
             if (currentQuestId != null) {
@@ -790,20 +716,16 @@ public class JournalDetailParallelPhase {
         if (draggingPhaseId == null) return;
         int currentIndex = customPhaseOrder.indexOf(draggingPhaseId);
         if (currentIndex == -1) return;
-
         double draggedCenter = currentDragCardX + colW / 2.0;
         int newIndex = currentIndex;
-
         for (int i = 0; i < customPhaseOrder.size(); i++) {
             if (i == currentIndex) continue;
             double otherCenter = i * (colW + gap) + colW / 2.0;
             if (currentIndex < i && draggedCenter > otherCenter) newIndex = i;
             if (currentIndex > i && draggedCenter < otherCenter) newIndex = i;
         }
-
         if (newIndex != currentIndex) {
-            customPhaseOrder.remove(currentIndex);
-            customPhaseOrder.add(newIndex, draggingPhaseId);
+            customPhaseOrder.remove(currentIndex); customPhaseOrder.add(newIndex, draggingPhaseId);
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 0.2f));
         }
     }
@@ -815,9 +737,7 @@ public class JournalDetailParallelPhase {
         phaseTargetScroll = Math.max(0.0, Math.min(1.0, rawPercentage)) * maxPhaseScroll;
     }
 
-    public String getSelectedPhaseId() {
-        return selectedPhaseId;
-    }
+    public String getSelectedPhaseId() { return selectedPhaseId; }
 
     private int getChoicesHeight(PhaseDefinition phase, QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
         boolean showChoices = JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId);
@@ -849,17 +769,8 @@ public class JournalDetailParallelPhase {
         currentOfferProgressRects.add(new OfferProgressRect(x, y, w, h, phaseId, objectiveIndex));
     }
 
-    private record ScrollControls(int leftX, int leftY, int leftW, int leftH,
-                                  int rightX, int rightY, int rightW, int rightH,
-                                  int trackX, int trackY, int trackW, int thumbX, int thumbW) {
-    }
-
-    private record IntelBtnRect(int absX, int absY, int w, int h, ResourceLocation sceneId) {
-    }
-
-    private record ObjScrollArea(int absX, int absY, int w, int h, String phaseId, int maxScroll) {
-    }
-
-    private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {
-    }
+    private record ScrollControls(int leftX, int leftY, int leftW, int leftH, int rightX, int rightY, int rightW, int rightH, int trackX, int trackY, int trackW, int thumbX, int thumbW) {}
+    private record IntelBtnRect(int absX, int absY, int w, int h, ResourceLocation sceneId) {}
+    private record ObjScrollArea(int absX, int absY, int w, int h, String phaseId, int maxScroll) {}
+    private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {}
 }

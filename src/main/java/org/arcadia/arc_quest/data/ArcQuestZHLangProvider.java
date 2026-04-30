@@ -83,6 +83,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiSection("journal", "current_phase", "▸ 当前阶段: %s");
         addGuiSection("journal", "completed_phases", "▸ 已通过阶段");
         addGuiSection("journal", "choose_path", "▸ 选择你的道路");
+        addGuiSection("journal", "phase_rewards", "▸ 阶段奖励");
+        addGuiSection("journal", "chapter_rewards", "▸ 章节奖励");
 
         // ── Journal Labels ──
         addGuiLabel("journal", "no_phases_completed",
