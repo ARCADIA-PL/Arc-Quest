@@ -45,6 +45,7 @@ public final class QuestBuilder {
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     @Nullable
     private String chapterShopId;
+    private ChapterShopType chapterShopType = ChapterShopType.TRADE;
     private boolean chapterShopPersistent = true;
 
     private QuestCompletionPolicy completionPolicy = QuestCompletionPolicy.ALL;
@@ -247,19 +248,42 @@ public final class QuestBuilder {
     // ════════════════════════════════════════
 
     /**
-     * 配置章节商店。
+     * 配置章节商店（兼容旧 API，默认 Trade）。
      *
-     * @param shopId     交易商店注册 ID
+     * @param shopId     商店注册 ID
      * @param persistent true=长效（任务完成后仍可访问），false=非长效
      */
     public QuestBuilder chapterShop(String shopId, boolean persistent) {
         this.chapterShopId = shopId;
+        this.chapterShopType = ChapterShopType.TRADE;
         this.chapterShopPersistent = persistent;
         return this;
     }
 
     public QuestBuilder chapterShop(String shopId) {
         return chapterShop(shopId, true);
+    }
+
+    public QuestBuilder chapterTradeShop(String shopId, boolean persistent) {
+        this.chapterShopId = shopId;
+        this.chapterShopType = ChapterShopType.TRADE;
+        this.chapterShopPersistent = persistent;
+        return this;
+    }
+
+    public QuestBuilder chapterTradeShop(String shopId) {
+        return chapterTradeShop(shopId, true);
+    }
+
+    public QuestBuilder chapterGachaShop(String shopId, boolean persistent) {
+        this.chapterShopId = shopId;
+        this.chapterShopType = ChapterShopType.GACHA;
+        this.chapterShopPersistent = persistent;
+        return this;
+    }
+
+    public QuestBuilder chapterGachaShop(String shopId) {
+        return chapterGachaShop(shopId, true);
     }
 
     // ════════════════════════════════════════
@@ -502,6 +526,7 @@ public final class QuestBuilder {
                 new ArrayList<>(this.flagsOnComplete),
                 this.visualConfigBuilder.build(),
                 this.chapterShopId,
+                this.chapterShopType,
                 this.chapterShopPersistent,
                 this.chapterStartSound,
                 this.chapterFailSound,

@@ -31,6 +31,7 @@ public final class QuestDefinition {
     private final List<String> flagsToSetOnComplete;
     @Nullable
     private final String chapterShopId;
+    private final ChapterShopType chapterShopType;
     private final boolean chapterShopPersistent;
 
     // 音效配置
@@ -62,7 +63,7 @@ public final class QuestDefinition {
                            QuestVisualConfig visualConfig) {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
-                flagsToSetOnAccept, flagsToSetOnComplete, visualConfig, null, false);
+                flagsToSetOnAccept, flagsToSetOnComplete, visualConfig, null, ChapterShopType.TRADE, false);
     }
 
     public QuestDefinition(ResourceLocation id,
@@ -80,11 +81,12 @@ public final class QuestDefinition {
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig,
                            @Nullable String chapterShopId,
+                           ChapterShopType chapterShopType,
                            boolean chapterShopPersistent) {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
                 flagsToSetOnAccept, flagsToSetOnComplete, visualConfig,
-                chapterShopId, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null);
+                chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null);
     }
 
     public QuestDefinition(ResourceLocation id,
@@ -102,6 +104,7 @@ public final class QuestDefinition {
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig,
                            @Nullable String chapterShopId,
+                           ChapterShopType chapterShopType,
                            boolean chapterShopPersistent,
                            @Nullable SoundEvent chapterStartSound,
                            @Nullable SoundEvent chapterFailSound,
@@ -135,6 +138,7 @@ public final class QuestDefinition {
         this.flagsToSetOnAccept = Collections.unmodifiableList(flagsToSetOnAccept);
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
         this.chapterShopId = chapterShopId;
+        this.chapterShopType = chapterShopType != null ? chapterShopType : ChapterShopType.TRADE;
         this.chapterShopPersistent = chapterShopPersistent;
         this.chapterStartSound = chapterStartSound;
         this.chapterFailSound = chapterFailSound;
@@ -260,6 +264,10 @@ public final class QuestDefinition {
     @Nullable
     public String getChapterShopId() {
         return this.chapterShopId;
+    }
+
+    public ChapterShopType getChapterShopType() {
+        return this.chapterShopType;
     }
 
     public boolean isChapterShopPersistent() {

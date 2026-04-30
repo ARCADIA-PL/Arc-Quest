@@ -8,6 +8,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.api.event.ChapterShopOpenEvent;
+import org.arcadia.arc_quest.quest.api.ChapterShopType;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
@@ -15,6 +16,9 @@ import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary.Code;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
+import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
+import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
+import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
@@ -170,11 +174,26 @@ public class C2SRequestQuestActionPacket {
         String shopId = def.getChapterShopId();
         if (shopId == null || shopId.isEmpty()) return Code.CHAPTER_SHOP_NOT_CONFIGURED;
 
-        TradeShopDefinition shop = TradeRegistry.get(shopId);
-        if (shop == null) return Code.CHAPTER_SHOP_DEFINITION_NOT_FOUND;
+        ChapterShopType shopType = def.getChapterShopType();
+        if (shopType == null) shopType = ChapterShopType.TRADE;
 
-        C2SRequestTradePacket.handleServerOpen(player, shop, false);
-        return Code.OK;
+        switch (shopType) {
+            case TRADE -> {
+                TradeShopDefinition shop = TradeRegistry.get(shopId);
+                if (shop == null) return Code.CHAPTER_SHOP_DEFINITION_NOT_FOUND;
+                C2SRequestTradePacket.handleServerOpen(player, shop, false);
+                return Code.OK;
+            }
+            case GACHA -> {
+                GachaShopDefinition shop = GachaRegistry.get(shopId);
+                if (shop == null) return Code.CHAPTER_SHOP_DEFINITION_NOT_FOUND;
+                GachaScreenOpener.openGachaScreen(player, shop, cap);
+                return Code.OK;
+            }
+            default -> {
+                return Code.CHAPTER_SHOP_DEFINITION_NOT_FOUND;
+            }
+        }
     }
 
     private static String resolveChapterShopId(String questId) {
