@@ -15,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -264,8 +265,25 @@ public final class QuestHistoryPanel {
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (runtime == null) return;
 
-        String targetPhase = runtime.getCurrentPhaseId();
-        if (targetPhase == null || targetPhase.isEmpty() || !nodeMap.containsKey(targetPhase)) {
+        String targetPhase = null;
+
+        String trackedQuest = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        String trackedPhase = QuestHudOverlay.INSTANCE.getTrackedPhaseId();
+
+        if (questId.equals(trackedQuest) && trackedPhase != null && nodeMap.containsKey(trackedPhase)) {
+            if (runtime.isPhaseActive(trackedPhase)) {
+                targetPhase = trackedPhase;
+            }
+        }
+
+        if (targetPhase == null) {
+            String current = runtime.getCurrentPhaseId();
+            if (current != null && runtime.isPhaseActive(current) && nodeMap.containsKey(current)) {
+                targetPhase = current;
+            }
+        }
+
+        if (targetPhase == null) {
             for (String pid : runtime.getActivePhaseIds()) {
                 if (nodeMap.containsKey(pid)) {
                     targetPhase = pid;

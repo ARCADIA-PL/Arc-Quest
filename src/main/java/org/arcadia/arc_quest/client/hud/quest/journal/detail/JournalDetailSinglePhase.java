@@ -133,16 +133,26 @@ public class JournalDetailSinglePhase {
         localY += 14;
 
         if (phase.hasDescription()) {
+            float textScale = 0.85f;
+            int maxW = (int) ((scrollAreaW - 4) / textScale);
+            List<String> phaseDescLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
+
+            int unscaledLineSpacing = font.lineHeight + 4;
+            int visualLineSpacing = (int) (unscaledLineSpacing * textScale);
+            int visualTextHeight = (int) (font.lineHeight * textScale);
+
+            int blockH = Math.max(visualTextHeight, (phaseDescLines.size() - 1) * visualLineSpacing + visualTextHeight);
+
             g.pose().pushPose();
-            g.pose().translate(4, localY, 0);
-            g.pose().scale(0.8f, 0.8f, 1f);
-            List<String> phaseDescLines = HudRenderUtil.wrapText(phase.getDescription().getString(), (int) ((scrollAreaW - 28) / 0.8f), font);
-            for (String line : phaseDescLines) {
-                g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0x99BBFF, safeA), false);
-                g.pose().translate(0, font.lineHeight + 1, 0);
+            g.pose().translate(0, localY, 0);
+            g.pose().scale(textScale, textScale, 1f);
+
+            for (int i = 0; i < phaseDescLines.size(); i++) {
+                g.drawString(font, phaseDescLines.get(i), 0, i * unscaledLineSpacing, HudAnimUtil.withAlpha(0xFFFFFF, safeA), false);
             }
             g.pose().popPose();
-            localY += phaseDescLines.size() * (font.lineHeight + 1) + 6;
+
+            localY += blockH + 6;
         }
 
         intelSceneId = phase.getIntelSceneId();

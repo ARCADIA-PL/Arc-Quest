@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.quest.network;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.quest.service.QuestOfferService;
 
 import java.util.function.Supplier;
@@ -57,7 +58,7 @@ public class C2SSubmitOfferPacket {
             }
 
             ArcQuestNetwork.CHANNEL.send(
-                    net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                    PacketDistributor.PLAYER.with(() -> player),
                     new S2COfferSubmitResultPacket(pkt.questId, pkt.phaseId, pkt.objectiveIndex, mode)
             );
         });

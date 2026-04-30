@@ -60,26 +60,35 @@ public class TrackerTitleWidget {
 
     public static int computeDescriptionHeight(PhaseDefinition phase, Font font) {
         if (!phase.hasDescription()) return 0;
-        int maxW = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2) / 0.75f);
+        float scale = 0.85f;
+        int maxW = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 4) / scale);
         List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
-        return descLines.size() * (int) (font.lineHeight * 0.75f + 1) + 4;
+
+        int unscaledLineH = font.lineHeight + 3;
+        return (int) (descLines.size() * unscaledLineH * scale) + 4;
     }
 
     public static int renderDescription(GuiGraphics g, PhaseDefinition phase, int textX, int textY, float alpha, float wipeAlpha, Font font) {
         if (!phase.hasDescription()) return textY;
+
         int descA = (int) (255 * alpha * wipeAlpha);
         if (descA > 4) {
-            int maxW = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2) / 0.75f);
+            float scale = 0.85f;
+            int maxW = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 4) / scale);
             List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
-            for (String line : descLines) {
-                g.pose().pushPose();
-                g.pose().translate(textX + 7, textY, 0);
-                g.pose().scale(0.75f, 0.75f, 1f);
-                g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0x99BBFF, descA), false);
-                g.pose().popPose();
-                textY += (int) (font.lineHeight * 0.75f + 1);
+
+            int unscaledLineH = font.lineHeight + 3;
+
+            g.pose().pushPose();
+            g.pose().translate(textX + 2, textY, 0);
+            g.pose().scale(scale, scale, 1f);
+
+            for (int i = 0; i < descLines.size(); i++) {
+                g.drawString(font, descLines.get(i), 0, i * unscaledLineH, HudAnimUtil.withAlpha(0xFFFFFF, descA), false);
             }
-            textY += 4;
+            g.pose().popPose();
+
+            textY += (int) (descLines.size() * unscaledLineH * scale) + 4;
         }
         return textY;
     }

@@ -213,12 +213,83 @@ public class JournalDetailParallelPhase {
             updateDragSwap(colW, gap);
         }
 
+        String focusPhaseId = resolveSelectedPhaseId(def, runtime);
+        PhaseDefinition focusPhase = focusPhaseId != null ? def.getPhase(focusPhaseId) : null;
+
+        int headerBaseY = localY;
+        int titleH = (int) (font.lineHeight * 0.8f);
+
+        int currentX1 = 0;
+
         g.pose().pushPose();
-        g.pose().translate(0, localY, 0);
+        g.pose().translate(currentX1, headerBaseY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "PARALLEL LANES", 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), true);
+        g.drawString(font, "PARALLEL LANES", 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), true);
         g.pose().popPose();
-        localY += 14;
+
+        currentX1 += (int) (font.width("PARALLEL LANES") * 0.8f) + 8;
+
+        g.pose().pushPose();
+        g.pose().translate(currentX1, headerBaseY, 0);
+        g.pose().scale(0.8f, 0.8f, 1f);
+        g.drawString(font, "//", 0, 0, HudAnimUtil.withAlpha(activeTheme, (int) (safeA * 0.6f)), true);
+        g.pose().popPose();
+
+        currentX1 += (int) (font.width("//") * 0.8f) + 8;
+
+        if (focusPhase != null) {
+            String pName = focusPhase.getDisplayName() != null && !focusPhase.getDisplayName().getString().isEmpty() ? focusPhase.getDisplayName().getString() : focusPhase.getPhaseId();
+            String prefix = "FOCUS: ";
+
+            g.pose().pushPose();
+            g.pose().translate(currentX1, headerBaseY + 1, 0);
+            g.pose().scale(0.75f, 0.75f, 1f);
+            g.drawString(font, prefix, 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), true);
+            g.pose().popPose();
+
+            int prefixW = (int) (font.width(prefix) * 0.75f);
+            currentX1 += prefixW;
+
+            int remainingW = scrollAreaW - currentX1 - 4;
+            int absX = x + 12 + currentX1;
+            int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + headerBaseY + 1;
+
+            g.pose().pushPose();
+            g.pose().translate(currentX1, headerBaseY + 1, 0);
+            g.pose().scale(0.75f, 0.75f, 1f);
+            drawScrollingString(g, font, pName, 0, 0, (int) (remainingW / 0.75f), HudAnimUtil.withAlpha(0xFFFFFF, safeA), true, absX, absY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+            g.pose().popPose();
+
+            localY += titleH + 6;
+
+            if (focusPhase.hasDescription()) {
+                float descScale = 0.85f;
+                int descMaxW = scrollAreaW - 4;
+                List<String> wrappedDesc = HudRenderUtil.wrapText(focusPhase.getDescription().getString(), (int) (descMaxW / descScale), font);
+
+                int maxLines = 2;
+                int unscaledLineH = font.lineHeight + 3;
+
+                g.pose().pushPose();
+                g.pose().translate(0, localY, 0);
+                g.pose().scale(descScale, descScale, 1f);
+
+                for (int i = 0; i < Math.min(wrappedDesc.size(), maxLines); i++) {
+                    String line = wrappedDesc.get(i);
+                    if (i == maxLines - 1 && wrappedDesc.size() > maxLines) {
+                        line += "...";
+                    }
+                    g.drawString(font, line, 0, i * unscaledLineH, HudAnimUtil.withAlpha(0xFFFFFF, safeA), false);
+                }
+                g.pose().popPose();
+
+                localY += (int) (Math.min(wrappedDesc.size(), maxLines) * unscaledLineH * descScale);
+            }
+        } else {
+            localY += titleH;
+        }
+
+        localY += 6;
 
         int MAX_VISIBLE_OBJS = 2, OBJ_LINE_H = 14, FIXED_OBJ_VIEW_H = MAX_VISIBLE_OBJS * OBJ_LINE_H;
 
