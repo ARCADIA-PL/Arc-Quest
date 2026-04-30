@@ -6,11 +6,7 @@ import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.quest.api.ICondition;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.trade.api.ITradeOffer;
-import org.arcadia.arc_quest.trade.api.TradeCategory;
-import org.arcadia.arc_quest.trade.api.TradeEntry;
-import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
-import org.arcadia.arc_quest.trade.api.TradeText;
+import org.arcadia.arc_quest.trade.api.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

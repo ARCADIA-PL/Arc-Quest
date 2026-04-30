@@ -1,14 +1,14 @@
 package org.arcadia.arc_quest.quest.logic;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraft.tags.TagKey;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.world.item.Item;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.quest.*;
 import org.arcadia.arc_quest.quest.api.*;
@@ -29,11 +29,7 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 任务进度推进核心逻辑（服务端）。
