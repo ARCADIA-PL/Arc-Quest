@@ -22,33 +22,33 @@ public final class QuestOfferService {
     private QuestOfferService() {
     }
 
-    public static void submitOffer(ServerPlayer player, String questId, String phaseId, int objectiveIndex, int submitAmount) {
-        if (submitAmount <= 0) return;
+    public static OfferSubmitResult submitOffer(ServerPlayer player, String questId, String phaseId, int objectiveIndex, int submitAmount) {
+        if (submitAmount <= 0) return OfferSubmitResult.REJECTED;
 
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        if (cap == null) return;
+        if (cap == null) return OfferSubmitResult.REJECTED;
 
         QuestRuntimeData data = cap.getActiveQuest(questId);
-        if (data == null || !data.isPhaseActive(phaseId)) return;
+        if (data == null || !data.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
 
         var qDef = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (qDef == null) return;
+        if (qDef == null) return OfferSubmitResult.REJECTED;
 
         var phase = qDef.getPhase(phaseId);
-        if (phase == null) return;
+        if (phase == null) return OfferSubmitResult.REJECTED;
 
-        if (objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return;
+        if (objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return OfferSubmitResult.REJECTED;
         ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
-        if (obj.getType() != ObjectiveType.OFFER) return;
+        if (obj.getType() != ObjectiveType.OFFER) return OfferSubmitResult.REJECTED;
 
         int required = Math.max(1, obj.getRequiredCount());
         int current = data.getObjectiveProgress(phaseId, objectiveIndex);
-        if (current >= required) return;
+        if (current >= required) return OfferSubmitResult.REJECTED;
 
         int remainNeed = required - current;
         int trySubmit = Math.min(submitAmount, remainNeed);
 
-        String targetTag = obj.getExtra("target_tag");
+        String targetTag = obj.getTargetTagId();
         int consumed;
         if (targetTag != null && !targetTag.isEmpty()) {
             consumed = consumeOfferTagItems(player, targetTag, trySubmit);
@@ -56,9 +56,17 @@ public final class QuestOfferService {
             consumed = consumeOfferItem(player, obj.getTargetId(), trySubmit);
         }
 
-        if (consumed <= 0) return;
+        if (consumed <= 0) return OfferSubmitResult.REJECTED;
+
+        int newProgress = current + consumed;
+        boolean reached = newProgress >= required;
 
         QuestProgressHandler.incrementObjective(player, questId, phaseId, objectiveIndex, consumed);
+
+        QuestRuntimeData after = cap.getActiveQuest(questId);
+        boolean phaseChanged = (after == null) || !after.isPhaseActive(phaseId);
+
+        return new OfferSubmitResult(true, reached, phaseChanged);
     }
 
     public static int countOfferable(ServerPlayer player, ObjectiveEntry obj) {
@@ -147,5 +155,9 @@ public final class QuestOfferService {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    public record OfferSubmitResult(boolean accepted, boolean objectiveReached, boolean phaseChanged) {
+        public static final OfferSubmitResult REJECTED = new OfferSubmitResult(false, false, false);
     }
 }

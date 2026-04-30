@@ -44,7 +44,22 @@ public class C2SSubmitOfferPacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;
-            QuestOfferService.submitOffer(player, pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.submitAmount);
+            QuestOfferService.OfferSubmitResult result =
+                    QuestOfferService.submitOffer(player, pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.submitAmount);
+
+            S2COfferSubmitResultPacket.CloseMode mode = S2COfferSubmitResultPacket.CloseMode.NONE;
+            if (result.accepted()) {
+                if (result.phaseChanged()) {
+                    mode = S2COfferSubmitResultPacket.CloseMode.CLEARED_CLOSE;
+                } else if (result.objectiveReached()) {
+                    mode = S2COfferSubmitResultPacket.CloseMode.NORMAL_CLOSE;
+                }
+            }
+
+            ArcQuestNetwork.CHANNEL.send(
+                    net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                    new S2COfferSubmitResultPacket(pkt.questId, pkt.phaseId, pkt.objectiveIndex, mode)
+            );
         });
         ctx.get().setPacketHandled(true);
     }

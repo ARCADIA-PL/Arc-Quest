@@ -103,6 +103,14 @@ public final class ArcQuestNetwork {
                 C2SSubmitOfferPacket::handle
         );
 
+        CHANNEL.registerMessage(
+                packetId++,
+                S2COfferSubmitResultPacket.class,
+                S2COfferSubmitResultPacket::encode,
+                S2COfferSubmitResultPacket::decode,
+                S2COfferSubmitResultPacket::handle
+        );
+
         // ─── S2C：任务动作结果（标准拒绝码）───
         CHANNEL.registerMessage(
                 packetId++,

@@ -21,6 +21,7 @@ import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SSubmitOfferPacket;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
+import org.arcadia.arc_quest.quest.network.S2COfferSubmitResultPacket;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.lwjgl.glfw.GLFW;
 
@@ -74,9 +75,8 @@ public final class QuestOfferPanel {
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
 
-    private static long autoCloseAtMs = 0L;
-    private static FinishMode finishMode = FinishMode.NONE;
-    private static long finishDecideAtMs = 0L;
+    private static S2COfferSubmitResultPacket.CloseMode serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
+
     private QuestOfferPanel() {
     }
 
@@ -107,9 +107,7 @@ public final class QuestOfferPanel {
         sliderValue = 1;
         sliderHoverAnim = 0f;
         visualThumbX = -1f;
-        finishMode = FinishMode.NONE;
-        finishDecideAtMs = 0L;
-        autoCloseAtMs = 0L;
+        serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
 
         OfferVM initialVm = resolveOfferViewModel();
         lastValidVm = initialVm;
@@ -285,30 +283,24 @@ public final class QuestOfferPanel {
         float ly = (float) ((my - currentDrawY) / currentScale);
 
         OfferVM vm = resolveOfferViewModel();
-        long nowMs = Util.getMillis();
-
-        if (!closing && vm == null && lastValidVm != null) {
-            finishMode = FinishMode.CLEARED_CLOSE;
-        }
-
-        if (!closing && finishMode == FinishMode.NONE && vm != null && vm.required > 0 && vm.current >= vm.required) {
-            finishMode = FinishMode.PENDING_NORMAL;
-            finishDecideAtMs = nowMs + 220L;
-        }
-
-        if (!closing && finishMode == FinishMode.PENDING_NORMAL && nowMs >= finishDecideAtMs) {
-            finishMode = FinishMode.NORMAL_CLOSE;
-            autoCloseAtMs = nowMs + 120L;
-        }
 
         if (vm != null) {
             lastValidVm = vm;
         }
 
-        if (finishMode == FinishMode.CLEARED_CLOSE && lastValidVm != null && !cleared && !closing) {
-            cleared = true;
-            clearTimer = 0f;
-            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.0F));
+        if (!closing) {
+            if (serverCloseMode == S2COfferSubmitResultPacket.CloseMode.CLEARED_CLOSE) {
+                if (!cleared && lastValidVm != null) {
+                    cleared = true;
+                    clearTimer = 0f;
+                    Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.0F));
+                }
+                serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
+            } else if (serverCloseMode == S2COfferSubmitResultPacket.CloseMode.NORMAL_CLOSE) {
+                close();
+                serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
+                return;
+            }
         }
 
         if (cleared) {
@@ -325,11 +317,6 @@ public final class QuestOfferPanel {
         }
 
         updateSubmitFeedback(renderVm, dt);
-
-        if (finishMode == FinishMode.NORMAL_CLOSE && !cleared && !closing && nowMs >= autoCloseAtMs) {
-            close();
-            return;
-        }
 
         int cyberEdgeWidth = 3;
         int bgAlpha = (int) (0x99 * alphaF);
@@ -647,11 +634,10 @@ public final class QuestOfferPanel {
         g.pose().popPose();
     }
 
-    private enum FinishMode {
-        NONE,
-        PENDING_NORMAL,
-        NORMAL_CLOSE,
-        CLEARED_CLOSE
+    public static void onServerSubmitResult(String qid, String pid, int objIndex, S2COfferSubmitResultPacket.CloseMode mode) {
+        if (!active) return;
+        if (!questId.equals(qid) || !phaseId.equals(pid) || objectiveIndex != objIndex) return;
+        if (mode != null) serverCloseMode = mode;
     }
 
     private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {
