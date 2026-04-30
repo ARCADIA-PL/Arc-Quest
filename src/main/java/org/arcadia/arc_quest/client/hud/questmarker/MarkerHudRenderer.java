@@ -15,7 +15,10 @@ import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 public class MarkerHudRenderer implements IGuiOverlay {
 

@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;

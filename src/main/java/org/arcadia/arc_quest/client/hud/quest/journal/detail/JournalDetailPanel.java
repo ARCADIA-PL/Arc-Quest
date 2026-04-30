@@ -8,10 +8,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
-import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
-import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
+import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
+import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -123,7 +125,8 @@ public class JournalDetailPanel {
 
         int absBtnX = x + 12 + hBtnX;
         int absBtnY = (int) (scrollAreaY + 12 - detailScrollOffset + hBtnY);
-        boolean hHover = mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
+        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+        boolean hHover = !panelsActive && mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
 
         historyBtnHoverAnim = HudAnimUtil.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
 
@@ -145,7 +148,7 @@ public class JournalDetailPanel {
         historyBtnRect[2] = hBtnR * 2 + 8;
         historyBtnRect[3] = hBtnR * 2 + 8;
 
-        if (hHover && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
+        if (hHover && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH && !panelsActive) {
             screen.setHoveredCustomTooltip(List.of(
                     Component.literal("Topology MAP").withStyle(Style.EMPTY.withColor(activeTheme).withBold(true)),
                     Component.literal("View node graph & history").withStyle(Style.EMPTY.withColor(0xAAAAAA))
@@ -222,8 +225,9 @@ public class JournalDetailPanel {
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
         int scrollAreaH = h - 40;
         int maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
+        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
 
-        if (maxDetailScroll > 0 && mx >= x + w - 6 && mx <= x + w && my >= y && my <= y + scrollAreaH) {
+        if (!panelsActive && maxDetailScroll > 0 && mx >= x + w - 6 && mx <= x + w && my >= y && my <= y + scrollAreaH) {
             isDraggingDetailScrollbar = true;
             int thumbH = Math.max(16, (int) (((float) scrollAreaH / detailContentHeight) * scrollAreaH));
             int thumbY = y + (int) ((detailScrollOffset / maxDetailScroll) * (scrollAreaH - thumbH));
@@ -232,9 +236,9 @@ public class JournalDetailPanel {
             return true;
         }
 
-        if (controlsRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
+        if (!panelsActive && controlsRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
 
-        if (mx >= historyBtnRect[0] && mx <= historyBtnRect[0] + historyBtnRect[2] &&
+        if (!panelsActive && mx >= historyBtnRect[0] && mx <= historyBtnRect[0] + historyBtnRect[2] &&
                 my >= historyBtnRect[1] && my <= historyBtnRect[1] + historyBtnRect[3] && my >= y && my <= y + scrollAreaH) {
             if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) {
                 QuestHistoryPanel.trigger(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId());
