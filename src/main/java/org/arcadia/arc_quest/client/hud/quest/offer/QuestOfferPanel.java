@@ -548,11 +548,15 @@ public final class QuestOfferPanel {
     }
 
     private static List<ItemStack> resolveIconCandidates(ObjectiveEntry obj) {
-        String targetTag = obj.getExtra("target_tag");
+        String targetTag = obj.getTargetTagId();
         if (targetTag != null && !targetTag.isEmpty()) {
             if (targetTag.equals(cachedTagKey) && !cachedTagIcons.isEmpty()) return cachedTagIcons;
             try {
-                ResourceLocation tagId = ResourceLocation.parse(targetTag);
+                ResourceLocation tagId = obj.getTargetTagResourceLocation();
+                if (tagId == null) {
+                    cachedTagKey = targetTag;
+                    return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
+                }
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
                 List<ItemStack> list = new ArrayList<>();
                 for (Item i : ForgeRegistries.ITEMS.getValues()) {
@@ -575,11 +579,12 @@ public final class QuestOfferPanel {
     private static int resolveOfferableCount(ObjectiveEntry obj) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return 0;
-        String targetTag = obj.getExtra("target_tag");
+        String targetTag = obj.getTargetTagId();
         int total = 0;
         if (targetTag != null && !targetTag.isEmpty()) {
             try {
-                ResourceLocation tagId = ResourceLocation.parse(targetTag);
+                ResourceLocation tagId = obj.getTargetTagResourceLocation();
+                if (tagId == null) return 0;
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
                 for (ItemStack st : mc.player.getInventory().items) {
                     if (!st.isEmpty() && st.is(tag)) total += st.getCount();

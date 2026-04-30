@@ -11,7 +11,11 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
@@ -511,9 +515,26 @@ public class JournalDetailParallelPhase {
                     if (canUpload) objColor = HudAnimUtil.lerpColor(objColor, activeTheme, hoverAnimOffer);
 
                     String normalText = prefix + cleanObjText;
-                    String submitText = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
-                    String displayText = (canUpload && textHovered) ? submitText : normalText;
+                    String displayText = normalText;
+
+                    if (canUpload && textHovered) {
+                        String submitBase = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
+                        String targetName = "";
+
+                        if (obj.hasTargetTag() && obj.getTargetTagTranslationKey() != null) {
+                            targetName = Component.translatable(obj.getTargetTagTranslationKey()).getString();
+                        } else {
+                            Item targetItem = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
+                            if (targetItem != null && targetItem != Items.AIR) {
+                                targetName = new ItemStack(targetItem).getHoverName().getString();
+                            }
+                        }
+
+                        displayText = targetName.isEmpty() ? submitBase : submitBase + " - " + targetName;
+                    }
+
                     int objMaxWidth = colW - 16 - contentShiftX - extraMargin - font.width(pr) - 6;
+                    // ----- 替换结束 -----
 
                     g.pose().pushPose();
                     if (hoverAnimOffer > 0.01f) {

@@ -30,7 +30,6 @@ public class JournalListPanel {
         clampScroll(h);
         scrollOffset += Math.abs(targetScroll - scrollOffset) > 0.5 ? (targetScroll - scrollOffset) * Math.min(1.0, dt * 14.0) : (targetScroll - scrollOffset);
 
-        // 核心对接：拦截并传递给全尺寸投影转换裁剪
         screen.enableScissor(g, x, y, x + w - 6, y + h);
 
         int selectedIndex = screen.getSelectedIndex();
@@ -48,7 +47,7 @@ public class JournalListPanel {
             }
 
             g.fill(x + 2, hlY, x + w - 8, hlY + JournalConstants.ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
-            g.fill(x + 2, hlY, x + 5, hlY + JournalConstants.ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(entryTheme, (int) (0xFF * effectiveAlpha)));
+            drawCyberneticEdge(g, x + 2, hlY, JournalConstants.ENTRY_HEIGHT - 2, entryTheme, (int) (0xFF * effectiveAlpha));
         }
 
         for (int i = 0; i < screen.getCurrentEntries().size(); i++) {
@@ -98,7 +97,8 @@ public class JournalListPanel {
                 float finalScale = baseScale * (1f + 0.03f * eHover);
 
                 g.pose().pushPose();
-                float textY = entryY + (JournalConstants.ENTRY_HEIGHT - screen.getFont().lineHeight * baseScale) / 2f + 1;
+                float textY = entryY + (JournalConstants.ENTRY_HEIGHT - screen.getFont().lineHeight * finalScale) / 2f - 0.5f;
+
                 g.pose().translate(x + textOffsetX, textY, 0);
                 g.pose().scale(finalScale, finalScale, 1f);
                 g.drawString(screen.getFont(), displayName, 0, 0, nameColor, true);
@@ -176,5 +176,22 @@ public class JournalListPanel {
         if (maxScroll <= 0) return;
         int thumbH = Math.max(16, (int) (((float) viewH / (screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT)) * viewH));
         targetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragListYOffset) / (viewH - thumbH))) * maxScroll;
+    }
+
+    private void drawCyberneticEdge(GuiGraphics g, int x, int y, int height, int themeColor, int alpha) {
+        if (alpha < 5) return;
+
+        int coreColor = themeColor & 0xFFFFFF;
+        int topAlpha = alpha;
+        int botAlpha = (int) (alpha * 0.15f);
+
+        int colorTop = coreColor | (topAlpha << 24);
+        int colorBot = coreColor | (botAlpha << 24);
+
+        g.fillGradient(x, y, x + 3, y + height, colorTop, colorBot);
+
+        int glowAlpha = (int) (topAlpha * 0.8f);
+        int colorGlow = 0xFFFFFF | (glowAlpha << 24);
+        g.fillGradient(x, y, x + 1, y + (height / 2), colorGlow, colorTop);
     }
 }

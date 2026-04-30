@@ -6,6 +6,10 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
@@ -16,6 +20,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.quest.api.ChoiceOption;
+import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -196,10 +201,25 @@ public class JournalDetailSinglePhase {
 
             List<String> renderLines = originalWrappedLines;
             if (canSubmit && isHovered) {
-                renderLines = HudRenderUtil.wrapText(Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString(), scrollAreaW - 40 - objX, font);
+                ObjectiveEntry currentObj = phase.getObjectives().get(i);
+                String submitBase = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
+                String targetName = "";
+
+                if (currentObj.hasTargetTag() && currentObj.getTargetTagTranslationKey() != null) {
+                    targetName = Component.translatable(currentObj.getTargetTagTranslationKey()).getString();
+                } else {
+                    Item targetItem = ForgeRegistries.ITEMS.getValue(currentObj.getTargetId());
+                    if (targetItem != null && targetItem != Items.AIR) {
+                        targetName = new ItemStack(targetItem).getHoverName().getString();
+                    }
+                }
+
+                String finalText = targetName.isEmpty() ? submitBase : submitBase + " - " + targetName;
+                renderLines = HudRenderUtil.wrapText(finalText, scrollAreaW - 40 - objX, font);
             }
 
             g.pose().pushPose();
+
             if (canSubmit && hoverAnim > 0.01f) {
                 float scale = 1.0f + 0.05f * hoverAnim;
                 float pivotX = objX;
