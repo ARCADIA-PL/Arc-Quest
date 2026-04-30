@@ -24,6 +24,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addEpicDialogueTranslations();
         addTradeTranslations();
         addGachaTranslations();
+        addItemTagTranslations();
 
         // ── 任务链 ──
         addPrologueQuest();
@@ -1189,5 +1190,128 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
                 "击败§6烈焰人§r以证明实力 (0/3)");
         addObjective("epic_branch_choice", "path_both", 1,
                 "收集§b海晶碎片§r (0/5)");
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  Item Tag 翻译
+    // ═══════════════════════════════════════════════════════
+
+    private void addItemTagTranslations() {
+        // 基础材料
+        addItemTag("wool", "羊毛");
+        addItemTag("planks", "木板");
+        addItemTag("stone_bricks", "石砖");
+        addItemTag("sand", "沙子");
+        addItemTag("dirt", "泥土");
+        addItemTag("terracotta", "陶瓦");
+        addItemTag("leaves", "树叶");
+        addItemTag("saplings", "树苗");
+        
+        // 木制物品
+        addItemTag("wooden_buttons", "木质按钮");
+        addItemTag("wooden_doors", "木门");
+        addItemTag("wooden_stairs", "木楼梯");
+        addItemTag("wooden_slabs", "木台阶");
+        addItemTag("wooden_fences", "木栅栏");
+        addItemTag("wooden_pressure_plates", "木质压力板");
+        addItemTag("wooden_trapdoors", "木活板门");
+        addItemTag("logs", "原木");
+        addItemTag("oak_logs", "橡木原木");
+        addItemTag("birch_logs", "白桦木原木");
+        addItemTag("spruce_logs", "云杉木原木");
+        addItemTag("jungle_logs", "丛林木原木");
+        addItemTag("acacia_logs", "金合欢木原木");
+        addItemTag("dark_oak_logs", "深色橡木原木");
+        addItemTag("mangrove_logs", "红树木原木");
+        addItemTag("cherry_logs", "樱花木原木");
+        addItemTag("crimson_stems", "绯红菌柄");
+        addItemTag("warped_stems", "诡异菌柄");
+        addItemTag("bamboo_blocks", "竹方块");
+        
+        // 建筑方块
+        addItemTag("stairs", "楼梯");
+        addItemTag("slabs", "台阶");
+        addItemTag("walls", "墙");
+        addItemTag("fences", "栅栏");
+        addItemTag("fence_gates", "栅栏门");
+        addItemTag("buttons", "按钮");
+        addItemTag("stone_buttons", "石质按钮");
+        addItemTag("doors", "门");
+        addItemTag("trapdoors", "活板门");
+        addItemTag("anvil", "铁砧");
+        addItemTag("rails", "铁轨");
+        addItemTag("wool_carpets", "羊毛地毯");
+        
+        // 花卉与植物
+        addItemTag("flowers", "花");
+        addItemTag("small_flowers", "小型花");
+        addItemTag("tall_flowers", "高花");
+        addItemTag("wart_blocks", "疣块");
+        
+        // 矿石
+        addItemTag("gold_ores", "金矿石");
+        addItemTag("iron_ores", "铁矿石");
+        addItemTag("diamond_ores", "钻石矿石");
+        addItemTag("redstone_ores", "红石矿石");
+        addItemTag("lapis_ores", "青金石矿石");
+        addItemTag("coal_ores", "煤矿石");
+        addItemTag("emerald_ores", "绿宝石矿石");
+        addItemTag("copper_ores", "铜矿石");
+        
+        // 工具与武器
+        addItemTag("swords", "剑");
+        addItemTag("axes", "斧");
+        addItemTag("hoes", "锄");
+        addItemTag("pickaxes", "镐");
+        addItemTag("shovels", "锹");
+        addItemTag("tools", "工具");
+        addItemTag("arrows", "箭");
+        
+        // 特殊物品
+        addItemTag("banners", "旗帜");
+        addItemTag("beds", "床");
+        addItemTag("boats", "船");
+        addItemTag("chest_boats", "运输船");
+        addItemTag("signs", "告示牌");
+        addItemTag("hanging_signs", "悬挂告示牌");
+        addItemTag("music_discs", "音乐唱片");
+        addItemTag("candles", "蜡烛");
+        addItemTag("fishes", "鱼");
+        addItemTag("coals", "煤炭");
+        addItemTag("books", "书");
+        addItemTag("lectern_books", "讲台用书");
+        addItemTag("bookshelf_books", "书架用书");
+        
+        // 生物相关
+        addItemTag("piglin_loved", "猪灵喜爱物品");
+        addItemTag("piglin_repellents", "猪灵驱避物品");
+        addItemTag("fox_food", "狐狸食物");
+        addItemTag("axolotl_tempt_items", "美西螈诱捕物品");
+        addItemTag("sniffer_food", "嗅探兽食物");
+        addItemTag("villager_plantable_seeds", "村民可种植种子");
+        
+        // 装饰与合成
+        addItemTag("decorated_pot_sherds", "饰纹陶罐碎片");
+        addItemTag("decorated_pot_ingredients", "饰纹陶罐材料");
+        addItemTag("trim_materials", "盔甲纹饰材料");
+        addItemTag("trim_templates", "盔甲纹饰模板");
+        addItemTag("trimmable_armor", "可纹饰盔甲");
+        addItemTag("beacon_payment_items", "信标支付物品");
+        
+        // 其他
+        addItemTag("compasses", "指南针");
+        addItemTag("creeper_drop_music_discs", "苦力怕掉落音乐唱片");
+        addItemTag("creeper_igniters", "苦力怕点燃器");
+        addItemTag("noteblock_top_instruments", "音符盒顶部乐器");
+        addItemTag("breaks_decorated_pots", "可破坏饰纹陶罐");
+        addItemTag("dampens_vibrations", "阻尼振动");
+        addItemTag("cluster_max_harvestables", "簇最大可收获物");
+        addItemTag("freeze_immune_wearables", "防冻可穿戴物品");
+        addItemTag("stone_tool_materials", "石制工具材料");
+        addItemTag("stone_crafting_materials", "石制合成材料");
+        addItemTag("smelts_to_glass", "可熔炼成玻璃");
+        addItemTag("non_flammable_wood", "不可燃木材");
+        addItemTag("soul_fire_base_blocks", "灵魂火基座方块");
+        addItemTag("completes_find_tree_tutorial", "完成找树教程");
     }
 }

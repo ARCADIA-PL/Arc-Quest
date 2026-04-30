@@ -24,6 +24,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addEpicDialogueTranslations();
         addTradeTranslations();
         addGachaTranslations();
+        addItemTagTranslations();
 
         // ── Quest Chains ──
         addPrologueQuest();
@@ -1191,5 +1192,128 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "Defeat 3 Blazes to Prove Your Strength");
         addObjective("epic_branch_choice", "path_both", 1,
                 "Collect Prismarine Shards (0/5)");
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  Item Tag Translations
+    // ═══════════════════════════════════════════════════════
+
+    private void addItemTagTranslations() {
+        // Basic Materials
+        addItemTag("wool", "Wool");
+        addItemTag("planks", "Planks");
+        addItemTag("stone_bricks", "Stone Bricks");
+        addItemTag("sand", "Sand");
+        addItemTag("dirt", "Dirt");
+        addItemTag("terracotta", "Terracotta");
+        addItemTag("leaves", "Leaves");
+        addItemTag("saplings", "Saplings");
+        
+        // Wooden Items
+        addItemTag("wooden_buttons", "Wooden Buttons");
+        addItemTag("wooden_doors", "Wooden Doors");
+        addItemTag("wooden_stairs", "Wooden Stairs");
+        addItemTag("wooden_slabs", "Wooden Slabs");
+        addItemTag("wooden_fences", "Wooden Fences");
+        addItemTag("wooden_pressure_plates", "Wooden Pressure Plates");
+        addItemTag("wooden_trapdoors", "Wooden Trapdoors");
+        addItemTag("logs", "Logs");
+        addItemTag("oak_logs", "Oak Logs");
+        addItemTag("birch_logs", "Birch Logs");
+        addItemTag("spruce_logs", "Spruce Logs");
+        addItemTag("jungle_logs", "Jungle Logs");
+        addItemTag("acacia_logs", "Acacia Logs");
+        addItemTag("dark_oak_logs", "Dark Oak Logs");
+        addItemTag("mangrove_logs", "Mangrove Logs");
+        addItemTag("cherry_logs", "Cherry Logs");
+        addItemTag("crimson_stems", "Crimson Stems");
+        addItemTag("warped_stems", "Warped Stems");
+        addItemTag("bamboo_blocks", "Bamboo Blocks");
+        
+        // Building Blocks
+        addItemTag("stairs", "Stairs");
+        addItemTag("slabs", "Slabs");
+        addItemTag("walls", "Walls");
+        addItemTag("fences", "Fences");
+        addItemTag("fence_gates", "Fence Gates");
+        addItemTag("buttons", "Buttons");
+        addItemTag("stone_buttons", "Stone Buttons");
+        addItemTag("doors", "Doors");
+        addItemTag("trapdoors", "Trapdoors");
+        addItemTag("anvil", "Anvil");
+        addItemTag("rails", "Rails");
+        addItemTag("wool_carpets", "Wool Carpets");
+        
+        // Flowers & Plants
+        addItemTag("flowers", "Flowers");
+        addItemTag("small_flowers", "Small Flowers");
+        addItemTag("tall_flowers", "Tall Flowers");
+        addItemTag("wart_blocks", "Wart Blocks");
+        
+        // Ores
+        addItemTag("gold_ores", "Gold Ores");
+        addItemTag("iron_ores", "Iron Ores");
+        addItemTag("diamond_ores", "Diamond Ores");
+        addItemTag("redstone_ores", "Redstone Ores");
+        addItemTag("lapis_ores", "Lapis Lazuli Ores");
+        addItemTag("coal_ores", "Coal Ores");
+        addItemTag("emerald_ores", "Emerald Ores");
+        addItemTag("copper_ores", "Copper Ores");
+        
+        // Tools & Weapons
+        addItemTag("swords", "Swords");
+        addItemTag("axes", "Axes");
+        addItemTag("hoes", "Hoes");
+        addItemTag("pickaxes", "Pickaxes");
+        addItemTag("shovels", "Shovels");
+        addItemTag("tools", "Tools");
+        addItemTag("arrows", "Arrows");
+        
+        // Special Items
+        addItemTag("banners", "Banners");
+        addItemTag("beds", "Beds");
+        addItemTag("boats", "Boats");
+        addItemTag("chest_boats", "Boats with Chest");
+        addItemTag("signs", "Signs");
+        addItemTag("hanging_signs", "Hanging Signs");
+        addItemTag("music_discs", "Music Discs");
+        addItemTag("candles", "Candles");
+        addItemTag("fishes", "Fishes");
+        addItemTag("coals", "Coals");
+        addItemTag("books", "Books");
+        addItemTag("lectern_books", "Lectern Books");
+        addItemTag("bookshelf_books", "Bookshelf Books");
+        
+        // Mob Related
+        addItemTag("piglin_loved", "Piglin Loved Items");
+        addItemTag("piglin_repellents", "Piglin Repellents");
+        addItemTag("fox_food", "Fox Food");
+        addItemTag("axolotl_tempt_items", "Axolotl Tempt Items");
+        addItemTag("sniffer_food", "Sniffer Food");
+        addItemTag("villager_plantable_seeds", "Villager Plantable Seeds");
+        
+        // Decoration & Crafting
+        addItemTag("decorated_pot_sherds", "Decorated Pot Sherds");
+        addItemTag("decorated_pot_ingredients", "Decorated Pot Ingredients");
+        addItemTag("trim_materials", "Armor Trim Materials");
+        addItemTag("trim_templates", "Armor Trim Templates");
+        addItemTag("trimmable_armor", "Trimmable Armor");
+        addItemTag("beacon_payment_items", "Beacon Payment Items");
+        
+        // Others
+        addItemTag("compasses", "Compasses");
+        addItemTag("creeper_drop_music_discs", "Creeper Drop Music Discs");
+        addItemTag("creeper_igniters", "Creeper Igniters");
+        addItemTag("noteblock_top_instruments", "Noteblock Top Instruments");
+        addItemTag("breaks_decorated_pots", "Breaks Decorated Pots");
+        addItemTag("dampens_vibrations", "Dampens Vibrations");
+        addItemTag("cluster_max_harvestables", "Cluster Max Harvestables");
+        addItemTag("freeze_immune_wearables", "Freeze Immune Wearables");
+        addItemTag("stone_tool_materials", "Stone Tool Materials");
+        addItemTag("stone_crafting_materials", "Stone Crafting Materials");
+        addItemTag("smelts_to_glass", "Smelts to Glass");
+        addItemTag("non_flammable_wood", "Non-Flammable Wood");
+        addItemTag("soul_fire_base_blocks", "Soul Fire Base Blocks");
+        addItemTag("completes_find_tree_tutorial", "Completes Find Tree Tutorial");
     }
 }
