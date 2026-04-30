@@ -386,16 +386,21 @@ public class DialogueSession {
 
     public Component processDialogueText(DialogueText text) {
         Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
+        IDialogueNpc dialogueNpc = (npc instanceof IDialogueNpc d) ? d : null;
+
         var cap = QuestCapabilityProvider.getOrNull(player);
         Map<String, Object> vars = buildDialogueVars(cap);
+
         DialogueTextContext ctx = new DialogueTextContext(
                 player,
                 npc,
+                dialogueNpc,
                 tree.dialogueId(),
                 currentNode != null ? currentNode.nodeId() : null,
                 cap,
                 vars
         );
+
         Component resolved = (text == null ? DialogueText.literal("") : text).resolve(ctx);
         return Component.literal(processText(resolved.getString()));
     }

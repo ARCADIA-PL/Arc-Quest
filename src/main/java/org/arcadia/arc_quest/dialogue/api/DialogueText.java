@@ -25,6 +25,10 @@ public final class DialogueText {
         return new DialogueText(ctx -> resolver.apply(ctx.player(), ctx.npc()));
     }
 
+    public static DialogueText of(TriFunction<ServerPlayer, Entity, IDialogueNpc, Component> resolver) {
+        return new DialogueText(ctx -> resolver.apply(ctx.player(), ctx.npc(), ctx.dialogueNpc()));
+    }
+
     public static DialogueText literal(String text) {
         return new DialogueText(ctx -> Component.literal(text == null ? "" : text));
     }
@@ -73,6 +77,12 @@ public final class DialogueText {
             };
         }
 
+        static DialogueArg npcDisplayName() {
+            return context -> context.dialogueNpc() != null
+                    ? context.dialogueNpc().getDialogueDisplayName()
+                    : (context.npc() == null ? Component.literal("Unknown") : context.npc().getName());
+        }
+
         static DialogueArg of(Function<DialogueTextContext, Object> fn) {
             return fn::apply;
         }
@@ -80,5 +90,10 @@ public final class DialogueText {
         static DialogueArg of(BiFunction<ServerPlayer, Entity, Object> fn) {
             return context -> fn.apply(context.player(), context.npc());
         }
+    }
+
+    @FunctionalInterface
+    public interface TriFunction<A, B, C, R> {
+        R apply(A a, B b, C c);
     }
 }

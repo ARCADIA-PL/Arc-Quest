@@ -514,7 +514,9 @@ public class DialogueTreeBuilder {
     private void commitCurrentNode() {
         if (!hasOpenNode) return;
 
-        DialogueText speaker = curSpeaker != null ? curSpeaker : DialogueText.literal("");
+        DialogueText speaker = curSpeaker != null
+                ? curSpeaker
+                : DialogueText.literal((defaultNpc != null && !defaultNpc.isBlank()) ? defaultNpc : "");
 
         // 序列化条件文本
         Map<String, ConditionalSay> conditionalTextsMap = serializeConditionalTexts();

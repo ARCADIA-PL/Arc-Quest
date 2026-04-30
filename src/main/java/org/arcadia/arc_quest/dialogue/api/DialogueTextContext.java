@@ -10,6 +10,7 @@ import java.util.Map;
 public record DialogueTextContext(
         ServerPlayer player,
         @Nullable Entity npc,
+        @Nullable IDialogueNpc dialogueNpc,
         @Nullable String dialogueId,
         @Nullable String nodeId,
         @Nullable IQuestCapability questCap,
@@ -20,6 +21,7 @@ public record DialogueTextContext(
     }
 
     public static DialogueTextContext of(ServerPlayer player, @Nullable Entity npc) {
-        return new DialogueTextContext(player, npc, null, null, null, Map.of());
+        IDialogueNpc dialogueNpc = (npc instanceof IDialogueNpc d) ? d : null;
+        return new DialogueTextContext(player, npc, dialogueNpc, null, null, null, Map.of());
     }
 }

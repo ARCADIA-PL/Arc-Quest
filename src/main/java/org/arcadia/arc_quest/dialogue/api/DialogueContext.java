@@ -61,6 +61,10 @@ public class DialogueContext {
         return this;
     }
 
+    public String getString(String key) {
+        return getString(key, "");
+    }
+
     public String getString(String key, String defaultValue) {
         return data.contains(key, Tag.TAG_STRING) ? data.getString(key) : defaultValue;
     }
@@ -83,6 +87,25 @@ public class DialogueContext {
 
     public boolean has(String key) {
         return data.contains(key);
+    }
+
+    public Object get(String key) {
+        if (!data.contains(key)) return null;
+        Tag tag = data.get(key);
+        if (tag instanceof StringTag st) return st.getAsString();
+        if (tag instanceof NumericTag nt) return nt.getAsNumber();
+        return tag != null ? tag.getAsString() : null;
+    }
+
+    public <T> T get(String key, Class<T> type) {
+        Object value = get(key);
+        if (value == null) return null;
+        return type.isInstance(value) ? type.cast(value) : null;
+    }
+
+    public String getOrDefault(String key, String defaultValue) {
+        Object value = get(key);
+        return value != null ? String.valueOf(value) : defaultValue;
     }
 
     // ═══════════════════════════════════════════════════════

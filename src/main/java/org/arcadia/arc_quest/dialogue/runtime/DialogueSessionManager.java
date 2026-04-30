@@ -1,19 +1,14 @@
 package org.arcadia.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.arcadia.arc_quest.api.event.dialogue.DialogueChoiceSelectedEvent;
-import org.arcadia.arc_quest.api.event.dialogue.DialogueEndedEvent;
-import org.arcadia.arc_quest.api.event.dialogue.DialogueNodeAutoAdvancedEvent;
-import org.arcadia.arc_quest.api.event.dialogue.DialogueNodeStartedEvent;
-import org.arcadia.arc_quest.api.event.dialogue.DialogueRestoreAttemptEvent;
-import org.arcadia.arc_quest.api.event.dialogue.DialogueRestoreFailedEvent;
-import org.arcadia.arc_quest.api.event.dialogue.DialogueStartedEvent;
+import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.capability.DialogueNpcPatch;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
@@ -255,7 +250,34 @@ public final class DialogueSessionManager {
         DialogueNode node = session.getCurrentNode();
         if (node == null) return;
 
-        String speaker = session.processDialogueText(node.speaker()).getString();
+        String speaker = "";
+        if (node.speaker() != null) {
+            speaker = session.processDialogueText(node.speaker()).getString();
+        }
+
+        if (speaker == null || speaker.isBlank()) {
+            Entity npcEntity = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
+            if (npcEntity instanceof IDialogueNpc dialogueNpc) {
+                Component display = dialogueNpc.getDialogueDisplayName();
+                if (display != null) {
+                    String s = display.getString();
+                    if (s != null && !s.isBlank()) {
+                        speaker = s;
+                    }
+                }
+            }
+        }
+
+        if (speaker == null || speaker.isBlank()) {
+            Object fallback = session.getContext().get("defaultNpc");
+            if (fallback instanceof String s && !s.isBlank()) {
+                speaker = s;
+            }
+        }
+
+        if (speaker == null) {
+            speaker = "";
+        }
         var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
         DialogueProgressStore progress = cap != null ? cap.getDialogueProgress() : null;
         Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;

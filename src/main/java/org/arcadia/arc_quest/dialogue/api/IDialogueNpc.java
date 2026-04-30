@@ -116,7 +116,7 @@ public interface IDialogueNpc {
     }
 
     /**
-     * NPC 对话显示名称（用于 speaker 字段的 fallback）。
+     * NPC 对话显示名称（用于 speakerName 字段的 fallback）。
      */
     default Component getDialogueDisplayName() {
         return asEntity().getDisplayName();
@@ -140,6 +140,7 @@ public interface IDialogueNpc {
 
         DialogueContext context = buildDialogueContext(player);
         context.put("npcName", getDialogueDisplayName().getString());
+        context.put("defaultNpc", getDialogueDisplayName().getString());
 
         DialogueSessionManager.INSTANCE.startDialogue(player, self, dialogueId, context);
     }
