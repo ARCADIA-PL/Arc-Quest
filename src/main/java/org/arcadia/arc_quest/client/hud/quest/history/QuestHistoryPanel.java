@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -33,6 +34,10 @@ public final class QuestHistoryPanel {
     private static final int PANEL_W = 630;
     private static final int PANEL_H = 270;
 
+    // 缩放极值限制
+    private static final float MIN_ZOOM = 1f;
+    private static final float MAX_ZOOM = 1.9f;
+
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
     private static final List<NodeData> renderNodes = new ArrayList<>();
@@ -56,21 +61,23 @@ public final class QuestHistoryPanel {
     private static boolean panning = false;
     private static double lastDragX = 0;
     private static double lastDragY = 0;
+
     // ===== 独立的 Tooltip 与 选中状态 =====
-    private static String pinnedPhaseId = null;            // 当前被点击固定的节点ID
+    private static String pinnedPhaseId = null;
     private static PhaseDefinition activeTooltipPhase = null;
     private static PhaseDefinition renderingTooltipPhase = null;
     private static float tooltipAnimProgress = 0f;
-    // 锁定位置锚点，防止鼠标移开去查物品时 Tooltip 乱跑
-    private static int lockedTipX = 0;
-    private static int lockedTipY = 0;
-    // 渲染时捕获的物品奖励 Tooltip
     private static ItemStack hoveredRewardStack = ItemStack.EMPTY;
-    // 尺寸补间动画（Morphing）状态
     private static float animTipX = 0;
     private static float animTipY = 0;
     private static float animTipW = 0;
     private static float animTipH = 0;
+
+    // ===== 新增：进场延迟聚焦动画控制 =====
+    private static boolean pendingFocusActive = false;
+    private static float focusDelayTimer = 0f;
+    private static final float FOCUS_DELAY_TIME = 0.6f; // 延迟 0.6 秒后再将镜头推向节点
+
     private QuestHistoryPanel() {
     }
 
@@ -99,7 +106,13 @@ public final class QuestHistoryPanel {
         animTipW = 0;
 
         buildGraphData();
+
+        // 先适配全局，展现全局概览
         fitCameraToGraph(PANEL_W - 8, PANEL_H - 32);
+
+        // 启动延迟聚焦计时器，替代直接调用
+        pendingFocusActive = true;
+        focusDelayTimer = 0f;
     }
 
     public static boolean isActive() {
@@ -122,7 +135,7 @@ public final class QuestHistoryPanel {
     }
 
     public static boolean mouseClicked(double mx, double my, int button) {
-        if (!active || closing || button != 0) return false;
+        if (!active || closing) return false;
 
         float scaledW = PANEL_W * currentScale;
         float scaledH = PANEL_H * currentScale;
@@ -139,32 +152,48 @@ public final class QuestHistoryPanel {
         boolean inBounds = lx >= treeX && lx <= treeX + treeW && ly >= treeY && ly <= treeY + treeH;
 
         if (inBounds) {
-            String clickedNodeId = null;
-            for (NodeData node : renderNodes) {
-                double nodeScreenX = treeX + panX + node.x * zoom;
-                double nodeScreenY = treeY + panY + node.y * zoom;
-                double hitRadius = 15 * zoom;
-
-                if (Math.abs(lx - nodeScreenX) <= hitRadius && Math.abs(ly - nodeScreenY) <= hitRadius) {
-                    clickedNodeId = node.id;
-                    break;
-                }
+            if (button == 2) {
+                focusOnActivePhase();
+                return true;
             }
 
-            if (clickedNodeId != null) {
-                if (clickedNodeId.equals(pinnedPhaseId)) {
-                    pinnedPhaseId = null;
-                } else {
-                    pinnedPhaseId = clickedNodeId;
-                    lockedTipX = (int) mx;
-                    lockedTipY = (int) my;
+            if (button == 0 || button == 1) {
+                String clickedNodeId = null;
+                for (NodeData node : renderNodes) {
+                    double nodeScreenX = treeX + panX + node.x * zoom;
+                    double nodeScreenY = treeY + panY + node.y * zoom;
+                    double hitRadius = 15 * zoom;
+
+                    if (Math.abs(lx - nodeScreenX) <= hitRadius && Math.abs(ly - nodeScreenY) <= hitRadius) {
+                        clickedNodeId = node.id;
+                        break;
+                    }
                 }
-                return true;
-            } else {
-                pinnedPhaseId = null;
-                panning = true;
-                lastDragX = lx;
-                lastDragY = ly;
+
+                if (clickedNodeId != null) {
+                    if (clickedNodeId.equals(pinnedPhaseId)) {
+                        pinnedPhaseId = null;
+                    } else {
+                        pinnedPhaseId = clickedNodeId;
+
+                        if (button == 1)
+                        {
+                            // 每次锁定节点时校准镜头
+                            focusOnNode(clickedNodeId);
+                        }
+
+                        Minecraft mc = Minecraft.getInstance();
+                        if (mc.player != null) {
+                            mc.player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.4f);
+                        }
+                    }
+                    return true;
+                } else {
+                    pinnedPhaseId = null;
+                    panning = true;
+                    lastDragX = lx;
+                    lastDragY = ly;
+                }
             }
         }
         return true;
@@ -206,7 +235,7 @@ public final class QuestHistoryPanel {
             float zoomSpeed = 0.15f;
             float oldZoom = targetZoom;
 
-            targetZoom = Math.max(0.3f, Math.min(2.5f, targetZoom + (float) delta * zoomSpeed));
+            targetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom + (float) delta * zoomSpeed));
 
             double mouseWorldX = (lx - treeX - targetPanX) / oldZoom;
             double mouseWorldY = (ly - treeY - targetPanY) / oldZoom;
@@ -216,6 +245,44 @@ public final class QuestHistoryPanel {
             return true;
         }
         return true;
+    }
+
+    private static void focusOnNode(String nodeId) {
+        if (nodeId == null || !nodeMap.containsKey(nodeId)) return;
+
+        NodeData targetNode = nodeMap.get(nodeId);
+        targetZoom = 1.55f;
+
+        int treeW = PANEL_W - 8;
+        int treeH = PANEL_H - 32;
+
+        targetPanX = (treeW / 2f) - targetNode.x * targetZoom;
+        targetPanY = (treeH / 2f) - targetNode.y * targetZoom;
+    }
+
+    private static void focusOnActivePhase() {
+        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
+        if (runtime == null) return;
+
+        String targetPhase = runtime.getCurrentPhaseId();
+        if (targetPhase == null || targetPhase.isEmpty() || !nodeMap.containsKey(targetPhase)) {
+            for (String pid : runtime.getActivePhaseIds()) {
+                if (nodeMap.containsKey(pid)) {
+                    targetPhase = pid;
+                    break;
+                }
+            }
+        }
+
+        if (targetPhase != null && nodeMap.containsKey(targetPhase)) {
+            pinnedPhaseId = null;
+            focusOnNode(targetPhase);
+
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.player != null) {
+                mc.player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.2f);
+            }
+        }
     }
 
     public static void render(GuiGraphics g, int mx, int my, float partialTick) {
@@ -232,6 +299,15 @@ public final class QuestHistoryPanel {
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
+
+        // 处理进场的延迟推镜动画
+        if (pendingFocusActive && !closing) {
+            focusDelayTimer += dt;
+            if (focusDelayTimer >= FOCUS_DELAY_TIME) {
+                pendingFocusActive = false;
+                focusOnActivePhase();
+            }
+        }
 
         float targetScaleW = (screenW * 0.90f) / (float) PANEL_W;
         float targetScaleH = (screenH * 0.65f) / (float) PANEL_H;
@@ -288,7 +364,7 @@ public final class QuestHistoryPanel {
         }
 
         activeTooltipPhase = null;
-        hoveredRewardStack = ItemStack.EMPTY; // 重置悬停物品
+        hoveredRewardStack = ItemStack.EMPTY;
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
@@ -313,17 +389,29 @@ public final class QuestHistoryPanel {
 
         g.pose().popPose();
 
-        // 渲染外置节点详细信息 Tooltip
         if (!closing) {
             handleTooltipAnimation(dt);
             if (tooltipAnimProgress > 0.01f && renderingTooltipPhase != null) {
-                int anchorX = pinnedPhaseId != null ? lockedTipX : mx;
-                int anchorY = pinnedPhaseId != null ? lockedTipY : my;
+                int anchorX = mx;
+                int anchorY = my;
+
+                // ===== 核心修复：动态计算锚点坐标，使 Tooltip 实时追随正在移动的节点 =====
+                if (pinnedPhaseId != null && nodeMap.containsKey(pinnedPhaseId)) {
+                    NodeData pNode = nodeMap.get(pinnedPhaseId);
+                    int treeX = 4;
+                    int treeY = 24; // topBarH(22) + 2
+
+                    // 计算节点相对于整个屏幕的真实绝对坐标
+                    float relX = treeX + panX + pNode.x * zoom;
+                    float relY = treeY + panY + pNode.y * zoom;
+                    anchorX = (int) (currentDrawX + relX * currentScale);
+                    anchorY = (int) (currentDrawY + relY * currentScale);
+                }
+
                 renderAwesomeTooltip(g, mc.font, renderingTooltipPhase, anchorX, anchorY, screenW, screenH, dt, mx, my);
             }
         }
 
-        // 核心修复：渲染内部物品提示 Tooltip，加入绝对的高 Z-index 赛博绘制
         if (!hoveredRewardStack.isEmpty() && !closing) {
             Minecraft mcForTip = Minecraft.getInstance();
             if (mcForTip.player != null) {
@@ -355,7 +443,7 @@ public final class QuestHistoryPanel {
         int topBarH = 22;
         g.pose().pushPose();
         g.pose().scale(0.85f, 0.85f, 1f);
-        g.drawString(font, "SYS.ARC_QUEST // TOPOLOGY MAP [ 21:9 ULTRAWIDE ]", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        g.drawString(font, "SYS.ARC_QUEST // TOPOLOGY MAP [ 21:9 ULTRAWIDE ]  >> MOUSE-3: FOCUS CURRENT", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
         g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
 
@@ -436,7 +524,6 @@ public final class QuestHistoryPanel {
                 g.pose().pushPose();
                 g.pose().translate(node.x, node.y, 0);
                 g.pose().scale(nodeScale, nodeScale, 1f);
-
                 g.pose().mulPose(Axis.ZP.rotationDegrees(45));
 
                 if (glowA > 0) g.fill(-r - 2, -r - 2, r + 2, r + 2, HudAnimUtil.withAlpha(nodeColor, glowA));
@@ -556,7 +643,7 @@ public final class QuestHistoryPanel {
         int borderAlpha = (int) (0x66 * easeScale);
 
         g.pose().pushPose();
-        g.pose().translate(0, 0, 6000); // 这里的层级是 6000
+        g.pose().translate(0, 0, 6000);
 
         float centerX = drawX + drawW / 2f;
         float centerY = drawY + drawH / 2f;
@@ -759,7 +846,7 @@ public final class QuestHistoryPanel {
         int treeH = Math.max(1, maxY - minY);
 
         targetZoom = Math.min((float) viewW / (treeW + 60), (float) viewH / (treeH + 60));
-        targetZoom = Math.max(0.4f, Math.min(1.5f, targetZoom));
+        targetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom)); // 应用极限规则
 
         targetPanX = (viewW - treeW * targetZoom) / 2f - minX * targetZoom;
         targetPanY = (viewH - treeH * targetZoom) / 2f - minY * targetZoom;
