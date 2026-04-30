@@ -9,7 +9,9 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -63,8 +65,24 @@ public final class QuestHistoryPanel {
     private static final List<NodeData> renderNodes = new ArrayList<>();
     private static final Map<String, NodeData> nodeMap = new HashMap<>();
 
-    private static List<Component> hoveredCustomTooltip = null;
+    // ===== 独立的 Tooltip 与 选中状态 =====
+    private static String pinnedPhaseId = null;            // 当前被点击固定的节点ID
+    private static PhaseDefinition activeTooltipPhase = null;
+    private static PhaseDefinition renderingTooltipPhase = null;
+    private static float tooltipAnimProgress = 0f;
+
+    // 锁定位置锚点，防止鼠标移开去查物品时 Tooltip 乱跑
+    private static int lockedTipX = 0;
+    private static int lockedTipY = 0;
+
+    // 渲染时捕获的物品奖励 Tooltip
     private static ItemStack hoveredRewardStack = ItemStack.EMPTY;
+
+    // 尺寸补间动画（Morphing）状态
+    private static float animTipX = 0;
+    private static float animTipY = 0;
+    private static float animTipW = 0;
+    private static float animTipH = 0;
 
     private QuestHistoryPanel() {}
 
@@ -80,9 +98,13 @@ public final class QuestHistoryPanel {
         zoom = 1.0f; panX = 0f; panY = 0f;
         targetZoom = 1.0f; targetPanX = 0f; targetPanY = 0f;
         panning = false;
-        hoveredCustomTooltip = null;
+
+        pinnedPhaseId = null;
+        activeTooltipPhase = null;
+        renderingTooltipPhase = null;
         hoveredRewardStack = ItemStack.EMPTY;
-        hoveredRewardStack = ItemStack.EMPTY;
+        tooltipAnimProgress = 0f;
+        animTipW = 0;
 
         buildGraphData();
         fitCameraToGraph(PANEL_W - 8, PANEL_H - 32);
@@ -123,9 +145,33 @@ public final class QuestHistoryPanel {
         boolean inBounds = lx >= treeX && lx <= treeX + treeW && ly >= treeY && ly <= treeY + treeH;
 
         if (inBounds) {
-            panning = true;
-            lastDragX = lx;
-            lastDragY = ly;
+            String clickedNodeId = null;
+            for (NodeData node : renderNodes) {
+                double nodeScreenX = treeX + panX + node.x * zoom;
+                double nodeScreenY = treeY + panY + node.y * zoom;
+                double hitRadius = 15 * zoom;
+
+                if (Math.abs(lx - nodeScreenX) <= hitRadius && Math.abs(ly - nodeScreenY) <= hitRadius) {
+                    clickedNodeId = node.id;
+                    break;
+                }
+            }
+
+            if (clickedNodeId != null) {
+                if (clickedNodeId.equals(pinnedPhaseId)) {
+                    pinnedPhaseId = null;
+                } else {
+                    pinnedPhaseId = clickedNodeId;
+                    lockedTipX = (int) mx;
+                    lockedTipY = (int) my;
+                }
+                return true;
+            } else {
+                pinnedPhaseId = null;
+                panning = true;
+                lastDragX = lx;
+                lastDragY = ly;
+            }
         }
         return true;
     }
@@ -193,13 +239,9 @@ public final class QuestHistoryPanel {
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
 
-        // ==========================================
-        // 极致视网膜级自适应缩放算法！(双轴约束)
-        // 保证在任何窗口比例下，这个 21:9 的面板都不会溢出边缘！
-        // ==========================================
         float targetScaleW = (screenW * 0.90f) / (float) PANEL_W;
         float targetScaleH = (screenH * 0.65f) / (float) PANEL_H;
-        float finalScale = Math.min(targetScaleW, targetScaleH); // 取最小限制，绝对不超框！
+        float finalScale = Math.min(targetScaleW, targetScaleH);
 
         float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f);
         float baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
@@ -244,15 +286,12 @@ public final class QuestHistoryPanel {
         if (closing) { scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress)); }
         else if (enterTimer < ENTER_TIME) { scX2 = (int) (currentDrawX + drawWidth * revealProgress); }
 
-        hoveredCustomTooltip = null;
-        hoveredRewardStack = ItemStack.EMPTY;
+        activeTooltipPhase = null;
+        hoveredRewardStack = ItemStack.EMPTY; // 重置悬停物品
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
 
-        // ==========================================
-        // 极致通透黑幕！暗度暴降至 35！
-        // ==========================================
         g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (35 * alphaF)));
 
         if (mc.screen instanceof QuestJournalScreen qjs) {
@@ -273,12 +312,25 @@ public final class QuestHistoryPanel {
 
         g.pose().popPose();
 
-        if (!closing && mc.screen instanceof QuestJournalScreen qjs) {
-            if (hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty()) {
-                qjs.setHoveredCustomTooltip(hoveredCustomTooltip);
+        // 渲染外置节点详细信息 Tooltip
+        if (!closing) {
+            handleTooltipAnimation(dt);
+            if (tooltipAnimProgress > 0.01f && renderingTooltipPhase != null) {
+                int anchorX = pinnedPhaseId != null ? lockedTipX : mx;
+                int anchorY = pinnedPhaseId != null ? lockedTipY : my;
+                renderAwesomeTooltip(g, mc.font, renderingTooltipPhase, anchorX, anchorY, screenW, screenH, dt, mx, my);
             }
-            if (!hoveredRewardStack.isEmpty()) {
-                qjs.setHoveredRewardTooltip(hoveredRewardStack);
+        }
+
+        // 核心修复：渲染内部物品提示 Tooltip，加入绝对的高 Z-index 赛博绘制
+        if (!hoveredRewardStack.isEmpty() && !closing) {
+            Minecraft mcForTip = Minecraft.getInstance();
+            if (mcForTip.player != null) {
+                List<Component> lines = hoveredRewardStack.getTooltipLines(
+                        mcForTip.player,
+                        mcForTip.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL
+                );
+                renderCyberTooltip(g, mcForTip.font, lines, mx, my, themeColor);
             }
         }
     }
@@ -345,20 +397,43 @@ public final class QuestHistoryPanel {
             String hoveredPhaseId = null;
 
             for (NodeData node : renderNodes) {
-                int r = 6;
-                int nodeColor = node.completed ? 0x66FF88 : (node.active ? themeColor : 0x555555);
-
                 double nodeScreenX = treeX + panX + node.x * zoom;
                 double nodeScreenY = treeY + panY + node.y * zoom;
-                double hitRadius = r * 2.5 * zoom;
+                double hitRadius = 6 * 2.5 * zoom;
 
                 boolean isHovered = inBounds && Math.abs(lx - nodeScreenX) <= hitRadius && Math.abs(ly - nodeScreenY) <= hitRadius;
                 if (isHovered) hoveredPhaseId = node.id;
 
-                int glowA = (int) ((node.active ? 150 + 50 * Math.sin(Util.getMillis() / 200.0) : (isHovered ? 200 : 0)) * alphaF);
+                boolean isPinned = node.id.equals(pinnedPhaseId);
+
+                int r = 6;
+                long time = Util.getMillis();
+                int nodeColor;
+                int glowA;
+                float nodeScale = 1.0f;
+
+                if (node.completed) {
+                    nodeColor = 0x66FF88;
+                    glowA = (int) ((80 + 30 * Math.sin(time / 800.0)) * alphaF);
+                } else if (node.active) {
+                    nodeColor = themeColor;
+                    glowA = (int) ((140 + 40 * Math.sin(time / 500.0)) * alphaF);
+                    nodeScale = 1.0f + 0.05f * (float) Math.sin(time / 500.0);
+                } else {
+                    nodeColor = 0x555555;
+                    glowA = (int) ((20 + 10 * Math.sin(time / 1000.0)) * alphaF);
+                }
+
+                if (isHovered || isPinned) {
+                    glowA = (int) (200 * alphaF);
+                    nodeScale = 1.15f;
+                    nodeColor = node.active ? themeColor : (node.completed ? 0x99FFBB : 0xAAAAAA);
+                }
 
                 g.pose().pushPose();
                 g.pose().translate(node.x, node.y, 0);
+                g.pose().scale(nodeScale, nodeScale, 1f);
+
                 g.pose().mulPose(Axis.ZP.rotationDegrees(45));
 
                 if (glowA > 0) g.fill(-r - 2, -r - 2, r + 2, r + 2, HudAnimUtil.withAlpha(nodeColor, glowA));
@@ -368,20 +443,237 @@ public final class QuestHistoryPanel {
 
                 String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, node.id);
                 int tw = font.width(phaseName);
-                int textAlpha = (int) ((isHovered || node.active ? 255 : 150) * alphaF);
+                int textAlpha = (int) ((isHovered || isPinned || node.active ? 255 : 150) * alphaF);
 
                 g.pose().pushPose();
-                g.pose().translate(node.x, node.y + 12, 0);
+                g.pose().translate(node.x, node.y + 14, 0);
                 g.pose().scale(0.6f, 0.6f, 1f);
                 g.drawString(font, phaseName, -tw / 2, 0, HudAnimUtil.withAlpha(nodeColor, textAlpha), true);
                 g.pose().popPose();
             }
 
-            if (hoveredPhaseId != null) buildPhaseTooltip(def.getPhase(hoveredPhaseId));
+            String targetPhaseId = pinnedPhaseId != null ? pinnedPhaseId : hoveredPhaseId;
+            if (targetPhaseId != null) {
+                activeTooltipPhase = def.getPhase(targetPhaseId);
+            } else {
+                activeTooltipPhase = null;
+            }
         }
 
         g.pose().popPose();
         if (mc.screen instanceof QuestJournalScreen qjs) g.disableScissor();
+    }
+
+    private static void handleTooltipAnimation(float dt) {
+        if (activeTooltipPhase != null) {
+            if (renderingTooltipPhase != activeTooltipPhase) {
+                renderingTooltipPhase = activeTooltipPhase;
+                tooltipAnimProgress = 0f;
+            }
+            tooltipAnimProgress = Math.min(1.0f, tooltipAnimProgress + dt * 10f);
+        } else {
+            tooltipAnimProgress = Math.max(0.0f, tooltipAnimProgress - dt * 15f);
+            if (tooltipAnimProgress <= 0) {
+                renderingTooltipPhase = null;
+            }
+        }
+    }
+
+    private static void renderAwesomeTooltip(GuiGraphics g, Font font, PhaseDefinition phase, int anchorX, int anchorY, int screenW, int screenH, float dt, int realMx, int realMy) {
+        if (phase == null) return;
+
+        int padding = 10;
+        int cyberEdgeWidth = 3;
+        int textMaxWidth = 0;
+
+        String title = phase.getDisplayName().getString();
+        List<FormattedCharSequence> descLines = font.split(phase.getDescription(), 200 - padding * 2);
+
+        textMaxWidth = Math.max(textMaxWidth, font.width(title));
+        for (FormattedCharSequence line : descLines) {
+            textMaxWidth = Math.max(textMaxWidth, font.width(line));
+        }
+
+        boolean hasRewards = !phase.getPhaseRewards().isEmpty();
+        if (hasRewards) {
+            textMaxWidth = Math.max(textMaxWidth, font.width("REWARDS"));
+            for (IReward reward : phase.getPhaseRewards()) {
+                int rw;
+                if (reward instanceof ItemReward ir) {
+                    ItemStack st = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
+                    String itemName = st.getHoverName().getString() + (ir.getCount() > 1 ? " x" + ir.getCount() : "");
+                    rw = 24 + font.width(itemName);
+                } else {
+                    rw = 24 + font.width(reward.describe());
+                }
+                textMaxWidth = Math.max(textMaxWidth, rw);
+            }
+        }
+
+        int targetW = textMaxWidth + padding * 2 + cyberEdgeWidth;
+        int targetH = padding;
+
+        targetH += font.lineHeight;
+        if (!descLines.isEmpty()) {
+            targetH += 6 + descLines.size() * font.lineHeight;
+        }
+        if (hasRewards) {
+            targetH += 10 + font.lineHeight + phase.getPhaseRewards().size() * 22;
+        }
+        targetH += padding;
+
+        int targetX = anchorX + 16;
+        int targetY = anchorY + 16;
+        if (targetX + targetW > screenW) targetX = anchorX - targetW - 8;
+        if (targetY + targetH > screenH) targetY = screenH - targetH - 2;
+        if (targetY < 0) targetY = 2;
+
+        if (animTipW == 0 || Math.abs(animTipW - targetW) > 50 || tooltipAnimProgress < 0.1f) {
+            animTipX = targetX; animTipY = targetY; animTipW = targetW; animTipH = targetH;
+        } else {
+            float morphSpeed = 18f;
+            animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
+            animTipY += (targetY - animTipY) * Math.min(1f, dt * morphSpeed);
+            animTipW += (targetW - animTipW) * Math.min(1f, dt * morphSpeed);
+            animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
+        }
+
+        float t = tooltipAnimProgress;
+        float easeScale = (float) (1.0 - Math.pow(1.0 - t, 4));
+        if (easeScale < 0.01f) return;
+
+        int drawX = (int) animTipX, drawY = (int) animTipY;
+        int drawW = (int) animTipW, drawH = (int) animTipH;
+
+        int baseAlpha = Math.min(255, Math.max(0, (int) (255 * easeScale)));
+        int bgAlpha = (int) (0xD0 * easeScale);
+        int borderAlpha = (int) (0x66 * easeScale);
+
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 6000); // 这里的层级是 6000
+
+        float centerX = drawX + drawW / 2f;
+        float centerY = drawY + drawH / 2f;
+        g.pose().translate(centerX, centerY, 0);
+        g.pose().scale(easeScale, easeScale, 1f);
+        g.pose().translate(-centerX, -centerY, 0);
+
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+
+        HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, themeColor, baseAlpha);
+
+        Minecraft mc = Minecraft.getInstance();
+        boolean scissored = false;
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            qjs.enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
+            scissored = true;
+        } else {
+            g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+            scissored = true;
+        }
+
+        int contentX = drawX + cyberEdgeWidth + padding;
+        int contentY = drawY + padding;
+
+        g.drawString(font, Component.literal(title).withStyle(Style.EMPTY.withBold(true)), contentX, contentY, HudAnimUtil.withAlpha(0xFFFFFF, baseAlpha), true);
+        contentY += font.lineHeight;
+
+        if (!descLines.isEmpty()) {
+            contentY += 4;
+            g.fill(contentX, contentY, drawX + drawW - padding, contentY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(baseAlpha * 0.15)));
+            contentY += 4;
+
+            for (FormattedCharSequence line : descLines) {
+                g.drawString(font, line, contentX, contentY, HudAnimUtil.withAlpha(0xAAAAAA, baseAlpha), false);
+                contentY += font.lineHeight;
+            }
+        }
+
+        if (hasRewards) {
+            contentY += 6;
+            g.drawString(font, Component.literal("REWARDS").withStyle(Style.EMPTY.withBold(true)), contentX, contentY, HudAnimUtil.withAlpha(0xFFCC00, baseAlpha), true);
+            contentY += font.lineHeight + 4;
+
+            float localMouseX = (realMx - centerX) / easeScale + centerX;
+            float localMouseY = (realMy - centerY) / easeScale + centerY;
+
+            for (IReward reward : phase.getPhaseRewards()) {
+                g.fill(contentX, contentY, drawX + drawW - padding, contentY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int)(baseAlpha * 0.05)));
+
+                if (reward instanceof ItemReward ir) {
+                    ItemStack st = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
+
+                    RenderSystem.enableDepthTest();
+                    g.renderItem(st, contentX + 2, contentY + 2);
+                    g.renderItemDecorations(font, st, contentX + 2, contentY + 2);
+                    RenderSystem.disableDepthTest();
+
+                    String itemName = st.getHoverName().getString() + (ir.getCount() > 1 ? " x" + ir.getCount() : "");
+                    g.drawString(font, itemName, contentX + 24, contentY + 6, HudAnimUtil.withAlpha(0xFFFFFF, baseAlpha), true);
+
+                    if (localMouseX >= contentX && localMouseX <= contentX + 24 && localMouseY >= contentY && localMouseY <= contentY + 22) {
+                        hoveredRewardStack = st;
+                    }
+
+                } else {
+                    g.drawString(font, "■", contentX + 6, contentY + 6, HudAnimUtil.withAlpha(themeColor, baseAlpha), true);
+                    g.drawString(font, reward.describe(), contentX + 24, contentY + 6, HudAnimUtil.withAlpha(0xDDDDDD, baseAlpha), true);
+                }
+                contentY += 22;
+            }
+        }
+
+        if (scissored) {
+            g.disableScissor();
+        }
+
+        g.pose().popPose();
+    }
+
+    private static void renderCyberTooltip(GuiGraphics g, Font font, List<Component> tooltipLines, int mouseX, int mouseY, int theme) {
+        if (tooltipLines == null || tooltipLines.isEmpty()) return;
+
+        int padding = 6;
+        int cyberEdgeWidth = 3;
+        int textMaxWidth = 0;
+        for (Component line : tooltipLines) {
+            int lw = font.width(line);
+            if (lw > textMaxWidth) textMaxWidth = lw;
+        }
+
+        int drawW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
+        int drawH = tooltipLines.size() * font.lineHeight + padding * 2;
+
+        Minecraft mc = Minecraft.getInstance();
+        int sw = mc.getWindow().getGuiScaledWidth();
+        int sh = mc.getWindow().getGuiScaledHeight();
+
+        int drawX = mouseX + 12;
+        int drawY = mouseY - 12;
+        if (drawX + drawW > sw) drawX = mouseX - drawW - 8;
+        if (drawY + drawH > sh) drawY = sh - drawH - 2;
+        if (drawY < 2) drawY = 2;
+
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 8000);
+
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, 0xD0));
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
+        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
+        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
+        HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, theme, 0xFF);
+
+        int textX = drawX + cyberEdgeWidth + padding + 1;
+        int textY = drawY + padding;
+        for (Component line : tooltipLines) {
+            g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), true);
+            textY += font.lineHeight;
+        }
+
+        g.pose().popPose();
     }
 
     private static void drawOrthogonalLine(GuiGraphics g, int x1, int y1, int x2, int y2, boolean isCompleted, float alphaF, int theme) {
@@ -467,40 +759,5 @@ public final class QuestHistoryPanel {
         targetPanY = (viewH - treeH * targetZoom) / 2f - minY * targetZoom;
 
         zoom = targetZoom; panX = targetPanX; panY = targetPanY;
-    }
-
-    private static void buildPhaseTooltip(PhaseDefinition phase) {
-        if (phase == null) return;
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.literal(phase.getDisplayName().getString()).withStyle(Style.EMPTY.withColor(0xFFFFFF).withBold(true)));
-
-        if (!phase.getDescription().getString().isEmpty()) {
-            lines.add(Component.literal(phase.getDescription().getString()).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
-        }
-
-        List<String> rewards = new ArrayList<>();
-        for (IReward reward : phase.getPhaseRewards()) {
-            if (reward instanceof ItemReward ir) {
-                ItemStack st = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
-                rewards.add(st.getHoverName().getString() + (ir.getCount() > 1 ? " x" + ir.getCount() : ""));
-            } else {
-                rewards.add(reward.describe());
-            }
-        }
-
-        if (!rewards.isEmpty()) {
-            lines.add(Component.empty());
-            lines.add(Component.literal("Rewards:").withStyle(Style.EMPTY.withColor(0xFFCC00)));
-            for (String r : rewards) {
-                lines.add(Component.literal("■ " + r).withStyle(Style.EMPTY.withColor(0xFFFFFF)));
-            }
-        }
-        hoveredCustomTooltip = lines;
-        for (IReward reward : phase.getPhaseRewards()) {
-            if (reward instanceof ItemReward ir) {
-                hoveredRewardStack = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
-                break;
-            }
-        }
     }
 }

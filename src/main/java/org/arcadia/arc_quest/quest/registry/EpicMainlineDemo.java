@@ -61,6 +61,7 @@ public final class EpicMainlineDemo {
                         .phase(PhaseBuilder.create("arc_quest:gather_wood")
                                 .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood"))
+                                .description("描述1描述1描述1描述1描述1描述1描述1描述1描述1")
                                 .setFlagOnEnter("arc_quest:prologue_started")
                                 .objective(ObjectiveBuilder.offerTag(ItemTags.LOGS.location(), 20)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.gather_wood.0")))
@@ -82,6 +83,7 @@ public final class EpicMainlineDemo {
                         // 并行支线A：侦查森林
                         .phase(PhaseBuilder.create("arc_quest:scout_forest")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.scout_forest"))
+                                .description("描述1描述1描述1描述1描述1描述1描述1描述1描述1")
                                 .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
                                 .objective(ObjectiveBuilder.collect(Items.STRING, 10)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.scout_forest.0")))
@@ -92,6 +94,7 @@ public final class EpicMainlineDemo {
                         // 并行支线B：加固村门
                         .phase(PhaseBuilder.create("arc_quest:reinforce_gate")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.reinforce_gate"))
+                                .description("描述1描述1描述1描述1描述1描述1描述1描述1描述1")
                                 .objective(ObjectiveBuilder.offerTag(ItemTags.PLANKS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
                                 .objective(ObjectiveBuilder.offerTag(ItemTags.FENCES.location(), 8)
@@ -104,6 +107,7 @@ public final class EpicMainlineDemo {
 
                         .phase(PhaseBuilder.create("arc_quest:reinforce_gate2")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.reinforce_gate"))
+                                .description("描述1描述1描述1描述1描述1描述1描述1描述1描述1")
                                 .objective(ObjectiveBuilder.offerTag(ItemTags.DOORS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.0")))
                                 .objective(ObjectiveBuilder.offerTag(ItemTags.STONE_BRICKS.location(), 8)

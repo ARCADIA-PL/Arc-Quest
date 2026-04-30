@@ -81,6 +81,17 @@ public final class QuestOfferPanel {
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
 
+    private static long autoCloseAtMs = 0L;
+
+    private enum FinishMode {
+        NONE,
+        PENDING_NORMAL,
+        NORMAL_CLOSE,
+        CLEARED_CLOSE
+    }
+    private static FinishMode finishMode = FinishMode.NONE;
+    private static long finishDecideAtMs = 0L;
+
     private QuestOfferPanel() {}
 
     public static void trigger(String qid, String pid, int objIndex) {
@@ -110,6 +121,9 @@ public final class QuestOfferPanel {
         sliderValue = 1;
         sliderHoverAnim = 0f;
         visualThumbX = -1f;
+        finishMode = FinishMode.NONE;
+        finishDecideAtMs = 0L;
+        autoCloseAtMs = 0L;
 
         OfferVM initialVm = resolveOfferViewModel();
         lastValidVm = initialVm;
@@ -276,9 +290,27 @@ public final class QuestOfferPanel {
         float ly = (float) ((my - currentDrawY) / currentScale);
 
         OfferVM vm = resolveOfferViewModel();
+        long nowMs = Util.getMillis();
+
+        if (!closing && vm == null && lastValidVm != null) {
+            finishMode = FinishMode.CLEARED_CLOSE;
+        }
+
+        if (!closing && finishMode == FinishMode.NONE && vm != null && vm.required > 0 && vm.current >= vm.required) {
+            finishMode = FinishMode.PENDING_NORMAL;
+            finishDecideAtMs = nowMs + 220L;
+        }
+
+        if (!closing && finishMode == FinishMode.PENDING_NORMAL && nowMs >= finishDecideAtMs) {
+            finishMode = FinishMode.NORMAL_CLOSE;
+            autoCloseAtMs = nowMs + 120L;
+        }
+
         if (vm != null) {
             lastValidVm = vm;
-        } else if (lastValidVm != null && !cleared && !closing) {
+        }
+
+        if (finishMode == FinishMode.CLEARED_CLOSE && lastValidVm != null && !cleared && !closing) {
             cleared = true;
             clearTimer = 0f;
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.0F));
@@ -299,7 +331,7 @@ public final class QuestOfferPanel {
 
         updateSubmitFeedback(renderVm, dt);
 
-        if (!cleared && !closing && renderVm != null && renderVm.required > 0 && renderVm.current >= renderVm.required) {
+        if (finishMode == FinishMode.NORMAL_CLOSE && !cleared && !closing && nowMs >= autoCloseAtMs) {
             close();
             return;
         }
