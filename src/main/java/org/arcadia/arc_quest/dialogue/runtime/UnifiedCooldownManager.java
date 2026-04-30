@@ -65,14 +65,14 @@ public final class UnifiedCooldownManager {
 
             case GAME_DAY -> {
                 long lastGameTime = record.gameTime();
-                long lastDayTime  = record.dayTime();
+                long lastDayTime = record.dayTime();
                 if (lastDayTime < 0 || lastGameTime < 0) yield false;
 
                 long gameTimeElapsed = nowGameTime - lastGameTime;
                 if (gameTimeElapsed >= 24000) yield false;
 
                 long lastDay = lastDayTime / 24000L;
-                long nowDay  = nowDayTime  / 24000L;
+                long nowDay = nowDayTime / 24000L;
                 if (lastDay != nowDay) yield false;
 
                 yield nowDayTime >= lastDayTime || gameTimeElapsed <= 0;
@@ -80,7 +80,7 @@ public final class UnifiedCooldownManager {
 
             case GAME_TICK -> {
                 long lastRawDayTime = record.dayTime();
-                long lastGameTime   = record.gameTime();
+                long lastGameTime = record.gameTime();
                 if (lastRawDayTime < 0 || lastGameTime < 0) yield false;
 
                 long gameTimeElapsed = nowGameTime - lastGameTime;
@@ -88,7 +88,7 @@ public final class UnifiedCooldownManager {
                 if (nowDayTime < lastRawDayTime && gameTimeElapsed > 0) yield false;
 
                 long recordedPeriod = Math.floorDiv(lastRawDayTime - resetTick, 24000);
-                long currentPeriod  = Math.floorDiv(nowDayTime     - resetTick, 24000);
+                long currentPeriod = Math.floorDiv(nowDayTime - resetTick, 24000);
                 yield recordedPeriod == currentPeriod;
             }
         };
@@ -101,7 +101,7 @@ public final class UnifiedCooldownManager {
      * 接受任意 {@link ICooldownRecord} 实现。
      */
     public static int getGameTickCooldownRemainingTicks(ICooldownRecord record, int resetTick,
-                                                         long nowGameTime, long nowDayTime) {
+                                                        long nowGameTime, long nowDayTime) {
         if (!record.exists() || record.dayTime() < 0 || record.gameTime() < 0) return 0;
 
         long gameTimeElapsed = nowGameTime - record.gameTime();
@@ -109,11 +109,11 @@ public final class UnifiedCooldownManager {
         if (nowDayTime < record.dayTime() && gameTimeElapsed > 0) return 0;
 
         long recordedPeriod = Math.floorDiv(record.dayTime() - resetTick, 24000);
-        long currentPeriod  = Math.floorDiv(nowDayTime       - resetTick, 24000);
+        long currentPeriod = Math.floorDiv(nowDayTime - resetTick, 24000);
         if (recordedPeriod != currentPeriod) return 0;
 
         long currentDayTick = ((nowDayTime % 24000) + 24000) % 24000;
-        long resetTickNorm  = ((long) resetTick % 24000 + 24000) % 24000;
+        long resetTickNorm = ((long) resetTick % 24000 + 24000) % 24000;
 
         return (int) (currentDayTick >= resetTickNorm
                 ? 24000 - currentDayTick + resetTickNorm

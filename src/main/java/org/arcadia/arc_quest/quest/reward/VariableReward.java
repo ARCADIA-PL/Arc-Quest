@@ -42,8 +42,8 @@ public final class VariableReward implements IReward {
 
     public int apply(int current) {
         return switch (this.operation) {
-            case SET      -> this.value;
-            case ADD      -> current + this.value;
+            case SET -> this.value;
+            case ADD -> current + this.value;
             case SUBTRACT -> current - this.value;
             case MULTIPLY -> current * this.value;
         };
@@ -62,5 +62,5 @@ public final class VariableReward implements IReward {
         return "Var(" + this.variableName + " " + this.operation + " " + this.value + ")";
     }
 
-    public enum Op { SET, ADD, SUBTRACT, MULTIPLY }
+    public enum Op {SET, ADD, SUBTRACT, MULTIPLY}
 }

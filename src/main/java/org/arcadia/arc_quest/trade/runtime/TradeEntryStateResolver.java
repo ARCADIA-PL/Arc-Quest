@@ -30,7 +30,8 @@ public final class TradeEntryStateResolver {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private TradeEntryStateResolver() {}
+    private TradeEntryStateResolver() {
+    }
 
     /**
      * 检查商品是否在冷却中。

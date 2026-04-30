@@ -91,22 +91,89 @@ public record DialogueNode(
             this.nodeId = nodeId;
         }
 
-        public Builder speaker(DialogueText s) { this.speaker = s; return this; }
-        public Builder speaker(String s) { this.speaker = DialogueText.literal(s); return this; }
-        public Builder text(DialogueText t) { this.text = t; return this; }
-        public Builder text(String t) { this.text = DialogueText.literal(t); return this; }
-        public Builder conditionalTexts(Map<String, ConditionalSay> ct) { this.conditionalTexts = ct; return this; }
-        public Builder choices(DialogueChoice... c) { this.choices = List.of(c); return this; }
-        public Builder choices(List<DialogueChoice> c) { this.choices = List.copyOf(c); return this; }
-        public Builder autoNext(String id) { this.autoNextId = id; return this; }
-        public Builder delay(int ms) { this.delayMs = ms; return this; }
-        public Builder repeatable(boolean r) { this.repeatable = r; return this; }
-        public Builder cooldown(long seconds) { this.cooldownSeconds = seconds; this.cooldownType = CooldownType.SECONDS; return this; }
-        public Builder cooldownGameDay() { this.cooldownSeconds = 1; this.cooldownType = CooldownType.GAME_DAY; return this; }
-        public Builder cooldownAtTick(int tick) { this.cooldownSeconds = 1; this.cooldownType = CooldownType.GAME_TICK; this.resetTimeTicks = Math.max(0, Math.min(tick, 24000)); return this; }
-        public Builder cooldownType(CooldownType type) { this.cooldownType = type; return this; }
-        public Builder resetTimeTicks(int ticks) { this.resetTimeTicks = Math.max(0, Math.min(ticks, 24000)); return this; }
-        public Builder enterSound(SoundEvent sound) { this.nodeEnterSound = sound; return this; }
+        public Builder speaker(DialogueText s) {
+            this.speaker = s;
+            return this;
+        }
+
+        public Builder speaker(String s) {
+            this.speaker = DialogueText.literal(s);
+            return this;
+        }
+
+        public Builder text(DialogueText t) {
+            this.text = t;
+            return this;
+        }
+
+        public Builder text(String t) {
+            this.text = DialogueText.literal(t);
+            return this;
+        }
+
+        public Builder conditionalTexts(Map<String, ConditionalSay> ct) {
+            this.conditionalTexts = ct;
+            return this;
+        }
+
+        public Builder choices(DialogueChoice... c) {
+            this.choices = List.of(c);
+            return this;
+        }
+
+        public Builder choices(List<DialogueChoice> c) {
+            this.choices = List.copyOf(c);
+            return this;
+        }
+
+        public Builder autoNext(String id) {
+            this.autoNextId = id;
+            return this;
+        }
+
+        public Builder delay(int ms) {
+            this.delayMs = ms;
+            return this;
+        }
+
+        public Builder repeatable(boolean r) {
+            this.repeatable = r;
+            return this;
+        }
+
+        public Builder cooldown(long seconds) {
+            this.cooldownSeconds = seconds;
+            this.cooldownType = CooldownType.SECONDS;
+            return this;
+        }
+
+        public Builder cooldownGameDay() {
+            this.cooldownSeconds = 1;
+            this.cooldownType = CooldownType.GAME_DAY;
+            return this;
+        }
+
+        public Builder cooldownAtTick(int tick) {
+            this.cooldownSeconds = 1;
+            this.cooldownType = CooldownType.GAME_TICK;
+            this.resetTimeTicks = Math.max(0, Math.min(tick, 24000));
+            return this;
+        }
+
+        public Builder cooldownType(CooldownType type) {
+            this.cooldownType = type;
+            return this;
+        }
+
+        public Builder resetTimeTicks(int ticks) {
+            this.resetTimeTicks = Math.max(0, Math.min(ticks, 24000));
+            return this;
+        }
+
+        public Builder enterSound(SoundEvent sound) {
+            this.nodeEnterSound = sound;
+            return this;
+        }
 
         public DialogueNode build() {
             return new DialogueNode(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs,

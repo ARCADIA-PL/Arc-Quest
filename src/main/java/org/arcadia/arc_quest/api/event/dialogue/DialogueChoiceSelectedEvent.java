@@ -20,12 +20,12 @@ public class DialogueChoiceSelectedEvent extends Event {
     private final String dialogueId;
     private final String nodeId;
     private final int choiceIndex;
-    
+
     /**
      * 选项的唯一标识符（带命名空间）。
      */
     private final String choiceId;
-    
+
     private final String choiceText;
 
     public DialogueChoiceSelectedEvent(ServerPlayer player, Entity npc, String dialogueId,
@@ -73,10 +73,10 @@ public class DialogueChoiceSelectedEvent extends Event {
     public int getChoiceIndex() {
         return choiceIndex;
     }
-    
+
     /**
      * 获取选项的唯一标识符。
-     * 
+     *
      * @return Choice ID（guaranteed non-null）
      */
     public String getChoiceId() {

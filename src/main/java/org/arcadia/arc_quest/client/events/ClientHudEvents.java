@@ -79,7 +79,7 @@ public class ClientHudEvents {
     public static void onScreenKeyPressPre(ScreenEvent.KeyPressed.Pre event) {
         // Intel 面板优先处理键盘
         if (QuestIntelPanel.isActive()) {
-            int key  = event.getKeyCode();
+            int key = event.getKeyCode();
             int scan = event.getScanCode();
             Minecraft mc = Minecraft.getInstance();
 

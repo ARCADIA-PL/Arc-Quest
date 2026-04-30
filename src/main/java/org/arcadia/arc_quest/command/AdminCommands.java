@@ -28,12 +28,12 @@ public class AdminCommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {
         return Commands.literal("admin")
-                        // /arcquest admin registry
-                        .then(Commands.literal("registry")
-                                .executes(AdminCommands::cmdRegistry))
-                        // /arcquest admin reload
-                        .then(Commands.literal("reload")
-                                .executes(AdminCommands::cmdReload));
+                // /arcquest admin registry
+                .then(Commands.literal("registry")
+                        .executes(AdminCommands::cmdRegistry))
+                // /arcquest admin reload
+                .then(Commands.literal("reload")
+                        .executes(AdminCommands::cmdReload));
     }
 
     // ═══════════════════════════════════════════════════════

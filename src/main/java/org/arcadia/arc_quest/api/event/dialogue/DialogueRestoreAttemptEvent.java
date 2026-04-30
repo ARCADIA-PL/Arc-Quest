@@ -14,7 +14,15 @@ public class DialogueRestoreAttemptEvent extends Event {
         this.restoreNodeId = restoreNodeId;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public String getDialogueId() { return dialogueId; }
-    public String getRestoreNodeId() { return restoreNodeId; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public String getDialogueId() {
+        return dialogueId;
+    }
+
+    public String getRestoreNodeId() {
+        return restoreNodeId;
+    }
 }

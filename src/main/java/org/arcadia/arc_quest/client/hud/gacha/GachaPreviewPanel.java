@@ -22,30 +22,24 @@ public class GachaPreviewPanel {
     private static final float WIPE_FADE_SPEED = 2.8f;       // 其余元素透明度衰减倍率
     private static final float WIPE_SHRINK_SPEED = 3.5f;     // 中心物品图标缩小倍率
     private static final float WIPE_SHRINK_POWER = 3.0f;     // 物品图标缩小的曲线次幂
-
+    private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
+    private static final float TIP_HOVER_DELAY = 0.05f;
     private final GachaScreen parent;
     private int width, height;
-
     private double scrollOffset = 0;
     private double targetScroll = 0;
     private float[] hoverAnims;
-
     private float btnHoverAnim = 0f;
     private float feedbackAnim = 0f;
     private boolean feedbackSuccess = false;
     private float shortfallTooltipAnim = 0f;
-    private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
-
     private int lastHoveredIndex = -1;
     private float previewSwitchAnim = 0f;
-
     private float previewAlphaAnim = 0f;
     private int tooltipHoverIndex = -1;
     private float tooltipHoverTimer = 0f;
     private float tooltipTipAlpha = 0f;
     private float animTipX = 0f, animTipY = 0f, animTipW = 0f, animTipH = 0f;
-    private static final float TIP_HOVER_DELAY = 0.05f;
-
     private int lastHistorySize = -1;
     private float logRollAnim = 0f;
 
@@ -59,6 +53,17 @@ public class GachaPreviewPanel {
 
     public GachaPreviewPanel(GachaScreen parent) {
         this.parent = parent;
+    }
+
+    private static boolean isCannotAffordFailure(String failReason) {
+        if (failReason == null || failReason.isEmpty()) {
+            return false;
+        }
+        String key = failReason.toLowerCase();
+        return "cannot_afford".equals(key)
+                || key.contains("cannot_afford")
+                || key.contains("insufficient")
+                || key.endsWith(".cannot_afford");
     }
 
     public void init(int w, int h) {
@@ -84,19 +89,17 @@ public class GachaPreviewPanel {
         this.snapshotCooldownText = cache.getCooldownText(shopId);
     }
 
-    private record Layout(int termW, int termX, int gridX, int gridW, int mainCX, int topH, int gridY, int gridH, int btnW, int btnH, int btnX, int btnY) {}
-
     private Layout getLayout() {
-        int termW = Math.max(140, Math.min(220, (int)(width * 0.22f)));
+        int termW = Math.max(140, Math.min(220, (int) (width * 0.22f)));
         int termX = width - 10 - termW;
 
-        int gridW = Math.max(400, (int)(width * 0.55f));
+        int gridW = Math.max(400, (int) (width * 0.55f));
         int gridX = width / 2 - gridW / 2;
         int mainCX = width / 2;
 
-        int topH = Math.max(100, (int)(height * 0.28f));
+        int topH = Math.max(100, (int) (height * 0.28f));
         int btnH = 28;
-        int btnW = Math.max(160, Math.min(280, (int)(gridW * 0.5f)));
+        int btnW = Math.max(160, Math.min(280, (int) (gridW * 0.5f)));
         int btnX = mainCX - btnW / 2;
         int btnY = height - btnH - 15;
 
@@ -159,13 +162,13 @@ public class GachaPreviewPanel {
 
         g.pose().pushPose();
         g.pose().translate(-slideX, splitOffset, 0);
-        renderItemGrid(g, l, mx + (int)slideX, (int)(my - splitOffset), dt, alpha, easeProgress, isWiping, isClosing, wipeScY1, wipeScY2, splitOffset);
+        renderItemGrid(g, l, mx + (int) slideX, (int) (my - splitOffset), dt, alpha, easeProgress, isWiping, isClosing, wipeScY1, wipeScY2, splitOffset);
         g.pose().popPose();
 
         if (isWiping) g.enableScissor(0, wipeScY1, width, wipeScY2);
         g.pose().pushPose();
         g.pose().translate(0, slideY + splitOffset, 0);
-        renderGlassButton(g, l, mx, (int)(my - slideY - splitOffset), dt, alpha, waiting, isWiping, isClosing);
+        renderGlassButton(g, l, mx, (int) (my - slideY - splitOffset), dt, alpha, waiting, isWiping, isClosing);
         g.pose().popPose();
         if (isWiping) g.disableScissor();
 
@@ -185,16 +188,16 @@ public class GachaPreviewPanel {
         g.pose().translate(l.mainCX(), cy, 0);
         g.pose().scale(adaptiveScale, adaptiveScale, 1f);
 
-        int titleAlpha = (int)(255 * alpha);
+        int titleAlpha = (int) (255 * alpha);
         if (titleAlpha > 5) {
             g.pose().pushPose();
             g.pose().scale(1.4f, 1.4f, 1f);
-            g.drawCenteredString(Minecraft.getInstance().font, parent.getShopDef().getDisplayName(), 0, - (cy / 2), HudAnimUtil.withAlpha(0xFFFFFF, titleAlpha));
+            g.drawCenteredString(Minecraft.getInstance().font, parent.getShopDef().getDisplayName(), 0, -(cy / 2), HudAnimUtil.withAlpha(0xFFFFFF, titleAlpha));
             g.pose().popPose();
         }
 
         float textAlphaF = alpha * (1f - previewAlphaAnim);
-        int targetAlpha = (int)(255 * textAlphaF);
+        int targetAlpha = (int) (255 * textAlphaF);
         if (targetAlpha > 5 && !isWiping) {
             g.drawCenteredString(Minecraft.getInstance().font, "// SELECT TARGET //", 0, 0, HudAnimUtil.withAlpha(0x555555, targetAlpha));
         }
@@ -209,11 +212,11 @@ public class GachaPreviewPanel {
             }
             float ease = HudAnimUtil.easeOutCubic(previewSwitchAnim);
 
-            int safeA = (int)(255 * alpha * ease * previewAlphaAnim);
-            float pulseScale = 1.0f + (float)Math.sin(Util.getMillis() / 600.0) * 0.02f;
+            int safeA = (int) (255 * alpha * ease * previewAlphaAnim);
+            float pulseScale = 1.0f + (float) Math.sin(Util.getMillis() / 600.0) * 0.02f;
 
-            float breatheAlpha = 0.6f + 0.4f * (float)Math.sin(Util.getMillis() / 250.0);
-            int glowA = (int)(150 * alpha * ease * previewAlphaAnim * breatheAlpha);
+            float breatheAlpha = 0.6f + 0.4f * (float) Math.sin(Util.getMillis() / 250.0);
+            int glowA = (int) (150 * alpha * ease * previewAlphaAnim * breatheAlpha);
 
             g.fill(-50, 18, 50, 20, HudAnimUtil.withAlpha(themeC, safeA));
             g.fillGradient(-65, -5, 65, 18, 0x00000000, HudAnimUtil.withAlpha(themeC, glowA));
@@ -221,9 +224,9 @@ public class GachaPreviewPanel {
             // 【急速缩小升级】：计算擦除状态下特有的极速坍缩缩放比
             float wipeShrinkScale = isWiping ? Math.max(0f, 1f - (rollTransition * WIPE_SHRINK_SPEED)) : 1f;
 
-            float dynamicScale = isClosing ? (float)Math.pow(alpha, 4.0) : (float)Math.pow(alpha, 0.5);
+            float dynamicScale = isClosing ? (float) Math.pow(alpha, 4.0) : (float) Math.pow(alpha, 0.5);
             // 将擦除的急速坍缩次幂叠加上去
-            dynamicScale *= (float)Math.pow(wipeShrinkScale, WIPE_SHRINK_POWER);
+            dynamicScale *= (float) Math.pow(wipeShrinkScale, WIPE_SHRINK_POWER);
 
             float finalIconScale = 2.5f * pulseScale * dynamicScale;
 
@@ -260,7 +263,7 @@ public class GachaPreviewPanel {
             String text = current + "/" + pityThreshold;
             g.pose().pushPose();
             g.pose().scale(0.65f, 0.65f, 1f);
-            g.drawCenteredString(Minecraft.getInstance().font, text, (int)(centerX / 0.65f), (int)((y + h + 2) / 0.65f), HudAnimUtil.withAlpha(0xAAAAAA, alpha));
+            g.drawCenteredString(Minecraft.getInstance().font, text, (int) (centerX / 0.65f), (int) ((y + h + 2) / 0.65f), HudAnimUtil.withAlpha(0xAAAAAA, alpha));
             g.pose().popPose();
         }
     }
@@ -285,8 +288,8 @@ public class GachaPreviewPanel {
         int gridScY2 = l.gridY() + l.gridH() + 10;
 
         if (isWiping) {
-            int localWipeY1 = (int)(wipeY1 - splitOffset);
-            int localWipeY2 = (int)(wipeY2 - splitOffset);
+            int localWipeY1 = (int) (wipeY1 - splitOffset);
+            int localWipeY2 = (int) (wipeY2 - splitOffset);
             gridScY1 = Math.max(gridScY1, localWipeY1);
             gridScY2 = Math.min(gridScY2, localWipeY2);
         }
@@ -308,7 +311,7 @@ public class GachaPreviewPanel {
             int row = i / cols;
 
             int drawX = l.gridX() + col * (cardW + gap);
-            int drawY = l.gridY() + row * (cardH + gap) - (int)scrollOffset;
+            int drawY = l.gridY() + row * (cardH + gap) - (int) scrollOffset;
 
             float cascadeYOffset = (1.0f - itemCascadeEase) * 10f;
             drawY += cascadeYOffset;
@@ -328,24 +331,24 @@ public class GachaPreviewPanel {
             float cardScale = itemCascadeEase * baseCardScale * (1.0f + hEase * 0.05f);
 
             g.pose().pushPose();
-            g.pose().translate(drawX + cardW/2f, drawY + cardH/2f, 0);
+            g.pose().translate(drawX + cardW / 2f, drawY + cardH / 2f, 0);
             g.pose().scale(cardScale, cardScale, 1f);
-            g.pose().translate(-(drawX + cardW/2f), -(drawY + cardH/2f), 0);
+            g.pose().translate(-(drawX + cardW / 2f), -(drawY + cardH / 2f), 0);
 
-            int safeA = (int)(255 * alpha * itemCascadeEase);
+            int safeA = (int) (255 * alpha * itemCascadeEase);
             int bgAlpha = (int) ((0x1A + 0x22 * hEase) * alpha * itemCascadeEase);
-            float breatheAlpha = 1.0f + 0.5f * (float)Math.sin(Util.getMillis() / 200.0);
-            int pulseGlowA = (int)((30 + 50 * hEase * breatheAlpha) * alpha * itemCascadeEase);
+            float breatheAlpha = 1.0f + 0.5f * (float) Math.sin(Util.getMillis() / 200.0);
+            int pulseGlowA = (int) ((30 + 50 * hEase * breatheAlpha) * alpha * itemCascadeEase);
 
             g.fill(drawX, drawY, drawX + cardW, drawY + cardH, (bgAlpha << 24) | 0x05050A);
 
             HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, cardH, themeC, safeA);
 
             g.fillGradient(drawX + 3, drawY, drawX + cardW, drawY + cardH, HudAnimUtil.withAlpha(themeC, pulseGlowA), 0x00000000);
-            g.fillGradient(drawX + 3, drawY + cardH - (int)(24 * responsiveScale), drawX + cardW, drawY + cardH, 0x00000000, HudAnimUtil.withAlpha(0x000000, (int)(safeA * 0.9f)));
+            g.fillGradient(drawX + 3, drawY + cardH - (int) (24 * responsiveScale), drawX + cardW, drawY + cardH, 0x00000000, HudAnimUtil.withAlpha(0x000000, (int) (safeA * 0.9f)));
 
             g.pose().pushPose();
-            g.pose().translate(drawX + cardW/2f, drawY + cardH/2f - (3 * responsiveScale), 0);
+            g.pose().translate(drawX + cardW / 2f, drawY + cardH / 2f - (3 * responsiveScale), 0);
             float iconScale = 1.8f * responsiveScale;
             g.pose().scale(iconScale, iconScale, 1f);
             g.pose().translate(-8, -8, 0);
@@ -354,7 +357,7 @@ public class GachaPreviewPanel {
 
             String name = item.getItemStack().getHoverName().getString();
             float textScale = Math.max(0.6f, 0.85f * responsiveScale);
-            int maxTextW = (int)((cardW - 8) / textScale);
+            int maxTextW = (int) ((cardW - 8) / textScale);
             if (Minecraft.getInstance().font.width(name) > maxTextW) {
                 name = Minecraft.getInstance().font.plainSubstrByWidth(name, maxTextW - 6) + "..";
             }
@@ -443,8 +446,10 @@ public class GachaPreviewPanel {
 
         // --- 2. 丝滑形变计算 (保留原有逻辑) ---
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
-            animTipX = targetX; animTipY = targetY;
-            animTipW = targetW; animTipH = targetH;
+            animTipX = targetX;
+            animTipY = targetY;
+            animTipW = targetW;
+            animTipH = targetH;
         } else {
             float morphSpeed = 15f;
             animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
@@ -496,7 +501,7 @@ public class GachaPreviewPanel {
         currentY += 14;
 
         // 主题色精美分割线
-        g.fill(leftX, currentY, rightX, currentY + 1, HudAnimUtil.withAlpha(themeColor, (int)(safeAlpha * 0.3f)));
+        g.fill(leftX, currentY, rightX, currentY + 1, HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * 0.3f)));
         g.fill(leftX, currentY, leftX + 20, currentY + 1, HudAnimUtil.withAlpha(themeColor, safeAlpha));
         currentY += 6;
 
@@ -527,7 +532,6 @@ public class GachaPreviewPanel {
     }
 
 
-
     private void renderShortfallTooltip(GuiGraphics g, Layout l, float alpha, int drawX) {
         var font = Minecraft.getInstance().font;
         List<CostShortfallLine> shortfalls = snapshotShortfall;
@@ -536,7 +540,7 @@ public class GachaPreviewPanel {
         }
 
         float ease = HudAnimUtil.easeOutCubic(shortfallTooltipAnim);
-        int safeAlpha = (int)(220 * alpha * ease);
+        int safeAlpha = (int) (220 * alpha * ease);
         if (safeAlpha <= 5) return;
 
         // --- 1. 同步 TradeScreen 的排版尺寸计算 ---
@@ -558,14 +562,14 @@ public class GachaPreviewPanel {
 
         // --- 2. 背景与边框 ---
         g.fill(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
-        g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int)(40 * alpha * ease)), 0);
+        g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int) (40 * alpha * ease)), 0);
         HudAnimUtil.drawFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
 
         // --- 3. 核心可视化内容排版 ---
         int currentY = boxY + padding;
 
         // 机能风红色警告分割线
-        g.fill(boxX + padding, currentY, boxX + boxW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int)(safeAlpha * 0.2f)));
+        g.fill(boxX + padding, currentY, boxX + boxW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (safeAlpha * 0.2f)));
         g.fill(boxX + padding, currentY, boxX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
         currentY += 6;
 
@@ -600,13 +604,13 @@ public class GachaPreviewPanel {
                 g.drawString(font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, safeAlpha), false);
                 g.pose().popPose();
 
-                int metaWidth = (int)(font.width(metaTxt) * 0.8f);
+                int metaWidth = (int) (font.width(metaTxt) * 0.8f);
                 int barX = boxX + padding + 6 + metaWidth + 6;
                 int barW = boxW - padding * 2 - (barX - boxX) - 5;
 
                 if (barW > 10) {
-                    float pct = Math.min(1f, (float)sf.owned() / sf.required());
-                    int fillW = (int)(barW * pct);
+                    float pct = Math.min(1f, (float) sf.owned() / sf.required());
+                    int fillW = (int) (barW * pct);
                     // 暗红底槽
                     g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
                     // 亮红填充
@@ -620,7 +624,7 @@ public class GachaPreviewPanel {
     }
 
     private void renderRightTerminalTracker(GuiGraphics g, Layout l, float dt, float alpha, boolean isWiping, boolean isClosing) {
-        int safeA = (int)(255 * alpha);
+        int safeA = (int) (255 * alpha);
         if (safeA <= 5) return;
         int termColor = HudAnimUtil.blend(parent.getShopDef().getThemeColor(), 0x00FFFF, 0.15f);
 
@@ -630,15 +634,15 @@ public class GachaPreviewPanel {
         g.pose().pushPose();
         int spineX = l.termX() + l.termW();
 
-        g.fill(spineX, y, spineX + 1, y + h, HudAnimUtil.withAlpha(termColor, (int)(safeA * 0.4f)));
+        g.fill(spineX, y, spineX + 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.4f)));
         g.fill(spineX - 4, y, spineX + 2, y + 2, HudAnimUtil.withAlpha(termColor, safeA));
-        g.fill(spineX - 4, y, spineX - 1, y + 8, HudAnimUtil.withAlpha(termColor, (int)(safeA * 0.6f)));
+        g.fill(spineX - 4, y, spineX - 1, y + 8, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
         g.fill(spineX - 4, y + h - 2, spineX + 2, y + h, HudAnimUtil.withAlpha(termColor, safeA));
-        g.fill(spineX - 4, y + h - 8, spineX - 1, y + h, HudAnimUtil.withAlpha(termColor, (int)(safeA * 0.6f)));
-        g.fill(spineX - 2, y + h/2 - 10, spineX + 2, y + h/2 + 10, HudAnimUtil.withAlpha(termColor, safeA));
+        g.fill(spineX - 4, y + h - 8, spineX - 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.6f)));
+        g.fill(spineX - 2, y + h / 2 - 10, spineX + 2, y + h / 2 + 10, HudAnimUtil.withAlpha(termColor, safeA));
 
-        for(int tick = y + 20; tick < y + h - 20; tick += 40) {
-            g.fill(spineX - 4, tick, spineX, tick + 1, HudAnimUtil.withAlpha(termColor, (int)(safeA * 0.2f)));
+        for (int tick = y + 20; tick < y + h - 20; tick += 40) {
+            g.fill(spineX - 4, tick, spineX, tick + 1, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.2f)));
         }
 
         String title = "// UPLINK.LOG";
@@ -692,9 +696,9 @@ public class GachaPreviewPanel {
                 if (i == 0 && logRollAnim > 0) itemAlphaMod = rollEase;
                 else if (isFull && i == limit - 1 && logRollAnim > 0) itemAlphaMod = 1.0f - rollEase;
 
-                int finalA = (int)(safeA * itemAlphaMod);
+                int finalA = (int) (safeA * itemAlphaMod);
                 if (finalA > 5) {
-                    g.drawString(Minecraft.getInstance().font, text, textStartX + 7, (int)drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
+                    g.drawString(Minecraft.getInstance().font, text, textStartX + 7, (int) drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
                 }
             }
         }
@@ -722,7 +726,8 @@ public class GachaPreviewPanel {
         if (!isWiping && !isClosing) {
             btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 10f, dt);
             if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
-            if (shortfallTooltipAnim > 0) shortfallTooltipAnim = Math.max(0, shortfallTooltipAnim - dt / SHORTFALL_TOOLTIP_DURATION);
+            if (shortfallTooltipAnim > 0)
+                shortfallTooltipAnim = Math.max(0, shortfallTooltipAnim - dt / SHORTFALL_TOOLTIP_DURATION);
         }
 
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
@@ -735,14 +740,14 @@ public class GachaPreviewPanel {
                 : unavailable ? 0x888888
                 : parent.getShopDef().getThemeColor();
 
-        int shakeX = (feedbackAnim > 0 && !feedbackSuccess) ? (int)(Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0;
+        int shakeX = (feedbackAnim > 0 && !feedbackSuccess) ? (int) (Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0;
         int drawX = l.btnX() + shakeX;
 
-        g.fill(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x151515, (int)(200 * alpha)));
-        g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int)((40 + 60 * hEase) * alpha)), 0);
-        HudAnimUtil.drawFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int)((150 + 105 * hEase) * alpha)));
+        g.fill(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x151515, (int) (200 * alpha)));
+        g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((40 + 60 * hEase) * alpha)), 0);
+        HudAnimUtil.drawFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
 
-        int btnTextAlpha = (int)(255 * alpha);
+        int btnTextAlpha = (int) (255 * alpha);
         if (btnTextAlpha > 5) {
             Component text = waiting
                     ? Component.translatable("arc_quest.gui.gacha.btn.decrypting")
@@ -797,14 +802,7 @@ public class GachaPreviewPanel {
         return true;
     }
 
-    private static boolean isCannotAffordFailure(String failReason) {
-        if (failReason == null || failReason.isEmpty()) {
-            return false;
-        }
-        String key = failReason.toLowerCase();
-        return "cannot_afford".equals(key)
-                || key.contains("cannot_afford")
-                || key.contains("insufficient")
-                || key.endsWith(".cannot_afford");
+    private record Layout(int termW, int termX, int gridX, int gridW, int mainCX, int topH, int gridY, int gridH,
+                          int btnW, int btnH, int btnX, int btnY) {
     }
 }

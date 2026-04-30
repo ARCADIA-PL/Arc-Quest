@@ -22,22 +22,35 @@ public class GachaDataStore {
     private final Map<String, Integer> drawCounts = new HashMap<>();
     private final Map<String, Integer> pityCounters = new HashMap<>();
     private final Map<String, List<IQuestCapability.GachaDrawRecord>> drawHistories = new HashMap<>();
-    /** 抽奖冷却时间戳，key=shopId，value=三时钟快照（realTime / gameTime / dayTime）。 */
+    /**
+     * 抽奖冷却时间戳，key=shopId，value=三时钟快照（realTime / gameTime / dayTime）。
+     */
     private final Map<String, CooldownEntry> drawCooldowns = new HashMap<>();
 
     // ════════════════════════════════════════
     //  抽奖次数
     // ════════════════════════════════════════
 
-    public int getDrawCount(String shopId) { return drawCounts.getOrDefault(shopId, 0); }
-    public void incrementDrawCount(String shopId) { drawCounts.merge(shopId, 1, Integer::sum); }
-    public void resetDrawCount(String shopId) { drawCounts.remove(shopId); }
+    public int getDrawCount(String shopId) {
+        return drawCounts.getOrDefault(shopId, 0);
+    }
+
+    public void incrementDrawCount(String shopId) {
+        drawCounts.merge(shopId, 1, Integer::sum);
+    }
+
+    public void resetDrawCount(String shopId) {
+        drawCounts.remove(shopId);
+    }
 
     // ════════════════════════════════════════
     //  保底计数
     // ════════════════════════════════════════
 
-    public int getPityCounter(String shopId) { return pityCounters.getOrDefault(shopId, 0); }
+    public int getPityCounter(String shopId) {
+        return pityCounters.getOrDefault(shopId, 0);
+    }
+
     public void setPityCounter(String shopId, int count) {
         if (count <= 0) {
             pityCounters.remove(shopId);
@@ -64,7 +77,9 @@ public class GachaDataStore {
                 drawHistories.getOrDefault(shopId, Collections.emptyList()));
     }
 
-    public void clearDrawHistory(String shopId) { drawHistories.remove(shopId); }
+    public void clearDrawHistory(String shopId) {
+        drawHistories.remove(shopId);
+    }
 
     // ════════════════════════════════════════
     //  冷却时间戳（独立于 DialogueProgressStore）
@@ -221,7 +236,11 @@ public class GachaDataStore {
 
         public static final CooldownEntry EMPTY = new CooldownEntry(0L, -1L, -1L);
 
-        /** 是否有有效记录（realTime > 0 表示存在过记录）。 */
-        public boolean exists() { return realTime > 0; }
+        /**
+         * 是否有有效记录（realTime > 0 表示存在过记录）。
+         */
+        public boolean exists() {
+            return realTime > 0;
+        }
     }
 }

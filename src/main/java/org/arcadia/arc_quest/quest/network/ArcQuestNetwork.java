@@ -39,11 +39,9 @@ public final class ArcQuestNetwork {
             PROTOCOL_VERSION::equals,
             PROTOCOL_VERSION::equals
     );
-
-    private static int packetId = 0;
-
     private static final Map<UUID, Long> MARKER_EPOCH = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> MARKER_REVISION = new ConcurrentHashMap<>();
+    private static int packetId = 0;
 
     private ArcQuestNetwork() {
     }
@@ -311,7 +309,9 @@ public final class ArcQuestNetwork {
         CHANNEL.sendToServer(packet);
     }
 
-    public static void sendSubmitOffer(C2SSubmitOfferPacket packet) {CHANNEL.sendToServer(packet);}
+    public static void sendSubmitOffer(C2SSubmitOfferPacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
 
     public static void sendDialogueChoice(C2SDialogueChoicePacket packet) {
         CHANNEL.sendToServer(packet);

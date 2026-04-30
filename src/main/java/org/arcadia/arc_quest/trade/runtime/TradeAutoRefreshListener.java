@@ -42,12 +42,14 @@ import org.slf4j.Logger;
 public class TradeAutoRefreshListener {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    
-    /** 上次刷新时间戳（毫秒），用于防抖 */
-    private static long lastRefreshTime = 0;
-    
-    /** 防抖间隔（毫秒） */
+    /**
+     * 防抖间隔（毫秒）
+     */
     private static final long REFRESH_DEBOUNCE_MS = 1000;
+    /**
+     * 上次刷新时间戳（毫秒），用于防抖
+     */
+    private static long lastRefreshTime = 0;
 
     @SubscribeEvent
     public static void onClientInit(FMLClientSetupEvent event) {
@@ -59,30 +61,30 @@ public class TradeAutoRefreshListener {
      */
     private static void onQuestEvent(QuestChangeEvent event) {
         Minecraft mc = Minecraft.getInstance();
-        
+
         if (mc.player == null || mc.level == null) {
             return;
         }
-        
+
         if (!(mc.screen instanceof AbstractTradeScreen tradeScreen)) {
             return;
         }
-        
+
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastRefreshTime < REFRESH_DEBOUNCE_MS) {
-            LOGGER.debug("[Trade-AutoRefresh] Skipped refresh due to debounce ({}ms since last)", 
+            LOGGER.debug("[Trade-AutoRefresh] Skipped refresh due to debounce ({}ms since last)",
                     currentTime - lastRefreshTime);
             return;
         }
-        
+
         String shopId = tradeScreen.getShopId();
         if (shopId == null || shopId.isEmpty()) {
             return;
         }
-        
+
         boolean shouldRefresh = false;
         String reason = "";
-        
+
         switch (event.getType()) {
             case QUEST_COMPLETED -> {
                 shouldRefresh = true;
@@ -99,16 +101,16 @@ public class TradeAutoRefreshListener {
             default -> {
             }
         }
-        
+
         if (!shouldRefresh) {
             return;
         }
-        
+
         C2SRequestTradePacket.ScreenType screenType = determineScreenType(mc.screen);
-        
+
         LOGGER.info("[Trade-AutoRefresh] Triggering auto-refresh for shop={}, reason={}", shopId, reason);
         ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.refresh(shopId, screenType));
-        
+
         lastRefreshTime = currentTime;
     }
 

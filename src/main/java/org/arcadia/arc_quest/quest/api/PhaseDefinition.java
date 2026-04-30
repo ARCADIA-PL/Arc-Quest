@@ -35,7 +35,9 @@ public final class PhaseDefinition {
     private final SoundEvent phaseStartSound;
     @Nullable
     private final SoundEvent phaseCompleteSound;
-    /** 该阶段关联的 Ponder 情报场景 ID，为 null 表示不显示 Intel 按钮。 */
+    /**
+     * 该阶段关联的 Ponder 情报场景 ID，为 null 表示不显示 Intel 按钮。
+     */
     @Nullable
     private final ResourceLocation intelSceneId;
 
@@ -83,7 +85,9 @@ public final class PhaseDefinition {
                 tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
     }
 
-    /** 旧的完整构造器（含 description），委托给带 intelSceneId 的新构造器。 */
+    /**
+     * 旧的完整构造器（含 description），委托给带 intelSceneId 的新构造器。
+     */
     public PhaseDefinition(String phaseId,
                            QuestText displayName,
                            QuestText description,
@@ -102,7 +106,9 @@ public final class PhaseDefinition {
                 tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
     }
 
-    /** 含 intelSceneId 的最终构造器，所有其他构造器最终委托至此。 */
+    /**
+     * 含 intelSceneId 的最终构造器，所有其他构造器最终委托至此。
+     */
     public PhaseDefinition(String phaseId,
                            QuestText displayName,
                            QuestText description,
@@ -141,15 +147,21 @@ public final class PhaseDefinition {
         this.autoEnterByCondition = autoEnterByCondition;
     }
 
-    public String getPhaseId() { return this.phaseId; }
+    public String getPhaseId() {
+        return this.phaseId;
+    }
 
-    public Component getDisplayName() { return this.displayName.resolve(null, QuestTextContext.empty()); }
+    public Component getDisplayName() {
+        return this.displayName.resolve(null, QuestTextContext.empty());
+    }
 
     public Component getDisplayName(ServerPlayer player, QuestTextContext context) {
         return this.displayName.resolve(player, context);
     }
 
-    public Component getDescription() { return this.description.resolve(null, QuestTextContext.empty()); }
+    public Component getDescription() {
+        return this.description.resolve(null, QuestTextContext.empty());
+    }
 
     public Component getDescription(ServerPlayer player, QuestTextContext context) {
         return this.description.resolve(player, context);
@@ -159,7 +171,9 @@ public final class PhaseDefinition {
         return !this.description.resolve(null, QuestTextContext.empty()).getString().isEmpty();
     }
 
-    public List<ObjectiveEntry> getObjectives() { return this.objectives; }
+    public List<ObjectiveEntry> getObjectives() {
+        return this.objectives;
+    }
 
     public int getRequiredObjectiveCount() {
         int count = 0;
@@ -169,25 +183,46 @@ public final class PhaseDefinition {
         return count;
     }
 
-    public List<PhaseTransition> getTransitions() { return this.transitions; }
+    public List<PhaseTransition> getTransitions() {
+        return this.transitions;
+    }
 
-    public List<ChoiceOption> getChoices() { return this.choices; }
+    public List<ChoiceOption> getChoices() {
+        return this.choices;
+    }
 
-    public boolean hasChoices() { return !this.choices.isEmpty(); }
+    public boolean hasChoices() {
+        return !this.choices.isEmpty();
+    }
 
-    public List<IReward> getPhaseRewards() { return this.phaseRewards; }
+    public List<IReward> getPhaseRewards() {
+        return this.phaseRewards;
+    }
 
     @Nullable
-    public ICondition getEnterCondition() { return enterCondition; }
-    public boolean isAutoEnterByCondition() { return autoEnterByCondition; }
+    public ICondition getEnterCondition() {
+        return enterCondition;
+    }
 
-    public boolean hasEnterCondition() { return this.enterCondition != null; }
+    public boolean isAutoEnterByCondition() {
+        return autoEnterByCondition;
+    }
 
-    public List<String> getFlagsToSetOnEnter() { return this.flagsToSetOnEnter; }
+    public boolean hasEnterCondition() {
+        return this.enterCondition != null;
+    }
 
-    public List<String> getFlagsToSetOnComplete() { return this.flagsToSetOnComplete; }
+    public List<String> getFlagsToSetOnEnter() {
+        return this.flagsToSetOnEnter;
+    }
 
-    public QuestVisualConfig getVisualConfig() { return this.visualConfig; }
+    public List<String> getFlagsToSetOnComplete() {
+        return this.flagsToSetOnComplete;
+    }
+
+    public QuestVisualConfig getVisualConfig() {
+        return this.visualConfig;
+    }
 
     public int getThemeColor(int parentQuestThemeColor) {
         int phaseColor = this.visualConfig.getThemeColor();
@@ -203,20 +238,32 @@ public final class PhaseDefinition {
     }
 
     @Nullable
-    public String getTradeShopId() { return this.tradeShopId; }
+    public String getTradeShopId() {
+        return this.tradeShopId;
+    }
 
     @Nullable
-    public SoundEvent getPhaseStartSound() { return phaseStartSound; }
+    public SoundEvent getPhaseStartSound() {
+        return phaseStartSound;
+    }
 
     @Nullable
-    public SoundEvent getPhaseCompleteSound() { return phaseCompleteSound; }
+    public SoundEvent getPhaseCompleteSound() {
+        return phaseCompleteSound;
+    }
 
-    public boolean hasTradeShop() { return this.tradeShopId != null; }
+    public boolean hasTradeShop() {
+        return this.tradeShopId != null;
+    }
 
     @Nullable
-    public ResourceLocation getIntelSceneId() { return this.intelSceneId; }
+    public ResourceLocation getIntelSceneId() {
+        return this.intelSceneId;
+    }
 
-    public boolean hasIntelScene() { return this.intelSceneId != null; }
+    public boolean hasIntelScene() {
+        return this.intelSceneId != null;
+    }
 
     @Override
     public String toString() {

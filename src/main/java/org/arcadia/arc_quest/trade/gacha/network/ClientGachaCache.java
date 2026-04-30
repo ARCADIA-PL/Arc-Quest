@@ -462,27 +462,80 @@ public final class ClientGachaCache {
         }
 
         // 兼容旧 API
-        public int getPityCounter() { return authority.pityCounter; }
-        public int getTotalDraws() { return authority.totalDraws; }
-        public boolean canDraw() { return authority.canDraw; }
-        public int getRemainingDraws() { return authority.remainingDraws; }
+        public int getPityCounter() {
+            return authority.pityCounter;
+        }
 
-        public long getLastDrawRealTime() { return authority.lastDrawRealTime; }
-        public long getLastDrawGameTime() { return authority.lastDrawGameTime; }
-        public long getLastDrawDayTime() { return authority.lastDrawDayTime; }
-        public int getCooldownType() { return authority.cooldownType; }
-        public long getCooldownValue() { return authority.cooldownValue; }
-        public int getResetTimeTicks() { return authority.resetTimeTicks; }
+        public int getTotalDraws() {
+            return authority.totalDraws;
+        }
 
-        @Nullable public String getLastDrawnItemId() { return history.lastDrawnItemId; }
-        @Nullable public String getLastRarityName() { return history.lastRarityName; }
-        public int getLastActualCount() { return history.lastActualCount; }
-        public boolean isLastPityTriggered() { return history.lastPityTriggered; }
-        public long getLastDrawTime() { return history.lastDrawTime; }
+        public boolean canDraw() {
+            return authority.canDraw;
+        }
 
-        @Nullable public String getLastFailReason() { return feedback.lastFailReason; }
-        public List<CostShortfallLine> getLastShortfallLines() { return List.copyOf(feedback.lastShortfallLines); }
-        public List<DrawRecord> getDrawHistory() { return Collections.unmodifiableList(history.drawHistory); }
+        public int getRemainingDraws() {
+            return authority.remainingDraws;
+        }
+
+        public long getLastDrawRealTime() {
+            return authority.lastDrawRealTime;
+        }
+
+        public long getLastDrawGameTime() {
+            return authority.lastDrawGameTime;
+        }
+
+        public long getLastDrawDayTime() {
+            return authority.lastDrawDayTime;
+        }
+
+        public int getCooldownType() {
+            return authority.cooldownType;
+        }
+
+        public long getCooldownValue() {
+            return authority.cooldownValue;
+        }
+
+        public int getResetTimeTicks() {
+            return authority.resetTimeTicks;
+        }
+
+        @Nullable
+        public String getLastDrawnItemId() {
+            return history.lastDrawnItemId;
+        }
+
+        @Nullable
+        public String getLastRarityName() {
+            return history.lastRarityName;
+        }
+
+        public int getLastActualCount() {
+            return history.lastActualCount;
+        }
+
+        public boolean isLastPityTriggered() {
+            return history.lastPityTriggered;
+        }
+
+        public long getLastDrawTime() {
+            return history.lastDrawTime;
+        }
+
+        @Nullable
+        public String getLastFailReason() {
+            return feedback.lastFailReason;
+        }
+
+        public List<CostShortfallLine> getLastShortfallLines() {
+            return List.copyOf(feedback.lastShortfallLines);
+        }
+
+        public List<DrawRecord> getDrawHistory() {
+            return Collections.unmodifiableList(history.drawHistory);
+        }
 
         // 新分层快照 API
         public AuthoritySnapshot authority() {
@@ -535,17 +588,20 @@ public final class ClientGachaCache {
     }
 
     static final class FeedbackState {
-        @Nullable String lastFailReason;
+        @Nullable
+        String lastFailReason;
         List<CostShortfallLine> lastShortfallLines = List.of();
     }
 
     static final class HistoryState {
-        @Nullable String lastDrawnItemId;
-        @Nullable String lastRarityName;
+        final ArrayList<DrawRecord> drawHistory = new ArrayList<>();
+        @Nullable
+        String lastDrawnItemId;
+        @Nullable
+        String lastRarityName;
         int lastActualCount;
         boolean lastPityTriggered;
         long lastDrawTime;
-        final ArrayList<DrawRecord> drawHistory = new ArrayList<>();
     }
 
     public record AuthoritySnapshot(
@@ -559,9 +615,11 @@ public final class ClientGachaCache {
             int cooldownType,
             long cooldownValue,
             int resetTimeTicks
-    ) {}
+    ) {
+    }
 
-    public record FeedbackSnapshot(@Nullable String failReason, List<CostShortfallLine> shortfallLines) {}
+    public record FeedbackSnapshot(@Nullable String failReason, List<CostShortfallLine> shortfallLines) {
+    }
 
     public record DrawRecord(
             String itemId,
@@ -569,5 +627,6 @@ public final class ClientGachaCache {
             int actualCount,
             boolean pityTriggered,
             long drawTime
-    ) {}
+    ) {
+    }
 }

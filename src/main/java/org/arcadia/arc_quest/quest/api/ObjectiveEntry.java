@@ -56,9 +56,17 @@ public final class ObjectiveEntry {
         this.countModifier = countModifier;
     }
 
-    public ObjectiveType getType() { return this.type; }
-    public ResourceLocation getTargetId() { return this.targetId; }
-    public int getRequiredCount() { return this.requiredCount; }
+    public ObjectiveType getType() {
+        return this.type;
+    }
+
+    public ResourceLocation getTargetId() {
+        return this.targetId;
+    }
+
+    public int getRequiredCount() {
+        return this.requiredCount;
+    }
 
     public int resolveRequiredCount(@Nullable ServerPlayer player) {
         if (player == null || countModifier == null) return requiredCount;
@@ -73,18 +81,35 @@ public final class ObjectiveEntry {
         return this.displayText.resolve(player, ctx);
     }
 
-    public QuestText getDisplayQuestText() { return this.displayText; }
-    public boolean isHidden() { return this.hidden; }
-    public boolean isOptional() { return this.optional; }
-    public Map<String, String> getExtraData() { return this.extraData; }
+    public QuestText getDisplayQuestText() {
+        return this.displayText;
+    }
+
+    public boolean isHidden() {
+        return this.hidden;
+    }
+
+    public boolean isOptional() {
+        return this.optional;
+    }
+
+    public Map<String, String> getExtraData() {
+        return this.extraData;
+    }
 
     @Nullable
-    public String getExtra(String key) { return this.extraData.get(key); }
+    public String getExtra(String key) {
+        return this.extraData.get(key);
+    }
 
     public int getExtraInt(String key, int fallback) {
         String val = this.extraData.get(key);
         if (val == null) return fallback;
-        try { return Integer.parseInt(val); } catch (NumberFormatException e) { return fallback; }
+        try {
+            return Integer.parseInt(val);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
     }
 
     @Override

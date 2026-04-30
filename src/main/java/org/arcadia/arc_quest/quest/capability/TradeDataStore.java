@@ -33,7 +33,7 @@ public class TradeDataStore {
 
     public void incrementPurchase(String shopId, String entryId) {
         purchaseCounts.computeIfAbsent(shopId, k -> new HashMap<>())
-                      .merge(entryId, 1, Integer::sum);
+                .merge(entryId, 1, Integer::sum);
     }
 
     // ════════════════════════════════════════
@@ -54,7 +54,7 @@ public class TradeDataStore {
      */
     public void recordCooldown(String shopId, String entryId, long realTime, long gameTime, long dayTime) {
         cooldowns.computeIfAbsent(shopId, k -> new HashMap<>())
-                 .put(entryId, new TradeCooldownEntry(realTime, gameTime, dayTime));
+                .put(entryId, new TradeCooldownEntry(realTime, gameTime, dayTime));
     }
 
     /**
@@ -186,13 +186,13 @@ public class TradeDataStore {
                     String payload = key.substring("trade:".length());
                     int sep = payload.indexOf('|');
                     if (sep < 0) continue;
-                    String shopId  = payload.substring(0, sep);
+                    String shopId = payload.substring(0, sep);
                     String entryId = payload.substring(sep + 1);
                     CompoundTag ct = tradeTag.getCompound(key);
                     cooldowns.computeIfAbsent(shopId, k -> new HashMap<>())
-                             .put(entryId, new TradeCooldownEntry(
-                                     ct.getLong("r"), ct.getLong("g"),
-                                     ct.contains("d") ? ct.getLong("d") : -1L));
+                            .put(entryId, new TradeCooldownEntry(
+                                    ct.getLong("r"), ct.getLong("g"),
+                                    ct.contains("d") ? ct.getLong("d") : -1L));
                 }
             }
         }
@@ -211,6 +211,8 @@ public class TradeDataStore {
         public static final TradeCooldownEntry EMPTY = new TradeCooldownEntry(0L, -1L, -1L);
 
         @Override
-        public boolean exists() { return realTime > 0; }
+        public boolean exists() {
+            return realTime > 0;
+        }
     }
 }

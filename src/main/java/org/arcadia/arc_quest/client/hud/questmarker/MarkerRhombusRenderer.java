@@ -8,7 +8,8 @@ import org.joml.Matrix4f;
 
 public final class MarkerRhombusRenderer {
 
-    private MarkerRhombusRenderer() {}
+    private MarkerRhombusRenderer() {
+    }
 
     public static void draw(GuiGraphics gui, int accentColor, float time, float activeProgress, float lightX, float lightY, float tier) {
         RenderSystem.enableBlend();
@@ -51,7 +52,7 @@ public final class MarkerRhombusRenderer {
         }
 
         float outSize = lerp(lerp(10f, 5f, phase1), 3.5f, phase2);
-        float inSize  = lerp(lerp(7f,  3f, phase1), 0.0f, phase2);
+        float inSize = lerp(lerp(7f, 3f, phase1), 0.0f, phase2);
         float gap = lerp(lerp(0f, 3.5f, phase1), 0.0f, phase2);
 
         float finalScaleX = breathScale;
@@ -61,7 +62,7 @@ public final class MarkerRhombusRenderer {
         float globalAlpha = lerp(lerp(1.0f, 0.8f, phase1), 0.75f, phase2);
 
         float glassAlphaMod = Math.max(0f, 1.0f - phase1 * 1.5f);
-        float rimAlphaMod   = Math.max(0f, 1.0f - phase1 * 2.0f);
+        float rimAlphaMod = Math.max(0f, 1.0f - phase1 * 2.0f);
 
         if (rimAlphaMod > 0.05f) {
             int rimA = (int) (baseAlpha * 0.35f * rimAlphaMod);
@@ -69,53 +70,53 @@ public final class MarkerRhombusRenderer {
             float rimOut = outSize + 1f;
             float rimIn = outSize;
 
-            addSolid(builder, matrix,  0, -rimOut,  gap, -gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  0, -rimIn,   gap, -gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  rimIn, 0,    gap, -gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  rimOut, 0,   gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, 0, -rimOut, gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, 0, -rimIn, gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, rimIn, 0, gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, rimOut, 0, gap, -gap, finalScaleX, finalScaleY, rimColor);
 
-            addSolid(builder, matrix,  rimOut, 0,   gap,  gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  rimIn, 0,    gap,  gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  0, rimIn,    gap,  gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  0, rimOut,   gap,  gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, rimOut, 0, gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, rimIn, 0, gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, 0, rimIn, gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, 0, rimOut, gap, gap, finalScaleX, finalScaleY, rimColor);
 
-            addSolid(builder, matrix,  0, rimOut,  -gap,  gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  0, rimIn,   -gap,  gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix, -rimIn, 0,   -gap,  gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix, -rimOut, 0,  -gap,  gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, 0, rimOut, -gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, 0, rimIn, -gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, -rimIn, 0, -gap, gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, -rimOut, 0, -gap, gap, finalScaleX, finalScaleY, rimColor);
 
-            addSolid(builder, matrix, -rimOut, 0,  -gap, -gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix, -rimIn, 0,   -gap, -gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  0, -rimIn,  -gap, -gap, finalScaleX, finalScaleY, rimColor);
-            addSolid(builder, matrix,  0, -rimOut, -gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, -rimOut, 0, -gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, -rimIn, 0, -gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, 0, -rimIn, -gap, -gap, finalScaleX, finalScaleY, rimColor);
+            addSolid(builder, matrix, 0, -rimOut, -gap, -gap, finalScaleX, finalScaleY, rimColor);
         }
 
         if (glassAlphaMod > 0.05f && inSize > 0) {
-            addDyn(builder, matrix,  0, -inSize, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, 0.2f * glassAlphaMod, lightBlend, activeProgress);
-            addDyn(builder, matrix, -inSize, 0,  0, 0, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, 0.2f * glassAlphaMod, lightBlend, activeProgress);
-            addDyn(builder, matrix,  0, inSize,  0, 0, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, 0.2f * glassAlphaMod, lightBlend, activeProgress);
-            addDyn(builder, matrix,  inSize, 0,  0, 0, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, 0.2f * glassAlphaMod, lightBlend, activeProgress);
+            addDyn(builder, matrix, 0, -inSize, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, 0.2f * glassAlphaMod, lightBlend, activeProgress);
+            addDyn(builder, matrix, -inSize, 0, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, 0.2f * glassAlphaMod, lightBlend, activeProgress);
+            addDyn(builder, matrix, 0, inSize, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, 0.2f * glassAlphaMod, lightBlend, activeProgress);
+            addDyn(builder, matrix, inSize, 0, 0, 0, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, 0.2f * glassAlphaMod, lightBlend, activeProgress);
         }
 
-        addDyn(builder, matrix,  0, -outSize,  gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  0, -inSize,   gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  inSize, 0,    gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  outSize, 0,   gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, 0, -outSize, gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, 0, -inSize, gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, inSize, 0, gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, outSize, 0, gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
 
-        addDyn(builder, matrix,  outSize, 0,   gap,  gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  inSize, 0,    gap,  gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  0, inSize,    gap,  gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  0, outSize,   gap,  gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, outSize, 0, gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, inSize, 0, gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, 0, inSize, gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, 0, outSize, gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
 
-        addDyn(builder, matrix,  0, outSize,  -gap,  gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  0, inSize,   -gap,  gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix, -inSize, 0,   -gap,  gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix, -outSize, 0,  -gap,  gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, 0, outSize, -gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, 0, inSize, -gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, -inSize, 0, -gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, -outSize, 0, -gap, gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
 
-        addDyn(builder, matrix, -outSize, 0,  -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix, -inSize, 0,   -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  0, -inSize,  -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
-        addDyn(builder, matrix,  0, -outSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, -outSize, 0, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, -inSize, 0, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, 0, -inSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
+        addDyn(builder, matrix, 0, -outSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
 
         float coreSize = lerp(lerp(2.0f, 1.5f, phase1), 1.2f, phase2);
         float coreBaseA = lerp(lerp(1.0f, 0.7f, phase1), 0.9f, phase2);
@@ -124,10 +125,10 @@ public final class MarkerRhombusRenderer {
         int coreA = (int) (baseAlpha * coreBaseA * coreGlow);
         int coreColor = (coreA << 24) | 0xFFFFFF;
 
-        addSolid(builder, matrix,  0, -coreSize, 0, 0, finalScaleX, finalScaleY, coreColor);
-        addSolid(builder, matrix, -coreSize, 0,  0, 0, finalScaleX, finalScaleY, coreColor);
-        addSolid(builder, matrix,  0, coreSize,  0, 0, finalScaleX, finalScaleY, coreColor);
-        addSolid(builder, matrix,  coreSize, 0,  0, 0, finalScaleX, finalScaleY, coreColor);
+        addSolid(builder, matrix, 0, -coreSize, 0, 0, finalScaleX, finalScaleY, coreColor);
+        addSolid(builder, matrix, -coreSize, 0, 0, 0, finalScaleX, finalScaleY, coreColor);
+        addSolid(builder, matrix, 0, coreSize, 0, 0, finalScaleX, finalScaleY, coreColor);
+        addSolid(builder, matrix, coreSize, 0, 0, 0, finalScaleX, finalScaleY, coreColor);
 
         BufferUploader.drawWithShader(builder.end());
     }

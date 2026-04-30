@@ -36,30 +36,23 @@ public final class QuestOfferPanel {
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
     private static final float CLEAR_TIME = 1.4f; // CLEAR 动画持续时间
-
+    private static final long SUBMIT_COOLDOWN_MS = 100L;
     private static boolean active = false;
     private static boolean closing = false;
     private static boolean cleared = false;
     private static long lastRenderMs = 0L;
-
     private static float enterTimer = 0f;
     private static float exitTimer = 0f;
     private static float clearTimer = 0f;
-
     private static String questId;
     private static String phaseId;
     private static int objectiveIndex;
     private static int themeColor = 0x5AD7FF;
-
     private static OfferVM lastValidVm = null; // 缓存断联前的最后影像
-
     private static ItemStack hoveredStack = ItemStack.EMPTY;
     private static int iconCycleTicker = 0;
     private static int iconCycleIndex = 0;
-
     private static long lastSubmitClickMs = 0L;
-    private static final long SUBMIT_COOLDOWN_MS = 100L;
-
     private static float submitFeedbackAnim = 0f;
     private static boolean submitFeedbackSuccess = false;
     private static int lastKnownProgress = -1;
@@ -82,17 +75,10 @@ public final class QuestOfferPanel {
     private static float currentDrawY = 0;
 
     private static long autoCloseAtMs = 0L;
-
-    private enum FinishMode {
-        NONE,
-        PENDING_NORMAL,
-        NORMAL_CLOSE,
-        CLEARED_CLOSE
-    }
     private static FinishMode finishMode = FinishMode.NONE;
     private static long finishDecideAtMs = 0L;
-
-    private QuestOfferPanel() {}
+    private QuestOfferPanel() {
+    }
 
     public static void trigger(String qid, String pid, int objIndex) {
         questId = qid;
@@ -130,7 +116,9 @@ public final class QuestOfferPanel {
         currentProgressAnim = initialVm != null ? initialVm.current : 0f;
     }
 
-    public static boolean isActive() { return active; }
+    public static boolean isActive() {
+        return active;
+    }
 
     public static void close() {
         if (!active || closing) return;
@@ -224,7 +212,11 @@ public final class QuestOfferPanel {
 
         if (closing) {
             exitTimer += dt;
-            if (exitTimer >= EXIT_TIME) { active = false; closing = false; return; }
+            if (exitTimer >= EXIT_TIME) {
+                active = false;
+                closing = false;
+                return;
+            }
             float t = Math.min(1.0f, exitTimer / EXIT_TIME);
             float easeIn = (float) Math.pow(t, 4.0);
             wipeProgress = easeIn;
@@ -252,8 +244,11 @@ public final class QuestOfferPanel {
         int scX1 = (int) (currentDrawX - 10);
         int scX2 = (int) (currentDrawX + drawWidth + 10);
 
-        if (closing) { scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress)); }
-        else if (enterTimer < ENTER_TIME) { scX2 = (int) (currentDrawX + drawWidth * revealProgress); }
+        if (closing) {
+            scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress));
+        } else if (enterTimer < ENTER_TIME) {
+            scX2 = (int) (currentDrawX + drawWidth * revealProgress);
+        }
 
         hoveredStack = ItemStack.EMPTY;
 
@@ -361,7 +356,7 @@ public final class QuestOfferPanel {
             g.pose().scale(0.8f, 0.8f, 1f);
             g.drawString(font, "SYS.ARC_QUEST // UPLOAD PROTOCOL", 16, 6, HudAnimUtil.withAlpha(0x667788, contentAlpha), false);
             g.pose().popPose();
-            g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, (int)(borderAlpha * contentAlphaMult)));
+            g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, (int) (borderAlpha * contentAlphaMult)));
 
             int contentY = topBarH + 12;
             g.drawString(font, font.plainSubstrByWidth(renderVm.title, PW - 70), 50, contentY + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), true);
@@ -369,7 +364,7 @@ public final class QuestOfferPanel {
             String progressText = renderVm.current + " / " + renderVm.required;
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
-            g.drawString(font, "STATUS: " + progressText, (int)(50 / 0.85f), (int)((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, contentAlpha), false);
+            g.drawString(font, "STATUS: " + progressText, (int) (50 / 0.85f), (int) ((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, contentAlpha), false);
             g.pose().popPose();
 
             int iconX = 20, iconY = contentY;
@@ -377,12 +372,13 @@ public final class QuestOfferPanel {
             itemSlotHoverAnim = HudAnimUtil.step(itemSlotHoverAnim, isHoverSlot ? 1f : 0f, 15f, dt);
 
             int slotBorderAlpha = (int) ((0x44 + 0x88 * itemSlotHoverAnim) * contentAlphaF);
-            HudAnimUtil.drawFrame(g, iconX - 4, iconY - 4, 24, 24, HudAnimUtil.withAlpha(0x000000, (int)(0x55 * contentAlphaF)), HudAnimUtil.withAlpha(themeColor, slotBorderAlpha));
+            HudAnimUtil.drawFrame(g, iconX - 4, iconY - 4, 24, 24, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * contentAlphaF)), HudAnimUtil.withAlpha(themeColor, slotBorderAlpha));
 
             iconCycleTicker++;
             if (iconCycleTicker >= 60) {
                 iconCycleTicker = 0;
-                if (renderVm.iconCandidates.size() > 1) iconCycleIndex = (iconCycleIndex + 1) % renderVm.iconCandidates.size();
+                if (renderVm.iconCandidates.size() > 1)
+                    iconCycleIndex = (iconCycleIndex + 1) % renderVm.iconCandidates.size();
             }
 
             ItemStack icon = renderVm.iconCandidates.isEmpty() ? ItemStack.EMPTY : renderVm.iconCandidates.get(iconCycleIndex % renderVm.iconCandidates.size());
@@ -399,10 +395,10 @@ public final class QuestOfferPanel {
 
             int barX = 20, barY = contentY + 36, barW = PW - 40, barH = 4;
             float ratio = renderVm.required <= 0 ? 0f : Math.max(0f, Math.min(1f, currentProgressAnim / renderVm.required));
-            int fillW = Math.max(0, (int)(barW * ratio));
+            int fillW = Math.max(0, (int) (barW * ratio));
 
-            g.fill(barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int)(20 * contentAlphaF)));
-            HudAnimUtil.drawFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int)(40 * contentAlphaF)));
+            g.fill(barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (20 * contentAlphaF)));
+            HudAnimUtil.drawFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * contentAlphaF)));
 
             if (fillW > 0) {
                 g.fill(barX, barY, barX + fillW, barY + barH, HudAnimUtil.withAlpha(themeColor, contentAlpha));
@@ -438,17 +434,17 @@ public final class QuestOfferPanel {
             g.pose().scale(0.85f, 0.85f, 1f);
             String qtyText = "QUANTITY // " + (maxSelectable == 0 ? "0" : sliderValue);
             int tW = font.width(qtyText);
-            g.drawString(font, qtyText, (int)((PW / 2f) / 0.85f) - tW / 2, (int)((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, contentAlpha), false);
+            g.drawString(font, qtyText, (int) ((PW / 2f) / 0.85f) - tW / 2, (int) ((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, contentAlpha), false);
             g.pose().popPose();
 
-            g.fill(sliderX, sliderY, sliderX + sliderW, sliderY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(30 * contentAlphaF)));
+            g.fill(sliderX, sliderY, sliderX + sliderW, sliderY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (30 * contentAlphaF)));
 
             if (maxSelectable > 0) {
-                float targetPct = maxSelectable > 1 ? (float)(sliderValue - 1) / (maxSelectable - 1) : 1f;
+                float targetPct = maxSelectable > 1 ? (float) (sliderValue - 1) / (maxSelectable - 1) : 1f;
                 float targetThumbX = sliderX + (targetPct * sliderW);
                 if (visualThumbX < 0) visualThumbX = targetThumbX;
                 visualThumbX += (targetThumbX - visualThumbX) * Math.min(1f, dt * 25f);
-                g.fill(sliderX, sliderY, (int)visualThumbX, sliderY + 2, HudAnimUtil.withAlpha(themeColor, contentAlpha));
+                g.fill(sliderX, sliderY, (int) visualThumbX, sliderY + 2, HudAnimUtil.withAlpha(themeColor, contentAlpha));
                 int tX = (int) visualThumbX;
                 int thumbActiveColor = isDraggingSlider ? 0xFFFFFF : HudAnimUtil.lerpColor(themeColor, 0xFFFFFF, sliderHoverAnim);
                 g.fill(tX - 1, sliderY - 2, tX + 1, sliderY + 3, HudAnimUtil.withAlpha(thumbActiveColor, contentAlpha));
@@ -469,22 +465,22 @@ public final class QuestOfferPanel {
                 String hint = "Insufficient items: need " + remain + ", have " + canSubmit;
                 g.pose().pushPose();
                 g.pose().scale(0.7f, 0.7f, 1f);
-                g.drawString(font, hint, (int)((btnX + btnW / 2f) / 0.7f) - font.width(hint) / 2, (int)((sliderY + 8) / 0.7f), HudAnimUtil.withAlpha(0xAA4444, contentAlpha), false);
+                g.drawString(font, hint, (int) ((btnX + btnW / 2f) / 0.7f) - font.width(hint) / 2, (int) ((sliderY + 8) / 0.7f), HudAnimUtil.withAlpha(0xAA4444, contentAlpha), false);
                 g.pose().popPose();
             }
         }
 
         if (cleared) {
-            g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int)(80 * Math.min(1f, clearTimer * 3f))));
+            g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int) (80 * Math.min(1f, clearTimer * 3f))));
 
             float clearScaleBase = Math.min(1f, clearTimer / 0.2f);
-            float textScale = 1.8f - 0.5f * (float)Math.pow(clearScaleBase, 3);
+            float textScale = 1.8f - 0.5f * (float) Math.pow(clearScaleBase, 3);
 
             float clearAlphaF = 1f;
             if (clearTimer > CLEAR_TIME - 0.3f) { // 最后0.3秒渐隐
                 clearAlphaF = Math.max(0f, (CLEAR_TIME - clearTimer) / 0.3f);
             }
-            int tAlpha = (int)(255 * clearAlphaF * alphaF);
+            int tAlpha = (int) (255 * clearAlphaF * alphaF);
 
             g.pose().pushPose();
             g.pose().translate(PW / 2f, PH / 2f, 100);
@@ -497,7 +493,7 @@ public final class QuestOfferPanel {
 
             if (clearTimer < 0.6f) {
                 float scanLineY = PH * (clearTimer / 0.6f);
-                g.fill(cyberEdgeWidth, (int)scanLineY, PW, (int)scanLineY + 1, HudAnimUtil.withAlpha(themeColor, (int)(100 * (1f - clearTimer/0.6f))));
+                g.fill(cyberEdgeWidth, (int) scanLineY, PW, (int) scanLineY + 1, HudAnimUtil.withAlpha(themeColor, (int) (100 * (1f - clearTimer / 0.6f))));
             }
         }
     }
@@ -505,7 +501,7 @@ public final class QuestOfferPanel {
     private static void drawCyberButton(GuiGraphics g, Font font, int x, int y, int w, int h, String text, float hoverAnim, boolean disabled, int alpha, float alphaF) {
         int currentColor = disabled ? 0x444444 : HudAnimUtil.lerpColor(0x777777, themeColor, hoverAnim);
         int finalBtnBg = HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF));
-        int finalBtnBorder = HudAnimUtil.withAlpha(currentColor, disabled ? (int)(100 * alphaF) : alpha);
+        int finalBtnBorder = HudAnimUtil.withAlpha(currentColor, disabled ? (int) (100 * alphaF) : alpha);
         g.fill(x, y, x + w, y + h, finalBtnBg);
         g.fill(x, y, x + w, y + 1, finalBtnBorder);
         g.fill(x, y + h - 1, x + w, y + h, finalBtnBorder);
@@ -589,7 +585,9 @@ public final class QuestOfferPanel {
                     if (!st.isEmpty() && st.is(tag)) total += st.getCount();
                 }
                 return total;
-            } catch (Exception ignored) { return 0; }
+            } catch (Exception ignored) {
+                return 0;
+            }
         }
         Item target = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
         if (target == null) return 0;
@@ -644,5 +642,13 @@ public final class QuestOfferPanel {
         g.pose().popPose();
     }
 
-    private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {}
+    private enum FinishMode {
+        NONE,
+        PENDING_NORMAL,
+        NORMAL_CLOSE,
+        CLEARED_CLOSE
+    }
+
+    private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {
+    }
 }

@@ -15,12 +15,12 @@ public class HudMarkerUtil {
     /**
      * 纯代码绘制：次世代机能风任务标点（类似鸣潮/明日方舟）
      *
-     * @param g         GuiGraphics实例
-     * @param x         屏幕2D坐标 X
-     * @param y         屏幕2D坐标 Y
-     * @param color     主题色 (如鸣潮主线是 0xFFFFCC00 金黄色，支线是 0xFF00E5FF 青蓝色)
-     * @param distance  距离玩家的距离
-     * @param label     可选的文本标签（如 "主线" 或 NPC名字），传 null 则不显示
+     * @param g        GuiGraphics实例
+     * @param x        屏幕2D坐标 X
+     * @param y        屏幕2D坐标 Y
+     * @param color    主题色 (如鸣潮主线是 0xFFFFCC00 金黄色，支线是 0xFF00E5FF 青蓝色)
+     * @param distance 距离玩家的距离
+     * @param label    可选的文本标签（如 "主线" 或 NPC名字），传 null 则不显示
      */
     public static void renderCyberQuestMarker(GuiGraphics g, float x, float y, int color, float distance, String label) {
         long time = Util.getMillis();

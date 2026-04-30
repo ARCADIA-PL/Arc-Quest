@@ -16,8 +16,19 @@ public class TradePurchaseRejectedEvent extends Event {
         this.errorKey = errorKey;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public String getShopId() { return shopId; }
-    public String getEntryId() { return entryId; }
-    public String getErrorKey() { return errorKey; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public String getShopId() {
+        return shopId;
+    }
+
+    public String getEntryId() {
+        return entryId;
+    }
+
+    public String getErrorKey() {
+        return errorKey;
+    }
 }

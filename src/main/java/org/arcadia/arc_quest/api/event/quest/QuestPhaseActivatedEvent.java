@@ -20,9 +20,23 @@ public class QuestPhaseActivatedEvent extends Event {
         this.autoActivated = autoActivated;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public ResourceLocation getQuestId() { return questId; }
-    public String getFromPhaseId() { return fromPhaseId; }
-    public String getToPhaseId() { return toPhaseId; }
-    public boolean isAutoActivated() { return autoActivated; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public ResourceLocation getQuestId() {
+        return questId;
+    }
+
+    public String getFromPhaseId() {
+        return fromPhaseId;
+    }
+
+    public String getToPhaseId() {
+        return toPhaseId;
+    }
+
+    public boolean isAutoActivated() {
+        return autoActivated;
+    }
 }

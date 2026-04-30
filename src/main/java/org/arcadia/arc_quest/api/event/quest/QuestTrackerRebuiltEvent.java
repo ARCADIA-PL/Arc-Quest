@@ -12,6 +12,11 @@ public class QuestTrackerRebuiltEvent extends Event {
         this.activeQuestCount = activeQuestCount;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public int getActiveQuestCount() { return activeQuestCount; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public int getActiveQuestCount() {
+        return activeQuestCount;
+    }
 }

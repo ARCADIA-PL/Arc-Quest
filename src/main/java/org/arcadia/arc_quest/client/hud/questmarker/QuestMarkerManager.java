@@ -19,7 +19,8 @@ public final class QuestMarkerManager {
     private long currentEpoch = -1L;
     private long currentRevision = -1L;
 
-    private QuestMarkerManager() {}
+    private QuestMarkerManager() {
+    }
 
     public synchronized void add(QuestMarkerData data) {
         markers.put(data.getId(), data);

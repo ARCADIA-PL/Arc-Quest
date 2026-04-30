@@ -22,22 +22,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JournalDetailPanel {
-    private final QuestJournalScreen screen;
-
     public final JournalDetailSinglePhase singlePhaseRenderer;
     public final JournalDetailParallelPhase parallelPhaseRenderer;
     public final JournalDetailRewards rewardsRenderer;
     public final JournalDetailControls controlsRenderer;
-
+    private final QuestJournalScreen screen;
+    private final int[] historyBtnRect = new int[]{0, 0, 0, 0};
     private double detailScrollOffset = 0;
     private double detailTargetScroll = 0;
     private boolean isDraggingDetailScrollbar = false;
     private double dragDetailYOffset = 0;
     private int detailContentHeight = 0;
-
     private float detailReveal = 0f;
     private float historyBtnHoverAnim = 0f;
-    private final int[] historyBtnRect = new int[]{0, 0, 0, 0};
 
     public JournalDetailPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -47,7 +44,49 @@ public class JournalDetailPanel {
         this.controlsRenderer = new JournalDetailControls(screen, this);
     }
 
-    public double getDetailScrollOffset() { return detailScrollOffset; }
+    public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
+        int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * screen.getEffectiveAlpha());
+        int borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * screen.getEffectiveAlpha());
+        int borderRgb = hovered ? (themeColor & 0xFFFFFF) : 0xCCCCCC;
+
+        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        g.fill(x, y, x + w, y + 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x, y + h - 1, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x, y, x + 1, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x + w - 1, y, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+
+        if (screen.getEffectiveAlpha() > 0.05f) {
+            int textW = screen.getFont().width(text);
+            float baseScale = 0.85f;
+            if (textW * baseScale > w - 4) baseScale = Math.max(0.5f, (w - 6) / (float) textW);
+            g.pose().pushPose();
+            g.pose().translate(x + w / 2f, y + h / 2f - (screen.getFont().lineHeight * baseScale) / 2f + 1, 0);
+            g.pose().scale(baseScale, baseScale, 1f);
+            g.drawCenteredString(screen.getFont(), text, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * screen.getEffectiveAlpha())));
+            g.pose().popPose();
+        }
+    }
+
+    public static boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
+        if (def == null || runtime == null || phaseId == null || phaseId.isEmpty()) return false;
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null || !phase.hasChoices()) return false;
+        int[] progress = runtime.getAllProgress(phaseId);
+        for (int i = 0; i < phase.getObjectives().size(); i++)
+            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
+        return true;
+    }
+
+    public static boolean isPhaseObjectivesDone(QuestRuntimeData runtime, PhaseDefinition phase, String phaseId) {
+        int[] progress = runtime.getAllProgress(phaseId);
+        for (int i = 0; i < phase.getObjectives().size(); i++)
+            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
+        return true;
+    }
+
+    public double getDetailScrollOffset() {
+        return detailScrollOffset;
+    }
 
     public void resetState() {
         detailReveal = 0f;
@@ -111,7 +150,8 @@ public class JournalDetailPanel {
         // 渲染主标题
         // =======================
         g.pose().pushPose();
-        g.pose().translate(titleIconOffset, localY, 0); g.pose().scale(1.2f, 1.2f, 1f);
+        g.pose().translate(titleIconOffset, localY, 0);
+        g.pose().scale(1.2f, 1.2f, 1f);
         g.drawString(screen.getFont(), def.getDisplayName().getString(), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
 
@@ -135,7 +175,7 @@ public class JournalDetailPanel {
         g.pose().mulPose(Axis.ZP.rotationDegrees(45));
 
         // 常态呼吸正弦波注入！
-        int idleGlow = 35 + (int)(25 * Math.sin(Util.getMillis() / 300.0));
+        int idleGlow = 35 + (int) (25 * Math.sin(Util.getMillis() / 300.0));
         int glowA = (int) ((hHover ? 180 : idleGlow) * dAlpha);
 
         if (glowA > 0) g.fill(-hBtnR - 2, -hBtnR - 2, hBtnR + 2, hBtnR + 2, HudAnimUtil.withAlpha(activeTheme, glowA));
@@ -158,7 +198,9 @@ public class JournalDetailPanel {
         localY += 18;
 
         if (!def.getDescription().getString().isEmpty()) {
-            g.pose().pushPose(); g.pose().translate(0, localY, 0); g.pose().scale(0.85f, 0.85f, 1f);
+            g.pose().pushPose();
+            g.pose().translate(0, localY, 0);
+            g.pose().scale(0.85f, 0.85f, 1f);
             List<String> descLines = HudRenderUtil.wrapText(def.getDescription().getString(), (int) ((scrollAreaW - 24) / 0.85f), screen.getFont());
             for (String line : descLines) {
                 g.drawString(screen.getFont(), line, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
@@ -232,7 +274,10 @@ public class JournalDetailPanel {
             int thumbH = Math.max(16, (int) (((float) scrollAreaH / detailContentHeight) * scrollAreaH));
             int thumbY = y + (int) ((detailScrollOffset / maxDetailScroll) * (scrollAreaH - thumbH));
             if (my >= thumbY && my <= thumbY + thumbH) dragDetailYOffset = my - thumbY;
-            else { dragDetailYOffset = thumbH / 2.0; updateScrollFromMouse(my, y, scrollAreaH, maxDetailScroll); }
+            else {
+                dragDetailYOffset = thumbH / 2.0;
+                updateScrollFromMouse(my, y, scrollAreaH, maxDetailScroll);
+            }
             return true;
         }
 
@@ -300,41 +345,5 @@ public class JournalDetailPanel {
         if (maxScroll <= 0) return;
         int thumbH = Math.max(16, (int) (((float) viewH / detailContentHeight) * viewH));
         detailTargetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragDetailYOffset) / (viewH - thumbH))) * maxScroll;
-    }
-
-    public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
-        int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * screen.getEffectiveAlpha());
-        int borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * screen.getEffectiveAlpha());
-        int borderRgb = hovered ? (themeColor & 0xFFFFFF) : 0xCCCCCC;
-
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(x, y, x + w, y + 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y + h - 1, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y, x + 1, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x + w - 1, y, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-
-        if (screen.getEffectiveAlpha() > 0.05f) {
-            int textW = screen.getFont().width(text);
-            float baseScale = 0.85f;
-            if (textW * baseScale > w - 4) baseScale = Math.max(0.5f, (w - 6) / (float) textW);
-            g.pose().pushPose(); g.pose().translate(x + w / 2f, y + h / 2f - (screen.getFont().lineHeight * baseScale) / 2f + 1, 0); g.pose().scale(baseScale, baseScale, 1f);
-            g.drawCenteredString(screen.getFont(), text, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * screen.getEffectiveAlpha())));
-            g.pose().popPose();
-        }
-    }
-
-    public static boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
-        if (def == null || runtime == null || phaseId == null || phaseId.isEmpty()) return false;
-        PhaseDefinition phase = def.getPhase(phaseId);
-        if (phase == null || !phase.hasChoices()) return false;
-        int[] progress = runtime.getAllProgress(phaseId);
-        for (int i = 0; i < phase.getObjectives().size(); i++) if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
-        return true;
-    }
-
-    public static boolean isPhaseObjectivesDone(QuestRuntimeData runtime, PhaseDefinition phase, String phaseId) {
-        int[] progress = runtime.getAllProgress(phaseId);
-        for (int i = 0; i < phase.getObjectives().size(); i++) if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
-        return true;
     }
 }

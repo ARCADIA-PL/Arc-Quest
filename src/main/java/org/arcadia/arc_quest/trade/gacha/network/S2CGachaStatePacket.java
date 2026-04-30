@@ -21,28 +21,20 @@ import java.util.function.Supplier;
  */
 public class S2CGachaStatePacket {
 
-    public enum Mode {
-        OPEN,
-        SYNC
-    }
-
     private final Mode mode;
     private final String shopId;
     private final int pityCounter;
     private final int totalDraws;
     private final boolean canDraw;
     private final int remainingDraws;
-
     private final long lastDrawRealTime;
     private final long lastDrawGameTime;
     private final long lastDrawDayTime;
     private final int cooldownType;
     private final long cooldownValue;
     private final int resetTimeTicks;
-
     private final List<CostShortfallLine> shortfallLines;
     private final List<IQuestCapability.GachaDrawRecord> drawHistory;
-
     private S2CGachaStatePacket(Mode mode,
                                 String shopId,
                                 int pityCounter,
@@ -279,5 +271,10 @@ public class S2CGachaStatePacket {
             }
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    public enum Mode {
+        OPEN,
+        SYNC
     }
 }

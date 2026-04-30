@@ -9,7 +9,8 @@ import org.joml.Matrix4f;
 
 public final class MarkerPointerRenderer {
 
-    private MarkerPointerRenderer() {}
+    private MarkerPointerRenderer() {
+    }
 
     public static void draw(GuiGraphics gui, int accentColor, float time, float activeProgress, float lightX, float lightY, float tier) {
         RenderSystem.enableBlend();
@@ -35,8 +36,8 @@ public final class MarkerPointerRenderer {
 
         float flowSpeed = -4.5f;
         float flowPhase = time * flowSpeed;
-        float flowLx = (float)Math.cos(flowPhase);
-        float flowLy = (float)Math.sin(flowPhase);
+        float flowLx = (float) Math.cos(flowPhase);
+        float flowLy = (float) Math.sin(flowPhase);
 
         float highlightMix = 0.2f + 0.8f * activeProgress;
         float mixLx = lightX * (1.0f - highlightMix) + flowLx * highlightMix;
@@ -44,13 +45,13 @@ public final class MarkerPointerRenderer {
         // ====================================================================
 
         float cTop = lerp(lerp(-12f, -8f, phase1), -5f, phase2) * breathScale;
-        float cBot = lerp(lerp(-9f,  -6f, phase1), -3.5f, phase2) * breathScale;
-        float cX   = lerp(lerp(8f,    4f, phase1),  2f, phase2) * breathScale;
+        float cBot = lerp(lerp(-9f, -6f, phase1), -3.5f, phase2) * breathScale;
+        float cX = lerp(lerp(8f, 4f, phase1), 2f, phase2) * breathScale;
 
         float wTop = cBot;
         float wBot = lerp(lerp(0f, -2f, phase1), -1f, phase2) * breathScale;
-        float wOut = lerp(lerp(8f,  5f, phase1),  2.5f, phase2) * breathScale;
-        float wIn  = lerp(lerp(6f,  3.5f, phase1), 1.5f, phase2) * breathScale;
+        float wOut = lerp(lerp(8f, 5f, phase1), 2.5f, phase2) * breathScale;
+        float wIn = lerp(lerp(6f, 3.5f, phase1), 1.5f, phase2) * breathScale;
         float wingGap = lerp(lerp(0f, 2.5f, phase1), 1.0f, phase2) * breathScale;
 
         float globalAlpha = lerp(lerp(1.0f, 0.6f, phase1), 0.25f, phase2);
@@ -58,27 +59,27 @@ public final class MarkerPointerRenderer {
 
         addVertex(builder, matrix, -cX, cTop, calcColor(-8, -6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
         addVertex(builder, matrix, -cX, cBot, calcColor(-8, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
-        addVertex(builder, matrix,  cX, cBot, calcColor( 8, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
-        addVertex(builder, matrix,  cX, cTop, calcColor( 8, -6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, cX, cBot, calcColor(8, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, cX, cTop, calcColor(8, -6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
 
-        addVertex(builder, matrix, -cX - wingGap,   wTop, calcColor(-8, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
-        addVertex(builder, matrix, -wOut - wingGap, wBot, calcColor(-8,  6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
-        addVertex(builder, matrix, -wIn - wingGap,  wBot, calcColor(-6,  6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
-        addVertex(builder, matrix, -wIn - wingGap,  wTop, calcColor(-6, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, -cX - wingGap, wTop, calcColor(-8, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, -wOut - wingGap, wBot, calcColor(-8, 6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, -wIn - wingGap, wBot, calcColor(-6, 6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, -wIn - wingGap, wTop, calcColor(-6, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
 
-        addVertex(builder, matrix, wIn + wingGap,  wTop, calcColor(6, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
-        addVertex(builder, matrix, wIn + wingGap,  wBot, calcColor(6,  6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
-        addVertex(builder, matrix, wOut + wingGap, wBot, calcColor(8,  6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
-        addVertex(builder, matrix, cX + wingGap,   wTop, calcColor(8, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, wIn + wingGap, wTop, calcColor(6, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, wIn + wingGap, wBot, calcColor(6, 6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, wOut + wingGap, wBot, calcColor(8, 6, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
+        addVertex(builder, matrix, cX + wingGap, wTop, calcColor(8, -3, mixLx, mixLy, accentColor, globalAlpha, activeProgress));
 
         if (coreAlphaMod > 0.05f) {
             float coreGlow = lerp(0.8f, 0.6f + 0.4f * breathFactor, activeProgress);
-            int coreA = (int)(baseAlpha * 0.8f * coreGlow);
+            int coreA = (int) (baseAlpha * 0.8f * coreGlow);
             int dotColor = (coreA << 24) | (accentColor & 0xFFFFFF);
             addVertex(builder, matrix, -2, -5, calcColor(-2, 1, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha, activeProgress));
             addVertex(builder, matrix, -2, -3, calcColor(-2, 3, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha, activeProgress));
-            addVertex(builder, matrix,  2, -3, calcColor( 2, 3, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha, activeProgress));
-            addVertex(builder, matrix,  2, -5, calcColor( 2, 1, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha, activeProgress));
+            addVertex(builder, matrix, 2, -3, calcColor(2, 3, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha, activeProgress));
+            addVertex(builder, matrix, 2, -5, calcColor(2, 1, mixLx, mixLy, dotColor, coreAlphaMod * globalAlpha, activeProgress));
         }
 
         BufferUploader.drawWithShader(builder.end());
@@ -94,7 +95,7 @@ public final class MarkerPointerRenderer {
         int g = (baseColor >> 8) & 0xFF;
         int b = baseColor & 0xFF;
 
-        float len = (float)Math.sqrt(nx*nx + ny*ny);
+        float len = (float) Math.sqrt(nx * nx + ny * ny);
         float normX = len > 0 ? nx / len : 0;
         float normY = len > 0 ? ny / len : 0;
 
@@ -107,14 +108,14 @@ public final class MarkerPointerRenderer {
         float glowMultiplier = 0.4f + 1.6f * activeProgress;
         float finalGlow = Math.min(1.0f, glow * glowMultiplier);
 
-        int outR = (int)(r + (255 - r) * finalGlow);
-        int outG = (int)(g + (255 - g) * finalGlow);
-        int outB = (int)(b + (255 - b) * finalGlow);
-        int outA = (int)Math.min(255, baseA + (255 - baseA) * (finalGlow * 0.4f));
+        int outR = (int) (r + (255 - r) * finalGlow);
+        int outG = (int) (g + (255 - g) * finalGlow);
+        int outB = (int) (b + (255 - b) * finalGlow);
+        int outA = (int) Math.min(255, baseA + (255 - baseA) * (finalGlow * 0.4f));
 
         if (dot < -0.2f) {
             float shadow = (-dot - 0.2f) / 0.8f;
-            outA = (int)(baseA * (1.0f - shadow * 0.7f));
+            outA = (int) (baseA * (1.0f - shadow * 0.7f));
         }
 
         return (outA << 24) | (outR << 16) | (outG << 8) | outB;

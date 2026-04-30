@@ -23,19 +23,6 @@ import org.arcadia.arc_quest.Arc_Quest;
  */
 public class QuestPonderPlugin implements PonderPlugin {
 
-    @Override
-    public String getModId() {
-        return Arc_Quest.MOD_ID;
-    }
-
-    @Override
-    public void registerScenes(PonderSceneRegistrationHelper<ResourceLocation> helper) {
-        registerQuestPhaseScenes(helper);
-        // registerDialogueScenes(helper);
-        // registerTradeScenes(helper);
-        // registerTutorialScenes(helper);
-    }
-
     /**
      * 注册任务阶段情报场景。
      *
@@ -66,6 +53,19 @@ public class QuestPonderPlugin implements PonderPlugin {
         //         "arc_quest:chapter1", "arc_quest:mine_ores",
         //         ArcQuestPonderHelper.questPhaseStructure("arc_quest:chapter1", "arc_quest:mine_ores"),
         //         QuestIntelScenes::chapter1MineOres);
+    }
+
+    @Override
+    public String getModId() {
+        return Arc_Quest.MOD_ID;
+    }
+
+    @Override
+    public void registerScenes(PonderSceneRegistrationHelper<ResourceLocation> helper) {
+        registerQuestPhaseScenes(helper);
+        // registerDialogueScenes(helper);
+        // registerTradeScenes(helper);
+        // registerTutorialScenes(helper);
     }
 
     @Override

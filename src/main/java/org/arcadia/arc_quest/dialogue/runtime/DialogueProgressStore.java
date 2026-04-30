@@ -18,7 +18,9 @@ import java.util.Map;
 public class DialogueProgressStore {
 
     private final Map<String, Entry> store = new HashMap<>();
-    /** 记录每个 key 对应的语义类型，用于 serialize 分区（写入时同步维护）。 */
+    /**
+     * 记录每个 key 对应的语义类型，用于 serialize 分区（写入时同步维护）。
+     */
     private final Map<String, ProgressKey.KeyType> keyTypes = new HashMap<>();
     private boolean dirty = false;
 
@@ -38,6 +40,14 @@ public class DialogueProgressStore {
 
     // ── 写入（ProgressKey 版本） ──────────────────────────
 
+    private static boolean isNumeric(String s) {
+        if (s.isEmpty()) return false;
+        for (char c : s.toCharArray()) {
+            if (!Character.isDigit(c)) return false;
+        }
+        return true;
+    }
+
     public void recordNodeVisit(ProgressKey key, long realTime, long gameTime, long dayTime) {
         String k = key.toKeyString();
         store.put(k, new Entry(realTime, gameTime, dayTime));
@@ -52,14 +62,14 @@ public class DialogueProgressStore {
         dirty = true;
     }
 
+    // ── 写入（String 版本，向后兼容） ────────────────────
+
     public void recordDialogueVisit(ProgressKey key, long realTime, long gameTime, long dayTime) {
         String k = key.toKeyString();
         store.put(k, new Entry(realTime, gameTime, dayTime));
         keyTypes.put(k, key.keyType());
         dirty = true;
     }
-
-    // ── 写入（String 版本，向后兼容） ────────────────────
 
     public void recordNodeVisit(String namespace, String nodeId, long realTime, long gameTime, long dayTime) {
         store.put(nodeKey(namespace, nodeId), new Entry(realTime, gameTime, dayTime));
@@ -71,12 +81,12 @@ public class DialogueProgressStore {
         dirty = true;
     }
 
+    // ── 查询（String 版本） ───────────────────────────────
+
     public void recordDialogueVisit(String namespace, String dialogueId, long realTime, long gameTime, long dayTime) {
         store.put(dialogueKey(namespace, dialogueId), new Entry(realTime, gameTime, dayTime));
         dirty = true;
     }
-
-    // ── 查询（String 版本） ───────────────────────────────
 
     public Entry getNodeVisit(String namespace, String nodeId) {
         return store.getOrDefault(nodeKey(namespace, nodeId), Entry.EMPTY);
@@ -102,11 +112,11 @@ public class DialogueProgressStore {
         return store.getOrDefault(dialogueKey(namespace, dialogueId), Entry.EMPTY);
     }
 
+    // ── 查询（ProgressKey 版本） ──────────────────────────
+
     public boolean hasCompletedDialogue(String namespace, String dialogueId) {
         return getDialogueVisit(namespace, dialogueId).exists();
     }
-
-    // ── 查询（ProgressKey 版本） ──────────────────────────
 
     public Entry getNodeVisit(ProgressKey key) {
         return store.getOrDefault(key.toKeyString(), Entry.EMPTY);
@@ -132,14 +142,14 @@ public class DialogueProgressStore {
         return getDialogueVisit(key).exists();
     }
 
+    // ── 冷却判断 ──────────────────────────────────────────
+
     /**
      * 统一查询入口（单 Map 后直接按 key 查找）。
      */
     public Entry getEntry(ProgressKey key) {
         return store.getOrDefault(key.toKeyString(), Entry.EMPTY);
     }
-
-    // ── 冷却判断 ──────────────────────────────────────────
 
     public boolean isOnCooldown(ProgressKey key, CooldownType cooldownType, int cooldownValue, int resetTick, TimeSnapshot ts) {
         return UnifiedCooldownManager.isOnCooldown(this, key, cooldownType, cooldownValue, resetTick, ts);
@@ -175,6 +185,8 @@ public class DialogueProgressStore {
         dirty = true;
     }
 
+    // ── 序列化（分区 NBT 格式，保持旧存档兼容） ──────────
+
     /**
      * 移除指定 key 的进度记录（彻底删除，用于重置操作）。
      */
@@ -185,14 +197,12 @@ public class DialogueProgressStore {
         dirty = true;
     }
 
-    // ── 序列化（分区 NBT 格式，保持旧存档兼容） ──────────
-
     public CompoundTag serialize() {
         CompoundTag root = new CompoundTag();
-        CompoundTag nodesTag     = new CompoundTag();
-        CompoundTag choicesTag   = new CompoundTag();
+        CompoundTag nodesTag = new CompoundTag();
+        CompoundTag choicesTag = new CompoundTag();
         CompoundTag dialoguesTag = new CompoundTag();
-        CompoundTag tradeTag     = new CompoundTag();
+        CompoundTag tradeTag = new CompoundTag();
 
         for (var e : store.entrySet()) {
             String k = e.getKey();
@@ -202,10 +212,10 @@ public class DialogueProgressStore {
             if (type != null) {
                 // 有精确类型信息时，按 KeyType 分区
                 switch (type) {
-                    case NODE     -> nodesTag.put(k, entryTag);
+                    case NODE -> nodesTag.put(k, entryTag);
                     case DIALOGUE -> dialoguesTag.put(k, entryTag);
-                    case CHOICE   -> choicesTag.put(k, entryTag);
-                    case TRADE    -> tradeTag.put(k, entryTag);
+                    case CHOICE -> choicesTag.put(k, entryTag);
+                    case TRADE -> tradeTag.put(k, entryTag);
                 }
             } else {
                 // 旧记录（通过 String 版本写入、无 KeyType 信息），退回字符串格式推断
@@ -233,10 +243,12 @@ public class DialogueProgressStore {
     public void deserialize(CompoundTag root) {
         store.clear();
         keyTypes.clear();
-        if (root.contains("Nodes",     Tag.TAG_COMPOUND)) loadMap(root.getCompound("Nodes"),     ProgressKey.KeyType.NODE);
-        if (root.contains("Choices",   Tag.TAG_COMPOUND)) loadMap(root.getCompound("Choices"),   ProgressKey.KeyType.CHOICE);
-        if (root.contains("Dialogues", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Dialogues"), ProgressKey.KeyType.DIALOGUE);
-        if (root.contains("Trade",     Tag.TAG_COMPOUND)) loadMap(root.getCompound("Trade"),     ProgressKey.KeyType.TRADE);
+        if (root.contains("Nodes", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Nodes"), ProgressKey.KeyType.NODE);
+        if (root.contains("Choices", Tag.TAG_COMPOUND))
+            loadMap(root.getCompound("Choices"), ProgressKey.KeyType.CHOICE);
+        if (root.contains("Dialogues", Tag.TAG_COMPOUND))
+            loadMap(root.getCompound("Dialogues"), ProgressKey.KeyType.DIALOGUE);
+        if (root.contains("Trade", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Trade"), ProgressKey.KeyType.TRADE);
     }
 
     private void loadMap(CompoundTag tag, ProgressKey.KeyType type) {
@@ -249,9 +261,9 @@ public class DialogueProgressStore {
     }
 
     public void migrateFromLegacy(CompoundTag root) {
-        migrateLegacyPair(root, "NodeVisitHistory",       "NodeVisitGameTime");
+        migrateLegacyPair(root, "NodeVisitHistory", "NodeVisitGameTime");
         migrateLegacyPair(root, "ChoiceSelectionHistory", "ChoiceSelectionGameTime");
-        migrateLegacyPair(root, "DialogueHistory",        "DialogueGameTime");
+        migrateLegacyPair(root, "DialogueHistory", "DialogueGameTime");
         dirty = true;
     }
 
@@ -266,18 +278,15 @@ public class DialogueProgressStore {
         }
     }
 
-    private static boolean isNumeric(String s) {
-        if (s.isEmpty()) return false;
-        for (char c : s.toCharArray()) {
-            if (!Character.isDigit(c)) return false;
-        }
-        return true;
-    }
-
     // ── 脏标记 ───────────────────────────────────────────
 
-    public boolean isDirty() { return dirty; }
-    public void clearDirty() { dirty = false; }
+    public boolean isDirty() {
+        return dirty;
+    }
+
+    public void clearDirty() {
+        dirty = false;
+    }
 
     public void clear() {
         store.clear();
@@ -313,7 +322,14 @@ public class DialogueProgressStore {
 
         public static final Entry EMPTY = new Entry(0L, -1L, -1L);
 
-        public boolean exists() { return realTime > 0; }
+        static Entry fromTag(CompoundTag tag) {
+            return new Entry(tag.getLong("r"), tag.getLong("g"),
+                    tag.contains("d") ? tag.getLong("d") : -1L);
+        }
+
+        public boolean exists() {
+            return realTime > 0;
+        }
 
         CompoundTag toTag() {
             CompoundTag tag = new CompoundTag();
@@ -321,11 +337,6 @@ public class DialogueProgressStore {
             tag.putLong("g", gameTime);
             tag.putLong("d", dayTime);
             return tag;
-        }
-
-        static Entry fromTag(CompoundTag tag) {
-            return new Entry(tag.getLong("r"), tag.getLong("g"),
-                    tag.contains("d") ? tag.getLong("d") : -1L);
         }
     }
 }

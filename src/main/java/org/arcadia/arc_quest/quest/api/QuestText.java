@@ -58,8 +58,6 @@ public final class QuestText {
 
     @FunctionalInterface
     public interface Arg {
-        Object resolve(ServerPlayer player, QuestTextContext context);
-
         static Arg playerName() {
             return (player, context) -> player.getName();
         }
@@ -71,5 +69,7 @@ public final class QuestText {
         static Arg of(BiFunction<ServerPlayer, QuestTextContext, Object> fn) {
             return fn::apply;
         }
+
+        Object resolve(ServerPlayer player, QuestTextContext context);
     }
 }

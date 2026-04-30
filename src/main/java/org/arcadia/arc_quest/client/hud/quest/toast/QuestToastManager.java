@@ -31,7 +31,8 @@ public final class QuestToastManager {
     private static String lastQueuedKey = null;
     private static long lastQueuedAt = 0L;
 
-    private QuestToastManager() {}
+    private QuestToastManager() {
+    }
 
     public static void show(ToastType type, String questName) {
         if (type == null || questName == null) return;
@@ -148,7 +149,9 @@ public final class QuestToastManager {
         }
     }
 
-    private static String buildKey(ToastType type, String text) { return type.name() + "|" + text; }
+    private static String buildKey(ToastType type, String text) {
+        return type.name() + "|" + text;
+    }
 
     private static void cancelAcceptedToastForQuest(String questName) {
         String acceptedKey = buildKey(ToastType.QUEST_ACCEPTED, questName);
@@ -169,8 +172,9 @@ public final class QuestToastManager {
         }
     }
 
-    private static void pruneRecentShown(long now) { recentShownAt.entrySet().removeIf(e -> now - e.getValue() > 5000L); }
-    private record PendingToast(ToastType type, String text, String key, long queuedAt) {}
+    private static void pruneRecentShown(long now) {
+        recentShownAt.entrySet().removeIf(e -> now - e.getValue() > 5000L);
+    }
 
     public enum ToastType {
         QUEST_ACCEPTED(0x4FC3F7, "arc_quest.toast.prefix.quest_accepted"),
@@ -186,14 +190,17 @@ public final class QuestToastManager {
             this.accentColor = color;
             this.translationKey = translationKey;
         }
-        
+
         /**
          * 获取翻译后的前缀文本。
          */
         public String getLocalizedPrefix() {
             return Minecraft.getInstance().player != null
-                ? Component.translatable(translationKey).getString()
-                : translationKey;
+                    ? Component.translatable(translationKey).getString()
+                    : translationKey;
         }
+    }
+
+    private record PendingToast(ToastType type, String text, String key, long queuedAt) {
     }
 }

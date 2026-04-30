@@ -88,7 +88,7 @@ public final class HudRenderUtil {
                                       int accentColor, int accentAlpha, int accentWidth) {
         // 【统一】背景
         g.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
-        
+
         // 【统一】使用机能风高级晶体侧边栏
         drawCyberneticEdge(g, x, y, h, accentColor, accentAlpha);
     }
@@ -99,14 +99,14 @@ public final class HudRenderUtil {
                                       int lineAlpha) {
         // 【统一】背景
         g.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
-        
+
         // 【统一】使用机能风高级晶体侧边栏
         drawCyberneticEdge(g, x, y, h, accentColor, accentAlpha);
-        
+
         // 底部线条（保留原有逻辑）
         if (lineAlpha > 0) {
-            g.fill(x + accentWidth, y + h - 1, x + w, y + h, 
-                   (lineAlpha << 24) | (accentColor & 0x00FFFFFF));
+            g.fill(x + accentWidth, y + h - 1, x + w, y + h,
+                    (lineAlpha << 24) | (accentColor & 0x00FFFFFF));
         }
     }
 

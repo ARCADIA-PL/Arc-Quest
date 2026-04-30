@@ -19,15 +19,8 @@ import java.util.function.Supplier;
  */
 public class C2SGachaControlPacket {
 
-    public enum Action {
-        OPEN,
-        SYNC,
-        CLOSE
-    }
-
     private final Action action;
     private final String shopId;
-
     public C2SGachaControlPacket(Action action, String shopId) {
         this.action = action;
         this.shopId = shopId;
@@ -86,5 +79,11 @@ public class C2SGachaControlPacket {
             }
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    public enum Action {
+        OPEN,
+        SYNC,
+        CLOSE
     }
 }

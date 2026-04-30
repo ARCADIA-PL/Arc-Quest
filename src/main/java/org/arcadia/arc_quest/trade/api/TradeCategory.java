@@ -12,6 +12,11 @@ import java.util.Objects;
  */
 public final class TradeCategory {
 
+    /**
+     * "全部" 分类常量
+     */
+    public static final TradeCategory ALL = new TradeCategory(
+            "_all", Component.translatable("arc_quest.trade.category.all"), -1, 0xFFFFFFFF);
     private final String id;
     private final Component displayName;
     private final int sortOrder;
@@ -28,15 +33,6 @@ public final class TradeCategory {
         this(id, displayName, 0, 0xFFFFFFFF);
     }
 
-    public String getId() { return id; }
-    public Component getDisplayName() { return displayName; }
-    public int getSortOrder() { return sortOrder; }
-    public int getThemeColor() { return themeColor; }
-
-    /** "全部" 分类常量 */
-    public static final TradeCategory ALL = new TradeCategory(
-            "_all", Component.translatable("arc_quest.trade.category.all"), -1, 0xFFFFFFFF);
-
     public static TradeCategory of(String id, String literal) {
         return new TradeCategory(id, Component.literal(literal));
     }
@@ -44,7 +40,7 @@ public final class TradeCategory {
     /**
      * 使用翻译键创建分类。
      *
-     * @param id 分类 ID
+     * @param id             分类 ID
      * @param translationKey 翻译键（如 {@code "arc_quest.trade.category.weapons"}）
      */
     public static TradeCategory ofTranslated(String id, String translationKey) {
@@ -92,10 +88,10 @@ public final class TradeCategory {
     /**
      * 使用翻译键 + ChatFormatting 创建分类（推荐）。
      *
-     * @param id 分类 ID
+     * @param id             分类 ID
      * @param translationKey 翻译键
-     * @param sortOrder 排序顺序
-     * @param formatting 颜色格式化
+     * @param sortOrder      排序顺序
+     * @param formatting     颜色格式化
      */
     public static TradeCategory ofTranslatedColor(String id, String translationKey, int sortOrder, ChatFormatting formatting) {
         Integer rgb = formatting.getColor();
@@ -106,11 +102,11 @@ public final class TradeCategory {
     /**
      * 从 RGB 值创建分类（自动添加完全不透明 Alpha 通道）。
      *
-     * @param id 分类 ID
+     * @param id      分类 ID
      * @param literal 显示名称
-     * @param r 红 (0-255)
-     * @param g 绿 (0-255)
-     * @param b 蓝 (0-255)
+     * @param r       红 (0-255)
+     * @param g       绿 (0-255)
+     * @param b       蓝 (0-255)
      */
     public static TradeCategory ofRGB(String id, String literal, int r, int g, int b) {
         int color = (0xFF << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
@@ -125,6 +121,22 @@ public final class TradeCategory {
         return new TradeCategory(id, Component.literal(literal), sortOrder, color);
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public Component getDisplayName() {
+        return displayName;
+    }
+
+    public int getSortOrder() {
+        return sortOrder;
+    }
+
+    public int getThemeColor() {
+        return themeColor;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -133,8 +145,12 @@ public final class TradeCategory {
     }
 
     @Override
-    public int hashCode() { return id.hashCode(); }
+    public int hashCode() {
+        return id.hashCode();
+    }
 
     @Override
-    public String toString() { return "TradeCategory[" + id + "]"; }
+    public String toString() {
+        return "TradeCategory[" + id + "]";
+    }
 }

@@ -20,7 +20,8 @@ public final class TradeRegistry {
     private static Map<String, TradeShopDefinition> REGISTRY = new LinkedHashMap<>();
     private static boolean frozen = false;
 
-    private TradeRegistry() {}
+    private TradeRegistry() {
+    }
 
     /**
      * 注册商店定义。
@@ -31,7 +32,7 @@ public final class TradeRegistry {
         if (frozen) {
             throw new IllegalStateException("TradeRegistry is frozen — cannot register '" + definition.getShopId() + "'");
         }
-        
+
         String id = definition.getShopId();
         if (REGISTRY.containsKey(id)) {
             throw new IllegalStateException("Duplicate trade shop ID: " + id);
@@ -40,7 +41,7 @@ public final class TradeRegistry {
         LOGGER.info("[ArcQuest] Registered trade shop: {} ({} entries)",
                 id, definition.getAllEntries().size());
     }
-    
+
     /**
      * 冻结注册表。在 commonSetup 完成后调用。
      * <p>
@@ -48,10 +49,10 @@ public final class TradeRegistry {
      */
     public static void freeze() {
         frozen = true;
-        
+
         // 【并发防护】转换为线程安全的不可变Map
         REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(REGISTRY));
-        
+
         LOGGER.info("[ArcQuest] TradeRegistry frozen. Total shops: {}", REGISTRY.size());
     }
 

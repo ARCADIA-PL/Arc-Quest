@@ -261,9 +261,10 @@ public sealed interface DialogueAction {
             }
             C2SRequestTradePacket.handleServerOpenFromDialogue(player, shop, false, restoreNodeId);
         }
+
         @Override
-        public void execute(ServerPlayer player, DialogueSession session) { 
-            execute(player); 
+        public void execute(ServerPlayer player, DialogueSession session) {
+            execute(player);
         }
     }
 
@@ -281,9 +282,10 @@ public sealed interface DialogueAction {
             }
             C2SRequestTradePacket.handleServerOpenFromDialogue(player, shop, true, restoreNodeId);
         }
+
         @Override
-        public void execute(ServerPlayer player, DialogueSession session) { 
-            execute(player); 
+        public void execute(ServerPlayer player, DialogueSession session) {
+            execute(player);
         }
     }
 
@@ -306,11 +308,13 @@ public sealed interface DialogueAction {
             }
             GachaScreenOpener.openGachaScreen(player, shop, cap, restoreNodeId);
         }
+
         @Override
         public void execute(ServerPlayer player, DialogueSession session) {
             execute(player);
         }
     }
+
     record LambdaAction(BiConsumer<ServerPlayer, Entity> handler, Entity target) implements DialogueAction {
 
         public LambdaAction(BiConsumer<ServerPlayer, Entity> handler) {

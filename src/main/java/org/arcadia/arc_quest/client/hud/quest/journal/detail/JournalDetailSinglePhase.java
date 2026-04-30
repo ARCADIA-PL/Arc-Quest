@@ -32,20 +32,15 @@ import java.util.Map;
 public class JournalDetailSinglePhase {
     private final QuestJournalScreen screen;
     private final JournalDetailPanel parent;
-
+    private final List<JournalTypes.ChoiceButtonRect> currentChoiceButtons = new ArrayList<>();
+    private final Map<Integer, Float> offerHoverAnims = new HashMap<>();
+    private final List<OfferProgressRect> currentOfferProgressRects = new ArrayList<>();
     private float[] detailObjReveal = new float[0];
     private float[] objProgressAnims = new float[0];
-    private final List<JournalTypes.ChoiceButtonRect> currentChoiceButtons = new ArrayList<>();
-
     private ResourceLocation intelSceneId = null;
     private int intelBtnLocalY = 0;
     private float intelBtnHoverAnim = 0f;
     private long lastChoiceClickAt = 0L;
-
-    private final Map<Integer, Float> offerHoverAnims = new HashMap<>();
-
-    private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {}
-    private final List<OfferProgressRect> currentOfferProgressRects = new ArrayList<>();
 
     public JournalDetailSinglePhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
@@ -67,14 +62,18 @@ public class JournalDetailSinglePhase {
         currentChoiceButtons.clear();
         currentOfferProgressRects.clear();
 
-        g.pose().pushPose(); g.pose().translate(0, localY, 0); g.pose().scale(0.8f, 0.8f, 1f);
+        g.pose().pushPose();
+        g.pose().translate(0, localY, 0);
+        g.pose().scale(0.8f, 0.8f, 1f);
         String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty() ? phase.getDisplayName().getString() : phase.getPhaseId();
         g.drawString(font, Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString(), 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), true);
         g.pose().popPose();
         localY += 14;
 
         if (phase.hasDescription()) {
-            g.pose().pushPose(); g.pose().translate(4, localY, 0); g.pose().scale(0.8f, 0.8f, 1f);
+            g.pose().pushPose();
+            g.pose().translate(4, localY, 0);
+            g.pose().scale(0.8f, 0.8f, 1f);
             List<String> phaseDescLines = HudRenderUtil.wrapText(phase.getDescription().getString(), (int) ((scrollAreaW - 28) / 0.8f), font);
             for (String line : phaseDescLines) {
                 g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0x99BBFF, safeA), false);
@@ -96,7 +95,10 @@ public class JournalDetailSinglePhase {
             detailObjReveal[i] = HudAnimUtil.lerp(detailObjReveal[i], 1f, 0.1f + i * 0.03f, dt);
             float oAlpha = dAlpha * HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]));
             int oA = (int) (255 * oAlpha);
-            if (oA <= 4) { localY += 22; continue; }
+            if (oA <= 4) {
+                localY += 22;
+                continue;
+            }
 
             int objX = (int) ((1f - HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
             int progress = runtime.getObjectiveProgress(phaseId, i);
@@ -159,13 +161,13 @@ public class JournalDetailSinglePhase {
             int fillW = (int) (barW * objProgressAnims[i]);
 
             RenderSystem.enableBlend();
-            int emptyBgColor = HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * oAlpha));
+            int emptyBgColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * oAlpha));
             g.fill(objX, localY, objX + barW, localY + 2, emptyBgColor);
 
             if (fillW > 0) {
-                int fillColor = HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int)(0xCC * oAlpha));
+                int fillColor = HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int) (0xCC * oAlpha));
                 g.fill(objX, localY, objX + fillW, localY + 2, fillColor);
-                int brightColor = HudAnimUtil.withAlpha(0xFFFFFF, (int)(255 * oAlpha));
+                int brightColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * oAlpha));
                 g.fill(objX + fillW - 2, localY - 1, objX + fillW, localY + 3, brightColor);
             }
 
@@ -208,7 +210,9 @@ public class JournalDetailSinglePhase {
             localY += 8;
             g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
             localY += 10;
-            g.pose().pushPose(); g.pose().translate(0, localY, 0); g.pose().scale(0.8f, 0.8f, 1f);
+            g.pose().pushPose();
+            g.pose().translate(0, localY, 0);
+            g.pose().scale(0.8f, 0.8f, 1f);
             g.drawString(font, Component.translatable("arc_quest.gui.journal.section.choose_path").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), true);
             g.pose().popPose();
             localY += 14;
@@ -216,7 +220,8 @@ public class JournalDetailSinglePhase {
             List<ChoiceOption> choices = phase.getChoices();
             for (int i = 0; i < choices.size(); i++) {
                 ChoiceOption choice = choices.get(i);
-                if (choice.getVisibleCondition() != null && !choice.getVisibleCondition().testClient(ClientQuestCache.INSTANCE.getCompletedQuestsAsRL(), ClientQuestCache.INSTANCE.getAllFlags(), ClientQuestCache.INSTANCE.getAllVariables())) continue;
+                if (choice.getVisibleCondition() != null && !choice.getVisibleCondition().testClient(ClientQuestCache.INSTANCE.getCompletedQuestsAsRL(), ClientQuestCache.INSTANCE.getAllFlags(), ClientQuestCache.INSTANCE.getAllVariables()))
+                    continue;
 
                 int choiceBtnW = scrollAreaW - 24, choiceBtnH = 22;
                 int absX = x + 12, absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
@@ -233,7 +238,9 @@ public class JournalDetailSinglePhase {
                 g.fill(choiceBtnW - 1, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
 
                 float textScale = 0.8f;
-                g.pose().pushPose(); g.pose().translate(8, localY + (choiceBtnH - font.lineHeight * textScale) / 2f + 1, 0); g.pose().scale(textScale, textScale, 1f);
+                g.pose().pushPose();
+                g.pose().translate(8, localY + (choiceBtnH - font.lineHeight * textScale) / 2f + 1, 0);
+                g.pose().scale(textScale, textScale, 1f);
                 g.drawString(font, font.plainSubstrByWidth((i + 1) + ". " + choice.getDisplayText().getString(), (int) ((choiceBtnW - 16) / textScale)), 0, 0, HudAnimUtil.withAlpha(textColor, safeA), false);
                 g.pose().popPose();
                 localY += choiceBtnH + 5;
@@ -285,5 +292,8 @@ public class JournalDetailSinglePhase {
             }
         }
         return false;
+    }
+
+    private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {
     }
 }

@@ -16,10 +16,9 @@ import java.util.List;
 
 public class TradeTooltipRenderer {
 
+    private static final float HOVER_DELAY = 0.05f;
     private final AbstractTradeScreen screen;
     private final Font font;
-
-    private static final float HOVER_DELAY = 0.05f;
     private float hoverTimer = 0f;
     private TradeEntry activeEntry = null;
     private TradeEntry hoveredEntry = null;
@@ -36,8 +35,13 @@ public class TradeTooltipRenderer {
         this.font = font;
     }
 
-    public void triggerTradeSuccess() { this.feedbackScale = 1.15f; }
-    public void triggerTradeFail() { this.feedbackShake = 6f; }
+    public void triggerTradeSuccess() {
+        this.feedbackScale = 1.15f;
+    }
+
+    public void triggerTradeFail() {
+        this.feedbackShake = 6f;
+    }
 
     public void updateAndRender(GuiGraphics g, TradeEntry newHovered, int mx, int my, float dt, boolean isClosing) {
         if (newHovered != hoveredEntry) {
@@ -63,7 +67,7 @@ public class TradeTooltipRenderer {
 
         if (tooltipAlpha > 0.02f && activeEntry != null) {
             int gi = new ArrayList<>(screen.getShop().getAllEntries()).indexOf(activeEntry);
-            if(gi != -1) renderMorphingTooltip(g, activeEntry, gi, mx, my, dt, isClosing);
+            if (gi != -1) renderMorphingTooltip(g, activeEntry, gi, mx, my, dt, isClosing);
         } else {
             animBgW = 0;
             activeEntry = null;
@@ -72,13 +76,6 @@ public class TradeTooltipRenderer {
 
     public void forceRefresh() {
         if (activeEntry != null && tooltipAlpha > 0.1f) animBgW = 0;
-    }
-
-    private static class TooltipData {
-        int x, y, w, h;
-        List<FormattedCharSequence> descLines;
-        boolean onCd; int purchases, maxP, themeColor;
-        boolean showShortfall; List<CostShortfallLine> shortfalls;
     }
 
     private TooltipData calcTooltipData(TradeEntry entry, int gi, int mx, int my) {
@@ -102,7 +99,8 @@ public class TradeTooltipRenderer {
 
         if (d.showShortfall) {
             totalW = Math.max(totalW, font.width(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary")) + 40);
-            for (CostShortfallLine sf : d.shortfalls) totalW = Math.max(totalW, font.width(sf.label()) + font.width("-" + sf.missing()) + 50);
+            for (CostShortfallLine sf : d.shortfalls)
+                totalW = Math.max(totalW, font.width(sf.label()) + font.width("-" + sf.missing()) + 50);
         } else {
             for (var line : d.descLines) totalW = Math.max(totalW, font.width(line));
         }
@@ -119,7 +117,8 @@ public class TradeTooltipRenderer {
 
         int yOffset = 18;
         d.x = mx - (d.w / 2);
-        if (d.x < 5) d.x = 5; if (d.x + d.w > screen.width - 5) d.x = screen.width - d.w - 5;
+        if (d.x < 5) d.x = 5;
+        if (d.x + d.w > screen.width - 5) d.x = screen.width - d.w - 5;
         d.y = my + yOffset;
         if (d.y + d.h > screen.height - 5) d.y = my - d.h - yOffset;
         if (d.y < 5) d.y = 5;
@@ -132,7 +131,11 @@ public class TradeTooltipRenderer {
 
         if (!isClosing) {
             if (animBgW == 0 || Math.abs(animBgW - target.w) > 20) {
-                animBgX = target.x; animBgY = target.y; animBgW = target.w; animBgH = target.h; animThemeColor = target.themeColor;
+                animBgX = target.x;
+                animBgY = target.y;
+                animBgW = target.w;
+                animBgH = target.h;
+                animThemeColor = target.themeColor;
             } else {
                 float ms = 15f;
                 animBgX += (target.x - animBgX) * Math.min(1f, dt * ms);
@@ -143,7 +146,7 @@ public class TradeTooltipRenderer {
             }
         }
 
-        float targetProgress = target.maxP > 0 ? Math.min(1f, (float)target.purchases / target.maxP) : 0f;
+        float targetProgress = target.maxP > 0 ? Math.min(1f, (float) target.purchases / target.maxP) : 0f;
         animProgress += (targetProgress - animProgress) * Math.min(1f, dt * 8f);
 
         if (feedbackScale > 1.0f) {
@@ -160,13 +163,15 @@ public class TradeTooltipRenderer {
         float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipAlpha) : HudAnimUtil.easeOutCubic(tooltipAlpha);
         if (scale < 0.01f) return;
 
-        int drawX = (int)animBgX + currentShake, drawY = (int)animBgY, drawW = (int)animBgW, drawH = (int)animBgH;
+        int drawX = (int) animBgX + currentShake, drawY = (int) animBgY, drawW = (int) animBgW, drawH = (int) animBgH;
         float finalScale = isClosing ? scale : (scale * feedbackScale);
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 400f);
         float centerX = drawX + drawW / 2f, centerY = drawY + drawH / 2f;
-        g.pose().translate(centerX, centerY, 0); g.pose().scale(finalScale, finalScale, 1f); g.pose().translate(-centerX, -centerY, 0);
+        g.pose().translate(centerX, centerY, 0);
+        g.pose().scale(finalScale, finalScale, 1f);
+        g.pose().translate(-centerX, -centerY, 0);
 
         int baseA = (int) (0x99 * tooltipAlpha);
         int borderA = (int) (0xFF * tooltipAlpha);
@@ -174,28 +179,28 @@ public class TradeTooltipRenderer {
 
         if (gi == screen.getLastClickedGi()) {
             if (screen.isFeedbackSuccess() && screen.getFeedbackAnim() > 0) {
-                borderA = Math.min(255, borderA + (int)(180 * screen.getFeedbackAnim()));
+                borderA = Math.min(255, borderA + (int) (180 * screen.getFeedbackAnim()));
                 currentThemeColor = screen.lerpColor(animThemeColor, 0x55FF55, screen.getFeedbackAnim());
             } else if (!screen.isFeedbackSuccess() && screen.getFeedbackAnim() > 0) {
                 float intensity = screen.getFeedbackAnim();
-                borderA = Math.min(255, borderA + (int)(180 * intensity));
+                borderA = Math.min(255, borderA + (int) (180 * intensity));
                 currentThemeColor = screen.lerpColor(animThemeColor, 0xFF3333, intensity);
             } else if (target.showShortfall) {
-                borderA = Math.min(255, borderA + (int)(40 * tooltipAlpha));
+                borderA = Math.min(255, borderA + (int) (40 * tooltipAlpha));
                 currentThemeColor = screen.lerpColor(animThemeColor, 0xAA4444, 0.35f);
             }
         }
 
         int borderColor = (borderA << 24) | (currentThemeColor & 0xFFFFFF);
         g.fill(drawX, drawY, drawX + drawW, drawY + drawH, (baseA << 24) | 0x050508);
-        g.fillGradient(drawX, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(currentThemeColor, (int)(65 * tooltipAlpha)), HudAnimUtil.withAlpha(currentThemeColor, 0));
+        g.fillGradient(drawX, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(currentThemeColor, (int) (65 * tooltipAlpha)), HudAnimUtil.withAlpha(currentThemeColor, 0));
         HudAnimUtil.drawFrame(g, drawX, drawY, drawW, drawH, 1, borderColor);
 
         boolean useScissor = Math.abs(finalScale - 1.0f) < 0.01f && currentShake == 0;
         if (useScissor) g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
 
         int padding = 10, currentY = drawY + padding;
-        int safeAlpha = (int)(255 * scale);
+        int safeAlpha = (int) (255 * scale);
         int titleColor = HudAnimUtil.withAlpha(animThemeColor, safeAlpha);
 
         if (entry.getRewardIcon() != null) {
@@ -203,20 +208,22 @@ public class TradeTooltipRenderer {
             g.drawString(font, entry.getDisplayName(), drawX + padding + 22, currentY + 4, titleColor, true);
         } else {
             ItemStack stack = screen.getIconStackForEntry(entry);
-            if (!stack.isEmpty()) { g.renderItem(stack, drawX + padding, currentY); g.drawString(font, entry.getDisplayName(), drawX + padding + 22, currentY + 4, titleColor, true); }
-            else g.drawString(font, entry.getDisplayName(), drawX + padding, currentY + 4, titleColor, true);
+            if (!stack.isEmpty()) {
+                g.renderItem(stack, drawX + padding, currentY);
+                g.drawString(font, entry.getDisplayName(), drawX + padding + 22, currentY + 4, titleColor, true);
+            } else g.drawString(font, entry.getDisplayName(), drawX + padding, currentY + 4, titleColor, true);
         }
         currentY += 20;
 
         if (!target.descLines.isEmpty() || target.maxP > 0 || target.onCd || target.showShortfall) {
             if (target.showShortfall) {
-                g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int)(safeAlpha * 0.2f)));
+                g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (safeAlpha * 0.2f)));
                 g.fill(drawX + padding, currentY, drawX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
                 currentY += 6;
                 g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary"), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
                 currentY += 12;
             } else {
-                g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int)(safeAlpha * 0.3f)));
+                g.fill(drawX + padding, currentY, drawX + target.w - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int) (safeAlpha * 0.3f)));
                 currentY += 6;
             }
         }
@@ -232,19 +239,26 @@ public class TradeTooltipRenderer {
                 currentY += 10;
                 if (sf.required() > 0) {
                     String metaTxt = sf.owned() + " / " + sf.required();
-                    g.pose().pushPose(); g.pose().translate(drawX + padding + 6, currentY, 0); g.pose().scale(0.8f, 0.8f, 1f);
-                    g.drawString(font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, safeAlpha), false); g.pose().popPose();
-                    int barX = drawX + padding + 6 + (int)(font.width(metaTxt) * 0.8f) + 6, barW = target.w - padding * 2 - (barX - drawX) - 5;
+                    g.pose().pushPose();
+                    g.pose().translate(drawX + padding + 6, currentY, 0);
+                    g.pose().scale(0.8f, 0.8f, 1f);
+                    g.drawString(font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, safeAlpha), false);
+                    g.pose().popPose();
+                    int barX = drawX + padding + 6 + (int) (font.width(metaTxt) * 0.8f) + 6, barW = target.w - padding * 2 - (barX - drawX) - 5;
                     if (barW > 10) {
-                        int fillW = (int)(barW * Math.min(1f, (float)sf.owned() / sf.required()));
+                        int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
                         g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
-                        if (fillW > 0) g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
+                        if (fillW > 0)
+                            g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
                     }
                 }
                 currentY += 8;
             }
         } else if (!target.descLines.isEmpty()) {
-            for (var line : target.descLines) { g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, safeAlpha), true); currentY += font.lineHeight; }
+            for (var line : target.descLines) {
+                g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, safeAlpha), true);
+                currentY += font.lineHeight;
+            }
             currentY += 4;
         }
 
@@ -254,16 +268,27 @@ public class TradeTooltipRenderer {
             int barW = target.w - padding * 2;
             g.fill(drawX + padding, currentY, drawX + padding + barW, currentY + 3, HudAnimUtil.withAlpha(0x333333, safeAlpha));
             if (animProgress > 0.01f) {
-                int filledW = (int)(barW * animProgress);
+                int filledW = (int) (barW * animProgress);
                 g.fill(drawX + padding, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(animProgress >= 0.99f ? 0xAA3333 : (animProgress >= 0.75f ? 0xDD9933 : 0x33AA33), safeAlpha));
-                if (filledW > 2) g.fill(drawX + padding + filledW - 2, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int)(safeAlpha * 0.6f)));
+                if (filledW > 2)
+                    g.fill(drawX + padding + filledW - 2, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (safeAlpha * 0.6f)));
             }
             currentY += 9;
         }
 
-        if (!target.showShortfall && target.onCd) g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", ClientTradeCache.INSTANCE.getCooldownText(screen.getShopId(), gi)).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
+        if (!target.showShortfall && target.onCd)
+            g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", ClientTradeCache.INSTANCE.getCooldownText(screen.getShopId(), gi)).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
 
         if (useScissor) g.disableScissor();
         g.pose().popPose();
+    }
+
+    private static class TooltipData {
+        int x, y, w, h;
+        List<FormattedCharSequence> descLines;
+        boolean onCd;
+        int purchases, maxP, themeColor;
+        boolean showShortfall;
+        List<CostShortfallLine> shortfalls;
     }
 }

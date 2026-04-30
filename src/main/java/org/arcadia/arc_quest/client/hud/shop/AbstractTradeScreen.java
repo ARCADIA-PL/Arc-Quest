@@ -30,33 +30,30 @@ import org.jetbrains.annotations.NotNull;
 public abstract class AbstractTradeScreen extends Screen {
 
     public static Screen pendingParentScreen = null;
-    public static void setParentScreen(Screen screen) { pendingParentScreen = screen; }
-
     protected final String shopId;
     protected final TradeShopDefinition shop;
-
     protected float transitionAnim = 0f;
     protected boolean isClosing = false;
     protected long lastRenderTime = 0;
     protected float dt = 0f;
     protected float suspendAlpha = 1.0f;
     protected float effectiveAlpha = 0f;
-
     protected float feedbackAnim = 0f;
     protected boolean feedbackSuccess = false;
     protected int lastClickedGi = -1;
-
-    private int authorityRefreshTicker = 0;
-    private TradeTooltipRenderer tooltipRenderer;
-
     // 记录是否已触发父界面的联动进出场动画
     protected boolean triggeredParentClose = false;
     protected boolean triggeredParentReopen = false;
-
+    private int authorityRefreshTicker = 0;
+    private TradeTooltipRenderer tooltipRenderer;
     public AbstractTradeScreen(String title, String shopId) {
         super(Component.translatable(title));
         this.shopId = shopId;
         this.shop = TradeRegistry.get(shopId);
+    }
+
+    public static void setParentScreen(Screen screen) {
+        pendingParentScreen = screen;
     }
 
     @Override
@@ -66,17 +63,40 @@ public abstract class AbstractTradeScreen extends Screen {
             this.transitionAnim = 0f;
             this.suspendAlpha = 1.0f;
         }
-        if(tooltipRenderer == null) tooltipRenderer = new TradeTooltipRenderer(this, font);
+        if (tooltipRenderer == null) tooltipRenderer = new TradeTooltipRenderer(this, font);
     }
 
-    public String getShopId() { return shopId; }
-    public TradeShopDefinition getShop() { return shop; }
-    public float getTransitionAnim() { return transitionAnim; }
-    public float getDt() { return dt; }
-    public float getEffectiveAlpha() { return effectiveAlpha; }
-    public int getLastClickedGi() { return lastClickedGi; }
-    public float getFeedbackAnim() { return feedbackAnim; }
-    public boolean isFeedbackSuccess() { return feedbackSuccess; }
+    public String getShopId() {
+        return shopId;
+    }
+
+    public TradeShopDefinition getShop() {
+        return shop;
+    }
+
+    public float getTransitionAnim() {
+        return transitionAnim;
+    }
+
+    public float getDt() {
+        return dt;
+    }
+
+    public float getEffectiveAlpha() {
+        return effectiveAlpha;
+    }
+
+    public int getLastClickedGi() {
+        return lastClickedGi;
+    }
+
+    public float getFeedbackAnim() {
+        return feedbackAnim;
+    }
+
+    public boolean isFeedbackSuccess() {
+        return feedbackSuccess;
+    }
 
     public int getThemeColorForEntry(TradeEntry entry) {
         int c = entry.getThemeColor();
@@ -86,15 +106,29 @@ public abstract class AbstractTradeScreen extends Screen {
     public int lerpColor(int c1, int c2, float t) {
         int r1 = (c1 >> 16) & 0xFF, g1 = (c1 >> 8) & 0xFF, b1 = c1 & 0xFF;
         int r2 = (c2 >> 16) & 0xFF, g2 = (c2 >> 8) & 0xFF, b2 = c2 & 0xFF;
-        return ((int)(r1 + (r2 - r1) * t) << 16) | ((int)(g1 + (g2 - g1) * t) << 8) | (int)(b1 + (b2 - b1) * t);
+        return ((int) (r1 + (r2 - r1) * t) << 16) | ((int) (g1 + (g2 - g1) * t) << 8) | (int) (b1 + (b2 - b1) * t);
     }
 
-    public void playClick() { if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)); }
+    public void playClick() {
+        if (minecraft != null)
+            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+    }
 
-    public void onTradeSuccess() { feedbackSuccess = true; feedbackAnim = 1f; if(tooltipRenderer!=null) tooltipRenderer.triggerTradeSuccess(); }
-    public void onTradeFail(S2COpenTradePacket.FailReason reason, String errorKey) { feedbackSuccess = false; feedbackAnim = 1f; if(tooltipRenderer!=null) tooltipRenderer.triggerTradeFail(); }
+    public void onTradeSuccess() {
+        feedbackSuccess = true;
+        feedbackAnim = 1f;
+        if (tooltipRenderer != null) tooltipRenderer.triggerTradeSuccess();
+    }
 
-    public void refreshData() { if(tooltipRenderer!=null) tooltipRenderer.forceRefresh(); }
+    public void onTradeFail(S2COpenTradePacket.FailReason reason, String errorKey) {
+        feedbackSuccess = false;
+        feedbackAnim = 1f;
+        if (tooltipRenderer != null) tooltipRenderer.triggerTradeFail();
+    }
+
+    public void refreshData() {
+        if (tooltipRenderer != null) tooltipRenderer.forceRefresh();
+    }
 
     @Override
     public void onClose() {
@@ -103,8 +137,14 @@ public abstract class AbstractTradeScreen extends Screen {
         }
     }
 
-    @Override public boolean isPauseScreen() { return false; }
-    protected C2SRequestTradePacket.ScreenType getCurrentScreenType() { return this instanceof SimpleTradePanel ? C2SRequestTradePacket.ScreenType.SIMPLE : C2SRequestTradePacket.ScreenType.FULL; }
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+
+    protected C2SRequestTradePacket.ScreenType getCurrentScreenType() {
+        return this instanceof SimpleTradePanel ? C2SRequestTradePacket.ScreenType.SIMPLE : C2SRequestTradePacket.ScreenType.FULL;
+    }
 
     @Override
     public void tick() {
@@ -119,11 +159,15 @@ public abstract class AbstractTradeScreen extends Screen {
     @Override
     public boolean keyPressed(int k, int s, int m) {
         if (QuestSplashRenderer.isActive()) return true;
-        if (k == 256 || k == 69) { onClose(); return true; }
+        if (k == 256 || k == 69) {
+            onClose();
+            return true;
+        }
         return super.keyPressed(k, s, m);
     }
 
     protected abstract void renderContent(GuiGraphics g, int mx, int my, float pt);
+
     protected abstract TradeEntry getHoveredEntry(int mx, int my);
 
     @Override
@@ -227,15 +271,21 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     public void drawAdaptiveIcon(GuiGraphics g, ResourceLocation loc, int x, int y, int w, int h, float alpha) {
-        RenderSystem.enableBlend(); RenderSystem.setShaderColor(1f, 1f, 1f, alpha);
+        RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(1f, 1f, 1f, alpha);
         g.blit(loc, x, y, w, h, 0f, 0f, 1, 1, 1, 1);
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
     }
 
     public ItemStack getIconStackForEntry(TradeEntry entry) {
-        if (!entry.getRewards().isEmpty() && entry.getRewards().get(0) instanceof ItemTradeOffer ito) return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
-        if (!entry.getCosts().isEmpty() && entry.getCosts().get(0) instanceof ItemTradeOffer ito) return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
+        if (!entry.getRewards().isEmpty() && entry.getRewards().get(0) instanceof ItemTradeOffer ito)
+            return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
+        if (!entry.getCosts().isEmpty() && entry.getCosts().get(0) instanceof ItemTradeOffer ito)
+            return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
         return ItemStack.EMPTY;
     }
-    public ItemStack getIconStackForOffer(ITradeOffer offer) { return offer instanceof ItemTradeOffer ito ? new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64)) : ItemStack.EMPTY; }
+
+    public ItemStack getIconStackForOffer(ITradeOffer offer) {
+        return offer instanceof ItemTradeOffer ito ? new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64)) : ItemStack.EMPTY;
+    }
 }

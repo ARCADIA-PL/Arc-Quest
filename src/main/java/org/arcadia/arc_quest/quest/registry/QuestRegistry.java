@@ -57,10 +57,10 @@ public final class QuestRegistry {
      */
     public static void freeze() {
         frozen = true;
-        
+
         // 【并发防护】转换为线程安全的不可变Map
         REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(REGISTRY));
-        
+
         LOGGER.info("[ArcQuest] QuestRegistry frozen. Total quests: {}", REGISTRY.size());
 
         // 验证跨任务引用的合法性
@@ -146,13 +146,6 @@ public final class QuestRegistry {
         return REGISTRY.size();
     }
 
-    public record QuestTextBundle(
-            Component questDisplayName,
-            Component questDescription,
-            Component phaseDisplayName,
-            Component phaseDescription
-    ) {}
-
     /**
      * 按 questId/phaseId 获取任务文本（支持动态 QuestText 解析）。
      * <p>
@@ -162,8 +155,8 @@ public final class QuestRegistry {
      */
     @Nullable
     public static QuestTextBundle getQuestTextById(@Nullable ServerPlayer player,
-                                                    String questId,
-                                                    @Nullable String phaseId) {
+                                                   String questId,
+                                                   @Nullable String phaseId) {
         QuestDefinition quest = get(questId);
         if (quest == null) {
             return null;
@@ -204,10 +197,6 @@ public final class QuestRegistry {
         return frozen;
     }
 
-    // ════════════════════════════════════════
-    //  验证
-    // ════════════════════════════════════════
-
     private static void validateCrossReferences() {
         int warnings = 0;
         for (QuestDefinition quest : REGISTRY.values()) {
@@ -226,6 +215,18 @@ public final class QuestRegistry {
             LOGGER.warn("[ArcQuest] Cross-reference validation: {} warning(s)", warnings);
         }
     }
-    
+
+    // ════════════════════════════════════════
+    //  验证
+    // ════════════════════════════════════════
+
+    public record QuestTextBundle(
+            Component questDisplayName,
+            Component questDescription,
+            Component phaseDisplayName,
+            Component phaseDescription
+    ) {
+    }
+
 
 }

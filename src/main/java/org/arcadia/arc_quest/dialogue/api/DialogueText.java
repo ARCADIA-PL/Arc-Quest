@@ -56,8 +56,6 @@ public final class DialogueText {
 
     @FunctionalInterface
     public interface DialogueArg {
-        Object resolve(DialogueTextContext context);
-
         static DialogueArg playerName() {
             return context -> context.player().getName();
         }
@@ -90,6 +88,8 @@ public final class DialogueText {
         static DialogueArg of(BiFunction<ServerPlayer, Entity, Object> fn) {
             return context -> fn.apply(context.player(), context.npc());
         }
+
+        Object resolve(DialogueTextContext context);
     }
 
     @FunctionalInterface

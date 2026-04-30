@@ -14,11 +14,10 @@ import java.util.function.Supplier;
  */
 public class C2SDialogueChoicePacket {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final int AUTO_ADVANCE = -1;
     public static final int CLOSE = -2;
     public static final int RESTORE_DIALOGUE = -3;
+    private static final Logger LOGGER = LogUtils.getLogger();
     /**
      * -1 = 自动跳转请求, -2 = 关闭对话, >=0 = 选择索引。
      */

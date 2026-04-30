@@ -116,16 +116,30 @@ public class QuestCapabilityImpl implements IQuestCapability {
     private final Map<String, Integer> variables = new HashMap<>();
     private final Map<String, QuestMarkerData> markers = new LinkedHashMap<>();
 
-    /** 统一对话/冷却进度存储 */
+    /**
+     * 统一对话/冷却进度存储
+     */
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
 
-    /** 交易系统数据（购买次数 + 冷却时间戳） */
+    /**
+     * 交易系统数据（购买次数 + 冷却时间戳）
+     */
     private final TradeDataStore tradeData = new TradeDataStore();
 
-    /** 抽奖系统数据（次数、保底、历史记录、冷却时间戳） */
+    /**
+     * 抽奖系统数据（次数、保底、历史记录、冷却时间戳）
+     */
     private final GachaDataStore gachaData = new GachaDataStore();
 
     private boolean isDirty = false;
+
+    private static QuestMarkerData.EntityAttachPoint parseAttachPoint(String value) {
+        try {
+            return QuestMarkerData.EntityAttachPoint.valueOf(value);
+        } catch (Exception ignored) {
+            return QuestMarkerData.EntityAttachPoint.HEAD;
+        }
+    }
 
     @Override
     public DialogueProgressStore getDialogueProgress() {
@@ -137,14 +151,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return gachaData;
     }
 
+    // ════════════════════════════════════════
+    //  抽奖系统 API（委托给 GachaDataStore）
+    // ════════════════════════════════════════
+
     @Override
     public TradeDataStore getTradeDataStore() {
         return tradeData;
     }
-
-    // ════════════════════════════════════════
-    //  抽奖系统 API（委托给 GachaDataStore）
-    // ════════════════════════════════════════
 
     @Override
     public synchronized int getGachaDrawCount(String shopId) {
@@ -176,7 +190,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
     @Override
     public synchronized void addGachaDrawHistory(String shopId, String itemId, String rarityName,
-                                                  int actualCount, boolean pityTriggered, long drawTime) {
+                                                 int actualCount, boolean pityTriggered, long drawTime) {
         gachaData.addDrawHistory(shopId,
                 new IQuestCapability.GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime));
         isDirty = true;
@@ -187,15 +201,15 @@ public class QuestCapabilityImpl implements IQuestCapability {
         return gachaData.getDrawHistory(shopId);
     }
 
+    // ═══════════════════════════════════════════════
+    //  任务管理
+    // ═══════════════════════════════════════════════
+
     @Override
     public synchronized void clearGachaDrawHistory(String shopId) {
         gachaData.clearDrawHistory(shopId);
         isDirty = true;
     }
-
-    // ═══════════════════════════════════════════════
-    //  任务管理
-    // ═══════════════════════════════════════════════
 
     @Override
     public synchronized void addActiveQuest(QuestRuntimeData data) {
@@ -239,41 +253,66 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     @Override
-    public Set<String> getCompletedQuests() { return Collections.unmodifiableSet(completedQuests); }
+    public Set<String> getCompletedQuests() {
+        return Collections.unmodifiableSet(completedQuests);
+    }
 
     @Override
-    public Set<String> getFailedQuests() { return Collections.unmodifiableSet(failedQuests); }
+    public Set<String> getFailedQuests() {
+        return Collections.unmodifiableSet(failedQuests);
+    }
 
     @Override
-    public boolean isQuestActive(String questId) { return activeQuests.containsKey(questId); }
+    public boolean isQuestActive(String questId) {
+        return activeQuests.containsKey(questId);
+    }
 
     @Override
-    public boolean isQuestCompleted(String questId) { return completedQuests.contains(questId); }
-
-    @Override
-    public boolean isQuestFailed(String questId) { return failedQuests.contains(questId); }
+    public boolean isQuestCompleted(String questId) {
+        return completedQuests.contains(questId);
+    }
 
     // ═══════════════════════════════════════════════
     //  Flag / Variable
     // ═══════════════════════════════════════════════
 
     @Override
-    public void setFlag(String flag) { flags.add(flag); isDirty = true; }
+    public boolean isQuestFailed(String questId) {
+        return failedQuests.contains(questId);
+    }
 
     @Override
-    public boolean hasFlag(String flag) { return flags.contains(flag); }
+    public void setFlag(String flag) {
+        flags.add(flag);
+        isDirty = true;
+    }
 
     @Override
-    public void removeFlag(String flag) { flags.remove(flag); isDirty = true; }
+    public boolean hasFlag(String flag) {
+        return flags.contains(flag);
+    }
 
     @Override
-    public Set<String> getAllFlags() { return Collections.unmodifiableSet(flags); }
+    public void removeFlag(String flag) {
+        flags.remove(flag);
+        isDirty = true;
+    }
 
     @Override
-    public int getVariable(String key) { return variables.getOrDefault(key, 0); }
+    public Set<String> getAllFlags() {
+        return Collections.unmodifiableSet(flags);
+    }
 
     @Override
-    public void setVariable(String key, int value) { variables.put(key, value); isDirty = true; }
+    public int getVariable(String key) {
+        return variables.getOrDefault(key, 0);
+    }
+
+    @Override
+    public void setVariable(String key, int value) {
+        variables.put(key, value);
+        isDirty = true;
+    }
 
     @Override
     public void incrementVariable(String key, int amount) {
@@ -282,7 +321,9 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     @Override
-    public Map<String, Integer> getAllVariables() { return Collections.unmodifiableMap(variables); }
+    public Map<String, Integer> getAllVariables() {
+        return Collections.unmodifiableMap(variables);
+    }
 
     @Override
     public synchronized void upsertMarker(QuestMarkerData marker) {
@@ -303,14 +344,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
         isDirty = true;
     }
 
+    // ═══════════════════════════════════════════════
+    //  序列化
+    // ═══════════════════════════════════════════════
+
     @Override
     public synchronized Map<String, QuestMarkerData> getAllMarkers() {
         return Collections.unmodifiableMap(markers);
     }
-
-    // ═══════════════════════════════════════════════
-    //  序列化
-    // ═══════════════════════════════════════════════
 
     @Override
     public CompoundTag serializeNBT() {
@@ -408,8 +449,16 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
             QuestMarkerType type;
             QuestMarkerState state;
-            try { type = QuestMarkerType.valueOf(t.getString("type")); } catch (Exception e) { type = QuestMarkerType.CUSTOM; }
-            try { state = QuestMarkerState.valueOf(t.getString("state")); } catch (Exception e) { state = QuestMarkerState.ACTIVE; }
+            try {
+                type = QuestMarkerType.valueOf(t.getString("type"));
+            } catch (Exception e) {
+                type = QuestMarkerType.CUSTOM;
+            }
+            try {
+                state = QuestMarkerState.valueOf(t.getString("state"));
+            } catch (Exception e) {
+                state = QuestMarkerState.ACTIVE;
+            }
 
             QuestMarkerData marker = new QuestMarkerData.Builder(
                     id,
@@ -454,14 +503,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
             gachaData.deserialize(root.getCompound("GachaData"));
         } else {
             gachaData.deserializeLegacy(root);
-        }
-    }
-
-    private static QuestMarkerData.EntityAttachPoint parseAttachPoint(String value) {
-        try {
-            return QuestMarkerData.EntityAttachPoint.valueOf(value);
-        } catch (Exception ignored) {
-            return QuestMarkerData.EntityAttachPoint.HEAD;
         }
     }
 

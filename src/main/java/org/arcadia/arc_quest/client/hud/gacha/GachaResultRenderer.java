@@ -15,23 +15,18 @@ import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
 public class GachaResultRenderer {
 
     public static final GachaResultRenderer INSTANCE = new GachaResultRenderer();
-
+    private static final float TIME_ENTER = 800f;
+    private static final float TIME_EXIT = 600f;
     private boolean active = false;
     private GachaShopDefinition shopDef;
     private ClientGachaCache.DrawRecord result;
     private GachaScreen parentScreen;
-
-    private enum State { ENTER, HOLD, EXIT }
     private State currentState = State.ENTER;
-
-    private static final float TIME_ENTER = 800f;
-    private static final float TIME_EXIT = 600f;
-
     private long startTime = 0;
     private long exitStartTime = 0;
     private boolean rewardConfirmed = false;
-
-    private GachaResultRenderer() {}
+    private GachaResultRenderer() {
+    }
 
     public void showResult(GachaScreen parent, GachaShopDefinition shopDef, ClientGachaCache.DrawRecord result) {
         this.parentScreen = parent;
@@ -45,7 +40,9 @@ public class GachaResultRenderer {
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.2f));
     }
 
-    public boolean isActive() { return active; }
+    public boolean isActive() {
+        return active;
+    }
 
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float dt) {
         if (!active || result == null) return;
@@ -80,13 +77,13 @@ public class GachaResultRenderer {
 
         if (currentState == State.ENTER) {
             float t = Math.min(1.0f, elapsed / TIME_ENTER);
-            float easeInOut = t < 0.5f ? 4f * t * t * t : 1f - (float)Math.pow(-2f * t + 2f, 3f) / 2f;
+            float easeInOut = t < 0.5f ? 4f * t * t * t : 1f - (float) Math.pow(-2f * t + 2f, 3f) / 2f;
             revealProgress = easeInOut;
             driftX = -25f * (1f - easeInOut);
             alpha = easeInOut;
         } else if (currentState == State.EXIT) {
             float t = Math.min(1.0f, (now - exitStartTime) / TIME_EXIT);
-            float easeInOut = t < 0.5f ? 4f * t * t * t : 1f - (float)Math.pow(-2f * t + 2f, 3f) / 2f;
+            float easeInOut = t < 0.5f ? 4f * t * t * t : 1f - (float) Math.pow(-2f * t + 2f, 3f) / 2f;
             wipeProgress = easeInOut;
             driftX = 50f * easeInOut;
             alpha = 1.0f - (float) Math.pow(t, 2.0);
@@ -117,10 +114,10 @@ public class GachaResultRenderer {
         g.pose().scale(baseScale, baseScale, 1f);
         g.pose().translate(-frameW / 2f, -frameH / 2f, 0);
 
-        int safeAlpha = Math.max(0, Math.min(255, (int)(alpha * 255)));
-        int bgBase = ((int)(safeAlpha * 0.6f) << 24) | 0x05050A;
+        int safeAlpha = Math.max(0, Math.min(255, (int) (alpha * 255)));
+        int bgBase = ((int) (safeAlpha * 0.6f) << 24) | 0x05050A;
         g.fill(0, 0, frameW, frameH, bgBase);
-        g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * 0.3f)), 0x00000000);
+        g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(themeC, (int) (safeAlpha * 0.3f)), 0x00000000);
 
         // 【统一】使用机能风高级晶体侧边栏
         HudRenderUtil.drawCyberneticEdge(g, 0, 0, frameH, themeC, safeAlpha);
@@ -138,7 +135,7 @@ public class GachaResultRenderer {
             int textX = 90;
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(Minecraft.getInstance().font, "// DECRYPTED", (int)(textX / 0.7f), (int)(15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), true);
+            g.drawString(Minecraft.getInstance().font, "// DECRYPTED", (int) (textX / 0.7f), (int) (15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), true);
             g.pose().popPose();
 
             g.pose().pushPose();
@@ -152,17 +149,17 @@ public class GachaResultRenderer {
             if (result.pityTriggered()) {
                 g.pose().pushPose();
                 g.pose().scale(0.8f, 0.8f, 1f);
-                g.drawString(Minecraft.getInstance().font, "[ GUARANTEED ]", (int)(textX / 0.8f), (int)(55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), true);
+                g.drawString(Minecraft.getInstance().font, "[ GUARANTEED ]", (int) (textX / 0.8f), (int) (55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), true);
                 g.pose().popPose();
             }
 
             float wave = (float) (Math.sin(now / 200.0) * 0.5 + 0.5);
-            int blinkA = (int)(safeAlpha * (0.3f + 0.7f * wave));
+            int blinkA = (int) (safeAlpha * (0.3f + 0.7f * wave));
 
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
             String acknowledgeText = Component.translatable("arc_quest.gui.gacha.result.acknowledge").getString();
-            g.drawString(Minecraft.getInstance().font, acknowledgeText, (int)(textX / 0.7f), (int)((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(themeC, blinkA), true);
+            g.drawString(Minecraft.getInstance().font, acknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(themeC, blinkA), true);
             g.pose().popPose();
         }
 
@@ -187,4 +184,6 @@ public class GachaResultRenderer {
             parentScreen.confirmDrawAndSync();
         }
     }
+
+    private enum State {ENTER, HOLD, EXIT}
 }

@@ -17,9 +17,23 @@ public class ChapterShopOpenEvent extends Event {
         this.code = code;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public String getQuestId() { return questId; }
-    public String getShopId() { return shopId; }
-    public QuestRejectCodeDictionary.Code getCode() { return code; }
-    public boolean isSuccess() { return code == QuestRejectCodeDictionary.Code.OK; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public String getQuestId() {
+        return questId;
+    }
+
+    public String getShopId() {
+        return shopId;
+    }
+
+    public QuestRejectCodeDictionary.Code getCode() {
+        return code;
+    }
+
+    public boolean isSuccess() {
+        return code == QuestRejectCodeDictionary.Code.OK;
+    }
 }

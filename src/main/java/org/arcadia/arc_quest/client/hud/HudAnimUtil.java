@@ -69,8 +69,8 @@ public final class HudAnimUtil {
     }
 
     public static float easeOutElastic(float t) {
-        float c4 = (2f * (float)Math.PI) / 3f;
-        return t == 0 ? 0 : t == 1 ? 1 : (float)Math.pow(2, -10 * t) * (float)Math.sin((t * 10f - 0.75f) * c4) + 1f;
+        float c4 = (2f * (float) Math.PI) / 3f;
+        return t == 0 ? 0 : t == 1 ? 1 : (float) Math.pow(2, -10 * t) * (float) Math.sin((t * 10f - 0.75f) * c4) + 1f;
     }
 
     public static int lerpColor(int c1, int c2, float t) {
@@ -113,7 +113,7 @@ public final class HudAnimUtil {
                                        int bgColor, int accentColor, int accentWidth) {
         int r = x + w, bottom = y + h;
         g.fill(x, y, r, bottom, bgColor);
-        
+
         // 【统一】使用机能风高级晶体侧边栏
         HudRenderUtil.drawCyberneticEdge(g, x, y, h, accentColor, 255);
     }

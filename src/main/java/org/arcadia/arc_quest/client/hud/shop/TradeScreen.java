@@ -30,7 +30,9 @@ public class TradeScreen extends AbstractTradeScreen {
         this.filteredEntries = new ArrayList<>(allEntries);
     }
 
-    public List<TradeEntry> getFilteredEntries() { return filteredEntries; }
+    public List<TradeEntry> getFilteredEntries() {
+        return filteredEntries;
+    }
 
     @Override
     protected void init() {
@@ -60,8 +62,13 @@ public class TradeScreen extends AbstractTradeScreen {
         }
     }
 
-    private int panelW() { return Math.max(380, Math.min(800, (int)(width * 0.85f))); }
-    private int panelH() { return Math.max(220, Math.min(600, (int)(height * 0.85f))); }
+    private int panelW() {
+        return Math.max(380, Math.min(800, (int) (width * 0.85f)));
+    }
+
+    private int panelH() {
+        return Math.max(220, Math.min(600, (int) (height * 0.85f)));
+    }
 
     @Override
     protected void renderContent(GuiGraphics g, int mx, int my, float pt) {
@@ -70,21 +77,29 @@ public class TradeScreen extends AbstractTradeScreen {
         float slideOffset = (1f - easeProgress) * 200f;
 
         g.pose().pushPose();
-        if (shop == null) { g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.shop_closed").getString(), width/2, height/2, HudAnimUtil.withAlpha(0xFF5555, (int)(255*effectiveAlpha))); g.pose().popPose(); return; }
+        if (shop == null) {
+            g.drawCenteredString(font, Component.translatable("arc_quest.gui.trade.error.shop_closed").getString(), width / 2, height / 2, HudAnimUtil.withAlpha(0xFF5555, (int) (255 * effectiveAlpha)));
+            g.pose().popPose();
+            return;
+        }
 
         float titleScale = isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : (0.95f + 0.05f * easeProgress);
         if (titleScale > 0.01f) {
-            g.pose().pushPose(); g.pose().translate(width / 2f, py + 16, 0); g.pose().scale(titleScale, titleScale, 1f); g.pose().translate(-width / 2f, -(py + 16), 0);
-            g.drawCenteredString(font, shop.getDisplayName(), width / 2, py, HudAnimUtil.withAlpha(shop.getThemeColor(), (int)(255*effectiveAlpha))); g.pose().popPose();
+            g.pose().pushPose();
+            g.pose().translate(width / 2f, py + 16, 0);
+            g.pose().scale(titleScale, titleScale, 1f);
+            g.pose().translate(-width / 2f, -(py + 16), 0);
+            g.drawCenteredString(font, shop.getDisplayName(), width / 2, py, HudAnimUtil.withAlpha(shop.getThemeColor(), (int) (255 * effectiveAlpha)));
+            g.pose().popPose();
         }
 
         int lx = px - (int) slideOffset, ly = py + 36, lw = CAT_WIDTH, lh = ph - 36;
         int rx = px + CAT_WIDTH + 16 + (int) slideOffset, ry = py + 36, rw = pw - CAT_WIDTH - 16, rh = ph - 36;
 
-        g.fill(lx, ly, lx + lw, ly + lh, HudAnimUtil.withAlpha(0x05050A, (int)(120 * effectiveAlpha)));
-        HudAnimUtil.drawFrame(g, lx, ly, lw, lh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(100 * effectiveAlpha)));
-        g.fill(rx, ry, rx + rw, ry + rh, HudAnimUtil.withAlpha(0x05050A, (int)(120 * effectiveAlpha)));
-        HudAnimUtil.drawFrame(g, rx, ry, rw, rh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(100 * effectiveAlpha)));
+        g.fill(lx, ly, lx + lw, ly + lh, HudAnimUtil.withAlpha(0x05050A, (int) (120 * effectiveAlpha)));
+        HudAnimUtil.drawFrame(g, lx, ly, lw, lh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (100 * effectiveAlpha)));
+        g.fill(rx, ry, rx + rw, ry + rh, HudAnimUtil.withAlpha(0x05050A, (int) (120 * effectiveAlpha)));
+        HudAnimUtil.drawFrame(g, rx, ry, rw, rh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (100 * effectiveAlpha)));
 
         float fastClose = isClosing ? Math.max(0f, (transitionAnim - 0.4f) / 0.6f) : effectiveAlpha;
 
@@ -96,7 +111,7 @@ public class TradeScreen extends AbstractTradeScreen {
     @Override
     protected TradeEntry getHoveredEntry(int mx, int my) {
         int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
-        int rx = px + CAT_WIDTH + 16 + (int)((1f - (HudAnimUtil.easeOutCubic(transitionAnim)* HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
+        int rx = px + CAT_WIDTH + 16 + (int) ((1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
         return listPanel.getHoveredEntry(mx, my, rx, py + 36, pw - CAT_WIDTH - 16, ph - 36 - BOTTOM_PADDING);
     }
 
@@ -104,13 +119,14 @@ public class TradeScreen extends AbstractTradeScreen {
     public boolean mouseClicked(double mx, double my, int btn) {
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) return super.mouseClicked(mx, my, btn);
         int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
-        float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim)* HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
+        float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
 
-        if (categoryPanel.mouseClicked(mx, my, px - (int)slide, py + 36, CAT_WIDTH, ph - 36 - BOTTOM_PADDING)) return true;
+        if (categoryPanel.mouseClicked(mx, my, px - (int) slide, py + 36, CAT_WIDTH, ph - 36 - BOTTOM_PADDING))
+            return true;
 
-        TradeEntry entry = getHoveredEntry((int)mx, (int)my);
+        TradeEntry entry = getHoveredEntry((int) mx, (int) my);
         if (entry != null) {
-            int rx = px + CAT_WIDTH + 16 + (int)slide;
+            int rx = px + CAT_WIDTH + 16 + (int) slide;
             int rw = pw - CAT_WIDTH - 16;
             int vi = filteredEntries.indexOf(entry);
             int btnX = rx + rw - 100;
@@ -118,8 +134,10 @@ public class TradeScreen extends AbstractTradeScreen {
             if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) {
                 int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, entry.getEntryId());
                 lastClickedGi = gi;
-                if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) { ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.purchaseWithScreenType(shopId, entry.getEntryId(), C2SRequestTradePacket.ScreenType.FULL)); playClick(); }
-                else onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
+                if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) {
+                    ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.purchaseWithScreenType(shopId, entry.getEntryId(), C2SRequestTradePacket.ScreenType.FULL));
+                    playClick();
+                } else onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
                 return true;
             }
         }

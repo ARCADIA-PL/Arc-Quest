@@ -51,8 +51,13 @@ public class BranchChoiceToast {
         return Util.getMillis() - dismissStartTime >= TIME_EXIT;
     }
 
-    public String getQuestId() { return questId; }
-    public String getPhaseId() { return phaseId; }
+    public String getQuestId() {
+        return questId;
+    }
+
+    public String getPhaseId() {
+        return phaseId;
+    }
 
     public boolean sameTarget(String otherQuestId, String otherPhaseId) {
         if (otherQuestId == null) return false;
@@ -115,7 +120,7 @@ public class BranchChoiceToast {
         // 仅在裁剪器（Scissor）计算时获取全局 uiScale（因为 Scissor 必须用物理像素/绝对 gui 缩放）
         Minecraft mc = Minecraft.getInstance();
         float uiScale = HudRenderUtil.getUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-        g.enableScissor((int)(scLeft * uiScale), (int)((baseY - 10) * uiScale), (int)(scRight * uiScale), (int)((baseY + POPUP_H + 20) * uiScale));
+        g.enableScissor((int) (scLeft * uiScale), (int) ((baseY - 10) * uiScale), (int) (scRight * uiScale), (int) ((baseY + POPUP_H + 20) * uiScale));
 
         int bgA = (int) (finalAlpha * 0x88);
         int accentA = (int) (finalAlpha * 255);

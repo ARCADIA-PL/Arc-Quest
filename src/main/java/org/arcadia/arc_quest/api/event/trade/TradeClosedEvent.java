@@ -17,7 +17,15 @@ public class TradeClosedEvent extends Event {
     }
 
     @Nullable
-    public Player getPlayer() { return player; }
-    public String getShopId() { return shopId; }
-    public boolean isClientSide() { return clientSide; }
+    public Player getPlayer() {
+        return player;
+    }
+
+    public String getShopId() {
+        return shopId;
+    }
+
+    public boolean isClientSide() {
+        return clientSide;
+    }
 }

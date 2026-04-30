@@ -37,19 +37,19 @@ public class DialogueCommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {
         return Commands.literal("dialogue")
-                        // /arcquest dialogue start <player> <id>
-                        .then(Commands.literal("start")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("dialogue_id", ResourceLocationArgument.id())
-                                                .suggests(DialogueCommands::suggestDialogueIds)
-                                                .executes(DialogueCommands::cmdDialogue))))
-                        // /arcquest dialogue reset <player> [id]
-                        .then(Commands.literal("reset")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .executes(ctx -> cmdDialogueReset(ctx, null))
-                                        .then(Commands.argument("dialogue_id", StringArgumentType.string())
-                                                .suggests(DialogueCommands::suggestDialogueIds)
-                                                .executes(ctx -> cmdDialogueReset(ctx, StringArgumentType.getString(ctx, "dialogue_id")))))
+                // /arcquest dialogue start <player> <id>
+                .then(Commands.literal("start")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("dialogue_id", ResourceLocationArgument.id())
+                                        .suggests(DialogueCommands::suggestDialogueIds)
+                                        .executes(DialogueCommands::cmdDialogue))))
+                // /arcquest dialogue reset <player> [id]
+                .then(Commands.literal("reset")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> cmdDialogueReset(ctx, null))
+                                .then(Commands.argument("dialogue_id", StringArgumentType.string())
+                                        .suggests(DialogueCommands::suggestDialogueIds)
+                                        .executes(ctx -> cmdDialogueReset(ctx, StringArgumentType.getString(ctx, "dialogue_id")))))
                         // /arcquest dialogue status <player>
                         .then(Commands.literal("status")
                                 .then(Commands.argument("player", EntityArgument.player())

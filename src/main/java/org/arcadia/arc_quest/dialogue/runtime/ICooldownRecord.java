@@ -9,12 +9,23 @@ package org.arcadia.arc_quest.dialogue.runtime;
  * 的公共访问契约，使 {@link UnifiedCooldownManager} 无需为每种记录类型单独重载。
  */
 public interface ICooldownRecord {
-    /** 真实时间戳（毫秒），来自 {@code System.currentTimeMillis()}。 */
+    /**
+     * 真实时间戳（毫秒），来自 {@code System.currentTimeMillis()}。
+     */
     long realTime();
-    /** 游戏总刻数（单调，不受 /time set 影响）。 */
+
+    /**
+     * 游戏总刻数（单调，不受 /time set 影响）。
+     */
     long gameTime();
-    /** 当日刻数 [0, 24000]（受 /time set 影响）。 */
+
+    /**
+     * 当日刻数 [0, 24000]（受 /time set 影响）。
+     */
     long dayTime();
-    /** 是否有有效记录（realTime &gt; 0）。 */
+
+    /**
+     * 是否有有效记录（realTime &gt; 0）。
+     */
     boolean exists();
 }

@@ -21,6 +21,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = PonderScene.class, remap = false)
 public class MixinPonderScene {
 
+    private static void renderTextElementSafely(
+            TextWindowElement twe, PonderScene scene,
+            int w, int h, Font font,
+            GuiGraphics graphics, float pt) {
+        // 获取或构造一个 stub PonderUI
+        PonderUI stub = IntelPonderUIStub.getOrCreate(w, h, font);
+        if (stub == null) return;
+        try {
+            twe.render(scene, stub, graphics, pt);
+        } catch (Exception ignored) {
+        }
+    }
+
     @Inject(method = "renderOverlay", at = @At("HEAD"), cancellable = true)
     private void arcQuest$injectStubScreen(PonderUI screen, GuiGraphics graphics,
                                            float partialTicks, CallbackInfo ci) {
@@ -40,22 +53,11 @@ public class MixinPonderScene {
             } else {
                 try {
                     element.render(self, null, graphics, partialTicks);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         });
         graphics.pose().popPose();
         ci.cancel();
-    }
-
-    private static void renderTextElementSafely(
-            TextWindowElement twe, PonderScene scene,
-            int w, int h, Font font,
-            GuiGraphics graphics, float pt) {
-        // 获取或构造一个 stub PonderUI
-        PonderUI stub = IntelPonderUIStub.getOrCreate(w, h, font);
-        if (stub == null) return;
-        try {
-            twe.render(scene, stub, graphics, pt);
-        } catch (Exception ignored) {}
     }
 }

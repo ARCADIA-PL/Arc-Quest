@@ -49,12 +49,12 @@ public final class TradeSession {
         }
 
         IQuestCapability cap = getCap();
-        
+
         // 第一步：尝试重置过期冷却（必须在 canPurchase 之前）
         if (entry.hasLimit() || entry.hasCooldown()) {
             checkAndResetPurchases(entryId, entry);
         }
-        
+
         // 第二步：综合判断
         if (!TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry)) {
             // 细分错误原因（统一优先级：cooldown > limit > condition > afford）
@@ -90,7 +90,7 @@ public final class TradeSession {
         }
 
         boolean shouldRecordCooldown = TradeEntryStateResolver.shouldRecordCooldown(getCap(), shop.getShopId(), entry);
-        
+
         TradeEntryStateResolver.recordPurchase(getCap(), shop.getShopId(), entryId);
 
         if (shouldRecordCooldown) {
@@ -143,7 +143,7 @@ public final class TradeSession {
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
+        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
 
         return switch (entry.getCooldownType()) {
             case NONE -> 0;
@@ -201,14 +201,14 @@ public final class TradeSession {
      */
     private void checkAndResetPurchases(String entryId, TradeEntry entry) {
         if (!entry.hasLimit()) return;
-        
+
         var resetCondition = entry.getPurchaseResetCondition();
         if (resetCondition == null) return;
-        
+
         IQuestCapability cap = getCap();
         int currentCount = cap.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
         if (currentCount == 0) return;
-        
+
         boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, cap, shop.getShopId(), entry);
 
         if (!shouldReset) {
@@ -218,11 +218,11 @@ public final class TradeSession {
                     LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
                 }
             } catch (Exception e) {
-                LOGGER.warn("[Trade] Error evaluating purchase reset condition for entry={}: {}", 
+                LOGGER.warn("[Trade] Error evaluating purchase reset condition for entry={}: {}",
                         entryId, e.getMessage());
             }
         }
-        
+
         if (shouldReset && currentCount > 0) {
             TradeEntryStateResolver.resetPurchaseAndCooldown(cap, shop.getShopId(), entryId);
         }
@@ -232,8 +232,13 @@ public final class TradeSession {
         return QuestCapabilityProvider.getOrNull(player);
     }
 
-    public TradeShopDefinition getShop() { return shop; }
-    public ServerPlayer getPlayer() { return player; }
+    public TradeShopDefinition getShop() {
+        return shop;
+    }
+
+    public ServerPlayer getPlayer() {
+        return player;
+    }
 
     private List<CostShortfallLine> collectShortfallLines(List<ITradeOffer> costs) {
         List<CostShortfallLine> lines = new ArrayList<>();
@@ -247,7 +252,7 @@ public final class TradeSession {
         public static TradeResult success() {
             return new TradeResult(true, null, List.of());
         }
-        
+
         public static TradeResult fail(String errorKey) {
             return new TradeResult(false, errorKey, List.of());
         }

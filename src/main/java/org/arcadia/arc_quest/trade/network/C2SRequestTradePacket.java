@@ -35,6 +35,20 @@ public class C2SRequestTradePacket {
     private static final Map<UUID, Map<String, Integer>> LAST_TRADE_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
     private static final Map<UUID, ActiveTradeContext> ACTIVE_TRADE_CONTEXTS = new ConcurrentHashMap<>();
     private static final long ACTIVE_TRADE_CONTEXT_TTL_MS = 20000L;
+    private final Action action;
+    private final String shopId;
+    private final String entryId;
+    private final ScreenType currentScreenType;
+
+    public C2SRequestTradePacket(Action action, String shopId, String entryId) {
+        this(action, shopId, entryId, ScreenType.NONE);
+    }
+    public C2SRequestTradePacket(Action action, String shopId, String entryId, ScreenType currentScreenType) {
+        this.action = action;
+        this.shopId = shopId;
+        this.entryId = entryId != null ? entryId : "";
+        this.currentScreenType = currentScreenType != null ? currentScreenType : ScreenType.NONE;
+    }
 
     public static void syncState(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
         touchActiveTradeContext(player, shop.getShopId(), clientScreenType);
@@ -66,35 +80,6 @@ public class C2SRequestTradePacket {
         touchActiveTradeContext(player, context.shopId(), context.screenType());
     }
 
-    public enum Action {
-        OPEN_FULL,
-        OPEN_SIMPLE,
-        PURCHASE
-    }
-
-    /** 客户端当前打开的界面类型（用于刷新时保持类型一致） */
-    public enum ScreenType {
-        NONE,
-        SIMPLE,
-        FULL
-    }
-
-    private final Action action;
-    private final String shopId;
-    private final String entryId;
-    private final ScreenType currentScreenType;
-
-    public C2SRequestTradePacket(Action action, String shopId, String entryId) {
-        this(action, shopId, entryId, ScreenType.NONE);
-    }
-
-    public C2SRequestTradePacket(Action action, String shopId, String entryId, ScreenType currentScreenType) {
-        this.action = action;
-        this.shopId = shopId;
-        this.entryId = entryId != null ? entryId : "";
-        this.currentScreenType = currentScreenType != null ? currentScreenType : ScreenType.NONE;
-    }
-
     public static C2SRequestTradePacket openFull(String shopId) {
         return new C2SRequestTradePacket(Action.OPEN_FULL, shopId, null);
     }
@@ -115,15 +100,6 @@ public class C2SRequestTradePacket {
         return new C2SRequestTradePacket(
                 screenType == ScreenType.SIMPLE ? Action.OPEN_SIMPLE : Action.OPEN_FULL,
                 shopId, null, screenType);
-    }
-
-    // ── 序列化 ──
-
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeEnum(action);
-        buf.writeUtf(shopId);
-        buf.writeUtf(entryId);
-        buf.writeEnum(currentScreenType);
     }
 
     public static C2SRequestTradePacket decode(FriendlyByteBuf buf) {
@@ -160,6 +136,8 @@ public class C2SRequestTradePacket {
         ctx.get().setPacketHandled(true);
     }
 
+    // ── 序列化 ──
+
     private static void sendGuardTradeFail(ServerPlayer player,
                                            C2SRequestTradePacket pkt,
                                            RejectCodeDictionary.Code code) {
@@ -192,7 +170,7 @@ public class C2SRequestTradePacket {
      */
     public static void handleServerOpenFromDialogue(ServerPlayer player, TradeShopDefinition shop, boolean simple, String restoreNodeId) {
         handleOpen(player, shop, simple);
-        
+
         DialogueSessionManager manager = DialogueSessionManager.INSTANCE;
         if (manager.isInDialogue(player)) {
             manager.setRestoreNodeId(player, restoreNodeId);
@@ -209,30 +187,30 @@ public class C2SRequestTradePacket {
         }
 
         TradeSnapshot snap = buildTradeSnapshot(player, shop, session);
-        
+
         // 获取商店音效 ID
-        String openSoundId = shop.getOpenSound() != null ? 
+        String openSoundId = shop.getOpenSound() != null ?
                 ResourceLocation.fromNamespaceAndPath(
                         Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getNamespace(),
                         Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getPath()
                 ).toString() : "";
-        String closeSoundId = shop.getCloseSound() != null ? 
+        String closeSoundId = shop.getCloseSound() != null ?
                 ResourceLocation.fromNamespaceAndPath(
                         Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getNamespace(),
                         Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getPath()
                 ).toString() : "";
-        
+
         S2COpenTradePacket response = simple
                 ? S2COpenTradePacket.openSimple(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
-                        snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
-                        snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                        snap.visibility(), snap.canBuyConditions(),
-                        openSoundId, closeSoundId)
+                snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
+                snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
+                snap.visibility(), snap.canBuyConditions(),
+                openSoundId, closeSoundId)
                 : S2COpenTradePacket.openFull(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
-                        snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
-                        snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
-                        snap.visibility(), snap.canBuyConditions(),
-                        openSoundId, closeSoundId);
+                snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
+                snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
+                snap.visibility(), snap.canBuyConditions(),
+                openSoundId, closeSoundId);
 
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
@@ -250,7 +228,7 @@ public class C2SRequestTradePacket {
     }
 
     private static void handlePurchase(ServerPlayer player, TradeShopDefinition shop,
-                                        String entryId, ScreenType clientScreenType) {
+                                       String entryId, ScreenType clientScreenType) {
         SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(),
                 SyncObservability.Stage.ACTION, "purchase:" + entryId);
 
@@ -263,7 +241,8 @@ public class C2SRequestTradePacket {
         switch (mappedCode) {
             case SESSION_ON_COOLDOWN -> reason = S2COpenTradePacket.FailReason.COOLDOWN;
             case SESSION_MAX_DRAWS_REACHED -> reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
-            case SESSION_NOT_VISIBLE, SESSION_CONDITION_NOT_MET -> reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
+            case SESSION_NOT_VISIBLE, SESSION_CONDITION_NOT_MET ->
+                    reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
             case CANNOT_AFFORD -> reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
             default -> reason = S2COpenTradePacket.FailReason.GENERIC;
         }
@@ -279,7 +258,7 @@ public class C2SRequestTradePacket {
         SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(),
                 SyncObservability.Stage.RESULT,
                 result.succeeded() ? "purchase_success" : "purchase_failed:" + reason.name());
-        
+
         // 发布 Forge 事件（供附属模组监听）
         if (result.succeeded()) {
             MinecraftForge.EVENT_BUS.post(new TradePurchasedSuccessEvent(player, shop.getShopId(), entryId));
@@ -305,9 +284,6 @@ public class C2SRequestTradePacket {
         refreshTradeData(player, shop, clientScreenType, "purchase_result");
     }
 
-    /**
-     * 刷新交易界面数据（不重建会话，仅同步最新状态）。
-     */
     /**
      * 刷新交易界面数据（不重建会话，仅同步最新状态）。
      * 启用变化检测：状态无变化时不发包。
@@ -350,34 +326,34 @@ public class C2SRequestTradePacket {
      * 为商店所有商品构建网络传输快照数据，供 handleOpen 和 refreshTradeData 共用。
      */
     private static TradeSnapshot buildTradeSnapshot(ServerPlayer player,
-                                                     TradeShopDefinition shop,
-                                                     TradeSession session) {
+                                                    TradeShopDefinition shop,
+                                                    TradeSession session) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         List<TradeEntry> allEntries = new ArrayList<>(shop.getAllEntries());
         int count = allEntries.size();
 
-        int[] purchases      = new int[count];
-        int[] maxPurchases   = new int[count];
-        long[] lastPurchaseTimes  = new long[count];
-        long[] purchaseGameTimes  = new long[count];
-        long[] purchaseDayTimes   = new long[count];
-        int[] cooldownTypes   = new int[count];
+        int[] purchases = new int[count];
+        int[] maxPurchases = new int[count];
+        long[] lastPurchaseTimes = new long[count];
+        long[] purchaseGameTimes = new long[count];
+        long[] purchaseDayTimes = new long[count];
+        int[] cooldownTypes = new int[count];
         long[] cooldownValues = new long[count];
-        int[] resetTimeTicks  = new int[count];
-        boolean[] visibility      = new boolean[count];
+        int[] resetTimeTicks = new int[count];
+        boolean[] visibility = new boolean[count];
         boolean[] canBuyConditions = new boolean[count];
 
         for (int i = 0; i < count; i++) {
             TradeEntry entry = allEntries.get(i);
-            purchases[i]    = session.getPurchaseCount(entry.getEntryId());
+            purchases[i] = session.getPurchaseCount(entry.getEntryId());
             maxPurchases[i] = entry.getMaxPurchases();
 
             if (entry.hasCooldown()) {
                 var cooldownRecord = cap.getTradeDataStore().getCooldown(shop.getShopId(), entry.getEntryId());
                 lastPurchaseTimes[i] = cooldownRecord.realTime();
                 purchaseGameTimes[i] = cooldownRecord.gameTime();
-                purchaseDayTimes[i]  = cooldownRecord.dayTime();
-                cooldownTypes[i]  = entry.getCooldownType().ordinal();
+                purchaseDayTimes[i] = cooldownRecord.dayTime();
+                cooldownTypes[i] = entry.getCooldownType().ordinal();
                 cooldownValues[i] = entry.getCooldownValue();
                 resetTimeTicks[i] = entry.getResetTimeTicks();
 
@@ -386,29 +362,13 @@ public class C2SRequestTradePacket {
                         purchaseGameTimes[i], purchaseDayTimes[i], cooldownTypes[i], cooldownValues[i]);
             }
 
-            visibility[i]       = session.isEntryVisible(entry);
+            visibility[i] = session.isEntryVisible(entry);
             canBuyConditions[i] = session.canPurchase(entry);
         }
 
         return new TradeSnapshot(purchases, maxPurchases, lastPurchaseTimes, purchaseGameTimes,
                 purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions);
     }
-
-    /**
-     * 商店快照数据载体，避免多个方法间传递大量数组参数。
-     */
-    private record TradeSnapshot(
-            int[] purchases,
-            int[] maxPurchases,
-            long[] lastPurchaseTimes,
-            long[] purchaseGameTimes,
-            long[] purchaseDayTimes,
-            int[] cooldownTypes,
-            long[] cooldownValues,
-            int[] resetTimeTicks,
-            boolean[] visibility,
-            boolean[] canBuyConditions
-    ) {}
 
     /**
      * 检查并重置过期的购买次数和冷却。
@@ -439,6 +399,10 @@ public class C2SRequestTradePacket {
         }
     }
 
+    /**
+     * 刷新交易界面数据（不重建会话，仅同步最新状态）。
+     */
+
     private static void touchActiveTradeContext(ServerPlayer player, String shopId, ScreenType screenType) {
         if (player == null || shopId == null || shopId.isEmpty()) {
             return;
@@ -449,9 +413,6 @@ public class C2SRequestTradePacket {
         }
         ACTIVE_TRADE_CONTEXTS.put(player.getUUID(),
                 new ActiveTradeContext(shopId, effectiveType, System.currentTimeMillis()));
-    }
-
-    private static record ActiveTradeContext(String shopId, ScreenType screenType, long lastSeenMs) {
     }
 
     private static boolean shouldSendTradeSync(ServerPlayer player, String shopId, TradeSnapshot snap) {
@@ -486,5 +447,47 @@ public class C2SRequestTradePacket {
         h = 31 * h + Arrays.hashCode(snap.visibility());
         h = 31 * h + Arrays.hashCode(snap.canBuyConditions());
         return h;
+    }
+
+    public void encode(FriendlyByteBuf buf) {
+        buf.writeEnum(action);
+        buf.writeUtf(shopId);
+        buf.writeUtf(entryId);
+        buf.writeEnum(currentScreenType);
+    }
+
+    public enum Action {
+        OPEN_FULL,
+        OPEN_SIMPLE,
+        PURCHASE
+    }
+
+    /**
+     * 客户端当前打开的界面类型（用于刷新时保持类型一致）
+     */
+    public enum ScreenType {
+        NONE,
+        SIMPLE,
+        FULL
+    }
+
+    /**
+     * 商店快照数据载体，避免多个方法间传递大量数组参数。
+     */
+    private record TradeSnapshot(
+            int[] purchases,
+            int[] maxPurchases,
+            long[] lastPurchaseTimes,
+            long[] purchaseGameTimes,
+            long[] purchaseDayTimes,
+            int[] cooldownTypes,
+            long[] cooldownValues,
+            int[] resetTimeTicks,
+            boolean[] visibility,
+            boolean[] canBuyConditions
+    ) {
+    }
+
+    private static record ActiveTradeContext(String shopId, ScreenType screenType, long lastSeenMs) {
     }
 }

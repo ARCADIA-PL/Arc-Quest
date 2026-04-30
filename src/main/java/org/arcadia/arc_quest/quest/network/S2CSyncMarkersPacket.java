@@ -31,6 +31,20 @@ public class S2CSyncMarkersPacket {
     private final List<MarkerEntry> entries;
     private final String removeId;
 
+    private S2CSyncMarkersPacket(byte mode,
+                                 long epoch,
+                                 long revision,
+                                 byte op,
+                                 List<MarkerEntry> entries,
+                                 String removeId) {
+        this.mode = mode;
+        this.epoch = epoch;
+        this.revision = revision;
+        this.op = op;
+        this.entries = entries;
+        this.removeId = removeId;
+    }
+
     public static S2CSyncMarkersPacket snapshot(long epoch, long revision, List<MarkerEntry> entries) {
         return new S2CSyncMarkersPacket(MODE_SNAPSHOT, epoch, revision, OP_ADD, entries, "");
     }
@@ -45,20 +59,6 @@ public class S2CSyncMarkersPacket {
 
     public static S2CSyncMarkersPacket deltaRemove(long epoch, long revision, String removeId) {
         return new S2CSyncMarkersPacket(MODE_DELTA, epoch, revision, OP_REMOVE, List.of(), removeId);
-    }
-
-    private S2CSyncMarkersPacket(byte mode,
-                                 long epoch,
-                                 long revision,
-                                 byte op,
-                                 List<MarkerEntry> entries,
-                                 String removeId) {
-        this.mode = mode;
-        this.epoch = epoch;
-        this.revision = revision;
-        this.op = op;
-        this.entries = entries;
-        this.removeId = removeId;
     }
 
     public static void encode(S2CSyncMarkersPacket pkt, FriendlyByteBuf buf) {

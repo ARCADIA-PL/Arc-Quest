@@ -23,7 +23,8 @@ public final class IntelPonderUIStub {
     private static int cachedW = -1;
     private static int cachedH = -1;
 
-    private IntelPonderUIStub() {}
+    private IntelPonderUIStub() {
+    }
 
     /**
      * 获取或创建一个尺寸匹配的 stub PonderUI。
@@ -49,7 +50,9 @@ public final class IntelPonderUIStub {
         }
     }
 
-    /** 已过时的旧签名，保留兼容 */
+    /**
+     * 已过时的旧签名，保留兼容
+     */
     @Nullable
     public static PonderUI get(int w, int h, Font font) {
         return getOrCreate(w, h, font);

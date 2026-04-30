@@ -19,7 +19,8 @@ import org.jetbrains.annotations.Nullable;
 
 public final class QuestOfferService {
 
-    private QuestOfferService() {}
+    private QuestOfferService() {
+    }
 
     public static void submitOffer(ServerPlayer player, String questId, String phaseId, int objectiveIndex, int submitAmount) {
         if (submitAmount <= 0) return;

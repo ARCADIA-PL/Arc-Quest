@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
  * 支持指定保底抽奖项、条件重置和冷却系统，与商店系统保持一致。
  */
 public class PityConfig {
-    
+
     private final int pityThreshold;              // 保底触发阈值（抽奖次数）
     @Nullable
     private final String guaranteedItemId;        // 保底指定的抽奖项 ID（null 则按稀有度）
@@ -21,8 +21,8 @@ public class PityConfig {
     @Nullable
     private final ICondition resetCondition;      // 重置条件（满足时重置计数）
     private final boolean resetOnTrigger;         // 触发后是否重置计数
-    
-    public PityConfig(int pityThreshold, 
+
+    public PityConfig(int pityThreshold,
                       @Nullable String guaranteedItemId,
                       @Nullable GachaItem.Rarity guaranteedRarity,
                       CooldownType resetCooldownType,
@@ -40,29 +40,49 @@ public class PityConfig {
         this.resetCondition = resetCondition;
         this.resetOnTrigger = resetOnTrigger;
     }
-    
+
     /**
      * 简化构造函数（按稀有度保底，无冷却和条件）。
      */
     public PityConfig(int pityThreshold, GachaItem.Rarity guaranteedRarity, boolean resetOnTrigger) {
         this(pityThreshold, null, guaranteedRarity, CooldownType.NONE, 0, null, resetOnTrigger);
     }
-    
+
     /**
      * 简化构造函数（指定物品 ID 保底，无冷却和条件）。
      */
     public PityConfig(int pityThreshold, String guaranteedItemId, boolean resetOnTrigger) {
         this(pityThreshold, guaranteedItemId, null, CooldownType.NONE, 0, null, resetOnTrigger);
     }
-    
-    public int getPityThreshold() { return pityThreshold; }
+
+    public int getPityThreshold() {
+        return pityThreshold;
+    }
+
     @Nullable
-    public String getGuaranteedItemId() { return guaranteedItemId; }
+    public String getGuaranteedItemId() {
+        return guaranteedItemId;
+    }
+
     @Nullable
-    public GachaItem.Rarity getGuaranteedRarity() { return guaranteedRarity; }
-    public CooldownType getResetCooldownType() { return resetCooldownType; }
-    public int getResetCooldownValue() { return resetCooldownValue; }
+    public GachaItem.Rarity getGuaranteedRarity() {
+        return guaranteedRarity;
+    }
+
+    public CooldownType getResetCooldownType() {
+        return resetCooldownType;
+    }
+
+    public int getResetCooldownValue() {
+        return resetCooldownValue;
+    }
+
     @Nullable
-    public ICondition getResetCondition() { return resetCondition; }
-    public boolean shouldResetOnTrigger() { return resetOnTrigger; }
+    public ICondition getResetCondition() {
+        return resetCondition;
+    }
+
+    public boolean shouldResetOnTrigger() {
+        return resetOnTrigger;
+    }
 }

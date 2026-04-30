@@ -20,32 +20,15 @@ import java.util.function.Supplier;
 public class S2COpenTradePacket {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    public enum Mode {
-        OPEN_FULL,
-        OPEN_SIMPLE,
-        TRADE_SUCCESS,
-        TRADE_FAIL,
-        CLOSE
-    }
-
-    public enum FailReason {
-        GENERIC,          // 通用错误
-        COOLDOWN,         // 冷却中
-        LIMIT_REACHED,    // 限购已满
-        CONDITION_FAIL,   // 条件不满足
-        CANNOT_AFFORD,    // 余额不足
-        NOT_VISIBLE       // 不可见
-    }
-
     private final Mode mode;
     private final String shopId;
     private final String entryId;
     private final FailReason failReason;
     private final String errorKey;
     private final List<CostShortfallLine> shortfallLines;
-
-    /** 各项数据数组（由于网络协议不变，保留接收逻辑，但 UI 不再直接消费它们） */
+    /**
+     * 各项数据数组（由于网络协议不变，保留接收逻辑，但 UI 不再直接消费它们）
+     */
     private final int[] purchaseCounts;
     private final int[] maxPurchases;
     private final long[] lastPurchaseTimes;
@@ -58,7 +41,6 @@ public class S2COpenTradePacket {
     private final boolean[] canBuyConditions;
     private final String openSoundId;  // 商店打开音效 ID
     private final String closeSoundId;  // 商店关闭音效 ID
-
     public S2COpenTradePacket(Mode mode, String shopId,
                               int[] purchaseCounts, int[] maxPurchases,
                               long[] lastPurchaseTimes,
@@ -86,7 +68,6 @@ public class S2COpenTradePacket {
         this.openSoundId = openSoundId;
         this.closeSoundId = closeSoundId;
     }
-
     public S2COpenTradePacket(Mode mode, String shopId, String entryId, FailReason failReason, String errorKey) {
         this(mode, shopId, entryId, failReason, errorKey, List.of());
     }
@@ -152,62 +133,6 @@ public class S2COpenTradePacket {
     public static S2COpenTradePacket tradeFail(String shopId, String entryId, FailReason reason,
                                                String errorKey, List<CostShortfallLine> shortfallLines) {
         return new S2COpenTradePacket(Mode.TRADE_FAIL, shopId, entryId, reason, errorKey, shortfallLines);
-    }
-
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeEnum(mode);
-        buf.writeUtf(shopId);
-
-        if (mode == Mode.OPEN_FULL || mode == Mode.OPEN_SIMPLE) {
-            int count = purchaseCounts != null ? purchaseCounts.length : 0;
-            buf.writeVarInt(count);
-            for (int i = 0; i < count; i++) {
-                buf.writeVarInt(purchaseCounts[i]);
-                if (maxPurchases != null) {
-                    buf.writeVarInt(maxPurchases[i]);
-                }
-                if (lastPurchaseTimes != null) {
-                    buf.writeLong(lastPurchaseTimes[i]);
-                }
-                if (purchaseGameTimes != null) {
-                    buf.writeLong(purchaseGameTimes[i]);
-                }
-                if (purchaseDayTimes != null) {
-                    buf.writeLong(purchaseDayTimes[i]);
-                }
-                if (cooldownTypes != null) {
-                    buf.writeVarInt(cooldownTypes[i]);
-                }
-                if (cooldownValues != null) {
-                    buf.writeLong(cooldownValues[i]);
-                }
-                if (resetTimeTicks != null) {
-                    buf.writeVarInt(resetTimeTicks[i]);
-                }
-                if (visibility != null) {
-                    buf.writeBoolean(visibility[i]);
-                }
-                buf.writeBoolean(canBuyConditions != null && canBuyConditions[i]);
-            }
-            // 写入商店音效 ID
-            buf.writeUtf(openSoundId != null ? openSoundId : "");
-            buf.writeUtf(closeSoundId != null ? closeSoundId : "");
-        } else if (mode == Mode.TRADE_FAIL || mode == Mode.TRADE_SUCCESS) {
-            buf.writeUtf(entryId != null ? entryId : "");
-            if (mode == Mode.TRADE_FAIL) {
-                buf.writeEnum(failReason != null ? failReason : FailReason.GENERIC);
-            }
-            buf.writeUtf(errorKey != null ? errorKey : "");
-            if (mode == Mode.TRADE_FAIL) {
-                buf.writeVarInt(shortfallLines.size());
-                for (CostShortfallLine line : shortfallLines) {
-                    buf.writeComponent(line.label());
-                    buf.writeVarInt(line.required());
-                    buf.writeVarInt(line.owned());
-                    buf.writeVarInt(line.missing());
-                }
-            }
-        }
     }
 
     public static S2COpenTradePacket decode(FriendlyByteBuf buf) {
@@ -337,6 +262,84 @@ public class S2COpenTradePacket {
         ctx.get().setPacketHandled(true);
     }
 
-    public Mode getMode() { return mode; }
-    public String getShopId() { return shopId; }
+    public void encode(FriendlyByteBuf buf) {
+        buf.writeEnum(mode);
+        buf.writeUtf(shopId);
+
+        if (mode == Mode.OPEN_FULL || mode == Mode.OPEN_SIMPLE) {
+            int count = purchaseCounts != null ? purchaseCounts.length : 0;
+            buf.writeVarInt(count);
+            for (int i = 0; i < count; i++) {
+                buf.writeVarInt(purchaseCounts[i]);
+                if (maxPurchases != null) {
+                    buf.writeVarInt(maxPurchases[i]);
+                }
+                if (lastPurchaseTimes != null) {
+                    buf.writeLong(lastPurchaseTimes[i]);
+                }
+                if (purchaseGameTimes != null) {
+                    buf.writeLong(purchaseGameTimes[i]);
+                }
+                if (purchaseDayTimes != null) {
+                    buf.writeLong(purchaseDayTimes[i]);
+                }
+                if (cooldownTypes != null) {
+                    buf.writeVarInt(cooldownTypes[i]);
+                }
+                if (cooldownValues != null) {
+                    buf.writeLong(cooldownValues[i]);
+                }
+                if (resetTimeTicks != null) {
+                    buf.writeVarInt(resetTimeTicks[i]);
+                }
+                if (visibility != null) {
+                    buf.writeBoolean(visibility[i]);
+                }
+                buf.writeBoolean(canBuyConditions != null && canBuyConditions[i]);
+            }
+            // 写入商店音效 ID
+            buf.writeUtf(openSoundId != null ? openSoundId : "");
+            buf.writeUtf(closeSoundId != null ? closeSoundId : "");
+        } else if (mode == Mode.TRADE_FAIL || mode == Mode.TRADE_SUCCESS) {
+            buf.writeUtf(entryId != null ? entryId : "");
+            if (mode == Mode.TRADE_FAIL) {
+                buf.writeEnum(failReason != null ? failReason : FailReason.GENERIC);
+            }
+            buf.writeUtf(errorKey != null ? errorKey : "");
+            if (mode == Mode.TRADE_FAIL) {
+                buf.writeVarInt(shortfallLines.size());
+                for (CostShortfallLine line : shortfallLines) {
+                    buf.writeComponent(line.label());
+                    buf.writeVarInt(line.required());
+                    buf.writeVarInt(line.owned());
+                    buf.writeVarInt(line.missing());
+                }
+            }
+        }
+    }
+
+    public Mode getMode() {
+        return mode;
+    }
+
+    public String getShopId() {
+        return shopId;
+    }
+
+    public enum Mode {
+        OPEN_FULL,
+        OPEN_SIMPLE,
+        TRADE_SUCCESS,
+        TRADE_FAIL,
+        CLOSE
+    }
+
+    public enum FailReason {
+        GENERIC,          // 通用错误
+        COOLDOWN,         // 冷却中
+        LIMIT_REACHED,    // 限购已满
+        CONDITION_FAIL,   // 条件不满足
+        CANNOT_AFFORD,    // 余额不足
+        NOT_VISIBLE       // 不可见
+    }
 }

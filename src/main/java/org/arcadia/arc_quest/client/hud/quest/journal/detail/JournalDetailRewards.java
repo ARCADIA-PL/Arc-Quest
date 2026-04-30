@@ -75,7 +75,7 @@ public class JournalDetailRewards {
         // 分支节点横线
         int axisX = 8;
         int branchY = localY + 6;
-        g.fill(axisX, branchY, axisX + 8, branchY + 1, HudAnimUtil.withAlpha(activeTheme, (int)(0x88 * dAlpha)));
+        g.fill(axisX, branchY, axisX + 8, branchY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (0x88 * dAlpha)));
 
         int boxMarginLeft = 16;
         int boxW = scrollAreaW - boxMarginLeft - 16;
@@ -85,7 +85,10 @@ public class JournalDetailRewards {
         int tempX = 8, rows = 1;
         for (IReward r : rewards) {
             int rWidth = (r instanceof ItemReward) ? 28 : (int) (font.width(">" + r.describe()) * 0.75f) + 12;
-            if (tempX + rWidth > boxW - 8 && tempX > 8) { tempX = 8; rows++; }
+            if (tempX + rWidth > boxW - 8 && tempX > 8) {
+                tempX = 8;
+                rows++;
+            }
             tempX += rWidth;
         }
         int boxH = 20 + rows * 28;

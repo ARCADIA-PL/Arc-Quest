@@ -12,64 +12,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class SyncObservability {
 
-    public enum Stage {
-        OPEN("open"),
-        SYNC_REQUEST("sync_request"),
-        SYNC_SENT("sync_sent"),
-        SYNC_DROPPED("sync_dropped"),
-        ACTION("action"),
-        RESULT("result");
-
-        private final String value;
-
-        Stage(String value) {
-            this.value = value;
-        }
-
-        public String value() {
-            return value;
-        }
-    }
-
-    public enum Reason {
-        UNKNOWN("unknown"),
-        MANUAL_SYNC("manual_sync"),
-        PURCHASE_RESULT("purchase_result"),
-        DELTA_PROGRESS_SYNC("delta_progress_sync"),
-
-        QUEST_ACCEPT("quest_accept"),
-        QUEST_ABANDON("quest_abandon"),
-        QUEST_CHOOSE("quest_choose"),
-
-        QUEST_ACCEPT_SUCCESS("quest_accept_success"),
-        QUEST_ACCEPT_REJECTED("quest_accept_rejected"),
-        QUEST_ABANDON_SUCCESS("quest_abandon_success"),
-        QUEST_ABANDON_REJECTED("quest_abandon_rejected"),
-        QUEST_CHOOSE_SUCCESS("quest_choose_success"),
-        QUEST_CHOOSE_REJECTED("quest_choose_rejected"),
-
-        DIALOGUE_OPEN("dialogue_open"),
-        DIALOGUE_CHOICE("dialogue_choice"),
-        DIALOGUE_CHOICE_NEXT_NODE("dialogue_choice_next_node"),
-        DIALOGUE_CHOICE_END("dialogue_choice_end"),
-        DIALOGUE_AUTO_ADVANCE("dialogue_auto_advance"),
-        DIALOGUE_AUTO_ADVANCE_NEXT_NODE("dialogue_auto_advance_next_node"),
-        DIALOGUE_AUTO_ADVANCE_END("dialogue_auto_advance_end"),
-        DIALOGUE_RESTORE("dialogue_restore"),
-        DIALOGUE_RESTORE_NEXT_NODE("dialogue_restore_next_node"),
-        DIALOGUE_RESTORE_NO_SESSION("dialogue_restore_no_session");
-
-        private final String value;
-
-        Reason(String value) {
-            this.value = value;
-        }
-
-        public String value() {
-            return value;
-        }
-    }
-
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final boolean VERBOSE_LOG = Boolean.parseBoolean(
             System.getProperty("arcquest.sync.log.verbose", "false")
@@ -77,11 +19,9 @@ public final class SyncObservability {
     private static final boolean TRACE_LOG = Boolean.parseBoolean(
             System.getProperty("arcquest.sync.trace", "false")
     );
-
     private static final Map<String, AtomicLong> REQUEST_COUNTS = new ConcurrentHashMap<>();
     private static final Map<String, AtomicLong> SENT_COUNTS = new ConcurrentHashMap<>();
     private static final Map<String, AtomicLong> DROPPED_COUNTS = new ConcurrentHashMap<>();
-
     private SyncObservability() {
     }
 
@@ -202,5 +142,63 @@ public final class SyncObservability {
                 req,
                 sent,
                 dropped);
+    }
+
+    public enum Stage {
+        OPEN("open"),
+        SYNC_REQUEST("sync_request"),
+        SYNC_SENT("sync_sent"),
+        SYNC_DROPPED("sync_dropped"),
+        ACTION("action"),
+        RESULT("result");
+
+        private final String value;
+
+        Stage(String value) {
+            this.value = value;
+        }
+
+        public String value() {
+            return value;
+        }
+    }
+
+    public enum Reason {
+        UNKNOWN("unknown"),
+        MANUAL_SYNC("manual_sync"),
+        PURCHASE_RESULT("purchase_result"),
+        DELTA_PROGRESS_SYNC("delta_progress_sync"),
+
+        QUEST_ACCEPT("quest_accept"),
+        QUEST_ABANDON("quest_abandon"),
+        QUEST_CHOOSE("quest_choose"),
+
+        QUEST_ACCEPT_SUCCESS("quest_accept_success"),
+        QUEST_ACCEPT_REJECTED("quest_accept_rejected"),
+        QUEST_ABANDON_SUCCESS("quest_abandon_success"),
+        QUEST_ABANDON_REJECTED("quest_abandon_rejected"),
+        QUEST_CHOOSE_SUCCESS("quest_choose_success"),
+        QUEST_CHOOSE_REJECTED("quest_choose_rejected"),
+
+        DIALOGUE_OPEN("dialogue_open"),
+        DIALOGUE_CHOICE("dialogue_choice"),
+        DIALOGUE_CHOICE_NEXT_NODE("dialogue_choice_next_node"),
+        DIALOGUE_CHOICE_END("dialogue_choice_end"),
+        DIALOGUE_AUTO_ADVANCE("dialogue_auto_advance"),
+        DIALOGUE_AUTO_ADVANCE_NEXT_NODE("dialogue_auto_advance_next_node"),
+        DIALOGUE_AUTO_ADVANCE_END("dialogue_auto_advance_end"),
+        DIALOGUE_RESTORE("dialogue_restore"),
+        DIALOGUE_RESTORE_NEXT_NODE("dialogue_restore_next_node"),
+        DIALOGUE_RESTORE_NO_SESSION("dialogue_restore_no_session");
+
+        private final String value;
+
+        Reason(String value) {
+            this.value = value;
+        }
+
+        public String value() {
+            return value;
+        }
     }
 }

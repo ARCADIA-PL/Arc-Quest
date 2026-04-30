@@ -14,7 +14,15 @@ public class TradeOpenRejectedEvent extends Event {
         this.errorKey = errorKey;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public String getShopId() { return shopId; }
-    public String getErrorKey() { return errorKey; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public String getShopId() {
+        return shopId;
+    }
+
+    public String getErrorKey() {
+        return errorKey;
+    }
 }

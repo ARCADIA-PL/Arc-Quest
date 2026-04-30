@@ -45,7 +45,7 @@ public final class ConditionalTextEvaluator {
     private static boolean matchesCondition(DialogueEvalContext ctx, IQuestCapability cap, String conditionKey) {
         ServerPlayer player = ctx.player();
         Entity npc = ctx.npc();
-        
+
         try {
             // HAS_QUEST:quest_id
             if (conditionKey.startsWith("HAS_QUEST:")) {
@@ -196,19 +196,6 @@ public final class ConditionalTextEvaluator {
     }
 
     /**
-     * 内部类：文本匹配结果
-     */
-    private static class TextMatch {
-        final String text;
-        final int priority;
-
-        TextMatch(String text, int priority) {
-            this.text = text;
-            this.priority = priority;
-        }
-    }
-
-    /**
      * 根据玩家状态评估条件文本，返回匹配到的 {@link ConditionalSay}。
      */
     public static ConditionalSay evaluateWithSound(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts, String defaultText) {
@@ -218,7 +205,7 @@ public final class ConditionalTextEvaluator {
 
         IQuestCapability cap = ctx.questCap();
         List<SayMatch> matches = new ArrayList<>();
-        
+
         for (Map.Entry<String, ConditionalSay> entry : conditionalTexts.entrySet()) {
             String key = entry.getKey();
             ConditionalSay say = entry.getValue();
@@ -260,33 +247,7 @@ public final class ConditionalTextEvaluator {
         var result = evaluateWithSound(ctx, conditionalTexts, "");
         return result.soundEvent();
     }
-    
-    /**
-     * SayIf 评估结果封装。
-     */
-    public static class SayIfResult {
-        /**
-         * 选中的 SayIf ID（可能为 null）。
-         */
-        @Nullable
-        public final String sayId;
-        
-        /**
-         * 选中的 SayIf 分支索引（从 0 开始，-1 表示无 SayIf）。
-         */
-        public final int selectedIndex;
-        
-        public final String text;
-        public final SoundEvent sound;
-        
-        public SayIfResult(@Nullable String sayId, int selectedIndex, String text, SoundEvent sound) {
-            this.sayId = sayId;
-            this.selectedIndex = selectedIndex;
-            this.text = text;
-            this.sound = sound;
-        }
-    }
-    
+
     /**
      * 评估 SayIf 条件并返回完整结果（包含选中索引）。
      * <p>
@@ -308,7 +269,7 @@ public final class ConditionalTextEvaluator {
         int matchIndex = -1;
         String matchedSayId = null;
         int currentIndex = 0;
-        
+
         for (Map.Entry<String, ConditionalSay> entry : conditionalTexts.entrySet()) {
             String key = entry.getKey();
             ConditionalSay say = entry.getValue();
@@ -349,11 +310,51 @@ public final class ConditionalTextEvaluator {
     }
 
     /**
+     * 内部类：文本匹配结果
+     */
+    private static class TextMatch {
+        final String text;
+        final int priority;
+
+        TextMatch(String text, int priority) {
+            this.text = text;
+            this.priority = priority;
+        }
+    }
+
+    /**
+     * SayIf 评估结果封装。
+     */
+    public static class SayIfResult {
+        /**
+         * 选中的 SayIf ID（可能为 null）。
+         */
+        @Nullable
+        public final String sayId;
+
+        /**
+         * 选中的 SayIf 分支索引（从 0 开始，-1 表示无 SayIf）。
+         */
+        public final int selectedIndex;
+
+        public final String text;
+        public final SoundEvent sound;
+
+        public SayIfResult(@Nullable String sayId, int selectedIndex, String text, SoundEvent sound) {
+            this.sayId = sayId;
+            this.selectedIndex = selectedIndex;
+            this.text = text;
+            this.sound = sound;
+        }
+    }
+
+    /**
      * 内部类：SayIf 匹配结果
      */
     private static class SayMatch {
         final ConditionalSay say;
         final int priority;
+
         SayMatch(ConditionalSay say, int priority) {
             this.say = say;
             this.priority = priority;

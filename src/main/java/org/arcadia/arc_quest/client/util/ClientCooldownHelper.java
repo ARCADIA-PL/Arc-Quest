@@ -23,12 +23,12 @@ public final class ClientCooldownHelper {
      * <p>
      * 此方法应在 GUI 的 render() 中每帧调用，确保冷却文本实时更新。
      *
-     * @param lastPurchaseTime   最后购买时间戳（毫秒），0 表示未购买
-     * @param purchaseGameTime   购买时的 gameTime
-     * @param purchaseDayTime    购买时的 dayTime
-     * @param cooldownType       冷却类型的 ordinal 值
-     * @param cooldownValue      冷却值（秒或tick）
-     * @param resetTimeTicks     重置刻（仅 GAME_TICK 有效）
+     * @param lastPurchaseTime 最后购买时间戳（毫秒），0 表示未购买
+     * @param purchaseGameTime 购买时的 gameTime
+     * @param purchaseDayTime  购买时的 dayTime
+     * @param cooldownType     冷却类型的 ordinal 值
+     * @param cooldownValue    冷却值（秒或tick）
+     * @param resetTimeTicks   重置刻（仅 GAME_TICK 有效）
      * @return 格式化的冷却文本，无冷却时返回空字符串
      */
     public static String getCooldownText(long lastPurchaseTime, long purchaseGameTime, long purchaseDayTime,
@@ -54,7 +54,7 @@ public final class ClientCooldownHelper {
                 Minecraft mc = Minecraft.getInstance();
                 if (mc.level == null) yield "";
                 long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
-                long nowDayTime  = TimeSanitizer.getCurrentDayTime(mc.level);
+                long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
                 boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
                         record, type, (int) cooldownValue, resetTimeTicks,
                         TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime);
@@ -65,11 +65,11 @@ public final class ClientCooldownHelper {
                 Minecraft mc = Minecraft.getInstance();
                 if (mc.level == null) yield "";
                 long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
-                long nowDayTime  = TimeSanitizer.getCurrentDayTime(mc.level);
+                long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
                 int remainingTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
                         record, resetTimeTicks, nowGameTime, nowDayTime);
                 if (remainingTicks <= 0) yield "";
-                if (remainingTicks < 60)   yield remainingTicks + "t";
+                if (remainingTicks < 60) yield remainingTicks + "t";
                 if (remainingTicks < 1200) yield (remainingTicks / 20) + "s";
                 long minutes = remainingTicks / 1200;
                 long seconds = (remainingTicks % 1200) / 20;
@@ -81,12 +81,12 @@ public final class ClientCooldownHelper {
     /**
      * 检查是否在冷却中。
      *
-     * @param lastPurchaseTime   最后购买时间戳
-     * @param purchaseGameTime   购买时的 gameTime
-     * @param purchaseDayTime    购买时的 dayTime
-     * @param cooldownType       冷却类型 ordinal
-     * @param cooldownValue      冷却值
-     * @param resetTimeTicks     重置刻
+     * @param lastPurchaseTime 最后购买时间戳
+     * @param purchaseGameTime 购买时的 gameTime
+     * @param purchaseDayTime  购买时的 dayTime
+     * @param cooldownType     冷却类型 ordinal
+     * @param cooldownValue    冷却值
+     * @param resetTimeTicks   重置刻
      * @return true = 仍在冷却中
      */
     public static boolean isOnCooldown(long lastPurchaseTime, long purchaseGameTime, long purchaseDayTime,
@@ -103,7 +103,7 @@ public final class ClientCooldownHelper {
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
-        long nowDayTime  = TimeSanitizer.getCurrentDayTime(mc.level);
+        long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
 
         return UnifiedCooldownManager.isOnCooldown(record, type, (int) cooldownValue, resetTimeTicks,
                 nowRealTime, nowGameTime, nowDayTime);
@@ -113,10 +113,25 @@ public final class ClientCooldownHelper {
 
     private static ICooldownRecord makeRecord(long realTime, long gameTime, long dayTime) {
         return new ICooldownRecord() {
-            @Override public long realTime() { return realTime; }
-            @Override public long gameTime() { return gameTime; }
-            @Override public long dayTime()  { return dayTime; }
-            @Override public boolean exists() { return realTime > 0; }
+            @Override
+            public long realTime() {
+                return realTime;
+            }
+
+            @Override
+            public long gameTime() {
+                return gameTime;
+            }
+
+            @Override
+            public long dayTime() {
+                return dayTime;
+            }
+
+            @Override
+            public boolean exists() {
+                return realTime > 0;
+            }
         };
     }
 }

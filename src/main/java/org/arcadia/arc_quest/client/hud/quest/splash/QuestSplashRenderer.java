@@ -21,13 +21,9 @@ public class QuestSplashRenderer {
     private static QuestDefinition activeQuest = null;
     private static SplashType activeType = null;
     private static ResourceLocation activeTexture = null;
-
-    private enum State { ENTER, HOLD, EXIT }
     private static State currentState = State.ENTER;
-
     private static long startTime = 0;
     private static long exitStartTime = 0;
-
     private static float skipStartX = 0f;
     private static float lastRenderX = 0f;
 
@@ -243,12 +239,12 @@ public class QuestSplashRenderer {
 
             if (currentState == State.HOLD) {
                 float wave = (float) (Math.sin(now / 200.0) * 0.5 + 0.5);
-                int blinkA = (int)(baseAlpha * (0.3f + 0.7f * wave));
+                int blinkA = (int) (baseAlpha * (0.3f + 0.7f * wave));
                 if (blinkA > 10) {
                     guiGraphics.pose().pushPose();
                     guiGraphics.pose().scale(0.7f, 0.7f, 1f);
                     int promptColor = (blinkA << 24) | (themeColor & 0xFFFFFF);
-                    guiGraphics.drawString(font, "[ CLICK TO DISMISS ]", 0, (int)(40 / 0.7f), promptColor, true);
+                    guiGraphics.drawString(font, "[ CLICK TO DISMISS ]", 0, (int) (40 / 0.7f), promptColor, true);
                     guiGraphics.pose().popPose();
                 }
             }
@@ -262,4 +258,6 @@ public class QuestSplashRenderer {
         RenderSystem.enableDepthTest();
         guiGraphics.pose().popPose();
     }
+
+    private enum State {ENTER, HOLD, EXIT}
 }

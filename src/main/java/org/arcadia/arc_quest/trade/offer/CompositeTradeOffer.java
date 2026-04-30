@@ -74,5 +74,7 @@ public final class CompositeTradeOffer implements ITradeOffer {
         return "composite";
     }
 
-    public List<ITradeOffer> getChildren() { return children; }
+    public List<ITradeOffer> getChildren() {
+        return children;
+    }
 }

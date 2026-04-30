@@ -28,7 +28,9 @@ public class SimpleTradePanel extends AbstractTradeScreen {
         }
     }
 
-    public List<TradeEntry> getEntries() { return entries; }
+    public List<TradeEntry> getEntries() {
+        return entries;
+    }
 
     @Override
     protected void init() {
@@ -44,12 +46,14 @@ public class SimpleTradePanel extends AbstractTradeScreen {
     }
 
     @Override
-    protected TradeEntry getHoveredEntry(int mx, int my) { return gridPanel.getHoveredEntry(mx, my); }
+    protected TradeEntry getHoveredEntry(int mx, int my) {
+        return gridPanel.getHoveredEntry(mx, my);
+    }
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
         if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) return super.mouseClicked(mx, my, btn);
-        TradeEntry entry = getHoveredEntry((int)mx, (int)my);
+        TradeEntry entry = getHoveredEntry((int) mx, (int) my);
         if (entry != null) {
             int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, entry.getEntryId());
             lastClickedGi = gi;
@@ -69,7 +73,8 @@ public class SimpleTradePanel extends AbstractTradeScreen {
         this.entries.clear();
         if (shop != null) {
             List<TradeEntry> all = new ArrayList<>(shop.getAllEntries());
-            for (int i = 0; i < all.size(); i++) if (ClientTradeCache.INSTANCE.isVisible(shopId, i)) entries.add(all.get(i));
+            for (int i = 0; i < all.size(); i++)
+                if (ClientTradeCache.INSTANCE.isVisible(shopId, i)) entries.add(all.get(i));
         }
         gridPanel.updateHoverAnimsSize(this.entries.size());
         if (hov != null) {

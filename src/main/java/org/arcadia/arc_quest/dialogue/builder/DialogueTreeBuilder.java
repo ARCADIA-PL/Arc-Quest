@@ -31,7 +31,7 @@ public class DialogueTreeBuilder {
     private boolean repeatable = true;
     private long cooldownSeconds = 0;
     private CooldownType treeCooldownType = CooldownType.NONE;
-    private int treeCooldownResetTicks = 0; 
+    private int treeCooldownResetTicks = 0;
     private String curNodeId;
     private DialogueText curSpeaker;
     private DialogueText curText;
@@ -47,26 +47,6 @@ public class DialogueTreeBuilder {
 
     private DialogueTreeBuilder(String dialogueId) {
         this.dialogueId = Objects.requireNonNull(dialogueId, "dialogueId must not be null");
-    }
-
-    /**
-     * 智能解析资源 ID（支持附属模组自定义命名空间）。
-     * <p>
-     * - 如果包含 ":"，则直接作为完整 ID
-     * - 如果不包含 ":"，则自动使用本模组命名空间 (arc_quest)
-     *
-     * @param id 资源 ID，如 "arc_quest:my_id" 或 "my_id"
-     * @return 完整的资源 ID 字符串
-     */
-    private String resolveId(String id) {
-        if (id == null || id.isEmpty()) {
-            throw new IllegalArgumentException("ID cannot be null or empty");
-        }
-        if (id.contains(":")) {
-            return id;
-        } else {
-            return Arc_Quest.MOD_ID + ":" + id;
-        }
     }
 
     /**
@@ -96,6 +76,26 @@ public class DialogueTreeBuilder {
             dialogueId = Arc_Quest.MOD_ID + ":" + id;
         }
         return new DialogueTreeBuilder(dialogueId);
+    }
+
+    /**
+     * 智能解析资源 ID（支持附属模组自定义命名空间）。
+     * <p>
+     * - 如果包含 ":"，则直接作为完整 ID
+     * - 如果不包含 ":"，则自动使用本模组命名空间 (arc_quest)
+     *
+     * @param id 资源 ID，如 "arc_quest:my_id" 或 "my_id"
+     * @return 完整的资源 ID 字符串
+     */
+    private String resolveId(String id) {
+        if (id == null || id.isEmpty()) {
+            throw new IllegalArgumentException("ID cannot be null or empty");
+        }
+        if (id.contains(":")) {
+            return id;
+        } else {
+            return Arc_Quest.MOD_ID + ":" + id;
+        }
     }
 
     /**
@@ -528,7 +528,7 @@ public class DialogueTreeBuilder {
             if ("__CURRENT__".equals(resolvedRestoreId)) {
                 resolvedRestoreId = curNodeId;  // 替换为当前节点 ID
             }
-            
+
             // 如果选项有 restoreNodeId，但动作中的 OpenTrade/OpenSimpleTrade 没有，则同步
             List<DialogueAction> resolvedActions = choice.actions();
             if (resolvedRestoreId != null && !choice.actions().isEmpty()) {
@@ -549,7 +549,7 @@ public class DialogueTreeBuilder {
                     resolvedActions = List.copyOf(newActions);
                 }
             }
-            
+
             resolvedChoices.add(new DialogueChoice(
                     choice.choiceId(),
                     choice.text(),
@@ -672,7 +672,7 @@ public class DialogueTreeBuilder {
         ConditionalText(DialogueCondition condition, DialogueText text, int priority, SoundEvent sound) {
             this(condition, text, priority, sound, null);
         }
-        
+
         ConditionalText(DialogueCondition condition, DialogueText text, int priority, SoundEvent sound, String sayId) {
             this.condition = condition;
             this.text = text;

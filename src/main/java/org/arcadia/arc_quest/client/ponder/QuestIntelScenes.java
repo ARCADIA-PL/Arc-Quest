@@ -33,7 +33,8 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class QuestIntelScenes {
 
-    private QuestIntelScenes() {}
+    private QuestIntelScenes() {
+    }
 
     /**
      * 示范场景 1：任务阶段概览。

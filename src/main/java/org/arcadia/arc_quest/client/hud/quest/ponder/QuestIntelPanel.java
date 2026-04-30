@@ -45,22 +45,19 @@ public final class QuestIntelPanel {
 
     private static final Vector3f DIFFUSE_0 = new Vector3f(-0.2F, 1.0F, 0.7F).normalize();
     private static final Vector3f DIFFUSE_1 = new Vector3f(0.2F, 1.0F, -0.7F).normalize();
-
+    // 交互悬浮状态插值追踪 (丝滑放大换色)
+    private static final Map<String, Float> buttonHoverStates = new HashMap<>();
     // ── 状态 ──────────────────────────────────────────────────────────
-    @Nullable private static List<PonderScene> activeScenes = null;
+    @Nullable
+    private static List<PonderScene> activeScenes = null;
     private static int sceneIndex = 0;
     private static int themeColor = 0x4FC3F7;
-
     // 独立的时间轴动画状态
     private static float enterTimer = 0f;
     private static float exitTimer = 0f;
     private static boolean isClosing = false;
     private static long lastTime = 0;
     private static boolean isPaused = false;
-
-    // 交互悬浮状态插值追踪 (丝滑放大换色)
-    private static final Map<String, Float> buttonHoverStates = new HashMap<>();
-
     // 场景渲染区域尺寸
     private static int lastSceneAreaW = PANEL_W;
     private static int lastSceneAreaH = PANEL_H;
@@ -70,7 +67,8 @@ public final class QuestIntelPanel {
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
 
-    private QuestIntelPanel() {}
+    private QuestIntelPanel() {
+    }
 
     // ── 公开 API ─────────────────────────────────────────────────────
 
@@ -109,7 +107,9 @@ public final class QuestIntelPanel {
         }
     }
 
-    public static boolean isActive() { return activeScenes != null; }
+    public static boolean isActive() {
+        return activeScenes != null;
+    }
 
     public static boolean hasScene(ResourceLocation sceneId) {
         if (sceneId == null) return false;
@@ -146,17 +146,34 @@ public final class QuestIntelPanel {
         isPaused = false;
     }
 
-    public static void togglePause() { isPaused = !isPaused; }
-    public static boolean isPaused() { return isPaused; }
+    public static void togglePause() {
+        isPaused = !isPaused;
+    }
 
-    public static int getSceneIndex() { return sceneIndex; }
-    public static int getSceneCount() { return activeScenes == null ? 0 : activeScenes.size(); }
+    public static boolean isPaused() {
+        return isPaused;
+    }
+
+    public static int getSceneIndex() {
+        return sceneIndex;
+    }
+
+    public static int getSceneCount() {
+        return activeScenes == null ? 0 : activeScenes.size();
+    }
 
     @Nullable
-    public static List<PonderScene> getActiveScenes() { return activeScenes; }
+    public static List<PonderScene> getActiveScenes() {
+        return activeScenes;
+    }
 
-    public static int getLastSceneAreaW() { return lastSceneAreaW; }
-    public static int getLastSceneAreaH() { return lastSceneAreaH; }
+    public static int getLastSceneAreaW() {
+        return lastSceneAreaW;
+    }
+
+    public static int getLastSceneAreaH() {
+        return lastSceneAreaH;
+    }
 
     // ── 渲染核心 ──────────────────────────────────────────────────────────
 
@@ -299,7 +316,7 @@ public final class QuestIntelPanel {
 
         // 右上角系统控制 (重播 / 暂停)
         drawContentHologramButton(g, font, "replay", PW - 48, 4, 20, 18, "↺", lx, ly, alpha, themeColor, true, dt);
-        drawContentHologramButton(g, font, "pause",  PW - 24, 4, 20, 18, isPaused ? "▶" : "‖", lx, ly, alpha, themeColor, true, dt);
+        drawContentHologramButton(g, font, "pause", PW - 24, 4, 20, 18, isPaused ? "▶" : "‖", lx, ly, alpha, themeColor, true, dt);
 
         // 两侧悬浮切换控制
         drawContentHologramButton(g, font, "prev", 4, PH / 2 - 15, 14, 30, "◄", lx, ly, alpha, themeColor, canPrev, dt);
@@ -335,7 +352,7 @@ public final class QuestIntelPanel {
 
         float progress = scene.getTotalTime() > 0 ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
 
-        g.fill(barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int)(alpha * 0.4f)));
+        g.fill(barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
 
         int curW = (int) (barW * progress);
         if (curW > 0) {

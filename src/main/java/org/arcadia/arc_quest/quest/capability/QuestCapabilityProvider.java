@@ -34,7 +34,7 @@ public class QuestCapabilityProvider implements ICapabilitySerializable<Compound
     public static @NotNull IQuestCapability getOrNull(ServerPlayer player) {
         return player.getCapability(QUEST_CAP).orElse(null);
     }
-    
+
     /**
      * 从任意玩家（包括客户端）身上安全地获取 Capability。
      * <p>

@@ -26,7 +26,8 @@ public final class GachaEntryStateResolver {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private GachaEntryStateResolver() {}
+    private GachaEntryStateResolver() {
+    }
 
     /**
      * 综合判断是否可以抽奖。
@@ -50,9 +51,9 @@ public final class GachaEntryStateResolver {
 
         try {
             return visibleCondition.test(player,
-                cap.getCompletedQuestLocations(),
-                cap.getAllFlags(),
-                cap.getAllVariables());
+                    cap.getCompletedQuestLocations(),
+                    cap.getAllFlags(),
+                    cap.getAllVariables());
         } catch (Exception e) {
             LOGGER.warn("[Gacha] Error evaluating visible condition for shop={}: {}", shop.getShopId(), e.getMessage());
             return false;
@@ -85,7 +86,7 @@ public final class GachaEntryStateResolver {
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
+        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
 
         return UnifiedCooldownManager.isOnCooldown(record, shop.getCooldownType(),
                 (int) shop.getCooldownValue(), shop.getResetTimeTicks(),
@@ -101,9 +102,9 @@ public final class GachaEntryStateResolver {
 
         try {
             return drawCondition.test(player,
-                cap.getCompletedQuestLocations(),
-                cap.getAllFlags(),
-                cap.getAllVariables());
+                    cap.getCompletedQuestLocations(),
+                    cap.getAllFlags(),
+                    cap.getAllVariables());
         } catch (Exception e) {
             LOGGER.warn("[Gacha] Error evaluating draw condition for shop={}: {}", shop.getShopId(), e.getMessage());
             return false;
@@ -114,7 +115,7 @@ public final class GachaEntryStateResolver {
      * 判断是否应该因为冷却过期而重置抽奖次数。
      */
     public static boolean shouldResetByCooldown(ServerPlayer player, IQuestCapability cap,
-                                                 String shopId, GachaShopDefinition shop) {
+                                                String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return false;
 
         if (shop.hasLimit()) {
@@ -173,7 +174,7 @@ public final class GachaEntryStateResolver {
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime  = TimeSanitizer.getCurrentDayTime(player);
+        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
 
         cap.getGachaDataStore().recordDrawCooldown(shopId, nowRealTime, nowGameTime, nowDayTime);
     }

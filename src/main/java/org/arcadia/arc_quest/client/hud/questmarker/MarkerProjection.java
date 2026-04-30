@@ -14,23 +14,7 @@ import org.arcadia.arc_quest.mixin.client.MixinGameRendererAccessor;
  */
 public final class MarkerProjection {
 
-    private MarkerProjection() {}
-
-    public static class ScreenResult {
-        public final float x;
-        public final float y;
-        public final boolean onScreen;
-        public final boolean behind;
-        /** 0=右, PI/2=下 */
-        public final float edgeAngle;
-
-        public ScreenResult(float x, float y, boolean onScreen, boolean behind, float edgeAngle) {
-            this.x = x;
-            this.y = y;
-            this.onScreen = onScreen;
-            this.behind = behind;
-            this.edgeAngle = edgeAngle;
-        }
+    private MarkerProjection() {
     }
 
     public static ScreenResult project(double worldX, double worldY, double worldZ) {
@@ -205,5 +189,24 @@ public final class MarkerProjection {
         y = Math.max(padding, Math.min(screenH - padding, y));
 
         return new float[]{x, y};
+    }
+
+    public static class ScreenResult {
+        public final float x;
+        public final float y;
+        public final boolean onScreen;
+        public final boolean behind;
+        /**
+         * 0=右, PI/2=下
+         */
+        public final float edgeAngle;
+
+        public ScreenResult(float x, float y, boolean onScreen, boolean behind, float edgeAngle) {
+            this.x = x;
+            this.y = y;
+            this.onScreen = onScreen;
+            this.behind = behind;
+            this.edgeAngle = edgeAngle;
+        }
     }
 }

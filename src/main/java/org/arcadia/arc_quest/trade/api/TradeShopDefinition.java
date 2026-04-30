@@ -49,20 +49,44 @@ public final class TradeShopDefinition {
         this.closeSound = closeSound;
     }
 
-    public String getShopId() { return shopId; }
-    public Component getDisplayName() { return displayName.resolveFallback(); }
+    public String getShopId() {
+        return shopId;
+    }
+
+    public Component getDisplayName() {
+        return displayName.resolveFallback();
+    }
+
     public Component getDisplayName(ServerPlayer player, @Nullable IQuestCapability cap) {
         return displayName.resolve(TradeTextContext.of(player, shopId, cap));
     }
-    @Nullable public Component getDescription() { return description != null ? description.resolveFallback() : null; }
-    @Nullable public Component getDescription(ServerPlayer player, @Nullable IQuestCapability cap) {
+
+    @Nullable
+    public Component getDescription() {
+        return description != null ? description.resolveFallback() : null;
+    }
+
+    @Nullable
+    public Component getDescription(ServerPlayer player, @Nullable IQuestCapability cap) {
         return description != null ? description.resolve(TradeTextContext.of(player, shopId, cap)) : null;
     }
-    public List<TradeCategory> getCategories() { return categories; }
 
-    public Collection<TradeEntry> getAllEntries() { return Collections.unmodifiableCollection(entries.values()); }
-    @Nullable public TradeEntry getEntry(String entryId) { return entries.get(entryId); }
-    public Set<String> getEntryIds() { return Collections.unmodifiableSet(entries.keySet()); }
+    public List<TradeCategory> getCategories() {
+        return categories;
+    }
+
+    public Collection<TradeEntry> getAllEntries() {
+        return Collections.unmodifiableCollection(entries.values());
+    }
+
+    @Nullable
+    public TradeEntry getEntry(String entryId) {
+        return entries.get(entryId);
+    }
+
+    public Set<String> getEntryIds() {
+        return Collections.unmodifiableSet(entries.keySet());
+    }
 
     public List<TradeEntry> getEntriesByCategory(TradeCategory category) {
         if (category == null || category.equals(TradeCategory.ALL)) return List.copyOf(entries.values());
@@ -71,11 +95,28 @@ public final class TradeShopDefinition {
         return result;
     }
 
-    @Nullable public ICondition getOpenCondition() { return openCondition; }
-    public boolean isSimpleMode() { return simpleMode; }
-    public int getThemeColor() { return themeColor; }
-    @Nullable public SoundEvent getOpenSound() { return openSound; }
-    @Nullable public SoundEvent getCloseSound() { return closeSound; }
+    @Nullable
+    public ICondition getOpenCondition() {
+        return openCondition;
+    }
+
+    public boolean isSimpleMode() {
+        return simpleMode;
+    }
+
+    public int getThemeColor() {
+        return themeColor;
+    }
+
+    @Nullable
+    public SoundEvent getOpenSound() {
+        return openSound;
+    }
+
+    @Nullable
+    public SoundEvent getCloseSound() {
+        return closeSound;
+    }
 
     public boolean canOpen(ServerPlayer player,
                            Set<ResourceLocation> completedQuests,

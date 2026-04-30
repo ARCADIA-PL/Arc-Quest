@@ -58,8 +58,6 @@ public final class TradeText {
 
     @FunctionalInterface
     public interface Arg {
-        Object resolve(TradeTextContext context);
-
         static Arg playerName() {
             return ctx -> ctx.player().getName();
         }
@@ -71,5 +69,7 @@ public final class TradeText {
         static Arg of(Function<TradeTextContext, Object> fn) {
             return fn::apply;
         }
+
+        Object resolve(TradeTextContext context);
     }
 }

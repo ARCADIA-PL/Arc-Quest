@@ -46,40 +46,40 @@ public class QuestCommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {
         return Commands.literal("quest")
-                        // /arcquest quest give <player> <id>
-                        .then(Commands.literal("give")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(QuestCommands::suggestQuestIds)
-                                                .executes(QuestCommands::cmdGive))))
-                        // /arcquest quest complete <player> <id>
-                        .then(Commands.literal("complete")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(QuestCommands::suggestQuestIds)
-                                                .executes(QuestCommands::cmdComplete))))
-                        // /arcquest quest fail <player> <id>
-                        .then(Commands.literal("fail")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(QuestCommands::suggestQuestIds)
-                                                .executes(QuestCommands::cmdFail))))
-                        // /arcquest quest reset <player> [id]
-                        .then(Commands.literal("reset")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .executes(ctx -> cmdQuestReset(ctx, null))
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(QuestCommands::suggestQuestIds)
-                                                .executes(ctx -> cmdQuestReset(ctx, ResourceLocationArgument.getId(ctx, "quest_id").toString())))))
-                        // /arcquest quest phase <player> <id> <phase>
-                        .then(Commands.literal("phase")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(QuestCommands::suggestQuestIds)
-                                                .then(Commands.argument("phase_id", StringArgumentType.string())
-                                                        .suggests(QuestCommands::suggestPhaseIds)
-                                                        .executes(QuestCommands::cmdPhase)))))
-                        // /arcquest quest progress <player> <id> <index> <amount>
+                // /arcquest quest give <player> <id>
+                .then(Commands.literal("give")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                        .suggests(QuestCommands::suggestQuestIds)
+                                        .executes(QuestCommands::cmdGive))))
+                // /arcquest quest complete <player> <id>
+                .then(Commands.literal("complete")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                        .suggests(QuestCommands::suggestQuestIds)
+                                        .executes(QuestCommands::cmdComplete))))
+                // /arcquest quest fail <player> <id>
+                .then(Commands.literal("fail")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                        .suggests(QuestCommands::suggestQuestIds)
+                                        .executes(QuestCommands::cmdFail))))
+                // /arcquest quest reset <player> [id]
+                .then(Commands.literal("reset")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> cmdQuestReset(ctx, null))
+                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                        .suggests(QuestCommands::suggestQuestIds)
+                                        .executes(ctx -> cmdQuestReset(ctx, ResourceLocationArgument.getId(ctx, "quest_id").toString())))))
+                // /arcquest quest phase <player> <id> <phase>
+                .then(Commands.literal("phase")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                        .suggests(QuestCommands::suggestQuestIds)
+                                        .then(Commands.argument("phase_id", StringArgumentType.string())
+                                                .suggests(QuestCommands::suggestPhaseIds)
+                                                .executes(QuestCommands::cmdPhase)))))
+                // /arcquest quest progress <player> <id> <index> <amount>
                 .then(Commands.literal("progress")
                         .then(Commands.argument("player", EntityArgument.player())
                                 .then(Commands.argument("quest_id", ResourceLocationArgument.id())
@@ -90,17 +90,17 @@ public class QuestCommands {
                                                         .then(Commands.argument("phase_id", StringArgumentType.string())
                                                                 .suggests(QuestCommands::suggestPhaseIds)
                                                                 .executes(QuestCommands::cmdProgress)))))))
-                        // /arcquest quest list [player]
-                        .then(Commands.literal("list")
-                                .executes(ctx -> cmdList(ctx, null))
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .executes(ctx -> cmdList(ctx, EntityArgument.getPlayer(ctx, "player")))))
-                        // /arcquest quest debug <player> <id>
-                        .then(Commands.literal("debug")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
-                                                .suggests(QuestCommands::suggestQuestIds)
-                                                .executes(QuestCommands::cmdDebug))));
+                // /arcquest quest list [player]
+                .then(Commands.literal("list")
+                        .executes(ctx -> cmdList(ctx, null))
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> cmdList(ctx, EntityArgument.getPlayer(ctx, "player")))))
+                // /arcquest quest debug <player> <id>
+                .then(Commands.literal("debug")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                        .suggests(QuestCommands::suggestQuestIds)
+                                        .executes(QuestCommands::cmdDebug))));
     }
 
     // ═══════════════════════════════════════════════════════
@@ -497,13 +497,6 @@ public class QuestCommands {
         return 1;
     }
 
-    private enum ProgressMode {
-        ADD, // +amount
-        SET  // =amount 或裸数字
-    }
-
-    private record ParsedProgress(ProgressMode mode, int value) {}
-
     private static ParsedProgress parseProgressExpr(String expr) {
         if (expr == null || expr.isEmpty()) {
             throw new IllegalArgumentException("empty amount expression");
@@ -528,5 +521,13 @@ public class QuestCommands {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("invalid amount expression: " + expr);
         }
+    }
+
+    private enum ProgressMode {
+        ADD, // +amount
+        SET  // =amount 或裸数字
+    }
+
+    private record ParsedProgress(ProgressMode mode, int value) {
     }
 }

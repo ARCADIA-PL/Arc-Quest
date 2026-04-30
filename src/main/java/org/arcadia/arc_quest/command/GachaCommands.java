@@ -82,9 +82,9 @@ public class GachaCommands {
     private static CompletableFuture<Suggestions> suggestGachaShopIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
         return SharedSuggestionProvider.suggest(
-            GachaRegistry.getAllShops().stream()
-                .map(GachaShopDefinition::getShopId), 
-            builder
+                GachaRegistry.getAllShops().stream()
+                        .map(GachaShopDefinition::getShopId),
+                builder
         );
     }
 
@@ -134,7 +134,7 @@ public class GachaCommands {
 
         success(ctx, String.format("已为 %s 打开抽奖界面: %s", player.getName().getString(), shopId));
         LOGGER.info("[GachaCommand] Opened gacha '{}' for player {}", shopId, player.getName().getString());
-        
+
         return 1;
     }
 
@@ -148,25 +148,25 @@ public class GachaCommands {
 
         for (GachaShopDefinition shop : shops) {
             msg.append(Component.literal(String.format("§b- %s\n", shop.getShopId())));
-            
+
             // 显示物品数量
             int itemCount = shop.getGachaPool().getItems().size();
             msg.append(Component.literal(String.format("  §7物品数: %d\n", itemCount)));
-            
+
             // 显示保底配置
             PityConfig pityConfig = shop.getPityConfig();
             if (pityConfig != null && pityConfig.getPityThreshold() > 0) {
-                msg.append(Component.literal(String.format("  §7保底: %d次必出%s\n", 
-                    pityConfig.getPityThreshold(),
-                    pityConfig.getGuaranteedRarity() != null ? pityConfig.getGuaranteedRarity().name() : "LEGENDARY")));
+                msg.append(Component.literal(String.format("  §7保底: %d次必出%s\n",
+                        pityConfig.getPityThreshold(),
+                        pityConfig.getGuaranteedRarity() != null ? pityConfig.getGuaranteedRarity().name() : "LEGENDARY")));
             } else {
                 msg.append(Component.literal("  §7保底: 无\n"));
             }
-            
+
             // 显示限购
             int maxDraws = shop.getMaxDraws();
             msg.append(Component.literal(String.format("  §7限购: %s\n", maxDraws < 0 ? "无限" : maxDraws + "次")));
-            
+
             msg.append(Component.literal("\n"));
         }
 
@@ -192,21 +192,21 @@ public class GachaCommands {
         }
 
         MutableComponent msg = Component.literal(String.format("§e=== 抽奖商店详情: %s ===\n", shopId));
-        
+
         // 基本信息
         msg.append(Component.literal(String.format("§b标题: §f%s\n", shop.getDisplayName().getString())));
-        
+
         // 成本信息
         msg.append(Component.literal(String.format("§b抽奖成本: §f%s\n", shop.getDrawCost().describe().getString())));
-        
+
         // 冷却和限购
         msg.append(Component.literal(String.format("§b冷却类型: §f%s\n", shop.getCooldownType().name())));
         msg.append(Component.literal(String.format("§b冷却值: §f%d\n", shop.getCooldownValue())));
         msg.append(Component.literal(String.format("§b限购次数: §f%s\n", shop.getMaxDraws() < 0 ? "无限" : shop.getMaxDraws())));
-        
+
         // 主题色
         msg.append(Component.literal(String.format("§b主题色: §f#%06X\n", shop.getThemeColor() & 0xFFFFFF)));
-        
+
         // 保底配置
         PityConfig pityConfig = shop.getPityConfig();
         if (pityConfig != null && pityConfig.getPityThreshold() > 0) {
@@ -216,12 +216,12 @@ public class GachaCommands {
                 msg.append(Component.literal(String.format("  §7保证稀有度: %s\n", pityConfig.getGuaranteedRarity().name())));
             }
         }
-        
+
         // 奖池物品列表
         GachaPool pool = shop.getGachaPool();
         var items = pool.getItems();
         msg.append(Component.literal(String.format("§b--- 奖池物品 (共 %d 个) ---\n", items.size())));
-        
+
         for (GachaItem item : items) {
             msg.append(Component.literal(String.format("  §e[%s] %s\n", item.getRarity().name(), item.getItemId())));
             msg.append(Component.literal(String.format("    §7权重: %d | 排序: %d\n", item.getBaseWeight(), item.getSortOrder())));
@@ -249,13 +249,13 @@ public class GachaCommands {
 
         // 重置抽奖次数
         cap.resetGachaDrawCount(shopId);
-        
+
         success(ctx, String.format("已重置 %s 在 %s 的抽奖次数", player.getName().getString(), shopId));
         LOGGER.info("[GachaCommand] Reset draw count for shop '{}' and player {}", shopId, player.getName().getString());
-        
+
         return 1;
     }
-    
+
     /**
      * /arcquest gacha reset shop <player> <shop>
      * 重置指定商店的所有数据（次数、冷却、保底、历史）
@@ -276,17 +276,17 @@ public class GachaCommands {
         cap.setGachaPityCounter(shopId, 0);        // 重置保底计数
         cap.clearGachaDrawHistory(shopId);         // 【新增】清除抽奖历史
         cap.getDialogueProgress().clearCooldownRecord(
-            ProgressKey.ofTrade(shopId, "draw")
+                ProgressKey.ofTrade(shopId, "draw")
         );                                         // 清除冷却记录
-        
-        success(ctx, String.format("已重置 %s 在 %s 的所有抽奖数据（次数、冷却、保底、历史）", 
-            player.getName().getString(), shopId));
-        LOGGER.info("[GachaCommand] Reset all gacha data for shop '{}' and player {}", 
-            shopId, player.getName().getString());
-        
+
+        success(ctx, String.format("已重置 %s 在 %s 的所有抽奖数据（次数、冷却、保底、历史）",
+                player.getName().getString(), shopId));
+        LOGGER.info("[GachaCommand] Reset all gacha data for shop '{}' and player {}",
+                shopId, player.getName().getString());
+
         return 1;
     }
-    
+
     /**
      * /arcquest gacha reset all <player>
      * 重置玩家所有抽奖商店的数据（次数、冷却、保底、历史）
@@ -298,26 +298,26 @@ public class GachaCommands {
         // 获取所有注册的抽奖商店
         Collection<GachaShopDefinition> allShops = GachaRegistry.getAllShops();
         int resetCount = 0;
-        
+
         for (GachaShopDefinition shop : allShops) {
             String shopId = shop.getShopId();
-            
+
             // 重置所有相关数据
             cap.resetGachaDrawCount(shopId);
             cap.setGachaPityCounter(shopId, 0);
             cap.clearGachaDrawHistory(shopId);     // 【新增】清除抽奖历史
             cap.getDialogueProgress().clearCooldownRecord(
-                ProgressKey.ofTrade(shopId, "draw")
+                    ProgressKey.ofTrade(shopId, "draw")
             );
-            
+
             resetCount++;
         }
-        
-        success(ctx, String.format("已重置 %s 的所有 %d 个抽奖商店数据（次数、冷却、保底、历史）", 
-            player.getName().getString(), resetCount));
-        LOGGER.info("[GachaCommand] Reset all gacha data for {} shops and player {}", 
-            resetCount, player.getName().getString());
-        
+
+        success(ctx, String.format("已重置 %s 的所有 %d 个抽奖商店数据（次数、冷却、保底、历史）",
+                player.getName().getString(), resetCount));
+        LOGGER.info("[GachaCommand] Reset all gacha data for {} shops and player {}",
+                resetCount, player.getName().getString());
+
         return 1;
     }
 }

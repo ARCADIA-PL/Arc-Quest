@@ -72,15 +72,21 @@ public class DialogueSession {
     //  公开查询
     // ═══════════════════════════════════════════════
 
-    public UUID getSessionId() { return sessionId; }
-    public ServerPlayer getPlayer() { return player; }
-    public DialogueTree getTree() { return tree; }
-    public DialogueNode getCurrentNode() { return currentNode; }
-    public boolean isEnded() { return ended; }
-    public List<DialogueChoice> getVisibleChoices() { return visibleChoices; }
-    public DialogueContext getContext() { return context; }
-    public int getEntityId() { return entityId; }
-    public String getNamespace() { return namespace; }
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public DialogueTree getTree() {
+        return tree;
+    }
+
+    public DialogueNode getCurrentNode() {
+        return currentNode;
+    }
 
     /**
      * 设置当前节点（包级私有，仅供 DialogueSessionManager 调用）。
@@ -88,6 +94,26 @@ public class DialogueSession {
     void setCurrentNode(DialogueNode node) {
         this.currentNode = node;
         evaluateVisibleChoices();
+    }
+
+    public boolean isEnded() {
+        return ended;
+    }
+
+    public List<DialogueChoice> getVisibleChoices() {
+        return visibleChoices;
+    }
+
+    public DialogueContext getContext() {
+        return context;
+    }
+
+    public int getEntityId() {
+        return entityId;
+    }
+
+    public String getNamespace() {
+        return namespace;
     }
 
     /**
@@ -121,13 +147,13 @@ public class DialogueSession {
 
             // 使用 ProgressKey + TimeSnapshot 检查冷却
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
-            
+
             // 先检测时间回退，如果检测到则清除记录
             if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
                 cooldowns[i] = 0;
                 continue;
             }
-            
+
             boolean onCooldown = progress.isOnCooldown(
                     choiceKey, choice.cooldownType(), (int) choice.cooldownSeconds(),
                     choice.resetTimeTicks(), ts);
@@ -144,26 +170,6 @@ public class DialogueSession {
 
         return cooldowns;
     }
-
-    /**
-     * 获取选项的原始冷却数据（用于客户端实时计算）。
-     * <p>
-     * 返回四个数组，分别对应每个可见选项的：
-     * <ul>
-     *   <li>lastSelectTimes - 最后选择时间戳（毫秒）</li>
-     *   <li>cooldownTypes - 冷却类型 ordinal</li>
-     *   <li>cooldownValues - 冷却值</li>
-     *   <li>resetTimeTicks - 重置刻</li>
-     * </ul>
-     */
-    public record ChoiceCooldownData(
-            long[] lastSelectTimes,
-            long[] purchaseGameTimes,
-            long[] purchaseDayTimes,
-            int[] cooldownTypes,
-            long[] cooldownValues,
-            int[] resetTimeTicks
-    ) {}
 
     public ChoiceCooldownData getChoiceCooldownRawData() {
         if (visibleChoices.isEmpty()) {
@@ -194,7 +200,7 @@ public class DialogueSession {
             }
 
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
-            
+
             // 检测时间回退
             if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
                 lastSelectTimes[i] = 0;
@@ -216,7 +222,7 @@ public class DialogueSession {
                 purchaseGTs[i] = 0;
                 purchaseDTs[i] = 0;
             }
-            
+
             cooldownTypes[i] = choice.cooldownType().ordinal();
             cooldownValues[i] = choice.cooldownSeconds();
             resetTimeTicks[i] = choice.resetTimeTicks();
@@ -256,10 +262,6 @@ public class DialogueSession {
             }
         };
     }
-
-    // ═══════════════════════════════════════════════
-    //  核心逻辑
-    // ═══════════════════════════════════════════════
 
     /**
      * 玩家做出选择。
@@ -302,7 +304,7 @@ public class DialogueSession {
             // 如果动作中包含打开商店，不结束会话（等待商店关闭后恢复）
             boolean hasShopAction = choice.actions().stream()
                     .anyMatch(a -> a instanceof DialogueAction.OpenTrade || a instanceof DialogueAction.OpenSimpleTrade);
-            
+
             if (!hasShopAction) {
                 end();
                 return null;
@@ -330,6 +332,10 @@ public class DialogueSession {
         }
         return currentNode;
     }
+
+    // ═══════════════════════════════════════════════
+    //  核心逻辑
+    // ═══════════════════════════════════════════════
 
     /**
      * 自动跳转（无选择节点）。
@@ -369,10 +375,6 @@ public class DialogueSession {
         ended = true;
     }
 
-    // ═══════════════════════════════════════════════
-    //  文本处理
-    // ═══════════════════════════════════════════════
-
     public String processText(String raw) {
         if (raw == null) return "";
         String result = raw
@@ -383,6 +385,10 @@ public class DialogueSession {
         }
         return result;
     }
+
+    // ═══════════════════════════════════════════════
+    //  文本处理
+    // ═══════════════════════════════════════════════
 
     public Component processDialogueText(DialogueText text) {
         Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
@@ -439,10 +445,6 @@ public class DialogueSession {
         return Map.copyOf(vars);
     }
 
-    // ═══════════════════════════════════════════════
-    // 内部：命名空间解析
-    // ═══════════════════════════════════════════════
-
     private String resolveNamespace() {
         if (entityId == -1) {
             return tree.dialogueId();
@@ -479,7 +481,7 @@ public class DialogueSession {
     }
 
     // ═══════════════════════════════════════════════
-    //  内部：构建评估上下文
+    // 内部：命名空间解析
     // ═══════════════════════════════════════════════
 
     private DialogueEvalContext buildEvalContext() {
@@ -488,7 +490,7 @@ public class DialogueSession {
     }
 
     // ═══════════════════════════════════════════════
-    // 内部：条件评估
+    //  内部：构建评估上下文
     // ═══════════════════════════════════════════════
 
     private void evaluateVisibleChoices() {
@@ -511,8 +513,8 @@ public class DialogueSession {
             for (int i = 0; i < allChoices.size(); i++) {
                 DialogueChoice choice = allChoices.get(i);
                 boolean pass = choice.conditions().isEmpty()
-                        || choice.conditions().stream().allMatch(c -> 
-                            cache.computeIfAbsent(c, () -> c.test(ctx)));
+                        || choice.conditions().stream().allMatch(c ->
+                        cache.computeIfAbsent(c, () -> c.test(ctx)));
 
                 LOGGER.debug("[Dialogue] Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
 
@@ -529,24 +531,24 @@ public class DialogueSession {
                 int maxPriority = passing.stream()
                         .mapToInt(DialogueChoice::priority)
                         .max().orElse(0);
-                
+
                 // 构建 choice -> originalIndex 的快速查找表
                 Map<DialogueChoice, Integer> choiceToIndexMap = new HashMap<>();
                 for (int i = 0; i < passing.size(); i++) {
                     choiceToIndexMap.put(passing.get(i), indices.get(i));
                 }
-                
+
                 // 优先级过滤后同步更新 indices 数组
                 List<DialogueChoice> finalChoices = passing.stream()
                         .filter(c -> c.priority() == maxPriority)
                         .toList();
-                
+
                 // 根据最终选择的 choice 重新构建 indices 数组（O(1) 查找）
                 List<Integer> finalIndices = new ArrayList<>();
                 for (DialogueChoice fc : finalChoices) {
                     finalIndices.add(choiceToIndexMap.get(fc));
                 }
-                
+
                 visibleChoices = finalChoices;
                 visibleChoiceOriginalIndices = finalIndices.stream().mapToInt(Integer::intValue).toArray();
             }
@@ -554,5 +556,30 @@ public class DialogueSession {
             //结束评估周期
             cache.endCycle();
         }
+    }
+
+    // ═══════════════════════════════════════════════
+    // 内部：条件评估
+    // ═══════════════════════════════════════════════
+
+    /**
+     * 获取选项的原始冷却数据（用于客户端实时计算）。
+     * <p>
+     * 返回四个数组，分别对应每个可见选项的：
+     * <ul>
+     *   <li>lastSelectTimes - 最后选择时间戳（毫秒）</li>
+     *   <li>cooldownTypes - 冷却类型 ordinal</li>
+     *   <li>cooldownValues - 冷却值</li>
+     *   <li>resetTimeTicks - 重置刻</li>
+     * </ul>
+     */
+    public record ChoiceCooldownData(
+            long[] lastSelectTimes,
+            long[] purchaseGameTimes,
+            long[] purchaseDayTimes,
+            int[] cooldownTypes,
+            long[] cooldownValues,
+            int[] resetTimeTicks
+    ) {
     }
 }

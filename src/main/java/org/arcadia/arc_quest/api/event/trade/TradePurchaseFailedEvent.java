@@ -13,37 +13,10 @@ import net.minecraftforge.eventbus.api.Event;
  */
 public class TradePurchaseFailedEvent extends Event {
 
-    /**
-     * 购买失败原因枚举。
-     */
-    public enum FailureReason {
-        /**
-         * 条件不满足（前置任务、等级等）
-         */
-        CONDITION_NOT_MET,
-        /**
-         * 冷却中
-         */
-        ON_COOLDOWN,
-        /**
-         * 已达限购次数
-         */
-        MAX_PURCHASES_REACHED,
-        /**
-         * 余额不足
-         */
-        INSUFFICIENT_FUNDS,
-        /**
-         * 其他未知原因
-         */
-        UNKNOWN
-    }
-
     private final ServerPlayer player;
     private final String shopId;
     private final String entryId;
     private final FailureReason reason;
-
     public TradePurchaseFailedEvent(ServerPlayer player, String shopId, String entryId, FailureReason reason) {
         this.player = player;
         this.shopId = shopId;
@@ -105,5 +78,31 @@ public class TradePurchaseFailedEvent extends Event {
      */
     public boolean isInsufficientFunds() {
         return reason == FailureReason.INSUFFICIENT_FUNDS;
+    }
+
+    /**
+     * 购买失败原因枚举。
+     */
+    public enum FailureReason {
+        /**
+         * 条件不满足（前置任务、等级等）
+         */
+        CONDITION_NOT_MET,
+        /**
+         * 冷却中
+         */
+        ON_COOLDOWN,
+        /**
+         * 已达限购次数
+         */
+        MAX_PURCHASES_REACHED,
+        /**
+         * 余额不足
+         */
+        INSUFFICIENT_FUNDS,
+        /**
+         * 其他未知原因
+         */
+        UNKNOWN
     }
 }

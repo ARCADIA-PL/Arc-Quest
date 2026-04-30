@@ -64,7 +64,7 @@ public final class ItemTradeOffer implements ITradeOffer {
     }
 
     /**
-     * @param itemTag      物品标签（如 minecraft:logs）
+     * @param itemTag       物品标签（如 minecraft:logs）
      * @param countResolver 根据玩家动态计算数量
      * @param previewCount  无玩家上下文时的展示数量
      * @param isCost        true=成本（扣除），false=奖励（给予）
@@ -137,6 +137,16 @@ public final class ItemTradeOffer implements ITradeOffer {
         return new ItemTradeOffer(itemTag, countResolver, previewCount, true, null);
     }
 
+    private static ToIntFunction<ServerPlayer> fixedCount(int count) {
+        int validated = validateCount(count);
+        return player -> validated;
+    }
+
+    private static int validateCount(int count) {
+        if (count < 1) throw new IllegalArgumentException("count must be >= 1");
+        return count;
+    }
+
     @Override
     public boolean canAfford(ServerPlayer player) {
         if (!isCost) return true;
@@ -205,11 +215,22 @@ public final class ItemTradeOffer implements ITradeOffer {
     }
 
     @Nullable
-    public Item getItem() { return item; }
+    public Item getItem() {
+        return item;
+    }
+
     @Nullable
-    public TagKey<Item> getItemTag() { return itemTag; }
-    public int getCount() { return previewCount; }
-    public boolean isCost() { return isCost; }
+    public TagKey<Item> getItemTag() {
+        return itemTag;
+    }
+
+    public int getCount() {
+        return previewCount;
+    }
+
+    public boolean isCost() {
+        return isCost;
+    }
 
     private boolean matches(ItemStack stack) {
         if (item != null) {
@@ -234,16 +255,6 @@ public final class ItemTradeOffer implements ITradeOffer {
             }
         }
         return found;
-    }
-
-    private static ToIntFunction<ServerPlayer> fixedCount(int count) {
-        int validated = validateCount(count);
-        return player -> validated;
-    }
-
-    private static int validateCount(int count) {
-        if (count < 1) throw new IllegalArgumentException("count must be >= 1");
-        return count;
     }
 
     private Component displayName() {

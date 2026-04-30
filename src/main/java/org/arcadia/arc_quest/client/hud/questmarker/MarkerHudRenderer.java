@@ -36,17 +36,15 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
     private static final long OFFSCREEN_ENTER_DELAY_MS = 60L;
     private static final long OFFSCREEN_EXIT_DELAY_MS = 90L;
-
+    private static final String ENTITY_MARKER_GUID_KEY = "arc_quest.marker_guid";
     private static double closestDistanceThreshold = 3.0;
     private static double nearDistanceThreshold = 25.0;
     private static double farDistanceThreshold = 50.0;
-
     private final Map<String, MarkerVisualState> stateMap = new HashMap<>();
     private long lastTimeMs = System.currentTimeMillis();
 
-    private static final String ENTITY_MARKER_GUID_KEY = "arc_quest.marker_guid";
-
-    private MarkerHudRenderer() {} // 私有构造函数
+    private MarkerHudRenderer() {
+    } // 私有构造函数
 
     public static void setDistanceThresholds(double closest, double near, double far) {
         closestDistanceThreshold = closest;
@@ -54,9 +52,17 @@ public class MarkerHudRenderer implements IGuiOverlay {
         farDistanceThreshold = Math.max(nearDistanceThreshold, far);
     }
 
-    public static double getClosestDistanceThreshold() { return closestDistanceThreshold; }
-    public static double getNearDistanceThreshold() { return nearDistanceThreshold; }
-    public static double getFarDistanceThreshold() { return farDistanceThreshold; }
+    public static double getClosestDistanceThreshold() {
+        return closestDistanceThreshold;
+    }
+
+    public static double getNearDistanceThreshold() {
+        return nearDistanceThreshold;
+    }
+
+    public static double getFarDistanceThreshold() {
+        return farDistanceThreshold;
+    }
 
     private static float[] insetFromEdge(float x, float y, float cx, float cy, float inset) {
         float dx = x - cx;
@@ -93,6 +99,62 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private static int normalizeColor(int argb) {
         int alpha = (argb >>> 24) & 0xFF;
         return alpha == 0 ? 0xFFFFFFFF : argb;
+    }
+
+    private static String getEntityMarkerGuid(Entity entity) {
+        if (entity == null) return "";
+        return entity.getPersistentData().getString(ENTITY_MARKER_GUID_KEY);
+    }
+
+    private static Entity findEntityByUuid(ClientLevel level, String uuidString) {
+        if (uuidString == null || uuidString.isEmpty()) return null;
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(uuidString);
+        } catch (Exception ignored) {
+            return null;
+        }
+        for (Entity e : level.entitiesForRendering()) {
+            if (uuid.equals(e.getUUID())) return e;
+        }
+        return null;
+    }
+
+    private static Entity findEntityByGuid(ClientLevel level, String guid) {
+        if (guid == null || guid.isEmpty()) return null;
+        for (Entity e : level.entitiesForRendering()) {
+            if (guid.equals(getEntityMarkerGuid(e))) return e;
+        }
+        return null;
+    }
+
+    private static boolean matchesBinding(QuestMarkerData marker, Entity entity) {
+        if (entity == null || !entity.isAlive()) return false;
+
+        boolean hasUuid = marker.hasEntityUuidBinding();
+        boolean hasGuid = marker.hasEntityGuidBinding();
+
+        if (hasUuid && !marker.getFollowEntityUuid().equals(entity.getUUID().toString())) {
+            return false;
+        }
+
+        if (hasGuid) {
+            String entityGuid = getEntityMarkerGuid(entity);
+            if (hasUuid) {
+                if (entityGuid != null && !entityGuid.isEmpty() && !marker.getFollowEntityGuid().equals(entityGuid)) {
+                    return false;
+                }
+            } else {
+                if (entityGuid == null || entityGuid.isEmpty()) {
+                    return false;
+                }
+                if (!marker.getFollowEntityGuid().equals(entityGuid)) {
+                    return false;
+                }
+            }
+        }
+
+        return hasUuid || hasGuid;
     }
 
     @Override
@@ -398,59 +460,6 @@ public class MarkerHudRenderer implements IGuiOverlay {
         gui.drawString(font, text, x, y - 1, outlineColor, false);
         gui.drawString(font, text, x, y + 1, outlineColor, false);
         gui.drawString(font, text, x, y, mainColor, false);
-    }
-
-    private static String getEntityMarkerGuid(Entity entity) {
-        if (entity == null) return "";
-        return entity.getPersistentData().getString(ENTITY_MARKER_GUID_KEY);
-    }
-    private static Entity findEntityByUuid(ClientLevel level, String uuidString) {
-        if (uuidString == null || uuidString.isEmpty()) return null;
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(uuidString);
-        } catch (Exception ignored) {
-            return null;
-        }
-        for (Entity e : level.entitiesForRendering()) {
-            if (uuid.equals(e.getUUID())) return e;
-        }
-        return null;
-    }
-    private static Entity findEntityByGuid(ClientLevel level, String guid) {
-        if (guid == null || guid.isEmpty()) return null;
-        for (Entity e : level.entitiesForRendering()) {
-            if (guid.equals(getEntityMarkerGuid(e))) return e;
-        }
-        return null;
-    }
-    private static boolean matchesBinding(QuestMarkerData marker, Entity entity) {
-        if (entity == null || !entity.isAlive()) return false;
-
-        boolean hasUuid = marker.hasEntityUuidBinding();
-        boolean hasGuid = marker.hasEntityGuidBinding();
-
-        if (hasUuid && !marker.getFollowEntityUuid().equals(entity.getUUID().toString())) {
-            return false;
-        }
-
-        if (hasGuid) {
-            String entityGuid = getEntityMarkerGuid(entity);
-            if (hasUuid) {
-                if (entityGuid != null && !entityGuid.isEmpty() && !marker.getFollowEntityGuid().equals(entityGuid)) {
-                    return false;
-                }
-            } else {
-                if (entityGuid == null || entityGuid.isEmpty()) {
-                    return false;
-                }
-                if (!marker.getFollowEntityGuid().equals(entityGuid)) {
-                    return false;
-                }
-            }
-        }
-
-        return hasUuid || hasGuid;
     }
 
     public enum DistanceTier {

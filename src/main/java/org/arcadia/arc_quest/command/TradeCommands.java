@@ -40,46 +40,46 @@ public class TradeCommands {
      */
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree(CommandDispatcher<CommandSourceStack> dispatcher) {
         return Commands.literal("trade")
-                        // /arcquest trade open <player> <shop>
-                        .then(Commands.literal("open")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("shop_id", ResourceLocationArgument.id())
-                                                .suggests(TradeCommands::suggestTradeShopIds)
-                                                .executes(TradeCommands::cmdTradeOpen))))
-                        // /arcquest trade simple <player> <shop>
-                        .then(Commands.literal("simple")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("shop_id", ResourceLocationArgument.id())
-                                                .suggests(TradeCommands::suggestTradeShopIds)
-                                                .executes(TradeCommands::cmdTradeSimple))))
-                        // /arcquest trade list
-                        .then(Commands.literal("list")
-                                .executes(TradeCommands::cmdTradeList))
-                        // /arcquest trade debug <shop>
-                        .then(Commands.literal("debug")
+                // /arcquest trade open <player> <shop>
+                .then(Commands.literal("open")
+                        .then(Commands.argument("player", EntityArgument.player())
                                 .then(Commands.argument("shop_id", ResourceLocationArgument.id())
                                         .suggests(TradeCommands::suggestTradeShopIds)
-                                        .executes(TradeCommands::cmdTradeDebug)))
-                        // /arcquest trade reset ...
-                        .then(Commands.literal("reset")
-                                // /arcquest trade reset shop <player> <shop>
-                                .then(Commands.literal("shop")
-                                        .then(Commands.argument("player", EntityArgument.player())
-                                                .then(Commands.argument("shop_id", ResourceLocationArgument.id())
-                                                        .suggests(TradeCommands::suggestTradeShopIds)
-                                                        .executes(TradeCommands::cmdTradeResetShop))))
-                                // /arcquest trade reset entry <player> <shop> <entry>
-                                .then(Commands.literal("entry")
-                                        .then(Commands.argument("player", EntityArgument.player())
-                                                .then(Commands.argument("shop_id", ResourceLocationArgument.id())
-                                                        .suggests(TradeCommands::suggestTradeShopIds)
-                                                        .then(Commands.argument("entry_id", StringArgumentType.string())
-                                                                .suggests(TradeCommands::suggestTradeEntryIds)
-                                                                .executes(TradeCommands::cmdTradeResetEntry)))))
-                                // /arcquest trade reset all <player>
-                                .then(Commands.literal("all")
-                                        .then(Commands.argument("player", EntityArgument.player())
-                                                .executes(TradeCommands::cmdTradeResetAll))));
+                                        .executes(TradeCommands::cmdTradeOpen))))
+                // /arcquest trade simple <player> <shop>
+                .then(Commands.literal("simple")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("shop_id", ResourceLocationArgument.id())
+                                        .suggests(TradeCommands::suggestTradeShopIds)
+                                        .executes(TradeCommands::cmdTradeSimple))))
+                // /arcquest trade list
+                .then(Commands.literal("list")
+                        .executes(TradeCommands::cmdTradeList))
+                // /arcquest trade debug <shop>
+                .then(Commands.literal("debug")
+                        .then(Commands.argument("shop_id", ResourceLocationArgument.id())
+                                .suggests(TradeCommands::suggestTradeShopIds)
+                                .executes(TradeCommands::cmdTradeDebug)))
+                // /arcquest trade reset ...
+                .then(Commands.literal("reset")
+                        // /arcquest trade reset shop <player> <shop>
+                        .then(Commands.literal("shop")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .then(Commands.argument("shop_id", ResourceLocationArgument.id())
+                                                .suggests(TradeCommands::suggestTradeShopIds)
+                                                .executes(TradeCommands::cmdTradeResetShop))))
+                        // /arcquest trade reset entry <player> <shop> <entry>
+                        .then(Commands.literal("entry")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .then(Commands.argument("shop_id", ResourceLocationArgument.id())
+                                                .suggests(TradeCommands::suggestTradeShopIds)
+                                                .then(Commands.argument("entry_id", StringArgumentType.string())
+                                                        .suggests(TradeCommands::suggestTradeEntryIds)
+                                                        .executes(TradeCommands::cmdTradeResetEntry)))))
+                        // /arcquest trade reset all <player>
+                        .then(Commands.literal("all")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .executes(TradeCommands::cmdTradeResetAll))));
     }
 
     // ═══════════════════════════════════════════════════════

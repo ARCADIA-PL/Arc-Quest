@@ -42,18 +42,13 @@ public final class QuestProgressHandler {
     private QuestProgressHandler() {
     }
 
-    private static final class ActivationContext {
-        int activatedCount = 0;
-        boolean flagsChanged = false;
+    public static boolean acceptQuest(ServerPlayer player, String questId) {
+        return acceptQuestWithCode(player, questId) == QuestRejectCodeDictionary.Code.OK;
     }
 
     // ═══════════════════════════════════════════════════════
     //  接受任务
     // ═══════════════════════════════════════════════════════
-
-    public static boolean acceptQuest(ServerPlayer player, String questId) {
-        return acceptQuestWithCode(player, questId) == QuestRejectCodeDictionary.Code.OK;
-    }
 
     private static boolean shouldCompleteQuest(QuestDefinition def, QuestRuntimeData data) {
         int done = data.getCompletedPhaseIds().size();
@@ -135,10 +130,6 @@ public final class QuestProgressHandler {
         return QuestRejectCodeDictionary.Code.OK;
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  目标推进（并行 phase 维度）
-    // ═══════════════════════════════════════════════════════
-
     public static void incrementObjective(ServerPlayer player,
                                           String questId,
                                           String phaseId,
@@ -177,6 +168,10 @@ public final class QuestProgressHandler {
 
         checkPhaseCompletion(player, cap, data, def, phaseId);
     }
+
+    // ═══════════════════════════════════════════════════════
+    //  目标推进（并行 phase 维度）
+    // ═══════════════════════════════════════════════════════
 
     private static void checkPhaseCompletion(ServerPlayer player,
                                              IQuestCapability cap,
@@ -248,10 +243,6 @@ public final class QuestProgressHandler {
         }
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 阶段推进（显式推进，用于 choice 等）
-    // ═══════════════════════════════════════════════════════
-
     public static void advanceToPhase(ServerPlayer player,
                                       IQuestCapability cap,
                                       QuestRuntimeData data,
@@ -276,7 +267,7 @@ public final class QuestProgressHandler {
     }
 
     // ═══════════════════════════════════════════════════════
-    // 分支选择
+    // 阶段推进（显式推进，用于 choice 等）
     // ═══════════════════════════════════════════════════════
 
     public static boolean handlePlayerChoice(ServerPlayer player,
@@ -285,6 +276,10 @@ public final class QuestProgressHandler {
                                              int choiceIndex) {
         return handlePlayerChoiceWithCode(player, questId, phaseId, choiceIndex) == QuestRejectCodeDictionary.Code.OK;
     }
+
+    // ═══════════════════════════════════════════════════════
+    // 分支选择
+    // ═══════════════════════════════════════════════════════
 
     // 兼容旧入口
     public static boolean handlePlayerChoice(ServerPlayer player,
@@ -416,16 +411,16 @@ public final class QuestProgressHandler {
         return QuestRejectCodeDictionary.Code.OK;
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 任务完成 / 失败 / 放弃
-    // ═══════════════════════════════════════════════════════
-
     private static void completeQuest(ServerPlayer player,
                                       IQuestCapability cap,
                                       QuestRuntimeData data,
                                       QuestDefinition def) {
         doCompleteQuest(player, cap, data, def, "completed");
     }
+
+    // ═══════════════════════════════════════════════════════
+    // 任务完成 / 失败 / 放弃
+    // ═══════════════════════════════════════════════════════
 
     public static void failQuest(ServerPlayer player, String questId) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
@@ -517,11 +512,11 @@ public final class QuestProgressHandler {
         }
     }
 
-
     private static void playChapterSound(ServerPlayer player, SoundEvent sound) {
         if (player == null || sound == null) return;
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), sound, SoundSource.PLAYERS, 1.0f, 1.0f);
     }
+
     private static void syncQuestStateAndPush(ServerPlayer player, QuestRuntimeData data) {
         QuestSyncCoordinator.syncQuestStateAndPush(player, data);
     }
@@ -541,10 +536,6 @@ public final class QuestProgressHandler {
                                                  int newProgress) {
         QuestSyncCoordinator.syncDeltaProgressAndPush(player, questId, phaseId, objIndex, newProgress);
     }
-
-    // ═══════════════════════════════════════════════════════
-    // 索引管理
-    // ═══════════════════════════════════════════════════════
 
     public static void rebuildTrackingIndex(ServerPlayer player, IQuestCapability cap) {
         ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
@@ -569,6 +560,10 @@ public final class QuestProgressHandler {
 
         MinecraftForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
     }
+
+    // ═══════════════════════════════════════════════════════
+    // 索引管理
+    // ═══════════════════════════════════════════════════════
 
     public static void registerPhaseObjectives(ServerPlayer player,
                                                QuestDefinition def,
@@ -668,10 +663,6 @@ public final class QuestProgressHandler {
         }
     }
 
-    // ═══════════════════════════════════════════════════════
-    // enterCondition / 激活辅助
-    // ═══════════════════════════════════════════════════════
-
     private static boolean canEnterPhase(ServerPlayer player,
                                          IQuestCapability cap,
                                          PhaseDefinition phase) {
@@ -679,6 +670,10 @@ public final class QuestProgressHandler {
         if (cond == null) return true;
         return cond.test(player, cap.getCompletedQuestLocations(), cap.getAllFlags(), cap.getAllVariables());
     }
+
+    // ═══════════════════════════════════════════════════════
+    // enterCondition / 激活辅助
+    // ═══════════════════════════════════════════════════════
 
     private static boolean activatePhase(ServerPlayer player,
                                          IQuestCapability cap,
@@ -833,5 +828,10 @@ public final class QuestProgressHandler {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private static final class ActivationContext {
+        int activatedCount = 0;
+        boolean flagsChanged = false;
     }
 }

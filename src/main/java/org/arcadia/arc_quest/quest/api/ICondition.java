@@ -35,6 +35,7 @@ public interface ICondition {
     static ICondition always() {
         return (player, cq, f, v) -> true;
     }
+
     /**
      * 条件：指定 Flag 已设置。
      * <p>推荐替代 {@code new FlagSetCondition(flag)}。
@@ -61,14 +62,12 @@ public interface ICondition {
             public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
                 return cq.contains(questId);
             }
-            @Override
-            public ResourceLocation getRequiredQuestId() { return questId; }
-        };
-    }
 
-    /** 允许注册表在冻结时对 questCompleted 条件做交叉引用验证。 */
-    interface WithRequiredQuest extends ICondition {
-        ResourceLocation getRequiredQuestId();
+            @Override
+            public ResourceLocation getRequiredQuestId() {
+                return questId;
+            }
+        };
     }
 
     /**
@@ -138,14 +137,14 @@ public interface ICondition {
         return this.test(null, completedQuests, flags, variables);
     }
 
-    // ── 组合器 ──
-
     /**
      * 人类可读的描述（用于调试日志 / UI 提示）
      */
     default String describe() {
         return getClass().getSimpleName();
     }
+
+    // ── 组合器 ──
 
     default ICondition and(ICondition other) {
         ICondition self = this;
@@ -190,5 +189,12 @@ public interface ICondition {
                 return "NOT(" + self.describe() + ")";
             }
         };
+    }
+
+    /**
+     * 允许注册表在冻结时对 questCompleted 条件做交叉引用验证。
+     */
+    interface WithRequiredQuest extends ICondition {
+        ResourceLocation getRequiredQuestId();
     }
 }

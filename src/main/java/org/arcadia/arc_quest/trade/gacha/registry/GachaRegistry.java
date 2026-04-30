@@ -22,7 +22,8 @@ public final class GachaRegistry {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<String, GachaShopDefinition> REGISTRY = new ConcurrentHashMap<>();
 
-    private GachaRegistry() {}
+    private GachaRegistry() {
+    }
 
     /**
      * 注册抽奖商店定义。
@@ -52,12 +53,12 @@ public final class GachaRegistry {
         if (def != null) {
             return def;
         }
-        
+
         // 2. 如果没有命名空间，尝试添加 arc_quest: 前缀
         if (!shopId.contains(":")) {
             def = REGISTRY.get(Arc_Quest.MOD_ID + ":" + shopId);
         }
-        
+
         return def;
     }
 

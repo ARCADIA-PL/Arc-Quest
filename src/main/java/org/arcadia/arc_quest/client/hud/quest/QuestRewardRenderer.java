@@ -23,7 +23,8 @@ public final class QuestRewardRenderer {
     private static final int ROW_HEIGHT = 16;
     private static final int ICON_TEXT_GAP = 3;
 
-    private QuestRewardRenderer() {}
+    private QuestRewardRenderer() {
+    }
 
     /**
      * 渲染奖励列表，返回消耗的总高度（像素）。
@@ -41,11 +42,11 @@ public final class QuestRewardRenderer {
     /**
      * 渲染奖励列表（支持自定义图标尺寸）。
      *
-     * @param g         渲染上下文（本地坐标系）
-     * @param rewards   奖励列表
-     * @param maxWidth  可用宽度
-     * @param alpha     整体透明度 (0-255)
-     * @param iconSize  物品图标尺寸（像素），推荐范围 8-32
+     * @param g        渲染上下文（本地坐标系）
+     * @param rewards  奖励列表
+     * @param maxWidth 可用宽度
+     * @param alpha    整体透明度 (0-255)
+     * @param iconSize 物品图标尺寸（像素），推荐范围 8-32
      * @return 总渲染高度
      */
     public static int render(GuiGraphics g, List<IReward> rewards, int maxWidth, int alpha, int iconSize) {
@@ -75,16 +76,16 @@ public final class QuestRewardRenderer {
         // 直接使用 getter 方法获取物品和数量
         Item item = ir.getItem();
         int count = ir.getCount();
-        
+
         if (item == null || count < 1) {
             return renderTextReward(g, ir.describe(), font, maxWidth, alpha, offsetY);
         }
-        
+
         ItemStack stack = new ItemStack(item, count);
-        
+
         g.pose().pushPose();
         g.pose().translate(0, offsetY, 0);
-        
+
         // 物品图标渲染（自动适配任意分辨率纹理，缩放到 iconSize）
         // Minecraft 物品图标标准为 16x16，通过缩放矩阵适配到目标尺寸
         // 无论原始纹理是 16x16、32x32 还是 64x64，都会正确缩放
@@ -98,7 +99,7 @@ public final class QuestRewardRenderer {
         String safe = font.plainSubstrByWidth(label, maxWidth - iconSize - ICON_TEXT_GAP - 2);
         g.drawString(font, safe, iconSize + ICON_TEXT_GAP, (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xEEEEEE, alpha), false);
         g.pose().popPose();
-        
+
         return ROW_HEIGHT;
     }
 

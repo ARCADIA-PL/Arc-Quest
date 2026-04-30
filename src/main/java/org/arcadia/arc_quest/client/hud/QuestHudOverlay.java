@@ -41,12 +41,24 @@ public class QuestHudOverlay implements IGuiOverlay {
     private float currentPhasePopupY = -1;
     private float currentBranchToastY = -1;
 
-    private QuestHudOverlay() {}
+    private QuestHudOverlay() {
+    }
 
-    public void setTrackedQuest(String questId) { trackerPanel.setTrackedQuest(questId); }
-    public void setTrackedFocus(String questId, String phaseId) { trackerPanel.setTrackedFocus(questId, phaseId); }
-    public String getTrackedPhaseId() { return trackerPanel.getTrackedPhaseId(); }
-    public String getTrackedQuestId() { return trackerPanel.getTrackedQuestId(); }
+    public void setTrackedQuest(String questId) {
+        trackerPanel.setTrackedQuest(questId);
+    }
+
+    public void setTrackedFocus(String questId, String phaseId) {
+        trackerPanel.setTrackedFocus(questId, phaseId);
+    }
+
+    public String getTrackedPhaseId() {
+        return trackerPanel.getTrackedPhaseId();
+    }
+
+    public String getTrackedQuestId() {
+        return trackerPanel.getTrackedQuestId();
+    }
 
     @Override
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
@@ -200,14 +212,25 @@ public class QuestHudOverlay implements IGuiOverlay {
         lastKnownActivePhaseIds.clear();
     }
 
-    public void showBranchChoiceToast(String questId) { showBranchChoiceToast(questId, null); }
+    public void showBranchChoiceToast(String questId) {
+        showBranchChoiceToast(questId, null);
+    }
+
     public void showBranchChoiceToast(String questId, String phaseId) {
         if (branchChoiceToast != null && branchChoiceToast.sameTarget(questId, phaseId)) return;
         this.branchChoiceToast = new BranchChoiceToast(questId, phaseId);
     }
-    public void clearBranchChoiceToast() { if (this.branchChoiceToast != null) this.branchChoiceToast.dismiss(); }
-    public void clearBranchChoiceToast(String questId, String phaseId) {
-        if (this.branchChoiceToast != null && this.branchChoiceToast.sameTarget(questId, phaseId)) this.branchChoiceToast.dismiss();
+
+    public void clearBranchChoiceToast() {
+        if (this.branchChoiceToast != null) this.branchChoiceToast.dismiss();
     }
-    public String getBranchChoiceQuestId() { return branchChoiceToast != null ? branchChoiceToast.getQuestId() : null; }
+
+    public void clearBranchChoiceToast(String questId, String phaseId) {
+        if (this.branchChoiceToast != null && this.branchChoiceToast.sameTarget(questId, phaseId))
+            this.branchChoiceToast.dismiss();
+    }
+
+    public String getBranchChoiceQuestId() {
+        return branchChoiceToast != null ? branchChoiceToast.getQuestId() : null;
+    }
 }

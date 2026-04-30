@@ -61,11 +61,10 @@ public final class ClientQuestCache {
      * 全局 Variables
      */
     private final Map<String, Integer> variables = new HashMap<>();
+    private boolean hasAppliedFullSync = false;
 
     private ClientQuestCache() {
     }
-
-    private boolean hasAppliedFullSync = false;
 
     // ═══════════════════════════════════════════════════════
     //  网络包调用的更新方法
@@ -219,12 +218,12 @@ public final class ClientQuestCache {
         }
 
         int oldProgress = oldData.getObjectiveProgress(objIndex);
-        
+
         // 防止进度回退（除非服务端明确允许）
         if (newProgress < oldProgress) {
             LOGGER.debug("[ClientCache] Objective progress decreased: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
         }
-        
+
         // 【修复】创建深拷贝并替换，确保原子性更新
         QuestRuntimeData newData = oldData.copy();
         newData.setObjectiveProgress(objIndex, newProgress);

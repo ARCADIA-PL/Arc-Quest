@@ -139,10 +139,11 @@ public interface IQuestCapability {
      * 抽奖历史记录（内部记录类）。
      */
     record GachaDrawRecord(
-        String itemId,
-        String rarityName,
-        int actualCount,
-        boolean pityTriggered,
-        long drawTime
-    ) {}
+            String itemId,
+            String rarityName,
+            int actualCount,
+            boolean pityTriggered,
+            long drawTime
+    ) {
+    }
 }

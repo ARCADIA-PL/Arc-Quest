@@ -66,17 +66,17 @@ public final class RegisteredConditions {
         if (predicate == null) {
             throw new IllegalArgumentException("Predicate must not be null");
         }
-        
+
         // 使用 System.identityHashCode 生成唯一名称
         // 注意：这基于对象引用，相同的 lambda 字面量可能生成不同的 hash
         int hash = System.identityHashCode(predicate);
         String name = "auto_" + Integer.toHexString(hash);
-        
+
         // 如果已存在，直接返回
         if (REGISTRY.containsKey(name)) {
             return name;
         }
-        
+
         REGISTRY.put(name, predicate);
         return name;
     }

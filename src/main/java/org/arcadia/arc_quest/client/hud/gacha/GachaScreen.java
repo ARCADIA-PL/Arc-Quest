@@ -24,24 +24,17 @@ public class GachaScreen extends Screen {
 
     private final String shopId;
     private final GachaShopDefinition shopDef;
-
-    public enum Phase { PREVIEW, WAITING_SERVER, ROLLING }
-    private Phase currentPhase = Phase.PREVIEW;
-
     private final GachaPreviewPanel previewPanel;
     private final GachaRollerPanel rollerPanel;
-
+    private Phase currentPhase = Phase.PREVIEW;
     private float transitionAnim = 0f;
     private float rollTransitionAnim = 0f;
-
     private boolean isClosing = false;
     private boolean switchingToResult = false;
     private long lastRenderTime = 0;
     private float dt = 0f;
-
     private long requestTimestamp = 0;
     private boolean hasPendingDraw = false;
-
     private int authorityRefreshTicker = 0;
 
     public GachaScreen(String shopId) {
@@ -60,8 +53,14 @@ public class GachaScreen extends Screen {
         this.rollerPanel.init(width, height);
     }
 
-    @Override public void renderBackground(GuiGraphics g) {}
-    @Override public boolean isPauseScreen() { return false; }
+    @Override
+    public void renderBackground(GuiGraphics g) {
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
 
     @Override
     public void tick() {
@@ -83,8 +82,13 @@ public class GachaScreen extends Screen {
         ArcQuestNetwork.CHANNEL.sendToServer(C2SGachaControlPacket.sync(shopId));
     }
 
-    public String getShopId() { return shopId; }
-    public GachaShopDefinition getShopDef() { return shopDef; }
+    public String getShopId() {
+        return shopId;
+    }
+
+    public GachaShopDefinition getShopDef() {
+        return shopDef;
+    }
 
     public GachaPreviewPanel getPreviewPanel() {
         return previewPanel;
@@ -252,4 +256,6 @@ public class GachaScreen extends Screen {
             LOGGER.debug("[Gacha-Client] RESTORE_DIALOGUE packet sent");
         }
     }
+
+    public enum Phase {PREVIEW, WAITING_SERVER, ROLLING}
 }

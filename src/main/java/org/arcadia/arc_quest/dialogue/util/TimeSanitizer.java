@@ -18,10 +18,10 @@ public final class TimeSanitizer {
     public static long getCurrentRealTime() {
         return System.currentTimeMillis();
     }
-    
+
     /**
      * 获取当前游戏总刻（gameTime）
-     * 
+     *
      * @param level 世界对象
      * @return 游戏总刻数
      */
@@ -32,7 +32,7 @@ public final class TimeSanitizer {
         }
         return level.getGameTime();
     }
-    
+
     /**
      * 获取当前游戏总刻（gameTime）- ServerPlayer重载
      */
@@ -45,17 +45,17 @@ public final class TimeSanitizer {
         }
         return player.level().getGameTime();
     }
-    
+
     /**
      * 获取当前当天刻（dayTime），已校准到 [0, 24000]
-     * 
+     *
      * @param level 世界对象
      * @return 当天刻数
      */
     public static long getCurrentDayTime(Level level) {
         return sanitizeDayTime(level);
     }
-    
+
     /**
      * 获取当前当天刻（dayTime）- ServerPlayer重载
      */
@@ -68,34 +68,34 @@ public final class TimeSanitizer {
         }
         return sanitizeDayTime(player.level());
     }
-    
+
     /**
      * 一次性获取所有时间数据（用于冷却检查等场景）
-     * 
+     *
      * @param level 世界对象
      * @return 时间数据数组 [realTime, gameTime, dayTime]
      */
     public static long[] getAllTimes(Level level) {
-        return new long[] {
-            getCurrentRealTime(),
-            getCurrentGameTime(level),
-            getCurrentDayTime(level)
+        return new long[]{
+                getCurrentRealTime(),
+                getCurrentGameTime(level),
+                getCurrentDayTime(level)
         };
     }
-    
+
     /**
      * 一次性获取所有时间数据 - ServerPlayer重载
      */
     public static long[] getAllTimes(ServerPlayer player) {
         if (player == null) {
-            return new long[] { getCurrentRealTime(), 0, 0 };
+            return new long[]{getCurrentRealTime(), 0, 0};
         } else {
             player.level();
         }
-        return new long[] {
-            getCurrentRealTime(),
-            getCurrentGameTime(player),
-            getCurrentDayTime(player)
+        return new long[]{
+                getCurrentRealTime(),
+                getCurrentGameTime(player),
+                getCurrentDayTime(player)
         };
     }
 
@@ -107,12 +107,12 @@ public final class TimeSanitizer {
             Arc_Quest.LOGGER.warn("[TimeSanitizer] Level is null, returning 0");
             return 0;
         }
-        
+
         long dayTime = level.getDayTime() % 24000;
         if (dayTime < 0) {
             dayTime += 24000;
         }
-        
+
         return dayTime;
     }
 
@@ -145,7 +145,7 @@ public final class TimeSanitizer {
      */
     public static String getTimePeriodDescription(Level level) {
         long t = sanitizeDayTime(level);
-        
+
         if (t >= 0 && t < 6000) {
             return String.format("早晨 (tick=%d, 6:00-12:00)", t);
         } else if (t >= 6000 && t < 12000) {
@@ -165,12 +165,12 @@ public final class TimeSanitizer {
         boolean morning = isMorning(level);
         boolean afternoon = isAfternoon(level);
         boolean night = isNight(level);
-        
+
         int matchCount = 0;
         if (morning) matchCount++;
         if (afternoon) matchCount++;
         if (night) matchCount++;
-        
+
         if (matchCount != 1) {
             Arc_Quest.LOGGER.error("[TimeSanitizer] ⚠️ 时间判断异常！tick={}, morning={}, afternoon={}, night={}, matches={}",
                     t, morning, afternoon, night, matchCount);

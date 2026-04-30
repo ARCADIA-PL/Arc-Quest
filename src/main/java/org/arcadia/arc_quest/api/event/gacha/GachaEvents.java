@@ -11,7 +11,7 @@ import java.util.Map;
  * 抽奖系统事件集合。
  */
 public class GachaEvents {
-    
+
     /**
      * 抽奖前事件（可取消）。
      * <p>
@@ -23,26 +23,46 @@ public class GachaEvents {
         private final IQuestCapability capability;
         private int pityCounter;
         private boolean cancelled;
-        
-        public PreDrawEvent(ServerPlayer player, String shopId, 
-                           IQuestCapability capability,
-                           int pityCounter) {
+
+        public PreDrawEvent(ServerPlayer player, String shopId,
+                            IQuestCapability capability,
+                            int pityCounter) {
             this.player = player;
             this.shopId = shopId;
             this.capability = capability;
             this.pityCounter = pityCounter;
             this.cancelled = false;
         }
-        
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public IQuestCapability getCapability() { return capability; }
-        public int getPityCounter() { return pityCounter; }
-        public void setPityCounter(int pityCounter) { this.pityCounter = pityCounter; }
-        public boolean isCancelled() { return cancelled; }
-        public void setCancelled(boolean cancelled) { this.cancelled = cancelled; }
+
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public IQuestCapability getCapability() {
+            return capability;
+        }
+
+        public int getPityCounter() {
+            return pityCounter;
+        }
+
+        public void setPityCounter(int pityCounter) {
+            this.pityCounter = pityCounter;
+        }
+
+        public boolean isCancelled() {
+            return cancelled;
+        }
+
+        public void setCancelled(boolean cancelled) {
+            this.cancelled = cancelled;
+        }
     }
-    
+
     /**
      * 抽奖后事件。
      * <p>
@@ -55,12 +75,12 @@ public class GachaEvents {
         private final boolean pityTriggered;
         private final int newPityCounter;
         private final IQuestCapability capability;
-        
+
         public PostDrawEvent(ServerPlayer player, String shopId,
-                            GachaItem drawnItem,
-                            boolean pityTriggered,
-                            int newPityCounter,
-                            IQuestCapability capability) {
+                             GachaItem drawnItem,
+                             boolean pityTriggered,
+                             int newPityCounter,
+                             IQuestCapability capability) {
             this.player = player;
             this.shopId = shopId;
             this.drawnItem = drawnItem;
@@ -68,15 +88,32 @@ public class GachaEvents {
             this.newPityCounter = newPityCounter;
             this.capability = capability;
         }
-        
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public GachaItem getDrawnItem() { return drawnItem; }
-        public boolean isPityTriggered() { return pityTriggered; }
-        public int getNewPityCounter() { return newPityCounter; }
-        public IQuestCapability getCapability() { return capability; }
+
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public GachaItem getDrawnItem() {
+            return drawnItem;
+        }
+
+        public boolean isPityTriggered() {
+            return pityTriggered;
+        }
+
+        public int getNewPityCounter() {
+            return newPityCounter;
+        }
+
+        public IQuestCapability getCapability() {
+            return capability;
+        }
     }
-    
+
     /**
      * 奖池刷新事件。
      * <p>
@@ -88,25 +125,39 @@ public class GachaEvents {
         private final IQuestCapability capability;
         private final Map<String, Integer> oldWeights;
         private final Map<String, Integer> newWeights;
-        
+
         public PoolRefreshEvent(ServerPlayer player, String shopId,
-                               IQuestCapability capability,
-                               Map<String, Integer> oldWeights,
-                               Map<String, Integer> newWeights) {
+                                IQuestCapability capability,
+                                Map<String, Integer> oldWeights,
+                                Map<String, Integer> newWeights) {
             this.player = player;
             this.shopId = shopId;
             this.capability = capability;
             this.oldWeights = oldWeights;
             this.newWeights = newWeights;
         }
-        
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public IQuestCapability getCapability() { return capability; }
-        public Map<String, Integer> getOldWeights() { return oldWeights; }
-        public Map<String, Integer> getNewWeights() { return newWeights; }
+
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public IQuestCapability getCapability() {
+            return capability;
+        }
+
+        public Map<String, Integer> getOldWeights() {
+            return oldWeights;
+        }
+
+        public Map<String, Integer> getNewWeights() {
+            return newWeights;
+        }
     }
-    
+
     /**
      * 抽奖商店打开事件。
      */
@@ -114,18 +165,26 @@ public class GachaEvents {
         private final ServerPlayer player;
         private final String shopId;
         private final IQuestCapability capability;
-        
+
         public OpenedEvent(ServerPlayer player, String shopId, IQuestCapability capability) {
             this.player = player;
             this.shopId = shopId;
             this.capability = capability;
         }
-        
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public IQuestCapability getCapability() { return capability; }
+
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public IQuestCapability getCapability() {
+            return capability;
+        }
     }
-    
+
     /**
      * 抽奖执行中事件（用于通知 HUD 播放动画）。
      * <p>
@@ -136,29 +195,88 @@ public class GachaEvents {
         private final String shopId;
         private final IQuestCapability capability;
         private final int currentPityCounter;
-        
+
         public DrawingEvent(ServerPlayer player, String shopId,
-                           IQuestCapability capability,
-                           int currentPityCounter) {
+                            IQuestCapability capability,
+                            int currentPityCounter) {
             this.player = player;
             this.shopId = shopId;
             this.capability = capability;
             this.currentPityCounter = currentPityCounter;
         }
-        
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public IQuestCapability getCapability() { return capability; }
-        public int getCurrentPityCounter() { return currentPityCounter; }
+
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public IQuestCapability getCapability() {
+            return capability;
+        }
+
+        public int getCurrentPityCounter() {
+            return currentPityCounter;
+        }
     }
-    
+
     /**
      * 抽奖失败事件（对标 TradePurchaseFailedEvent）。
      * <p>
      * 当玩家尝试抽奖但因冷却、限购或条件不满足而失败时触发。
      */
     public static class DrawFailedEvent extends Event {
-        
+
+        private final ServerPlayer player;
+        private final String shopId;
+        private final IQuestCapability capability;
+        private final FailReason reason;
+        public DrawFailedEvent(ServerPlayer player, String shopId, IQuestCapability capability, FailReason reason) {
+            this.player = player;
+            this.shopId = shopId;
+            this.capability = capability;
+            this.reason = reason;
+        }
+
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public IQuestCapability getCapability() {
+            return capability;
+        }
+
+        public FailReason getReason() {
+            return reason;
+        }
+
+        /**
+         * 检查是否因为条件不满足而失败。
+         */
+        public boolean isConditionNotMet() {
+            return reason == FailReason.CONDITION_NOT_MET;
+        }
+
+        /**
+         * 检查是否因为冷却而失败。
+         */
+        public boolean isOnCooldown() {
+            return reason == FailReason.ON_COOLDOWN;
+        }
+
+        /**
+         * 检查是否因为达到抽奖次数上限而失败。
+         */
+        public boolean isMaxDrawsReached() {
+            return reason == FailReason.MAX_DRAWS_REACHED;
+        }
+
         /**
          * 抽奖失败原因枚举。
          */
@@ -188,46 +306,8 @@ public class GachaEvents {
              */
             UNKNOWN
         }
-        
-        private final ServerPlayer player;
-        private final String shopId;
-        private final IQuestCapability capability;
-        private final FailReason reason;
-        
-        public DrawFailedEvent(ServerPlayer player, String shopId, IQuestCapability capability, FailReason reason) {
-            this.player = player;
-            this.shopId = shopId;
-            this.capability = capability;
-            this.reason = reason;
-        }
-        
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public IQuestCapability getCapability() { return capability; }
-        public FailReason getReason() { return reason; }
-        
-        /**
-         * 检查是否因为条件不满足而失败。
-         */
-        public boolean isConditionNotMet() {
-            return reason == FailReason.CONDITION_NOT_MET;
-        }
-        
-        /**
-         * 检查是否因为冷却而失败。
-         */
-        public boolean isOnCooldown() {
-            return reason == FailReason.ON_COOLDOWN;
-        }
-        
-        /**
-         * 检查是否因为达到抽奖次数上限而失败。
-         */
-        public boolean isMaxDrawsReached() {
-            return reason == FailReason.MAX_DRAWS_REACHED;
-        }
     }
-    
+
     /**
      * 保底提前触发事件。
      * <p>
@@ -241,12 +321,12 @@ public class GachaEvents {
         private final int currentPityCounter;  // 触发时的保底计数
         private final int pityThreshold;       // 保底阈值
         private final boolean willResetPity;   // 是否会重置保底进度
-        
+
         public PityEarlyTriggerEvent(ServerPlayer player, String shopId,
-                                    GachaItem drawnItem,
-                                    int currentPityCounter,
-                                    int pityThreshold,
-                                    boolean willResetPity) {
+                                     GachaItem drawnItem,
+                                     int currentPityCounter,
+                                     int pityThreshold,
+                                     boolean willResetPity) {
             this.player = player;
             this.shopId = shopId;
             this.drawnItem = drawnItem;
@@ -254,14 +334,31 @@ public class GachaEvents {
             this.pityThreshold = pityThreshold;
             this.willResetPity = willResetPity;
         }
-        
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public GachaItem getDrawnItem() { return drawnItem; }
-        public int getCurrentPityCounter() { return currentPityCounter; }
-        public int getPityThreshold() { return pityThreshold; }
-        public boolean willResetPity() { return willResetPity; }
-        
+
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public GachaItem getDrawnItem() {
+            return drawnItem;
+        }
+
+        public int getCurrentPityCounter() {
+            return currentPityCounter;
+        }
+
+        public int getPityThreshold() {
+            return pityThreshold;
+        }
+
+        public boolean willResetPity() {
+            return willResetPity;
+        }
+
         /**
          * 获取保底进度百分比（0-100）。
          */
@@ -270,14 +367,64 @@ public class GachaEvents {
             return Math.min(100, (currentPityCounter * 100) / pityThreshold);
         }
     }
-    
+
     /**
      * 抽奖限购重置事件。
      * <p>
      * 当冷却过期或自定义条件满足导致限购重置时触发。
      */
     public static class DrawLimitResetEvent extends Event {
-        
+
+        private final ServerPlayer player;
+        private final String shopId;
+        private final IQuestCapability capability;
+        private final ResetReason reason;
+        private final int previousDrawCount;  // 重置前的抽奖次数
+        public DrawLimitResetEvent(ServerPlayer player, String shopId,
+                                   IQuestCapability capability,
+                                   ResetReason reason,
+                                   int previousDrawCount) {
+            this.player = player;
+            this.shopId = shopId;
+            this.capability = capability;
+            this.reason = reason;
+            this.previousDrawCount = previousDrawCount;
+        }
+
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public IQuestCapability getCapability() {
+            return capability;
+        }
+
+        public ResetReason getReason() {
+            return reason;
+        }
+
+        public int getPreviousDrawCount() {
+            return previousDrawCount;
+        }
+
+        /**
+         * 检查是否因为冷却过期而重置。
+         */
+        public boolean isCooldownExpired() {
+            return reason == ResetReason.COOLDOWN_EXPIRED;
+        }
+
+        /**
+         * 检查是否因为自定义条件而重置。
+         */
+        public boolean isCustomCondition() {
+            return reason == ResetReason.CUSTOM_CONDITION;
+        }
+
         /**
          * 重置原因枚举。
          */
@@ -291,53 +438,13 @@ public class GachaEvents {
              */
             CUSTOM_CONDITION
         }
-        
-        private final ServerPlayer player;
-        private final String shopId;
-        private final IQuestCapability capability;
-        private final ResetReason reason;
-        private final int previousDrawCount;  // 重置前的抽奖次数
-        
-        public DrawLimitResetEvent(ServerPlayer player, String shopId,
-                                  IQuestCapability capability,
-                                  ResetReason reason,
-                                  int previousDrawCount) {
-            this.player = player;
-            this.shopId = shopId;
-            this.capability = capability;
-            this.reason = reason;
-            this.previousDrawCount = previousDrawCount;
-        }
-        
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public IQuestCapability getCapability() { return capability; }
-        public ResetReason getReason() { return reason; }
-        public int getPreviousDrawCount() { return previousDrawCount; }
-        
-        /**
-         * 检查是否因为冷却过期而重置。
-         */
-        public boolean isCooldownExpired() {
-            return reason == ResetReason.COOLDOWN_EXPIRED;
-        }
-        
-        /**
-         * 检查是否因为自定义条件而重置。
-         */
-        public boolean isCustomCondition() {
-            return reason == ResetReason.CUSTOM_CONDITION;
-        }
     }
 
     public static class StateSyncedEvent extends Event {
-        public enum SyncResult { SENT, DROPPED }
-
         private final ServerPlayer player;
         private final String shopId;
         private final String reason;
         private final SyncResult result;
-
         public StateSyncedEvent(ServerPlayer player, String shopId, String reason, SyncResult result) {
             this.player = player;
             this.shopId = shopId;
@@ -345,10 +452,23 @@ public class GachaEvents {
             this.result = result;
         }
 
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
-        public String getReason() { return reason; }
-        public SyncResult getSyncResult() { return result; }
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public SyncResult getSyncResult() {
+            return result;
+        }
+
+        public enum SyncResult {SENT, DROPPED}
     }
 
     public static class ClosedEvent extends Event {
@@ -360,7 +480,12 @@ public class GachaEvents {
             this.shopId = shopId;
         }
 
-        public ServerPlayer getPlayer() { return player; }
-        public String getShopId() { return shopId; }
+        public ServerPlayer getPlayer() {
+            return player;
+        }
+
+        public String getShopId() {
+            return shopId;
+        }
     }
 }

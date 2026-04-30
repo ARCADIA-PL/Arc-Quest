@@ -15,7 +15,15 @@ public class QuestMarkersRefreshedEvent extends Event {
         this.activePhaseCount = activePhaseCount;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public ResourceLocation getQuestId() { return questId; }
-    public int getActivePhaseCount() { return activePhaseCount; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public ResourceLocation getQuestId() {
+        return questId;
+    }
+
+    public int getActivePhaseCount() {
+        return activePhaseCount;
+    }
 }

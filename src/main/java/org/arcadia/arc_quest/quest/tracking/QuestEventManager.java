@@ -142,8 +142,6 @@ public final class QuestEventManager {
         }
     }
 
-    private record PhaseGroupKey(String questId, String phaseId) {}
-
     private static void processMatch(ServerPlayer player,
                                      ObjectiveType type,
                                      ResourceLocation targetId,
@@ -258,5 +256,8 @@ public final class QuestEventManager {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private record PhaseGroupKey(String questId, String phaseId) {
     }
 }

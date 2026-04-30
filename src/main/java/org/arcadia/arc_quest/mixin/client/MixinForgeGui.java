@@ -23,8 +23,8 @@ public class MixinForgeGui {
         Minecraft mc = Minecraft.getInstance();
 
         if (mc.screen instanceof QuestJournalScreen ||
-            mc.screen instanceof DialogueScreen ||
-                mc.screen instanceof AbstractTradeScreen||
+                mc.screen instanceof DialogueScreen ||
+                mc.screen instanceof AbstractTradeScreen ||
                 mc.screen instanceof GachaScreen) {
             cir.setReturnValue(false);
         }

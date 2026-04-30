@@ -51,11 +51,14 @@ public final class QuestBuilder {
     private int completionRequiredCount = 0;
     @Nullable
     private String completionTargetPhaseId = null;
-    
+
     // 音效配置
-    @Nullable private SoundEvent chapterStartSound;
-    @Nullable private SoundEvent chapterFailSound;
-    @Nullable private SoundEvent chapterCompleteSound;
+    @Nullable
+    private SoundEvent chapterStartSound;
+    @Nullable
+    private SoundEvent chapterFailSound;
+    @Nullable
+    private SoundEvent chapterCompleteSound;
 
     private QuestBuilder(ResourceLocation id) {
         this.id = id;
@@ -146,6 +149,7 @@ public final class QuestBuilder {
         this.completionPolicy = policy;
         return this;
     }
+
     public QuestBuilder completionRequiredCount(int count) {
         this.completionRequiredCount = count;
         return this;

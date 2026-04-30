@@ -17,35 +17,26 @@ import java.util.Random;
 public class GachaRollerPanel {
 
     private final GachaScreen parent;
-    private int width, height;
-
-    private boolean isRolling = false;
-
-    private enum State { ENTER, ROLLING, HOLD, EXIT }
-    private State currentState = State.ENTER;
-
-    private float masterAnim = 0f;
-
-    private float rollElapsed = 0f;
-    private float holdElapsed = 0f;
-    private float exitElapsed = 0f;
-    private float rollSpeedMult = 1.0f;
-
-    private double scrollX = 0;
-    private double targetStopX = 0;
-    private long rollDuration = 0;
-    private int lastTickCard = -1;
-
     private final List<GachaItem> rollStrip = new ArrayList<>();
-    private int targetItemIndex = -1;
-    private ClientGachaCache.DrawRecord confirmedResult;
-    private int targetThemeHighContrast;
-
     private final int cardW = 70;
     private final int cardH = 55;
     private final int gap = 25;
     private final int cardTotalW = cardW + gap;
-
+    private int width, height;
+    private boolean isRolling = false;
+    private State currentState = State.ENTER;
+    private float masterAnim = 0f;
+    private float rollElapsed = 0f;
+    private float holdElapsed = 0f;
+    private float exitElapsed = 0f;
+    private float rollSpeedMult = 1.0f;
+    private double scrollX = 0;
+    private double targetStopX = 0;
+    private long rollDuration = 0;
+    private int lastTickCard = -1;
+    private int targetItemIndex = -1;
+    private ClientGachaCache.DrawRecord confirmedResult;
+    private int targetThemeHighContrast;
     public GachaRollerPanel(GachaScreen parent) {
         this.parent = parent;
     }
@@ -131,10 +122,10 @@ public class GachaRollerPanel {
 
         float exitProgress = Math.min(1.0f, exitElapsed / 350.0f);
         float easeMaster = masterAnim < 0.5f ?
-                2.0f * masterAnim * masterAnim : 1.0f - (float)Math.pow(-2.0f * masterAnim + 2.0f, 2.0) / 2.0f;
-        float wipeOut = (currentState == State.EXIT) ? (float)Math.pow(exitProgress, 3.0) : 0f;
+                2.0f * masterAnim * masterAnim : 1.0f - (float) Math.pow(-2.0f * masterAnim + 2.0f, 2.0) / 2.0f;
+        float wipeOut = (currentState == State.EXIT) ? (float) Math.pow(exitProgress, 3.0) : 0f;
 
-        int bgAlpha = (int)(0x8C * easeMaster * (1.0f - wipeOut));
+        int bgAlpha = (int) (0x8C * easeMaster * (1.0f - wipeOut));
         if (bgAlpha > 0) g.fill(0, 0, width, height, bgAlpha << 24);
 
         int targetBarHeight = (int) (this.height * 0.10f);
@@ -145,12 +136,12 @@ public class GachaRollerPanel {
             g.fill(0, this.height - barHeight, this.width, this.height, 0xFF000000);
         }
 
-        int safeAlpha = (int)(255 * easeMaster);
+        int safeAlpha = (int) (255 * easeMaster);
         if (safeAlpha < 10) return;
 
         if (currentState == State.ROLLING || currentState == State.ENTER) {
             float t = Math.min(1.0f, rollElapsed / rollDuration);
-            float rollEase = 1.0f - (float)Math.pow(1.0f - t, 4.0);
+            float rollEase = 1.0f - (float) Math.pow(1.0f - t, 4.0);
             scrollX = targetStopX * rollEase;
 
             double pointerAbsoluteX = scrollX + width / 2.0;
@@ -180,7 +171,7 @@ public class GachaRollerPanel {
             int themeC = parent.getShopDef().getEffectiveThemeColor(item);
 
             double centerDist = Math.abs((drawX + cardW / 2.0) - cx);
-            float popFactor = Math.max(0f, 1f - (float)(centerDist / (cardW * 1.5)));
+            float popFactor = Math.max(0f, 1f - (float) (centerDist / (cardW * 1.5)));
 
             float cardScale = 1.0f + popFactor * 0.07f;
             float iconScale = 1.25f + popFactor * 0.5f;
@@ -189,39 +180,39 @@ public class GachaRollerPanel {
             if (currentState == State.EXIT) {
                 if (i == targetItemIndex) {
                     float centerWipe = Math.min(1.0f, exitProgress * 2.5f);
-                    float implode = 1.0f - (float)Math.pow(centerWipe, 0.5);
+                    float implode = 1.0f - (float) Math.pow(centerWipe, 0.5);
                     iconScale *= implode;
                     cardScale *= implode;
-                    cardAlpha = (int)(safeAlpha * (1.0f - centerWipe));
+                    cardAlpha = (int) (safeAlpha * (1.0f - centerWipe));
                 } else {
                     float dir = (i < targetItemIndex) ? -1f : 1f;
                     drawX += dir * wipeOut * 600f;
-                    cardAlpha = (int)(safeAlpha * (1.0f - wipeOut));
+                    cardAlpha = (int) (safeAlpha * (1.0f - wipeOut));
                 }
             }
 
             if (cardAlpha <= 5) continue;
 
             g.pose().pushPose();
-            g.pose().translate(drawX + cardW/2f, centerY, 0);
+            g.pose().translate(drawX + cardW / 2f, centerY, 0);
             g.pose().scale(cardScale, cardScale, 1f);
-            g.pose().translate(-(drawX + cardW/2f), -centerY, 0);
+            g.pose().translate(-(drawX + cardW / 2f), -centerY, 0);
 
-            int drawCardX = (int)drawX;
-            int drawCardY = centerY - cardH/2;
+            int drawCardX = (int) drawX;
+            int drawCardY = centerY - cardH / 2;
 
-            g.fill(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(0x111111, (int)(cardAlpha * 0.8f)));
-            g.fillGradient(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(themeC, (int)(cardAlpha * 0.2f)), 0);
+            g.fill(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(0x111111, (int) (cardAlpha * 0.8f)));
+            g.fillGradient(drawCardX, drawCardY, drawCardX + cardW, drawCardY + cardH, HudAnimUtil.withAlpha(themeC, (int) (cardAlpha * 0.2f)), 0);
 
             // 【统一】使用机能风高级晶体侧边栏
             HudRenderUtil.drawCyberneticEdge(g, drawCardX, drawCardY, cardH, themeC, cardAlpha);
 
             if (popFactor > 0.1f && currentState != State.EXIT) {
-                HudAnimUtil.drawFrame(g, drawCardX, drawCardY, cardW, cardH, 1, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * popFactor * 0.8f)));
+                HudAnimUtil.drawFrame(g, drawCardX, drawCardY, cardW, cardH, 1, HudAnimUtil.withAlpha(themeC, (int) (safeAlpha * popFactor * 0.8f)));
             }
 
             g.pose().pushPose();
-            g.pose().translate(drawX + cardW/2f, centerY, 0);
+            g.pose().translate(drawX + cardW / 2f, centerY, 0);
             g.pose().scale(iconScale, iconScale, 1f);
             g.pose().translate(-8, -8, 0);
             g.renderItem(item.getItemStack(), 0, 0);
@@ -235,7 +226,7 @@ public class GachaRollerPanel {
 
         if (currentState == State.HOLD || currentState == State.EXIT) {
             float holdT = Math.min(1.0f, (holdElapsed + exitElapsed) / 400f);
-            float spring = 1.0f + 0.4f * (float)Math.exp(-holdT * 8f) * (float)Math.cos(holdT * 25f);
+            float spring = 1.0f + 0.4f * (float) Math.exp(-holdT * 8f) * (float) Math.cos(holdT * 25f);
             aimW *= spring;
             aimH *= spring;
         }
@@ -245,21 +236,21 @@ public class GachaRollerPanel {
             aimH += wipeOut * 300f;
         }
 
-        int pulseA = (int)(safeAlpha * (0.6f + 0.4f * Math.sin(now / 150.0)));
-        if (currentState == State.EXIT) pulseA = (int)(pulseA * (1.0f - wipeOut));
+        int pulseA = (int) (safeAlpha * (0.6f + 0.4f * Math.sin(now / 150.0)));
+        if (currentState == State.EXIT) pulseA = (int) (pulseA * (1.0f - wipeOut));
 
         if (pulseA > 5) {
             int crossColor = HudAnimUtil.withAlpha(targetThemeHighContrast, pulseA);
             int len = 10;
             int thick = 2;
-            g.fill((int)(cx - aimW/2), (int)(centerY - aimH/2), (int)(cx - aimW/2 + len), (int)(centerY - aimH/2 + thick), crossColor);
-            g.fill((int)(cx - aimW/2), (int)(centerY - aimH/2), (int)(cx - aimW/2 + thick), (int)(centerY - aimH/2 + len), crossColor);
-            g.fill((int)(cx + aimW/2 - len), (int)(centerY - aimH/2), (int)(cx + aimW/2), (int)(centerY - aimH/2 + thick), crossColor);
-            g.fill((int)(cx + aimW/2 - thick), (int)(centerY - aimH/2), (int)(cx + aimW/2), (int)(centerY - aimH/2 + len), crossColor);
-            g.fill((int)(cx - aimW/2), (int)(centerY + aimH/2 - thick), (int)(cx - aimW/2 + len), (int)(centerY + aimH/2), crossColor);
-            g.fill((int)(cx - aimW/2), (int)(centerY + aimH/2 - len), (int)(cx - aimW/2 + thick), (int)(centerY + aimH/2), crossColor);
-            g.fill((int)(cx + aimW/2 - len), (int)(centerY + aimH/2 - thick), (int)(cx + aimW/2), (int)(centerY + aimH/2), crossColor);
-            g.fill((int)(cx + aimW/2 - thick), (int)(centerY + aimH/2 - len), (int)(cx + aimW/2), (int)(centerY + aimH/2), crossColor);
+            g.fill((int) (cx - aimW / 2), (int) (centerY - aimH / 2), (int) (cx - aimW / 2 + len), (int) (centerY - aimH / 2 + thick), crossColor);
+            g.fill((int) (cx - aimW / 2), (int) (centerY - aimH / 2), (int) (cx - aimW / 2 + thick), (int) (centerY - aimH / 2 + len), crossColor);
+            g.fill((int) (cx + aimW / 2 - len), (int) (centerY - aimH / 2), (int) (cx + aimW / 2), (int) (centerY - aimH / 2 + thick), crossColor);
+            g.fill((int) (cx + aimW / 2 - thick), (int) (centerY - aimH / 2), (int) (cx + aimW / 2), (int) (centerY - aimH / 2 + len), crossColor);
+            g.fill((int) (cx - aimW / 2), (int) (centerY + aimH / 2 - thick), (int) (cx - aimW / 2 + len), (int) (centerY + aimH / 2), crossColor);
+            g.fill((int) (cx - aimW / 2), (int) (centerY + aimH / 2 - len), (int) (cx - aimW / 2 + thick), (int) (centerY + aimH / 2), crossColor);
+            g.fill((int) (cx + aimW / 2 - len), (int) (centerY + aimH / 2 - thick), (int) (cx + aimW / 2), (int) (centerY + aimH / 2), crossColor);
+            g.fill((int) (cx + aimW / 2 - thick), (int) (centerY + aimH / 2 - len), (int) (cx + aimW / 2), (int) (centerY + aimH / 2), crossColor);
         }
 
         g.disableScissor();
@@ -288,4 +279,6 @@ public class GachaRollerPanel {
         this.currentState = State.EXIT;
         this.exitElapsed = 0f;
     }
+
+    private enum State {ENTER, ROLLING, HOLD, EXIT}
 }

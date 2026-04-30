@@ -16,8 +16,19 @@ public class DialogueNodeAutoAdvancedEvent extends Event {
         this.toNodeId = toNodeId;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public String getDialogueId() { return dialogueId; }
-    public String getFromNodeId() { return fromNodeId; }
-    public String getToNodeId() { return toNodeId; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public String getDialogueId() {
+        return dialogueId;
+    }
+
+    public String getFromNodeId() {
+        return fromNodeId;
+    }
+
+    public String getToNodeId() {
+        return toNodeId;
+    }
 }

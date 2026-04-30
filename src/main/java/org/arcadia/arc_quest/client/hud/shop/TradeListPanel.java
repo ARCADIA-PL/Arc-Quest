@@ -12,23 +12,41 @@ import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 import java.util.List;
 
 public class TradeListPanel {
+    public static final int CARD_HEIGHT = 48;
     private final TradeScreen screen;
     private final Font font;
-    public static final int CARD_HEIGHT = 48;
     private double scrollOffset = 0, targetScroll = 0;
     private float[] entryHoverAnims;
 
-    public TradeListPanel(TradeScreen screen, Font font) { this.screen = screen; this.font = font; resetAnims(); }
-    public void resetAnims() { targetScroll = 0; scrollOffset = 0; entryHoverAnims = new float[screen.getFilteredEntries().size()]; }
-    public void setHoverAnim(int index, float val) { if (index >= 0 && index < entryHoverAnims.length) entryHoverAnims[index] = val; }
+    public TradeListPanel(TradeScreen screen, Font font) {
+        this.screen = screen;
+        this.font = font;
+        resetAnims();
+    }
+
+    public void resetAnims() {
+        targetScroll = 0;
+        scrollOffset = 0;
+        entryHoverAnims = new float[screen.getFilteredEntries().size()];
+    }
+
+    public void setHoverAnim(int index, float val) {
+        if (index >= 0 && index < entryHoverAnims.length) entryHoverAnims[index] = val;
+    }
 
     public void clampScroll(int listHeight) {
         int maxScroll = Math.max(0, screen.getFilteredEntries().size() * (CARD_HEIGHT + 8) + 4 - listHeight);
         targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
     }
 
-    public void mouseScrolled(double d, int listHeight) { targetScroll -= d * (CARD_HEIGHT + 8); clampScroll(listHeight); }
-    public double getScrollOffset() { return scrollOffset; }
+    public void mouseScrolled(double d, int listHeight) {
+        targetScroll -= d * (CARD_HEIGHT + 8);
+        clampScroll(listHeight);
+    }
+
+    public double getScrollOffset() {
+        return scrollOffset;
+    }
 
     public void render(GuiGraphics g, int rx, int ry, int rw, int rh, int mx, int my, float dt, float alpha, boolean isClosing, float fastClose) {
         clampScroll(rh);
@@ -85,7 +103,8 @@ public class TradeListPanel {
                 g.pose().scale(aScale, aScale, 1f);
                 g.pose().translate(-(cx + cw / 2f), -(cy + ch / 2f), 0);
 
-                if (entry.getRewardIcon() != null) screen.drawAdaptiveIcon(g, entry.getRewardIcon(), cx + 7, cy + 16, 16, 16, alpha);
+                if (entry.getRewardIcon() != null)
+                    screen.drawAdaptiveIcon(g, entry.getRewardIcon(), cx + 7, cy + 16, 16, 16, alpha);
                 else {
                     ItemStack is = screen.getIconStackForEntry(entry);
                     if (!is.isEmpty()) {
@@ -118,7 +137,8 @@ public class TradeListPanel {
                 if (font.width(nStr) > mNW) nStr = font.plainSubstrByWidth(nStr, mNW - 8) + "...";
 
                 g.drawString(font, nStr, textX, cy + 10, HudAnimUtil.withAlpha(canBuy ? 0xFFFFFF : 0x999999, (int) (255 * alpha)), true);
-                if (!statStr.isEmpty()) g.drawString(font, statStr, textX + font.width(nStr) + 6, cy + 10, HudAnimUtil.withAlpha(scColor, (int) (255 * alpha)), true);
+                if (!statStr.isEmpty())
+                    g.drawString(font, statStr, textX + font.width(nStr) + 6, cy + 10, HudAnimUtil.withAlpha(scColor, (int) (255 * alpha)), true);
 
                 int cX = textX, costY = cy + 26;
                 for (int j = 0; j < entry.getCosts().size(); j++) {

@@ -13,6 +13,11 @@ public class QuestAbandonedEvent extends Event {
         this.questId = questId;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public ResourceLocation getQuestId() { return questId; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public ResourceLocation getQuestId() {
+        return questId;
+    }
 }

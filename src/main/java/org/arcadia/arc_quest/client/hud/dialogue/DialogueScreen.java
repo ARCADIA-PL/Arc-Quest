@@ -112,8 +112,13 @@ public class DialogueScreen extends Screen {
         return scale;
     }
 
-    public int getScaledWidth() { return (int) (this.width / getUiScale()); }
-    public int getScaledHeight() { return (int) (this.height / getUiScale()); }
+    public int getScaledWidth() {
+        return (int) (this.width / getUiScale());
+    }
+
+    public int getScaledHeight() {
+        return (int) (this.height / getUiScale());
+    }
 
     public void updateNode(String speaker, String text, String[] choices,
                            boolean isTerminal, boolean hasAutoNext, int delayMs,

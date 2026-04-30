@@ -61,18 +61,13 @@ public sealed interface DialogueCondition permits
         // ── 跨系统适配器 ──
         DialogueCondition.IConditionWrapper {
 
-    /**
-     * 评估条件是否满足。
-     */
-    boolean test(DialogueEvalContext ctx);
+    private static QuestRuntimeData getQuestData(DialogueEvalContext ctx, String questId) {
+        return ctx.questCap().getActiveQuest(questId);
+    }
 
     // ═══════════════════════════════════════════════
     //  内部辅助
     // ═══════════════════════════════════════════════
-
-    private static QuestRuntimeData getQuestData(DialogueEvalContext ctx, String questId) {
-        return ctx.questCap().getActiveQuest(questId);
-    }
 
     private static QuestDefinition getQuestDef(String questId) {
         ResourceLocation rl = ResourceLocation.tryParse(questId);
@@ -100,6 +95,11 @@ public sealed interface DialogueCondition permits
         if (from == to) return null; // 空区间
         return new int[]{from, to};  // [from, to)
     }
+
+    /**
+     * 评估条件是否满足。
+     */
+    boolean test(DialogueEvalContext ctx);
 
     // ═══════════════════════════════════════════════
     //  逻辑组合
@@ -133,17 +133,17 @@ public sealed interface DialogueCondition permits
 
         private static final String AUTO_PREFIX = "auto_";
 
-        public static CustomCondition create(BiPredicate<ServerPlayer, Entity> predicate) {
-            String name = RegisteredConditions.autoRegister(predicate);
-            return new CustomCondition(name);
-        }
-
         public CustomCondition {
             if (!nameOrPredicate.startsWith(AUTO_PREFIX)) {
                 if (!RegisteredConditions.isRegistered(nameOrPredicate)) {
                     Arc_Quest.LOGGER.warn("[CustomCondition] Condition '{}' is not registered", nameOrPredicate);
                 }
             }
+        }
+
+        public static CustomCondition create(BiPredicate<ServerPlayer, Entity> predicate) {
+            String name = RegisteredConditions.autoRegister(predicate);
+            return new CustomCondition(name);
         }
 
         @Override

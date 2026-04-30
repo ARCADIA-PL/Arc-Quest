@@ -47,12 +47,16 @@ public final class TradeShopBuilder {
     private final List<TradeCategory> categories = new ArrayList<>();
     private final LinkedHashMap<String, TradeEntry> entries = new LinkedHashMap<>();
     private TradeText displayName;
-    @Nullable private TradeText description;
-    @Nullable private ICondition openCondition;
+    @Nullable
+    private TradeText description;
+    @Nullable
+    private ICondition openCondition;
     private boolean simpleMode = false;
     private int themeColor = 0xE0C860;  // 默认金色
-    @Nullable private SoundEvent openSound;
-    @Nullable private SoundEvent closeSound;
+    @Nullable
+    private SoundEvent openSound;
+    @Nullable
+    private SoundEvent closeSound;
 
     private TradeShopBuilder(String shopId) {
         this.shopId = Objects.requireNonNull(shopId);

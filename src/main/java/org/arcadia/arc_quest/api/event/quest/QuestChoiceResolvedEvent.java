@@ -22,10 +22,27 @@ public class QuestChoiceResolvedEvent extends Event {
         this.targetPhaseId = targetPhaseId;
     }
 
-    public ServerPlayer getPlayer() { return player; }
-    public ResourceLocation getQuestId() { return questId; }
-    public String getPhaseId() { return phaseId; }
-    public int getChoiceIndex() { return choiceIndex; }
-    public String getChoiceId() { return choiceId; }
-    public String getTargetPhaseId() { return targetPhaseId; }
+    public ServerPlayer getPlayer() {
+        return player;
+    }
+
+    public ResourceLocation getQuestId() {
+        return questId;
+    }
+
+    public String getPhaseId() {
+        return phaseId;
+    }
+
+    public int getChoiceIndex() {
+        return choiceIndex;
+    }
+
+    public String getChoiceId() {
+        return choiceId;
+    }
+
+    public String getTargetPhaseId() {
+        return targetPhaseId;
+    }
 }

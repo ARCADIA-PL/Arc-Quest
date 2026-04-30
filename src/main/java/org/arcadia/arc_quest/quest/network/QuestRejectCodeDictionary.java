@@ -10,6 +10,10 @@ public final class QuestRejectCodeDictionary {
     private QuestRejectCodeDictionary() {
     }
 
+    public static String errorKey(Code code) {
+        return "arcquest.quest.reject." + code.name().toLowerCase(Locale.ROOT);
+    }
+
     public enum Code {
         OK,
         QUEST_NOT_FOUND,
@@ -29,9 +33,5 @@ public final class QuestRejectCodeDictionary {
         CHAPTER_SHOP_DEFINITION_NOT_FOUND,
 
         UNKNOWN
-    }
-
-    public static String errorKey(Code code) {
-        return "arcquest.quest.reject." + code.name().toLowerCase(Locale.ROOT);
     }
 }

@@ -28,7 +28,7 @@ public final class ClientDialogueCache {
      * 支持嵌套场景：对话中打开商店再返回对话时保持状态
      */
     private final Map<String, DialogueSessionData> activeSessions = new HashMap<>();
-    
+
     /**
      * 当前正在显示的对话树 ID（用于 getCurrentSession()）
      */
@@ -47,10 +47,10 @@ public final class ClientDialogueCache {
                                  int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
                                  @Nullable SoundEvent matchedSaySound, @Nullable SoundEvent[] choiceSounds,
                                  @Nullable String matchedSayId, @Nullable String[] choiceIds) {
-        
+
         // 更新当前活跃的对话树 ID
         this.currentTreeId = treeId;
-        
+
         DialogueSessionData session = activeSessions.computeIfAbsent(treeId, DialogueSessionData::new);
         session.updateNode(nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
                 lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks,
@@ -75,12 +75,12 @@ public final class ClientDialogueCache {
             LOGGER.warn("[DialogueCache] Cannot play choice selectSound: no session for treeId={}", treeId);
             return;
         }
-        
+
         if (index < 0 || index >= session.choiceSounds.length) {
             LOGGER.warn("[DialogueCache] Invalid choice index: {} (max: {})", index, session.choiceSounds.length - 1);
             return;
         }
-        
+
         SoundEvent sound = session.choiceSounds[index];
         if (sound != null) {
             GuiSoundManager.play(sound);
@@ -174,7 +174,7 @@ public final class ClientDialogueCache {
         public long[] cooldownValues;
         public int[] resetTimeTicks;
         public SoundEvent[] choiceSounds;
-        
+
         // Say/Choice IDs
         public String matchedSayId;
         public String[] choiceIds;
@@ -204,7 +204,7 @@ public final class ClientDialogueCache {
             this.cooldownValues = (cooldownValues != null) ? cooldownValues.clone() : new long[this.choices.length];
             this.resetTimeTicks = (resetTimeTicks != null) ? resetTimeTicks.clone() : new int[this.choices.length];
             this.choiceSounds = (choiceSounds != null) ? choiceSounds.clone() : new SoundEvent[this.choices.length];
-            
+
             // 存储 ID
             this.matchedSayId = matchedSayId;
             this.choiceIds = (choiceIds != null) ? choiceIds.clone() : new String[this.choices.length];

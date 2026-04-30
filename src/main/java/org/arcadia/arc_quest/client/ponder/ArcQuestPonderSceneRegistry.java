@@ -44,16 +44,25 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ArcQuestPonderSceneRegistry {
 
-    /** 已注册的任务阶段情报场景 ID 集合，供 hasScene() 快速检测。 */
+    /**
+     * 已注册的任务阶段情报场景 ID 集合，供 hasScene() 快速检测。
+     */
     static final Set<ResourceLocation> REGISTERED_QUEST_PHASE_IDS = ConcurrentHashMap.newKeySet();
-    /** 已注册的对话场景 ID 集合。 */
+    /**
+     * 已注册的对话场景 ID 集合。
+     */
     static final Set<ResourceLocation> REGISTERED_DIALOGUE_IDS = ConcurrentHashMap.newKeySet();
-    /** 已注册的交易场景 ID 集合。 */
+    /**
+     * 已注册的交易场景 ID 集合。
+     */
     static final Set<ResourceLocation> REGISTERED_TRADE_IDS = ConcurrentHashMap.newKeySet();
-    /** 通用教程场景 ID 集合。 */
+    /**
+     * 通用教程场景 ID 集合。
+     */
     static final Set<ResourceLocation> REGISTERED_TUTORIAL_IDS = ConcurrentHashMap.newKeySet();
 
-    private ArcQuestPonderSceneRegistry() {}
+    private ArcQuestPonderSceneRegistry() {
+    }
 
     // ── 任务阶段情报 ──────────────────────────────────────────────────
 
@@ -175,7 +184,9 @@ public final class ArcQuestPonderSceneRegistry {
 
     // ── 查询工具 ──────────────────────────────────────────────────────
 
-    /** 检查给定 sceneId 是否已注册过场景（任意类型）。 */
+    /**
+     * 检查给定 sceneId 是否已注册过场景（任意类型）。
+     */
     public static boolean hasScene(ResourceLocation sceneId) {
         return REGISTERED_QUEST_PHASE_IDS.contains(sceneId)
                 || REGISTERED_DIALOGUE_IDS.contains(sceneId)
@@ -183,7 +194,9 @@ public final class ArcQuestPonderSceneRegistry {
                 || REGISTERED_TUTORIAL_IDS.contains(sceneId);
     }
 
-    /** 检查给定任务阶段是否已注册情报场景。 */
+    /**
+     * 检查给定任务阶段是否已注册情报场景。
+     */
     public static boolean hasQuestPhaseIntel(String questId, String phaseId) {
         return REGISTERED_QUEST_PHASE_IDS.contains(ArcQuestPonderHelper.questPhaseId(questId, phaseId));
     }

@@ -39,10 +39,13 @@ import org.arcadia.arc_quest.Arc_Quest;
 public final class ArcQuestPonderHelper {
 
     private static final String MOD = Arc_Quest.MOD_ID;
-    /** 命名空间与 path 之间的分隔符，选用双下划线避免与常规命名冲突。 */
+    /**
+     * 命名空间与 path 之间的分隔符，选用双下划线避免与常规命名冲突。
+     */
     private static final String NS_SEP = "__";
 
-    private ArcQuestPonderHelper() {}
+    private ArcQuestPonderHelper() {
+    }
 
     /**
      * 将任意形式的 ID 字符串编码为合法的 RL path 段。
@@ -60,7 +63,7 @@ public final class ArcQuestPonderHelper {
             return idOrPath;
         }
         String namespace = idOrPath.substring(0, colon);
-        String path      = idOrPath.substring(colon + 1);
+        String path = idOrPath.substring(colon + 1);
         if (MOD.equals(namespace)) {
             // 本模组命名空间，省略前缀保持简洁
             return path;

@@ -23,27 +23,12 @@ package org.arcadia.arc_quest.dialogue.runtime;
  */
 public final class ProgressKey {
 
-    /**
-     * Key 的语义类型，用于序列化分区时替代字符串格式猜测。
-     */
-    public enum KeyType {
-        /** 节点访问记录，格式：namespace:nodeId */
-        NODE,
-        /** 对话树访问记录，格式：namespace:dialogueId */
-        DIALOGUE,
-        /** 选项选择记录，格式：namespace:nodeId:choiceIndex */
-        CHOICE,
-        /** 交易/商品冷却记录，格式：trade:shopId|entryId */
-        TRADE
-    }
-
     private final String namespace;
     private final String id;
     private final int index;        // -1 = 非选项 Key
     private final KeyType keyType;  // 语义类型，用于 serialize 分区
     private final String keyString; // 缓存
     private final int hash;         // 预计算
-
     private ProgressKey(String namespace, String id, int index, KeyType keyType) {
         this.namespace = namespace.intern();
         this.id = id;
@@ -58,21 +43,27 @@ public final class ProgressKey {
         this.hash = keyString.hashCode();
     }
 
-    // ═══════════════════════════════════════════════
-    //  静态工厂
-    // ═══════════════════════════════════════════════
-
-    /** 节点 Key: "namespace:nodeId" */
+    /**
+     * 节点 Key: "namespace:nodeId"
+     */
     public static ProgressKey ofNode(String namespace, String nodeId) {
         return new ProgressKey(namespace, nodeId, -1, KeyType.NODE);
     }
 
-    /** 选项 Key: "namespace:nodeId:choiceIndex" */
+    // ═══════════════════════════════════════════════
+    //  静态工厂
+    // ═══════════════════════════════════════════════
+
+    /**
+     * 选项 Key: "namespace:nodeId:choiceIndex"
+     */
     public static ProgressKey ofChoice(String namespace, String nodeId, int choiceIndex) {
         return new ProgressKey(namespace, nodeId, choiceIndex, KeyType.CHOICE);
     }
 
-    /** 对话树 Key: "namespace:dialogueId" */
+    /**
+     * 对话树 Key: "namespace:dialogueId"
+     */
     public static ProgressKey ofDialogue(String namespace, String dialogueId) {
         return new ProgressKey(namespace, dialogueId, -1, KeyType.DIALOGUE);
     }
@@ -90,27 +81,42 @@ public final class ProgressKey {
         return new ProgressKey("trade", shopId + "|" + entryId, -1, KeyType.TRADE);
     }
 
+    public String namespace() {
+        return namespace;
+    }
+
     // ═══════════════════════════════════════════════
     //  访问器
     // ═══════════════════════════════════════════════
 
-    public String namespace()  { return namespace; }
-    public String id()         { return id; }
-    public int index()         { return index; }
-    public KeyType keyType()   { return keyType; }
+    public String id() {
+        return id;
+    }
+
+    public int index() {
+        return index;
+    }
+
+    public KeyType keyType() {
+        return keyType;
+    }
 
     /**
      * 返回缓存的 key 字符串，用于 Map 查找和 NBT 序列化。
      * <b>零拼接开销</b>：构造时已生成。
      */
-    public String toKeyString() { return keyString; }
+    public String toKeyString() {
+        return keyString;
+    }
+
+    @Override
+    public int hashCode() {
+        return hash;
+    }
 
     // ═══════════════════════════════════════════════
     //  equals / hashCode（基于缓存的 keyString）
     // ═══════════════════════════════════════════════
-
-    @Override
-    public int hashCode() { return hash; }
 
     @Override
     public boolean equals(Object o) {
@@ -120,5 +126,29 @@ public final class ProgressKey {
     }
 
     @Override
-    public String toString() { return keyString; }
+    public String toString() {
+        return keyString;
+    }
+
+    /**
+     * Key 的语义类型，用于序列化分区时替代字符串格式猜测。
+     */
+    public enum KeyType {
+        /**
+         * 节点访问记录，格式：namespace:nodeId
+         */
+        NODE,
+        /**
+         * 对话树访问记录，格式：namespace:dialogueId
+         */
+        DIALOGUE,
+        /**
+         * 选项选择记录，格式：namespace:nodeId:choiceIndex
+         */
+        CHOICE,
+        /**
+         * 交易/商品冷却记录，格式：trade:shopId|entryId
+         */
+        TRADE
+    }
 }

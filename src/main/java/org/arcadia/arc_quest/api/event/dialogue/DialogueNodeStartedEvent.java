@@ -23,7 +23,7 @@ public class DialogueNodeStartedEvent extends Event {
     private final Entity npc;
     private final String dialogueId;
     private final String nodeId;
-    
+
     /**
      * Say/SayIf 的唯一标识符（带命名空间）。
      * <p>
@@ -32,18 +32,18 @@ public class DialogueNodeStartedEvent extends Event {
      * </p>
      */
     private final String sayId;
-    
+
     /**
      * SayIf 评估后的最终显示文本（已进行变量替换）。
      */
     private final String displayText;
-    
+
     /**
      * SayIf 匹配到的音效（可能为 null）。
      */
     @Nullable
     private final SoundEvent saySound;
-    
+
     /**
      * SayIf 匹配到的音效 ID（用于网络传输，可能为 null）。
      */
@@ -51,7 +51,7 @@ public class DialogueNodeStartedEvent extends Event {
     private final ResourceLocation saySoundId;
 
     public DialogueNodeStartedEvent(ServerPlayer player, Entity npc, String dialogueId, String nodeId,
-                                    String sayId, String displayText, 
+                                    String sayId, String displayText,
                                     @Nullable SoundEvent saySound, @Nullable ResourceLocation saySoundId) {
         this.player = player;
         this.npc = npc;
@@ -90,20 +90,20 @@ public class DialogueNodeStartedEvent extends Event {
     public String getNodeId() {
         return nodeId;
     }
-    
+
     /**
      * 获取 Say/SayIf 的唯一标识符。
      * <p>
      * - 如果是普通 say()，则为配置的 sayId
      * - 如果是 sayIf()，则为选中的分支 ID
      * </p>
-     * 
+     *
      * @return Say ID（ guaranteed non-null）
      */
     public String getSayId() {
         return sayId;
     }
-    
+
     /**
      * 获取 SayIf 评估后的最终显示文本（已进行变量替换）。
      * <p>
@@ -113,7 +113,7 @@ public class DialogueNodeStartedEvent extends Event {
     public String getDisplayText() {
         return displayText;
     }
-    
+
     /**
      * 获取 SayIf 匹配到的音效。
      * <p>
@@ -124,7 +124,7 @@ public class DialogueNodeStartedEvent extends Event {
     public SoundEvent getSaySound() {
         return saySound;
     }
-    
+
     /**
      * 获取 SayIf 匹配到的音效 ID（用于网络传输）。
      * <p>
@@ -135,7 +135,7 @@ public class DialogueNodeStartedEvent extends Event {
     public ResourceLocation getSaySoundId() {
         return saySoundId;
     }
-    
+
     /**
      * 检查是否有 SayIf 音效。
      */

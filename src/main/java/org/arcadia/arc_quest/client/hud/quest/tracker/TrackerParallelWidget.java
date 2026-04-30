@@ -42,7 +42,7 @@ public class TrackerParallelWidget {
         int treeLineY1 = textY;
         int treeLineY2 = textY + (rows - 1) * (TrackerConstants.LANE_ROW_H + TrackerConstants.LANE_ROW_GAP) + 4;
 
-        g.fill(treeLineX, treeLineY1, treeLineX + 1, treeLineY2, HudAnimUtil.withAlpha(0xFFFFFF, (int)(0x22 * alpha * wipeAlpha)));
+        g.fill(treeLineX, treeLineY1, treeLineX + 1, treeLineY2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha * wipeAlpha)));
 
         for (int i = 0; i < rows; i++) {
             String pid = activePhaseOrder.get(i);
@@ -54,7 +54,8 @@ public class TrackerParallelWidget {
             int done = 0;
             int total = p.getObjectives().size();
             for (int j = 0; j < total; j++) {
-                if (tracked.getObjectiveProgress(pid, j) >= Math.max(1, p.getObjectives().get(j).getRequiredCount())) done++;
+                if (tracked.getObjectiveProgress(pid, j) >= Math.max(1, p.getObjectives().get(j).getRequiredCount()))
+                    done++;
             }
             boolean isComplete = total > 0 && done >= total;
 

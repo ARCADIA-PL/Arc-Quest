@@ -17,9 +17,25 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class GuiSoundManager {
 
+    // --- 任务系统 ---
+    public static final String CHAPTER_START = "chapter_start";
+    public static final String CHAPTER_FAIL = "chapter_fail";
+    public static final String CHAPTER_COMPLETE = "chapter_complete";
+    public static final String PHASE_START = "phase_start";
+    public static final String PHASE_COMPLETE = "phase_complete";
+    // --- 对话系统 ---
+    public static final String SAY = "say";
+    public static final String CHOICE = "choice";
+    // --- 交易系统 ---
+    public static final String PURCHASE_SUCCESS = "purchase_success";
+
+    // ════════════════════════════════════════
+    //  预定义音效键常量
+    // ════════════════════════════════════════
+    public static final String PURCHASE_FAIL = "purchase_fail";
+    public static final String PURCHASE_LOCKED = "purchase_locked";
     private static final Map<String, SoundEvent> SOUND_CACHE = new ConcurrentHashMap<>();
     private static final Minecraft MC = Minecraft.getInstance();
-
     // 默认音效路径前缀
     private static final String PREFIX = Arc_Quest.MOD_ID + ":trade.";
 
@@ -62,26 +78,6 @@ public final class GuiSoundManager {
         if (MC.player == null || soundEvent == null) return;
         MC.getSoundManager().play(SimpleSoundInstance.forUI(soundEvent, 1.0F));
     }
-
-    // ════════════════════════════════════════
-    //  预定义音效键常量
-    // ════════════════════════════════════════
-
-    // --- 任务系统 ---
-    public static final String CHAPTER_START = "chapter_start";
-    public static final String CHAPTER_FAIL = "chapter_fail";
-    public static final String CHAPTER_COMPLETE = "chapter_complete";
-    public static final String PHASE_START = "phase_start";
-    public static final String PHASE_COMPLETE = "phase_complete";
-
-    // --- 对话系统 ---
-    public static final String SAY = "say";
-    public static final String CHOICE = "choice";
-
-    // --- 交易系统 ---
-    public static final String PURCHASE_SUCCESS = "purchase_success";
-    public static final String PURCHASE_FAIL = "purchase_fail";
-    public static final String PURCHASE_LOCKED = "purchase_locked";
 
     /**
      * 初始化默认音效映射（如果模组资源文件中定义了这些音效）。

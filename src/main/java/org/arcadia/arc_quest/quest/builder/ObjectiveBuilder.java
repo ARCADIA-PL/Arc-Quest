@@ -136,10 +136,25 @@ public final class ObjectiveBuilder {
         return b;
     }
 
-    public ObjectiveBuilder display(String literal) { this.displayText = QuestText.literal(literal); return this; }
-    public ObjectiveBuilder display(Component component) { this.displayText = QuestText.component(component); return this; }
-    public ObjectiveBuilder display(QuestText text) { this.displayText = text; return this; }
-    public ObjectiveBuilder count(int count) { this.requiredCount = count; return this; }
+    public ObjectiveBuilder display(String literal) {
+        this.displayText = QuestText.literal(literal);
+        return this;
+    }
+
+    public ObjectiveBuilder display(Component component) {
+        this.displayText = QuestText.component(component);
+        return this;
+    }
+
+    public ObjectiveBuilder display(QuestText text) {
+        this.displayText = text;
+        return this;
+    }
+
+    public ObjectiveBuilder count(int count) {
+        this.requiredCount = count;
+        return this;
+    }
 
     public ObjectiveBuilder countModifier(ToIntFunction<ServerPlayer> resolver) {
         this.countModifier = resolver;
@@ -150,9 +165,20 @@ public final class ObjectiveBuilder {
         return countModifier(resolver);
     }
 
-    public ObjectiveBuilder hidden() { this.hidden = true; return this; }
-    public ObjectiveBuilder optional() { this.optional = true; return this; }
-    public ObjectiveBuilder extra(String key, String value) { this.extraData.put(key, value); return this; }
+    public ObjectiveBuilder hidden() {
+        this.hidden = true;
+        return this;
+    }
+
+    public ObjectiveBuilder optional() {
+        this.optional = true;
+        return this;
+    }
+
+    public ObjectiveBuilder extra(String key, String value) {
+        this.extraData.put(key, value);
+        return this;
+    }
 
     public ObjectiveEntry build() {
         Objects.requireNonNull(this.targetId, "targetId not set for ObjectiveBuilder");

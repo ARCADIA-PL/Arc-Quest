@@ -32,11 +32,14 @@ public final class QuestDefinition {
     @Nullable
     private final String chapterShopId;
     private final boolean chapterShopPersistent;
-    
+
     // 音效配置
-    @Nullable private final SoundEvent chapterStartSound;
-    @Nullable private final SoundEvent chapterFailSound;
-    @Nullable private final SoundEvent chapterCompleteSound;
+    @Nullable
+    private final SoundEvent chapterStartSound;
+    @Nullable
+    private final SoundEvent chapterFailSound;
+    @Nullable
+    private final SoundEvent chapterCompleteSound;
 
     private final QuestCompletionPolicy completionPolicy;
     private final int completionRequiredCount;
@@ -80,8 +83,8 @@ public final class QuestDefinition {
                            boolean chapterShopPersistent) {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
-                flagsToSetOnAccept, flagsToSetOnComplete, visualConfig, 
-                chapterShopId, chapterShopPersistent, null, null, null,QuestCompletionPolicy.ALL, 0, null);
+                flagsToSetOnAccept, flagsToSetOnComplete, visualConfig,
+                chapterShopId, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null);
     }
 
     public QuestDefinition(ResourceLocation id,
@@ -268,13 +271,19 @@ public final class QuestDefinition {
     }
 
     @Nullable
-    public SoundEvent getChapterStartSound() { return chapterStartSound; }
+    public SoundEvent getChapterStartSound() {
+        return chapterStartSound;
+    }
 
     @Nullable
-    public SoundEvent getChapterFailSound() { return chapterFailSound; }
+    public SoundEvent getChapterFailSound() {
+        return chapterFailSound;
+    }
 
     @Nullable
-    public SoundEvent getChapterCompleteSound() { return chapterCompleteSound; }
+    public SoundEvent getChapterCompleteSound() {
+        return chapterCompleteSound;
+    }
 
 
     public QuestVisualConfig getVisualConfig() {

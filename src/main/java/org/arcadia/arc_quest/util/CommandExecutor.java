@@ -21,7 +21,8 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public final class CommandExecutor {
 
-    private CommandExecutor() {}
+    private CommandExecutor() {
+    }
 
     /**
      * 以服务器权限（op级别4）执行命令，适用于奖励/交易等服务端赋予场景。

@@ -16,7 +16,8 @@ import org.joml.Matrix4f;
  */
 public final class MarkerRenderUtil {
 
-    private MarkerRenderUtil() {}
+    private MarkerRenderUtil() {
+    }
 
     /**
      * 平滑暗色机能菱形 (包含柔和的呼吸核心)
@@ -37,11 +38,11 @@ public final class MarkerRenderUtil {
         int rgb = accentColor & 0x00FFFFFF;
 
         // --- 外层：柔和呼吸光晕 (消除突兀感) ---
-        int haloAlpha = (int)(alpha * 0.3f * breath);
+        int haloAlpha = (int) (alpha * 0.3f * breath);
         gui.fill(-4, -4, 4, 4, (haloAlpha << 24) | rgb);
 
         // --- 内层：小巧的高亮核心 (旋转后呈现完美的锐利小菱形) ---
-        int coreAlpha = (int)(alpha * (0.6f + 0.4f * breath));
+        int coreAlpha = (int) (alpha * (0.6f + 0.4f * breath));
         gui.fill(-2, -2, 2, 2, (coreAlpha << 24) | rgb);
 
         gui.pose().popPose();

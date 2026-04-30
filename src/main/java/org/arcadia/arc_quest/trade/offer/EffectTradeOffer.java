@@ -36,6 +36,17 @@ public final class EffectTradeOffer implements ITradeOffer {
         return new EffectTradeOffer(effect, durationSeconds * 20, 0, false);
     }
 
+    private static String toRoman(int n) {
+        return switch (n) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            case 5 -> "V";
+            default -> String.valueOf(n);
+        };
+    }
+
     @Override
     public boolean canAfford(ServerPlayer player) {
         if (!isCost) return true;
@@ -66,13 +77,5 @@ public final class EffectTradeOffer implements ITradeOffer {
     @Override
     public String getType() {
         return "effect";
-    }
-
-    private static String toRoman(int n) {
-        return switch (n) {
-            case 1 -> "I"; case 2 -> "II"; case 3 -> "III";
-            case 4 -> "IV"; case 5 -> "V";
-            default -> String.valueOf(n);
-        };
     }
 }

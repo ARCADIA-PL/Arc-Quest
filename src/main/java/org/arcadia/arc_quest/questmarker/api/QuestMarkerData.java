@@ -8,34 +8,27 @@ import org.arcadia.arc_quest.quest.api.QuestState;
  */
 public class QuestMarkerData {
 
-    public enum EntityAttachPoint {
-        HEAD,
-        CENTER
-    }
-
     private final String id;
     private final double worldX;
     private final double worldY;
     private final double worldZ;
     private final String label;
     private final String dimension;
-
     private final String questId;
     private final String phaseId;
     private final int objectiveIndex;
-
-    /** 客户端实体ID，<0 表示非实体跟随。 */
+    /**
+     * 客户端实体ID，<0 表示非实体跟随。
+     */
     private final int followEntityId;
     private final String followEntityUuid;
     private final String followEntityGuid;
     private final EntityAttachPoint attachPoint;
-
     private final int colorARGB;
     private final QuestMarkerType type;
     private final QuestMarkerState state;
     private final boolean showDistance;
     private final boolean allowOffscreenArrow;
-
     private QuestMarkerData(Builder builder) {
         this.id = builder.id;
         this.worldX = builder.worldX;
@@ -99,27 +92,77 @@ public class QuestMarkerData {
                 .build();
     }
 
-    public String getId() { return id; }
-    public double getWorldX() { return worldX; }
-    public double getWorldY() { return worldY; }
-    public double getWorldZ() { return worldZ; }
-    public String getLabel() { return label; }
-    public String getDimension() { return dimension; }
+    public String getId() {
+        return id;
+    }
 
-    public String getQuestId() { return questId; }
-    public String getPhaseId() { return phaseId; }
-    public int getObjectiveIndex() { return objectiveIndex; }
+    public double getWorldX() {
+        return worldX;
+    }
 
-    public int getFollowEntityId() { return followEntityId; }
-    public String getFollowEntityUuid() { return followEntityUuid; }
-    public String getFollowEntityGuid() { return followEntityGuid; }
-    public EntityAttachPoint getAttachPoint() { return attachPoint; }
+    public double getWorldY() {
+        return worldY;
+    }
 
-    public int getColorARGB() { return colorARGB; }
-    public QuestMarkerType getType() { return type; }
-    public QuestMarkerState getState() { return state; }
-    public boolean isShowDistance() { return showDistance; }
-    public boolean isAllowOffscreenArrow() { return allowOffscreenArrow; }
+    public double getWorldZ() {
+        return worldZ;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public String getDimension() {
+        return dimension;
+    }
+
+    public String getQuestId() {
+        return questId;
+    }
+
+    public String getPhaseId() {
+        return phaseId;
+    }
+
+    public int getObjectiveIndex() {
+        return objectiveIndex;
+    }
+
+    public int getFollowEntityId() {
+        return followEntityId;
+    }
+
+    public String getFollowEntityUuid() {
+        return followEntityUuid;
+    }
+
+    public String getFollowEntityGuid() {
+        return followEntityGuid;
+    }
+
+    public EntityAttachPoint getAttachPoint() {
+        return attachPoint;
+    }
+
+    public int getColorARGB() {
+        return colorARGB;
+    }
+
+    public QuestMarkerType getType() {
+        return type;
+    }
+
+    public QuestMarkerState getState() {
+        return state;
+    }
+
+    public boolean isShowDistance() {
+        return showDistance;
+    }
+
+    public boolean isAllowOffscreenArrow() {
+        return allowOffscreenArrow;
+    }
 
     public boolean hasQuestBinding() {
         return questId != null && !questId.isEmpty();
@@ -154,6 +197,11 @@ public class QuestMarkerData {
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
+    public enum EntityAttachPoint {
+        HEAD,
+        CENTER
+    }
+
     public static class Builder {
         private final String id;
         private final double worldX, worldY, worldZ;
@@ -183,10 +231,25 @@ public class QuestMarkerData {
             this.label = label;
         }
 
-        public Builder dimension(String dimension) { this.dimension = dimension; return this; }
-        public Builder bindQuest(String questId) { this.questId = questId == null ? "" : questId; return this; }
-        public Builder bindPhase(String phaseId) { this.phaseId = phaseId == null ? "" : phaseId; return this; }
-        public Builder bindObjective(int objectiveIndex) { this.objectiveIndex = objectiveIndex; return this; }
+        public Builder dimension(String dimension) {
+            this.dimension = dimension;
+            return this;
+        }
+
+        public Builder bindQuest(String questId) {
+            this.questId = questId == null ? "" : questId;
+            return this;
+        }
+
+        public Builder bindPhase(String phaseId) {
+            this.phaseId = phaseId == null ? "" : phaseId;
+            return this;
+        }
+
+        public Builder bindObjective(int objectiveIndex) {
+            this.objectiveIndex = objectiveIndex;
+            return this;
+        }
 
         public Builder followEntity(int entityId) {
             this.followEntityId = entityId;
@@ -234,12 +297,33 @@ public class QuestMarkerData {
             return this;
         }
 
-        public Builder color(int colorARGB) { this.colorARGB = colorARGB; return this; }
-        public Builder type(QuestMarkerType type) { this.type = type == null ? QuestMarkerType.CUSTOM : type; return this; }
-        public Builder state(QuestMarkerState state) { this.state = state == null ? QuestMarkerState.ACTIVE : state; return this; }
-        public Builder showDistance(boolean show) { this.showDistance = show; return this; }
-        public Builder allowOffscreenArrow(boolean allow) { this.allowOffscreenArrow = allow; return this; }
+        public Builder color(int colorARGB) {
+            this.colorARGB = colorARGB;
+            return this;
+        }
 
-        public QuestMarkerData build() { return new QuestMarkerData(this); }
+        public Builder type(QuestMarkerType type) {
+            this.type = type == null ? QuestMarkerType.CUSTOM : type;
+            return this;
+        }
+
+        public Builder state(QuestMarkerState state) {
+            this.state = state == null ? QuestMarkerState.ACTIVE : state;
+            return this;
+        }
+
+        public Builder showDistance(boolean show) {
+            this.showDistance = show;
+            return this;
+        }
+
+        public Builder allowOffscreenArrow(boolean allow) {
+            this.allowOffscreenArrow = allow;
+            return this;
+        }
+
+        public QuestMarkerData build() {
+            return new QuestMarkerData(this);
+        }
     }
 }

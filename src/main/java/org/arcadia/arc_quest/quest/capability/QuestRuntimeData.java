@@ -17,15 +17,19 @@ public final class QuestRuntimeData {
 
     private final String questId;
     private final long acceptedAtTick;
-    private QuestState state;
-
-    /** 当前活跃并行阶段 */
+    /**
+     * 当前活跃并行阶段
+     */
     private final LinkedHashSet<String> activePhaseIds;
-    /** 已完成阶段 */
+    /**
+     * 已完成阶段
+     */
     private final LinkedHashSet<String> completedPhaseIds;
-    /** 每个阶段的目标进度 */
+    /**
+     * 每个阶段的目标进度
+     */
     private final LinkedHashMap<String, int[]> phaseProgress;
-
+    private QuestState state;
     private boolean isDirty = false;
 
     public QuestRuntimeData(String questId,
@@ -151,9 +155,22 @@ public final class QuestRuntimeData {
         return new QuestRuntimeData(questId, state, active, completed, progress, accepted);
     }
 
-    public String getQuestId() { return questId; }
-    public QuestState getState() { return state; }
-    public long getAcceptedAtTick() { return acceptedAtTick; }
+    public String getQuestId() {
+        return questId;
+    }
+
+    public QuestState getState() {
+        return state;
+    }
+
+    public void setState(QuestState state) {
+        this.state = Objects.requireNonNull(state);
+        this.isDirty = true;
+    }
+
+    public long getAcceptedAtTick() {
+        return acceptedAtTick;
+    }
 
     public Set<String> getActivePhaseIds() {
         return Set.copyOf(activePhaseIds);
@@ -224,13 +241,13 @@ public final class QuestRuntimeData {
         }
     }
 
-    public void setState(QuestState state) {
-        this.state = Objects.requireNonNull(state);
-        this.isDirty = true;
+    public boolean isDirty() {
+        return isDirty;
     }
 
-    public boolean isDirty() { return isDirty; }
-    public void clearDirty() { this.isDirty = false; }
+    public void clearDirty() {
+        this.isDirty = false;
+    }
 
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
@@ -313,32 +330,44 @@ public final class QuestRuntimeData {
         isDirty = true;
     }
 
-    /** 过渡接口 */
+    /**
+     * 过渡接口
+     */
     public int getObjectiveCount() {
         return getObjectiveCount(getCurrentPhaseId());
     }
 
-    /** 过渡接口 */
+    /**
+     * 过渡接口
+     */
     public int getObjectiveProgress(int index) {
         return getObjectiveProgress(getCurrentPhaseId(), index);
     }
 
-    /** 过渡接口 */
+    /**
+     * 过渡接口
+     */
     public int[] getAllProgress() {
         return getAllProgress(getCurrentPhaseId());
     }
 
-    /** 过渡接口 */
+    /**
+     * 过渡接口
+     */
     public int incrementProgress(int index, int amount, int clampMax) {
         return incrementProgress(getCurrentPhaseId(), index, amount, clampMax);
     }
 
-    /** 过渡接口 */
+    /**
+     * 过渡接口
+     */
     public void setObjectiveProgress(int index, int value) {
         setObjectiveProgress(getCurrentPhaseId(), index, value);
     }
 
-    /** 过渡接口 */
+    /**
+     * 过渡接口
+     */
     public void resetObjectives(int newCount) {
         String current = getCurrentPhaseId();
         if (current == null || current.isEmpty()) return;

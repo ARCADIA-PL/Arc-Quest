@@ -30,28 +30,23 @@ import java.util.Objects;
 
 public class QuestTrackerPanel {
 
+    private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
     private float panelReveal = 0f;
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
     private float currentPanelY = TrackerConstants.MARGIN_TOP;
-
     private long lastRenderTime = 0;
     private float dt = 0f;
-
     private String trackedQuestId = null;
     private String trackedPhaseId = null;
     private String targetPhaseId = null;
     private String displayedPhaseId = null;
-
     private boolean isPhaseTransitioning = false;
     private boolean phaseWipingOut = false;
     private long phaseTransitionStart = 0;
     private long completionDismissStart = 0;
-
     private List<String> activePhaseOrder = new ArrayList<>();
     private int currentThemeColor = TrackerConstants.COLOR_ACCENT_DEFAULT;
-
-    private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
 
     public void setTrackedQuest(String questId) {
         if (!Objects.equals(this.trackedQuestId, questId)) {
@@ -76,8 +71,13 @@ public class QuestTrackerPanel {
         resetObjectiveAnimations();
     }
 
-    public String getTrackedPhaseId() { return trackedPhaseId; }
-    public String getTrackedQuestId() { return trackedQuestId; }
+    public String getTrackedPhaseId() {
+        return trackedPhaseId;
+    }
+
+    public String getTrackedQuestId() {
+        return trackedQuestId;
+    }
 
     public void resetPanelAnimation() {
         this.panelReveal = 0f;
@@ -143,20 +143,32 @@ public class QuestTrackerPanel {
             if (phaseWipingOut) {
                 float t = elapsed / TrackerConstants.TIME_WIPE_OUT;
                 if (t >= 1f) {
-                    t = 1f; phaseWipingOut = false; displayedPhaseId = targetPhaseId; resetObjectiveAnimations(); phaseTransitionStart = now;
+                    t = 1f;
+                    phaseWipingOut = false;
+                    displayedPhaseId = targetPhaseId;
+                    resetObjectiveAnimations();
+                    phaseTransitionStart = now;
                 }
                 float ease = (float) Math.pow(t, 4.0);
-                wipeReveal = 1f - ease; wipeDrift = ease * 30f; wipeAlpha = 1f - ease;
+                wipeReveal = 1f - ease;
+                wipeDrift = ease * 30f;
+                wipeAlpha = 1f - ease;
             } else {
                 float t = elapsed / TrackerConstants.TIME_WIPE_IN;
-                if (t >= 1f) { t = 1f; isPhaseTransitioning = false; }
+                if (t >= 1f) {
+                    t = 1f;
+                    isPhaseTransitioning = false;
+                }
                 float ease = (float) (1.0 - Math.pow(1.0 - t, 5.0));
-                wipeReveal = ease; wipeDrift = -(1f - ease) * 30f; wipeAlpha = ease;
+                wipeReveal = ease;
+                wipeDrift = -(1f - ease) * 30f;
+                wipeAlpha = ease;
             }
         }
 
         panelReveal = TrackerConstants.lerp(panelReveal, shouldShow ? 1f : 0f, 0.15f, dt);
-        if (completionDismissStart == 0) panelSlide = TrackerConstants.lerp(panelSlide, shouldShow ? 0f : 1f, 0.15f, dt);
+        if (completionDismissStart == 0)
+            panelSlide = TrackerConstants.lerp(panelSlide, shouldShow ? 0f : 1f, 0.15f, dt);
 
         if (panelReveal < 0.01f && !shouldShow) return;
 
@@ -251,9 +263,11 @@ public class QuestTrackerPanel {
     }
 
     private String resolvePreferredPhaseId(QuestRuntimeData tracked, QuestDefinition def) {
-        if (trackedPhaseId != null && !trackedPhaseId.isEmpty() && tracked.isPhaseActive(trackedPhaseId) && def.getPhase(trackedPhaseId) != null) return trackedPhaseId;
+        if (trackedPhaseId != null && !trackedPhaseId.isEmpty() && tracked.isPhaseActive(trackedPhaseId) && def.getPhase(trackedPhaseId) != null)
+            return trackedPhaseId;
         String current = tracked.getCurrentPhaseId();
-        if (current != null && !current.isEmpty() && tracked.isPhaseActive(current) && def.getPhase(current) != null) return current;
+        if (current != null && !current.isEmpty() && tracked.isPhaseActive(current) && def.getPhase(current) != null)
+            return current;
         for (String pid : activePhaseOrder) if (def.getPhase(pid) != null) return pid;
         return "";
     }
@@ -274,11 +288,19 @@ public class QuestTrackerPanel {
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
         QuestRuntimeData data = ClientQuestCache.INSTANCE.resolveTrackedQuest(trackedQuestId);
         if (data != null) {
-            if (trackedQuestId == null) { trackedQuestId = data.getQuestId(); resetObjectiveAnimations(); }
+            if (trackedQuestId == null) {
+                trackedQuestId = data.getQuestId();
+                resetObjectiveAnimations();
+            }
             return data;
         }
         if (trackedQuestId != null) {
-            trackedQuestId = null; trackedPhaseId = null; displayedPhaseId = null; targetPhaseId = null; currentPanelH = -1f; activePhaseOrder.clear();
+            trackedQuestId = null;
+            trackedPhaseId = null;
+            displayedPhaseId = null;
+            targetPhaseId = null;
+            currentPanelH = -1f;
+            activePhaseOrder.clear();
             resetObjectiveAnimations();
         }
         return null;
@@ -288,7 +310,8 @@ public class QuestTrackerPanel {
         if (tracked != null && (tracked.getState() == QuestState.COMPLETED || tracked.getState() == QuestState.FAILED)) {
             if (completionDismissStart == 0) completionDismissStart = now;
             float elapsed = now - completionDismissStart;
-            if (elapsed >= TrackerConstants.DISMISS_DELAY) panelSlide = TrackerConstants.easeInCubic(Math.min(1f, (elapsed - TrackerConstants.DISMISS_DELAY) / TrackerConstants.DISMISS_SLIDE_TIME));
+            if (elapsed >= TrackerConstants.DISMISS_DELAY)
+                panelSlide = TrackerConstants.easeInCubic(Math.min(1f, (elapsed - TrackerConstants.DISMISS_DELAY) / TrackerConstants.DISMISS_SLIDE_TIME));
         } else completionDismissStart = 0;
     }
 

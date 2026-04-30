@@ -35,56 +35,44 @@ public final class QuestHistoryPanel {
 
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
-
+    private static final List<NodeData> renderNodes = new ArrayList<>();
+    private static final Map<String, NodeData> nodeMap = new HashMap<>();
     private static boolean active = false;
     private static boolean closing = false;
     private static long lastRenderMs = 0L;
-
     private static float enterTimer = 0f;
     private static float exitTimer = 0f;
-
     private static String questId;
     private static int themeColor = 0x5AD7FF;
-
     private static float currentScale = 1.0f;
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
-
     private static float zoom = 1.0f;
     private static float panX = 0f;
     private static float panY = 0f;
     private static float targetZoom = 1.0f;
     private static float targetPanX = 0f;
     private static float targetPanY = 0f;
-
     private static boolean panning = false;
     private static double lastDragX = 0;
     private static double lastDragY = 0;
-
-    private record NodeData(String id, int x, int y, boolean completed, boolean active) {}
-    private static final List<NodeData> renderNodes = new ArrayList<>();
-    private static final Map<String, NodeData> nodeMap = new HashMap<>();
-
     // ===== 独立的 Tooltip 与 选中状态 =====
     private static String pinnedPhaseId = null;            // 当前被点击固定的节点ID
     private static PhaseDefinition activeTooltipPhase = null;
     private static PhaseDefinition renderingTooltipPhase = null;
     private static float tooltipAnimProgress = 0f;
-
     // 锁定位置锚点，防止鼠标移开去查物品时 Tooltip 乱跑
     private static int lockedTipX = 0;
     private static int lockedTipY = 0;
-
     // 渲染时捕获的物品奖励 Tooltip
     private static ItemStack hoveredRewardStack = ItemStack.EMPTY;
-
     // 尺寸补间动画（Morphing）状态
     private static float animTipX = 0;
     private static float animTipY = 0;
     private static float animTipW = 0;
     private static float animTipH = 0;
-
-    private QuestHistoryPanel() {}
+    private QuestHistoryPanel() {
+    }
 
     public static void trigger(String qid) {
         questId = qid;
@@ -95,8 +83,12 @@ public final class QuestHistoryPanel {
         exitTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
 
-        zoom = 1.0f; panX = 0f; panY = 0f;
-        targetZoom = 1.0f; targetPanX = 0f; targetPanY = 0f;
+        zoom = 1.0f;
+        panX = 0f;
+        panY = 0f;
+        targetZoom = 1.0f;
+        targetPanX = 0f;
+        targetPanY = 0f;
         panning = false;
 
         pinnedPhaseId = null;
@@ -110,7 +102,9 @@ public final class QuestHistoryPanel {
         fitCameraToGraph(PANEL_W - 8, PANEL_H - 32);
     }
 
-    public static boolean isActive() { return active; }
+    public static boolean isActive() {
+        return active;
+    }
 
     public static void close() {
         if (!active || closing) return;
@@ -255,7 +249,11 @@ public final class QuestHistoryPanel {
 
         if (closing) {
             exitTimer += dt;
-            if (exitTimer >= EXIT_TIME) { active = false; closing = false; return; }
+            if (exitTimer >= EXIT_TIME) {
+                active = false;
+                closing = false;
+                return;
+            }
             float t = Math.min(1.0f, exitTimer / EXIT_TIME);
             float easeIn = (float) Math.pow(t, 4.0);
             wipeProgress = easeIn;
@@ -283,8 +281,11 @@ public final class QuestHistoryPanel {
 
         int scX1 = (int) (currentDrawX - 10);
         int scX2 = (int) (currentDrawX + drawWidth + 10);
-        if (closing) { scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress)); }
-        else if (enterTimer < ENTER_TIME) { scX2 = (int) (currentDrawX + drawWidth * revealProgress); }
+        if (closing) {
+            scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress));
+        } else if (enterTimer < ENTER_TIME) {
+            scX2 = (int) (currentDrawX + drawWidth * revealProgress);
+        }
 
         activeTooltipPhase = null;
         hoveredRewardStack = ItemStack.EMPTY; // 重置悬停物品
@@ -358,8 +359,10 @@ public final class QuestHistoryPanel {
         g.pose().popPose();
         g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
 
-        for (int i = 15; i < PW; i += 15) g.fill(i, topBarH, i + 1, PH - 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (4 * alphaF)));
-        for (int i = topBarH + 15; i < PH; i += 15) g.fill(1, i, PW - 1, i + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (4 * alphaF)));
+        for (int i = 15; i < PW; i += 15)
+            g.fill(i, topBarH, i + 1, PH - 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (4 * alphaF)));
+        for (int i = topBarH + 15; i < PH; i += 15)
+            g.fill(1, i, PW - 1, i + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (4 * alphaF)));
 
         zoom += (targetZoom - zoom) * Math.min(1f, dt * 15f);
         panX += (targetPanX - panX) * Math.min(1f, dt * 15f);
@@ -374,7 +377,7 @@ public final class QuestHistoryPanel {
             float absY = currentDrawY + treeY * currentScale;
             float absW = treeW * currentScale;
             float absH = treeH * currentScale;
-            qjs.enableScissor(g, (int)absX, (int)absY, (int)(absX + absW), (int)(absY + absH));
+            qjs.enableScissor(g, (int) absX, (int) absY, (int) (absX + absW), (int) (absY + absH));
         }
 
         g.pose().pushPose();
@@ -529,7 +532,10 @@ public final class QuestHistoryPanel {
         if (targetY < 0) targetY = 2;
 
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50 || tooltipAnimProgress < 0.1f) {
-            animTipX = targetX; animTipY = targetY; animTipW = targetW; animTipH = targetH;
+            animTipX = targetX;
+            animTipY = targetY;
+            animTipW = targetW;
+            animTipH = targetH;
         } else {
             float morphSpeed = 18f;
             animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
@@ -583,7 +589,7 @@ public final class QuestHistoryPanel {
 
         if (!descLines.isEmpty()) {
             contentY += 4;
-            g.fill(contentX, contentY, drawX + drawW - padding, contentY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int)(baseAlpha * 0.15)));
+            g.fill(contentX, contentY, drawX + drawW - padding, contentY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (baseAlpha * 0.15)));
             contentY += 4;
 
             for (FormattedCharSequence line : descLines) {
@@ -601,7 +607,7 @@ public final class QuestHistoryPanel {
             float localMouseY = (realMy - centerY) / easeScale + centerY;
 
             for (IReward reward : phase.getPhaseRewards()) {
-                g.fill(contentX, contentY, drawX + drawW - padding, contentY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int)(baseAlpha * 0.05)));
+                g.fill(contentX, contentY, drawX + drawW - padding, contentY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int) (baseAlpha * 0.05)));
 
                 if (reward instanceof ItemReward ir) {
                     ItemStack st = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
@@ -677,7 +683,7 @@ public final class QuestHistoryPanel {
     }
 
     private static void drawOrthogonalLine(GuiGraphics g, int x1, int y1, int x2, int y2, boolean isCompleted, float alphaF, int theme) {
-        int color = isCompleted ? HudAnimUtil.withAlpha(0x66FF88, (int)(180 * alphaF)) : HudAnimUtil.withAlpha(0x555555, (int)(100 * alphaF));
+        int color = isCompleted ? HudAnimUtil.withAlpha(0x66FF88, (int) (180 * alphaF)) : HudAnimUtil.withAlpha(0x555555, (int) (100 * alphaF));
         int midX = (x1 + x2) / 2;
         g.fill(x1, y1 - 1, midX, y1 + 1, color);
         g.fill(midX - 1, Math.min(y1, y2), midX + 1, Math.max(y1, y2), color);
@@ -758,6 +764,11 @@ public final class QuestHistoryPanel {
         targetPanX = (viewW - treeW * targetZoom) / 2f - minX * targetZoom;
         targetPanY = (viewH - treeH * targetZoom) / 2f - minY * targetZoom;
 
-        zoom = targetZoom; panX = targetPanX; panY = targetPanY;
+        zoom = targetZoom;
+        panX = targetPanX;
+        panY = targetPanY;
+    }
+
+    private record NodeData(String id, int x, int y, boolean completed, boolean active) {
     }
 }
