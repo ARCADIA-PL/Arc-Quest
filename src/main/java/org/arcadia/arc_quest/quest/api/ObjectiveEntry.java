@@ -102,6 +102,28 @@ public final class ObjectiveEntry {
         return this.extraData.get(key);
     }
 
+    public boolean hasTargetTag() {
+        return this.extraData.containsKey("target_tag");
+    }
+
+    @Nullable
+    public String getTargetTagId() {
+        return this.extraData.get("target_tag");
+    }
+
+    @Nullable
+    public ResourceLocation getTargetTagResourceLocation() {
+        String tag = getTargetTagId();
+        return tag == null || tag.isEmpty() ? null : ResourceLocation.tryParse(tag);
+    }
+
+    @Nullable
+    public String getTargetTagTranslationKey() {
+        ResourceLocation tagId = getTargetTagResourceLocation();
+        if (tagId == null) return null;
+        return "tag.item." + tagId.getNamespace() + "." + tagId.getPath().replace('/', '.');
+    }
+
     public int getExtraInt(String key, int fallback) {
         String val = this.extraData.get(key);
         if (val == null) return fallback;

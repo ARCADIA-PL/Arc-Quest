@@ -224,6 +224,22 @@ public final class ItemTradeOffer implements ITradeOffer {
         return itemTag;
     }
 
+    public boolean hasItemTag() {
+        return itemTag != null;
+    }
+
+    @Nullable
+    public ResourceLocation getItemTagId() {
+        return itemTag != null ? itemTag.location() : null;
+    }
+
+    @Nullable
+    public String getItemTagTranslationKey() {
+        ResourceLocation tagId = getItemTagId();
+        if (tagId == null) return null;
+        return "tag.item." + tagId.getNamespace() + "." + tagId.getPath().replace('/', '.');
+    }
+
     public int getCount() {
         return previewCount;
     }

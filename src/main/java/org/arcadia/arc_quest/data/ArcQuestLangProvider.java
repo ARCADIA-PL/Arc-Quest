@@ -326,4 +326,34 @@ public abstract class ArcQuestLangProvider extends LanguageProvider {
     protected void addMisc(String key, String text) {
         add(key, text);
     }
+
+    // ════════════════════════════════════════════════════════
+    //  Item Tag 翻译（对应物品标签显示名称）
+    // ════════════════════════════════════════════════════════
+
+    /**
+     * 添加物品标签的显示名称（默认 minecraft 命名空间）。
+     * <p>
+     * 翻译键格式：{@code tag.item.minecraft.{tagPath}}
+     *
+     * @param tagPath 标签路径（如 {@code "wool"}, {@code "logs"}, {@code "planks"}）
+     * @param tagName 标签显示名称（如 {@code "羊毛"}, {@code "Logs"}, {@code "木板"}）
+     */
+    protected void addItemTag(String tagPath, String tagName) {
+        addItemTag("minecraft", tagPath, tagName);
+    }
+
+    /**
+     * 添加物品标签的显示名称（可自定义命名空间）。
+     * <p>
+     * 翻译键格式：{@code tag.item.{namespace}.{tagPath}}
+     *
+     * @param namespace 命名空间（如 {@code "minecraft"}, {@code "arc_quest"}）
+     * @param tagPath   标签路径（使用点分隔，如 {@code "logs"}, {@code "quest.offer_wood"}）
+     * @param tagName   标签显示名称
+     */
+    protected void addItemTag(String namespace, String tagPath, String tagName) {
+        String ns = (namespace == null || namespace.isBlank()) ? "minecraft" : namespace;
+        add("tag.item." + ns + "." + tagPath, tagName);
+    }
 }
