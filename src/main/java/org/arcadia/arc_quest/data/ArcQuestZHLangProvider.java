@@ -91,6 +91,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiLabel("journal", "quest_failed",
                 "§c✘ 该任务已失败。");
         addGuiLabel("journal", "select_quest", "选择一个任务");
+        addGuiLabel("journal", "click_to_submit", "点击提交物品");
         addGuiLabel("journal", "objective_complete_prefix", "§a✔ ");
         addGuiLabel("journal", "objective_active_prefix", "§f○ ");
 

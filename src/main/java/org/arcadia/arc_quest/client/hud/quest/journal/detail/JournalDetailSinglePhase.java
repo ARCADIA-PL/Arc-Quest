@@ -56,6 +56,57 @@ public class JournalDetailSinglePhase {
         offerHoverAnims.clear();
     }
 
+    private void drawScrollingString(GuiGraphics g, Font font, String text, int localX, int localY, int maxWidth, int color, boolean dropShadow, int absX, int absY, int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
+        int textWidth = font.width(text);
+        if (textWidth <= maxWidth) {
+            g.drawString(font, text, localX, localY, color, dropShadow);
+            return;
+        }
+
+        long time = Util.getMillis();
+        double speed = 30.0; // 滚动速度 (像素/秒)
+        int pauseTime = 1500; // 两端的悬停停留时间 (毫秒)
+
+        double maxShift = textWidth - maxWidth;
+        double totalScrollTime = (maxShift / speed) * 1000.0; // 单程滚动所需时间
+
+        double halfPeriod = pauseTime + totalScrollTime; // 单程总耗时（包含一次悬停）
+        double period = halfPeriod * 2.0; // 完整的来回周期
+        double t = time % period;
+
+        double shift;
+        if (t < halfPeriod) {
+            // 前半周期：起点悬停 -> 正向滚动
+            if (t <= pauseTime) {
+                shift = 0; // 起点悬停
+            } else {
+                shift = ((t - pauseTime) / 1000.0) * speed; // 往左滚
+            }
+        } else {
+            // 后半周期：终点悬停 -> 反向滚动
+            double tBack = t - halfPeriod;
+            if (tBack <= pauseTime) {
+                shift = maxShift; // 终点悬停
+            } else {
+                shift = maxShift - (((tBack - pauseTime) / 1000.0) * speed); // 平滑退回右侧
+            }
+        }
+
+        int cx1 = Math.max(parentClipX1, absX);
+        int cy1 = Math.max(parentClipY1, absY);
+        int cx2 = Math.min(parentClipX2, absX + maxWidth);
+        int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
+
+        if (cx1 < cx2 && cy1 < cy2) {
+            g.disableScissor();
+            screen.enableScissor(g, cx1, cy1, cx2, cy2);
+            // 强转int以保证像素对齐，防止字体边缘模糊抖动
+            g.drawString(font, text, localX - (int)shift, localY, color, dropShadow);
+            g.disableScissor();
+            screen.enableScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
+        }
+    }
+
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, String phaseId, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
         PhaseDefinition phase = def.getPhase(phaseId);
         Font font = screen.getFont();
@@ -66,7 +117,13 @@ public class JournalDetailSinglePhase {
         g.pose().translate(0, localY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
         String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty() ? phase.getDisplayName().getString() : phase.getPhaseId();
-        g.drawString(font, Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString(), 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), true);
+        String titleText = Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString();
+
+        int maxTitleW = (int)((scrollAreaW - 10) / 0.8f);
+        int nameAbsX = x;
+        int nameAbsY = scrollAreaY + 12 - (int)parent.getDetailScrollOffset() + localY;
+        drawScrollingString(g, font, titleText, 0, 0, maxTitleW, HudAnimUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+
         g.pose().popPose();
         localY += 14;
 
@@ -108,8 +165,8 @@ public class JournalDetailSinglePhase {
             String objText = (complete ? Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString() : Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString()) + phase.getObjectives().get(i).getDisplayText().getString();
 
             int textStartY = localY;
-            List<String> wrappedObjLines = HudRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
-            int textBlockHeight = wrappedObjLines.size() * (font.lineHeight + 1);
+            List<String> originalWrappedLines = HudRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
+            int textBlockHeight = originalWrappedLines.size() * (font.lineHeight + 1);
             int barW = Math.min(scrollAreaW - 40 - objX, 325);
 
             boolean isOffer = phase.getObjectives().get(i).getType() == ObjectiveType.OFFER && progress < required;
@@ -137,6 +194,11 @@ public class JournalDetailSinglePhase {
                 }
             }
 
+            List<String> renderLines = originalWrappedLines;
+            if (canSubmit && isHovered) {
+                renderLines = HudRenderUtil.wrapText(Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString(), scrollAreaW - 40 - objX, font);
+            }
+
             g.pose().pushPose();
             if (canSubmit && hoverAnim > 0.01f) {
                 float scale = 1.0f + 0.05f * hoverAnim;
@@ -147,14 +209,22 @@ public class JournalDetailSinglePhase {
                 g.pose().translate(-pivotX, -pivotY, 0);
             }
 
-            for (String line : wrappedObjLines) {
+            int drawY = textStartY;
+            if (canSubmit && isHovered) {
+                // 中心对齐替换过的 Hover 文本，防止在 Hover 时引发卡片高度布局抖动跳跃
+                drawY += (textBlockHeight - renderLines.size() * (font.lineHeight + 1)) / 2;
+            }
+
+            for (String line : renderLines) {
                 String cleanLine = line.replace("§7", "").replace("§a", "").replace("§f", "");
                 int baseColor = complete ? 0x88FF88 : 0xDDDDDD;
                 if (canSubmit) baseColor = HudAnimUtil.lerpColor(baseColor, activeTheme, hoverAnim);
-                g.drawString(font, cleanLine, objX, localY, HudAnimUtil.withAlpha(baseColor, oA), true);
-                localY += font.lineHeight + 1;
+                g.drawString(font, cleanLine, objX, drawY, HudAnimUtil.withAlpha(baseColor, oA), true);
+                drawY += font.lineHeight + 1;
             }
             g.pose().popPose();
+
+            localY += textBlockHeight;
 
             float targetRatio = required > 0 ? Math.max(0f, Math.min(1f, (float) progress / required)) : 0f;
             objProgressAnims[i] = HudAnimUtil.lerp(objProgressAnims[i], targetRatio, 0.15f, dt);
@@ -241,7 +311,14 @@ public class JournalDetailSinglePhase {
                 g.pose().pushPose();
                 g.pose().translate(8, localY + (choiceBtnH - font.lineHeight * textScale) / 2f + 1, 0);
                 g.pose().scale(textScale, textScale, 1f);
-                g.drawString(font, font.plainSubstrByWidth((i + 1) + ". " + choice.getDisplayText().getString(), (int) ((choiceBtnW - 16) / textScale)), 0, 0, HudAnimUtil.withAlpha(textColor, safeA), false);
+
+                String choiceText = (i + 1) + ". " + choice.getDisplayText().getString();
+                int maxChoiceW = (int) ((choiceBtnW - 16) / textScale);
+                int stringAbsX = absX + 8;
+                int stringAbsY = absY + (int)((choiceBtnH - font.lineHeight * textScale) / 2f + 1);
+
+                drawScrollingString(g, font, choiceText, 0, 0, maxChoiceW, HudAnimUtil.withAlpha(textColor, safeA), false, stringAbsX, stringAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+
                 g.pose().popPose();
                 localY += choiceBtnH + 5;
             }

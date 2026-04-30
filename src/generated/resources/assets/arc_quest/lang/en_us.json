@@ -91,6 +91,7 @@
   "arc_quest.gui.journal.button.restart": "↻ RESTART",
   "arc_quest.gui.journal.button.track": "⊕ TRACK",
   "arc_quest.gui.journal.button.tracked": "§a⊕ TRACKED",
+  "arc_quest.gui.journal.label.click_to_submit": "Click to submit items",
   "arc_quest.gui.journal.label.no_phases_completed": "§7No phases completed yet.",
   "arc_quest.gui.journal.label.objective_active_prefix": "§f○ ",
   "arc_quest.gui.journal.label.objective_complete_prefix": "§a✔ ",

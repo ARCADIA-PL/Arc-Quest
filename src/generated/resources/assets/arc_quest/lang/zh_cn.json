@@ -91,6 +91,7 @@
   "arc_quest.gui.journal.button.restart": "↻ 重新开始",
   "arc_quest.gui.journal.button.track": "⊕ 追踪",
   "arc_quest.gui.journal.button.tracked": "§a⊕ 追踪中",
+  "arc_quest.gui.journal.label.click_to_submit": "点击提交物品",
   "arc_quest.gui.journal.label.no_phases_completed": "§7尚无已完成的阶段。",
   "arc_quest.gui.journal.label.objective_active_prefix": "§f○ ",
   "arc_quest.gui.journal.label.objective_complete_prefix": "§a✔ ",

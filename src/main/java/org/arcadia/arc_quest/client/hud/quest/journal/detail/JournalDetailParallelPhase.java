@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -79,6 +80,7 @@ public class JournalDetailParallelPhase {
     private float dragScaleAnim = 0f;
     private String selectedPhaseId = null;
     private long lastChoiceClickAt = 0L;
+
     public JournalDetailParallelPhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
         this.parent = parent;
@@ -141,6 +143,54 @@ public class JournalDetailParallelPhase {
         potentialDragPhaseId = null;
         draggingPhaseId = null;
         dragScaleAnim = 0f;
+    }
+
+    private void drawScrollingString(GuiGraphics g, Font font, String text, int localX, int localY, int maxWidth, int color, boolean dropShadow, int absX, int absY, int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
+        int textWidth = font.width(text);
+        if (textWidth <= maxWidth) {
+            g.drawString(font, text, localX, localY, color, dropShadow);
+            return;
+        }
+
+        long time = Util.getMillis();
+        double speed = 30.0;
+        int pauseTime = 1500;
+
+        double maxShift = textWidth - maxWidth;
+        double totalScrollTime = (maxShift / speed) * 1000.0;
+
+        double halfPeriod = pauseTime + totalScrollTime;
+        double period = halfPeriod * 2.0;
+        double t = time % period;
+
+        double shift;
+        if (t < halfPeriod) {
+            if (t <= pauseTime) {
+                shift = 0;
+            } else {
+                shift = ((t - pauseTime) / 1000.0) * speed;
+            }
+        } else {
+            double tBack = t - halfPeriod;
+            if (tBack <= pauseTime) {
+                shift = maxShift;
+            } else {
+                shift = maxShift - (((tBack - pauseTime) / 1000.0) * speed);
+            }
+        }
+
+        int cx1 = Math.max(parentClipX1, absX);
+        int cy1 = Math.max(parentClipY1, absY);
+        int cx2 = Math.min(parentClipX2, absX + maxWidth);
+        int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
+
+        if (cx1 < cx2 && cy1 < cy2) {
+            g.disableScissor();
+            screen.enableScissor(g, cx1, cy1, cx2, cy2);
+            g.drawString(font, text, localX - (int)shift, localY, color, dropShadow);
+            g.disableScissor();
+            screen.enableScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
+        }
     }
 
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, List<String> activePhaseIds, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
@@ -303,7 +353,9 @@ public class JournalDetailParallelPhase {
                 currentPhaseTags.add(new JournalTypes.PhaseTagRect(absCardX, absCardY, colW, maxCardH, phaseId));
 
             String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty() ? phase.getDisplayName().getString() : phase.getPhaseId();
-            g.drawString(font, font.plainSubstrByWidth(phaseName, colW - 60), cardX + 8 + contentShiftX, cardY + 6, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true);
+            int nameAbsX = absCardX + 8 + contentShiftX;
+            int nameAbsY = absCardY + 6;
+            drawScrollingString(g, font, phaseName, cardX + 8 + contentShiftX, cardY + 6, colW - 60, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true, nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
             ResourceLocation pIntel = phase.getIntelSceneId();
             boolean hasIntel = pIntel != null;
@@ -434,15 +486,18 @@ public class JournalDetailParallelPhase {
                     float hoverAnimOffer = offerHoverAnims.getOrDefault(offerKey, 0f);
 
                     String cleanObjText = obj.getDisplayText().getString().replace("§7", "").replace("§a", "").replace("§f", "");
-                    String line = font.plainSubstrByWidth((complete ? "✔ " : "○ ") + cleanObjText, Math.max(5, colW - 16 - contentShiftX - extraMargin - font.width(pr) - 6));
+                    String prefix = complete ? "✔ " : "○ ";
+
+                    int actualTextW = font.width(prefix + cleanObjText);
+                    int hitX2 = cardX + 8 + contentShiftX, hitY2 = objY, hitW2 = actualTextW, hitH2 = font.lineHeight;
+                    int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY2 - currentInnerScroll);
+
+                    boolean textHovered = !isBeingDragged && mx >= absX2 && mx < absX2 + hitW2 && my >= absY2 && my < absY2 + hitH2 && my >= intY1 && my < intY2 && mx >= intX1 && mx < intX2;
+                    hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
 
                     if (canUpload) {
                         boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
                         if (!panelsActive) {
-                            int actualTextW = font.width(line), hitX2 = cardX + 8 + contentShiftX, hitY2 = objY, hitW2 = actualTextW, hitH2 = font.lineHeight;
-                            int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY2 - currentInnerScroll);
-                            boolean textHovered = !isBeingDragged && mx >= absX2 && mx < absX2 + hitW2 && my >= absY2 && my < absY2 + hitH2 && my >= intY1 && my < intY2 && mx >= intX1 && mx < intX2;
-                            hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
                             offerHoverAnims.put(offerKey, hoverAnimOffer);
                             if (draggingPhaseId == null)
                                 recordParallelOfferProgressRect(absX2, absY2, hitW2, hitH2, phaseId, i);
@@ -455,10 +510,26 @@ public class JournalDetailParallelPhase {
                     int objColor = complete ? 0x88FF88 : 0xCCCCCC;
                     if (canUpload) objColor = HudAnimUtil.lerpColor(objColor, activeTheme, hoverAnimOffer);
 
-                    g.pose().pushPose();
-                    if (hoverAnimOffer > 0.01f) g.pose().translate(hoverAnimOffer * 4.0f, 0, 0);
+                    String normalText = prefix + cleanObjText;
+                    String submitText = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
+                    String displayText = (canUpload && textHovered) ? submitText : normalText;
+                    int objMaxWidth = colW - 16 - contentShiftX - extraMargin - font.width(pr) - 6;
 
-                    g.drawString(font, line, cardX + 8 + contentShiftX, objY, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, objColor, Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
+                    g.pose().pushPose();
+                    if (hoverAnimOffer > 0.01f) {
+                        g.pose().translate(hoverAnimOffer * 4.0f, 0, 0);
+                        if (canUpload) {
+                            float scale = 1.0f + 0.05f * hoverAnimOffer;
+                            float pivotX = cardX + 8 + contentShiftX;
+                            float pivotY = objY + font.lineHeight / 2.0f;
+                            g.pose().translate(pivotX, pivotY, 0);
+                            g.pose().scale(scale, scale, 1f);
+                            g.pose().translate(-pivotX, -pivotY, 0);
+                        }
+                    }
+
+                    drawScrollingString(g, font, displayText, cardX + 8 + contentShiftX, objY, objMaxWidth, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, objColor, Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absX2, absY2, intX1, intY1, intX2, intY2);
+
                     g.drawString(font, pr, cardX + colW - 8 - extraMargin - font.width(pr), objY, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
 
                     g.pose().popPose();
@@ -502,7 +573,9 @@ public class JournalDetailParallelPhase {
                     g.fill(btnX, btnY, btnX + 1, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
                     g.fill(btnX + btnW - 1, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
 
-                    g.drawString(font, font.plainSubstrByWidth((i + 1) + ". " + choice.getDisplayText().getString(), btnW - 12), btnX + 6, btnY + 6, HudAnimUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
+                    String choiceText = (i + 1) + ". " + choice.getDisplayText().getString();
+                    drawScrollingString(g, font, choiceText, btnX + 6, btnY + 6, btnW - 12, HudAnimUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absBtnX + 6, absBtnY + 6, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
+
                     if (draggingPhaseId == null)
                         currentChoiceButtons.add(new JournalTypes.ChoiceButtonRect(absBtnX, absBtnY, btnW, btnH, phase.getChoices().indexOf(choice), phaseId));
                     cy += 24;
