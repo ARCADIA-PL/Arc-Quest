@@ -44,6 +44,10 @@ public final class DialogueHistoryPanel {
     // 主题色: 高亮灰白 (简约现代全息感)
     private static final int THEME_COLOR = 0xE8E8E8;
 
+    private static List<TranscriptEntry> compactedTranscriptCache = List.of();
+    private static int compactedSourceSize = -1;
+    private static long compactedTailSignature = Long.MIN_VALUE;
+
     private DialogueHistoryPanel() {}
 
     public static void toggle() {
@@ -207,7 +211,7 @@ public final class DialogueHistoryPanel {
         g.drawString(font, "SYS.LOG // TRANSCRIPT", 14, 8, HudAnimUtil.withAlpha(0x99AABB, alpha), false);
         g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0x556677, (int)(alpha * 0.4f)));
 
-        List<TranscriptEntry> transcript = compactTranscript(ClientDialogueCache.INSTANCE.getCurrentTranscript());
+        List<TranscriptEntry> transcript = getCompactedTranscript(ClientDialogueCache.INSTANCE.getCurrentTranscript());
 
         if (transcript.size() != lastEntryCount) {
             lastEntryCount = transcript.size();
@@ -297,32 +301,20 @@ public final class DialogueHistoryPanel {
         if (source == null || source.isEmpty()) return List.of();
 
         List<TranscriptEntry> compact = new ArrayList<>(source.size());
-        TranscriptEntry lastEntry = null;
+        Set<EntryKey> seen = new HashSet<>((int) (source.size() / 0.75f) + 1);
 
         for (TranscriptEntry e : source) {
             if (e == null) continue;
 
-            if (lastEntry != null && isDuplicate(lastEntry, e)) {
+            EntryKey key = EntryKey.of(e);
+            if (!seen.add(key)) {
                 continue;
             }
 
             compact.add(e);
-            lastEntry = e;
         }
 
         return compact;
-    }
-
-    private static boolean isDuplicate(TranscriptEntry a, TranscriptEntry b) {
-        return safeEquals(a.text(), b.text()) &&
-                safeEquals(a.speaker(), b.speaker()) &&
-                safeEquals(a.role(), b.role());
-    }
-
-    private static boolean safeEquals(String s1, String s2) {
-        if (s1 == s2) return true;
-        if (s1 == null || s2 == null) return false;
-        return s1.trim().equalsIgnoreCase(s2.trim());
     }
 
     private static void drawHorizontalCyberBase(GuiGraphics g, int startX, int endX, int bottomY, int themeColor, float alphaPercentage) {
@@ -345,5 +337,160 @@ public final class DialogueHistoryPanel {
         String speaker;
         List<String> lines;
         int height;
+    }
+
+    private static final class EntryKey {
+        private final String role;
+        private final String speaker;
+        private final String text;
+        private final String nodeId;
+        private final String sayId;
+        private final String choiceId;
+        private final int choiceIndex;
+        private final int hash;
+
+        private EntryKey(String role, String speaker, String text,
+                         String nodeId, String sayId, String choiceId, int choiceIndex) {
+            this.role = role;
+            this.speaker = speaker;
+            this.text = text;
+            this.nodeId = nodeId;
+            this.sayId = sayId;
+            this.choiceId = choiceId;
+            this.choiceIndex = choiceIndex;
+
+            int h = 17;
+            h = 31 * h + role.hashCode();
+            h = 31 * h + speaker.hashCode();
+            h = 31 * h + text.hashCode();
+            h = 31 * h + nodeId.hashCode();
+            h = 31 * h + sayId.hashCode();
+            h = 31 * h + choiceId.hashCode();
+            h = 31 * h + choiceIndex;
+            this.hash = h;
+        }
+
+        static EntryKey of(TranscriptEntry e) {
+            return new EntryKey(
+                    normFast(e.role()),
+                    normFast(e.speaker()),
+                    normFast(e.text()),
+                    normFast(e.nodeId()),
+                    normFast(e.sayId()),
+                    normFast(e.choiceId()),
+                    e.choiceIndex() == null ? Integer.MIN_VALUE : e.choiceIndex()
+            );
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (!(obj instanceof EntryKey other)) return false;
+            return choiceIndex == other.choiceIndex
+                    && role.equals(other.role)
+                    && speaker.equals(other.speaker)
+                    && text.equals(other.text)
+                    && nodeId.equals(other.nodeId)
+                    && sayId.equals(other.sayId)
+                    && choiceId.equals(other.choiceId);
+        }
+    }
+
+    private static String normFast(String s) {
+        if (s == null || s.isEmpty()) return "";
+
+        int n = s.length();
+        StringBuilder out = new StringBuilder(n);
+        boolean prevSpace = false;
+
+        for (int i = 0; i < n; i++) {
+            char c = s.charAt(i);
+
+            if (Character.isWhitespace(c)) {
+                if (!prevSpace) {
+                    out.append(' ');
+                    prevSpace = true;
+                }
+            } else {
+                out.append(Character.toLowerCase(c));
+                prevSpace = false;
+            }
+        }
+
+        int len = out.length();
+        if (len == 0) return "";
+
+        if (out.charAt(0) == ' ') {
+            out.deleteCharAt(0);
+            len--;
+        }
+        if (len > 0 && out.charAt(len - 1) == ' ') {
+            out.deleteCharAt(len - 1);
+        }
+
+        return out.toString();
+    }
+
+    private static void ensureCompactedTranscriptUpToDate(List<TranscriptEntry> raw) {
+        int currentSize = (raw == null) ? 0 : raw.size();
+
+        long currentTailSig = tailSignature(raw);
+        if (currentSize == compactedSourceSize && currentTailSig == compactedTailSignature) {
+            return;
+        }
+
+        compactedSourceSize = currentSize;
+        compactedTailSignature = currentTailSig;
+
+        compactedTranscriptCache = compactTranscript(raw);
+    }
+
+    private static long tailSignature(List<TranscriptEntry> raw) {
+        if (raw == null || raw.isEmpty()) return 0L;
+
+        TranscriptEntry e = raw.get(raw.size() - 1);
+        if (e == null) return 1L;
+
+        long h = 1469598103934665603L;
+        h = fnv1a(h, normFast(e.role()));
+        h = fnv1a(h, normFast(e.speaker()));
+        h = fnv1a(h, normFast(e.text()));
+        h = fnv1a(h, normFast(e.nodeId()));
+        h = fnv1a(h, normFast(e.sayId()));
+        h = fnv1a(h, normFast(e.choiceId()));
+        h = fnv1a(h, e.choiceIndex() == null ? Integer.MIN_VALUE : e.choiceIndex());
+        return h;
+    }
+
+    private static long fnv1a(long hash, String s) {
+        final long prime = 1099511628211L;
+        for (int i = 0, n = s.length(); i < n; i++) {
+            hash ^= s.charAt(i);
+            hash *= prime;
+        }
+        return hash;
+    }
+
+    private static long fnv1a(long hash, int v) {
+        final long prime = 1099511628211L;
+        hash ^= (v) & 0xFF;
+        hash *= prime;
+        hash ^= (v >>> 8) & 0xFF;
+        hash *= prime;
+        hash ^= (v >>> 16) & 0xFF;
+        hash *= prime;
+        hash ^= (v >>> 24) & 0xFF;
+        hash *= prime;
+        return hash;
+    }
+
+    private static List<TranscriptEntry> getCompactedTranscript(List<TranscriptEntry> raw) {
+        ensureCompactedTranscriptUpToDate(raw);
+        return compactedTranscriptCache;
     }
 }

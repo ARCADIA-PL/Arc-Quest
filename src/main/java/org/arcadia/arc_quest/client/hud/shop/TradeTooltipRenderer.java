@@ -7,6 +7,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -97,7 +98,7 @@ public class TradeTooltipRenderer {
             if (pageChanged) {
                 pageFadeAnim = 0f; // 触发淡入重载动画
                 if (Minecraft.getInstance().player != null) {
-                    Minecraft.getInstance().player.playSound(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 0.3f, 1.5f);
+                    Minecraft.getInstance().player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.3f, 1.5f);
                 }
             }
         }
