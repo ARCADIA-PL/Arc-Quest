@@ -117,12 +117,21 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
-        if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) return super.mouseClicked(mx, my, btn);
+        if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) {
+            return super.mouseClicked(mx, my, btn);
+        }
+
         int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
+
+        if (closeIfClickedOutside(mx, my, btn, px, py, pw, ph)) {
+            return true;
+        }
+
         float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
 
-        if (categoryPanel.mouseClicked(mx, my, px - (int) slide, py + 36, CAT_WIDTH, ph - 36 - BOTTOM_PADDING))
+        if (categoryPanel.mouseClicked(mx, my, px - (int) slide, py + 36, CAT_WIDTH, ph - 36 - BOTTOM_PADDING)) {
             return true;
+        }
 
         TradeEntry entry = getHoveredEntry((int) mx, (int) my);
         if (entry != null) {
@@ -130,17 +139,28 @@ public class TradeScreen extends AbstractTradeScreen {
             int rw = pw - CAT_WIDTH - 16;
             int vi = filteredEntries.indexOf(entry);
             int btnX = rx + rw - 100;
-            int btnY = py + 36 + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset()) + 8 + (TradeListPanel.CARD_HEIGHT - 24) / 2;
+            int btnY = py + 36 + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset())
+                    + 8 + (TradeListPanel.CARD_HEIGHT - 24) / 2;
+
             if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) {
                 int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, entry.getEntryId());
                 lastClickedGi = gi;
                 if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) {
-                    ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.purchaseWithScreenType(shopId, entry.getEntryId(), C2SRequestTradePacket.ScreenType.FULL));
+                    ArcQuestNetwork.sendTradeRequest(
+                            C2SRequestTradePacket.purchaseWithScreenType(
+                                    shopId,
+                                    entry.getEntryId(),
+                                    C2SRequestTradePacket.ScreenType.FULL
+                            )
+                    );
                     playClick();
-                } else onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
+                } else {
+                    onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
+                }
                 return true;
             }
         }
+
         return super.mouseClicked(mx, my, btn);
     }
 

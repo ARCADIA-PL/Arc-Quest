@@ -52,18 +52,40 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int btn) {
-        if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) return super.mouseClicked(mx, my, btn);
+        if (btn != 0 || shop == null || isClosing || transitionAnim < 0.9f) {
+            return super.mouseClicked(mx, my, btn);
+        }
+
+        int panelW = Math.max(220, (int) (width * 0.85f));
+        int panelH = Math.max(140, (int) (height * 0.70f));
+        int panelX = (width - panelW) / 2;
+        int panelY = (height - panelH) / 2;
+
+        if (closeIfClickedOutside(mx, my, btn, panelX, panelY, panelW, panelH)) {
+            return true;
+        }
+
         TradeEntry entry = getHoveredEntry((int) mx, (int) my);
         if (entry != null) {
             int gi = ClientTradeCache.INSTANCE.getGlobalIndex(shopId, entry.getEntryId());
             lastClickedGi = gi;
             if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) {
-                ArcQuestNetwork.sendTradeRequest(C2SRequestTradePacket.purchaseWithScreenType(shopId, entry.getEntryId(), C2SRequestTradePacket.ScreenType.SIMPLE));
+                ArcQuestNetwork.sendTradeRequest(
+                        C2SRequestTradePacket.purchaseWithScreenType(
+                                shopId,
+                                entry.getEntryId(),
+                                C2SRequestTradePacket.ScreenType.SIMPLE
+                        )
+                );
                 playClick();
-            } else onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
+            } else {
+                onTradeFail(S2COpenTradePacket.FailReason.GENERIC, "blocked");
+            }
             return true;
         }
-        return super.mouseClicked(mx, my, btn);
+
+        onClose();
+        return true;
     }
 
     @Override

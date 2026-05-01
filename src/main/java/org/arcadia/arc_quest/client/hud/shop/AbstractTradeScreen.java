@@ -288,4 +288,14 @@ public abstract class AbstractTradeScreen extends Screen {
     public ItemStack getIconStackForOffer(ITradeOffer offer) {
         return offer instanceof ItemTradeOffer ito ? new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64)) : ItemStack.EMPTY;
     }
+
+    protected boolean closeIfClickedOutside(double mx, double my, int button, int x, int y, int w, int h) {
+        if (button != 0 || isClosing || transitionAnim < 0.9f) return false;
+        boolean inside = mx >= x && mx < x + w && my >= y && my < y + h;
+        if (!inside) {
+            onClose();
+            return true;
+        }
+        return false;
+    }
 }
