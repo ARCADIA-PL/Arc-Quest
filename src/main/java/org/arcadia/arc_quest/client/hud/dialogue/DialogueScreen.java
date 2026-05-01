@@ -25,7 +25,6 @@ public class DialogueScreen extends Screen {
 
     private static final float CHARS_PER_SECOND = 45f;
 
-    // ── 点击动画参数 ──
     private static final float CLICK_ANIM_SPEED_SELECTED = 4.0f;
     private static final float CLICK_ANIM_SPEED_OTHERS = 5.5f;
     private static final float CLICK_SEND_THRESHOLD = 0.35f;
@@ -37,7 +36,6 @@ public class DialogueScreen extends Screen {
     private boolean hasAutoNext;
     private int delayMs;
 
-    // ── 点击动画状态 ──
     private int clickedIndex = -1;
     private float[] clickAnim;
     private boolean clickSent = false;
@@ -50,6 +48,7 @@ public class DialogueScreen extends Screen {
     private long lastRenderTime = 0;
     private float dt = 0f;
 
+    // 控制文本内容的透明度
     private float suspendAlpha = 1.0f;
 
     private float typewriterProgress = 0f;
@@ -65,6 +64,8 @@ public class DialogueScreen extends Screen {
     private boolean isClosing = false;
 
     private List<String> wrappedLines;
+
+    private float historyHoverAnim = 0f;
 
     public DialogueScreen(String dialogueId, String speaker, String text,
                           String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
@@ -224,6 +225,10 @@ public class DialogueScreen extends Screen {
         this.autoAdvanceSent = false;
         this.autoAdvanceTime = 0;
         this.cachedNpcEntity = null;
+
+        if (DialogueHistoryPanel.isActive()) {
+            DialogueHistoryPanel.close();
+        }
     }
 
     @Override
@@ -251,8 +256,27 @@ public class DialogueScreen extends Screen {
     }
 
     @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (DialogueHistoryPanel.isActive()) {
+            if (DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, delta)) {
+                return true;
+            }
+        }
+        return super.mouseScrolled(mouseX, mouseY, delta);
+    }
+
+    @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (QuestSplashRenderer.isActive()) return true;
+
+        if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.keyPressed(keyCode)) {
+            return true;
+        }
+
+        if (keyCode == 72) {
+            DialogueHistoryPanel.toggle();
+            return true;
+        }
 
         if (keyCode == 256) {
             startClose();
@@ -275,7 +299,8 @@ public class DialogueScreen extends Screen {
             }
             return true;
         }
-        if (choicesVisible && clickedIndex < 0 && keyCode >= 49 && keyCode <= 57) {
+        // 如果历史档案被打开，禁止使用数字键选择
+        if (choicesVisible && clickedIndex < 0 && keyCode >= 49 && keyCode <= 57 && !DialogueHistoryPanel.isActive()) {
             int idx = keyCode - 49;
             if (idx < choices.length) {
                 selectChoice(idx);
@@ -288,11 +313,36 @@ public class DialogueScreen extends Screen {
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (QuestSplashRenderer.isActive()) return true;
+
+        if (DialogueHistoryPanel.isActive()) {
+            if (DialogueHistoryPanel.mouseClicked(mx, my, button)) {
+                return true;
+            }
+        }
+
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
 
         float uiScale = getUiScale();
         double smx = mx / uiScale;
         double smy = my / uiScale;
+        int sh = getScaledHeight();
+
+        int targetBarHeight = Math.max(24, (int) (sh * 0.08f));
+        int logBtnY = (targetBarHeight - font.lineHeight) / 2;
+        int logBtnX = 20;
+        int logBtnW = font.width("■ SYS.LOG");
+        int logBtnH = font.lineHeight;
+
+        if (!isClosing && masterAnim > 0.8f && smx >= logBtnX && smx <= logBtnX + logBtnW && smy >= logBtnY && smy <= logBtnY + logBtnH) {
+            DialogueHistoryPanel.toggle();
+            playClick();
+            return true;
+        }
+
+        // 如果历史面板打开了，拦截对底下文字的点击
+        if (DialogueHistoryPanel.isActive()) {
+            return true;
+        }
 
         if (!typewriterDone) {
             typewriterProgress = fullText.length();
@@ -378,13 +428,15 @@ public class DialogueScreen extends Screen {
         int sh = getScaledHeight();
 
         boolean splashActive = QuestSplashRenderer.isActive();
-        if (splashActive) {
-            suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
-            dt = 0f;
-            if (typewriterDone && typewriterDoneTime > 0) typewriterDoneTime += (long) (realDt * 1000);
-            if (autoAdvanceTime > 0) autoAdvanceTime += (long) (realDt * 1000);
+        boolean historyActive = DialogueHistoryPanel.isActive();
+        // 任何覆盖层处于激活状态时，收起对话文本
+        boolean suspendContent = splashActive || historyActive;
+
+        if (suspendContent) {
+            suspendAlpha = Math.max(0f, suspendAlpha - realDt * 8f); // 快速淡出
+            if (splashActive) dt = 0f; // Splash时暂停动画，看历史时可以选择不暂停，但统一设0防止选项在后面乱动
         } else {
-            suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
+            suspendAlpha = Math.min(1f, suspendAlpha + realDt * 6f); // 快速淡入
             dt = realDt;
         }
 
@@ -405,8 +457,10 @@ public class DialogueScreen extends Screen {
             return;
         }
 
-        float easeMaster = HudAnimUtil.easeOutCubic(masterAnim) * HudAnimUtil.easeOutCubic(suspendAlpha);
-        float masterAlpha = Math.max(0f, Math.min(1f, easeMaster)) * suspendAlpha;
+        // 黑边专用的Ease
+        float baseMasterEase = HudAnimUtil.easeOutCubic(masterAnim);
+        // 内容专用的Alpha，受到历史面板开关的影响
+        float contentAlpha = Math.max(0f, Math.min(1f, baseMasterEase)) * suspendAlpha;
 
         if (!typewriterDone && masterAnim > 0.1f) {
             typewriterProgress += CHARS_PER_SECOND * dt;
@@ -453,11 +507,46 @@ public class DialogueScreen extends Screen {
         RenderSystem.defaultBlendFunc();
 
         int targetBarHeight = Math.max(24, (int) (sh * 0.08f));
-        int barHeight = Math.round(targetBarHeight * easeMaster);
+        // 黑边完全不受历史面板影响，保持存在感
+        int barHeight = Math.round(targetBarHeight * baseMasterEase);
 
         if (barHeight > 0) {
             g.fill(0, 0, sw, barHeight, 0xFF000000);
             g.fill(0, sh - barHeight, sw, sh, 0xFF000000);
+        }
+
+        float btnFadeAlpha = Math.max(0f, Math.min(1f, (masterAnim - 0.8f) * 5f));
+        // 就算内容收起，SYS.LOG 按钮也依然留在黑边上
+        float logBtnAlphaMod = splashActive ? suspendAlpha : 1.0f;
+        int btnSafeAlpha = Math.round(255 * btnFadeAlpha * logBtnAlphaMod);
+
+        if (btnSafeAlpha > 5 && !isClosing) {
+            String btnText = "■ SYS.LOG";
+            int logBtnY = (targetBarHeight - font.lineHeight) / 2;
+            int logBtnX = 20;
+            int logBtnW = font.width(btnText);
+
+            boolean logHovered = !historyActive
+                    && smx >= logBtnX && smx <= logBtnX + logBtnW
+                    && smy >= logBtnY && smy <= logBtnY + font.lineHeight;
+
+            historyHoverAnim = HudAnimUtil.step(historyHoverAnim, logHovered ? 1f : 0f, 10f, dt);
+            float hEase = HudAnimUtil.easeOutCubic(historyHoverAnim);
+
+            int baseColor = historyActive ? 0x99AABB : 0x667788;
+            int hoverColor = 0xE8E8E8;
+
+            int r = (int) ((((baseColor >> 16) & 0xFF) * (1 - hEase)) + (((hoverColor >> 16) & 0xFF) * hEase));
+            int gc = (int) ((((baseColor >> 8) & 0xFF) * (1 - hEase)) + (((hoverColor >> 8) & 0xFF) * hEase));
+            int b = (int) (((baseColor & 0xFF) * (1 - hEase)) + ((hoverColor & 0xFF) * hEase));
+            int textColor = (r << 16) | (gc << 8) | b;
+
+            g.drawString(font, btnText, logBtnX, logBtnY, HudAnimUtil.withAlpha(textColor, btnSafeAlpha), false);
+
+            if (hEase > 0.05f) {
+                int lineW = (int) (font.width(btnText) * hEase);
+                g.fill(logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, HudAnimUtil.withAlpha(hoverColor, (int)(btnSafeAlpha * 0.5f)));
+            }
         }
 
         int bottomPadding = Math.max(30, (int) (sh * 0.05f));
@@ -465,31 +554,33 @@ public class DialogueScreen extends Screen {
         int targetBaseY = contentBottomY - totalContentHeight;
 
         int gradientTop = targetBaseY - 60;
-        int safeAlpha = Math.round(255 * masterAlpha);
-        if (safeAlpha > 2) {
+        int safeContentAlpha = Math.round(255 * contentAlpha);
+
+        if (safeContentAlpha > 2) {
             g.fillGradient(0, gradientTop, sw, sh - barHeight,
                     0x00000000,
-                    HudAnimUtil.withAlpha(0x050505, Math.round(220 * masterAlpha)));
+                    HudAnimUtil.withAlpha(0x050505, Math.round(220 * contentAlpha)));
         }
 
-        int yOffsetAnim = Math.round((1f - easeMaster) * 15f);
+        // Y轴位移只跟随主入场动画
+        int yOffsetAnim = Math.round((1f - baseMasterEase) * 15f);
         int textBaseY = targetBaseY + yOffsetAnim;
 
-        if (speaker != null && !speaker.isBlank() && safeAlpha > 5) {
+        if (speaker != null && !speaker.isBlank() && safeContentAlpha > 5) {
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
             g.pose().scale(1.1f, 1.1f, 1f);
-            g.drawString(font, speaker, 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, safeAlpha), true);
+            g.drawString(font, speaker, 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
             g.pose().popPose();
             int spkW = (int) (font.width(speaker) * 1.1f);
             g.fill(textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13,
-                    HudAnimUtil.withAlpha(0x44FFFFFF, safeAlpha));
+                    HudAnimUtil.withAlpha(0x44FFFFFF, safeContentAlpha));
             textBaseY += 28;
         } else {
             textBaseY += 10;
         }
 
-        if (safeAlpha > 5) {
+        if (safeContentAlpha > 5) {
             int visibleChars = (int) typewriterProgress;
             int charCount = 0;
             g.pose().pushPose();
@@ -498,7 +589,7 @@ public class DialogueScreen extends Screen {
                 if (charCount >= visibleChars) break;
                 int lineVisible = Math.min(line.length(), visibleChars - charCount);
                 String renderLine = line.substring(0, lineVisible);
-                g.drawString(font, renderLine, 0, 0, HudAnimUtil.withAlpha(0xFFDDDDDD, safeAlpha), true);
+                g.drawString(font, renderLine, 0, 0, HudAnimUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
                 g.pose().translate(0, lineHeight, 0);
                 charCount += line.length();
             }
@@ -521,8 +612,7 @@ public class DialogueScreen extends Screen {
                 float cEase = HudAnimUtil.easeOutCubic(cAnim);
 
                 int currentExpand = Math.round(15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
-                // 碰撞检测已换用虚拟系鼠标 smx 和 smy
-                boolean hovered = !isClosing && !splashActive && !onCooldown && !hasClickSelection
+                boolean hovered = !isClosing && !suspendContent && !onCooldown && !hasClickSelection
                         && smx >= choiceX - currentExpand && smx <= choiceX + choiceW
                         && smy >= cy && smy <= cy + choiceH;
 
@@ -545,7 +635,7 @@ public class DialogueScreen extends Screen {
 
                 if (progress < 0.01f) continue;
 
-                int baseAlpha = Math.round(255 * masterAlpha * revealEase);
+                int baseAlpha = Math.round(255 * contentAlpha * revealEase);
 
                 int clickSlideX = 0;
                 if (hasClickSelection && !isClickTarget) {
@@ -562,7 +652,7 @@ public class DialogueScreen extends Screen {
                 int currentX = choiceX - expandAnim - confirmExpand + clickSlideX + Math.round((1f - slideEase) * 60f);
                 int currentW = choiceW + expandAnim + confirmExpand;
 
-                int bgAlphaVal = Math.round((120 + 40 * hEase) * masterAlpha * revealEase);
+                int bgAlphaVal = Math.round((120 + 40 * hEase) * contentAlpha * revealEase);
                 if (hasClickSelection && !isClickTarget) bgAlphaVal = Math.round(bgAlphaVal * (1f - cEase));
 
                 int bgBright = isClickTarget ? Math.round(20 * cEase) : 0;
@@ -620,7 +710,7 @@ public class DialogueScreen extends Screen {
             }
         }
 
-        if (typewriterDone && choices.length == 0 && safeAlpha > 5 && !isClosing) {
+        if (typewriterDone && choices.length == 0 && safeContentAlpha > 5 && !isClosing) {
             float timeSec = now / 1000f;
             float pulseA = 0.3f + 0.7f * (float) Math.abs(Math.sin(timeSec * 3f));
             float driftY = (float) Math.sin(timeSec * 5f) * 1.5f;
@@ -630,11 +720,14 @@ public class DialogueScreen extends Screen {
             g.pose().pushPose();
             g.pose().translate(indX, indY, 0);
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, "▼", 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeAlpha * pulseA)), true);
+            g.drawString(font, "▼", 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeContentAlpha * pulseA)), true);
             g.pose().popPose();
         }
 
         RenderSystem.disableBlend();
         g.pose().popPose();
+
+        // 在最上层渲染历史面板
+        DialogueHistoryPanel.render(g, mouseX, mouseY, partialTick);
     }
 }

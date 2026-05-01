@@ -7,8 +7,7 @@ import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 客户端对话状态缓存（单例）。
@@ -22,6 +21,11 @@ import java.util.Map;
 public final class ClientDialogueCache {
     public static final ClientDialogueCache INSTANCE = new ClientDialogueCache();
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    @Nullable
+    private UUID currentSessionId = null;
+
+    private final Map<UUID, List<TranscriptEntry>> transcripts = new HashMap<>();
 
     /**
      * 当前活跃的对话会话映射 (treeId -> SessionData)
@@ -55,6 +59,10 @@ public final class ClientDialogueCache {
         session.updateNode(nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
                 lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks,
                 choiceSounds, matchedSayId, choiceIds);
+
+        if (currentSessionId == null) {
+            currentSessionId = UUID.randomUUID();
+        }
 
         // 播放 SayIf 匹配的个体化音效
         if (matchedSaySound != null) {
@@ -143,12 +151,49 @@ public final class ClientDialogueCache {
         return activeSessions.get(currentTreeId);
     }
 
+    @Nullable
+    public UUID getCurrentSessionId() {
+        return currentSessionId;
+    }
+
+    public List<TranscriptEntry> getCurrentTranscript() {
+        if (currentSessionId == null) return List.of();
+        return transcripts.getOrDefault(currentSessionId, List.of());
+    }
+
+    public void replaceTranscriptSnapshot(UUID sessionId, List<S2CDialogueTranscriptDeltaPacket.Entry> entries) {
+        this.currentSessionId = sessionId;
+        List<TranscriptEntry> mapped = new ArrayList<>(entries.size());
+        for (S2CDialogueTranscriptDeltaPacket.Entry e : entries) {
+            mapped.add(new TranscriptEntry(
+                    e.clientMs(), e.role(), e.speaker(), e.text(),
+                    e.nodeId(), e.sayId(), e.choiceId(),
+                    e.choiceIndexOrNeg1() >= 0 ? e.choiceIndexOrNeg1() : null
+            ));
+        }
+        transcripts.put(sessionId, mapped);
+    }
+
+    public void appendTranscriptEntry(UUID sessionId, long clientMs, String role, String speaker, String text,
+                                      @Nullable String nodeId, @Nullable String sayId,
+                                      @Nullable String choiceId, @Nullable Integer choiceIndex) {
+        transcripts.computeIfAbsent(sessionId, k -> new ArrayList<>())
+                .add(new TranscriptEntry(clientMs, role, speaker, text, nodeId, sayId, choiceId, choiceIndex));
+    }
+
+    public record TranscriptEntry(long clientMs, String role, String speaker, String text,
+                                  @Nullable String nodeId, @Nullable String sayId,
+                                  @Nullable String choiceId, @Nullable Integer choiceIndex) {
+    }
+
     /**
      * 清理所有会话数据（用于模组卸载或世界切换）。
      */
     public void clear() {
         int count = activeSessions.size();
         activeSessions.clear();
+        transcripts.clear();
+        currentSessionId = null;
         LOGGER.debug("[DialogueCache] Cleared {} session(s)", count);
     }
 

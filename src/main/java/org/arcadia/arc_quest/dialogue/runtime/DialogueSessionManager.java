@@ -11,6 +11,8 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.capability.DialogueNpcPatch;
+import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
+import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
@@ -21,10 +23,7 @@ import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class DialogueSessionManager {
@@ -34,6 +33,8 @@ public final class DialogueSessionManager {
 
     private final Map<UUID, DialogueSession> sessions = new ConcurrentHashMap<>();
     private final Map<UUID, Deque<String>> restoreNodeMap = new ConcurrentHashMap<>();
+
+    private final Map<UUID, List<S2CDialogueTranscriptDeltaPacket.Entry>> transcriptMap = new ConcurrentHashMap<>();
 
     private DialogueSessionManager() {
     }
@@ -88,6 +89,7 @@ public final class DialogueSessionManager {
 
         endDialogue(player);
         sessions.put(player.getUUID(), session);
+        transcriptMap.put(player.getUUID(), new ArrayList<>());
 
         if (npcEntity instanceof IDialogueNpc) {
             DialogueNpcPatch.get(npcEntity).setConversing(player);
@@ -113,10 +115,29 @@ public final class DialogueSessionManager {
                 SyncObservability.Stage.ACTION, Reason.DIALOGUE_CHOICE);
 
         DialogueNode currentNode = session.getCurrentNode();
-        if (currentNode != null && choiceIndex >= 0 && choiceIndex < currentNode.choices().size()) {
-            Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
-            var choice = currentNode.choices().get(choiceIndex);
-            MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(player, npc, session.getTree().dialogueId(), currentNode.nodeId(), choiceIndex, choice.choiceId(), session.processDialogueText(choice.text()).getString()));
+        if (currentNode != null) {
+            var visibleChoices = session.getVisibleChoices();
+            if (choiceIndex >= 0 && choiceIndex < visibleChoices.size()) {
+                Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
+                var choice = visibleChoices.get(choiceIndex);
+                String choiceText = session.processDialogueText(choice.text()).getString();
+
+                MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(
+                        player, npc, session.getTree().dialogueId(),
+                        currentNode.nodeId(), choiceIndex, choice.choiceId(), choiceText
+                ));
+
+                appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
+                        System.currentTimeMillis(),
+                        "player",
+                        player.getName().getString(),
+                        choiceText,
+                        currentNode.nodeId(),
+                        null,
+                        choice.choiceId(),
+                        choiceIndex
+                ));
+            }
         }
 
         DialogueNode next = session.choose(choiceIndex);
@@ -213,6 +234,7 @@ public final class DialogueSessionManager {
         DialogueSession session = sessions.remove(player.getUUID());
         if (session == null) return;
 
+        transcriptMap.remove(player.getUUID());
         String dialogueId = session.getTree().dialogueId();
         Entity npcEntity = null;
         if (session.getEntityId() != -1) {
@@ -250,6 +272,16 @@ public final class DialogueSessionManager {
         DialogueNode node = session.getCurrentNode();
         if (node == null) return;
 
+        if (openMode) {
+            ArcQuestNetwork.sendTranscriptSnapshotPacket(
+                    session.getPlayer(),
+                    new S2CDialogueTranscriptSnapshotPacket(
+                            session.getSessionId(),
+                            transcriptMap.getOrDefault(session.getPlayer().getUUID(), List.of())
+                    )
+            );
+        }
+
         String speaker = "";
         if (node.speaker() != null) {
             speaker = session.processDialogueText(node.speaker()).getString();
@@ -286,6 +318,17 @@ public final class DialogueSessionManager {
         String text = session.processText(sayIfResult.text);
         SoundEvent matchedSaySound = sayIfResult.sound;
         String selectedSayId = sayIfResult.sayId;
+
+        appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
+                System.currentTimeMillis(),
+                "npc",
+                speaker,
+                text,
+                node.nodeId(),
+                selectedSayId,
+                null,
+                -1
+        ));
 
         ResourceLocation saySoundId = matchedSaySound != null ? ForgeRegistries.SOUND_EVENTS.getKey(matchedSaySound) : null;
         MinecraftForge.EVENT_BUS.post(new DialogueNodeStartedEvent(player, npc, session.getTree().dialogueId(), node.nodeId(), selectedSayId, text, matchedSaySound, saySoundId));
@@ -348,6 +391,15 @@ public final class DialogueSessionManager {
             restoreNodeMap.remove(playerId);
         }
         return restoreNodeId;
+    }
+
+    private void appendTranscriptDelta(DialogueSession session, S2CDialogueTranscriptDeltaPacket.Entry entry) {
+        UUID playerId = session.getPlayer().getUUID();
+        transcriptMap.computeIfAbsent(playerId, k -> new ArrayList<>()).add(entry);
+        ArcQuestNetwork.sendTranscriptDeltaPacket(
+                session.getPlayer(),
+                new S2CDialogueTranscriptDeltaPacket(session.getSessionId(), entry)
+        );
     }
 
     private void clearRestoreNodeState(ServerPlayer player) {

@@ -7,6 +7,8 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
+import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
+import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -127,6 +129,22 @@ public final class ArcQuestNetwork {
                 S2COpenDialoguePacket::encode,
                 S2COpenDialoguePacket::decode,
                 S2COpenDialoguePacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CDialogueTranscriptDeltaPacket.class,
+                S2CDialogueTranscriptDeltaPacket::encode,
+                S2CDialogueTranscriptDeltaPacket::decode,
+                S2CDialogueTranscriptDeltaPacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CDialogueTranscriptSnapshotPacket.class,
+                S2CDialogueTranscriptSnapshotPacket::encode,
+                S2CDialogueTranscriptSnapshotPacket::decode,
+                S2CDialogueTranscriptSnapshotPacket::handle
         );
 
         // ─── C2S：对话选择 ───
@@ -370,6 +388,14 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendDrawFailedPacket(ServerPlayer player, S2CDrawFailedPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendTranscriptDeltaPacket(ServerPlayer player, S2CDialogueTranscriptDeltaPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendTranscriptSnapshotPacket(ServerPlayer player, S2CDialogueTranscriptSnapshotPacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 
