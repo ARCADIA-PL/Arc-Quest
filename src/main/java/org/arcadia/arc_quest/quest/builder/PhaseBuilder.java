@@ -34,6 +34,7 @@ public final class PhaseBuilder {
     private final List<String> flagsOnComplete = new ArrayList<>();
     private QuestText displayName;
     private QuestText description = QuestText.component(Component.empty());
+    private QuestText story = QuestText.component(Component.empty());
     private int transitionPriorityCounter = 0;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     private String tradeShopId = null;
@@ -89,6 +90,21 @@ public final class PhaseBuilder {
 
     public PhaseBuilder description(QuestText text) {
         this.description = text;
+        return this;
+    }
+
+    public PhaseBuilder story(String literal) {
+        this.story = QuestText.literal(literal);
+        return this;
+    }
+
+    public PhaseBuilder story(Component component) {
+        this.story = QuestText.component(component);
+        return this;
+    }
+
+    public PhaseBuilder story(QuestText text) {
+        this.story = text;
         return this;
     }
 
@@ -344,6 +360,7 @@ public final class PhaseBuilder {
                 this.phaseId,
                 this.displayName,
                 this.description,
+                this.story,
                 new ArrayList<>(this.objectives),
                 new ArrayList<>(this.transitions),
                 new ArrayList<>(this.choices),

@@ -9,6 +9,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.Item;
@@ -25,6 +26,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
+import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -85,6 +87,10 @@ public class JournalDetailParallelPhase {
     private String selectedPhaseId = null;
     private long lastChoiceClickAt = 0L;
 
+    private float descHoverAnim = 0f;
+    private final int[] descHitBox = new int[4];
+    private String currentDescPhaseId = null;
+
     public JournalDetailParallelPhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
         this.parent = parent;
@@ -127,9 +133,9 @@ public class JournalDetailParallelPhase {
         selectedPhaseId = null; currentOfferProgressRects.clear(); offerHoverAnims.clear();
         customPhaseOrder.clear(); phaseVisualX.clear(); potentialDragPhaseId = null;
         draggingPhaseId = null; dragScaleAnim = 0f;
+        descHoverAnim = 0f; currentDescPhaseId = null;
     }
 
-    // 核心修改：安全裁剪框，防止任何负数或倒错坐标摧毁 OpenGL 状态
     private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
         g.disableScissor();
         if (x2 > x1 && y2 > y1) {
@@ -251,42 +257,79 @@ public class JournalDetailParallelPhase {
             currentX1 += prefixW;
 
             int remainingW = scrollAreaW - currentX1 - 4;
-            int absX = x + 12 + currentX1;
-            int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + headerBaseY + 1;
+            int absTitleX = x + 12 + currentX1;
+            int absTitleY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + headerBaseY + 1;
 
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
             g.pose().scale(0.75f, 0.75f, 1f);
-            drawScrollingString(g, font, pName, 0, 0, (int) (remainingW / 0.75f), HudAnimUtil.withAlpha(0xFFFFFF, safeA), true, absX, absY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+            drawScrollingString(g, font, pName, 0, 0, (int) (remainingW / 0.75f), HudAnimUtil.withAlpha(0xFFFFFF, safeA), true, absTitleX, absTitleY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
             g.pose().popPose();
 
             localY += titleH + 6;
 
             if (focusPhase.hasDescription()) {
-                float descScale = 0.85f;
+                boolean hasStory = focusPhase.getStory() != null && !focusPhase.getStory().getString().isEmpty();
+                float baseTextScale = 0.85f;
                 int descMaxW = scrollAreaW - 4;
-                List<String> wrappedDesc = HudRenderUtil.wrapText(focusPhase.getDescription().getString(), (int) (descMaxW / descScale), font);
+                List<String> wrappedDesc = HudRenderUtil.wrapText(focusPhase.getDescription().getString(), (int) (descMaxW / baseTextScale), font);
 
                 int maxLines = 2;
                 int unscaledLineH = font.lineHeight + 3;
+                int blockH = (int) (Math.min(wrappedDesc.size(), maxLines) * unscaledLineH * baseTextScale);
+
+                int absX = x + 12;
+                int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
+                int hitW = descMaxW;
+                int hitH = blockH;
+
+                boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
+                boolean isHovered = hasStory && !panelsActive && mx >= absX && mx <= absX + hitW && my >= absY && my <= absY + hitH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
+
+                descHoverAnim = HudAnimUtil.lerp(descHoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
+
+                if (isHovered) {
+                    screen.setHoveredCustomTooltip(List.of(
+                            Component.translatable("arc_quest.gui.journal.label.story_archive").withStyle(Style.EMPTY.withColor(activeTheme).withBold(true)),
+                            Component.translatable("arc_quest.gui.journal.label.read_story").withStyle(Style.EMPTY.withColor(0xAAAAAA))
+                    ));
+                }
+
+                descHitBox[0] = absX; descHitBox[1] = absY; descHitBox[2] = hitW; descHitBox[3] = hitH;
+                currentDescPhaseId = hasStory ? focusPhaseId : null;
+
+                float breath = isHovered ? (float) (Math.sin(Util.getMillis() / 250.0) * 0.015f) : 0f;
+                float currentScale = baseTextScale + (0.02f * descHoverAnim) + breath;
 
                 g.pose().pushPose();
+
+                float pivotX = 0;
+                float pivotY = localY + blockH / 2f;
+                g.pose().translate(pivotX, pivotY, 0);
+                g.pose().scale(currentScale / baseTextScale, currentScale / baseTextScale, 1f);
+                g.pose().translate(-pivotX, -pivotY, 0);
+
                 g.pose().translate(0, localY, 0);
-                g.pose().scale(descScale, descScale, 1f);
+                g.pose().scale(baseTextScale, baseTextScale, 1f);
+
+                int descColor = HudAnimUtil.lerpColor(0xFFFFFF, activeTheme, descHoverAnim * 0.4f);
 
                 for (int i = 0; i < Math.min(wrappedDesc.size(), maxLines); i++) {
                     String line = wrappedDesc.get(i);
                     if (i == maxLines - 1 && wrappedDesc.size() > maxLines) {
                         line += "...";
                     }
-                    g.drawString(font, line, 0, i * unscaledLineH, HudAnimUtil.withAlpha(0xFFFFFF, safeA), false);
+                    g.drawString(font, line, 0, i * unscaledLineH, HudAnimUtil.withAlpha(descColor, safeA), false);
                 }
                 g.pose().popPose();
 
-                localY += (int) (Math.min(wrappedDesc.size(), maxLines) * unscaledLineH * descScale);
+                localY += blockH;
+            } else {
+                currentDescPhaseId = null;
             }
         } else {
             localY += titleH;
+            currentDescPhaseId = null;
         }
 
         localY += 6;
@@ -303,7 +346,6 @@ public class JournalDetailParallelPhase {
         int currentY = localY;
         int clipAbsY1 = scrollAreaY, clipAbsY2 = scrollAreaY + scrollAreaH;
 
-        // 【应用安全裁剪】
         safeScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
         dragScaleAnim = HudAnimUtil.lerp(dragScaleAnim, draggingPhaseId != null ? 1f : 0f, 0.2f, dt);
@@ -422,7 +464,7 @@ public class JournalDetailParallelPhase {
                 float baseScale = 0.75f, rawTextW = font.width(btnText), rawTextH = font.lineHeight, textW = rawTextW * baseScale;
                 int btnW = (int) textW + 8, btnH = 10, btnX = rightEdgeX - btnW, btnY = cardY + 5;
                 int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
-                boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+                boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
                 boolean btnHovered = !isBeingDragged && !panelsActive && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
 
                 float btnSelfHover = phaseIntelBtnHoverAnims.getOrDefault(phaseId, 0f);
@@ -478,7 +520,7 @@ public class JournalDetailParallelPhase {
                         g.fill((int) (cx + sFill) - 2, cy - 1, (int) (cx + sFill), cy + 3, brightColor);
                     }
                     if (canUpload) {
-                        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+                        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
                         if (!panelsActive) {
                             float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
                             int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * cardSafeA * (actualDAlpha / dAlpha) / 255f));
@@ -501,7 +543,6 @@ public class JournalDetailParallelPhase {
             int intY2 = Math.min(clipAbsY2, (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + cy) + FIXED_OBJ_VIEW_H);
 
             if (intX2 > intX1 && intY2 > intY1 && total > 0) {
-                // 【应用安全裁剪】
                 safeScissor(g, intX1, intY1, intX2, intY2);
 
                 g.pose().pushPose();
@@ -531,7 +572,7 @@ public class JournalDetailParallelPhase {
                     hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
 
                     if (canUpload) {
-                        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+                        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
                         if (!panelsActive) {
                             offerHoverAnims.put(offerKey, hoverAnimOffer);
                             if (draggingPhaseId == null) recordParallelOfferProgressRect(absX2, absY2, hitW2, hitH2, phaseId, i);
@@ -577,7 +618,6 @@ public class JournalDetailParallelPhase {
                 }
                 g.pose().popPose();
 
-                // 【应用安全裁剪】
                 safeScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
             }
 
@@ -624,7 +664,6 @@ public class JournalDetailParallelPhase {
             g.pose().popPose();
         }
 
-        // 【应用安全裁剪：恢复父级全局状态】
         safeScissor(g, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
         localY = currentY + maxCardH + 8;
@@ -670,6 +709,17 @@ public class JournalDetailParallelPhase {
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
         int scrollAreaY = y, scrollAreaH = h - 40;
+
+        if (currentDescPhaseId != null && mx >= descHitBox[0] && mx <= descHitBox[0] + descHitBox[2] && my >= descHitBox[1] && my <= descHitBox[1] + descHitBox[3] && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
+            if (!panelsActive) {
+                String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
+                QuestStoryPanel.trigger(qid, currentDescPhaseId);
+                screen.playClick();
+                return true;
+            }
+        }
+
         if (maxPhaseScroll > 0 && currentScrollControls != null) {
             ScrollControls sc = currentScrollControls;
             if (mx >= sc.leftX && mx < sc.leftX + sc.leftW && my >= sc.leftY && my < sc.leftY + sc.leftH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
@@ -687,7 +737,7 @@ public class JournalDetailParallelPhase {
         }
 
         if (!currentIntelBtns.isEmpty()) {
-            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive()  || QuestStoryPanel.isActive();
             if (!panelsActive) {
                 for (IntelBtnRect rect : currentIntelBtns) {
                     if (mx >= rect.absX && mx < rect.absX + rect.w && my >= rect.absY && my < rect.absY + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
@@ -698,7 +748,7 @@ public class JournalDetailParallelPhase {
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentOfferProgressRects.isEmpty()) {
-            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
             if (!panelsActive) {
                 for (OfferProgressRect rect : currentOfferProgressRects) {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
@@ -710,7 +760,7 @@ public class JournalDetailParallelPhase {
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentChoiceButtons.isEmpty()) {
-            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
             if (!panelsActive) {
                 for (JournalTypes.ChoiceButtonRect rect : currentChoiceButtons) {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
@@ -725,7 +775,7 @@ public class JournalDetailParallelPhase {
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentPhaseTags.isEmpty()) {
-            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
             if (!panelsActive) {
                 for (JournalTypes.PhaseTagRect rect : currentPhaseTags) {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {

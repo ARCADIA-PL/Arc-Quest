@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
+import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -159,7 +160,7 @@ public class JournalDetailPanel {
 
         int absBtnX = x + 12 + hBtnX;
         int absBtnY = (int) (scrollAreaY + 12 - detailScrollOffset + hBtnY);
-        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
         boolean hHover = !panelsActive && mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
 
         historyBtnHoverAnim = HudAnimUtil.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
@@ -260,7 +261,7 @@ public class JournalDetailPanel {
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
         int scrollAreaH = h - 40;
         int maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
-        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive();
+        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
 
         if (!panelsActive && rewardsRenderer.mouseClicked(mx, my)) return true;
 

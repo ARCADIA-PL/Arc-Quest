@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
@@ -192,7 +193,11 @@ public class QuestJournalScreen extends Screen {
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.keyPressed(keyCode);
             return true;
-        } // 新增拦截
+        }
+        if (QuestStoryPanel.isActive()) {
+            QuestStoryPanel.keyPressed(keyCode);
+            return true;
+        }
 
         if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
             this.onClose();
@@ -228,7 +233,11 @@ public class QuestJournalScreen extends Screen {
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseClicked(smx, smy, button);
             return true;
-        } // 新增拦截
+        }
+        if (QuestStoryPanel.isActive()) {
+            QuestStoryPanel.mouseClicked(smx, smy, button);
+            return true;
+        }
 
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
@@ -252,11 +261,11 @@ public class QuestJournalScreen extends Screen {
         double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight();
 
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseDragged(smx, smy);
             return true;
-        } // 新增拦截
+        }
 
         int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
         int listH = sh - 20 - listY;
@@ -267,11 +276,11 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseReleased(button);
             return true;
-        } // 新增拦截
+        }
 
         listPanel.mouseReleased(button);
         detailPanel.mouseReleased(button);
@@ -284,11 +293,11 @@ public class QuestJournalScreen extends Screen {
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
 
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive()) return true;
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseScrolled(smx, smy, delta);
             return true;
-        } // 新增拦截
+        }
 
         if (isClosing) return false;
 
@@ -325,14 +334,15 @@ public class QuestJournalScreen extends Screen {
 
         boolean intelActive = QuestIntelPanel.isActive();
         boolean offerActive = QuestOfferPanel.isActive();
-        boolean historyActive = QuestHistoryPanel.isActive(); // 捕获状态
+        boolean historyActive = QuestHistoryPanel.isActive();
+        boolean storyActive = QuestStoryPanel.isActive();
 
         if (QuestSplashRenderer.isActive()) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
             dt = 0f;
         } else {
             suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
-            dt = intelActive ? 0f : realDt;
+            dt = (intelActive || storyActive) ? 0f : realDt;
         }
 
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
@@ -383,7 +393,8 @@ public class QuestJournalScreen extends Screen {
 
         if (intelActive) QuestIntelPanel.render(g, sw, sh, partialTick);
         if (offerActive) QuestOfferPanel.render(g, smx, smy, partialTick);
-        if (historyActive) QuestHistoryPanel.render(g, smx, smy, partialTick); // 渲染历史弹窗
+        if (historyActive) QuestHistoryPanel.render(g, smx, smy, partialTick);
+        if (storyActive) QuestStoryPanel.render(g, smx, smy, partialTick);
 
         updateAndRenderTooltip(g, smx, smy);
 
@@ -394,7 +405,7 @@ public class QuestJournalScreen extends Screen {
         boolean hasCustom = hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty();
         boolean hasItem = hoveredRewardTooltip != null;
 
-        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive();
+        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive() && !QuestStoryPanel.isActive();
 
         if (isHoveringValid) {
             if (hasCustom) {

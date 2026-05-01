@@ -95,6 +95,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
                 "§c✘ This quest has failed.");
         addGuiLabel("journal", "select_quest", "Select a quest");
         addGuiLabel("journal", "click_to_submit", "Click to submit items");
+        addGuiLabel("journal", "story_archive", "Phase Story");
+        addGuiLabel("journal", "read_story", "Read");
         addGuiLabel("journal", "objective_complete_prefix", "§a✔ ");
         addGuiLabel("journal", "objective_active_prefix", "§f○ ");
 

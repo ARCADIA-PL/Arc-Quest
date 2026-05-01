@@ -19,6 +19,7 @@ public final class PhaseDefinition {
     private final String phaseId;
     private final QuestText displayName;
     private final QuestText description;
+    private final QuestText story;
     private final List<ObjectiveEntry> objectives;
     private final List<PhaseTransition> transitions;
     private final List<ChoiceOption> choices;
@@ -50,8 +51,9 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnEnter,
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig, boolean autoEnterByCondition) {
-        this(phaseId, displayName, QuestText.component(Component.empty()), objectives, transitions, choices,
-                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, null, null, null, null, null, autoEnterByCondition);
+        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
+                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
+                visualConfig, null, null, null, null, null, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
@@ -64,8 +66,9 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig,
                            @Nullable String tradeShopId, boolean autoEnterByCondition) {
-        this(phaseId, displayName, QuestText.component(Component.empty()), objectives, transitions, choices,
-                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig, tradeShopId, null, null, null, null, autoEnterByCondition);
+        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
+                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
+                visualConfig, tradeShopId, null, null, null, null, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
@@ -80,13 +83,13 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
-        this(phaseId, displayName, QuestText.component(Component.empty()), objectives, transitions, choices,
-                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig,
-                tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
+        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
+                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
+                visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
     }
 
     /**
-     * 旧的完整构造器（含 description），委托给带 intelSceneId 的新构造器。
+     * 旧的完整构造器（含 description），委托给带 story 的新构造器。
      */
     public PhaseDefinition(String phaseId,
                            QuestText displayName,
@@ -101,17 +104,18 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
-        this(phaseId, displayName, description, objectives, transitions, choices,
-                phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, visualConfig,
-                tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
+        this(phaseId, displayName, description, QuestText.component(Component.empty()), 
+                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
+                visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
     }
 
     /**
-     * 含 intelSceneId 的最终构造器，所有其他构造器最终委托至此。
+     * 含 story 和 intelSceneId 的最终构造器，所有其他构造器最终委托至此。
      */
     public PhaseDefinition(String phaseId,
                            QuestText displayName,
                            QuestText description,
+                           QuestText story,
                            List<ObjectiveEntry> objectives,
                            List<PhaseTransition> transitions,
                            List<ChoiceOption> choices,
@@ -132,6 +136,7 @@ public final class PhaseDefinition {
         this.phaseId = phaseId;
         this.displayName = displayName;
         this.description = description != null ? description : QuestText.component(Component.empty());
+        this.story = story != null ? story : QuestText.component(Component.empty());
         this.objectives = Collections.unmodifiableList(objectives);
         this.transitions = Collections.unmodifiableList(transitions);
         this.choices = Collections.unmodifiableList(choices);
@@ -169,6 +174,18 @@ public final class PhaseDefinition {
 
     public boolean hasDescription() {
         return !this.description.resolve(null, QuestTextContext.empty()).getString().isEmpty();
+    }
+
+    public Component getStory() {
+        return this.story.resolve(null, QuestTextContext.empty());
+    }
+
+    public Component getStory(ServerPlayer player, QuestTextContext context) {
+        return this.story.resolve(player, context);
+    }
+
+    public boolean hasStory() {
+        return !this.story.resolve(null, QuestTextContext.empty()).getString().isEmpty();
     }
 
     public List<ObjectiveEntry> getObjectives() {
