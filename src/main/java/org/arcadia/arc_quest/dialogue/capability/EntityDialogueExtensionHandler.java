@@ -2,7 +2,6 @@ package org.arcadia.arc_quest.dialogue.capability;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -10,7 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -108,36 +107,32 @@ public class EntityDialogueExtensionHandler {
     }
 
     /**
-     * Tick 事件 - 更新所有正在对话的 NPC
+     * Tick 事件 - 按实体更新对话中的 NPC（更稳定的时序）
      */
     @SubscribeEvent
-    public static void onServerTick(TickEvent.LevelTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (!(event.level instanceof ServerLevel serverLevel)) return;
+    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
+        if (event.getEntity().level().isClientSide()) return;
 
-        // 遍历所有 LivingEntity
-        for (var entity : serverLevel.getAllEntities()) {
-            if (entity instanceof LivingEntity livingEntity) {
-                livingEntity.getCapability(DialogueNpcPatch.CAPABILITY).ifPresent(patch -> {
-                    if (!patch.isConversing()) return;
+        LivingEntity livingEntity = event.getEntity();
+        livingEntity.getCapability(DialogueNpcPatch.CAPABILITY).ifPresent(patch -> {
+            if (!patch.isConversing()) return;
 
-                    var player = patch.getConversingPlayer();
-                    if (!(player instanceof ServerPlayer serverPlayer)) return;
+            var player = patch.getConversingPlayer();
+            if (!(player instanceof ServerPlayer serverPlayer)) return;
 
-                    // 检查距离
-                    checkDistance(patch, livingEntity, serverPlayer);
+            // 检查距离
+            checkDistance(patch, livingEntity, serverPlayer);
+            if (!patch.isConversing()) return;
 
-                    // 控制 NPC 行为（注视/停止移动）
-                    controlNpcBehavior(patch, livingEntity, serverPlayer);
+            // 控制 NPC 行为（注视/停止移动）
+            controlNpcBehavior(patch, livingEntity, serverPlayer);
 
-                    // 调用扩展的 onTalkingTick
-                    callExtensionOnTick(livingEntity, serverPlayer);
+            // 调用扩展的 onTalkingTick
+            callExtensionOnTick(livingEntity, serverPlayer);
 
-                    // 调用 patch.tick()
-                    patch.tick();
-                });
-            }
-        }
+            // 调用 patch.tick()
+            patch.tick();
+        });
     }
 
     /**
@@ -163,20 +158,20 @@ public class EntityDialogueExtensionHandler {
     @SuppressWarnings("unchecked")
     private static void controlNpcBehavior(DialogueNpcPatch patch, LivingEntity entity, ServerPlayer player) {
         if (!(entity instanceof Mob mob)) return;
+        if (!patch.isConversing()) return;
 
         if (EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(entity.getType())) {
             var extensions = EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(entity.getType());
             for (var ext : extensions) {
                 IEntityDialogueExtension<LivingEntity> livingExt = (IEntityDialogueExtension<LivingEntity>) ext;
-                if (livingExt.canInteractWith(player, entity)) {
-                    if (livingExt.shouldLookAtPlayer(player, entity)) {
-                        mob.getLookControl().setLookAt(player, 60.0F, 60.0F);
-                    }
-                    if (livingExt.shouldStopMoving(player, entity)) {
-                        mob.getNavigation().stop();
-                    }
-                    break;
+
+                if (livingExt.shouldLookAtPlayer(player, entity)) {
+                    mob.getLookControl().setLookAt(player);
                 }
+                if (livingExt.shouldStopMoving(player, entity)) {
+                    mob.getNavigation().stop();
+                }
+                break;
             }
         } else {
             patch.tick();
@@ -192,10 +187,8 @@ public class EntityDialogueExtensionHandler {
         var extensions = EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(entity.getType());
         for (var ext : extensions) {
             IEntityDialogueExtension<LivingEntity> livingExt = (IEntityDialogueExtension<LivingEntity>) ext;
-            if (livingExt.canInteractWith(player, entity)) {
-                livingExt.onTalkingTick(player, entity);
-                break;
-            }
+            livingExt.onTalkingTick(player, entity);
+            break;
         }
     }
 
