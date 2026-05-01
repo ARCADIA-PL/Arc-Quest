@@ -46,7 +46,7 @@ public final class DialogueHistoryPanel {
 
     private static List<TranscriptEntry> compactedTranscriptCache = List.of();
     private static int compactedSourceSize = -1;
-    private static long compactedTailSignature = Long.MIN_VALUE;
+    private static long compactedContentSignature = Long.MIN_VALUE;
 
     private DialogueHistoryPanel() {}
 
@@ -301,17 +301,18 @@ public final class DialogueHistoryPanel {
         if (source == null || source.isEmpty()) return List.of();
 
         List<TranscriptEntry> compact = new ArrayList<>(source.size());
-        Set<EntryKey> seen = new HashSet<>((int) (source.size() / 0.75f) + 1);
 
+        EntryKey lastKey = null;
         for (TranscriptEntry e : source) {
             if (e == null) continue;
 
-            EntryKey key = EntryKey.of(e);
-            if (!seen.add(key)) {
+            EntryKey curKey = EntryKey.of(e);
+            if (lastKey != null && lastKey.equals(curKey)) {
                 continue;
             }
 
             compact.add(e);
+            lastKey = curKey;
         }
 
         return compact;
@@ -337,6 +338,37 @@ public final class DialogueHistoryPanel {
         String speaker;
         List<String> lines;
         int height;
+    }
+
+    private static void ensureCompactedTranscriptUpToDate(List<TranscriptEntry> raw) {
+        int currentSize = (raw == null) ? 0 : raw.size();
+        long currentSig = rollingSignature(raw);
+
+        if (currentSize == compactedSourceSize && currentSig == compactedContentSignature) {
+            return;
+        }
+
+        compactedSourceSize = currentSize;
+        compactedContentSignature = currentSig;
+        compactedTranscriptCache = compactTranscript(raw);
+    }
+
+    private static long rollingSignature(List<TranscriptEntry> raw) {
+        if (raw == null || raw.isEmpty()) return 0L;
+
+        long h = 1469598103934665603L;
+        for (TranscriptEntry e : raw) {
+            if (e == null) {
+                h = fnv1a(h, 0);
+                continue;
+            }
+
+            EntryKey k = EntryKey.of(e);
+            h = fnv1a(h, k.hashCode());
+        }
+
+        h = fnv1a(h, raw.size());
+        return h;
     }
 
     private static final class EntryKey {
@@ -434,20 +466,6 @@ public final class DialogueHistoryPanel {
         }
 
         return out.toString();
-    }
-
-    private static void ensureCompactedTranscriptUpToDate(List<TranscriptEntry> raw) {
-        int currentSize = (raw == null) ? 0 : raw.size();
-
-        long currentTailSig = tailSignature(raw);
-        if (currentSize == compactedSourceSize && currentTailSig == compactedTailSignature) {
-            return;
-        }
-
-        compactedSourceSize = currentSize;
-        compactedTailSignature = currentTailSig;
-
-        compactedTranscriptCache = compactTranscript(raw);
     }
 
     private static long tailSignature(List<TranscriptEntry> raw) {
