@@ -95,8 +95,6 @@ public final class TradeEntryStateResolver {
                 return false;
             }
         }
-
-        LOGGER.debug("[Trade-State] Purchase allowed: entry={}", entry.getEntryId());
         return true;
     }
 

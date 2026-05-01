@@ -356,10 +356,6 @@ public class C2SRequestTradePacket {
                 cooldownTypes[i] = entry.getCooldownType().ordinal();
                 cooldownValues[i] = entry.getCooldownValue();
                 resetTimeTicks[i] = entry.getResetTimeTicks();
-
-                LOGGER.debug("[Trade-Packet] Entry {}: id={}, purchases={}, lastTime={}, gameT={}, dayT={}, cdType={}, cdVal={}",
-                        i, entry.getEntryId(), purchases[i], lastPurchaseTimes[i],
-                        purchaseGameTimes[i], purchaseDayTimes[i], cooldownTypes[i], cooldownValues[i]);
             }
 
             visibility[i] = session.isEntryVisible(entry);

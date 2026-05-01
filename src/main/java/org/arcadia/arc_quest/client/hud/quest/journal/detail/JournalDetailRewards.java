@@ -72,7 +72,7 @@ public class JournalDetailRewards {
         if (activeTab == Tab.PHASE && !hasPhaseRewards) activeTab = Tab.CHAPTER;
         if (activeTab == Tab.CHAPTER && !hasChapterRewards) activeTab = Tab.PHASE;
 
-        localY += 12;
+        localY += 5;
         Font font = screen.getFont();
         int localW = scrollAreaW - 24;
         int currentY = localY;
