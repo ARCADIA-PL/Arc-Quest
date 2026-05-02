@@ -9,6 +9,10 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.quest.api.QuestVisualConfig;
+import org.arcadia.arc_quest.questmarker.api.MarkActivation;
+import org.arcadia.arc_quest.questmarker.api.MarkActivations;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -25,6 +29,7 @@ public class DialogueTreeBuilder {
     private final Map<String, DialogueNode> committedNodes = new LinkedHashMap<>();
     private final List<ConditionalText> curConditionalTexts = new ArrayList<>();
     private final List<DialogueChoice> curChoices = new ArrayList<>();
+    private final List<MarkSpec> treeMarks = new ArrayList<>();
     private String defaultNpc = "";
     private String startNodeId = null;
     private QuestVisualConfig visualConfig = null;
@@ -186,6 +191,22 @@ public class DialogueTreeBuilder {
         return this;
     }
 
+    public DialogueTreeBuilder markRelatedObject(MarkableObject object) {
+        return markRelatedObject(object, MarkActivations.always());
+    }
+
+    public DialogueTreeBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
+        String id = this.dialogueId + "::dialogue_mark_" + treeMarks.size();
+        this.treeMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+                org.arcadia.arc_quest.questmarker.api.QuestMarkerType.NPC_INTERACT, 0, 256, 20, true, false, java.util.Map.of()));
+        return this;
+    }
+
+    public DialogueTreeBuilder markRelatedObject(MarkSpec spec) {
+        this.treeMarks.add(spec);
+        return this;
+    }
+
 
     public DialogueTreeBuilder node(String nodeId) {
         commitCurrentNode();
@@ -249,6 +270,15 @@ public class DialogueTreeBuilder {
      * <b>SayIf 必须提供唯一 ID</b>
      * </p>
      */
+    public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, String sayId,
+                                                                    Consumer<SayIfBuilder> configurator) {
+        ensureOpenNode();
+        SayIfBuilder sb = new SayIfBuilder(resolveId(sayId));
+        if (configurator != null) configurator.accept(sb);
+        curConditionalTexts.add(new ConditionalText(condition, DialogueText.literal(text), 0, null, resolveId(sayId), sb.relatedMarks));
+        return this;
+    }
+
     @SuppressWarnings("unchecked")
     public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, String sayId) {
         ensureOpenNode();
@@ -494,7 +524,8 @@ public class DialogueTreeBuilder {
                 repeatable,
                 cooldownSeconds,
                 treeCooldownType,
-                treeCooldownResetTicks
+                treeCooldownResetTicks,
+                List.copyOf(treeMarks)
         );
     }
 
@@ -562,7 +593,8 @@ public class DialogueTreeBuilder {
                     choice.resetTimeTicks(),
                     choice.priority(),
                     resolvedRestoreId,
-                    choice.selectSound()
+                    choice.selectSound(),
+                    choice.relatedMarks()
             ));
         }
 
@@ -598,7 +630,7 @@ public class DialogueTreeBuilder {
         // 条件文本
         for (ConditionalText ct : curConditionalTexts) {
             String key = ct.priority + "|" + serializeCondition(ct.condition);
-            map.put(key, new ConditionalSay(ct.sayId, ct.text, ct.soundEvent));
+            map.put(key, new ConditionalSay(ct.sayId, ct.text, ct.soundEvent, ct.relatedMarks));
         }
 
         return Map.copyOf(map);
@@ -646,6 +678,35 @@ public class DialogueTreeBuilder {
         return "UNKNOWN";
     }
 
+    // ═══════════════════════════════════════════════════════
+    //  内部类: SayIfBuilder
+    // ═══════════════════════════════════════════════════════
+
+    public static class SayIfBuilder {
+        private final String sayId;
+        private final List<MarkSpec> relatedMarks = new ArrayList<>();
+
+        SayIfBuilder(String sayId) {
+            this.sayId = sayId;
+        }
+
+        public SayIfBuilder markRelatedObject(MarkableObject object) {
+            return markRelatedObject(object, MarkActivations.always());
+        }
+
+        public SayIfBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
+            String id = this.sayId + "::say_mark_" + relatedMarks.size();
+            this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+                    org.arcadia.arc_quest.questmarker.api.QuestMarkerType.NPC_INTERACT, 0, 128, 20, true, false, java.util.Map.of()));
+            return this;
+        }
+
+        public SayIfBuilder markRelatedObject(MarkSpec spec) {
+            this.relatedMarks.add(spec);
+            return this;
+        }
+    }
+
     // ═════════════════════════════════════════════════════==
     //  内部类: ConditionalText
     // ═════════════════════════════════════════════════════==
@@ -660,25 +721,31 @@ public class DialogueTreeBuilder {
         final SoundEvent soundEvent;
         @Nullable
         final String sayId;
+        final List<MarkSpec> relatedMarks;
 
         ConditionalText(DialogueCondition condition, DialogueText text) {
-            this(condition, text, 0, null, null);
+            this(condition, text, 0, null, null, List.of());
         }
 
         ConditionalText(DialogueCondition condition, DialogueText text, int priority) {
-            this(condition, text, priority, null, null);
+            this(condition, text, priority, null, null, List.of());
         }
 
         ConditionalText(DialogueCondition condition, DialogueText text, int priority, SoundEvent sound) {
-            this(condition, text, priority, sound, null);
+            this(condition, text, priority, sound, null, List.of());
         }
 
         ConditionalText(DialogueCondition condition, DialogueText text, int priority, SoundEvent sound, String sayId) {
+            this(condition, text, priority, sound, sayId, List.of());
+        }
+
+        ConditionalText(DialogueCondition condition, DialogueText text, int priority, SoundEvent sound, String sayId, List<MarkSpec> relatedMarks) {
             this.condition = condition;
             this.text = text;
             this.priority = priority;
             this.soundEvent = sound;
             this.sayId = sayId;
+            this.relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
         }
     }
 
@@ -700,6 +767,7 @@ public class DialogueTreeBuilder {
         private int priority = 0;
         private String restoreNodeId = null;
         private SoundEvent selectSound = null;
+        private final List<MarkSpec> relatedMarks = new ArrayList<>();
 
         ChoiceBuilder(String choiceId, String text) {
             if (choiceId == null || choiceId.isEmpty()) {
@@ -916,6 +984,22 @@ public class DialogueTreeBuilder {
             return this;
         }
 
+        public ChoiceBuilder markRelatedObject(MarkableObject object) {
+            return markRelatedObject(object, MarkActivations.always());
+        }
+
+        public ChoiceBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
+            String id = this.choiceId + "::choice_mark_" + relatedMarks.size();
+            this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+                    org.arcadia.arc_quest.questmarker.api.QuestMarkerType.NPC_INTERACT, 0, 128, 20, true, false, java.util.Map.of()));
+            return this;
+        }
+
+        public ChoiceBuilder markRelatedObject(MarkSpec spec) {
+            this.relatedMarks.add(spec);
+            return this;
+        }
+
         /**
          * 添加自定义 Lambda 条件。
          * <p>
@@ -1078,7 +1162,8 @@ public class DialogueTreeBuilder {
                     resetTimeTicks,
                     priority,
                     restoreNodeId,
-                    selectSound
+                    selectSound,
+                    List.copyOf(relatedMarks)
             );
         }
     }

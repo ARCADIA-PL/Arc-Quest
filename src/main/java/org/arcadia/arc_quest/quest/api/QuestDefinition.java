@@ -4,6 +4,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -29,6 +30,7 @@ public final class QuestDefinition {
     private final List<IReward> completionRewards;
     private final List<String> flagsToSetOnAccept;
     private final List<String> flagsToSetOnComplete;
+    private final List<MarkSpec> relatedMarks;
     @Nullable
     private final String chapterShopId;
     private final ChapterShopType chapterShopType;
@@ -47,6 +49,10 @@ public final class QuestDefinition {
     @Nullable
     private final String completionTargetPhaseId;
 
+    @Nullable
+    private final QuestTimeLimitType timeLimitType;
+    private final long timeLimitValue;
+
     public QuestDefinition(ResourceLocation id,
                            QuestCategory category,
                            QuestText displayName,
@@ -60,10 +66,36 @@ public final class QuestDefinition {
                            List<IReward> completionRewards,
                            List<String> flagsToSetOnAccept,
                            List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
                            QuestVisualConfig visualConfig) {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
-                flagsToSetOnAccept, flagsToSetOnComplete, visualConfig, null, ChapterShopType.TRADE, false);
+                flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig, null, ChapterShopType.TRADE, false);
+    }
+
+    public QuestDefinition(ResourceLocation id,
+                           QuestCategory category,
+                           QuestText displayName,
+                           QuestText description,
+                           @Nullable ResourceLocation iconTexture,
+                           int sortOrder,
+                           boolean repeatable,
+                           List<ICondition> unlockConditions,
+                           LinkedHashMap<String, PhaseDefinition> phases,
+                           String initialPhaseId,
+                           List<IReward> completionRewards,
+                           List<String> flagsToSetOnAccept,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String chapterShopId,
+                           ChapterShopType chapterShopType,
+                           boolean chapterShopPersistent) {
+        this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
+                unlockConditions, phases, initialPhaseId, completionRewards,
+                flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig,
+                chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null,
+                null, 0L);
     }
 
     public QuestDefinition(ResourceLocation id,
@@ -85,8 +117,9 @@ public final class QuestDefinition {
                            boolean chapterShopPersistent) {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
-                flagsToSetOnAccept, flagsToSetOnComplete, visualConfig,
-                chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null);
+                flagsToSetOnAccept, flagsToSetOnComplete, List.of(), visualConfig,
+                chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null,
+                null, 0L);
     }
 
     public QuestDefinition(ResourceLocation id,
@@ -102,6 +135,7 @@ public final class QuestDefinition {
                            List<IReward> completionRewards,
                            List<String> flagsToSetOnAccept,
                            List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
                            QuestVisualConfig visualConfig,
                            @Nullable String chapterShopId,
                            ChapterShopType chapterShopType,
@@ -111,7 +145,9 @@ public final class QuestDefinition {
                            @Nullable SoundEvent chapterCompleteSound,
                            QuestCompletionPolicy completionPolicy,
                            int completionRequiredCount,
-                           @Nullable String completionTargetPhaseId) {
+                           @Nullable String completionTargetPhaseId,
+                           @Nullable QuestTimeLimitType timeLimitType,
+                           long timeLimitValue) {
         Objects.requireNonNull(id, "Quest id must not be null");
         Objects.requireNonNull(category);
         Objects.requireNonNull(displayName);
@@ -137,6 +173,7 @@ public final class QuestDefinition {
         this.completionRewards = Collections.unmodifiableList(completionRewards);
         this.flagsToSetOnAccept = Collections.unmodifiableList(flagsToSetOnAccept);
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
+        this.relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
         this.chapterShopId = chapterShopId;
         this.chapterShopType = chapterShopType != null ? chapterShopType : ChapterShopType.TRADE;
         this.chapterShopPersistent = chapterShopPersistent;
@@ -146,6 +183,17 @@ public final class QuestDefinition {
         this.completionPolicy = completionPolicy != null ? completionPolicy : QuestCompletionPolicy.ALL;
         this.completionRequiredCount = Math.max(0, completionRequiredCount);
         this.completionTargetPhaseId = completionTargetPhaseId;
+        this.timeLimitType = timeLimitType;
+        this.timeLimitValue = Math.max(0L, timeLimitValue);
+        if (this.timeLimitType == null) {
+            if (this.timeLimitValue != 0L) {
+                throw new IllegalArgumentException(
+                        "Quest '" + id + "': timeLimitValue requires timeLimitType");
+            }
+        } else if (this.timeLimitValue <= 0L) {
+            throw new IllegalArgumentException(
+                    "Quest '" + id + "': timeLimitValue must be > 0 when timeLimitType is set");
+        }
         int phaseCount = this.phases.size();
         switch (this.completionPolicy) {
             case ALL, ANY -> {
@@ -261,6 +309,10 @@ public final class QuestDefinition {
         return this.flagsToSetOnComplete;
     }
 
+    public List<MarkSpec> getRelatedMarks() {
+        return relatedMarks;
+    }
+
     @Nullable
     public String getChapterShopId() {
         return this.chapterShopId;
@@ -314,6 +366,19 @@ public final class QuestDefinition {
 
     public int getCompletionRequiredCount() {
         return completionRequiredCount;
+    }
+
+    @Nullable
+    public QuestTimeLimitType getTimeLimitType() {
+        return timeLimitType;
+    }
+
+    public long getTimeLimitValue() {
+        return timeLimitValue;
+    }
+
+    public boolean hasTimeLimit() {
+        return timeLimitType != null && timeLimitValue > 0L;
     }
 
     @Nullable

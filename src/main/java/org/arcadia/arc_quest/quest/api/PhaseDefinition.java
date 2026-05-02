@@ -4,6 +4,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -26,6 +27,7 @@ public final class PhaseDefinition {
     private final List<IReward> phaseRewards;
     private final List<String> flagsToSetOnEnter;
     private final List<String> flagsToSetOnComplete;
+    private final List<MarkSpec> relatedMarks;
     private final QuestVisualConfig visualConfig;
     @Nullable
     private final ICondition enterCondition;
@@ -128,6 +130,28 @@ public final class PhaseDefinition {
                            @Nullable SoundEvent phaseCompleteSound,
                            @Nullable ResourceLocation intelSceneId,
                            @Nullable ICondition enterCondition, boolean autoEnterByCondition) {
+        this(phaseId, displayName, description, story, objectives, transitions, choices, phaseRewards,
+                flagsToSetOnEnter, flagsToSetOnComplete, List.of(), visualConfig,
+                tradeShopId, phaseStartSound, phaseCompleteSound, intelSceneId, enterCondition, autoEnterByCondition);
+    }
+
+    public PhaseDefinition(String phaseId,
+                           QuestText displayName,
+                           QuestText description,
+                           QuestText story,
+                           List<ObjectiveEntry> objectives,
+                           List<PhaseTransition> transitions,
+                           List<ChoiceOption> choices,
+                           List<IReward> phaseRewards,
+                           List<String> flagsToSetOnEnter,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String tradeShopId,
+                           @Nullable SoundEvent phaseStartSound,
+                           @Nullable SoundEvent phaseCompleteSound,
+                           @Nullable ResourceLocation intelSceneId,
+                           @Nullable ICondition enterCondition, boolean autoEnterByCondition) {
         Objects.requireNonNull(phaseId);
         Objects.requireNonNull(displayName);
         if (objectives.isEmpty()) {
@@ -143,6 +167,7 @@ public final class PhaseDefinition {
         this.phaseRewards = Collections.unmodifiableList(phaseRewards);
         this.flagsToSetOnEnter = Collections.unmodifiableList(flagsToSetOnEnter);
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
+        this.relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
         this.visualConfig = visualConfig != null ? visualConfig : QuestVisualConfig.EMPTY;
         this.tradeShopId = tradeShopId;
         this.phaseStartSound = phaseStartSound;
@@ -235,6 +260,10 @@ public final class PhaseDefinition {
 
     public List<String> getFlagsToSetOnComplete() {
         return this.flagsToSetOnComplete;
+    }
+
+    public List<MarkSpec> getRelatedMarks() {
+        return relatedMarks;
     }
 
     public QuestVisualConfig getVisualConfig() {

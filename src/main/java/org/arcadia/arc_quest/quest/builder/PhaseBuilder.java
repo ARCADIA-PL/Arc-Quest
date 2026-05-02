@@ -6,6 +6,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderHelper;
 import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.questmarker.api.MarkActivation;
+import org.arcadia.arc_quest.questmarker.api.MarkActivations;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -32,6 +36,7 @@ public final class PhaseBuilder {
     private final List<IReward> phaseRewards = new ArrayList<>();
     private final List<String> flagsOnEnter = new ArrayList<>();
     private final List<String> flagsOnComplete = new ArrayList<>();
+    private final List<MarkSpec> relatedMarks = new ArrayList<>();
     private QuestText displayName;
     private QuestText description = QuestText.component(Component.empty());
     private QuestText story = QuestText.component(Component.empty());
@@ -193,6 +198,22 @@ public final class PhaseBuilder {
     public PhaseBuilder enterWhen(ICondition condition, boolean autoEnterByCondition) {
         this.enterCondition = condition;
         this.autoEnterByCondition = autoEnterByCondition;
+        return this;
+    }
+
+    public PhaseBuilder markRelatedObject(MarkableObject object) {
+        return markRelatedObject(object, MarkActivations.always());
+    }
+
+    public PhaseBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
+        String id = this.phaseId + "::phase_mark_" + relatedMarks.size();
+        this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+                org.arcadia.arc_quest.questmarker.api.QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false, java.util.Map.of()));
+        return this;
+    }
+
+    public PhaseBuilder markRelatedObject(MarkSpec spec) {
+        this.relatedMarks.add(spec);
         return this;
     }
 
@@ -367,6 +388,7 @@ public final class PhaseBuilder {
                 new ArrayList<>(this.phaseRewards),
                 new ArrayList<>(this.flagsOnEnter),
                 new ArrayList<>(this.flagsOnComplete),
+                new ArrayList<>(this.relatedMarks),
                 this.visualConfigBuilder.build(),
                 this.tradeShopId,
                 this.phaseStartSound,

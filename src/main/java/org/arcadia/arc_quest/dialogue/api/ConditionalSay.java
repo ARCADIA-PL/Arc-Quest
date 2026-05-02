@@ -2,6 +2,8 @@ package org.arcadia.arc_quest.dialogue.api;
 
 import net.minecraft.sounds.SoundEvent;
 
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -14,7 +16,8 @@ import javax.annotation.Nullable;
 public record ConditionalSay(
         @Nonnull String sayId,
         DialogueText text,
-        @Nullable SoundEvent soundEvent
+        @Nullable SoundEvent soundEvent,
+        java.util.List<MarkSpec> relatedMarks
 ) {
 
     public static ConditionalSay of(String sayId, DialogueText text) {
@@ -24,7 +27,7 @@ public record ConditionalSay(
         if (text == null) {
             throw new IllegalArgumentException("SayIf text cannot be null");
         }
-        return new ConditionalSay(sayId, text, null);
+        return new ConditionalSay(sayId, text, null, java.util.List.of());
     }
 
     public static ConditionalSay of(String sayId, DialogueText text, SoundEvent sound) {
@@ -34,7 +37,7 @@ public record ConditionalSay(
         if (text == null) {
             throw new IllegalArgumentException("SayIf text cannot be null");
         }
-        return new ConditionalSay(sayId, text, sound);
+        return new ConditionalSay(sayId, text, sound, java.util.List.of());
     }
 
     public static ConditionalSay of(String sayId, String text) {

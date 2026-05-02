@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.quest.api;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -19,6 +20,7 @@ public final class ObjectiveEntry {
     private final boolean hidden;
     private final boolean optional;
     private final Map<String, String> extraData;
+    private final java.util.List<MarkSpec> relatedMarks;
     @Nullable
     private final ToIntFunction<ServerPlayer> countModifier;
 
@@ -29,7 +31,7 @@ public final class ObjectiveEntry {
                           boolean hidden,
                           boolean optional,
                           Map<String, String> extraData) {
-        this(type, targetId, requiredCount, QuestText.component(displayText), hidden, optional, extraData, null);
+        this(type, targetId, requiredCount, QuestText.component(displayText), hidden, optional, extraData, java.util.List.of(), null);
     }
 
     public ObjectiveEntry(ObjectiveType type,
@@ -39,6 +41,7 @@ public final class ObjectiveEntry {
                           boolean hidden,
                           boolean optional,
                           Map<String, String> extraData,
+                          java.util.List<MarkSpec> relatedMarks,
                           @Nullable ToIntFunction<ServerPlayer> countModifier) {
         Objects.requireNonNull(type, "ObjectiveType must not be null");
         Objects.requireNonNull(targetId, "targetId must not be null");
@@ -53,6 +56,7 @@ public final class ObjectiveEntry {
         this.hidden = hidden;
         this.optional = optional;
         this.extraData = Collections.unmodifiableMap(extraData);
+        this.relatedMarks = relatedMarks == null ? java.util.List.of() : java.util.List.copyOf(relatedMarks);
         this.countModifier = countModifier;
     }
 
@@ -95,6 +99,10 @@ public final class ObjectiveEntry {
 
     public Map<String, String> getExtraData() {
         return this.extraData;
+    }
+
+    public java.util.List<MarkSpec> getRelatedMarks() {
+        return relatedMarks;
     }
 
     @Nullable

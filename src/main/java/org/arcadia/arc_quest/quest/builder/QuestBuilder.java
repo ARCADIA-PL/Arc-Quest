@@ -6,6 +6,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.questmarker.api.MarkActivation;
+import org.arcadia.arc_quest.questmarker.api.MarkActivations;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.Nullable;
 
@@ -34,6 +39,7 @@ public final class QuestBuilder {
     private final List<IReward> completionRewards = new ArrayList<>();
     private final List<String> flagsOnAccept = new ArrayList<>();
     private final List<String> flagsOnComplete = new ArrayList<>();
+    private final List<MarkSpec> relatedMarks = new ArrayList<>();
     private QuestCategory category = QuestCategory.ADVENTURE;
     private QuestText displayName;
     private QuestText description = QuestText.component(Component.empty());
@@ -52,6 +58,10 @@ public final class QuestBuilder {
     private int completionRequiredCount = 0;
     @Nullable
     private String completionTargetPhaseId = null;
+
+    @Nullable
+    private QuestTimeLimitType timeLimitType = null;
+    private long timeLimitValue = 0L;
 
     // 音效配置
     @Nullable
@@ -158,6 +168,46 @@ public final class QuestBuilder {
 
     public QuestBuilder completionTargetPhase(String phaseId) {
         this.completionTargetPhaseId = phaseId;
+        return this;
+    }
+
+    public QuestBuilder questTimeLimitSeconds(long seconds) {
+        if (seconds <= 0L) {
+            throw new IllegalArgumentException("questTimeLimitSeconds requires seconds > 0");
+        }
+        this.timeLimitType = QuestTimeLimitType.REAL_SECONDS;
+        this.timeLimitValue = seconds;
+        return this;
+    }
+
+    public QuestBuilder questTimeLimitDayTicks(long dayTicks) {
+        if (dayTicks <= 0L) {
+            throw new IllegalArgumentException("questTimeLimitDayTicks requires dayTicks > 0");
+        }
+        this.timeLimitType = QuestTimeLimitType.GAME_DAY_TIME;
+        this.timeLimitValue = dayTicks;
+        return this;
+    }
+
+    public QuestBuilder clearQuestTimeLimit() {
+        this.timeLimitType = null;
+        this.timeLimitValue = 0L;
+        return this;
+    }
+
+    public QuestBuilder markRelatedObject(MarkableObject object) {
+        return markRelatedObject(object, MarkActivations.always());
+    }
+
+    public QuestBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
+        String id = this.id + "::quest_mark_" + relatedMarks.size();
+        this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+                QuestMarkerType.QUEST_MAIN, 0, 256, 20, true, false, java.util.Map.of()));
+        return this;
+    }
+
+    public QuestBuilder markRelatedObject(MarkSpec spec) {
+        this.relatedMarks.add(spec);
         return this;
     }
 
@@ -524,6 +574,7 @@ public final class QuestBuilder {
                 new ArrayList<>(this.completionRewards),
                 new ArrayList<>(this.flagsOnAccept),
                 new ArrayList<>(this.flagsOnComplete),
+                new ArrayList<>(this.relatedMarks),
                 this.visualConfigBuilder.build(),
                 this.chapterShopId,
                 this.chapterShopType,
@@ -533,7 +584,9 @@ public final class QuestBuilder {
                 this.chapterCompleteSound,
                 this.completionPolicy,
                 this.completionRequiredCount,
-                this.completionTargetPhaseId
+                this.completionTargetPhaseId,
+                this.timeLimitType,
+                this.timeLimitValue
         );
     }
 

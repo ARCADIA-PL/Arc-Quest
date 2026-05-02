@@ -9,7 +9,12 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestText;
+import org.arcadia.arc_quest.questmarker.api.MarkActivation;
+import org.arcadia.arc_quest.questmarker.api.MarkActivations;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -24,6 +29,7 @@ public final class ObjectiveBuilder {
     private QuestText displayText = QuestText.literal("???");
     private boolean hidden = false;
     private boolean optional = false;
+    private final java.util.List<MarkSpec> relatedMarks = new ArrayList<>();
     private ToIntFunction<ServerPlayer> countModifier;
 
     private ObjectiveBuilder(ObjectiveType type) {
@@ -180,9 +186,25 @@ public final class ObjectiveBuilder {
         return this;
     }
 
+    public ObjectiveBuilder markRelatedObject(MarkableObject object) {
+        return markRelatedObject(object, MarkActivations.always());
+    }
+
+    public ObjectiveBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
+        String id = this.type.name().toLowerCase() + "::obj_mark_" + relatedMarks.size();
+        this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+                org.arcadia.arc_quest.questmarker.api.QuestMarkerType.QUEST_OBJECTIVE, 0, 128, 20, true, false, java.util.Map.of()));
+        return this;
+    }
+
+    public ObjectiveBuilder markRelatedObject(MarkSpec spec) {
+        this.relatedMarks.add(spec);
+        return this;
+    }
+
     public ObjectiveEntry build() {
         Objects.requireNonNull(this.targetId, "targetId not set for ObjectiveBuilder");
         return new ObjectiveEntry(this.type, this.targetId, this.requiredCount, this.displayText,
-                this.hidden, this.optional, new LinkedHashMap<>(this.extraData), this.countModifier);
+                this.hidden, this.optional, new LinkedHashMap<>(this.extraData), new ArrayList<>(this.relatedMarks), this.countModifier);
     }
 }
