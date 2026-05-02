@@ -706,9 +706,10 @@ public class GachaPreviewPanel {
     }
 
     private void renderGlassButton(GuiGraphics g, Layout l, int mx, int my, float dt, float alpha, boolean waiting, boolean isWiping, boolean isClosing) {
-        boolean onCooldown = snapshotCooldownText != null && !snapshotCooldownText.isEmpty();
+        String cooldownText = ClientGachaCache.INSTANCE.getCooldownText(parent.getShopId());
+        boolean onCooldown = cooldownText != null && !cooldownText.isEmpty();
+        
         int remainingDraws = snapshotRemainingDraws;
-        String cooldownText = snapshotCooldownText;
         String lastFailReason = snapshotFailReason;
         boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
 

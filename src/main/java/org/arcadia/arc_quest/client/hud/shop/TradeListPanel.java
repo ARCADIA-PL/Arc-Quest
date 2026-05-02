@@ -17,6 +17,10 @@ public class TradeListPanel {
     private final Font font;
     private double scrollOffset = 0, targetScroll = 0;
     private float[] entryHoverAnims;
+    
+    // 性能优化：条目状态缓存（避免每帧重复计算）
+    private final java.util.Map<String, EntryRenderState> stateCache = new java.util.HashMap<>();
+    private static final long CACHE_VALID_MS = 100; // 100ms 缓存有效期
 
     public TradeListPanel(TradeScreen screen, Font font) {
         this.screen = screen;
@@ -28,6 +32,17 @@ public class TradeListPanel {
         targetScroll = 0;
         scrollOffset = 0;
         entryHoverAnims = new float[screen.getFilteredEntries().size()];
+        stateCache.clear(); // 清除状态缓存
+    }
+    
+    // 条目渲染状态缓存
+    private static class EntryRenderState {
+        int globalIndex;
+        boolean onCd;
+        boolean maxed;
+        boolean locked;
+        boolean canBuy;
+        long lastUpdateTime;
     }
 
     public void setHoverAnim(int index, float val) {
@@ -55,20 +70,41 @@ public class TradeListPanel {
         float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
         List<TradeEntry> entries = screen.getFilteredEntries();
+        
+        long now = System.currentTimeMillis();
 
         for (int i = 0; i < entries.size(); i++) {
             TradeEntry entry = entries.get(i);
-            int gi = cache.getGlobalIndex(screen.getShopId(), entry.getEntryId());
-            if (gi == -1) continue;
             int drawY = ry + (int) (i * (CARD_HEIGHT + 8) - scrollOffset) + 8;
+            
+            // 先裁剪，再计算（避免计算不可见条目）
             if (drawY + CARD_HEIGHT < ry || drawY > ry + rh) continue;
+            
+            // 使用缓存状态（避免每帧重复计算）
+            EntryRenderState state = stateCache.get(entry.getEntryId());
+            if (state == null || now - state.lastUpdateTime > CACHE_VALID_MS) {
+                // 缓存失效，重新计算
+                state = new EntryRenderState();
+                state.globalIndex = cache.getGlobalIndex(screen.getShopId(), entry.getEntryId());
+                if (state.globalIndex != -1) {
+                    state.onCd = cache.isEntryCoolingDown(screen.getShopId(), state.globalIndex, entry);
+                    state.maxed = cache.isPurchaseLimitReached(screen.getShopId(), state.globalIndex, entry);
+                    state.locked = !state.onCd && !state.maxed && cache.isConditionBlocked(screen.getShopId(), state.globalIndex, entry);
+                    state.canBuy = !state.onCd && !state.maxed && !state.locked;
+                }
+                state.lastUpdateTime = now;
+                stateCache.put(entry.getEntryId(), state);
+            }
+            
+            int gi = state.globalIndex;
+            if (gi == -1) continue;
+            
+            boolean onCd = state.onCd;
+            boolean maxed = state.maxed;
+            boolean locked = state.locked;
+            boolean canBuy = state.canBuy;
 
             boolean hov = !isClosing && dt > 0 && mx >= rx && mx < rx + rw && my >= drawY && my < drawY + CARD_HEIGHT && my >= ry && my <= ry + rh;
-            boolean onCd = cache.isEntryCoolingDown(screen.getShopId(), gi, entry);
-            boolean maxed = cache.isPurchaseLimitReached(screen.getShopId(), gi, entry);
-            boolean locked = !onCd && !maxed && cache.isConditionBlocked(screen.getShopId(), gi, entry);
-            boolean canBuy = !onCd && !maxed && !locked;
-
             entryHoverAnims[i] = HudAnimUtil.step(entryHoverAnims[i], hov && canBuy ? 1f : 0f, 6f, dt);
             float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
             int bgA = (int) ((0x22 + 0x33 * hEase) * alpha);

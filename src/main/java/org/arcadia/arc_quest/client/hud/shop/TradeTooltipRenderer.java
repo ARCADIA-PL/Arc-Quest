@@ -36,11 +36,16 @@ public class TradeTooltipRenderer {
     private float feedbackScale = 1.0f;
     private float feedbackShake = 0f;
 
-    // --- 分页系统状态 ---
+    // 分页系统状态
     private int currentPage = 0; // 0: 交易数据 (Trade Data), 1: 物品数据 (Item Data)
     private boolean wasAKeyDown = false;
     private boolean wasDKeyDown = false;
     private float pageFadeAnim = 1.0f; // 切换页面时的淡入动画
+    
+    // 性能优化：Tooltip 数据缓存（避免每帧重复计算）
+    private TooltipData cachedData = null;
+    private TradeEntry cachedEntry = null;
+    private int cachedGi = -1;
 
     public TradeTooltipRenderer(AbstractTradeScreen screen, Font font) {
         this.screen = screen;

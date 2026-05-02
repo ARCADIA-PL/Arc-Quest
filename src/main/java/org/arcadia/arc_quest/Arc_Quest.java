@@ -38,7 +38,7 @@ public class Arc_Quest {
     public static final String MOD_ID = "arc_quest";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // TODO: 对话历史面板
+    // TODO:
     // TODO: 传送罗盘模块 可用于传送任务相关地点
 
     public Arc_Quest() {
