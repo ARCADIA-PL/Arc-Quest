@@ -147,13 +147,17 @@ public class JournalDetailPanel {
             titleIconOffset = 22;
         }
 
+        String titleText = def.getDisplayName().getString();
+
+        // 渲染主标题
         g.pose().pushPose();
         g.pose().translate(titleIconOffset, localY, 0);
         g.pose().scale(1.2f, 1.2f, 1f);
-        g.drawString(screen.getFont(), def.getDisplayName().getString(), 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
+        g.drawString(screen.getFont(), titleText, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
 
-        int titleW = (int) (screen.getFont().width(def.getDisplayName().getString()) * 1.2f);
+        // 计算标题和历史按钮的位置 (先排版历史按钮)
+        int titleW = (int) (screen.getFont().width(titleText) * 1.2f);
         int hBtnX = titleIconOffset + titleW + 10;
         int hBtnY = localY + 5;
         int hBtnR = 3;
@@ -189,6 +193,49 @@ public class JournalDetailPanel {
             ));
         }
 
+        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
+
+        // ==========================================================
+        // 极简机能风排版：绝对靠右倒计时，丢弃多余前缀
+        // ==========================================================
+        long remainSec = getQuestRemainSeconds(def, runtime);
+        if (remainSec >= 0) {
+            String timeStr = formatAsClock(remainSec);
+            float timeScale = 1.0f; // 大方干脆的等比例字体
+            int timerRenderW = (int) (screen.getFont().width(timeStr) * timeScale);
+
+            // 危机感红脉冲
+            float pulse = 1.0f;
+            int activeTimerColor = activeTheme;
+            if (remainSec <= 60) {
+                pulse = 0.6f + 0.4f * (float) Math.sin(Util.getMillis() / (remainSec <= 10 ? 80.0 : 200.0));
+                if (remainSec <= 10) {
+                    activeTimerColor = 0xFF4444;
+                }
+            }
+
+            int timeColor = HudAnimUtil.withAlpha(activeTimerColor, (int)(safeA * pulse));
+
+            // 精准靠右锚定：刚好对齐下方的分割线右边缘 (scrollAreaW - 24)
+            int timeX = (scrollAreaW - 24) - timerRenderW;
+
+            // 保护机制：如果标题过长，不要让倒计时和按钮重叠，最少距离按钮 16 像素
+            int minTimerX = hBtnX + hBtnR + 16;
+            if (timeX < minTimerX) {
+                timeX = minTimerX;
+            }
+
+            // Y轴基线对齐，因为标题是 1.2 比例，这里是 1.0 比例，略微下沉 2px 对齐底部
+            int timeY = localY + 2;
+
+            g.pose().pushPose();
+            g.pose().translate(timeX, timeY, 0);
+            g.pose().scale(timeScale, timeScale, 1f);
+            g.drawString(screen.getFont(), timeStr, 0, 0, timeColor, true);
+            g.pose().popPose();
+        }
+        // ==========================================================
+
         localY += 18;
 
         if (!def.getDescription().getString().isEmpty()) {
@@ -207,7 +254,6 @@ public class JournalDetailPanel {
         g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
         localY += 10;
 
-        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
         String selectedPhaseIdForRewards = null;
 
         if (entry.state() == QuestState.ACTIVE && runtime != null) {
@@ -347,5 +393,42 @@ public class JournalDetailPanel {
         if (maxScroll <= 0) return;
         int thumbH = Math.max(16, (int) (((float) viewH / detailContentHeight) * viewH));
         detailTargetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragDetailYOffset) / (viewH - thumbH))) * maxScroll;
+    }
+
+    private long getQuestRemainSeconds(QuestDefinition def, QuestRuntimeData runtime) {
+        if (def == null || runtime == null || runtime.getState() != QuestState.ACTIVE) return -1L;
+        if (!def.hasTimeLimit()) return -1L;
+
+        QuestTimeLimitType type = def.getTimeLimitType();
+        long limit = def.getTimeLimitValue();
+        if (type == null || limit <= 0L) return -1L;
+
+        if (type == QuestTimeLimitType.REAL_SECONDS) {
+            long accepted = runtime.getAcceptedAtRealMs();
+            if (accepted <= 0L) return -1L;
+            long elapsedSec = Math.max(0L, (System.currentTimeMillis() - accepted) / 1000L);
+            return Math.max(0L, limit - elapsedSec);
+        } else if (type == QuestTimeLimitType.GAME_DAY_TIME) {
+            long acceptedDay = runtime.getAcceptedAtDayTime() % 24000L;
+            long nowDay = (screen.getMinecraft().level != null)
+                    ? (screen.getMinecraft().level.getDayTime() % 24000L)
+                    : acceptedDay;
+            long elapsedTicks = (nowDay - acceptedDay + 24000L) % 24000L;
+            long remainTicks = Math.max(0L, limit - elapsedTicks);
+            return remainTicks / 20L;
+        }
+        return -1L;
+    }
+
+    private String formatAsClock(long totalSeconds) {
+        long s = Math.max(0L, totalSeconds);
+        long h = s / 3600L;
+        long m = (s % 3600L) / 60L;
+        long sec = s % 60L;
+
+        if (h > 0L) {
+            return String.format("%02d:%02d:%02d", h, m, sec);
+        }
+        return String.format("%02d:%02d", m, sec);
     }
 }
