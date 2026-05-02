@@ -12,14 +12,10 @@ import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache.TranscriptEntry;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 
 public final class DialogueHistoryPanel {
 
-    // 档案尺寸放大，提供更宽敞舒适的阅读空间
     private static final int PANEL_W = 420;
     private static final int PANEL_H = 180;
 
@@ -41,7 +37,12 @@ public final class DialogueHistoryPanel {
     private static float maxScroll = 0f;
     private static int lastEntryCount = 0;
 
-    // 主题色: 高亮灰白 (简约现代全息感)
+    // --- 全新优化的双模拖拽状态 ---
+    private static boolean isDraggingScrollbar = false;
+    private static boolean isDraggingContent = false;
+    private static float dragStartMouseY = 0f;
+    private static float dragStartScrollOffset = 0f;
+
     private static final int THEME_COLOR = 0xE8E8E8;
 
     private static List<TranscriptEntry> compactedTranscriptCache = List.of();
@@ -51,11 +52,8 @@ public final class DialogueHistoryPanel {
     private DialogueHistoryPanel() {}
 
     public static void toggle() {
-        if (active && !closing) {
-            close();
-        } else {
-            open();
-        }
+        if (active && !closing) close();
+        else open();
     }
 
     public static void open() {
@@ -63,19 +61,23 @@ public final class DialogueHistoryPanel {
         closing = false;
         enterTimer = 0f;
         exitTimer = 0f;
+
+        isDraggingScrollbar = false;
+        isDraggingContent = false;
+
         lastRenderMs = System.currentTimeMillis();
         forceScrollToBottom();
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.0f, 1.2f));
     }
 
-    public static boolean isActive() {
-        return active;
-    }
+    public static boolean isActive() { return active; }
 
     public static void close() {
         if (!active || closing) return;
         closing = true;
         exitTimer = 0f;
+        isDraggingScrollbar = false;
+        isDraggingContent = false;
     }
 
     public static boolean keyPressed(int keyCode) {
@@ -89,20 +91,101 @@ public final class DialogueHistoryPanel {
 
     public static boolean mouseScrolled(double mx, double my, double scrollDelta) {
         if (!active || closing) return false;
-        targetScrollOffset -= (float) (scrollDelta * 40f);
+        targetScrollOffset -= (float) (scrollDelta * 80f);
         targetScrollOffset = Math.max(0, Math.min(targetScrollOffset, maxScroll));
         return true;
     }
 
     public static boolean mouseClicked(double mx, double my, int button) {
         if (!active || closing || button != 0) return false;
-        float scaledW = PANEL_W * currentScale;
-        float scaledH = PANEL_H * currentScale;
-        if (mx < currentDrawX || mx > currentDrawX + scaledW || my < currentDrawY || my > currentDrawY + scaledH) {
+
+        float localX = (float) (mx - currentDrawX) / currentScale;
+        float localY = (float) (my - currentDrawY) / currentScale;
+
+        // 点击外部关闭
+        if (localX < 0 || localX > PANEL_W || localY < 0 || localY > PANEL_H) {
             close();
             return true;
         }
+
+        // 处理内部拖拽事件
+        if (maxScroll > 0) {
+            int topBarH = 22;
+            int contentYStart = topBarH + 12;
+            int viewHeight = PANEL_H - contentYStart - 12;
+
+            // 模式 A：点击到了右侧滚动条区域
+            if (localX >= PANEL_W - 15 && localY >= contentYStart && localY <= contentYStart + viewHeight) {
+                isDraggingScrollbar = true;
+                updateScrollbarDrag(localY);
+                return true;
+            }
+            // 模式 B：点击到了文本内容区域
+            else if (localY >= contentYStart && localY <= contentYStart + viewHeight) {
+                isDraggingContent = true;
+                dragStartMouseY = (float) my;
+                dragStartScrollOffset = targetScrollOffset;
+                return true;
+            }
+        }
         return true;
+    }
+
+    private static void updateScrollbarDrag(float localY) {
+        int topBarH = 22;
+        int contentYStart = topBarH + 12;
+        int viewHeight = PANEL_H - contentYStart - 12;
+
+        float visibleRatio = (float) viewHeight / (maxScroll + viewHeight);
+        int thumbH = Math.max(15, (int) (viewHeight * visibleRatio));
+
+        float thumbCenterY = localY - contentYStart;
+        float thumbTopY = thumbCenterY - thumbH / 2f;
+
+        float trackScrollableH = viewHeight - thumbH;
+        if (trackScrollableH <= 0) return;
+
+        float progress = thumbTopY / trackScrollableH;
+        progress = Math.max(0f, Math.min(1f, progress));
+
+        targetScrollOffset = progress * maxScroll;
+        scrollOffset = targetScrollOffset; // 拖拽时取消缓动，立刻跟手
+    }
+
+    // 【新增】精准稳定的拖拽逻辑
+    public static boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
+        if (!active || closing) return false;
+
+        if (isDraggingScrollbar) {
+            float localY = (float) (my - currentDrawY) / currentScale;
+            updateScrollbarDrag(localY);
+            return true;
+        }
+
+        if (isDraggingContent) {
+            // 使用起点绝对坐标计算，防止 delta 帧率波动导致的卡死
+            float pixelDiffY = (float) (my - dragStartMouseY);
+            float logicalDiffY = pixelDiffY / currentScale;
+
+            float newScroll = dragStartScrollOffset - logicalDiffY;
+            targetScrollOffset = Math.max(0, Math.min(newScroll, maxScroll));
+            scrollOffset = targetScrollOffset; // 取消缓动，完全跟手
+            return true;
+        }
+
+        return false;
+    }
+
+    // 【新增】释放鼠标取消拖拽
+    public static boolean mouseReleased(double mx, double my, int button) {
+        if (!active || closing || button != 0) return false;
+
+        if (isDraggingScrollbar || isDraggingContent) {
+            isDraggingScrollbar = false;
+            isDraggingContent = false;
+            return true;
+        }
+        return false;
     }
 
     private static void forceScrollToBottom() {
@@ -200,7 +283,6 @@ public final class DialogueHistoryPanel {
 
         drawHorizontalCyberBase(g, 0, PW, PH - 2, THEME_COLOR, alphaF);
 
-        // 顶角高亮修饰 (极简)
         g.fill(0, 0, 15, 1, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
         g.fill(0, 0, 1, 15, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
         g.fill(PW - 15, 0, PW, 1, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
@@ -233,15 +315,21 @@ public final class DialogueHistoryPanel {
             block.isPlayer = isPlayer;
             block.speaker = speakerName;
             block.lines = HudRenderUtil.wrapText(entry.text(), safeMaxWidth - 15, font);
-            // 增加行距和段间距
             block.height = 14 + (block.lines.size() * (font.lineHeight + 6)) + 16;
             blocks.add(block);
             totalHeight += block.height;
         }
 
         maxScroll = Math.max(0, totalHeight - viewHeight);
-        targetScrollOffset = Math.max(0, Math.min(targetScrollOffset, maxScroll));
-        scrollOffset += (targetScrollOffset - scrollOffset) * Math.min(1f, dt * 15f);
+
+        // 安全限制机制：防止 forceScrollToBottom 导致坐标无限飞出宇宙造成卡死假象
+        if (targetScrollOffset > maxScroll) targetScrollOffset = maxScroll;
+        if (scrollOffset > maxScroll) scrollOffset = maxScroll;
+
+        // 仅在非拖拽状态下才触发平滑滚动补偿
+        if (!isDraggingScrollbar && !isDraggingContent) {
+            scrollOffset += (targetScrollOffset - scrollOffset) * Math.min(1f, dt * 15f);
+        }
 
         g.enableScissor(
                 (int) currentDrawX,
@@ -261,7 +349,6 @@ public final class DialogueHistoryPanel {
             }
 
             int leftX = 20;
-
             int nameColor = block.isPlayer ? THEME_COLOR : 0xAAAAAA;
             g.drawString(font, block.speaker, leftX, currentY, HudAnimUtil.withAlpha(nameColor, alpha), false);
 
@@ -293,28 +380,25 @@ public final class DialogueHistoryPanel {
             float scrollProgress = scrollOffset / maxScroll;
             int thumbY = scrollBarY + (int) (scrollProgress * (scrollBarH - thumbH));
 
-            g.fill(scrollBarX, thumbY, scrollBarX + 2, thumbY + thumbH, HudAnimUtil.withAlpha(0xBBCCDD, (int)(alpha * 0.6f)));
+            // 如果正在拖拽滚动条本身，使其高亮发光
+            int scrollColor = isDraggingScrollbar ? 0xFFFFFF : 0xBBCCDD;
+            int scrollAlpha = isDraggingScrollbar ? (int)(alpha * 0.9f) : (int)(alpha * 0.6f);
+
+            g.fill(scrollBarX, thumbY, scrollBarX + 2, thumbY + thumbH, HudAnimUtil.withAlpha(scrollColor, scrollAlpha));
         }
     }
 
     private static List<TranscriptEntry> compactTranscript(List<TranscriptEntry> source) {
         if (source == null || source.isEmpty()) return List.of();
-
         List<TranscriptEntry> compact = new ArrayList<>(source.size());
-
         EntryKey lastKey = null;
         for (TranscriptEntry e : source) {
             if (e == null) continue;
-
             EntryKey curKey = EntryKey.of(e);
-            if (lastKey != null && lastKey.equals(curKey)) {
-                continue;
-            }
-
+            if (lastKey != null && lastKey.equals(curKey)) continue;
             compact.add(e);
             lastKey = curKey;
         }
-
         return compact;
     }
 
@@ -343,11 +427,7 @@ public final class DialogueHistoryPanel {
     private static void ensureCompactedTranscriptUpToDate(List<TranscriptEntry> raw) {
         int currentSize = (raw == null) ? 0 : raw.size();
         long currentSig = rollingSignature(raw);
-
-        if (currentSize == compactedSourceSize && currentSig == compactedContentSignature) {
-            return;
-        }
-
+        if (currentSize == compactedSourceSize && currentSig == compactedContentSignature) return;
         compactedSourceSize = currentSize;
         compactedContentSignature = currentSig;
         compactedTranscriptCache = compactTranscript(raw);
@@ -355,155 +435,81 @@ public final class DialogueHistoryPanel {
 
     private static long rollingSignature(List<TranscriptEntry> raw) {
         if (raw == null || raw.isEmpty()) return 0L;
-
         long h = 1469598103934665603L;
         for (TranscriptEntry e : raw) {
             if (e == null) {
                 h = fnv1a(h, 0);
                 continue;
             }
-
             EntryKey k = EntryKey.of(e);
             h = fnv1a(h, k.hashCode());
         }
-
         h = fnv1a(h, raw.size());
         return h;
     }
 
     private static final class EntryKey {
-        private final String role;
-        private final String speaker;
-        private final String text;
-        private final String nodeId;
-        private final String sayId;
-        private final String choiceId;
-        private final int choiceIndex;
-        private final int hash;
+        private final String role, speaker, text, nodeId, sayId, choiceId;
+        private final int choiceIndex, hash;
 
         private EntryKey(String role, String speaker, String text,
                          String nodeId, String sayId, String choiceId, int choiceIndex) {
-            this.role = role;
-            this.speaker = speaker;
-            this.text = text;
-            this.nodeId = nodeId;
-            this.sayId = sayId;
-            this.choiceId = choiceId;
+            this.role = role; this.speaker = speaker; this.text = text;
+            this.nodeId = nodeId; this.sayId = sayId; this.choiceId = choiceId;
             this.choiceIndex = choiceIndex;
 
             int h = 17;
-            h = 31 * h + role.hashCode();
-            h = 31 * h + speaker.hashCode();
-            h = 31 * h + text.hashCode();
-            h = 31 * h + nodeId.hashCode();
-            h = 31 * h + sayId.hashCode();
-            h = 31 * h + choiceId.hashCode();
+            h = 31 * h + role.hashCode(); h = 31 * h + speaker.hashCode(); h = 31 * h + text.hashCode();
+            h = 31 * h + nodeId.hashCode(); h = 31 * h + sayId.hashCode(); h = 31 * h + choiceId.hashCode();
             h = 31 * h + choiceIndex;
             this.hash = h;
         }
 
         static EntryKey of(TranscriptEntry e) {
             return new EntryKey(
-                    normFast(e.role()),
-                    normFast(e.speaker()),
-                    normFast(e.text()),
-                    normFast(e.nodeId()),
-                    normFast(e.sayId()),
-                    normFast(e.choiceId()),
+                    normFast(e.role()), normFast(e.speaker()), normFast(e.text()),
+                    normFast(e.nodeId()), normFast(e.sayId()), normFast(e.choiceId()),
                     e.choiceIndex() == null ? Integer.MIN_VALUE : e.choiceIndex()
             );
         }
-
-        @Override
-        public int hashCode() {
-            return hash;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
+        @Override public int hashCode() { return hash; }
+        @Override public boolean equals(Object obj) {
             if (this == obj) return true;
             if (!(obj instanceof EntryKey other)) return false;
-            return choiceIndex == other.choiceIndex
-                    && role.equals(other.role)
-                    && speaker.equals(other.speaker)
-                    && text.equals(other.text)
-                    && nodeId.equals(other.nodeId)
-                    && sayId.equals(other.sayId)
-                    && choiceId.equals(other.choiceId);
+            return choiceIndex == other.choiceIndex && role.equals(other.role)
+                    && speaker.equals(other.speaker) && text.equals(other.text)
+                    && nodeId.equals(other.nodeId) && sayId.equals(other.sayId) && choiceId.equals(other.choiceId);
         }
     }
 
     private static String normFast(String s) {
         if (s == null || s.isEmpty()) return "";
-
         int n = s.length();
         StringBuilder out = new StringBuilder(n);
         boolean prevSpace = false;
-
         for (int i = 0; i < n; i++) {
             char c = s.charAt(i);
-
             if (Character.isWhitespace(c)) {
-                if (!prevSpace) {
-                    out.append(' ');
-                    prevSpace = true;
-                }
-            } else {
-                out.append(Character.toLowerCase(c));
-                prevSpace = false;
-            }
+                if (!prevSpace) { out.append(' '); prevSpace = true; }
+            } else { out.append(Character.toLowerCase(c)); prevSpace = false; }
         }
-
         int len = out.length();
         if (len == 0) return "";
-
-        if (out.charAt(0) == ' ') {
-            out.deleteCharAt(0);
-            len--;
-        }
-        if (len > 0 && out.charAt(len - 1) == ' ') {
-            out.deleteCharAt(len - 1);
-        }
-
+        if (out.charAt(0) == ' ') { out.deleteCharAt(0); len--; }
+        if (len > 0 && out.charAt(len - 1) == ' ') out.deleteCharAt(len - 1);
         return out.toString();
-    }
-
-    private static long tailSignature(List<TranscriptEntry> raw) {
-        if (raw == null || raw.isEmpty()) return 0L;
-
-        TranscriptEntry e = raw.get(raw.size() - 1);
-        if (e == null) return 1L;
-
-        long h = 1469598103934665603L;
-        h = fnv1a(h, normFast(e.role()));
-        h = fnv1a(h, normFast(e.speaker()));
-        h = fnv1a(h, normFast(e.text()));
-        h = fnv1a(h, normFast(e.nodeId()));
-        h = fnv1a(h, normFast(e.sayId()));
-        h = fnv1a(h, normFast(e.choiceId()));
-        h = fnv1a(h, e.choiceIndex() == null ? Integer.MIN_VALUE : e.choiceIndex());
-        return h;
     }
 
     private static long fnv1a(long hash, String s) {
         final long prime = 1099511628211L;
-        for (int i = 0, n = s.length(); i < n; i++) {
-            hash ^= s.charAt(i);
-            hash *= prime;
-        }
+        for (int i = 0, n = s.length(); i < n; i++) { hash ^= s.charAt(i); hash *= prime; }
         return hash;
     }
 
     private static long fnv1a(long hash, int v) {
         final long prime = 1099511628211L;
-        hash ^= (v) & 0xFF;
-        hash *= prime;
-        hash ^= (v >>> 8) & 0xFF;
-        hash *= prime;
-        hash ^= (v >>> 16) & 0xFF;
-        hash *= prime;
-        hash ^= (v >>> 24) & 0xFF;
-        hash *= prime;
+        hash ^= (v) & 0xFF; hash *= prime; hash ^= (v >>> 8) & 0xFF; hash *= prime;
+        hash ^= (v >>> 16) & 0xFF; hash *= prime; hash ^= (v >>> 24) & 0xFF; hash *= prime;
         return hash;
     }
 

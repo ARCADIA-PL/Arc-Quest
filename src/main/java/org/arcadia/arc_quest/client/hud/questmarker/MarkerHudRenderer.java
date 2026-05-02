@@ -44,7 +44,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private long lastTimeMs = System.currentTimeMillis();
 
     private MarkerHudRenderer() {
-    } // 私有构造函数
+    }
 
     public static void setDistanceThresholds(double closest, double near, double far) {
         closestDistanceThreshold = closest;
@@ -52,17 +52,9 @@ public class MarkerHudRenderer implements IGuiOverlay {
         farDistanceThreshold = Math.max(nearDistanceThreshold, far);
     }
 
-    public static double getClosestDistanceThreshold() {
-        return closestDistanceThreshold;
-    }
-
-    public static double getNearDistanceThreshold() {
-        return nearDistanceThreshold;
-    }
-
-    public static double getFarDistanceThreshold() {
-        return farDistanceThreshold;
-    }
+    public static double getClosestDistanceThreshold() { return closestDistanceThreshold; }
+    public static double getNearDistanceThreshold() { return nearDistanceThreshold; }
+    public static double getFarDistanceThreshold() { return farDistanceThreshold; }
 
     private static float[] insetFromEdge(float x, float y, float cx, float cy, float inset) {
         float dx = x - cx;
@@ -72,14 +64,8 @@ public class MarkerHudRenderer implements IGuiOverlay {
         return new float[]{x - (dx / len) * inset, y - (dy / len) * inset};
     }
 
-    private static float lerp(float from, float to, float t) {
-        return from + (to - from) * t;
-    }
-
-    private static double lerp(double from, double to, float t) {
-        return from + (to - from) * t;
-    }
-
+    private static float lerp(float from, float to, float t) { return from + (to - from) * t; }
+    private static double lerp(double from, double to, float t) { return from + (to - from) * t; }
     private static float lerpAngle(float from, float to, float t) {
         float diff = normalizeAngle(to - from);
         return from + diff * t;
@@ -109,11 +95,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private static Entity findEntityByUuid(ClientLevel level, String uuidString) {
         if (uuidString == null || uuidString.isEmpty()) return null;
         UUID uuid;
-        try {
-            uuid = UUID.fromString(uuidString);
-        } catch (Exception ignored) {
-            return null;
-        }
+        try { uuid = UUID.fromString(uuidString); } catch (Exception ignored) { return null; }
         for (Entity e : level.entitiesForRendering()) {
             if (uuid.equals(e.getUUID())) return e;
         }
@@ -130,30 +112,18 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
     private static boolean matchesBinding(QuestMarkerData marker, Entity entity) {
         if (entity == null || !entity.isAlive()) return false;
-
         boolean hasUuid = marker.hasEntityUuidBinding();
         boolean hasGuid = marker.hasEntityGuidBinding();
-
-        if (hasUuid && !marker.getFollowEntityUuid().equals(entity.getUUID().toString())) {
-            return false;
-        }
-
+        if (hasUuid && !marker.getFollowEntityUuid().equals(entity.getUUID().toString())) return false;
         if (hasGuid) {
             String entityGuid = getEntityMarkerGuid(entity);
             if (hasUuid) {
-                if (entityGuid != null && !entityGuid.isEmpty() && !marker.getFollowEntityGuid().equals(entityGuid)) {
-                    return false;
-                }
+                if (entityGuid != null && !entityGuid.isEmpty() && !marker.getFollowEntityGuid().equals(entityGuid)) return false;
             } else {
-                if (entityGuid == null || entityGuid.isEmpty()) {
-                    return false;
-                }
-                if (!marker.getFollowEntityGuid().equals(entityGuid)) {
-                    return false;
-                }
+                if (entityGuid == null || entityGuid.isEmpty()) return false;
+                if (!marker.getFollowEntityGuid().equals(entityGuid)) return false;
             }
         }
-
         return hasUuid || hasGuid;
     }
 
@@ -191,38 +161,27 @@ public class MarkerHudRenderer implements IGuiOverlay {
         for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all()) {
             if (!marker.isActive()) continue;
             if (!currentDim.equals(marker.getDimension())) continue;
-            if (marker.hasEntityBinding() && !marker.hasEntityGuidBinding() && !marker.hasEntityUuidBinding()) {
-                continue;
-            }
+            if (marker.hasEntityBinding() && !marker.hasEntityGuidBinding() && !marker.hasEntityUuidBinding()) continue;
+
             double targetX = marker.getWorldX();
             double targetY = marker.getWorldY();
             double targetZ = marker.getWorldZ();
+
             if (marker.hasEntityBinding()) {
                 Entity entity = null;
                 if (marker.getFollowEntityId() >= 0) {
                     Entity fast = mc.level.getEntity(marker.getFollowEntityId());
-                    if (matchesBinding(marker, fast)) {
-                        entity = fast;
-                    }
+                    if (matchesBinding(marker, fast)) entity = fast;
                 }
-
                 if (entity == null && marker.hasEntityGuidBinding()) {
                     Entity byGuid = findEntityByGuid(mc.level, marker.getFollowEntityGuid());
-                    if (matchesBinding(marker, byGuid)) {
-                        entity = byGuid;
-                    }
+                    if (matchesBinding(marker, byGuid)) entity = byGuid;
                 }
-
                 if (entity == null && marker.hasEntityUuidBinding()) {
                     Entity byUuid = findEntityByUuid(mc.level, marker.getFollowEntityUuid());
-                    if (matchesBinding(marker, byUuid)) {
-                        entity = byUuid;
-                    }
+                    if (matchesBinding(marker, byUuid)) entity = byUuid;
                 }
-
-                if (entity == null) {
-                    continue;
-                }
+                if (entity == null) continue;
 
                 targetX = lerp(entity.xo, entity.getX(), partialTick);
                 targetZ = lerp(entity.zo, entity.getZ(), partialTick);
@@ -233,8 +192,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
                         : entity.getBbHeight() * 0.5);
             }
 
-            MarkerProjection.ScreenResult proj = MarkerProjection.project(
-                    targetX, targetY, targetZ, EDGE_PADDING);
+            MarkerProjection.ScreenResult proj = MarkerProjection.project(targetX, targetY, targetZ, EDGE_PADDING);
 
             double dxDist = targetX - px;
             double dyDist = targetY - py;
@@ -244,8 +202,6 @@ public class MarkerHudRenderer implements IGuiOverlay {
             MarkerVisualState st = stateMap.computeIfAbsent(marker.getId(), k -> new MarkerVisualState());
 
             float targetTier = DistanceTier.getTierForDistance(dist).getTargetValue();
-
-            // 计算 Active 状态用于播放高光和缩放动画的进度
             boolean isQuestActive = marker.getState() == QuestMarkerState.ACTIVE;
             float targetActive = isQuestActive ? 1.0f : 0.0f;
 
@@ -253,12 +209,33 @@ public class MarkerHudRenderer implements IGuiOverlay {
             if (!isFirstPerson && proj.onScreen) {
                 Vec3 markerPos = new Vec3(targetX, targetY, targetZ);
                 Optional<Vec3> hit = playerOcclusionBox.clip(camPos, markerPos);
-                if (hit.isPresent()) {
-                    isOccluded = true;
-                }
+                if (hit.isPresent()) isOccluded = true;
             }
 
             float targetOcclusionAlpha = isOccluded ? 0.15f : 1.0f;
+
+            float tierDistRatio = 0.0f;
+            if (dist <= closestDistanceThreshold) {
+                tierDistRatio = (float) (dist / Math.max(1.0, closestDistanceThreshold));
+            } else if (dist <= nearDistanceThreshold) {
+                float range = (float) (nearDistanceThreshold - closestDistanceThreshold);
+                tierDistRatio = range > 0 ? (float) ((dist - closestDistanceThreshold) / range) : 0f;
+            } else if (dist <= farDistanceThreshold) {
+                float range = (float) (farDistanceThreshold - nearDistanceThreshold);
+                tierDistRatio = range > 0 ? (float) ((dist - nearDistanceThreshold) / range) : 0f;
+            } else {
+                float range = 50.0f;
+                tierDistRatio = (float) Math.min(1.0, (dist - farDistanceThreshold) / range);
+            }
+
+            float targetDistAlpha = 1.0f - (tierDistRatio * 0.65f);
+
+            float dxCenter = proj.x - cx;
+            float dyCenter = proj.y - cy;
+            float screenDist = (float) Math.sqrt(dxCenter * dxCenter + dyCenter * dyCenter);
+            float hoverFactor = 1.0f - Math.max(0f, Math.min(1f, (screenDist - 12f) / 24f));
+
+            float targetDynamicAlpha = lerp(targetDistAlpha, 1.0f, hoverFactor);
 
             if (!st.initialized) {
                 st.x = proj.x;
@@ -269,6 +246,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
                 st.distanceTier = targetTier;
                 st.occlusionAlpha = targetOcclusionAlpha;
                 st.activeProgress = targetActive;
+                st.dynamicDistanceAlpha = targetDynamicAlpha;
                 st.switchTs = now;
                 st.initialized = true;
             } else {
@@ -295,7 +273,8 @@ public class MarkerHudRenderer implements IGuiOverlay {
                 float occLerpFactor = Math.min(1.0f, dt * OCCLUSION_TRANSITION_SPEED);
                 st.occlusionAlpha = lerp(st.occlusionAlpha, targetOcclusionAlpha, occLerpFactor);
 
-                // 平滑状态过渡
+                st.dynamicDistanceAlpha = lerp(st.dynamicDistanceAlpha, targetDynamicAlpha, dt * 10.0f);
+
                 st.activeProgress = lerp(st.activeProgress, targetActive, dt * 5.0f);
 
                 float[] anchor = insetFromEdge(proj.x, proj.y, cx, cy, OFFSCREEN_INSET);
@@ -352,7 +331,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
             ly = lightLen > 0 ? ly / lightLen : -1;
 
             if (st.transitionProgress < 0.99f) {
-                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha, st.activeProgress);
+                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha, st.activeProgress, st.dynamicDistanceAlpha);
             }
             if (st.transitionProgress > 0.01f && marker.isAllowOffscreenArrow()) {
                 renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier, time, st.activeProgress);
@@ -360,10 +339,11 @@ public class MarkerHudRenderer implements IGuiOverlay {
         }
     }
 
-    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha, float activeProgress) {
+    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha, float activeProgress, float dynamicDistanceAlpha) {
         float alphaFade = 1.0f - progress;
         int originalAlpha = (color >> 24) & 0xFF;
-        int currentAlpha = (int) (originalAlpha * alphaFade * occlusionAlpha);
+
+        int currentAlpha = (int) (originalAlpha * alphaFade * occlusionAlpha * dynamicDistanceAlpha);
 
         if (currentAlpha <= 5) return;
 
@@ -374,16 +354,23 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
         float perspectiveScale = 1.0f;
         if (dist > closestDistanceThreshold) {
-            float perspectiveFactor = 10.0f / (float) (dist + 10.0 - closestDistanceThreshold);
-            perspectiveScale = Math.max(0.6f, perspectiveFactor * 0.9F);
+            float pFactor = 25.0f / (float) (dist + 25.0 - closestDistanceThreshold);
+            perspectiveScale = Math.max(0.5f, pFactor);
         }
 
-        float finalScale;
         if (tier <= 1.0f) {
-            finalScale = lerp(perspectiveScale, 0.7f, tier);
+            perspectiveScale = lerp(perspectiveScale, 0.85f, tier);
         } else {
-            finalScale = lerp(0.8f, 1.0f, tier - 1.0f);
+            perspectiveScale = lerp(0.85f, 1.0f, tier - 1.0f);
         }
+
+        float styleScale;
+        if (tier <= 1.0f) {
+            styleScale = lerp(1.0f, 0.95f, tier);
+        } else {
+            styleScale = lerp(0.95f, 1.0f, tier - 1.0f);
+        }
+        float finalScale = perspectiveScale * styleScale;
 
         gui.pose().pushPose();
         float ease = progress * progress;
@@ -396,12 +383,35 @@ public class MarkerHudRenderer implements IGuiOverlay {
         gui.pose().popPose();
 
         String name = marker.getLabel();
-
         float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4f, tier - 1.0f);
         float scaledRadius = baseRadius * finalScale;
 
-        int nameOffsetY = (int) (-scaledRadius - font.lineHeight);
-        int distOffsetY = (int) (scaledRadius + 2);
+        float textScale = 1.0f;
+        float extraSpacing = 0f;
+
+        if (dist <= closestDistanceThreshold) {
+            textScale = 1.0f;
+            extraSpacing = 2f;
+        } else if (dist <= nearDistanceThreshold) {
+            float t = (float) ((dist - closestDistanceThreshold) / (nearDistanceThreshold - closestDistanceThreshold));
+            textScale = lerp(1.0f, 0.85f, t);
+            extraSpacing = lerp(2f, 3f, t);
+        } else if (dist <= farDistanceThreshold) {
+            float t = (float) ((dist - nearDistanceThreshold) / (farDistanceThreshold - nearDistanceThreshold));
+            textScale = lerp(0.85f, 0.7f, t);
+            extraSpacing = lerp(4f, 6f, t);
+        } else {
+            textScale = 0.7f;
+            extraSpacing = 6f; // 极远距离时将文字远远推开，防止遮挡微小标记
+        }
+
+        gui.pose().pushPose();
+        gui.pose().scale(textScale, textScale, 1.0f);
+
+        // 使用倒数计算相对坐标，确保缩放后依然能完美锚定在标记外侧
+        float invScale = 1.0f / textScale;
+        int nameOffsetY = (int) (((-scaledRadius - extraSpacing) * invScale) - font.lineHeight);
+        int distOffsetY = (int) ((scaledRadius + extraSpacing) * invScale);
 
         drawTextWithBlackOutline(gui, font, name, -font.width(name) / 2, nameOffsetY, accentColor, currentAlpha);
         if (marker.isShowDistance()) {
@@ -409,7 +419,8 @@ public class MarkerHudRenderer implements IGuiOverlay {
             drawTextWithBlackOutline(gui, font, distText, -font.width(distText) / 2, distOffsetY, accentColor, currentAlpha);
         }
 
-        gui.pose().popPose();
+        gui.pose().popPose(); // 恢复文本缩放
+        gui.pose().popPose(); // 恢复整体位移
     }
 
     private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY, float tier, float time, float activeProgress) {
@@ -441,12 +452,29 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
         String distText = String.format("%.0fm", dist);
         int distW = font.width(distText);
-        float textOffset = 16f;
 
-        float txRel = -(float) Math.cos(angle) * textOffset;
-        float tyRel = -(float) Math.sin(angle) * textOffset;
+        // ================= 【优化核心 2】边缘指示器文字排版适配 =================
+        float textScale = 1.0f;
+        if (dist > nearDistanceThreshold && dist <= farDistanceThreshold) {
+            float t = (float) ((dist - nearDistanceThreshold) / (farDistanceThreshold - nearDistanceThreshold));
+            textScale = lerp(1.0f, 0.75f, t);
+        } else if (dist > farDistanceThreshold) {
+            textScale = 0.75f;
+        }
+
+        gui.pose().pushPose();
+        gui.pose().scale(textScale, textScale, 1.0f);
+
+        float invScale = 1.0f / textScale;
+        // 动态计算基础推离半径（文字越小，为了保证不遮挡变大的箭头，稍微推远一点）
+        float currentOffset = (30f + (1.0f - textScale) * 15f) * invScale;
+
+        float txRel = -(float) Math.cos(angle) * currentOffset;
+        float tyRel = -(float) Math.sin(angle) * currentOffset;
+
         drawTextWithBlackOutline(gui, font, distText, (int) (txRel - distW / 2.0f), (int) (tyRel - font.lineHeight / 2.0f), accentColor, currentAlpha);
 
+        gui.pose().popPose();
         gui.pose().popPose();
     }
 
@@ -496,6 +524,9 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float distanceTier;
         float occlusionAlpha = 1.0f;
         float activeProgress = 0.0f;
+
+        float dynamicDistanceAlpha = 1.0f;
+
         boolean initialized;
     }
 }

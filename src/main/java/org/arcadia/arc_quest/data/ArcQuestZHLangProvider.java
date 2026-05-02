@@ -555,7 +555,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // 序章已接受
         add("dialogue.epic_village_elder.prologue_accepted.text",
                 "§a§l任务已接受！\n\n"
-                        + "§f第一步：收集§6橡木原木 x5\n"
+                        + "§f第一步：收集§6橡木原木\n"
                         + "第二步：回来找我获取下一步指示\n\n"
                         + "§e祝你好运，勇士！");
         add("dialogue.epic_village_elder.prologue_accepted.choice_ok",
@@ -949,7 +949,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // ── Phase: gather_wood ──
         addPhase("epic_prologue", "gather_wood", "武装自己");
         addObjective("epic_prologue", "gather_wood", 0,
-                "收集§6橡木原木§r (0/5)");
+                "收集§6橡木原木§r");
 
         // ── Phase: talk_villager ──
         addPhase("epic_prologue", "talk_villager", "寻求建议");
@@ -959,33 +959,37 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         // ── Phase: scout_forest ──
         addPhase("epic_prologue", "scout_forest", "侦查森林");
         addObjective("epic_prologue", "scout_forest", 0,
-                "收集线索：线 (0/6)");
+                "收集线索：线");
 
         // ── Phase: reinforce_gate ──
         addPhase("epic_prologue", "reinforce_gate", "加固村门");
-        addObjective("epic_prologue", "reinforce_gate", 0,
-                "收集加固材料：橡木木板 (0/16)");
+        addObjective("epic_prologue", "reinforce_gate", 0, "收集加固材料：木板");
+        addObjective("epic_prologue", "reinforce_gate", 1, "收集加固材料：栅栏");
+        addObjective("epic_prologue", "reinforce_gate", 2, "收集加固材料：墙");
+        addObjective("epic_prologue", "reinforce_gate2", 0, "收集加固材料：门");
+        addObjective("epic_prologue", "reinforce_gate2", 1, "收集加固材料：砖块");
+        addObjective("epic_prologue", "reinforce_gate2", 2, "收集加固材料：白桦木原木");
 
         // ── Phase: craft_sword ──
         addPhase("epic_prologue", "craft_sword", "打造武器");
         addObjective("epic_prologue", "craft_sword", 0,
-                "收集§f铁锭§r (0/3)");
+                "收集§f铁锭§r");
         addObjective("epic_prologue", "craft_sword", 1,
-                "收集§6木棍§r (0/2)");
+                "收集§6木棍§r)");
 
         // ── Phase: defend_village ──
         addPhase("epic_prologue", "defend_village", "——保卫家园！");
         addObjective("epic_prologue", "defend_village", 0,
-                "击退来袭的§c僵尸§r (0/10)");
+                "击退来袭的§c僵尸§r");
         addObjective("epic_prologue", "defend_village", 1,
-                "驱逐§e沙漠尸鬼§r (0/3)");
+                "驱逐§e沙漠尸鬼§r");
 
         // ── Phase: gather_food ──
         addPhase("epic_prologue", "gather_food", "筹备物资");
         addObjective("epic_prologue", "gather_food", 0,
-                "收集§6面包§r (0/10)");
+                "收集§6面包§r");
         addObjective("epic_prologue", "gather_food", 1,
-                "收集§c熟牛肉§r (0/5)");
+                "收集§c熟牛肉§r");
     }
 
     // ═══════════════════════════════════════════════════════
