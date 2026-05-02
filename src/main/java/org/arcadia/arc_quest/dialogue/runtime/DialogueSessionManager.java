@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
@@ -17,6 +18,9 @@ import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
@@ -234,6 +238,14 @@ public final class DialogueSessionManager {
         DialogueSession session = sessions.remove(player.getUUID());
         if (session == null) return;
 
+        var cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap != null) {
+            String cleanupPrefix = "aq:dlg:" + session.getTree().dialogueId() + ":";
+            for (String markerId : cap.getAllMarkers().keySet().stream().toList()) {
+                if (markerId.startsWith(cleanupPrefix)) cap.removeMarker(markerId);
+            }
+        }
+
         transcriptMap.remove(player.getUUID());
         String dialogueId = session.getTree().dialogueId();
         Entity npcEntity = null;
@@ -250,7 +262,6 @@ public final class DialogueSessionManager {
             MinecraftForge.EVENT_BUS.post(new DialogueEndedEvent(player, npcEntity, dialogueId));
         }
     }
-
     public boolean isInDialogue(ServerPlayer player) {
         DialogueSession session = sessions.get(player.getUUID());
         return session != null && !session.isEnded();
@@ -318,6 +329,7 @@ public final class DialogueSessionManager {
         String text = session.processText(sayIfResult.text);
         SoundEvent matchedSaySound = sayIfResult.sound;
         String selectedSayId = sayIfResult.sayId;
+        if (cap != null) syncDialogueMarkers(session, node, sayIfResult);
 
         appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
                 System.currentTimeMillis(),
@@ -358,6 +370,115 @@ public final class DialogueSessionManager {
         ArcQuestNetwork.sendToPlayer(player, packet);
     }
 
+    private void syncDialogueMarkers(DialogueSession session,
+                                     DialogueNode node,
+                                     ConditionalTextEvaluator.SayIfResult sayIfResult) {
+        var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
+        if (cap == null) return;
+
+        String dialogueId = session.getTree().dialogueId();
+        String nodeId = node.nodeId();
+        ServerPlayer player = session.getPlayer();
+        ServerLevel level = player.serverLevel();
+
+        String cleanupPrefix = "aq:dlg:" + dialogueId + ":";
+        for (String markerId : cap.getAllMarkers().keySet().stream().toList()) {
+            if (markerId.startsWith(cleanupPrefix)) cap.removeMarker(markerId);
+        }
+
+        for (DialogueChoice c : session.getVisibleChoices()) {
+            for (MarkSpec spec : c.relatedMarks()) {
+                boolean active = spec.activateWhen().test(player, cap) && !spec.deactivateWhen().test(player, cap);
+                if (!active) continue;
+                String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":choice:" + c.choiceId() + ":" + spec.id();
+                QuestMarkerData marker = resolveDialogueMarker(markerId, spec, player, level, dialogueId);
+                if (marker != null) cap.upsertMarker(marker);
+            }
+        }
+
+        if (sayIfResult.sayId != null && !sayIfResult.sayId.isBlank()) {
+            for (var entry : node.conditionalTexts().values()) {
+                if (!sayIfResult.sayId.equals(entry.sayId())) continue;
+                for (MarkSpec spec : entry.relatedMarks()) {
+                    boolean active = spec.activateWhen().test(player, cap) && !spec.deactivateWhen().test(player, cap);
+                    if (!active) continue;
+                    String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":say:" + entry.sayId() + ":" + spec.id();
+                    QuestMarkerData marker = resolveDialogueMarker(markerId, spec, player, level, dialogueId);
+                    if (marker != null) cap.upsertMarker(marker);
+                }
+            }
+        }
+    }
+
+    private QuestMarkerData resolveDialogueMarker(String markerId,
+                                                  MarkSpec spec,
+                                                  ServerPlayer player,
+                                                  ServerLevel level,
+                                                  String dialogueId) {
+        MarkableObject target = spec.target();
+        if (target instanceof MarkableObject.Pos p) {
+            return new QuestMarkerData.Builder(markerId, p.x(), p.y(), p.z(), spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .type(spec.markerType())
+                    .build();
+        }
+        if (target instanceof MarkableObject.DimensionPos dp) {
+            if (!level.dimension().equals(dp.dimension())) return null;
+            return new QuestMarkerData.Builder(markerId, dp.x(), dp.y(), dp.z(), spec.id())
+                    .dimension(dp.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .type(spec.markerType())
+                    .build();
+        }
+        if (target instanceof MarkableObject.EntityByUuid byUuid) {
+            Entity ent = level.getEntity(byUuid.uuid());
+            if (ent == null) return null;
+            return new QuestMarkerData.Builder(markerId, ent.getX(), ent.getY(), ent.getZ(), spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .followEntity(ent.getId(), byUuid.uuid().toString(), "", QuestMarkerData.EntityAttachPoint.HEAD)
+                    .type(spec.markerType())
+                    .build();
+        }
+        if (target instanceof MarkableObject.EntityByNpcId byNpc) {
+            Entity nearestNpc = level.getEntities(player,
+                            player.getBoundingBox().inflate(byNpc.searchRadius()),
+                            e -> e.getPersistentData().contains("ArcQuestNpcId")
+                                    && byNpc.npcId().equals(e.getPersistentData().getString("ArcQuestNpcId")))
+                    .stream().min((a, b) -> Double.compare(a.distanceToSqr(player), b.distanceToSqr(player))).orElse(null);
+            if (nearestNpc == null) return null;
+            return new QuestMarkerData.Builder(markerId, nearestNpc.getX(), nearestNpc.getY(), nearestNpc.getZ(), spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .followEntity(nearestNpc.getId(), nearestNpc.getUUID().toString(), byNpc.npcId(), QuestMarkerData.EntityAttachPoint.HEAD)
+                    .type(spec.markerType())
+                    .build();
+        }
+        if (target instanceof MarkableObject.EntityByTypeNearest byType) {
+            Entity nearest = level.getEntities(player,
+                            player.getBoundingBox().inflate(byType.searchRadius()),
+                            e -> e.getType() == byType.type())
+                    .stream().min((a, b) -> Double.compare(a.distanceToSqr(player), b.distanceToSqr(player))).orElse(null);
+            if (nearest == null) return null;
+            return new QuestMarkerData.Builder(markerId, nearest.getX(), nearest.getY(), nearest.getZ(), spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .followEntity(nearest.getId(), nearest.getUUID().toString(), "", QuestMarkerData.EntityAttachPoint.HEAD)
+                    .type(spec.markerType())
+                    .build();
+        }
+        if (target instanceof MarkableObject.StructureNearest byStructure) {
+            net.minecraft.core.BlockPos pos = level.findNearestMapStructure(byStructure.structureTag(), player.blockPosition(), byStructure.searchRadius(), false);
+            if (pos == null) return null;
+            return new QuestMarkerData.Builder(markerId, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .type(spec.markerType())
+                    .build();
+        }
+        return null;
+    }
     private void sendClose(ServerPlayer player) {
         ArcQuestNetwork.sendToPlayer(player, S2COpenDialoguePacket.close());
     }

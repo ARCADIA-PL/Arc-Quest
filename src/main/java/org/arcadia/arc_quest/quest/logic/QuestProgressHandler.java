@@ -91,11 +91,17 @@ public final class QuestProgressHandler {
             return QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE;
         }
 
+        long acceptedTick = player.getServer() != null ? player.getServer().getTickCount() : 0L;
+        long acceptedRealMs = System.currentTimeMillis();
+        long acceptedDayTime = player.level().getDayTime() % 24000L;
+
         QuestRuntimeData data = new QuestRuntimeData(
                 questId,
                 firstPhase.getPhaseId(),
                 firstPhase.getObjectives().size(),
-                player.getServer() != null ? player.getServer().getTickCount() : 0
+                acceptedTick,
+                acceptedRealMs,
+                acceptedDayTime
         );
         cap.addActiveQuest(data);
 
@@ -835,3 +841,4 @@ public final class QuestProgressHandler {
         boolean flagsChanged = false;
     }
 }
+
