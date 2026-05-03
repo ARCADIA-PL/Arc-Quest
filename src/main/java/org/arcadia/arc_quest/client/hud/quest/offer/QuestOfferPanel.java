@@ -1,3 +1,4 @@
+// file_name: QuestOfferPanel.java
 package org.arcadia.arc_quest.client.hud.quest.offer;
 
 import net.minecraft.Util;
@@ -36,7 +37,7 @@ public final class QuestOfferPanel {
 
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
-    private static final float CLEAR_TIME = 1.4f; // CLEAR 动画持续时间
+    private static final float CLEAR_TIME = 1.4f;
     private static final long SUBMIT_COOLDOWN_MS = 100L;
     private static boolean active = false;
     private static boolean closing = false;
@@ -49,7 +50,7 @@ public final class QuestOfferPanel {
     private static String phaseId;
     private static int objectiveIndex;
     private static int themeColor = 0x5AD7FF;
-    private static OfferVM lastValidVm = null; // 缓存断联前的最后影像
+    private static OfferVM lastValidVm = null;
     private static ItemStack hoveredStack = ItemStack.EMPTY;
     private static int iconCycleTicker = 0;
     private static int iconCycleIndex = 0;
@@ -91,45 +92,31 @@ public final class QuestOfferPanel {
 
     private static S2COfferSubmitResultPacket.CloseMode serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
 
-    private QuestOfferPanel() {
+    private QuestOfferPanel() {}
+
+    // 【终极优化：内联矩形拼接边框】
+    private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
+        g.fill(x, y, x + w, y + thickness, color);
+        g.fill(x, y + h - thickness, x + w, y + h, color);
+        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
+        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
     }
 
     public static void trigger(String qid, String pid, int objIndex) {
-        questId = qid;
-        phaseId = pid;
-        objectiveIndex = objIndex;
+        questId = qid; phaseId = pid; objectiveIndex = objIndex;
         themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(qid, 0x5AD7FF);
-        active = true;
-        closing = false;
-        cleared = false;
-        enterTimer = 0f;
-        exitTimer = 0f;
-        clearTimer = 0f;
+        active = true; closing = false; cleared = false;
+        enterTimer = 0f; exitTimer = 0f; clearTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
-        iconCycleTicker = 0;
-        iconCycleIndex = 0;
+        iconCycleTicker = 0; iconCycleIndex = 0;
         hoveredStack = ItemStack.EMPTY;
-        submitFeedbackAnim = 0f;
-        submitFeedbackSuccess = false;
-        lastKnownProgress = -1;
-        pendingSubmitCheckAt = 0L;
-        cachedTagKey = "";
-        cachedTagIcons = List.of();
-        cachedObjective = null;
-        cachedStaticKey = "";
-        cachedTitle = "";
-        cachedTrimmedTitle = "";
-        cachedTrimmedTitleWidth = -1;
-        cachedRequired = 1;
-        cachedIconCandidates = List.of();
-        cachedTooltipLayout = null;
-        cachedTooltipKey = "";
-        submitHoverAnim = 0f;
-        itemSlotHoverAnim = 0f;
-        isDraggingSlider = false;
-        sliderValue = 1;
-        sliderHoverAnim = 0f;
-        visualThumbX = -1f;
+        submitFeedbackAnim = 0f; submitFeedbackSuccess = false;
+        lastKnownProgress = -1; pendingSubmitCheckAt = 0L;
+        cachedTagKey = ""; cachedTagIcons = List.of(); cachedObjective = null; cachedStaticKey = "";
+        cachedTitle = ""; cachedTrimmedTitle = ""; cachedTrimmedTitleWidth = -1; cachedRequired = 1;
+        cachedIconCandidates = List.of(); cachedTooltipLayout = null; cachedTooltipKey = "";
+        submitHoverAnim = 0f; itemSlotHoverAnim = 0f; isDraggingSlider = false;
+        sliderValue = 1; sliderHoverAnim = 0f; visualThumbX = -1f;
         serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
 
         initStaticOfferCache();
@@ -138,36 +125,26 @@ public final class QuestOfferPanel {
         currentProgressAnim = initialVm != null ? initialVm.current : 0f;
     }
 
-    public static boolean isActive() {
-        return active;
-    }
+    public static boolean isActive() { return active; }
 
     public static void close() {
         if (!active || closing) return;
-        closing = true;
-        exitTimer = 0f;
+        closing = true; exitTimer = 0f;
     }
 
     public static boolean keyPressed(int keyCode) {
         if (!active || closing) return false;
         if (cleared) return true;
-        if (keyCode == 256 || keyCode == 69) {
-            close();
-            return true;
-        }
+        if (keyCode == 256 || keyCode == 69) { close(); return true; }
         return false;
     }
 
     public static boolean mouseClicked(double mx, double my, int button) {
-        if (!active || closing || button != 0) return false;
-        if (cleared) return true; // 清算动画期间锁定！
+        if (!active || closing || button != 0 || cleared) return false;
 
-        float scaledW = PANEL_W * currentScale;
-        float scaledH = PANEL_H * currentScale;
-
+        float scaledW = PANEL_W * currentScale, scaledH = PANEL_H * currentScale;
         if (mx < currentDrawX || mx > currentDrawX + scaledW || my < currentDrawY || my > currentDrawY + scaledH) {
-            close();
-            return true;
+            close(); return true;
         }
 
         float lx = (float) ((mx - currentDrawX) / currentScale);
@@ -180,31 +157,21 @@ public final class QuestOfferPanel {
         int canSubmit = Math.max(0, vm.canSubmitNow);
         int maxSelectable = Math.max(0, Math.min(50, Math.min(remain, canSubmit)));
 
-        int sliderW = 160;
-        int sliderX = PANEL_W / 2 - sliderW / 2;
-        int sliderY = 95;
+        int sliderW = 160, sliderX = PANEL_W / 2 - sliderW / 2, sliderY = 95;
         if (maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8) {
-            isDraggingSlider = true;
-            return true;
+            isDraggingSlider = true; return true;
         }
 
-        int btnW = 140;
-        int btnH = 16;
-        int btnX = PANEL_W / 2 - btnW / 2;
-        int btnY = PANEL_H - btnH - 10;
-
+        int btnW = 140, btnH = 16, btnX = PANEL_W / 2 - btnW / 2, btnY = PANEL_H - btnH - 10;
         if (lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH) {
             if (sliderValue <= 0 || maxSelectable <= 0) {
-                submitFeedbackSuccess = false;
-                submitFeedbackAnim = 1f;
+                submitFeedbackSuccess = false; submitFeedbackAnim = 1f;
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.6F));
                 return true;
             }
             long now = Util.getMillis();
             if (now - lastSubmitClickMs < SUBMIT_COOLDOWN_MS) return true;
-            lastSubmitClickMs = now;
-            lastKnownProgress = vm.current;
-            pendingSubmitCheckAt = now + 100L;
+            lastSubmitClickMs = now; lastKnownProgress = vm.current; pendingSubmitCheckAt = now + 100L;
             ArcQuestNetwork.sendSubmitOffer(C2SSubmitOfferPacket.of(questId, phaseId, objectiveIndex, sliderValue));
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
             return true;
@@ -215,62 +182,42 @@ public final class QuestOfferPanel {
     public static void render(GuiGraphics g, int mx, int my, float partialTick) {
         if (!active) return;
         Minecraft mc = Minecraft.getInstance();
-        int screenW = mc.getWindow().getGuiScaledWidth();
-        int screenH = mc.getWindow().getGuiScaledHeight();
+        int screenW = mc.getWindow().getGuiScaledWidth(), screenH = mc.getWindow().getGuiScaledHeight();
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
 
         float finalScale = (screenH * 0.55f) / (float) PANEL_H;
-        float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f);
-        float baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
-        float scaleAnim = finalScale;
-        float currentX = baseX;
-        float currentY = baseY;
-        float alphaF = 1.0f;
-        float revealProgress = 1.0f;
-        float wipeProgress = 0.0f;
-        float actualFlyDist = 4.0f * finalScale;
+        float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f), baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
+        float scaleAnim = finalScale, currentX = baseX, currentY = baseY, alphaF = 1.0f;
+        float revealProgress = 1.0f, wipeProgress = 0.0f, actualFlyDist = 4.0f * finalScale;
 
         if (closing) {
             exitTimer += dt;
-            if (exitTimer >= EXIT_TIME) {
-                active = false;
-                closing = false;
-                return;
-            }
+            if (exitTimer >= EXIT_TIME) { active = false; closing = false; return; }
             float t = Math.min(1.0f, exitTimer / EXIT_TIME);
-            float easeIn = (float) Math.pow(t, 4.0);
-            wipeProgress = easeIn;
-            currentX = baseX - (easeIn * actualFlyDist * 1.5f);
+            wipeProgress = (float) Math.pow(t, 4.0);
+            currentX = baseX - (wipeProgress * actualFlyDist * 1.5f);
             alphaF = 1.0f - (float) Math.pow(t, 8.0);
         } else {
             enterTimer = Math.min(ENTER_TIME, enterTimer + dt);
             float t = Math.min(1.0f, enterTimer / ENTER_TIME);
-            float easeOut = (float) (1.0 - Math.pow(1.0 - t, 5));
-            revealProgress = easeOut;
-            alphaF = easeOut;
-            scaleAnim = finalScale * (1.10f - 0.10f * easeOut);
-            currentX = baseX - (1.0f - easeOut) * actualFlyDist * 2f;
+            revealProgress = (float) (1.0 - Math.pow(1.0 - t, 5));
+            alphaF = revealProgress;
+            scaleAnim = finalScale * (1.10f - 0.10f * revealProgress);
+            currentX = baseX - (1.0f - revealProgress) * actualFlyDist * 2f;
         }
 
         if (revealProgress <= 0.001f || wipeProgress >= 0.999f) return;
 
-        float drawWidth = PANEL_W * scaleAnim;
-        float drawHeight = PANEL_H * scaleAnim;
-        float scaleOffsetW = (drawWidth - PANEL_W * finalScale) / 2f;
-        float scaleOffsetH = (drawHeight - PANEL_H * finalScale) / 2f;
-        currentDrawX = currentX - scaleOffsetW;
-        currentDrawY = currentY - scaleOffsetH;
+        float drawWidth = PANEL_W * scaleAnim, drawHeight = PANEL_H * scaleAnim;
+        currentDrawX = currentX - (drawWidth - PANEL_W * finalScale) / 2f;
+        currentDrawY = currentY - (drawHeight - PANEL_H * finalScale) / 2f;
         currentScale = scaleAnim;
-        int scX1 = (int) (currentDrawX - 10);
-        int scX2 = (int) (currentDrawX + drawWidth + 10);
 
-        if (closing) {
-            scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress));
-        } else if (enterTimer < ENTER_TIME) {
-            scX2 = (int) (currentDrawX + drawWidth * revealProgress);
-        }
+        int scX1 = (int) (currentDrawX - 10), scX2 = (int) (currentDrawX + drawWidth + 10);
+        if (closing) scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress));
+        else if (enterTimer < ENTER_TIME) scX2 = (int) (currentDrawX + drawWidth * revealProgress);
 
         hoveredStack = ItemStack.EMPTY;
 
@@ -282,8 +229,7 @@ public final class QuestOfferPanel {
         g.pose().translate(currentDrawX, currentDrawY, 0);
         g.pose().scale(scaleAnim, scaleAnim, 1f);
 
-        int alphaInt = Math.max(0, Math.min(255, (int) (255 * alphaF)));
-        renderPanel(g, mc.font, alphaInt, alphaF, dt, mx, my);
+        renderPanel(g, mc.font, Math.max(0, Math.min(255, (int) (255 * alphaF))), alphaF, dt, mx, my);
 
         g.pose().popPose();
         g.disableScissor();
@@ -304,31 +250,23 @@ public final class QuestOfferPanel {
         float ly = (float) ((my - currentDrawY) / currentScale);
 
         OfferVM vm = resolveOfferViewModel();
-
-        if (vm != null) {
-            lastValidVm = vm;
-        }
+        if (vm != null) lastValidVm = vm;
 
         if (!closing) {
             if (serverCloseMode == S2COfferSubmitResultPacket.CloseMode.CLEARED_CLOSE) {
                 if (!cleared && lastValidVm != null) {
-                    cleared = true;
-                    clearTimer = 0f;
+                    cleared = true; clearTimer = 0f;
                     Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.0F));
                 }
                 serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
             } else if (serverCloseMode == S2COfferSubmitResultPacket.CloseMode.NORMAL_CLOSE) {
-                close();
-                serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
-                return;
+                close(); serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE; return;
             }
         }
 
         if (cleared) {
             clearTimer += dt;
-            if (clearTimer >= CLEAR_TIME && !closing) {
-                close();
-            }
+            if (clearTimer >= CLEAR_TIME && !closing) close();
         }
 
         OfferVM renderVm = cleared ? lastValidVm : vm;
@@ -339,24 +277,23 @@ public final class QuestOfferPanel {
 
         updateSubmitFeedback(renderVm, dt);
 
-        int cyberEdgeWidth = 3;
-        int bgAlpha = (int) (0x99 * alphaF);
-        int borderAlpha = (int) (0x66 * alphaF);
-        int borderRgb = 0xCCCCCC;
-
+        // =========================================================================
+        // PASS 1: 纯 2D 通道 (背景、遮罩、文本、滑块、按钮)
+        // =========================================================================
+        int bgAlpha = (int) (0x99 * alphaF), borderAlpha = (int) (0x66 * alphaF), borderRgb = 0xCCCCCC;
         int feedbackTargetColor = submitFeedbackSuccess ? 0x33FF66 : 0xFF3333;
         int currentEdgeColor = cleared ? 0x33FF66 : HudAnimUtil.lerpColor(themeColor, feedbackTargetColor, submitFeedbackAnim);
 
-        g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(cyberEdgeWidth, 0, PW, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(cyberEdgeWidth, PH - 1, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(PW - 1, 0, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-
+        g.fill(3, 0, PW - 3, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
+        drawFastFrame(g, 3, 0, PW - 6, PH, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
         HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, currentEdgeColor, alpha);
 
         float contentAlphaMult = cleared ? Math.max(0f, 1f - (clearTimer * 4f)) : 1f;
         int contentAlpha = (int) (alpha * contentAlphaMult);
         float contentAlphaF = alphaF * contentAlphaMult;
+
+        int iconX = 20, iconY = 34; // 提前声明用于PASS 2
+        ItemStack iconToRender = ItemStack.EMPTY;
 
         if (contentAlpha > 5) {
             int topBarH = 22;
@@ -369,13 +306,11 @@ public final class QuestOfferPanel {
             int contentY = topBarH + 12;
             g.drawString(font, getTrimmedTitle(font, renderVm.title, PW - 70), 50, contentY + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), false);
 
-            String progressText = renderVm.current + " / " + renderVm.required;
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
-            g.drawString(font, "STATUS: " + progressText, (int) (50 / 0.85f), (int) ((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, contentAlpha), false);
+            g.drawString(font, "STATUS: " + renderVm.current + " / " + renderVm.required, (int) (50 / 0.85f), (int) ((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, contentAlpha), false);
             g.pose().popPose();
 
-            int iconX = 20, iconY = contentY;
             boolean isHoverSlot = !cleared && lx >= iconX - 2 && lx <= iconX + 20 && ly >= iconY - 2 && ly <= iconY + 20;
             itemSlotHoverAnim = HudAnimUtil.step(itemSlotHoverAnim, isHoverSlot ? 1f : 0f, 15f, dt);
 
@@ -385,18 +320,10 @@ public final class QuestOfferPanel {
             iconCycleTicker++;
             if (iconCycleTicker >= 60) {
                 iconCycleTicker = 0;
-                if (renderVm.iconCandidates.size() > 1)
-                    iconCycleIndex = (iconCycleIndex + 1) % renderVm.iconCandidates.size();
+                if (renderVm.iconCandidates.size() > 1) iconCycleIndex = (iconCycleIndex + 1) % renderVm.iconCandidates.size();
             }
-
-            ItemStack icon = renderVm.iconCandidates.isEmpty() ? ItemStack.EMPTY : renderVm.iconCandidates.get(iconCycleIndex % renderVm.iconCandidates.size());
-            if (!icon.isEmpty()) {
-                g.pose().pushPose();
-                g.renderItem(icon, iconX, iconY);
-                g.renderItemDecorations(font, icon, iconX, iconY);
-                g.pose().popPose();
-                if (isHoverSlot) hoveredStack = icon;
-            }
+            iconToRender = renderVm.iconCandidates.isEmpty() ? ItemStack.EMPTY : renderVm.iconCandidates.get(iconCycleIndex % renderVm.iconCandidates.size());
+            if (!iconToRender.isEmpty() && isHoverSlot) hoveredStack = iconToRender;
 
             currentProgressAnim += (renderVm.current - currentProgressAnim) * Math.min(1f, dt * 10f);
             if (cleared) currentProgressAnim = renderVm.required;
@@ -406,7 +333,7 @@ public final class QuestOfferPanel {
             int fillW = Math.max(0, (int) (barW * ratio));
 
             g.fill(barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (20 * contentAlphaF)));
-            HudAnimUtil.drawFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * contentAlphaF)));
+            drawFastFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * contentAlphaF)));
 
             if (fillW > 0) {
                 g.fill(barX, barY, barX + fillW, barY + barH, HudAnimUtil.withAlpha(themeColor, contentAlpha));
@@ -421,16 +348,13 @@ public final class QuestOfferPanel {
             if (sliderValue < 1 && maxSelectable > 0) sliderValue = 1;
             if (maxSelectable == 0) sliderValue = 0;
 
-            int sliderW = 160;
-            int sliderX = PW / 2 - sliderW / 2;
-            int sliderY = 95;
+            int sliderW = 160, sliderX = PW / 2 - sliderW / 2, sliderY = 95;
 
             if (isDraggingSlider && !cleared) {
                 if (GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS) {
                     isDraggingSlider = false;
                 } else if (maxSelectable > 1) {
-                    float pct = (lx - sliderX) / (float) sliderW;
-                    pct = Math.max(0f, Math.min(1f, pct));
+                    float pct = Math.max(0f, Math.min(1f, (lx - sliderX) / (float) sliderW));
                     sliderValue = 1 + Math.round(pct * (maxSelectable - 1));
                 }
             }
@@ -441,28 +365,21 @@ public final class QuestOfferPanel {
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
             String qtyText = "QUANTITY // " + (maxSelectable == 0 ? "0" : sliderValue);
-            int tW = font.width(qtyText);
-            g.drawString(font, qtyText, (int) ((PW / 2f) / 0.85f) - tW / 2, (int) ((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, contentAlpha), false);
+            g.drawString(font, qtyText, (int) ((PW / 2f) / 0.85f) - font.width(qtyText) / 2, (int) ((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, contentAlpha), false);
             g.pose().popPose();
 
             g.fill(sliderX, sliderY, sliderX + sliderW, sliderY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (30 * contentAlphaF)));
 
             if (maxSelectable > 0) {
-                float targetPct = maxSelectable > 1 ? (float) (sliderValue - 1) / (maxSelectable - 1) : 1f;
-                float targetThumbX = sliderX + (targetPct * sliderW);
+                float targetThumbX = sliderX + (maxSelectable > 1 ? (float) (sliderValue - 1) / (maxSelectable - 1) : 1f) * sliderW;
                 if (visualThumbX < 0) visualThumbX = targetThumbX;
                 visualThumbX += (targetThumbX - visualThumbX) * Math.min(1f, dt * 25f);
                 g.fill(sliderX, sliderY, (int) visualThumbX, sliderY + 2, HudAnimUtil.withAlpha(themeColor, contentAlpha));
                 int tX = (int) visualThumbX;
-                int thumbActiveColor = isDraggingSlider ? 0xFFFFFF : HudAnimUtil.lerpColor(themeColor, 0xFFFFFF, sliderHoverAnim);
-                g.fill(tX - 1, sliderY - 2, tX + 1, sliderY + 3, HudAnimUtil.withAlpha(thumbActiveColor, contentAlpha));
+                g.fill(tX - 1, sliderY - 2, tX + 1, sliderY + 3, HudAnimUtil.withAlpha(isDraggingSlider ? 0xFFFFFF : HudAnimUtil.lerpColor(themeColor, 0xFFFFFF, sliderHoverAnim), contentAlpha));
             }
 
-            int btnW = 140;
-            int btnH = 16;
-            int btnX = PW / 2 - btnW / 2;
-            int btnY = PANEL_H - btnH - 10;
-
+            int btnW = 140, btnH = 16, btnX = PW / 2 - btnW / 2, btnY = PANEL_H - btnH - 10;
             boolean disabled = sliderValue <= 0 || maxSelectable <= 0;
             boolean hoverSubmit = !cleared && !disabled && lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH;
             submitHoverAnim = HudAnimUtil.step(submitHoverAnim, hoverSubmit ? 1f : 0f, 15f, dt);
@@ -479,42 +396,38 @@ public final class QuestOfferPanel {
         }
 
         if (cleared) {
-            g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int) (80 * Math.min(1f, clearTimer * 3f))));
-
+            g.fill(3, 0, PW - 3, PH, HudAnimUtil.withAlpha(0x000000, (int) (80 * Math.min(1f, clearTimer * 3f))));
             float clearScaleBase = Math.min(1f, clearTimer / 0.2f);
             float textScale = 1.8f - 0.5f * (float) Math.pow(clearScaleBase, 3);
-
-            float clearAlphaF = 1f;
-            if (clearTimer > CLEAR_TIME - 0.3f) { // 最后0.3秒渐隐
-                clearAlphaF = Math.max(0f, (CLEAR_TIME - clearTimer) / 0.3f);
-            }
-            int tAlpha = (int) (255 * clearAlphaF * alphaF);
+            float clearAlphaF = clearTimer > CLEAR_TIME - 0.3f ? Math.max(0f, (CLEAR_TIME - clearTimer) / 0.3f) : 1f;
 
             g.pose().pushPose();
             g.pose().translate(PW / 2f, PH / 2f, 100);
             g.pose().scale(textScale, textScale, 1f);
-
-            String clearTxt = "[ // CLEARED // ]";
-            int tw = font.width(clearTxt);
-            g.drawCenteredString(font, clearTxt, 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(themeColor, tAlpha));
+            g.drawCenteredString(font, "[ // CLEARED // ]", 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(themeColor, (int) (255 * clearAlphaF * alphaF)));
             g.pose().popPose();
 
             if (clearTimer < 0.6f) {
                 float scanLineY = PH * (clearTimer / 0.6f);
-                g.fill(cyberEdgeWidth, (int) scanLineY, PW, (int) scanLineY + 1, HudAnimUtil.withAlpha(themeColor, (int) (100 * (1f - clearTimer / 0.6f))));
+                g.fill(3, (int) scanLineY, PW - 3, (int) scanLineY + 1, HudAnimUtil.withAlpha(themeColor, (int) (100 * (1f - clearTimer / 0.6f))));
             }
+        }
+
+        // =========================================================================
+        // PASS 2: 纯 3D 通道 (只渲染物品)
+        // =========================================================================
+        if (contentAlpha > 5 && !iconToRender.isEmpty() && !cleared) {
+            g.pose().pushPose();
+            g.renderItem(iconToRender, iconX, iconY);
+            g.renderItemDecorations(font, iconToRender, iconX, iconY);
+            g.pose().popPose();
         }
     }
 
     private static void drawCyberButton(GuiGraphics g, Font font, int x, int y, int w, int h, String text, float hoverAnim, boolean disabled, int alpha, float alphaF) {
         int currentColor = disabled ? 0x444444 : HudAnimUtil.lerpColor(0x777777, themeColor, hoverAnim);
-        int finalBtnBg = HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF));
-        int finalBtnBorder = HudAnimUtil.withAlpha(currentColor, disabled ? (int) (100 * alphaF) : alpha);
-        g.fill(x, y, x + w, y + h, finalBtnBg);
-        g.fill(x, y, x + w, y + 1, finalBtnBorder);
-        g.fill(x, y + h - 1, x + w, y + h, finalBtnBorder);
-        g.fill(x, y, x + 1, y + h, finalBtnBorder);
-        g.fill(x + w - 1, y, x + w, y + h, finalBtnBorder);
+        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF)));
+        drawFastFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(currentColor, disabled ? (int) (100 * alphaF) : alpha));
 
         g.pose().pushPose();
         float btnTextScale = disabled ? 0.85f : 0.85f + (0.05f * hoverAnim);
@@ -529,23 +442,15 @@ public final class QuestOfferPanel {
         if (vm == null) return;
         if (pendingSubmitCheckAt > 0L && Util.getMillis() >= pendingSubmitCheckAt) {
             pendingSubmitCheckAt = 0L;
-            if (lastKnownProgress >= 0 && vm.current > lastKnownProgress) {
-                submitFeedbackSuccess = true;
-            } else {
-                submitFeedbackSuccess = false;
-            }
+            submitFeedbackSuccess = lastKnownProgress >= 0 && vm.current > lastKnownProgress;
             submitFeedbackAnim = 1f;
         }
     }
 
     private static void initStaticOfferCache() {
         cachedStaticKey = questId + "|" + phaseId + "|" + objectiveIndex;
-        cachedObjective = null;
-        cachedTitle = "";
-        cachedTrimmedTitle = "";
-        cachedTrimmedTitleWidth = -1;
-        cachedRequired = 1;
-        cachedIconCandidates = List.of();
+        cachedObjective = null; cachedTitle = ""; cachedTrimmedTitle = "";
+        cachedTrimmedTitleWidth = -1; cachedRequired = 1; cachedIconCandidates = List.of();
 
         var def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
@@ -562,8 +467,7 @@ public final class QuestOfferPanel {
 
     private static String getTrimmedTitle(Font font, String title, int width) {
         if (cachedTrimmedTitleWidth != width || !title.equals(cachedTitle) || cachedTrimmedTitle.isEmpty()) {
-            cachedTitle = title;
-            cachedTrimmedTitleWidth = width;
+            cachedTitle = title; cachedTrimmedTitleWidth = width;
             cachedTrimmedTitle = font.plainSubstrByWidth(title, width);
         }
         return cachedTrimmedTitle;
@@ -572,12 +476,9 @@ public final class QuestOfferPanel {
     private static OfferVM resolveOfferViewModel() {
         var data = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (data == null || !data.isPhaseActive(phaseId)) return null;
-        String staticKey = questId + "|" + phaseId + "|" + objectiveIndex;
-        if (cachedObjective == null || !staticKey.equals(cachedStaticKey)) initStaticOfferCache();
+        if (cachedObjective == null || !(questId + "|" + phaseId + "|" + objectiveIndex).equals(cachedStaticKey)) initStaticOfferCache();
         if (cachedObjective == null) return null;
-        int current = data.getObjectiveProgress(phaseId, objectiveIndex);
-        int canSubmitNow = resolveOfferableCount(cachedObjective);
-        return new OfferVM(cachedTitle, cachedRequired, current, canSubmitNow, cachedIconCandidates);
+        return new OfferVM(cachedTitle, cachedRequired, data.getObjectiveProgress(phaseId, objectiveIndex), resolveOfferableCount(cachedObjective), cachedIconCandidates);
     }
 
     private static List<ItemStack> resolveIconCandidates(ObjectiveEntry obj) {
@@ -586,10 +487,7 @@ public final class QuestOfferPanel {
             if (targetTag.equals(cachedTagKey) && !cachedTagIcons.isEmpty()) return cachedTagIcons;
             try {
                 ResourceLocation tagId = obj.getTargetTagResourceLocation();
-                if (tagId == null) {
-                    cachedTagKey = targetTag;
-                    return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
-                }
+                if (tagId == null) { cachedTagKey = targetTag; return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY); }
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
                 List<ItemStack> list = new ArrayList<>();
                 for (Item i : ForgeRegistries.ITEMS.getValues()) {
@@ -597,11 +495,9 @@ public final class QuestOfferPanel {
                     if (!st.isEmpty() && st.is(tag)) list.add(st);
                 }
                 if (list.isEmpty()) list = Collections.singletonList(ItemStack.EMPTY);
-                cachedTagKey = targetTag;
-                return cachedTagIcons = list;
+                cachedTagKey = targetTag; return cachedTagIcons = list;
             } catch (Exception ignored) {
-                cachedTagKey = targetTag;
-                return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
+                cachedTagKey = targetTag; return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
             }
         }
         Item item = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
@@ -619,26 +515,19 @@ public final class QuestOfferPanel {
                 ResourceLocation tagId = obj.getTargetTagResourceLocation();
                 if (tagId == null) return 0;
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
-                for (ItemStack st : mc.player.getInventory().items) {
-                    if (!st.isEmpty() && st.is(tag)) total += st.getCount();
-                }
+                for (ItemStack st : mc.player.getInventory().items) { if (!st.isEmpty() && st.is(tag)) total += st.getCount(); }
                 return total;
-            } catch (Exception ignored) {
-                return 0;
-            }
+            } catch (Exception ignored) { return 0; }
         }
         Item target = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
         if (target == null) return 0;
-        for (ItemStack st : mc.player.getInventory().items) {
-            if (!st.isEmpty() && st.getItem() == target) total += st.getCount();
-        }
+        for (ItemStack st : mc.player.getInventory().items) { if (!st.isEmpty() && st.getItem() == target) total += st.getCount(); }
         return total;
     }
 
     private static TooltipLayout getTooltipLayout(ItemStack stack, Minecraft mc, boolean advanced) {
         String key = stack.getItem().builtInRegistryHolder().key().location() + "|" + stack.getCount() + "|" + stack.getHoverName().getString() + "|" + advanced;
         if (key.equals(cachedTooltipKey) && cachedTooltipLayout != null) return cachedTooltipLayout;
-
         TooltipLayout layout = new TooltipLayout();
         if (mc.player != null) {
             layout.lines = stack.getTooltipLines(mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
@@ -647,59 +536,42 @@ public final class QuestOfferPanel {
                 if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;
             }
         }
-        cachedTooltipKey = key;
-        cachedTooltipLayout = layout;
+        cachedTooltipKey = key; cachedTooltipLayout = layout;
         return layout;
     }
 
     private static void renderCyberTooltip(GuiGraphics g, Font font, TooltipLayout layout, int mouseX, int mouseY, int theme) {
         if (layout == null || layout.lines == null || layout.lines.isEmpty()) return;
-
-        int padding = 6;
-        int cyberEdgeWidth = 3;
-        int textMaxWidth = layout.textMaxWidth;
-        List<Component> tooltipLines = layout.lines;
-
-        int drawW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
-        int drawH = tooltipLines.size() * font.lineHeight + padding * 2;
-
+        int padding = 6, cyberEdgeWidth = 3;
+        int drawW = layout.textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
+        int drawH = layout.lines.size() * font.lineHeight + padding * 2;
         Minecraft mc = Minecraft.getInstance();
-        int sw = mc.getWindow().getGuiScaledWidth();
-        int sh = mc.getWindow().getGuiScaledHeight();
-
-        int drawX = mouseX + 12;
-        int drawY = mouseY - 12;
+        int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
+        int drawX = mouseX + 12, drawY = mouseY - 12;
         if (drawX + drawW > sw) drawX = mouseX - drawW - 8;
         if (drawY + drawH > sh) drawY = sh - drawH - 2;
         if (drawY < 2) drawY = 2;
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 6000);
-
         g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, 0xD0));
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
-        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
-        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
+        drawFastFrame(g, drawX + cyberEdgeWidth, drawY, drawW - cyberEdgeWidth, drawH, 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
         HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, theme, 0xFF);
 
         g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
-        int textX = drawX + cyberEdgeWidth + padding + 1;
-        int textY = drawY + padding;
-        for (Component line : tooltipLines) {
+        int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
+        for (Component line : layout.lines) {
             g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), true);
             textY += font.lineHeight;
         }
         g.disableScissor();
-
         g.pose().popPose();
     }
 
     public static void onServerSubmitResult(String qid, String pid, int objIndex, S2COfferSubmitResultPacket.CloseMode mode) {
-        if (!active) return;
-        if (!questId.equals(qid) || !phaseId.equals(pid) || objectiveIndex != objIndex) return;
+        if (!active || !questId.equals(qid) || !phaseId.equals(pid) || objectiveIndex != objIndex) return;
         if (mode != null) serverCloseMode = mode;
     }
 
-    private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {
-    }
+    private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {}
 }
