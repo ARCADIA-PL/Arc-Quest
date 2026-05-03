@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.animation.ArcVisibilityFilter;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
+import org.arcadia.arc_quest.mutil.core.ArcGuiTickContext;
 import org.arcadia.arc_quest.mutil.overlay.ArcOverlayRoot;
 import org.arcadia.arc_quest.mutil.primitive.ArcGuiRect;
 import org.arcadia.arc_quest.mutil.primitive.ArcGuiText;
@@ -18,8 +19,8 @@ public class ArcDemoOverlayRoot extends ArcOverlayRoot {
     private final ArcGuiRect progressFill;
     private final ArcGuiText title;
     private final ArcGuiText subtitle;
-    private float progress = 0f;
-    private boolean forward = true;
+    private final ArcDemoOverlayPresenter presenter = new ArcDemoOverlayPresenter();
+    private float reveal;
 
     public ArcDemoOverlayRoot(Minecraft minecraft) {
         super(minecraft, "arc_demo_overlay");
@@ -36,24 +37,21 @@ public class ArcDemoOverlayRoot extends ArcOverlayRoot {
     }
 
     @Override
+    protected void tick(ArcGuiTickContext context, int refX, int refY) {
+        presenter.tick(context);
+        ArcDemoOverlayPresenter.Model model = presenter.model();
+        reveal = visibilityFilter.update(isActive(), context.deltaTime());
+        setX(Math.round(ArcAnimClock.lerp(getX(), model.targetX(), 0.16f, context.deltaTime())));
+        setY(Math.round(ArcAnimClock.lerp(getY(), model.targetY(), 0.16f, context.deltaTime())));
+        setOpacity(reveal);
+        if (model.isDirty()) {
+            progressFill.setWidth(Math.round(186 * model.progress()));
+            model.markClean();
+        }
+    }
+
+    @Override
     protected void update(ArcGuiContext context, int refX, int refY) {
         super.update(context, refX, refY);
-        int targetX = context.screenWidth() - 230;
-        int targetY = 18;
-        float reveal = visibilityFilter.update(isActive(), context.deltaTime());
-        setX(Math.round(ArcAnimClock.lerp(getX(), targetX, 0.16f, context.deltaTime())));
-        setY(Math.round(ArcAnimClock.lerp(getY(), targetY, 0.16f, context.deltaTime())));
-        setOpacity(reveal);
-
-        float delta = context.deltaTime() * 0.45f;
-        progress += forward ? delta : -delta;
-        if (progress >= 1f) {
-            progress = 1f;
-            forward = false;
-        } else if (progress <= 0f) {
-            progress = 0f;
-            forward = true;
-        }
-        progressFill.setWidth(Math.round(186 * progress));
     }
 }

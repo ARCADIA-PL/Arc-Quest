@@ -10,6 +10,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.mutil.demo.ArcMutilDemoHost;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
 
@@ -30,6 +31,8 @@ public class ClientHudEvents {
                     event.getWindow().getGuiScaledHeight(),
                     event.getPartialTick());
         }
+
+        ArcMutilDemoHost.render(event.getGuiGraphics(), event.getPartialTick());
     }
 
     @SubscribeEvent

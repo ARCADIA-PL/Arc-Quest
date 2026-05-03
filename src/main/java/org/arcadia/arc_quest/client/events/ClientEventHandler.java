@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
+import org.arcadia.arc_quest.mutil.demo.ArcMutilDemoHost;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.lwjgl.glfw.GLFW;
 
@@ -48,6 +49,7 @@ public final class ClientEventHandler {
 
         QuestToastManager.tick();
         QuestIntelPanel.tick();
+        ArcMutilDemoHost.tick();
     }
 
     @SubscribeEvent

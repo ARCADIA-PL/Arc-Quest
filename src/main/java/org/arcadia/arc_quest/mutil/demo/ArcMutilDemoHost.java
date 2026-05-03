@@ -27,6 +27,11 @@ public final class ArcMutilDemoHost {
         HOST.renderAll(graphics, partialTick);
     }
 
+    public static void tick() {
+        ensureInitialized();
+        HOST.tickAll();
+    }
+
     public static ArcOverlayHost host() {
         ensureInitialized();
         return HOST;
