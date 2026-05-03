@@ -46,10 +46,30 @@ public class TradeTooltipRenderer {
     private TooltipData cachedData = null;
     private TradeEntry cachedEntry = null;
     private int cachedGi = -1;
+    private final Component shortfallSummaryText;
+    private final Component emptyItemDataHint;
+    private final Component itemDataHint;
+    private final Component tradeDataHint;
+    private final Component pageDotTrade;
+    private final Component pageDotItem;
+    private final int emptyItemDataHintWidth;
+    private final int itemDataHintWidth;
+    private final int tradeDataHintWidth;
+    private final int pageDotItemWidth;
 
     public TradeTooltipRenderer(AbstractTradeScreen screen, Font font) {
         this.screen = screen;
         this.font = font;
+        this.shortfallSummaryText = Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary");
+        this.emptyItemDataHint = Component.literal("[ NO ADDITIONAL ITEM DATA ]").withStyle(Style.EMPTY.withColor(0x555555));
+        this.itemDataHint = Component.literal("ITEM DATA [D] ▶").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
+        this.tradeDataHint = Component.literal("◀ [A] TRADE DATA").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
+        this.pageDotTrade = Component.literal("● ○").withStyle(Style.EMPTY.withColor(0xFFFFFF));
+        this.pageDotItem = Component.literal("○ ●").withStyle(Style.EMPTY.withColor(0xFFFFFF));
+        this.emptyItemDataHintWidth = font.width(emptyItemDataHint);
+        this.itemDataHintWidth = font.width(itemDataHint);
+        this.tradeDataHintWidth = font.width(tradeDataHint);
+        this.pageDotItemWidth = font.width(pageDotItem);
     }
 
     public void triggerTradeSuccess() {
@@ -65,6 +85,7 @@ public class TradeTooltipRenderer {
         if (newHovered != hoveredEntry) {
             currentPage = 0; // 默认永远回到第0页 (Trade Data)
             pageFadeAnim = 1.0f;
+            clearCachedTooltip();
             if (newHovered != null && tooltipAlpha > 0.5f) {
                 hoveredEntry = newHovered;
                 activeEntry = newHovered;
@@ -102,6 +123,7 @@ public class TradeTooltipRenderer {
 
             if (pageChanged) {
                 pageFadeAnim = 0f; // 触发淡入重载动画
+                clearCachedTooltip();
                 if (Minecraft.getInstance().player != null) {
                     Minecraft.getInstance().player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.3f, 1.5f);
                 }
@@ -117,7 +139,7 @@ public class TradeTooltipRenderer {
         tooltipAlpha += (targetAlpha - tooltipAlpha) * Math.min(1f, dt * 15f);
 
         if (tooltipAlpha > 0.02f && activeEntry != null) {
-            int gi = new ArrayList<>(screen.getShop().getAllEntries()).indexOf(activeEntry);
+            int gi = ClientTradeCache.INSTANCE.getGlobalIndex(screen.getShopId(), activeEntry.getEntryId());
             if (gi != -1) renderMorphingTooltip(g, activeEntry, gi, mx, my, dt, isClosing);
         } else {
             animBgW = 0;
@@ -127,9 +149,20 @@ public class TradeTooltipRenderer {
 
     public void forceRefresh() {
         if (activeEntry != null && tooltipAlpha > 0.1f) animBgW = 0;
+        clearCachedTooltip();
+    }
+
+    private void clearCachedTooltip() {
+        cachedData = null;
+        cachedEntry = null;
+        cachedGi = -1;
     }
 
     private TooltipData calcTooltipData(TradeEntry entry, int gi, int mx, int my) {
+        if (cachedData != null && cachedEntry == entry && cachedGi == gi) {
+            updateTooltipPosition(cachedData, mx, my);
+            return cachedData;
+        }
         TooltipData d = new TooltipData();
         d.themeColor = screen.getThemeColorForEntry(entry);
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
@@ -173,7 +206,7 @@ public class TradeTooltipRenderer {
             if (d.hasTradeInfo) {
                 for (var line : d.extraDescLines) totalW = Math.max(totalW, font.width(line) + padding * 2);
                 if (d.showShortfall) {
-                    totalW = Math.max(totalW, font.width(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary")) + 40);
+                    totalW = Math.max(totalW, font.width(shortfallSummaryText) + 40);
                     for (CostShortfallLine sf : d.shortfalls)
                         totalW = Math.max(totalW, font.width(sf.label()) + font.width("-" + sf.missing()) + 50);
                 }
@@ -181,7 +214,7 @@ public class TradeTooltipRenderer {
         } else {
             // Page 1: Item Data
             if (!d.hasItemInfo) {
-                totalW = Math.max(totalW, font.width("[ NO ADDITIONAL ITEM DATA ]") + padding * 2);
+                totalW = Math.max(totalW, emptyItemDataHintWidth + padding * 2);
             } else {
                 for (int i = 1; i < d.vanillaLines.size(); i++) {
                     totalW = Math.max(totalW, font.width(d.vanillaLines.get(i)) + padding * 2 + 12);
@@ -216,6 +249,15 @@ public class TradeTooltipRenderer {
         d.h = totalH;
 
         // 位置计算
+        updateTooltipPosition(d, mx, my);
+
+        cachedData = d;
+        cachedEntry = entry;
+        cachedGi = gi;
+        return d;
+    }
+
+    private void updateTooltipPosition(TooltipData d, int mx, int my) {
         int yOffset = 18;
         d.x = mx - (d.w / 2);
         if (d.x < 5) d.x = 5;
@@ -223,8 +265,6 @@ public class TradeTooltipRenderer {
         d.y = my + yOffset;
         if (d.y + d.h > screen.height - 5) d.y = my - d.h - yOffset;
         if (d.y < 5) d.y = 5;
-
-        return d;
     }
 
     private void renderMorphingTooltip(GuiGraphics g, TradeEntry entry, int gi, int mx, int my, float dt, boolean isClosing) {
@@ -308,13 +348,13 @@ public class TradeTooltipRenderer {
         Component titleLine = target.vanillaLines.isEmpty() ? entry.getDisplayName() : target.vanillaLines.get(0);
         if (entry.getRewardIcon() != null) {
             screen.drawAdaptiveIcon(g, entry.getRewardIcon(), drawX + padding, currentY, 16, 16, scale);
-            g.drawString(font, titleLine, drawX + padding + 22, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+            g.drawString(font, titleLine, drawX + padding + 22, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
         } else if (target.hasItem) {
             ItemStack stack = screen.getIconStackForEntry(entry);
             g.renderItem(stack, drawX + padding, currentY);
-            g.drawString(font, titleLine, drawX + padding + 22, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+            g.drawString(font, titleLine, drawX + padding + 22, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
         } else {
-            g.drawString(font, titleLine, drawX + padding, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+            g.drawString(font, titleLine, drawX + padding, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
         }
         currentY += 20;
 
@@ -323,7 +363,7 @@ public class TradeTooltipRenderer {
             if (target.hasTradeInfo) { // 仅当拥有交易数据时才渲染内容
                 if (!target.extraDescLines.isEmpty()) {
                     for (var line : target.extraDescLines) {
-                        g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, contentAlpha), true);
+                        g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, contentAlpha), false);
                         currentY += font.lineHeight;
                     }
                     currentY += 4;
@@ -334,7 +374,7 @@ public class TradeTooltipRenderer {
                         g.fill(drawX + padding, currentY, drawX + drawW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (contentAlpha * 0.2f)));
                         g.fill(drawX + padding, currentY, drawX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, contentAlpha));
                         currentY += 6;
-                        g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary"), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, contentAlpha), true);
+                        g.drawString(font, shortfallSummaryText, drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, contentAlpha), false);
                         currentY += 12;
                     } else {
                         g.fill(drawX + padding, currentY, drawX + drawW - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int) (contentAlpha * 0.3f)));
@@ -345,10 +385,10 @@ public class TradeTooltipRenderer {
                 if (target.showShortfall) {
                     for (CostShortfallLine sf : target.shortfalls) {
                         g.fill(drawX + padding, currentY + 3, drawX + padding + 2, currentY + 7, HudAnimUtil.withAlpha(0xFF4444, contentAlpha));
-                        g.drawString(font, sf.label(), drawX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, contentAlpha), true);
+                        g.drawString(font, sf.label(), drawX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, contentAlpha), false);
                         if (sf.missing() > 0) {
                             String missingTxt = "-" + sf.missing();
-                            g.drawString(font, missingTxt, drawX + drawW - padding - font.width(missingTxt), currentY, HudAnimUtil.withAlpha(0xFF3333, contentAlpha), true);
+                            g.drawString(font, missingTxt, drawX + drawW - padding - font.width(missingTxt), currentY, HudAnimUtil.withAlpha(0xFF3333, contentAlpha), false);
                         }
                         currentY += 10;
                         if (sf.required() > 0) {
@@ -370,7 +410,7 @@ public class TradeTooltipRenderer {
                 }
 
                 if (!target.showShortfall && target.maxP > 0) {
-                    g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.limit", target.purchases, target.maxP).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xDDDDDD, contentAlpha), true);
+                    g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.limit", target.purchases, target.maxP).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xDDDDDD, contentAlpha), false);
                     currentY += font.lineHeight + 2;
                     int barW = drawW - padding * 2;
                     g.fill(drawX + padding, currentY, drawX + padding + barW, currentY + 3, HudAnimUtil.withAlpha(0x333333, contentAlpha));
@@ -383,7 +423,7 @@ public class TradeTooltipRenderer {
                 }
 
                 if (!target.showShortfall && target.onCd)
-                    g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", ClientTradeCache.INSTANCE.getCooldownText(screen.getShopId(), gi)).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, contentAlpha), true);
+                    g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", ClientTradeCache.INSTANCE.getCooldownText(screen.getShopId(), gi)).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, contentAlpha), false);
             }
         }
 
@@ -391,12 +431,11 @@ public class TradeTooltipRenderer {
         if (currentPage == 1) {
             if (!target.hasItemInfo) {
                 // 如果没有原版Lore、属性等信息，显示科技感占位符
-                Component emptyHint = Component.literal("[ NO ADDITIONAL ITEM DATA ]").withStyle(Style.EMPTY.withColor(0x555555));
-                g.drawString(font, emptyHint, drawX + drawW / 2 - font.width(emptyHint) / 2, currentY + 2, HudAnimUtil.withAlpha(0x555555, contentAlpha), false);
+                g.drawString(font, emptyItemDataHint, drawX + drawW / 2 - emptyItemDataHintWidth / 2, currentY + 2, HudAnimUtil.withAlpha(0x555555, contentAlpha), false);
                 currentY += font.lineHeight + 4;
             } else {
                 for (int i = 1; i < target.vanillaLines.size(); i++) {
-                    g.drawString(font, target.vanillaLines.get(i), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), true);
+                    g.drawString(font, target.vanillaLines.get(i), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), false);
                     currentY += font.lineHeight;
                 }
                 currentY += 4;
@@ -409,16 +448,12 @@ public class TradeTooltipRenderer {
 
         if (currentPage == 0) {
             // 当前是 Trade Data, 提示可以按 D 查看 Item Data
-            Component hint = Component.literal("ITEM DATA [D] ▶").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
-            Component dot = Component.literal("● ○").withStyle(Style.EMPTY.withColor(animThemeColor));
-            g.drawString(font, dot, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
-            g.drawString(font, hint, drawX + drawW - padding - font.width(hint), navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+            g.drawString(font, pageDotTrade, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
+            g.drawString(font, itemDataHint, drawX + drawW - padding - itemDataHintWidth, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
         } else {
             // 当前是 Item Data, 提示可以按 A 返回 Trade Data
-            Component hint = Component.literal("◀ [A] TRADE DATA").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
-            Component dot = Component.literal("○ ●").withStyle(Style.EMPTY.withColor(animThemeColor));
-            g.drawString(font, hint, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
-            g.drawString(font, dot, drawX + drawW - padding - font.width(dot), navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+            g.drawString(font, tradeDataHint, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
+            g.drawString(font, pageDotItem, drawX + drawW - padding - pageDotItemWidth, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
         }
 
         if (useScissor) g.disableScissor();

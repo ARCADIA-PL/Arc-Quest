@@ -50,6 +50,8 @@ public class GachaPreviewPanel {
     private String snapshotFailReason = null;
     private List<CostShortfallLine> snapshotShortfall = new ArrayList<>();
     private String snapshotCooldownText = "";
+    private String[] itemNameCache;
+    private int[] itemNameWidthCache;
 
     public GachaPreviewPanel(GachaScreen parent) {
         this.parent = parent;
@@ -70,7 +72,10 @@ public class GachaPreviewPanel {
         this.width = w;
         this.height = h;
         if (hoverAnims == null || hoverAnims.length != parent.getShopDef().getGachaPool().getItems().size()) {
-            hoverAnims = new float[parent.getShopDef().getGachaPool().getItems().size()];
+            int size = parent.getShopDef().getGachaPool().getItems().size();
+            hoverAnims = new float[size];
+            itemNameCache = new String[size];
+            itemNameWidthCache = new int[size];
         }
         updateDataSnapshot();
     }
@@ -238,7 +243,8 @@ public class GachaPreviewPanel {
             g.pose().popPose();
 
             if (safeA > 5) {
-                g.drawCenteredString(Minecraft.getInstance().font, item.getItemStack().getHoverName().getString(), 0, 28, HudAnimUtil.withAlpha(themeC, safeA));
+                String itemName = getItemName(lastHoveredIndex, item);
+                g.drawCenteredString(Minecraft.getInstance().font, itemName, 0, 28, HudAnimUtil.withAlpha(themeC, safeA));
                 renderCompactPityBar(g, 0, 42, 100, 4, safeA, themeC);
             }
         }
@@ -300,8 +306,13 @@ public class GachaPreviewPanel {
 
         int currentHover = -1;
         float responsiveScale = cardW / 110.0f;
+        int rowStride = cardH + gap;
+        int firstRow = Math.max(0, (int) Math.floor((scrollOffset - 20) / rowStride));
+        int lastRow = Math.min(totalRows - 1, (int) Math.ceil((scrollOffset + l.gridH() + 20) / rowStride));
+        int firstIndex = Math.max(0, firstRow * cols);
+        int lastIndex = Math.min(items.size() - 1, (lastRow + 1) * cols - 1);
 
-        for (int i = 0; i < items.size(); i++) {
+        for (int i = firstIndex; i <= lastIndex; i++) {
             float staggerProgress = Math.max(0f, Math.min(1f, easeProgress * 1.5f - i * 0.05f));
             float itemCascadeEase = HudAnimUtil.easeOutCubic(staggerProgress);
             if (itemCascadeEase <= 0.01f) continue;
@@ -355,10 +366,10 @@ public class GachaPreviewPanel {
             g.renderItem(item.getItemStack(), 0, 0);
             g.pose().popPose();
 
-            String name = item.getItemStack().getHoverName().getString();
+            String name = getCachedItemName(i, item);
             float textScale = Math.max(0.6f, 0.85f * responsiveScale);
             int maxTextW = (int) ((cardW - 8) / textScale);
-            if (Minecraft.getInstance().font.width(name) > maxTextW) {
+            if (getCachedItemNameWidth(i, item) > maxTextW) {
                 name = Minecraft.getInstance().font.plainSubstrByWidth(name, maxTextW - 6) + "..";
             }
             int rawTextW = Minecraft.getInstance().font.width(name);
@@ -369,7 +380,7 @@ public class GachaPreviewPanel {
                 float textDrawY = drawY + cardH - (8 * textScale) - 4;
                 g.pose().translate(textDrawX, textDrawY, 0);
                 g.pose().scale(textScale, textScale, 1f);
-                g.drawString(Minecraft.getInstance().font, name, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), true);
+                g.drawString(Minecraft.getInstance().font, name, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
                 g.pose().popPose();
             }
 
@@ -410,6 +421,30 @@ public class GachaPreviewPanel {
         } else if (tooltipTipAlpha <= 0.02f) {
             animTipW = 0f;
         }
+    }
+
+    private String getItemName(int index, GachaItem item) {
+        return getCachedItemName(index, item);
+    }
+
+    private String getCachedItemName(int index, GachaItem item) {
+        if (itemNameCache == null || index < 0 || index >= itemNameCache.length) {
+            return item.getItemStack().getHoverName().getString();
+        }
+        if (itemNameCache[index] == null) {
+            itemNameCache[index] = item.getItemStack().getHoverName().getString();
+        }
+        return itemNameCache[index];
+    }
+
+    private int getCachedItemNameWidth(int index, GachaItem item) {
+        if (itemNameWidthCache == null || index < 0 || index >= itemNameWidthCache.length) {
+            return Minecraft.getInstance().font.width(item.getItemStack().getHoverName());
+        }
+        if (itemNameWidthCache[index] == 0) {
+            itemNameWidthCache[index] = Minecraft.getInstance().font.width(getCachedItemName(index, item));
+        }
+        return itemNameWidthCache[index];
     }
 
     private void renderItemTooltip(GuiGraphics g, GachaItem item, int mouseX, int mouseY, float dt, float alpha, boolean isClosing) {

@@ -44,6 +44,7 @@ public abstract class AbstractTradeScreen extends Screen {
     // 记录是否已触发父界面的联动进出场动画
     protected boolean triggeredParentClose = false;
     protected boolean triggeredParentReopen = false;
+    private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 40;
     private int authorityRefreshTicker = 0;
     private TradeTooltipRenderer tooltipRenderer;
     public AbstractTradeScreen(String title, String shopId) {
@@ -150,7 +151,7 @@ public abstract class AbstractTradeScreen extends Screen {
     public void tick() {
         super.tick();
         if (isClosing || shop == null || minecraft == null || minecraft.player == null) return;
-        if (++authorityRefreshTicker >= 10) {
+        if (++authorityRefreshTicker >= AUTHORITY_REFRESH_INTERVAL_TICKS) {
             authorityRefreshTicker = 0;
             ArcQuestNetwork.CHANNEL.sendToServer(new C2SRequestTradeSyncPacket(shopId, getCurrentScreenType()));
         }

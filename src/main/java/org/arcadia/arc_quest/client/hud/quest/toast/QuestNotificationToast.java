@@ -18,12 +18,16 @@ public class QuestNotificationToast {
 
     private final QuestToastManager.ToastType type;
     private final String text;
+    private final String subtitle;
+    private String cachedNameStr = "";
+    private int cachedNameWidth = -1;
     private long startTime;
     private long lastUpdateTime;
 
     public QuestNotificationToast(QuestToastManager.ToastType type, String text) {
         this.type = type;
         this.text = text;
+        this.subtitle = type.getLocalizedPrefix();
         long now = Util.getMillis();
         this.startTime = now;
         this.lastUpdateTime = now;
@@ -95,13 +99,15 @@ public class QuestNotificationToast {
 
         int textAlpha = (int) (255 * alpha);
         if (textAlpha > 8) {
-            String subtitle = type.getLocalizedPrefix();
-            String nameStr = font.plainSubstrByWidth(text, TOAST_WIDTH - 16);
+            if (cachedNameWidth != TOAST_WIDTH - 16) {
+                cachedNameWidth = TOAST_WIDTH - 16;
+                cachedNameStr = font.plainSubstrByWidth(text, cachedNameWidth);
+            }
 
             int subColor = HudAnimUtil.withAlpha(type.accentColor, textAlpha);
             int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, textAlpha);
             HudRenderUtil.drawDualText(g, font, toastX + 8, vSlotY + 4,
-                    subtitle, nameStr, subColor, titleColor, 1.0f);
+                    subtitle, cachedNameStr, subColor, titleColor, 1.0f);
         }
 
         RenderSystem.enableDepthTest();
