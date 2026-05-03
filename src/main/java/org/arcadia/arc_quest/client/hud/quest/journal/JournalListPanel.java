@@ -5,6 +5,9 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.quest.api.IconPosition;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class JournalListPanel {
     private final QuestJournalScreen screen;
 
@@ -14,6 +17,15 @@ public class JournalListPanel {
     private double targetScroll = 0;
     private boolean isDraggingListScrollbar = false;
     private double dragListYOffset = 0;
+    private final Map<String, TextCache> textCache = new HashMap<>();
+
+    private static class TextCache {
+        String displayName;
+        int width;
+        String lastDrawName;
+        int lastMaxWidth = Integer.MIN_VALUE;
+        float lastScale = 1f;
+    }
 
     public JournalListPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -24,6 +36,7 @@ public class JournalListPanel {
         selectedSlide = screen.getSelectedIndex();
         targetScroll = 0;
         scrollOffset = 0;
+        textCache.clear();
     }
 
     public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
@@ -50,7 +63,10 @@ public class JournalListPanel {
             drawCyberneticEdge(g, x + 2, hlY, JournalConstants.ENTRY_HEIGHT - 2, entryTheme, (int) (0xFF * effectiveAlpha));
         }
 
-        for (int i = 0; i < screen.getCurrentEntries().size(); i++) {
+        int firstVisible = Math.max(0, (int) ((scrollOffset - 2 - JournalConstants.ENTRY_HEIGHT) / JournalConstants.ENTRY_HEIGHT));
+        int lastVisible = Math.min(screen.getCurrentEntries().size() - 1, (int) ((scrollOffset + h) / JournalConstants.ENTRY_HEIGHT) + 1);
+
+        for (int i = firstVisible; i <= lastVisible; i++) {
             JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(i);
             int entryY = (int) (y + 2 - scrollOffset + i * JournalConstants.ENTRY_HEIGHT);
             if (entryY + JournalConstants.ENTRY_HEIGHT < y || entryY > y + h) {
@@ -82,15 +98,20 @@ public class JournalListPanel {
                 }
 
                 int maxDrawWidth = w - textOffsetX - 16;
-                String displayName = entry.displayName();
-                int textW = screen.getFont().width(displayName);
+                TextCache cachedText = getTextCache(entry);
+                String displayName = cachedText.displayName;
+                int textW = cachedText.width;
                 float baseScale = 1f;
 
                 if (textW > maxDrawWidth) {
                     baseScale = Math.max(0.75f, (float) maxDrawWidth / textW);
-                    if (screen.getFont().width(displayName) * baseScale > maxDrawWidth) {
-                        int allowedW = (int) (maxDrawWidth / 0.75f) - screen.getFont().width("...");
-                        displayName = screen.getFont().plainSubstrByWidth(displayName, allowedW) + "...";
+                    if (textW * baseScale > maxDrawWidth) {
+                        if (cachedText.lastMaxWidth != maxDrawWidth) {
+                            int allowedW = (int) (maxDrawWidth / 0.75f) - screen.getFont().width("...");
+                            cachedText.lastDrawName = screen.getFont().plainSubstrByWidth(displayName, allowedW) + "...";
+                            cachedText.lastMaxWidth = maxDrawWidth;
+                        }
+                        displayName = cachedText.lastDrawName;
                     }
                 }
 
@@ -101,7 +122,7 @@ public class JournalListPanel {
 
                 g.pose().translate(x + textOffsetX, textY, 0);
                 g.pose().scale(finalScale, finalScale, 1f);
-                g.drawString(screen.getFont(), displayName, 0, 0, nameColor, true);
+                g.drawString(screen.getFont(), displayName, 0, 0, nameColor, false);
                 g.pose().popPose();
             }
         }
@@ -109,6 +130,16 @@ public class JournalListPanel {
 
         int maxScroll = Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - h);
         renderScrollbar(g, x + w - 6, y + 2, h - 4, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT, maxScroll);
+    }
+
+    private TextCache getTextCache(JournalTypes.QuestListEntry entry) {
+        String key = entry.displayName();
+        return textCache.computeIfAbsent(key, k -> {
+            TextCache cache = new TextCache();
+            cache.displayName = k;
+            cache.width = screen.getFont().width(k);
+            return cache;
+        });
     }
 
     private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, int maxScroll) {

@@ -11,7 +11,9 @@ import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class JournalDetailRewards {
     private final QuestJournalScreen screen;
@@ -36,6 +38,15 @@ public class JournalDetailRewards {
     private final int[] rewardAreaRect = new int[4];
     private int parentClipY1 = 0;
     private int parentClipY2 = 0;
+    private final Map<String, RewardCache> rewardCache = new HashMap<>();
+    private final String phaseRewardText = Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString();
+    private final String chapterRewardText = Component.translatable("arc_quest.gui.journal.section.chapter_rewards").getString();
+
+    private static class RewardCache {
+        ItemStack stack = ItemStack.EMPTY;
+        int width = -1;
+        String text;
+    }
 
     public JournalDetailRewards(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
@@ -77,8 +88,8 @@ public class JournalDetailRewards {
         int localW = scrollAreaW - 24;
         int currentY = localY;
 
-        String phaseTxt = Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString();
-        String chapTxt = Component.translatable("arc_quest.gui.journal.section.chapter_rewards").getString();
+        String phaseTxt = phaseRewardText;
+        String chapTxt = chapterRewardText;
 
         int totalTabW = 0;
         int phaseTw = font.width(phaseTxt);
@@ -105,7 +116,7 @@ public class JournalDetailRewards {
             phaseTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, phaseTabRect);
             int color = (activeTab == Tab.PHASE) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
-            g.drawString(font, phaseTxt, phaseTabX, currentY, HudAnimUtil.withAlpha(color, safeA), true);
+            g.drawString(font, phaseTxt, phaseTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
         }
 
         if (hasChapterRewards) {
@@ -115,7 +126,7 @@ public class JournalDetailRewards {
             chapterTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, chapterTabRect);
             int color = (activeTab == Tab.CHAPTER) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
-            g.drawString(font, chapTxt, chapTabX, currentY, HudAnimUtil.withAlpha(color, safeA), true);
+            g.drawString(font, chapTxt, chapTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
         }
 
         // 处理丝滑滑块动画
@@ -167,6 +178,7 @@ public class JournalDetailRewards {
         for (IReward r : currentRewards) {
             int rW = getRewardWidth(r, font);
             int rH = 24;
+            RewardCache cachedReward = getRewardCache(r, font);
 
             int absHitX = x + 12 + renderStartX + itemX;
             int absHitY = absItemsY;
@@ -178,8 +190,8 @@ public class JournalDetailRewards {
                     my >= absHitY && my <= absHitY + rH &&
                     my >= parentClipY1 && my <= parentClipY2;
 
-            if (r instanceof ItemReward ir) {
-                ItemStack stack = new ItemStack(ir.getItem(), ir.getCount());
+            if (r instanceof ItemReward) {
+                ItemStack stack = cachedReward.stack;
                 int lineY = rH - 2;
 
                 if (hovered && !isDragging) {
@@ -210,7 +222,7 @@ public class JournalDetailRewards {
                 g.pose().pushPose();
                 g.pose().translate(itemX + 8, 8, 0);
                 g.pose().scale(0.85f, 0.85f, 1f);
-                g.drawString(font, r.describe(), 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, itemSafeA), true);
+                g.drawString(font, cachedReward.text, 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, itemSafeA), false);
                 g.pose().popPose();
             }
             itemX += rW + 12;
@@ -227,7 +239,22 @@ public class JournalDetailRewards {
     }
 
     private int getRewardWidth(IReward r, Font font) {
-        return (r instanceof ItemReward) ? 24 : (int) (font.width(r.describe()) * 0.85f) + 12;
+        return getRewardCache(r, font).width;
+    }
+
+    private RewardCache getRewardCache(IReward r, Font font) {
+        String key = r instanceof ItemReward ir ? "item:" + ir.getItem() + ":" + ir.getCount() : "text:" + r.describe();
+        return rewardCache.computeIfAbsent(key, k -> {
+            RewardCache cache = new RewardCache();
+            if (r instanceof ItemReward ir) {
+                cache.stack = new ItemStack(ir.getItem(), ir.getCount());
+                cache.width = 24;
+            } else {
+                cache.text = r.describe();
+                cache.width = (int) (font.width(cache.text) * 0.85f) + 12;
+            }
+            return cache;
+        });
     }
 
     private void switchToTab(Tab tab) {

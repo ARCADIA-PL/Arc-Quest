@@ -48,6 +48,10 @@ public final class DialogueHistoryPanel {
     private static List<TranscriptEntry> compactedTranscriptCache = List.of();
     private static int compactedSourceSize = -1;
     private static long compactedContentSignature = Long.MIN_VALUE;
+    private static List<RenderBlock> renderBlockCache = List.of();
+    private static long renderBlockSignature = Long.MIN_VALUE;
+    private static int renderBlockWidth = -1;
+    private static int renderBlockTotalHeight = 0;
 
     private DialogueHistoryPanel() {}
 
@@ -64,6 +68,10 @@ public final class DialogueHistoryPanel {
 
         isDraggingScrollbar = false;
         isDraggingContent = false;
+        renderBlockCache = List.of();
+        renderBlockSignature = Long.MIN_VALUE;
+        renderBlockWidth = -1;
+        renderBlockTotalHeight = 0;
 
         lastRenderMs = System.currentTimeMillis();
         forceScrollToBottom();
@@ -304,21 +312,8 @@ public final class DialogueHistoryPanel {
         int viewHeight = PH - contentYStart - 12;
         int safeMaxWidth = PW - 50;
 
-        List<RenderBlock> blocks = new ArrayList<>();
-        int totalHeight = 0;
-
-        for (TranscriptEntry entry : transcript) {
-            boolean isPlayer = "player".equalsIgnoreCase(entry.role());
-            String speakerName = (entry.speaker() == null || entry.speaker().isBlank()) ? (isPlayer ? "YOU" : "UNKNOWN") : entry.speaker();
-
-            RenderBlock block = new RenderBlock();
-            block.isPlayer = isPlayer;
-            block.speaker = speakerName;
-            block.lines = HudRenderUtil.wrapText(entry.text(), safeMaxWidth - 15, font);
-            block.height = 14 + (block.lines.size() * (font.lineHeight + 6)) + 16;
-            blocks.add(block);
-            totalHeight += block.height;
-        }
+        List<RenderBlock> blocks = getRenderBlocks(transcript, safeMaxWidth - 15, font);
+        int totalHeight = renderBlockTotalHeight;
 
         maxScroll = Math.max(0, totalHeight - viewHeight);
 
@@ -357,7 +352,7 @@ public final class DialogueHistoryPanel {
             int textY = currentY;
             int textColor = block.isPlayer ? 0xFFFFFF : 0xCCCCCC;
             for (String line : block.lines) {
-                g.drawString(font, line, leftX + 12, textY, HudAnimUtil.withAlpha(textColor, alpha), true);
+                g.drawString(font, line, leftX + 12, textY, HudAnimUtil.withAlpha(textColor, alpha), false);
                 textY += font.lineHeight + 6;
             }
 
@@ -386,6 +381,31 @@ public final class DialogueHistoryPanel {
 
             g.fill(scrollBarX, thumbY, scrollBarX + 2, thumbY + thumbH, HudAnimUtil.withAlpha(scrollColor, scrollAlpha));
         }
+    }
+
+    private static List<RenderBlock> getRenderBlocks(List<TranscriptEntry> transcript, int wrapWidth, Font font) {
+        long signature = compactedContentSignature;
+        if (renderBlockSignature == signature && renderBlockWidth == wrapWidth) return renderBlockCache;
+
+        List<RenderBlock> blocks = new ArrayList<>(transcript.size());
+        int totalHeight = 0;
+        for (TranscriptEntry entry : transcript) {
+            boolean isPlayer = "player".equalsIgnoreCase(entry.role());
+            String speakerName = (entry.speaker() == null || entry.speaker().isBlank()) ? (isPlayer ? "YOU" : "UNKNOWN") : entry.speaker();
+
+            RenderBlock block = new RenderBlock();
+            block.isPlayer = isPlayer;
+            block.speaker = speakerName;
+            block.lines = HudRenderUtil.wrapText(entry.text(), wrapWidth, font);
+            block.height = 14 + (block.lines.size() * (font.lineHeight + 6)) + 16;
+            blocks.add(block);
+            totalHeight += block.height;
+        }
+        renderBlockSignature = signature;
+        renderBlockWidth = wrapWidth;
+        renderBlockCache = blocks;
+        renderBlockTotalHeight = totalHeight;
+        return renderBlockCache;
     }
 
     private static List<TranscriptEntry> compactTranscript(List<TranscriptEntry> source) {

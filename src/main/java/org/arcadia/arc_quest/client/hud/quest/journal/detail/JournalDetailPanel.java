@@ -36,6 +36,28 @@ public class JournalDetailPanel {
     private int detailContentHeight = 0;
     private float detailReveal = 0f;
     private float historyBtnHoverAnim = 0f;
+    private final DetailHeaderCache headerCache = new DetailHeaderCache();
+    private final String questCompletedText = Component.translatable("arc_quest.gui.journal.label.quest_completed").getString();
+    private final String questFailedText = Component.translatable("arc_quest.gui.journal.label.quest_failed").getString();
+    private final String selectQuestText = Component.translatable("arc_quest.gui.journal.label.select_quest").getString();
+
+    private static class DetailHeaderCache {
+        String questId = "";
+        int descWidth = -1;
+        String titleText = "";
+        int titleWidth = 0;
+        String descriptionText = "";
+        List<String> descriptionLines = List.of();
+
+        void clear() {
+            questId = "";
+            descWidth = -1;
+            titleText = "";
+            titleWidth = 0;
+            descriptionText = "";
+            descriptionLines = List.of();
+        }
+    }
 
     public JournalDetailPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -93,6 +115,7 @@ public class JournalDetailPanel {
         detailReveal = 0f;
         detailTargetScroll = 0;
         detailScrollOffset = 0;
+        headerCache.clear();
         singlePhaseRenderer.reset();
         parallelPhaseRenderer.reset();
     }
@@ -147,7 +170,8 @@ public class JournalDetailPanel {
             titleIconOffset = 22;
         }
 
-        String titleText = def.getDisplayName().getString();
+        DetailHeaderCache header = getHeaderCache(entry, def, scrollAreaW);
+        String titleText = header.titleText;
 
         // 渲染主标题
         g.pose().pushPose();
@@ -157,7 +181,7 @@ public class JournalDetailPanel {
         g.pose().popPose();
 
         // 计算标题和历史按钮的位置 (先排版历史按钮)
-        int titleW = (int) (screen.getFont().width(titleText) * 1.2f);
+        int titleW = (int) (header.titleWidth * 1.2f);
         int hBtnX = titleIconOffset + titleW + 10;
         int hBtnY = localY + 5;
         int hBtnR = 3;
@@ -238,17 +262,16 @@ public class JournalDetailPanel {
 
         localY += 18;
 
-        if (!def.getDescription().getString().isEmpty()) {
+        if (!header.descriptionText.isEmpty()) {
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.85f, 0.85f, 1f);
-            List<String> descLines = HudRenderUtil.wrapText(def.getDescription().getString(), (int) ((scrollAreaW - 24) / 0.85f), screen.getFont());
-            for (String line : descLines) {
+            for (String line : header.descriptionLines) {
                 g.drawString(screen.getFont(), line, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
                 g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
             }
             g.pose().popPose();
-            localY += descLines.size() * (int) (screen.getFont().lineHeight * 0.85f + 1) + 8;
+            localY += header.descriptionLines.size() * (int) (screen.getFont().lineHeight * 0.85f + 1) + 8;
         }
 
         g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
@@ -272,10 +295,10 @@ public class JournalDetailPanel {
                 selectedPhaseIdForRewards = parallelPhaseRenderer.getSelectedPhaseId();
             }
         } else if (entry.state() == QuestState.COMPLETED) {
-            g.drawString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.quest_completed").getString(), 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), true);
+            g.drawString(screen.getFont(), questCompletedText, 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), false);
             localY += 16;
         } else if (entry.state() == QuestState.FAILED) {
-            g.drawString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.quest_failed").getString(), 0, localY, HudAnimUtil.withAlpha(0xFF6666, safeA), true);
+            g.drawString(screen.getFont(), questFailedText, 0, localY, HudAnimUtil.withAlpha(0xFF6666, safeA), false);
             localY += 16;
         }
 
@@ -290,9 +313,25 @@ public class JournalDetailPanel {
         controlsRenderer.render(g, entry, def, runtime, x, y, w, h, mx, my, dt, activeTheme);
     }
 
+    private DetailHeaderCache getHeaderCache(JournalTypes.QuestListEntry entry, QuestDefinition def, int scrollAreaW) {
+        int descWidth = (int) ((scrollAreaW - 24) / 0.85f);
+        String description = def.getDescription().getString();
+        if (!entry.questId().equals(headerCache.questId)
+                || headerCache.descWidth != descWidth
+                || !description.equals(headerCache.descriptionText)) {
+            headerCache.questId = entry.questId();
+            headerCache.descWidth = descWidth;
+            headerCache.titleText = def.getDisplayName().getString();
+            headerCache.titleWidth = screen.getFont().width(headerCache.titleText);
+            headerCache.descriptionText = description;
+            headerCache.descriptionLines = description.isEmpty() ? List.of() : HudRenderUtil.wrapText(description, descWidth, screen.getFont());
+        }
+        return headerCache;
+    }
+
     private void renderEmptyDetail(GuiGraphics g, int x, int y, int w, int h) {
         if (screen.getEffectiveAlpha() > 0.05f) {
-            g.drawCenteredString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.select_quest").getString(), x + w / 2, y + h / 2, HudAnimUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
+            g.drawCenteredString(screen.getFont(), selectQuestText, x + w / 2, y + h / 2, HudAnimUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
         }
     }
 

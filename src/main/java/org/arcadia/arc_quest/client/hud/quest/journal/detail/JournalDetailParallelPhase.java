@@ -90,6 +90,14 @@ public class JournalDetailParallelPhase {
     private float descHoverAnim = 0f;
     private final int[] descHitBox = new int[4];
     private String currentDescPhaseId = null;
+    private final Map<String, TextLayoutCache> textLayoutCache = new HashMap<>();
+
+    private static class TextLayoutCache {
+        String text;
+        String cleanText;
+        int width = -1;
+        List<String> lines;
+    }
 
     public JournalDetailParallelPhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
@@ -134,6 +142,7 @@ public class JournalDetailParallelPhase {
         customPhaseOrder.clear(); phaseVisualX.clear(); potentialDragPhaseId = null;
         draggingPhaseId = null; dragScaleAnim = 0f;
         descHoverAnim = 0f; currentDescPhaseId = null;
+        textLayoutCache.clear();
     }
 
     private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
@@ -230,7 +239,7 @@ public class JournalDetailParallelPhase {
         g.pose().pushPose();
         g.pose().translate(currentX1, headerBaseY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "PARALLEL LANES", 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), true);
+        g.drawString(font, "PARALLEL LANES", 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
         g.pose().popPose();
 
         currentX1 += (int) (font.width("PARALLEL LANES") * 0.8f) + 8;
@@ -238,19 +247,19 @@ public class JournalDetailParallelPhase {
         g.pose().pushPose();
         g.pose().translate(currentX1, headerBaseY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "//", 0, 0, HudAnimUtil.withAlpha(activeTheme, (int) (safeA * 0.6f)), true);
+        g.drawString(font, "//", 0, 0, HudAnimUtil.withAlpha(activeTheme, (int) (safeA * 0.6f)), false);
         g.pose().popPose();
 
         currentX1 += (int) (font.width("//") * 0.8f) + 8;
 
         if (focusPhase != null) {
-            String pName = focusPhase.getDisplayName() != null && !focusPhase.getDisplayName().getString().isEmpty() ? focusPhase.getDisplayName().getString() : focusPhase.getPhaseId();
+            String pName = getPhaseDisplayName(focusPhase);
             String prefix = "FOCUS: ";
 
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
             g.pose().scale(0.75f, 0.75f, 1f);
-            g.drawString(font, prefix, 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), true);
+            g.drawString(font, prefix, 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), false);
             g.pose().popPose();
 
             int prefixW = (int) (font.width(prefix) * 0.75f);
@@ -272,7 +281,7 @@ public class JournalDetailParallelPhase {
                 boolean hasStory = focusPhase.getStory() != null && !focusPhase.getStory().getString().isEmpty();
                 float baseTextScale = 0.85f;
                 int descMaxW = scrollAreaW - 4;
-                List<String> wrappedDesc = HudRenderUtil.wrapText(focusPhase.getDescription().getString(), (int) (descMaxW / baseTextScale), font);
+                List<String> wrappedDesc = getWrappedLines("focus-desc:" + focusPhaseId, focusPhase.getDescription().getString(), (int) (descMaxW / baseTextScale), font);
 
                 int maxLines = 2;
                 int unscaledLineH = font.lineHeight + 3;
@@ -434,7 +443,7 @@ public class JournalDetailParallelPhase {
             if (draggingPhaseId == null && potentialDragPhaseId == null)
                 currentPhaseTags.add(new JournalTypes.PhaseTagRect(absCardX, absCardY, colW, maxCardH, phaseId));
 
-            String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty() ? phase.getDisplayName().getString() : phase.getPhaseId();
+            String phaseName = getPhaseDisplayName(phase);
             int nameAbsX = absCardX + 8 + contentShiftX, nameAbsY = absCardY + 6;
             drawScrollingString(g, font, phaseName, cardX + 8 + contentShiftX, cardY + 6, colW - 60, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true, nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
@@ -561,7 +570,7 @@ public class JournalDetailParallelPhase {
                     String offerKey = phaseId + "_" + i;
                     float hoverAnimOffer = offerHoverAnims.getOrDefault(offerKey, 0f);
 
-                    String cleanObjText = obj.getDisplayText().getString().replace("§7", "").replace("§a", "").replace("§f", "");
+                    String cleanObjText = getCleanObjectiveText(obj);
                     String prefix = complete ? "✔ " : "○ ";
 
                     int actualTextW = font.width(prefix + cleanObjText);
@@ -586,12 +595,12 @@ public class JournalDetailParallelPhase {
 
                     String displayText = prefix + cleanObjText;
                     if (canUpload && textHovered) {
-                        String submitBase = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
+                        String submitBase = getStaticText("submit", "arc_quest.gui.journal.label.click_to_submit");
                         String targetName = "";
                         if (obj.hasTargetTag() && obj.getTargetTagTranslationKey() != null) targetName = Component.translatable(obj.getTargetTagTranslationKey()).getString();
                         else {
                             Item targetItem = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
-                            if (targetItem != null && targetItem != Items.AIR) targetName = new ItemStack(targetItem).getHoverName().getString();
+                            if (targetItem != null && targetItem != Items.AIR) targetName = getItemName(obj.getTargetId());
                         }
                         displayText = targetName.isEmpty() ? submitBase : submitBase + " - " + targetName;
                     }
@@ -654,7 +663,7 @@ public class JournalDetailParallelPhase {
                     g.fill(btnX, btnY, btnX + 1, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
                     g.fill(btnX + btnW - 1, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
 
-                    String choiceText = (i + 1) + ". " + choice.getDisplayText().getString();
+                    String choiceText = (i + 1) + ". " + getChoiceText(choice);
                     drawScrollingString(g, font, choiceText, btnX + 6, btnY + 6, btnW - 12, HudAnimUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absBtnX + 6, absBtnY + 6, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
                     if (draggingPhaseId == null) currentChoiceButtons.add(new JournalTypes.ChoiceButtonRect(absBtnX, absBtnY, btnW, btnH, phase.getChoices().indexOf(choice), phaseId));
@@ -888,6 +897,62 @@ public class JournalDetailParallelPhase {
 
     private void recordParallelOfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {
         currentOfferProgressRects.add(new OfferProgressRect(x, y, w, h, phaseId, objectiveIndex));
+    }
+
+    private String getPhaseDisplayName(PhaseDefinition phase) {
+        String key = "phase-name:" + phase.getPhaseId();
+        return textLayoutCache.computeIfAbsent(key, k -> {
+            TextLayoutCache cache = new TextLayoutCache();
+            String name = phase.getDisplayName() != null ? phase.getDisplayName().getString() : "";
+            cache.text = name.isEmpty() ? phase.getPhaseId() : name;
+            return cache;
+        }).text;
+    }
+
+    private List<String> getWrappedLines(String key, String text, int width, Font font) {
+        TextLayoutCache cache = textLayoutCache.computeIfAbsent(key, k -> new TextLayoutCache());
+        if (cache.lines == null || cache.width != width || !text.equals(cache.text)) {
+            cache.text = text;
+            cache.width = width;
+            cache.lines = HudRenderUtil.wrapText(text, width, font);
+        }
+        return cache.lines;
+    }
+
+    private String getCleanObjectiveText(ObjectiveEntry objective) {
+        String key = "objective-clean:" + objective.getDisplayText().getString();
+        return textLayoutCache.computeIfAbsent(key, k -> {
+            TextLayoutCache cache = new TextLayoutCache();
+            cache.cleanText = objective.getDisplayText().getString().replace("§7", "").replace("§a", "").replace("§f", "");
+            return cache;
+        }).cleanText;
+    }
+
+    private String getChoiceText(ChoiceOption choice) {
+        String key = "choice:" + choice.getDisplayText().getString();
+        return textLayoutCache.computeIfAbsent(key, k -> {
+            TextLayoutCache cache = new TextLayoutCache();
+            cache.text = choice.getDisplayText().getString();
+            return cache;
+        }).text;
+    }
+
+    private String getStaticText(String key, String translationKey) {
+        return textLayoutCache.computeIfAbsent("static:" + key, k -> {
+            TextLayoutCache cache = new TextLayoutCache();
+            cache.text = Component.translatable(translationKey).getString();
+            return cache;
+        }).text;
+    }
+
+    private String getItemName(ResourceLocation itemId) {
+        String key = "item-name:" + itemId;
+        return textLayoutCache.computeIfAbsent(key, k -> {
+            TextLayoutCache cache = new TextLayoutCache();
+            Item item = ForgeRegistries.ITEMS.getValue(itemId);
+            cache.text = item == null || item == Items.AIR ? "" : new ItemStack(item).getHoverName().getString();
+            return cache;
+        }).text;
     }
 
     private record ScrollControls(int leftX, int leftY, int leftW, int leftH, int rightX, int rightY, int rightW, int rightH, int trackX, int trackY, int trackW, int thumbX, int thumbW) {}

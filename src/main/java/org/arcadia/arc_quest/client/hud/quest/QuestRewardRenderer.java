@@ -9,7 +9,9 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 在任务日志详情面板中渲染奖励列表。
@@ -22,6 +24,15 @@ public final class QuestRewardRenderer {
     private static final int ICON_SIZE = 12;
     private static final int ROW_HEIGHT = 16;
     private static final int ICON_TEXT_GAP = 3;
+    private static final Map<String, RewardRenderCache> CACHE = new HashMap<>();
+
+    private static class RewardRenderCache {
+        ItemStack stack = ItemStack.EMPTY;
+        String label;
+        String prefixedText;
+        int lastMaxWidth = Integer.MIN_VALUE;
+        String safeText;
+    }
 
     private QuestRewardRenderer() {
     }
@@ -73,30 +84,21 @@ public final class QuestRewardRenderer {
 
     private static int renderItemReward(GuiGraphics g, ItemReward ir, Font font,
                                         int maxWidth, int alpha, int offsetY, int iconSize) {
-        // 直接使用 getter 方法获取物品和数量
-        Item item = ir.getItem();
-        int count = ir.getCount();
-
-        if (item == null || count < 1) {
+        RewardRenderCache cache = getItemCache(ir);
+        if (cache.stack.isEmpty()) {
             return renderTextReward(g, ir.describe(), font, maxWidth, alpha, offsetY);
         }
-
-        ItemStack stack = new ItemStack(item, count);
 
         g.pose().pushPose();
         g.pose().translate(0, offsetY, 0);
 
-        // 物品图标渲染（自动适配任意分辨率纹理，缩放到 iconSize）
-        // Minecraft 物品图标标准为 16x16，通过缩放矩阵适配到目标尺寸
-        // 无论原始纹理是 16x16、32x32 还是 64x64，都会正确缩放
         g.pose().pushPose();
-        float scale = iconSize / 16f;  // 从标准 16x16 缩放到目标尺寸
+        float scale = iconSize / 16f;
         g.pose().scale(scale, scale, 1f);
-        g.renderItem(stack, 0, 0);
+        g.renderItem(cache.stack, 0, 0);
         g.pose().popPose();
 
-        String label = stack.getHoverName().getString() + (count > 1 ? " ×" + count : "");
-        String safe = font.plainSubstrByWidth(label, maxWidth - iconSize - ICON_TEXT_GAP - 2);
+        String safe = safeText(cache, cache.label, maxWidth - iconSize - ICON_TEXT_GAP - 2, font);
         g.drawString(font, safe, iconSize + ICON_TEXT_GAP, (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xEEEEEE, alpha), false);
         g.pose().popPose();
 
@@ -105,10 +107,39 @@ public final class QuestRewardRenderer {
 
     private static int renderTextReward(GuiGraphics g, String text, Font font,
                                         int maxWidth, int alpha, int offsetY) {
-        String prefix = rewardPrefix(text);
-        String safe = font.plainSubstrByWidth(prefix + text, maxWidth);
+        RewardRenderCache cache = getTextCache(text);
+        String safe = safeText(cache, cache.prefixedText, maxWidth, font);
         g.drawString(font, safe, 0, offsetY + (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xDDCCFF, alpha), false);
         return ROW_HEIGHT;
+    }
+
+    private static RewardRenderCache getItemCache(ItemReward reward) {
+        Item item = reward.getItem();
+        int count = reward.getCount();
+        if (item == null || count < 1) return new RewardRenderCache();
+        String key = "item:" + Item.getId(item) + ":" + count;
+        return CACHE.computeIfAbsent(key, k -> {
+            RewardRenderCache cache = new RewardRenderCache();
+            cache.stack = new ItemStack(item, count);
+            cache.label = cache.stack.getHoverName().getString() + (count > 1 ? " ×" + count : "");
+            return cache;
+        });
+    }
+
+    private static RewardRenderCache getTextCache(String text) {
+        return CACHE.computeIfAbsent("text:" + text, k -> {
+            RewardRenderCache cache = new RewardRenderCache();
+            cache.prefixedText = rewardPrefix(text) + text;
+            return cache;
+        });
+    }
+
+    private static String safeText(RewardRenderCache cache, String text, int maxWidth, Font font) {
+        if (cache.lastMaxWidth != maxWidth) {
+            cache.safeText = font.plainSubstrByWidth(text, maxWidth);
+            cache.lastMaxWidth = maxWidth;
+        }
+        return cache.safeText;
     }
 
     private static String rewardPrefix(String describe) {

@@ -53,6 +53,18 @@ public class JournalDetailSinglePhase {
     private float descHoverAnim = 0f;
     private final int[] descHitBox = new int[4];
     private String currentDescPhaseId = null;
+    private final Map<String, TextLayoutCache> textLayoutCache = new HashMap<>();
+    private final Map<String, String> itemNameCache = new HashMap<>();
+    private final String objectiveCompletePrefix = Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString();
+    private final String objectiveActivePrefix = Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString();
+    private final String clickToSubmitText = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
+    private final String choosePathText = Component.translatable("arc_quest.gui.journal.section.choose_path").getString();
+
+    private static class TextLayoutCache {
+        String text;
+        int width = -1;
+        List<String> lines;
+    }
 
     public JournalDetailSinglePhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
@@ -68,6 +80,7 @@ public class JournalDetailSinglePhase {
         offerHoverAnims.clear();
         descHoverAnim = 0f;
         currentDescPhaseId = null;
+        textLayoutCache.clear();
     }
 
     private void drawScrollingString(GuiGraphics g, Font font, String text, int localX, int localY, int maxWidth, int color, boolean dropShadow, int absX, int absY, int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
@@ -127,7 +140,7 @@ public class JournalDetailSinglePhase {
         g.pose().pushPose();
         g.pose().translate(0, localY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        String phaseName = phase.getDisplayName() != null && !phase.getDisplayName().getString().isEmpty() ? phase.getDisplayName().getString() : phase.getPhaseId();
+        String phaseName = getPhaseDisplayName(phase);
         String titleText = Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString();
 
         int maxTitleW = (int)((scrollAreaW - 10) / 0.8f);
@@ -142,7 +155,7 @@ public class JournalDetailSinglePhase {
             boolean hasStory = phase.getStory() != null && !phase.getStory().getString().isEmpty();
             float baseTextScale = 0.85f;
             int maxW = (int) ((scrollAreaW - 4) / baseTextScale);
-            List<String> phaseDescLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
+            List<String> phaseDescLines = getWrappedLines("desc:" + phaseId, phase.getDescription().getString(), maxW, font);
 
             int unscaledLineSpacing = font.lineHeight + 4;
             int visualLineSpacing = (int) (unscaledLineSpacing * baseTextScale);
@@ -220,10 +233,10 @@ public class JournalDetailSinglePhase {
             int required = phase.getObjectives().get(i).getRequiredCount();
             boolean complete = progress >= required;
 
-            String objText = (complete ? Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString() : Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString()) + phase.getObjectives().get(i).getDisplayText().getString();
+            String objText = getObjectiveText(phase.getObjectives().get(i), complete);
 
             int textStartY = localY;
-            List<String> originalWrappedLines = HudRenderUtil.wrapText(objText, scrollAreaW - 40 - objX, font);
+            List<String> originalWrappedLines = getWrappedLines("obj:" + phaseId + ":" + i + ":" + complete, objText, scrollAreaW - 40 - objX, font);
             int textBlockHeight = originalWrappedLines.size() * (font.lineHeight + 1);
             int barW = Math.min(scrollAreaW - 40 - objX, 325);
 
@@ -255,7 +268,7 @@ public class JournalDetailSinglePhase {
             List<String> renderLines = originalWrappedLines;
             if (canSubmit && isHovered) {
                 ObjectiveEntry currentObj = phase.getObjectives().get(i);
-                String submitBase = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
+                String submitBase = clickToSubmitText;
                 String targetName = "";
 
                 if (currentObj.hasTargetTag() && currentObj.getTargetTagTranslationKey() != null) {
@@ -263,12 +276,12 @@ public class JournalDetailSinglePhase {
                 } else {
                     Item targetItem = ForgeRegistries.ITEMS.getValue(currentObj.getTargetId());
                     if (targetItem != null && targetItem != Items.AIR) {
-                        targetName = new ItemStack(targetItem).getHoverName().getString();
+                        targetName = getItemName(currentObj.getTargetId());
                     }
                 }
 
                 String finalText = targetName.isEmpty() ? submitBase : submitBase + " - " + targetName;
-                renderLines = HudRenderUtil.wrapText(finalText, scrollAreaW - 40 - objX, font);
+                renderLines = getWrappedLines("submit:" + phaseId + ":" + i + ":" + targetName, finalText, scrollAreaW - 40 - objX, font);
             }
 
             g.pose().pushPose();
@@ -291,7 +304,7 @@ public class JournalDetailSinglePhase {
                 String cleanLine = line.replace("§7", "").replace("§a", "").replace("§f", "");
                 int baseColor = complete ? 0x88FF88 : 0xDDDDDD;
                 if (canSubmit) baseColor = HudAnimUtil.lerpColor(baseColor, activeTheme, hoverAnim);
-                g.drawString(font, cleanLine, objX, drawY, HudAnimUtil.withAlpha(baseColor, oA), true);
+                g.drawString(font, cleanLine, objX, drawY, HudAnimUtil.withAlpha(baseColor, oA), false);
                 drawY += font.lineHeight + 1;
             }
             g.pose().popPose();
@@ -355,7 +368,7 @@ public class JournalDetailSinglePhase {
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, Component.translatable("arc_quest.gui.journal.section.choose_path").getString(), 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), true);
+            g.drawString(font, choosePathText, 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), false);
             g.pose().popPose();
             localY += 14;
 
@@ -384,7 +397,7 @@ public class JournalDetailSinglePhase {
                 g.pose().translate(8, localY + (choiceBtnH - font.lineHeight * textScale) / 2f + 1, 0);
                 g.pose().scale(textScale, textScale, 1f);
 
-                String choiceText = (i + 1) + ". " + choice.getDisplayText().getString();
+                String choiceText = (i + 1) + ". " + getChoiceText(choice);
                 int maxChoiceW = (int) ((choiceBtnW - 16) / textScale);
                 int stringAbsX = absX + 8;
                 int stringAbsY = absY + (int)((choiceBtnH - font.lineHeight * textScale) / 2f + 1);
@@ -453,6 +466,53 @@ public class JournalDetailSinglePhase {
             }
         }
         return false;
+    }
+
+    private String getPhaseDisplayName(PhaseDefinition phase) {
+        String key = "phase-name:" + phase.getPhaseId();
+        return textLayoutCache.computeIfAbsent(key, k -> {
+            TextLayoutCache cache = new TextLayoutCache();
+            String name = phase.getDisplayName() != null ? phase.getDisplayName().getString() : "";
+            cache.text = name.isEmpty() ? phase.getPhaseId() : name;
+            return cache;
+        }).text;
+    }
+
+    private String getObjectiveText(ObjectiveEntry objective, boolean complete) {
+        String key = "objective:" + complete + ":" + objective.getDisplayText().getString();
+        return textLayoutCache.computeIfAbsent(key, k -> {
+            TextLayoutCache cache = new TextLayoutCache();
+            cache.text = (complete ? objectiveCompletePrefix : objectiveActivePrefix) + objective.getDisplayText().getString();
+            return cache;
+        }).text;
+    }
+
+    private String getChoiceText(ChoiceOption choice) {
+        String key = "choice:" + choice.getDisplayText().getString();
+        return textLayoutCache.computeIfAbsent(key, k -> {
+            TextLayoutCache cache = new TextLayoutCache();
+            cache.text = choice.getDisplayText().getString();
+            return cache;
+        }).text;
+    }
+
+    private List<String> getWrappedLines(String key, String text, int width, Font font) {
+        TextLayoutCache cache = textLayoutCache.computeIfAbsent(key, k -> new TextLayoutCache());
+        if (cache.lines == null || cache.width != width || !text.equals(cache.text)) {
+            cache.text = text;
+            cache.width = width;
+            cache.lines = HudRenderUtil.wrapText(text, width, font);
+        }
+        return cache.lines;
+    }
+
+    private String getItemName(ResourceLocation itemId) {
+        String key = itemId.toString();
+        return itemNameCache.computeIfAbsent(key, k -> {
+            Item item = ForgeRegistries.ITEMS.getValue(itemId);
+            if (item == null || item == Items.AIR) return "";
+            return new ItemStack(item).getHoverName().getString();
+        });
     }
 
     private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {
