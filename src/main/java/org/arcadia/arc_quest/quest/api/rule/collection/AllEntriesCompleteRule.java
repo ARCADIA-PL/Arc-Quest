@@ -14,7 +14,8 @@ public final class AllEntriesCompleteRule implements CollectionCompletionRule {
             if (phase == null) continue;
             CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
             if (entryConfig == null) continue;
-            if (context.getCategoryId() != null && !context.getCategoryId().equals(entryConfig.getCategoryId())) continue;
+            if (context.getCategoryId() != null && !context.getCategoryId().equals(entryConfig.getCategoryId()))
+                continue;
             if (!context.getQuestRuntimeData().isPhaseCompleted(phaseId)) return false;
         }
         return true;

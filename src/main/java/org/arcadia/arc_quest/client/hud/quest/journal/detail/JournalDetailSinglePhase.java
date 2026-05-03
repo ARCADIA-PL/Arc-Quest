@@ -21,11 +21,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
-import org.arcadia.arc_quest.quest.api.ChoiceOption;
-import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
-import org.arcadia.arc_quest.quest.api.ObjectiveType;
-import org.arcadia.arc_quest.quest.api.PhaseDefinition;
-import org.arcadia.arc_quest.quest.api.QuestDefinition;
+import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SRequestQuestActionPacket;
@@ -42,29 +38,22 @@ public class JournalDetailSinglePhase {
     private final List<JournalTypes.ChoiceButtonRect> currentChoiceButtons = new ArrayList<>();
     private final Map<Integer, Float> offerHoverAnims = new HashMap<>();
     private final List<OfferProgressRect> currentOfferProgressRects = new ArrayList<>();
-    private float[] detailObjReveal = new float[0];
-    private float[] objProgressAnims = new float[0];
-    private ResourceLocation intelSceneId = null;
-    private int intelBtnLocalY = 0;
-    private float intelBtnHoverAnim = 0f;
-    private long lastChoiceClickAt = 0L;
-
-    // 新增：描述文本交互相关状态
-    private float descHoverAnim = 0f;
     private final int[] descHitBox = new int[4];
-    private String currentDescPhaseId = null;
     private final Map<String, TextLayoutCache> textLayoutCache = new HashMap<>();
     private final Map<String, String> itemNameCache = new HashMap<>();
     private final String objectiveCompletePrefix = Component.translatable("arc_quest.gui.journal.label.objective_complete_prefix").getString();
     private final String objectiveActivePrefix = Component.translatable("arc_quest.gui.journal.label.objective_active_prefix").getString();
     private final String clickToSubmitText = Component.translatable("arc_quest.gui.journal.label.click_to_submit").getString();
     private final String choosePathText = Component.translatable("arc_quest.gui.journal.section.choose_path").getString();
-
-    private static class TextLayoutCache {
-        String text;
-        int width = -1;
-        List<String> lines;
-    }
+    private float[] detailObjReveal = new float[0];
+    private float[] objProgressAnims = new float[0];
+    private ResourceLocation intelSceneId = null;
+    private int intelBtnLocalY = 0;
+    private float intelBtnHoverAnim = 0f;
+    private long lastChoiceClickAt = 0L;
+    // 新增：描述文本交互相关状态
+    private float descHoverAnim = 0f;
+    private String currentDescPhaseId = null;
 
     public JournalDetailSinglePhase(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
@@ -125,7 +114,7 @@ public class JournalDetailSinglePhase {
         if (cx1 < cx2 && cy1 < cy2) {
             g.disableScissor();
             screen.enableScissor(g, cx1, cy1, cx2, cy2);
-            g.drawString(font, text, localX - (int)shift, localY, color, dropShadow);
+            g.drawString(font, text, localX - (int) shift, localY, color, dropShadow);
             g.disableScissor();
             screen.enableScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
         }
@@ -143,9 +132,9 @@ public class JournalDetailSinglePhase {
         String phaseName = getPhaseDisplayName(phase);
         String titleText = Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString();
 
-        int maxTitleW = (int)((scrollAreaW - 10) / 0.8f);
+        int maxTitleW = (int) ((scrollAreaW - 10) / 0.8f);
         int nameAbsX = x;
-        int nameAbsY = scrollAreaY + 12 - (int)parent.getDetailScrollOffset() + localY;
+        int nameAbsY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
         drawScrollingString(g, font, titleText, 0, 0, maxTitleW, HudAnimUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
         g.pose().popPose();
@@ -181,7 +170,10 @@ public class JournalDetailSinglePhase {
                 ));
             }
 
-            descHitBox[0] = absX; descHitBox[1] = absY; descHitBox[2] = hitW; descHitBox[3] = hitH;
+            descHitBox[0] = absX;
+            descHitBox[1] = absY;
+            descHitBox[2] = hitW;
+            descHitBox[3] = hitH;
             currentDescPhaseId = hasStory ? phaseId : null;
 
             // 如果悬停且包含剧情，文本放大且具有呼吸效果，略微染色
@@ -400,7 +392,7 @@ public class JournalDetailSinglePhase {
                 String choiceText = (i + 1) + ". " + getChoiceText(choice);
                 int maxChoiceW = (int) ((choiceBtnW - 16) / textScale);
                 int stringAbsX = absX + 8;
-                int stringAbsY = absY + (int)((choiceBtnH - font.lineHeight * textScale) / 2f + 1);
+                int stringAbsY = absY + (int) ((choiceBtnH - font.lineHeight * textScale) / 2f + 1);
 
                 drawScrollingString(g, font, choiceText, 0, 0, maxChoiceW, HudAnimUtil.withAlpha(textColor, safeA), false, stringAbsX, stringAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
@@ -513,6 +505,12 @@ public class JournalDetailSinglePhase {
             if (item == null || item == Items.AIR) return "";
             return new ItemStack(item).getHoverName().getString();
         });
+    }
+
+    private static class TextLayoutCache {
+        String text;
+        int width = -1;
+        List<String> lines;
     }
 
     private record OfferProgressRect(int x, int y, int w, int h, String phaseId, int objectiveIndex) {

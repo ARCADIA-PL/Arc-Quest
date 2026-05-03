@@ -35,6 +35,7 @@ public class S2CGachaStatePacket {
     private final int resetTimeTicks;
     private final List<CostShortfallLine> shortfallLines;
     private final List<IQuestCapability.GachaDrawRecord> drawHistory;
+
     private S2CGachaStatePacket(Mode mode,
                                 String shopId,
                                 int pityCounter,

@@ -19,25 +19,18 @@ import java.util.Map;
 public class JournalDetailRewards {
     private final QuestJournalScreen screen;
     private final JournalDetailPanel parent;
-
-    private enum Tab { PHASE, CHAPTER }
-    private Tab activeTab = Tab.PHASE;
-
-    private double scrollX = 0, targetScrollX = 0, lastMouseX = 0;
-    private boolean isDragging = false;
-
-    private float animTabX = -1, animTabW = -1, itemsAlphaAnim = 1f;
-
     private final int[] phaseTabRect = new int[4], chapterTabRect = new int[4], rewardAreaRect = new int[4];
-    private int parentClipY1 = 0, parentClipY2 = 0;
     private final Map<String, RewardCache> rewardCache = new HashMap<>();
     private final String phaseRewardText = Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString();
     private final String chapterRewardText = Component.translatable("arc_quest.gui.journal.section.chapter_rewards").getString();
-
-    private static class RewardCache { ItemStack stack = ItemStack.EMPTY; int width = -1; String text; }
-
+    private Tab activeTab = Tab.PHASE;
+    private double scrollX = 0, targetScrollX = 0, lastMouseX = 0;
+    private boolean isDragging = false;
+    private float animTabX = -1, animTabW = -1, itemsAlphaAnim = 1f;
+    private int parentClipY1 = 0, parentClipY2 = 0;
     public JournalDetailRewards(QuestJournalScreen screen, JournalDetailPanel parent) {
-        this.screen = screen; this.parent = parent;
+        this.screen = screen;
+        this.parent = parent;
     }
 
     private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
@@ -46,7 +39,8 @@ public class JournalDetailRewards {
     }
 
     public int render(GuiGraphics g, QuestDefinition def, String selectedPhaseId, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, int activeTheme, float dAlpha, int safeA, int localY, float dt) {
-        this.parentClipY1 = scrollAreaY; this.parentClipY2 = scrollAreaY + scrollAreaH;
+        this.parentClipY1 = scrollAreaY;
+        this.parentClipY2 = scrollAreaY + scrollAreaH;
 
         List<IReward> phaseRewards = null;
         if (selectedPhaseId != null && !selectedPhaseId.isEmpty()) {
@@ -57,40 +51,62 @@ public class JournalDetailRewards {
         boolean hasPhaseRewards = phaseRewards != null && !phaseRewards.isEmpty();
         boolean hasChapterRewards = !def.getCompletionRewards().isEmpty();
 
-        if (!hasPhaseRewards && !hasChapterRewards) { phaseTabRect[2] = 0; chapterTabRect[2] = 0; rewardAreaRect[2] = 0; return localY; }
+        if (!hasPhaseRewards && !hasChapterRewards) {
+            phaseTabRect[2] = 0;
+            chapterTabRect[2] = 0;
+            rewardAreaRect[2] = 0;
+            return localY;
+        }
 
         if (activeTab == Tab.PHASE && !hasPhaseRewards) activeTab = Tab.CHAPTER;
         if (activeTab == Tab.CHAPTER && !hasChapterRewards) activeTab = Tab.PHASE;
 
-        localY += 5; Font font = screen.getFont(); int localW = scrollAreaW - 24, currentY = localY;
+        localY += 5;
+        Font font = screen.getFont();
+        int localW = scrollAreaW - 24, currentY = localY;
         int totalTabW = 0, phaseTw = font.width(phaseRewardText), chapTw = font.width(chapterRewardText);
 
         if (hasPhaseRewards) totalTabW += phaseTw;
-        if (hasChapterRewards) { if (hasPhaseRewards) totalTabW += 20; totalTabW += chapTw; }
+        if (hasChapterRewards) {
+            if (hasPhaseRewards) totalTabW += 20;
+            totalTabW += chapTw;
+        }
 
         int tabStartX = localW / 2 - totalTabW / 2, phaseTabX = tabStartX, chapTabX = tabStartX + (hasPhaseRewards ? phaseTw + 20 : 0);
         int absTopY = (int) (scrollAreaY + 12 - parent.getDetailScrollOffset() + currentY);
-        phaseTabRect[2] = 0; chapterTabRect[2] = 0;
+        phaseTabRect[2] = 0;
+        chapterTabRect[2] = 0;
 
         // == PASS 1: 渲染 2D 文本和底部 UI ==
         if (hasPhaseRewards) {
-            phaseTabRect[0] = x + 12 + phaseTabX - 4; phaseTabRect[1] = absTopY - 4; phaseTabRect[2] = phaseTw + 8; phaseTabRect[3] = font.lineHeight + 8;
+            phaseTabRect[0] = x + 12 + phaseTabX - 4;
+            phaseTabRect[1] = absTopY - 4;
+            phaseTabRect[2] = phaseTw + 8;
+            phaseTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, phaseTabRect);
             int color = (activeTab == Tab.PHASE) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
             g.drawString(font, phaseRewardText, phaseTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
         }
 
         if (hasChapterRewards) {
-            chapterTabRect[0] = x + 12 + chapTabX - 4; chapterTabRect[1] = absTopY - 4; chapterTabRect[2] = chapTw + 8; chapterTabRect[3] = font.lineHeight + 8;
+            chapterTabRect[0] = x + 12 + chapTabX - 4;
+            chapterTabRect[1] = absTopY - 4;
+            chapterTabRect[2] = chapTw + 8;
+            chapterTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, chapterTabRect);
             int color = (activeTab == Tab.CHAPTER) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
             g.drawString(font, chapterRewardText, chapTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
         }
 
         int targetTabX = activeTab == Tab.PHASE ? phaseTabX : chapTabX, targetTabW = activeTab == Tab.PHASE ? phaseTw : chapTw;
-        if (animTabX < 0) { animTabX = targetTabX; animTabW = targetTabW; }
-        else { animTabX = HudAnimUtil.lerp(animTabX, targetTabX, 0.2f, dt); animTabW = HudAnimUtil.lerp(animTabW, targetTabW, 0.2f, dt); }
-        g.fill((int)animTabX, currentY + font.lineHeight + 1, (int)(animTabX + animTabW), currentY + font.lineHeight + 2, HudAnimUtil.withAlpha(activeTheme, safeA));
+        if (animTabX < 0) {
+            animTabX = targetTabX;
+            animTabW = targetTabW;
+        } else {
+            animTabX = HudAnimUtil.lerp(animTabX, targetTabX, 0.2f, dt);
+            animTabW = HudAnimUtil.lerp(animTabW, targetTabW, 0.2f, dt);
+        }
+        g.fill((int) animTabX, currentY + font.lineHeight + 1, (int) (animTabX + animTabW), currentY + font.lineHeight + 2, HudAnimUtil.withAlpha(activeTheme, safeA));
 
         currentY += 16;
         itemsAlphaAnim = HudAnimUtil.lerp(itemsAlphaAnim, 1f, 0.15f, dt);
@@ -109,7 +125,10 @@ public class JournalDetailRewards {
 
         int renderWidth = Math.min(totalRewardsW, localW);
         int hitStartX = (totalRewardsW <= localW) ? renderStartX : 0;
-        rewardAreaRect[0] = x + 12 + hitStartX; rewardAreaRect[1] = absItemsY - 4; rewardAreaRect[2] = renderWidth; rewardAreaRect[3] = 32;
+        rewardAreaRect[0] = x + 12 + hitStartX;
+        rewardAreaRect[1] = absItemsY - 4;
+        rewardAreaRect[2] = renderWidth;
+        rewardAreaRect[3] = 32;
 
         boolean needsScissor = totalRewardsW > localW;
         if (needsScissor) safeScissor(g, x + 12, scrollAreaY, x + 12 + localW, scrollAreaY + scrollAreaH);
@@ -137,7 +156,8 @@ public class JournalDetailRewards {
                     g.fill(itemX + 2, lineY - 1, itemX + rW - 2, lineY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (255 * itemDAlpha)));
                     g.fill(itemX + 2, 2, itemX + rW - 2, lineY, HudAnimUtil.withAlpha(activeTheme, (int) (0x1A * itemDAlpha)));
                     screen.setHoveredRewardTooltip(stack);
-                } else g.fill(itemX + 4, lineY, itemX + rW - 4, lineY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * itemDAlpha)));
+                } else
+                    g.fill(itemX + 4, lineY, itemX + rW - 4, lineY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * itemDAlpha)));
 
                 // 收集可见物品，生成独立闭包供 Pass 2 批量调用
                 if (inBounds && itemDAlpha > 0.01f) {
@@ -180,33 +200,83 @@ public class JournalDetailRewards {
         return currentY + 16;
     }
 
-    private int getRewardWidth(IReward r, Font font) { return getRewardCache(r, font).width; }
+    private int getRewardWidth(IReward r, Font font) {
+        return getRewardCache(r, font).width;
+    }
 
     private RewardCache getRewardCache(IReward r, Font font) {
         String key = r instanceof ItemReward ir ? "item:" + ir.getItem() + ":" + ir.getCount() : "text:" + r.describe();
         return rewardCache.computeIfAbsent(key, k -> {
             RewardCache cache = new RewardCache();
-            if (r instanceof ItemReward ir) { cache.stack = new ItemStack(ir.getItem(), ir.getCount()); cache.width = 24; }
-            else { cache.text = r.describe(); cache.width = (int) (font.width(cache.text) * 0.85f) + 12; }
+            if (r instanceof ItemReward ir) {
+                cache.stack = new ItemStack(ir.getItem(), ir.getCount());
+                cache.width = 24;
+            } else {
+                cache.text = r.describe();
+                cache.width = (int) (font.width(cache.text) * 0.85f) + 12;
+            }
             return cache;
         });
     }
 
-    private void switchToTab(Tab tab) { if (activeTab != tab) { activeTab = tab; scrollX = 0; targetScrollX = 0; itemsAlphaAnim = 0f; screen.playClick(); } }
+    private void switchToTab(Tab tab) {
+        if (activeTab != tab) {
+            activeTab = tab;
+            scrollX = 0;
+            targetScrollX = 0;
+            itemsAlphaAnim = 0f;
+            screen.playClick();
+        }
+    }
+
     public boolean mouseClicked(double mx, double my) {
-        if (isHovering(mx, my, phaseTabRect)) { switchToTab(Tab.PHASE); return true; }
-        if (isHovering(mx, my, chapterTabRect)) { switchToTab(Tab.CHAPTER); return true; }
-        if (isHovering(mx, my, rewardAreaRect)) { isDragging = true; lastMouseX = mx; return true; }
+        if (isHovering(mx, my, phaseTabRect)) {
+            switchToTab(Tab.PHASE);
+            return true;
+        }
+        if (isHovering(mx, my, chapterTabRect)) {
+            switchToTab(Tab.CHAPTER);
+            return true;
+        }
+        if (isHovering(mx, my, rewardAreaRect)) {
+            isDragging = true;
+            lastMouseX = mx;
+            return true;
+        }
         return false;
     }
-    public boolean mouseDragged(double mx, double my) { if (isDragging) { targetScrollX += (lastMouseX - mx); lastMouseX = mx; return true; } return false; }
-    public boolean mouseReleased(int button) { if (button == 0 && isDragging) { isDragging = false; return true; } return false; }
-    public boolean mouseScrolled(double mx, double my, double delta) { if (isHovering(mx, my, rewardAreaRect)) { targetScrollX -= delta * 30.0; return true; } return false; }
+
+    public boolean mouseDragged(double mx, double my) {
+        if (isDragging) {
+            targetScrollX += (lastMouseX - mx);
+            lastMouseX = mx;
+            return true;
+        }
+        return false;
+    }
+
+    public boolean mouseReleased(int button) {
+        if (button == 0 && isDragging) {
+            isDragging = false;
+            return true;
+        }
+        return false;
+    }
+
+    public boolean mouseScrolled(double mx, double my, double delta) {
+        if (isHovering(mx, my, rewardAreaRect)) {
+            targetScrollX -= delta * 30.0;
+            return true;
+        }
+        return false;
+    }
+
     private boolean isHovering(double mx, double my, int[] rect) {
         if (rect[2] == 0) return false;
         if (my < parentClipY1 || my > parentClipY2) return false;
         return mx >= rect[0] && mx <= rect[0] + rect[2] && my >= rect[1] && my <= rect[1] + rect[3];
     }
+
     private void drawHorizontalCyberBase(GuiGraphics g, int startX, int endX, int bottomY, int themeColor, float alphaPercentage) {
         if (alphaPercentage < 0.02f) return;
         int alpha = (int) (255 * alphaPercentage);
@@ -216,7 +286,15 @@ public class JournalDetailRewards {
         int coreColor = themeColor & 0xFFFFFF;
         int glowHeight = 24, glowMaxA = (int) (alpha * (0.10f + 0.15f * pulse));
         g.fillGradient(startX, bottomY - glowHeight, endX, bottomY, coreColor | (0 << 24), coreColor | (glowMaxA << 24));
-        g.fillGradient(startX, bottomY - 3, endX, bottomY, coreColor | ((int)(alpha * 0.15f) << 24), coreColor | (alpha << 24));
-        g.fillGradient(startX, bottomY - 1, endX, bottomY, coreColor | (alpha << 24), 0xFFFFFF | ((int)(alpha * 0.8f) << 24));
+        g.fillGradient(startX, bottomY - 3, endX, bottomY, coreColor | ((int) (alpha * 0.15f) << 24), coreColor | (alpha << 24));
+        g.fillGradient(startX, bottomY - 1, endX, bottomY, coreColor | (alpha << 24), 0xFFFFFF | ((int) (alpha * 0.8f) << 24));
+    }
+
+    private enum Tab {PHASE, CHAPTER}
+
+    private static class RewardCache {
+        ItemStack stack = ItemStack.EMPTY;
+        int width = -1;
+        String text;
     }
 }

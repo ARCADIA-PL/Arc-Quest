@@ -55,8 +55,8 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnEnter,
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig, boolean autoEnterByCondition) {
-        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
-                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
+        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()),
+                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete,
                 visualConfig, null, null, null, null, null, null, autoEnterByCondition);
     }
 
@@ -70,8 +70,8 @@ public final class PhaseDefinition {
                            List<String> flagsToSetOnComplete,
                            QuestVisualConfig visualConfig,
                            @Nullable String tradeShopId, boolean autoEnterByCondition) {
-        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
-                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
+        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()),
+                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete,
                 visualConfig, tradeShopId, null, null, null, null, null, autoEnterByCondition);
     }
 
@@ -87,8 +87,8 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
-        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
-                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
+        this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()),
+                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete,
                 visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, null, autoEnterByCondition);
     }
 
@@ -108,8 +108,8 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
-        this(phaseId, displayName, description, QuestText.component(Component.empty()), 
-                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
+        this(phaseId, displayName, description, QuestText.component(Component.empty()),
+                objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete,
                 visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, null, autoEnterByCondition);
     }
 

@@ -6,11 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderHelper;
 import org.arcadia.arc_quest.quest.api.*;
-import org.arcadia.arc_quest.questmarker.api.MarkActivation;
-import org.arcadia.arc_quest.questmarker.api.MarkActivations;
-import org.arcadia.arc_quest.questmarker.api.MarkSpec;
-import org.arcadia.arc_quest.questmarker.api.MarkableObject;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
+import org.arcadia.arc_quest.questmarker.api.*;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;

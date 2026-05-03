@@ -91,7 +91,8 @@ public class GachaRollerPanel {
                     rollElapsed = rollDuration;
                     currentState = State.HOLD;
                     Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
-                    if (rollSpeedMult > 1.0f) Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ANVIL_LAND, 1.2f, 1.0f));
+                    if (rollSpeedMult > 1.0f)
+                        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ANVIL_LAND, 1.2f, 1.0f));
                 }
                 break;
             case HOLD:
@@ -201,7 +202,8 @@ public class GachaRollerPanel {
             if (currentState == State.EXIT) {
                 if (i == targetItemIndex) {
                     float implode = 1.0f - (float) Math.pow(Math.min(1.0f, exitProgress * 2.5f), 0.5);
-                    iconScale *= implode; cardScale *= implode;
+                    iconScale *= implode;
+                    cardScale *= implode;
                     cardAlpha = (int) (safeAlpha * (1.0f - Math.min(1.0f, exitProgress * 2.5f)));
                 } else {
                     drawX += ((i < targetItemIndex) ? -1f : 1f) * wipeOut * 600f;
@@ -231,10 +233,12 @@ public class GachaRollerPanel {
         if (currentState == State.HOLD || currentState == State.EXIT) {
             float holdT = Math.min(1.0f, (holdElapsed + exitElapsed) / 400f);
             float spring = 1.0f + 0.4f * (float) Math.exp(-holdT * 8f) * (float) Math.cos(holdT * 25f);
-            aimW *= spring; aimH *= spring;
+            aimW *= spring;
+            aimH *= spring;
         }
         if (currentState == State.EXIT) {
-            aimW += wipeOut * 300f; aimH += wipeOut * 300f;
+            aimW += wipeOut * 300f;
+            aimH += wipeOut * 300f;
         }
 
         int pulseA = currentState == State.EXIT ? (int) ((safeAlpha * (0.6f + 0.4f * Math.sin(now / 150.0))) * (1.0f - wipeOut)) : (int) (safeAlpha * (0.6f + 0.4f * Math.sin(now / 150.0)));
@@ -261,7 +265,9 @@ public class GachaRollerPanel {
                 if (currentState == State.ENTER) masterAnim = 1.0f;
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
             } else {
-                currentState = State.HOLD; rollElapsed = rollDuration; scrollX = targetStopX;
+                currentState = State.HOLD;
+                rollElapsed = rollDuration;
+                scrollX = targetStopX;
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ANVIL_LAND, 1.2f, 2.0f));
             }

@@ -29,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 
 public abstract class AbstractTradeScreen extends Screen {
 
+    private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 40;
     public static Screen pendingParentScreen = null;
     protected final String shopId;
     protected final TradeShopDefinition shop;
@@ -44,9 +45,9 @@ public abstract class AbstractTradeScreen extends Screen {
     // 记录是否已触发父界面的联动进出场动画
     protected boolean triggeredParentClose = false;
     protected boolean triggeredParentReopen = false;
-    private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 40;
     private int authorityRefreshTicker = 0;
     private TradeTooltipRenderer tooltipRenderer;
+
     public AbstractTradeScreen(String title, String shopId) {
         super(Component.translatable(title));
         this.shopId = shopId;

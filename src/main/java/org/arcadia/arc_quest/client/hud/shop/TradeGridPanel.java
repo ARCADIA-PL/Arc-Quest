@@ -18,21 +18,18 @@ import java.util.Map;
 
 public class TradeGridPanel {
 
+    private static final long CACHE_VALID_MS = 100;
     private final SimpleTradePanel screen;
     private final Font font;
-    private float openAnimTime = 0f;
-    private float[] hoverAnims;
-
     private final Map<String, EntryRenderState> stateCache = new HashMap<>();
     private final Map<String, EntryVisualCache> visualCache = new HashMap<>();
-    private static final long CACHE_VALID_MS = 100;
-
-    private FrameAnimData[] animData = new FrameAnimData[0];
-
     private final String statusMaxedText;
     private final String statusLockedText;
     private final String plusText = "+";
     private final int plusWidth;
+    private float openAnimTime = 0f;
+    private float[] hoverAnims;
+    private FrameAnimData[] animData = new FrameAnimData[0];
 
     public TradeGridPanel(SimpleTradePanel screen, Font font) {
         this.screen = screen;
@@ -364,7 +361,10 @@ public class TradeGridPanel {
         boolean visible;
     }
 
-    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {}
+    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {
+    }
 
-    private record Layout(int cols, int rows, int cardW, int cardH, int gap, int startX, int startY, int totalW, int totalH) {}
+    private record Layout(int cols, int rows, int cardW, int cardH, int gap, int startX, int startY, int totalW,
+                          int totalH) {
+    }
 }

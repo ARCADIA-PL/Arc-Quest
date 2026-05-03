@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.client.hud.quest.story;
 
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -23,21 +22,18 @@ public final class QuestStoryPanel {
 
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
+    private static final List<PageData> pages = new ArrayList<>();
     private static boolean active = false;
     private static boolean closing = false;
     private static long lastRenderMs = 0L;
     private static float enterTimer = 0f;
     private static float exitTimer = 0f;
-
     private static String questId;
     private static String phaseId;
     private static int themeColor = 0x5AD7FF;
-
     private static float currentScale = 1.0f;
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
-
-    private static final List<PageData> pages = new ArrayList<>();
     private static int currentPageIndex = 0;
 
     private static float flipAnimTimer = 0f;
@@ -47,7 +43,8 @@ public final class QuestStoryPanel {
     private static float prevHoverAnim = 0f;
     private static float nextHoverAnim = 0f;
 
-    private QuestStoryPanel() {}
+    private QuestStoryPanel() {
+    }
 
     // 【终极优化：内联矩形拼接边框】(纯2D面板无需分离3D，但降低方法调用依然是优化重点)
     private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
@@ -58,27 +55,47 @@ public final class QuestStoryPanel {
     }
 
     public static void trigger(String qid, String pid) {
-        questId = qid; phaseId = pid;
+        questId = qid;
+        phaseId = pid;
         themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(qid, 0x5AD7FF);
-        active = true; closing = false; enterTimer = 0f; exitTimer = 0f;
+        active = true;
+        closing = false;
+        enterTimer = 0f;
+        exitTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
-        currentPageIndex = 0; oldPageIndex = 0; flipAnimTimer = 0f; flipDirection = 0;
-        prevHoverAnim = 0f; nextHoverAnim = 0f;
+        currentPageIndex = 0;
+        oldPageIndex = 0;
+        flipAnimTimer = 0f;
+        flipDirection = 0;
+        prevHoverAnim = 0f;
+        nextHoverAnim = 0f;
         buildPages();
     }
 
-    public static boolean isActive() { return active; }
+    public static boolean isActive() {
+        return active;
+    }
 
     public static void close() {
         if (!active || closing) return;
-        closing = true; exitTimer = 0f;
+        closing = true;
+        exitTimer = 0f;
     }
 
     public static boolean keyPressed(int keyCode) {
         if (!active || closing) return false;
-        if (keyCode == 256 || keyCode == 69) { close(); return true; }
-        if (keyCode == 263 || keyCode == 65) { turnPage(-1); return true; }
-        if (keyCode == 262 || keyCode == 68) { turnPage(1); return true; }
+        if (keyCode == 256 || keyCode == 69) {
+            close();
+            return true;
+        }
+        if (keyCode == 263 || keyCode == 65) {
+            turnPage(-1);
+            return true;
+        }
+        if (keyCode == 262 || keyCode == 68) {
+            turnPage(1);
+            return true;
+        }
         return false;
     }
 
@@ -87,27 +104,36 @@ public final class QuestStoryPanel {
         float scaledW = PANEL_W * currentScale, scaledH = PANEL_H * currentScale;
 
         if (mx < currentDrawX || mx > currentDrawX + scaledW || my < currentDrawY || my > currentDrawY + scaledH) {
-            close(); return true;
+            close();
+            return true;
         }
 
         float lx = (float) ((mx - currentDrawX) / currentScale), ly = (float) ((my - currentDrawY) / currentScale);
         int btnW = 80, btnH = 16, btnY = PANEL_H - btnH - 12;
 
         if (currentPageIndex > 0 && lx >= 20 && lx <= 20 + btnW && ly >= btnY && ly <= btnY + btnH) {
-            turnPage(-1); return true;
+            turnPage(-1);
+            return true;
         }
         if (currentPageIndex < pages.size() - 1 && lx >= PANEL_W - btnW - 20 && lx <= PANEL_W - 20 && ly >= btnY && ly <= btnY + btnH) {
-            turnPage(1); return true;
+            turnPage(1);
+            return true;
         }
         return true;
     }
 
     private static void turnPage(int dir) {
         if (dir == -1 && currentPageIndex > 0) {
-            oldPageIndex = currentPageIndex; currentPageIndex--; flipDirection = -1; flipAnimTimer = 1.0f;
+            oldPageIndex = currentPageIndex;
+            currentPageIndex--;
+            flipDirection = -1;
+            flipAnimTimer = 1.0f;
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.0f, 1.2f));
         } else if (dir == 1 && currentPageIndex < pages.size() - 1) {
-            oldPageIndex = currentPageIndex; currentPageIndex++; flipDirection = 1; flipAnimTimer = 1.0f;
+            oldPageIndex = currentPageIndex;
+            currentPageIndex++;
+            flipDirection = 1;
+            flipAnimTimer = 1.0f;
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.BOOK_PAGE_TURN, 1.0f, 1.2f));
         }
     }
@@ -126,7 +152,11 @@ public final class QuestStoryPanel {
 
         if (closing) {
             exitTimer += dt;
-            if (exitTimer >= EXIT_TIME) { active = false; closing = false; return; }
+            if (exitTimer >= EXIT_TIME) {
+                active = false;
+                closing = false;
+                return;
+            }
             float t = Math.min(1.0f, exitTimer / EXIT_TIME);
             wipeProgress = (float) Math.pow(t, 4.0);
             currentX = baseX - (wipeProgress * 4.0f * finalScale * 1.5f);
@@ -194,10 +224,10 @@ public final class QuestStoryPanel {
             int slideDist = 20;
 
             if (oldPageIndex >= 0 && oldPageIndex < pages.size()) {
-                renderPage(g, font, pages.get(oldPageIndex), contentY, (int) (alpha * (1.0f - ease)), flipDirection == 1 ? (int)(-slideDist * ease) : (int)(slideDist * ease));
+                renderPage(g, font, pages.get(oldPageIndex), contentY, (int) (alpha * (1.0f - ease)), flipDirection == 1 ? (int) (-slideDist * ease) : (int) (slideDist * ease));
             }
             if (currentPageIndex >= 0 && currentPageIndex < pages.size()) {
-                renderPage(g, font, pages.get(currentPageIndex), contentY, (int) (alpha * ease), flipDirection == 1 ? (int)(slideDist * (1.0f - ease)) : (int)(-slideDist * (1.0f - ease)));
+                renderPage(g, font, pages.get(currentPageIndex), contentY, (int) (alpha * ease), flipDirection == 1 ? (int) (slideDist * (1.0f - ease)) : (int) (-slideDist * (1.0f - ease)));
             }
         } else if (currentPageIndex >= 0 && currentPageIndex < pages.size()) {
             renderPage(g, font, pages.get(currentPageIndex), contentY, alpha, 0);
@@ -243,20 +273,33 @@ public final class QuestStoryPanel {
         int safeMaxWidth = PANEL_W - 40, maxPageHeight = PANEL_H - 22 - 38, currentYSpace = 0, leftPad = 20;
         PageData currentPage = new PageData();
 
-        for (String tLine : HudRenderUtil.wrapText(phase.getDisplayName().getString(), (int)(safeMaxWidth / 1.35f), mc.font)) {
-            int lh = (int)Math.ceil(mc.font.lineHeight * 1.35f) + 6;
-            if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) { pages.add(currentPage); currentPage = new PageData(); currentYSpace = 0; }
-            currentPage.lines.add(new RenderLine(tLine, leftPad, themeColor, 1.35f, lh)); currentYSpace += lh;
+        for (String tLine : HudRenderUtil.wrapText(phase.getDisplayName().getString(), (int) (safeMaxWidth / 1.35f), mc.font)) {
+            int lh = (int) Math.ceil(mc.font.lineHeight * 1.35f) + 6;
+            if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) {
+                pages.add(currentPage);
+                currentPage = new PageData();
+                currentYSpace = 0;
+            }
+            currentPage.lines.add(new RenderLine(tLine, leftPad, themeColor, 1.35f, lh));
+            currentYSpace += lh;
         }
         currentYSpace += 12;
 
         if (phase.hasDescription()) {
             for (String para : phase.getDescription().getString().split("\n")) {
-                if (para.trim().isEmpty()) { currentYSpace += (int)(mc.font.lineHeight * 0.95f); continue; }
-                for (String dLine : HudRenderUtil.wrapText(para, (int)(safeMaxWidth / 0.95f), mc.font)) {
-                    int lh = (int)Math.ceil(mc.font.lineHeight * 0.95f) + 5;
-                    if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) { pages.add(currentPage); currentPage = new PageData(); currentYSpace = 0; }
-                    currentPage.lines.add(new RenderLine(dLine, leftPad, 0x99AABB, 0.95f, lh)); currentYSpace += lh;
+                if (para.trim().isEmpty()) {
+                    currentYSpace += (int) (mc.font.lineHeight * 0.95f);
+                    continue;
+                }
+                for (String dLine : HudRenderUtil.wrapText(para, (int) (safeMaxWidth / 0.95f), mc.font)) {
+                    int lh = (int) Math.ceil(mc.font.lineHeight * 0.95f) + 5;
+                    if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) {
+                        pages.add(currentPage);
+                        currentPage = new PageData();
+                        currentYSpace = 0;
+                    }
+                    currentPage.lines.add(new RenderLine(dLine, leftPad, 0x99AABB, 0.95f, lh));
+                    currentYSpace += lh;
                 }
             }
             currentYSpace += 16;
@@ -265,11 +308,19 @@ public final class QuestStoryPanel {
         String storyRaw = phase.getStory() != null ? phase.getStory().getString() : "";
         if (!storyRaw.isEmpty()) {
             for (String para : storyRaw.split("\n")) {
-                if (para.trim().isEmpty()) { currentYSpace += mc.font.lineHeight; continue; }
+                if (para.trim().isEmpty()) {
+                    currentYSpace += mc.font.lineHeight;
+                    continue;
+                }
                 for (String sLine : HudRenderUtil.wrapText(para, safeMaxWidth, mc.font)) {
                     int lh = mc.font.lineHeight + 6;
-                    if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) { pages.add(currentPage); currentPage = new PageData(); currentYSpace = 0; }
-                    currentPage.lines.add(new RenderLine(sLine, leftPad, 0xE0E0E0, 1.0f, lh)); currentYSpace += lh;
+                    if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) {
+                        pages.add(currentPage);
+                        currentPage = new PageData();
+                        currentYSpace = 0;
+                    }
+                    currentPage.lines.add(new RenderLine(sLine, leftPad, 0xE0E0E0, 1.0f, lh));
+                    currentYSpace += lh;
                 }
             }
         }
@@ -288,9 +339,21 @@ public final class QuestStoryPanel {
         g.pose().popPose();
     }
 
-    private static class PageData { List<RenderLine> lines = new ArrayList<>(); }
+    private static class PageData {
+        List<RenderLine> lines = new ArrayList<>();
+    }
+
     private static class RenderLine {
-        String text; int x, color, lineHeight; float scale;
-        RenderLine(String t, int x, int c, float s, int lh) { text = t; this.x = x; color = c; scale = s; lineHeight = lh; }
+        String text;
+        int x, color, lineHeight;
+        float scale;
+
+        RenderLine(String t, int x, int c, float s, int lh) {
+            text = t;
+            this.x = x;
+            color = c;
+            scale = s;
+            lineHeight = lh;
+        }
     }
 }

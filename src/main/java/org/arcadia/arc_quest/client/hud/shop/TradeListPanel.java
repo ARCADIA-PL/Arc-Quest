@@ -18,16 +18,12 @@ import java.util.Map;
 
 public class TradeListPanel {
     public static final int CARD_HEIGHT = 48;
-    private final TradeScreen screen;
-    private final Font font;
-    private double scrollOffset = 0, targetScroll = 0;
-    private float[] entryHoverAnims;
-
-    private final Map<String, EntryRenderState> stateCache = new HashMap<>();
-    private final Map<String, EntryVisualCache> visualCache = new HashMap<>();
     private static final long CACHE_VALID_MS = 100;
     private static final int STRIDE = CARD_HEIGHT + 8;
-
+    private final TradeScreen screen;
+    private final Font font;
+    private final Map<String, EntryRenderState> stateCache = new HashMap<>();
+    private final Map<String, EntryVisualCache> visualCache = new HashMap<>();
     private final String plusText = "+";
     private final int plusWidth;
     private final String statusMaxedText;
@@ -36,6 +32,8 @@ public class TradeListPanel {
     private final String waitText;
     private final String lockedText;
     private final String emptyText;
+    private double scrollOffset = 0, targetScroll = 0;
+    private float[] entryHoverAnims;
 
     public TradeListPanel(TradeScreen screen, Font font) {
         this.screen = screen;
@@ -352,5 +350,6 @@ public class TradeListPanel {
         int clippedNameWidth;
     }
 
-    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {}
+    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {
+    }
 }

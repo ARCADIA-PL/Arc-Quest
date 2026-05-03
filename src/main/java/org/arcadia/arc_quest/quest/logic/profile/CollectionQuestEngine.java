@@ -5,17 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.quest.QuestAcceptedEvent;
 import org.arcadia.arc_quest.api.event.quest.QuestStartedEvent;
-import org.arcadia.arc_quest.quest.api.CollectionCategoryDefinition;
-import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
-import org.arcadia.arc_quest.quest.api.CollectionRewardNode;
-import org.arcadia.arc_quest.quest.api.CollectionRuleContext;
-import org.arcadia.arc_quest.quest.api.EntryRewardGrantMode;
-import org.arcadia.arc_quest.quest.api.IReward;
-import org.arcadia.arc_quest.quest.api.CollectionQuestConfig;
-import org.arcadia.arc_quest.quest.api.PhaseDefinition;
-import org.arcadia.arc_quest.quest.api.QuestDefinition;
-import org.arcadia.arc_quest.quest.api.QuestState;
-import org.arcadia.arc_quest.quest.api.VisibilityMode;
+import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
@@ -299,7 +289,8 @@ public final class CollectionQuestEngine {
         CollectionQuestConfig config = def.getCollectionConfig();
         CollectionRuntimeData collectionData = runtime.getCollectionData();
         if (config == null || collectionData == null || rewardNodeId == null || rewardNodeId.isEmpty()) return false;
-        if (!collectionData.isRewardUnlocked(rewardNodeId) || collectionData.isRewardClaimed(rewardNodeId)) return false;
+        if (!collectionData.isRewardUnlocked(rewardNodeId) || collectionData.isRewardClaimed(rewardNodeId))
+            return false;
 
         for (CollectionRewardNode node : config.getQuestRewardNodes()) {
             if (rewardNodeId.equals(node.getRewardNodeId()) && node.getGrantMode() == EntryRewardGrantMode.MANUAL) {

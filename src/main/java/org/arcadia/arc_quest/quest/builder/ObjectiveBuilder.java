@@ -9,29 +9,21 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestText;
-import org.arcadia.arc_quest.questmarker.api.MarkActivation;
-import org.arcadia.arc_quest.questmarker.api.MarkActivations;
-import org.arcadia.arc_quest.questmarker.api.MarkSpec;
-import org.arcadia.arc_quest.questmarker.api.MarkableObject;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
+import org.arcadia.arc_quest.questmarker.api.*;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.ToIntFunction;
 
 public final class ObjectiveBuilder {
 
     private final ObjectiveType type;
     private final Map<String, String> extraData = new LinkedHashMap<>();
+    private final List<MarkSpec> relatedMarks = new ArrayList<>();
     private ResourceLocation targetId;
     private int requiredCount = 1;
     private QuestText displayText = QuestText.literal("???");
     private boolean hidden = false;
     private boolean optional = false;
-    private final List<MarkSpec> relatedMarks = new ArrayList<>();
     private ToIntFunction<ServerPlayer> countModifier;
 
     private ObjectiveBuilder(ObjectiveType type) {

@@ -23,7 +23,7 @@ public final class ClientTradeCache {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private final Map<String, TradeSessionData> activeSessions = new HashMap<>();
-    
+
     // 性能优化：entryId -> globalIndex 映射缓存（避免 O(n) 查找）
     private final Map<String, Map<String, Integer>> globalIndexCache = new HashMap<>();
 
@@ -106,7 +106,7 @@ public final class ClientTradeCache {
         data.authority.resetTimeTicks = resetTimeTicks;
         data.authority.visibility = visibility;
         data.authority.canBuyConditions = canBuyConditions;
-        
+
         // 状态更新时清除索引缓存
         globalIndexCache.remove(shopId);
     }
@@ -169,24 +169,24 @@ public final class ClientTradeCache {
 
     public int getGlobalIndex(String shopId, String entryId) {
         if (entryId == null || entryId.isEmpty()) return -1;
-        
+
         // 先查缓存（O(1) 查找）
         Map<String, Integer> shopCache = globalIndexCache.get(shopId);
         if (shopCache != null) {
             Integer cached = shopCache.get(entryId);
             if (cached != null) return cached;
         }
-        
+
         // 缓存未命中，执行原逻辑
         var shopDef = TradeRegistry.get(shopId);
         if (shopDef == null) return -1;
-        
+
         int index = 0;
         for (TradeEntry entry : shopDef.getAllEntries()) {
             if (entryId.equals(entry.getEntryId())) {
                 // 缓存结果
                 globalIndexCache.computeIfAbsent(shopId, k -> new HashMap<>())
-                    .put(entryId, index);
+                        .put(entryId, index);
                 return index;
             }
             index++;

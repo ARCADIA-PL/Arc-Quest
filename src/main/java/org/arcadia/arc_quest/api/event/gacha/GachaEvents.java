@@ -233,6 +233,7 @@ public class GachaEvents {
         private final String shopId;
         private final IQuestCapability capability;
         private final FailReason reason;
+
         public DrawFailedEvent(ServerPlayer player, String shopId, IQuestCapability capability, FailReason reason) {
             this.player = player;
             this.shopId = shopId;
@@ -380,6 +381,7 @@ public class GachaEvents {
         private final IQuestCapability capability;
         private final ResetReason reason;
         private final int previousDrawCount;  // 重置前的抽奖次数
+
         public DrawLimitResetEvent(ServerPlayer player, String shopId,
                                    IQuestCapability capability,
                                    ResetReason reason,
@@ -445,6 +447,7 @@ public class GachaEvents {
         private final String shopId;
         private final String reason;
         private final SyncResult result;
+
         public StateSyncedEvent(ServerPlayer player, String shopId, String reason, SyncResult result) {
             this.player = player;
             this.shopId = shopId;

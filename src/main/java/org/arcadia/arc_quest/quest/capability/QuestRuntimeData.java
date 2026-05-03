@@ -182,23 +182,76 @@ public final class QuestRuntimeData {
         return new QuestRuntimeData(questId, state, active, completed, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
     }
 
-    public String getQuestId() { return questId; }
-    public QuestState getState() { return state; }
-    public void setState(QuestState state) { this.state = Objects.requireNonNull(state); this.isDirty = true; }
-    public long getAcceptedAtTick() { return acceptedAtTick; }
-    public long getAcceptedAtRealMs() { return acceptedAtRealMs; }
-    public long getAcceptedAtDayTime() { return acceptedAtDayTime; }
-    public Set<String> getActivePhaseIds() { return Set.copyOf(activePhaseIds); }
-    public Set<String> getCompletedPhaseIds() { return Set.copyOf(completedPhaseIds); }
-    public boolean isPhaseActive(String phaseId) { return activePhaseIds.contains(phaseId); }
-    public boolean isPhaseCompleted(String phaseId) { return completedPhaseIds.contains(phaseId); }
-    @Nullable public CollectionRuntimeData getCollectionData() { return collectionData; }
-    public boolean hasCollectionData() { return collectionData != null; }
-    public void setCollectionData(@Nullable CollectionRuntimeData collectionData) { this.collectionData = collectionData; this.isDirty = true; }
+    public String getQuestId() {
+        return questId;
+    }
 
-    public int getObjectiveCount(String phaseId) { int[] arr = phaseProgress.get(phaseId); return arr == null ? 0 : arr.length; }
-    public int getObjectiveProgress(String phaseId, int index) { int[] arr = phaseProgress.get(phaseId); if (arr == null || index < 0 || index >= arr.length) return 0; return arr[index]; }
-    public int[] getAllProgress(String phaseId) { int[] arr = phaseProgress.get(phaseId); return arr == null ? new int[0] : Arrays.copyOf(arr, arr.length); }
+    public QuestState getState() {
+        return state;
+    }
+
+    public void setState(QuestState state) {
+        this.state = Objects.requireNonNull(state);
+        this.isDirty = true;
+    }
+
+    public long getAcceptedAtTick() {
+        return acceptedAtTick;
+    }
+
+    public long getAcceptedAtRealMs() {
+        return acceptedAtRealMs;
+    }
+
+    public long getAcceptedAtDayTime() {
+        return acceptedAtDayTime;
+    }
+
+    public Set<String> getActivePhaseIds() {
+        return Set.copyOf(activePhaseIds);
+    }
+
+    public Set<String> getCompletedPhaseIds() {
+        return Set.copyOf(completedPhaseIds);
+    }
+
+    public boolean isPhaseActive(String phaseId) {
+        return activePhaseIds.contains(phaseId);
+    }
+
+    public boolean isPhaseCompleted(String phaseId) {
+        return completedPhaseIds.contains(phaseId);
+    }
+
+    @Nullable
+    public CollectionRuntimeData getCollectionData() {
+        return collectionData;
+    }
+
+    public void setCollectionData(@Nullable CollectionRuntimeData collectionData) {
+        this.collectionData = collectionData;
+        this.isDirty = true;
+    }
+
+    public boolean hasCollectionData() {
+        return collectionData != null;
+    }
+
+    public int getObjectiveCount(String phaseId) {
+        int[] arr = phaseProgress.get(phaseId);
+        return arr == null ? 0 : arr.length;
+    }
+
+    public int getObjectiveProgress(String phaseId, int index) {
+        int[] arr = phaseProgress.get(phaseId);
+        if (arr == null || index < 0 || index >= arr.length) return 0;
+        return arr[index];
+    }
+
+    public int[] getAllProgress(String phaseId) {
+        int[] arr = phaseProgress.get(phaseId);
+        return arr == null ? new int[0] : Arrays.copyOf(arr, arr.length);
+    }
 
     public int incrementProgress(String phaseId, int index, int amount, int clampMax) {
         int[] arr = phaseProgress.get(phaseId);
@@ -211,18 +264,36 @@ public final class QuestRuntimeData {
 
     public void setObjectiveProgress(String phaseId, int index, int value) {
         int[] arr = phaseProgress.get(phaseId);
-        if (arr != null && index >= 0 && index < arr.length) { arr[index] = value; isDirty = true; }
+        if (arr != null && index >= 0 && index < arr.length) {
+            arr[index] = value;
+            isDirty = true;
+        }
     }
 
     public void activatePhase(String phaseId, int objectiveCount) {
         if (phaseId == null || phaseId.isEmpty()) return;
         if (!phaseProgress.containsKey(phaseId)) phaseProgress.put(phaseId, new int[Math.max(0, objectiveCount)]);
-        if (activePhaseIds.add(phaseId)) { completedPhaseIds.remove(phaseId); isDirty = true; }
+        if (activePhaseIds.add(phaseId)) {
+            completedPhaseIds.remove(phaseId);
+            isDirty = true;
+        }
     }
 
-    public void completePhase(String phaseId) { if (activePhaseIds.remove(phaseId)) { completedPhaseIds.add(phaseId); isDirty = true; } }
-    public boolean isDirty() { return isDirty || (collectionData != null && collectionData.isDirty()); }
-    public void clearDirty() { this.isDirty = false; if (collectionData != null) collectionData.clearDirty(); }
+    public void completePhase(String phaseId) {
+        if (activePhaseIds.remove(phaseId)) {
+            completedPhaseIds.add(phaseId);
+            isDirty = true;
+        }
+    }
+
+    public boolean isDirty() {
+        return isDirty || (collectionData != null && collectionData.isDirty());
+    }
+
+    public void clearDirty() {
+        this.isDirty = false;
+        if (collectionData != null) collectionData.clearDirty();
+    }
 
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
@@ -277,20 +348,45 @@ public final class QuestRuntimeData {
         LinkedHashSet<String> active = new LinkedHashSet<>(activePhaseIds);
         LinkedHashSet<String> completed = new LinkedHashSet<>(completedPhaseIds);
         LinkedHashMap<String, int[]> progress = new LinkedHashMap<>();
-        for (Map.Entry<String, int[]> e : phaseProgress.entrySet()) progress.put(e.getKey(), Arrays.copyOf(e.getValue(), e.getValue().length));
+        for (Map.Entry<String, int[]> e : phaseProgress.entrySet())
+            progress.put(e.getKey(), Arrays.copyOf(e.getValue(), e.getValue().length));
         CollectionRuntimeData collectionDataCopy = collectionData != null ? collectionData.copy() : null;
         return new QuestRuntimeData(questId, state, active, completed, progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
     }
 
-    public String getCurrentPhaseId() { if (!activePhaseIds.isEmpty()) return activePhaseIds.iterator().next(); if (!completedPhaseIds.isEmpty()) return completedPhaseIds.iterator().next(); return ""; }
+    public String getCurrentPhaseId() {
+        if (!activePhaseIds.isEmpty()) return activePhaseIds.iterator().next();
+        if (!completedPhaseIds.isEmpty()) return completedPhaseIds.iterator().next();
+        return "";
+    }
 
-    public void setCurrentPhaseId(String phaseId) { activePhaseIds.clear(); completedPhaseIds.clear(); phaseProgress.clear(); activatePhase(phaseId, 0); isDirty = true; }
+    public void setCurrentPhaseId(String phaseId) {
+        activePhaseIds.clear();
+        completedPhaseIds.clear();
+        phaseProgress.clear();
+        activatePhase(phaseId, 0);
+        isDirty = true;
+    }
 
-    public int getObjectiveCount() { return getObjectiveCount(getCurrentPhaseId()); }
-    public int getObjectiveProgress(int index) { return getObjectiveProgress(getCurrentPhaseId(), index); }
-    public int[] getAllProgress() { return getAllProgress(getCurrentPhaseId()); }
-    public int incrementProgress(int index, int amount, int clampMax) { return incrementProgress(getCurrentPhaseId(), index, amount, clampMax); }
-    public void setObjectiveProgress(int index, int value) { setObjectiveProgress(getCurrentPhaseId(), index, value); }
+    public int getObjectiveCount() {
+        return getObjectiveCount(getCurrentPhaseId());
+    }
+
+    public int getObjectiveProgress(int index) {
+        return getObjectiveProgress(getCurrentPhaseId(), index);
+    }
+
+    public int[] getAllProgress() {
+        return getAllProgress(getCurrentPhaseId());
+    }
+
+    public int incrementProgress(int index, int amount, int clampMax) {
+        return incrementProgress(getCurrentPhaseId(), index, amount, clampMax);
+    }
+
+    public void setObjectiveProgress(int index, int value) {
+        setObjectiveProgress(getCurrentPhaseId(), index, value);
+    }
 
     public void resetObjectives(int newCount) {
         String current = getCurrentPhaseId();

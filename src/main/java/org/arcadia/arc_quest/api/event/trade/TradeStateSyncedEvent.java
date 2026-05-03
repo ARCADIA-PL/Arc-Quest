@@ -8,6 +8,7 @@ public class TradeStateSyncedEvent extends Event {
     private final String shopId;
     private final String reason;
     private final SyncResult result;
+
     public TradeStateSyncedEvent(ServerPlayer player, String shopId, String reason, SyncResult result) {
         this.player = player;
         this.shopId = shopId;

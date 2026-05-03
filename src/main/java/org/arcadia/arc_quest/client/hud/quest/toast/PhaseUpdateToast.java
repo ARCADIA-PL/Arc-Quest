@@ -26,6 +26,7 @@ public class PhaseUpdateToast {
     private final Kind kind;
     private long startTime;
     private long lastRenderTime;
+
     /**
      * 兼容旧调用：默认 ADDED
      */

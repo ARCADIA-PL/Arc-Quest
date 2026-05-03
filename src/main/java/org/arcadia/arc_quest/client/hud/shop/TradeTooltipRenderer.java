@@ -216,7 +216,10 @@ public class TradeTooltipRenderer {
 
         if (!isClosing) {
             if (animBgW == 0 || Math.abs(animBgW - target.w) > 40) {
-                animBgX = target.x; animBgY = target.y; animBgW = target.w; animBgH = target.h;
+                animBgX = target.x;
+                animBgY = target.y;
+                animBgW = target.w;
+                animBgH = target.h;
                 animThemeColor = target.themeColor;
             } else {
                 float ms = 18f;
@@ -347,7 +350,8 @@ public class TradeTooltipRenderer {
                         if (barW > 10) {
                             int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
                             g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, contentAlpha));
-                            if (fillW > 0) g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, contentAlpha));
+                            if (fillW > 0)
+                                g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, contentAlpha));
                         }
                     }
                     currentY += 8;
@@ -362,7 +366,8 @@ public class TradeTooltipRenderer {
                 if (animProgress > 0.01f) {
                     int filledW = (int) (barW * animProgress);
                     g.fill(drawX + padding, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(animProgress >= 0.99f ? 0xAA3333 : (animProgress >= 0.75f ? 0xDD9933 : 0x33AA33), contentAlpha));
-                    if (filledW > 2) g.fill(drawX + padding + filledW - 2, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (contentAlpha * 0.6f)));
+                    if (filledW > 2)
+                        g.fill(drawX + padding + filledW - 2, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (contentAlpha * 0.6f)));
                 }
                 currentY += 9;
             }

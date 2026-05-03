@@ -1212,7 +1212,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("terracotta", "Terracotta");
         addItemTag("leaves", "Leaves");
         addItemTag("saplings", "Saplings");
-        
+
         // Wooden Items
         addItemTag("wooden_buttons", "Wooden Buttons");
         addItemTag("wooden_doors", "Wooden Doors");
@@ -1233,7 +1233,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("crimson_stems", "Crimson Stems");
         addItemTag("warped_stems", "Warped Stems");
         addItemTag("bamboo_blocks", "Bamboo Blocks");
-        
+
         // Building Blocks
         addItemTag("stairs", "Stairs");
         addItemTag("slabs", "Slabs");
@@ -1247,13 +1247,13 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("anvil", "Anvil");
         addItemTag("rails", "Rails");
         addItemTag("wool_carpets", "Wool Carpets");
-        
+
         // Flowers & Plants
         addItemTag("flowers", "Flowers");
         addItemTag("small_flowers", "Small Flowers");
         addItemTag("tall_flowers", "Tall Flowers");
         addItemTag("wart_blocks", "Wart Blocks");
-        
+
         // Ores
         addItemTag("gold_ores", "Gold Ores");
         addItemTag("iron_ores", "Iron Ores");
@@ -1263,7 +1263,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("coal_ores", "Coal Ores");
         addItemTag("emerald_ores", "Emerald Ores");
         addItemTag("copper_ores", "Copper Ores");
-        
+
         // Tools & Weapons
         addItemTag("swords", "Swords");
         addItemTag("axes", "Axes");
@@ -1272,7 +1272,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("shovels", "Shovels");
         addItemTag("tools", "Tools");
         addItemTag("arrows", "Arrows");
-        
+
         // Special Items
         addItemTag("banners", "Banners");
         addItemTag("beds", "Beds");
@@ -1287,7 +1287,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("books", "Books");
         addItemTag("lectern_books", "Lectern Books");
         addItemTag("bookshelf_books", "Bookshelf Books");
-        
+
         // Mob Related
         addItemTag("piglin_loved", "Piglin Loved Items");
         addItemTag("piglin_repellents", "Piglin Repellents");
@@ -1295,7 +1295,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("axolotl_tempt_items", "Axolotl Tempt Items");
         addItemTag("sniffer_food", "Sniffer Food");
         addItemTag("villager_plantable_seeds", "Villager Plantable Seeds");
-        
+
         // Decoration & Crafting
         addItemTag("decorated_pot_sherds", "Decorated Pot Sherds");
         addItemTag("decorated_pot_ingredients", "Decorated Pot Ingredients");
@@ -1303,7 +1303,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addItemTag("trim_templates", "Armor Trim Templates");
         addItemTag("trimmable_armor", "Trimmable Armor");
         addItemTag("beacon_payment_items", "Beacon Payment Items");
-        
+
         // Others
         addItemTag("compasses", "Compasses");
         addItemTag("creeper_drop_music_discs", "Creeper Drop Music Discs");

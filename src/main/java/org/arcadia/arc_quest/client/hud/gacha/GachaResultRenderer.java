@@ -32,7 +32,8 @@ public class GachaResultRenderer {
     private String cachedResultName = "";
     private String cachedAcknowledgeText = "";
 
-    private GachaResultRenderer() {}
+    private GachaResultRenderer() {
+    }
 
     public void showResult(GachaScreen parent, GachaShopDefinition shopDef, ClientGachaCache.DrawRecord result) {
         this.parentScreen = parent;
@@ -162,7 +163,8 @@ public class GachaResultRenderer {
     }
 
     public boolean mouseClicked() {
-        if (!active || currentState == State.EXIT || (currentState == State.ENTER && (Util.getMillis() - startTime < TIME_ENTER))) return false;
+        if (!active || currentState == State.EXIT || (currentState == State.ENTER && (Util.getMillis() - startTime < TIME_ENTER)))
+            return false;
         this.currentState = State.EXIT;
         this.exitStartTime = Util.getMillis();
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f));

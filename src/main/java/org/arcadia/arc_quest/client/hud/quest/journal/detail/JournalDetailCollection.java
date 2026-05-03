@@ -4,13 +4,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.quest.api.CollectionCategoryDefinition;
-import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
-import org.arcadia.arc_quest.quest.api.CollectionQuestConfig;
-import org.arcadia.arc_quest.quest.api.CollectionRewardNode;
-import org.arcadia.arc_quest.quest.api.EntryRewardGrantMode;
-import org.arcadia.arc_quest.quest.api.PhaseDefinition;
-import org.arcadia.arc_quest.quest.api.QuestDefinition;
+import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SClaimCollectionRewardPacket;
@@ -23,10 +17,6 @@ public final class JournalDetailCollection {
 
     private final QuestJournalScreen screen;
     private final List<ClaimButton> claimButtons = new ArrayList<>();
-
-    private record ClaimButton(int x, int y, int w, int h, String rewardNodeId) {}
-    private record RewardRow(String label, String rewardNodeId, RewardState state) {}
-    private enum RewardState { LOCKED, CLAIMABLE, CLAIMED }
 
     public JournalDetailCollection(QuestJournalScreen screen) {
         this.screen = screen;
@@ -51,7 +41,8 @@ public final class JournalDetailCollection {
 
         List<String> rows = new ArrayList<>();
         for (String pid : def.getPhaseIds()) {
-            if (runtime.isPhaseActive(pid) || runtime.isPhaseCompleted(pid) || ClientQuestCache.INSTANCE.isCollectionEntryDiscovered(entry.questId(), pid)) rows.add(pid);
+            if (runtime.isPhaseActive(pid) || runtime.isPhaseCompleted(pid) || ClientQuestCache.INSTANCE.isCollectionEntryDiscovered(entry.questId(), pid))
+                rows.add(pid);
         }
 
         if (rows.isEmpty()) {
@@ -100,7 +91,8 @@ public final class JournalDetailCollection {
                 case LOCKED -> "Locked";
             };
             JournalDetailPanel.drawCyberButton(g, screen, bx, by, bw, bh, buttonText, activeTheme, 0f, false);
-            if (row.state() == RewardState.CLAIMABLE) claimButtons.add(new ClaimButton(bx, by, bw, bh, row.rewardNodeId()));
+            if (row.state() == RewardState.CLAIMABLE)
+                claimButtons.add(new ClaimButton(bx, by, bw, bh, row.rewardNodeId()));
             localY += 14;
         }
         return localY + 2;
@@ -111,18 +103,21 @@ public final class JournalDetailCollection {
         CollectionQuestConfig config = def.getCollectionConfig();
         if (config == null || !config.isAllowManualRewardClaim()) return rows;
 
-        for (CollectionRewardNode node : config.getQuestRewardNodes()) addManualRewardRow(rows, questId, "Quest Reward", node);
+        for (CollectionRewardNode node : config.getQuestRewardNodes())
+            addManualRewardRow(rows, questId, "Quest Reward", node);
         for (CollectionCategoryDefinition category : config.getCategories()) {
             String categoryName = category.getDisplayNameText().resolve(null, null).getString();
             if (categoryName == null || categoryName.isEmpty()) categoryName = category.getCategoryId();
-            for (CollectionRewardNode node : category.getRewardNodes()) addManualRewardRow(rows, questId, "Category: " + categoryName, node);
+            for (CollectionRewardNode node : category.getRewardNodes())
+                addManualRewardRow(rows, questId, "Category: " + categoryName, node);
         }
         for (String phaseId : def.getPhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
             if (phase == null || phase.getCollectionEntryConfig() == null) continue;
             String phaseName = phase.getDisplayName().getString();
             if (phaseName == null || phaseName.isEmpty()) phaseName = phaseId;
-            for (CollectionRewardNode node : phase.getCollectionEntryConfig().getRewardNodes()) addManualRewardRow(rows, questId, "Entry: " + phaseName, node);
+            for (CollectionRewardNode node : phase.getCollectionEntryConfig().getRewardNodes())
+                addManualRewardRow(rows, questId, "Entry: " + phaseName, node);
         }
         return rows;
     }
@@ -154,5 +149,13 @@ public final class JournalDetailCollection {
         int idx = screen.getSelectedIndex();
         if (idx < 0 || idx >= screen.getCurrentEntries().size()) return "";
         return screen.getCurrentEntries().get(idx).questId();
+    }
+
+    private enum RewardState {LOCKED, CLAIMABLE, CLAIMED}
+
+    private record ClaimButton(int x, int y, int w, int h, String rewardNodeId) {
+    }
+
+    private record RewardRow(String label, String rewardNodeId, RewardState state) {
     }
 }

@@ -21,6 +21,7 @@ public class C2SGachaControlPacket {
 
     private final Action action;
     private final String shopId;
+
     public C2SGachaControlPacket(Action action, String shopId) {
         this.action = action;
         this.shopId = shopId;

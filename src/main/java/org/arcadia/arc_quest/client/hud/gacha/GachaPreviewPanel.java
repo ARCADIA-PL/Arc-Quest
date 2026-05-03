@@ -133,11 +133,13 @@ public class GachaPreviewPanel {
 
             int topScY1 = 0;
             int topScY2 = Math.max(0, centerY - scissorGap);
-            if (topScY2 > topScY1) renderContent(g, l, -1000, -1000, dt, finalGlobalAlpha, easeProgress, true, isClosing, topScY1, topScY2, -splitOffset, waiting, rollTransition);
+            if (topScY2 > topScY1)
+                renderContent(g, l, -1000, -1000, dt, finalGlobalAlpha, easeProgress, true, isClosing, topScY1, topScY2, -splitOffset, waiting, rollTransition);
 
             int botScY1 = Math.min(height, centerY + scissorGap);
             int botScY2 = height;
-            if (botScY2 > botScY1) renderContent(g, l, -1000, -1000, dt, finalGlobalAlpha, easeProgress, true, isClosing, botScY1, botScY2, splitOffset, waiting, rollTransition);
+            if (botScY2 > botScY1)
+                renderContent(g, l, -1000, -1000, dt, finalGlobalAlpha, easeProgress, true, isClosing, botScY1, botScY2, splitOffset, waiting, rollTransition);
         }
     }
 
@@ -328,7 +330,8 @@ public class GachaPreviewPanel {
             String name = getCachedItemName(i, item);
             float textScale = Math.max(0.6f, 0.85f * responsiveScale);
             int maxTextW = (int) ((cardW - 8) / textScale);
-            if (getCachedItemNameWidth(i, item) > maxTextW) name = Minecraft.getInstance().font.plainSubstrByWidth(name, maxTextW - 6) + "..";
+            if (getCachedItemNameWidth(i, item) > maxTextW)
+                name = Minecraft.getInstance().font.plainSubstrByWidth(name, maxTextW - 6) + "..";
 
             if (safeA > 5) {
                 g.pose().pushPose();
@@ -413,14 +416,17 @@ public class GachaPreviewPanel {
     }
 
     private String getCachedItemName(int index, GachaItem item) {
-        if (itemNameCache == null || index < 0 || index >= itemNameCache.length) return item.getItemStack().getHoverName().getString();
+        if (itemNameCache == null || index < 0 || index >= itemNameCache.length)
+            return item.getItemStack().getHoverName().getString();
         if (itemNameCache[index] == null) itemNameCache[index] = item.getItemStack().getHoverName().getString();
         return itemNameCache[index];
     }
 
     private int getCachedItemNameWidth(int index, GachaItem item) {
-        if (itemNameWidthCache == null || index < 0 || index >= itemNameWidthCache.length) return Minecraft.getInstance().font.width(item.getItemStack().getHoverName());
-        if (itemNameWidthCache[index] == 0) itemNameWidthCache[index] = Minecraft.getInstance().font.width(getCachedItemName(index, item));
+        if (itemNameWidthCache == null || index < 0 || index >= itemNameWidthCache.length)
+            return Minecraft.getInstance().font.width(item.getItemStack().getHoverName());
+        if (itemNameWidthCache[index] == 0)
+            itemNameWidthCache[index] = Minecraft.getInstance().font.width(getCachedItemName(index, item));
         return itemNameWidthCache[index];
     }
 
@@ -446,7 +452,10 @@ public class GachaPreviewPanel {
         if (targetY < 0) targetY = 2;
 
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
-            animTipX = targetX; animTipY = targetY; animTipW = targetW; animTipH = targetH;
+            animTipX = targetX;
+            animTipY = targetY;
+            animTipW = targetW;
+            animTipH = targetH;
         } else {
             float morphSpeed = 15f;
             animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
@@ -566,7 +575,8 @@ public class GachaPreviewPanel {
                 if (barW > 10) {
                     int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
                     g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
-                    if (fillW > 0) g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
+                    if (fillW > 0)
+                        g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
                 }
             }
             currentY += 8;
@@ -601,7 +611,8 @@ public class GachaPreviewPanel {
         if (lastHistorySize == -1) lastHistorySize = history.size();
 
         if (!isWiping && !isClosing && history.size() > lastHistorySize) {
-            logRollAnim = 1.0f; lastHistorySize = history.size();
+            logRollAnim = 1.0f;
+            lastHistorySize = history.size();
         }
         if (!isWiping && !isClosing && logRollAnim > 0) logRollAnim = Math.max(0, logRollAnim - dt * 6.0f);
 
@@ -627,7 +638,8 @@ public class GachaPreviewPanel {
                 else if (isFull && i == limit - 1 && logRollAnim > 0) itemAlphaMod = 1.0f - rollEase;
 
                 int finalA = (int) (safeA * itemAlphaMod);
-                if (finalA > 5) g.drawString(Minecraft.getInstance().font, text, textStartX + 7, (int) drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
+                if (finalA > 5)
+                    g.drawString(Minecraft.getInstance().font, text, textStartX + 7, (int) drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
             }
         }
         g.pose().popPose();
@@ -648,7 +660,8 @@ public class GachaPreviewPanel {
         if (!isWiping && !isClosing) {
             btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 10f, dt);
             if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
-            if (shortfallTooltipAnim > 0) shortfallTooltipAnim = Math.max(0, shortfallTooltipAnim - dt / SHORTFALL_TOOLTIP_DURATION);
+            if (shortfallTooltipAnim > 0)
+                shortfallTooltipAnim = Math.max(0, shortfallTooltipAnim - dt / SHORTFALL_TOOLTIP_DURATION);
         }
 
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
@@ -678,7 +691,8 @@ public class GachaPreviewPanel {
             boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
 
             if (!(!onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw)) {
-                feedbackSuccess = false; feedbackAnim = 1f;
+                feedbackSuccess = false;
+                feedbackAnim = 1f;
                 if (insufficientFunds) shortfallTooltipAnim = 1f;
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
                 return true;
@@ -696,5 +710,7 @@ public class GachaPreviewPanel {
         return true;
     }
 
-    private record Layout(int termW, int termX, int gridX, int gridW, int mainCX, int topH, int gridY, int gridH, int btnW, int btnH, int btnX, int btnY) {}
+    private record Layout(int termW, int termX, int gridX, int gridW, int mainCX, int topH, int gridY, int gridH,
+                          int btnW, int btnH, int btnX, int btnY) {
+    }
 }

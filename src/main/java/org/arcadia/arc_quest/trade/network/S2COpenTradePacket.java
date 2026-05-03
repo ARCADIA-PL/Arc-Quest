@@ -41,6 +41,7 @@ public class S2COpenTradePacket {
     private final boolean[] canBuyConditions;
     private final String openSoundId;  // 商店打开音效 ID
     private final String closeSoundId;  // 商店关闭音效 ID
+
     public S2COpenTradePacket(Mode mode, String shopId,
                               int[] purchaseCounts, int[] maxPurchases,
                               long[] lastPurchaseTimes,
@@ -68,6 +69,7 @@ public class S2COpenTradePacket {
         this.openSoundId = openSoundId;
         this.closeSoundId = closeSoundId;
     }
+
     public S2COpenTradePacket(Mode mode, String shopId, String entryId, FailReason failReason, String errorKey) {
         this(mode, shopId, entryId, failReason, errorKey, List.of());
     }

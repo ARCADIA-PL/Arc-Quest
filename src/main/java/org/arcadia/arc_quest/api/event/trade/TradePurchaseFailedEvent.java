@@ -17,6 +17,7 @@ public class TradePurchaseFailedEvent extends Event {
     private final String shopId;
     private final String entryId;
     private final FailureReason reason;
+
     public TradePurchaseFailedEvent(ServerPlayer player, String shopId, String entryId, FailureReason reason) {
         this.player = player;
         this.shopId = shopId;

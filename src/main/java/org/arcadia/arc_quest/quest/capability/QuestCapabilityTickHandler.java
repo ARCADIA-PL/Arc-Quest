@@ -28,8 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class QuestCapabilityTickHandler {
 
-    private static int tickCounter = 0;
     private static final Map<String, Long> markerRefreshClock = new ConcurrentHashMap<>();
+    private static int tickCounter = 0;
 
     private QuestCapabilityTickHandler() {
     }

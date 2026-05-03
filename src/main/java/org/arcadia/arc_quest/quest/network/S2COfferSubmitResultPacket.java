@@ -9,17 +9,10 @@ import java.util.function.Supplier;
 
 public class S2COfferSubmitResultPacket {
 
-    public enum CloseMode {
-        NONE,
-        NORMAL_CLOSE,
-        CLEARED_CLOSE
-    }
-
     private final String questId;
     private final String phaseId;
     private final int objectiveIndex;
     private final CloseMode closeMode;
-
     public S2COfferSubmitResultPacket(String questId, String phaseId, int objectiveIndex, CloseMode closeMode) {
         this.questId = questId;
         this.phaseId = phaseId;
@@ -50,5 +43,11 @@ public class S2COfferSubmitResultPacket {
             QuestOfferPanel.onServerSubmitResult(pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.closeMode);
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    public enum CloseMode {
+        NONE,
+        NORMAL_CLOSE,
+        CLEARED_CLOSE
     }
 }

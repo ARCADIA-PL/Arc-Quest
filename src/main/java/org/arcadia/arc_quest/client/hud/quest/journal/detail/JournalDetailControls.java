@@ -83,7 +83,8 @@ public class JournalDetailControls {
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive()) return false;
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive())
+            return false;
         if (screen.getSelectedIndex() < 0 || screen.getSelectedIndex() >= screen.getCurrentEntries().size())
             return false;
 

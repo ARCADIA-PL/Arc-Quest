@@ -39,6 +39,8 @@ public final class QuestHistoryPanel {
     private static final float EXIT_TIME = 0.5f;
     private static final List<NodeData> renderNodes = new ArrayList<>();
     private static final Map<String, NodeData> nodeMap = new HashMap<>();
+    private static final Component REWARDS_TITLE = Component.literal("REWARDS").withStyle(Style.EMPTY.withBold(true));
+    private static final float FOCUS_DELAY_TIME = 0.6f;
     private static boolean active = false;
     private static boolean closing = false;
     private static long lastRenderMs = 0L;
@@ -58,7 +60,6 @@ public final class QuestHistoryPanel {
     private static boolean panning = false;
     private static double lastDragX = 0;
     private static double lastDragY = 0;
-
     private static String pinnedPhaseId = null;
     private static PhaseDefinition activeTooltipPhase = null;
     private static PhaseDefinition renderingTooltipPhase = null;
@@ -68,37 +69,11 @@ public final class QuestHistoryPanel {
     private static float animTipY = 0;
     private static float animTipW = 0;
     private static float animTipH = 0;
-    private static final Component REWARDS_TITLE = Component.literal("REWARDS").withStyle(Style.EMPTY.withBold(true));
-
     private static boolean pendingFocusActive = false;
     private static float focusDelayTimer = 0f;
-    private static final float FOCUS_DELAY_TIME = 0.6f;
 
-    private static class TooltipLayout {
-        List<Component> lines = List.of();
-        int textMaxWidth = 0;
+    private QuestHistoryPanel() {
     }
-
-    private static class RewardRenderData {
-        ItemStack stack = ItemStack.EMPTY;
-        String text = "";
-        int width = 0;
-        boolean item;
-    }
-
-    private static class PhaseTooltipData {
-        String title = "";
-        Component titleComponent = Component.empty();
-        int titleWidth = 0;
-        List<FormattedCharSequence> descLines = List.of();
-        int descMaxWidth = 0;
-        List<RewardRenderData> rewards = List.of();
-        int textMaxWidth = 0;
-        int targetW = 0;
-        int targetH = 0;
-    }
-
-    private QuestHistoryPanel() {}
 
     // 【终极优化：内联矩形拼接边框】
     private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
@@ -116,27 +91,46 @@ public final class QuestHistoryPanel {
         }
         questId = qid;
         themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(qid, 0x5AD7FF);
-        active = true; closing = false; enterTimer = 0f; exitTimer = 0f;
+        active = true;
+        closing = false;
+        enterTimer = 0f;
+        exitTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
-        zoom = 1.0f; panX = 0f; panY = 0f; targetZoom = 1.0f; targetPanX = 0f; targetPanY = 0f; panning = false;
-        pinnedPhaseId = null; activeTooltipPhase = null; renderingTooltipPhase = null;
+        zoom = 1.0f;
+        panX = 0f;
+        panY = 0f;
+        targetZoom = 1.0f;
+        targetPanX = 0f;
+        targetPanY = 0f;
+        panning = false;
+        pinnedPhaseId = null;
+        activeTooltipPhase = null;
+        renderingTooltipPhase = null;
         hoveredRewardStack = ItemStack.EMPTY;
-        tooltipAnimProgress = 0f; animTipW = 0;
+        tooltipAnimProgress = 0f;
+        animTipW = 0;
         buildGraphData();
         fitCameraToGraph(PANEL_W - 8, PANEL_H - 32);
-        pendingFocusActive = true; focusDelayTimer = 0f;
+        pendingFocusActive = true;
+        focusDelayTimer = 0f;
     }
 
-    public static boolean isActive() { return active; }
+    public static boolean isActive() {
+        return active;
+    }
 
     public static void close() {
         if (!active || closing) return;
-        closing = true; exitTimer = 0f;
+        closing = true;
+        exitTimer = 0f;
     }
 
     public static boolean keyPressed(int keyCode) {
         if (!active || closing) return false;
-        if (keyCode == 256 || keyCode == 69) { close(); return true; }
+        if (keyCode == 256 || keyCode == 69) {
+            close();
+            return true;
+        }
         return false;
     }
 
@@ -144,7 +138,8 @@ public final class QuestHistoryPanel {
         if (!active || closing) return false;
         float scaledW = PANEL_W * currentScale, scaledH = PANEL_H * currentScale;
         if (mx < currentDrawX || mx > currentDrawX + scaledW || my < currentDrawY || my > currentDrawY + scaledH) {
-            close(); return true;
+            close();
+            return true;
         }
 
         float lx = (float) ((mx - currentDrawX) / currentScale), ly = (float) ((my - currentDrawY) / currentScale);
@@ -152,12 +147,16 @@ public final class QuestHistoryPanel {
         boolean inBounds = lx >= treeX && lx <= treeX + treeW && ly >= treeY && ly <= treeY + treeH;
 
         if (inBounds) {
-            if (button == 2) { focusOnActivePhase(); return true; }
+            if (button == 2) {
+                focusOnActivePhase();
+                return true;
+            }
             if (button == 0 || button == 1) {
                 String clickedNodeId = null;
                 for (NodeData node : renderNodes) {
                     if (Math.abs(lx - (treeX + panX + node.x * zoom)) <= 15 * zoom && Math.abs(ly - (treeY + panY + node.y * zoom)) <= 15 * zoom) {
-                        clickedNodeId = node.id; break;
+                        clickedNodeId = node.id;
+                        break;
                     }
                 }
                 if (clickedNodeId != null) {
@@ -165,11 +164,15 @@ public final class QuestHistoryPanel {
                     else {
                         pinnedPhaseId = clickedNodeId;
                         if (button == 1) focusOnNode(clickedNodeId);
-                        if (Minecraft.getInstance().player != null) Minecraft.getInstance().player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.4f);
+                        if (Minecraft.getInstance().player != null)
+                            Minecraft.getInstance().player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.4f);
                     }
                     return true;
                 } else {
-                    pinnedPhaseId = null; panning = true; lastDragX = lx; lastDragY = ly;
+                    pinnedPhaseId = null;
+                    panning = true;
+                    lastDragX = lx;
+                    lastDragY = ly;
                 }
             }
         }
@@ -179,11 +182,14 @@ public final class QuestHistoryPanel {
     public static boolean mouseDragged(double mx, double my) {
         if (!active || closing || !panning) return false;
         if (GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS) {
-            panning = false; return true;
+            panning = false;
+            return true;
         }
         float lx = (float) ((mx - currentDrawX) / currentScale), ly = (float) ((my - currentDrawY) / currentScale);
-        targetPanX += (lx - lastDragX); targetPanY += (ly - lastDragY);
-        lastDragX = lx; lastDragY = ly;
+        targetPanX += (lx - lastDragX);
+        targetPanY += (ly - lastDragY);
+        lastDragX = lx;
+        lastDragY = ly;
         return true;
     }
 
@@ -221,18 +227,26 @@ public final class QuestHistoryPanel {
         String targetPhase = null;
         String trackedQuest = QuestHudOverlay.INSTANCE.getTrackedQuestId(), trackedPhase = QuestHudOverlay.INSTANCE.getTrackedPhaseId();
 
-        if (questId.equals(trackedQuest) && trackedPhase != null && nodeMap.containsKey(trackedPhase) && runtime.isPhaseActive(trackedPhase)) targetPhase = trackedPhase;
+        if (questId.equals(trackedQuest) && trackedPhase != null && nodeMap.containsKey(trackedPhase) && runtime.isPhaseActive(trackedPhase))
+            targetPhase = trackedPhase;
         if (targetPhase == null) {
             String current = runtime.getCurrentPhaseId();
-            if (current != null && runtime.isPhaseActive(current) && nodeMap.containsKey(current)) targetPhase = current;
+            if (current != null && runtime.isPhaseActive(current) && nodeMap.containsKey(current))
+                targetPhase = current;
         }
         if (targetPhase == null) {
-            for (String pid : runtime.getActivePhaseIds()) if (nodeMap.containsKey(pid)) { targetPhase = pid; break; }
+            for (String pid : runtime.getActivePhaseIds())
+                if (nodeMap.containsKey(pid)) {
+                    targetPhase = pid;
+                    break;
+                }
         }
 
         if (targetPhase != null && nodeMap.containsKey(targetPhase)) {
-            pinnedPhaseId = null; focusOnNode(targetPhase);
-            if (Minecraft.getInstance().player != null) Minecraft.getInstance().player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.2f);
+            pinnedPhaseId = null;
+            focusOnNode(targetPhase);
+            if (Minecraft.getInstance().player != null)
+                Minecraft.getInstance().player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.2f);
         }
     }
 
@@ -242,7 +256,8 @@ public final class QuestHistoryPanel {
         int screenW = mc.getWindow().getGuiScaledWidth(), screenH = mc.getWindow().getGuiScaledHeight();
 
         if (mc.screen instanceof QuestJournalScreen qjs) {
-            screenW = qjs.getScaledWidth(); screenH = qjs.getScaledHeight();
+            screenW = qjs.getScaledWidth();
+            screenH = qjs.getScaledHeight();
         }
 
         long now = System.currentTimeMillis();
@@ -251,7 +266,10 @@ public final class QuestHistoryPanel {
 
         if (pendingFocusActive && !closing) {
             focusDelayTimer += dt;
-            if (focusDelayTimer >= FOCUS_DELAY_TIME) { pendingFocusActive = false; focusOnActivePhase(); }
+            if (focusDelayTimer >= FOCUS_DELAY_TIME) {
+                pendingFocusActive = false;
+                focusOnActivePhase();
+            }
         }
 
         float finalScale = Math.min((screenW * 0.90f) / (float) PANEL_W, (screenH * 0.65f) / (float) PANEL_H);
@@ -260,7 +278,11 @@ public final class QuestHistoryPanel {
 
         if (closing) {
             exitTimer += dt;
-            if (exitTimer >= EXIT_TIME) { active = false; closing = false; return; }
+            if (exitTimer >= EXIT_TIME) {
+                active = false;
+                closing = false;
+                return;
+            }
             float t = Math.min(1.0f, exitTimer / EXIT_TIME);
             wipeProgress = (float) Math.pow(t, 4.0);
             currentX = baseX - (wipeProgress * 4.0f * finalScale * 1.5f);
@@ -285,13 +307,15 @@ public final class QuestHistoryPanel {
         if (closing) scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress));
         else if (enterTimer < ENTER_TIME) scX2 = (int) (currentDrawX + drawWidth * revealProgress);
 
-        activeTooltipPhase = null; hoveredRewardStack = ItemStack.EMPTY;
+        activeTooltipPhase = null;
+        hoveredRewardStack = ItemStack.EMPTY;
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
         g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (35 * alphaF)));
 
-        if (mc.screen instanceof QuestJournalScreen qjs) qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        if (mc.screen instanceof QuestJournalScreen qjs)
+            qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         else g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
 
         g.pose().pushPose();
@@ -345,8 +369,10 @@ public final class QuestHistoryPanel {
         g.pose().popPose();
         g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
 
-        for (int i = 15; i < PW; i += 15) g.fill(i, topBarH, i + 1, PH - 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (4 * alphaF)));
-        for (int i = topBarH + 15; i < PH; i += 15) g.fill(1, i, PW - 1, i + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (4 * alphaF)));
+        for (int i = 15; i < PW; i += 15)
+            g.fill(i, topBarH, i + 1, PH - 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (4 * alphaF)));
+        for (int i = topBarH + 15; i < PH; i += 15)
+            g.fill(1, i, PW - 1, i + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (4 * alphaF)));
 
         zoom += (targetZoom - zoom) * Math.min(1f, dt * 15f);
         panX += (targetPanX - panX) * Math.min(1f, dt * 15f);
@@ -372,7 +398,8 @@ public final class QuestHistoryPanel {
                 if (phase == null) continue;
                 for (PhaseTransition tr : phase.getTransitions()) {
                     NodeData target = nodeMap.get(tr.getTargetPhaseId());
-                    if (target != null) drawOrthogonalLine(g, node.x, node.y, target.x, target.y, node.completed, alphaF, themeColor);
+                    if (target != null)
+                        drawOrthogonalLine(g, node.x, node.y, target.x, target.y, node.completed, alphaF, themeColor);
                 }
             }
 
@@ -389,7 +416,8 @@ public final class QuestHistoryPanel {
                 float nodeScale = node.active ? 1.0f + 0.05f * (float) Math.sin(time / 500.0) : 1.0f;
 
                 if (isHovered || isPinned) {
-                    glowA = (int) (200 * alphaF); nodeScale = 1.15f;
+                    glowA = (int) (200 * alphaF);
+                    nodeScale = 1.15f;
                     nodeColor = node.active ? themeColor : (node.completed ? 0x99FFBB : 0xAAAAAA);
                 }
 
@@ -418,7 +446,10 @@ public final class QuestHistoryPanel {
 
     private static void handleTooltipAnimation(float dt) {
         if (activeTooltipPhase != null) {
-            if (renderingTooltipPhase != activeTooltipPhase) { renderingTooltipPhase = activeTooltipPhase; tooltipAnimProgress = 0f; }
+            if (renderingTooltipPhase != activeTooltipPhase) {
+                renderingTooltipPhase = activeTooltipPhase;
+                tooltipAnimProgress = 0f;
+            }
             tooltipAnimProgress = Math.min(1.0f, tooltipAnimProgress + dt * 10f);
         } else {
             tooltipAnimProgress = Math.max(0.0f, tooltipAnimProgress - dt * 15f);
@@ -437,7 +468,10 @@ public final class QuestHistoryPanel {
         if (targetY < 0) targetY = 2;
 
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50 || tooltipAnimProgress < 0.1f) {
-            animTipX = targetX; animTipY = targetY; animTipW = targetW; animTipH = targetH;
+            animTipX = targetX;
+            animTipY = targetY;
+            animTipW = targetW;
+            animTipH = targetH;
         } else {
             float morphSpeed = 18f;
             animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
@@ -465,7 +499,8 @@ public final class QuestHistoryPanel {
 
         Minecraft mc = Minecraft.getInstance();
         boolean scissored = true;
-        if (mc.screen instanceof QuestJournalScreen qjs) qjs.enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
+        if (mc.screen instanceof QuestJournalScreen qjs)
+            qjs.enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
         else g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
 
         int contentX = drawX + cyberEdgeWidth + padding, contentY = drawY + padding;
@@ -497,7 +532,8 @@ public final class QuestHistoryPanel {
 
             for (RewardRenderData reward : tooltipData.rewards) {
                 g.fill(contentX, contentY, drawX + drawW - padding, contentY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int) (baseAlpha * 0.05)));
-                if (!reward.item) g.drawString(font, "■", contentX + 6, contentY + 6, HudAnimUtil.withAlpha(themeColor, baseAlpha), false);
+                if (!reward.item)
+                    g.drawString(font, "■", contentX + 6, contentY + 6, HudAnimUtil.withAlpha(themeColor, baseAlpha), false);
                 g.drawString(font, reward.text, contentX + 24, contentY + 6, HudAnimUtil.withAlpha(reward.item ? 0xFFFFFF : 0xDDDDDD, baseAlpha), false);
 
                 if (reward.item && localMouseX >= contentX && localMouseX <= contentX + 24 && localMouseY >= contentY && localMouseY <= contentY + 22) {
@@ -550,7 +586,8 @@ public final class QuestHistoryPanel {
         Minecraft mc = Minecraft.getInstance();
         int drawX = mouseX + 12, drawY = mouseY - 12;
         if (drawX + drawW > mc.getWindow().getGuiScaledWidth()) drawX = mouseX - drawW - 8;
-        if (drawY + drawH > mc.getWindow().getGuiScaledHeight()) drawY = mc.getWindow().getGuiScaledHeight() - drawH - 2;
+        if (drawY + drawH > mc.getWindow().getGuiScaledHeight())
+            drawY = mc.getWindow().getGuiScaledHeight() - drawH - 2;
         if (drawY < 2) drawY = 2;
 
         g.pose().pushPose();
@@ -576,7 +613,8 @@ public final class QuestHistoryPanel {
     }
 
     private static void buildGraphData() {
-        renderNodes.clear(); nodeMap.clear();
+        renderNodes.clear();
+        nodeMap.clear();
         QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (def == null || runtime == null) return;
@@ -588,12 +626,14 @@ public final class QuestHistoryPanel {
             PhaseDefinition p = def.getPhase(id);
             if (p != null) {
                 int curD = depth.getOrDefault(id, 0);
-                for (PhaseTransition tr : p.getTransitions()) depth.put(tr.getTargetPhaseId(), Math.max(depth.getOrDefault(tr.getTargetPhaseId(), 0), curD + 1));
+                for (PhaseTransition tr : p.getTransitions())
+                    depth.put(tr.getTargetPhaseId(), Math.max(depth.getOrDefault(tr.getTargetPhaseId(), 0), curD + 1));
             }
         }
 
         Map<Integer, List<String>> nodesByDepth = new HashMap<>();
-        for (String pid : phaseOrder) nodesByDepth.computeIfAbsent(depth.getOrDefault(pid, 0), k -> new ArrayList<>()).add(pid);
+        for (String pid : phaseOrder)
+            nodesByDepth.computeIfAbsent(depth.getOrDefault(pid, 0), k -> new ArrayList<>()).add(pid);
 
         final int dx = 60, dy = 40;
         for (Map.Entry<Integer, List<String>> entry : nodesByDepth.entrySet()) {
@@ -605,7 +645,8 @@ public final class QuestHistoryPanel {
                 Font font = Minecraft.getInstance().font;
                 String displayName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, pid);
                 NodeData nd = new NodeData(pid, d * dx, (int) ((i - (totalInLayer - 1) / 2.0f) * dy), completed.contains(pid), !completed.contains(pid) && active.contains(pid), displayName, font.width(displayName), buildPhaseTooltipData(phase, font));
-                renderNodes.add(nd); nodeMap.put(pid, nd);
+                renderNodes.add(nd);
+                nodeMap.put(pid, nd);
             }
         }
     }
@@ -617,7 +658,8 @@ public final class QuestHistoryPanel {
         data.titleWidth = font.width(data.title);
         data.descLines = font.split(phase.getDescription(), 200 - 20);
         data.textMaxWidth = data.titleWidth;
-        for (FormattedCharSequence line : data.descLines) data.textMaxWidth = Math.max(data.textMaxWidth, font.width(line));
+        for (FormattedCharSequence line : data.descLines)
+            data.textMaxWidth = Math.max(data.textMaxWidth, font.width(line));
 
         if (!phase.getPhaseRewards().isEmpty()) {
             data.textMaxWidth = Math.max(data.textMaxWidth, font.width(REWARDS_TITLE));
@@ -625,9 +667,13 @@ public final class QuestHistoryPanel {
             for (IReward reward : phase.getPhaseRewards()) {
                 RewardRenderData rd = new RewardRenderData();
                 if (reward instanceof ItemReward ir) {
-                    rd.item = true; rd.stack = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
+                    rd.item = true;
+                    rd.stack = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
                     rd.text = rd.stack.getHoverName().getString() + (ir.getCount() > 1 ? " x" + ir.getCount() : "");
-                } else { rd.item = false; rd.text = reward.describe(); }
+                } else {
+                    rd.item = false;
+                    rd.text = reward.describe();
+                }
                 rd.width = 24 + font.width(rd.text);
                 data.textMaxWidth = Math.max(data.textMaxWidth, rd.width);
                 rewards.add(rd);
@@ -647,15 +693,45 @@ public final class QuestHistoryPanel {
         if (renderNodes.isEmpty()) return;
         int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
         for (NodeData n : renderNodes) {
-            if (n.x < minX) minX = n.x; if (n.x > maxX) maxX = n.x;
-            if (n.y < minY) minY = n.y; if (n.y > maxY) maxY = n.y;
+            if (n.x < minX) minX = n.x;
+            if (n.x > maxX) maxX = n.x;
+            if (n.y < minY) minY = n.y;
+            if (n.y > maxY) maxY = n.y;
         }
         int treeW = Math.max(1, maxX - minX), treeH = Math.max(1, maxY - minY);
         targetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min((float) viewW / (treeW + 60), (float) viewH / (treeH + 60))));
         targetPanX = (viewW - treeW * targetZoom) / 2f - minX * targetZoom;
         targetPanY = (viewH - treeH * targetZoom) / 2f - minY * targetZoom;
-        zoom = targetZoom; panX = targetPanX; panY = targetPanY;
+        zoom = targetZoom;
+        panX = targetPanX;
+        panY = targetPanY;
     }
 
-    private record NodeData(String id, int x, int y, boolean completed, boolean active, String displayName, int displayNameWidth, PhaseTooltipData tooltipData) {}
+    private static class TooltipLayout {
+        List<Component> lines = List.of();
+        int textMaxWidth = 0;
+    }
+
+    private static class RewardRenderData {
+        ItemStack stack = ItemStack.EMPTY;
+        String text = "";
+        int width = 0;
+        boolean item;
+    }
+
+    private static class PhaseTooltipData {
+        String title = "";
+        Component titleComponent = Component.empty();
+        int titleWidth = 0;
+        List<FormattedCharSequence> descLines = List.of();
+        int descMaxWidth = 0;
+        List<RewardRenderData> rewards = List.of();
+        int textMaxWidth = 0;
+        int targetW = 0;
+        int targetH = 0;
+    }
+
+    private record NodeData(String id, int x, int y, boolean completed, boolean active, String displayName,
+                            int displayNameWidth, PhaseTooltipData tooltipData) {
+    }
 }

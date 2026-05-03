@@ -43,6 +43,7 @@ public class C2SRequestTradePacket {
     public C2SRequestTradePacket(Action action, String shopId, String entryId) {
         this(action, shopId, entryId, ScreenType.NONE);
     }
+
     public C2SRequestTradePacket(Action action, String shopId, String entryId, ScreenType currentScreenType) {
         this.action = action;
         this.shopId = shopId;

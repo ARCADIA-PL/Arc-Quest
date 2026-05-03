@@ -22,6 +22,7 @@ public final class SyncObservability {
     private static final Map<String, AtomicLong> REQUEST_COUNTS = new ConcurrentHashMap<>();
     private static final Map<String, AtomicLong> SENT_COUNTS = new ConcurrentHashMap<>();
     private static final Map<String, AtomicLong> DROPPED_COUNTS = new ConcurrentHashMap<>();
+
     private SyncObservability() {
     }
 

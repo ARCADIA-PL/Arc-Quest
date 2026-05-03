@@ -8,6 +8,7 @@ public class DialogueRestoreFailedEvent extends Event {
     private final String dialogueId;
     private final String restoreNodeId;
     private final FailureReason reason;
+
     public DialogueRestoreFailedEvent(ServerPlayer player, String dialogueId, String restoreNodeId, FailureReason reason) {
         this.player = player;
         this.dialogueId = dialogueId;

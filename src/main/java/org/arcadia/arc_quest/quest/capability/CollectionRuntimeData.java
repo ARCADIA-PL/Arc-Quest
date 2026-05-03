@@ -7,11 +7,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 
 import javax.annotation.Nullable;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public final class CollectionRuntimeData {
 
@@ -98,93 +94,6 @@ public final class CollectionRuntimeData {
         return new CollectionRuntimeData(visible, discovered, entryCounts, uniqueKeys, unlockedRewards, claimedRewards, lastPhaseId, lastCategoryId, lastUpdatedAtMs, false);
     }
 
-    public boolean isVisible(String phaseId) { return visiblePhaseIds.contains(phaseId); }
-    public boolean isDiscovered(String phaseId) { return discoveredPhaseIds.contains(phaseId); }
-    public int getEntryCount(String phaseId) { return entryCounts.getOrDefault(phaseId, 0); }
-
-    public int incrementEntryCount(String phaseId, int amount, int max) {
-        int current = getEntryCount(phaseId);
-        int next = current + Math.max(0, amount);
-        if (max > 0) next = Math.min(next, max);
-        entryCounts.put(phaseId, next);
-        dirty = true;
-        return next;
-    }
-
-    public boolean addUniqueKey(String phaseId, String key) {
-        Objects.requireNonNull(phaseId);
-        Objects.requireNonNull(key);
-        LinkedHashSet<String> keys = entryUniqueKeys.computeIfAbsent(phaseId, ignored -> new LinkedHashSet<>());
-        boolean added = keys.add(key);
-        if (added) dirty = true;
-        return added;
-    }
-
-    public void markVisible(String phaseId) { if (visiblePhaseIds.add(phaseId)) dirty = true; }
-    public void markDiscovered(String phaseId) { if (discoveredPhaseIds.add(phaseId)) dirty = true; }
-    public boolean isRewardUnlocked(String rewardId) { return unlockedRewardIds.contains(rewardId); }
-    public void markRewardUnlocked(String rewardId) { if (unlockedRewardIds.add(rewardId)) dirty = true; }
-    public boolean isRewardClaimed(String rewardId) { return claimedRewardIds.contains(rewardId); }
-    public void markRewardClaimed(String rewardId) { if (claimedRewardIds.add(rewardId)) dirty = true; }
-
-    public void markUpdated(@Nullable String phaseId, @Nullable String categoryId, long updatedAtMs) {
-        this.lastUpdatedPhaseId = phaseId;
-        this.lastUpdatedCategoryId = categoryId;
-        this.lastUpdatedAtMs = Math.max(0L, updatedAtMs);
-        this.dirty = true;
-    }
-
-    public Set<String> getVisiblePhaseIds() { return Set.copyOf(visiblePhaseIds); }
-    public Set<String> getDiscoveredPhaseIds() { return Set.copyOf(discoveredPhaseIds); }
-    public Map<String, Integer> getEntryCounts() { return Map.copyOf(entryCounts); }
-    public Set<String> getEntryUniqueKeys(String phaseId) { LinkedHashSet<String> keys = entryUniqueKeys.get(phaseId); return keys == null ? Set.of() : Set.copyOf(keys); }
-    public Set<String> getUnlockedRewardIds() { return Set.copyOf(unlockedRewardIds); }
-    public Set<String> getClaimedRewardIds() { return Set.copyOf(claimedRewardIds); }
-    @Nullable public String getLastUpdatedPhaseId() { return lastUpdatedPhaseId; }
-    @Nullable public String getLastUpdatedCategoryId() { return lastUpdatedCategoryId; }
-    public long getLastUpdatedAtMs() { return lastUpdatedAtMs; }
-    public boolean isDirty() { return dirty; }
-    public void clearDirty() { this.dirty = false; }
-
-    public CompoundTag serializeNBT() {
-        CompoundTag tag = new CompoundTag();
-        writeStringSet(tag, "VisiblePhases", visiblePhaseIds);
-        writeStringSet(tag, "DiscoveredPhases", discoveredPhaseIds);
-        CompoundTag entryCountsTag = new CompoundTag();
-        for (Map.Entry<String, Integer> entry : entryCounts.entrySet()) entryCountsTag.putInt(entry.getKey(), entry.getValue());
-        tag.put("EntryCounts", entryCountsTag);
-        CompoundTag uniqueKeysTag = new CompoundTag();
-        for (Map.Entry<String, LinkedHashSet<String>> entry : entryUniqueKeys.entrySet()) writeStringSet(uniqueKeysTag, entry.getKey(), entry.getValue());
-        tag.put("EntryUniqueKeys", uniqueKeysTag);
-        writeStringSet(tag, "UnlockedRewards", unlockedRewardIds);
-        writeStringSet(tag, "ClaimedRewards", claimedRewardIds);
-        if (lastUpdatedPhaseId != null && !lastUpdatedPhaseId.isEmpty()) tag.putString("LastUpdatedPhaseId", lastUpdatedPhaseId);
-        if (lastUpdatedCategoryId != null && !lastUpdatedCategoryId.isEmpty()) tag.putString("LastUpdatedCategoryId", lastUpdatedCategoryId);
-        tag.putLong("LastUpdatedAtMs", lastUpdatedAtMs);
-        return tag;
-    }
-
-    public void writeToNetwork(FriendlyByteBuf buf) {
-        writeStringSet(buf, visiblePhaseIds);
-        writeStringSet(buf, discoveredPhaseIds);
-        buf.writeVarInt(entryCounts.size());
-        for (Map.Entry<String, Integer> entry : entryCounts.entrySet()) { buf.writeUtf(entry.getKey()); buf.writeVarInt(entry.getValue()); }
-        buf.writeVarInt(entryUniqueKeys.size());
-        for (Map.Entry<String, LinkedHashSet<String>> entry : entryUniqueKeys.entrySet()) { buf.writeUtf(entry.getKey()); writeStringSet(buf, entry.getValue()); }
-        writeStringSet(buf, unlockedRewardIds);
-        writeStringSet(buf, claimedRewardIds);
-        buf.writeUtf(lastUpdatedPhaseId != null ? lastUpdatedPhaseId : "");
-        buf.writeUtf(lastUpdatedCategoryId != null ? lastUpdatedCategoryId : "");
-        buf.writeLong(lastUpdatedAtMs);
-    }
-
-    public CollectionRuntimeData copy() {
-        LinkedHashMap<String, Integer> counts = new LinkedHashMap<>(entryCounts);
-        LinkedHashMap<String, LinkedHashSet<String>> uniqueKeys = new LinkedHashMap<>();
-        for (Map.Entry<String, LinkedHashSet<String>> entry : entryUniqueKeys.entrySet()) uniqueKeys.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
-        return new CollectionRuntimeData(new LinkedHashSet<>(visiblePhaseIds), new LinkedHashSet<>(discoveredPhaseIds), counts, uniqueKeys, new LinkedHashSet<>(unlockedRewardIds), new LinkedHashSet<>(claimedRewardIds), lastUpdatedPhaseId, lastUpdatedCategoryId, lastUpdatedAtMs, dirty);
-    }
-
     private static LinkedHashSet<String> readStringSet(CompoundTag tag, String key) {
         LinkedHashSet<String> values = new LinkedHashSet<>();
         if (!tag.contains(key, Tag.TAG_LIST)) return values;
@@ -217,5 +126,163 @@ public final class CollectionRuntimeData {
     @Nullable
     private static String emptyToNull(String value) {
         return value == null || value.isEmpty() ? null : value;
+    }
+
+    public boolean isVisible(String phaseId) {
+        return visiblePhaseIds.contains(phaseId);
+    }
+
+    public boolean isDiscovered(String phaseId) {
+        return discoveredPhaseIds.contains(phaseId);
+    }
+
+    public int getEntryCount(String phaseId) {
+        return entryCounts.getOrDefault(phaseId, 0);
+    }
+
+    public int incrementEntryCount(String phaseId, int amount, int max) {
+        int current = getEntryCount(phaseId);
+        int next = current + Math.max(0, amount);
+        if (max > 0) next = Math.min(next, max);
+        entryCounts.put(phaseId, next);
+        dirty = true;
+        return next;
+    }
+
+    public boolean addUniqueKey(String phaseId, String key) {
+        Objects.requireNonNull(phaseId);
+        Objects.requireNonNull(key);
+        LinkedHashSet<String> keys = entryUniqueKeys.computeIfAbsent(phaseId, ignored -> new LinkedHashSet<>());
+        boolean added = keys.add(key);
+        if (added) dirty = true;
+        return added;
+    }
+
+    public void markVisible(String phaseId) {
+        if (visiblePhaseIds.add(phaseId)) dirty = true;
+    }
+
+    public void markDiscovered(String phaseId) {
+        if (discoveredPhaseIds.add(phaseId)) dirty = true;
+    }
+
+    public boolean isRewardUnlocked(String rewardId) {
+        return unlockedRewardIds.contains(rewardId);
+    }
+
+    public void markRewardUnlocked(String rewardId) {
+        if (unlockedRewardIds.add(rewardId)) dirty = true;
+    }
+
+    public boolean isRewardClaimed(String rewardId) {
+        return claimedRewardIds.contains(rewardId);
+    }
+
+    public void markRewardClaimed(String rewardId) {
+        if (claimedRewardIds.add(rewardId)) dirty = true;
+    }
+
+    public void markUpdated(@Nullable String phaseId, @Nullable String categoryId, long updatedAtMs) {
+        this.lastUpdatedPhaseId = phaseId;
+        this.lastUpdatedCategoryId = categoryId;
+        this.lastUpdatedAtMs = Math.max(0L, updatedAtMs);
+        this.dirty = true;
+    }
+
+    public Set<String> getVisiblePhaseIds() {
+        return Set.copyOf(visiblePhaseIds);
+    }
+
+    public Set<String> getDiscoveredPhaseIds() {
+        return Set.copyOf(discoveredPhaseIds);
+    }
+
+    public Map<String, Integer> getEntryCounts() {
+        return Map.copyOf(entryCounts);
+    }
+
+    public Set<String> getEntryUniqueKeys(String phaseId) {
+        LinkedHashSet<String> keys = entryUniqueKeys.get(phaseId);
+        return keys == null ? Set.of() : Set.copyOf(keys);
+    }
+
+    public Set<String> getUnlockedRewardIds() {
+        return Set.copyOf(unlockedRewardIds);
+    }
+
+    public Set<String> getClaimedRewardIds() {
+        return Set.copyOf(claimedRewardIds);
+    }
+
+    @Nullable
+    public String getLastUpdatedPhaseId() {
+        return lastUpdatedPhaseId;
+    }
+
+    @Nullable
+    public String getLastUpdatedCategoryId() {
+        return lastUpdatedCategoryId;
+    }
+
+    public long getLastUpdatedAtMs() {
+        return lastUpdatedAtMs;
+    }
+
+    public boolean isDirty() {
+        return dirty;
+    }
+
+    public void clearDirty() {
+        this.dirty = false;
+    }
+
+    public CompoundTag serializeNBT() {
+        CompoundTag tag = new CompoundTag();
+        writeStringSet(tag, "VisiblePhases", visiblePhaseIds);
+        writeStringSet(tag, "DiscoveredPhases", discoveredPhaseIds);
+        CompoundTag entryCountsTag = new CompoundTag();
+        for (Map.Entry<String, Integer> entry : entryCounts.entrySet())
+            entryCountsTag.putInt(entry.getKey(), entry.getValue());
+        tag.put("EntryCounts", entryCountsTag);
+        CompoundTag uniqueKeysTag = new CompoundTag();
+        for (Map.Entry<String, LinkedHashSet<String>> entry : entryUniqueKeys.entrySet())
+            writeStringSet(uniqueKeysTag, entry.getKey(), entry.getValue());
+        tag.put("EntryUniqueKeys", uniqueKeysTag);
+        writeStringSet(tag, "UnlockedRewards", unlockedRewardIds);
+        writeStringSet(tag, "ClaimedRewards", claimedRewardIds);
+        if (lastUpdatedPhaseId != null && !lastUpdatedPhaseId.isEmpty())
+            tag.putString("LastUpdatedPhaseId", lastUpdatedPhaseId);
+        if (lastUpdatedCategoryId != null && !lastUpdatedCategoryId.isEmpty())
+            tag.putString("LastUpdatedCategoryId", lastUpdatedCategoryId);
+        tag.putLong("LastUpdatedAtMs", lastUpdatedAtMs);
+        return tag;
+    }
+
+    public void writeToNetwork(FriendlyByteBuf buf) {
+        writeStringSet(buf, visiblePhaseIds);
+        writeStringSet(buf, discoveredPhaseIds);
+        buf.writeVarInt(entryCounts.size());
+        for (Map.Entry<String, Integer> entry : entryCounts.entrySet()) {
+            buf.writeUtf(entry.getKey());
+            buf.writeVarInt(entry.getValue());
+        }
+        buf.writeVarInt(entryUniqueKeys.size());
+        for (Map.Entry<String, LinkedHashSet<String>> entry : entryUniqueKeys.entrySet()) {
+            buf.writeUtf(entry.getKey());
+            writeStringSet(buf, entry.getValue());
+        }
+        writeStringSet(buf, unlockedRewardIds);
+        writeStringSet(buf, claimedRewardIds);
+        buf.writeUtf(lastUpdatedPhaseId != null ? lastUpdatedPhaseId : "");
+        buf.writeUtf(lastUpdatedCategoryId != null ? lastUpdatedCategoryId : "");
+        buf.writeLong(lastUpdatedAtMs);
+    }
+
+    public CollectionRuntimeData copy() {
+        LinkedHashMap<String, Integer> counts = new LinkedHashMap<>(entryCounts);
+        LinkedHashMap<String, LinkedHashSet<String>> uniqueKeys = new LinkedHashMap<>();
+        for (Map.Entry<String, LinkedHashSet<String>> entry : entryUniqueKeys.entrySet())
+            uniqueKeys.put(entry.getKey(), new LinkedHashSet<>(entry.getValue()));
+        return new CollectionRuntimeData(new LinkedHashSet<>(visiblePhaseIds), new LinkedHashSet<>(discoveredPhaseIds), counts, uniqueKeys, new LinkedHashSet<>(unlockedRewardIds), new LinkedHashSet<>(claimedRewardIds), lastUpdatedPhaseId, lastUpdatedCategoryId, lastUpdatedAtMs, dirty);
     }
 }

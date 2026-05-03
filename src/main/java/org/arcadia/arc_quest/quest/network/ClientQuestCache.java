@@ -208,11 +208,17 @@ public final class ClientQuestCache {
         if (after == null) return;
         String questName = getQuestDisplayName(questId);
         Set<String> beforeDiscovered = before != null ? before.getDiscoveredPhaseIds() : Set.of();
-        for (String phaseId : after.getDiscoveredPhaseIds()) if (!beforeDiscovered.contains(phaseId)) QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_DISCOVERED, questName);
+        for (String phaseId : after.getDiscoveredPhaseIds())
+            if (!beforeDiscovered.contains(phaseId))
+                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_DISCOVERED, questName);
         Set<String> beforeUnlocked = before != null ? before.getUnlockedRewardIds() : Set.of();
-        for (String rewardId : after.getUnlockedRewardIds()) if (!beforeUnlocked.contains(rewardId)) QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_UNLOCKED, questName);
+        for (String rewardId : after.getUnlockedRewardIds())
+            if (!beforeUnlocked.contains(rewardId))
+                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_UNLOCKED, questName);
         Set<String> beforeCompleted = previousData != null ? previousData.getCompletedPhaseIds() : Set.of();
-        for (String phaseId : newData.getCompletedPhaseIds()) if (!beforeCompleted.contains(phaseId)) QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_COMPLETED, questName);
+        for (String phaseId : newData.getCompletedPhaseIds())
+            if (!beforeCompleted.contains(phaseId))
+                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_COMPLETED, questName);
     }
 
     /**

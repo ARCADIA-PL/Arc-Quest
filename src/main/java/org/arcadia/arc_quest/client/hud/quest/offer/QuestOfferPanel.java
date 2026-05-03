@@ -70,28 +70,20 @@ public final class QuestOfferPanel {
     private static List<ItemStack> cachedIconCandidates = List.of();
     private static TooltipLayout cachedTooltipLayout = null;
     private static String cachedTooltipKey = "";
-
-    private static class TooltipLayout {
-        List<Component> lines = List.of();
-        int textMaxWidth = 0;
-    }
-
     private static float submitHoverAnim = 0f;
     private static float itemSlotHoverAnim = 0f;
     private static float currentProgressAnim = 0f;
-
     private static boolean isDraggingSlider = false;
     private static int sliderValue = 1;
     private static float sliderHoverAnim = 0f;
     private static float visualThumbX = -1f;
-
     private static float currentScale = 1.0f;
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
-
     private static S2COfferSubmitResultPacket.CloseMode serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
 
-    private QuestOfferPanel() {}
+    private QuestOfferPanel() {
+    }
 
     // 【终极优化：内联矩形拼接边框】
     private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
@@ -102,20 +94,41 @@ public final class QuestOfferPanel {
     }
 
     public static void trigger(String qid, String pid, int objIndex) {
-        questId = qid; phaseId = pid; objectiveIndex = objIndex;
+        questId = qid;
+        phaseId = pid;
+        objectiveIndex = objIndex;
         themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(qid, 0x5AD7FF);
-        active = true; closing = false; cleared = false;
-        enterTimer = 0f; exitTimer = 0f; clearTimer = 0f;
+        active = true;
+        closing = false;
+        cleared = false;
+        enterTimer = 0f;
+        exitTimer = 0f;
+        clearTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
-        iconCycleTicker = 0; iconCycleIndex = 0;
+        iconCycleTicker = 0;
+        iconCycleIndex = 0;
         hoveredStack = ItemStack.EMPTY;
-        submitFeedbackAnim = 0f; submitFeedbackSuccess = false;
-        lastKnownProgress = -1; pendingSubmitCheckAt = 0L;
-        cachedTagKey = ""; cachedTagIcons = List.of(); cachedObjective = null; cachedStaticKey = "";
-        cachedTitle = ""; cachedTrimmedTitle = ""; cachedTrimmedTitleWidth = -1; cachedRequired = 1;
-        cachedIconCandidates = List.of(); cachedTooltipLayout = null; cachedTooltipKey = "";
-        submitHoverAnim = 0f; itemSlotHoverAnim = 0f; isDraggingSlider = false;
-        sliderValue = 1; sliderHoverAnim = 0f; visualThumbX = -1f;
+        submitFeedbackAnim = 0f;
+        submitFeedbackSuccess = false;
+        lastKnownProgress = -1;
+        pendingSubmitCheckAt = 0L;
+        cachedTagKey = "";
+        cachedTagIcons = List.of();
+        cachedObjective = null;
+        cachedStaticKey = "";
+        cachedTitle = "";
+        cachedTrimmedTitle = "";
+        cachedTrimmedTitleWidth = -1;
+        cachedRequired = 1;
+        cachedIconCandidates = List.of();
+        cachedTooltipLayout = null;
+        cachedTooltipKey = "";
+        submitHoverAnim = 0f;
+        itemSlotHoverAnim = 0f;
+        isDraggingSlider = false;
+        sliderValue = 1;
+        sliderHoverAnim = 0f;
+        visualThumbX = -1f;
         serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
 
         initStaticOfferCache();
@@ -124,17 +137,23 @@ public final class QuestOfferPanel {
         currentProgressAnim = initialVm != null ? initialVm.current : 0f;
     }
 
-    public static boolean isActive() { return active; }
+    public static boolean isActive() {
+        return active;
+    }
 
     public static void close() {
         if (!active || closing) return;
-        closing = true; exitTimer = 0f;
+        closing = true;
+        exitTimer = 0f;
     }
 
     public static boolean keyPressed(int keyCode) {
         if (!active || closing) return false;
         if (cleared) return true;
-        if (keyCode == 256 || keyCode == 69) { close(); return true; }
+        if (keyCode == 256 || keyCode == 69) {
+            close();
+            return true;
+        }
         return false;
     }
 
@@ -143,7 +162,8 @@ public final class QuestOfferPanel {
 
         float scaledW = PANEL_W * currentScale, scaledH = PANEL_H * currentScale;
         if (mx < currentDrawX || mx > currentDrawX + scaledW || my < currentDrawY || my > currentDrawY + scaledH) {
-            close(); return true;
+            close();
+            return true;
         }
 
         float lx = (float) ((mx - currentDrawX) / currentScale);
@@ -158,19 +178,23 @@ public final class QuestOfferPanel {
 
         int sliderW = 160, sliderX = PANEL_W / 2 - sliderW / 2, sliderY = 95;
         if (maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8) {
-            isDraggingSlider = true; return true;
+            isDraggingSlider = true;
+            return true;
         }
 
         int btnW = 140, btnH = 16, btnX = PANEL_W / 2 - btnW / 2, btnY = PANEL_H - btnH - 10;
         if (lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH) {
             if (sliderValue <= 0 || maxSelectable <= 0) {
-                submitFeedbackSuccess = false; submitFeedbackAnim = 1f;
+                submitFeedbackSuccess = false;
+                submitFeedbackAnim = 1f;
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 0.6F));
                 return true;
             }
             long now = Util.getMillis();
             if (now - lastSubmitClickMs < SUBMIT_COOLDOWN_MS) return true;
-            lastSubmitClickMs = now; lastKnownProgress = vm.current; pendingSubmitCheckAt = now + 100L;
+            lastSubmitClickMs = now;
+            lastKnownProgress = vm.current;
+            pendingSubmitCheckAt = now + 100L;
             ArcQuestNetwork.sendSubmitOffer(C2SSubmitOfferPacket.of(questId, phaseId, objectiveIndex, sliderValue));
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
             return true;
@@ -193,7 +217,11 @@ public final class QuestOfferPanel {
 
         if (closing) {
             exitTimer += dt;
-            if (exitTimer >= EXIT_TIME) { active = false; closing = false; return; }
+            if (exitTimer >= EXIT_TIME) {
+                active = false;
+                closing = false;
+                return;
+            }
             float t = Math.min(1.0f, exitTimer / EXIT_TIME);
             wipeProgress = (float) Math.pow(t, 4.0);
             currentX = baseX - (wipeProgress * actualFlyDist * 1.5f);
@@ -254,12 +282,15 @@ public final class QuestOfferPanel {
         if (!closing) {
             if (serverCloseMode == S2COfferSubmitResultPacket.CloseMode.CLEARED_CLOSE) {
                 if (!cleared && lastValidVm != null) {
-                    cleared = true; clearTimer = 0f;
+                    cleared = true;
+                    clearTimer = 0f;
                     Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.0F));
                 }
                 serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
             } else if (serverCloseMode == S2COfferSubmitResultPacket.CloseMode.NORMAL_CLOSE) {
-                close(); serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE; return;
+                close();
+                serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
+                return;
             }
         }
 
@@ -319,7 +350,8 @@ public final class QuestOfferPanel {
             iconCycleTicker++;
             if (iconCycleTicker >= 60) {
                 iconCycleTicker = 0;
-                if (renderVm.iconCandidates.size() > 1) iconCycleIndex = (iconCycleIndex + 1) % renderVm.iconCandidates.size();
+                if (renderVm.iconCandidates.size() > 1)
+                    iconCycleIndex = (iconCycleIndex + 1) % renderVm.iconCandidates.size();
             }
             iconToRender = renderVm.iconCandidates.isEmpty() ? ItemStack.EMPTY : renderVm.iconCandidates.get(iconCycleIndex % renderVm.iconCandidates.size());
             if (!iconToRender.isEmpty() && isHoverSlot) hoveredStack = iconToRender;
@@ -448,8 +480,12 @@ public final class QuestOfferPanel {
 
     private static void initStaticOfferCache() {
         cachedStaticKey = questId + "|" + phaseId + "|" + objectiveIndex;
-        cachedObjective = null; cachedTitle = ""; cachedTrimmedTitle = "";
-        cachedTrimmedTitleWidth = -1; cachedRequired = 1; cachedIconCandidates = List.of();
+        cachedObjective = null;
+        cachedTitle = "";
+        cachedTrimmedTitle = "";
+        cachedTrimmedTitleWidth = -1;
+        cachedRequired = 1;
+        cachedIconCandidates = List.of();
 
         var def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
@@ -466,7 +502,8 @@ public final class QuestOfferPanel {
 
     private static String getTrimmedTitle(Font font, String title, int width) {
         if (cachedTrimmedTitleWidth != width || !title.equals(cachedTitle) || cachedTrimmedTitle.isEmpty()) {
-            cachedTitle = title; cachedTrimmedTitleWidth = width;
+            cachedTitle = title;
+            cachedTrimmedTitleWidth = width;
             cachedTrimmedTitle = font.plainSubstrByWidth(title, width);
         }
         return cachedTrimmedTitle;
@@ -475,7 +512,8 @@ public final class QuestOfferPanel {
     private static OfferVM resolveOfferViewModel() {
         var data = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (data == null || !data.isPhaseActive(phaseId)) return null;
-        if (cachedObjective == null || !(questId + "|" + phaseId + "|" + objectiveIndex).equals(cachedStaticKey)) initStaticOfferCache();
+        if (cachedObjective == null || !(questId + "|" + phaseId + "|" + objectiveIndex).equals(cachedStaticKey))
+            initStaticOfferCache();
         if (cachedObjective == null) return null;
         return new OfferVM(cachedTitle, cachedRequired, data.getObjectiveProgress(phaseId, objectiveIndex), resolveOfferableCount(cachedObjective), cachedIconCandidates);
     }
@@ -486,7 +524,10 @@ public final class QuestOfferPanel {
             if (targetTag.equals(cachedTagKey) && !cachedTagIcons.isEmpty()) return cachedTagIcons;
             try {
                 ResourceLocation tagId = obj.getTargetTagResourceLocation();
-                if (tagId == null) { cachedTagKey = targetTag; return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY); }
+                if (tagId == null) {
+                    cachedTagKey = targetTag;
+                    return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
+                }
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
                 List<ItemStack> list = new ArrayList<>();
                 for (Item i : ForgeRegistries.ITEMS.getValues()) {
@@ -494,9 +535,11 @@ public final class QuestOfferPanel {
                     if (!st.isEmpty() && st.is(tag)) list.add(st);
                 }
                 if (list.isEmpty()) list = Collections.singletonList(ItemStack.EMPTY);
-                cachedTagKey = targetTag; return cachedTagIcons = list;
+                cachedTagKey = targetTag;
+                return cachedTagIcons = list;
             } catch (Exception ignored) {
-                cachedTagKey = targetTag; return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
+                cachedTagKey = targetTag;
+                return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
             }
         }
         Item item = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
@@ -514,13 +557,19 @@ public final class QuestOfferPanel {
                 ResourceLocation tagId = obj.getTargetTagResourceLocation();
                 if (tagId == null) return 0;
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
-                for (ItemStack st : mc.player.getInventory().items) { if (!st.isEmpty() && st.is(tag)) total += st.getCount(); }
+                for (ItemStack st : mc.player.getInventory().items) {
+                    if (!st.isEmpty() && st.is(tag)) total += st.getCount();
+                }
                 return total;
-            } catch (Exception ignored) { return 0; }
+            } catch (Exception ignored) {
+                return 0;
+            }
         }
         Item target = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
         if (target == null) return 0;
-        for (ItemStack st : mc.player.getInventory().items) { if (!st.isEmpty() && st.getItem() == target) total += st.getCount(); }
+        for (ItemStack st : mc.player.getInventory().items) {
+            if (!st.isEmpty() && st.getItem() == target) total += st.getCount();
+        }
         return total;
     }
 
@@ -535,7 +584,8 @@ public final class QuestOfferPanel {
                 if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;
             }
         }
-        cachedTooltipKey = key; cachedTooltipLayout = layout;
+        cachedTooltipKey = key;
+        cachedTooltipLayout = layout;
         return layout;
     }
 
@@ -572,5 +622,11 @@ public final class QuestOfferPanel {
         if (mode != null) serverCloseMode = mode;
     }
 
-    private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {}
+    private static class TooltipLayout {
+        List<Component> lines = List.of();
+        int textMaxWidth = 0;
+    }
+
+    private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {
+    }
 }
