@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.mutil.layout;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.perf.ArcGuiProfiler;
 
 public class ArcGridLayoutGroup extends ArcGuiElement {
     private int columns;
@@ -45,6 +46,12 @@ public class ArcGridLayoutGroup extends ArcGuiElement {
 
     public void markLayoutDirty() {
         layoutDirty = true;
+        invalidateLayout();
+    }
+
+    @Override
+    public void onChildLayoutInvalidated() {
+        markLayoutDirty();
     }
 
     public void layoutNow() {
@@ -56,9 +63,12 @@ public class ArcGridLayoutGroup extends ArcGuiElement {
             child.setSize(cellWidth, cellHeight);
         }
         int rows = children.isEmpty() ? 0 : ((children.size() - 1) / columns) + 1;
-        width = columns * cellWidth + Math.max(0, columns - 1) * gapX;
-        height = rows * cellHeight + Math.max(0, rows - 1) * gapY;
+        setMeasuredSize(
+                columns * cellWidth + Math.max(0, columns - 1) * gapX,
+                rows * cellHeight + Math.max(0, rows - 1) * gapY
+        );
         layoutDirty = false;
+        ArcGuiProfiler.layoutRebuilt();
     }
 
     @Override

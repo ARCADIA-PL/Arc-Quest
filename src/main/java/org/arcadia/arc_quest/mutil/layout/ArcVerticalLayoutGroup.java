@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.mutil.layout;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.perf.ArcGuiProfiler;
 
 public class ArcVerticalLayoutGroup extends ArcGuiElement {
     protected boolean layoutDirty = false;
@@ -27,6 +28,12 @@ public class ArcVerticalLayoutGroup extends ArcGuiElement {
 
     public void markLayoutDirty() {
         layoutDirty = true;
+        invalidateLayout();
+    }
+
+    @Override
+    public void onChildLayoutInvalidated() {
+        markLayoutDirty();
     }
 
     public void layoutNow() {
@@ -37,6 +44,7 @@ public class ArcVerticalLayoutGroup extends ArcGuiElement {
         }
         setHeight(Math.max(0, offset - (children.isEmpty() ? 0 : spacing)));
         layoutDirty = false;
+        ArcGuiProfiler.layoutRebuilt();
     }
 
     @Override

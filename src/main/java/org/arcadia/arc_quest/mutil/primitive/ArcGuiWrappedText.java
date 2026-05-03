@@ -6,7 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.mutil.core.ArcGuiColor;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
-import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.perf.ArcGuiProfiler;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutCache;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ public class ArcGuiWrappedText extends ArcGuiElement {
     protected boolean shadow = true;
     protected List<String> lines = new ArrayList<>();
     protected boolean layoutDirty = true;
+    protected final ArcTextLayoutCache textLayoutCache = new ArcTextLayoutCache();
 
     public ArcGuiWrappedText(int x, int y, int width, String text) {
         super(x, y, width, 0);
@@ -36,8 +38,11 @@ public class ArcGuiWrappedText extends ArcGuiElement {
     }
 
     public ArcGuiWrappedText setText(String text) {
-        this.text = text == null ? "" : text;
+        String next = text == null ? "" : text;
+        if (next.equals(this.text)) return this;
+        this.text = next;
         this.layoutDirty = true;
+        invalidateLayout();
         return this;
     }
 
@@ -50,9 +55,12 @@ public class ArcGuiWrappedText extends ArcGuiElement {
     }
 
     protected void rebuildLayout() {
-        lines = ArcDrawUtil.wrapText(text, Math.max(1, width), font);
-        height = lines.isEmpty() ? 0 : lines.size() * font.lineHeight;
+        lines = textLayoutCache.layout(font, text, Math.max(1, width));
+        int nextHeight = textLayoutCache.getHeight();
+        if (height != nextHeight) setMeasuredSize(width, nextHeight);
         layoutDirty = false;
+        ArcGuiProfiler.textLaidOut();
+        ArcGuiProfiler.layoutRebuilt();
     }
 
     @Override

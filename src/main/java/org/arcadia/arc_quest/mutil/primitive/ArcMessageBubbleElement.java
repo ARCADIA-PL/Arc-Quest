@@ -6,7 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.mutil.core.ArcGuiColor;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
-import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.perf.ArcGuiProfiler;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutCache;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,7 @@ public class ArcMessageBubbleElement extends ArcGuiElement {
     private int textColor = 0xFFFFFFFF;
     private int padding = 8;
     private boolean layoutDirty = true;
+    private final ArcTextLayoutCache textLayoutCache = new ArcTextLayoutCache();
 
     public ArcMessageBubbleElement(int x, int y, int width) {
         super(x, y, width, 0);
@@ -28,9 +30,13 @@ public class ArcMessageBubbleElement extends ArcGuiElement {
     }
 
     public ArcMessageBubbleElement setContent(String speaker, String message) {
-        this.speaker = speaker == null ? "" : speaker;
-        this.message = message == null ? "" : message;
+        String nextSpeaker = speaker == null ? "" : speaker;
+        String nextMessage = message == null ? "" : message;
+        if (nextSpeaker.equals(this.speaker) && nextMessage.equals(this.message)) return this;
+        this.speaker = nextSpeaker;
+        this.message = nextMessage;
         layoutDirty = true;
+        invalidateLayout();
         return this;
     }
 
@@ -42,9 +48,12 @@ public class ArcMessageBubbleElement extends ArcGuiElement {
     }
 
     private void rebuildLayout() {
-        lines = ArcDrawUtil.wrapText(message, Math.max(1, width - padding * 2), font);
-        height = padding * 2 + (speaker.isEmpty() ? 0 : font.lineHeight + 4) + lines.size() * font.lineHeight;
+        lines = textLayoutCache.layout(font, message, Math.max(1, width - padding * 2));
+        int nextHeight = padding * 2 + (speaker.isEmpty() ? 0 : font.lineHeight + 4) + textLayoutCache.getHeight();
+        if (height != nextHeight) setMeasuredSize(width, nextHeight);
         layoutDirty = false;
+        ArcGuiProfiler.textLaidOut();
+        ArcGuiProfiler.layoutRebuilt();
     }
 
     @Override

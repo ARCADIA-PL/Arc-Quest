@@ -3,13 +3,15 @@ package org.arcadia.arc_quest.mutil.core;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimation;
+import org.arcadia.arc_quest.mutil.layout.ArcLayoutInvalidationListener;
+import org.arcadia.arc_quest.mutil.perf.ArcGuiProfiler;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ArcGuiElement {
+public class ArcGuiElement implements ArcLayoutInvalidationListener {
     protected int x;
     protected int y;
     protected int width;
@@ -33,6 +35,7 @@ public class ArcGuiElement {
 
     public final void updateTree(ArcGuiContext context, int refX, int refY) {
         if (!visible) return;
+        ArcGuiProfiler.elementUpdated();
         tickAnimations(context);
         update(context, refX, refY);
         for (ArcGuiElement child : children) {
@@ -59,6 +62,7 @@ public class ArcGuiElement {
 
     public void draw(GuiGraphics graphics, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
         if (!visible) return;
+        ArcGuiProfiler.elementDrawn();
         drawChildren(graphics, context, refX + x, refY + y, inheritedOpacity * opacity);
     }
 
@@ -163,12 +167,14 @@ public class ArcGuiElement {
         }
         child.parent = this;
         children.add(child);
+        invalidateLayout();
     }
 
     public void removeChild(ArcGuiElement child) {
         if (child == null) return;
         if (children.remove(child)) {
             child.parent = null;
+            invalidateLayout();
         }
     }
 
@@ -177,6 +183,7 @@ public class ArcGuiElement {
             child.parent = null;
         }
         children.clear();
+        invalidateLayout();
     }
 
     public List<ArcGuiElement> getChildren() {
@@ -198,14 +205,20 @@ public class ArcGuiElement {
     }
 
     public ArcGuiElement setPosition(int x, int y) {
-        this.x = x;
-        this.y = y;
+        if (this.x != x || this.y != y) {
+            this.x = x;
+            this.y = y;
+            invalidateLayout();
+        }
         return this;
     }
 
     public ArcGuiElement setSize(int width, int height) {
-        this.width = width;
-        this.height = height;
+        if (this.width != width || this.height != height) {
+            this.width = width;
+            this.height = height;
+            invalidateLayout();
+        }
         return this;
     }
 
@@ -297,11 +310,14 @@ public class ArcGuiElement {
     }
 
     public void setX(int x) {
-        this.x = x;
+        if (this.x != x) {
+            this.x = x;
+            invalidateLayout();
+        }
     }
 
     public ArcGuiElement withX(int x) {
-        this.x = x;
+        setX(x);
         return this;
     }
 
@@ -310,11 +326,14 @@ public class ArcGuiElement {
     }
 
     public void setY(int y) {
-        this.y = y;
+        if (this.y != y) {
+            this.y = y;
+            invalidateLayout();
+        }
     }
 
     public ArcGuiElement withY(int y) {
-        this.y = y;
+        setY(y);
         return this;
     }
 
@@ -323,11 +342,14 @@ public class ArcGuiElement {
     }
 
     public void setWidth(int width) {
-        this.width = width;
+        if (this.width != width) {
+            this.width = width;
+            invalidateLayout();
+        }
     }
 
     public ArcGuiElement withWidth(int width) {
-        this.width = width;
+        setWidth(width);
         return this;
     }
 
@@ -336,11 +358,14 @@ public class ArcGuiElement {
     }
 
     public void setHeight(int height) {
-        this.height = height;
+        if (this.height != height) {
+            this.height = height;
+            invalidateLayout();
+        }
     }
 
     public ArcGuiElement withHeight(int height) {
-        this.height = height;
+        setHeight(height);
         return this;
     }
 
@@ -354,6 +379,24 @@ public class ArcGuiElement {
 
     public boolean isRemovePending() {
         return removePending;
+    }
+
+    public void invalidateLayout() {
+        ArcGuiProfiler.layoutInvalidated();
+        if (parent != null) parent.onChildLayoutInvalidated();
+    }
+
+    @Override
+    public void onChildLayoutInvalidated() {
+        invalidateLayout();
+    }
+
+    protected void setMeasuredSize(int width, int height) {
+        if (this.width != width || this.height != height) {
+            this.width = width;
+            this.height = height;
+            invalidateLayout();
+        }
     }
 
     public void markForRemoval() {

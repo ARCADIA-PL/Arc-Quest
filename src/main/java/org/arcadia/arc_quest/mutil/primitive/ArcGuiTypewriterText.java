@@ -6,7 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.mutil.core.ArcGuiColor;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
-import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.perf.ArcGuiProfiler;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutCache;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +22,7 @@ public class ArcGuiTypewriterText extends ArcGuiElement {
     private boolean shadow = true;
     private boolean layoutDirty = true;
     private boolean done;
+    private final ArcTextLayoutCache textLayoutCache = new ArcTextLayoutCache();
 
     public ArcGuiTypewriterText(int x, int y, int width, String text) {
         super(x, y, width, 0);
@@ -33,6 +35,7 @@ public class ArcGuiTypewriterText extends ArcGuiElement {
         this.progress = 0f;
         this.done = false;
         this.layoutDirty = true;
+        invalidateLayout();
         return this;
     }
 
@@ -69,9 +72,12 @@ public class ArcGuiTypewriterText extends ArcGuiElement {
     }
 
     private void rebuildLayout() {
-        lines = ArcDrawUtil.wrapText(text, Math.max(1, width), font);
-        height = lines.isEmpty() ? 0 : lines.size() * font.lineHeight;
+        lines = textLayoutCache.layout(font, text, Math.max(1, width));
+        int nextHeight = textLayoutCache.getHeight();
+        if (height != nextHeight) setMeasuredSize(width, nextHeight);
         layoutDirty = false;
+        ArcGuiProfiler.textLaidOut();
+        ArcGuiProfiler.layoutRebuilt();
     }
 
     @Override
