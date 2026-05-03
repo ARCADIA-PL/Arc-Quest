@@ -7,6 +7,7 @@ import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.ToIntFunction;
@@ -20,7 +21,7 @@ public final class ObjectiveEntry {
     private final boolean hidden;
     private final boolean optional;
     private final Map<String, String> extraData;
-    private final java.util.List<MarkSpec> relatedMarks;
+    private final List<MarkSpec> relatedMarks;
     @Nullable
     private final ToIntFunction<ServerPlayer> countModifier;
 
@@ -31,7 +32,7 @@ public final class ObjectiveEntry {
                           boolean hidden,
                           boolean optional,
                           Map<String, String> extraData) {
-        this(type, targetId, requiredCount, QuestText.component(displayText), hidden, optional, extraData, java.util.List.of(), null);
+        this(type, targetId, requiredCount, QuestText.component(displayText), hidden, optional, extraData, List.of(), null);
     }
 
     public ObjectiveEntry(ObjectiveType type,
@@ -41,7 +42,7 @@ public final class ObjectiveEntry {
                           boolean hidden,
                           boolean optional,
                           Map<String, String> extraData,
-                          java.util.List<MarkSpec> relatedMarks,
+                          List<MarkSpec> relatedMarks,
                           @Nullable ToIntFunction<ServerPlayer> countModifier) {
         Objects.requireNonNull(type, "ObjectiveType must not be null");
         Objects.requireNonNull(targetId, "targetId must not be null");
@@ -56,7 +57,7 @@ public final class ObjectiveEntry {
         this.hidden = hidden;
         this.optional = optional;
         this.extraData = Collections.unmodifiableMap(extraData);
-        this.relatedMarks = relatedMarks == null ? java.util.List.of() : java.util.List.copyOf(relatedMarks);
+        this.relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
         this.countModifier = countModifier;
     }
 
@@ -101,7 +102,7 @@ public final class ObjectiveEntry {
         return this.extraData;
     }
 
-    public java.util.List<MarkSpec> getRelatedMarks() {
+    public List<MarkSpec> getRelatedMarks() {
         return relatedMarks;
     }
 

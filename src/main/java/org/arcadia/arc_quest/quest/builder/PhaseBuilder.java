@@ -10,10 +10,12 @@ import org.arcadia.arc_quest.questmarker.api.MarkActivation;
 import org.arcadia.arc_quest.questmarker.api.MarkActivations;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -208,7 +210,7 @@ public final class PhaseBuilder {
     public PhaseBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
         String id = this.phaseId + "::phase_mark_" + relatedMarks.size();
         this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                org.arcadia.arc_quest.questmarker.api.QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false, java.util.Map.of()));
+                QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false, Map.of()));
         return this;
     }
 

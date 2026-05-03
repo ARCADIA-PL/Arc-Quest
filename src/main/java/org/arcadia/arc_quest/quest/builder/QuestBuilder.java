@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 流式构建 QuestDefinition 的顶层 Builder。
@@ -202,7 +203,7 @@ public final class QuestBuilder {
     public QuestBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
         String id = this.id + "::quest_mark_" + relatedMarks.size();
         this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                QuestMarkerType.QUEST_MAIN, 0, 256, 20, true, false, java.util.Map.of()));
+                QuestMarkerType.QUEST_MAIN, 0, 256, 20, true, false, Map.of()));
         return this;
     }
 

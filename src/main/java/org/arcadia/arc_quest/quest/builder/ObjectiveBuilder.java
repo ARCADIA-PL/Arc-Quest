@@ -13,9 +13,11 @@ import org.arcadia.arc_quest.questmarker.api.MarkActivation;
 import org.arcadia.arc_quest.questmarker.api.MarkActivations;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.ToIntFunction;
@@ -29,7 +31,7 @@ public final class ObjectiveBuilder {
     private QuestText displayText = QuestText.literal("???");
     private boolean hidden = false;
     private boolean optional = false;
-    private final java.util.List<MarkSpec> relatedMarks = new ArrayList<>();
+    private final List<MarkSpec> relatedMarks = new ArrayList<>();
     private ToIntFunction<ServerPlayer> countModifier;
 
     private ObjectiveBuilder(ObjectiveType type) {
@@ -193,7 +195,7 @@ public final class ObjectiveBuilder {
     public ObjectiveBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
         String id = this.type.name().toLowerCase() + "::obj_mark_" + relatedMarks.size();
         this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                org.arcadia.arc_quest.questmarker.api.QuestMarkerType.QUEST_OBJECTIVE, 0, 128, 20, true, false, java.util.Map.of()));
+                QuestMarkerType.QUEST_OBJECTIVE, 0, 128, 20, true, false, Map.of()));
         return this;
     }
 

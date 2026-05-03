@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.questmarker.api.MarkActivation;
 import org.arcadia.arc_quest.questmarker.api.MarkActivations;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -198,7 +199,7 @@ public class DialogueTreeBuilder {
     public DialogueTreeBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
         String id = this.dialogueId + "::dialogue_mark_" + treeMarks.size();
         this.treeMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                org.arcadia.arc_quest.questmarker.api.QuestMarkerType.NPC_INTERACT, 0, 256, 20, true, false, java.util.Map.of()));
+                QuestMarkerType.NPC_INTERACT, 0, 256, 20, true, false, Map.of()));
         return this;
     }
 
@@ -697,7 +698,7 @@ public class DialogueTreeBuilder {
         public SayIfBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
             String id = this.sayId + "::say_mark_" + relatedMarks.size();
             this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                    org.arcadia.arc_quest.questmarker.api.QuestMarkerType.NPC_INTERACT, 0, 128, 20, true, false, java.util.Map.of()));
+                    QuestMarkerType.NPC_INTERACT, 0, 128, 20, true, false, Map.of()));
             return this;
         }
 
@@ -991,7 +992,7 @@ public class DialogueTreeBuilder {
         public ChoiceBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
             String id = this.choiceId + "::choice_mark_" + relatedMarks.size();
             this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                    org.arcadia.arc_quest.questmarker.api.QuestMarkerType.NPC_INTERACT, 0, 128, 20, true, false, java.util.Map.of()));
+                    QuestMarkerType.NPC_INTERACT, 0, 128, 20, true, false, Map.of()));
             return this;
         }
 

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.capability;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -243,7 +244,7 @@ public final class QuestCapabilityTickHandler {
                     .type(spec.markerType())
                     .build();
         } else if (target instanceof MarkableObject.StructureNearest byStructure) {
-            net.minecraft.core.BlockPos pos = level.findNearestMapStructure(byStructure.structureTag(), player.blockPosition(), byStructure.searchRadius(), false);
+            BlockPos pos = level.findNearestMapStructure(byStructure.structureTag(), player.blockPosition(), byStructure.searchRadius(), false);
             if (pos == null) return null;
             marker = new QuestMarkerData.Builder(markerId, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, spec.id())
                     .dimension(level.dimension().location().toString())

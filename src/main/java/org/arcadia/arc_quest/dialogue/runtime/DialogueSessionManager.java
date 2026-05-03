@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -469,7 +470,7 @@ public final class DialogueSessionManager {
                     .build();
         }
         if (target instanceof MarkableObject.StructureNearest byStructure) {
-            net.minecraft.core.BlockPos pos = level.findNearestMapStructure(byStructure.structureTag(), player.blockPosition(), byStructure.searchRadius(), false);
+            BlockPos pos = level.findNearestMapStructure(byStructure.structureTag(), player.blockPosition(), byStructure.searchRadius(), false);
             if (pos == null) return null;
             return new QuestMarkerData.Builder(markerId, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, spec.id())
                     .dimension(level.dimension().location().toString())

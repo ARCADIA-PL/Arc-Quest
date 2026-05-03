@@ -36,42 +36,15 @@ public class TradeTooltipRenderer {
     private float feedbackScale = 1.0f;
     private float feedbackShake = 0f;
 
-    // 分页系统状态
+    // --- 分页系统状态 ---
     private int currentPage = 0; // 0: 交易数据 (Trade Data), 1: 物品数据 (Item Data)
     private boolean wasAKeyDown = false;
     private boolean wasDKeyDown = false;
-    private float pageFadeAnim = 1.0f; // 切换页面时的淡入动画
-    
-    // 性能优化：Tooltip 数据缓存（避免每帧重复计算）
-    private TooltipData cachedData = null;
-    private TradeEntry cachedEntry = null;
-    private int cachedGi = -1;
-    private String cachedItemTooltipSignature = "";
-    private boolean cachedAdvancedTooltip = false;
-    private final Component shortfallSummaryText;
-    private final Component emptyItemDataHint;
-    private final Component itemDataHint;
-    private final Component tradeDataHint;
-    private final Component pageDotTrade;
-    private final Component pageDotItem;
-    private final int emptyItemDataHintWidth;
-    private final int itemDataHintWidth;
-    private final int tradeDataHintWidth;
-    private final int pageDotItemWidth;
+    private float pageFadeAnim = 1.0f;
 
     public TradeTooltipRenderer(AbstractTradeScreen screen, Font font) {
         this.screen = screen;
         this.font = font;
-        this.shortfallSummaryText = Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary");
-        this.emptyItemDataHint = Component.literal("[ NO ADDITIONAL ITEM DATA ]").withStyle(Style.EMPTY.withColor(0x555555));
-        this.itemDataHint = Component.literal("ITEM DATA [D] ▶").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
-        this.tradeDataHint = Component.literal("◀ [A] TRADE DATA").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
-        this.pageDotTrade = Component.literal("● ○").withStyle(Style.EMPTY.withColor(0xFFFFFF));
-        this.pageDotItem = Component.literal("○ ●").withStyle(Style.EMPTY.withColor(0xFFFFFF));
-        this.emptyItemDataHintWidth = font.width(emptyItemDataHint);
-        this.itemDataHintWidth = font.width(itemDataHint);
-        this.tradeDataHintWidth = font.width(tradeDataHint);
-        this.pageDotItemWidth = font.width(pageDotItem);
     }
 
     public void triggerTradeSuccess() {
@@ -83,11 +56,9 @@ public class TradeTooltipRenderer {
     }
 
     public void updateAndRender(GuiGraphics g, TradeEntry newHovered, int mx, int my, float dt, boolean isClosing) {
-        // 切换悬停物品时重置状态
         if (newHovered != hoveredEntry) {
-            currentPage = 0; // 默认永远回到第0页 (Trade Data)
+            currentPage = 0;
             pageFadeAnim = 1.0f;
-            clearCachedTooltip();
             if (newHovered != null && tooltipAlpha > 0.5f) {
                 hoveredEntry = newHovered;
                 activeEntry = newHovered;
@@ -105,7 +76,6 @@ public class TradeTooltipRenderer {
             hoverTimer = 0f;
         }
 
-        // --- 处理 A/D 翻页按键 (强制双页) ---
         if (activeEntry != null && tooltipAlpha > 0.5f) {
             long window = Minecraft.getInstance().getWindow().getWindow();
             boolean isAKeyDown = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_A) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT);
@@ -113,19 +83,18 @@ public class TradeTooltipRenderer {
 
             boolean pageChanged = false;
             if (isAKeyDown && !wasAKeyDown && currentPage > 0) {
-                currentPage--; // 1 -> 0
+                currentPage--;
                 pageChanged = true;
             }
             if (isDKeyDown && !wasDKeyDown && currentPage < 1) {
-                currentPage++; // 0 -> 1
+                currentPage++;
                 pageChanged = true;
             }
             wasAKeyDown = isAKeyDown;
             wasDKeyDown = isDKeyDown;
 
             if (pageChanged) {
-                pageFadeAnim = 0f; // 触发淡入重载动画
-                clearCachedTooltip();
+                pageFadeAnim = 0f;
                 if (Minecraft.getInstance().player != null) {
                     Minecraft.getInstance().player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.3f, 1.5f);
                 }
@@ -141,7 +110,7 @@ public class TradeTooltipRenderer {
         tooltipAlpha += (targetAlpha - tooltipAlpha) * Math.min(1f, dt * 15f);
 
         if (tooltipAlpha > 0.02f && activeEntry != null) {
-            int gi = ClientTradeCache.INSTANCE.getGlobalIndex(screen.getShopId(), activeEntry.getEntryId());
+            int gi = new ArrayList<>(screen.getShop().getAllEntries()).indexOf(activeEntry);
             if (gi != -1) renderMorphingTooltip(g, activeEntry, gi, mx, my, dt, isClosing);
         } else {
             animBgW = 0;
@@ -151,29 +120,9 @@ public class TradeTooltipRenderer {
 
     public void forceRefresh() {
         if (activeEntry != null && tooltipAlpha > 0.1f) animBgW = 0;
-        clearCachedTooltip();
-    }
-
-    private void clearCachedTooltip() {
-        cachedData = null;
-        cachedEntry = null;
-        cachedGi = -1;
-        cachedItemTooltipSignature = "";
-        cachedAdvancedTooltip = false;
     }
 
     private TooltipData calcTooltipData(TradeEntry entry, int gi, int mx, int my) {
-        Minecraft mc = Minecraft.getInstance();
-        ItemStack stack = screen.getIconStackForEntry(entry);
-        boolean advancedTooltip = mc.options.advancedItemTooltips;
-        String tooltipSignature = buildItemTooltipSignature(stack, advancedTooltip, entry);
-
-        if (cachedData != null && cachedEntry == entry && cachedGi == gi
-                && cachedAdvancedTooltip == advancedTooltip
-                && tooltipSignature.equals(cachedItemTooltipSignature)) {
-            updateTooltipPosition(cachedData, mx, my);
-            return cachedData;
-        }
         TooltipData d = new TooltipData();
         d.themeColor = screen.getThemeColorForEntry(entry);
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
@@ -181,11 +130,13 @@ public class TradeTooltipRenderer {
         d.purchases = cache.getPurchaseCount(screen.getShopId(), gi);
         d.onCd = cache.isOnCooldown(screen.getShopId(), gi);
 
+        Minecraft mc = Minecraft.getInstance();
+        ItemStack stack = screen.getIconStackForEntry(entry);
         d.hasItem = !stack.isEmpty();
         d.vanillaLines = new ArrayList<>();
 
         if (d.hasItem && mc.player != null) {
-            d.vanillaLines.addAll(stack.getTooltipLines(mc.player, advancedTooltip ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL));
+            d.vanillaLines.addAll(stack.getTooltipLines(mc.player, mc.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL));
         }
 
         int padding = 10;
@@ -196,14 +147,11 @@ public class TradeTooltipRenderer {
         boolean thisEntryFailed = feedback != null && feedback.lastFailedEntryId() != null && feedback.lastFailedEntryId().equals(entry.getEntryId());
         d.showShortfall = thisEntryFailed && !d.shortfalls.isEmpty();
 
-        // 占位符逻辑判断
         d.hasTradeInfo = d.showShortfall || d.maxP > 0 || d.onCd || !d.extraDescLines.isEmpty();
         d.hasItemInfo = d.vanillaLines.size() > 1;
 
-        // --- 动态计算当前页面的宽度 ---
-        int totalW = 188; // 基础最小宽度
+        int totalW = 188;
 
-        // 头部宽度计算 (两个页面都显示)
         if (!d.vanillaLines.isEmpty() && (d.hasItem || entry.getRewardIcon() != null)) {
             totalW = Math.max(totalW, font.width(d.vanillaLines.get(0)) + 40);
         } else {
@@ -211,19 +159,17 @@ public class TradeTooltipRenderer {
         }
 
         if (currentPage == 0) {
-            // Page 0: Trade Data (移除空占位符，仅当有数据时扩充宽度)
             if (d.hasTradeInfo) {
                 for (var line : d.extraDescLines) totalW = Math.max(totalW, font.width(line) + padding * 2);
                 if (d.showShortfall) {
-                    totalW = Math.max(totalW, font.width(shortfallSummaryText) + 40);
+                    totalW = Math.max(totalW, font.width(Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary")) + 40);
                     for (CostShortfallLine sf : d.shortfalls)
                         totalW = Math.max(totalW, font.width(sf.label()) + font.width("-" + sf.missing()) + 50);
                 }
             }
         } else {
-            // Page 1: Item Data
             if (!d.hasItemInfo) {
-                totalW = Math.max(totalW, emptyItemDataHintWidth + padding * 2);
+                totalW = Math.max(totalW, font.width("[ NO ADDITIONAL ITEM DATA ]") + padding * 2);
             } else {
                 for (int i = 1; i < d.vanillaLines.size(); i++) {
                     totalW = Math.max(totalW, font.width(d.vanillaLines.get(i)) + padding * 2 + 12);
@@ -232,11 +178,9 @@ public class TradeTooltipRenderer {
         }
         d.w = totalW;
 
-        // --- 动态计算当前页面的高度 ---
-        int totalH = padding * 2 + 16; // 基础上下边距 + 图标高度
+        int totalH = padding * 2 + 16;
 
         if (currentPage == 0) {
-            // Page 0: Trade Data (移除空占位符，仅当有数据时增加高度)
             if (d.hasTradeInfo) {
                 if (!d.extraDescLines.isEmpty()) totalH += 6 + d.extraDescLines.size() * font.lineHeight;
                 if (d.showShortfall) totalH += 18 + (d.shortfalls.size() * 18);
@@ -246,40 +190,16 @@ public class TradeTooltipRenderer {
                 }
             }
         } else {
-            // Page 1: Item Data
             if (!d.hasItemInfo) {
-                totalH += font.lineHeight + 4; // 占位符高度
+                totalH += font.lineHeight + 4;
             } else {
-                totalH += (d.vanillaLines.size() - 1) * font.lineHeight; // 原版其他行高度
+                totalH += (d.vanillaLines.size() - 1) * font.lineHeight;
             }
         }
-        totalH += 18; // 强制预留底部导航栏的高度
+        totalH += 18;
 
         d.h = totalH;
 
-        // 位置计算
-        updateTooltipPosition(d, mx, my);
-
-        cachedData = d;
-        cachedEntry = entry;
-        cachedGi = gi;
-        cachedAdvancedTooltip = advancedTooltip;
-        cachedItemTooltipSignature = tooltipSignature;
-        return d;
-    }
-
-    private String buildItemTooltipSignature(ItemStack stack, boolean advancedTooltip, TradeEntry entry) {
-        if (stack == null || stack.isEmpty()) {
-            return "empty|" + advancedTooltip + "|" + entry.getEntryId();
-        }
-        String itemId = stack.getItem().builtInRegistryHolder().key().location().toString();
-        String hover = stack.getHoverName().getString();
-        int count = stack.getCount();
-        int tagHash = stack.getTag() != null ? stack.getTag().hashCode() : 0;
-        return itemId + "|" + hover + "|" + count + "|" + tagHash + "|" + advancedTooltip;
-    }
-
-    private void updateTooltipPosition(TooltipData d, int mx, int my) {
         int yOffset = 18;
         d.x = mx - (d.w / 2);
         if (d.x < 5) d.x = 5;
@@ -287,18 +207,19 @@ public class TradeTooltipRenderer {
         d.y = my + yOffset;
         if (d.y + d.h > screen.height - 5) d.y = my - d.h - yOffset;
         if (d.y < 5) d.y = 5;
+
+        return d;
     }
 
     private void renderMorphingTooltip(GuiGraphics g, TradeEntry entry, int gi, int mx, int my, float dt, boolean isClosing) {
         TooltipData target = calcTooltipData(entry, gi, mx, my);
 
-        // 外框变形逻辑
         if (!isClosing) {
             if (animBgW == 0 || Math.abs(animBgW - target.w) > 40) {
                 animBgX = target.x; animBgY = target.y; animBgW = target.w; animBgH = target.h;
                 animThemeColor = target.themeColor;
             } else {
-                float ms = 18f; // 加快变形速度
+                float ms = 18f;
                 animBgX += (target.x - animBgX) * Math.min(1f, dt * ms);
                 animBgY += (target.y - animBgY) * Math.min(1f, dt * ms);
                 animBgW += (target.w - animBgW) * Math.min(1f, dt * ms);
@@ -327,7 +248,6 @@ public class TradeTooltipRenderer {
         int drawX = (int) animBgX + currentShake, drawY = (int) animBgY, drawW = (int) animBgW, drawH = (int) animBgH;
         float finalScale = isClosing ? scale : (scale * feedbackScale);
 
-        // --- 基础渲染 ---
         g.pose().pushPose();
         g.pose().translate(0, 0, 400f);
         float centerX = drawX + drawW / 2f, centerY = drawY + drawH / 2f;
@@ -354,128 +274,141 @@ public class TradeTooltipRenderer {
         }
 
         int borderColor = (borderA << 24) | (currentThemeColor & 0xFFFFFF);
+
+        // ==========================================
+        // 【核心修复】先画底板和边框！
+        // 它们定义了绝对轮廓，不需要被 Scissor 裁剪，绝对不会被啃掉边缘！
+        // ==========================================
         g.fill(drawX, drawY, drawX + drawW, drawY + drawH, (baseA << 24) | 0x050508);
         g.fillGradient(drawX, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(currentThemeColor, (int) (65 * tooltipAlpha)), HudAnimUtil.withAlpha(currentThemeColor, 0));
         HudAnimUtil.drawFrame(g, drawX, drawY, drawW, drawH, 1, borderColor);
 
+        // 开启裁剪区域：仅用来限制内部的长文本和进度条，防止变形时溢出
         boolean useScissor = Math.abs(finalScale - 1.0f) < 0.01f && currentShake == 0;
         if (useScissor) g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
 
-        int padding = 10, currentY = drawY + padding;
+        int padding = 10;
+        int headerY = drawY + padding;
+        int currentY = headerY;
         int safeAlpha = (int) (255 * scale);
-        // 内容渐变透明度（切换页面时文本拥有独立淡入）
         int contentAlpha = (int) (safeAlpha * HudAnimUtil.easeOutCubic(pageFadeAnim));
 
-        // --- 头部：图标与标题 (所有页面固定显示) ---
+        // --- 头部文本 ---
         Component titleLine = target.vanillaLines.isEmpty() ? entry.getDisplayName() : target.vanillaLines.get(0);
-        if (entry.getRewardIcon() != null) {
-            screen.drawAdaptiveIcon(g, entry.getRewardIcon(), drawX + padding, currentY, 16, 16, scale);
-            g.drawString(font, titleLine, drawX + padding + 22, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
-        } else if (target.hasItem) {
-            ItemStack stack = screen.getIconStackForEntry(entry);
-            g.renderItem(stack, drawX + padding, currentY);
-            g.drawString(font, titleLine, drawX + padding + 22, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
-        } else {
-            g.drawString(font, titleLine, drawX + padding, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
+        int titleTextX = drawX + padding;
+        if (entry.getRewardIcon() != null || target.hasItem) {
+            titleTextX += 22; // 为将要在 Pass 2 渲染的物品图标预留空间
         }
+        g.drawString(font, titleLine, titleTextX, currentY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+
         currentY += 20;
 
-        // --- PAGE 0: 交易特有信息 (默认主页) ---
-        if (currentPage == 0) {
-            if (target.hasTradeInfo) { // 仅当拥有交易数据时才渲染内容
-                if (!target.extraDescLines.isEmpty()) {
-                    for (var line : target.extraDescLines) {
-                        g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, contentAlpha), false);
-                        currentY += font.lineHeight;
-                    }
-                    currentY += 4;
+        // --- PAGE 0: 交易特有信息 ---
+        if (currentPage == 0 && target.hasTradeInfo) {
+            if (!target.extraDescLines.isEmpty()) {
+                for (var line : target.extraDescLines) {
+                    g.drawString(font, line, drawX + padding, currentY, HudAnimUtil.withAlpha(0xBBBBBB, contentAlpha), true);
+                    currentY += font.lineHeight;
                 }
+                currentY += 4;
+            }
 
-                if (target.maxP > 0 || target.onCd || target.showShortfall) {
-                    if (target.showShortfall) {
-                        g.fill(drawX + padding, currentY, drawX + drawW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (contentAlpha * 0.2f)));
-                        g.fill(drawX + padding, currentY, drawX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, contentAlpha));
-                        currentY += 6;
-                        g.drawString(font, shortfallSummaryText, drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, contentAlpha), false);
-                        currentY += 12;
-                    } else {
-                        g.fill(drawX + padding, currentY, drawX + drawW - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int) (contentAlpha * 0.3f)));
-                        currentY += 6;
-                    }
-                }
-
+            if (target.maxP > 0 || target.onCd || target.showShortfall) {
                 if (target.showShortfall) {
-                    for (CostShortfallLine sf : target.shortfalls) {
-                        g.fill(drawX + padding, currentY + 3, drawX + padding + 2, currentY + 7, HudAnimUtil.withAlpha(0xFF4444, contentAlpha));
-                        g.drawString(font, sf.label(), drawX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, contentAlpha), false);
-                        if (sf.missing() > 0) {
-                            String missingTxt = "-" + sf.missing();
-                            g.drawString(font, missingTxt, drawX + drawW - padding - font.width(missingTxt), currentY, HudAnimUtil.withAlpha(0xFF3333, contentAlpha), false);
-                        }
-                        currentY += 10;
-                        if (sf.required() > 0) {
-                            String metaTxt = sf.owned() + " / " + sf.required();
-                            g.pose().pushPose();
-                            g.pose().translate(drawX + padding + 6, currentY, 0);
-                            g.pose().scale(0.8f, 0.8f, 1f);
-                            g.drawString(font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, contentAlpha), false);
-                            g.pose().popPose();
-                            int barX = drawX + padding + 6 + (int) (font.width(metaTxt) * 0.8f) + 6, barW = drawW - padding * 2 - (barX - drawX) - 5;
-                            if (barW > 10) {
-                                int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
-                                g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, contentAlpha));
-                                if (fillW > 0) g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, contentAlpha));
-                            }
-                        }
-                        currentY += 8;
-                    }
+                    g.fill(drawX + padding, currentY, drawX + drawW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (contentAlpha * 0.2f)));
+                    g.fill(drawX + padding, currentY, drawX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, contentAlpha));
+                    currentY += 6;
+                    g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary"), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, contentAlpha), true);
+                    currentY += 12;
+                } else {
+                    g.fill(drawX + padding, currentY, drawX + drawW - padding, currentY + 1, HudAnimUtil.withAlpha(animThemeColor, (int) (contentAlpha * 0.3f)));
+                    currentY += 6;
                 }
+            }
 
-                if (!target.showShortfall && target.maxP > 0) {
-                    g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.limit", target.purchases, target.maxP).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xDDDDDD, contentAlpha), false);
-                    currentY += font.lineHeight + 2;
-                    int barW = drawW - padding * 2;
-                    g.fill(drawX + padding, currentY, drawX + padding + barW, currentY + 3, HudAnimUtil.withAlpha(0x333333, contentAlpha));
-                    if (animProgress > 0.01f) {
-                        int filledW = (int) (barW * animProgress);
-                        g.fill(drawX + padding, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(animProgress >= 0.99f ? 0xAA3333 : (animProgress >= 0.75f ? 0xDD9933 : 0x33AA33), contentAlpha));
-                        if (filledW > 2) g.fill(drawX + padding + filledW - 2, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (contentAlpha * 0.6f)));
+            if (target.showShortfall) {
+                for (CostShortfallLine sf : target.shortfalls) {
+                    g.fill(drawX + padding, currentY + 3, drawX + padding + 2, currentY + 7, HudAnimUtil.withAlpha(0xFF4444, contentAlpha));
+                    g.drawString(font, sf.label(), drawX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, contentAlpha), true);
+                    if (sf.missing() > 0) {
+                        String missingTxt = "-" + sf.missing();
+                        g.drawString(font, missingTxt, drawX + drawW - padding - font.width(missingTxt), currentY, HudAnimUtil.withAlpha(0xFF3333, contentAlpha), true);
                     }
-                    currentY += 9;
-                }
+                    currentY += 10;
+                    if (sf.required() > 0) {
+                        String metaTxt = sf.owned() + " / " + sf.required();
+                        g.pose().pushPose();
+                        g.pose().translate(drawX + padding + 6, currentY, 0);
+                        g.pose().scale(0.8f, 0.8f, 1f);
+                        g.drawString(font, metaTxt, 0, 0, HudAnimUtil.withAlpha(0x888888, contentAlpha), false);
+                        g.pose().popPose();
 
-                if (!target.showShortfall && target.onCd)
-                    g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", ClientTradeCache.INSTANCE.getCooldownText(screen.getShopId(), gi)).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, contentAlpha), false);
+                        int barX = drawX + padding + 6 + (int) (font.width(metaTxt) * 0.8f) + 6, barW = drawW - padding * 2 - (barX - drawX) - 5;
+                        if (barW > 10) {
+                            int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
+                            g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, contentAlpha));
+                            if (fillW > 0) g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, contentAlpha));
+                        }
+                    }
+                    currentY += 8;
+                }
+            }
+
+            if (!target.showShortfall && target.maxP > 0) {
+                g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.limit", target.purchases, target.maxP).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xDDDDDD, contentAlpha), true);
+                currentY += font.lineHeight + 2;
+                int barW = drawW - padding * 2;
+                g.fill(drawX + padding, currentY, drawX + padding + barW, currentY + 3, HudAnimUtil.withAlpha(0x333333, contentAlpha));
+                if (animProgress > 0.01f) {
+                    int filledW = (int) (barW * animProgress);
+                    g.fill(drawX + padding, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(animProgress >= 0.99f ? 0xAA3333 : (animProgress >= 0.75f ? 0xDD9933 : 0x33AA33), contentAlpha));
+                    if (filledW > 2) g.fill(drawX + padding + filledW - 2, currentY, drawX + padding + filledW, currentY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (contentAlpha * 0.6f)));
+                }
+                currentY += 9;
+            }
+
+            if (!target.showShortfall && target.onCd) {
+                g.drawString(font, Component.translatable("arc_quest.gui.trade.tooltip.cooldown", ClientTradeCache.INSTANCE.getCooldownText(screen.getShopId(), gi)).getString(), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, contentAlpha), true);
             }
         }
 
         // --- PAGE 1: 物品原版信息 ---
         if (currentPage == 1) {
             if (!target.hasItemInfo) {
-                // 如果没有原版Lore、属性等信息，显示科技感占位符
-                g.drawString(font, emptyItemDataHint, drawX + drawW / 2 - emptyItemDataHintWidth / 2, currentY + 2, HudAnimUtil.withAlpha(0x555555, contentAlpha), false);
-                currentY += font.lineHeight + 4;
+                Component emptyHint = Component.literal("[ NO ADDITIONAL ITEM DATA ]").withStyle(Style.EMPTY.withColor(0x555555));
+                g.drawString(font, emptyHint, drawX + drawW / 2 - font.width(emptyHint) / 2, currentY + 2, HudAnimUtil.withAlpha(0x555555, contentAlpha), false);
             } else {
                 for (int i = 1; i < target.vanillaLines.size(); i++) {
-                    g.drawString(font, target.vanillaLines.get(i), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), false);
+                    g.drawString(font, target.vanillaLines.get(i), drawX + padding, currentY, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), true);
                     currentY += font.lineHeight;
                 }
-                currentY += 4;
             }
         }
 
         // --- 底部强制 UI 操作指引 ---
-        int navY = drawY + drawH - 14; // 固定在底部
+        int navY = drawY + drawH - 14;
         g.fill(drawX + padding, navY - 4, drawX + drawW - padding, navY - 3, HudAnimUtil.withAlpha(animThemeColor, (int) (safeAlpha * 0.3f)));
 
         if (currentPage == 0) {
-            // 当前是 Trade Data, 提示可以按 D 查看 Item Data
-            g.drawString(font, pageDotTrade, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
-            g.drawString(font, itemDataHint, drawX + drawW - padding - itemDataHintWidth, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
+            Component hint = Component.literal("ITEM DATA [D] ▶").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
+            Component dot = Component.literal("● ○").withStyle(Style.EMPTY.withColor(animThemeColor));
+            g.drawString(font, dot, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+            g.drawString(font, hint, drawX + drawW - padding - font.width(hint), navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
         } else {
-            // 当前是 Item Data, 提示可以按 A 返回 Trade Data
-            g.drawString(font, tradeDataHint, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
-            g.drawString(font, pageDotItem, drawX + drawW - padding - pageDotItemWidth, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
+            Component hint = Component.literal("◀ [A] TRADE DATA").withStyle(Style.EMPTY.withColor(0xAAAAAA).withBold(true));
+            Component dot = Component.literal("○ ●").withStyle(Style.EMPTY.withColor(animThemeColor));
+            g.drawString(font, hint, drawX + padding, navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+            g.drawString(font, dot, drawX + drawW - padding - font.width(dot), navY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+        }
+
+        // ==========================================
+        // PASS 2: 3D 昂贵通道 (渲染物品图标)
+        // ==========================================
+        if (entry.getRewardIcon() != null) {
+            screen.drawAdaptiveIcon(g, entry.getRewardIcon(), drawX + padding, headerY, 16, 16, scale);
+        } else if (target.hasItem) {
+            ItemStack stack = screen.getIconStackForEntry(entry);
+            g.renderItem(stack, drawX + padding, headerY);
         }
 
         if (useScissor) g.disableScissor();
@@ -492,7 +425,6 @@ public class TradeTooltipRenderer {
         boolean showShortfall;
         List<CostShortfallLine> shortfalls;
 
-        // 用于判断是否需要渲染科技感空占位符
         boolean hasTradeInfo;
         boolean hasItemInfo;
     }

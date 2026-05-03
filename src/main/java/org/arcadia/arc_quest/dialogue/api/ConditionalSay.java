@@ -6,6 +6,7 @@ import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.List;
 
 /**
  * 单个条件台词（SayIf）。
@@ -17,7 +18,7 @@ public record ConditionalSay(
         @Nonnull String sayId,
         DialogueText text,
         @Nullable SoundEvent soundEvent,
-        java.util.List<MarkSpec> relatedMarks
+        List<MarkSpec> relatedMarks
 ) {
 
     public static ConditionalSay of(String sayId, DialogueText text) {
@@ -27,7 +28,7 @@ public record ConditionalSay(
         if (text == null) {
             throw new IllegalArgumentException("SayIf text cannot be null");
         }
-        return new ConditionalSay(sayId, text, null, java.util.List.of());
+        return new ConditionalSay(sayId, text, null, List.of());
     }
 
     public static ConditionalSay of(String sayId, DialogueText text, SoundEvent sound) {
@@ -37,7 +38,7 @@ public record ConditionalSay(
         if (text == null) {
             throw new IllegalArgumentException("SayIf text cannot be null");
         }
-        return new ConditionalSay(sayId, text, sound, java.util.List.of());
+        return new ConditionalSay(sayId, text, sound, List.of());
     }
 
     public static ConditionalSay of(String sayId, String text) {

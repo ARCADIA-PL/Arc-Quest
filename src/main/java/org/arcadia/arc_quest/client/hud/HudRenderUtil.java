@@ -1,138 +1,113 @@
 package org.arcadia.arc_quest.client.hud;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
-import org.joml.Matrix4f;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 
 /**
- * 共享渲染工具集 (极致性能优化版)
+ * 共享渲染工具集 (稳定极速版)
  */
 public final class HudRenderUtil {
 
-    private static final Map<String, Component> TRANSLATION_CACHE = new HashMap<>();
-
-    private HudRenderUtil() {
-    }
+    private HudRenderUtil() {}
 
     public static float getUniversalUiScale(int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return 1.0f;
-        float guiScale = (float) mc.getWindow().getGuiScale();
-        if (guiScale == 0) guiScale = 1.0f;
+        double guiScale = mc.getWindow().getGuiScale();
+        if (guiScale == 0) guiScale = 1.0;
 
-        float scale = 3.0f / guiScale;
+        float scale = (float) (3.0 / guiScale);
         float sw = screenWidth / scale;
         float sh = screenHeight / scale;
 
-        if (sw < 480f) {
-            scale = screenWidth / 480f;
+        float minW = 480f;
+        float minH = 260f;
+
+        if (sw < minW) {
+            scale = screenWidth / minW;
             sh = screenHeight / scale;
         }
-        if (sh < 260f) {
-            scale = screenHeight / 260f;
+        if (sh < minH) {
+            scale = screenHeight / minH;
         }
+
         return scale;
     }
 
-    public static void drawBatchRects(GuiGraphics g, int[] rects, int rectCount) {
-        if (rectCount <= 0) return;
-
-        Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
-
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-
-        Matrix4f pose = g.pose().last().pose();
-
-        for (int i = 0; i < rectCount; i++) {
-            int idx = i * 5;
-            float x = rects[idx];
-            float y = rects[idx + 1];
-            float w = rects[idx + 2];
-            float h = rects[idx + 3];
-            int color = rects[idx + 4];
-
-            // 预先解包，避免内联四次调用
-            float a = ((color >> 24) & 0xFF) / 255.0F;
-            float r = ((color >> 16) & 0xFF) / 255.0F;
-            float gr = ((color >> 8) & 0xFF) / 255.0F;
-            float b = (color & 0xFF) / 255.0F;
-
-            buffer.vertex(pose, x, y + h, 0).color(r, gr, b, a).endVertex();
-            buffer.vertex(pose, x + w, y + h, 0).color(r, gr, b, a).endVertex();
-            buffer.vertex(pose, x + w, y, 0).color(r, gr, b, a).endVertex();
-            buffer.vertex(pose, x, y, 0).color(r, gr, b, a).endVertex();
-        }
-
-        tesselator.end();
-    }
-
-    public static void drawGlassPanel(GuiGraphics g, int x, int y, int w, int h, int bgColor, int bgAlpha, int accentColor, int accentAlpha, int accentWidth) {
+    public static void drawGlassPanel(GuiGraphics g, int x, int y, int w, int h,
+                                      int bgColor, int bgAlpha,
+                                      int accentColor, int accentAlpha, int accentWidth) {
         g.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
         drawCyberneticEdge(g, x, y, h, accentColor, accentAlpha);
     }
 
-    public static void drawToastPanel(GuiGraphics g, int x, int y, int w, int h, int bgColor, int bgAlpha, int accentColor, int accentAlpha, int accentWidth, int lineAlpha) {
+    public static void drawToastPanel(GuiGraphics g, int x, int y, int w, int h,
+                                      int bgColor, int bgAlpha,
+                                      int accentColor, int accentAlpha, int accentWidth,
+                                      int lineAlpha) {
         g.fill(x, y, x + w, y + h, (bgAlpha << 24) | (bgColor & 0x00FFFFFF));
         drawCyberneticEdge(g, x, y, h, accentColor, accentAlpha);
         if (lineAlpha > 0) {
-            g.fill(x + accentWidth, y + h - 1, x + w, y + h, (lineAlpha << 24) | (accentColor & 0x00FFFFFF));
+            g.fill(x + accentWidth, y + h - 1, x + w, y + h,
+                    (lineAlpha << 24) | (accentColor & 0x00FFFFFF));
         }
     }
 
-    public static void drawDualText(GuiGraphics g, Font font, float x, float y, String subtitle, String title, int subtitleColor, int titleColor, float alpha) {
+    public static void drawDualText(GuiGraphics g, Font font, float x, float y,
+                                    String subtitle, String title,
+                                    int subtitleColor, int titleColor, float alpha) {
         int subA = (int) (((subtitleColor >> 24) & 0xFF) * alpha);
         int titleA = (int) (((titleColor >> 24) & 0xFF) * alpha);
 
-        if (subA >= 5) {
-            // 【优化】副标题缩放，保持矩阵变换
+        if (subA < 5 && titleA < 5) return;
+
+        // 【修复】保留了 pushPose 机制，这能确保浮点数 x/y 平移时的高精度对齐，避免锯齿错位
+        if (subA > 5) {
             g.pose().pushPose();
             g.pose().translate((int) x, (int) y, 0);
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, subtitle, 0, 0, HudAnimUtil.withAlpha(subtitleColor, subA), true);
+            g.drawString(font, subtitle, 0, 0, HudAnimUtil.withAlpha(subtitleColor & 0x00FFFFFF, subA), true);
             g.pose().popPose();
         }
 
-        if (titleA >= 5) {
-            // 【优化】由于 scale 为 1.0f，彻底剔除昂贵的 pushPose/popPose 压栈操作
-            g.drawString(font, title, (int) x, (int) (y + 10), HudAnimUtil.withAlpha(titleColor, titleA), true);
+        if (titleA > 5) {
+            g.pose().pushPose();
+            g.pose().translate((int) x, (int) (y + 10), 0);
+            g.pose().scale(1.0f, 1.0f, 1f);
+            g.drawString(font, title, 0, 0, HudAnimUtil.withAlpha(titleColor & 0x00FFFFFF, titleA), true);
+            g.pose().popPose();
         }
     }
 
-    public static void drawTextWithLine(GuiGraphics g, Font font, float x, float y, String text, int color, float lineWidth, float lineYOffset) {
+    public static void drawTextWithLine(GuiGraphics g, Font font, float x, float y,
+                                        String text, int color,
+                                        float lineWidth, float lineYOffset) {
         int alpha = (color >> 24) & 0xFF;
         if (alpha < 5) return;
 
-        // 【优化】剔除无意义的矩阵操作，直接通过坐标位移绘制
-        g.drawString(font, text, (int) x, (int) y, color, true);
+        g.pose().pushPose();
+        g.pose().translate((int) x, (int) y, 0);
+        g.pose().scale(1.0f, 1.0f, 1f);
+        g.drawString(font, text, 0, 0, color, true);
+        g.pose().popPose();
 
+        // 【修复】废弃容易遗漏混合状态的底边重绘，恢复最稳妥的多次 g.fill
         if (lineWidth > 2) {
             int lineY = (int) (y + lineYOffset);
-            int lineColor = HudAnimUtil.withAlpha(color, alpha);
+            int lineColor = HudAnimUtil.withAlpha(color & 0x00FFFFFF, alpha);
+            g.fill((int) x, lineY, (int) (x + lineWidth), lineY + 1, lineColor);
 
-            // 使用 drawBatchRects 合并绘制
-            int[] rects = lineWidth > 10 ? new int[10] : new int[5];
-            rects[0] = (int) x; rects[1] = lineY; rects[2] = (int) lineWidth; rects[3] = 1; rects[4] = lineColor;
             if (lineWidth > 10) {
-                rects[5] = (int) (x + lineWidth); rects[6] = lineY - 1; rects[7] = 3; rects[8] = 3; rects[9] = lineColor;
-                drawBatchRects(g, rects, 2);
-            } else {
-                drawBatchRects(g, rects, 1);
+                g.fill((int) (x + lineWidth), lineY - 1,
+                        (int) (x + lineWidth) + 3, lineY + 2, lineColor);
             }
         }
     }
@@ -140,17 +115,34 @@ public final class HudRenderUtil {
     public static void drawCyberneticEdge(GuiGraphics g, int x, int y, int height, int themeColor, int alpha) {
         if (alpha < 5) return;
         int coreColor = themeColor & 0xFFFFFF;
-        int colorTop = coreColor | (alpha << 24);
-        int colorBot = coreColor | ((int) (alpha * 0.15f) << 24);
+        int topAlpha = alpha;
+        int botAlpha = (int) (alpha * 0.15f);
+
+        int colorTop = coreColor | (topAlpha << 24);
+        int colorBot = coreColor | (botAlpha << 24);
+
         g.fillGradient(x, y, x + 3, y + height, colorTop, colorBot);
 
-        int colorGlow = 0xFFFFFF | ((int) (alpha * 0.8f) << 24);
+        int glowAlpha = (int) (topAlpha * 0.8f);
+        int colorGlow = 0xFFFFFF | (glowAlpha << 24);
         g.fillGradient(x, y, x + 1, y + (height / 2), colorGlow, colorTop);
     }
 
-    public static void applyDynamicScissor(GuiGraphics g, int baseX, int baseY, int width, int height, float revealProgress, float wipeProgress, boolean isEntering, boolean isExiting) {
+    public static void applyDynamicScissor(GuiGraphics g, int baseX, int baseY,
+                                           int width, int height,
+                                           float revealProgress, float wipeProgress,
+                                           boolean isEntering, boolean isExiting) {
         int scLeft = baseX - 20;
-        int scRight = isEntering ? baseX + (int) (width * revealProgress) : (isExiting ? baseX + (int) (width * (1f - wipeProgress)) : baseX + width + 20);
+        int scRight;
+
+        if (isEntering) {
+            scRight = baseX + (int) (width * revealProgress);
+        } else if (isExiting) {
+            scRight = baseX + (int) (width * (1f - wipeProgress));
+        } else {
+            scRight = baseX + width + 20;
+        }
+
         g.enableScissor(scLeft, baseY - 10, scRight, baseY + height + 20);
     }
 
@@ -166,79 +158,72 @@ public final class HudRenderUtil {
     }
 
     public static List<String> wrapText(String text, int maxWidth, Font font) {
+        // 【修复】保留原版的可靠切分逻辑，避免优化版的自循环切分吞掉前置空格和特殊符号！
         List<String> lines = new ArrayList<>();
         if (text == null || text.isEmpty()) return lines;
 
-        int len = text.length();
-        int lastLineStart = 0;
-        int lastSpace = -1;
-
-        for (int i = 0; i < len; i++) {
-            char c = text.charAt(i);
-
-            if (c == '\n') {
-                lines.add(text.substring(lastLineStart, i).trim());
-                lastLineStart = i + 1;
-                lastSpace = -1;
-                continue;
-            }
-
-            if (c == ' ') lastSpace = i;
-
-            if (font.width(text.substring(lastLineStart, i + 1)) > maxWidth) {
-                if (lastSpace > lastLineStart) {
-                    lines.add(text.substring(lastLineStart, lastSpace).trim());
-                    lastLineStart = lastSpace + 1;
+        String[] paragraphs = text.split("\\n");
+        for (String paragraph : paragraphs) {
+            String[] words = paragraph.split(" ");
+            StringBuilder current = new StringBuilder();
+            for (String word : words) {
+                String test = current.isEmpty() ? word : current + " " + word;
+                if (font.width(test) > maxWidth && !current.isEmpty()) {
+                    lines.add(current.toString());
+                    current = new StringBuilder(word);
                 } else {
-                    lines.add(text.substring(lastLineStart, i));
-                    lastLineStart = i;
+                    if (!current.isEmpty()) current.append(" ");
+                    current.append(word);
                 }
             }
+            if (!current.isEmpty()) lines.add(current.toString());
         }
-
-        if (lastLineStart < len) {
-            lines.add(text.substring(lastLineStart, len).trim());
-        }
-
         return lines;
     }
 
     public static Component resolveTradeFailMessage(@Nullable String errorKey, @Nullable String rawReason) {
-        String cacheKey = "fail:" + (errorKey != null ? errorKey : "null") + "|" + (rawReason != null ? rawReason : "null");
+        String normalized = normalizeFailureKey(errorKey, rawReason);
 
-        return TRANSLATION_CACHE.computeIfAbsent(cacheKey, k -> {
-            String norm = normalizeFailureKey(errorKey, rawReason);
-            if (containsAny(norm, "cooldown", "on_cooldown")) return Component.translatable("arc_quest.gui.gacha.btn.cooldown");
-            if (containsAny(norm, "limit", "max_purchase", "max_purchases", "maxed")) return Component.translatable("arc_quest.gui.trade.status.maxed");
-            if (containsAny(norm, "condition", "locked", "requirement", "blocked")) return Component.translatable("arc_quest.gui.trade.status.locked");
-            if (containsAny(norm, "cannot_afford", "insufficient", "shortfall", "not_enough")) return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
-            return Component.translatable("arc_quest.gui.trade.error.shop_closed");
-        });
+        if (containsAny(normalized, "cooldown", "on_cooldown")) {
+            return Component.translatable("arc_quest.gui.gacha.btn.cooldown");
+        }
+        if (containsAny(normalized, "limit", "max_purchase", "max_purchases", "maxed")) {
+            return Component.translatable("arc_quest.gui.trade.status.maxed");
+        }
+        if (containsAny(normalized, "condition", "locked", "requirement", "blocked")) {
+            return Component.translatable("arc_quest.gui.trade.status.locked");
+        }
+        if (containsAny(normalized, "cannot_afford", "insufficient", "shortfall", "not_enough")) {
+            return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
+        }
+
+        return Component.translatable("arc_quest.gui.trade.error.shop_closed");
     }
 
-    public static Component resolveGachaFailButtonText(@Nullable String failReason, boolean onCooldown, boolean maxed, boolean locked, boolean insufficientFunds, @Nullable String cooldownText) {
-        String cacheKey = "gacha:" + failReason + "|" + onCooldown + "|" + maxed + "|" + locked + "|" + insufficientFunds + "|" + cooldownText;
-
-        return TRANSLATION_CACHE.computeIfAbsent(cacheKey, k -> {
-            if (onCooldown) {
-                return cooldownText == null || cooldownText.isEmpty()
-                        ? Component.translatable("arc_quest.gui.gacha.btn.cooldown")
-                        : Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cooldownText);
-            }
-            if (maxed) return Component.translatable("arc_quest.gui.trade.btn.empty");
-            if (locked) return Component.translatable("arc_quest.gui.trade.btn.locked");
-
-            if (insufficientFunds || containsAny(normalizeFailureKey(failReason, null), "cannot_afford", "insufficient", "shortfall")) {
-                return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
-            }
-            return Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle");
-        });
+    public static Component resolveGachaFailButtonText(@Nullable String failReason, boolean onCooldown, boolean maxed,
+                                                       boolean locked, boolean insufficientFunds, @Nullable String cooldownText) {
+        if (onCooldown) {
+            return cooldownText == null || cooldownText.isEmpty()
+                    ? Component.translatable("arc_quest.gui.gacha.btn.cooldown")
+                    : Component.translatable("arc_quest.gui.trade.tooltip.cooldown", cooldownText);
+        }
+        if (maxed) {
+            return Component.translatable("arc_quest.gui.trade.btn.empty");
+        }
+        if (locked) {
+            return Component.translatable("arc_quest.gui.trade.btn.locked");
+        }
+        if (insufficientFunds || containsAny(normalizeFailureKey(failReason, null), "cannot_afford", "insufficient", "shortfall")) {
+            return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
+        }
+        return Component.translatable("arc_quest.gui.gacha.btn.unlock_receptacle");
     }
 
     private static String normalizeFailureKey(@Nullable String primary, @Nullable String fallback) {
-        String key = (primary != null && !primary.isEmpty()) ? primary : fallback;
+        String key = primary;
+        if (key == null || key.isEmpty()) key = fallback;
         if (key == null) return "";
-        return key.toLowerCase(java.util.Locale.ROOT);
+        return key.toLowerCase(Locale.ROOT);
     }
 
     private static boolean containsAny(String source, String... needles) {
