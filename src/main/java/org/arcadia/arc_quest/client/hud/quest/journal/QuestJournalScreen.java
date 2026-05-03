@@ -28,7 +28,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import static org.arcadia.arc_quest.client.hud.HudRenderUtil.drawCyberneticEdge;
 
 public class QuestJournalScreen extends Screen {
@@ -90,32 +89,16 @@ public class QuestJournalScreen extends Screen {
         if (this.minecraft == null) return 1.0f;
         double guiScale = this.minecraft.getWindow().getGuiScale();
         if (guiScale == 0) guiScale = 1.0;
-
         float scale = (float) (3.0 / guiScale);
-        float sw = this.width / scale;
-        float sh = this.height / scale;
-
-        float minW = 480f;
-        float minH = 260f;
-
-        if (sw < minW) {
-            scale = this.width / minW;
-            sh = this.height / scale;
-        }
-        if (sh < minH) {
-            scale = this.height / minH;
-        }
-
+        float sw = this.width / scale, sh = this.height / scale;
+        float minW = 480f, minH = 260f;
+        if (sw < minW) { scale = this.width / minW; sh = this.height / scale; }
+        if (sh < minH) scale = this.height / minH;
         return scale;
     }
 
-    public int getScaledWidth() {
-        return (int) (this.width / getUiScale());
-    }
-
-    public int getScaledHeight() {
-        return (int) (this.height / getUiScale());
-    }
+    public int getScaledWidth() { return (int) (this.width / getUiScale()); }
+    public int getScaledHeight() { return (int) (this.height / getUiScale()); }
 
     public void enableScissor(GuiGraphics g, int x, int y, int x2, int y2) {
         float s = getUiScale();
@@ -172,13 +155,9 @@ public class QuestJournalScreen extends Screen {
                     if (lastActivePhases == null && currentPhases != null) phasesChanged = true;
                     else if (lastActivePhases != null && currentPhases == null) phasesChanged = true;
                     else if (lastActivePhases != null && currentPhases != null) {
-                        if (lastActivePhases.size() != currentPhases.size() || !lastActivePhases.containsAll(currentPhases))
-                            phasesChanged = true;
+                        if (lastActivePhases.size() != currentPhases.size() || !lastActivePhases.containsAll(currentPhases)) phasesChanged = true;
                     }
-                    if (!phasesChanged) {
-                        selectedIndex = i;
-                        return;
-                    }
+                    if (!phasesChanged) { selectedIndex = i; return; }
                     break;
                 }
             }
@@ -191,41 +170,20 @@ public class QuestJournalScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (QuestIntelPanel.isActive()) {
-            if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) {
-                QuestIntelPanel.dismiss();
-                return true;
-            }
+            if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) { QuestIntelPanel.dismiss(); return true; }
             return true;
         }
-        if (QuestOfferPanel.isActive()) {
-            QuestOfferPanel.keyPressed(keyCode);
-            return true;
-        }
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.keyPressed(keyCode);
-            return true;
-        }
-        if (QuestStoryPanel.isActive()) {
-            QuestStoryPanel.keyPressed(keyCode);
-            return true;
-        }
-
-        if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
-            this.onClose();
-            return true;
-        }
+        if (QuestOfferPanel.isActive()) { QuestOfferPanel.keyPressed(keyCode); return true; }
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.keyPressed(keyCode); return true; }
+        if (QuestStoryPanel.isActive()) { QuestStoryPanel.keyPressed(keyCode); return true; }
+        if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) { this.onClose(); return true; }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
-    public void onClose() {
-        if (!isClosing) isClosing = true;
-    }
-
+    public void onClose() { if (!isClosing) isClosing = true; }
     @Override
-    public boolean isPauseScreen() {
-        return false;
-    }
+    public boolean isPauseScreen() { return false; }
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
@@ -233,29 +191,16 @@ public class QuestJournalScreen extends Screen {
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
 
-        if (QuestIntelPanel.isActive()) {
-            QuestIntelPanel.handleMouseClick(smx, smy, sw, sh);
-            return true;
-        }
-        if (QuestOfferPanel.isActive()) {
-            QuestOfferPanel.mouseClicked(smx, smy, button);
-            return true;
-        }
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.mouseClicked(smx, smy, button);
-            return true;
-        }
-        if (QuestStoryPanel.isActive()) {
-            QuestStoryPanel.mouseClicked(smx, smy, button);
-            return true;
-        }
+        if (QuestIntelPanel.isActive()) { QuestIntelPanel.handleMouseClick(smx, smy, sw, sh); return true; }
+        if (QuestOfferPanel.isActive()) { QuestOfferPanel.mouseClicked(smx, smy, button); return true; }
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseClicked(smx, smy, button); return true; }
+        if (QuestStoryPanel.isActive()) { QuestStoryPanel.mouseClicked(smx, smy, button); return true; }
 
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
         int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
-        int listH = sh - 20 - listY;
+        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
 
@@ -271,15 +216,10 @@ public class QuestJournalScreen extends Screen {
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight();
-
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.mouseDragged(smx, smy);
-            return true;
-        }
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseDragged(smx, smy); return true; }
 
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
-        int listH = sh - 20 - listY;
+        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         if (listPanel.mouseDragged(smx, smy, listY, listH)) return true;
         if (detailPanel.mouseDragged(smx, smy, listY, listH)) return true;
         return super.mouseDragged(mx, my, button, dragX, dragY);
@@ -288,11 +228,7 @@ public class QuestJournalScreen extends Screen {
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.mouseReleased(button);
-            return true;
-        }
-
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseReleased(button); return true; }
         listPanel.mouseReleased(button);
         detailPanel.mouseReleased(button);
         return super.mouseReleased(mx, my, button);
@@ -305,29 +241,21 @@ public class QuestJournalScreen extends Screen {
         int sw = getScaledWidth(), sh = getScaledHeight();
 
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.mouseScrolled(smx, smy, delta);
-            return true;
-        }
-
+        if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseScrolled(smx, smy, delta); return true; }
         if (isClosing) return false;
 
         float slideOffset = (1f - getEaseProgress()) * 200f;
         int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
-        int listH = sh - 20 - listY;
+        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
 
         if (listPanel.mouseScrolled(smx, smy, delta, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
         if (detailPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
-
         return super.mouseScrolled(mx, my, delta);
     }
 
-    private float getEaseProgress() {
-        return (isClosing ? HudAnimUtil.easeInCubic(transitionAlpha) : HudAnimUtil.easeOutCubic(transitionAlpha)) * HudAnimUtil.easeOutCubic(suspendAlpha);
-    }
+    private float getEaseProgress() { return (isClosing ? HudAnimUtil.easeInCubic(transitionAlpha) : HudAnimUtil.easeOutCubic(transitionAlpha)) * HudAnimUtil.easeOutCubic(suspendAlpha); }
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
@@ -343,27 +271,13 @@ public class QuestJournalScreen extends Screen {
         lastRenderTime = now;
         if (realDt > 0.1f) realDt = 0.1f;
 
-        boolean intelActive = QuestIntelPanel.isActive();
-        boolean offerActive = QuestOfferPanel.isActive();
-        boolean historyActive = QuestHistoryPanel.isActive();
-        boolean storyActive = QuestStoryPanel.isActive();
+        boolean intelActive = QuestIntelPanel.isActive(), offerActive = QuestOfferPanel.isActive(), historyActive = QuestHistoryPanel.isActive(), storyActive = QuestStoryPanel.isActive();
 
-        if (QuestSplashRenderer.isActive()) {
-            suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
-            dt = 0f;
-        } else {
-            suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
-            dt = (intelActive || storyActive) ? 0f : realDt;
-        }
+        if (QuestSplashRenderer.isActive()) { suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f); dt = 0f; }
+        else { suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f); dt = (intelActive || storyActive) ? 0f : realDt; }
 
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
-
-        if (isClosing && transitionAlpha <= 0.01f) {
-            if (minecraft != null && minecraft.screen == this) {
-                minecraft.setScreen(null);
-            }
-            return;
-        }
+        if (isClosing && transitionAlpha <= 0.01f) { if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null); return; }
 
         effectiveAlpha = transitionAlpha * suspendAlpha;
         float easeProgress = getEaseProgress();
@@ -373,6 +287,7 @@ public class QuestJournalScreen extends Screen {
         g.pose().pushPose();
         g.pose().scale(uiScale, uiScale, 1f);
 
+        // === PASS 1: 纯 2D 极速渲染通道 (无物品干扰，极大利用底层批处理) ===
         int bgTint = HudAnimUtil.lerpColor(0x000000, currentThemeColor, 0.05f);
         g.fill(0, 0, sw, sh, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
 
@@ -389,10 +304,7 @@ public class QuestJournalScreen extends Screen {
         int theme = getThemeColor();
         tabPanel.render(g, smx, smy, safeAlpha, slideOffset, theme, dt);
 
-        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
-        int listH = sh - 20 - listY;
-
+        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset, listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         HudAnimUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
         listPanel.render(g, listX, listY, JournalConstants.LIST_WIDTH, listH, smx, smy, theme, dt);
 
@@ -400,6 +312,8 @@ public class QuestJournalScreen extends Screen {
         int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
 
         HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)), HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
+
+        // 此处的 DetailPanel 会内部管理自己的 Pass1(2D) 和 Pass2(3D)
         detailPanel.render(g, detailX, listY, detailW, listH, smx, smy, theme, dt);
 
         if (intelActive) QuestIntelPanel.render(g, sw, sh, partialTick);
@@ -407,6 +321,7 @@ public class QuestJournalScreen extends Screen {
         if (historyActive) QuestHistoryPanel.render(g, smx, smy, partialTick);
         if (storyActive) QuestStoryPanel.render(g, smx, smy, partialTick);
 
+        // === PASS 3: 顶层 Tooltip 渲染（原生含有 3D，自定义纯 2D，放到最后确保遮盖） ===
         updateAndRenderTooltip(g, smx, smy);
 
         g.pose().popPose();
@@ -415,52 +330,38 @@ public class QuestJournalScreen extends Screen {
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
         boolean hasCustom = hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty();
         boolean hasItem = hoveredRewardTooltip != null;
-
         boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive() && !QuestStoryPanel.isActive();
 
         if (isHoveringValid) {
             if (hasCustom) {
-                activeCustomTooltip = hoveredCustomTooltip;
-                activeTooltipStack = null;
-                tooltipHoverTimer += dt;
+                activeCustomTooltip = hoveredCustomTooltip; activeTooltipStack = null; tooltipHoverTimer += dt;
             } else {
                 activeCustomTooltip = null;
                 if (activeTooltipStack == null || !ItemStack.matches(activeTooltipStack, hoveredRewardTooltip)) {
-                    if (tooltipTipAlpha > 0.5f) {
-                        tooltipHoverTimer = TIP_HOVER_DELAY;
-                        activeTooltipStack = hoveredRewardTooltip;
-                    } else {
-                        tooltipHoverTimer += dt;
-                    }
-                } else {
-                    tooltipHoverTimer += dt;
-                }
+                    if (tooltipTipAlpha > 0.5f) { tooltipHoverTimer = TIP_HOVER_DELAY; activeTooltipStack = hoveredRewardTooltip; }
+                    else tooltipHoverTimer += dt;
+                } else tooltipHoverTimer += dt;
                 if (tooltipHoverTimer >= TIP_HOVER_DELAY) activeTooltipStack = hoveredRewardTooltip;
             }
-        } else {
-            tooltipHoverTimer = 0f;
-            activeCustomTooltip = null;
-        }
+        } else { tooltipHoverTimer = 0f; activeCustomTooltip = null; }
 
         float targetTipAlpha = (isHoveringValid && tooltipHoverTimer >= TIP_HOVER_DELAY && !isClosing) ? 1f : 0f;
         tooltipTipAlpha += (targetTipAlpha - tooltipTipAlpha) * Math.min(1f, dt * 15f);
 
         if (tooltipTipAlpha > 0.02f) {
-            if (activeCustomTooltip != null && !activeCustomTooltip.isEmpty())
-                renderTooltipLines(g, activeCustomTooltip, mouseX, mouseY);
+            // 纯 2D 自定义文本框
+            if (activeCustomTooltip != null && !activeCustomTooltip.isEmpty()) renderTooltipLines(g, activeCustomTooltip, mouseX, mouseY);
+                // 3D 原生物品提示框
             else if (activeTooltipStack != null) renderTooltip(g, activeTooltipStack, mouseX, mouseY);
-        } else {
-            animTipW = 0;
-            activeTooltipStack = null;
-            activeCustomTooltip = null;
-        }
+        } else { animTipW = 0; activeTooltipStack = null; activeCustomTooltip = null; }
     }
 
     public void renderTooltip(GuiGraphics g, ItemStack stack, int mouseX, int mouseY) {
         if (this.minecraft == null || this.minecraft.player == null) return;
         TooltipLayoutCache layout = getItemTooltipLayout(stack, this.minecraft.options.advancedItemTooltips);
         if (layout.lines.isEmpty()) return;
-        renderTooltipLayout(g, layout, mouseX, mouseY);
+        // 原生物品悬浮窗本身带有高度优化的 3D/2D 批处理逻辑
+        g.renderTooltip(font, stack, mouseX, mouseY);
     }
 
     public void renderTooltipLines(GuiGraphics g, List<Component> tooltipLines, int mouseX, int mouseY) {
@@ -491,17 +392,14 @@ public class QuestJournalScreen extends Screen {
         }
         layout.targetW = layout.textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
         layout.targetH = layout.lines.size() * font.lineHeight + padding * 2;
-        tooltipLayoutKey = key;
-        tooltipLayoutCache = layout;
+        tooltipLayoutKey = key; tooltipLayoutCache = layout;
         return layout;
     }
 
     private void renderTooltipLayout(GuiGraphics g, TooltipLayoutCache layout, int mouseX, int mouseY) {
         if (layout == null || layout.lines.isEmpty()) return;
         int padding = 6, cyberEdgeWidth = 3;
-        int targetW = layout.targetW;
-        int targetH = layout.targetH;
-        int targetX = mouseX + 12, targetY = mouseY - 12;
+        int targetW = layout.targetW, targetH = layout.targetH, targetX = mouseX + 12, targetY = mouseY - 12;
 
         int sw = getScaledWidth(), sh = getScaledHeight();
         if (targetX + targetW > sw) targetX = mouseX - targetW - 8;
@@ -509,10 +407,7 @@ public class QuestJournalScreen extends Screen {
         if (targetY < 0) targetY = 2;
 
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
-            animTipX = targetX;
-            animTipY = targetY;
-            animTipW = targetW;
-            animTipH = targetH;
+            animTipX = targetX; animTipY = targetY; animTipW = targetW; animTipH = targetH;
         } else {
             float morphSpeed = 18f;
             animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
@@ -541,7 +436,6 @@ public class QuestJournalScreen extends Screen {
         g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
 
         drawCyberneticEdge(g, drawX, drawY, drawH, currentThemeColor, edgeAlpha);
-
         enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
 
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
@@ -549,74 +443,22 @@ public class QuestJournalScreen extends Screen {
             g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, edgeAlpha), true);
             textY += font.lineHeight;
         }
-
         g.disableScissor();
         g.pose().popPose();
     }
 
-    public Font getFont() {
-        return this.font;
-    }
-
-    public float getEffectiveAlpha() {
-        return this.effectiveAlpha;
-    }
-
-    public float getDt() {
-        return this.dt;
-    }
-
-    public int getThemeColor() {
-        return currentTab == JournalTypes.Tab.ACTIVE ? JournalConstants.THEME_ACTIVE : currentTab == JournalTypes.Tab.COMPLETED ? JournalConstants.THEME_COMPLETED : JournalConstants.THEME_FAILED;
-    }
-
-    public JournalTypes.Tab getCurrentTab() {
-        return currentTab;
-    }
-
-    public void setCurrentTab(JournalTypes.Tab tab) {
-        this.currentTab = tab;
-        rebuildEntries();
-    }
-
-    public List<JournalTypes.QuestListEntry> getCurrentEntries() {
-        return currentEntries;
-    }
-
-    public int getSelectedIndex() {
-        return selectedIndex;
-    }
-
-    public void onEntrySelected(int idx) {
-        if (this.selectedIndex != idx) {
-            this.selectedIndex = idx;
-            this.detailPanel.resetState();
-            playClick();
-        }
-    }
-
-    public void playClick() {
-        if (minecraft != null)
-            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
-    }
-
-    public void setHoveredRewardTooltip(ItemStack stack) {
-        this.hoveredRewardTooltip = stack;
-    }
-
-    public void setHoveredCustomTooltip(List<Component> lines) {
-        this.hoveredCustomTooltip = lines;
-    }
-
-    public int getCurrentThemeColor() {
-        return this.currentThemeColor;
-    }
-
-    public void setCurrentThemeColor(int color) {
-        this.currentThemeColor = color;
-    }
-
-    public void executeNetworkAction(Runnable action) {
-        if (minecraft != null) minecraft.execute(action);
-    }
+    public Font getFont() { return this.font; }
+    public float getEffectiveAlpha() { return this.effectiveAlpha; }
+    public float getDt() { return this.dt; }
+    public int getThemeColor() { return currentTab == JournalTypes.Tab.ACTIVE ? JournalConstants.THEME_ACTIVE : currentTab == JournalTypes.Tab.COMPLETED ? JournalConstants.THEME_COMPLETED : JournalConstants.THEME_FAILED; }
+    public JournalTypes.Tab getCurrentTab() { return currentTab; }
+    public void setCurrentTab(JournalTypes.Tab tab) { this.currentTab = tab; rebuildEntries(); }
+    public List<JournalTypes.QuestListEntry> getCurrentEntries() { return currentEntries; }
+    public int getSelectedIndex() { return selectedIndex; }
+    public void onEntrySelected(int idx) { if (this.selectedIndex != idx) { this.selectedIndex = idx; this.detailPanel.resetState(); playClick(); } }
+    public void playClick() { if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)); }
+    public void setHoveredRewardTooltip(ItemStack stack) { this.hoveredRewardTooltip = stack; }
+    public void setHoveredCustomTooltip(List<Component> lines) { this.hoveredCustomTooltip = lines; }
+    public int getCurrentThemeColor() { return this.currentThemeColor; }
+    public void setCurrentThemeColor(int color) { this.currentThemeColor = color; }
 }
