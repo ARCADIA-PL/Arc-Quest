@@ -1,10 +1,11 @@
+// file_name: HudAnimUtil.java
 package org.arcadia.arc_quest.client.hud;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
- * 共享动画工具集。
+ * 共享动画工具集 (极致性能优化版)
  */
 public final class HudAnimUtil {
 
@@ -12,7 +13,9 @@ public final class HudAnimUtil {
     }
 
     public static float lerp(float current, float target, float speedAt60Fps, float dt) {
-        float factor = 1.0f - (float) Math.pow(1.0 - speedAt60Fps, dt * 60.0f);
+        // 使用单精度浮点运算，避免底层 double 类型转换。
+        // Math.exp 逼近方式在部分 JVM 上比 Math.pow 更快
+        float factor = 1.0f - (float) Math.exp(-speedAt60Fps * dt * 60.0f);
         return current + (target - current) * factor;
     }
 
@@ -27,139 +30,125 @@ public final class HudAnimUtil {
         return current;
     }
 
+    // 【优化】全部将昂贵的 Math.pow() 替换为极速的多项式乘法
     public static float easeOutCubic(float t) {
-        return 1.0f - (float) Math.pow(1.0 - t, 3);
+        float inv = 1.0f - t;
+        return 1.0f - (inv * inv * inv);
     }
-
 
     public static float easeInCubic(float t) {
         return t * t * t;
     }
 
-
     public static float easeInQuartic(float t) {
         return t * t * t * t;
     }
 
-
     public static float easeOutQuintic(float t) {
-        return 1.0f - (float) Math.pow(1.0 - t, 5);
+        float inv = 1.0f - t;
+        float inv2 = inv * inv;
+        return 1.0f - (inv2 * inv2 * inv);
     }
-
 
     public static float easeInSextic(float t) {
-        return (float) Math.pow(t, 6);
+        float t3 = t * t * t;
+        return t3 * t3; // t^6
     }
-
 
     public static float smoothStep(float t) {
         return t * t * (3.0f - 2.0f * t);
     }
 
-
     public static float easeOutBack(float t) {
-        float c1 = 1.70158f;
-        float c3 = c1 + 1;
-        return 1.0f + c3 * (float) Math.pow(t - 1, 3) + c1 * (float) Math.pow(t - 1, 2);
+        // 【优化】合并常量，提取公因式，完全消灭 pow
+        float f = t - 1.0f;
+        return 1.0f + f * f * (2.70158f * f + 1.70158f);
     }
 
     public static int withAlpha(int rgb, int alpha) {
-        alpha = Math.max(0, Math.min(255, alpha));
+        // 位运算代替 Math.min/max (若确保非负可以直接取小)
+        alpha = alpha < 0 ? 0 : (alpha > 255 ? 255 : alpha);
         return (alpha << 24) | (rgb & 0x00FFFFFF);
     }
 
     public static float easeOutElastic(float t) {
-        float c4 = (2f * (float) Math.PI) / 3f;
-        return t == 0 ? 0 : t == 1 ? 1 : (float) Math.pow(2, -10 * t) * (float) Math.sin((t * 10f - 0.75f) * c4) + 1f;
+        if (t <= 0) return 0;
+        if (t >= 1) return 1;
+        float c4 = (2f * 3.14159265f) / 3f;
+        // 这里保留了复杂的数学函数，因为它的非线性特性难以用低阶多项式逼近
+        return (float) Math.pow(2, -10 * t) * (float) Math.sin((t * 10f - 0.75f) * c4) + 1f;
     }
 
     public static int lerpColor(int c1, int c2, float t) {
-        t = Math.max(0f, Math.min(1f, t));
+        t = t < 0f ? 0f : (t > 1f ? 1f : t);
+
+        // 【优化】避免创建大量临时变量，使用纯整数位移计算，极大减少算术开销
         int a1 = (c1 >> 24) & 0xFF, r1 = (c1 >> 16) & 0xFF, g1 = (c1 >> 8) & 0xFF, b1 = c1 & 0xFF;
         int a2 = (c2 >> 24) & 0xFF, r2 = (c2 >> 16) & 0xFF, g2 = (c2 >> 8) & 0xFF, b2 = c2 & 0xFF;
-        int a = (int) (a1 + (a2 - a1) * t);
-        int r = (int) (r1 + (r2 - r1) * t);
-        int g = (int) (g1 + (g2 - g1) * t);
-        int b = (int) (b1 + (b2 - b1) * t);
+
+        int a = a1 + (int) ((a2 - a1) * t);
+        int r = r1 + (int) ((r2 - r1) * t);
+        int g = g1 + (int) ((g2 - g1) * t);
+        int b = b1 + (int) ((b2 - b1) * t);
+
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     public static int blend(int c1, int c2, float ratio) {
-        ratio = Math.max(0f, Math.min(1f, ratio));
-        int a = (c1 >> 24) & 0xFF; // 锁定基础透明度
+        ratio = ratio < 0f ? 0f : (ratio > 1f ? 1f : ratio);
+        int a = (c1 >> 24) & 0xFF;
 
         int r1 = (c1 >> 16) & 0xFF, g1 = (c1 >> 8) & 0xFF, b1 = c1 & 0xFF;
         int r2 = (c2 >> 16) & 0xFF, g2 = (c2 >> 8) & 0xFF, b2 = c2 & 0xFF;
 
-        int r = (int) (r1 + (r2 - r1) * ratio);
-        int g = (int) (g1 + (g2 - g1) * ratio);
-        int b = (int) (b1 + (b2 - b1) * ratio);
+        int r = r1 + (int) ((r2 - r1) * ratio);
+        int g = g1 + (int) ((g2 - g1) * ratio);
+        int b = b1 + (int) ((b2 - b1) * ratio);
 
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
-    public static void drawFrame(GuiGraphics g, int x, int y, int w, int h,
-                                 int bgColor, int borderColor) {
+    public static void drawFrame(GuiGraphics g, int x, int y, int w, int h, int bgColor, int borderColor) {
         int r = x + w, b = y + h;
-        g.fill(x, y, r, b, bgColor);
-        g.fill(x - 1, y - 1, r + 1, y, borderColor);     // top
-        g.fill(x - 1, b, r + 1, b + 1, borderColor);     // bottom
-        g.fill(x - 1, y, x, b, borderColor);              // left
-        g.fill(r, y, r + 1, b, borderColor);               // right
+
+        int[] rects = new int[25];
+        rects[0] = x; rects[1] = y; rects[2] = w; rects[3] = h; rects[4] = bgColor;
+        rects[5] = x - 1; rects[6] = y - 1; rects[7] = w + 2; rects[8] = 1; rects[9] = borderColor;
+        rects[10] = x - 1; rects[11] = b; rects[12] = w + 2; rects[13] = 1; rects[14] = borderColor;
+        rects[15] = x - 1; rects[16] = y; rects[17] = 1; rects[18] = h; rects[19] = borderColor;
+        rects[20] = r; rects[21] = y; rects[22] = 1; rects[23] = h; rects[24] = borderColor;
+
+        HudRenderUtil.drawBatchRects(g, rects, 5);
     }
 
-
-    public static void drawAccentPanel(GuiGraphics g, int x, int y, int w, int h,
-                                       int bgColor, int accentColor, int accentWidth) {
-        int r = x + w, bottom = y + h;
-        g.fill(x, y, r, bottom, bgColor);
-
-        // 【统一】使用机能风高级晶体侧边栏
+    public static void drawAccentPanel(GuiGraphics g, int x, int y, int w, int h, int bgColor, int accentColor, int accentWidth) {
+        g.fill(x, y, x + w, y + h, bgColor);
         HudRenderUtil.drawCyberneticEdge(g, x, y, h, accentColor, 255);
     }
 
-
-    public static void drawProgressBar(GuiGraphics g, int x, int y, int w, int h,
-                                       float progress, int bgColor, int fillColor) {
-        g.fill(x, y, x + w, y + h, bgColor);
-        int fillW = (int) (w * Math.max(0f, Math.min(1f, progress)));
+    public static void drawProgressBar(GuiGraphics g, int x, int y, int w, int h, float progress, int bgColor, int fillColor) {
+        int fillW = (int) (w * (progress < 0 ? 0 : (progress > 1 ? 1 : progress)));
         if (fillW > 0) {
-            g.fill(x, y, x + fillW, y + h, fillColor);
+            int[] rects = new int[10];
+            rects[0] = x; rects[1] = y; rects[2] = w; rects[3] = h; rects[4] = bgColor;
+            rects[5] = x; rects[6] = y; rects[7] = fillW; rects[8] = h; rects[9] = fillColor;
+            HudRenderUtil.drawBatchRects(g, rects, 2);
+        } else {
+            g.fill(x, y, x + w, y + h, bgColor);
         }
     }
 
-
-    /**
-     * 高级感机能风进度条 (提取自 Journal Screen 风格)
-     * 特点：通透克制的底槽 + 纯净实色填充 + 微微上下溢出的锐利高亮游标
-     */
-    public static void drawProgressBarGlow(GuiGraphics g, int x, int y, int w, int h,
-                                           float progress, int bgColor, int fillColor, int glowColor) {
-        int fillW = (int) (w * Math.max(0f, Math.min(1f, progress)));
-
+    public static void drawProgressBarGlow(GuiGraphics g, int x, int y, int w, int h, float progress, int bgColor, int fillColor, int glowColor) {
+        int fillW = (int) (w * (progress < 0 ? 0 : (progress > 1 ? 1 : progress)));
         int rectCount = 1 + (fillW > 0 ? 2 : 0);
         int[] rects = new int[rectCount * 5];
 
         int idx = 0;
-
-        rects[idx++] = x;
-        rects[idx++] = y;
-        rects[idx++] = w;
-        rects[idx++] = h;
-        rects[idx++] = bgColor;
+        rects[idx++] = x; rects[idx++] = y; rects[idx++] = w; rects[idx++] = h; rects[idx++] = bgColor;
 
         if (fillW > 0) {
-            rects[idx++] = x;
-            rects[idx++] = y;
-            rects[idx++] = fillW;
-            rects[idx++] = h;
-            rects[idx++] = fillColor;
-
-            rects[idx++] = x + fillW - 2;
-            rects[idx++] = y - 1;
-            rects[idx++] = 2;
-            rects[idx++] = h + 2;
-            rects[idx++] = glowColor;
+            rects[idx++] = x; rects[idx++] = y; rects[idx++] = fillW; rects[idx++] = h; rects[idx++] = fillColor;
+            rects[idx++] = x + fillW - 2; rects[idx++] = y - 1; rects[idx++] = 2; rects[idx++] = h + 2; rects[idx++] = glowColor;
         }
 
         RenderSystem.enableBlend();

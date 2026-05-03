@@ -1,5 +1,7 @@
+// file_name: TradeListPanel.java
 package org.arcadia.arc_quest.client.hud.shop;
 
+import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -21,11 +23,12 @@ public class TradeListPanel {
     private final Font font;
     private double scrollOffset = 0, targetScroll = 0;
     private float[] entryHoverAnims;
-    
+
     private final Map<String, EntryRenderState> stateCache = new HashMap<>();
     private final Map<String, EntryVisualCache> visualCache = new HashMap<>();
     private static final long CACHE_VALID_MS = 100;
     private static final int STRIDE = CARD_HEIGHT + 8;
+
     private final String plusText = "+";
     private final int plusWidth;
     private final String statusMaxedText;
@@ -55,28 +58,6 @@ public class TradeListPanel {
         stateCache.clear();
         visualCache.clear();
     }
-    
-    private static class EntryRenderState {
-        int globalIndex;
-        boolean onCd;
-        boolean maxed;
-        boolean locked;
-        boolean canBuy;
-        long lastUpdateTime;
-    }
-
-    private static class EntryVisualCache {
-        String name;
-        int nameWidth;
-        ItemStack mainStack;
-        List<CostVisual> costs;
-        int lastMaxNameWidth = Integer.MIN_VALUE;
-        String clippedName;
-        int clippedNameWidth;
-    }
-
-    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {
-    }
 
     public void setHoverAnim(int index, float val) {
         if (index >= 0 && index < entryHoverAnims.length) entryHoverAnims[index] = val;
@@ -96,29 +77,42 @@ public class TradeListPanel {
         return scrollOffset;
     }
 
+    // 【终极优化：内联矩形拼接边框】
+    private void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
+        g.fill(x, y, x + w, y + thickness, color);
+        g.fill(x, y + h - thickness, x + w, y + h, color);
+        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
+        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
+    }
+
     public void render(GuiGraphics g, int rx, int ry, int rw, int rh, int mx, int my, float dt, float alpha, boolean isClosing, float fastClose) {
         clampScroll(rh);
         scrollOffset += (targetScroll - scrollOffset) * Math.min(1.0, dt * 12.0);
         g.enableScissor(rx, ry, rx + rw, ry + rh);
+
         float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         ClientTradeCache cache = ClientTradeCache.INSTANCE;
         List<TradeEntry> entries = screen.getFilteredEntries();
-        
+
         long now = System.currentTimeMillis();
+        // 提炼脉冲运算，全场共享一个时间戳！
+        float pulse = (float) (Math.sin(Util.getMillis() / 200.0) * 0.5 + 0.5);
+        float syncBreath = (float) (Math.sin(Util.getMillis() / 150.0) * 0.5 + 0.5);
 
         int firstVisible = Math.max(0, (int) Math.floor((scrollOffset - 8 - CARD_HEIGHT) / STRIDE));
         int lastVisible = Math.min(entries.size() - 1, (int) Math.ceil((scrollOffset + rh - 8) / STRIDE));
         ClientTradeCache.FeedbackSnapshot fbs = screen.getLastClickedGi() >= 0 ? cache.feedbackSnapshot(screen.getShopId()) : null;
 
+        // =========================================================================
+        // PASS 1: 纯 2D 渲染通道
+        // =========================================================================
         for (int i = firstVisible; i <= lastVisible; i++) {
             TradeEntry entry = entries.get(i);
             EntryVisualCache visual = getVisualCache(entry);
             int drawY = ry + (int) (i * STRIDE - scrollOffset) + 8;
-            
-            // 使用缓存状态（避免每帧重复计算）
+
             EntryRenderState state = stateCache.get(entry.getEntryId());
             if (state == null || now - state.lastUpdateTime > CACHE_VALID_MS) {
-                // 缓存失效，重新计算
                 state = stateCache.computeIfAbsent(entry.getEntryId(), id -> new EntryRenderState());
                 state.globalIndex = cache.getGlobalIndex(screen.getShopId(), entry.getEntryId());
                 if (state.globalIndex != -1) {
@@ -129,44 +123,39 @@ public class TradeListPanel {
                 }
                 state.lastUpdateTime = now;
             }
-            
+
             int gi = state.globalIndex;
             if (gi == -1) continue;
-            
-            boolean onCd = state.onCd;
-            boolean maxed = state.maxed;
-            boolean locked = state.locked;
-            boolean canBuy = state.canBuy;
 
             boolean hov = !isClosing && dt > 0 && mx >= rx && mx < rx + rw && my >= drawY && my < drawY + CARD_HEIGHT && my >= ry && my <= ry + rh;
-            entryHoverAnims[i] = HudAnimUtil.step(entryHoverAnims[i], hov && canBuy ? 1f : 0f, 6f, dt);
+            entryHoverAnims[i] = HudAnimUtil.step(entryHoverAnims[i], hov && state.canBuy ? 1f : 0f, 6f, dt);
             float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
+
             int bgA = (int) ((0x22 + 0x33 * hEase) * alpha);
             int bdA = (int) ((0x44 + 0x66 * hEase) * alpha);
-            int bRgb = hov && canBuy ? screen.getThemeColorForEntry(entry) : 0xFFFFFF;
+            int bRgb = hov && state.canBuy ? screen.getThemeColorForEntry(entry) : 0xFFFFFF;
 
             boolean hasShortfall = false;
             if (gi == screen.getLastClickedGi()) {
                 hasShortfall = fbs != null && entry.getEntryId().equals(fbs.lastFailedEntryId()) && !fbs.shortfallLines().isEmpty();
-            }
 
-            if (gi == screen.getLastClickedGi()) {
                 if (screen.isFeedbackSuccess() && screen.getFeedbackAnim() > 0) {
                     bdA = Math.min(255, bdA + (int) (180 * screen.getFeedbackAnim() * alpha));
-                    bRgb = screen.lerpColor(bRgb, 0x55FF55, screen.getFeedbackAnim());
+                    bRgb = HudAnimUtil.lerpColor(bRgb, 0x55FF55, screen.getFeedbackAnim());
                 } else if (!screen.isFeedbackSuccess() && screen.getFeedbackAnim() > 0) {
                     float intensity = screen.getFeedbackAnim();
                     bdA = Math.min(255, bdA + (int) (180 * intensity * alpha));
-                    bRgb = screen.lerpColor(bRgb, 0xFF3333, intensity);
+                    bRgb = HudAnimUtil.lerpColor(bRgb, 0xFF3333, intensity);
                 } else if (hasShortfall) {
                     bdA = Math.min(255, bdA + (int) (40 * alpha));
-                    bRgb = screen.lerpColor(bRgb, 0xAA4444, 0.35f);
+                    bRgb = HudAnimUtil.lerpColor(bRgb, 0xAA4444, 0.35f);
                 }
             }
 
             int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
+
             g.fill(cx, cy, cx + cw, cy + ch, (bgA << 24) | 0x05050A);
-            HudAnimUtil.drawFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
+            drawFastFrame(g, cx, cy, cw, ch, 1, (bdA << 24) | (bRgb & 0xFFFFFF));
 
             if (contentScale > 0.01f) {
                 g.pose().pushPose();
@@ -175,38 +164,36 @@ public class TradeListPanel {
                 g.pose().scale(aScale, aScale, 1f);
                 g.pose().translate(-(cx + cw / 2f), -(cy + ch / 2f), 0);
 
-                if (entry.getRewardIcon() != null)
-                    screen.drawAdaptiveIcon(g, entry.getRewardIcon(), cx + 7, cy + 16, 16, 16, alpha);
-                else if (!visual.mainStack.isEmpty()) {
-                    g.pose().pushPose();
-                    g.pose().translate(cx + 12, cy + 16, 0);
-                    g.pose().scale(1.2f, 1.2f, 1f);
-                    g.renderItem(visual.mainStack, 0, 0);
-                    g.pose().popPose();
-                }
+                if (state.onCd || state.maxed || state.locked) {
+                    int pA = (int) (255 * alpha * (0.6f + 0.4f * pulse));
+                    int pC = state.onCd ? 0xFF6666 : (state.maxed ? 0xAAAAAA : 0x4488CC);
+                    int maskA1 = HudAnimUtil.withAlpha(pC, (int) (pA * 0.1f));
+                    int maskA2 = HudAnimUtil.withAlpha(pC, pA);
 
-                if (onCd || maxed || locked) {
-                    int pA = (int) (255 * alpha);
-                    int pC = onCd ? 0xFF6666 : (maxed ? 0xAAAAAA : 0x4488CC);
-                    g.fill(cx, cy, cx + cw, cy + ch, HudAnimUtil.withAlpha(pC, (int) (pA * 0.1f)));
-                    g.fill(cx - 1, cy - 1, cx + cw + 1, cy, HudAnimUtil.withAlpha(pC, pA));
-                    g.fill(cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, HudAnimUtil.withAlpha(pC, pA));
-                    g.fill(cx - 1, cy, cx, cy + ch, HudAnimUtil.withAlpha(pC, pA));
-                    g.fill(cx + cw, cy, cx + cw + 1, cy + ch, HudAnimUtil.withAlpha(pC, pA));
+                    g.fill(cx, cy, cx + cw, cy + ch, maskA1);
+                    g.fill(cx - 1, cy - 1, cx + cw + 1, cy, maskA2);
+                    g.fill(cx - 1, cy + ch, cx + cw + 1, cy + ch + 1, maskA2);
+                    g.fill(cx - 1, cy, cx, cy + ch, maskA2);
+                    g.fill(cx + cw, cy, cx + cw + 1, cy + ch, maskA2);
                     g.fill(cx, cy, cx + cw, cy + ch, HudAnimUtil.withAlpha(0x000000, (int) (160 * alpha)));
                 }
 
+                if (entry.getRewardIcon() != null) {
+                    screen.drawAdaptiveIcon(g, entry.getRewardIcon(), cx + 7, cy + 16, 16, 16, alpha);
+                }
+
                 int textX = cx + 52 + (int) (4 * hEase);
-                String statStr = onCd ? cache.getCooldownText(screen.getShopId(), gi)
-                        : (maxed ? statusMaxedText
-                        : (locked ? statusLockedText : ""));
-                int scColor = onCd ? 0xFF5555 : (maxed ? 0xAAAAAA : 0x4488CC);
+                String statStr = state.onCd ? cache.getCooldownText(screen.getShopId(), gi)
+                        : (state.maxed ? statusMaxedText : (state.locked ? statusLockedText : ""));
+                int scColor = state.onCd ? 0xFF5555 : (state.maxed ? 0xAAAAAA : 0x4488CC);
+
                 int mNW = cw - 140 - (statStr.isEmpty() ? 0 : font.width(statStr) + 6);
                 String nStr = getClippedName(visual, mNW);
 
-                g.drawString(font, nStr, textX, cy + 10, HudAnimUtil.withAlpha(canBuy ? 0xFFFFFF : 0x999999, (int) (255 * alpha)), false);
-                if (!statStr.isEmpty())
+                g.drawString(font, nStr, textX, cy + 10, HudAnimUtil.withAlpha(state.canBuy ? 0xFFFFFF : 0x999999, (int) (255 * alpha)), false);
+                if (!statStr.isEmpty()) {
                     g.drawString(font, statStr, textX + visual.clippedNameWidth + 6, cy + 10, HudAnimUtil.withAlpha(scColor, (int) (255 * alpha)), false);
+                }
 
                 int cX = textX, costY = cy + 26;
                 for (int j = 0; j < visual.costs.size(); j++) {
@@ -215,15 +202,17 @@ public class TradeListPanel {
                         g.drawString(font, plusText, cX, costY, HudAnimUtil.withAlpha(0x777777, (int) (255 * alpha)), false);
                         cX += plusWidth + 2;
                     }
-                    g.pose().pushPose();
-                    g.pose().translate(cX, costY - 1, 0);
-                    g.pose().scale(0.6f, 0.6f, 1f);
-                    if (cost.icon() != null) screen.drawAdaptiveIcon(g, cost.icon(), 0, 0, 16, 16, alpha);
-                    else if (!cost.stack().isEmpty()) g.renderItem(cost.stack(), 0, 0);
-                    g.pose().popPose();
+
+                    if (cost.icon() != null) {
+                        g.pose().pushPose();
+                        g.pose().translate(cX, costY - 1, 0);
+                        g.pose().scale(0.6f, 0.6f, 1f);
+                        screen.drawAdaptiveIcon(g, cost.icon(), 0, 0, 16, 16, alpha);
+                        g.pose().popPose();
+                    }
                     cX += 12;
 
-                    g.drawString(font, cost.text(), cX, costY, HudAnimUtil.withAlpha(canBuy ? 0xDDDDDD : 0x777777, (int) (255 * alpha)), false);
+                    g.drawString(font, cost.text(), cX, costY, HudAnimUtil.withAlpha(state.canBuy ? 0xDDDDDD : 0x777777, (int) (255 * alpha)), false);
                     cX += cost.textWidth() + 4;
                     if (cX > cx + cw - 100) {
                         g.drawString(font, "...", cX, costY, HudAnimUtil.withAlpha(0x777777, (int) (255 * alpha)), false);
@@ -232,21 +221,70 @@ public class TradeListPanel {
                 }
 
                 int btnW = 80, btnH = 24, btnX = cx + cw - btnW - 12, btnY = cy + (ch - btnH) / 2;
-                String btnText = canBuy
-                        ? purchaseText
-                        : (onCd ? waitText
-                        : (locked ? lockedText
-                        : emptyText));
-                int btnC = canBuy
+                String btnText = state.canBuy ? purchaseText : (state.onCd ? waitText : (state.locked ? lockedText : emptyText));
+                int btnC = state.canBuy
                         ? ((hov && mx >= btnX && mx < btnX + btnW && my >= btnY && my < btnY + btnH) ? 0xFFFFFF : screen.getThemeColorForEntry(entry))
-                        : (locked ? 0x4488CC : 0x888888);
+                        : (state.locked ? 0x4488CC : 0x888888);
 
                 g.fill(btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(btnC, (int) (40 * alpha)));
-                HudAnimUtil.drawFrame(g, btnX, btnY, btnW, btnH, 1, HudAnimUtil.withAlpha(btnC, (int) (200 * alpha)));
+                drawFastFrame(g, btnX, btnY, btnW, btnH, 1, HudAnimUtil.withAlpha(btnC, (int) (200 * alpha)));
                 g.drawCenteredString(font, btnText, btnX + btnW / 2, btnY + 8, HudAnimUtil.withAlpha(btnC, (int) (255 * alpha)));
+
                 g.pose().popPose();
             }
         }
+
+        // =========================================================================
+        // PASS 2: 纯 3D 渲染通道
+        // =========================================================================
+        if (contentScale > 0.01f) {
+            for (int i = firstVisible; i <= lastVisible; i++) {
+                TradeEntry entry = entries.get(i);
+                EntryRenderState state = stateCache.get(entry.getEntryId());
+                if (state == null || state.globalIndex == -1) continue;
+
+                EntryVisualCache visual = getVisualCache(entry);
+                int drawY = ry + (int) (i * STRIDE - scrollOffset) + 8;
+                int cx = rx + 8, cy = drawY, cw = rw - 16, ch = CARD_HEIGHT;
+
+                float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
+
+                g.pose().pushPose();
+                g.pose().translate(cx + cw / 2f, cy + ch / 2f, 0);
+                float aScale = contentScale + hEase * 0.02f;
+                g.pose().scale(aScale, aScale, 1f);
+                g.pose().translate(-(cx + cw / 2f), -(cy + ch / 2f), 0);
+
+                if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty()) {
+                    g.pose().pushPose();
+                    g.pose().translate(cx + 12, cy + 16, 0);
+                    g.pose().scale(1.2f, 1.2f, 1f);
+                    g.renderItem(visual.mainStack, 0, 0);
+                    g.pose().popPose();
+                }
+
+                int textX = cx + 52 + (int) (4 * hEase);
+                int cX = textX, costY = cy + 26;
+                for (int j = 0; j < visual.costs.size(); j++) {
+                    CostVisual cost = visual.costs.get(j);
+                    if (j > 0) cX += plusWidth + 2;
+
+                    if (cost.icon() == null && !cost.stack().isEmpty()) {
+                        g.pose().pushPose();
+                        g.pose().translate(cX, costY - 1, 0);
+                        g.pose().scale(0.6f, 0.6f, 1f);
+                        g.renderItem(cost.stack(), 0, 0);
+                        g.pose().popPose();
+                    }
+
+                    cX += 12 + cost.textWidth() + 4;
+                    if (cX > cx + cw - 100) break;
+                }
+
+                g.pose().popPose();
+            }
+        }
+
         g.disableScissor();
 
         int maxScroll = Math.max(0, entries.size() * STRIDE + 4 - rh);
@@ -295,4 +333,25 @@ public class TradeListPanel {
         }
         return null;
     }
+
+    private static class EntryRenderState {
+        int globalIndex;
+        boolean onCd;
+        boolean maxed;
+        boolean locked;
+        boolean canBuy;
+        long lastUpdateTime;
+    }
+
+    private static class EntryVisualCache {
+        String name;
+        int nameWidth;
+        ItemStack mainStack;
+        List<CostVisual> costs;
+        int lastMaxNameWidth = Integer.MIN_VALUE;
+        String clippedName;
+        int clippedNameWidth;
+    }
+
+    private record CostVisual(ResourceLocation icon, ItemStack stack, String text, int textWidth) {}
 }
