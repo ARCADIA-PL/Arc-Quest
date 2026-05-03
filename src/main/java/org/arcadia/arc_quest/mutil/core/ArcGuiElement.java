@@ -36,7 +36,6 @@ public class ArcGuiElement implements ArcLayoutInvalidationListener {
     public final void updateTree(ArcGuiContext context, int refX, int refY) {
         if (!visible) return;
         ArcGuiProfiler.elementUpdated();
-        tickAnimations(context);
         update(context, refX, refY);
         for (ArcGuiElement child : children) {
             if (!child.visible) continue;
@@ -45,16 +44,40 @@ public class ArcGuiElement implements ArcLayoutInvalidationListener {
         }
     }
 
+    public final void tickTree(ArcGuiTickContext context, int refX, int refY) {
+        if (!visible) return;
+        tickAnimations(context);
+        tick(context, refX, refY);
+        for (ArcGuiElement child : children) {
+            if (!child.visible) continue;
+            child.tickTree(context, refX + x + getXOffset(this, child.attachmentAnchor) - getXOffset(child, child.attachmentPoint),
+                    refY + y + getYOffset(this, child.attachmentAnchor) - getYOffset(child, child.attachmentPoint));
+        }
+    }
+
+    protected void tick(ArcGuiTickContext context, int refX, int refY) {
+    }
+
     protected void update(ArcGuiContext context, int refX, int refY) {
     }
 
-    protected void tickAnimations(ArcGuiContext context) {
+    protected void tickAnimations(ArcGuiTickContext context) {
         if (activeAnimations.isEmpty()) return;
+        ArcGuiContext animationContext = new ArcGuiContext(
+                context.minecraft(),
+                context.screenWidth(),
+                context.screenHeight(),
+                context.mouseX(),
+                context.mouseY(),
+                0f,
+                context.deltaTime(),
+                context.nowMs()
+        );
         for (int i = activeAnimations.size() - 1; i >= 0; i--) {
             ArcAnimation animation = activeAnimations.get(i);
-            animation.update(this, context);
+            animation.update(this, animationContext);
             if (animation.isFinished()) {
-                animation.finish(this, context);
+                animation.finish(this, animationContext);
                 activeAnimations.remove(i);
             }
         }

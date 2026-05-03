@@ -21,13 +21,52 @@ public class ArcGuiRoot extends ArcGuiElement {
 
     public void drawRoot(GuiGraphics graphics, float partialTick) {
         if (!visible) return;
-        ArcGuiProfiler.beginFrame();
-        renderQueue.clear();
-        ArcRenderQueueContext.begin(renderQueue);
-        ArcGuiContext context = createContext(partialTick);
+        ArcGuiContext context = beginFrame(graphics, partialTick);
+        ArcGuiTickContext tickContext = createTickContext(context);
+        tickTree(tickContext, 0, 0);
         updateTree(context, 0, 0);
         updateFocusState(0, 0, context.mouseX(), context.mouseY());
         drawChildren(graphics, context, 0, 0, 1f);
+        endFrame(graphics);
+    }
+
+    public void tickRoot() {
+        if (!visible) return;
+        ArcGuiTickContext context = createTickContext();
+        tickTree(context, 0, 0);
+    }
+
+    public void tickAndUpdateRoot() {
+        if (!visible) return;
+        ArcGuiTickContext tickContext = createTickContext();
+        tickTree(tickContext, 0, 0);
+        ArcGuiContext context = createContext(tickContext, 0f);
+        updateTree(context, 0, 0);
+    }
+
+    public void drawRootOnly(GuiGraphics graphics, float partialTick) {
+        if (!visible) return;
+        ArcGuiContext context = beginDrawOnlyFrame(graphics, partialTick);
+        updateFocusState(0, 0, context.mouseX(), context.mouseY());
+        drawChildren(graphics, context, 0, 0, 1f);
+        endFrame(graphics);
+    }
+
+    protected ArcGuiContext beginFrame(GuiGraphics graphics, float partialTick) {
+        ArcGuiProfiler.beginFrame();
+        renderQueue.clear();
+        ArcRenderQueueContext.begin(renderQueue);
+        return createContext(partialTick);
+    }
+
+    protected ArcGuiContext beginDrawOnlyFrame(GuiGraphics graphics, float partialTick) {
+        ArcGuiProfiler.beginFrame();
+        renderQueue.clear();
+        ArcRenderQueueContext.begin(renderQueue);
+        return createRenderContext(partialTick);
+    }
+
+    protected void endFrame(GuiGraphics graphics) {
         renderQueue.flush(graphics);
         ArcRenderQueueContext.end();
         ArcGuiProfiler.endFrame();
@@ -35,8 +74,7 @@ public class ArcGuiRoot extends ArcGuiElement {
 
     protected ArcGuiContext createContext(float partialTick) {
         Window window = minecraft.getWindow();
-        width = window.getGuiScaledWidth();
-        height = window.getGuiScaledHeight();
+        updateRootSize(window);
 
         int mouseX = (int) (minecraft.mouseHandler.xpos() * width / window.getScreenWidth());
         int mouseY = (int) (minecraft.mouseHandler.ypos() * height / window.getScreenHeight());
@@ -47,6 +85,60 @@ public class ArcGuiRoot extends ArcGuiElement {
 
         lastContext = new ArcGuiContext(minecraft, width, height, mouseX, mouseY, partialTick, deltaTime, now);
         return lastContext;
+    }
+
+    protected ArcGuiContext createRenderContext(float partialTick) {
+        Window window = minecraft.getWindow();
+        updateRootSize(window);
+        int mouseX = (int) (minecraft.mouseHandler.xpos() * width / window.getScreenWidth());
+        int mouseY = (int) (minecraft.mouseHandler.ypos() * height / window.getScreenHeight());
+        long now = Util.getMillis();
+        float deltaTime = lastContext == null ? 0f : lastContext.deltaTime();
+        lastContext = new ArcGuiContext(minecraft, width, height, mouseX, mouseY, partialTick, deltaTime, now);
+        return lastContext;
+    }
+
+    protected ArcGuiTickContext createTickContext() {
+        Window window = minecraft.getWindow();
+        updateRootSize(window);
+        int mouseX = (int) (minecraft.mouseHandler.xpos() * width / window.getScreenWidth());
+        int mouseY = (int) (minecraft.mouseHandler.ypos() * height / window.getScreenHeight());
+        long now = Util.getMillis();
+        if (lastFrameTime == 0L) lastFrameTime = now;
+        float deltaTime = Math.min((now - lastFrameTime) / 1000f, 0.1f);
+        lastFrameTime = now;
+        return new ArcGuiTickContext(minecraft, width, height, mouseX, mouseY, deltaTime, now);
+    }
+
+    protected ArcGuiContext createContext(ArcGuiTickContext tickContext, float partialTick) {
+        lastContext = new ArcGuiContext(
+                tickContext.minecraft(),
+                tickContext.screenWidth(),
+                tickContext.screenHeight(),
+                tickContext.mouseX(),
+                tickContext.mouseY(),
+                partialTick,
+                tickContext.deltaTime(),
+                tickContext.nowMs()
+        );
+        return lastContext;
+    }
+
+    protected ArcGuiTickContext createTickContext(ArcGuiContext context) {
+        return new ArcGuiTickContext(
+                context.minecraft(),
+                context.screenWidth(),
+                context.screenHeight(),
+                context.mouseX(),
+                context.mouseY(),
+                context.deltaTime(),
+                context.nowMs()
+        );
+    }
+
+    protected void updateRootSize(Window window) {
+        width = window.getGuiScaledWidth();
+        height = window.getGuiScaledHeight();
     }
 
     public ArcGuiContext getLastContext() {

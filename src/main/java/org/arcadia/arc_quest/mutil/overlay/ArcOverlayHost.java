@@ -54,14 +54,28 @@ public class ArcOverlayHost {
 
     public void renderAll(GuiGraphics graphics, float partialTick) {
         if (!enabled) return;
+        sortIfDirty();
+        for (ArcOverlayRoot overlay : overlays) {
+            if (overlay != null && overlay.isActive()) {
+                overlay.drawRootOnly(graphics, partialTick);
+            }
+        }
+    }
+
+    public void tickAll() {
+        if (!enabled) return;
+        sortIfDirty();
+        for (ArcOverlayRoot overlay : overlays) {
+            if (overlay != null && overlay.isActive()) {
+                overlay.tickAndUpdateRoot();
+            }
+        }
+    }
+
+    private void sortIfDirty() {
         if (dirty) {
             overlays.sort(Comparator.comparingInt(ArcOverlayRoot::getZIndex));
             dirty = false;
-        }
-        for (ArcOverlayRoot overlay : overlays) {
-            if (overlay != null && overlay.isActive()) {
-                overlay.drawRoot(graphics, partialTick);
-            }
         }
     }
 
