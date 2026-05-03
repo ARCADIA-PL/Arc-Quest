@@ -4,11 +4,15 @@ import com.mojang.blaze3d.platform.Window;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import org.arcadia.arc_quest.mutil.perf.ArcGuiProfiler;
+import org.arcadia.arc_quest.mutil.render.ArcRenderQueue;
+import org.arcadia.arc_quest.mutil.render.ArcRenderQueueContext;
 
 public class ArcGuiRoot extends ArcGuiElement {
     protected final Minecraft minecraft;
     private long lastFrameTime = 0L;
     private ArcGuiContext lastContext;
+    private final ArcRenderQueue renderQueue = new ArcRenderQueue();
 
     public ArcGuiRoot(Minecraft minecraft) {
         super(0, 0, 0, 0);
@@ -17,10 +21,16 @@ public class ArcGuiRoot extends ArcGuiElement {
 
     public void drawRoot(GuiGraphics graphics, float partialTick) {
         if (!visible) return;
+        ArcGuiProfiler.beginFrame();
+        renderQueue.clear();
+        ArcRenderQueueContext.begin(renderQueue);
         ArcGuiContext context = createContext(partialTick);
         updateTree(context, 0, 0);
         updateFocusState(0, 0, context.mouseX(), context.mouseY());
         drawChildren(graphics, context, 0, 0, 1f);
+        renderQueue.flush(graphics);
+        ArcRenderQueueContext.end();
+        ArcGuiProfiler.endFrame();
     }
 
     protected ArcGuiContext createContext(float partialTick) {
@@ -41,6 +51,10 @@ public class ArcGuiRoot extends ArcGuiElement {
 
     public ArcGuiContext getLastContext() {
         return lastContext;
+    }
+
+    public ArcRenderQueue getRenderQueue() {
+        return renderQueue;
     }
 
     public Minecraft getMinecraft() {

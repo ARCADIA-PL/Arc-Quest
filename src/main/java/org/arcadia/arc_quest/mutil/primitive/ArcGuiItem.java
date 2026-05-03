@@ -9,6 +9,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.render.ArcRenderQueue;
+import org.arcadia.arc_quest.mutil.render.ArcRenderQueueContext;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -60,18 +62,29 @@ public class ArcGuiItem extends ArcGuiElement {
         if (!visible || itemStack == null || itemStack.isEmpty()) return;
         float finalOpacity = inheritedOpacity * opacity;
         if (finalOpacity < opacityThreshold) return;
+        ArcRenderQueue queue = ArcRenderQueueContext.current();
+        int drawX = refX + x;
+        int drawY = refY + y;
+        if (queue != null) {
+            queue.item(taskGraphics -> renderItem(taskGraphics, drawX, drawY));
+        } else {
+            renderItem(graphics, drawX, drawY);
+        }
+        drawChildren(graphics, context, refX + x, refY + y, finalOpacity);
+    }
+
+    protected void renderItem(GuiGraphics graphics, int drawX, int drawY) {
         RenderSystem.applyModelViewMatrix();
         RenderSystem.enableDepthTest();
         RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
                 GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-        graphics.renderItem(itemStack, refX + x, refY + y);
+        graphics.renderItem(itemStack, drawX, drawY);
         if (renderDecoration) {
-            graphics.renderItemDecorations(minecraft.font, itemStack, refX + x, refY + y);
+            graphics.renderItemDecorations(minecraft.font, itemStack, drawX, drawY);
         }
         if (resetDepthTest) {
             RenderSystem.disableDepthTest();
         }
-        drawChildren(graphics, context, refX + x, refY + y, finalOpacity);
     }
 
     @Override

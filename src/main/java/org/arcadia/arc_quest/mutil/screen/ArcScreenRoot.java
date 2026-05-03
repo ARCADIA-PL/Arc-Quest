@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiRoot;
+import org.arcadia.arc_quest.mutil.render.ArcRenderQueue;
 import org.arcadia.arc_quest.mutil.theme.ArcTooltipRenderer;
 
 import java.util.List;
@@ -57,7 +58,10 @@ public class ArcScreenRoot extends ArcGuiRoot {
         List<Component> lines = getTooltipLines();
         ArcGuiContext context = getLastContext();
         if (context == null || lines == null || lines.isEmpty()) return;
-        ArcTooltipRenderer.render(graphics, minecraft.font, lines, Math.round(context.mouseX() * uiScale), Math.round(context.mouseY() * uiScale), context.screenWidth(), context.screenHeight());
+        int tooltipX = Math.round(context.mouseX() * uiScale);
+        int tooltipY = Math.round(context.mouseY() * uiScale);
+        ArcRenderQueue queue = getRenderQueue();
+        queue.tooltip(taskGraphics -> ArcTooltipRenderer.render(taskGraphics, minecraft.font, lines, tooltipX, tooltipY, context.screenWidth(), context.screenHeight()));
     }
 
     public void setUiScale(float uiScale) {

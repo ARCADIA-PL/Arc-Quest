@@ -5,6 +5,8 @@ import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.mutil.core.ArcGuiColor;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.render.ArcRenderQueue;
+import org.arcadia.arc_quest.mutil.render.ArcRenderQueueContext;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 
 public class ArcItemCardElement extends ArcGuiElement {
@@ -49,7 +51,11 @@ public class ArcItemCardElement extends ArcGuiElement {
         graphics.pose().translate(-(drawX + width / 2f), -(drawY + height / 2f), 0);
         ArcDrawUtil.drawAccentPanel(graphics, drawX, drawY, width, height, ArcGuiColor.withOpacity(0xAA111111, inheritedOpacity * opacity), ArcGuiColor.withOpacity(themeColor, inheritedOpacity * opacity), 2);
         if (!stack.isEmpty()) {
-            graphics.renderItem(stack, drawX + (width - 16) / 2, drawY + (height - 16) / 2);
+            int itemX = drawX + (width - 16) / 2;
+            int itemY = drawY + (height - 16) / 2;
+            ArcRenderQueue queue = ArcRenderQueueContext.current();
+            if (queue != null) queue.item(taskGraphics -> taskGraphics.renderItem(stack, itemX, itemY));
+            else graphics.renderItem(stack, itemX, itemY);
         }
         graphics.pose().popPose();
     }
