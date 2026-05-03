@@ -107,6 +107,14 @@ public final class ArcQuestNetwork {
 
         CHANNEL.registerMessage(
                 packetId++,
+                C2SClaimCollectionRewardPacket.class,
+                C2SClaimCollectionRewardPacket::encode,
+                C2SClaimCollectionRewardPacket::decode,
+                C2SClaimCollectionRewardPacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
                 S2COfferSubmitResultPacket.class,
                 S2COfferSubmitResultPacket::encode,
                 S2COfferSubmitResultPacket::decode,
@@ -336,6 +344,10 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendSubmitOffer(C2SSubmitOfferPacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
+
+    public static void sendClaimCollectionReward(C2SClaimCollectionRewardPacket packet) {
         CHANNEL.sendToServer(packet);
     }
 

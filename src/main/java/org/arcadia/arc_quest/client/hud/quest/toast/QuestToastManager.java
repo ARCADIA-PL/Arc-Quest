@@ -180,6 +180,9 @@ public final class QuestToastManager {
         QUEST_ACCEPTED(0x4FC3F7, "arc_quest.toast.prefix.quest_accepted"),
         QUEST_COMPLETED(0x66FF66, "arc_quest.toast.prefix.quest_completed"),
         QUEST_FAILED(0xFF6666, "arc_quest.toast.prefix.quest_failed"),
+        COLLECTION_ENTRY_DISCOVERED(0xA98BFF, "arc_quest.toast.prefix.collection_entry_discovered"),
+        COLLECTION_ENTRY_COMPLETED(0x7CFFB2, "arc_quest.toast.prefix.collection_entry_completed"),
+        COLLECTION_REWARD_UNLOCKED(0xFFD166, "arc_quest.toast.prefix.collection_reward_unlocked"),
         PHASE_ADVANCED(0xFFCC44, "arc_quest.toast.prefix.phase_advanced"),
         OBJECTIVE_COMPLETE(0x88DDFF, "arc_quest.toast.prefix.objective_complete");
 

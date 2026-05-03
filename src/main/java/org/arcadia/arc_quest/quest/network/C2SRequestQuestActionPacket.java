@@ -153,6 +153,7 @@ public class C2SRequestQuestActionPacket {
             case ABANDON -> ok ? Reason.QUEST_ABANDON_SUCCESS : Reason.QUEST_ABANDON_REJECTED;
             case CHOOSE -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
             case OPEN_CHAPTER_SHOP -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
+            case CLAIM_COLLECTION_REWARD -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
         };
     }
 
@@ -208,6 +209,7 @@ public class C2SRequestQuestActionPacket {
         ACCEPT,
         ABANDON,
         CHOOSE,
-        OPEN_CHAPTER_SHOP
+        OPEN_CHAPTER_SHOP,
+        CLAIM_COLLECTION_REWARD
     }
 }

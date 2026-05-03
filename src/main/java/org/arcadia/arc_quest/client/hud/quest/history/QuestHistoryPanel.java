@@ -109,6 +109,11 @@ public final class QuestHistoryPanel {
     }
 
     public static void trigger(String qid) {
+        QuestDefinition modeDef = QuestRegistry.get(ResourceLocation.tryParse(qid));
+        if (modeDef != null && modeDef.isCollectionQuest()) {
+            CollectionHistoryPanel.trigger(qid);
+            return;
+        }
         questId = qid;
         themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(qid, 0x5AD7FF);
         active = true; closing = false; enterTimer = 0f; exitTimer = 0f;

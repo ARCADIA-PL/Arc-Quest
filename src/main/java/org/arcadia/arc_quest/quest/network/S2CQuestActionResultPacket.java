@@ -76,6 +76,7 @@ public class S2CQuestActionResultPacket {
             case ABANDON -> "放弃任务";
             case CHOOSE -> "选择分支";
             case OPEN_CHAPTER_SHOP -> "打开章节商店";
+            case CLAIM_COLLECTION_REWARD -> "领取收集奖励";
         };
 
         String reason = switch (code) {
