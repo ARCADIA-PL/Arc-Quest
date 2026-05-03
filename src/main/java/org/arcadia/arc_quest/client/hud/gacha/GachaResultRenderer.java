@@ -31,8 +31,8 @@ public class GachaResultRenderer {
     private int resolvedThemeColor = 0xFFFFFF;
     private String cachedResultName = "";
     private String cachedAcknowledgeText = "";
-    private GachaResultRenderer() {
-    }
+
+    private GachaResultRenderer() {}
 
     public void showResult(GachaScreen parent, GachaShopDefinition shopDef, ClientGachaCache.DrawRecord result) {
         this.parentScreen = parent;
@@ -66,21 +66,14 @@ public class GachaResultRenderer {
         }
 
         if (currentState == State.EXIT) {
-            long exitElapsed = now - exitStartTime;
-            if (exitElapsed >= TIME_EXIT) {
+            if (now - exitStartTime >= TIME_EXIT) {
                 forceCloseAndConfirm();
                 return;
             }
         }
 
-        int frameW = 200;
-        int frameH = 100;
-        float baseScale = 1.3f;
-
-        float revealProgress = 1.0f;
-        float wipeProgress = 0.0f;
-        float driftX = 0f;
-        float alpha = 1.0f;
+        int frameW = 200, frameH = 100;
+        float baseScale = 1.3f, revealProgress = 1.0f, wipeProgress = 0.0f, driftX = 0f, alpha = 1.0f;
 
         if (currentState == State.ENTER) {
             float t = Math.min(1.0f, elapsed / TIME_ENTER);
@@ -96,49 +89,29 @@ public class GachaResultRenderer {
             alpha = 1.0f - (float) Math.pow(t, 2.0);
         }
 
-        float scaledW = frameW * baseScale;
-        float cx = screenWidth / 2f + driftX;
-        float cy = screenHeight / 2f;
+        float scaledW = frameW * baseScale, cx = screenWidth / 2f + driftX, cy = screenHeight / 2f;
+        int scX1 = (int) (cx - scaledW / 2f - 5), scX2 = (int) (cx + scaledW / 2f + 5);
 
-        int scX1 = (int) (cx - scaledW / 2f - 5);
-        int scX2 = (int) (cx + scaledW / 2f + 5);
-
-        if (currentState == State.ENTER) {
-            scX2 = (int) (cx - scaledW / 2f + scaledW * revealProgress);
-        } else if (currentState == State.EXIT) {
-            scX1 = (int) (cx - scaledW / 2f + scaledW * wipeProgress);
-        }
+        if (currentState == State.ENTER) scX2 = (int) (cx - scaledW / 2f + scaledW * revealProgress);
+        else if (currentState == State.EXIT) scX1 = (int) (cx - scaledW / 2f + scaledW * wipeProgress);
 
         if (scX2 <= scX1) return;
-
-        GachaItem targetItem = resolvedTargetItem;
-        int themeC = resolvedThemeColor;
-
         g.enableScissor(scX1, -1000, scX2, 10000);
 
+        // =========================================================================
+        // PASS 1: 纯 2D 渲染通道
+        // =========================================================================
         g.pose().pushPose();
         g.pose().translate(cx, cy, 0);
         g.pose().scale(baseScale, baseScale, 1f);
         g.pose().translate(-frameW / 2f, -frameH / 2f, 0);
 
         int safeAlpha = Math.max(0, Math.min(255, (int) (alpha * 255)));
-        int bgBase = ((int) (safeAlpha * 0.6f) << 24) | 0x05050A;
-        g.fill(0, 0, frameW, frameH, bgBase);
-        g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(themeC, (int) (safeAlpha * 0.3f)), 0x00000000);
+        g.fill(0, 0, frameW, frameH, ((int) (safeAlpha * 0.6f) << 24) | 0x05050A);
+        g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(resolvedThemeColor, (int) (safeAlpha * 0.3f)), 0x00000000);
+        HudRenderUtil.drawCyberneticEdge(g, 0, 0, frameH, resolvedThemeColor, safeAlpha);
 
-        // 【统一】使用机能风高级晶体侧边栏
-        HudRenderUtil.drawCyberneticEdge(g, 0, 0, frameH, themeC, safeAlpha);
-
-        if (targetItem != null) {
-            g.pose().pushPose();
-            g.pose().translate(45, frameH / 2f, 0);
-            g.pose().scale(3.0f, 3.0f, 1f);
-            g.pose().translate(-8, -8, 0);
-            g.renderItem(resolvedItemStack, 0, 0);
-            g.pose().popPose();
-        }
-
-        if (safeAlpha > 10 && targetItem != null) {
+        if (safeAlpha > 10 && resolvedTargetItem != null) {
             int textX = 90;
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
@@ -147,8 +120,7 @@ public class GachaResultRenderer {
 
             g.pose().pushPose();
             g.pose().scale(1.0f, 1.0f, 1f);
-            String nameStr = cachedResultName;
-            g.drawString(Minecraft.getInstance().font, nameStr, textX, 35, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
+            g.drawString(Minecraft.getInstance().font, cachedResultName, textX, 35, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
             g.pose().popPose();
 
             if (result.pityTriggered()) {
@@ -158,13 +130,22 @@ public class GachaResultRenderer {
                 g.pose().popPose();
             }
 
-            float wave = (float) (Math.sin(now / 200.0) * 0.5 + 0.5);
-            int blinkA = (int) (safeAlpha * (0.3f + 0.7f * wave));
-
+            int blinkA = (int) (safeAlpha * (0.3f + 0.7f * (float) (Math.sin(now / 200.0) * 0.5 + 0.5)));
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            String acknowledgeText = cachedAcknowledgeText;
-            g.drawString(Minecraft.getInstance().font, acknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(themeC, blinkA), false);
+            g.drawString(Minecraft.getInstance().font, cachedAcknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(resolvedThemeColor, blinkA), false);
+            g.pose().popPose();
+        }
+
+        // =========================================================================
+        // PASS 2: 纯 3D 渲染通道
+        // =========================================================================
+        if (resolvedTargetItem != null) {
+            g.pose().pushPose();
+            g.pose().translate(45, frameH / 2f, 0);
+            g.pose().scale(3.0f, 3.0f, 1f);
+            g.pose().translate(-8, -8, 0);
+            g.renderItem(resolvedItemStack, 0, 0);
             g.pose().popPose();
         }
 
@@ -177,18 +158,11 @@ public class GachaResultRenderer {
         resolvedThemeColor = resolvedTargetItem != null ? shopDef.getEffectiveThemeColor(resolvedTargetItem) : 0xFFFFFF;
         resolvedItemStack = resolvedTargetItem != null ? resolvedTargetItem.getItemStack() : ItemStack.EMPTY;
         cachedAcknowledgeText = Component.translatable("arc_quest.gui.gacha.result.acknowledge").getString();
-        if (!resolvedItemStack.isEmpty()) {
-            String rawName = ">_" + resolvedItemStack.getHoverName().getString() + " x" + result.actualCount();
-            cachedResultName = Minecraft.getInstance().font.plainSubstrByWidth(rawName, 200 - 90 - 5);
-        } else {
-            cachedResultName = "";
-        }
+        cachedResultName = !resolvedItemStack.isEmpty() ? Minecraft.getInstance().font.plainSubstrByWidth(">_" + resolvedItemStack.getHoverName().getString() + " x" + result.actualCount(), 200 - 90 - 5) : "";
     }
 
     public boolean mouseClicked() {
-        if (!active || currentState == State.EXIT) return false;
-        if (currentState == State.ENTER && (Util.getMillis() - startTime < TIME_ENTER)) return false;
-
+        if (!active || currentState == State.EXIT || (currentState == State.ENTER && (Util.getMillis() - startTime < TIME_ENTER))) return false;
         this.currentState = State.EXIT;
         this.exitStartTime = Util.getMillis();
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f));

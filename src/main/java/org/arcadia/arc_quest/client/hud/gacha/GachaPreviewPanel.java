@@ -17,13 +17,13 @@ import java.util.List;
 
 public class GachaPreviewPanel {
 
-    // 过渡到 Roller
-    private static final float WIPE_SPLIT_MULT = 1.4f;       // 上下撕裂位移幅度倍率
-    private static final float WIPE_FADE_SPEED = 2.8f;       // 其余元素透明度衰减倍率
-    private static final float WIPE_SHRINK_SPEED = 3.5f;     // 中心物品图标缩小倍率
-    private static final float WIPE_SHRINK_POWER = 3.0f;     // 物品图标缩小的曲线次幂
+    private static final float WIPE_SPLIT_MULT = 1.4f;
+    private static final float WIPE_FADE_SPEED = 2.8f;
+    private static final float WIPE_SHRINK_SPEED = 3.5f;
+    private static final float WIPE_SHRINK_POWER = 3.0f;
     private static final float SHORTFALL_TOOLTIP_DURATION = 1.6f;
     private static final float TIP_HOVER_DELAY = 0.05f;
+
     private final GachaScreen parent;
     private int width, height;
     private double scrollOffset = 0;
@@ -58,14 +58,9 @@ public class GachaPreviewPanel {
     }
 
     private static boolean isCannotAffordFailure(String failReason) {
-        if (failReason == null || failReason.isEmpty()) {
-            return false;
-        }
+        if (failReason == null || failReason.isEmpty()) return false;
         String key = failReason.toLowerCase();
-        return "cannot_afford".equals(key)
-                || key.contains("cannot_afford")
-                || key.contains("insufficient")
-                || key.endsWith(".cannot_afford");
+        return "cannot_afford".equals(key) || key.contains("cannot_afford") || key.contains("insufficient") || key.endsWith(".cannot_afford");
     }
 
     public void init(int w, int h) {
@@ -86,7 +81,6 @@ public class GachaPreviewPanel {
 
         this.snapshotPityProgress = cache.getPityProgress(shopId);
         this.snapshotHistory = new ArrayList<>(cache.getDrawHistory(shopId));
-
         this.snapshotCanDraw = cache.canDraw(shopId);
         this.snapshotRemainingDraws = cache.getRemainingDraws(shopId);
         this.snapshotFailReason = cache.getLastFailReason(shopId);
@@ -94,20 +88,25 @@ public class GachaPreviewPanel {
         this.snapshotCooldownText = cache.getCooldownText(shopId);
     }
 
+    // 【终极优化：内联矩形拼接边框】
+    private void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
+        g.fill(x, y, x + w, y + thickness, color);
+        g.fill(x, y + h - thickness, x + w, y + h, color);
+        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
+        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
+    }
+
     private Layout getLayout() {
         int termW = Math.max(140, Math.min(220, (int) (width * 0.22f)));
         int termX = width - 10 - termW;
-
         int gridW = Math.max(400, (int) (width * 0.55f));
         int gridX = width / 2 - gridW / 2;
         int mainCX = width / 2;
-
         int topH = Math.max(100, (int) (height * 0.28f));
         int btnH = 28;
         int btnW = Math.max(160, Math.min(280, (int) (gridW * 0.5f)));
         int btnX = mainCX - btnW / 2;
         int btnY = height - btnH - 15;
-
         int gridY = topH + 10;
         int gridH = btnY - gridY - 15;
         return new Layout(termW, termX, gridX, gridW, mainCX, topH, gridY, gridH, btnW, btnH, btnX, btnY);
@@ -118,11 +117,7 @@ public class GachaPreviewPanel {
         if (easeProgress <= 0.01f) return;
 
         boolean isWiping = rollTransition > 0.001f;
-
-        // 【极速擦除升级】：采用二次幂加速曲线，让开始位移的瞬间更具爆发力
         float rollEase = isWiping ? (float) Math.pow(rollTransition, 1.8) : 0f;
-
-        // 【极速透明升级】：按配置的超高倍率在擦除前期瞬间降下所有元素的 Alpha
         float wipeAlphaMult = isWiping ? Math.max(0f, 1f - (rollTransition * WIPE_FADE_SPEED)) : 1f;
         float finalGlobalAlpha = Math.max(0, easeProgress) * wipeAlphaMult;
 
@@ -133,30 +128,22 @@ public class GachaPreviewPanel {
             renderContent(g, l, mx, my, dt, finalGlobalAlpha, easeProgress, false, isClosing, 0, height, 0f, waiting, 0f);
         } else {
             int centerY = height / 2;
-
-            // 【极速位移升级】：应用幅度配置倍率，让上下半区以夸张的速度扯开
             float splitOffset = (height / 2f) * rollEase * WIPE_SPLIT_MULT;
             int scissorGap = (int) ((height / 2f) * rollEase * 1.05f * WIPE_SPLIT_MULT);
 
             int topScY1 = 0;
             int topScY2 = Math.max(0, centerY - scissorGap);
-            if (topScY2 > topScY1) {
-                renderContent(g, l, -1000, -1000, dt, finalGlobalAlpha, easeProgress, true, isClosing, topScY1, topScY2, -splitOffset, waiting, rollTransition);
-            }
+            if (topScY2 > topScY1) renderContent(g, l, -1000, -1000, dt, finalGlobalAlpha, easeProgress, true, isClosing, topScY1, topScY2, -splitOffset, waiting, rollTransition);
 
             int botScY1 = Math.min(height, centerY + scissorGap);
             int botScY2 = height;
-            if (botScY2 > botScY1) {
-                renderContent(g, l, -1000, -1000, dt, finalGlobalAlpha, easeProgress, true, isClosing, botScY1, botScY2, splitOffset, waiting, rollTransition);
-            }
+            if (botScY2 > botScY1) renderContent(g, l, -1000, -1000, dt, finalGlobalAlpha, easeProgress, true, isClosing, botScY1, botScY2, splitOffset, waiting, rollTransition);
         }
     }
 
     private void renderContent(GuiGraphics g, Layout l, int mx, int my, float dt, float alpha, float easeProgress, boolean isWiping, boolean isClosing, int wipeScY1, int wipeScY2, float splitOffset, boolean waiting, float rollTransition) {
         float outEase = (float) Math.pow(1.0f - easeProgress, 3.0);
-
-        float slideX = outEase * 25f;
-        float slideY = outEase * 15f;
+        float slideX = outEase * 25f, slideY = outEase * 15f;
 
         if (isWiping) g.enableScissor(0, wipeScY1, width, wipeScY2);
         g.pose().pushPose();
@@ -212,41 +199,40 @@ public class GachaPreviewPanel {
             GachaItem item = items.get(lastHoveredIndex);
             int themeC = parent.getShopDef().getEffectiveThemeColor(item);
 
-            if (!isWiping && !isClosing) {
-                previewSwitchAnim = HudAnimUtil.step(previewSwitchAnim, 1f, 8f, 0.016f);
-            }
+            if (!isWiping && !isClosing) previewSwitchAnim = HudAnimUtil.step(previewSwitchAnim, 1f, 8f, 0.016f);
             float ease = HudAnimUtil.easeOutCubic(previewSwitchAnim);
 
             int safeA = (int) (255 * alpha * ease * previewAlphaAnim);
             float pulseScale = 1.0f + (float) Math.sin(Util.getMillis() / 600.0) * 0.02f;
-
             float breatheAlpha = 0.6f + 0.4f * (float) Math.sin(Util.getMillis() / 250.0);
             int glowA = (int) (150 * alpha * ease * previewAlphaAnim * breatheAlpha);
 
-            g.fill(-50, 18, 50, 20, HudAnimUtil.withAlpha(themeC, safeA));
-            g.fillGradient(-65, -5, 65, 18, 0x00000000, HudAnimUtil.withAlpha(themeC, glowA));
-
-            // 【急速缩小升级】：计算擦除状态下特有的极速坍缩缩放比
             float wipeShrinkScale = isWiping ? Math.max(0f, 1f - (rollTransition * WIPE_SHRINK_SPEED)) : 1f;
-
             float dynamicScale = isClosing ? (float) Math.pow(alpha, 4.0) : (float) Math.pow(alpha, 0.5);
-            // 将擦除的急速坍缩次幂叠加上去
             dynamicScale *= (float) Math.pow(wipeShrinkScale, WIPE_SHRINK_POWER);
-
             float finalIconScale = 2.5f * pulseScale * dynamicScale;
 
-            g.pose().pushPose();
-            g.pose().translate(0, -2, 0);
-            g.pose().scale(finalIconScale, finalIconScale, 1f);
-            g.pose().translate(-8, -8, 0);
-            g.renderItem(item.getItemStack(), 0, 0);
-            g.pose().popPose();
+            // =========================================================================
+            // PASS 1: 纯 2D 背景及文本
+            // =========================================================================
+            g.fill(-50, 18, 50, 20, HudAnimUtil.withAlpha(themeC, safeA));
+            g.fillGradient(-65, -5, 65, 18, 0x00000000, HudAnimUtil.withAlpha(themeC, glowA));
 
             if (safeA > 5) {
                 String itemName = getItemName(lastHoveredIndex, item);
                 g.drawCenteredString(Minecraft.getInstance().font, itemName, 0, 28, HudAnimUtil.withAlpha(themeC, safeA));
                 renderCompactPityBar(g, 0, 42, 100, 4, safeA, themeC);
             }
+
+            // =========================================================================
+            // PASS 2: 纯 3D 原版物品
+            // =========================================================================
+            g.pose().pushPose();
+            g.pose().translate(0, -2, 0);
+            g.pose().scale(finalIconScale, finalIconScale, 1f);
+            g.pose().translate(-8, -8, 0);
+            g.renderItem(item.getItemStack(), 0, 0);
+            g.pose().popPose();
         }
         g.pose().popPose();
     }
@@ -256,11 +242,10 @@ public class GachaPreviewPanel {
         int pityThreshold = shopDef.getPityConfig() != null ? shopDef.getPityConfig().getPityThreshold() : 0;
         if (pityThreshold <= 0) return;
 
-        int current = this.snapshotPityProgress;
-        if (current < 0) current = 0;
+        int current = Math.max(0, this.snapshotPityProgress);
         float percent = (float) current / pityThreshold;
-
         int startX = centerX - w / 2;
+
         g.fill(startX, y, startX + w, y + h, HudAnimUtil.withAlpha(0x222222, alpha));
         int fillW = (int) (w * percent);
         g.fill(startX, y, startX + fillW, y + h, HudAnimUtil.withAlpha(themeC, alpha));
@@ -276,12 +261,9 @@ public class GachaPreviewPanel {
 
     private void renderItemGrid(GuiGraphics g, Layout l, int mx, int my, float dt, float alpha, float easeProgress, boolean isWiping, boolean isClosing, int wipeY1, int wipeY2, float splitOffset) {
         List<GachaItem> items = parent.getShopDef().getGachaPool().getItems();
-
-        int gap = 8;
-        int cols = Math.max(4, (l.gridW() + gap) / 100);
+        int gap = 8, cols = Math.max(4, (l.gridW() + gap) / 100);
         int cardW = (l.gridW() - (cols - 1) * gap) / cols;
         int cardH = (int) (cardW * 0.5625f);
-
         int totalRows = (int) Math.ceil((double) items.size() / cols);
         int maxScroll = Math.max(0, totalRows * (cardH + gap) - l.gridH());
 
@@ -290,18 +272,13 @@ public class GachaPreviewPanel {
             scrollOffset += (targetScroll - scrollOffset) * Math.min(1.0, dt * 10.0);
         }
 
-        int gridScY1 = l.gridY() - 10;
-        int gridScY2 = l.gridY() + l.gridH() + 10;
-
+        int gridScY1 = l.gridY() - 10, gridScY2 = l.gridY() + l.gridH() + 10;
         if (isWiping) {
-            int localWipeY1 = (int) (wipeY1 - splitOffset);
-            int localWipeY2 = (int) (wipeY2 - splitOffset);
-            gridScY1 = Math.max(gridScY1, localWipeY1);
-            gridScY2 = Math.min(gridScY2, localWipeY2);
+            gridScY1 = Math.max(gridScY1, (int) (wipeY1 - splitOffset));
+            gridScY2 = Math.min(gridScY2, (int) (wipeY2 - splitOffset));
         }
 
         if (gridScY2 <= gridScY1) return;
-
         g.enableScissor(l.gridX() - 10, gridScY1, l.gridX() + l.gridW() + 10, gridScY2);
 
         int currentHover = -1;
@@ -312,51 +289,79 @@ public class GachaPreviewPanel {
         int firstIndex = Math.max(0, firstRow * cols);
         int lastIndex = Math.min(items.size() - 1, (lastRow + 1) * cols - 1);
 
+        // =========================================================================
+        // PASS 1: 纯 2D 渲染通道 (背景、边框、遮罩、文字、光效)
+        // =========================================================================
         for (int i = firstIndex; i <= lastIndex; i++) {
             float staggerProgress = Math.max(0f, Math.min(1f, easeProgress * 1.5f - i * 0.05f));
             float itemCascadeEase = HudAnimUtil.easeOutCubic(staggerProgress);
             if (itemCascadeEase <= 0.01f) continue;
 
             GachaItem item = items.get(i);
-            int col = i % cols;
-            int row = i / cols;
-
-            int drawX = l.gridX() + col * (cardW + gap);
-            int drawY = l.gridY() + row * (cardH + gap) - (int) scrollOffset;
-
-            float cascadeYOffset = (1.0f - itemCascadeEase) * 10f;
-            drawY += cascadeYOffset;
-
+            int drawX = l.gridX() + (i % cols) * (cardW + gap);
+            int drawY = l.gridY() + (i / cols) * (cardH + gap) - (int) scrollOffset + (int) ((1.0f - itemCascadeEase) * 10f);
             if (drawY + cardH < l.gridY() - 20 || drawY > l.gridY() + l.gridH() + 20) continue;
 
             boolean hov = alpha >= 0.99f && mx >= drawX && mx < drawX + cardW && my >= drawY && my < drawY + cardH;
             if (hov) currentHover = i;
 
-            if (!isWiping && !isClosing) {
-                hoverAnims[i] = HudAnimUtil.step(hoverAnims[i], hov ? 1f : 0f, 10f, dt);
-            }
+            if (!isWiping && !isClosing) hoverAnims[i] = HudAnimUtil.step(hoverAnims[i], hov ? 1f : 0f, 10f, dt);
             float hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
             int themeC = parent.getShopDef().getEffectiveThemeColor(item);
 
-            float baseCardScale = 0.9f;
-            float cardScale = itemCascadeEase * baseCardScale * (1.0f + hEase * 0.05f);
+            float cardScale = itemCascadeEase * 0.9f * (1.0f + hEase * 0.05f);
+            int safeA = (int) (255 * alpha * itemCascadeEase);
+            int bgAlpha = (int) ((0x1A + 0x22 * hEase) * alpha * itemCascadeEase);
+            float breatheAlpha = 1.0f + 0.5f * (float) Math.sin(Util.getMillis() / 200.0);
+            int pulseGlowA = (int) ((30 + 50 * hEase * breatheAlpha) * alpha * itemCascadeEase);
 
             g.pose().pushPose();
             g.pose().translate(drawX + cardW / 2f, drawY + cardH / 2f, 0);
             g.pose().scale(cardScale, cardScale, 1f);
             g.pose().translate(-(drawX + cardW / 2f), -(drawY + cardH / 2f), 0);
 
-            int safeA = (int) (255 * alpha * itemCascadeEase);
-            int bgAlpha = (int) ((0x1A + 0x22 * hEase) * alpha * itemCascadeEase);
-            float breatheAlpha = 1.0f + 0.5f * (float) Math.sin(Util.getMillis() / 200.0);
-            int pulseGlowA = (int) ((30 + 50 * hEase * breatheAlpha) * alpha * itemCascadeEase);
-
             g.fill(drawX, drawY, drawX + cardW, drawY + cardH, (bgAlpha << 24) | 0x05050A);
-
             HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, cardH, themeC, safeA);
-
             g.fillGradient(drawX + 3, drawY, drawX + cardW, drawY + cardH, HudAnimUtil.withAlpha(themeC, pulseGlowA), 0x00000000);
             g.fillGradient(drawX + 3, drawY + cardH - (int) (24 * responsiveScale), drawX + cardW, drawY + cardH, 0x00000000, HudAnimUtil.withAlpha(0x000000, (int) (safeA * 0.9f)));
+
+            String name = getCachedItemName(i, item);
+            float textScale = Math.max(0.6f, 0.85f * responsiveScale);
+            int maxTextW = (int) ((cardW - 8) / textScale);
+            if (getCachedItemNameWidth(i, item) > maxTextW) name = Minecraft.getInstance().font.plainSubstrByWidth(name, maxTextW - 6) + "..";
+
+            if (safeA > 5) {
+                g.pose().pushPose();
+                float textDrawX = drawX + cardW - (Minecraft.getInstance().font.width(name) * textScale) - 4;
+                float textDrawY = drawY + cardH - (8 * textScale) - 4;
+                g.pose().translate(textDrawX, textDrawY, 0);
+                g.pose().scale(textScale, textScale, 1f);
+                g.drawString(Minecraft.getInstance().font, name, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
+                g.pose().popPose();
+            }
+            g.pose().popPose();
+        }
+
+        // =========================================================================
+        // PASS 2: 纯 3D 渲染通道 (只渲染物品)
+        // =========================================================================
+        for (int i = firstIndex; i <= lastIndex; i++) {
+            float staggerProgress = Math.max(0f, Math.min(1f, easeProgress * 1.5f - i * 0.05f));
+            float itemCascadeEase = HudAnimUtil.easeOutCubic(staggerProgress);
+            if (itemCascadeEase <= 0.01f) continue;
+
+            GachaItem item = items.get(i);
+            int drawX = l.gridX() + (i % cols) * (cardW + gap);
+            int drawY = l.gridY() + (i / cols) * (cardH + gap) - (int) scrollOffset + (int) ((1.0f - itemCascadeEase) * 10f);
+            if (drawY + cardH < l.gridY() - 20 || drawY > l.gridY() + l.gridH() + 20) continue;
+
+            float hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
+            float cardScale = itemCascadeEase * 0.9f * (1.0f + hEase * 0.05f);
+
+            g.pose().pushPose();
+            g.pose().translate(drawX + cardW / 2f, drawY + cardH / 2f, 0);
+            g.pose().scale(cardScale, cardScale, 1f);
+            g.pose().translate(-(drawX + cardW / 2f), -(drawY + cardH / 2f), 0);
 
             g.pose().pushPose();
             g.pose().translate(drawX + cardW / 2f, drawY + cardH / 2f - (3 * responsiveScale), 0);
@@ -365,24 +370,6 @@ public class GachaPreviewPanel {
             g.pose().translate(-8, -8, 0);
             g.renderItem(item.getItemStack(), 0, 0);
             g.pose().popPose();
-
-            String name = getCachedItemName(i, item);
-            float textScale = Math.max(0.6f, 0.85f * responsiveScale);
-            int maxTextW = (int) ((cardW - 8) / textScale);
-            if (getCachedItemNameWidth(i, item) > maxTextW) {
-                name = Minecraft.getInstance().font.plainSubstrByWidth(name, maxTextW - 6) + "..";
-            }
-            int rawTextW = Minecraft.getInstance().font.width(name);
-
-            if (safeA > 5) {
-                g.pose().pushPose();
-                float textDrawX = drawX + cardW - (rawTextW * textScale) - 4;
-                float textDrawY = drawY + cardH - (8 * textScale) - 4;
-                g.pose().translate(textDrawX, textDrawY, 0);
-                g.pose().scale(textScale, textScale, 1f);
-                g.drawString(Minecraft.getInstance().font, name, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
-                g.pose().popPose();
-            }
 
             g.pose().popPose();
         }
@@ -403,9 +390,7 @@ public class GachaPreviewPanel {
                 tooltipHoverTimer = 0f;
             }
             if (tooltipHoverIndex != -1) {
-                if (tooltipHoverTimer < TIP_HOVER_DELAY) {
-                    tooltipHoverTimer += dt;
-                }
+                if (tooltipHoverTimer < TIP_HOVER_DELAY) tooltipHoverTimer += dt;
             } else {
                 tooltipHoverTimer = 0f;
             }
@@ -428,63 +413,40 @@ public class GachaPreviewPanel {
     }
 
     private String getCachedItemName(int index, GachaItem item) {
-        if (itemNameCache == null || index < 0 || index >= itemNameCache.length) {
-            return item.getItemStack().getHoverName().getString();
-        }
-        if (itemNameCache[index] == null) {
-            itemNameCache[index] = item.getItemStack().getHoverName().getString();
-        }
+        if (itemNameCache == null || index < 0 || index >= itemNameCache.length) return item.getItemStack().getHoverName().getString();
+        if (itemNameCache[index] == null) itemNameCache[index] = item.getItemStack().getHoverName().getString();
         return itemNameCache[index];
     }
 
     private int getCachedItemNameWidth(int index, GachaItem item) {
-        if (itemNameWidthCache == null || index < 0 || index >= itemNameWidthCache.length) {
-            return Minecraft.getInstance().font.width(item.getItemStack().getHoverName());
-        }
-        if (itemNameWidthCache[index] == 0) {
-            itemNameWidthCache[index] = Minecraft.getInstance().font.width(getCachedItemName(index, item));
-        }
+        if (itemNameWidthCache == null || index < 0 || index >= itemNameWidthCache.length) return Minecraft.getInstance().font.width(item.getItemStack().getHoverName());
+        if (itemNameWidthCache[index] == 0) itemNameWidthCache[index] = Minecraft.getInstance().font.width(getCachedItemName(index, item));
         return itemNameWidthCache[index];
     }
 
     private void renderItemTooltip(GuiGraphics g, GachaItem item, int mouseX, int mouseY, float dt, float alpha, boolean isClosing) {
         var font = Minecraft.getInstance().font;
-        int padding = 10;
-        int cyberEdgeWidth = 3;
+        int padding = 10, cyberEdgeWidth = 3;
 
-        // --- 1. 数据准备与排版计算 ---
         String rarityVal = item.getRarity().getName().toUpperCase();
-        String countVal = (item.getMinCount() == item.getMaxCount()) ?
-                String.valueOf(item.getMinCount()) :
-                item.getMinCount() + " - " + item.getMaxCount();
+        String countVal = (item.getMinCount() == item.getMaxCount()) ? String.valueOf(item.getMinCount()) : item.getMinCount() + " - " + item.getMaxCount();
         String weightVal = String.valueOf(item.getBaseWeight());
 
-        // 标签硬编码为纯英文，极大提升机能风 UI 的视觉秩序感
-        String lblRarity = "RARITY";
-        String lblYield = "YIELD";
-        String lblWeight = "WEIGHT";
-
+        String lblRarity = "RARITY", lblYield = "YIELD", lblWeight = "WEIGHT";
         int nameW = font.width(item.getItemStack().getHoverName());
         int maxKeyW = Math.max(font.width(lblRarity), Math.max(font.width(lblYield), font.width(lblWeight)));
         int maxValW = Math.max(font.width(rarityVal), Math.max(font.width(countVal), font.width(weightVal)));
 
-        // 动态计算目标尺寸 (宽度: 物品名与键值对取最大值; 高度: 标题 + 分割线 + 3行数据 + 保底标识)
         int targetW = Math.max(nameW, maxKeyW + maxValW + 40) + padding * 2 + cyberEdgeWidth;
         int targetH = padding * 2 + 14 + 6 + (3 * 12) + (item.countsTowardsPity() ? 14 : 0);
 
-        int targetX = mouseX + 12;
-        int targetY = mouseY - 12;
-
+        int targetX = mouseX + 12, targetY = mouseY - 12;
         if (targetX + targetW > width) targetX = mouseX - targetW - 8;
         if (targetY + targetH > height) targetY = height - targetH - 2;
         if (targetY < 0) targetY = 2;
 
-        // --- 2. 丝滑形变计算 (保留原有逻辑) ---
         if (animTipW == 0 || Math.abs(animTipW - targetW) > 50) {
-            animTipX = targetX;
-            animTipY = targetY;
-            animTipW = targetW;
-            animTipH = targetH;
+            animTipX = targetX; animTipY = targetY; animTipW = targetW; animTipH = targetH;
         } else {
             float morphSpeed = 15f;
             animTipX += (targetX - animTipX) * Math.min(1f, dt * morphSpeed);
@@ -496,23 +458,15 @@ public class GachaPreviewPanel {
         float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : HudAnimUtil.easeOutCubic(tooltipTipAlpha);
         if (scale < 0.01f) return;
 
-        int drawX = (int) animTipX;
-        int drawY = (int) animTipY;
-        int drawW = (int) animTipW;
-        int drawH = (int) animTipH;
-
+        int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;
         float finalTipAlpha = tooltipTipAlpha * alpha;
-        int bgAlpha = (int) (0x96 * finalTipAlpha);
-        int borderAlpha = (int) (0x66 * finalTipAlpha);
-        int safeAlpha = (int) (255 * finalTipAlpha);
+        int bgAlpha = (int) (0x96 * finalTipAlpha), borderAlpha = (int) (0x66 * finalTipAlpha), safeAlpha = (int) (255 * finalTipAlpha);
         int themeColor = parent.getShopDef().getEffectiveThemeColor(item);
 
-        // --- 3. 背景与边框渲染 ---
         g.pose().pushPose();
         g.pose().translate(0, 0, 400);
 
-        float centerX = drawX + drawW / 2f;
-        float centerY = drawY + drawH / 2f;
+        float centerX = drawX + drawW / 2f, centerY = drawY + drawH / 2f;
         g.pose().translate(centerX, centerY, 0);
         g.pose().scale(scale, scale, 1f);
         g.pose().translate(-centerX, -centerY, 0);
@@ -524,38 +478,26 @@ public class GachaPreviewPanel {
 
         HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, themeColor, safeAlpha);
 
-        // --- 4. 高级机能风内部排版渲染 ---
         g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+        int currentY = drawY + padding, leftX = drawX + cyberEdgeWidth + padding, rightX = drawX + drawW - padding;
 
-        int currentY = drawY + padding;
-        int leftX = drawX + cyberEdgeWidth + padding;
-        int rightX = drawX + drawW - padding;
-
-        // 物品标题
         g.drawString(font, item.getItemStack().getHoverName(), leftX, currentY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
         currentY += 14;
 
-        // 主题色精美分割线
         g.fill(leftX, currentY, rightX, currentY + 1, HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * 0.3f)));
         g.fill(leftX, currentY, leftX + 20, currentY + 1, HudAnimUtil.withAlpha(themeColor, safeAlpha));
         currentY += 6;
 
-        // RARITY
         g.drawString(font, lblRarity, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
         g.drawString(font, rarityVal, rightX - font.width(rarityVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
         currentY += 12;
-
-        // YIELD
         g.drawString(font, lblYield, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
         g.drawString(font, countVal, rightX - font.width(countVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
         currentY += 12;
-
-        // WEIGHT
         g.drawString(font, lblWeight, leftX, currentY, HudAnimUtil.withAlpha(0x666666, safeAlpha), true);
         g.drawString(font, weightVal, rightX - font.width(weightVal), currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
         currentY += 12;
 
-        // 保底标识 (如果计入保底，添加醒目提示)
         if (item.countsTowardsPity()) {
             currentY += 2;
             g.fill(leftX, currentY + 2, leftX + 2, currentY + 6, HudAnimUtil.withAlpha(themeColor, safeAlpha));
@@ -566,19 +508,15 @@ public class GachaPreviewPanel {
         g.pose().popPose();
     }
 
-
     private void renderShortfallTooltip(GuiGraphics g, Layout l, float alpha, int drawX) {
         var font = Minecraft.getInstance().font;
         List<CostShortfallLine> shortfalls = snapshotShortfall;
-        if (shortfallTooltipAnim <= 0f || shortfalls == null || shortfalls.isEmpty()) {
-            return;
-        }
+        if (shortfallTooltipAnim <= 0f || shortfalls == null || shortfalls.isEmpty()) return;
 
         float ease = HudAnimUtil.easeOutCubic(shortfallTooltipAnim);
         int safeAlpha = (int) (220 * alpha * ease);
         if (safeAlpha <= 5) return;
 
-        // --- 1. 同步 TradeScreen 的排版尺寸计算 ---
         int padding = 10;
         Component summaryTitle = Component.translatable("arc_quest.gui.trade.tooltip.shortfall_summary");
         int boxW = font.width(summaryTitle) + 40;
@@ -588,51 +526,34 @@ public class GachaPreviewPanel {
             boxW = Math.max(boxW, lineW);
         }
         boxW += padding * 2;
-
-        // 警告顶部分割线与标题高度(18) + 每个短缺项高度(18)
         int boxH = padding * 2 + 18 + (shortfalls.size() * 18);
-
         int boxX = drawX + l.btnW() / 2 - boxW / 2;
         int boxY = l.btnY() - boxH - 8;
 
-        // --- 2. 背景与边框 ---
         g.fill(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
         g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int) (40 * alpha * ease)), 0);
-        HudAnimUtil.drawFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
+        drawFastFrame(g, boxX, boxY, boxW, boxH, 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
 
-        // --- 3. 核心可视化内容排版 ---
         int currentY = boxY + padding;
-
-        // 机能风红色警告分割线
         g.fill(boxX + padding, currentY, boxX + boxW - padding, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, (int) (safeAlpha * 0.2f)));
         g.fill(boxX + padding, currentY, boxX + padding + 40, currentY + 1, HudAnimUtil.withAlpha(0xFF3333, safeAlpha));
         currentY += 6;
 
-        // 摘要标题
         g.drawString(font, summaryTitle, boxX + padding, currentY, HudAnimUtil.withAlpha(0xFF5555, safeAlpha), true);
         currentY += 12;
 
-        // 短缺列表渲染 (完全复用高级数据可视化方案)
         for (CostShortfallLine sf : shortfalls) {
-            // 左侧红点
             g.fill(boxX + padding, currentY + 3, boxX + padding + 2, currentY + 7, HudAnimUtil.withAlpha(0xFF4444, safeAlpha));
-
-            // 物品名称
             g.drawString(font, sf.label(), boxX + padding + 6, currentY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
 
-            // 缺失数量 (右边缘对齐)
             if (sf.missing() > 0) {
                 String missingTxt = "-" + sf.missing();
-                int mWidth = font.width(missingTxt);
-                g.drawString(font, missingTxt, boxX + boxW - padding - mWidth, currentY, HudAnimUtil.withAlpha(0xFF3333, safeAlpha), true);
+                g.drawString(font, missingTxt, boxX + boxW - padding - font.width(missingTxt), currentY, HudAnimUtil.withAlpha(0xFF3333, safeAlpha), true);
             }
-
             currentY += 10;
 
-            // 微型进度条与库存状态
             if (sf.required() > 0) {
                 String metaTxt = sf.owned() + " / " + sf.required();
-
                 g.pose().pushPose();
                 g.pose().translate(boxX + padding + 6, currentY, 0);
                 g.pose().scale(0.8f, 0.8f, 1f);
@@ -640,18 +561,12 @@ public class GachaPreviewPanel {
                 g.pose().popPose();
 
                 int metaWidth = (int) (font.width(metaTxt) * 0.8f);
-                int barX = boxX + padding + 6 + metaWidth + 6;
-                int barW = boxW - padding * 2 - (barX - boxX) - 5;
+                int barX = boxX + padding + 6 + metaWidth + 6, barW = boxW - padding * 2 - (barX - boxX) - 5;
 
                 if (barW > 10) {
-                    float pct = Math.min(1f, (float) sf.owned() / sf.required());
-                    int fillW = (int) (barW * pct);
-                    // 暗红底槽
+                    int fillW = (int) (barW * Math.min(1f, (float) sf.owned() / sf.required()));
                     g.fill(barX, currentY + 2, barX + barW, currentY + 4, HudAnimUtil.withAlpha(0x442222, safeAlpha));
-                    // 亮红填充
-                    if (fillW > 0) {
-                        g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
-                    }
+                    if (fillW > 0) g.fill(barX, currentY + 2, barX + fillW, currentY + 4, HudAnimUtil.withAlpha(0xAA3333, safeAlpha));
                 }
             }
             currentY += 8;
@@ -663,11 +578,8 @@ public class GachaPreviewPanel {
         if (safeA <= 5) return;
         int termColor = HudAnimUtil.blend(parent.getShopDef().getThemeColor(), 0x00FFFF, 0.15f);
 
-        int h = height - 60;
-        int y = 30;
-
+        int h = height - 60, y = 30, spineX = l.termX() + l.termW();
         g.pose().pushPose();
-        int spineX = l.termX() + l.termW();
 
         g.fill(spineX, y, spineX + 1, y + h, HudAnimUtil.withAlpha(termColor, (int) (safeA * 0.4f)));
         g.fill(spineX - 4, y, spineX + 2, y + 2, HudAnimUtil.withAlpha(termColor, safeA));
@@ -681,60 +593,41 @@ public class GachaPreviewPanel {
         }
 
         String title = "// UPLINK.LOG";
-        int titleW = Minecraft.getInstance().font.width(title);
-        int titleX = spineX - 10 - titleW;
-
+        int titleX = spineX - 10 - Minecraft.getInstance().font.width(title);
         g.drawString(Minecraft.getInstance().font, title, titleX, y, HudAnimUtil.withAlpha(termColor, safeA), true);
 
-        int textStartX = titleX + 4;
-        int maxTextW = (spineX - 10) - textStartX;
-
+        int textStartX = titleX + 4, maxTextW = (spineX - 10) - textStartX;
         List<ClientGachaCache.DrawRecord> history = this.snapshotHistory;
-
         if (lastHistorySize == -1) lastHistorySize = history.size();
 
         if (!isWiping && !isClosing && history.size() > lastHistorySize) {
-            logRollAnim = 1.0f;
-            lastHistorySize = history.size();
+            logRollAnim = 1.0f; lastHistorySize = history.size();
         }
-        if (!isWiping && !isClosing && logRollAnim > 0) {
-            logRollAnim = Math.max(0, logRollAnim - dt * 6.0f);
-        }
+        if (!isWiping && !isClosing && logRollAnim > 0) logRollAnim = Math.max(0, logRollAnim - dt * 6.0f);
 
-        float rollEase = HudAnimUtil.easeOutCubic(1.0f - logRollAnim);
-        int startY = y + 22;
-        float lineHeight = 14f;
-        int maxRecords = Math.max(5, (int) ((h - 30) / lineHeight));
-        int limit = Math.min(maxRecords, history.size());
+        float rollEase = HudAnimUtil.easeOutCubic(1.0f - logRollAnim), lineHeight = 14f;
+        int startY = y + 22, maxRecords = Math.max(5, (int) ((h - 30) / lineHeight)), limit = Math.min(maxRecords, history.size());
 
         if (history.isEmpty()) {
             String emptyMsg = "NO RECORDS YET.";
-            int emptyW = Minecraft.getInstance().font.width(emptyMsg);
-            int emptyX = spineX - 10 - emptyW;
-            g.drawString(Minecraft.getInstance().font, emptyMsg, emptyX, startY, HudAnimUtil.withAlpha(0x555555, safeA));
+            g.drawString(Minecraft.getInstance().font, emptyMsg, spineX - 10 - Minecraft.getInstance().font.width(emptyMsg), startY, HudAnimUtil.withAlpha(0x555555, safeA));
         } else {
             boolean isFull = history.size() >= maxRecords;
             for (int i = 0; i < limit; i++) {
                 ClientGachaCache.DrawRecord rec = history.get(history.size() - 1 - i);
-
                 GachaItem gItem = parent.getShopDef().getGachaPool().getItems().stream().filter(itm -> itm.getItemId().equals(rec.itemId())).findFirst().orElse(null);
                 int itemColor = gItem != null ? parent.getShopDef().getEffectiveThemeColor(gItem) : 0xAAAAAA;
                 String itemName = gItem != null ? gItem.getItemStack().getHoverName().getString() : Component.translatable("arc_quest.gui.gacha.unknown_item").getString();
 
-                String text = (rec.pityTriggered() ? "[PITY]" : "> ") + itemName + " x" + rec.actualCount();
-                text = Minecraft.getInstance().font.plainSubstrByWidth(text, maxTextW);
-
-                float targetY = startY + i * lineHeight;
-                float drawY = targetY - (1.0f - rollEase) * lineHeight;
+                String text = Minecraft.getInstance().font.plainSubstrByWidth((rec.pityTriggered() ? "[PITY]" : "> ") + itemName + " x" + rec.actualCount(), maxTextW);
+                float drawY = startY + i * lineHeight - (1.0f - rollEase) * lineHeight;
 
                 float itemAlphaMod = 1.0f;
                 if (i == 0 && logRollAnim > 0) itemAlphaMod = rollEase;
                 else if (isFull && i == limit - 1 && logRollAnim > 0) itemAlphaMod = 1.0f - rollEase;
 
                 int finalA = (int) (safeA * itemAlphaMod);
-                if (finalA > 5) {
-                    g.drawString(Minecraft.getInstance().font, text, textStartX + 7, (int) drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
-                }
+                if (finalA > 5) g.drawString(Minecraft.getInstance().font, text, textStartX + 7, (int) drawY, HudAnimUtil.withAlpha(itemColor, finalA), true);
             }
         }
         g.pose().popPose();
@@ -743,59 +636,33 @@ public class GachaPreviewPanel {
     private void renderGlassButton(GuiGraphics g, Layout l, int mx, int my, float dt, float alpha, boolean waiting, boolean isWiping, boolean isClosing) {
         String cooldownText = ClientGachaCache.INSTANCE.getCooldownText(parent.getShopId());
         boolean onCooldown = cooldownText != null && !cooldownText.isEmpty();
-        
-        int remainingDraws = snapshotRemainingDraws;
-        String lastFailReason = snapshotFailReason;
         boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
-
-        boolean maxed = remainingDraws == 0;
-        boolean insufficientFunds = isCannotAffordFailure(lastFailReason) || hasShortfall;
+        boolean maxed = snapshotRemainingDraws == 0;
+        boolean insufficientFunds = isCannotAffordFailure(snapshotFailReason) || hasShortfall;
         boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
-
         boolean canInteract = !waiting && !onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw;
         boolean unavailable = !waiting && !canInteract;
 
-        boolean hov = canInteract
-                && mx >= l.btnX() && mx < l.btnX() + l.btnW()
-                && my >= l.btnY() && my < l.btnY() + l.btnH();
+        boolean hov = canInteract && mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH();
 
         if (!isWiping && !isClosing) {
             btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 10f, dt);
             if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
-            if (shortfallTooltipAnim > 0)
-                shortfallTooltipAnim = Math.max(0, shortfallTooltipAnim - dt / SHORTFALL_TOOLTIP_DURATION);
+            if (shortfallTooltipAnim > 0) shortfallTooltipAnim = Math.max(0, shortfallTooltipAnim - dt / SHORTFALL_TOOLTIP_DURATION);
         }
 
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
-        int baseColor = waiting
-                ? 0x666666
-                : onCooldown ? 0x777777
-                : maxed ? 0x8A5A5A
-                : locked ? 0x7A6A8A
-                : insufficientFunds ? 0x8A5A5A
-                : unavailable ? 0x888888
-                : parent.getShopDef().getThemeColor();
-
-        int shakeX = (feedbackAnim > 0 && !feedbackSuccess) ? (int) (Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0;
-        int drawX = l.btnX() + shakeX;
+        int baseColor = waiting ? 0x666666 : onCooldown ? 0x777777 : maxed ? 0x8A5A5A : locked ? 0x7A6A8A : insufficientFunds ? 0x8A5A5A : unavailable ? 0x888888 : parent.getShopDef().getThemeColor();
+        int drawX = l.btnX() + ((feedbackAnim > 0 && !feedbackSuccess) ? (int) (Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0);
 
         g.fill(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x151515, (int) (200 * alpha)));
         g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((40 + 60 * hEase) * alpha)), 0);
-        HudAnimUtil.drawFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
+        drawFastFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
 
         int btnTextAlpha = (int) (255 * alpha);
         if (btnTextAlpha > 5) {
-            Component text = waiting
-                    ? Component.translatable("arc_quest.gui.gacha.btn.decrypting")
-                    : HudRenderUtil.resolveGachaFailButtonText(lastFailReason, onCooldown, maxed, locked, insufficientFunds, cooldownText);
-
-            g.drawCenteredString(
-                    Minecraft.getInstance().font,
-                    text,
-                    drawX + l.btnW() / 2,
-                    l.btnY() + l.btnH() / 2 - 4,
-                    HudAnimUtil.withAlpha(0xFFFFFF, btnTextAlpha)
-            );
+            Component text = waiting ? Component.translatable("arc_quest.gui.gacha.btn.decrypting") : HudRenderUtil.resolveGachaFailButtonText(snapshotFailReason, onCooldown, maxed, locked, insufficientFunds, cooldownText);
+            g.drawCenteredString(Minecraft.getInstance().font, text, drawX + l.btnW() / 2, l.btnY() + l.btnH() / 2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, btnTextAlpha));
         }
 
         renderShortfallTooltip(g, l, alpha, drawX);
@@ -810,23 +677,14 @@ public class GachaPreviewPanel {
             boolean maxed = snapshotRemainingDraws == 0;
             boolean locked = !onCooldown && !maxed && !insufficientFunds && !snapshotCanDraw;
 
-            boolean canInteract = !onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw;
-
-            if (!canInteract) {
-                feedbackSuccess = false;
-                feedbackAnim = 1f;
-                if (insufficientFunds) {
-                    shortfallTooltipAnim = 1f;
-                }
-                Minecraft.getInstance().getSoundManager().play(
-                        SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f)
-                );
+            if (!(!onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw)) {
+                feedbackSuccess = false; feedbackAnim = 1f;
+                if (insufficientFunds) shortfallTooltipAnim = 1f;
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
                 return true;
             }
 
-            Minecraft.getInstance().getSoundManager().play(
-                    SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0f)
-            );
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0f));
             parent.startDrawRequest();
             return true;
         }
@@ -838,7 +696,5 @@ public class GachaPreviewPanel {
         return true;
     }
 
-    private record Layout(int termW, int termX, int gridX, int gridW, int mainCX, int topH, int gridY, int gridH,
-                          int btnW, int btnH, int btnX, int btnY) {
-    }
+    private record Layout(int termW, int termX, int gridX, int gridW, int mainCX, int topH, int gridY, int gridH, int btnW, int btnH, int btnX, int btnY) {}
 }
