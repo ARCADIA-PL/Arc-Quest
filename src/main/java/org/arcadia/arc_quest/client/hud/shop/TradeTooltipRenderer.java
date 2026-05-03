@@ -46,6 +46,8 @@ public class TradeTooltipRenderer {
     private TooltipData cachedData = null;
     private TradeEntry cachedEntry = null;
     private int cachedGi = -1;
+    private String cachedItemTooltipSignature = "";
+    private boolean cachedAdvancedTooltip = false;
     private final Component shortfallSummaryText;
     private final Component emptyItemDataHint;
     private final Component itemDataHint;
@@ -156,10 +158,19 @@ public class TradeTooltipRenderer {
         cachedData = null;
         cachedEntry = null;
         cachedGi = -1;
+        cachedItemTooltipSignature = "";
+        cachedAdvancedTooltip = false;
     }
 
     private TooltipData calcTooltipData(TradeEntry entry, int gi, int mx, int my) {
-        if (cachedData != null && cachedEntry == entry && cachedGi == gi) {
+        Minecraft mc = Minecraft.getInstance();
+        ItemStack stack = screen.getIconStackForEntry(entry);
+        boolean advancedTooltip = mc.options.advancedItemTooltips;
+        String tooltipSignature = buildItemTooltipSignature(stack, advancedTooltip, entry);
+
+        if (cachedData != null && cachedEntry == entry && cachedGi == gi
+                && cachedAdvancedTooltip == advancedTooltip
+                && tooltipSignature.equals(cachedItemTooltipSignature)) {
             updateTooltipPosition(cachedData, mx, my);
             return cachedData;
         }
@@ -170,13 +181,11 @@ public class TradeTooltipRenderer {
         d.purchases = cache.getPurchaseCount(screen.getShopId(), gi);
         d.onCd = cache.isOnCooldown(screen.getShopId(), gi);
 
-        Minecraft mc = Minecraft.getInstance();
-        ItemStack stack = screen.getIconStackForEntry(entry);
         d.hasItem = !stack.isEmpty();
         d.vanillaLines = new ArrayList<>();
 
         if (d.hasItem && mc.player != null) {
-            d.vanillaLines.addAll(stack.getTooltipLines(mc.player, mc.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL));
+            d.vanillaLines.addAll(stack.getTooltipLines(mc.player, advancedTooltip ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL));
         }
 
         int padding = 10;
@@ -254,7 +263,20 @@ public class TradeTooltipRenderer {
         cachedData = d;
         cachedEntry = entry;
         cachedGi = gi;
+        cachedAdvancedTooltip = advancedTooltip;
+        cachedItemTooltipSignature = tooltipSignature;
         return d;
+    }
+
+    private String buildItemTooltipSignature(ItemStack stack, boolean advancedTooltip, TradeEntry entry) {
+        if (stack == null || stack.isEmpty()) {
+            return "empty|" + advancedTooltip + "|" + entry.getEntryId();
+        }
+        String itemId = stack.getItem().builtInRegistryHolder().key().location().toString();
+        String hover = stack.getHoverName().getString();
+        int count = stack.getCount();
+        int tagHash = stack.getTag() != null ? stack.getTag().hashCode() : 0;
+        return itemId + "|" + hover + "|" + count + "|" + tagHash + "|" + advancedTooltip;
     }
 
     private void updateTooltipPosition(TooltipData d, int mx, int my) {
