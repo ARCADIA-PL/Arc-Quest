@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.screen.ArcScissorStack;
 
 public class ArcPanZoomCanvas extends ArcGuiElement {
     private float zoom = 1f;
@@ -17,6 +18,7 @@ public class ArcPanZoomCanvas extends ArcGuiElement {
     private boolean panning;
     private double lastDragX;
     private double lastDragY;
+    private final ArcScissorStack scissorStack = new ArcScissorStack();
 
     public ArcPanZoomCanvas(int x, int y, int width, int height) {
         super(x, y, width, height);
@@ -91,12 +93,12 @@ public class ArcPanZoomCanvas extends ArcGuiElement {
 
     @Override
     protected void drawChildren(GuiGraphics graphics, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
-        graphics.enableScissor(refX, refY, refX + width, refY + height);
+        scissorStack.push(graphics, refX, refY, width, height);
         graphics.pose().pushPose();
         graphics.pose().translate(refX + panX, refY + panY, 0);
         graphics.pose().scale(zoom, zoom, 1f);
         super.drawChildren(graphics, context, 0, 0, inheritedOpacity);
         graphics.pose().popPose();
-        graphics.disableScissor();
+        scissorStack.pop(graphics);
     }
 }

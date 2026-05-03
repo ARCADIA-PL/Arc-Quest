@@ -3,17 +3,20 @@ package org.arcadia.arc_quest.mutil.layout;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.screen.ArcScissorStack;
 
 public class ArcClipRect extends ArcGuiElement {
+    private final ArcScissorStack scissorStack = new ArcScissorStack();
+
     public ArcClipRect(int x, int y, int width, int height) {
         super(x, y, width, height);
     }
 
     @Override
     protected void drawChildren(GuiGraphics graphics, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
-        graphics.enableScissor(refX, refY, refX + width, refY + height);
+        scissorStack.push(graphics, refX, refY, width, height);
         super.drawChildren(graphics, context, refX, refY, inheritedOpacity);
-        graphics.disableScissor();
+        scissorStack.pop(graphics);
     }
 
     @Override

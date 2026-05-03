@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.mutil.layout;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.screen.ArcScissorStack;
 
 public class ArcHorizontalStrip extends ArcGuiElement {
     private double scrollOffset;
@@ -11,6 +12,7 @@ public class ArcHorizontalStrip extends ArcGuiElement {
     private boolean layoutDirty = true;
     private int spacing;
     private int contentWidth;
+    private final ArcScissorStack scissorStack = new ArcScissorStack();
 
     public ArcHorizontalStrip(int x, int y, int width, int height, int spacing) {
         super(x, y, width, height);
@@ -76,8 +78,8 @@ public class ArcHorizontalStrip extends ArcGuiElement {
 
     @Override
     protected void drawChildren(GuiGraphics graphics, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
-        graphics.enableScissor(refX, refY, refX + width, refY + height);
+        scissorStack.push(graphics, refX, refY, width, height);
         super.drawChildren(graphics, context, refX - (int) scrollOffset, refY, inheritedOpacity);
-        graphics.disableScissor();
+        scissorStack.pop(graphics);
     }
 }
