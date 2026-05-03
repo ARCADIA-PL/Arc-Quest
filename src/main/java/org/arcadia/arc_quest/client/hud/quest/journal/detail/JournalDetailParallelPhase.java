@@ -215,10 +215,17 @@ public class JournalDetailParallelPhase {
         maxPhaseScroll = Math.max(0, customPhaseOrder.size() * (colW + gap) - gap - cardAreaW);
 
         int clipAbsX1 = x + 12, clipAbsX2 = clipAbsX1 + cardAreaW + 4;
+
         if (draggingPhaseId != null) {
-            int edgeZone = 40; double autoScrollSpeed = 400.0 * dt;
-            if (mx >= clipAbsX1 && mx < clipAbsX1 + edgeZone) phaseTargetScroll = Math.max(0, phaseTargetScroll - autoScrollSpeed);
-            else if (mx <= clipAbsX2 && mx > clipAbsX2 - edgeZone) phaseTargetScroll = Math.min(maxPhaseScroll, phaseTargetScroll + autoScrollSpeed);
+            int edgeZone = 80;
+            double autoScrollSpeed = 800.0 * dt;
+
+            if (mx < clipAbsX1 + edgeZone) {
+                phaseTargetScroll = Math.max(0, phaseTargetScroll - autoScrollSpeed);
+            }
+            else if (mx > clipAbsX2 - edgeZone) {
+                phaseTargetScroll = Math.min(maxPhaseScroll, phaseTargetScroll + autoScrollSpeed);
+            }
         }
 
         phaseScrollOffset += Math.abs(phaseTargetScroll - phaseScrollOffset) > 0.5 ? (phaseTargetScroll - phaseScrollOffset) * Math.min(1.0, dt * 14.0) : (phaseTargetScroll - phaseScrollOffset);

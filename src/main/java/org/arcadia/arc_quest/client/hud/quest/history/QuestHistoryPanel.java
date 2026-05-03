@@ -69,8 +69,6 @@ public final class QuestHistoryPanel {
     private static float animTipW = 0;
     private static float animTipH = 0;
     private static final Component REWARDS_TITLE = Component.literal("REWARDS").withStyle(Style.EMPTY.withBold(true));
-    private static TooltipLayout cachedRewardTooltipLayout = null;
-    private static String cachedRewardTooltipKey = "";
 
     private static boolean pendingFocusActive = false;
     private static float focusDelayTimer = 0f;
@@ -117,7 +115,7 @@ public final class QuestHistoryPanel {
         lastRenderMs = System.currentTimeMillis();
         zoom = 1.0f; panX = 0f; panY = 0f; targetZoom = 1.0f; targetPanX = 0f; targetPanY = 0f; panning = false;
         pinnedPhaseId = null; activeTooltipPhase = null; renderingTooltipPhase = null;
-        hoveredRewardStack = ItemStack.EMPTY; cachedRewardTooltipLayout = null; cachedRewardTooltipKey = "";
+        hoveredRewardStack = ItemStack.EMPTY;
         tooltipAnimProgress = 0f; animTipW = 0;
         buildGraphData();
         fitCameraToGraph(PANEL_W - 8, PANEL_H - 32);
@@ -317,8 +315,11 @@ public final class QuestHistoryPanel {
         if (!hoveredRewardStack.isEmpty() && !closing) {
             Minecraft mcForTip = Minecraft.getInstance();
             if (mcForTip.player != null) {
-                TooltipLayout layout = getRewardTooltipLayout(hoveredRewardStack, mcForTip, mcForTip.options.advancedItemTooltips);
-                renderCyberTooltip(g, mcForTip.font, layout, mx, my, themeColor);
+                List<Component> lines = hoveredRewardStack.getTooltipLines(
+                        mcForTip.player,
+                        mcForTip.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL
+                );
+                renderCyberTooltip(g, mcForTip.font, lines, mx, my, themeColor);
             }
         }
     }
@@ -422,8 +423,7 @@ public final class QuestHistoryPanel {
 
     private static void renderAwesomeTooltip(GuiGraphics g, Font font, PhaseDefinition phase, int anchorX, int anchorY, int screenW, int screenH, float dt, int realMx, int realMy) {
         if (phase == null) return;
-        NodeData node = nodeMap.get(phase.getPhaseId());
-        PhaseTooltipData tooltipData = node != null ? node.tooltipData : buildPhaseTooltipData(phase, font);
+        PhaseTooltipData tooltipData = buildPhaseTooltipData(phase, font);
 
         int padding = 10, cyberEdgeWidth = 3, targetW = tooltipData.targetW, targetH = tooltipData.targetH;
         int targetX = anchorX + 16, targetY = anchorY + 16;
@@ -523,8 +523,6 @@ public final class QuestHistoryPanel {
     }
 
     private static TooltipLayout getRewardTooltipLayout(ItemStack stack, Minecraft mc, boolean advanced) {
-        String key = stack.getItem().builtInRegistryHolder().key().location() + "|" + stack.getCount() + "|" + stack.getHoverName().getString() + "|" + advanced;
-        if (key.equals(cachedRewardTooltipKey) && cachedRewardTooltipLayout != null) return cachedRewardTooltipLayout;
         TooltipLayout layout = new TooltipLayout();
         if (mc.player != null) {
             layout.lines = stack.getTooltipLines(mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
@@ -533,12 +531,17 @@ public final class QuestHistoryPanel {
                 if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;
             }
         }
-        cachedRewardTooltipKey = key; cachedRewardTooltipLayout = layout; return layout;
+        return layout;
     }
 
-    private static void renderCyberTooltip(GuiGraphics g, Font font, TooltipLayout layout, int mouseX, int mouseY, int theme) {
-        if (layout == null || layout.lines == null || layout.lines.isEmpty()) return;
-        int padding = 6, cyberEdgeWidth = 3, drawW = layout.textMaxWidth + padding * 2 + cyberEdgeWidth + 2, drawH = layout.lines.size() * font.lineHeight + padding * 2;
+    private static void renderCyberTooltip(GuiGraphics g, Font font, List<Component> lines, int mouseX, int mouseY, int theme) {
+        if (lines == null || lines.isEmpty()) return;
+        int textMaxWidth = 0;
+        for (Component line : lines) {
+            int lw = font.width(line);
+            if (lw > textMaxWidth) textMaxWidth = lw;
+        }
+        int padding = 6, cyberEdgeWidth = 3, drawW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2, drawH = lines.size() * font.lineHeight + padding * 2;
         Minecraft mc = Minecraft.getInstance();
         int drawX = mouseX + 12, drawY = mouseY - 12;
         if (drawX + drawW > mc.getWindow().getGuiScaledWidth()) drawX = mouseX - drawW - 8;
@@ -552,7 +555,7 @@ public final class QuestHistoryPanel {
         HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, theme, 0xFF);
 
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
-        for (Component line : layout.lines) {
+        for (Component line : lines) {
             g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), false);
             textY += font.lineHeight;
         }
