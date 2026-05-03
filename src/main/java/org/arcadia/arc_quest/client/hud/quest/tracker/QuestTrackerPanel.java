@@ -31,6 +31,7 @@ import java.util.Objects;
 public class QuestTrackerPanel {
 
     private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
+    private final TrackerCollectionWidget collectionWidget = new TrackerCollectionWidget();
     private float panelReveal = 0f;
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
@@ -175,7 +176,7 @@ public class QuestTrackerPanel {
         PhaseDefinition phase = resolveDisplayedPhase(def, tracked);
         if (phase == null) return;
 
-        List<ObjectiveEntry> objectives = phase.getObjectives();
+        List<ObjectiveEntry> objectives = def.isCollectionQuest() ? List.of() : phase.getObjectives();
         Font font = mc.font;
 
         float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
@@ -185,7 +186,7 @@ public class QuestTrackerPanel {
         if (activePhaseOrder.size() > 1) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
         else targetH += 16;
         targetH += TrackerTitleWidget.computeDescriptionHeight(phase, font);
-        targetH += objectives.size() * (TrackerConstants.OBJ_ROW_HEIGHT + TrackerConstants.PROGRESS_BAR_H + 6);
+        targetH += def.isCollectionQuest() ? collectionWidget.computeHeight() : objectives.size() * (TrackerConstants.OBJ_ROW_HEIGHT + TrackerConstants.PROGRESS_BAR_H + 6);
         targetH += TrackerConstants.PADDING;
 
         if (currentPanelH < 0) currentPanelH = targetH;
@@ -233,7 +234,7 @@ public class QuestTrackerPanel {
         }
 
         textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
-        objectiveWidget.render(g, font, tracked, displayedPhaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
+        if (def.isCollectionQuest()) collectionWidget.render(g, font, tracked, def, phase, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha); else objectiveWidget.render(g, font, tracked, displayedPhaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
 
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();

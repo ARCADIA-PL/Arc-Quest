@@ -124,6 +124,17 @@ public class JournalListPanel {
                 g.pose().scale(finalScale, finalScale, 1f);
                 g.drawString(screen.getFont(), displayName, 0, 0, nameColor, false);
                 g.pose().popPose();
+
+                if (entry.def() != null && entry.def().isCollectionQuest()) {
+                    int done = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionCompletedEntryCount(entry.questId());
+                    int total = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionTotalEntryCount(entry.questId());
+                    String summary = done + "/" + total + " collected";
+                    g.pose().pushPose();
+                    g.pose().translate(x + textOffsetX, entryY + JournalConstants.ENTRY_HEIGHT - 9, 0);
+                    g.pose().scale(0.75f, 0.75f, 1f);
+                    g.drawString(screen.getFont(), summary, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)), false);
+                    g.pose().popPose();
+                }
             }
         }
         g.disableScissor();

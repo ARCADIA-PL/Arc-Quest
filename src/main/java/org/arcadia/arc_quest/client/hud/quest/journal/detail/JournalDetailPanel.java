@@ -27,6 +27,7 @@ public class JournalDetailPanel {
     public final JournalDetailParallelPhase parallelPhaseRenderer;
     public final JournalDetailRewards rewardsRenderer;
     public final JournalDetailControls controlsRenderer;
+    public final JournalDetailCollection collectionRenderer;
     private final QuestJournalScreen screen;
     private final int[] historyBtnRect = new int[]{0, 0, 0, 0};
     private double detailScrollOffset = 0, detailTargetScroll = 0, dragDetailYOffset = 0;
@@ -46,7 +47,7 @@ public class JournalDetailPanel {
     public JournalDetailPanel(QuestJournalScreen screen) {
         this.screen = screen; this.singlePhaseRenderer = new JournalDetailSinglePhase(screen, this);
         this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
-        this.rewardsRenderer = new JournalDetailRewards(screen, this); this.controlsRenderer = new JournalDetailControls(screen, this);
+        this.rewardsRenderer = new JournalDetailRewards(screen, this); this.controlsRenderer = new JournalDetailControls(screen, this); this.collectionRenderer = new JournalDetailCollection(screen);
     }
 
     public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
@@ -173,7 +174,8 @@ public class JournalDetailPanel {
             for (String pid : def.getPhaseIds()) if (runtime.isPhaseActive(pid)) activePhaseIds.add(pid);
             if (activePhaseIds.isEmpty()) activePhaseIds.addAll(runtime.getActivePhaseIds());
 
-            if (activePhaseIds.isEmpty()) { g.drawString(screen.getFont(), "No active phase.", 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false); localY += 16; }
+            if (def.isCollectionQuest()) { localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme); selectedPhaseIdForRewards = !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null; }
+            else if (activePhaseIds.isEmpty()) { g.drawString(screen.getFont(), "No active phase.", 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false); localY += 16; }
             else if (activePhaseIds.size() == 1) { selectedPhaseIdForRewards = activePhaseIds.get(0); localY = singlePhaseRenderer.render(g, entry, def, runtime, activePhaseIds.get(0), x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY); }
             else { localY = parallelPhaseRenderer.render(g, entry, def, runtime, activePhaseIds, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY); selectedPhaseIdForRewards = parallelPhaseRenderer.getSelectedPhaseId(); }
         } else if (entry.state() == QuestState.COMPLETED) { g.drawString(screen.getFont(), questCompletedText, 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), false); localY += 16; }
@@ -212,6 +214,7 @@ public class JournalDetailPanel {
             if (my >= thumbY && my <= thumbY + thumbH) dragDetailYOffset = my - thumbY; else { dragDetailYOffset = thumbH / 2.0; updateScrollFromMouse(my, y, scrollAreaH, maxDetailScroll); } return true;
         }
         if (!panelsActive && controlsRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
+        if (!panelsActive && entryIsCollectionActive() && collectionRenderer.mouseClicked(mx - (x + 12), my - (y + 12 - detailScrollOffset))) return true;
         if (!panelsActive && mx >= historyBtnRect[0] && mx <= historyBtnRect[0] + historyBtnRect[2] && my >= historyBtnRect[1] && my <= historyBtnRect[1] + historyBtnRect[3] && my >= y && my <= y + scrollAreaH) {
             if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) { QuestHistoryPanel.trigger(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId()); screen.playClick(); return true; }
         }
@@ -239,6 +242,7 @@ public class JournalDetailPanel {
     }
     public void clampScroll(int scrollAreaH) { detailTargetScroll = Math.max(0, Math.min(detailTargetScroll, Math.max(0, detailContentHeight - scrollAreaH))); }
     private void updateScrollFromMouse(double my, int y0, int viewH, int maxScroll) { if (maxScroll <= 0) return; int thumbH = Math.max(16, (int) (((float) viewH / detailContentHeight) * viewH)); detailTargetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragDetailYOffset) / (viewH - thumbH))) * maxScroll; }
+    private boolean entryIsCollectionActive() { if (screen.getSelectedIndex() < 0 || screen.getSelectedIndex() >= screen.getCurrentEntries().size()) return false; JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(screen.getSelectedIndex()); return entry.def() != null && entry.def().isCollectionQuest() && entry.state() == QuestState.ACTIVE; }
     private long getQuestRemainSeconds(QuestDefinition def, QuestRuntimeData runtime) {
         if (def == null || runtime == null || runtime.getState() != QuestState.ACTIVE) return -1L; if (!def.hasTimeLimit()) return -1L;
         QuestTimeLimitType type = def.getTimeLimitType(); long limit = def.getTimeLimitValue(); if (type == null || limit <= 0L) return -1L;

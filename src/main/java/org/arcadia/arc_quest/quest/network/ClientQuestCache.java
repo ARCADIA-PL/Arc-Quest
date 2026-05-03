@@ -12,6 +12,7 @@ import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
+import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
@@ -136,6 +137,7 @@ public final class ClientQuestCache {
         String questId = data.getQuestId();
         QuestState oldState = null;
         String oldPhaseId = null;
+        QuestRuntimeData previousData = activeQuests.get(questId);
 
         // 记录旧状态用于动画和音效触发
         if (activeQuests.containsKey(questId)) {
@@ -196,7 +198,21 @@ public final class ClientQuestCache {
         }
 
         LOGGER.debug("[ClientCache] Quest updated: {} → {}", questId, data.getState());
+        maybeShowCollectionToasts(questId, previousData, data);
         refreshJournalIfOpen();
+    }
+
+    private void maybeShowCollectionToasts(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
+        CollectionRuntimeData before = previousData != null ? previousData.getCollectionData() : null;
+        CollectionRuntimeData after = newData.getCollectionData();
+        if (after == null) return;
+        String questName = getQuestDisplayName(questId);
+        Set<String> beforeDiscovered = before != null ? before.getDiscoveredPhaseIds() : Set.of();
+        for (String phaseId : after.getDiscoveredPhaseIds()) if (!beforeDiscovered.contains(phaseId)) QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_DISCOVERED, questName);
+        Set<String> beforeUnlocked = before != null ? before.getUnlockedRewardIds() : Set.of();
+        for (String rewardId : after.getUnlockedRewardIds()) if (!beforeUnlocked.contains(rewardId)) QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_UNLOCKED, questName);
+        Set<String> beforeCompleted = previousData != null ? previousData.getCompletedPhaseIds() : Set.of();
+        for (String phaseId : newData.getCompletedPhaseIds()) if (!beforeCompleted.contains(phaseId)) QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_COMPLETED, questName);
     }
 
     /**
@@ -317,6 +333,74 @@ public final class ClientQuestCache {
      */
     public boolean isQuestFailed(String questId) {
         return failedQuests.contains(questId);
+    }
+
+    public boolean isCollectionQuest(String questId) {
+        QuestRuntimeData data = activeQuests.get(questId);
+        return data != null && data.hasCollectionData();
+    }
+
+    @Nullable
+    public CollectionRuntimeData getCollectionData(String questId) {
+        QuestRuntimeData data = activeQuests.get(questId);
+        return data != null ? data.getCollectionData() : null;
+    }
+
+    public boolean isCollectionEntryVisible(String questId, String phaseId) {
+        CollectionRuntimeData data = getCollectionData(questId);
+        return data != null && data.isVisible(phaseId);
+    }
+
+    public boolean isCollectionEntryDiscovered(String questId, String phaseId) {
+        CollectionRuntimeData data = getCollectionData(questId);
+        return data != null && data.isDiscovered(phaseId);
+    }
+
+    public int getCollectionEntryCount(String questId, String phaseId) {
+        CollectionRuntimeData data = getCollectionData(questId);
+        return data != null ? data.getEntryCount(phaseId) : 0;
+    }
+
+    public boolean isCollectionRewardClaimed(String questId, String rewardId) {
+        CollectionRuntimeData data = getCollectionData(questId);
+        return data != null && data.isRewardClaimed(rewardId);
+    }
+
+    public boolean isCollectionRewardUnlocked(String questId, String rewardId) {
+        CollectionRuntimeData data = getCollectionData(questId);
+        return data != null && data.isRewardUnlocked(rewardId);
+    }
+
+    public int getCollectionCompletedEntryCount(String questId) {
+        QuestRuntimeData runtime = activeQuests.get(questId);
+        if (runtime == null) return 0;
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
+        if (def == null) return 0;
+        int completed = 0;
+        for (String phaseId : def.getPhaseIds()) {
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase == null || !phase.hasCollectionEntryConfig()) continue;
+            if (runtime.isPhaseCompleted(phaseId)) completed++;
+        }
+        return completed;
+    }
+
+    public int getCollectionTotalEntryCount(String questId) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
+        if (def == null) return 0;
+        int total = 0;
+        for (String phaseId : def.getPhaseIds()) {
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase != null && phase.hasCollectionEntryConfig()) total++;
+        }
+        return total;
+    }
+
+    public int getCollectionDiscoveredEntryCount(String questId) {
+        CollectionRuntimeData data = getCollectionData(questId);
+        return data != null ? data.getDiscoveredPhaseIds().size() : 0;
     }
 
     /**
