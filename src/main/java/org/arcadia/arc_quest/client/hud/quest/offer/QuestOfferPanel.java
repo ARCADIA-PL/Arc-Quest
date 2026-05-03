@@ -61,6 +61,20 @@ public final class QuestOfferPanel {
 
     private static String cachedTagKey = "";
     private static List<ItemStack> cachedTagIcons = List.of();
+    private static ObjectiveEntry cachedObjective = null;
+    private static String cachedStaticKey = "";
+    private static String cachedTitle = "";
+    private static String cachedTrimmedTitle = "";
+    private static int cachedTrimmedTitleWidth = -1;
+    private static int cachedRequired = 1;
+    private static List<ItemStack> cachedIconCandidates = List.of();
+    private static TooltipLayout cachedTooltipLayout = null;
+    private static String cachedTooltipKey = "";
+
+    private static class TooltipLayout {
+        List<Component> lines = List.of();
+        int textMaxWidth = 0;
+    }
 
     private static float submitHoverAnim = 0f;
     private static float itemSlotHoverAnim = 0f;
@@ -101,6 +115,15 @@ public final class QuestOfferPanel {
         pendingSubmitCheckAt = 0L;
         cachedTagKey = "";
         cachedTagIcons = List.of();
+        cachedObjective = null;
+        cachedStaticKey = "";
+        cachedTitle = "";
+        cachedTrimmedTitle = "";
+        cachedTrimmedTitleWidth = -1;
+        cachedRequired = 1;
+        cachedIconCandidates = List.of();
+        cachedTooltipLayout = null;
+        cachedTooltipKey = "";
         submitHoverAnim = 0f;
         itemSlotHoverAnim = 0f;
         isDraggingSlider = false;
@@ -109,6 +132,7 @@ public final class QuestOfferPanel {
         visualThumbX = -1f;
         serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
 
+        initStaticOfferCache();
         OfferVM initialVm = resolveOfferViewModel();
         lastValidVm = initialVm;
         currentProgressAnim = initialVm != null ? initialVm.current : 0f;
@@ -268,11 +292,8 @@ public final class QuestOfferPanel {
         if (!hoveredStack.isEmpty() && !closing && !cleared) {
             Minecraft mcForTip = Minecraft.getInstance();
             if (mcForTip.player != null) {
-                List<Component> lines = hoveredStack.getTooltipLines(
-                        mcForTip.player,
-                        mcForTip.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL
-                );
-                renderCyberTooltip(g, mcForTip.font, lines, mx, my, themeColor);
+                TooltipLayout layout = getTooltipLayout(hoveredStack, mcForTip, mcForTip.options.advancedItemTooltips);
+                renderCyberTooltip(g, mcForTip.font, layout, mx, my, themeColor);
             }
         }
     }
@@ -346,7 +367,7 @@ public final class QuestOfferPanel {
             g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, (int) (borderAlpha * contentAlphaMult)));
 
             int contentY = topBarH + 12;
-            g.drawString(font, font.plainSubstrByWidth(renderVm.title, PW - 70), 50, contentY + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), true);
+            g.drawString(font, getTrimmedTitle(font, renderVm.title, PW - 70), 50, contentY + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), false);
 
             String progressText = renderVm.current + " / " + renderVm.required;
             g.pose().pushPose();
@@ -517,21 +538,46 @@ public final class QuestOfferPanel {
         }
     }
 
+    private static void initStaticOfferCache() {
+        cachedStaticKey = questId + "|" + phaseId + "|" + objectiveIndex;
+        cachedObjective = null;
+        cachedTitle = "";
+        cachedTrimmedTitle = "";
+        cachedTrimmedTitleWidth = -1;
+        cachedRequired = 1;
+        cachedIconCandidates = List.of();
+
+        var def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null) return;
+        var phase = def.getPhase(phaseId);
+        if (phase == null || objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return;
+        ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
+        if (obj.getType() != ObjectiveType.OFFER) return;
+
+        cachedObjective = obj;
+        cachedTitle = obj.getDisplayText().getString();
+        cachedRequired = Math.max(1, obj.getRequiredCount());
+        cachedIconCandidates = resolveIconCandidates(obj);
+    }
+
+    private static String getTrimmedTitle(Font font, String title, int width) {
+        if (cachedTrimmedTitleWidth != width || !title.equals(cachedTitle) || cachedTrimmedTitle.isEmpty()) {
+            cachedTitle = title;
+            cachedTrimmedTitleWidth = width;
+            cachedTrimmedTitle = font.plainSubstrByWidth(title, width);
+        }
+        return cachedTrimmedTitle;
+    }
+
     private static OfferVM resolveOfferViewModel() {
         var data = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (data == null || !data.isPhaseActive(phaseId)) return null;
-        var def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def == null) return null;
-        var phase = def.getPhase(phaseId);
-        if (phase == null) return null;
-        if (objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return null;
-        ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
-        if (obj.getType() != ObjectiveType.OFFER) return null;
-        int required = Math.max(1, obj.getRequiredCount());
+        String staticKey = questId + "|" + phaseId + "|" + objectiveIndex;
+        if (cachedObjective == null || !staticKey.equals(cachedStaticKey)) initStaticOfferCache();
+        if (cachedObjective == null) return null;
         int current = data.getObjectiveProgress(phaseId, objectiveIndex);
-        List<ItemStack> candidates = resolveIconCandidates(obj);
-        int canSubmitNow = resolveOfferableCount(obj);
-        return new OfferVM(obj.getDisplayText().getString(), required, current, canSubmitNow, candidates);
+        int canSubmitNow = resolveOfferableCount(cachedObjective);
+        return new OfferVM(cachedTitle, cachedRequired, current, canSubmitNow, cachedIconCandidates);
     }
 
     private static List<ItemStack> resolveIconCandidates(ObjectiveEntry obj) {
@@ -589,16 +635,30 @@ public final class QuestOfferPanel {
         return total;
     }
 
-    private static void renderCyberTooltip(GuiGraphics g, Font font, List<Component> tooltipLines, int mouseX, int mouseY, int theme) {
-        if (tooltipLines == null || tooltipLines.isEmpty()) return;
+    private static TooltipLayout getTooltipLayout(ItemStack stack, Minecraft mc, boolean advanced) {
+        String key = stack.getItem().builtInRegistryHolder().key().location() + "|" + stack.getCount() + "|" + stack.getHoverName().getString() + "|" + advanced;
+        if (key.equals(cachedTooltipKey) && cachedTooltipLayout != null) return cachedTooltipLayout;
+
+        TooltipLayout layout = new TooltipLayout();
+        if (mc.player != null) {
+            layout.lines = stack.getTooltipLines(mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+            for (Component line : layout.lines) {
+                int lw = mc.font.width(line);
+                if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;
+            }
+        }
+        cachedTooltipKey = key;
+        cachedTooltipLayout = layout;
+        return layout;
+    }
+
+    private static void renderCyberTooltip(GuiGraphics g, Font font, TooltipLayout layout, int mouseX, int mouseY, int theme) {
+        if (layout == null || layout.lines == null || layout.lines.isEmpty()) return;
 
         int padding = 6;
         int cyberEdgeWidth = 3;
-        int textMaxWidth = 0;
-        for (Component line : tooltipLines) {
-            int lw = font.width(line);
-            if (lw > textMaxWidth) textMaxWidth = lw;
-        }
+        int textMaxWidth = layout.textMaxWidth;
+        List<Component> tooltipLines = layout.lines;
 
         int drawW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
         int drawH = tooltipLines.size() * font.lineHeight + padding * 2;

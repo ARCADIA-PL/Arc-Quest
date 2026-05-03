@@ -54,6 +54,15 @@ public class QuestJournalScreen extends Screen {
     private float tooltipHoverTimer = 0f;
     private float tooltipTipAlpha = 0f;
     private float animTipX = 0, animTipY = 0, animTipW = 0, animTipH = 0;
+    private TooltipLayoutCache tooltipLayoutCache = null;
+    private String tooltipLayoutKey = "";
+
+    private static class TooltipLayoutCache {
+        List<Component> lines = List.of();
+        int textMaxWidth = 0;
+        int targetW = 0;
+        int targetH = 0;
+    }
 
     public QuestJournalScreen() {
         super(Component.translatable("gui.arc_quest.journal.title"));
@@ -72,6 +81,8 @@ public class QuestJournalScreen extends Screen {
         this.hoveredRewardTooltip = null;
         this.hoveredCustomTooltip = null;
         this.activeTooltipStack = null;
+        this.tooltipLayoutCache = null;
+        this.tooltipLayoutKey = "";
         this.animTipW = 0f;
     }
 
@@ -447,21 +458,49 @@ public class QuestJournalScreen extends Screen {
 
     public void renderTooltip(GuiGraphics g, ItemStack stack, int mouseX, int mouseY) {
         if (this.minecraft == null || this.minecraft.player == null) return;
-        List<Component> tooltipLines = stack.getTooltipLines(this.minecraft.player, this.minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
-        if (tooltipLines.isEmpty()) return;
-        renderTooltipLines(g, tooltipLines, mouseX, mouseY);
+        TooltipLayoutCache layout = getItemTooltipLayout(stack, this.minecraft.options.advancedItemTooltips);
+        if (layout.lines.isEmpty()) return;
+        renderTooltipLayout(g, layout, mouseX, mouseY);
     }
 
     public void renderTooltipLines(GuiGraphics g, List<Component> tooltipLines, int mouseX, int mouseY) {
         if (tooltipLines == null || tooltipLines.isEmpty()) return;
-        int padding = 6, cyberEdgeWidth = 3, textMaxWidth = 0;
-        for (Component line : tooltipLines) {
-            int lineWidth = font.width(line);
-            if (lineWidth > textMaxWidth) textMaxWidth = lineWidth;
-        }
+        renderTooltipLayout(g, getComponentTooltipLayout(tooltipLines), mouseX, mouseY);
+    }
 
-        int targetW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
-        int targetH = tooltipLines.size() * font.lineHeight + padding * 2;
+    private TooltipLayoutCache getItemTooltipLayout(ItemStack stack, boolean advanced) {
+        String key = "item|" + stack.getItem().builtInRegistryHolder().key().location() + "|" + stack.getCount() + "|" + stack.getHoverName().getString() + "|" + advanced;
+        if (key.equals(tooltipLayoutKey) && tooltipLayoutCache != null) return tooltipLayoutCache;
+        List<Component> lines = stack.getTooltipLines(this.minecraft.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+        return buildTooltipLayout(key, lines);
+    }
+
+    private TooltipLayoutCache getComponentTooltipLayout(List<Component> lines) {
+        String key = "custom|" + lines.hashCode();
+        if (key.equals(tooltipLayoutKey) && tooltipLayoutCache != null) return tooltipLayoutCache;
+        return buildTooltipLayout(key, lines);
+    }
+
+    private TooltipLayoutCache buildTooltipLayout(String key, List<Component> lines) {
+        TooltipLayoutCache layout = new TooltipLayoutCache();
+        layout.lines = lines == null ? List.of() : lines;
+        int padding = 6, cyberEdgeWidth = 3;
+        for (Component line : layout.lines) {
+            int lineWidth = font.width(line);
+            if (lineWidth > layout.textMaxWidth) layout.textMaxWidth = lineWidth;
+        }
+        layout.targetW = layout.textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
+        layout.targetH = layout.lines.size() * font.lineHeight + padding * 2;
+        tooltipLayoutKey = key;
+        tooltipLayoutCache = layout;
+        return layout;
+    }
+
+    private void renderTooltipLayout(GuiGraphics g, TooltipLayoutCache layout, int mouseX, int mouseY) {
+        if (layout == null || layout.lines.isEmpty()) return;
+        int padding = 6, cyberEdgeWidth = 3;
+        int targetW = layout.targetW;
+        int targetH = layout.targetH;
         int targetX = mouseX + 12, targetY = mouseY - 12;
 
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -506,7 +545,7 @@ public class QuestJournalScreen extends Screen {
         enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
 
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
-        for (Component line : tooltipLines) {
+        for (Component line : layout.lines) {
             g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, edgeAlpha), true);
             textY += font.lineHeight;
         }
