@@ -40,6 +40,17 @@ public interface IQuestCapability {
 
     boolean isQuestActive(String questId);
 
+    default boolean isCollectionQuestActive(String questId) {
+        QuestRuntimeData data = getActiveQuest(questId);
+        return data != null && data.hasCollectionData();
+    }
+
+    @Nullable
+    default CollectionRuntimeData getCollectionData(String questId) {
+        QuestRuntimeData data = getActiveQuest(questId);
+        return data != null ? data.getCollectionData() : null;
+    }
+
     boolean isQuestCompleted(String questId);
 
     boolean isQuestFailed(String questId);

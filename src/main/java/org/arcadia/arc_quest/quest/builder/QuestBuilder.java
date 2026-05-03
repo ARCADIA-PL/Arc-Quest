@@ -6,12 +6,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.MarkActivation;
 import org.arcadia.arc_quest.questmarker.api.MarkActivations;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
-import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -19,21 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 流式构建 QuestDefinition 的顶层 Builder。
- *
- * <pre>
- *   QuestBuilder.create("tutorial_main")
- *       .category(QuestCategory.ARCHON)
- *       .displayName("黎明之路")
- *       .phase(PhaseBuilder.create("step1")...)
- *       .phase(PhaseBuilder.create("step2")...)
- *       .reward(new ItemReward(...))
- *       .buildAndRegister();
- * </pre>
- */
 public final class QuestBuilder {
-
     private final ResourceLocation id;
     private final List<ICondition> unlockConditions = new ArrayList<>();
     private final LinkedHashMap<String, PhaseDefinition> phases = new LinkedHashMap<>();
@@ -44,561 +30,102 @@ public final class QuestBuilder {
     private QuestCategory category = QuestCategory.ADVENTURE;
     private QuestText displayName;
     private QuestText description = QuestText.component(Component.empty());
-    @Nullable
-    private ResourceLocation iconTexture;
-    private int sortOrder = 0;
-    private boolean repeatable = false;
-    private String initialPhaseId = null;
+    @Nullable private ResourceLocation iconTexture;
+    private int sortOrder;
+    private boolean repeatable;
+    private String initialPhaseId;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
-    @Nullable
-    private String chapterShopId;
+    private QuestMode mode = QuestMode.PROGRESSION;
+    @Nullable private CollectionQuestConfig collectionConfig;
+    @Nullable private String chapterShopId;
     private ChapterShopType chapterShopType = ChapterShopType.TRADE;
     private boolean chapterShopPersistent = true;
-
     private QuestCompletionPolicy completionPolicy = QuestCompletionPolicy.ALL;
-    private int completionRequiredCount = 0;
-    @Nullable
-    private String completionTargetPhaseId = null;
-
-    @Nullable
-    private QuestTimeLimitType timeLimitType = null;
-    private long timeLimitValue = 0L;
-
-    // 音效配置
-    @Nullable
-    private SoundEvent chapterStartSound;
-    @Nullable
-    private SoundEvent chapterFailSound;
-    @Nullable
-    private SoundEvent chapterCompleteSound;
-
-    private QuestBuilder(ResourceLocation id) {
-        this.id = id;
-    }
-
-    /**
-     * 创建 Builder，使用完整 ResourceLocation（推荐）。
-     * <p>
-     * 支持自定义命名空间，适合主模组和附属模组使用。
-     *
-     * @param id 完整的资源位置，如 "arc_quest:my_quest" 或 "my_mod:my_quest"
-     */
-    public static QuestBuilder create(ResourceLocation id) {
-        return new QuestBuilder(id);
-    }
-
-    /**
-     * 创建 Builder，使用字符串 ID（自动解析命名空间）。
-     * <p>
-     * - 如果包含 ":"，则直接解析为 ResourceLocation
-     * - 如果不包含 ":"，则默认使用 arc_quest 命名空间
-     *
-     * @param id 资源 ID，如 "arc_quest:my_quest" 或 "my_quest"
-     */
-    public static QuestBuilder create(String id) {
-        if (id.contains(":")) {
-            return new QuestBuilder(ResourceLocation.tryParse(id));
-        } else {
-            return new QuestBuilder(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, id));
-        }
-    }
-
-    // ════════════════════════════════════════
-    //  基本属性
-    // ════════════════════════════════════════
-
-    public QuestBuilder category(QuestCategory category) {
-        this.category = category;
-        return this;
-    }
-
-    public QuestBuilder displayName(String literal) {
-        this.displayName = QuestText.literal(literal);
-        return this;
-    }
-
-    public QuestBuilder displayName(Component component) {
-        this.displayName = QuestText.component(component);
-        return this;
-    }
-
-    public QuestBuilder displayName(QuestText text) {
-        this.displayName = text;
-        return this;
-    }
-
-    public QuestBuilder description(String literal) {
-        this.description = QuestText.literal(literal);
-        return this;
-    }
-
-    public QuestBuilder description(Component component) {
-        this.description = QuestText.component(component);
-        return this;
-    }
-
-    public QuestBuilder description(QuestText text) {
-        this.description = text;
-        return this;
-    }
-
-    public QuestBuilder icon(ResourceLocation texture) {
-        this.iconTexture = texture;
-        return this;
-    }
-
-    public QuestBuilder sortOrder(int order) {
-        this.sortOrder = order;
-        return this;
-    }
-
-    public QuestBuilder repeatable() {
-        this.repeatable = true;
-        return this;
-    }
-
-    public QuestBuilder completionPolicy(QuestCompletionPolicy policy) {
-        this.completionPolicy = policy;
-        return this;
-    }
-
-    public QuestBuilder completionRequiredCount(int count) {
-        this.completionRequiredCount = count;
-        return this;
-    }
-
-    public QuestBuilder completionTargetPhase(String phaseId) {
-        this.completionTargetPhaseId = phaseId;
-        return this;
-    }
-
-    public QuestBuilder questTimeLimitSeconds(long seconds) {
-        if (seconds <= 0L) {
-            throw new IllegalArgumentException("questTimeLimitSeconds requires seconds > 0");
-        }
-        this.timeLimitType = QuestTimeLimitType.REAL_SECONDS;
-        this.timeLimitValue = seconds;
-        return this;
-    }
-
-    public QuestBuilder questTimeLimitDayTicks(long dayTicks) {
-        if (dayTicks <= 0L) {
-            throw new IllegalArgumentException("questTimeLimitDayTicks requires dayTicks > 0");
-        }
-        this.timeLimitType = QuestTimeLimitType.GAME_DAY_TIME;
-        this.timeLimitValue = dayTicks;
-        return this;
-    }
-
-    public QuestBuilder clearQuestTimeLimit() {
-        this.timeLimitType = null;
-        this.timeLimitValue = 0L;
-        return this;
-    }
-
-    public QuestBuilder markRelatedObject(MarkableObject object) {
-        return markRelatedObject(object, MarkActivations.always());
-    }
-
-    public QuestBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
-        String id = this.id + "::quest_mark_" + relatedMarks.size();
-        this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                QuestMarkerType.QUEST_MAIN, 0, 256, 20, true, false, Map.of()));
-        return this;
-    }
-
-    public QuestBuilder markRelatedObject(MarkSpec spec) {
-        this.relatedMarks.add(spec);
-        return this;
-    }
-
-    // ════════════════════════════════════════
-    //  解锁条件
-    // ════════════════════════════════════════
-
-    public QuestBuilder unlockCondition(ICondition condition) {
-        this.unlockConditions.add(condition);
-        return this;
-    }
-
-    /**
-     * 快捷：需要指定任务已完成（支持智能命名空间解析）
-     * <p>
-     * - 如果包含 ":"，则直接解析
-     * - 如果不包含 ":"，则自动添加 arc_quest: 前缀
-     */
-    public QuestBuilder requiresQuest(String questId) {
-        ResourceLocation location;
-        if (questId.contains(":")) {
-            location = ResourceLocation.tryParse(questId);
-        } else {
-            location = ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, questId);
-        }
-        this.unlockConditions.add(ICondition.questCompleted(location));
-        return this;
-    }
-
-    public QuestBuilder requiresQuest(ResourceLocation questId) {
-        this.unlockConditions.add(ICondition.questCompleted(questId));
-        return this;
-    }
-
-    /**
-     * 快捷：需要指定 Flag 已设置
-     */
-    public QuestBuilder requiresFlag(String flag) {
-        this.unlockConditions.add(ICondition.flagSet(flag));
-        return this;
-    }
-
-    // ════════════════════════════════════════
-    //  阶段
-    // ════════════════════════════════════════
-
-    /**
-     * 添加阶段（传入 PhaseBuilder，自动 build）。
-     * 第一个添加的阶段自动成为 initialPhase。
-     */
-    public QuestBuilder phase(PhaseBuilder phaseBuilder) {
-        PhaseDefinition phase = phaseBuilder.build();
-        return this.phase(phase);
-    }
-
-    public QuestBuilder phase(PhaseDefinition phase) {
-        String pid = phase.getPhaseId();
-        if (this.phases.containsKey(pid)) {
-            throw new IllegalArgumentException(
-                    "Duplicate phase id '" + pid + "' in quest '" + this.id + "'");
-        }
-        this.phases.put(pid, phase);
-        if (this.initialPhaseId == null) {
-            this.initialPhaseId = pid;
-        }
-        return this;
-    }
-
-    /**
-     * 显式指定起始阶段（覆盖默认的"第一个添加的"）
-     */
-    public QuestBuilder startAt(String phaseId) {
-        this.initialPhaseId = phaseId;
-        return this;
-    }
-
-    // ════════════════════════════════════════
-    //  完成奖励
-    // ════════════════════════════════════════
-
-    public QuestBuilder reward(IReward reward) {
-        this.completionRewards.add(reward);
-        return this;
-    }
-
-    // ════════════════════════════════════════
-    //  章节商店
-    // ════════════════════════════════════════
-
-    /**
-     * 配置章节商店（兼容旧 API，默认 Trade）。
-     *
-     * @param shopId     商店注册 ID
-     * @param persistent true=长效（任务完成后仍可访问），false=非长效
-     */
-    public QuestBuilder chapterShop(String shopId, boolean persistent) {
-        this.chapterShopId = shopId;
-        this.chapterShopType = ChapterShopType.TRADE;
-        this.chapterShopPersistent = persistent;
-        return this;
-    }
-
-    public QuestBuilder chapterShop(String shopId) {
-        return chapterShop(shopId, true);
-    }
-
-    public QuestBuilder chapterTradeShop(String shopId, boolean persistent) {
-        this.chapterShopId = shopId;
-        this.chapterShopType = ChapterShopType.TRADE;
-        this.chapterShopPersistent = persistent;
-        return this;
-    }
-
-    public QuestBuilder chapterTradeShop(String shopId) {
-        return chapterTradeShop(shopId, true);
-    }
-
-    public QuestBuilder chapterGachaShop(String shopId, boolean persistent) {
-        this.chapterShopId = shopId;
-        this.chapterShopType = ChapterShopType.GACHA;
-        this.chapterShopPersistent = persistent;
-        return this;
-    }
-
-    public QuestBuilder chapterGachaShop(String shopId) {
-        return chapterGachaShop(shopId, true);
-    }
-
-    // ════════════════════════════════════════
-    //  音效配置
-    // ════════════════════════════════════════
-
-    public QuestBuilder chapterStartSound(SoundEvent sound) {
-        this.chapterStartSound = sound;
-        return this;
-    }
-
-    public QuestBuilder chapterFailSound(SoundEvent sound) {
-        this.chapterFailSound = sound;
-        return this;
-    }
-
-    public QuestBuilder chapterCompleteSound(SoundEvent sound) {
-        this.chapterCompleteSound = sound;
-        return this;
-    }
-
-    // ════════════════════════════════════════
-    //  Flags
-    // ════════════════════════════════════════
-
-    public QuestBuilder setFlagOnAccept(String flag) {
-        this.flagsOnAccept.add(flag);
-        return this;
-    }
-
-    public QuestBuilder setFlagOnComplete(String flag) {
-        this.flagsOnComplete.add(flag);
-        return this;
-    }
-
-    // ════════════════════════════════════════
-    //  视觉配置（高可扩展 API）
-    // ════════════════════════════════════════
-
-    /**
-     * 设置视觉配置（高级 API，直接传入完整配置）。
-     */
-    public QuestBuilder visualConfig(QuestVisualConfig config) {
-        if (config != null) {
-            // 重建配置
-            this.visualConfigBuilder = QuestVisualConfig.builder()
-                    .themeColor(config.getThemeColor());
-            // 复制所有立绘配置
-            for (SplashType type : SplashType.values()) {
-                config.getSplash(type).ifPresent(asset ->
-                        this.visualConfigBuilder.splash(type, asset));
-            }
-            // 复制所有图标配置
-            for (IconPosition pos : IconPosition.values()) {
-                config.getIcon(pos).ifPresent(asset ->
-                        this.visualConfigBuilder.icon(pos, asset));
-            }
-        }
-        return this;
-    }
-
-    /**
-     * 便捷方法：添加任务获得时的立绘。
-     */
-    public QuestBuilder acquisitionSplash(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.splash(SplashType.QUEST_ACQUIRED, texture, scale);
-        return this;
-    }
-
-    /**
-     * 便捷方法：添加任务获得时的立绘（默认缩放 1.0）。
-     */
-    public QuestBuilder acquisitionSplash(ResourceLocation texture) {
-        return acquisitionSplash(texture, 1.0f);
-    }
-
-    /**
-     * 便捷方法：添加任务详情的立绘。
-     */
-    public QuestBuilder detailSplash(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.splash(SplashType.QUEST_DETAIL, texture, scale);
-        return this;
-    }
-
-    /**
-     * 便捷方法：添加任务详情的立绘（默认缩放 1.0）。
-     */
-    public QuestBuilder detailSplash(ResourceLocation texture) {
-        return detailSplash(texture, 1.0f);
-    }
-
-    /**
-     * 便捷方法：添加任务完成时的立绘。
-     */
-    public QuestBuilder completionSplash(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.splash(SplashType.QUEST_COMPLETED, texture, scale);
-        return this;
-    }
-
-    /**
-     * 便捷方法：添加任务完成时的立绘（默认缩放 1.0）。
-     */
-    public QuestBuilder completionSplash(ResourceLocation texture) {
-        return completionSplash(texture, 1.0f);
-    }
-
-    /**
-     * 便捷方法：添加任务列表图标。
-     */
-    public QuestBuilder listIcon(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.icon(IconPosition.QUEST_LIST, texture, scale);
-        return this;
-    }
-
-    /**
-     * 便捷方法：添加任务列表图标（默认缩放 1.0）。
-     */
-    public QuestBuilder listIcon(ResourceLocation texture) {
-        return listIcon(texture, 1.0f);
-    }
-
-    /**
-     * 便捷方法：添加任务标题图标。
-     */
-    public QuestBuilder titleIcon(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.icon(IconPosition.QUEST_TITLE, texture, scale);
-        return this;
-    }
-
-    /**
-     * 便捷方法：添加任务标题图标（默认缩放 1.0）。
-     */
-    public QuestBuilder titleIcon(ResourceLocation texture) {
-        return titleIcon(texture, 1.0f);
-    }
-
-    /**
-     * 便捷方法：设置主题色（ARGB 整数）。
-     */
-    public QuestBuilder themeColor(int color) {
-        this.visualConfigBuilder.themeColor(color);
-        return this;
-    }
-
-    /**
-     * 便捷方法：从 ChatFormatting 设置主题色。
-     */
-    public QuestBuilder themeColor(ChatFormatting formatting) {
-        this.visualConfigBuilder.themeColorFromChatFormatting(formatting);
-        return this;
-    }
-
-    // ════════════════════════════════════════
-    //  构建
-    // ════════════════════════════════════════
-
+    private int completionRequiredCount;
+    @Nullable private String completionTargetPhaseId;
+    @Nullable private QuestTimeLimitType timeLimitType;
+    private long timeLimitValue;
+    @Nullable private SoundEvent chapterStartSound;
+    @Nullable private SoundEvent chapterFailSound;
+    @Nullable private SoundEvent chapterCompleteSound;
+
+    private QuestBuilder(ResourceLocation id) { this.id = id; }
+    public static QuestBuilder create(ResourceLocation id) { return new QuestBuilder(id); }
+    public static QuestBuilder create(String id) { return id.contains(":") ? new QuestBuilder(ResourceLocation.tryParse(id)) : new QuestBuilder(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, id)); }
+    public QuestBuilder category(QuestCategory category) { this.category = category; return this; }
+    public QuestBuilder displayName(String literal) { this.displayName = QuestText.literal(literal); return this; }
+    public QuestBuilder displayName(Component component) { this.displayName = QuestText.component(component); return this; }
+    public QuestBuilder displayName(QuestText text) { this.displayName = text; return this; }
+    public QuestBuilder description(String literal) { this.description = QuestText.literal(literal); return this; }
+    public QuestBuilder description(Component component) { this.description = QuestText.component(component); return this; }
+    public QuestBuilder description(QuestText text) { this.description = text; return this; }
+    public QuestBuilder icon(ResourceLocation texture) { this.iconTexture = texture; return this; }
+    public QuestBuilder sortOrder(int order) { this.sortOrder = order; return this; }
+    public QuestBuilder repeatable() { this.repeatable = true; return this; }
+    public QuestBuilder mode(QuestMode mode) { this.mode = mode != null ? mode : QuestMode.PROGRESSION; return this; }
+    public QuestBuilder collectionConfig(CollectionQuestConfig collectionConfig) { this.collectionConfig = collectionConfig; return this; }
+    public QuestBuilder completionPolicy(QuestCompletionPolicy policy) { this.completionPolicy = policy; return this; }
+    public QuestBuilder completionRequiredCount(int count) { this.completionRequiredCount = count; return this; }
+    public QuestBuilder completionTargetPhase(String phaseId) { this.completionTargetPhaseId = phaseId; return this; }
+    public QuestBuilder questTimeLimitSeconds(long seconds) { if (seconds <= 0L) throw new IllegalArgumentException("questTimeLimitSeconds requires seconds > 0"); this.timeLimitType = QuestTimeLimitType.REAL_SECONDS; this.timeLimitValue = seconds; return this; }
+    public QuestBuilder questTimeLimitDayTicks(long dayTicks) { if (dayTicks <= 0L) throw new IllegalArgumentException("questTimeLimitDayTicks requires dayTicks > 0"); this.timeLimitType = QuestTimeLimitType.GAME_DAY_TIME; this.timeLimitValue = dayTicks; return this; }
+    public QuestBuilder clearQuestTimeLimit() { this.timeLimitType = null; this.timeLimitValue = 0L; return this; }
+    public QuestBuilder markRelatedObject(MarkableObject object) { return markRelatedObject(object, MarkActivations.always()); }
+    public QuestBuilder markRelatedObject(MarkableObject object, MarkActivation activation) { String markId = this.id + "::quest_mark_" + relatedMarks.size(); this.relatedMarks.add(new MarkSpec(markId, object, activation, MarkActivations.never(), QuestMarkerType.QUEST_MAIN, 0, 256, 20, true, false, Map.of())); return this; }
+    public QuestBuilder markRelatedObject(MarkSpec spec) { this.relatedMarks.add(spec); return this; }
+    public QuestBuilder unlockCondition(ICondition condition) { this.unlockConditions.add(condition); return this; }
+    public QuestBuilder requiresQuest(String questId) { ResourceLocation location = questId.contains(":") ? ResourceLocation.tryParse(questId) : ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, questId); this.unlockConditions.add(ICondition.questCompleted(location)); return this; }
+    public QuestBuilder requiresQuest(ResourceLocation questId) { this.unlockConditions.add(ICondition.questCompleted(questId)); return this; }
+    public QuestBuilder requiresFlag(String flag) { this.unlockConditions.add(ICondition.flagSet(flag)); return this; }
+    public QuestBuilder phase(PhaseBuilder phaseBuilder) { return this.phase(phaseBuilder.build()); }
+    public QuestBuilder phase(PhaseDefinition phase) { String pid = phase.getPhaseId(); if (this.phases.containsKey(pid)) throw new IllegalArgumentException("Duplicate phase id '" + pid + "' in quest '" + this.id + "'"); this.phases.put(pid, phase); if (this.initialPhaseId == null) this.initialPhaseId = pid; return this; }
+    public QuestBuilder startAt(String phaseId) { this.initialPhaseId = phaseId; return this; }
+    public QuestBuilder reward(IReward reward) { this.completionRewards.add(reward); return this; }
+    public QuestBuilder chapterShop(String shopId, boolean persistent) { this.chapterShopId = shopId; this.chapterShopType = ChapterShopType.TRADE; this.chapterShopPersistent = persistent; return this; }
+    public QuestBuilder chapterShop(String shopId) { return chapterShop(shopId, true); }
+    public QuestBuilder chapterTradeShop(String shopId, boolean persistent) { this.chapterShopId = shopId; this.chapterShopType = ChapterShopType.TRADE; this.chapterShopPersistent = persistent; return this; }
+    public QuestBuilder chapterTradeShop(String shopId) { return chapterTradeShop(shopId, true); }
+    public QuestBuilder chapterGachaShop(String shopId, boolean persistent) { this.chapterShopId = shopId; this.chapterShopType = ChapterShopType.GACHA; this.chapterShopPersistent = persistent; return this; }
+    public QuestBuilder chapterGachaShop(String shopId) { return chapterGachaShop(shopId, true); }
+    public QuestBuilder chapterStartSound(SoundEvent sound) { this.chapterStartSound = sound; return this; }
+    public QuestBuilder chapterFailSound(SoundEvent sound) { this.chapterFailSound = sound; return this; }
+    public QuestBuilder chapterCompleteSound(SoundEvent sound) { this.chapterCompleteSound = sound; return this; }
+    public QuestBuilder setFlagOnAccept(String flag) { this.flagsOnAccept.add(flag); return this; }
+    public QuestBuilder setFlagOnComplete(String flag) { this.flagsOnComplete.add(flag); return this; }
+    public QuestBuilder visualConfig(QuestVisualConfig config) { if (config != null) { this.visualConfigBuilder = QuestVisualConfig.builder().themeColor(config.getThemeColor()); for (SplashType type : SplashType.values()) config.getSplash(type).ifPresent(asset -> this.visualConfigBuilder.splash(type, asset)); for (IconPosition pos : IconPosition.values()) config.getIcon(pos).ifPresent(asset -> this.visualConfigBuilder.icon(pos, asset)); } return this; }
+    public QuestBuilder acquisitionSplash(ResourceLocation texture, float scale) { this.visualConfigBuilder.splash(SplashType.QUEST_ACQUIRED, texture, scale); return this; }
+    public QuestBuilder acquisitionSplash(ResourceLocation texture) { return acquisitionSplash(texture, 1.0f); }
+    public QuestBuilder detailSplash(ResourceLocation texture, float scale) { this.visualConfigBuilder.splash(SplashType.QUEST_DETAIL, texture, scale); return this; }
+    public QuestBuilder detailSplash(ResourceLocation texture) { return detailSplash(texture, 1.0f); }
+    public QuestBuilder completionSplash(ResourceLocation texture, float scale) { this.visualConfigBuilder.splash(SplashType.QUEST_COMPLETED, texture, scale); return this; }
+    public QuestBuilder completionSplash(ResourceLocation texture) { return completionSplash(texture, 1.0f); }
+    public QuestBuilder listIcon(ResourceLocation texture, float scale) { this.visualConfigBuilder.icon(IconPosition.QUEST_LIST, texture, scale); return this; }
+    public QuestBuilder listIcon(ResourceLocation texture) { return listIcon(texture, 1.0f); }
+    public QuestBuilder titleIcon(ResourceLocation texture, float scale) { this.visualConfigBuilder.icon(IconPosition.QUEST_TITLE, texture, scale); return this; }
+    public QuestBuilder titleIcon(ResourceLocation texture) { return titleIcon(texture, 1.0f); }
+    public QuestBuilder themeColor(int color) { this.visualConfigBuilder.themeColor(color); return this; }
+    public QuestBuilder themeColor(ChatFormatting formatting) { this.visualConfigBuilder.themeColorFromChatFormatting(formatting); return this; }
     public QuestDefinition build() {
-        if (this.displayName == null) {
-            this.displayName = QuestText.literal(this.id.getPath());
-        }
-        if (this.phases.isEmpty()) {
-            throw new IllegalStateException("Quest '" + this.id + "' has no phases");
-        }
-        if (this.initialPhaseId == null) {
-            this.initialPhaseId = this.phases.keySet().iterator().next();
-        }
-
-        // 验证所有 transition 引用的 phaseId 都存在
+        if (this.displayName == null) this.displayName = QuestText.literal(this.id.getPath());
+        if (this.phases.isEmpty()) throw new IllegalStateException("Quest '" + this.id + "' has no phases");
+        if (this.initialPhaseId == null) this.initialPhaseId = this.phases.keySet().iterator().next();
         for (PhaseDefinition phase : this.phases.values()) {
-            for (PhaseTransition tr : phase.getTransitions()) {
-                if (!this.phases.containsKey(tr.getTargetPhaseId())) {
-                    throw new IllegalStateException(
-                            "Quest '" + this.id + "', phase '" + phase.getPhaseId()
-                                    + "' references unknown phase '" + tr.getTargetPhaseId() + "'");
-                }
-            }
-            for (ChoiceOption ch : phase.getChoices()) {
-                if (!this.phases.containsKey(ch.getTargetPhaseId())) {
-                    throw new IllegalStateException(
-                            "Quest '" + this.id + "', phase '" + phase.getPhaseId()
-                                    + "' choice references unknown phase '" + ch.getTargetPhaseId() + "'");
-                }
-            }
+            for (PhaseTransition tr : phase.getTransitions()) if (!this.phases.containsKey(tr.getTargetPhaseId())) throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "' references unknown phase '" + tr.getTargetPhaseId() + "'");
+            for (ChoiceOption ch : phase.getChoices()) if (!this.phases.containsKey(ch.getTargetPhaseId())) throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "' choice references unknown phase '" + ch.getTargetPhaseId() + "'");
         }
-
         int phaseCount = this.phases.size();
-
-        if ((this.completionPolicy == QuestCompletionPolicy.ALL || this.completionPolicy == QuestCompletionPolicy.ANY)
-                && this.completionRequiredCount > 0) {
-            throw new IllegalStateException(
-                    "Quest '" + this.id + "': completionRequiredCount only valid for N_OF_M");
-        }
-
+        if ((this.completionPolicy == QuestCompletionPolicy.ALL || this.completionPolicy == QuestCompletionPolicy.ANY) && this.completionRequiredCount > 0) throw new IllegalStateException("Quest '" + this.id + "': completionRequiredCount only valid for N_OF_M");
         if (this.completionPolicy == QuestCompletionPolicy.N_OF_M) {
-            if (this.completionRequiredCount < 1 || this.completionRequiredCount > phaseCount) {
-                throw new IllegalStateException(
-                        "Quest '" + this.id + "': N_OF_M requires completionRequiredCount in [1," + phaseCount + "], got " + this.completionRequiredCount);
-            }
-            if (this.completionTargetPhaseId != null && !this.completionTargetPhaseId.isEmpty()) {
-                throw new IllegalStateException(
-                        "Quest '" + this.id + "': completionTargetPhase not allowed with N_OF_M");
-            }
+            if (this.completionRequiredCount < 1 || this.completionRequiredCount > phaseCount) throw new IllegalStateException("Quest '" + this.id + "': N_OF_M requires completionRequiredCount in [1," + phaseCount + "], got " + this.completionRequiredCount);
+            if (this.completionTargetPhaseId != null && !this.completionTargetPhaseId.isEmpty()) throw new IllegalStateException("Quest '" + this.id + "': completionTargetPhase not allowed with N_OF_M");
         }
-
         if (this.completionPolicy == QuestCompletionPolicy.SPECIFIC_PHASE) {
-            if (this.completionTargetPhaseId == null || this.completionTargetPhaseId.isEmpty()) {
-                throw new IllegalStateException(
-                        "Quest '" + this.id + "': SPECIFIC_PHASE requires completionTargetPhase");
-            }
-            if (!this.phases.containsKey(this.completionTargetPhaseId)) {
-                throw new IllegalStateException(
-                        "Quest '" + this.id + "': completionTargetPhase '" + this.completionTargetPhaseId + "' not found");
-            }
-            if (this.completionRequiredCount > 0) {
-                throw new IllegalStateException(
-                        "Quest '" + this.id + "': completionRequiredCount not allowed with SPECIFIC_PHASE");
-            }
+            if (this.completionTargetPhaseId == null || this.completionTargetPhaseId.isEmpty()) throw new IllegalStateException("Quest '" + this.id + "': SPECIFIC_PHASE requires completionTargetPhase");
+            if (!this.phases.containsKey(this.completionTargetPhaseId)) throw new IllegalStateException("Quest '" + this.id + "': completionTargetPhase '" + this.completionTargetPhaseId + "' not found");
+            if (this.completionRequiredCount > 0) throw new IllegalStateException("Quest '" + this.id + "': completionRequiredCount not allowed with SPECIFIC_PHASE");
         }
-
-        if (this.completionPolicy != QuestCompletionPolicy.SPECIFIC_PHASE
-                && this.completionTargetPhaseId != null
-                && !this.completionTargetPhaseId.isEmpty()) {
-            throw new IllegalStateException(
-                    "Quest '" + this.id + "': completionTargetPhase only valid for SPECIFIC_PHASE");
-        }
-
-        return new QuestDefinition(
-                this.id,
-                this.category,
-                this.displayName,
-                this.description,
-                this.iconTexture,
-                this.sortOrder,
-                this.repeatable,
-                new ArrayList<>(this.unlockConditions),
-                new LinkedHashMap<>(this.phases),
-                this.initialPhaseId,
-                new ArrayList<>(this.completionRewards),
-                new ArrayList<>(this.flagsOnAccept),
-                new ArrayList<>(this.flagsOnComplete),
-                new ArrayList<>(this.relatedMarks),
-                this.visualConfigBuilder.build(),
-                this.chapterShopId,
-                this.chapterShopType,
-                this.chapterShopPersistent,
-                this.chapterStartSound,
-                this.chapterFailSound,
-                this.chapterCompleteSound,
-                this.completionPolicy,
-                this.completionRequiredCount,
-                this.completionTargetPhaseId,
-                this.timeLimitType,
-                this.timeLimitValue
-        );
+        if (this.completionPolicy != QuestCompletionPolicy.SPECIFIC_PHASE && this.completionTargetPhaseId != null && !this.completionTargetPhaseId.isEmpty()) throw new IllegalStateException("Quest '" + this.id + "': completionTargetPhase only valid for SPECIFIC_PHASE");
+        return new QuestDefinition(this.id, this.category, this.displayName, this.description, this.iconTexture, this.sortOrder, this.repeatable, new ArrayList<>(this.unlockConditions), new LinkedHashMap<>(this.phases), this.initialPhaseId, new ArrayList<>(this.completionRewards), new ArrayList<>(this.flagsOnAccept), new ArrayList<>(this.flagsOnComplete), new ArrayList<>(this.relatedMarks), this.visualConfigBuilder.build(), this.mode, this.collectionConfig, this.chapterShopId, this.chapterShopType, this.chapterShopPersistent, this.chapterStartSound, this.chapterFailSound, this.chapterCompleteSound, this.completionPolicy, this.completionRequiredCount, this.completionTargetPhaseId, this.timeLimitType, this.timeLimitValue);
     }
-
-    /**
-     * 构建并直接注册到全局 QuestRegistry。
-     *
-     * @return 构建好的 QuestDefinition（方便链式引用）
-     */
-    public QuestDefinition buildAndRegister() {
-        QuestDefinition def = this.build();
-        QuestRegistry.register(def);
-        return def;
-    }
+    public QuestDefinition buildAndRegister() { QuestDefinition def = this.build(); QuestRegistry.register(def); return def; }
 }

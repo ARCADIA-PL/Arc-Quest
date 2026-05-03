@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;
+import org.arcadia.arc_quest.quest.logic.profile.CollectionQuestEngine;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
@@ -71,6 +72,10 @@ public final class QuestProgressHandler {
         }
 
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+
+        if (def.isCollectionQuest()) {
+            return CollectionQuestEngine.acceptQuest(player, cap, def);
+        }
 
         if (cap.isQuestActive(questId)) {
             return QuestRejectCodeDictionary.Code.ALREADY_ACTIVE;
@@ -146,10 +151,11 @@ public final class QuestProgressHandler {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         QuestRuntimeData data = cap.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) return;
-        if (!data.isPhaseActive(phaseId)) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
+        if (def.isCollectionQuest()) return;
+        if (!data.isPhaseActive(phaseId)) return;
 
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) return;
@@ -173,6 +179,58 @@ public final class QuestProgressHandler {
                 objIndex, currentProgress, newProgress, required));
 
         checkPhaseCompletion(player, cap, data, def, phaseId);
+    }
+
+    public static void incrementCollectionEntry(ServerPlayer player,
+                                                String questId,
+                                                String phaseId,
+                                                int amount) {
+        if (amount <= 0) return;
+
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null || !def.isCollectionQuest()) return;
+
+        int next = CollectionQuestEngine.incrementEntry(player, cap, def, data, phaseId, amount);
+        if (next > 0) {
+            syncQuestStateAndPush(player, data);
+        }
+    }
+
+    public static void discoverCollectionEntry(ServerPlayer player,
+                                               String questId,
+                                               String phaseId) {
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null || !def.isCollectionQuest()) return;
+
+        if (CollectionQuestEngine.discoverEntry(def, data, phaseId)) {
+            syncQuestStateAndPush(player, data);
+        }
+    }
+
+    public static void addCollectionUniqueKey(ServerPlayer player,
+                                              String questId,
+                                              String phaseId,
+                                              String uniqueKey) {
+        if (uniqueKey == null || uniqueKey.isEmpty()) return;
+
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null || !def.isCollectionQuest()) return;
+
+        if (CollectionQuestEngine.addUniqueProgress(player, cap, def, data, phaseId, uniqueKey)) {
+            syncQuestStateAndPush(player, data);
+        }
     }
 
     // ═══════════════════════════════════════════════════════

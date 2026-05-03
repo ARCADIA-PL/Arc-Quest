@@ -38,6 +38,8 @@ public final class PhaseDefinition {
     private final SoundEvent phaseStartSound;
     @Nullable
     private final SoundEvent phaseCompleteSound;
+    @Nullable
+    private final CollectionEntryConfig collectionEntryConfig;
     /**
      * 该阶段关联的 Ponder 情报场景 ID，为 null 表示不显示 Intel 按钮。
      */
@@ -55,7 +57,7 @@ public final class PhaseDefinition {
                            QuestVisualConfig visualConfig, boolean autoEnterByCondition) {
         this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
                 objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
-                visualConfig, null, null, null, null, null, autoEnterByCondition);
+                visualConfig, null, null, null, null, null, null, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
@@ -70,7 +72,7 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId, boolean autoEnterByCondition) {
         this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
                 objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
-                visualConfig, tradeShopId, null, null, null, null, autoEnterByCondition);
+                visualConfig, tradeShopId, null, null, null, null, null, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
@@ -87,7 +89,7 @@ public final class PhaseDefinition {
                            @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
         this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()), 
                 objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
-                visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
+                visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, null, autoEnterByCondition);
     }
 
     /**
@@ -108,7 +110,7 @@ public final class PhaseDefinition {
                            @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
         this(phaseId, displayName, description, QuestText.component(Component.empty()), 
                 objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete, 
-                visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, autoEnterByCondition);
+                visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, null, autoEnterByCondition);
     }
 
     /**
@@ -128,11 +130,12 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound,
+                           @Nullable CollectionEntryConfig collectionEntryConfig,
                            @Nullable ResourceLocation intelSceneId,
                            @Nullable ICondition enterCondition, boolean autoEnterByCondition) {
         this(phaseId, displayName, description, story, objectives, transitions, choices, phaseRewards,
                 flagsToSetOnEnter, flagsToSetOnComplete, List.of(), visualConfig,
-                tradeShopId, phaseStartSound, phaseCompleteSound, intelSceneId, enterCondition, autoEnterByCondition);
+                tradeShopId, phaseStartSound, phaseCompleteSound, collectionEntryConfig, intelSceneId, enterCondition, autoEnterByCondition);
     }
 
     public PhaseDefinition(String phaseId,
@@ -150,6 +153,7 @@ public final class PhaseDefinition {
                            @Nullable String tradeShopId,
                            @Nullable SoundEvent phaseStartSound,
                            @Nullable SoundEvent phaseCompleteSound,
+                           @Nullable CollectionEntryConfig collectionEntryConfig,
                            @Nullable ResourceLocation intelSceneId,
                            @Nullable ICondition enterCondition, boolean autoEnterByCondition) {
         Objects.requireNonNull(phaseId);
@@ -172,6 +176,7 @@ public final class PhaseDefinition {
         this.tradeShopId = tradeShopId;
         this.phaseStartSound = phaseStartSound;
         this.phaseCompleteSound = phaseCompleteSound;
+        this.collectionEntryConfig = collectionEntryConfig;
         this.intelSceneId = intelSceneId;
         this.enterCondition = enterCondition;
         this.autoEnterByCondition = autoEnterByCondition;
@@ -239,6 +244,15 @@ public final class PhaseDefinition {
 
     public List<IReward> getPhaseRewards() {
         return this.phaseRewards;
+    }
+
+    @Nullable
+    public CollectionEntryConfig getCollectionEntryConfig() {
+        return this.collectionEntryConfig;
+    }
+
+    public boolean hasCollectionEntryConfig() {
+        return this.collectionEntryConfig != null;
     }
 
     @Nullable

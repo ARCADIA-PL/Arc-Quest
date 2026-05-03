@@ -44,18 +44,18 @@ public final class PhaseBuilder {
     private QuestText story = QuestText.component(Component.empty());
     private int transitionPriorityCounter = 0;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
+    @Nullable
+    private CollectionEntryConfig collectionEntryConfig = null;
     private String tradeShopId = null;
     @Nullable
     private ICondition enterCondition = null;
     private boolean autoEnterByCondition = true;
 
-    // 音效配置
     @Nullable
     private SoundEvent phaseStartSound;
     @Nullable
     private SoundEvent phaseCompleteSound;
 
-    // Ponder 情报场景
     @Nullable
     private ResourceLocation intelSceneId = null;
 
@@ -67,8 +67,6 @@ public final class PhaseBuilder {
     public static PhaseBuilder create(String phaseId) {
         return new PhaseBuilder(phaseId);
     }
-
-    // ── 显示名称 ──
 
     public PhaseBuilder displayName(String literal) {
         this.displayName = QuestText.literal(literal);
@@ -115,71 +113,48 @@ public final class PhaseBuilder {
         return this;
     }
 
-    // ── 目标 ──
-
-    /**
-     * 添加一个目标（传入 ObjectiveBuilder，自动 build）
-     */
     public PhaseBuilder objective(ObjectiveBuilder objectiveBuilder) {
         this.objectives.add(objectiveBuilder.build());
         return this;
     }
 
-    /**
-     * 添加一个已构建好的 ObjectiveEntry
-     */
     public PhaseBuilder objective(ObjectiveEntry entry) {
         this.objectives.add(entry);
         return this;
     }
 
-    // ── 跳转 ──
-
-    /**
-     * 无条件跳转到指定阶段（默认分支）
-     */
     public PhaseBuilder thenGoTo(String targetPhaseId) {
         this.transitions.add(new PhaseTransition(
                 targetPhaseId, null, this.transitionPriorityCounter++));
         return this;
     }
 
-    /**
-     * 有条件跳转（优先于无条件分支）
-     */
     public PhaseBuilder thenGoToIf(String targetPhaseId, ICondition condition) {
         this.transitions.add(new PhaseTransition(
                 targetPhaseId, condition, this.transitionPriorityCounter++));
         return this;
     }
 
-    // ── 选择分支（对话选项） ──
-
-    /**
-     * 添加玩家可见的选择项
-     */
     public PhaseBuilder choice(Component text, String flagToSet, String targetPhaseId) {
         this.choices.add(new ChoiceOption(text, flagToSet, targetPhaseId, null));
         return this;
     }
 
-    /**
-     * 添加带可见条件的选择项
-     */
     public PhaseBuilder choice(Component text, String flagToSet, String targetPhaseId,
                                ICondition visibleCondition) {
         this.choices.add(new ChoiceOption(text, flagToSet, targetPhaseId, visibleCondition));
         return this;
     }
 
-    // ── 奖励 ──
-
     public PhaseBuilder reward(IReward reward) {
         this.phaseRewards.add(reward);
         return this;
     }
 
-    // ── Flags ──
+    public PhaseBuilder collectionEntryConfig(CollectionEntryConfig collectionEntryConfig) {
+        this.collectionEntryConfig = collectionEntryConfig;
+        return this;
+    }
 
     public PhaseBuilder setFlagOnEnter(String flag) {
         this.flagsOnEnter.add(flag);
@@ -219,61 +194,20 @@ public final class PhaseBuilder {
         return this;
     }
 
-    // ── Phase 交易 ──
-
-    /**
-     * 为此阶段配置专属交易商店。
-     *
-     * @param shopId 交易商店注册 ID
-     */
     public PhaseBuilder phaseTrade(String shopId) {
         this.tradeShopId = shopId;
         return this;
     }
 
-    // ── Ponder 情报场景 ──
-
-    /**
-     * 绑定一个 Ponder 情报场景，玩家在任务日志中可通过 [PHASE INTEL] 按钮打开。
-     *
-     * <p>推荐配合 {@link ArcQuestPonderHelper} 生成 sceneId：
-     * <pre>
-     *   // 本模组阶段
-     *   .intelScene(ArcQuestPonderHelper.questPhaseId("arc_quest:epic_prologue", "arc_quest:defend_village"))
-     *
-     *   // 附属模组阶段（自动编码命名空间，避免冲突）
-     *   .intelScene(ArcQuestPonderHelper.questPhaseId("addon:prologue", "addon:phase_1"))
-     * </pre>
-     *
-     * <p>对应的场景须已在 {@link org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry} 中注册，
-     * 且结构文件（.nbt）已放置于 {@code assets/<modid>/ponder/} 目录。
-     *
-     * @param sceneId Ponder 场景 ID，由 {@code ArcQuestPonderHelper.questPhaseId()} 生成
-     */
     public PhaseBuilder intelScene(ResourceLocation sceneId) {
         this.intelSceneId = sceneId;
         return this;
     }
 
-    /**
-     * 快捷方法：直接传入 questId + phaseId，内部调用
-     * {@link ArcQuestPonderHelper#questPhaseId}。
-     *
-     * <p>支持带或不带命名空间的 ID：
-     * <pre>
-     *   .intelScene("arc_quest:epic_prologue", "arc_quest:defend_village")
-     *   .intelScene("addon:prologue",          "addon:phase_1")
-     *   .intelScene("epic_prologue",           "defend_village")
-     * </pre>
-     */
     public PhaseBuilder intelScene(String questId, String phaseId) {
         this.intelSceneId = ArcQuestPonderHelper.questPhaseId(questId, phaseId);
         return this;
     }
-
-    // ════════════════════════════════════════
-    //  音效配置
-    // ════════════════════════════════════════
 
     public PhaseBuilder phaseStartSound(SoundEvent sound) {
         this.phaseStartSound = sound;
@@ -285,13 +219,6 @@ public final class PhaseBuilder {
         return this;
     }
 
-    // ════════════════════════════════════════
-    //  视觉配置（高可扩展 API）
-    // ════════════════════════════════════════
-
-    /**
-     * 设置视觉配置（高级 API）。
-     */
     public PhaseBuilder visualConfig(QuestVisualConfig config) {
         if (config != null) {
             this.visualConfigBuilder = QuestVisualConfig.builder()
@@ -308,68 +235,42 @@ public final class PhaseBuilder {
         return this;
     }
 
-    /**
-     * 便捷方法：添加阶段开始立绘。
-     */
     public PhaseBuilder startSplash(ResourceLocation texture, float scale) {
         this.visualConfigBuilder.splash(SplashType.PHASE_START, texture, scale);
         return this;
     }
 
-    /**
-     * 便捷方法：添加阶段开始立绘（默认缩放 1.0）。
-     */
     public PhaseBuilder startSplash(ResourceLocation texture) {
         return startSplash(texture, 1.0f);
     }
 
-    /**
-     * 便捷方法：添加阶段完成立绘。
-     */
     public PhaseBuilder completeSplash(ResourceLocation texture, float scale) {
         this.visualConfigBuilder.splash(SplashType.PHASE_COMPLETE, texture, scale);
         return this;
     }
 
-    /**
-     * 便捷方法：添加阶段完成立绘（默认缩放 1.0）。
-     */
     public PhaseBuilder completeSplash(ResourceLocation texture) {
         return completeSplash(texture, 1.0f);
     }
 
-    /**
-     * 便捷方法：添加阶段标签图标。
-     */
     public PhaseBuilder labelIcon(ResourceLocation texture, float scale) {
         this.visualConfigBuilder.icon(IconPosition.PHASE_LABEL, texture, scale);
         return this;
     }
 
-    /**
-     * 便捷方法：添加阶段标签图标（默认缩放 1.0）。
-     */
     public PhaseBuilder labelIcon(ResourceLocation texture) {
         return labelIcon(texture, 1.0f);
     }
 
-    /**
-     * 便捷方法：设置阶段主题色。
-     */
     public PhaseBuilder themeColor(int color) {
         this.visualConfigBuilder.themeColor(color);
         return this;
     }
 
-    /**
-     * 便捷方法：从 ChatFormatting 设置阶段主题色。
-     */
     public PhaseBuilder themeColor(ChatFormatting formatting) {
         this.visualConfigBuilder.themeColorFromChatFormatting(formatting);
         return this;
     }
-
-    // ── 构建 ──
 
     public PhaseDefinition build() {
         if (this.displayName == null) {
@@ -395,6 +296,7 @@ public final class PhaseBuilder {
                 this.tradeShopId,
                 this.phaseStartSound,
                 this.phaseCompleteSound,
+                this.collectionEntryConfig,
                 this.intelSceneId,
                 this.enterCondition,
                 this.autoEnterByCondition

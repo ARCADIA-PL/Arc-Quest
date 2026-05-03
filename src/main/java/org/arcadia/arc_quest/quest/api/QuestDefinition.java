@@ -23,6 +23,9 @@ public final class QuestDefinition {
     private final int sortOrder;
     private final boolean repeatable;
     private final QuestVisualConfig visualConfig;
+    private final QuestMode mode;
+    @Nullable
+    private final CollectionQuestConfig collectionConfig;
 
     private final List<ICondition> unlockConditions;
     private final LinkedHashMap<String, PhaseDefinition> phases;
@@ -70,7 +73,35 @@ public final class QuestDefinition {
                            QuestVisualConfig visualConfig) {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
-                flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig, null, ChapterShopType.TRADE, false);
+                flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig,
+                QuestMode.PROGRESSION, null, null, ChapterShopType.TRADE, false);
+    }
+
+    public QuestDefinition(ResourceLocation id,
+                           QuestCategory category,
+                           QuestText displayName,
+                           QuestText description,
+                           @Nullable ResourceLocation iconTexture,
+                           int sortOrder,
+                           boolean repeatable,
+                           List<ICondition> unlockConditions,
+                           LinkedHashMap<String, PhaseDefinition> phases,
+                           String initialPhaseId,
+                           List<IReward> completionRewards,
+                           List<String> flagsToSetOnAccept,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable QuestMode mode,
+                           @Nullable CollectionQuestConfig collectionConfig,
+                           @Nullable String chapterShopId,
+                           ChapterShopType chapterShopType,
+                           boolean chapterShopPersistent) {
+        this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
+                unlockConditions, phases, initialPhaseId, completionRewards,
+                flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig,
+                mode, collectionConfig, chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null,
+                null, 0L);
     }
 
     public QuestDefinition(ResourceLocation id,
@@ -94,7 +125,7 @@ public final class QuestDefinition {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
                 flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig,
-                chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null,
+                QuestMode.PROGRESSION, null, chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null,
                 null, 0L);
     }
 
@@ -118,7 +149,7 @@ public final class QuestDefinition {
         this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
                 unlockConditions, phases, initialPhaseId, completionRewards,
                 flagsToSetOnAccept, flagsToSetOnComplete, List.of(), visualConfig,
-                chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null,
+                QuestMode.PROGRESSION, null, chapterShopId, chapterShopType, chapterShopPersistent, null, null, null, QuestCompletionPolicy.ALL, 0, null,
                 null, 0L);
     }
 
@@ -137,6 +168,43 @@ public final class QuestDefinition {
                            List<String> flagsToSetOnComplete,
                            List<MarkSpec> relatedMarks,
                            QuestVisualConfig visualConfig,
+                           @Nullable String chapterShopId,
+                           ChapterShopType chapterShopType,
+                           boolean chapterShopPersistent,
+                           @Nullable SoundEvent chapterStartSound,
+                           @Nullable SoundEvent chapterFailSound,
+                           @Nullable SoundEvent chapterCompleteSound,
+                           QuestCompletionPolicy completionPolicy,
+                           int completionRequiredCount,
+                           @Nullable String completionTargetPhaseId,
+                           @Nullable QuestTimeLimitType timeLimitType,
+                           long timeLimitValue) {
+        this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
+                unlockConditions, phases, initialPhaseId, completionRewards,
+                flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig,
+                QuestMode.PROGRESSION, null, chapterShopId, chapterShopType, chapterShopPersistent,
+                chapterStartSound, chapterFailSound, chapterCompleteSound,
+                completionPolicy, completionRequiredCount, completionTargetPhaseId,
+                timeLimitType, timeLimitValue);
+    }
+
+    public QuestDefinition(ResourceLocation id,
+                           QuestCategory category,
+                           QuestText displayName,
+                           QuestText description,
+                           @Nullable ResourceLocation iconTexture,
+                           int sortOrder,
+                           boolean repeatable,
+                           List<ICondition> unlockConditions,
+                           LinkedHashMap<String, PhaseDefinition> phases,
+                           String initialPhaseId,
+                           List<IReward> completionRewards,
+                           List<String> flagsToSetOnAccept,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable QuestMode mode,
+                           @Nullable CollectionQuestConfig collectionConfig,
                            @Nullable String chapterShopId,
                            ChapterShopType chapterShopType,
                            boolean chapterShopPersistent,
@@ -167,6 +235,8 @@ public final class QuestDefinition {
         this.sortOrder = sortOrder;
         this.repeatable = repeatable;
         this.visualConfig = visualConfig != null ? visualConfig : QuestVisualConfig.EMPTY;
+        this.mode = mode != null ? mode : QuestMode.PROGRESSION;
+        this.collectionConfig = collectionConfig;
         this.unlockConditions = Collections.unmodifiableList(unlockConditions);
         this.phases = new LinkedHashMap<>(phases);          // 防御性拷贝
         this.initialPhaseId = initialPhaseId;
@@ -270,6 +340,19 @@ public final class QuestDefinition {
 
     public boolean isRepeatable() {
         return this.repeatable;
+    }
+
+    public QuestMode getMode() {
+        return this.mode;
+    }
+
+    @Nullable
+    public CollectionQuestConfig getCollectionConfig() {
+        return this.collectionConfig;
+    }
+
+    public boolean isCollectionQuest() {
+        return this.mode == QuestMode.COLLECTION;
     }
 
     public List<ICondition> getUnlockConditions() {

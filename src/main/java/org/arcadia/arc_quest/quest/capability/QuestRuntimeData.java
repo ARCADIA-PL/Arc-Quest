@@ -7,6 +7,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import org.arcadia.arc_quest.quest.api.QuestState;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -31,6 +32,8 @@ public final class QuestRuntimeData {
      * 每个阶段的目标进度
      */
     private final LinkedHashMap<String, int[]> phaseProgress;
+    @Nullable
+    private CollectionRuntimeData collectionData;
     private QuestState state;
     private boolean isDirty = false;
 
@@ -49,6 +52,7 @@ public final class QuestRuntimeData {
         this.activePhaseIds = new LinkedHashSet<>();
         this.completedPhaseIds = new LinkedHashSet<>();
         this.phaseProgress = new LinkedHashMap<>();
+        this.collectionData = null;
 
         this.activePhaseIds.add(Objects.requireNonNull(initialPhaseId));
         this.phaseProgress.put(initialPhaseId, new int[Math.max(0, objectiveCount)]);
@@ -59,6 +63,7 @@ public final class QuestRuntimeData {
                              LinkedHashSet<String> activePhaseIds,
                              LinkedHashSet<String> completedPhaseIds,
                              LinkedHashMap<String, int[]> phaseProgress,
+                             @Nullable CollectionRuntimeData collectionData,
                              long acceptedAtTick,
                              long acceptedAtRealMs,
                              long acceptedAtDayTime) {
@@ -67,6 +72,7 @@ public final class QuestRuntimeData {
         this.activePhaseIds = activePhaseIds;
         this.completedPhaseIds = completedPhaseIds;
         this.phaseProgress = phaseProgress;
+        this.collectionData = collectionData;
         this.acceptedAtTick = acceptedAtTick;
         this.acceptedAtRealMs = acceptedAtRealMs;
         this.acceptedAtDayTime = acceptedAtDayTime;
@@ -132,7 +138,12 @@ public final class QuestRuntimeData {
             active.add(progress.keySet().iterator().next());
         }
 
-        return new QuestRuntimeData(questId, state, active, completed, progress, accepted, acceptedRealMs, acceptedDayTime);
+        CollectionRuntimeData collectionData = null;
+        if (tag.contains("CollectionData", Tag.TAG_COMPOUND)) {
+            collectionData = CollectionRuntimeData.deserializeNBT(tag.getCompound("CollectionData"));
+        }
+
+        return new QuestRuntimeData(questId, state, active, completed, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
     }
 
     public static QuestRuntimeData readFromNetwork(FriendlyByteBuf buf) {
@@ -163,10 +174,12 @@ public final class QuestRuntimeData {
             progress.put(phaseId, arr);
         }
 
+        boolean hasCollectionData = buf.readBoolean();
+        CollectionRuntimeData collectionData = hasCollectionData ? CollectionRuntimeData.readFromNetwork(buf) : null;
         long accepted = buf.readLong();
         long acceptedRealMs = buf.readLong();
         long acceptedDayTime = buf.readLong();
-        return new QuestRuntimeData(questId, state, active, completed, progress, accepted, acceptedRealMs, acceptedDayTime);
+        return new QuestRuntimeData(questId, state, active, completed, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
     }
 
     public String getQuestId() { return questId; }
@@ -179,6 +192,9 @@ public final class QuestRuntimeData {
     public Set<String> getCompletedPhaseIds() { return Set.copyOf(completedPhaseIds); }
     public boolean isPhaseActive(String phaseId) { return activePhaseIds.contains(phaseId); }
     public boolean isPhaseCompleted(String phaseId) { return completedPhaseIds.contains(phaseId); }
+    @Nullable public CollectionRuntimeData getCollectionData() { return collectionData; }
+    public boolean hasCollectionData() { return collectionData != null; }
+    public void setCollectionData(@Nullable CollectionRuntimeData collectionData) { this.collectionData = collectionData; this.isDirty = true; }
 
     public int getObjectiveCount(String phaseId) { int[] arr = phaseProgress.get(phaseId); return arr == null ? 0 : arr.length; }
     public int getObjectiveProgress(String phaseId, int index) { int[] arr = phaseProgress.get(phaseId); if (arr == null || index < 0 || index >= arr.length) return 0; return arr[index]; }
@@ -205,13 +221,13 @@ public final class QuestRuntimeData {
     }
 
     public void completePhase(String phaseId) { if (activePhaseIds.remove(phaseId)) { completedPhaseIds.add(phaseId); isDirty = true; } }
-    public boolean isDirty() { return isDirty; }
-    public void clearDirty() { this.isDirty = false; }
+    public boolean isDirty() { return isDirty || (collectionData != null && collectionData.isDirty()); }
+    public void clearDirty() { this.isDirty = false; if (collectionData != null) collectionData.clearDirty(); }
 
     public CompoundTag serializeNBT() {
         CompoundTag tag = new CompoundTag();
         tag.putString("QuestId", questId);
-        tag.putInt("SchemaVersion", 2);
+        tag.putInt("SchemaVersion", 3);
         tag.putString("State", state.name());
         tag.putLong("AcceptedAt", acceptedAtTick);
         tag.putLong("AcceptedAtRealMs", acceptedAtRealMs);
@@ -228,6 +244,7 @@ public final class QuestRuntimeData {
         CompoundTag progressTag = new CompoundTag();
         for (Map.Entry<String, int[]> e : phaseProgress.entrySet()) progressTag.putIntArray(e.getKey(), e.getValue());
         tag.put("PhaseProgress", progressTag);
+        if (collectionData != null) tag.put("CollectionData", collectionData.serializeNBT());
         return tag;
     }
 
@@ -249,6 +266,8 @@ public final class QuestRuntimeData {
             for (int p : arr) buf.writeVarInt(p);
         }
 
+        buf.writeBoolean(collectionData != null);
+        if (collectionData != null) collectionData.writeToNetwork(buf);
         buf.writeLong(acceptedAtTick);
         buf.writeLong(acceptedAtRealMs);
         buf.writeLong(acceptedAtDayTime);
@@ -259,7 +278,8 @@ public final class QuestRuntimeData {
         LinkedHashSet<String> completed = new LinkedHashSet<>(completedPhaseIds);
         LinkedHashMap<String, int[]> progress = new LinkedHashMap<>();
         for (Map.Entry<String, int[]> e : phaseProgress.entrySet()) progress.put(e.getKey(), Arrays.copyOf(e.getValue(), e.getValue().length));
-        return new QuestRuntimeData(questId, state, active, completed, progress, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
+        CollectionRuntimeData collectionDataCopy = collectionData != null ? collectionData.copy() : null;
+        return new QuestRuntimeData(questId, state, active, completed, progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
     }
 
     public String getCurrentPhaseId() { if (!activePhaseIds.isEmpty()) return activePhaseIds.iterator().next(); if (!completedPhaseIds.isEmpty()) return completedPhaseIds.iterator().next(); return ""; }
@@ -286,6 +306,7 @@ public final class QuestRuntimeData {
                 ", state=" + state +
                 ", activePhases=" + activePhaseIds +
                 ", completedPhases=" + completedPhaseIds +
+                ", hasCollectionData=" + (collectionData != null) +
                 '}';
     }
 }
