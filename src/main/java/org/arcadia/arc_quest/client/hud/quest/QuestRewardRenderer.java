@@ -26,14 +26,6 @@ public final class QuestRewardRenderer {
     private static final int ICON_TEXT_GAP = 3;
     private static final Map<String, RewardRenderCache> CACHE = new HashMap<>();
 
-    private static class RewardRenderCache {
-        ItemStack stack = ItemStack.EMPTY;
-        String label;
-        String prefixedText;
-        int lastMaxWidth = Integer.MIN_VALUE;
-        String safeText;
-    }
-
     private QuestRewardRenderer() {
     }
 
@@ -154,5 +146,13 @@ public final class QuestRewardRenderer {
      */
     public static int measureHeight(List<IReward> rewards) {
         return rewards.size() * ROW_HEIGHT;
+    }
+
+    private static class RewardRenderCache {
+        ItemStack stack = ItemStack.EMPTY;
+        String label;
+        String prefixedText;
+        int lastMaxWidth = Integer.MIN_VALUE;
+        String safeText;
     }
 }

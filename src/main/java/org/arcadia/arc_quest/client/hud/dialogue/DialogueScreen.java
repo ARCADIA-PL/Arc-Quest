@@ -2,7 +2,6 @@ package org.arcadia.arc_quest.client.hud.dialogue;
 
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -84,91 +83,188 @@ public class DialogueScreen extends Screen {
         float scale = (float) (3.0 / guiScale);
         float sw = this.width / scale, sh = this.height / scale;
         float minW = 480f, minH = 260f;
-        if (sw < minW) { scale = this.width / minW; sh = this.height / scale; }
+        if (sw < minW) {
+            scale = this.width / minW;
+            sh = this.height / scale;
+        }
         if (sh < minH) scale = this.height / minH;
         return scale;
     }
 
-    public int getScaledWidth() { return (int) (this.width / getUiScale()); }
-    public int getScaledHeight() { return (int) (this.height / getUiScale()); }
+    public int getScaledWidth() {
+        return (int) (this.width / getUiScale());
+    }
+
+    public int getScaledHeight() {
+        return (int) (this.height / getUiScale());
+    }
 
     public void updateNode(String speaker, String text, String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes, int[] choiceCooldownTypes, long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
     public void updateEntityId(int entityId) {
-        if (this.entityId != entityId) { this.entityId = entityId; this.cachedNpcEntity = null; }
+        if (this.entityId != entityId) {
+            this.entityId = entityId;
+            this.cachedNpcEntity = null;
+        }
     }
 
     private void applyNodeData(String speaker, String text, String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
-        this.speaker = speaker; this.fullText = text; this.choices = choices != null ? choices : new String[0];
-        this.isTerminal = isTerminal; this.hasAutoNext = hasAutoNext; this.delayMs = delayMs;
-        this.typewriterProgress = 0f; this.typewriterDone = false; this.typewriterDoneTime = 0;
-        this.choicesVisible = false; this.autoAdvanceSent = false; this.autoAdvanceTime = 0;
-        this.choiceReveal = new float[this.choices.length]; this.choiceHover = new float[this.choices.length];
-        this.wrappedLines = null; this.clickedIndex = -1; this.clickSent = false;
+        this.speaker = speaker;
+        this.fullText = text;
+        this.choices = choices != null ? choices : new String[0];
+        this.isTerminal = isTerminal;
+        this.hasAutoNext = hasAutoNext;
+        this.delayMs = delayMs;
+        this.typewriterProgress = 0f;
+        this.typewriterDone = false;
+        this.typewriterDoneTime = 0;
+        this.choicesVisible = false;
+        this.autoAdvanceSent = false;
+        this.autoAdvanceTime = 0;
+        this.choiceReveal = new float[this.choices.length];
+        this.choiceHover = new float[this.choices.length];
+        this.wrappedLines = null;
+        this.clickedIndex = -1;
+        this.clickSent = false;
         this.clickAnim = new float[this.choices.length];
     }
 
-    @Nullable private ClientDialogueCache.DialogueSessionData getCurrentSession() { return ClientDialogueCache.INSTANCE.getCurrentSession(); }
-    private boolean isChoiceOnCooldown(int index) { ClientDialogueCache.DialogueSessionData session = getCurrentSession(); return session != null && session.isChoiceOnCooldown(index); }
-    private String getChoiceCooldownText(int index) { ClientDialogueCache.DialogueSessionData session = getCurrentSession(); return session != null ? session.getChoiceCooldownText(index) : ""; }
+    @Nullable
+    private ClientDialogueCache.DialogueSessionData getCurrentSession() {
+        return ClientDialogueCache.INSTANCE.getCurrentSession();
+    }
+
+    private boolean isChoiceOnCooldown(int index) {
+        ClientDialogueCache.DialogueSessionData session = getCurrentSession();
+        return session != null && session.isChoiceOnCooldown(index);
+    }
+
+    private String getChoiceCooldownText(int index) {
+        ClientDialogueCache.DialogueSessionData session = getCurrentSession();
+        return session != null ? session.getChoiceCooldownText(index) : "";
+    }
 
     private void selectChoice(int index) {
         if (isClosing || clickedIndex >= 0 || isChoiceOnCooldown(index)) return;
         ClientDialogueCache.DialogueSessionData session = getCurrentSession();
         if (session != null) ClientDialogueCache.INSTANCE.playChoiceSound(session.treeId, index);
-        clickedIndex = index; clickSent = false; playClick();
+        clickedIndex = index;
+        clickSent = false;
+        playClick();
     }
 
     private void commitChoice() {
-        if (!clickSent && clickedIndex >= 0) { clickSent = true; ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(clickedIndex)); }
+        if (!clickSent && clickedIndex >= 0) {
+            clickSent = true;
+            ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(clickedIndex));
+        }
     }
 
     public void resetSelectionState() {
-        this.clickedIndex = -1; this.clickSent = false;
+        this.clickedIndex = -1;
+        this.clickSent = false;
         if (this.clickAnim != null) for (int i = 0; i < this.clickAnim.length; i++) this.clickAnim[i] = 0f;
     }
 
-    @Nullable public Entity getNpcEntity() {
-        if (cachedNpcEntity == null && entityId != -1 && minecraft != null && minecraft.level != null) cachedNpcEntity = minecraft.level.getEntity(entityId);
+    @Nullable
+    public Entity getNpcEntity() {
+        if (cachedNpcEntity == null && entityId != -1 && minecraft != null && minecraft.level != null)
+            cachedNpcEntity = minecraft.level.getEntity(entityId);
         return cachedNpcEntity;
     }
 
-    @Override protected void init() {
-        super.init(); this.lastRenderTime = 0; this.masterAnim = 0f; this.suspendAlpha = 1f;
-        this.isClosing = false; this.autoAdvanceSent = false; this.autoAdvanceTime = 0; this.cachedNpcEntity = null;
+    @Override
+    protected void init() {
+        super.init();
+        this.lastRenderTime = 0;
+        this.masterAnim = 0f;
+        this.suspendAlpha = 1f;
+        this.isClosing = false;
+        this.autoAdvanceSent = false;
+        this.autoAdvanceTime = 0;
+        this.cachedNpcEntity = null;
         if (DialogueHistoryPanel.isActive()) DialogueHistoryPanel.close();
     }
 
-    @Override public void resize(@NotNull Minecraft mc, int width, int height) { this.wrappedLines = null; super.resize(mc, width, height); }
+    @Override
+    public void resize(@NotNull Minecraft mc, int width, int height) {
+        this.wrappedLines = null;
+        super.resize(mc, width, height);
+    }
 
-    private int getChoiceWidth() { return Math.max(200, Math.min(300, (int) (getScaledWidth() * 0.28f))); }
-    private int getChoiceRightMargin() { return Math.max(16, (int) (getScaledWidth() * 0.03f)); }
-    private int getChoiceX() { return getScaledWidth() - getChoiceWidth() - getChoiceRightMargin(); }
+    private int getChoiceWidth() {
+        return Math.max(200, Math.min(300, (int) (getScaledWidth() * 0.28f)));
+    }
+
+    private int getChoiceRightMargin() {
+        return Math.max(16, (int) (getScaledWidth() * 0.03f));
+    }
+
+    private int getChoiceX() {
+        return getScaledWidth() - getChoiceWidth() - getChoiceRightMargin();
+    }
+
     private int getChoiceStartY(int choiceH, int gap) {
         int totalChoiceHeight = choices.length * (choiceH + gap) - gap;
         return (getScaledHeight() - totalChoiceHeight) / 2 + (getScaledHeight() / 10);
     }
 
-    @Override public boolean mouseScrolled(double mouseX, double mouseY, double delta) { if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, delta)) return true; return super.mouseScrolled(mouseX, mouseY, delta); }
-    @Override public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) { if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseDragged(mx, my, button, dragX, dragY)) return true; return super.mouseDragged(mx, my, button, dragX, dragY); }
-    @Override public boolean mouseReleased(double mx, double my, int button) { if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseReleased(mx, my, button)) return true; return super.mouseReleased(mx, my, button); }
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, delta)) return true;
+        return super.mouseScrolled(mouseX, mouseY, delta);
+    }
+
+    @Override
+    public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
+        if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseDragged(mx, my, button, dragX, dragY))
+            return true;
+        return super.mouseDragged(mx, my, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int button) {
+        if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseReleased(mx, my, button)) return true;
+        return super.mouseReleased(mx, my, button);
+    }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (QuestSplashRenderer.isActive()) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.keyPressed(keyCode)) return true;
-        if (keyCode == 72) { DialogueHistoryPanel.toggle(); return true; }
-        if (keyCode == 256) { startClose(); return true; }
+        if (keyCode == 72) {
+            DialogueHistoryPanel.toggle();
+            return true;
+        }
+        if (keyCode == 256) {
+            startClose();
+            return true;
+        }
         if (keyCode == 32 || keyCode == 257) {
-            if (!typewriterDone) { typewriterProgress = fullText.length(); typewriterDone = true; typewriterDoneTime = Util.getMillis(); return true; }
-            if (isTerminal && choices.length == 0) { startClose(); return true; }
-            if (hasAutoNext && choices.length == 0 && !autoAdvanceSent) { sendAutoAdvance(); return true; }
+            if (!typewriterDone) {
+                typewriterProgress = fullText.length();
+                typewriterDone = true;
+                typewriterDoneTime = Util.getMillis();
+                return true;
+            }
+            if (isTerminal && choices.length == 0) {
+                startClose();
+                return true;
+            }
+            if (hasAutoNext && choices.length == 0 && !autoAdvanceSent) {
+                sendAutoAdvance();
+                return true;
+            }
             return true;
         }
         if (choicesVisible && clickedIndex < 0 && keyCode >= 49 && keyCode <= 57 && !DialogueHistoryPanel.isActive()) {
-            int idx = keyCode - 49; if (idx < choices.length) { selectChoice(idx); return true; }
+            int idx = keyCode - 49;
+            if (idx < choices.length) {
+                selectChoice(idx);
+                return true;
+            }
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
@@ -179,17 +275,26 @@ public class DialogueScreen extends Screen {
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseClicked(mx, my, button)) return true;
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
 
-        float uiScale = getUiScale(); double smx = mx / uiScale, smy = my / uiScale;
+        float uiScale = getUiScale();
+        double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight(), targetBarHeight = Math.max(24, (int) (sh * 0.08f));
         int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width("■ SYS.LOG");
 
         if (!isClosing && masterAnim > 0.8f && smx >= logBtnX && smx <= logBtnX + logBtnW && smy >= logBtnY && smy <= logBtnY + font.lineHeight) {
-            DialogueHistoryPanel.toggle(); playClick(); return true;
+            DialogueHistoryPanel.toggle();
+            playClick();
+            return true;
         }
 
         if (DialogueHistoryPanel.isActive()) return true;
 
-        if (!typewriterDone) { typewriterProgress = fullText.length(); typewriterDone = true; typewriterDoneTime = Util.getMillis(); playClick(); return true; }
+        if (!typewriterDone) {
+            typewriterProgress = fullText.length();
+            typewriterDone = true;
+            typewriterDoneTime = Util.getMillis();
+            playClick();
+            return true;
+        }
         if (choicesVisible && choices.length > 0 && clickedIndex < 0) {
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8;
             int choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap);
@@ -198,26 +303,61 @@ public class DialogueScreen extends Screen {
                 int cy = choiceStartY + i * (choiceH + gap);
                 int expand = (int) (15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
                 int currentX = choiceX - expand, currentW = choiceW + expand;
-                if (smx >= currentX && smx <= currentX + currentW && smy >= cy && smy <= cy + choiceH) { selectChoice(i); return true; }
+                if (smx >= currentX && smx <= currentX + currentW && smy >= cy && smy <= cy + choiceH) {
+                    selectChoice(i);
+                    return true;
+                }
             }
         }
-        if (isTerminal && typewriterDone && choices.length == 0) { startClose(); playClick(); return true; }
-        if (typewriterDone && choices.length == 0 && !autoAdvanceSent) { sendAutoAdvance(); playClick(); return true; }
+        if (isTerminal && typewriterDone && choices.length == 0) {
+            startClose();
+            playClick();
+            return true;
+        }
+        if (typewriterDone && choices.length == 0 && !autoAdvanceSent) {
+            sendAutoAdvance();
+            playClick();
+            return true;
+        }
         return super.mouseClicked(mx, my, button);
     }
 
-    @Override public boolean isPauseScreen() { return false; }
-    private void sendAutoAdvance() { if (!autoAdvanceSent) { autoAdvanceSent = true; ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.autoAdvance()); } }
-    @Override public void onClose() { startClose(); }
-    public void startCloseAnimation() { startClose(); }
-    private void startClose() { if (!isClosing) isClosing = true; }
-    private void playClick() { if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0F, 0.8F)); }
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+
+    private void sendAutoAdvance() {
+        if (!autoAdvanceSent) {
+            autoAdvanceSent = true;
+            ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.autoAdvance());
+        }
+    }
+
+    @Override
+    public void onClose() {
+        startClose();
+    }
+
+    public void startCloseAnimation() {
+        startClose();
+    }
+
+    private void startClose() {
+        if (!isClosing) isClosing = true;
+    }
+
+    private void playClick() {
+        if (minecraft != null)
+            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0F, 0.8F));
+    }
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
-        float realDt = (now - lastRenderTime) / 1000f; lastRenderTime = now;
+        float realDt = (now - lastRenderTime) / 1000f;
+        lastRenderTime = now;
         if (realDt > 0.1f) realDt = 0.1f;
 
         float uiScale = getUiScale();
@@ -227,12 +367,21 @@ public class DialogueScreen extends Screen {
         boolean splashActive = QuestSplashRenderer.isActive(), historyActive = DialogueHistoryPanel.isActive();
         boolean suspendContent = splashActive || historyActive;
 
-        if (suspendContent) { suspendAlpha = Math.max(0f, suspendAlpha - realDt * 8f); if (splashActive) dt = 0f; }
-        else { suspendAlpha = Math.min(1f, suspendAlpha + realDt * 6f); dt = realDt; }
+        if (suspendContent) {
+            suspendAlpha = Math.max(0f, suspendAlpha - realDt * 8f);
+            if (splashActive) dt = 0f;
+        } else {
+            suspendAlpha = Math.min(1f, suspendAlpha + realDt * 6f);
+            dt = realDt;
+        }
 
         masterAnim = Math.max(0f, Math.min(1f, masterAnim + (isClosing ? -4.0f * dt : 3.0f * dt)));
         if (isClosing && masterAnim <= 0.0f) {
-            if (minecraft != null && minecraft.screen == this) { ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close()); minecraft.setScreen(null); } return;
+            if (minecraft != null && minecraft.screen == this) {
+                ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close());
+                minecraft.setScreen(null);
+            }
+            return;
         }
 
         float baseMasterEase = HudAnimUtil.easeOutCubic(masterAnim);
@@ -240,7 +389,11 @@ public class DialogueScreen extends Screen {
 
         if (!typewriterDone && masterAnim > 0.1f) {
             typewriterProgress += CHARS_PER_SECOND * dt;
-            if (typewriterProgress >= fullText.length()) { typewriterProgress = fullText.length(); typewriterDone = true; typewriterDoneTime = now; }
+            if (typewriterProgress >= fullText.length()) {
+                typewriterProgress = fullText.length();
+                typewriterDone = true;
+                typewriterDoneTime = now;
+            }
         }
 
         if (typewriterDone && choices.length > 0 && !choicesVisible) choicesVisible = true;
@@ -280,7 +433,8 @@ public class DialogueScreen extends Screen {
 
         int btnSafeAlpha = Math.round(255 * Math.max(0f, Math.min(1f, (masterAnim - 0.8f) * 5f)) * (splashActive ? suspendAlpha : 1.0f));
         if (btnSafeAlpha > 5 && !isClosing) {
-            String btnText = "■ SYS.LOG"; int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width(btnText);
+            String btnText = "■ SYS.LOG";
+            int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width(btnText);
             boolean logHovered = !historyActive && smx >= logBtnX && smx <= logBtnX + logBtnW && smy >= logBtnY && smy <= logBtnY + font.lineHeight;
             historyHoverAnim = HudAnimUtil.step(historyHoverAnim, logHovered ? 1f : 0f, 10f, dt);
             float hEase = HudAnimUtil.easeOutCubic(historyHoverAnim);
@@ -294,7 +448,7 @@ public class DialogueScreen extends Screen {
             g.drawString(font, btnText, logBtnX, logBtnY, HudAnimUtil.withAlpha(textColor, btnSafeAlpha), false);
             if (hEase > 0.05f) {
                 int lineW = (int) (font.width(btnText) * hEase);
-                g.fill(logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, HudAnimUtil.withAlpha(hoverColor, (int)(btnSafeAlpha * 0.5f)));
+                g.fill(logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, HudAnimUtil.withAlpha(hoverColor, (int) (btnSafeAlpha * 0.5f)));
             }
         }
 
@@ -307,7 +461,9 @@ public class DialogueScreen extends Screen {
 
         int yOffsetAnim = Math.round((1f - baseMasterEase) * 15f), textBaseY = targetBaseY + yOffsetAnim;
         if (speaker != null && !speaker.isBlank() && safeContentAlpha > 5) {
-            g.pose().pushPose(); g.pose().translate(textBaseX, textBaseY, 0); g.pose().scale(1.1f, 1.1f, 1f);
+            g.pose().pushPose();
+            g.pose().translate(textBaseX, textBaseY, 0);
+            g.pose().scale(1.1f, 1.1f, 1f);
             g.drawString(font, speaker, 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
             g.pose().popPose();
             int spkW = (int) (font.width(speaker) * 1.1f);
@@ -317,12 +473,14 @@ public class DialogueScreen extends Screen {
 
         if (safeContentAlpha > 5) {
             int visibleChars = (int) typewriterProgress, charCount = 0;
-            g.pose().pushPose(); g.pose().translate(textBaseX, textBaseY, 0);
+            g.pose().pushPose();
+            g.pose().translate(textBaseX, textBaseY, 0);
             for (String line : wrappedLines) {
                 if (charCount >= visibleChars) break;
                 int lineVisible = Math.min(line.length(), visibleChars - charCount);
                 g.drawString(font, line.substring(0, lineVisible), 0, 0, HudAnimUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
-                g.pose().translate(0, lineHeight, 0); charCount += line.length();
+                g.pose().translate(0, lineHeight, 0);
+                charCount += line.length();
             }
             g.pose().popPose();
         }
@@ -348,7 +506,10 @@ public class DialogueScreen extends Screen {
                 if (progress < 0.01f) continue;
 
                 int baseAlpha = Math.round(255 * contentAlpha * revealEase), clickSlideX = 0;
-                if (hasClickSelection && !isClickTarget) { baseAlpha = Math.round(baseAlpha * (1f - cEase)); clickSlideX = Math.round(cEase * 25f); }
+                if (hasClickSelection && !isClickTarget) {
+                    baseAlpha = Math.round(baseAlpha * (1f - cEase));
+                    clickSlideX = Math.round(cEase * 25f);
+                }
                 if (baseAlpha < 2) continue;
 
                 int expandAnim = Math.round(15 * hEase), confirmExpand = isClickTarget ? Math.round(6 * cEase) : 0;
@@ -369,20 +530,27 @@ public class DialogueScreen extends Screen {
 
                 if (isClickTarget) {
                     int arrowAlpha = Math.round(baseAlpha * Math.max(hEase, cEase));
-                    if (arrowAlpha > 2) g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
+                    if (arrowAlpha > 2)
+                        g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
                 } else if (hEase > 0.01f) {
                     g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, Math.round(baseAlpha * hEase)), true);
                 }
 
                 int textGray = Math.round(170 + (255 - 170) * hEase), textOffsetX = 12 + Math.round(10 * hEase);
                 String displayText = choices[i];
-                if (onCooldown) { String cooldownText = getChoiceCooldownText(i); if (!cooldownText.isEmpty()) displayText = choices[i] + " §7" + cooldownText; }
+                if (onCooldown) {
+                    String cooldownText = getChoiceCooldownText(i);
+                    if (!cooldownText.isEmpty()) displayText = choices[i] + " §7" + cooldownText;
+                }
 
                 String safeChoice = font.plainSubstrByWidth(displayText, currentW - textOffsetX - 10);
                 int finalTextColor;
-                if (onCooldown) finalTextColor = HudAnimUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, Math.round(baseAlpha * 0.5f));
-                else if (isClickTarget) { int bright = Math.round(textGray + (255 - textGray) * cEase); finalTextColor = HudAnimUtil.withAlpha((bright << 16) | (bright << 8) | bright, baseAlpha); }
-                else finalTextColor = HudAnimUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, baseAlpha);
+                if (onCooldown)
+                    finalTextColor = HudAnimUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, Math.round(baseAlpha * 0.5f));
+                else if (isClickTarget) {
+                    int bright = Math.round(textGray + (255 - textGray) * cEase);
+                    finalTextColor = HudAnimUtil.withAlpha((bright << 16) | (bright << 8) | bright, baseAlpha);
+                } else finalTextColor = HudAnimUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, baseAlpha);
 
                 g.drawString(font, safeChoice, currentX + textOffsetX, cy + (choiceH - font.lineHeight) / 2 + 1, finalTextColor, true);
             }
@@ -391,7 +559,9 @@ public class DialogueScreen extends Screen {
         if (typewriterDone && choices.length == 0 && safeContentAlpha > 5 && !isClosing) {
             float timeSec = now / 1000f, pulseA = 0.3f + 0.7f * (float) Math.abs(Math.sin(timeSec * 3f));
             int indX = textBaseX + font.width(wrappedLines.get(wrappedLines.size() - 1)) + 12, indY = textBaseY + (wrappedLines.size() - 1) * lineHeight + yOffsetAnim + Math.round((float) Math.sin(timeSec * 5f) * 1.5f);
-            g.pose().pushPose(); g.pose().translate(indX, indY, 0); g.pose().scale(0.8f, 0.8f, 1f);
+            g.pose().pushPose();
+            g.pose().translate(indX, indY, 0);
+            g.pose().scale(0.8f, 0.8f, 1f);
             g.drawString(font, "▼", 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeContentAlpha * pulseA)), true);
             g.pose().popPose();
         }

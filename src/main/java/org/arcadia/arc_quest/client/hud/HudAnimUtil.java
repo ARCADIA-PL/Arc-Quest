@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.client.hud;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 
 /**
@@ -8,7 +7,8 @@ import net.minecraft.client.gui.GuiGraphics;
  */
 public final class HudAnimUtil {
 
-    private HudAnimUtil() {}
+    private HudAnimUtil() {
+    }
 
     public static float lerp(float current, float target, float speedAt60Fps, float dt) {
         // 【修复】恢复原版计算方式，确保动画曲线原汁原味，不出现“慢动作”

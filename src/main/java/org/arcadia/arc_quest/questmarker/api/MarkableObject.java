@@ -3,10 +3,10 @@ package org.arcadia.arc_quest.questmarker.api;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.tags.TagKey;
 
 import java.util.Map;
 import java.util.Objects;
@@ -14,7 +14,8 @@ import java.util.UUID;
 
 public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObject.DimensionPos, MarkableObject.EntityByUuid, MarkableObject.EntityByTypeNearest, MarkableObject.EntityByNpcId, MarkableObject.StructureNearest, MarkableObject.CustomResolver {
 
-    record Pos(int x, int y, int z) implements MarkableObject {}
+    record Pos(int x, int y, int z) implements MarkableObject {
+    }
 
     record DimensionPos(ResourceKey<Level> dimension, int x, int y, int z) implements MarkableObject {
         public DimensionPos {
@@ -55,7 +56,8 @@ public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObjec
 
     record CustomResolver(String resolverId, Map<String, String> args) implements MarkableObject {
         public CustomResolver {
-            if (resolverId == null || resolverId.isBlank()) throw new IllegalArgumentException("resolverId cannot be blank");
+            if (resolverId == null || resolverId.isBlank())
+                throw new IllegalArgumentException("resolverId cannot be blank");
             args = args == null ? Map.of() : Map.copyOf(args);
         }
     }

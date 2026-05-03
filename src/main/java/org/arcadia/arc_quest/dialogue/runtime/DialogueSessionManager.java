@@ -4,8 +4,8 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
@@ -19,12 +19,12 @@ import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
-import org.arcadia.arc_quest.questmarker.api.MarkSpec;
-import org.arcadia.arc_quest.questmarker.api.MarkableObject;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -263,6 +263,7 @@ public final class DialogueSessionManager {
             MinecraftForge.EVENT_BUS.post(new DialogueEndedEvent(player, npcEntity, dialogueId));
         }
     }
+
     public boolean isInDialogue(ServerPlayer player) {
         DialogueSession session = sessions.get(player.getUUID());
         return session != null && !session.isEnded();
@@ -480,6 +481,7 @@ public final class DialogueSessionManager {
         }
         return null;
     }
+
     private void sendClose(ServerPlayer player) {
         ArcQuestNetwork.sendToPlayer(player, S2COpenDialoguePacket.close());
     }

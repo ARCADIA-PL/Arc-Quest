@@ -1,17 +1,19 @@
 package org.arcadia.arc_quest.questmarker.api;
 
-import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-
 import java.util.Arrays;
 import java.util.Objects;
 
 public final class MarkActivations {
-    private MarkActivations() {}
+    private MarkActivations() {
+    }
 
-    public static MarkActivation always() { return (p, c) -> true; }
+    public static MarkActivation always() {
+        return (p, c) -> true;
+    }
 
-    public static MarkActivation never() { return (p, c) -> false; }
+    public static MarkActivation never() {
+        return (p, c) -> false;
+    }
 
     public static MarkActivation questActive(String questId) {
         return (p, c) -> c != null && c.isQuestActive(questId);

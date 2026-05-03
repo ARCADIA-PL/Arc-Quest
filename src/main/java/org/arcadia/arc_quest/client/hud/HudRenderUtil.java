@@ -16,7 +16,8 @@ import java.util.Locale;
  */
 public final class HudRenderUtil {
 
-    private HudRenderUtil() {}
+    private HudRenderUtil() {
+    }
 
     public static float getUniversalUiScale(int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();

@@ -9,11 +9,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.quest.api.QuestVisualConfig;
-import org.arcadia.arc_quest.questmarker.api.MarkActivation;
-import org.arcadia.arc_quest.questmarker.api.MarkActivations;
-import org.arcadia.arc_quest.questmarker.api.MarkSpec;
-import org.arcadia.arc_quest.questmarker.api.MarkableObject;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
+import org.arcadia.arc_quest.questmarker.api.*;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -272,7 +268,7 @@ public class DialogueTreeBuilder {
      * </p>
      */
     public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, String sayId,
-                                                                    Consumer<SayIfBuilder> configurator) {
+                                                                   Consumer<SayIfBuilder> configurator) {
         ensureOpenNode();
         SayIfBuilder sb = new SayIfBuilder(resolveId(sayId));
         if (configurator != null) configurator.accept(sb);
@@ -760,6 +756,7 @@ public class DialogueTreeBuilder {
         private final DialogueText text;
         private final List<DialogueCondition> conditions = new ArrayList<>();
         private final List<DialogueAction> actions = new ArrayList<>();
+        private final List<MarkSpec> relatedMarks = new ArrayList<>();
         private String nextNodeId = null;
         private boolean repeatable = true;
         private long cooldownSeconds = 0;
@@ -768,7 +765,6 @@ public class DialogueTreeBuilder {
         private int priority = 0;
         private String restoreNodeId = null;
         private SoundEvent selectSound = null;
-        private final List<MarkSpec> relatedMarks = new ArrayList<>();
 
         ChoiceBuilder(String choiceId, String text) {
             if (choiceId == null || choiceId.isEmpty()) {

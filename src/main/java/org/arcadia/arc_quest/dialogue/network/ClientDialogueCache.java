@@ -21,18 +21,14 @@ import java.util.*;
 public final class ClientDialogueCache {
     public static final ClientDialogueCache INSTANCE = new ClientDialogueCache();
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    @Nullable
-    private UUID currentSessionId = null;
-
     private final Map<UUID, List<TranscriptEntry>> transcripts = new HashMap<>();
-
     /**
      * 当前活跃的对话会话映射 (treeId -> SessionData)
      * 支持嵌套场景：对话中打开商店再返回对话时保持状态
      */
     private final Map<String, DialogueSessionData> activeSessions = new HashMap<>();
-
+    @Nullable
+    private UUID currentSessionId = null;
     /**
      * 当前正在显示的对话树 ID（用于 getCurrentSession()）
      */
@@ -181,11 +177,6 @@ public final class ClientDialogueCache {
                 .add(new TranscriptEntry(clientMs, role, speaker, text, nodeId, sayId, choiceId, choiceIndex));
     }
 
-    public record TranscriptEntry(long clientMs, String role, String speaker, String text,
-                                  @Nullable String nodeId, @Nullable String sayId,
-                                  @Nullable String choiceId, @Nullable Integer choiceIndex) {
-    }
-
     /**
      * 清理所有会话数据（用于模组卸载或世界切换）。
      */
@@ -195,6 +186,11 @@ public final class ClientDialogueCache {
         transcripts.clear();
         currentSessionId = null;
         LOGGER.debug("[DialogueCache] Cleared {} session(s)", count);
+    }
+
+    public record TranscriptEntry(long clientMs, String role, String speaker, String text,
+                                  @Nullable String nodeId, @Nullable String sayId,
+                                  @Nullable String choiceId, @Nullable Integer choiceIndex) {
     }
 
     /**

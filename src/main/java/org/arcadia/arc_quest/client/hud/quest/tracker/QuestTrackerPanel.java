@@ -234,7 +234,10 @@ public class QuestTrackerPanel {
         }
 
         textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
-        if (def.isCollectionQuest()) collectionWidget.render(g, font, tracked, def, phase, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha); else objectiveWidget.render(g, font, tracked, displayedPhaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
+        if (def.isCollectionQuest())
+            collectionWidget.render(g, font, tracked, def, phase, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha);
+        else
+            objectiveWidget.render(g, font, tracked, displayedPhaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
 
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();

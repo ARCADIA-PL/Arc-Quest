@@ -15,29 +15,15 @@ import java.util.Map;
 
 public class TrackerObjectiveWidget {
 
+    private final Map<String, ObjectiveTextCache> textCache = new HashMap<>();
+    private final Component completePrefix = Component.translatable("arc_quest.hud.objective_complete_prefix");
+    private final Component activePrefix = Component.translatable("arc_quest.hud.objective_active_prefix");
     private float[] objReveal = new float[0];
     private int[] lastKnownProgress = new int[0];
     private float[] objPulse = new float[0];
     private boolean[] objCompletedFlag = new boolean[0];
     private float[] objCompleteAnim = new float[0];
     private float[] animProgressRatio = new float[0];
-    private final Map<String, ObjectiveTextCache> textCache = new HashMap<>();
-    private final Component completePrefix = Component.translatable("arc_quest.hud.objective_complete_prefix");
-    private final Component activePrefix = Component.translatable("arc_quest.hud.objective_active_prefix");
-
-    private static class ObjectiveTextCache {
-        String resolvedBody = "";
-        String activeText = "";
-        String completeText = "";
-        String lastActiveSafe;
-        String lastCompleteSafe;
-        int lastActiveWidth = Integer.MIN_VALUE;
-        int lastCompleteWidth = Integer.MIN_VALUE;
-        int lastProgress = Integer.MIN_VALUE;
-        int lastRequired = Integer.MIN_VALUE;
-        String progressText = "";
-        int progressWidth = 0;
-    }
 
     public void reset() {
         objReveal = new float[0];
@@ -228,5 +214,19 @@ public class TrackerObjectiveWidget {
             cache.lastActiveWidth = maxWidth;
         }
         return cache.lastActiveSafe;
+    }
+
+    private static class ObjectiveTextCache {
+        String resolvedBody = "";
+        String activeText = "";
+        String completeText = "";
+        String lastActiveSafe;
+        String lastCompleteSafe;
+        int lastActiveWidth = Integer.MIN_VALUE;
+        int lastCompleteWidth = Integer.MIN_VALUE;
+        int lastProgress = Integer.MIN_VALUE;
+        int lastRequired = Integer.MIN_VALUE;
+        String progressText = "";
+        int progressWidth = 0;
     }
 }

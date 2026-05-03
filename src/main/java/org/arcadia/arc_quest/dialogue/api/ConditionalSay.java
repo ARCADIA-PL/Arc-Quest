@@ -1,7 +1,6 @@
 package org.arcadia.arc_quest.dialogue.api;
 
 import net.minecraft.sounds.SoundEvent;
-
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 
 import javax.annotation.Nonnull;

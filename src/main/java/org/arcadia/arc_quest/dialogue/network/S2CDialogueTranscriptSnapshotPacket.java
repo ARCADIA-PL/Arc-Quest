@@ -38,6 +38,11 @@ public class S2CDialogueTranscriptSnapshotPacket {
         return new S2CDialogueTranscriptSnapshotPacket(sid, entries);
     }
 
+    public static void handle(S2CDialogueTranscriptSnapshotPacket pkt, Supplier<NetworkEvent.Context> ctx) {
+        ctx.get().enqueueWork(() -> ClientDialogueCache.INSTANCE.replaceTranscriptSnapshot(pkt.sessionId, pkt.entries));
+        ctx.get().setPacketHandled(true);
+    }
+
     public void encode(FriendlyByteBuf buf) {
         buf.writeUUID(sessionId);
         buf.writeVarInt(entries.size());
@@ -64,10 +69,5 @@ public class S2CDialogueTranscriptSnapshotPacket {
 
             buf.writeVarInt(e.choiceIndexOrNeg1());
         }
-    }
-
-    public static void handle(S2CDialogueTranscriptSnapshotPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> ClientDialogueCache.INSTANCE.replaceTranscriptSnapshot(pkt.sessionId, pkt.entries));
-        ctx.get().setPacketHandled(true);
     }
 }

@@ -10,11 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
-import org.arcadia.arc_quest.quest.api.IconPosition;
-import org.arcadia.arc_quest.quest.api.PhaseDefinition;
-import org.arcadia.arc_quest.quest.api.QuestDefinition;
-import org.arcadia.arc_quest.quest.api.QuestState;
-import org.arcadia.arc_quest.quest.api.QuestTimeLimitType;
+import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -82,7 +78,7 @@ public class TrackerTitleWidget {
                     }
                 }
 
-                int timeColor = HudAnimUtil.withAlpha(themeColor, (int)(titleA * pulse));
+                int timeColor = HudAnimUtil.withAlpha(themeColor, (int) (titleA * pulse));
 
                 // 精准计算：靠右对齐的绝对 X 坐标
                 int timeX = maxRightX - timerRenderW;

@@ -29,6 +29,7 @@ public final class ProgressKey {
     private final KeyType keyType;  // 语义类型，用于 serialize 分区
     private final String keyString; // 缓存
     private final int hash;         // 预计算
+
     private ProgressKey(String namespace, String id, int index, KeyType keyType) {
         this.namespace = namespace.intern();
         this.id = id;

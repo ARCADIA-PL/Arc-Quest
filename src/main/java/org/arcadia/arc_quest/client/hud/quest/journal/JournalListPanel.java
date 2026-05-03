@@ -4,28 +4,20 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.quest.api.IconPosition;
+import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class JournalListPanel {
     private final QuestJournalScreen screen;
-
+    private final Map<String, TextCache> textCache = new HashMap<>();
     private float selectedSlide = -1f;
     private float[] entryHoverAnim = new float[0];
     private double scrollOffset = 0;
     private double targetScroll = 0;
     private boolean isDraggingListScrollbar = false;
     private double dragListYOffset = 0;
-    private final Map<String, TextCache> textCache = new HashMap<>();
-
-    private static class TextCache {
-        String displayName;
-        int width;
-        String lastDrawName;
-        int lastMaxWidth = Integer.MIN_VALUE;
-        float lastScale = 1f;
-    }
 
     public JournalListPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -126,8 +118,8 @@ public class JournalListPanel {
                 g.pose().popPose();
 
                 if (entry.def() != null && entry.def().isCollectionQuest()) {
-                    int done = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionCompletedEntryCount(entry.questId());
-                    int total = org.arcadia.arc_quest.quest.network.ClientQuestCache.INSTANCE.getCollectionTotalEntryCount(entry.questId());
+                    int done = ClientQuestCache.INSTANCE.getCollectionCompletedEntryCount(entry.questId());
+                    int total = ClientQuestCache.INSTANCE.getCollectionTotalEntryCount(entry.questId());
                     String summary = done + "/" + total + " collected";
                     g.pose().pushPose();
                     g.pose().translate(x + textOffsetX, entryY + JournalConstants.ENTRY_HEIGHT - 9, 0);
@@ -235,5 +227,13 @@ public class JournalListPanel {
         int glowAlpha = (int) (topAlpha * 0.8f);
         int colorGlow = 0xFFFFFF | (glowAlpha << 24);
         g.fillGradient(x, y, x + 1, y + (height / 2), colorGlow, colorTop);
+    }
+
+    private static class TextCache {
+        String displayName;
+        int width;
+        String lastDrawName;
+        int lastMaxWidth = Integer.MIN_VALUE;
+        float lastScale = 1f;
     }
 }

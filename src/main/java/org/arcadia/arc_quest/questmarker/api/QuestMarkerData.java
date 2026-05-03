@@ -29,6 +29,7 @@ public class QuestMarkerData {
     private final QuestMarkerState state;
     private final boolean showDistance;
     private final boolean allowOffscreenArrow;
+
     private QuestMarkerData(Builder builder) {
         this.id = builder.id;
         this.worldX = builder.worldX;

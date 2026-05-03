@@ -24,7 +24,8 @@ public record DialogueChoice(
 ) {
 
     public DialogueChoice {
-        if (choiceId == null || choiceId.isEmpty()) throw new IllegalArgumentException("DialogueChoice ID cannot be null or empty");
+        if (choiceId == null || choiceId.isEmpty())
+            throw new IllegalArgumentException("DialogueChoice ID cannot be null or empty");
         if (text == null) throw new IllegalArgumentException("DialogueChoice text cannot be null");
         relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
     }

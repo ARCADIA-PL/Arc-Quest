@@ -9,14 +9,8 @@ import java.util.function.Supplier;
 
 public class S2CDialogueTranscriptDeltaPacket {
 
-    public record Entry(long clientMs, String role, String speaker, String text,
-                        @Nullable String nodeId, @Nullable String sayId,
-                        @Nullable String choiceId, int choiceIndexOrNeg1) {
-    }
-
     private final UUID sessionId;
     private final Entry entry;
-
     public S2CDialogueTranscriptDeltaPacket(UUID sessionId, Entry entry) {
         this.sessionId = sessionId;
         this.entry = entry;
@@ -36,6 +30,21 @@ public class S2CDialogueTranscriptDeltaPacket {
                 sid,
                 new Entry(ms, role, speaker, text, nodeId, sayId, choiceId, choiceIndexOrNeg1)
         );
+    }
+
+    public static void handle(S2CDialogueTranscriptDeltaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
+        ctx.get().enqueueWork(() -> ClientDialogueCache.INSTANCE.appendTranscriptEntry(
+                pkt.sessionId,
+                pkt.entry.clientMs(),
+                pkt.entry.role(),
+                pkt.entry.speaker(),
+                pkt.entry.text(),
+                pkt.entry.nodeId(),
+                pkt.entry.sayId(),
+                pkt.entry.choiceId(),
+                pkt.entry.choiceIndexOrNeg1() >= 0 ? pkt.entry.choiceIndexOrNeg1() : null
+        ));
+        ctx.get().setPacketHandled(true);
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -63,18 +72,8 @@ public class S2CDialogueTranscriptDeltaPacket {
         buf.writeVarInt(entry.choiceIndexOrNeg1());
     }
 
-    public static void handle(S2CDialogueTranscriptDeltaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> ClientDialogueCache.INSTANCE.appendTranscriptEntry(
-                pkt.sessionId,
-                pkt.entry.clientMs(),
-                pkt.entry.role(),
-                pkt.entry.speaker(),
-                pkt.entry.text(),
-                pkt.entry.nodeId(),
-                pkt.entry.sayId(),
-                pkt.entry.choiceId(),
-                pkt.entry.choiceIndexOrNeg1() >= 0 ? pkt.entry.choiceIndexOrNeg1() : null
-        ));
-        ctx.get().setPacketHandled(true);
+    public record Entry(long clientMs, String role, String speaker, String text,
+                        @Nullable String nodeId, @Nullable String sayId,
+                        @Nullable String choiceId, int choiceIndexOrNeg1) {
     }
 }

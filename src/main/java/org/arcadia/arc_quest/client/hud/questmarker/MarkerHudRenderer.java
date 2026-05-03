@@ -52,9 +52,17 @@ public class MarkerHudRenderer implements IGuiOverlay {
         farDistanceThreshold = Math.max(nearDistanceThreshold, far);
     }
 
-    public static double getClosestDistanceThreshold() { return closestDistanceThreshold; }
-    public static double getNearDistanceThreshold() { return nearDistanceThreshold; }
-    public static double getFarDistanceThreshold() { return farDistanceThreshold; }
+    public static double getClosestDistanceThreshold() {
+        return closestDistanceThreshold;
+    }
+
+    public static double getNearDistanceThreshold() {
+        return nearDistanceThreshold;
+    }
+
+    public static double getFarDistanceThreshold() {
+        return farDistanceThreshold;
+    }
 
     private static float[] insetFromEdge(float x, float y, float cx, float cy, float inset) {
         float dx = x - cx;
@@ -64,8 +72,14 @@ public class MarkerHudRenderer implements IGuiOverlay {
         return new float[]{x - (dx / len) * inset, y - (dy / len) * inset};
     }
 
-    private static float lerp(float from, float to, float t) { return from + (to - from) * t; }
-    private static double lerp(double from, double to, float t) { return from + (to - from) * t; }
+    private static float lerp(float from, float to, float t) {
+        return from + (to - from) * t;
+    }
+
+    private static double lerp(double from, double to, float t) {
+        return from + (to - from) * t;
+    }
+
     private static float lerpAngle(float from, float to, float t) {
         float diff = normalizeAngle(to - from);
         return from + diff * t;
@@ -95,7 +109,11 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private static Entity findEntityByUuid(ClientLevel level, String uuidString) {
         if (uuidString == null || uuidString.isEmpty()) return null;
         UUID uuid;
-        try { uuid = UUID.fromString(uuidString); } catch (Exception ignored) { return null; }
+        try {
+            uuid = UUID.fromString(uuidString);
+        } catch (Exception ignored) {
+            return null;
+        }
         for (Entity e : level.entitiesForRendering()) {
             if (uuid.equals(e.getUUID())) return e;
         }
@@ -118,7 +136,8 @@ public class MarkerHudRenderer implements IGuiOverlay {
         if (hasGuid) {
             String entityGuid = getEntityMarkerGuid(entity);
             if (hasUuid) {
-                if (entityGuid != null && !entityGuid.isEmpty() && !marker.getFollowEntityGuid().equals(entityGuid)) return false;
+                if (entityGuid != null && !entityGuid.isEmpty() && !marker.getFollowEntityGuid().equals(entityGuid))
+                    return false;
             } else {
                 if (entityGuid == null || entityGuid.isEmpty()) return false;
                 if (!marker.getFollowEntityGuid().equals(entityGuid)) return false;
