@@ -1,4 +1,3 @@
-// file_name: QuestOfferPanel.java
 package org.arcadia.arc_quest.client.hud.quest.offer;
 
 import net.minecraft.Util;

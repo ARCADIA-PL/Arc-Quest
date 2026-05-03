@@ -1,4 +1,3 @@
-// file_name: HudRenderUtil.java
 package org.arcadia.arc_quest.client.hud;
 
 import com.mojang.blaze3d.systems.RenderSystem;

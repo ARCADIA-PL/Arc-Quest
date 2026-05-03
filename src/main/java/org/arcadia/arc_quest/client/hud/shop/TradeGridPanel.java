@@ -1,4 +1,3 @@
-// file_name: TradeGridPanel.java
 package org.arcadia.arc_quest.client.hud.shop;
 
 import net.minecraft.Util;

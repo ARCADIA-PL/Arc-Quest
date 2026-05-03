@@ -1,4 +1,3 @@
-// file_name: QuestHistoryPanel.java
 package org.arcadia.arc_quest.client.hud.quest.history;
 
 import com.mojang.blaze3d.systems.RenderSystem;
