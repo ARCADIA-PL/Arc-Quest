@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
@@ -25,6 +26,11 @@ public class GachaResultRenderer {
     private long startTime = 0;
     private long exitStartTime = 0;
     private boolean rewardConfirmed = false;
+    private GachaItem resolvedTargetItem;
+    private ItemStack resolvedItemStack = ItemStack.EMPTY;
+    private int resolvedThemeColor = 0xFFFFFF;
+    private String cachedResultName = "";
+    private String cachedAcknowledgeText = "";
     private GachaResultRenderer() {
     }
 
@@ -36,6 +42,7 @@ public class GachaResultRenderer {
         this.currentState = State.ENTER;
         this.startTime = Util.getMillis();
         this.rewardConfirmed = false;
+        resolveResultCache();
         Minecraft.getInstance().mouseHandler.releaseMouse();
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.2f));
     }
@@ -104,8 +111,8 @@ public class GachaResultRenderer {
 
         if (scX2 <= scX1) return;
 
-        GachaItem targetItem = shopDef.getGachaPool().getItems().stream().filter(i -> i.getItemId().equals(result.itemId())).findFirst().orElse(null);
-        int themeC = targetItem != null ? shopDef.getEffectiveThemeColor(targetItem) : 0xFFFFFF;
+        GachaItem targetItem = resolvedTargetItem;
+        int themeC = resolvedThemeColor;
 
         g.enableScissor(scX1, -1000, scX2, 10000);
 
@@ -127,7 +134,7 @@ public class GachaResultRenderer {
             g.pose().translate(45, frameH / 2f, 0);
             g.pose().scale(3.0f, 3.0f, 1f);
             g.pose().translate(-8, -8, 0);
-            g.renderItem(targetItem.getItemStack(), 0, 0);
+            g.renderItem(resolvedItemStack, 0, 0);
             g.pose().popPose();
         }
 
@@ -135,21 +142,19 @@ public class GachaResultRenderer {
             int textX = 90;
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(Minecraft.getInstance().font, "// DECRYPTED", (int) (textX / 0.7f), (int) (15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), true);
+            g.drawString(Minecraft.getInstance().font, "// DECRYPTED", (int) (textX / 0.7f), (int) (15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), false);
             g.pose().popPose();
 
             g.pose().pushPose();
             g.pose().scale(1.0f, 1.0f, 1f);
-            String nameStr = ">_" + targetItem.getItemStack().getHoverName().getString() + " x" + result.actualCount();
-            int maxW = frameW - textX - 5;
-            nameStr = Minecraft.getInstance().font.plainSubstrByWidth(nameStr, maxW);
-            g.drawString(Minecraft.getInstance().font, nameStr, textX, 35, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+            String nameStr = cachedResultName;
+            g.drawString(Minecraft.getInstance().font, nameStr, textX, 35, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
             g.pose().popPose();
 
             if (result.pityTriggered()) {
                 g.pose().pushPose();
                 g.pose().scale(0.8f, 0.8f, 1f);
-                g.drawString(Minecraft.getInstance().font, "[ GUARANTEED ]", (int) (textX / 0.8f), (int) (55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), true);
+                g.drawString(Minecraft.getInstance().font, "[ GUARANTEED ]", (int) (textX / 0.8f), (int) (55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), false);
                 g.pose().popPose();
             }
 
@@ -158,13 +163,26 @@ public class GachaResultRenderer {
 
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            String acknowledgeText = Component.translatable("arc_quest.gui.gacha.result.acknowledge").getString();
-            g.drawString(Minecraft.getInstance().font, acknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(themeC, blinkA), true);
+            String acknowledgeText = cachedAcknowledgeText;
+            g.drawString(Minecraft.getInstance().font, acknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(themeC, blinkA), false);
             g.pose().popPose();
         }
 
         g.pose().popPose();
         g.disableScissor();
+    }
+
+    private void resolveResultCache() {
+        resolvedTargetItem = shopDef == null || result == null ? null : shopDef.getGachaPool().getItems().stream().filter(i -> i.getItemId().equals(result.itemId())).findFirst().orElse(null);
+        resolvedThemeColor = resolvedTargetItem != null ? shopDef.getEffectiveThemeColor(resolvedTargetItem) : 0xFFFFFF;
+        resolvedItemStack = resolvedTargetItem != null ? resolvedTargetItem.getItemStack() : ItemStack.EMPTY;
+        cachedAcknowledgeText = Component.translatable("arc_quest.gui.gacha.result.acknowledge").getString();
+        if (!resolvedItemStack.isEmpty()) {
+            String rawName = ">_" + resolvedItemStack.getHoverName().getString() + " x" + result.actualCount();
+            cachedResultName = Minecraft.getInstance().font.plainSubstrByWidth(rawName, 200 - 90 - 5);
+        } else {
+            cachedResultName = "";
+        }
     }
 
     public boolean mouseClicked() {

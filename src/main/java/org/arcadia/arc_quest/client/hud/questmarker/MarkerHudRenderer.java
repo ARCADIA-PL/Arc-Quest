@@ -331,15 +331,15 @@ public class MarkerHudRenderer implements IGuiOverlay {
             ly = lightLen > 0 ? ly / lightLen : -1;
 
             if (st.transitionProgress < 0.99f) {
-                renderOnScreenMarker(gui, font, marker, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha, st.activeProgress, st.dynamicDistanceAlpha);
+                renderOnScreenMarker(gui, font, marker, st, st.x, st.y, color, dist, time, st.transitionProgress, lx, ly, st.distanceTier, st.occlusionAlpha, st.activeProgress, st.dynamicDistanceAlpha);
             }
             if (st.transitionProgress > 0.01f && marker.isAllowOffscreenArrow()) {
-                renderOffscreenMarker(gui, font, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier, time, st.activeProgress);
+                renderOffscreenMarker(gui, font, st, marker, st.x, st.y, color, dist, st.angle, st.transitionProgress, lx, ly, st.distanceTier, time, st.activeProgress);
             }
         }
     }
 
-    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha, float activeProgress, float dynamicDistanceAlpha) {
+    private void renderOnScreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, MarkerVisualState st, float x, float y, int color, double dist, float time, float progress, float lightX, float lightY, float tier, float occlusionAlpha, float activeProgress, float dynamicDistanceAlpha) {
         float alphaFade = 1.0f - progress;
         int originalAlpha = (color >> 24) & 0xFF;
 
@@ -383,6 +383,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
         gui.pose().popPose();
 
         String name = marker.getLabel();
+        updateLabelCache(st, font, name);
         float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4f, tier - 1.0f);
         float scaledRadius = baseRadius * finalScale;
 
@@ -413,17 +414,17 @@ public class MarkerHudRenderer implements IGuiOverlay {
         int nameOffsetY = (int) (((-scaledRadius - extraSpacing) * invScale) - font.lineHeight);
         int distOffsetY = (int) ((scaledRadius + extraSpacing) * invScale);
 
-        drawTextWithBlackOutline(gui, font, name, -font.width(name) / 2, nameOffsetY, accentColor, currentAlpha);
+        drawTextWithBlackOutline(gui, font, name, -st.cachedLabelWidth / 2, nameOffsetY, accentColor, currentAlpha, currentAlpha < 90 || dist > farDistanceThreshold);
         if (marker.isShowDistance()) {
-            String distText = String.format("%.0fm", dist);
-            drawTextWithBlackOutline(gui, font, distText, -font.width(distText) / 2, distOffsetY, accentColor, currentAlpha);
+            updateDistanceCache(st, font, dist);
+            drawTextWithBlackOutline(gui, font, st.cachedDistanceText, -st.cachedDistanceWidth / 2, distOffsetY, accentColor, currentAlpha, currentAlpha < 90 || dist > farDistanceThreshold);
         }
 
         gui.pose().popPose(); // 恢复文本缩放
         gui.pose().popPose(); // 恢复整体位移
     }
 
-    private void renderOffscreenMarker(GuiGraphics gui, Font font, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY, float tier, float time, float activeProgress) {
+    private void renderOffscreenMarker(GuiGraphics gui, Font font, MarkerVisualState st, QuestMarkerData marker, float x, float y, int color, double dist, float angle, float progress, float lightX, float lightY, float tier, float time, float activeProgress) {
         int originalAlpha = (color >> 24) & 0xFF;
         int currentAlpha = (int) (originalAlpha * progress);
         if (currentAlpha <= 5) return;
@@ -450,8 +451,8 @@ public class MarkerHudRenderer implements IGuiOverlay {
         MarkerPointerRenderer.draw(gui, accentColor, time, activeProgress, localLightX, localLightY, tier);
         gui.pose().popPose();
 
-        String distText = String.format("%.0fm", dist);
-        int distW = font.width(distText);
+        updateDistanceCache(st, font, dist);
+        int distW = st.cachedDistanceWidth;
 
         // ================= 【优化核心 2】边缘指示器文字排版适配 =================
         float textScale = 1.0f;
@@ -472,22 +473,42 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float txRel = -(float) Math.cos(angle) * currentOffset;
         float tyRel = -(float) Math.sin(angle) * currentOffset;
 
-        drawTextWithBlackOutline(gui, font, distText, (int) (txRel - distW / 2.0f), (int) (tyRel - font.lineHeight / 2.0f), accentColor, currentAlpha);
+        drawTextWithBlackOutline(gui, font, st.cachedDistanceText, (int) (txRel - distW / 2.0f), (int) (tyRel - font.lineHeight / 2.0f), accentColor, currentAlpha, currentAlpha < 100 || dist > farDistanceThreshold);
 
         gui.pose().popPose();
         gui.pose().popPose();
     }
 
-    private void drawTextWithBlackOutline(GuiGraphics gui, Font font, String text, int x, int y, int textColor, int alpha) {
+    private void drawTextWithBlackOutline(GuiGraphics gui, Font font, String text, int x, int y, int textColor, int alpha, boolean lightweight) {
         if (alpha <= 5) return;
         int outlineColor = (alpha << 24) | 0x000000;
         int mainColor = (alpha << 24) | (textColor & 0xFFFFFF);
 
-        gui.drawString(font, text, x - 1, y, outlineColor, false);
-        gui.drawString(font, text, x + 1, y, outlineColor, false);
-        gui.drawString(font, text, x, y - 1, outlineColor, false);
-        gui.drawString(font, text, x, y + 1, outlineColor, false);
+        if (lightweight) {
+            gui.drawString(font, text, x + 1, y + 1, outlineColor, false);
+        } else {
+            gui.drawString(font, text, x - 1, y, outlineColor, false);
+            gui.drawString(font, text, x + 1, y, outlineColor, false);
+            gui.drawString(font, text, x, y - 1, outlineColor, false);
+            gui.drawString(font, text, x, y + 1, outlineColor, false);
+        }
         gui.drawString(font, text, x, y, mainColor, false);
+    }
+
+    private void updateLabelCache(MarkerVisualState st, Font font, String label) {
+        if (!label.equals(st.cachedLabel)) {
+            st.cachedLabel = label;
+            st.cachedLabelWidth = font.width(label);
+        }
+    }
+
+    private void updateDistanceCache(MarkerVisualState st, Font font, double dist) {
+        int meters = Math.max(0, (int) Math.round(dist));
+        if (meters != st.cachedDistanceMeters) {
+            st.cachedDistanceMeters = meters;
+            st.cachedDistanceText = meters + "m";
+            st.cachedDistanceWidth = font.width(st.cachedDistanceText);
+        }
     }
 
     public enum DistanceTier {
@@ -526,6 +547,11 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float activeProgress = 0.0f;
 
         float dynamicDistanceAlpha = 1.0f;
+        String cachedLabel = "";
+        int cachedLabelWidth = 0;
+        int cachedDistanceMeters = Integer.MIN_VALUE;
+        String cachedDistanceText = "";
+        int cachedDistanceWidth = 0;
 
         boolean initialized;
     }
