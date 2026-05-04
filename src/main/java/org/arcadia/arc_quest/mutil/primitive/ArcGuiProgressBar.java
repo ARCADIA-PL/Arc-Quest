@@ -72,4 +72,33 @@ public class ArcGuiProgressBar extends ArcGuiElement {
         }
         drawChildren(graphics, context, drawX, drawY, inheritedOpacity * opacity);
     }
+
+    public static void renderThin(GuiGraphics graphics, int x, int y, int width, float progress, int alpha, int themeColor) {
+        int clampedAlpha = ArcDrawUtil.clampAlpha(alpha);
+        float clampedProgress = Math.max(0f, Math.min(1f, progress));
+        graphics.fill(x, y, x + width, y + 1, ArcDrawUtil.withAlpha(0x334455, (int) (clampedAlpha * 0.4f)));
+        int fillWidth = (int) (width * clampedProgress);
+        if (fillWidth > 0) {
+            graphics.fill(x, y, x + fillWidth, y + 1, ArcDrawUtil.withAlpha(themeColor, clampedAlpha));
+        }
+        graphics.fill(x + fillWidth - 1, y - 1, x + fillWidth + 1, y + 2, ArcDrawUtil.withAlpha(0xFFFFFF, clampedAlpha));
+    }
+
+    public static void renderKeyframeMarkers(GuiGraphics graphics, int x, int y, int width, int alpha, int themeColor, int totalTime, int keyframeCount, KeyframeTime keyframeTime) {
+        if (totalTime <= 0 || keyframeCount <= 0 || keyframeTime == null) return;
+        int clampedAlpha = ArcDrawUtil.clampAlpha(alpha);
+        for (int k = 0; k < keyframeCount; k++) {
+            float progress = Math.max(0f, Math.min(1f, keyframeTime.timeAt(k) / (float) totalTime));
+            int markerX = x + (int) (width * progress);
+            graphics.fill(markerX, y - 1, markerX + 1, y + 2, ArcDrawUtil.withAlpha(themeColor, clampedAlpha));
+        }
+    }
+
+    public static float progressFromLocal(float localX, int x, int width) {
+        return Math.max(0f, Math.min(1f, (localX - x) / Math.max(1f, width)));
+    }
+
+    public interface KeyframeTime {
+        int timeAt(int index);
+    }
 }

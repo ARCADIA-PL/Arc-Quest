@@ -38,6 +38,20 @@ public class ArcButtonElement extends ArcGuiElement {
         return pressProgress;
     }
 
+    public void setHoverProgress(float hoverProgress) {
+        this.hoverProgress = clamp01(hoverProgress);
+    }
+
+    public float stepHover(boolean hovered, float speed, float deltaTime) {
+        float target = hovered && enabled ? 1f : 0f;
+        hoverProgress += (target - hoverProgress) * Math.min(1f, Math.max(0f, deltaTime) * speed);
+        return hoverProgress;
+    }
+
+    public static boolean containsLocal(float localX, float localY, int x, int y, int width, int height) {
+        return localX >= x && localX <= x + width && localY >= y && localY <= y + height;
+    }
+
     @Override
     protected void update(ArcGuiContext context, int refX, int refY) {
         hoverProgress = ArcAnimClock.lerp(hoverProgress, enabled && focused ? 1f : 0f, 0.2f, context.deltaTime());
@@ -60,5 +74,9 @@ public class ArcButtonElement extends ArcGuiElement {
             pressed = false;
             if (shouldClick && onClick != null) onClick.run();
         }
+    }
+
+    private static float clamp01(float value) {
+        return Math.max(0f, Math.min(1f, value));
     }
 }

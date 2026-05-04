@@ -18,6 +18,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.mutil.animation.ArcPanelTransition;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.input.ArcCyberButtonElement;
+import org.arcadia.arc_quest.mutil.input.ArcCyberSliderElement;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
@@ -176,13 +178,13 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
         int maxSelectable = Math.max(0, Math.min(50, Math.min(remain, canSubmit)));
 
         int sliderW = 160, sliderX = PANEL_W / 2 - sliderW / 2, sliderY = 95;
-        if (maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8) {
+        if (maxSelectable > 1 && ArcCyberSliderElement.containsLocal(lx, ly, sliderX - 5, sliderY - 6, sliderW + 10, 14)) {
             isDraggingSlider = true;
             return true;
         }
 
         int btnW = 140, btnH = 16, btnX = PANEL_W / 2 - btnW / 2, btnY = PANEL_H - btnH - 10;
-        if (lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH) {
+        if (ArcCyberButtonElement.containsLocal(lx, ly, btnX, btnY, btnW, btnH)) {
             if (sliderValue <= 0 || maxSelectable <= 0) {
                 submitFeedbackSuccess = false;
                 submitFeedbackAnim = 1f;
@@ -334,16 +336,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
 
             int barX = 20, barY = contentY + 36, barW = PW - 40, barH = 4;
             float ratio = renderVm.required <= 0 ? 0f : Math.max(0f, Math.min(1f, currentProgressAnim / renderVm.required));
-            int fillW = Math.max(0, (int) (barW * ratio));
-
-            g.fill(barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (20 * contentAlphaF)));
-            ArcPanelChrome.drawFastFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * contentAlphaF)));
-
-            if (fillW > 0) {
-                g.fill(barX, barY, barX + fillW, barY + barH, HudAnimUtil.withAlpha(themeColor, contentAlpha));
-                g.fill(barX + fillW - 2, barY - 2, barX + fillW + 1, barY + barH + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha));
-            }
-
+            ArcCyberSliderElement.renderProgressFrame(g, barX, barY, barW, barH, ratio, contentAlpha, contentAlphaF, themeColor);
             int remain = Math.max(0, renderVm.required - renderVm.current);
             int canSubmit = Math.max(0, renderVm.canSubmitNow);
             int maxSelectable = Math.max(0, Math.min(50, Math.min(remain, canSubmit)));
@@ -358,12 +351,11 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
                 if (GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS) {
                     isDraggingSlider = false;
                 } else if (maxSelectable > 1) {
-                    float pct = Math.max(0f, Math.min(1f, (lx - sliderX) / (float) sliderW));
-                    sliderValue = 1 + Math.round(pct * (maxSelectable - 1));
+                    sliderValue = ArcCyberSliderElement.valueFromLocal(lx, sliderX, sliderW, 1, maxSelectable);
                 }
             }
 
-            boolean sliderHover = !cleared && !isDraggingSlider && maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8;
+            boolean sliderHover = !cleared && !isDraggingSlider && maxSelectable > 1 && ArcCyberSliderElement.containsLocal(lx, ly, sliderX - 5, sliderY - 6, sliderW + 10, 14);
             sliderHoverAnim = HudAnimUtil.step(sliderHoverAnim, sliderHover ? 1f : 0f, 18f, dt);
 
             g.pose().pushPose();
@@ -371,24 +363,17 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
             String qtyText = "QUANTITY // " + (maxSelectable == 0 ? "0" : sliderValue);
             g.drawString(font, qtyText, (int) ((PW / 2f) / 0.85f) - font.width(qtyText) / 2, (int) ((sliderY - 12) / 0.85f), HudAnimUtil.withAlpha(0xAAAAAA, contentAlpha), false);
             g.pose().popPose();
-
-            g.fill(sliderX, sliderY, sliderX + sliderW, sliderY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (30 * contentAlphaF)));
-
             if (maxSelectable > 0) {
-                float targetThumbX = sliderX + (maxSelectable > 1 ? (float) (sliderValue - 1) / (maxSelectable - 1) : 1f) * sliderW;
-                if (visualThumbX < 0) visualThumbX = targetThumbX;
-                visualThumbX += (targetThumbX - visualThumbX) * Math.min(1f, dt * 25f);
-                g.fill(sliderX, sliderY, (int) visualThumbX, sliderY + 2, HudAnimUtil.withAlpha(themeColor, contentAlpha));
-                int tX = (int) visualThumbX;
-                g.fill(tX - 1, sliderY - 2, tX + 1, sliderY + 3, HudAnimUtil.withAlpha(isDraggingSlider ? 0xFFFFFF : HudAnimUtil.lerpColor(themeColor, 0xFFFFFF, sliderHoverAnim), contentAlpha));
+                float targetThumbX = ArcCyberSliderElement.targetThumbX(sliderX, sliderW, sliderValue, 1, maxSelectable);
+                visualThumbX = ArcCyberSliderElement.stepVisualThumb(visualThumbX, targetThumbX, dt);
+                ArcCyberSliderElement.renderCyber(g, sliderX, sliderY, sliderW, 1, visualThumbX, isDraggingSlider, sliderHoverAnim, contentAlpha, contentAlphaF, themeColor);
             }
-
             int btnW = 140, btnH = 16, btnX = PW / 2 - btnW / 2, btnY = PANEL_H - btnH - 10;
             boolean disabled = sliderValue <= 0 || maxSelectable <= 0;
-            boolean hoverSubmit = !cleared && !disabled && lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH;
+            boolean hoverSubmit = !cleared && !disabled && ArcCyberButtonElement.containsLocal(lx, ly, btnX, btnY, btnW, btnH);
             submitHoverAnim = HudAnimUtil.step(submitHoverAnim, hoverSubmit ? 1f : 0f, 15f, dt);
 
-            drawCyberButton(g, font, btnX, btnY, btnW, btnH, "SUBMIT [ " + sliderValue + " ]", submitHoverAnim, disabled, contentAlpha, contentAlphaF);
+            ArcCyberButtonElement.renderCyber(g, font, btnX, btnY, btnW, btnH, "SUBMIT [ " + sliderValue + " ]", submitHoverAnim, disabled, contentAlpha, contentAlphaF, themeColor);
 
             if (disabled && remain > 0) {
                 String hint = "Insufficient items: need " + remain + ", have " + canSubmit;
@@ -427,20 +412,6 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
             g.pose().popPose();
         }
     }
-
-    private static void drawCyberButton(GuiGraphics g, Font font, int x, int y, int w, int h, String text, float hoverAnim, boolean disabled, int alpha, float alphaF) {
-        int currentColor = disabled ? 0x444444 : HudAnimUtil.lerpColor(0x777777, themeColor, hoverAnim);
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF)));
-        ArcPanelChrome.drawFastFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(currentColor, disabled ? (int) (100 * alphaF) : alpha));
-
-        g.pose().pushPose();
-        float btnTextScale = disabled ? 0.85f : 0.85f + (0.05f * hoverAnim);
-        g.pose().translate(x + w / 2f, y + h / 2f - (font.lineHeight * btnTextScale) / 2f + 1, 0);
-        g.pose().scale(btnTextScale, btnTextScale, 1f);
-        g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(disabled ? 0x888888 : 0xFFFFFF, alpha));
-        g.pose().popPose();
-    }
-
     private static void updateSubmitFeedback(OfferVM vm, float dt) {
         if (submitFeedbackAnim > 0f) submitFeedbackAnim = Math.max(0f, submitFeedbackAnim - dt * 1.25f);
         if (vm == null) return;

@@ -30,16 +30,48 @@ public class ArcSliderElement extends ArcGuiElement {
         return value;
     }
 
+    public int getMin() {
+        return min;
+    }
+
+    public int getMax() {
+        return max;
+    }
+
+    public boolean isDragging() {
+        return dragging;
+    }
+
     public float getProgress() {
-        if (max <= min) return 0f;
-        return (value - min) / (float) (max - min);
+        return progressFor(value, min, max);
+    }
+
+    public void setDragging(boolean dragging) {
+        this.dragging = dragging;
+    }
+
+    public void setValueSilently(int value) {
+        this.value = clampValue(value, min, max);
     }
 
     public void setValue(int value) {
-        int next = Math.max(min, Math.min(max, value));
+        int next = clampValue(value, min, max);
         if (this.value == next) return;
         this.value = next;
         if (onChanged != null) onChanged.onChanged(next);
+    }
+
+    public static int valueFromProgress(float progress, int min, int max) {
+        int safeMin = Math.min(min, max);
+        int safeMax = Math.max(min, max);
+        return clampValue(Math.round(safeMin + clamp01(progress) * (safeMax - safeMin)), safeMin, safeMax);
+    }
+
+    public static float progressFor(int value, int min, int max) {
+        int safeMin = Math.min(min, max);
+        int safeMax = Math.max(min, max);
+        if (safeMax <= safeMin) return 0f;
+        return (clampValue(value, safeMin, safeMax) - safeMin) / (float) (safeMax - safeMin);
     }
 
     @Override
@@ -64,7 +96,15 @@ public class ArcSliderElement extends ArcGuiElement {
     private void updateFromMouse(double mouseX) {
         double localX = mouseX - getAbsoluteX();
         float progress = (float) Math.max(0.0, Math.min(1.0, localX / Math.max(1, width)));
-        setValue(Math.round(min + progress * (max - min)));
+        setValue(valueFromProgress(progress, min, max));
+    }
+
+    private static int clampValue(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static float clamp01(float value) {
+        return Math.max(0f, Math.min(1f, value));
     }
 
     public interface ValueChanged {

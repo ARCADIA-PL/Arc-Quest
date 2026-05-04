@@ -22,6 +22,8 @@ import org.arcadia.arc_quest.client.hud.quest.ponder.IntelPonderUIStub;
 import org.arcadia.arc_quest.mutil.animation.ArcPanelTransition;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.input.ArcHologramButtonElement;
+import org.arcadia.arc_quest.mutil.primitive.ArcGuiProgressBar;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
@@ -307,56 +309,20 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
 
         float progress = scene.getTotalTime() > 0 ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
 
-        g.fill(barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
-
-        int curW = (int) (barW * progress);
-        if (curW > 0) {
-            g.fill(barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
-        }
-
-        g.fill(barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
-
-        for (int k = 0; k < scene.getKeyframeCount(); k++) {
-            float kf = scene.getTotalTime() > 0 ? (float) scene.getKeyframeTime(k) / scene.getTotalTime() : 0f;
-            int kx = barX + (int) (barW * kf);
-            g.fill(kx, barY - 1, kx + 1, barY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
-        }
+        ArcGuiProgressBar.renderThin(g, barX, barY, barW, progress, alpha, themeColor);
+        ArcGuiProgressBar.renderKeyframeMarkers(g, barX, barY, barW, alpha, themeColor, scene.getTotalTime(), scene.getKeyframeCount(), scene::getKeyframeTime);
     }
 
     private static void drawContentHologramButton(GuiGraphics g, Font font, String id, int x, int y, int w, int h, String text, float lx, float ly, int alpha, int colorTheme, boolean enabled, float dt) {
         if (!enabled) return;
-        boolean hovered = lx >= x && lx <= x + w && ly >= y && ly <= y + h;
+        boolean hovered = ArcHologramButtonElement.containsLocal(lx, ly, x, y, w, h);
 
         float hoverTarget = hovered ? 1f : 0f;
         float currentHover = buttonHoverStates.getOrDefault(id, 0f);
         currentHover += (hoverTarget - currentHover) * Math.min(1f, dt * 18f);
         buttonHoverStates.put(id, currentHover);
 
-        int baseColor = 0x888888;
-        int currentColor = interpolateColor(baseColor, colorTheme, currentHover);
-        int finalTextColor = HudAnimUtil.withAlpha(currentColor, alpha);
-
-        g.pose().pushPose();
-        float baseTextScale = text.length() == 1 ? 1.4f : 1.2f;
-        float textScale = baseTextScale + (0.35f * currentHover);
-
-        g.pose().translate(x + w / 2f, y + h / 2f - (font.lineHeight * textScale) / 2f + 1, 0);
-        g.pose().scale(textScale, textScale, 1f);
-        g.drawCenteredString(font, text, 0, 0, finalTextColor);
-        g.pose().popPose();
-    }
-
-    private static int interpolateColor(int c1, int c2, float t) {
-        int r1 = (c1 >> 16) & 0xFF;
-        int g1 = (c1 >> 8) & 0xFF;
-        int b1 = c1 & 0xFF;
-        int r2 = (c2 >> 16) & 0xFF;
-        int g2 = (c2 >> 8) & 0xFF;
-        int b2 = c2 & 0xFF;
-        int r = (int) (r1 + (r2 - r1) * t);
-        int g = (int) (g1 + (g2 - g1) * t);
-        int b = (int) (b1 + (b2 - b1) * t);
-        return (r << 16) | (g << 8) | b;
+        ArcHologramButtonElement.renderHologram(g, font, x, y, w, h, text, currentHover, alpha, 0x888888, colorTheme);
     }
 
     private static void renderPonderScene(GuiGraphics g, PonderScene scene, int areaX, int areaY, int areaW, int areaH, float pt) {
@@ -434,7 +400,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
         int barX = PROG_PAD;
         int barW = PANEL_W - PROG_PAD * 2;
         if (ly >= barY - 4 && ly <= barY + 4 && lx >= barX && lx <= barX + barW) {
-            float t = (lx - barX) / barW;
+            float t = ArcGuiProgressBar.progressFromLocal(lx, barX, barW);
             PonderScene scene = activeScenes.get(sceneIndex);
             if (scene.getTotalTime() > 0) {
                 int target = (int) (t * scene.getTotalTime());
