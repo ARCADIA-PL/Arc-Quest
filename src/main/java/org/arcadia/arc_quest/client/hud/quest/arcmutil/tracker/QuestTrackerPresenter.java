@@ -70,6 +70,19 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
         return trackedPhaseId;
     }
 
+    public String dumpDebug() {
+        return "QuestTrackerVM{" +
+                "visible=" + model.visible +
+                ", quest='" + model.questId + '\'' +
+                ", phase='" + model.phaseId + '\'' +
+                ", objectives=" + model.objectives.size() +
+                ", collection=" + model.collectionQuest +
+                ", reveal=" + String.format("%.2f", model.panelReveal) +
+                ", slide=" + String.format("%.2f", model.panelSlide) +
+                ", wipe=" + String.format("%.2f", model.wipeReveal) +
+                '}';
+    }
+
     @Override
     public void tick(ArcGuiTickContext context) {
         tick(context, QuestHudBlockState.current());

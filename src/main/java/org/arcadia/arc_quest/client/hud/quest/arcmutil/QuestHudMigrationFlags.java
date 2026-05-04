@@ -10,4 +10,20 @@ public final class QuestHudMigrationFlags {
 
     private QuestHudMigrationFlags() {
     }
+
+    public static void setArcTrackerEnabled(boolean enabled) {
+        ARC_TRACKER_ENABLED = enabled;
+    }
+
+    public static void setArcDebugOverlay(boolean enabled) {
+        ARC_DEBUG_OVERLAY = enabled;
+    }
+
+    public static void toggleArcTracker() {
+        ARC_TRACKER_ENABLED = !ARC_TRACKER_ENABLED;
+    }
+
+    public static void toggleDebugOverlay() {
+        ARC_DEBUG_OVERLAY = !ARC_DEBUG_OVERLAY;
+    }
 }
