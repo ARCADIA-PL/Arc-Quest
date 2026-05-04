@@ -7,6 +7,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -14,6 +15,8 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+
+import java.util.List;
 
 public class ArcQuestCollectionHistoryElement extends ArcGuiElement {
     private static final int PANEL_W = 360;
@@ -48,17 +51,20 @@ public class ArcQuestCollectionHistoryElement extends ArcGuiElement {
         ArcPanelChrome.drawTopDivider(g, x + 10, x + PANEL_W - 10, y + 34, ArcPanelChrome.DEFAULT_BORDER_RGB, (int) (0x66 * alphaF));
         g.drawString(font, def.getDisplayName().getString(), x + 14, y + 42, ArcDrawUtil.withAlpha(0xAAAAAA, alpha), false);
 
-        int lineY = y + 62;
-        for (String phaseId : def.getPhaseIds()) {
+        List<ArcTextLayoutUtil.CollectionRow> rows = ArcTextLayoutUtil.collectionRows(font, def.getPhaseIds(), phaseId -> {
             PhaseDefinition phase = def.getPhase(phaseId);
-            if (phase == null || !phase.hasCollectionEntryConfig()) continue;
+            if (phase == null || !phase.hasCollectionEntryConfig()) return null;
             int count = ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, phaseId);
             int target = Math.max(1, phase.getCollectionEntryConfig().getCompletionTarget());
             boolean completed = runtime != null && runtime.isPhaseCompleted(phaseId);
             String name = phase.getDisplayName().getString();
             if (name == null || name.isEmpty()) name = phaseId;
-            int color = completed ? 0x88FF88 : 0xFFFFFF;
-            g.drawString(font, (completed ? "[Done] " : "[ ] ") + name + "  " + count + "/" + target, x + 14, lineY, ArcDrawUtil.withAlpha(color, alpha), false);
+            return new ArcTextLayoutUtil.CollectionRow((completed ? "[Done] " : "[ ] ") + name + "  " + count + "/" + target, completed ? 0x88FF88 : 0xFFFFFF);
+        });
+
+        int lineY = y + 62;
+        for (ArcTextLayoutUtil.CollectionRow row : rows) {
+            g.drawString(font, row.text(), x + 14, lineY, ArcDrawUtil.withAlpha(row.color(), alpha), false);
             lineY += 12;
             if (lineY > y + PANEL_H - 14) break;
         }

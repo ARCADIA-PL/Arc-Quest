@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.input.ArcCyberButtonElement;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -28,7 +29,7 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
 
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
-    private static final List<PageData> pages = new ArrayList<>();
+    private static final List<ArcTextLayoutUtil.Page> pages = new ArrayList<>();
     private static boolean active = false;
     private static boolean closing = false;
     private static long lastRenderMs = 0L;
@@ -244,16 +245,16 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
         g.drawString(font, pageStr, PW / 2 - font.width(pageStr) / 2, btnY + 4, HudAnimUtil.withAlpha(0x778899, alpha), false);
     }
 
-    private static void renderPage(GuiGraphics g, Font font, PageData page, int startY, int alpha, int offsetX) {
+    private static void renderPage(GuiGraphics g, Font font, ArcTextLayoutUtil.Page page, int startY, int alpha, int offsetX) {
         if (alpha <= 4) return;
         int currentY = startY;
-        for (RenderLine line : page.lines) {
+        for (ArcTextLayoutUtil.StyledLine line : page.lines()) {
             g.pose().pushPose();
-            g.pose().translate(line.x + offsetX, currentY, 0);
-            g.pose().scale(line.scale, line.scale, 1f);
-            g.drawString(font, line.text, 0, 0, HudAnimUtil.withAlpha(line.color, alpha), false);
+            g.pose().translate(line.x() + offsetX, currentY, 0);
+            g.pose().scale(line.scale(), line.scale(), 1f);
+            g.drawString(font, line.text(), 0, 0, HudAnimUtil.withAlpha(line.color(), alpha), false);
             g.pose().popPose();
-            currentY += line.lineHeight;
+            currentY += line.lineHeight();
         }
     }
 
@@ -267,78 +268,7 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) return;
 
-        int safeMaxWidth = PANEL_W - 40, maxPageHeight = PANEL_H - 22 - 38, currentYSpace = 0, leftPad = 20;
-        PageData currentPage = new PageData();
-
-        for (String tLine : HudRenderUtil.wrapText(phase.getDisplayName().getString(), (int) (safeMaxWidth / 1.35f), mc.font)) {
-            int lh = (int) Math.ceil(mc.font.lineHeight * 1.35f) + 6;
-            if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) {
-                pages.add(currentPage);
-                currentPage = new PageData();
-                currentYSpace = 0;
-            }
-            currentPage.lines.add(new RenderLine(tLine, leftPad, themeColor, 1.35f, lh));
-            currentYSpace += lh;
-        }
-        currentYSpace += 12;
-
-        if (phase.hasDescription()) {
-            for (String para : phase.getDescription().getString().split("\n")) {
-                if (para.trim().isEmpty()) {
-                    currentYSpace += (int) (mc.font.lineHeight * 0.95f);
-                    continue;
-                }
-                for (String dLine : HudRenderUtil.wrapText(para, (int) (safeMaxWidth / 0.95f), mc.font)) {
-                    int lh = (int) Math.ceil(mc.font.lineHeight * 0.95f) + 5;
-                    if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) {
-                        pages.add(currentPage);
-                        currentPage = new PageData();
-                        currentYSpace = 0;
-                    }
-                    currentPage.lines.add(new RenderLine(dLine, leftPad, 0x99AABB, 0.95f, lh));
-                    currentYSpace += lh;
-                }
-            }
-            currentYSpace += 16;
-        }
-
-        String storyRaw = phase.getStory() != null ? phase.getStory().getString() : "";
-        if (!storyRaw.isEmpty()) {
-            for (String para : storyRaw.split("\n")) {
-                if (para.trim().isEmpty()) {
-                    currentYSpace += mc.font.lineHeight;
-                    continue;
-                }
-                for (String sLine : HudRenderUtil.wrapText(para, safeMaxWidth, mc.font)) {
-                    int lh = mc.font.lineHeight + 6;
-                    if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) {
-                        pages.add(currentPage);
-                        currentPage = new PageData();
-                        currentYSpace = 0;
-                    }
-                    currentPage.lines.add(new RenderLine(sLine, leftPad, 0xE0E0E0, 1.0f, lh));
-                    currentYSpace += lh;
-                }
-            }
-        }
-        if (!currentPage.lines.isEmpty() || pages.isEmpty()) pages.add(currentPage);
-    }
-
-    private static class PageData {
-        List<RenderLine> lines = new ArrayList<>();
-    }
-
-    private static class RenderLine {
-        String text;
-        int x, color, lineHeight;
-        float scale;
-
-        RenderLine(String t, int x, int c, float s, int lh) {
-            text = t;
-            this.x = x;
-            color = c;
-            scale = s;
-            lineHeight = lh;
-        }
-    }
-}
+        int safeMaxWidth = PANEL_W - 40;
+        int maxPageHeight = PANEL_H - 22 - 38;
+        pages.addAll(ArcTextLayoutUtil.paginateStory(mc.font, phase.getDisplayName().getString(), phase.hasDescription() ? phase.getDescription() : null, phase.getStory(), safeMaxWidth, maxPageHeight, 20, themeColor));
+    }}

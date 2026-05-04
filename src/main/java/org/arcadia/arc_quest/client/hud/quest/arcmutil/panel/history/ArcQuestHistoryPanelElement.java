@@ -21,6 +21,7 @@ import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcRewardRenderer;
 import org.arcadia.arc_quest.mutil.theme.ArcTooltipRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -549,15 +550,16 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
         }
     }
 
+
     private static PhaseTooltipData buildPhaseTooltipData(PhaseDefinition phase, Font font) {
         PhaseTooltipData data = new PhaseTooltipData();
         data.title = phase.getDisplayName().getString();
         data.titleComponent = Component.literal(data.title).withStyle(Style.EMPTY.withBold(true));
-        data.titleWidth = font.width(data.title);
-        data.descLines = font.split(phase.getDescription(), 200 - 20);
-        data.textMaxWidth = data.titleWidth;
-        for (FormattedCharSequence line : data.descLines)
-            data.textMaxWidth = Math.max(data.textMaxWidth, font.width(line));
+
+        ArcTextLayoutUtil.TooltipText tooltipText = ArcTextLayoutUtil.tooltipText(font, data.titleComponent, phase.getDescription(), 180);
+        data.titleWidth = tooltipText.titleWidth();
+        data.descLines = tooltipText.descLines();
+        data.textMaxWidth = tooltipText.textMaxWidth();
 
         if (!phase.getPhaseRewards().isEmpty()) {
             data.textMaxWidth = Math.max(data.textMaxWidth, font.width(REWARDS_TITLE));
@@ -585,7 +587,6 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
         data.targetH += 10;
         return data;
     }
-
     private static void fitCameraToGraph(int viewW, int viewH) {
         if (renderNodes.isEmpty()) return;
         int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
