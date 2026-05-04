@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 
 public record QuestHudBlockState(
@@ -17,7 +17,7 @@ public record QuestHudBlockState(
     public static QuestHudBlockState current() {
         Minecraft mc = Minecraft.getInstance();
         boolean hideAll = mc.player == null || mc.options.hideGui;
-        boolean splash = QuestSplashRenderer.isActive();
+        boolean splash = ArcQuestSplashManager.isActive();
         boolean blockingScreen = mc.screen instanceof QuestJournalScreen
                 || mc.screen instanceof DialogueScreen
                 || mc.screen instanceof AbstractTradeScreen

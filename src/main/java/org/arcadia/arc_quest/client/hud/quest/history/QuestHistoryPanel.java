@@ -16,6 +16,7 @@ import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuestCollectionHistoryManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -86,7 +87,7 @@ public final class QuestHistoryPanel {
     public static void trigger(String qid) {
         QuestDefinition modeDef = QuestRegistry.get(ResourceLocation.tryParse(qid));
         if (modeDef != null && modeDef.isCollectionQuest()) {
-            CollectionHistoryPanel.trigger(qid);
+            ArcQuestCollectionHistoryManager.trigger(qid);
             return;
         }
         questId = qid;

@@ -13,7 +13,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
 import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
@@ -160,7 +160,7 @@ public abstract class AbstractTradeScreen extends Screen {
 
     @Override
     public boolean keyPressed(int k, int s, int m) {
-        if (QuestSplashRenderer.isActive()) return true;
+        if (ArcQuestSplashManager.isActive()) return true;
         if (k == 256 || k == 69) {
             onClose();
             return true;
@@ -179,7 +179,7 @@ public abstract class AbstractTradeScreen extends Screen {
         float realDt = Math.min(0.1f, (now - lastRenderTime) / 1000f);
         lastRenderTime = now;
 
-        if (QuestSplashRenderer.isActive()) {
+        if (ArcQuestSplashManager.isActive()) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
             dt = 0f;
         } else {

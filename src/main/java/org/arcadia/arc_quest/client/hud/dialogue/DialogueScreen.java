@@ -10,7 +10,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
-import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
 import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -232,7 +232,7 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (QuestSplashRenderer.isActive()) return true;
+        if (ArcQuestSplashManager.isActive()) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.keyPressed(keyCode)) return true;
         if (keyCode == 72) {
             DialogueHistoryPanel.toggle();
@@ -271,7 +271,7 @@ public class DialogueScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
-        if (QuestSplashRenderer.isActive()) return true;
+        if (ArcQuestSplashManager.isActive()) return true;
         if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseClicked(mx, my, button)) return true;
         if (button != 0 || isClosing) return super.mouseClicked(mx, my, button);
 
@@ -364,7 +364,7 @@ public class DialogueScreen extends Screen {
         int smx = (int) (mouseX / uiScale), smy = (int) (mouseY / uiScale);
         int sw = getScaledWidth(), sh = getScaledHeight();
 
-        boolean splashActive = QuestSplashRenderer.isActive(), historyActive = DialogueHistoryPanel.isActive();
+        boolean splashActive = ArcQuestSplashManager.isActive(), historyActive = DialogueHistoryPanel.isActive();
         boolean suspendContent = splashActive || historyActive;
 
         if (suspendContent) {

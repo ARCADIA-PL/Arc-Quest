@@ -18,7 +18,7 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
-import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
 import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
@@ -95,7 +95,7 @@ public class Arc_Quest {
     public static class ClientForgeEvents {
         @SubscribeEvent
         public static void onRenderGuiOverlayPre(RenderGuiOverlayEvent.Pre event) {
-            if (QuestSplashRenderer.isActive()) {
+            if (ArcQuestSplashManager.isActive()) {
                 if (!(event.getOverlay().overlay() instanceof QuestHudOverlay)) {
                     event.setCanceled(true);
                 }

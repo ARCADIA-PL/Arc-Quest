@@ -11,7 +11,7 @@ import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
-import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
 import org.arcadia.arc_quest.mutil.demo.ArcMutilDemoHost;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
@@ -60,8 +60,8 @@ public class ClientHudEvents {
             return;
         }
 
-        if (QuestSplashRenderer.isActive()) {
-            if (QuestSplashRenderer.mouseClicked()) {
+        if (ArcQuestSplashManager.isActive()) {
+            if (ArcQuestSplashManager.mouseClicked()) {
                 event.setCanceled(true);
             }
         }
@@ -95,7 +95,7 @@ public class ClientHudEvents {
             return;
         }
 
-        if (QuestSplashRenderer.isActive()) {
+        if (ArcQuestSplashManager.isActive()) {
             event.setCanceled(true);
             return;
         }
@@ -114,7 +114,7 @@ public class ClientHudEvents {
             return;
         }
 
-        if (QuestSplashRenderer.isActive()) {
+        if (ArcQuestSplashManager.isActive()) {
             event.setCanceled(true);
             return;
         }
@@ -127,7 +127,7 @@ public class ClientHudEvents {
     public static void handleVisualTrigger(QuestDefinition quest, SplashType type, String phaseName) {
         if (quest == null) return;
         quest.getSplashConfig(type).ifPresent(asset -> {
-            QuestSplashRenderer.trigger(quest, type, asset.texture());
+            ArcQuestSplashManager.trigger(quest, type, asset.texture());
         });
     }
 }

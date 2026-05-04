@@ -6,7 +6,7 @@ import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestToastElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestToastViewModel;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -94,7 +94,7 @@ public final class QuestToastManager {
 
         // 核心修复：如果 Splash 在播放，或者日志、对话在看，全盘冻结！
         boolean isJournalVisible = mc.screen instanceof QuestJournalScreen;
-        boolean isFrozen = QuestSplashRenderer.isActive() ||
+        boolean isFrozen = ArcQuestSplashManager.isActive() ||
                 isJournalVisible ||
                 mc.screen instanceof DialogueScreen;
 

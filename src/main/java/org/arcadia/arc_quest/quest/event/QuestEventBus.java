@@ -22,7 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * <pre>
  *   // 在客户端初始化中：
  *   QuestEventBus.subscribe(QuestChangeEvent.Type.QUEST_COMPLETED, event -> {
- *       QuestSplashRenderer.trigger(event.getQuestId(), SplashType.COMPLETED);
+ *       ArcQuestSplashManager.trigger(event.getQuestId(), SplashType.COMPLETED);
  *   });
  * </pre>
  */
