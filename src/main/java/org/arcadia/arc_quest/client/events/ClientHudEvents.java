@@ -8,6 +8,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.mutil.demo.ArcMutilDemoHost;
@@ -21,10 +23,6 @@ public class ClientHudEvents {
     public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {
         if (Minecraft.getInstance().screen != null) return;
 
-        QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
-                event.getWindow().getGuiScaledWidth(),
-                event.getWindow().getGuiScaledHeight());
-
         if (GachaResultRenderer.INSTANCE.isActive()) {
             GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(),
                     event.getWindow().getGuiScaledWidth(),
@@ -37,10 +35,8 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
-        if (QuestSplashRenderer.isActive()) {
-            QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
-                    event.getScreen().width,
-                    event.getScreen().height);
+        if (!(event.getScreen() instanceof QuestJournalScreen)) {
+            QuestArcHudController.INSTANCE.render(event.getGuiGraphics(), event.getPartialTick());
         }
 
         if (GachaResultRenderer.INSTANCE.isActive()) {

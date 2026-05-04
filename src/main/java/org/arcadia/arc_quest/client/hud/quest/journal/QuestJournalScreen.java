@@ -12,6 +12,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
+import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
@@ -186,6 +188,10 @@ public class QuestJournalScreen extends Screen {
             QuestHistoryPanel.keyPressed(keyCode);
             return true;
         }
+        if (CollectionHistoryPanel.isActive()) {
+            CollectionHistoryPanel.keyPressed(keyCode);
+            return true;
+        }
         if (QuestStoryPanel.isActive()) {
             QuestStoryPanel.keyPressed(keyCode);
             return true;
@@ -225,6 +231,7 @@ public class QuestJournalScreen extends Screen {
             QuestHistoryPanel.mouseClicked(smx, smy, button);
             return true;
         }
+        if (CollectionHistoryPanel.isActive()) return true;
         if (QuestStoryPanel.isActive()) {
             QuestStoryPanel.mouseClicked(smx, smy, button);
             return true;
@@ -250,7 +257,7 @@ public class QuestJournalScreen extends Screen {
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight();
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive() || CollectionHistoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseDragged(smx, smy);
             return true;
@@ -264,7 +271,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive() || CollectionHistoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseReleased(button);
             return true;
@@ -280,7 +287,7 @@ public class QuestJournalScreen extends Screen {
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
 
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive() || CollectionHistoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseScrolled(smx, smy, delta);
             return true;
@@ -316,7 +323,7 @@ public class QuestJournalScreen extends Screen {
         lastRenderTime = now;
         if (realDt > 0.1f) realDt = 0.1f;
 
-        boolean intelActive = QuestIntelPanel.isActive(), offerActive = QuestOfferPanel.isActive(), historyActive = QuestHistoryPanel.isActive(), storyActive = QuestStoryPanel.isActive();
+        boolean intelActive = QuestIntelPanel.isActive(), offerActive = QuestOfferPanel.isActive(), historyActive = QuestHistoryPanel.isActive() || CollectionHistoryPanel.isActive(), storyActive = QuestStoryPanel.isActive();
 
         if (QuestSplashRenderer.isActive()) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
@@ -369,10 +376,7 @@ public class QuestJournalScreen extends Screen {
         // 此处的 DetailPanel 会内部管理自己的 Pass1(2D) 和 Pass2(3D)
         detailPanel.render(g, detailX, listY, detailW, listH, smx, smy, theme, dt);
 
-        if (intelActive) QuestIntelPanel.render(g, sw, sh, partialTick);
-        if (offerActive) QuestOfferPanel.render(g, smx, smy, partialTick);
-        if (historyActive) QuestHistoryPanel.render(g, smx, smy, partialTick);
-        if (storyActive) QuestStoryPanel.render(g, smx, smy, partialTick);
+        if (intelActive || offerActive || historyActive || storyActive) QuestArcHudController.INSTANCE.render(g, partialTick);
 
         // === PASS 3: 顶层 Tooltip 渲染（原生含有 3D，自定义纯 2D，放到最后确保遮盖） ===
         updateAndRenderTooltip(g, smx, smy);
