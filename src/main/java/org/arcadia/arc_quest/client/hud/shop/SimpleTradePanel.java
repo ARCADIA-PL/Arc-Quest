@@ -1,7 +1,8 @@
 package org.arcadia.arc_quest.client.hud.shop;
 
 import net.minecraft.client.gui.GuiGraphics;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
@@ -41,7 +42,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
     @Override
     protected void renderContent(GuiGraphics g, int mx, int my, float pt) {
         if (shop == null) return;
-        float easeProgress = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim)) * HudAnimUtil.easeOutCubic(suspendAlpha);
+        float easeProgress = (isClosing ? ArcAnimClock.easeInCubic(transitionAnim) : ArcAnimClock.easeOutCubic(transitionAnim)) * ArcAnimClock.easeOutCubic(suspendAlpha);
         gridPanel.render(g, mx, my, pt, dt, easeProgress, isClosing);
     }
 

@@ -7,8 +7,8 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
@@ -109,32 +109,32 @@ public class GachaResultRenderer {
 
         int safeAlpha = Math.max(0, Math.min(255, (int) (alpha * 255)));
         g.fill(0, 0, frameW, frameH, ((int) (safeAlpha * 0.6f) << 24) | 0x05050A);
-        g.fillGradient(0, 0, frameW, frameH, HudAnimUtil.withAlpha(resolvedThemeColor, (int) (safeAlpha * 0.3f)), 0x00000000);
-        HudRenderUtil.drawCyberneticEdge(g, 0, 0, frameH, resolvedThemeColor, safeAlpha);
+        g.fillGradient(0, 0, frameW, frameH, ArcDrawUtil.withAlpha(resolvedThemeColor, (int) (safeAlpha * 0.3f)), 0x00000000);
+        ArcDrawUtil.drawCyberneticEdge(g, 0, 0, frameH, resolvedThemeColor, safeAlpha, 3);
 
         if (safeAlpha > 10 && resolvedTargetItem != null) {
             int textX = 90;
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(Minecraft.getInstance().font, "// DECRYPTED", (int) (textX / 0.7f), (int) (15 / 0.7f), HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha), false);
+            g.drawString(Minecraft.getInstance().font, "// DECRYPTED", (int) (textX / 0.7f), (int) (15 / 0.7f), ArcDrawUtil.withAlpha(0xAAAAAA, safeAlpha), false);
             g.pose().popPose();
 
             g.pose().pushPose();
             g.pose().scale(1.0f, 1.0f, 1f);
-            g.drawString(Minecraft.getInstance().font, cachedResultName, textX, 35, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), false);
+            g.drawString(Minecraft.getInstance().font, cachedResultName, textX, 35, ArcDrawUtil.withAlpha(0xFFFFFF, safeAlpha), false);
             g.pose().popPose();
 
             if (result.pityTriggered()) {
                 g.pose().pushPose();
                 g.pose().scale(0.8f, 0.8f, 1f);
-                g.drawString(Minecraft.getInstance().font, "[ GUARANTEED ]", (int) (textX / 0.8f), (int) (55 / 0.8f), HudAnimUtil.withAlpha(0xFFD700, safeAlpha), false);
+                g.drawString(Minecraft.getInstance().font, "[ GUARANTEED ]", (int) (textX / 0.8f), (int) (55 / 0.8f), ArcDrawUtil.withAlpha(0xFFD700, safeAlpha), false);
                 g.pose().popPose();
             }
 
             int blinkA = (int) (safeAlpha * (0.3f + 0.7f * (float) (Math.sin(now / 200.0) * 0.5 + 0.5)));
             g.pose().pushPose();
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(Minecraft.getInstance().font, cachedAcknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), HudAnimUtil.withAlpha(resolvedThemeColor, blinkA), false);
+            g.drawString(Minecraft.getInstance().font, cachedAcknowledgeText, (int) (textX / 0.7f), (int) ((frameH - 15) / 0.7f), ArcDrawUtil.withAlpha(resolvedThemeColor, blinkA), false);
             g.pose().popPose();
         }
 

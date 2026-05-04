@@ -8,8 +8,9 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
 import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
@@ -301,7 +302,7 @@ public class DialogueScreen extends Screen {
             for (int i = 0; i < choices.length; i++) {
                 if (isChoiceOnCooldown(i)) continue;
                 int cy = choiceStartY + i * (choiceH + gap);
-                int expand = (int) (15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
+                int expand = (int) (15 * ArcAnimClock.easeOutCubic(choiceHover[i]));
                 int currentX = choiceX - expand, currentW = choiceW + expand;
                 if (smx >= currentX && smx <= currentX + currentW && smy >= cy && smy <= cy + choiceH) {
                     selectChoice(i);
@@ -384,7 +385,7 @@ public class DialogueScreen extends Screen {
             return;
         }
 
-        float baseMasterEase = HudAnimUtil.easeOutCubic(masterAnim);
+        float baseMasterEase = ArcAnimClock.easeOutCubic(masterAnim);
         float contentAlpha = Math.max(0f, Math.min(1f, baseMasterEase)) * suspendAlpha;
 
         if (!typewriterDone && masterAnim > 0.1f) {
@@ -405,7 +406,7 @@ public class DialogueScreen extends Screen {
         if (clickedIndex >= 0 && clickAnim != null) {
             for (int i = 0; i < choices.length; i++) {
                 float speed = (i == clickedIndex) ? CLICK_ANIM_SPEED_SELECTED : CLICK_ANIM_SPEED_OTHERS;
-                clickAnim[i] = HudAnimUtil.step(clickAnim[i], 1f, speed, dt);
+                clickAnim[i] = ArcAnimClock.step(clickAnim[i], 1f, speed, dt);
             }
             if (!clickSent && clickAnim[clickedIndex] >= CLICK_SEND_THRESHOLD) commitChoice();
         }
@@ -419,7 +420,7 @@ public class DialogueScreen extends Screen {
 
         int baseChoiceX = getChoiceX(), textBaseX = Math.max(30, (int) (sw * 0.05f));
         int maxTextWidth = (choices.length > 0) ? (baseChoiceX - textBaseX - Math.max(20, (int) (sw * 0.05f))) : (sw - textBaseX - Math.max(40, (int) (sw * 0.1f)));
-        if (wrappedLines == null) wrappedLines = HudRenderUtil.wrapText(fullText, maxTextWidth, font);
+        if (wrappedLines == null) wrappedLines = ArcTextLayoutUtil.wrapPlain(font, fullText, maxTextWidth);
 
         int lineHeight = font.lineHeight + 6;
         int totalContentHeight = ((speaker != null && !speaker.isBlank()) ? 28 : 10) + wrappedLines.size() * lineHeight;
@@ -436,8 +437,8 @@ public class DialogueScreen extends Screen {
             String btnText = "■ SYS.LOG";
             int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width(btnText);
             boolean logHovered = !historyActive && smx >= logBtnX && smx <= logBtnX + logBtnW && smy >= logBtnY && smy <= logBtnY + font.lineHeight;
-            historyHoverAnim = HudAnimUtil.step(historyHoverAnim, logHovered ? 1f : 0f, 10f, dt);
-            float hEase = HudAnimUtil.easeOutCubic(historyHoverAnim);
+            historyHoverAnim = ArcAnimClock.step(historyHoverAnim, logHovered ? 1f : 0f, 10f, dt);
+            float hEase = ArcAnimClock.easeOutCubic(historyHoverAnim);
 
             int baseColor = historyActive ? 0x99AABB : 0x667788, hoverColor = 0xE8E8E8;
             int r = (int) ((((baseColor >> 16) & 0xFF) * (1 - hEase)) + (((hoverColor >> 16) & 0xFF) * hEase));
@@ -445,10 +446,10 @@ public class DialogueScreen extends Screen {
             int b = (int) (((baseColor & 0xFF) * (1 - hEase)) + ((hoverColor & 0xFF) * hEase));
             int textColor = (r << 16) | (gc << 8) | b;
 
-            g.drawString(font, btnText, logBtnX, logBtnY, HudAnimUtil.withAlpha(textColor, btnSafeAlpha), false);
+            g.drawString(font, btnText, logBtnX, logBtnY, ArcDrawUtil.withAlpha(textColor, btnSafeAlpha), false);
             if (hEase > 0.05f) {
                 int lineW = (int) (font.width(btnText) * hEase);
-                g.fill(logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, HudAnimUtil.withAlpha(hoverColor, (int) (btnSafeAlpha * 0.5f)));
+                g.fill(logBtnX, logBtnY + font.lineHeight + 1, logBtnX + lineW, logBtnY + font.lineHeight + 2, ArcDrawUtil.withAlpha(hoverColor, (int) (btnSafeAlpha * 0.5f)));
             }
         }
 
@@ -456,7 +457,7 @@ public class DialogueScreen extends Screen {
         int safeContentAlpha = Math.round(255 * contentAlpha);
 
         if (safeContentAlpha > 2) {
-            g.fillGradient(0, targetBaseY - 60, sw, sh - barHeight, 0x00000000, HudAnimUtil.withAlpha(0x050505, Math.round(220 * contentAlpha)));
+            g.fillGradient(0, targetBaseY - 60, sw, sh - barHeight, 0x00000000, ArcDrawUtil.withAlpha(0x050505, Math.round(220 * contentAlpha)));
         }
 
         int yOffsetAnim = Math.round((1f - baseMasterEase) * 15f), textBaseY = targetBaseY + yOffsetAnim;
@@ -464,10 +465,10 @@ public class DialogueScreen extends Screen {
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
             g.pose().scale(1.1f, 1.1f, 1f);
-            g.drawString(font, speaker, 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
+            g.drawString(font, speaker, 0, 0, ArcDrawUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
             g.pose().popPose();
             int spkW = (int) (font.width(speaker) * 1.1f);
-            g.fill(textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13, HudAnimUtil.withAlpha(0x44FFFFFF, safeContentAlpha));
+            g.fill(textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13, ArcDrawUtil.withAlpha(0x44FFFFFF, safeContentAlpha));
             textBaseY += 28;
         } else textBaseY += 10;
 
@@ -478,7 +479,7 @@ public class DialogueScreen extends Screen {
             for (String line : wrappedLines) {
                 if (charCount >= visibleChars) break;
                 int lineVisible = Math.min(line.length(), visibleChars - charCount);
-                g.drawString(font, line.substring(0, lineVisible), 0, 0, HudAnimUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
+                g.drawString(font, line.substring(0, lineVisible), 0, 0, ArcDrawUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
                 g.pose().translate(0, lineHeight, 0);
                 charCount += line.length();
             }
@@ -492,16 +493,16 @@ public class DialogueScreen extends Screen {
             for (int i = 0; i < choices.length; i++) {
                 int cy = choiceStartY + i * (choiceH + gap);
                 boolean onCooldown = isChoiceOnCooldown(i), isClickTarget = (clickedIndex == i), hasClickSelection = (clickedIndex >= 0);
-                float cAnim = (clickAnim != null && i < clickAnim.length) ? clickAnim[i] : 0f, cEase = HudAnimUtil.easeOutCubic(cAnim);
+                float cAnim = (clickAnim != null && i < clickAnim.length) ? clickAnim[i] : 0f, cEase = ArcAnimClock.easeOutCubic(cAnim);
 
-                int currentExpand = Math.round(15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
+                int currentExpand = Math.round(15 * ArcAnimClock.easeOutCubic(choiceHover[i]));
                 boolean hovered = !isClosing && !suspendContent && !onCooldown && !hasClickSelection && smx >= choiceX - currentExpand && smx <= choiceX + choiceW && smy >= cy && smy <= cy + choiceH;
 
-                choiceReveal[i] = HudAnimUtil.step(choiceReveal[i], (!isClosing && timeSinceTextDone >= 0.05f + (i * 0.08f)) ? 1f : 0f, isClosing ? 15f : 5.0f, dt);
-                float progress = choiceReveal[i], revealEase = HudAnimUtil.easeOutCubic(progress), slideEase = progress * progress * (3f - 2f * progress);
+                choiceReveal[i] = ArcAnimClock.step(choiceReveal[i], (!isClosing && timeSinceTextDone >= 0.05f + (i * 0.08f)) ? 1f : 0f, isClosing ? 15f : 5.0f, dt);
+                float progress = choiceReveal[i], revealEase = ArcAnimClock.easeOutCubic(progress), slideEase = progress * progress * (3f - 2f * progress);
 
-                choiceHover[i] = HudAnimUtil.step(choiceHover[i], isClickTarget ? 1f : (hasClickSelection ? 0f : (hovered ? 1f : 0f)), 10f, dt);
-                float hEase = HudAnimUtil.easeOutCubic(choiceHover[i]);
+                choiceHover[i] = ArcAnimClock.step(choiceHover[i], isClickTarget ? 1f : (hasClickSelection ? 0f : (hovered ? 1f : 0f)), 10f, dt);
+                float hEase = ArcAnimClock.easeOutCubic(choiceHover[i]);
 
                 if (progress < 0.01f) continue;
 
@@ -523,17 +524,17 @@ public class DialogueScreen extends Screen {
                 int lineGray = Math.round(85 + (255 - 85) * hEase);
                 if (isClickTarget) {
                     int lineBright = Math.round(lineGray + (255 - lineGray) * cEase), lineW = 2 + Math.round(2 * cEase);
-                    g.fill(currentX, cy, currentX + lineW, cy + choiceH, HudAnimUtil.withAlpha((lineBright << 16) | (lineBright << 8) | lineBright, baseAlpha));
+                    g.fill(currentX, cy, currentX + lineW, cy + choiceH, ArcDrawUtil.withAlpha((lineBright << 16) | (lineBright << 8) | lineBright, baseAlpha));
                 } else {
-                    g.fill(currentX, cy, currentX + 2, cy + choiceH, HudAnimUtil.withAlpha((lineGray << 16) | (lineGray << 8) | lineGray, baseAlpha));
+                    g.fill(currentX, cy, currentX + 2, cy + choiceH, ArcDrawUtil.withAlpha((lineGray << 16) | (lineGray << 8) | lineGray, baseAlpha));
                 }
 
                 if (isClickTarget) {
                     int arrowAlpha = Math.round(baseAlpha * Math.max(hEase, cEase));
                     if (arrowAlpha > 2)
-                        g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
+                        g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, ArcDrawUtil.withAlpha(0xFFFFFF, arrowAlpha), true);
                 } else if (hEase > 0.01f) {
-                    g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, HudAnimUtil.withAlpha(0xFFFFFF, Math.round(baseAlpha * hEase)), true);
+                    g.drawString(font, ">", currentX + 8, cy + (choiceH - font.lineHeight) / 2 + 1, ArcDrawUtil.withAlpha(0xFFFFFF, Math.round(baseAlpha * hEase)), true);
                 }
 
                 int textGray = Math.round(170 + (255 - 170) * hEase), textOffsetX = 12 + Math.round(10 * hEase);
@@ -546,11 +547,11 @@ public class DialogueScreen extends Screen {
                 String safeChoice = font.plainSubstrByWidth(displayText, currentW - textOffsetX - 10);
                 int finalTextColor;
                 if (onCooldown)
-                    finalTextColor = HudAnimUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, Math.round(baseAlpha * 0.5f));
+                    finalTextColor = ArcDrawUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, Math.round(baseAlpha * 0.5f));
                 else if (isClickTarget) {
                     int bright = Math.round(textGray + (255 - textGray) * cEase);
-                    finalTextColor = HudAnimUtil.withAlpha((bright << 16) | (bright << 8) | bright, baseAlpha);
-                } else finalTextColor = HudAnimUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, baseAlpha);
+                    finalTextColor = ArcDrawUtil.withAlpha((bright << 16) | (bright << 8) | bright, baseAlpha);
+                } else finalTextColor = ArcDrawUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, baseAlpha);
 
                 g.drawString(font, safeChoice, currentX + textOffsetX, cy + (choiceH - font.lineHeight) / 2 + 1, finalTextColor, true);
             }
@@ -562,7 +563,7 @@ public class DialogueScreen extends Screen {
             g.pose().pushPose();
             g.pose().translate(indX, indY, 0);
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, "▼", 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, Math.round(safeContentAlpha * pulseA)), true);
+            g.drawString(font, "▼", 0, 0, ArcDrawUtil.withAlpha(0xFFFFFFFF, Math.round(safeContentAlpha * pulseA)), true);
             g.pose().popPose();
         }
 

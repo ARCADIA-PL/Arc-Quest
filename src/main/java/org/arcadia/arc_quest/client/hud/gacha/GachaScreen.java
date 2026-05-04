@@ -5,7 +5,8 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -164,7 +165,7 @@ public class GachaScreen extends Screen {
         dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
         lastRenderTime = now;
 
-        transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.15f : 0.1f, dt);
+        transitionAnim = ArcAnimClock.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.15f : 0.1f, dt);
         if (isClosing && transitionAnim <= 0.01f) {
             minecraft.setScreen(null);
             return;
@@ -184,7 +185,7 @@ public class GachaScreen extends Screen {
             rollTransitionAnim = Math.max(0.0f, rollTransitionAnim - dt * 3.5f);
         }
 
-        float easeProgress = isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim);
+        float easeProgress = isClosing ? ArcAnimClock.easeInCubic(transitionAnim) : ArcAnimClock.easeOutCubic(transitionAnim);
         float contentScale = isClosing ? transitionAnim : (0.8f + 0.2f * easeProgress);
 
         if (switchingToResult) {

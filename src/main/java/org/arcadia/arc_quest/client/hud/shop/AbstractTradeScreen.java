@@ -9,8 +9,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
@@ -233,9 +233,9 @@ public abstract class AbstractTradeScreen extends Screen {
         }
 
         float transEase = isClosing
-                ? HudAnimUtil.easeInCubic(transitionAnim)
-                : HudAnimUtil.easeOutCubic(transitionAnim);
-        effectiveAlpha = transEase * HudAnimUtil.easeOutCubic(suspendAlpha);
+                ? ArcAnimClock.easeInCubic(transitionAnim)
+                : ArcAnimClock.easeOutCubic(transitionAnim);
+        effectiveAlpha = transEase * ArcAnimClock.easeOutCubic(suspendAlpha);
 
         if (feedbackAnim > 0) {
             feedbackAnim = Math.max(0, feedbackAnim - dt * 0.5f);
@@ -261,15 +261,37 @@ public abstract class AbstractTradeScreen extends Screen {
     private void renderTradeFailToast(GuiGraphics g) {
         ClientTradeCache.FeedbackSnapshot feedback = ClientTradeCache.INSTANCE.feedbackSnapshot(shopId);
         if (feedback == null || (feedback.errorKey() == null && feedback.failReason() == null)) return;
-        String msg = HudRenderUtil.resolveTradeFailMessage(feedback.errorKey(), feedback.failReason() != null ? feedback.failReason().name() : null).getString();
+        String msg = resolveTradeFailMessage(feedback.errorKey(), feedback.failReason() != null ? feedback.failReason().name() : null).getString();
         if (msg.isEmpty()) return;
 
         int safeA = (int) (210 * effectiveAlpha);
         if (safeA <= 5) return;
         int w = font.width(msg) + 20, h = 18, x = (width - w) / 2, y = Math.max(8, height / 2 - 90);
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x160A0A, safeA));
-        HudAnimUtil.drawFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(0xFF6666, safeA));
-        g.drawCenteredString(font, msg, x + w / 2, y + 5, HudAnimUtil.withAlpha(0xFFD0D0, safeA));
+        g.fill(x, y, x + w, y + h, ArcDrawUtil.withAlpha(0x160A0A, safeA));
+        ArcDrawUtil.drawFrame(g, x, y, w, h, 1, ArcDrawUtil.withAlpha(0xFF6666, safeA));
+        g.drawCenteredString(font, msg, x + w / 2, y + 5, ArcDrawUtil.withAlpha(0xFFD0D0, safeA));
+    }
+
+    private Component resolveTradeFailMessage(String errorKey, String rawReason) {
+        String normalized = normalizeFailureKey(errorKey, rawReason);
+        if (containsAny(normalized, "cooldown", "on_cooldown")) return Component.translatable("arc_quest.gui.gacha.btn.cooldown");
+        if (containsAny(normalized, "limit", "max_purchase", "max_purchases", "maxed")) return Component.translatable("arc_quest.gui.trade.status.maxed");
+        if (containsAny(normalized, "condition", "locked", "requirement", "blocked")) return Component.translatable("arc_quest.gui.trade.status.locked");
+        if (containsAny(normalized, "cannot_afford", "insufficient", "shortfall", "not_enough")) return Component.translatable("arc_quest.gui.gacha.btn.insufficient_funds");
+        return Component.translatable("arc_quest.gui.trade.error.shop_closed");
+    }
+
+    private String normalizeFailureKey(String primary, String fallback) {
+        String key = primary;
+        if (key == null || key.isEmpty()) key = fallback;
+        return key == null ? "" : key.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private boolean containsAny(String source, String... needles) {
+        for (String needle : needles) {
+            if (source.contains(needle)) return true;
+        }
+        return false;
     }
 
     public void drawAdaptiveIcon(GuiGraphics g, ResourceLocation loc, int x, int y, int w, int h, float alpha) {

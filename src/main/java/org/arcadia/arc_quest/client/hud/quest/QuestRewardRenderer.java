@@ -5,7 +5,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 
@@ -91,7 +92,7 @@ public final class QuestRewardRenderer {
         g.pose().popPose();
 
         String safe = safeText(cache, cache.label, maxWidth - iconSize - ICON_TEXT_GAP - 2, font);
-        g.drawString(font, safe, iconSize + ICON_TEXT_GAP, (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xEEEEEE, alpha), false);
+        g.drawString(font, safe, iconSize + ICON_TEXT_GAP, (ROW_HEIGHT - font.lineHeight) / 2, ArcDrawUtil.withAlpha(0xEEEEEE, alpha), false);
         g.pose().popPose();
 
         return ROW_HEIGHT;
@@ -101,7 +102,7 @@ public final class QuestRewardRenderer {
                                         int maxWidth, int alpha, int offsetY) {
         RewardRenderCache cache = getTextCache(text);
         String safe = safeText(cache, cache.prefixedText, maxWidth, font);
-        g.drawString(font, safe, 0, offsetY + (ROW_HEIGHT - font.lineHeight) / 2, HudAnimUtil.withAlpha(0xDDCCFF, alpha), false);
+        g.drawString(font, safe, 0, offsetY + (ROW_HEIGHT - font.lineHeight) / 2, ArcDrawUtil.withAlpha(0xDDCCFF, alpha), false);
         return ROW_HEIGHT;
     }
 

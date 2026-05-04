@@ -6,8 +6,9 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache.TranscriptEntry;
 
@@ -194,7 +195,7 @@ public final class DialogueHistoryPanel {
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 5000);
-        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (60 * alphaF)));
+        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, ArcDrawUtil.withAlpha(0x000000, (int) (60 * alphaF)));
 
         g.enableScissor(scX1, scY1, scX2, scY2);
         g.pose().pushPose();
@@ -211,16 +212,16 @@ public final class DialogueHistoryPanel {
 
     private static void renderPanel(GuiGraphics g, Font font, int alpha, float alphaF, float dt) {
         int PW = PANEL_W, PH = PANEL_H;
-        g.fill(0, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int) (0x1A * alphaF)));
+        g.fill(0, 0, PW, PH, ArcDrawUtil.withAlpha(0x000000, (int) (0x1A * alphaF)));
         drawHorizontalCyberBase(g, 0, PW, PH - 2, THEME_COLOR, alphaF);
-        g.fill(0, 0, 15, 1, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
-        g.fill(0, 0, 1, 15, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
-        g.fill(PW - 15, 0, PW, 1, HudAnimUtil.withAlpha(THEME_COLOR, alpha));
+        g.fill(0, 0, 15, 1, ArcDrawUtil.withAlpha(THEME_COLOR, alpha));
+        g.fill(0, 0, 1, 15, ArcDrawUtil.withAlpha(THEME_COLOR, alpha));
+        g.fill(PW - 15, 0, PW, 1, ArcDrawUtil.withAlpha(THEME_COLOR, alpha));
 
         if (alpha < 5) return;
         int topBarH = 22;
-        g.drawString(font, "SYS.LOG // TRANSCRIPT", 14, 8, HudAnimUtil.withAlpha(0x99AABB, alpha), false);
-        g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.4f)));
+        g.drawString(font, "SYS.LOG // TRANSCRIPT", 14, 8, ArcDrawUtil.withAlpha(0x99AABB, alpha), false);
+        g.fill(10, topBarH - 1, PW - 10, topBarH, ArcDrawUtil.withAlpha(0x556677, (int) (alpha * 0.4f)));
 
         List<TranscriptEntry> transcript = getCompactedTranscript(ClientDialogueCache.INSTANCE.getCurrentTranscript());
         if (transcript.size() != lastEntryCount) {
@@ -247,13 +248,13 @@ public final class DialogueHistoryPanel {
                 currentY += block.height;
                 continue;
             }
-            g.drawString(font, block.speaker, leftX, currentY, HudAnimUtil.withAlpha(block.isPlayer ? THEME_COLOR : 0xAAAAAA, alpha), false);
+            g.drawString(font, block.speaker, leftX, currentY, ArcDrawUtil.withAlpha(block.isPlayer ? THEME_COLOR : 0xAAAAAA, alpha), false);
             int textY = currentY + 14, textColor = block.isPlayer ? 0xFFFFFF : 0xCCCCCC;
             for (String line : block.lines) {
-                g.drawString(font, line, leftX + 12, textY, HudAnimUtil.withAlpha(textColor, alpha), false);
+                g.drawString(font, line, leftX + 12, textY, ArcDrawUtil.withAlpha(textColor, alpha), false);
                 textY += font.lineHeight + 6;
             }
-            g.fill(leftX + 2, currentY + 16, leftX + 3, textY - 6, block.isPlayer ? HudAnimUtil.withAlpha(THEME_COLOR, (int) (alpha * 0.5f)) : HudAnimUtil.withAlpha(0x556677, (int) (alpha * 0.3f)));
+            g.fill(leftX + 2, currentY + 16, leftX + 3, textY - 6, block.isPlayer ? ArcDrawUtil.withAlpha(THEME_COLOR, (int) (alpha * 0.5f)) : ArcDrawUtil.withAlpha(0x556677, (int) (alpha * 0.3f)));
             currentY = textY + 16;
         }
 
@@ -263,7 +264,7 @@ public final class DialogueHistoryPanel {
         if (maxScroll > 0) {
             int thumbH = Math.max(15, (int) (viewHeight * ((float) viewHeight / renderBlockTotalHeight)));
             int thumbY = contentYStart + (int) ((scrollOffset / maxScroll) * (viewHeight - thumbH));
-            g.fill(PW - 8, thumbY, PW - 6, thumbY + thumbH, HudAnimUtil.withAlpha(isDraggingScrollbar ? 0xFFFFFF : 0xBBCCDD, isDraggingScrollbar ? (int) (alpha * 0.9f) : (int) (alpha * 0.6f)));
+            g.fill(PW - 8, thumbY, PW - 6, thumbY + thumbH, ArcDrawUtil.withAlpha(isDraggingScrollbar ? 0xFFFFFF : 0xBBCCDD, isDraggingScrollbar ? (int) (alpha * 0.9f) : (int) (alpha * 0.6f)));
         }
     }
 
@@ -276,7 +277,7 @@ public final class DialogueHistoryPanel {
             RenderBlock block = new RenderBlock();
             block.isPlayer = isPlayer;
             block.speaker = (entry.speaker() == null || entry.speaker().isBlank()) ? (isPlayer ? "YOU" : "UNKNOWN") : entry.speaker();
-            block.lines = HudRenderUtil.wrapText(entry.text(), wrapWidth, font);
+            block.lines = ArcTextLayoutUtil.wrapPlain(font, entry.text(), wrapWidth);
             block.height = 14 + (block.lines.size() * (font.lineHeight + 6)) + 16;
             blocks.add(block);
             totalHeight += block.height;
