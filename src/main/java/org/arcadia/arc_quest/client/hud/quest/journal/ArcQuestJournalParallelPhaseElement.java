@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.client.hud.quest.journal.detail;
+package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -20,11 +20,10 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
-import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
-import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
-import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.story.ArcQuestStoryPanelElement;
@@ -43,13 +42,13 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class JournalDetailParallelPhase {
+public class ArcQuestJournalParallelPhaseElement extends ArcGuiElement {
     private static final Map<String, List<String>> GLOBAL_PHASE_ORDER_CACHE = new ConcurrentHashMap<>();
     private static final Path CACHE_FILE = FMLPaths.CONFIGDIR.get().resolve("arc_quest_layout_cache.json");
     private static final Gson GSON = new GsonBuilder().create();
     private static boolean cacheLoaded = false;
     private final QuestJournalScreen screen;
-    private final JournalDetailPanel parent;
+
     private final List<String> customPhaseOrder = new ArrayList<>();
     private final Map<String, Double> phaseVisualX = new HashMap<>();
     private final Map<String, Float> phaseCardReveal = new HashMap<>();
@@ -92,9 +91,9 @@ public class JournalDetailParallelPhase {
     private float descHoverAnim = 0f;
     private String currentDescPhaseId = null;
 
-    public JournalDetailParallelPhase(QuestJournalScreen screen, JournalDetailPanel parent) {
+    public ArcQuestJournalParallelPhaseElement(QuestJournalScreen screen) {
+        super(0, 0, 0, 0);
         this.screen = screen;
-        this.parent = parent;
         loadCacheFromDisk();
     }
 
@@ -292,7 +291,7 @@ public class JournalDetailParallelPhase {
 
             int remainingW = scrollAreaW - currentX1 - 4;
             int absTitleX = x + 12 + currentX1;
-            int absTitleY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + headerBaseY + 1;
+            int absTitleY = scrollAreaY + 12 - (int) screen.getDetailPanel().getDetailScrollOffset() + headerBaseY + 1;
 
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
@@ -313,7 +312,7 @@ public class JournalDetailParallelPhase {
                 int blockH = (int) (Math.min(wrappedDesc.size(), maxLines) * unscaledLineH * baseTextScale);
 
                 int absX = x + 12;
-                int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
+                int absY = scrollAreaY + 12 - (int) screen.getDetailPanel().getDetailScrollOffset() + localY;
                 int hitW = descMaxW;
                 int hitH = blockH;
 
@@ -432,7 +431,7 @@ public class JournalDetailParallelPhase {
 
             int objContentH = total * OBJ_LINE_H;
             int maxInnerScroll = Math.max(0, objContentH - FIXED_OBJ_VIEW_H);
-            int absCardX = x + 12 + cardX, absCardY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + cardY);
+            int absCardX = x + 12 + cardX, absCardY = (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + cardY);
 
             boolean cardHovered = !isBeingDragged && mx >= absCardX && mx < absCardX + colW && my >= absCardY && my < absCardY + maxCardH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
 
@@ -500,7 +499,7 @@ public class JournalDetailParallelPhase {
                 String btnText = "INTEL";
                 float baseScale = 0.75f, rawTextW = font.width(btnText), rawTextH = font.lineHeight, textW = rawTextW * baseScale;
                 int btnW = (int) textW + 8, btnH = 10, btnX = rightEdgeX - btnW, btnY = cardY + 5;
-                int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
+                int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + btnY);
                 boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                 boolean btnHovered = !isBeingDragged && !panelsActive && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
 
@@ -576,9 +575,9 @@ public class JournalDetailParallelPhase {
             phaseObjScrollOffsets.put(phaseId, currentInnerScroll);
 
             int intX1 = Math.max(clipAbsX1, x + 12 + cardX);
-            int intY1 = Math.max(clipAbsY1, (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + cy));
+            int intY1 = Math.max(clipAbsY1, (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + cy));
             int intX2 = Math.min(clipAbsX2, x + 12 + cardX + colW);
-            int intY2 = Math.min(clipAbsY2, (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + cy) + FIXED_OBJ_VIEW_H);
+            int intY2 = Math.min(clipAbsY2, (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + cy) + FIXED_OBJ_VIEW_H);
 
             if (intX2 > intX1 && intY2 > intY1 && total > 0) {
                 safeScissor(g, intX1, intY1, intX2, intY2);
@@ -604,7 +603,7 @@ public class JournalDetailParallelPhase {
 
                     int actualTextW = font.width(prefix + cleanObjText);
                     int hitX2 = cardX + 8 + contentShiftX, hitY2 = objY, hitW2 = actualTextW, hitH2 = font.lineHeight;
-                    int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY2 - currentInnerScroll);
+                    int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + hitY2 - currentInnerScroll);
 
                     boolean textHovered = !isBeingDragged && mx >= absX2 && mx < absX2 + hitW2 && my >= absY2 && my < absY2 + hitH2 && my >= intY1 && my < intY2 && mx >= intX1 && mx < intX2;
                     hoverAnimOffer = ArcAnimClock.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
@@ -686,7 +685,7 @@ public class JournalDetailParallelPhase {
                 for (int i = 0; i < visibleChoices.size(); i++) {
                     ChoiceOption choice = visibleChoices.get(i);
                     int btnX = cardX + 8 + contentShiftX, btnY = cy, btnW = colW - 16, btnH = 20;
-                    int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
+                    int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + btnY);
 
                     boolean btnHover = !isBeingDragged && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
 
@@ -712,7 +711,7 @@ public class JournalDetailParallelPhase {
         localY = currentY + maxCardH + 8;
 
         if (maxPhaseScroll > 0) {
-            int ctrlY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + localY);
+            int ctrlY = (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + localY);
             int absCtrlY = ctrlY, btnW = 12, trackGap = 8, absTrackW = cardAreaW - (btnW * 2) - (trackGap * 2);
             int absLeftX = x + 12, absRightX = x + 12 + cardAreaW - btnW, absTrackX = absLeftX + btnW + trackGap;
 

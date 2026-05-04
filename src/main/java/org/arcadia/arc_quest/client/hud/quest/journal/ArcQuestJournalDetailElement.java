@@ -24,6 +24,7 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
     private final ArcQuestJournalRewardsElement rewardsElement;
     private final ArcQuestJournalCollectionElement collectionElement;
     private final ArcQuestJournalSinglePhaseElement singlePhaseElement;
+    private final ArcQuestJournalParallelPhaseElement parallelPhaseElement;
     private float trackBtnHover = 0f;
     private float abandonBtnHover = 0f;
     private float failedRestartBtnHover = 0f;
@@ -35,6 +36,7 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
         this.rewardsElement = new ArcQuestJournalRewardsElement(screen);
         this.collectionElement = new ArcQuestJournalCollectionElement(screen);
         this.singlePhaseElement = new ArcQuestJournalSinglePhaseElement(screen);
+        this.parallelPhaseElement = new ArcQuestJournalParallelPhaseElement(screen);
     }
 
     @Override
@@ -165,6 +167,7 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
 
     public void resetPhaseState() {
         singlePhaseElement.reset();
+        parallelPhaseElement.reset();
     }
 
     public int renderSinglePhase(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, String phaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, float dt, int activeTheme, float detailAlpha, int safeAlpha, int localY) {
@@ -173,6 +176,29 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
 
     public boolean mouseClickedSinglePhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
         return singlePhaseElement.mouseClicked(mouseX, mouseY, detailX, detailY, detailW, detailH);
+    }
+    public int renderParallelPhase(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, java.util.List<String> activePhaseIds, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, float dt, int activeTheme, float detailAlpha, int safeAlpha, int localY) {
+        return parallelPhaseElement.render(graphics, entry, def, runtime, activePhaseIds, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, dt, activeTheme, detailAlpha, safeAlpha, localY);
+    }
+
+    public String getSelectedParallelPhaseId() {
+        return parallelPhaseElement.getSelectedPhaseId();
+    }
+
+    public boolean mouseClickedParallelPhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
+        return parallelPhaseElement.mouseClicked(mouseX, mouseY, detailX, detailY, detailW, detailH);
+    }
+
+    public boolean mouseDraggedParallelPhase(double mouseX, double mouseY) {
+        return parallelPhaseElement.mouseDragged(mouseX, mouseY);
+    }
+
+    public void mouseReleasedParallelPhase() {
+        parallelPhaseElement.onMouseReleased();
+    }
+
+    public boolean mouseScrolledParallelPhase(double mouseX, double mouseY, double delta, int detailX, int scrollAreaY, int scrollAreaH) {
+        return parallelPhaseElement.mouseScrolled(mouseX, mouseY, delta, detailX, scrollAreaY, scrollAreaH);
     }
     public int renderRewards(GuiGraphics graphics, QuestDefinition def, String selectedPhaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, int activeTheme, float detailAlpha, int safeAlpha, int localY, float dt) {
         return rewardsElement.render(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);

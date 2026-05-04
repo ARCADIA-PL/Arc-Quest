@@ -25,7 +25,7 @@ import java.util.List;
 
 public class JournalDetailPanel {
 
-    public final JournalDetailParallelPhase parallelPhaseRenderer;
+
 
 
 
@@ -43,7 +43,7 @@ public class JournalDetailPanel {
     public JournalDetailPanel(QuestJournalScreen screen) {
         this.screen = screen;
 
-        this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
+
 
 
 
@@ -97,7 +97,7 @@ public class JournalDetailPanel {
         detailScrollOffset = 0;
         headerCache.clear();
         screen.resetJournalPhaseState();
-        parallelPhaseRenderer.reset();
+
     }
 
     public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
@@ -236,8 +236,8 @@ public class JournalDetailPanel {
                 selectedPhaseIdForRewards = activePhaseIds.get(0);
                 localY = screen.renderJournalSinglePhase(g, entry, def, runtime, activePhaseIds.get(0), x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
             } else {
-                localY = parallelPhaseRenderer.render(g, entry, def, runtime, activePhaseIds, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
-                selectedPhaseIdForRewards = parallelPhaseRenderer.getSelectedPhaseId();
+                localY = screen.renderJournalParallelPhase(g, entry, def, runtime, activePhaseIds, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
+                selectedPhaseIdForRewards = screen.getSelectedJournalParallelPhaseId();
             }
         } else if (entry.state() == QuestState.COMPLETED) {
             g.drawString(screen.getFont(), questCompletedText, 0, localY, ArcDrawUtil.withAlpha(0x88FF88, safeA), false);
@@ -316,7 +316,7 @@ public class JournalDetailPanel {
                 if (activePhaseIds.size() == 1) {
                     if (screen.mouseClickedJournalSinglePhase(mx, my, x, y, w, h)) return true;
                 } else if (activePhaseIds.size() > 1) {
-                    if (parallelPhaseRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
+                    if (screen.mouseClickedJournalParallelPhase(mx, my, x, y, w, h)) return true;
                 }
             }
         }
@@ -329,21 +329,21 @@ public class JournalDetailPanel {
             updateScrollFromMouse(my, y, h - 40, Math.max(0, detailContentHeight - (h - 40)));
             return true;
         }
-        return parallelPhaseRenderer.mouseDragged(mx, my);
+        return screen.mouseDraggedJournalParallelPhase(mx, my);
     }
 
     public boolean mouseReleased(int button) {
         if (screen.mouseReleasedJournalRewards(button)) return true;
         if (button == 0) {
             isDraggingDetailScrollbar = false;
-            parallelPhaseRenderer.onMouseReleased();
+            screen.mouseReleasedJournalParallelPhase();
         }
         return isDraggingDetailScrollbar;
     }
 
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
         if (screen.mouseScrolledJournalRewards(mx, my, delta)) return true;
-        if (parallelPhaseRenderer.mouseScrolled(mx, my, delta, x, y, h - 40)) return true;
+        if (screen.mouseScrolledJournalParallelPhase(mx, my, delta, x, y, h - 40)) return true;
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
             detailTargetScroll -= delta * 25.0;
             clampScroll(h - 40);

@@ -112,6 +112,29 @@ public class ArcQuestJournalElement extends ArcGuiElement {
     public boolean mouseClickedSinglePhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
         return detailElement.mouseClickedSinglePhase(mouseX, mouseY, detailX, detailY, detailW, detailH);
     }
+    public int renderParallelPhase(GuiGraphics graphics, JournalTypes.QuestListEntry entry, org.arcadia.arc_quest.quest.api.QuestDefinition def, org.arcadia.arc_quest.quest.capability.QuestRuntimeData runtime, java.util.List<String> activePhaseIds, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, float dt, int activeTheme, float detailAlpha, int safeAlpha, int localY) {
+        return detailElement.renderParallelPhase(graphics, entry, def, runtime, activePhaseIds, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, dt, activeTheme, detailAlpha, safeAlpha, localY);
+    }
+
+    public String getSelectedParallelPhaseId() {
+        return detailElement.getSelectedParallelPhaseId();
+    }
+
+    public boolean mouseClickedParallelPhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
+        return detailElement.mouseClickedParallelPhase(mouseX, mouseY, detailX, detailY, detailW, detailH);
+    }
+
+    public boolean mouseDraggedParallelPhase(double mouseX, double mouseY) {
+        return detailElement.mouseDraggedParallelPhase(mouseX, mouseY);
+    }
+
+    public void mouseReleasedParallelPhase() {
+        detailElement.mouseReleasedParallelPhase();
+    }
+
+    public boolean mouseScrolledParallelPhase(double mouseX, double mouseY, double delta, int detailX, int scrollAreaY, int scrollAreaH) {
+        return detailElement.mouseScrolledParallelPhase(mouseX, mouseY, delta, detailX, scrollAreaY, scrollAreaH);
+    }
     public int renderCollection(GuiGraphics graphics, JournalTypes.QuestListEntry entry, org.arcadia.arc_quest.quest.api.QuestDefinition def, org.arcadia.arc_quest.quest.capability.QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
         return detailElement.renderCollection(graphics, entry, def, runtime, localY, safeAlpha, activeTheme);
     }

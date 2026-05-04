@@ -537,6 +537,29 @@ public class QuestJournalScreen extends Screen {
     public boolean mouseClickedJournalSinglePhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
         return arcRoot != null && arcRoot.mouseClickedSinglePhase(mouseX, mouseY, detailX, detailY, detailW, detailH);
     }
+    public int renderJournalParallelPhase(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, java.util.List<String> activePhaseIds, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, float dt, int activeTheme, float detailAlpha, int safeAlpha, int localY) {
+        return arcRoot != null ? arcRoot.renderParallelPhase(graphics, entry, def, runtime, activePhaseIds, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, dt, activeTheme, detailAlpha, safeAlpha, localY) : localY;
+    }
+
+    public String getSelectedJournalParallelPhaseId() {
+        return arcRoot != null ? arcRoot.getSelectedParallelPhaseId() : null;
+    }
+
+    public boolean mouseClickedJournalParallelPhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
+        return arcRoot != null && arcRoot.mouseClickedParallelPhase(mouseX, mouseY, detailX, detailY, detailW, detailH);
+    }
+
+    public boolean mouseDraggedJournalParallelPhase(double mouseX, double mouseY) {
+        return arcRoot != null && arcRoot.mouseDraggedParallelPhase(mouseX, mouseY);
+    }
+
+    public void mouseReleasedJournalParallelPhase() {
+        if (arcRoot != null) arcRoot.mouseReleasedParallelPhase();
+    }
+
+    public boolean mouseScrolledJournalParallelPhase(double mouseX, double mouseY, double delta, int detailX, int scrollAreaY, int scrollAreaH) {
+        return arcRoot != null && arcRoot.mouseScrolledParallelPhase(mouseX, mouseY, delta, detailX, scrollAreaY, scrollAreaH);
+    }
     public int renderJournalCollection(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
         return arcRoot != null ? arcRoot.renderCollection(graphics, entry, def, runtime, localY, safeAlpha, activeTheme) : localY;
     }
