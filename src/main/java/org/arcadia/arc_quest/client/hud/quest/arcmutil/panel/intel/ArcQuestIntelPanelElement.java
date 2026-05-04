@@ -352,7 +352,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
 
         ms.pushPose();
         ms.translate(areaX, areaY, 100);
-        scene.renderOverlay(null, g, pt);
+        IntelPonderUIStub.renderOverlay(scene, g, pt, areaW, areaH, Minecraft.getInstance().font);
         ms.popPose();
     }
 

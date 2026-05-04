@@ -1,8 +1,12 @@
 package org.arcadia.arc_quest.client.hud.quest.ponder;
 
+import net.createmod.ponder.api.element.PonderOverlayElement;
 import net.createmod.ponder.foundation.PonderScene;
+import net.createmod.ponder.foundation.element.TextWindowElement;
 import net.createmod.ponder.foundation.ui.PonderUI;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.mixin.client.ponder.MixinPonderUIStubAccessor;
@@ -11,82 +15,147 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * 最小可用的 PonderUI 实例，用于向 TextWindowElement 提供 width/height/font。
+ * Ponder overlay compatibility layer for ArcMutil intel panels.
  *
- * <p>PonderUI 构造器需要 List&lt;PonderScene&gt;，无法直接 new；
- * 这里借助第一个场景注册的真实 sceneId 来构造，然后通过
- * {@link MixinPonderUIStubAccessor} 强制覆写宽高和字体。
+ * <p>Create's TextWindowElement expects a real PonderUI screen for dimensions and font.
+ * ArcQuest renders ponder scenes inside an ArcMutil HUD element, so this class builds and
+ * caches a size-matched PonderUI stub and exposes safe overlay rendering helpers.</p>
  */
 public final class IntelPonderUIStub {
 
     @Nullable
     private static PonderUI cached = null;
+    @Nullable
+    private static ResourceLocation cachedSceneId = null;
     private static int cachedW = -1;
     private static int cachedH = -1;
+    @Nullable
+    private static OverlayContext activeOverlayContext = null;
 
     private IntelPonderUIStub() {
     }
 
-    /**
-     * 获取或创建一个尺寸匹配的 stub PonderUI。
-     * 如果 ArcQuestIntelPanelElement 已有活跃场景，利用其 sceneId 构造；否则返回 null。
-     */
     @Nullable
     public static PonderUI getOrCreate(int w, int h, Font font) {
-        if (cachedW == w && cachedH == h && cached != null) {
+        List<PonderScene> scenes = ArcQuestIntelPanelElement.getActiveScenes();
+        if (scenes == null || scenes.isEmpty()) return null;
+        return getOrCreate(scenes.get(0), w, h, font);
+    }
+
+    @Nullable
+    public static PonderUI getOrCreate(PonderScene scene, int w, int h, Font font) {
+        if (scene == null || font == null || w <= 0 || h <= 0) return null;
+        ResourceLocation sceneId = scene.getLocation();
+        if (cachedW == w && cachedH == h && cached != null && sceneId.equals(cachedSceneId)) {
+            configure(cached, w, h, font);
             return cached;
         }
 
-        // 尝试用当前激活的场景 ID 构造（不触发 PonderIndex 的完整注册流程）
         try {
-            PonderUI ui = buildStub(w, h, font);
+            PonderUI ui = buildStub(sceneId, w, h, font);
             if (ui != null) {
                 cached = ui;
+                cachedSceneId = sceneId;
                 cachedW = w;
                 cachedH = h;
             }
             return cached;
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             return null;
         }
     }
 
-    /**
-     * 已过时的旧签名，保留兼容
-     */
     @Nullable
     public static PonderUI get(int w, int h, Font font) {
         return getOrCreate(w, h, font);
     }
 
-    public static void invalidate() {
-        cached = null;
-        cachedW = -1;
-        cachedH = -1;
+    public static void renderOverlay(PonderScene scene, GuiGraphics graphics, float partialTicks, int w, int h, Font font) {
+        if (scene == null || graphics == null || font == null) return;
+        PonderUI stub = getOrCreate(scene, w, h, font);
+        if (stub != null) {
+            scene.renderOverlay(stub, graphics, partialTicks);
+            return;
+        }
+        renderOverlaySafely(scene, graphics, partialTicks, w, h, font);
+    }
+
+    public static void renderOverlaySafely(PonderScene scene, GuiGraphics graphics, float partialTicks, int w, int h, Font font) {
+        if (scene == null || graphics == null || font == null) return;
+        withOverlayContext(scene, w, h, font, () -> {
+            graphics.pose().pushPose();
+            scene.forEachVisible(PonderOverlayElement.class, element -> renderElementSafely(scene, element, graphics, partialTicks));
+            graphics.pose().popPose();
+        });
+    }
+
+    public static void withOverlayContext(PonderScene scene, int w, int h, Font font, Runnable renderer) {
+        if (renderer == null) return;
+        OverlayContext previous = activeOverlayContext;
+        activeOverlayContext = new OverlayContext(scene, Math.max(1, w), Math.max(1, h), font == null ? Minecraft.getInstance().font : font);
+        try {
+            renderer.run();
+        } finally {
+            activeOverlayContext = previous;
+        }
     }
 
     @Nullable
-    private static PonderUI buildStub(int w, int h, Font font) {
-        // ArcQuestIntelPanelElement 提供当前活跃的 sceneId
-        List<PonderScene> scenes =
-                ArcQuestIntelPanelElement.getActiveScenes();
-        if (scenes == null || scenes.isEmpty()) return null;
+    public static OverlayContext getActiveOverlayContext() {
+        return activeOverlayContext;
+    }
 
-        // 用 PonderUI.of(ResourceLocation) 构造
-        ResourceLocation loc = scenes.get(0).getLocation();
+    public static void invalidate() {
+        cached = null;
+        cachedSceneId = null;
+        cachedW = -1;
+        cachedH = -1;
+        activeOverlayContext = null;
+    }
+
+    private static void renderElementSafely(PonderScene scene, PonderOverlayElement element, GuiGraphics graphics, float partialTicks) {
+        if (element instanceof TextWindowElement textWindow) {
+            renderTextElementSafely(textWindow, scene, graphics, partialTicks);
+            return;
+        }
+        try {
+            element.render(scene, null, graphics, partialTicks);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static void renderTextElementSafely(TextWindowElement textWindow, PonderScene scene, GuiGraphics graphics, float partialTicks) {
+        OverlayContext context = activeOverlayContext;
+        if (context == null) return;
+        PonderUI stub = getOrCreate(context.scene(), context.width(), context.height(), context.font());
+        if (stub == null) return;
+        try {
+            textWindow.render(scene, stub, graphics, partialTicks);
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Nullable
+    private static PonderUI buildStub(ResourceLocation sceneId, int w, int h, Font font) {
+        if (sceneId == null) return null;
         PonderUI ui;
         try {
-            ui = PonderUI.of(loc);
-        } catch (Exception e) {
+            ui = PonderUI.of(sceneId);
+        } catch (Exception ignored) {
             return null;
         }
+        configure(ui, w, h, font);
+        return ui;
+    }
 
-        // 通过 Mixin Accessor 覆写宽高和字体
+    private static void configure(PonderUI ui, int w, int h, Font font) {
         if (ui instanceof MixinPonderUIStubAccessor acc) {
             acc.arcQuest$setWidth(w);
             acc.arcQuest$setHeight(h);
             acc.arcQuest$setFont(font);
         }
-        return ui;
+    }
+
+    public record OverlayContext(PonderScene scene, int width, int height, Font font) {
     }
 }
