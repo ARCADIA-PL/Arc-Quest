@@ -8,12 +8,10 @@ import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
-import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestHudMigrationFlags;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.toast.BranchChoiceToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
-import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
@@ -27,8 +25,6 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     private static final int POPUP_H = 36;
     private static final int LEFT_BASE_X = 20;
-
-    private final QuestTrackerPanel trackerPanel = new QuestTrackerPanel();
 
     private long lastRenderTime = 0;
     private float dt = 0f;
@@ -47,23 +43,19 @@ public class QuestHudOverlay implements IGuiOverlay {
     }
 
     public void setTrackedQuest(String questId) {
-        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) QuestArcHudController.INSTANCE.setTrackedQuest(questId);
-        trackerPanel.setTrackedQuest(questId);
+        QuestArcHudController.INSTANCE.setTrackedQuest(questId);
     }
 
     public void setTrackedFocus(String questId, String phaseId) {
-        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) QuestArcHudController.INSTANCE.setTrackedFocus(questId, phaseId);
-        trackerPanel.setTrackedFocus(questId, phaseId);
+        QuestArcHudController.INSTANCE.setTrackedFocus(questId, phaseId);
     }
 
     public String getTrackedPhaseId() {
-        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) return QuestArcHudController.INSTANCE.getTrackedPhaseId();
-        return trackerPanel.getTrackedPhaseId();
+        return QuestArcHudController.INSTANCE.getTrackedPhaseId();
     }
 
     public String getTrackedQuestId() {
-        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) return QuestArcHudController.INSTANCE.getTrackedQuestId();
-        return trackerPanel.getTrackedQuestId();
+        return QuestArcHudController.INSTANCE.getTrackedQuestId();
     }
 
     @Override
@@ -84,6 +76,7 @@ public class QuestHudOverlay implements IGuiOverlay {
 
         if (tracked == null) {
             resetPhaseTrackingState();
+            QuestArcHudController.INSTANCE.render(g, partialTick);
             if (!isSplashActive && !isBlockingScreen) {
                 QuestToastManager.render(g, screenWidth, screenHeight);
             }
@@ -134,12 +127,7 @@ public class QuestHudOverlay implements IGuiOverlay {
             }
         }
 
-        // 解除强行截断，让 TrackerPanel 内部处理状态机，从而触发滑出/滑入动画！
-        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) {
-            QuestArcHudController.INSTANCE.render(g, partialTick);
-        } else {
-            trackerPanel.render(g, screenWidth, screenHeight, partialTick);
-        }
+        QuestArcHudController.INSTANCE.render(g, partialTick);
 
         if (!isSplashActive && !isBlockingScreen) {
             QuestToastManager.render(g, screenWidth, screenHeight);
@@ -191,25 +179,25 @@ public class QuestHudOverlay implements IGuiOverlay {
     }
 
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
-        String trackedQuestId = trackerPanel.getTrackedQuestId();
+        String trackedQuestId = QuestArcHudController.INSTANCE.getTrackedQuestId();
         QuestRuntimeData data = ClientQuestCache.INSTANCE.resolveTrackedQuest(trackedQuestId);
 
         if (data != null && trackedQuestId != null && !data.getQuestId().equals(trackedQuestId)) {
-            trackerPanel.setTrackedQuest(null);
+            QuestArcHudController.INSTANCE.setTrackedQuest(null);
             return null;
         }
         if (data == null && trackedQuestId != null) {
-            trackerPanel.setTrackedQuest(null);
+            QuestArcHudController.INSTANCE.setTrackedQuest(null);
             return null;
         }
         if (data != null && trackedQuestId == null) {
-            trackerPanel.setTrackedQuest(data.getQuestId());
+            QuestArcHudController.INSTANCE.setTrackedQuest(data.getQuestId());
             return data;
         }
         if (data == null && trackedQuestId == null && !active.isEmpty()) {
             QuestRuntimeData first = active.values().iterator().next();
             if (first != null) {
-                trackerPanel.setTrackedQuest(first.getQuestId());
+                QuestArcHudController.INSTANCE.setTrackedQuest(first.getQuestId());
                 return first;
             }
         }

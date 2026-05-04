@@ -27,11 +27,10 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
     private final ArcGuiRect contentRule;
     private final ArcGuiText title;
     private final ArcGuiText phase;
+    private final ArcQuestTrackerPhaseStrip phaseStrip;
     private final ArcGuiWrappedText description;
-    private final List<ArcGuiText> phaseLines = new ArrayList<>();
-    private final List<ArcGuiText> objectiveLines = new ArrayList<>();
-    private final List<ArcGuiRect> progressBackgrounds = new ArrayList<>();
-    private final List<ArcGuiRect> progressFills = new ArrayList<>();
+    private final ArcQuestTrackerCollectionSummary collectionSummary;
+    private final List<ArcQuestTrackerObjectiveRow> objectiveRows = new ArrayList<>();
     private final ArcScissorStack scissorStack = new ArcScissorStack();
 
     public ArcQuestTrackerOverlayRoot(Minecraft minecraft, QuestTrackerViewModel model) {
@@ -44,7 +43,9 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         contentRule = new ArcGuiRect(CONTENT_X, TrackerConstants.PADDING + 25, OBJECTIVE_WIDTH, 1, 0x224FC3F7);
         title = new ArcGuiText(CONTENT_X, TrackerConstants.PADDING, "").setColor(0xFFFFFFFF);
         phase = new ArcGuiText(CONTENT_X, TrackerConstants.PADDING + 14, "").setColor(0xFF4FC3F7);
+        phaseStrip = new ArcQuestTrackerPhaseStrip(CONTENT_X, TrackerConstants.PADDING + 27, OBJECTIVE_WIDTH);
         description = new ArcGuiWrappedText(CONTENT_X, TrackerConstants.PADDING + 31, OBJECTIVE_WIDTH, "").setColor(0xFFD6E8FF).setShadow(true);
+        collectionSummary = new ArcQuestTrackerCollectionSummary(CONTENT_X, 0, OBJECTIVE_WIDTH);
         addChild(shadow);
         addChild(panel);
         panel.addChild(topLine);
@@ -52,7 +53,9 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         panel.addChild(contentRule);
         panel.addChild(title);
         panel.addChild(phase);
+        panel.addChild(phaseStrip);
         panel.addChild(description);
+        panel.addChild(collectionSummary);
     }
 
     @Override
@@ -103,102 +106,79 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         int drift = Math.round(model.wipeDrift);
         title.setOpacity(contentOpacity);
         phase.setOpacity(contentOpacity);
+        phaseStrip.setOpacity(contentOpacity);
         description.setOpacity(contentOpacity);
+        collectionSummary.setOpacity(contentOpacity);
         phase.setX(CONTENT_X + drift);
+        phaseStrip.setX(CONTENT_X + drift);
         description.setX(CONTENT_X + drift);
-        for (ArcGuiText line : objectiveLines) {
-            line.setOpacity(contentOpacity);
-            line.setX(CONTENT_X + drift);
+        collectionSummary.setX(CONTENT_X + drift);
+        for (ArcQuestTrackerObjectiveRow row : objectiveRows) {
+            row.setOpacity(contentOpacity);
+            row.setX(CONTENT_X + drift);
         }
-        for (ArcGuiRect background : progressBackgrounds) background.setX(CONTENT_X + drift);
-        for (ArcGuiRect fill : progressFills) fill.setX(CONTENT_X + drift);
     }
 
     private void applyModel() {
         title.setText(model.questTitle);
         phase.setText(model.phaseName);
         phase.setColor(model.themeColor);
+        boolean hasParallelPhases = model.activePhases.size() > 1;
+        phaseStrip.setVisible(hasParallelPhases);
+        if (hasParallelPhases) phaseStrip.apply(model.activePhases, model.themeColor);
+        int descriptionY = hasParallelPhases ? TrackerConstants.PADDING + 42 : TrackerConstants.PADDING + 31;
+        description.setY(descriptionY);
         description.setText(model.phaseDescription);
-        int cursorY = TrackerConstants.PADDING + 35 + Math.max(18, description.getHeight() + 6);
-        ensurePhaseLineCount(Math.max(0, model.activePhases.size() - 1));
-        if (model.activePhases.size() > 1) {
-            StringBuilder builder = new StringBuilder();
-            for (QuestTrackerPhaseViewModel phaseModel : model.activePhases) {
-                if (builder.length() > 0) builder.append("  ");
-                builder.append(phaseModel.displayed ? "◆ " : "◇ ").append(phaseModel.phaseName);
-            }
-            phase.setText(builder.toString());
-        }
-        int count = model.collectionQuest ? Math.max(1, model.collection.visibleEntryLines.size() + model.collection.rewardLines.size()) : Math.max(1, model.objectives.size());
-        ensureLineCount(count);
-        int index = 0;
+        int cursorY = descriptionY + Math.max(18, description.getHeight() + 7);
         if (model.collectionQuest) {
+            collectionSummary.setVisible(true);
+            collectionSummary.setY(cursorY);
+            collectionSummary.apply(model.collection, model.themeColor);
+            cursorY += collectionSummary.getHeight() + 6;
+            ensureObjectiveRows(Math.max(1, model.collection.visibleEntryLines.size() + model.collection.rewardLines.size()));
+            int index = 0;
             for (String line : model.collection.visibleEntryLines) {
-                configureLine(index++, cursorY, line, 0xFFE8E8E8);
-                cursorY += 12;
+                configureCollectionLine(index++, cursorY, line, 0xFFE8E8E8);
+                cursorY += 13;
             }
             for (String line : model.collection.rewardLines) {
-                configureLine(index++, cursorY, line, 0xFFFFD166);
-                cursorY += 12;
+                configureCollectionLine(index++, cursorY, line, 0xFFFFD166);
+                cursorY += 13;
             }
+            hideRowsFrom(index);
         } else {
+            collectionSummary.setVisible(false);
+            ensureObjectiveRows(Math.max(1, model.objectives.size()));
+            int index = 0;
             for (QuestTrackerObjectiveViewModel objective : model.objectives) {
-                String text = objective.complete ? "✓ " + objective.text : "• " + objective.text + " " + objective.progress + "/" + objective.required;
-                configureLine(index, cursorY, text, objective.complete ? 0xFF7CFFB2 : 0xFFE8E8E8);
-                configureProgress(index, cursorY + 11, objective.progressVisual, objective.complete ? 0xFF7CFFB2 : model.themeColor);
+                ArcQuestTrackerObjectiveRow row = objectiveRows.get(index);
+                row.setVisible(true);
+                row.setY(cursorY);
+                row.apply(objective, model.themeColor);
                 index++;
-                cursorY += 18;
+                cursorY += row.getHeight() + 4;
             }
-        }
-        for (int i = index; i < objectiveLines.size(); i++) {
-            objectiveLines.get(i).setVisible(false);
-            if (i < progressBackgrounds.size()) progressBackgrounds.get(i).setVisible(false);
-            if (i < progressFills.size()) progressFills.get(i).setVisible(false);
+            hideRowsFrom(index);
         }
         model.markClean();
     }
 
-    private void ensureLineCount(int count) {
-        while (objectiveLines.size() < count) {
-            ArcGuiText line = new ArcGuiText(CONTENT_X, 0, OBJECTIVE_WIDTH, "").setColor(0xFFE8E8E8);
-            ArcGuiRect progressBg = new ArcGuiRect(CONTENT_X, 0, OBJECTIVE_WIDTH, 2, 0x33000000);
-            ArcGuiRect progressFill = new ArcGuiRect(CONTENT_X, 0, 0, 2, model.themeColor);
-            objectiveLines.add(line);
-            progressBackgrounds.add(progressBg);
-            progressFills.add(progressFill);
-            panel.addChild(line);
-            panel.addChild(progressBg);
-            panel.addChild(progressFill);
+    private void ensureObjectiveRows(int count) {
+        while (objectiveRows.size() < count) {
+            ArcQuestTrackerObjectiveRow row = new ArcQuestTrackerObjectiveRow(CONTENT_X, 0, OBJECTIVE_WIDTH);
+            objectiveRows.add(row);
+            panel.addChild(row);
         }
     }
 
-    private void ensurePhaseLineCount(int count) {
-        while (phaseLines.size() < count) {
-            ArcGuiText line = new ArcGuiText(CONTENT_X, 0, OBJECTIVE_WIDTH, "").setColor(0xFF9FB7D8);
-            phaseLines.add(line);
-            panel.addChild(line);
-        }
-        for (ArcGuiText line : phaseLines) line.setVisible(false);
+    private void configureCollectionLine(int index, int y, String text, int color) {
+        ArcQuestTrackerObjectiveRow row = objectiveRows.get(index);
+        row.setVisible(true);
+        row.setY(y);
+        row.applyLine(text, color);
     }
 
-    private void configureLine(int index, int y, String text, int color) {
-        ArcGuiText line = objectiveLines.get(index);
-        line.setVisible(true);
-        line.setY(y);
-        line.setText(text);
-        line.setColor(color);
-        if (index < progressBackgrounds.size()) progressBackgrounds.get(index).setVisible(false);
-        if (index < progressFills.size()) progressFills.get(index).setVisible(false);
-    }
-
-    private void configureProgress(int index, int y, float progress, int color) {
-        ArcGuiRect background = progressBackgrounds.get(index);
-        ArcGuiRect fill = progressFills.get(index);
-        background.setVisible(true);
-        background.setY(y);
-        fill.setVisible(true);
-        fill.setY(y);
-        fill.setWidth(Math.round(OBJECTIVE_WIDTH * Math.max(0f, Math.min(1f, progress))));
-        fill.setColor(color);
+    private void hideRowsFrom(int index) {
+        for (int i = index; i < objectiveRows.size(); i++) objectiveRows.get(i).setVisible(false);
     }
 }
