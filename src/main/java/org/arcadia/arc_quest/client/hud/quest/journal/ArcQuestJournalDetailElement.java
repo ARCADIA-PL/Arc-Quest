@@ -22,6 +22,7 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 public class ArcQuestJournalDetailElement extends ArcGuiElement {
     private final QuestJournalScreen screen;
     private final ArcQuestJournalRewardsElement rewardsElement;
+    private final ArcQuestJournalCollectionElement collectionElement;
     private float trackBtnHover = 0f;
     private float abandonBtnHover = 0f;
     private float failedRestartBtnHover = 0f;
@@ -31,6 +32,7 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
         super(0, 0, 0, 0);
         this.screen = screen;
         this.rewardsElement = new ArcQuestJournalRewardsElement(screen);
+        this.collectionElement = new ArcQuestJournalCollectionElement(screen);
     }
 
     @Override
@@ -163,6 +165,13 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
         return rewardsElement.render(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);
     }
 
+    public int renderCollection(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
+        return collectionElement.render(graphics, entry, def, runtime, localY, safeAlpha, activeTheme);
+    }
+
+    public boolean mouseClickedCollection(double mouseX, double mouseY) {
+        return collectionElement.mouseClicked(mouseX, mouseY);
+    }
     public boolean mouseClickedRewards(double mouseX, double mouseY) {
         return rewardsElement.mouseClicked(mouseX, mouseY);
     }

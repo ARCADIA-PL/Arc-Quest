@@ -1,10 +1,9 @@
-package org.arcadia.arc_quest.client.hud.quest.journal.detail;
+package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;
-import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
-import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
-import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.input.ArcCyberButtonElement;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -14,12 +13,13 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class JournalDetailCollection {
+public final class ArcQuestJournalCollectionElement extends ArcGuiElement {
 
     private final QuestJournalScreen screen;
     private final List<ClaimButton> claimButtons = new ArrayList<>();
 
-    public JournalDetailCollection(QuestJournalScreen screen) {
+    public ArcQuestJournalCollectionElement(QuestJournalScreen screen) {
+        super(0, 0, 0, 0);
         this.screen = screen;
     }
 
@@ -91,7 +91,7 @@ public final class JournalDetailCollection {
                 case CLAIMABLE -> "Claim";
                 case LOCKED -> "Locked";
             };
-            JournalDetailPanel.drawCyberButton(g, screen, bx, by, bw, bh, buttonText, activeTheme, 0f, false);
+            ArcCyberButtonElement.renderCyber(g, screen.getFont(), bx, by, bw, bh, buttonText, 0f, row.state() == RewardState.LOCKED, safeA, screen.getEffectiveAlpha(), activeTheme);
             if (row.state() == RewardState.CLAIMABLE)
                 claimButtons.add(new ClaimButton(bx, by, bw, bh, row.rewardNodeId()));
             localY += 14;

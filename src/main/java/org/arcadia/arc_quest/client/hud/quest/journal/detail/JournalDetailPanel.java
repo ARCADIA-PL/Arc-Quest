@@ -28,7 +28,7 @@ public class JournalDetailPanel {
     public final JournalDetailParallelPhase parallelPhaseRenderer;
 
 
-    public final JournalDetailCollection collectionRenderer;
+
     private final QuestJournalScreen screen;
     private final int[] historyBtnRect = new int[]{0, 0, 0, 0};
     private final DetailHeaderCache headerCache = new DetailHeaderCache();
@@ -46,7 +46,7 @@ public class JournalDetailPanel {
         this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
 
 
-        this.collectionRenderer = new JournalDetailCollection(screen);
+
     }
 
     public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
@@ -227,7 +227,7 @@ public class JournalDetailPanel {
             if (activePhaseIds.isEmpty()) activePhaseIds.addAll(runtime.getActivePhaseIds());
 
             if (def.isCollectionQuest()) {
-                localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme);
+                localY = screen.renderJournalCollection(g, entry, def, runtime, localY, safeA, activeTheme);
                 selectedPhaseIdForRewards = !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null;
             } else if (activePhaseIds.isEmpty()) {
                 g.drawString(screen.getFont(), "No active phase.", 0, localY, ArcDrawUtil.withAlpha(0x888888, safeA), false);
@@ -297,7 +297,7 @@ public class JournalDetailPanel {
             return true;
         }
 
-        if (!panelsActive && entryIsCollectionActive() && collectionRenderer.mouseClicked(mx - (x + 12), my - (y + 12 - detailScrollOffset)))
+        if (!panelsActive && entryIsCollectionActive() && screen.mouseClickedJournalCollection(mx - (x + 12), my - (y + 12 - detailScrollOffset)))
             return true;
         if (!panelsActive && mx >= historyBtnRect[0] && mx <= historyBtnRect[0] + historyBtnRect[2] && my >= historyBtnRect[1] && my <= historyBtnRect[1] + historyBtnRect[3] && my >= y && my <= y + scrollAreaH) {
             if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) {

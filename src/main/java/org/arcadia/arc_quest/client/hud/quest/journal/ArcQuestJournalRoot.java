@@ -30,6 +30,13 @@ public class ArcQuestJournalRoot extends ArcScreenRoot {
         return journalElement.renderRewards(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);
     }
 
+    public int renderCollection(net.minecraft.client.gui.GuiGraphics graphics, JournalTypes.QuestListEntry entry, org.arcadia.arc_quest.quest.api.QuestDefinition def, org.arcadia.arc_quest.quest.capability.QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
+        return journalElement.renderCollection(graphics, entry, def, runtime, localY, safeAlpha, activeTheme);
+    }
+
+    public boolean mouseClickedCollection(double mouseX, double mouseY) {
+        return journalElement.mouseClickedCollection(mouseX, mouseY);
+    }
     public boolean mouseClickedRewards(double mouseX, double mouseY) {
         return journalElement.mouseClickedRewards(mouseX, mouseY);
     }

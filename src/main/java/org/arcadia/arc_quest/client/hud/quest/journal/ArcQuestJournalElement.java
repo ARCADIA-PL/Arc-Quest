@@ -101,6 +101,13 @@ public class ArcQuestJournalElement extends ArcGuiElement {
         return detailElement.renderRewards(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);
     }
 
+    public int renderCollection(GuiGraphics graphics, JournalTypes.QuestListEntry entry, org.arcadia.arc_quest.quest.api.QuestDefinition def, org.arcadia.arc_quest.quest.capability.QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
+        return detailElement.renderCollection(graphics, entry, def, runtime, localY, safeAlpha, activeTheme);
+    }
+
+    public boolean mouseClickedCollection(double mouseX, double mouseY) {
+        return detailElement.mouseClickedCollection(mouseX, mouseY);
+    }
     public boolean mouseClickedRewards(double mouseX, double mouseY) {
         return detailElement.mouseClickedRewards(mouseX, mouseY);
     }

@@ -526,6 +526,13 @@ public class QuestJournalScreen extends Screen {
         }
     }
 
+    public int renderJournalCollection(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
+        return arcRoot != null ? arcRoot.renderCollection(graphics, entry, def, runtime, localY, safeAlpha, activeTheme) : localY;
+    }
+
+    public boolean mouseClickedJournalCollection(double mouseX, double mouseY) {
+        return arcRoot != null && arcRoot.mouseClickedCollection(mouseX, mouseY);
+    }
     public int renderJournalRewards(GuiGraphics graphics, QuestDefinition def, String selectedPhaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, int activeTheme, float detailAlpha, int safeAlpha, int localY, float dt) {
         return arcRoot != null ? arcRoot.renderRewards(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt) : localY;
     }
