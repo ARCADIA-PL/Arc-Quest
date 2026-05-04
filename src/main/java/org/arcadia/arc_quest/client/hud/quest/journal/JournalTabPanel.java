@@ -2,7 +2,8 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 
 public class JournalTabPanel {
     private final QuestJournalScreen screen;
@@ -48,8 +49,8 @@ public class JournalTabPanel {
             int tw = screen.getFont().width(label) + 16;
             boolean hovered = mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
             int textColor = (tab == screen.getCurrentTab())
-                    ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha)
-                    : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
+                    ? ArcDrawUtil.withAlpha(0xFFFFFF, safeAlpha)
+                    : hovered ? ArcDrawUtil.withAlpha(0xDDDDDD, safeAlpha) : ArcDrawUtil.withAlpha(0x888888, safeAlpha);
 
             if (safeAlpha > 8) {
                 g.drawString(screen.getFont(), label, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, textColor, true);
@@ -58,7 +59,7 @@ public class JournalTabPanel {
         }
 
         if ((int) (255 * screen.getEffectiveAlpha()) > 8) {
-            g.fill((int) tabSlideAnim, tabY + JournalConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + JournalConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, (int) (255 * screen.getEffectiveAlpha())));
+            g.fill((int) tabSlideAnim, tabY + JournalConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + JournalConstants.TAB_HEIGHT, ArcDrawUtil.withAlpha(theme, (int) (255 * screen.getEffectiveAlpha())));
         }
     }
 

@@ -11,8 +11,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
@@ -135,7 +136,7 @@ public class JournalDetailSinglePhase {
         int maxTitleW = (int) ((scrollAreaW - 10) / 0.8f);
         int nameAbsX = x;
         int nameAbsY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
-        drawScrollingString(g, font, titleText, 0, 0, maxTitleW, HudAnimUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+        drawScrollingString(g, font, titleText, 0, 0, maxTitleW, ArcDrawUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
         g.pose().popPose();
         localY += 14;
@@ -161,7 +162,7 @@ public class JournalDetailSinglePhase {
             boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             boolean isHovered = hasStory && !panelsActive && mx >= absX && mx <= absX + hitW && my >= absY && my <= absY + hitH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
 
-            descHoverAnim = HudAnimUtil.lerp(descHoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
+            descHoverAnim = ArcAnimClock.lerp(descHoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
 
             if (isHovered) {
                 screen.setHoveredCustomTooltip(List.of(
@@ -191,10 +192,10 @@ public class JournalDetailSinglePhase {
             g.pose().translate(0, localY, 0);
             g.pose().scale(baseTextScale, baseTextScale, 1f);
 
-            int descColor = HudAnimUtil.lerpColor(0xFFFFFF, activeTheme, descHoverAnim * 0.4f);
+            int descColor = ArcDrawUtil.lerpColor(0xFFFFFF, activeTheme, descHoverAnim * 0.4f);
 
             for (int i = 0; i < phaseDescLines.size(); i++) {
-                g.drawString(font, phaseDescLines.get(i), 0, i * unscaledLineSpacing, HudAnimUtil.withAlpha(descColor, safeA), false);
+                g.drawString(font, phaseDescLines.get(i), 0, i * unscaledLineSpacing, ArcDrawUtil.withAlpha(descColor, safeA), false);
             }
             g.pose().popPose();
 
@@ -212,15 +213,15 @@ public class JournalDetailSinglePhase {
         }
 
         for (int i = 0; i < objCount; i++) {
-            detailObjReveal[i] = HudAnimUtil.lerp(detailObjReveal[i], 1f, 0.1f + i * 0.03f, dt);
-            float oAlpha = dAlpha * HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]));
+            detailObjReveal[i] = ArcAnimClock.lerp(detailObjReveal[i], 1f, 0.1f + i * 0.03f, dt);
+            float oAlpha = dAlpha * ArcAnimClock.easeOutCubic(Math.min(1f, detailObjReveal[i]));
             int oA = (int) (255 * oAlpha);
             if (oA <= 4) {
                 localY += 22;
                 continue;
             }
 
-            int objX = (int) ((1f - HudAnimUtil.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
+            int objX = (int) ((1f - ArcAnimClock.easeOutCubic(Math.min(1f, detailObjReveal[i]))) * 25f);
             int progress = runtime.getObjectiveProgress(phaseId, i);
             int required = phase.getObjectives().get(i).getRequiredCount();
             boolean complete = progress >= required;
@@ -248,7 +249,7 @@ public class JournalDetailSinglePhase {
                     int absX = x + 12 + hitX;
                     int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + hitY;
                     isHovered = mx >= absX && mx < absX + hitW && my >= absY && my < absY + hitH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
-                    hoverAnim = HudAnimUtil.lerp(hoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
+                    hoverAnim = ArcAnimClock.lerp(hoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
                     offerHoverAnims.put(i, hoverAnim);
                     currentOfferProgressRects.add(new OfferProgressRect(absX, absY, hitW, hitH, phaseId, i));
                 } else {
@@ -295,8 +296,8 @@ public class JournalDetailSinglePhase {
             for (String line : renderLines) {
                 String cleanLine = line.replace("§7", "").replace("§a", "").replace("§f", "");
                 int baseColor = complete ? 0x88FF88 : 0xDDDDDD;
-                if (canSubmit) baseColor = HudAnimUtil.lerpColor(baseColor, activeTheme, hoverAnim);
-                g.drawString(font, cleanLine, objX, drawY, HudAnimUtil.withAlpha(baseColor, oA), false);
+                if (canSubmit) baseColor = ArcDrawUtil.lerpColor(baseColor, activeTheme, hoverAnim);
+                g.drawString(font, cleanLine, objX, drawY, ArcDrawUtil.withAlpha(baseColor, oA), false);
                 drawY += font.lineHeight + 1;
             }
             g.pose().popPose();
@@ -304,17 +305,17 @@ public class JournalDetailSinglePhase {
             localY += textBlockHeight;
 
             float targetRatio = required > 0 ? Math.max(0f, Math.min(1f, (float) progress / required)) : 0f;
-            objProgressAnims[i] = HudAnimUtil.lerp(objProgressAnims[i], targetRatio, 0.15f, dt);
+            objProgressAnims[i] = ArcAnimClock.lerp(objProgressAnims[i], targetRatio, 0.15f, dt);
             int fillW = (int) (barW * objProgressAnims[i]);
 
             RenderSystem.enableBlend();
-            int emptyBgColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * oAlpha));
+            int emptyBgColor = ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x22 * oAlpha));
             g.fill(objX, localY, objX + barW, localY + 2, emptyBgColor);
 
             if (fillW > 0) {
-                int fillColor = HudAnimUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int) (0xCC * oAlpha));
+                int fillColor = ArcDrawUtil.withAlpha(complete ? 0x66FF66 : activeTheme, (int) (0xCC * oAlpha));
                 g.fill(objX, localY, objX + fillW, localY + 2, fillColor);
-                int brightColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * oAlpha));
+                int brightColor = ArcDrawUtil.withAlpha(0xFFFFFF, (int) (255 * oAlpha));
                 g.fill(objX + fillW - 2, localY - 1, objX + fillW, localY + 3, brightColor);
             }
 
@@ -322,8 +323,8 @@ public class JournalDetailSinglePhase {
                 boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                 if (!panelsActive) {
                     float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
-                    int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * oAlpha));
-                    int hoverGlow = HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * hoverAnim * oAlpha));
+                    int glowColor = ArcDrawUtil.withAlpha(activeTheme, (int) (60 * breath * oAlpha));
+                    int hoverGlow = ArcDrawUtil.withAlpha(0xFFFFFF, (int) (40 * hoverAnim * oAlpha));
                     g.fill(objX, localY, objX + barW, localY + 2, glowColor);
                     if (hoverAnim > 0.01f) {
                         g.fill(objX, localY, objX + barW, localY + 2, hoverGlow);
@@ -331,12 +332,12 @@ public class JournalDetailSinglePhase {
                 }
             }
 
-            int pColor = canSubmit ? HudAnimUtil.lerpColor(0x999999, 0xFFFFFF, hoverAnim) : 0x999999;
+            int pColor = canSubmit ? ArcDrawUtil.lerpColor(0x999999, 0xFFFFFF, hoverAnim) : 0x999999;
 
             g.pose().pushPose();
             g.pose().translate(objX + barW + 4, localY - 1, 0);
             g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, progress + " / " + required, 0, 0, HudAnimUtil.withAlpha(pColor, oA), false);
+            g.drawString(font, progress + " / " + required, 0, 0, ArcDrawUtil.withAlpha(pColor, oA), false);
             g.pose().popPose();
 
             localY += 12;
@@ -348,19 +349,19 @@ public class JournalDetailSinglePhase {
             int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + localY);
             boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             boolean btnHovered = !panelsActive && mx >= intelBtnAbsX && mx <= intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my <= intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
-            intelBtnHoverAnim = HudAnimUtil.step(intelBtnHoverAnim, btnHovered ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, 0, localY, JournalConstants.INTEL_BTN_W, JournalConstants.INTEL_BTN_H, "PHASE INTEL", activeTheme, HudAnimUtil.easeOutCubic(intelBtnHoverAnim), btnHovered);
+            intelBtnHoverAnim = ArcAnimClock.step(intelBtnHoverAnim, btnHovered ? 1f : 0f, 8f, dt);
+            JournalDetailPanel.drawCyberButton(g, screen, 0, localY, JournalConstants.INTEL_BTN_W, JournalConstants.INTEL_BTN_H, "PHASE INTEL", activeTheme, ArcAnimClock.easeOutCubic(intelBtnHoverAnim), btnHovered);
             localY += JournalConstants.INTEL_BTN_H + 12;
         }
 
         if (JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {
             localY += 8;
-            g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
+            g.fill(0, localY, scrollAreaW - 24, localY + 1, ArcDrawUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
             localY += 10;
             g.pose().pushPose();
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, choosePathText, 0, 0, HudAnimUtil.withAlpha(0xFFCC66, safeA), false);
+            g.drawString(font, choosePathText, 0, 0, ArcDrawUtil.withAlpha(0xFFCC66, safeA), false);
             g.pose().popPose();
             localY += 14;
 
@@ -378,11 +379,11 @@ public class JournalDetailSinglePhase {
                 int borderColor = isHovered ? activeTheme : 0x666666;
                 int textColor = isHovered ? activeTheme : 0xCCCCCC;
 
-                g.fill(0, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isHovered ? 0x22 : 0x11) * dAlpha)));
-                g.fill(0, localY, choiceBtnW, localY + 1, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                g.fill(0, localY + choiceBtnH - 1, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                g.fill(0, localY, 1, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
-                g.fill(choiceBtnW - 1, localY, choiceBtnW, localY + choiceBtnH, HudAnimUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                g.fill(0, localY, choiceBtnW, localY + choiceBtnH, ArcDrawUtil.withAlpha(0xFFFFFF, (int) ((isHovered ? 0x22 : 0x11) * dAlpha)));
+                g.fill(0, localY, choiceBtnW, localY + 1, ArcDrawUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                g.fill(0, localY + choiceBtnH - 1, choiceBtnW, localY + choiceBtnH, ArcDrawUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                g.fill(0, localY, 1, localY + choiceBtnH, ArcDrawUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
+                g.fill(choiceBtnW - 1, localY, choiceBtnW, localY + choiceBtnH, ArcDrawUtil.withAlpha(borderColor, (int) (200 * dAlpha)));
 
                 float textScale = 0.8f;
                 g.pose().pushPose();
@@ -394,7 +395,7 @@ public class JournalDetailSinglePhase {
                 int stringAbsX = absX + 8;
                 int stringAbsY = absY + (int) ((choiceBtnH - font.lineHeight * textScale) / 2f + 1);
 
-                drawScrollingString(g, font, choiceText, 0, 0, maxChoiceW, HudAnimUtil.withAlpha(textColor, safeA), false, stringAbsX, stringAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+                drawScrollingString(g, font, choiceText, 0, 0, maxChoiceW, ArcDrawUtil.withAlpha(textColor, safeA), false, stringAbsX, stringAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
                 g.pose().popPose();
                 localY += choiceBtnH + 5;
@@ -493,7 +494,7 @@ public class JournalDetailSinglePhase {
         if (cache.lines == null || cache.width != width || !text.equals(cache.text)) {
             cache.text = text;
             cache.width = width;
-            cache.lines = HudRenderUtil.wrapText(text, width, font);
+            cache.lines = ArcTextLayoutUtil.wrapPlain(font, text, width);
         }
         return cache.lines;
     }

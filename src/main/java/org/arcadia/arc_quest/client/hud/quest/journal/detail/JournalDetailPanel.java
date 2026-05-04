@@ -6,8 +6,9 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
@@ -51,11 +52,11 @@ public class JournalDetailPanel {
     public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
         int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * screen.getEffectiveAlpha()), borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * screen.getEffectiveAlpha());
         int borderRgb = hovered ? (themeColor & 0xFFFFFF) : 0xCCCCCC;
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(x, y, x + w, y + 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y + h - 1, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y, x + 1, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x + w - 1, y, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x, y, x + w, y + h, ArcDrawUtil.withAlpha(0x000000, bgAlpha));
+        g.fill(x, y, x + w, y + 1, ArcDrawUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x, y + h - 1, x + w, y + h, ArcDrawUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x, y, x + 1, y + h, ArcDrawUtil.withAlpha(borderRgb, borderAlpha));
+        g.fill(x + w - 1, y, x + w, y + h, ArcDrawUtil.withAlpha(borderRgb, borderAlpha));
 
         if (screen.getEffectiveAlpha() > 0.05f) {
             int textW = screen.getFont().width(text);
@@ -64,7 +65,7 @@ public class JournalDetailPanel {
             g.pose().pushPose();
             g.pose().translate(x + w / 2f, y + h / 2f - (screen.getFont().lineHeight * baseScale) / 2f + 1, 0);
             g.pose().scale(baseScale, baseScale, 1f);
-            g.drawCenteredString(screen.getFont(), text, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * screen.getEffectiveAlpha())));
+            g.drawCenteredString(screen.getFont(), text, 0, 0, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (255 * screen.getEffectiveAlpha())));
             g.pose().popPose();
         }
     }
@@ -114,8 +115,8 @@ public class JournalDetailPanel {
         int activeTheme = ClientQuestCache.INSTANCE.getQuestThemeColor(entry.questId(), theme);
         screen.setCurrentThemeColor(activeTheme);
 
-        detailReveal = HudAnimUtil.lerp(detailReveal, 1f, 0.15f, dt);
-        float dAlpha = screen.getEffectiveAlpha() * HudAnimUtil.easeOutCubic(Math.min(1f, detailReveal));
+        detailReveal = ArcAnimClock.lerp(detailReveal, 1f, 0.15f, dt);
+        float dAlpha = screen.getEffectiveAlpha() * ArcAnimClock.easeOutCubic(Math.min(1f, detailReveal));
         int safeA = (int) (255 * dAlpha);
         if (safeA <= 8) return;
 
@@ -151,22 +152,22 @@ public class JournalDetailPanel {
         g.pose().pushPose();
         g.pose().translate(titleIconOffset, localY, 0);
         g.pose().scale(1.2f, 1.2f, 1f);
-        g.drawString(screen.getFont(), titleText, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
+        g.drawString(screen.getFont(), titleText, 0, 0, ArcDrawUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
 
         int titleW = (int) (header.titleWidth * 1.2f), hBtnX = titleIconOffset + titleW + 10, hBtnY = localY + 5, hBtnR = 3;
         int absBtnX = x + 12 + hBtnX, absBtnY = (int) (scrollAreaY + 12 - detailScrollOffset + hBtnY);
         boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
         boolean hHover = !panelsActive && mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
-        historyBtnHoverAnim = HudAnimUtil.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
+        historyBtnHoverAnim = ArcAnimClock.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
 
         g.pose().pushPose();
         g.pose().translate(hBtnX, hBtnY, 0);
         g.pose().mulPose(Axis.ZP.rotationDegrees(45));
         int idleGlow = 35 + (int) (25 * Math.sin(Util.getMillis() / 300.0)), glowA = (int) ((hHover ? 180 : idleGlow) * dAlpha);
-        if (glowA > 0) g.fill(-hBtnR - 2, -hBtnR - 2, hBtnR + 2, hBtnR + 2, HudAnimUtil.withAlpha(activeTheme, glowA));
-        g.fill(-hBtnR, -hBtnR, hBtnR, hBtnR, HudAnimUtil.withAlpha(0x222222, safeA));
-        g.fill(-hBtnR + 1, -hBtnR + 1, hBtnR - 1, hBtnR - 1, HudAnimUtil.withAlpha(activeTheme, (int) ((150 + 105 * historyBtnHoverAnim) * dAlpha)));
+        if (glowA > 0) g.fill(-hBtnR - 2, -hBtnR - 2, hBtnR + 2, hBtnR + 2, ArcDrawUtil.withAlpha(activeTheme, glowA));
+        g.fill(-hBtnR, -hBtnR, hBtnR, hBtnR, ArcDrawUtil.withAlpha(0x222222, safeA));
+        g.fill(-hBtnR + 1, -hBtnR + 1, hBtnR - 1, hBtnR - 1, ArcDrawUtil.withAlpha(activeTheme, (int) ((150 + 105 * historyBtnHoverAnim) * dAlpha)));
         g.pose().popPose();
 
         historyBtnRect[0] = absBtnX - hBtnR - 4;
@@ -192,7 +193,7 @@ public class JournalDetailPanel {
                 pulse = 0.6f + 0.4f * (float) Math.sin(Util.getMillis() / (remainSec <= 10 ? 80.0 : 200.0));
                 if (remainSec <= 10) activeTimerColor = 0xFF4444;
             }
-            int timeColor = HudAnimUtil.withAlpha(activeTimerColor, (int) (safeA * pulse)), timeX = (scrollAreaW - 24) - timerRenderW;
+            int timeColor = ArcDrawUtil.withAlpha(activeTimerColor, (int) (safeA * pulse)), timeX = (scrollAreaW - 24) - timerRenderW;
             int minTimerX = hBtnX + hBtnR + 16;
             if (timeX < minTimerX) timeX = minTimerX;
             int timeY = localY + 2;
@@ -209,14 +210,14 @@ public class JournalDetailPanel {
             g.pose().translate(0, localY, 0);
             g.pose().scale(0.85f, 0.85f, 1f);
             for (String line : header.descriptionLines) {
-                g.drawString(screen.getFont(), line, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
+                g.drawString(screen.getFont(), line, 0, 0, ArcDrawUtil.withAlpha(0xAAAAAA, safeA), false);
                 g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
             }
             g.pose().popPose();
             localY += header.descriptionLines.size() * (int) (screen.getFont().lineHeight * 0.85f + 1) + 8;
         }
 
-        g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
+        g.fill(0, localY, scrollAreaW - 24, localY + 1, ArcDrawUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
         localY += 10;
         String selectedPhaseIdForRewards = null;
 
@@ -229,7 +230,7 @@ public class JournalDetailPanel {
                 localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme);
                 selectedPhaseIdForRewards = !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null;
             } else if (activePhaseIds.isEmpty()) {
-                g.drawString(screen.getFont(), "No active phase.", 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false);
+                g.drawString(screen.getFont(), "No active phase.", 0, localY, ArcDrawUtil.withAlpha(0x888888, safeA), false);
                 localY += 16;
             } else if (activePhaseIds.size() == 1) {
                 selectedPhaseIdForRewards = activePhaseIds.get(0);
@@ -239,10 +240,10 @@ public class JournalDetailPanel {
                 selectedPhaseIdForRewards = parallelPhaseRenderer.getSelectedPhaseId();
             }
         } else if (entry.state() == QuestState.COMPLETED) {
-            g.drawString(screen.getFont(), questCompletedText, 0, localY, HudAnimUtil.withAlpha(0x88FF88, safeA), false);
+            g.drawString(screen.getFont(), questCompletedText, 0, localY, ArcDrawUtil.withAlpha(0x88FF88, safeA), false);
             localY += 16;
         } else if (entry.state() == QuestState.FAILED) {
-            g.drawString(screen.getFont(), questFailedText, 0, localY, HudAnimUtil.withAlpha(0xFF6666, safeA), false);
+            g.drawString(screen.getFont(), questFailedText, 0, localY, ArcDrawUtil.withAlpha(0xFF6666, safeA), false);
             localY += 16;
         }
 
@@ -264,21 +265,21 @@ public class JournalDetailPanel {
             headerCache.titleText = def.getDisplayName().getString();
             headerCache.titleWidth = screen.getFont().width(headerCache.titleText);
             headerCache.descriptionText = description;
-            headerCache.descriptionLines = description.isEmpty() ? List.of() : HudRenderUtil.wrapText(description, descWidth, screen.getFont());
+            headerCache.descriptionLines = description.isEmpty() ? List.of() : ArcTextLayoutUtil.wrapPlain(screen.getFont(), description, descWidth);
         }
         return headerCache;
     }
 
     private void renderEmptyDetail(GuiGraphics g, int x, int y, int w, int h) {
         if (screen.getEffectiveAlpha() > 0.05f)
-            g.drawCenteredString(screen.getFont(), selectQuestText, x + w / 2, y + h / 2, HudAnimUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
+            g.drawCenteredString(screen.getFont(), selectQuestText, x + w / 2, y + h / 2, ArcDrawUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
     }
 
     private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, int maxScroll) {
         if (maxScroll <= 0) return;
         int thumbH = Math.max(16, (int) (((float) viewH / contentH) * viewH)), thumbY = y + (int) ((detailScrollOffset / maxScroll) * (viewH - thumbH));
-        g.fill(x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
-        g.fill(x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isDraggingDetailScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
+        g.fill(x, y, x + 4, y + viewH, ArcDrawUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
+        g.fill(x, thumbY, x + 4, thumbY + thumbH, ArcDrawUtil.withAlpha(0xFFFFFF, (int) ((isDraggingDetailScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {

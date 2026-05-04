@@ -2,7 +2,8 @@ package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
@@ -63,22 +64,22 @@ public class JournalDetailControls {
 
         if (bShop) {
             boolean shopHover = !active && mx >= shopBtnX && mx <= shopBtnX + btnW && my >= btnY && my <= btnY + btnH;
-            chapterShopBtnHover = HudAnimUtil.step(chapterShopBtnHover, shopHover ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, shopBtnX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.chapter_shop").getString(), activeTheme, HudAnimUtil.easeOutCubic(chapterShopBtnHover), shopHover);
+            chapterShopBtnHover = ArcAnimClock.step(chapterShopBtnHover, shopHover ? 1f : 0f, 8f, dt);
+            JournalDetailPanel.drawCyberButton(g, screen, shopBtnX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.chapter_shop").getString(), activeTheme, ArcAnimClock.easeOutCubic(chapterShopBtnHover), shopHover);
         }
 
         if (bActive) {
             boolean tHover = !active && mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH;
-            trackBtnHover = HudAnimUtil.step(trackBtnHover, tHover ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.tracked").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
+            trackBtnHover = ArcAnimClock.step(trackBtnHover, tHover ? 1f : 0f, 8f, dt);
+            JournalDetailPanel.drawCyberButton(g, screen, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.tracked").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, ArcAnimClock.easeOutCubic(trackBtnHover), tHover);
 
             boolean aHover = !active && mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH;
-            abandonBtnHover = HudAnimUtil.step(abandonBtnHover, aHover ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, abanX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.abandon").getString(), 0xFF4444, HudAnimUtil.easeOutCubic(abandonBtnHover), aHover);
+            abandonBtnHover = ArcAnimClock.step(abandonBtnHover, aHover ? 1f : 0f, 8f, dt);
+            JournalDetailPanel.drawCyberButton(g, screen, abanX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.abandon").getString(), 0xFF4444, ArcAnimClock.easeOutCubic(abandonBtnHover), aHover);
         } else if (bFailed) {
             boolean rHover = !active && mx >= restartX && mx <= restartX + btnW && my >= btnY && my <= btnY + btnH;
-            failedRestartBtnHover = HudAnimUtil.step(failedRestartBtnHover, rHover ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, restartX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.restart").getString(), activeTheme, HudAnimUtil.easeOutCubic(failedRestartBtnHover), rHover);
+            failedRestartBtnHover = ArcAnimClock.step(failedRestartBtnHover, rHover ? 1f : 0f, 8f, dt);
+            JournalDetailPanel.drawCyberButton(g, screen, restartX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.restart").getString(), activeTheme, ArcAnimClock.easeOutCubic(failedRestartBtnHover), rHover);
         }
     }
 

@@ -17,8 +17,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
@@ -263,7 +264,7 @@ public class JournalDetailParallelPhase {
         g.pose().pushPose();
         g.pose().translate(currentX1, headerBaseY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "PARALLEL LANES", 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
+        g.drawString(font, "PARALLEL LANES", 0, 0, ArcDrawUtil.withAlpha(0xEEEEEE, safeA), false);
         g.pose().popPose();
 
         currentX1 += (int) (font.width("PARALLEL LANES") * 0.8f) + 8;
@@ -271,7 +272,7 @@ public class JournalDetailParallelPhase {
         g.pose().pushPose();
         g.pose().translate(currentX1, headerBaseY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "//", 0, 0, HudAnimUtil.withAlpha(activeTheme, (int) (safeA * 0.6f)), false);
+        g.drawString(font, "//", 0, 0, ArcDrawUtil.withAlpha(activeTheme, (int) (safeA * 0.6f)), false);
         g.pose().popPose();
 
         currentX1 += (int) (font.width("//") * 0.8f) + 8;
@@ -283,7 +284,7 @@ public class JournalDetailParallelPhase {
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
             g.pose().scale(0.75f, 0.75f, 1f);
-            g.drawString(font, prefix, 0, 0, HudAnimUtil.withAlpha(activeTheme, safeA), false);
+            g.drawString(font, prefix, 0, 0, ArcDrawUtil.withAlpha(activeTheme, safeA), false);
             g.pose().popPose();
 
             int prefixW = (int) (font.width(prefix) * 0.75f);
@@ -296,7 +297,7 @@ public class JournalDetailParallelPhase {
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
             g.pose().scale(0.75f, 0.75f, 1f);
-            drawScrollingString(g, font, pName, 0, 0, (int) (remainingW / 0.75f), HudAnimUtil.withAlpha(0xFFFFFF, safeA), true, absTitleX, absTitleY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+            drawScrollingString(g, font, pName, 0, 0, (int) (remainingW / 0.75f), ArcDrawUtil.withAlpha(0xFFFFFF, safeA), true, absTitleX, absTitleY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
             g.pose().popPose();
 
             localY += titleH + 6;
@@ -319,7 +320,7 @@ public class JournalDetailParallelPhase {
                 boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                 boolean isHovered = hasStory && !panelsActive && mx >= absX && mx <= absX + hitW && my >= absY && my <= absY + hitH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
 
-                descHoverAnim = HudAnimUtil.lerp(descHoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
+                descHoverAnim = ArcAnimClock.lerp(descHoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
 
                 if (isHovered) {
                     screen.setHoveredCustomTooltip(List.of(
@@ -348,14 +349,14 @@ public class JournalDetailParallelPhase {
                 g.pose().translate(0, localY, 0);
                 g.pose().scale(baseTextScale, baseTextScale, 1f);
 
-                int descColor = HudAnimUtil.lerpColor(0xFFFFFF, activeTheme, descHoverAnim * 0.4f);
+                int descColor = ArcDrawUtil.lerpColor(0xFFFFFF, activeTheme, descHoverAnim * 0.4f);
 
                 for (int i = 0; i < Math.min(wrappedDesc.size(), maxLines); i++) {
                     String line = wrappedDesc.get(i);
                     if (i == maxLines - 1 && wrappedDesc.size() > maxLines) {
                         line += "...";
                     }
-                    g.drawString(font, line, 0, i * unscaledLineH, HudAnimUtil.withAlpha(descColor, safeA), false);
+                    g.drawString(font, line, 0, i * unscaledLineH, ArcDrawUtil.withAlpha(descColor, safeA), false);
                 }
                 g.pose().popPose();
 
@@ -384,7 +385,7 @@ public class JournalDetailParallelPhase {
 
         safeScissor(g, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
-        dragScaleAnim = HudAnimUtil.lerp(dragScaleAnim, draggingPhaseId != null ? 1f : 0f, 0.2f, dt);
+        dragScaleAnim = ArcAnimClock.lerp(dragScaleAnim, draggingPhaseId != null ? 1f : 0f, 0.2f, dt);
         List<String> renderOrder = new ArrayList<>(customPhaseOrder);
         if (draggingPhaseId != null) {
             renderOrder.remove(draggingPhaseId);
@@ -409,10 +410,10 @@ public class JournalDetailParallelPhase {
             if (!isBeingDragged && (rawCardX + colW < -100 || rawCardX > cardAreaW + 100)) continue;
 
             float reveal = phaseCardReveal.getOrDefault(phaseId, 0f);
-            reveal = HudAnimUtil.lerp(reveal, 1f, 0.12f + (logicalIdx * 0.02f), dt);
+            reveal = ArcAnimClock.lerp(reveal, 1f, 0.12f + (logicalIdx * 0.02f), dt);
             phaseCardReveal.put(phaseId, reveal);
 
-            float cardEase = HudAnimUtil.easeOutCubic(Math.min(1f, reveal));
+            float cardEase = ArcAnimClock.easeOutCubic(Math.min(1f, reveal));
             int cardX = rawCardX + (int) ((1f - cardEase) * 18f);
             int cardY = currentY + (int) ((1f - cardEase) * 10f);
             int cardSafeA = (int) (safeA * cardEase);
@@ -439,9 +440,9 @@ public class JournalDetailParallelPhase {
                 objScrollAreas.add(new ObjScrollArea(absCardX, absCardY, colW, maxCardH, phaseId, maxInnerScroll));
 
             float hoverAnim = phaseCardHoverAnims.getOrDefault(phaseId, 0f);
-            hoverAnim = HudAnimUtil.lerp(hoverAnim, cardHovered ? 1f : 0f, 0.2f, dt);
+            hoverAnim = ArcAnimClock.lerp(hoverAnim, cardHovered ? 1f : 0f, 0.2f, dt);
             phaseCardHoverAnims.put(phaseId, hoverAnim);
-            float hoverEase = HudAnimUtil.easeOutCubic(hoverAnim);
+            float hoverEase = ArcAnimClock.easeOutCubic(hoverAnim);
 
             int cyberEdgeWidth = 3, contentShiftX = 0;
             float actualDAlpha = dAlpha;
@@ -449,7 +450,7 @@ public class JournalDetailParallelPhase {
 
             int bgAlpha = (int) ((0x44 + (selected ? 0x11 : (int) (0x22 * hoverEase))) * actualDAlpha * cardEase);
             int staticBorderAlpha = (int) ((0x1A + 0x22 * hoverEase) * actualDAlpha * cardEase);
-            int finalEdgeColor = selected ? activeTheme : HudAnimUtil.lerpColor(0x555555, 0xDDDDDD, hoverEase);
+            int finalEdgeColor = selected ? activeTheme : ArcDrawUtil.lerpColor(0x555555, 0xDDDDDD, hoverEase);
             int edgeAlpha = selected ? (int) (255 * actualDAlpha * cardEase) : (int) ((100 + 100 * hoverEase) * powerFactor * actualDAlpha * cardEase);
 
             g.pose().pushPose();
@@ -458,29 +459,29 @@ public class JournalDetailParallelPhase {
                 g.pose().translate(cardX + colW / 2f, cardY + maxCardH / 2f, 50f);
                 g.pose().scale(currentScale, currentScale, 1f);
                 g.pose().translate(-(cardX + colW / 2f), -(cardY + maxCardH / 2f), 0);
-                g.fill(cardX + 6, cardY + 6, cardX + colW + 6, cardY + maxCardH + 6, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * dragScaleAnim)));
+                g.fill(cardX + 6, cardY + 6, cardX + colW + 6, cardY + maxCardH + 6, ArcDrawUtil.withAlpha(0x000000, (int) (0x55 * dragScaleAnim)));
             }
 
-            g.fill(cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-            g.fill(cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + 1, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
-            g.fill(cardX + cyberEdgeWidth, cardY + maxCardH - 1, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
-            g.fill(cardX + colW - 1, cardY, cardX + colW, cardY + maxCardH, HudAnimUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
-            HudRenderUtil.drawCyberneticEdge(g, cardX, cardY, maxCardH, finalEdgeColor, edgeAlpha);
+            g.fill(cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + maxCardH, ArcDrawUtil.withAlpha(0x000000, bgAlpha));
+            g.fill(cardX + cyberEdgeWidth, cardY, cardX + colW, cardY + 1, ArcDrawUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
+            g.fill(cardX + cyberEdgeWidth, cardY + maxCardH - 1, cardX + colW, cardY + maxCardH, ArcDrawUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
+            g.fill(cardX + colW - 1, cardY, cardX + colW, cardY + maxCardH, ArcDrawUtil.withAlpha(0xFFFFFF, staticBorderAlpha));
+            ArcDrawUtil.drawCyberneticEdge(g, cardX, cardY, maxCardH, finalEdgeColor, edgeAlpha, 3);
 
             if (draggingPhaseId == null && potentialDragPhaseId == null)
                 currentPhaseTags.add(new JournalTypes.PhaseTagRect(absCardX, absCardY, colW, maxCardH, phaseId));
 
             String phaseName = getPhaseDisplayName(phase);
             int nameAbsX = absCardX + 8 + contentShiftX, nameAbsY = absCardY + 6;
-            drawScrollingString(g, font, phaseName, cardX + 8 + contentShiftX, cardY + 6, colW - 60, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true, nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
+            drawScrollingString(g, font, phaseName, cardX + 8 + contentShiftX, cardY + 6, colW - 60, ArcDrawUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true, nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
             ResourceLocation pIntel = phase.getIntelSceneId();
             boolean hasIntel = pIntel != null;
 
             float intelAnim = phaseIntelHoverAnims.getOrDefault(phaseId, 0f);
-            intelAnim = HudAnimUtil.step(intelAnim, (cardHovered && hasIntel) ? 1f : 0f, 15f, dt);
+            intelAnim = ArcAnimClock.step(intelAnim, (cardHovered && hasIntel) ? 1f : 0f, 15f, dt);
             phaseIntelHoverAnims.put(phaseId, intelAnim);
-            float easeIntel = HudAnimUtil.easeOutQuintic(intelAnim);
+            float easeIntel = ArcAnimClock.easeOutQuintic(intelAnim);
 
             int rightEdgeX = cardX + colW - 6;
 
@@ -491,7 +492,7 @@ public class JournalDetailParallelPhase {
                 g.pose().pushPose();
                 g.pose().translate(rightEdgeX - font.width(statusLabel) * 0.7f, cardY + 7, 0);
                 g.pose().scale(0.7f, 0.7f, 1f);
-                g.drawString(font, statusLabel, 0, 0, HudAnimUtil.withAlpha(statusColor, (int) (sAlpha * cardSafeA * (actualDAlpha / dAlpha))), false);
+                g.drawString(font, statusLabel, 0, 0, ArcDrawUtil.withAlpha(statusColor, (int) (sAlpha * cardSafeA * (actualDAlpha / dAlpha))), false);
                 g.pose().popPose();
             }
 
@@ -504,11 +505,11 @@ public class JournalDetailParallelPhase {
                 boolean btnHovered = !isBeingDragged && !panelsActive && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
 
                 float btnSelfHover = phaseIntelBtnHoverAnims.getOrDefault(phaseId, 0f);
-                btnSelfHover = HudAnimUtil.step(btnSelfHover, (btnHovered && intelAnim > 0.5f) ? 1f : 0f, 15f, dt);
+                btnSelfHover = ArcAnimClock.step(btnSelfHover, (btnHovered && intelAnim > 0.5f) ? 1f : 0f, 15f, dt);
                 phaseIntelBtnHoverAnims.put(phaseId, btnSelfHover);
 
-                int currentColor = HudAnimUtil.lerpColor(activeTheme, 0xFFFFFF, btnSelfHover);
-                int finalColor = HudAnimUtil.withAlpha(currentColor, (int) (easeIntel * cardSafeA * (actualDAlpha / dAlpha)));
+                int currentColor = ArcDrawUtil.lerpColor(activeTheme, 0xFFFFFF, btnSelfHover);
+                int finalColor = ArcDrawUtil.withAlpha(currentColor, (int) (easeIntel * cardSafeA * (actualDAlpha / dAlpha)));
 
                 g.fill(btnX, btnY + 2, btnX + 1, btnY + btnH - 2, finalColor);
                 float breathScale = baseScale + 0.06f * (float) Math.sin(Util.getMillis() / 600.0);
@@ -525,10 +526,10 @@ public class JournalDetailParallelPhase {
             }
 
             int cy = cardY + 22, laneBarW = colW - 16, barX = cardX + 8 + contentShiftX;
-            int dimmedThemeColor = HudAnimUtil.lerpColor(0x000000, phaseDone ? 0x66FF66 : activeTheme, powerFactor);
-            int emptyBgColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * powerFactor * actualDAlpha * cardEase));
-            int fillColor = HudAnimUtil.withAlpha(dimmedThemeColor, (int) (0xCC * powerFactor * actualDAlpha * cardEase));
-            int brightColor = HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * powerFactor * actualDAlpha * cardEase));
+            int dimmedThemeColor = ArcDrawUtil.lerpColor(0x000000, phaseDone ? 0x66FF66 : activeTheme, powerFactor);
+            int emptyBgColor = ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x22 * powerFactor * actualDAlpha * cardEase));
+            int fillColor = ArcDrawUtil.withAlpha(dimmedThemeColor, (int) (0xCC * powerFactor * actualDAlpha * cardEase));
+            int brightColor = ArcDrawUtil.withAlpha(0xFFFFFF, (int) (255 * powerFactor * actualDAlpha * cardEase));
 
             float[] pAnims = phaseObjProgressAnims.computeIfAbsent(phaseId, k -> new float[Math.max(1, total)]);
             if (pAnims.length < total) {
@@ -545,7 +546,7 @@ public class JournalDetailParallelPhase {
                     ObjectiveEntry obj = phase.getObjectives().get(i);
                     int req = Math.max(1, obj.getRequiredCount()), progress = runtime.getObjectiveProgress(phaseId, i);
                     float targetRatio = (float) Math.max(0, Math.min(progress, req)) / req;
-                    pAnims[i] = HudAnimUtil.lerp(pAnims[i], targetRatio, 0.15f, dt);
+                    pAnims[i] = ArcAnimClock.lerp(pAnims[i], targetRatio, 0.15f, dt);
 
                     int sFill = (int) (segW * pAnims[i]);
                     boolean isOffer = obj.getType() == ObjectiveType.OFFER && progress < req;
@@ -560,7 +561,7 @@ public class JournalDetailParallelPhase {
                         boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                         if (!panelsActive) {
                             float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
-                            int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * cardSafeA * (actualDAlpha / dAlpha) / 255f));
+                            int glowColor = ArcDrawUtil.withAlpha(activeTheme, (int) (60 * breath * cardSafeA * (actualDAlpha / dAlpha) / 255f));
                             g.fill((int) cx, cy, (int) (cx + segW), cy + 2, glowColor);
                         }
                     }
@@ -606,7 +607,7 @@ public class JournalDetailParallelPhase {
                     int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY2 - currentInnerScroll);
 
                     boolean textHovered = !isBeingDragged && mx >= absX2 && mx < absX2 + hitW2 && my >= absY2 && my < absY2 + hitH2 && my >= intY1 && my < intY2 && mx >= intX1 && mx < intX2;
-                    hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
+                    hoverAnimOffer = ArcAnimClock.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
 
                     if (canUpload) {
                         boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
@@ -621,7 +622,7 @@ public class JournalDetailParallelPhase {
                     }
 
                     int objColor = complete ? 0x88FF88 : 0xCCCCCC;
-                    if (canUpload) objColor = HudAnimUtil.lerpColor(objColor, activeTheme, hoverAnimOffer);
+                    if (canUpload) objColor = ArcDrawUtil.lerpColor(objColor, activeTheme, hoverAnimOffer);
 
                     String displayText = prefix + cleanObjText;
                     if (canUpload && textHovered) {
@@ -651,8 +652,8 @@ public class JournalDetailParallelPhase {
                         }
                     }
 
-                    drawScrollingString(g, font, displayText, cardX + 8 + contentShiftX, objY, objMaxWidth, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, objColor, Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absX2, absY2, intX1, intY1, intX2, intY2);
-                    g.drawString(font, pr, cardX + colW - 8 - extraMargin - font.width(pr), objY, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
+                    drawScrollingString(g, font, displayText, cardX + 8 + contentShiftX, objY, objMaxWidth, ArcDrawUtil.withAlpha(ArcDrawUtil.lerpColor(0x000000, objColor, Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absX2, absY2, intX1, intY1, intX2, intY2);
+                    g.drawString(font, pr, cardX + colW - 8 - extraMargin - font.width(pr), objY, ArcDrawUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
 
                     g.pose().popPose();
                     objY += OBJ_LINE_H;
@@ -665,19 +666,19 @@ public class JournalDetailParallelPhase {
             if (maxInnerScroll > 0) {
                 int gradientW = colW - 8;
                 if (currentInnerScroll > 1.0)
-                    g.fillGradient(cardX + cyberEdgeWidth, cy, cardX + gradientW, cy + 6, HudAnimUtil.withAlpha(0x000000, (int) (0xAA * actualDAlpha * cardEase)), HudAnimUtil.withAlpha(0x000000, 0));
+                    g.fillGradient(cardX + cyberEdgeWidth, cy, cardX + gradientW, cy + 6, ArcDrawUtil.withAlpha(0x000000, (int) (0xAA * actualDAlpha * cardEase)), ArcDrawUtil.withAlpha(0x000000, 0));
                 if (currentInnerScroll < maxInnerScroll - 1.0)
-                    g.fillGradient(cardX + cyberEdgeWidth, cy + FIXED_OBJ_VIEW_H - 6, cardX + gradientW, cy + FIXED_OBJ_VIEW_H, HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, (int) (0xAA * actualDAlpha * cardEase)));
+                    g.fillGradient(cardX + cyberEdgeWidth, cy + FIXED_OBJ_VIEW_H - 6, cardX + gradientW, cy + FIXED_OBJ_VIEW_H, ArcDrawUtil.withAlpha(0x000000, 0), ArcDrawUtil.withAlpha(0x000000, (int) (0xAA * actualDAlpha * cardEase)));
 
                 int trackX = cardX + colW - 6;
-                g.fill(trackX, cy, trackX + 2, cy + FIXED_OBJ_VIEW_H, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * actualDAlpha * cardEase)));
+                g.fill(trackX, cy, trackX + 2, cy + FIXED_OBJ_VIEW_H, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x11 * actualDAlpha * cardEase)));
                 int thumbH = Math.max(8, (int) (((float) FIXED_OBJ_VIEW_H / objContentH) * FIXED_OBJ_VIEW_H));
-                g.fill(trackX, cy + (int) ((currentInnerScroll / maxInnerScroll) * (FIXED_OBJ_VIEW_H - thumbH)), trackX + 2, cy + (int) ((currentInnerScroll / maxInnerScroll) * (FIXED_OBJ_VIEW_H - thumbH)) + thumbH, HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * actualDAlpha * cardEase)));
+                g.fill(trackX, cy + (int) ((currentInnerScroll / maxInnerScroll) * (FIXED_OBJ_VIEW_H - thumbH)), trackX + 2, cy + (int) ((currentInnerScroll / maxInnerScroll) * (FIXED_OBJ_VIEW_H - thumbH)) + thumbH, ArcDrawUtil.withAlpha(activeTheme, (int) (0xAA * actualDAlpha * cardEase)));
             }
 
             cy += FIXED_OBJ_VIEW_H + 4;
             if (phase.hasChoices() && !JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {
-                g.drawString(font, "Choices locked", cardX + 8 + contentShiftX, cy, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
+                g.drawString(font, "Choices locked", cardX + 8 + contentShiftX, cy, ArcDrawUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
             }
 
             if (!visibleChoices.isEmpty()) {
@@ -689,14 +690,14 @@ public class JournalDetailParallelPhase {
 
                     boolean btnHover = !isBeingDragged && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
 
-                    g.fill(btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((btnHover ? 0x22 : 0x12) * actualDAlpha * cardEase)));
-                    g.fill(btnX, btnY, btnX + btnW, btnY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
-                    g.fill(btnX, btnY + btnH - 1, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
-                    g.fill(btnX, btnY, btnX + 1, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
-                    g.fill(btnX + btnW - 1, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
+                    g.fill(btnX, btnY, btnX + btnW, btnY + btnH, ArcDrawUtil.withAlpha(0xFFFFFF, (int) ((btnHover ? 0x22 : 0x12) * actualDAlpha * cardEase)));
+                    g.fill(btnX, btnY, btnX + btnW, btnY + 1, ArcDrawUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
+                    g.fill(btnX, btnY + btnH - 1, btnX + btnW, btnY + btnH, ArcDrawUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
+                    g.fill(btnX, btnY, btnX + 1, btnY + btnH, ArcDrawUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
+                    g.fill(btnX + btnW - 1, btnY, btnX + btnW, btnY + btnH, ArcDrawUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
 
                     String choiceText = (i + 1) + ". " + getChoiceText(choice);
-                    drawScrollingString(g, font, choiceText, btnX + 6, btnY + 6, btnW - 12, HudAnimUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absBtnX + 6, absBtnY + 6, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
+                    drawScrollingString(g, font, choiceText, btnX + 6, btnY + 6, btnW - 12, ArcDrawUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absBtnX + 6, absBtnY + 6, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
                     if (draggingPhaseId == null)
                         currentChoiceButtons.add(new JournalTypes.ChoiceButtonRect(absBtnX, absBtnY, btnW, btnH, phase.getChoices().indexOf(choice), phaseId));
@@ -716,30 +717,30 @@ public class JournalDetailParallelPhase {
             int absLeftX = x + 12, absRightX = x + 12 + cardAreaW - btnW, absTrackX = absLeftX + btnW + trackGap;
 
             boolean lHover = mx >= absLeftX && mx < absLeftX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
-            leftBtnHover = HudAnimUtil.step(leftBtnHover, lHover ? 1f : 0f, 10f, dt);
-            int leftColor = HudAnimUtil.lerpColor(0x777777, activeTheme, leftBtnHover);
-            g.drawString(font, "<", 0, localY - 2, HudAnimUtil.withAlpha(leftColor, safeA), false);
+            leftBtnHover = ArcAnimClock.step(leftBtnHover, lHover ? 1f : 0f, 10f, dt);
+            int leftColor = ArcDrawUtil.lerpColor(0x777777, activeTheme, leftBtnHover);
+            g.drawString(font, "<", 0, localY - 2, ArcDrawUtil.withAlpha(leftColor, safeA), false);
 
             boolean rHover = mx >= absRightX && mx < absRightX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
-            rightBtnHover = HudAnimUtil.step(rightBtnHover, rHover ? 1f : 0f, 10f, dt);
-            int rightColor = HudAnimUtil.lerpColor(0x777777, activeTheme, rightBtnHover);
-            g.drawString(font, ">", cardAreaW - btnW + 4, localY - 2, HudAnimUtil.withAlpha(rightColor, safeA), false);
+            rightBtnHover = ArcAnimClock.step(rightBtnHover, rHover ? 1f : 0f, 10f, dt);
+            int rightColor = ArcDrawUtil.lerpColor(0x777777, activeTheme, rightBtnHover);
+            g.drawString(font, ">", cardAreaW - btnW + 4, localY - 2, ArcDrawUtil.withAlpha(rightColor, safeA), false);
 
             int localTrackX = btnW + trackGap;
-            g.fill(localTrackX, localY + 2, localTrackX + absTrackW, localY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (25 * dAlpha)));
-            g.fill(localTrackX, localY + 1, localTrackX + 1, localY + 4, HudAnimUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
-            g.fill(localTrackX + absTrackW - 1, localY + 1, localTrackX + absTrackW, localY + 4, HudAnimUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
+            g.fill(localTrackX, localY + 2, localTrackX + absTrackW, localY + 3, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (25 * dAlpha)));
+            g.fill(localTrackX, localY + 1, localTrackX + 1, localY + 4, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
+            g.fill(localTrackX + absTrackW - 1, localY + 1, localTrackX + absTrackW, localY + 4, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
 
             int thumbW = Math.max(12, (int) (((float) absTrackW / (customPhaseOrder.size() * (colW + gap) - gap)) * absTrackW));
             int thumbLocalX = localTrackX + (int) ((phaseScrollOffset / maxPhaseScroll) * (absTrackW - thumbW));
 
             int thumbAlpha = isDraggingPhaseScrollbar ? 255 : 150;
-            g.fill(thumbLocalX, localY + 2, thumbLocalX + thumbW, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (thumbAlpha * dAlpha)));
+            g.fill(thumbLocalX, localY + 2, thumbLocalX + thumbW, localY + 3, ArcDrawUtil.withAlpha(activeTheme, (int) (thumbAlpha * dAlpha)));
 
             int centerX = thumbLocalX + thumbW / 2, needleOffset = isDraggingPhaseScrollbar ? 2 : 1;
-            g.fill(centerX, localY + 2 - needleOffset, centerX + 1, localY + 3 + needleOffset, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * dAlpha)));
-            g.fill(centerX - 2, localY + 2, centerX, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (255 * dAlpha)));
-            g.fill(centerX + 1, localY + 2, centerX + 3, localY + 3, HudAnimUtil.withAlpha(activeTheme, (int) (255 * dAlpha)));
+            g.fill(centerX, localY + 2 - needleOffset, centerX + 1, localY + 3 + needleOffset, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (255 * dAlpha)));
+            g.fill(centerX - 2, localY + 2, centerX, localY + 3, ArcDrawUtil.withAlpha(activeTheme, (int) (255 * dAlpha)));
+            g.fill(centerX + 1, localY + 2, centerX + 3, localY + 3, ArcDrawUtil.withAlpha(activeTheme, (int) (255 * dAlpha)));
 
             currentScrollControls = new ScrollControls(absLeftX, absCtrlY - 2, btnW, 10, absRightX, absCtrlY - 2, btnW, 10, absTrackX, absCtrlY - 2, absTrackW, absTrackX + (int) ((phaseScrollOffset / maxPhaseScroll) * (absTrackW - thumbW)), thumbW);
 
@@ -972,7 +973,7 @@ public class JournalDetailParallelPhase {
         if (cache.lines == null || cache.width != width || !text.equals(cache.text)) {
             cache.text = text;
             cache.width = width;
-            cache.lines = HudRenderUtil.wrapText(text, width, font);
+            cache.lines = ArcTextLayoutUtil.wrapPlain(font, text, width);
         }
         return cache.lines;
     }

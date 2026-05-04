@@ -1,7 +1,8 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.quest.api.IconPosition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -42,7 +43,7 @@ public class JournalListPanel {
 
         if (selectedIndex >= 0) {
             if (selectedSlide < 0) selectedSlide = selectedIndex;
-            selectedSlide = HudAnimUtil.lerp(selectedSlide, selectedIndex, 0.25f, dt);
+            selectedSlide = ArcAnimClock.lerp(selectedSlide, selectedIndex, 0.25f, dt);
             int hlY = (int) (y + 2 - scrollOffset + selectedSlide * JournalConstants.ENTRY_HEIGHT);
 
             int entryTheme = theme;
@@ -51,8 +52,8 @@ public class JournalListPanel {
                 if (defTheme != 0xFFFFFFFF) entryTheme = defTheme;
             }
 
-            g.fill(x + 2, hlY, x + w - 8, hlY + JournalConstants.ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
-            drawCyberneticEdge(g, x + 2, hlY, JournalConstants.ENTRY_HEIGHT - 2, entryTheme, (int) (0xFF * effectiveAlpha));
+            g.fill(x + 2, hlY, x + w - 8, hlY + JournalConstants.ENTRY_HEIGHT - 2, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
+            ArcDrawUtil.drawCyberneticEdge(g, x + 2, hlY, JournalConstants.ENTRY_HEIGHT - 2, entryTheme, (int) (0xFF * effectiveAlpha), 3);
         }
 
         int firstVisible = Math.max(0, (int) ((scrollOffset - 2 - JournalConstants.ENTRY_HEIGHT) / JournalConstants.ENTRY_HEIGHT));
@@ -68,16 +69,16 @@ public class JournalListPanel {
 
             boolean hovered = mx >= x && mx <= x + w - 8 && my >= entryY && my <= entryY + JournalConstants.ENTRY_HEIGHT && my >= y && my <= y + h;
             if (i < entryHoverAnim.length)
-                entryHoverAnim[i] = HudAnimUtil.step(entryHoverAnim[i], hovered ? 1f : 0f, 8f, dt);
-            float eHover = HudAnimUtil.easeOutCubic(i < entryHoverAnim.length ? entryHoverAnim[i] : 0f);
+                entryHoverAnim[i] = ArcAnimClock.step(entryHoverAnim[i], hovered ? 1f : 0f, 8f, dt);
+            float eHover = ArcAnimClock.easeOutCubic(i < entryHoverAnim.length ? entryHoverAnim[i] : 0f);
 
             if (i != selectedIndex && eHover > 0.01f) {
-                g.fill(x + 2, entryY, x + w - 8, entryY + JournalConstants.ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (eHover * 0x22 * effectiveAlpha)));
+                g.fill(x + 2, entryY, x + w - 8, entryY + JournalConstants.ENTRY_HEIGHT - 2, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (eHover * 0x22 * effectiveAlpha)));
             }
 
             if (effectiveAlpha > 0.05f) {
                 int baseGray = (int) (0xAA + 0x55 * eHover);
-                int nameColor = (i == selectedIndex) ? HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)) : HudAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray, (int) (255 * effectiveAlpha));
+                int nameColor = (i == selectedIndex) ? ArcDrawUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)) : ArcDrawUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray, (int) (255 * effectiveAlpha));
 
                 int textOffsetX = 10;
                 if (entry.def() != null) {
@@ -124,7 +125,7 @@ public class JournalListPanel {
                     g.pose().pushPose();
                     g.pose().translate(x + textOffsetX, entryY + JournalConstants.ENTRY_HEIGHT - 9, 0);
                     g.pose().scale(0.75f, 0.75f, 1f);
-                    g.drawString(screen.getFont(), summary, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)), false);
+                    g.drawString(screen.getFont(), summary, 0, 0, ArcDrawUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)), false);
                     g.pose().popPose();
                 }
             }
@@ -149,8 +150,8 @@ public class JournalListPanel {
         if (maxScroll <= 0) return;
         int thumbH = Math.max(16, (int) (((float) viewH / contentH) * viewH));
         int thumbY = y + (int) ((scrollOffset / maxScroll) * (viewH - thumbH));
-        g.fill(x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
-        g.fill(x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isDraggingListScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
+        g.fill(x, y, x + 4, y + viewH, ArcDrawUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
+        g.fill(x, thumbY, x + 4, thumbY + thumbH, ArcDrawUtil.withAlpha(0xFFFFFF, (int) ((isDraggingListScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
     }
 
     public void clampScroll(int listH) {

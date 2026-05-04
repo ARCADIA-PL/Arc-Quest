@@ -1,7 +1,8 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import net.minecraft.client.gui.GuiGraphics;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.*;
@@ -34,9 +35,9 @@ public final class JournalDetailCollection {
         int total = ClientQuestCache.INSTANCE.getCollectionTotalEntryCount(entry.questId());
         int discovered = ClientQuestCache.INSTANCE.getCollectionDiscoveredEntryCount(entry.questId());
 
-        g.drawString(screen.getFont(), "Collection Progress: " + completed + "/" + total, 0, localY, HudAnimUtil.withAlpha(activeTheme, safeA), false);
+        g.drawString(screen.getFont(), "Collection Progress: " + completed + "/" + total, 0, localY, ArcDrawUtil.withAlpha(activeTheme, safeA), false);
         localY += 12;
-        g.drawString(screen.getFont(), "Discovered: " + discovered + "/" + total, 0, localY, HudAnimUtil.withAlpha(0xAAAAAA, safeA), false);
+        g.drawString(screen.getFont(), "Discovered: " + discovered + "/" + total, 0, localY, ArcDrawUtil.withAlpha(0xAAAAAA, safeA), false);
         localY += 16;
 
         List<String> rows = new ArrayList<>();
@@ -46,7 +47,7 @@ public final class JournalDetailCollection {
         }
 
         if (rows.isEmpty()) {
-            g.drawString(screen.getFont(), "No collection entries visible.", 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false);
+            g.drawString(screen.getFont(), "No collection entries visible.", 0, localY, ArcDrawUtil.withAlpha(0x888888, safeA), false);
             return localY + 16;
         }
 
@@ -60,7 +61,7 @@ public final class JournalDetailCollection {
             String name = phase.getDisplayName().getString();
             if (name == null || name.isEmpty()) name = pid;
             int color = runtime.isPhaseCompleted(pid) ? 0x88FF88 : 0xFFFFFF;
-            g.drawString(screen.getFont(), name + "  [" + count + "/" + target + "]", 0, localY, HudAnimUtil.withAlpha(color, safeA), false);
+            g.drawString(screen.getFont(), name + "  [" + count + "/" + target + "]", 0, localY, ArcDrawUtil.withAlpha(color, safeA), false);
             localY += 12;
         }
 
@@ -73,7 +74,7 @@ public final class JournalDetailCollection {
         List<RewardRow> rewardRows = collectManualRewardRows(questId, def);
         if (rewardRows.isEmpty()) return localY;
 
-        g.drawString(screen.getFont(), "Manual Rewards", 0, localY, HudAnimUtil.withAlpha(0xFFD166, safeA), false);
+        g.drawString(screen.getFont(), "Manual Rewards", 0, localY, ArcDrawUtil.withAlpha(0xFFD166, safeA), false);
         localY += 14;
 
         for (RewardRow row : rewardRows) {
@@ -82,7 +83,7 @@ public final class JournalDetailCollection {
                 case CLAIMABLE -> 0xFFFFFF;
                 case LOCKED -> 0x888888;
             };
-            g.drawString(screen.getFont(), row.label(), 0, localY, HudAnimUtil.withAlpha(textColor, safeA), false);
+            g.drawString(screen.getFont(), row.label(), 0, localY, ArcDrawUtil.withAlpha(textColor, safeA), false);
 
             int bx = 150, by = localY - 2, bw = 56, bh = 12;
             String buttonText = switch (row.state()) {

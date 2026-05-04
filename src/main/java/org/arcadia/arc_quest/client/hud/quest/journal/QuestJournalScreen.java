@@ -11,7 +11,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuestCollectionHistoryManager;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
@@ -31,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.arcadia.arc_quest.client.hud.HudRenderUtil.drawCyberneticEdge;
+
 
 public class QuestJournalScreen extends Screen {
 
@@ -306,7 +307,7 @@ public class QuestJournalScreen extends Screen {
     }
 
     private float getEaseProgress() {
-        return (isClosing ? HudAnimUtil.easeInCubic(transitionAlpha) : HudAnimUtil.easeOutCubic(transitionAlpha)) * HudAnimUtil.easeOutCubic(suspendAlpha);
+        return (isClosing ? ArcAnimClock.easeInCubic(transitionAlpha) : ArcAnimClock.easeOutCubic(transitionAlpha)) * ArcAnimClock.easeOutCubic(suspendAlpha);
     }
 
     @Override
@@ -333,7 +334,7 @@ public class QuestJournalScreen extends Screen {
             dt = (intelActive || storyActive) ? 0f : realDt;
         }
 
-        transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
+        transitionAlpha = ArcAnimClock.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
         if (isClosing && transitionAlpha <= 0.01f) {
             if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
             return;
@@ -348,8 +349,8 @@ public class QuestJournalScreen extends Screen {
         g.pose().scale(uiScale, uiScale, 1f);
 
         // === PASS 1: 纯 2D 极速渲染通道 (无物品干扰，极大利用底层批处理) ===
-        int bgTint = HudAnimUtil.lerpColor(0x000000, currentThemeColor, 0.05f);
-        g.fill(0, 0, sw, sh, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
+        int bgTint = ArcDrawUtil.lerpColor(0x000000, currentThemeColor, 0.05f);
+        g.fill(0, 0, sw, sh, ArcDrawUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
 
         if (safeAlpha > 8) {
             g.pose().pushPose();
@@ -357,7 +358,7 @@ public class QuestJournalScreen extends Screen {
             float titleScale = 0.95f + 0.05f * easeProgress;
             g.pose().scale(titleScale, titleScale, 1f);
             g.pose().translate(-sw / 2f, -14, 0);
-            g.drawCenteredString(font, this.title, sw / 2, 14, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
+            g.drawCenteredString(font, this.title, sw / 2, 14, ArcDrawUtil.withAlpha(0xFFFFFF, safeAlpha));
             g.pose().popPose();
         }
 
@@ -365,13 +366,13 @@ public class QuestJournalScreen extends Screen {
         tabPanel.render(g, smx, smy, safeAlpha, slideOffset, theme, dt);
 
         int listX = JournalConstants.LIST_MARGIN - (int) slideOffset, listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
-        HudAnimUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
+        ArcDrawUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH, ArcDrawUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), ArcDrawUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
         listPanel.render(g, listX, listY, JournalConstants.LIST_WIDTH, listH, smx, smy, theme, dt);
 
         int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
 
-        HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)), HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
+        ArcDrawUtil.drawFrame(g, detailX, listY, detailW, listH, ArcDrawUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)), ArcDrawUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
 
         // 此处的 DetailPanel 会内部管理自己的 Pass1(2D) 和 Pass2(3D)
         detailPanel.render(g, detailX, listY, detailW, listH, smx, smy, theme, dt);
@@ -473,7 +474,7 @@ public class QuestJournalScreen extends Screen {
             animTipH += (targetH - animTipH) * Math.min(1f, dt * morphSpeed);
         }
 
-        float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipTipAlpha) : (tooltipTipAlpha == 0 ? 1f : HudAnimUtil.easeOutCubic(tooltipTipAlpha));
+        float scale = isClosing ? ArcAnimClock.easeInCubic(tooltipTipAlpha) : (tooltipTipAlpha == 0 ? 1f : ArcAnimClock.easeOutCubic(tooltipTipAlpha));
         if (scale < 0.01f) return;
 
         int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;
@@ -487,17 +488,17 @@ public class QuestJournalScreen extends Screen {
         g.pose().scale(scale, scale, 1f);
         g.pose().translate(-centerX, -centerY, 0);
 
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, ArcDrawUtil.withAlpha(0x000000, bgAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, ArcDrawUtil.withAlpha(0xCCCCCC, borderAlpha));
+        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, ArcDrawUtil.withAlpha(0xCCCCCC, borderAlpha));
+        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, ArcDrawUtil.withAlpha(0xCCCCCC, borderAlpha));
 
-        drawCyberneticEdge(g, drawX, drawY, drawH, currentThemeColor, edgeAlpha);
+        ArcDrawUtil.drawCyberneticEdge(g, drawX, drawY, drawH, currentThemeColor, edgeAlpha, 3);
         enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
 
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
         for (Component line : layout.lines) {
-            g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, edgeAlpha), true);
+            g.drawString(font, line, textX, textY, ArcDrawUtil.withAlpha(0xFFFFFF, edgeAlpha), true);
             textY += font.lineHeight;
         }
         g.disableScissor();

@@ -5,7 +5,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -85,7 +86,7 @@ public class JournalDetailRewards {
             phaseTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, phaseTabRect);
             int color = (activeTab == Tab.PHASE) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
-            g.drawString(font, phaseRewardText, phaseTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
+            g.drawString(font, phaseRewardText, phaseTabX, currentY, ArcDrawUtil.withAlpha(color, safeA), false);
         }
 
         if (hasChapterRewards) {
@@ -95,7 +96,7 @@ public class JournalDetailRewards {
             chapterTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, chapterTabRect);
             int color = (activeTab == Tab.CHAPTER) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
-            g.drawString(font, chapterRewardText, chapTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
+            g.drawString(font, chapterRewardText, chapTabX, currentY, ArcDrawUtil.withAlpha(color, safeA), false);
         }
 
         int targetTabX = activeTab == Tab.PHASE ? phaseTabX : chapTabX, targetTabW = activeTab == Tab.PHASE ? phaseTw : chapTw;
@@ -103,13 +104,13 @@ public class JournalDetailRewards {
             animTabX = targetTabX;
             animTabW = targetTabW;
         } else {
-            animTabX = HudAnimUtil.lerp(animTabX, targetTabX, 0.2f, dt);
-            animTabW = HudAnimUtil.lerp(animTabW, targetTabW, 0.2f, dt);
+            animTabX = ArcAnimClock.lerp(animTabX, targetTabX, 0.2f, dt);
+            animTabW = ArcAnimClock.lerp(animTabW, targetTabW, 0.2f, dt);
         }
-        g.fill((int) animTabX, currentY + font.lineHeight + 1, (int) (animTabX + animTabW), currentY + font.lineHeight + 2, HudAnimUtil.withAlpha(activeTheme, safeA));
+        g.fill((int) animTabX, currentY + font.lineHeight + 1, (int) (animTabX + animTabW), currentY + font.lineHeight + 2, ArcDrawUtil.withAlpha(activeTheme, safeA));
 
         currentY += 16;
-        itemsAlphaAnim = HudAnimUtil.lerp(itemsAlphaAnim, 1f, 0.15f, dt);
+        itemsAlphaAnim = ArcAnimClock.lerp(itemsAlphaAnim, 1f, 0.15f, dt);
         float itemDAlpha = dAlpha * itemsAlphaAnim;
         int itemSafeA = (int) (safeA * itemsAlphaAnim);
 
@@ -153,11 +154,11 @@ public class JournalDetailRewards {
 
                 // Pass 1: 2D 高亮、遮罩和槽位底图
                 if (hovered && !isDragging) {
-                    g.fill(itemX + 2, lineY - 1, itemX + rW - 2, lineY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (255 * itemDAlpha)));
-                    g.fill(itemX + 2, 2, itemX + rW - 2, lineY, HudAnimUtil.withAlpha(activeTheme, (int) (0x1A * itemDAlpha)));
+                    g.fill(itemX + 2, lineY - 1, itemX + rW - 2, lineY + 1, ArcDrawUtil.withAlpha(activeTheme, (int) (255 * itemDAlpha)));
+                    g.fill(itemX + 2, 2, itemX + rW - 2, lineY, ArcDrawUtil.withAlpha(activeTheme, (int) (0x1A * itemDAlpha)));
                     screen.setHoveredRewardTooltip(stack);
                 } else
-                    g.fill(itemX + 4, lineY, itemX + rW - 4, lineY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * itemDAlpha)));
+                    g.fill(itemX + 4, lineY, itemX + rW - 4, lineY + 1, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x33 * itemDAlpha)));
 
                 // 收集可见物品，生成独立闭包供 Pass 2 批量调用
                 if (inBounds && itemDAlpha > 0.01f) {
@@ -177,11 +178,11 @@ public class JournalDetailRewards {
             } else {
                 // Pass 1: 纯 2D 文本奖励
                 int tickY1 = 6, tickY2 = 18;
-                g.fill(itemX, tickY1, itemX + 2, tickY2, HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * itemDAlpha)));
+                g.fill(itemX, tickY1, itemX + 2, tickY2, ArcDrawUtil.withAlpha(activeTheme, (int) (0xAA * itemDAlpha)));
                 g.pose().pushPose();
                 g.pose().translate(itemX + 8, 8, 0);
                 g.pose().scale(0.85f, 0.85f, 1f);
-                g.drawString(font, cachedReward.text, 0, 0, HudAnimUtil.withAlpha(0xDDDDDD, itemSafeA), false);
+                g.drawString(font, cachedReward.text, 0, 0, ArcDrawUtil.withAlpha(0xDDDDDD, itemSafeA), false);
                 g.pose().popPose();
             }
             itemX += rW + 12;
