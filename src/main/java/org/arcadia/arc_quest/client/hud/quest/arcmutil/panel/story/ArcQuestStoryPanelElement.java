@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.client.hud.quest.story;
+package org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.story;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -8,6 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -15,7 +17,7 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class QuestStoryPanel {
+public class ArcQuestStoryPanelElement extends ArcGuiElement {
 
     private static final int PANEL_W = 340;
     private static final int PANEL_H = 240;
@@ -43,7 +45,8 @@ public final class QuestStoryPanel {
     private static float prevHoverAnim = 0f;
     private static float nextHoverAnim = 0f;
 
-    private QuestStoryPanel() {
+    public ArcQuestStoryPanelElement() {
+        super(0, 0, PANEL_W, PANEL_H);
     }
 
     // 【终极优化：内联矩形拼接边框】(纯2D面板无需分离3D，但降低方法调用依然是优化重点)
@@ -138,10 +141,12 @@ public final class QuestStoryPanel {
         }
     }
 
-    public static void render(GuiGraphics g, int mx, int my, float partialTick) {
+    @Override
+    public void draw(GuiGraphics g, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
         if (!active) return;
         Minecraft mc = Minecraft.getInstance();
-        int screenW = mc.getWindow().getGuiScaledWidth(), screenH = mc.getWindow().getGuiScaledHeight();
+        int mx = context.mouseX(), my = context.mouseY();
+        int screenW = context.screenWidth(), screenH = context.screenHeight();
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
