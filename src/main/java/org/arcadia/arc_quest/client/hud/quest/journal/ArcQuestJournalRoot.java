@@ -30,6 +30,17 @@ public class ArcQuestJournalRoot extends ArcScreenRoot {
         return journalElement.renderRewards(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);
     }
 
+    public void resetPhaseState() {
+        journalElement.resetPhaseState();
+    }
+
+    public int renderSinglePhase(net.minecraft.client.gui.GuiGraphics graphics, JournalTypes.QuestListEntry entry, org.arcadia.arc_quest.quest.api.QuestDefinition def, org.arcadia.arc_quest.quest.capability.QuestRuntimeData runtime, String phaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, float dt, int activeTheme, float detailAlpha, int safeAlpha, int localY) {
+        return journalElement.renderSinglePhase(graphics, entry, def, runtime, phaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, dt, activeTheme, detailAlpha, safeAlpha, localY);
+    }
+
+    public boolean mouseClickedSinglePhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
+        return journalElement.mouseClickedSinglePhase(mouseX, mouseY, detailX, detailY, detailW, detailH);
+    }
     public int renderCollection(net.minecraft.client.gui.GuiGraphics graphics, JournalTypes.QuestListEntry entry, org.arcadia.arc_quest.quest.api.QuestDefinition def, org.arcadia.arc_quest.quest.capability.QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
         return journalElement.renderCollection(graphics, entry, def, runtime, localY, safeAlpha, activeTheme);
     }

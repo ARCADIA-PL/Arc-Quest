@@ -101,6 +101,17 @@ public class ArcQuestJournalElement extends ArcGuiElement {
         return detailElement.renderRewards(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);
     }
 
+    public void resetPhaseState() {
+        detailElement.resetPhaseState();
+    }
+
+    public int renderSinglePhase(GuiGraphics graphics, JournalTypes.QuestListEntry entry, org.arcadia.arc_quest.quest.api.QuestDefinition def, org.arcadia.arc_quest.quest.capability.QuestRuntimeData runtime, String phaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, float dt, int activeTheme, float detailAlpha, int safeAlpha, int localY) {
+        return detailElement.renderSinglePhase(graphics, entry, def, runtime, phaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, dt, activeTheme, detailAlpha, safeAlpha, localY);
+    }
+
+    public boolean mouseClickedSinglePhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
+        return detailElement.mouseClickedSinglePhase(mouseX, mouseY, detailX, detailY, detailW, detailH);
+    }
     public int renderCollection(GuiGraphics graphics, JournalTypes.QuestListEntry entry, org.arcadia.arc_quest.quest.api.QuestDefinition def, org.arcadia.arc_quest.quest.capability.QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
         return detailElement.renderCollection(graphics, entry, def, runtime, localY, safeAlpha, activeTheme);
     }

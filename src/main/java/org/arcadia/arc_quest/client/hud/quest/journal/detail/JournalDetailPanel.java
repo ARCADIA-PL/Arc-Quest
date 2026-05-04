@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JournalDetailPanel {
-    public final JournalDetailSinglePhase singlePhaseRenderer;
+
     public final JournalDetailParallelPhase parallelPhaseRenderer;
 
 
@@ -42,7 +42,7 @@ public class JournalDetailPanel {
 
     public JournalDetailPanel(QuestJournalScreen screen) {
         this.screen = screen;
-        this.singlePhaseRenderer = new JournalDetailSinglePhase(screen, this);
+
         this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
 
 
@@ -96,7 +96,7 @@ public class JournalDetailPanel {
         detailTargetScroll = 0;
         detailScrollOffset = 0;
         headerCache.clear();
-        singlePhaseRenderer.reset();
+        screen.resetJournalPhaseState();
         parallelPhaseRenderer.reset();
     }
 
@@ -234,7 +234,7 @@ public class JournalDetailPanel {
                 localY += 16;
             } else if (activePhaseIds.size() == 1) {
                 selectedPhaseIdForRewards = activePhaseIds.get(0);
-                localY = singlePhaseRenderer.render(g, entry, def, runtime, activePhaseIds.get(0), x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
+                localY = screen.renderJournalSinglePhase(g, entry, def, runtime, activePhaseIds.get(0), x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
             } else {
                 localY = parallelPhaseRenderer.render(g, entry, def, runtime, activePhaseIds, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
                 selectedPhaseIdForRewards = parallelPhaseRenderer.getSelectedPhaseId();
@@ -314,7 +314,7 @@ public class JournalDetailPanel {
                 for (String pid : entry.def().getPhaseIds()) if (runtime.isPhaseActive(pid)) activePhaseIds.add(pid);
                 if (activePhaseIds.isEmpty()) activePhaseIds.addAll(runtime.getActivePhaseIds());
                 if (activePhaseIds.size() == 1) {
-                    if (singlePhaseRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
+                    if (screen.mouseClickedJournalSinglePhase(mx, my, x, y, w, h)) return true;
                 } else if (activePhaseIds.size() > 1) {
                     if (parallelPhaseRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
                 }

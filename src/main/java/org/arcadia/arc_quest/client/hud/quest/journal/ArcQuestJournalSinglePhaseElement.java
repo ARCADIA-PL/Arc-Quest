@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.client.hud.quest.journal.detail;
+package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
@@ -14,11 +14,10 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.input.ArcCyberButtonElement;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
-import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
-import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
-import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.story.ArcQuestStoryPanelElement;
@@ -33,9 +32,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class JournalDetailSinglePhase {
+public class ArcQuestJournalSinglePhaseElement extends ArcGuiElement {
     private final QuestJournalScreen screen;
-    private final JournalDetailPanel parent;
+
     private final List<JournalTypes.ChoiceButtonRect> currentChoiceButtons = new ArrayList<>();
     private final Map<Integer, Float> offerHoverAnims = new HashMap<>();
     private final List<OfferProgressRect> currentOfferProgressRects = new ArrayList<>();
@@ -56,9 +55,9 @@ public class JournalDetailSinglePhase {
     private float descHoverAnim = 0f;
     private String currentDescPhaseId = null;
 
-    public JournalDetailSinglePhase(QuestJournalScreen screen, JournalDetailPanel parent) {
+    public ArcQuestJournalSinglePhaseElement(QuestJournalScreen screen) {
+        super(0, 0, 0, 0);
         this.screen = screen;
-        this.parent = parent;
     }
 
     public void reset() {
@@ -135,7 +134,7 @@ public class JournalDetailSinglePhase {
 
         int maxTitleW = (int) ((scrollAreaW - 10) / 0.8f);
         int nameAbsX = x;
-        int nameAbsY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
+        int nameAbsY = scrollAreaY + 12 - (int) screen.getDetailPanel().getDetailScrollOffset() + localY;
         drawScrollingString(g, font, titleText, 0, 0, maxTitleW, ArcDrawUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
         g.pose().popPose();
@@ -155,7 +154,7 @@ public class JournalDetailSinglePhase {
 
             // 计算全局绝对坐标与碰撞检测
             int absX = x + 12;
-            int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
+            int absY = scrollAreaY + 12 - (int) screen.getDetailPanel().getDetailScrollOffset() + localY;
             int hitW = scrollAreaW - 4;
             int hitH = blockH;
 
@@ -247,7 +246,7 @@ public class JournalDetailSinglePhase {
                 boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                 if (!panelsActive) {
                     int absX = x + 12 + hitX;
-                    int absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + hitY;
+                    int absY = scrollAreaY + 12 - (int) screen.getDetailPanel().getDetailScrollOffset() + hitY;
                     isHovered = mx >= absX && mx < absX + hitW && my >= absY && my < absY + hitH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
                     hoverAnim = ArcAnimClock.lerp(hoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
                     offerHoverAnims.put(i, hoverAnim);
@@ -346,15 +345,15 @@ public class JournalDetailSinglePhase {
 
         if (intelSceneId != null) {
             intelBtnLocalY = localY;
-            int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + localY);
+            int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + localY);
             boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             boolean btnHovered = !panelsActive && mx >= intelBtnAbsX && mx <= intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my <= intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
             intelBtnHoverAnim = ArcAnimClock.step(intelBtnHoverAnim, btnHovered ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, 0, localY, JournalConstants.INTEL_BTN_W, JournalConstants.INTEL_BTN_H, "PHASE INTEL", activeTheme, ArcAnimClock.easeOutCubic(intelBtnHoverAnim), btnHovered);
+            ArcCyberButtonElement.renderCyber(g, screen.getFont(), 0, localY, JournalConstants.INTEL_BTN_W, JournalConstants.INTEL_BTN_H, "PHASE INTEL", ArcAnimClock.easeOutCubic(intelBtnHoverAnim), false, safeA, screen.getEffectiveAlpha(), activeTheme);
             localY += JournalConstants.INTEL_BTN_H + 12;
         }
 
-        if (JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {
+        if (shouldShowBranchChoices(def, runtime, phaseId)) {
             localY += 8;
             g.fill(0, localY, scrollAreaW - 24, localY + 1, ArcDrawUtil.withAlpha(activeTheme, (int) (80 * dAlpha)));
             localY += 10;
@@ -372,7 +371,7 @@ public class JournalDetailSinglePhase {
                     continue;
 
                 int choiceBtnW = scrollAreaW - 24, choiceBtnH = 22;
-                int absX = x + 12, absY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
+                int absX = x + 12, absY = scrollAreaY + 12 - (int) screen.getDetailPanel().getDetailScrollOffset() + localY;
                 currentChoiceButtons.add(new JournalTypes.ChoiceButtonRect(absX, absY, choiceBtnW, choiceBtnH, i, phaseId));
 
                 boolean isHovered = mx >= absX && mx <= absX + choiceBtnW && my >= absY && my <= absY + choiceBtnH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
@@ -421,7 +420,7 @@ public class JournalDetailSinglePhase {
         if (intelSceneId != null) {
             boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             if (!panelsActive) {
-                int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + intelBtnLocalY);
+                int intelBtnAbsX = x + 12, intelBtnAbsY = (int) Math.round(scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + intelBtnLocalY);
                 if (mx >= intelBtnAbsX && mx < intelBtnAbsX + JournalConstants.INTEL_BTN_W && my >= intelBtnAbsY && my < intelBtnAbsY + JournalConstants.INTEL_BTN_H && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                     screen.playClick();
                     ArcQuestIntelPanelElement.trigger(intelSceneId, screen.getCurrentThemeColor(), x, y, w, h);
@@ -459,6 +458,17 @@ public class JournalDetailSinglePhase {
             }
         }
         return false;
+    }
+
+    private boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
+        if (def == null || runtime == null || phaseId == null || phaseId.isEmpty()) return false;
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null || !phase.hasChoices()) return false;
+        int[] progress = runtime.getAllProgress(phaseId);
+        for (int i = 0; i < phase.getObjectives().size(); i++) {
+            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
+        }
+        return true;
     }
 
     private String getPhaseDisplayName(PhaseDefinition phase) {

@@ -526,6 +526,17 @@ public class QuestJournalScreen extends Screen {
         }
     }
 
+    public void resetJournalPhaseState() {
+        if (arcRoot != null) arcRoot.resetPhaseState();
+    }
+
+    public int renderJournalSinglePhase(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, String phaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, float dt, int activeTheme, float detailAlpha, int safeAlpha, int localY) {
+        return arcRoot != null ? arcRoot.renderSinglePhase(graphics, entry, def, runtime, phaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, dt, activeTheme, detailAlpha, safeAlpha, localY) : localY;
+    }
+
+    public boolean mouseClickedJournalSinglePhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
+        return arcRoot != null && arcRoot.mouseClickedSinglePhase(mouseX, mouseY, detailX, detailY, detailW, detailH);
+    }
     public int renderJournalCollection(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, int localY, int safeAlpha, int activeTheme) {
         return arcRoot != null ? arcRoot.renderCollection(graphics, entry, def, runtime, localY, safeAlpha, activeTheme) : localY;
     }

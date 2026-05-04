@@ -23,6 +23,7 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
     private final QuestJournalScreen screen;
     private final ArcQuestJournalRewardsElement rewardsElement;
     private final ArcQuestJournalCollectionElement collectionElement;
+    private final ArcQuestJournalSinglePhaseElement singlePhaseElement;
     private float trackBtnHover = 0f;
     private float abandonBtnHover = 0f;
     private float failedRestartBtnHover = 0f;
@@ -33,6 +34,7 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
         this.screen = screen;
         this.rewardsElement = new ArcQuestJournalRewardsElement(screen);
         this.collectionElement = new ArcQuestJournalCollectionElement(screen);
+        this.singlePhaseElement = new ArcQuestJournalSinglePhaseElement(screen);
     }
 
     @Override
@@ -161,6 +163,17 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
         return false;
     }
 
+    public void resetPhaseState() {
+        singlePhaseElement.reset();
+    }
+
+    public int renderSinglePhase(GuiGraphics graphics, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, String phaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, float dt, int activeTheme, float detailAlpha, int safeAlpha, int localY) {
+        return singlePhaseElement.render(graphics, entry, def, runtime, phaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, dt, activeTheme, detailAlpha, safeAlpha, localY);
+    }
+
+    public boolean mouseClickedSinglePhase(double mouseX, double mouseY, int detailX, int detailY, int detailW, int detailH) {
+        return singlePhaseElement.mouseClicked(mouseX, mouseY, detailX, detailY, detailW, detailH);
+    }
     public int renderRewards(GuiGraphics graphics, QuestDefinition def, String selectedPhaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, int activeTheme, float detailAlpha, int safeAlpha, int localY, float dt) {
         return rewardsElement.render(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);
     }
