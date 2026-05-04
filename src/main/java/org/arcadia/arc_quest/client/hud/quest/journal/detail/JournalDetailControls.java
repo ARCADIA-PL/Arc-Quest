@@ -8,7 +8,7 @@ import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHis
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
-import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.story.ArcQuestStoryPanelElement;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
@@ -45,7 +45,7 @@ public class JournalDetailControls {
 
     public void render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, int x, int y, int w, int h, int mx, int my, float dt, int activeTheme) {
         int btnH = 20, btnY = y + h - btnH - 8;
-        boolean active = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
+        boolean active = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
 
         boolean bShop = shouldShowShop(def);
         boolean bActive = shouldShowActiveBtns(runtime);
@@ -83,7 +83,7 @@ public class JournalDetailControls {
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
-        if (QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive())
+        if (ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive())
             return false;
         if (screen.getSelectedIndex() < 0 || screen.getSelectedIndex() >= screen.getCurrentEntries().size())
             return false;

@@ -8,14 +8,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.quest.ponder.IntelPonderUIStub;
-import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * 当 QuestIntelPanel 传入 null screen 调用 renderOverlay 时，
+ * 当 ArcQuestIntelPanelElement 传入 null screen 调用 renderOverlay 时，
  * 注入一个动态尺寸的 stub PonderUI，使 TextWindowElement 能正确渲染。
  */
 @Mixin(value = PonderScene.class, remap = false)
@@ -40,8 +40,8 @@ public class MixinPonderScene {
         if (screen != null) return;
 
         PonderScene self = (PonderScene) (Object) this;
-        int sceneW = QuestIntelPanel.getLastSceneAreaW();
-        int sceneH = QuestIntelPanel.getLastSceneAreaH();
+        int sceneW = ArcQuestIntelPanelElement.getLastSceneAreaW();
+        int sceneH = ArcQuestIntelPanelElement.getLastSceneAreaH();
         Font font = Minecraft.getInstance().font;
 
         graphics.pose().pushPose();

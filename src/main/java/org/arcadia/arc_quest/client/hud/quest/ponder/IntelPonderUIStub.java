@@ -4,6 +4,7 @@ import net.createmod.ponder.foundation.PonderScene;
 import net.createmod.ponder.foundation.ui.PonderUI;
 import net.minecraft.client.gui.Font;
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.mixin.client.ponder.MixinPonderUIStubAccessor;
 
 import javax.annotation.Nullable;
@@ -28,7 +29,7 @@ public final class IntelPonderUIStub {
 
     /**
      * 获取或创建一个尺寸匹配的 stub PonderUI。
-     * 如果 QuestIntelPanel 已有活跃场景，利用其 sceneId 构造；否则返回 null。
+     * 如果 ArcQuestIntelPanelElement 已有活跃场景，利用其 sceneId 构造；否则返回 null。
      */
     @Nullable
     public static PonderUI getOrCreate(int w, int h, Font font) {
@@ -66,9 +67,9 @@ public final class IntelPonderUIStub {
 
     @Nullable
     private static PonderUI buildStub(int w, int h, Font font) {
-        // QuestIntelPanel 提供当前活跃的 sceneId
+        // ArcQuestIntelPanelElement 提供当前活跃的 sceneId
         List<PonderScene> scenes =
-                QuestIntelPanel.getActiveScenes();
+                ArcQuestIntelPanelElement.getActiveScenes();
         if (scenes == null || scenes.isEmpty()) return null;
 
         // 用 PonderUI.of(ResourceLocation) 构造

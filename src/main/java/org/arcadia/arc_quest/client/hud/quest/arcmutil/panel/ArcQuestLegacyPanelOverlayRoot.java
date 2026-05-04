@@ -7,7 +7,7 @@ import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuest
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.story.ArcQuestStoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
-import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.overlay.ArcOverlayRoot;
 
@@ -16,6 +16,7 @@ public class ArcQuestLegacyPanelOverlayRoot extends ArcOverlayRoot {
     private final ArcQuestStoryPanelElement storyPanelElement = new ArcQuestStoryPanelElement();
     private final ArcQuestOfferPanelElement offerPanelElement = new ArcQuestOfferPanelElement();
     private final ArcQuestHistoryPanelElement historyPanelElement = new ArcQuestHistoryPanelElement();
+    private final ArcQuestIntelPanelElement intelPanelElement = new ArcQuestIntelPanelElement();
 
     public ArcQuestLegacyPanelOverlayRoot(Minecraft minecraft) {
         super(minecraft, "arc_quest_legacy_panel_bridge");
@@ -23,6 +24,7 @@ public class ArcQuestLegacyPanelOverlayRoot extends ArcOverlayRoot {
         addChild(storyPanelElement);
         addChild(offerPanelElement);
         addChild(historyPanelElement);
+        addChild(intelPanelElement);
     }
 
     @Override
@@ -31,7 +33,7 @@ public class ArcQuestLegacyPanelOverlayRoot extends ArcOverlayRoot {
         Minecraft mc = Minecraft.getInstance();
         int mouseX = (int) (mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / (double) mc.getWindow().getScreenWidth());
         int mouseY = (int) (mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / (double) mc.getWindow().getScreenHeight());
-        if (QuestIntelPanel.isActive()) QuestIntelPanel.render(graphics, context.screenWidth(), context.screenHeight(), context.partialTick());
+        if (ArcQuestIntelPanelElement.isActive()) intelPanelElement.draw(graphics, context, refX, refY, inheritedOpacity);
         if (ArcQuestOfferPanelElement.isActive()) offerPanelElement.draw(graphics, context, refX, refY, inheritedOpacity);
         if (ArcQuestHistoryPanelElement.isActive()) historyPanelElement.draw(graphics, context, refX, refY, inheritedOpacity);
         else if (ArcQuestCollectionHistoryManager.isActive()) collectionHistoryElement.draw(graphics, context, refX, refY, inheritedOpacity);
@@ -39,7 +41,7 @@ public class ArcQuestLegacyPanelOverlayRoot extends ArcOverlayRoot {
     }
 
     public static boolean isAnyPanelActive() {
-        return QuestIntelPanel.isActive()
+        return ArcQuestIntelPanelElement.isActive()
                 || ArcQuestOfferPanelElement.isActive()
                 || ArcQuestHistoryPanelElement.isActive()
                 || ArcQuestCollectionHistoryManager.isActive()

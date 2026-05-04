@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.client.hud.quest.ponder;
+package org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -18,6 +18,9 @@ import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
+import org.arcadia.arc_quest.client.hud.quest.ponder.IntelPonderUIStub;
+import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -30,7 +33,7 @@ import java.util.Map;
  * Quest Intel Ponder 面板。
  * 完美移植 Genesis 的动画参数，呈现高级感全息机能面板。
  */
-public final class QuestIntelPanel {
+public class ArcQuestIntelPanelElement extends ArcGuiElement {
 
     // ── 面板尺寸（采用 16:9 基础宽屏比例）──────────────
     private static final int PANEL_W = 400;
@@ -67,7 +70,8 @@ public final class QuestIntelPanel {
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
 
-    private QuestIntelPanel() {
+    public ArcQuestIntelPanelElement() {
+        super(0, 0, PANEL_W, PANEL_H);
     }
 
     // ── 公开 API ─────────────────────────────────────────────────────
@@ -177,8 +181,12 @@ public final class QuestIntelPanel {
 
     // ── 渲染核心 ──────────────────────────────────────────────────────────
 
-    public static void render(GuiGraphics g, int screenW, int screenH, float partialTick) {
+    @Override
+    public void draw(GuiGraphics g, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
         if (activeScenes == null) return;
+        int screenW = context.screenWidth();
+        int screenH = context.screenHeight();
+        float partialTick = context.partialTick();
 
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastTime) / 1000f, 0.1f);

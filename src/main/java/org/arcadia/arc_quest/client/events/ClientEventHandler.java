@@ -11,7 +11,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
@@ -48,7 +48,7 @@ public final class ClientEventHandler {
         }
 
         QuestToastManager.tick();
-        QuestIntelPanel.tick();
+        ArcQuestIntelPanelElement.tick();
         QuestArcHudController.INSTANCE.tick();
     }
 
