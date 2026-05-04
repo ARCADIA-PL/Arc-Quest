@@ -21,7 +21,6 @@ import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
-import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
@@ -419,11 +418,11 @@ public class ArcQuestJournalParallelPhaseElement extends ArcGuiElement {
 
             int total = phase.getObjectives().size();
             boolean selected = phaseId.equals(resolveSelectedPhaseId(def, runtime));
-            boolean phaseDone = JournalDetailPanel.isPhaseObjectivesDone(runtime, phase, phaseId);
+            boolean phaseDone = ArcQuestJournalDetailUtil.isPhaseObjectivesDone(runtime, phase, phaseId);
             float powerFactor = (selected && !phaseDone) ? 1.0f : 0.35f;
 
             List<ChoiceOption> visibleChoices = new ArrayList<>();
-            if (JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {
+            if (ArcQuestJournalDetailUtil.shouldShowBranchChoices(def, runtime, phaseId)) {
                 for (ChoiceOption choice : phase.getChoices())
                     if (choice.getVisibleCondition() == null || choice.getVisibleCondition().testClient(ClientQuestCache.INSTANCE.getCompletedQuestsAsRL(), ClientQuestCache.INSTANCE.getAllFlags(), ClientQuestCache.INSTANCE.getAllVariables()))
                         visibleChoices.add(choice);
@@ -676,7 +675,7 @@ public class ArcQuestJournalParallelPhaseElement extends ArcGuiElement {
             }
 
             cy += FIXED_OBJ_VIEW_H + 4;
-            if (phase.hasChoices() && !JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {
+            if (phase.hasChoices() && !ArcQuestJournalDetailUtil.shouldShowBranchChoices(def, runtime, phaseId)) {
                 g.drawString(font, "Choices locked", cardX + 8 + contentShiftX, cy, ArcDrawUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
             }
 
@@ -928,7 +927,7 @@ public class ArcQuestJournalParallelPhaseElement extends ArcGuiElement {
     }
 
     private int getChoicesHeight(PhaseDefinition phase, QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
-        boolean showChoices = JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId);
+        boolean showChoices = ArcQuestJournalDetailUtil.shouldShowBranchChoices(def, runtime, phaseId);
         if (showChoices) {
             int visibleCount = 0;
             for (ChoiceOption choice : phase.getChoices())

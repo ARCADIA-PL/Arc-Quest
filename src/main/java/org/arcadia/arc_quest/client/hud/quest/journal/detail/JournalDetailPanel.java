@@ -49,44 +49,6 @@ public class JournalDetailPanel {
 
     }
 
-    public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
-        int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * screen.getEffectiveAlpha()), borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * screen.getEffectiveAlpha());
-        int borderRgb = hovered ? (themeColor & 0xFFFFFF) : 0xCCCCCC;
-        g.fill(x, y, x + w, y + h, ArcDrawUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(x, y, x + w, y + 1, ArcDrawUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y + h - 1, x + w, y + h, ArcDrawUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y, x + 1, y + h, ArcDrawUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x + w - 1, y, x + w, y + h, ArcDrawUtil.withAlpha(borderRgb, borderAlpha));
-
-        if (screen.getEffectiveAlpha() > 0.05f) {
-            int textW = screen.getFont().width(text);
-            float baseScale = 0.85f;
-            if (textW * baseScale > w - 4) baseScale = Math.max(0.5f, (w - 6) / (float) textW);
-            g.pose().pushPose();
-            g.pose().translate(x + w / 2f, y + h / 2f - (screen.getFont().lineHeight * baseScale) / 2f + 1, 0);
-            g.pose().scale(baseScale, baseScale, 1f);
-            g.drawCenteredString(screen.getFont(), text, 0, 0, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (255 * screen.getEffectiveAlpha())));
-            g.pose().popPose();
-        }
-    }
-
-    public static boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
-        if (def == null || runtime == null || phaseId == null || phaseId.isEmpty()) return false;
-        PhaseDefinition phase = def.getPhase(phaseId);
-        if (phase == null || !phase.hasChoices()) return false;
-        int[] progress = runtime.getAllProgress(phaseId);
-        for (int i = 0; i < phase.getObjectives().size(); i++)
-            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
-        return true;
-    }
-
-    public static boolean isPhaseObjectivesDone(QuestRuntimeData runtime, PhaseDefinition phase, String phaseId) {
-        int[] progress = runtime.getAllProgress(phaseId);
-        for (int i = 0; i < phase.getObjectives().size(); i++)
-            if (i >= progress.length || progress[i] < phase.getObjectives().get(i).getRequiredCount()) return false;
-        return true;
-    }
-
     public double getDetailScrollOffset() {
         return detailScrollOffset;
     }
