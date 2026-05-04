@@ -76,6 +76,7 @@ public class QuestHudOverlay implements IGuiOverlay {
 
         if (tracked == null) {
             resetPhaseTrackingState();
+            QuestArcHudController.INSTANCE.setOverlayPressure(0);
             QuestArcHudController.INSTANCE.render(g, partialTick);
             if (!isSplashActive && !isBlockingScreen) {
                 QuestToastManager.render(g, screenWidth, screenHeight);
@@ -127,6 +128,7 @@ public class QuestHudOverlay implements IGuiOverlay {
             }
         }
 
+        QuestArcHudController.INSTANCE.setOverlayPressure((isPhaseActive ? POPUP_H + gap : 0) + (isBranchActive ? POPUP_H + gap : 0));
         QuestArcHudController.INSTANCE.render(g, partialTick);
 
         if (!isSplashActive && !isBlockingScreen) {

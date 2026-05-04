@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.arcmutil.tracker;
 
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.core.ArcGuiTickContext;
 import org.arcadia.arc_quest.mutil.primitive.ArcGuiRect;
 import org.arcadia.arc_quest.mutil.primitive.ArcGuiText;
 
@@ -10,6 +11,11 @@ public class ArcQuestTrackerObjectiveRow extends ArcGuiElement {
     private final ArcGuiRect progressTrack;
     private final ArcGuiRect progressFill;
     private int barWidth;
+    private float displayedProgress;
+    private float targetProgress;
+    private boolean targetComplete;
+    private long completedAt;
+    private boolean lineMode;
 
     public ArcQuestTrackerObjectiveRow(int x, int y, int width) {
         super(x, y, width, 17);
@@ -18,6 +24,8 @@ public class ArcQuestTrackerObjectiveRow extends ArcGuiElement {
         label = new ArcGuiText(4, 1, width - 8, "").setColor(0xFFE8E8E8);
         progressTrack = new ArcGuiRect(4, 13, width - 8, 2, 0x33000000);
         progressFill = new ArcGuiRect(4, 13, 0, 2, 0xFF4FC3F7);
+        displayedProgress = 0f;
+        targetProgress = 0f;
         addChild(background);
         addChild(label);
         addChild(progressTrack);
@@ -32,7 +40,10 @@ public class ArcQuestTrackerObjectiveRow extends ArcGuiElement {
         label.setColor(color);
         progressTrack.setVisible(true);
         progressFill.setVisible(true);
-        progressFill.setWidth(Math.round((barWidth - 8) * Math.max(0f, Math.min(1f, objective.progressVisual))));
+        lineMode = false;
+        targetProgress = Math.max(0f, Math.min(1f, objective.progressVisual));
+        if (complete && !targetComplete) completedAt = System.currentTimeMillis();
+        targetComplete = complete;
         progressFill.setColor(complete ? 0xFF7CFFB2 : themeColor);
         background.setColor(complete ? 0x1A7CFFB2 : 0x18000000);
     }
@@ -42,6 +53,24 @@ public class ArcQuestTrackerObjectiveRow extends ArcGuiElement {
         label.setColor(color);
         progressTrack.setVisible(false);
         progressFill.setVisible(false);
+        lineMode = true;
+        targetComplete = false;
+        targetProgress = 0f;
+        displayedProgress = 0f;
         background.setColor(0x12000000);
+    }
+
+    @Override
+    protected void tick(ArcGuiTickContext context, int refX, int refY) {
+        if (lineMode) return;
+        displayedProgress = ArcQuestTrackerConstants.lerp(displayedProgress, targetProgress, 0.18f, context.deltaTime());
+        progressFill.setWidth(Math.round((barWidth - 8) * displayedProgress));
+        if (targetComplete && completedAt > 0) {
+            long elapsed = context.nowMs() - completedAt;
+            if (elapsed < 650L) {
+                float pulse = 1f - Math.min(1f, elapsed / 650f);
+                background.setColor((Math.round(0x28 * pulse) << 24) | 0x007CFFB2);
+            }
+        }
     }
 }

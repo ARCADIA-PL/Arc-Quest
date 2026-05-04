@@ -28,7 +28,7 @@ public final class QuestArcHudController {
 
     public void tick() {
         ensureInitialized();
-        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) trackerPresenter.tick(ArcGuiTickContextFactory.create(Minecraft.getInstance()));
+        trackerPresenter.tick(ArcGuiTickContextFactory.create(Minecraft.getInstance()));
         host.tickAll();
     }
 
@@ -43,6 +43,10 @@ public final class QuestArcHudController {
 
     public void setTrackedFocus(@Nullable String questId, @Nullable String phaseId) {
         trackerPresenter.setTrackedFocus(questId, phaseId);
+    }
+
+    public void setOverlayPressure(int pixels) {
+        trackerPresenter.setOverlayPressure(pixels);
     }
 
     @Nullable

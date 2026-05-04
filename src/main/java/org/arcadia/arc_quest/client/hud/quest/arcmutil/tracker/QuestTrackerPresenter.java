@@ -5,7 +5,6 @@ import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestHudBlockState;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestHudSelectors;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
-import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerConstants;
 import org.arcadia.arc_quest.mutil.core.ArcGuiTickContext;
 import org.arcadia.arc_quest.mutil.presenter.ArcHudPresenter;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
@@ -30,6 +29,7 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
     private boolean phaseWipingOut;
     private long phaseTransitionStart;
     private long completionDismissStart;
+    private int overlayPressure;
 
     public QuestTrackerViewModel model() {
         return model;
@@ -68,6 +68,13 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
     @Nullable
     public String getTrackedPhaseId() {
         return trackedPhaseId;
+    }
+
+    public void setOverlayPressure(int pixels) {
+        int clamped = Math.max(0, Math.min(48, pixels));
+        if (overlayPressure == clamped) return;
+        overlayPressure = clamped;
+        model.markDirty();
     }
 
     @Override
@@ -111,8 +118,8 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
     }
 
     private void fade(boolean shouldShow, float deltaTime) {
-        model.panelReveal = TrackerConstants.lerp(model.panelReveal, shouldShow ? 1f : 0f, 0.15f, deltaTime);
-        if (completionDismissStart == 0) model.panelSlide = TrackerConstants.lerp(model.panelSlide, shouldShow ? 0f : 1f, 0.15f, deltaTime);
+        model.panelReveal = ArcQuestTrackerConstants.lerp(model.panelReveal, shouldShow ? 1f : 0f, 0.15f, deltaTime);
+        if (completionDismissStart == 0) model.panelSlide = ArcQuestTrackerConstants.lerp(model.panelSlide, shouldShow ? 0f : 1f, 0.15f, deltaTime);
         boolean visible = model.panelReveal >= 0.01f || shouldShow;
         if (model.visible != visible) {
             model.visible = visible;
@@ -153,7 +160,7 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
         if (!phaseTransitioning) return;
         long elapsed = now - phaseTransitionStart;
         if (phaseWipingOut) {
-            float t = Math.min(1f, elapsed / TrackerConstants.TIME_WIPE_OUT);
+            float t = Math.min(1f, elapsed / ArcQuestTrackerConstants.TIME_WIPE_OUT);
             float ease = (float) Math.pow(t, 4.0);
             model.wipeReveal = 1f - ease;
             model.wipeDrift = ease * 30f;
@@ -165,7 +172,7 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
                 model.markDirty();
             }
         } else {
-            float t = Math.min(1f, elapsed / TrackerConstants.TIME_WIPE_IN);
+            float t = Math.min(1f, elapsed / ArcQuestTrackerConstants.TIME_WIPE_IN);
             float ease = (float) (1.0 - Math.pow(1.0 - t, 5.0));
             model.wipeReveal = ease;
             model.wipeDrift = -(1f - ease) * 30f;
@@ -178,8 +185,8 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
         if (tracked != null && (tracked.getState() == QuestState.COMPLETED || tracked.getState() == QuestState.FAILED)) {
             if (completionDismissStart == 0) completionDismissStart = now;
             float elapsed = now - completionDismissStart;
-            if (elapsed >= TrackerConstants.DISMISS_DELAY) {
-                model.panelSlide = TrackerConstants.easeInCubic(Math.min(1f, (elapsed - TrackerConstants.DISMISS_DELAY) / TrackerConstants.DISMISS_SLIDE_TIME));
+            if (elapsed >= ArcQuestTrackerConstants.DISMISS_DELAY) {
+                model.panelSlide = ArcQuestTrackerConstants.easeInCubic(Math.min(1f, (elapsed - ArcQuestTrackerConstants.DISMISS_DELAY) / ArcQuestTrackerConstants.DISMISS_SLIDE_TIME));
             }
         } else if (active) {
             completionDismissStart = 0;
@@ -196,9 +203,9 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
         model.phaseId = phaseId;
         model.phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), phaseId);
         model.phaseDescription = phase.getDescription().getString();
-        model.themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(tracked.getQuestId(), TrackerConstants.COLOR_ACCENT_DEFAULT);
+        model.themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(tracked.getQuestId(), ArcQuestTrackerConstants.COLOR_ACCENT_DEFAULT);
         model.collectionQuest = definition.isCollectionQuest();
-        model.pushDownOffset = QuestToastManager.getPushDownOffset();
+        model.pushDownOffset = QuestToastManager.getPushDownOffset() + overlayPressure;
         model.uiScale = HudRenderUtil.getUniversalUiScale(context.screenWidth(), context.screenHeight());
         model.virtualScreenWidth = Math.round(context.screenWidth() / model.uiScale);
 
@@ -219,7 +226,7 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
         else rebuildObjectives(tracked, phaseId, phase);
 
         int contentRows = definition.isCollectionQuest() ? Math.max(2, model.collection.visibleEntryLines.size()) : Math.max(1, model.objectives.size());
-        model.targetHeight = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + 16 + 28 + contentRows * 18 + TrackerConstants.PADDING;
+        model.targetHeight = ArcQuestTrackerConstants.PADDING + ArcQuestTrackerConstants.TITLE_HEIGHT + 16 + 28 + contentRows * 18 + ArcQuestTrackerConstants.PADDING;
         model.markDirty();
     }
 

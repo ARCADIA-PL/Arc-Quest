@@ -2,7 +2,6 @@ package org.arcadia.arc_quest.client.hud.quest.arcmutil.tracker;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import org.arcadia.arc_quest.client.hud.quest.tracker.TrackerConstants;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiTickContext;
 import org.arcadia.arc_quest.mutil.overlay.ArcOverlayRoot;
@@ -15,9 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
-    private static final int CONTENT_X = TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
-    private static final int PANEL_WIDTH = TrackerConstants.PANEL_WIDTH;
-    private static final int OBJECTIVE_WIDTH = PANEL_WIDTH - CONTENT_X - TrackerConstants.PADDING;
+    private static final int CONTENT_X = ArcQuestTrackerConstants.ACCENT_WIDTH + ArcQuestTrackerConstants.PADDING;
+    private static final int PANEL_WIDTH = ArcQuestTrackerConstants.PANEL_WIDTH;
+    private static final int OBJECTIVE_WIDTH = PANEL_WIDTH - CONTENT_X - ArcQuestTrackerConstants.PADDING;
 
     private final QuestTrackerViewModel model;
     private final ArcGuiRect shadow;
@@ -39,12 +38,12 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         shadow = new ArcGuiRect(3, 4, PANEL_WIDTH, 90, 0x33000000);
         panel = new ArcGuiRect(0, 0, PANEL_WIDTH, 90, 0xAA071019);
         topLine = new ArcGuiRect(0, 0, PANEL_WIDTH, 1, 0x334FC3F7);
-        accent = new ArcGuiRect(0, 0, TrackerConstants.ACCENT_WIDTH, 90, 0xFF4FC3F7);
-        contentRule = new ArcGuiRect(CONTENT_X, TrackerConstants.PADDING + 25, OBJECTIVE_WIDTH, 1, 0x224FC3F7);
-        title = new ArcGuiText(CONTENT_X, TrackerConstants.PADDING, "").setColor(0xFFFFFFFF);
-        phase = new ArcGuiText(CONTENT_X, TrackerConstants.PADDING + 14, "").setColor(0xFF4FC3F7);
-        phaseStrip = new ArcQuestTrackerPhaseStrip(CONTENT_X, TrackerConstants.PADDING + 27, OBJECTIVE_WIDTH);
-        description = new ArcGuiWrappedText(CONTENT_X, TrackerConstants.PADDING + 31, OBJECTIVE_WIDTH, "").setColor(0xFFD6E8FF).setShadow(true);
+        accent = new ArcGuiRect(0, 0, ArcQuestTrackerConstants.ACCENT_WIDTH, 90, 0xFF4FC3F7);
+        contentRule = new ArcGuiRect(CONTENT_X, ArcQuestTrackerConstants.PADDING + 25, OBJECTIVE_WIDTH, 1, 0x224FC3F7);
+        title = new ArcGuiText(CONTENT_X, ArcQuestTrackerConstants.PADDING, "").setColor(0xFFFFFFFF);
+        phase = new ArcGuiText(CONTENT_X, ArcQuestTrackerConstants.PADDING + 14, "").setColor(0xFF4FC3F7);
+        phaseStrip = new ArcQuestTrackerPhaseStrip(CONTENT_X, ArcQuestTrackerConstants.PADDING + 27, OBJECTIVE_WIDTH);
+        description = new ArcGuiWrappedText(CONTENT_X, ArcQuestTrackerConstants.PADDING + 31, OBJECTIVE_WIDTH, "").setColor(0xFFD6E8FF).setShadow(true);
         collectionSummary = new ArcQuestTrackerCollectionSummary(CONTENT_X, 0, OBJECTIVE_WIDTH);
         addChild(shadow);
         addChild(panel);
@@ -67,8 +66,8 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         setVisible(true);
         int panelH = Math.max(72, model.targetHeight);
         int virtualWidth = model.virtualScreenWidth > 0 ? model.virtualScreenWidth : context.screenWidth();
-        int x = Math.round(virtualWidth - PANEL_WIDTH - TrackerConstants.MARGIN_RIGHT + model.panelSlide * (PANEL_WIDTH + TrackerConstants.MARGIN_RIGHT + 20f));
-        int y = TrackerConstants.MARGIN_TOP + model.pushDownOffset;
+        int x = Math.round(virtualWidth - PANEL_WIDTH - ArcQuestTrackerConstants.MARGIN_RIGHT + model.panelSlide * (PANEL_WIDTH + ArcQuestTrackerConstants.MARGIN_RIGHT + 20f));
+        int y = ArcQuestTrackerConstants.MARGIN_TOP + model.pushDownOffset;
         setPosition(x, y);
         setOpacity(model.panelReveal);
         panel.setSize(PANEL_WIDTH, panelH);
@@ -77,7 +76,7 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         topLine.setSize(PANEL_WIDTH, 1);
         topLine.setColor((0x66 << 24) | (model.themeColor & 0x00FFFFFF));
         contentRule.setColor((0x33 << 24) | (model.themeColor & 0x00FFFFFF));
-        accent.setSize(TrackerConstants.ACCENT_WIDTH, panelH);
+        accent.setSize(ArcQuestTrackerConstants.ACCENT_WIDTH, panelH);
         accent.setColor((0xFF << 24) | (model.themeColor & 0x00FFFFFF));
         if (model.isDirty()) applyModel();
         applyTransientState();
@@ -88,7 +87,7 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         if (!visible) return;
         float scale = model.uiScale <= 0f ? 1f : model.uiScale;
         int panelH = Math.max(72, model.targetHeight);
-        int clipW = Math.max(TrackerConstants.ACCENT_WIDTH + 1, Math.round(PANEL_WIDTH * model.wipeReveal));
+        int clipW = Math.max(ArcQuestTrackerConstants.ACCENT_WIDTH + 1, Math.round(PANEL_WIDTH * model.wipeReveal));
         scissorStack.push(graphics,
                 Math.round((x - 5) * scale),
                 Math.round((y - 5) * scale),
@@ -126,7 +125,7 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         boolean hasParallelPhases = model.activePhases.size() > 1;
         phaseStrip.setVisible(hasParallelPhases);
         if (hasParallelPhases) phaseStrip.apply(model.activePhases, model.themeColor);
-        int descriptionY = hasParallelPhases ? TrackerConstants.PADDING + 42 : TrackerConstants.PADDING + 31;
+        int descriptionY = hasParallelPhases ? ArcQuestTrackerConstants.PADDING + 42 : ArcQuestTrackerConstants.PADDING + 31;
         description.setY(descriptionY);
         description.setText(model.phaseDescription);
         int cursorY = descriptionY + Math.max(18, description.getHeight() + 7);
