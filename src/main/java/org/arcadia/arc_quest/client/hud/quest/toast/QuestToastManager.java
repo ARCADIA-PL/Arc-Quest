@@ -1,9 +1,10 @@
 package org.arcadia.arc_quest.client.hud.quest.toast;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestToastElement;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestToastViewModel;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 
@@ -14,16 +15,15 @@ import java.util.Map;
 
 public final class QuestToastManager {
 
-    private static final int MAX_SLOTS = 3;
-    private static final int TOAST_GAP = 4;
-    private static final int MARGIN_RIGHT = 8;
-    private static final int MARGIN_TOP = 8;
+    public static final int MAX_SLOTS = 3;
+    public static final int TOAST_GAP = ArcQuestToastElement.TOAST_GAP;
+    private static final int TOAST_HEIGHT = ArcQuestToastElement.TOAST_HEIGHT;
 
     private static final long DUPLICATE_WINDOW_MS = 1200L;
     private static final long RECENT_SHOWN_WINDOW_MS = 1500L;
 
     private static final Deque<PendingToast> pendingQueue = new ArrayDeque<>();
-    private static final QuestNotificationToast[] activeSlots = new QuestNotificationToast[MAX_SLOTS];
+    private static final ArcQuestToastViewModel[] activeSlots = new ArcQuestToastViewModel[MAX_SLOTS];
     private static final String[] activeKeys = new String[MAX_SLOTS];
 
     private static final Map<String, Long> recentShownAt = new HashMap<>();
@@ -65,7 +65,7 @@ public final class QuestToastManager {
             return;
         }
 
-        pendingQueue.addLast(new PendingToast(type, text, key, now));
+        pendingQueue.addLast(new PendingToast(type, text, key));
         lastQueuedKey = key;
         lastQueuedAt = now;
 
@@ -114,7 +114,7 @@ public final class QuestToastManager {
             for (int i = 0; i < activeSlots.length; i++) {
                 if (activeSlots[i] == null && !pendingQueue.isEmpty()) {
                     PendingToast p = pendingQueue.pollFirst();
-                    activeSlots[i] = new QuestNotificationToast(p.type(), p.text());
+                    activeSlots[i] = new ArcQuestToastViewModel(p.type(), p.text(), p.key());
                     activeKeys[i] = p.key();
                     recentShownAt.put(p.key(), now);
                 }
@@ -130,23 +130,12 @@ public final class QuestToastManager {
             if (activeSlots[i] != null) highestSlotIndex = i;
         }
         if (highestSlotIndex == -1) return 0;
-        return (highestSlotIndex + 1) * (QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP);
+        return (highestSlotIndex + 1) * (TOAST_HEIGHT + TOAST_GAP);
     }
 
-    public static void render(GuiGraphics guiGraphics, int screenWidth, int screenHeight) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-
-        int slotY = MARGIN_TOP;
-        for (int i = 0; i < activeSlots.length; i++) {
-            QuestNotificationToast toast = activeSlots[i];
-            if (toast == null) {
-                slotY += QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP;
-                continue;
-            }
-            toast.render(guiGraphics, mc.font, screenWidth, slotY, MARGIN_RIGHT);
-            slotY += QuestNotificationToast.TOAST_HEIGHT + TOAST_GAP;
-        }
+    public static ArcQuestToastViewModel getActiveToast(int slot) {
+        if (slot < 0 || slot >= activeSlots.length) return null;
+        return activeSlots[slot];
     }
 
     private static String buildKey(ToastType type, String text) {
@@ -204,6 +193,6 @@ public final class QuestToastManager {
         }
     }
 
-    private record PendingToast(ToastType type, String text, String key, long queuedAt) {
+    private record PendingToast(ToastType type, String text, String key) {
     }
 }

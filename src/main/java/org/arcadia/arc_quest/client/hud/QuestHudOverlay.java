@@ -11,7 +11,6 @@ import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.toast.BranchChoiceToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
-import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
@@ -78,9 +77,6 @@ public class QuestHudOverlay implements IGuiOverlay {
             resetPhaseTrackingState();
             QuestArcHudController.INSTANCE.setOverlayPressure(0);
             QuestArcHudController.INSTANCE.render(g, partialTick);
-            if (!isSplashActive && !isBlockingScreen) {
-                QuestToastManager.render(g, screenWidth, screenHeight);
-            }
             return;
         }
 
@@ -130,10 +126,6 @@ public class QuestHudOverlay implements IGuiOverlay {
 
         QuestArcHudController.INSTANCE.setOverlayPressure((isPhaseActive ? POPUP_H + gap : 0) + (isBranchActive ? POPUP_H + gap : 0));
         QuestArcHudController.INSTANCE.render(g, partialTick);
-
-        if (!isSplashActive && !isBlockingScreen) {
-            QuestToastManager.render(g, screenWidth, screenHeight);
-        }
     }
 
     private void updatePhasePopup(QuestRuntimeData tracked, int themeColor) {

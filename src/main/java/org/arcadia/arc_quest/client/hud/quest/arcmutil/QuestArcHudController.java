@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.arcmutil;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestToastOverlayRoot;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.tracker.ArcQuestTrackerOverlayRoot;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.tracker.QuestTrackerPresenter;
 import org.arcadia.arc_quest.mutil.core.ArcGuiTickContextFactory;
@@ -22,7 +23,9 @@ public final class QuestArcHudController {
     public void ensureInitialized() {
         if (initialized) return;
         ArcQuestTrackerOverlayRoot trackerRoot = new ArcQuestTrackerOverlayRoot(Minecraft.getInstance(), trackerPresenter.model());
+        ArcQuestToastOverlayRoot toastRoot = new ArcQuestToastOverlayRoot(Minecraft.getInstance());
         host.register(trackerRoot);
+        host.register(toastRoot);
         initialized = true;
     }
 
