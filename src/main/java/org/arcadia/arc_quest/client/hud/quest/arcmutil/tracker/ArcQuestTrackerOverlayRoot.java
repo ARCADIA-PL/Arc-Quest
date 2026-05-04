@@ -20,8 +20,11 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
     private static final int OBJECTIVE_WIDTH = PANEL_WIDTH - CONTENT_X - TrackerConstants.PADDING;
 
     private final QuestTrackerViewModel model;
+    private final ArcGuiRect shadow;
     private final ArcGuiRect panel;
+    private final ArcGuiRect topLine;
     private final ArcGuiRect accent;
+    private final ArcGuiRect contentRule;
     private final ArcGuiText title;
     private final ArcGuiText phase;
     private final ArcGuiWrappedText description;
@@ -34,13 +37,19 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
     public ArcQuestTrackerOverlayRoot(Minecraft minecraft, QuestTrackerViewModel model) {
         super(minecraft, "arc_quest_tracker");
         this.model = model;
-        panel = new ArcGuiRect(0, 0, PANEL_WIDTH, 90, 0x55000000);
+        shadow = new ArcGuiRect(3, 4, PANEL_WIDTH, 90, 0x33000000);
+        panel = new ArcGuiRect(0, 0, PANEL_WIDTH, 90, 0xAA071019);
+        topLine = new ArcGuiRect(0, 0, PANEL_WIDTH, 1, 0x334FC3F7);
         accent = new ArcGuiRect(0, 0, TrackerConstants.ACCENT_WIDTH, 90, 0xFF4FC3F7);
+        contentRule = new ArcGuiRect(CONTENT_X, TrackerConstants.PADDING + 25, OBJECTIVE_WIDTH, 1, 0x224FC3F7);
         title = new ArcGuiText(CONTENT_X, TrackerConstants.PADDING, "").setColor(0xFFFFFFFF);
         phase = new ArcGuiText(CONTENT_X, TrackerConstants.PADDING + 14, "").setColor(0xFF4FC3F7);
-        description = new ArcGuiWrappedText(CONTENT_X, TrackerConstants.PADDING + 29, OBJECTIVE_WIDTH, "").setColor(0xFFD6E8FF).setShadow(true);
+        description = new ArcGuiWrappedText(CONTENT_X, TrackerConstants.PADDING + 31, OBJECTIVE_WIDTH, "").setColor(0xFFD6E8FF).setShadow(true);
+        addChild(shadow);
         addChild(panel);
+        panel.addChild(topLine);
         panel.addChild(accent);
+        panel.addChild(contentRule);
         panel.addChild(title);
         panel.addChild(phase);
         panel.addChild(description);
@@ -60,7 +69,11 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         setPosition(x, y);
         setOpacity(model.panelReveal);
         panel.setSize(PANEL_WIDTH, panelH);
-        panel.setColor(0x55000000);
+        shadow.setSize(PANEL_WIDTH, panelH);
+        panel.setColor(0xAA071019);
+        topLine.setSize(PANEL_WIDTH, 1);
+        topLine.setColor((0x66 << 24) | (model.themeColor & 0x00FFFFFF));
+        contentRule.setColor((0x33 << 24) | (model.themeColor & 0x00FFFFFF));
         accent.setSize(TrackerConstants.ACCENT_WIDTH, panelH);
         accent.setColor((0xFF << 24) | (model.themeColor & 0x00FFFFFF));
         if (model.isDirty()) applyModel();
@@ -106,7 +119,7 @@ public class ArcQuestTrackerOverlayRoot extends ArcOverlayRoot {
         phase.setText(model.phaseName);
         phase.setColor(model.themeColor);
         description.setText(model.phaseDescription);
-        int cursorY = TrackerConstants.PADDING + 29 + Math.max(18, description.getHeight() + 6);
+        int cursorY = TrackerConstants.PADDING + 35 + Math.max(18, description.getHeight() + 6);
         ensurePhaseLineCount(Math.max(0, model.activePhases.size() - 1));
         if (model.activePhases.size() > 1) {
             StringBuilder builder = new StringBuilder();
