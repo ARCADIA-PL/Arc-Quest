@@ -19,8 +19,12 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
 import org.arcadia.arc_quest.client.hud.quest.ponder.IntelPonderUIStub;
+import org.arcadia.arc_quest.mutil.animation.ArcPanelTransition;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -48,6 +52,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
 
     private static final Vector3f DIFFUSE_0 = new Vector3f(-0.2F, 1.0F, 0.7F).normalize();
     private static final Vector3f DIFFUSE_1 = new Vector3f(0.2F, 1.0F, -0.7F).normalize();
+    private static final ArcPanelTransition TRANSITION = new ArcPanelTransition(PANEL_W, PANEL_H, ENTER_TIME, EXIT_TIME);
     // 交互悬浮状态插值追踪 (丝滑放大换色)
     private static final Map<String, Float> buttonHoverStates = new HashMap<>();
     // ── 状态 ──────────────────────────────────────────────────────────
@@ -91,8 +96,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
         sceneIndex = 0;
         themeColor = theme;
 
-        enterTimer = 0f;
-        exitTimer = 0f;
+        TRANSITION.reset();
         isClosing = false;
         isPaused = false;
         buttonHoverStates.clear(); // 清空悬停状态
@@ -106,7 +110,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
     public static void dismiss() {
         if (!isClosing && activeScenes != null) {
             isClosing = true;
-            exitTimer = 0f;
+            TRANSITION.close();
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_TOAST_OUT, 1.0F));
         }
     }
@@ -192,77 +196,32 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
         float dt = Math.min((now - lastTime) / 1000f, 0.1f);
         lastTime = now;
 
-        // 动态缩放，占据屏幕高度的 65%
         float finalScale = (screenH * 0.65f) / (float) PANEL_H;
-        float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f);
-        float baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
-
-        float scaleAnim = finalScale;
-        float currentX = baseX;
-        float currentY = baseY;
-
-        float alphaF = 1.0f;
-        float revealProgress = 1.0f;
-        float wipeProgress = 0.0f;
-        float actualFlyDist = 4.0f * finalScale;
-
-        // 动画缓动逻辑计算
-        if (isClosing) {
-            exitTimer += dt;
-            if (exitTimer >= EXIT_TIME) {
-                activeScenes = null;
-                return;
-            }
-            float t = Math.min(1.0f, exitTimer / EXIT_TIME);
-            float easeIn = (float) Math.pow(t, 4.0); // Ease In Quart
-            wipeProgress = easeIn;
-            currentX = baseX - (easeIn * actualFlyDist * 1.5f);
-            alphaF = 1.0f - (float) Math.pow(t, 8.0);
-        } else {
-            enterTimer = Math.min(ENTER_TIME, enterTimer + dt);
-            float t = Math.min(1.0f, enterTimer / ENTER_TIME);
-            float easeOut = (float) (1.0 - Math.pow(1.0 - t, 5)); // Ease Out Quint
-            revealProgress = easeOut;
-            alphaF = easeOut;
-            scaleAnim = finalScale * (1.10f - 0.10f * easeOut); // 轻微缩放推镜
-            currentX = baseX - (1.0f - easeOut) * actualFlyDist * 2f;
+        ArcPanelTransition.Frame frame = TRANSITION.update(dt, screenW, screenH, finalScale);
+        if (TRANSITION.isFinished()) {
+            activeScenes = null;
+            return;
         }
+        if (!frame.visible()) return;
 
-        if (revealProgress <= 0.001f || wipeProgress >= 0.999f) return;
-
-        // 计算带缩放推移偏移量的最终渲染原点
-        float drawWidth = PANEL_W * scaleAnim;
-        float drawHeight = PANEL_H * scaleAnim;
-        float scaleOffsetW = (drawWidth - PANEL_W * finalScale) / 2f;
-        float scaleOffsetH = (drawHeight - PANEL_H * finalScale) / 2f;
-
-        currentDrawX = currentX - scaleOffsetW;
-        currentDrawY = currentY - scaleOffsetH;
-        currentScale = scaleAnim;
-
-        // 动态裁切计算 (Scissor Wipe)
-        int scX1 = (int) (currentDrawX - 10);
-        int scX2 = (int) (currentDrawX + drawWidth + 10);
-
-        if (isClosing) {
-            scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress));
-        } else if (enterTimer < ENTER_TIME) {
-            scX2 = (int) (currentDrawX + drawWidth * revealProgress);
-        }
+        currentDrawX = frame.drawX();
+        currentDrawY = frame.drawY();
+        currentScale = frame.scale();
+        float alphaF = frame.alpha();
 
         g.pose().pushPose();
-        g.pose().translate(0, 0, 4500); // 置顶 UI 层级
+        g.pose().translate(0, 0, 4500);
 
-        g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        ArcScissorUtil.enableGui(g, frame.scissorX1(), frame.scissorY1(), frame.scissorX2(), frame.scissorY2());
         g.pose().pushPose();
         g.pose().translate(currentDrawX, currentDrawY, 0);
-        g.pose().scale(scaleAnim, scaleAnim, 1f);
+        g.pose().scale(currentScale, currentScale, 1f);
 
-        int alphaInt = Math.max(0, Math.min(255, (int) (255 * alphaF)));
+        int alphaInt = ArcDrawUtil.clampAlpha((int) (255 * alphaF));
         renderPanel(g, Minecraft.getInstance().font, alphaInt, alphaF, dt, partialTick);
 
         g.pose().popPose();
-        g.disableScissor();
+        ArcScissorUtil.disable(g);
         g.pose().popPose();
     }
 
@@ -284,23 +243,11 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
         int edgeAlpha = alpha;
         int borderRgb = 0xCCCCCC;
 
-        // 背景暗化
-        g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-
-        // 灰色框
-        g.fill(cyberEdgeWidth, 0, PW, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha)); // 上
-        g.fill(cyberEdgeWidth, PH - 1, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha)); // 下
-        g.fill(PW - 1, 0, PW, PH, HudAnimUtil.withAlpha(borderRgb, borderAlpha)); // 右
-
-        // 左侧彩条
-        HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, themeColor, edgeAlpha);
+        ArcPanelChrome.drawQuestPanel(g, 0, 0, PW, PH, 0x000000, bgAlpha, borderRgb, borderAlpha, themeColor, edgeAlpha);
 
         //顶部信息排版
         int topBarH = 26;
-        g.pose().pushPose();
-        g.pose().scale(0.7f, 0.7f, 1f);
-        g.drawString(font, "SYS.ARC_QUEST // PHASE INTEL", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
-        g.pose().popPose();
+        ArcPanelChrome.drawHeader(g, font, "SYS.ARC_QUEST // PHASE INTEL", 0.7f, 16, 6, ArcPanelChrome.DEFAULT_HEADER_RGB, alpha);
 
         String title = scene.getTitle();
         g.pose().pushPose();
@@ -317,7 +264,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
             g.pose().popPose();
         }
 
-        g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
+        ArcPanelChrome.drawTopDivider(g, PW, topBarH, borderRgb, borderAlpha);
 
         boolean canPrev = sceneIndex > 0;
         boolean canNext = activeScenes != null && sceneIndex < activeScenes.size() - 1;

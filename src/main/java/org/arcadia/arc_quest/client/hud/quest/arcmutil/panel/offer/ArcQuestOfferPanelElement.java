@@ -16,8 +16,12 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcPanelTransition;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -39,6 +43,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
     private static final float CLEAR_TIME = 1.4f;
+    private static final ArcPanelTransition TRANSITION = new ArcPanelTransition(PANEL_W, PANEL_H, ENTER_TIME, EXIT_TIME);
     private static final long SUBMIT_COOLDOWN_MS = 100L;
     private static boolean active = false;
     private static boolean closing = false;
@@ -88,14 +93,6 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
         super(0, 0, PANEL_W, PANEL_H);
     }
 
-    // 【终极优化：内联矩形拼接边框】
-    private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color);
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
-    }
-
     public static void trigger(String qid, String pid, int objIndex) {
         questId = qid;
         phaseId = pid;
@@ -104,8 +101,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
         active = true;
         closing = false;
         cleared = false;
-        enterTimer = 0f;
-        exitTimer = 0f;
+        TRANSITION.reset();
         clearTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
         iconCycleTicker = 0;
@@ -147,7 +143,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
     public static void close() {
         if (!active || closing) return;
         closing = true;
-        exitTimer = 0f;
+        TRANSITION.close();
     }
 
     public static boolean keyPressed(int keyCode) {
@@ -216,57 +212,34 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
         lastRenderMs = now;
 
         float finalScale = (screenH * 0.55f) / (float) PANEL_H;
-        float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f), baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
-        float scaleAnim = finalScale, currentX = baseX, currentY = baseY, alphaF = 1.0f;
-        float revealProgress = 1.0f, wipeProgress = 0.0f, actualFlyDist = 4.0f * finalScale;
-
-        if (closing) {
-            exitTimer += dt;
-            if (exitTimer >= EXIT_TIME) {
-                active = false;
-                closing = false;
-                return;
-            }
-            float t = Math.min(1.0f, exitTimer / EXIT_TIME);
-            wipeProgress = (float) Math.pow(t, 4.0);
-            currentX = baseX - (wipeProgress * actualFlyDist * 1.5f);
-            alphaF = 1.0f - (float) Math.pow(t, 8.0);
-        } else {
-            enterTimer = Math.min(ENTER_TIME, enterTimer + dt);
-            float t = Math.min(1.0f, enterTimer / ENTER_TIME);
-            revealProgress = (float) (1.0 - Math.pow(1.0 - t, 5));
-            alphaF = revealProgress;
-            scaleAnim = finalScale * (1.10f - 0.10f * revealProgress);
-            currentX = baseX - (1.0f - revealProgress) * actualFlyDist * 2f;
+        ArcPanelTransition.Frame frame = TRANSITION.update(dt, screenW, screenH, finalScale);
+        if (TRANSITION.isFinished()) {
+            active = false;
+            closing = false;
+            return;
         }
+        if (!frame.visible()) return;
 
-        if (revealProgress <= 0.001f || wipeProgress >= 0.999f) return;
-
-        float drawWidth = PANEL_W * scaleAnim, drawHeight = PANEL_H * scaleAnim;
-        currentDrawX = currentX - (drawWidth - PANEL_W * finalScale) / 2f;
-        currentDrawY = currentY - (drawHeight - PANEL_H * finalScale) / 2f;
-        currentScale = scaleAnim;
-
-        int scX1 = (int) (currentDrawX - 10), scX2 = (int) (currentDrawX + drawWidth + 10);
-        if (closing) scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress));
-        else if (enterTimer < ENTER_TIME) scX2 = (int) (currentDrawX + drawWidth * revealProgress);
+        currentDrawX = frame.drawX();
+        currentDrawY = frame.drawY();
+        currentScale = frame.scale();
+        float alphaF = frame.alpha();
 
         hoveredStack = ItemStack.EMPTY;
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
-        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (100 * alphaF)));
-        g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        ArcDrawUtil.fillFullscreenDim(g, screenW, screenH, (int) (100 * alphaF));
+        ArcScissorUtil.enableGui(g, frame.scissorX1(), frame.scissorY1(), frame.scissorX2(), frame.scissorY2());
         g.pose().pushPose();
         g.pose().translate(currentDrawX, currentDrawY, 0);
-        g.pose().scale(scaleAnim, scaleAnim, 1f);
+        g.pose().scale(currentScale, currentScale, 1f);
 
-        renderPanel(g, mc.font, Math.max(0, Math.min(255, (int) (255 * alphaF))), alphaF, dt, mx, my);
+        renderPanel(g, mc.font, ArcDrawUtil.clampAlpha((int) (255 * alphaF)), alphaF, dt, mx, my);
 
         g.pose().popPose();
-        g.disableScissor();
+        ArcScissorUtil.disable(g);
         g.pose().popPose();
-
         if (!hoveredStack.isEmpty() && !closing && !cleared) {
             Minecraft mcForTip = Minecraft.getInstance();
             if (mcForTip.player != null) {
@@ -319,9 +292,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
         int feedbackTargetColor = submitFeedbackSuccess ? 0x33FF66 : 0xFF3333;
         int currentEdgeColor = cleared ? 0x33FF66 : HudAnimUtil.lerpColor(themeColor, feedbackTargetColor, submitFeedbackAnim);
 
-        g.fill(3, 0, PW - 3, PH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        drawFastFrame(g, 3, 0, PW - 6, PH, 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, currentEdgeColor, alpha);
+        ArcPanelChrome.drawQuestPanel(g, 0, 0, PW - 3, PH, 0x000000, bgAlpha, borderRgb, borderAlpha, currentEdgeColor, alpha);
 
         float contentAlphaMult = cleared ? Math.max(0f, 1f - (clearTimer * 4f)) : 1f;
         int contentAlpha = (int) (alpha * contentAlphaMult);
@@ -332,11 +303,8 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
 
         if (contentAlpha > 5) {
             int topBarH = 22;
-            g.pose().pushPose();
-            g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, "SYS.ARC_QUEST // UPLOAD PROTOCOL", 16, 6, HudAnimUtil.withAlpha(0x667788, contentAlpha), false);
-            g.pose().popPose();
-            g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, (int) (borderAlpha * contentAlphaMult)));
+            ArcPanelChrome.drawHeader(g, font, "SYS.ARC_QUEST // UPLOAD PROTOCOL", 0.8f, 16, 6, ArcPanelChrome.DEFAULT_HEADER_RGB, contentAlpha);
+            ArcPanelChrome.drawTopDivider(g, PW, topBarH, borderRgb, (int) (borderAlpha * contentAlphaMult));
 
             int contentY = topBarH + 12;
             g.drawString(font, getTrimmedTitle(font, renderVm.title, PW - 70), 50, contentY + 2, HudAnimUtil.withAlpha(0xFFFFFF, contentAlpha), false);
@@ -369,7 +337,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
             int fillW = Math.max(0, (int) (barW * ratio));
 
             g.fill(barX, barY, barX + barW, barY + barH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (20 * contentAlphaF)));
-            drawFastFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * contentAlphaF)));
+            ArcPanelChrome.drawFastFrame(g, barX - 1, barY - 1, barW + 2, barH + 2, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (40 * contentAlphaF)));
 
             if (fillW > 0) {
                 g.fill(barX, barY, barX + fillW, barY + barH, HudAnimUtil.withAlpha(themeColor, contentAlpha));
@@ -463,7 +431,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
     private static void drawCyberButton(GuiGraphics g, Font font, int x, int y, int w, int h, String text, float hoverAnim, boolean disabled, int alpha, float alphaF) {
         int currentColor = disabled ? 0x444444 : HudAnimUtil.lerpColor(0x777777, themeColor, hoverAnim);
         g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF)));
-        drawFastFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(currentColor, disabled ? (int) (100 * alphaF) : alpha));
+        ArcPanelChrome.drawFastFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(currentColor, disabled ? (int) (100 * alphaF) : alpha));
 
         g.pose().pushPose();
         float btnTextScale = disabled ? 0.85f : 0.85f + (0.05f * hoverAnim);
@@ -609,7 +577,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
         g.pose().pushPose();
         g.pose().translate(0, 0, 6000);
         g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, 0xD0));
-        drawFastFrame(g, drawX + cyberEdgeWidth, drawY, drawW - cyberEdgeWidth, drawH, 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
+        ArcPanelChrome.drawFastFrame(g, drawX + cyberEdgeWidth, drawY, drawW - cyberEdgeWidth, drawH, 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
         HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, theme, 0xFF);
 
         g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
