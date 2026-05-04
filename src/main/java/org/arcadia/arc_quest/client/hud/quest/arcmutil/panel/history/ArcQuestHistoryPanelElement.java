@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.client.hud.quest.history;
+package org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
@@ -17,6 +17,8 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuestCollectionHistoryManager;
+import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -30,7 +32,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
 
-public final class QuestHistoryPanel {
+public class ArcQuestHistoryPanelElement extends ArcGuiElement {
 
     private static final int PANEL_W = 630;
     private static final int PANEL_H = 270;
@@ -73,7 +75,8 @@ public final class QuestHistoryPanel {
     private static boolean pendingFocusActive = false;
     private static float focusDelayTimer = 0f;
 
-    private QuestHistoryPanel() {
+    public ArcQuestHistoryPanelElement() {
+        super(0, 0, PANEL_W, PANEL_H);
     }
 
     // 【终极优化：内联矩形拼接边框】
@@ -251,10 +254,12 @@ public final class QuestHistoryPanel {
         }
     }
 
-    public static void render(GuiGraphics g, int mx, int my, float partialTick) {
+    @Override
+    public void draw(GuiGraphics g, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
         if (!active) return;
         Minecraft mc = Minecraft.getInstance();
-        int screenW = mc.getWindow().getGuiScaledWidth(), screenH = mc.getWindow().getGuiScaledHeight();
+        int mx = context.mouseX(), my = context.mouseY();
+        int screenW = context.screenWidth(), screenH = context.screenHeight();
 
         if (mc.screen instanceof QuestJournalScreen qjs) {
             screenW = qjs.getScaledWidth();

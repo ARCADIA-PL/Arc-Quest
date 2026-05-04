@@ -20,7 +20,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
-import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -316,7 +316,7 @@ public class JournalDetailParallelPhase {
                 int hitW = descMaxW;
                 int hitH = blockH;
 
-                boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+                boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                 boolean isHovered = hasStory && !panelsActive && mx >= absX && mx <= absX + hitW && my >= absY && my <= absY + hitH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
 
                 descHoverAnim = HudAnimUtil.lerp(descHoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
@@ -500,7 +500,7 @@ public class JournalDetailParallelPhase {
                 float baseScale = 0.75f, rawTextW = font.width(btnText), rawTextH = font.lineHeight, textW = rawTextW * baseScale;
                 int btnW = (int) textW + 8, btnH = 10, btnX = rightEdgeX - btnW, btnY = cardY + 5;
                 int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
-                boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+                boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                 boolean btnHovered = !isBeingDragged && !panelsActive && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
 
                 float btnSelfHover = phaseIntelBtnHoverAnims.getOrDefault(phaseId, 0f);
@@ -557,7 +557,7 @@ public class JournalDetailParallelPhase {
                         g.fill((int) (cx + sFill) - 2, cy - 1, (int) (cx + sFill), cy + 3, brightColor);
                     }
                     if (canUpload) {
-                        boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+                        boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                         if (!panelsActive) {
                             float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
                             int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * cardSafeA * (actualDAlpha / dAlpha) / 255f));
@@ -609,7 +609,7 @@ public class JournalDetailParallelPhase {
                     hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
 
                     if (canUpload) {
-                        boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+                        boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
                         if (!panelsActive) {
                             offerHoverAnims.put(offerKey, hoverAnimOffer);
                             if (draggingPhaseId == null)
@@ -753,7 +753,7 @@ public class JournalDetailParallelPhase {
         int scrollAreaY = y, scrollAreaH = h - 40;
 
         if (currentDescPhaseId != null && mx >= descHitBox[0] && mx <= descHitBox[0] + descHitBox[2] && my >= descHitBox[1] && my <= descHitBox[1] + descHitBox[3] && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH) {
-            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             if (!panelsActive) {
                 String qid = screen.getCurrentEntries().get(screen.getSelectedIndex()).questId();
                 ArcQuestStoryPanelElement.trigger(qid, currentDescPhaseId);
@@ -786,7 +786,7 @@ public class JournalDetailParallelPhase {
         }
 
         if (!currentIntelBtns.isEmpty()) {
-            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             if (!panelsActive) {
                 for (IntelBtnRect rect : currentIntelBtns) {
                     if (mx >= rect.absX && mx < rect.absX + rect.w && my >= rect.absY && my < rect.absY + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
@@ -799,7 +799,7 @@ public class JournalDetailParallelPhase {
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentOfferProgressRects.isEmpty()) {
-            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             if (!panelsActive) {
                 for (OfferProgressRect rect : currentOfferProgressRects) {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
@@ -813,7 +813,7 @@ public class JournalDetailParallelPhase {
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentChoiceButtons.isEmpty()) {
-            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             if (!panelsActive) {
                 for (JournalTypes.ChoiceButtonRect rect : currentChoiceButtons) {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
@@ -830,7 +830,7 @@ public class JournalDetailParallelPhase {
         }
 
         if (screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && !currentPhaseTags.isEmpty()) {
-            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+            boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
             if (!panelsActive) {
                 for (JournalTypes.PhaseTagRect rect : currentPhaseTags) {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {

@@ -14,7 +14,7 @@ import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuestCollectionHistoryManager;
-import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
@@ -184,8 +184,8 @@ public class QuestJournalScreen extends Screen {
             ArcQuestOfferPanelElement.keyPressed(keyCode);
             return true;
         }
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.keyPressed(keyCode);
+        if (ArcQuestHistoryPanelElement.isActive()) {
+            ArcQuestHistoryPanelElement.keyPressed(keyCode);
             return true;
         }
         if (ArcQuestCollectionHistoryManager.isActive()) {
@@ -227,8 +227,8 @@ public class QuestJournalScreen extends Screen {
             ArcQuestOfferPanelElement.mouseClicked(smx, smy, button);
             return true;
         }
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.mouseClicked(smx, smy, button);
+        if (ArcQuestHistoryPanelElement.isActive()) {
+            ArcQuestHistoryPanelElement.mouseClicked(smx, smy, button);
             return true;
         }
         if (ArcQuestCollectionHistoryManager.isActive()) return true;
@@ -258,8 +258,8 @@ public class QuestJournalScreen extends Screen {
         double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight();
         if (QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestStoryPanelElement.isActive() || ArcQuestCollectionHistoryManager.isActive()) return true;
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.mouseDragged(smx, smy);
+        if (ArcQuestHistoryPanelElement.isActive()) {
+            ArcQuestHistoryPanelElement.mouseDragged(smx, smy);
             return true;
         }
 
@@ -272,8 +272,8 @@ public class QuestJournalScreen extends Screen {
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
         if (QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestStoryPanelElement.isActive() || ArcQuestCollectionHistoryManager.isActive()) return true;
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.mouseReleased(button);
+        if (ArcQuestHistoryPanelElement.isActive()) {
+            ArcQuestHistoryPanelElement.mouseReleased(button);
             return true;
         }
         listPanel.mouseReleased(button);
@@ -288,8 +288,8 @@ public class QuestJournalScreen extends Screen {
         int sw = getScaledWidth(), sh = getScaledHeight();
 
         if (QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestStoryPanelElement.isActive() || ArcQuestCollectionHistoryManager.isActive()) return true;
-        if (QuestHistoryPanel.isActive()) {
-            QuestHistoryPanel.mouseScrolled(smx, smy, delta);
+        if (ArcQuestHistoryPanelElement.isActive()) {
+            ArcQuestHistoryPanelElement.mouseScrolled(smx, smy, delta);
             return true;
         }
         if (isClosing) return false;
@@ -323,7 +323,7 @@ public class QuestJournalScreen extends Screen {
         lastRenderTime = now;
         if (realDt > 0.1f) realDt = 0.1f;
 
-        boolean intelActive = QuestIntelPanel.isActive(), offerActive = ArcQuestOfferPanelElement.isActive(), historyActive = QuestHistoryPanel.isActive() || ArcQuestCollectionHistoryManager.isActive(), storyActive = ArcQuestStoryPanelElement.isActive();
+        boolean intelActive = QuestIntelPanel.isActive(), offerActive = ArcQuestOfferPanelElement.isActive(), historyActive = ArcQuestHistoryPanelElement.isActive() || ArcQuestCollectionHistoryManager.isActive(), storyActive = ArcQuestStoryPanelElement.isActive();
 
         if (ArcQuestSplashManager.isActive()) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
@@ -387,7 +387,7 @@ public class QuestJournalScreen extends Screen {
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
         boolean hasCustom = hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty();
         boolean hasItem = hoveredRewardTooltip != null;
-        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !ArcQuestOfferPanelElement.isActive() && !QuestHistoryPanel.isActive() && !ArcQuestStoryPanelElement.isActive();
+        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !ArcQuestOfferPanelElement.isActive() && !ArcQuestHistoryPanelElement.isActive() && !ArcQuestStoryPanelElement.isActive();
 
         if (isHoveringValid) {
             if (hasCustom) {
