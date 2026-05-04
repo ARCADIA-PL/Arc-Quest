@@ -27,8 +27,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
 
 
     private final QuestJournalScreen screen;
-    private final ArcQuestJournalHistoryButtonElement historyButton;
-    private final DetailHeaderCache headerCache = new DetailHeaderCache();
+    private final ArcQuestJournalHeaderElement headerElement;
     private final String questCompletedText = Component.translatable("arc_quest.gui.journal.label.quest_completed").getString();
     private final String questFailedText = Component.translatable("arc_quest.gui.journal.label.quest_failed").getString();
     private final String selectQuestText = Component.translatable("arc_quest.gui.journal.label.select_quest").getString();
@@ -40,7 +39,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
     public ArcQuestJournalBodyElement(QuestJournalScreen screen) {
         super(0, 0, 0, 0);
         this.screen = screen;
-        this.historyButton = new ArcQuestJournalHistoryButtonElement(screen);
+        this.headerElement = new ArcQuestJournalHeaderElement(screen);
 
 
 
@@ -56,7 +55,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         detailReveal = 0f;
         detailTargetScroll = 0;
         detailScrollOffset = 0;
-        headerCache.clear();
+        headerElement.resetState();
         screen.resetJournalPhaseState();
 
     }
@@ -97,63 +96,8 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         g.pose().pushPose();
         g.pose().translate(x + 12, scrollAreaY + 12 - detailScrollOffset, 0);
 
-        int localY = 0, titleIconOffset = 0;
-        if (def.getVisualConfig().getIcon(IconPosition.QUEST_TITLE).isPresent()) {
-            int finalLocalY = localY;
-            def.getVisualConfig().getIcon(IconPosition.QUEST_TITLE).ifPresent(icon -> {
-                RenderSystem.setShaderColor(1f, 1f, 1f, dAlpha);
-                QuestIconRenderer.renderIcon(g, icon, 0, finalLocalY - 2, 16, 16);
-                RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-            });
-            titleIconOffset = 22;
-        }
-
-        DetailHeaderCache header = getHeaderCache(entry, def, scrollAreaW);
-        String titleText = header.titleText;
-        g.pose().pushPose();
-        g.pose().translate(titleIconOffset, localY, 0);
-        g.pose().scale(1.2f, 1.2f, 1f);
-        g.drawString(screen.getFont(), titleText, 0, 0, ArcDrawUtil.withAlpha(0xFFFFFF, safeA), true);
-        g.pose().popPose();
-
-        int titleW = (int) (header.titleWidth * 1.2f), hBtnX = titleIconOffset + titleW + 10, hBtnY = localY + 5, hBtnR = 3;
-        historyButton.render(g, hBtnX, hBtnY, x, scrollAreaY, scrollAreaH, detailScrollOffset, mx, my, activeTheme, dAlpha, safeA, dt);
-
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
-        long remainSec = getQuestRemainSeconds(def, runtime);
-        if (remainSec >= 0) {
-            String timeStr = formatAsClock(remainSec);
-            float timeScale = 1.0f;
-            int timerRenderW = (int) (screen.getFont().width(timeStr) * timeScale);
-            float pulse = 1.0f;
-            int activeTimerColor = activeTheme;
-            if (remainSec <= 60) {
-                pulse = 0.6f + 0.4f * (float) Math.sin(Util.getMillis() / (remainSec <= 10 ? 80.0 : 200.0));
-                if (remainSec <= 10) activeTimerColor = 0xFF4444;
-            }
-            int timeColor = ArcDrawUtil.withAlpha(activeTimerColor, (int) (safeA * pulse)), timeX = (scrollAreaW - 24) - timerRenderW;
-            int minTimerX = hBtnX + hBtnR + 16;
-            if (timeX < minTimerX) timeX = minTimerX;
-            int timeY = localY + 2;
-            g.pose().pushPose();
-            g.pose().translate(timeX, timeY, 0);
-            g.pose().scale(timeScale, timeScale, 1f);
-            g.drawString(screen.getFont(), timeStr, 0, 0, timeColor, true);
-            g.pose().popPose();
-        }
-
-        localY += 18;
-        if (!header.descriptionText.isEmpty()) {
-            g.pose().pushPose();
-            g.pose().translate(0, localY, 0);
-            g.pose().scale(0.85f, 0.85f, 1f);
-            for (String line : header.descriptionLines) {
-                g.drawString(screen.getFont(), line, 0, 0, ArcDrawUtil.withAlpha(0xAAAAAA, safeA), false);
-                g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
-            }
-            g.pose().popPose();
-            localY += header.descriptionLines.size() * (int) (screen.getFont().lineHeight * 0.85f + 1) + 8;
-        }
+        int localY = headerElement.render(g, entry, def, runtime, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, 0, detailScrollOffset, dt);
 
         g.fill(0, localY, scrollAreaW - 24, localY + 1, ArcDrawUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
         localY += 10;
@@ -194,20 +138,6 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
 
     }
 
-    private DetailHeaderCache getHeaderCache(JournalTypes.QuestListEntry entry, QuestDefinition def, int scrollAreaW) {
-        int descWidth = (int) ((scrollAreaW - 24) / 0.85f);
-        String description = def.getDescription().getString();
-        if (!entry.questId().equals(headerCache.questId) || headerCache.descWidth != descWidth || !description.equals(headerCache.descriptionText)) {
-            headerCache.questId = entry.questId();
-            headerCache.descWidth = descWidth;
-            headerCache.titleText = def.getDisplayName().getString();
-            headerCache.titleWidth = screen.getFont().width(headerCache.titleText);
-            headerCache.descriptionText = description;
-            headerCache.descriptionLines = description.isEmpty() ? List.of() : ArcTextLayoutUtil.wrapPlain(screen.getFont(), description, descWidth);
-        }
-        return headerCache;
-    }
-
     private void renderEmptyDetail(GuiGraphics g, int x, int y, int w, int h) {
         if (screen.getEffectiveAlpha() > 0.05f)
             g.drawCenteredString(screen.getFont(), selectQuestText, x + w / 2, y + h / 2, ArcDrawUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
@@ -237,7 +167,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
 
         if (!panelsActive && entryIsCollectionActive() && screen.mouseClickedJournalCollection(mx - (x + 12), my - (y + 12 - detailScrollOffset)))
             return true;
-        if (!panelsActive && historyButton.mouseClicked(mx, my, y, scrollAreaH)) return true;
+        if (!panelsActive && headerElement.mouseClicked(mx, my, y, scrollAreaH)) return true;
         if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) {
             JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(screen.getSelectedIndex());
             QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
@@ -301,48 +231,4 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         return entry.def() != null && entry.def().isCollectionQuest() && entry.state() == QuestState.ACTIVE;
     }
 
-    private long getQuestRemainSeconds(QuestDefinition def, QuestRuntimeData runtime) {
-        if (def == null || runtime == null || runtime.getState() != QuestState.ACTIVE) return -1L;
-        if (!def.hasTimeLimit()) return -1L;
-        QuestTimeLimitType type = def.getTimeLimitType();
-        long limit = def.getTimeLimitValue();
-        if (type == null || limit <= 0L) return -1L;
-        if (type == QuestTimeLimitType.REAL_SECONDS) {
-            long accepted = runtime.getAcceptedAtRealMs();
-            if (accepted <= 0L) return -1L;
-            long elapsedSec = Math.max(0L, (System.currentTimeMillis() - accepted) / 1000L);
-            return Math.max(0L, limit - elapsedSec);
-        } else if (type == QuestTimeLimitType.GAME_DAY_TIME) {
-            long acceptedDay = runtime.getAcceptedAtDayTime() % 24000L;
-            long nowDay = (screen.getMinecraft().level != null) ? (screen.getMinecraft().level.getDayTime() % 24000L) : acceptedDay;
-            long elapsedTicks = (nowDay - acceptedDay + 24000L) % 24000L;
-            long remainTicks = Math.max(0L, limit - elapsedTicks);
-            return remainTicks / 20L;
-        }
-        return -1L;
-    }
-
-    private String formatAsClock(long totalSeconds) {
-        long s = Math.max(0L, totalSeconds), h = s / 3600L, m = (s % 3600L) / 60L, sec = s % 60L;
-        if (h > 0L) return String.format("%02d:%02d:%02d", h, m, sec);
-        return String.format("%02d:%02d", m, sec);
-    }
-
-    private static class DetailHeaderCache {
-        String questId = "";
-        int descWidth = -1;
-        String titleText = "";
-        int titleWidth = 0;
-        String descriptionText = "";
-        List<String> descriptionLines = List.of();
-
-        void clear() {
-            questId = "";
-            descWidth = -1;
-            titleText = "";
-            titleWidth = 0;
-            descriptionText = "";
-            descriptionLines = List.of();
-        }
-    }
 }
