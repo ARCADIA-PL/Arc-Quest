@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.quest.network;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 
 import java.util.function.Supplier;
 
@@ -40,7 +40,7 @@ public class S2COfferSubmitResultPacket {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
-            QuestOfferPanel.onServerSubmitResult(pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.closeMode);
+            ArcQuestOfferPanelElement.onServerSubmitResult(pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.closeMode);
         });
         ctx.get().setPacketHandled(true);
     }

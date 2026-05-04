@@ -12,7 +12,6 @@ import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
-import org.arcadia.arc_quest.mutil.demo.ArcMutilDemoHost;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
 
@@ -30,7 +29,6 @@ public class ClientHudEvents {
                     event.getPartialTick());
         }
 
-        ArcMutilDemoHost.render(event.getGuiGraphics(), event.getPartialTick());
     }
 
     @SubscribeEvent

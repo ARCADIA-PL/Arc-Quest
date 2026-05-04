@@ -12,7 +12,7 @@ import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.story.ArcQuestStoryPanelElement;
 import org.arcadia.arc_quest.quest.api.*;
@@ -156,7 +156,7 @@ public class JournalDetailPanel {
 
         int titleW = (int) (header.titleWidth * 1.2f), hBtnX = titleIconOffset + titleW + 10, hBtnY = localY + 5, hBtnR = 3;
         int absBtnX = x + 12 + hBtnX, absBtnY = (int) (scrollAreaY + 12 - detailScrollOffset + hBtnY);
-        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+        boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
         boolean hHover = !panelsActive && mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
         historyBtnHoverAnim = HudAnimUtil.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
 
@@ -283,7 +283,7 @@ public class JournalDetailPanel {
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
         int scrollAreaH = h - 40, maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
-        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
+        boolean panelsActive = QuestIntelPanel.isActive() || ArcQuestOfferPanelElement.isActive() || QuestHistoryPanel.isActive() || ArcQuestStoryPanelElement.isActive();
         if (!panelsActive && rewardsRenderer.mouseClicked(mx, my)) return true;
         if (!panelsActive && maxDetailScroll > 0 && mx >= x + w - 6 && mx <= x + w && my >= y && my <= y + scrollAreaH) {
             isDraggingDetailScrollbar = true;

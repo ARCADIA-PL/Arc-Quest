@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.client.hud.quest.offer;
+package org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer;
 
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -16,6 +16,8 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -29,7 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public final class QuestOfferPanel {
+public class ArcQuestOfferPanelElement extends ArcGuiElement {
 
     private static final int PANEL_W = 280;
     private static final int PANEL_H = 140;
@@ -82,7 +84,8 @@ public final class QuestOfferPanel {
     private static float currentDrawY = 0;
     private static S2COfferSubmitResultPacket.CloseMode serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
 
-    private QuestOfferPanel() {
+    public ArcQuestOfferPanelElement() {
+        super(0, 0, PANEL_W, PANEL_H);
     }
 
     // 【终极优化：内联矩形拼接边框】
@@ -202,10 +205,12 @@ public final class QuestOfferPanel {
         return true;
     }
 
-    public static void render(GuiGraphics g, int mx, int my, float partialTick) {
+    @Override
+    public void draw(GuiGraphics g, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
         if (!active) return;
         Minecraft mc = Minecraft.getInstance();
-        int screenW = mc.getWindow().getGuiScaledWidth(), screenH = mc.getWindow().getGuiScaledHeight();
+        int mx = context.mouseX(), my = context.mouseY();
+        int screenW = context.screenWidth(), screenH = context.screenHeight();
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
