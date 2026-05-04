@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client.hud.quest.arcmutil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.ArcQuestLegacyPanelOverlayRoot;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashOverlayRoot;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestCenterToastManager;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestCenterToastOverlayRoot;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestToastOverlayRoot;
@@ -28,10 +29,12 @@ public final class QuestArcHudController {
         ArcQuestTrackerOverlayRoot trackerRoot = new ArcQuestTrackerOverlayRoot(Minecraft.getInstance(), trackerPresenter.model());
         ArcQuestToastOverlayRoot toastRoot = new ArcQuestToastOverlayRoot(Minecraft.getInstance());
         ArcQuestCenterToastOverlayRoot centerToastRoot = new ArcQuestCenterToastOverlayRoot(Minecraft.getInstance());
+        ArcQuestSplashOverlayRoot splashRoot = new ArcQuestSplashOverlayRoot(Minecraft.getInstance());
         ArcQuestLegacyPanelOverlayRoot panelRoot = new ArcQuestLegacyPanelOverlayRoot(Minecraft.getInstance());
         host.register(trackerRoot);
         host.register(toastRoot);
         host.register(centerToastRoot);
+        host.register(splashRoot);
         host.register(panelRoot);
         initialized = true;
     }

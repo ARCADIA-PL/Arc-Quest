@@ -6,7 +6,6 @@ import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
-import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.overlay.ArcOverlayRoot;
@@ -22,7 +21,6 @@ public class ArcQuestLegacyPanelOverlayRoot extends ArcOverlayRoot {
         Minecraft mc = Minecraft.getInstance();
         int mouseX = (int) (mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / (double) mc.getWindow().getScreenWidth());
         int mouseY = (int) (mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / (double) mc.getWindow().getScreenHeight());
-        if (QuestSplashRenderer.isActive()) QuestSplashRenderer.render(graphics, context.partialTick(), context.screenWidth(), context.screenHeight());
         if (QuestIntelPanel.isActive()) QuestIntelPanel.render(graphics, context.screenWidth(), context.screenHeight(), context.partialTick());
         if (QuestOfferPanel.isActive()) QuestOfferPanel.render(graphics, mouseX, mouseY, context.partialTick());
         if (QuestHistoryPanel.isActive()) QuestHistoryPanel.render(graphics, mouseX, mouseY, context.partialTick());
@@ -31,8 +29,7 @@ public class ArcQuestLegacyPanelOverlayRoot extends ArcOverlayRoot {
     }
 
     public static boolean isAnyPanelActive() {
-        return QuestSplashRenderer.isActive()
-                || QuestIntelPanel.isActive()
+        return QuestIntelPanel.isActive()
                 || QuestOfferPanel.isActive()
                 || QuestHistoryPanel.isActive()
                 || CollectionHistoryPanel.isActive()

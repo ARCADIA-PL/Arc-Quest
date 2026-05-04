@@ -18,7 +18,6 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
-import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
@@ -80,7 +79,6 @@ public class Arc_Quest {
         @SubscribeEvent
         public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
             event.registerAboveAll("quest_hud", QuestHudOverlay.INSTANCE);
-            event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
             event.registerAboveAll("gacha_result", GachaResultOverlay.INSTANCE);
             event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), "quest_markers", MarkerHudRenderer.INSTANCE);
 
@@ -98,7 +96,7 @@ public class Arc_Quest {
         @SubscribeEvent
         public static void onRenderGuiOverlayPre(RenderGuiOverlayEvent.Pre event) {
             if (QuestSplashRenderer.isActive()) {
-                if (!(event.getOverlay().overlay() instanceof QuestSplashOverlay)) {
+                if (!(event.getOverlay().overlay() instanceof QuestHudOverlay)) {
                     event.setCanceled(true);
                 }
             }
