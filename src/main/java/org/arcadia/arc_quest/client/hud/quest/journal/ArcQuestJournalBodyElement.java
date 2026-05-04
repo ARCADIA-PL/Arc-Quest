@@ -1,19 +1,15 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
-import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
-import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.story.ArcQuestStoryPanelElement;
@@ -31,7 +27,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
 
 
     private final QuestJournalScreen screen;
-    private final int[] historyBtnRect = new int[]{0, 0, 0, 0};
+    private final ArcQuestJournalHistoryButtonElement historyButton;
     private final DetailHeaderCache headerCache = new DetailHeaderCache();
     private final String questCompletedText = Component.translatable("arc_quest.gui.journal.label.quest_completed").getString();
     private final String questFailedText = Component.translatable("arc_quest.gui.journal.label.quest_failed").getString();
@@ -39,11 +35,12 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
     private double detailScrollOffset = 0, detailTargetScroll = 0, dragDetailYOffset = 0;
     private boolean isDraggingDetailScrollbar = false;
     private int detailContentHeight = 0;
-    private float detailReveal = 0f, historyBtnHoverAnim = 0f;
+    private float detailReveal = 0f;
 
     public ArcQuestJournalBodyElement(QuestJournalScreen screen) {
         super(0, 0, 0, 0);
         this.screen = screen;
+        this.historyButton = new ArcQuestJournalHistoryButtonElement(screen);
 
 
 
@@ -120,30 +117,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         g.pose().popPose();
 
         int titleW = (int) (header.titleWidth * 1.2f), hBtnX = titleIconOffset + titleW + 10, hBtnY = localY + 5, hBtnR = 3;
-        int absBtnX = x + 12 + hBtnX, absBtnY = (int) (scrollAreaY + 12 - detailScrollOffset + hBtnY);
-        boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
-        boolean hHover = !panelsActive && mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
-        historyBtnHoverAnim = ArcAnimClock.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
-
-        g.pose().pushPose();
-        g.pose().translate(hBtnX, hBtnY, 0);
-        g.pose().mulPose(Axis.ZP.rotationDegrees(45));
-        int idleGlow = 35 + (int) (25 * Math.sin(Util.getMillis() / 300.0)), glowA = (int) ((hHover ? 180 : idleGlow) * dAlpha);
-        if (glowA > 0) g.fill(-hBtnR - 2, -hBtnR - 2, hBtnR + 2, hBtnR + 2, ArcDrawUtil.withAlpha(activeTheme, glowA));
-        g.fill(-hBtnR, -hBtnR, hBtnR, hBtnR, ArcDrawUtil.withAlpha(0x222222, safeA));
-        g.fill(-hBtnR + 1, -hBtnR + 1, hBtnR - 1, hBtnR - 1, ArcDrawUtil.withAlpha(activeTheme, (int) ((150 + 105 * historyBtnHoverAnim) * dAlpha)));
-        g.pose().popPose();
-
-        historyBtnRect[0] = absBtnX - hBtnR - 4;
-        historyBtnRect[1] = absBtnY - hBtnR - 4;
-        historyBtnRect[2] = hBtnR * 2 + 8;
-        historyBtnRect[3] = hBtnR * 2 + 8;
-        if (hHover && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH && !panelsActive) {
-            screen.setHoveredCustomTooltip(List.of(
-                    Component.literal("Topology MAP").withStyle(Style.EMPTY.withColor(activeTheme).withBold(true)),
-                    Component.literal("View node graph & history").withStyle(Style.EMPTY.withColor(0xAAAAAA))
-            ));
-        }
+        historyButton.render(g, hBtnX, hBtnY, x, scrollAreaY, scrollAreaH, detailScrollOffset, mx, my, activeTheme, dAlpha, safeA, dt);
 
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
         long remainSec = getQuestRemainSeconds(def, runtime);
@@ -263,13 +237,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
 
         if (!panelsActive && entryIsCollectionActive() && screen.mouseClickedJournalCollection(mx - (x + 12), my - (y + 12 - detailScrollOffset)))
             return true;
-        if (!panelsActive && mx >= historyBtnRect[0] && mx <= historyBtnRect[0] + historyBtnRect[2] && my >= historyBtnRect[1] && my <= historyBtnRect[1] + historyBtnRect[3] && my >= y && my <= y + scrollAreaH) {
-            if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) {
-                ArcQuestHistoryPanelElement.trigger(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId());
-                screen.playClick();
-                return true;
-            }
-        }
+        if (!panelsActive && historyButton.mouseClicked(mx, my, y, scrollAreaH)) return true;
         if (screen.getSelectedIndex() >= 0 && screen.getSelectedIndex() < screen.getCurrentEntries().size()) {
             JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(screen.getSelectedIndex());
             QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
