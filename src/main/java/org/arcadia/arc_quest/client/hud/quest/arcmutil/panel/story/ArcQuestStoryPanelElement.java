@@ -10,6 +10,10 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.input.ArcCyberButtonElement;
+import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -48,15 +52,6 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
     public ArcQuestStoryPanelElement() {
         super(0, 0, PANEL_W, PANEL_H);
     }
-
-    // 【终极优化：内联矩形拼接边框】(纯2D面板无需分离3D，但降低方法调用依然是优化重点)
-    private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
-        g.fill(x, y, x + w, y + thickness, color);
-        g.fill(x, y + h - thickness, x + w, y + h, color);
-        g.fill(x, y + thickness, x + thickness, y + h - thickness, color);
-        g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color);
-    }
-
     public static void trigger(String qid, String pid) {
         questId = qid;
         phaseId = pid;
@@ -114,11 +109,11 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
         float lx = (float) ((mx - currentDrawX) / currentScale), ly = (float) ((my - currentDrawY) / currentScale);
         int btnW = 80, btnH = 16, btnY = PANEL_H - btnH - 12;
 
-        if (currentPageIndex > 0 && lx >= 20 && lx <= 20 + btnW && ly >= btnY && ly <= btnY + btnH) {
+        if (currentPageIndex > 0 && ArcCyberButtonElement.containsLocal(lx, ly, 20, btnY, btnW, btnH)) {
             turnPage(-1);
             return true;
         }
-        if (currentPageIndex < pages.size() - 1 && lx >= PANEL_W - btnW - 20 && lx <= PANEL_W - 20 && ly >= btnY && ly <= btnY + btnH) {
+        if (currentPageIndex < pages.size() - 1 && ArcCyberButtonElement.containsLocal(lx, ly, PANEL_W - btnW - 20, btnY, btnW, btnH)) {
             turnPage(1);
             return true;
         }
@@ -190,9 +185,9 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
-        g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (120 * alphaF)));
+        ArcDrawUtil.fillFullscreenDim(g, screenW, screenH, (int) (120 * alphaF));
 
-        g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        ArcScissorUtil.enableScreenAware(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
         g.pose().pushPose();
         g.pose().translate(currentDrawX, currentDrawY, 0);
         g.pose().scale(scaleAnim, scaleAnim, 1f);
@@ -201,17 +196,14 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
         renderPanel(g, mc.font, Math.max(0, Math.min(255, (int) (255 * alphaF))), alphaF, dt, mx, my);
 
         g.pose().popPose();
-        g.disableScissor();
+        ArcScissorUtil.disable(g);
         g.pose().popPose();
     }
 
     private static void renderPanel(GuiGraphics g, Font font, int alpha, float alphaF, float dt, int mx, int my) {
         int PW = PANEL_W, PH = PANEL_H, cyberEdgeWidth = 3;
         float lx = (float) ((mx - currentDrawX) / currentScale), ly = (float) ((my - currentDrawY) / currentScale);
-
-        g.fill(cyberEdgeWidth, 0, PW, PH, HudAnimUtil.withAlpha(0x000000, (int) (0xCC * alphaF)));
-        drawFastFrame(g, cyberEdgeWidth, 0, PW - cyberEdgeWidth, PH, 1, HudAnimUtil.withAlpha(0xCCCCCC, (int) (0x66 * alphaF)));
-        HudRenderUtil.drawCyberneticEdge(g, 0, 0, PH, themeColor, alpha);
+        ArcPanelChrome.drawQuestPanel(g, 0, 0, PW, PH, 0x000000, (int) (0xCC * alphaF), 0xCCCCCC, (int) (0x66 * alphaF), themeColor, alpha, cyberEdgeWidth);
 
         if (alpha < 5) return;
 
@@ -220,7 +212,7 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
         g.pose().scale(0.8f, 0.8f, 1f);
         g.drawString(font, "SYS.ARC_QUEST // STORY ARCHIVE", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
-        g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0xCCCCCC, (int) (0x66 * alphaF)));
+        ArcPanelChrome.drawTopDivider(g, PW, topBarH, 0xCCCCCC, (int) (0x66 * alphaF));
 
         int contentY = topBarH + 10;
 
@@ -239,14 +231,14 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
         }
 
         int btnW = 80, btnH = 16, btnY = PH - btnH - 12;
-        boolean hoverPrev = !closing && currentPageIndex > 0 && lx >= 20 && lx <= 20 + btnW && ly >= btnY && ly <= btnY + btnH;
-        boolean hoverNext = !closing && currentPageIndex < pages.size() - 1 && lx >= PW - btnW - 20 && lx <= PW - 20 && ly >= btnY && ly <= btnY + btnH;
+        boolean hoverPrev = !closing && currentPageIndex > 0 && ArcCyberButtonElement.containsLocal(lx, ly, 20, btnY, btnW, btnH);
+        boolean hoverNext = !closing && currentPageIndex < pages.size() - 1 && ArcCyberButtonElement.containsLocal(lx, ly, PW - btnW - 20, btnY, btnW, btnH);
 
         prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverPrev ? 1f : 0f, 15f, dt);
         nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverNext ? 1f : 0f, 15f, dt);
 
-        drawCyberButton(g, font, 20, btnY, btnW, btnH, "<< PREV", prevHoverAnim, currentPageIndex <= 0, alpha, alphaF);
-        drawCyberButton(g, font, PW - btnW - 20, btnY, btnW, btnH, "NEXT >>", nextHoverAnim, currentPageIndex >= pages.size() - 1, alpha, alphaF);
+        ArcCyberButtonElement.renderCyber(g, font, 20, btnY, btnW, btnH, "<< PREV", prevHoverAnim, currentPageIndex <= 0, alpha, alphaF, themeColor);
+        ArcCyberButtonElement.renderCyber(g, font, PW - btnW - 20, btnY, btnW, btnH, "NEXT >>", nextHoverAnim, currentPageIndex >= pages.size() - 1, alpha, alphaF, themeColor);
 
         String pageStr = "PAGE " + (currentPageIndex + 1) + " / " + Math.max(1, pages.size());
         g.drawString(font, pageStr, PW / 2 - font.width(pageStr) / 2, btnY + 4, HudAnimUtil.withAlpha(0x778899, alpha), false);
@@ -330,18 +322,6 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
             }
         }
         if (!currentPage.lines.isEmpty() || pages.isEmpty()) pages.add(currentPage);
-    }
-
-    private static void drawCyberButton(GuiGraphics g, Font font, int x, int y, int w, int h, String text, float hoverAnim, boolean disabled, int alpha, float alphaF) {
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int) ((0x44 + 0x44 * hoverAnim) * alphaF)));
-        drawFastFrame(g, x, y, w, h, 1, HudAnimUtil.withAlpha(disabled ? 0x444444 : HudAnimUtil.lerpColor(0x777777, themeColor, hoverAnim), disabled ? (int) (100 * alphaF) : alpha));
-
-        g.pose().pushPose();
-        float btnTextScale = disabled ? 0.85f : 0.85f + (0.05f * hoverAnim);
-        g.pose().translate(x + w / 2f, y + h / 2f - (font.lineHeight * btnTextScale) / 2f + 1, 0);
-        g.pose().scale(btnTextScale, btnTextScale, 1f);
-        g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(disabled ? 0x888888 : 0xFFFFFF, alpha));
-        g.pose().popPose();
     }
 
     private static class PageData {

@@ -411,7 +411,7 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
         }
 
         g.pose().popPose();
-        if (mc.screen instanceof QuestJournalScreen qjs) g.disableScissor();
+        if (mc.screen instanceof QuestJournalScreen) ArcScissorUtil.disable(g);
     }
 
     private static void handleTooltipAnimation(float dt) {

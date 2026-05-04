@@ -4,9 +4,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
+import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
@@ -33,17 +35,20 @@ public class ArcQuestCollectionHistoryElement extends ArcGuiElement {
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
         if (def == null) return;
 
-        int x = context.screenWidth() / 2 - 180;
-        int y = context.screenHeight() / 2 - 110;
+        int x = context.screenWidth() / 2 - PANEL_W / 2;
+        int y = context.screenHeight() / 2 - PANEL_H / 2;
         int theme = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, 0x5AD7FF);
-        int alpha = Math.max(0, Math.min(255, (int) (255 * inheritedOpacity)));
+        int alpha = ArcDrawUtil.clampAlpha((int) (255 * inheritedOpacity));
+        float alphaF = alpha / 255f;
 
-        g.fill(x, y, x + PANEL_W, y + PANEL_H, HudAnimUtil.withAlpha(0x111111, (int) (230 * inheritedOpacity)));
-        g.fill(x, y, x + PANEL_W, y + 2, HudAnimUtil.withAlpha(theme, alpha));
-        g.drawString(font, "Collection History", x + 10, y + 10, HudAnimUtil.withAlpha(0xFFFFFF, alpha), false);
-        g.drawString(font, def.getDisplayName().getString(), x + 10, y + 24, HudAnimUtil.withAlpha(0xAAAAAA, alpha), false);
+        ArcDrawUtil.fillFullscreenDim(g, context.screenWidth(), context.screenHeight(), (int) (45 * alphaF));
+        ArcScissorUtil.enableScreenAware(g, x - 8, y - 8, x + PANEL_W + 8, y + PANEL_H + 8);
+        ArcPanelChrome.drawQuestPanel(g, x, y, PANEL_W, PANEL_H, 0x111111, (int) (230 * alphaF), ArcPanelChrome.DEFAULT_BORDER_RGB, (int) (0x66 * alphaF), theme, alpha);
+        ArcPanelChrome.drawHeader(g, font, "SYS.ARC_QUEST // COLLECTION HISTORY", 0.8f, x + 10, y + 8, ArcPanelChrome.DEFAULT_HEADER_RGB, alpha);
+        ArcPanelChrome.drawTopDivider(g, x + 10, x + PANEL_W - 10, y + 34, ArcPanelChrome.DEFAULT_BORDER_RGB, (int) (0x66 * alphaF));
+        g.drawString(font, def.getDisplayName().getString(), x + 14, y + 42, ArcDrawUtil.withAlpha(0xAAAAAA, alpha), false);
 
-        int lineY = y + 46;
+        int lineY = y + 62;
         for (String phaseId : def.getPhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
             if (phase == null || !phase.hasCollectionEntryConfig()) continue;
@@ -53,9 +58,10 @@ public class ArcQuestCollectionHistoryElement extends ArcGuiElement {
             String name = phase.getDisplayName().getString();
             if (name == null || name.isEmpty()) name = phaseId;
             int color = completed ? 0x88FF88 : 0xFFFFFF;
-            g.drawString(font, (completed ? "[Done] " : "[ ] ") + name + "  " + count + "/" + target, x + 12, lineY, HudAnimUtil.withAlpha(color, alpha), false);
+            g.drawString(font, (completed ? "[Done] " : "[ ] ") + name + "  " + count + "/" + target, x + 14, lineY, ArcDrawUtil.withAlpha(color, alpha), false);
             lineY += 12;
             if (lineY > y + PANEL_H - 14) break;
         }
+        ArcScissorUtil.disable(g);
     }
 }
