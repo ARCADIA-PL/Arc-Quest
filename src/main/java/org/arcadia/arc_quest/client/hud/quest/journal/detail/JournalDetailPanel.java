@@ -26,7 +26,7 @@ import java.util.List;
 public class JournalDetailPanel {
     public final JournalDetailSinglePhase singlePhaseRenderer;
     public final JournalDetailParallelPhase parallelPhaseRenderer;
-    public final JournalDetailRewards rewardsRenderer;
+
 
     public final JournalDetailCollection collectionRenderer;
     private final QuestJournalScreen screen;
@@ -44,7 +44,7 @@ public class JournalDetailPanel {
         this.screen = screen;
         this.singlePhaseRenderer = new JournalDetailSinglePhase(screen, this);
         this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
-        this.rewardsRenderer = new JournalDetailRewards(screen, this);
+
 
         this.collectionRenderer = new JournalDetailCollection(screen);
     }
@@ -247,7 +247,7 @@ public class JournalDetailPanel {
             localY += 16;
         }
 
-        localY = rewardsRenderer.render(g, def, selectedPhaseIdForRewards, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY, dt);
+        localY = screen.renderJournalRewards(g, def, selectedPhaseIdForRewards, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, activeTheme, dAlpha, safeA, localY, dt);
 
         detailContentHeight = localY + 12;
         g.pose().popPose();
@@ -285,7 +285,7 @@ public class JournalDetailPanel {
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
         int scrollAreaH = h - 40, maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
         boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
-        if (!panelsActive && rewardsRenderer.mouseClicked(mx, my)) return true;
+        if (!panelsActive && screen.mouseClickedJournalRewards(mx, my)) return true;
         if (!panelsActive && maxDetailScroll > 0 && mx >= x + w - 6 && mx <= x + w && my >= y && my <= y + scrollAreaH) {
             isDraggingDetailScrollbar = true;
             int thumbH = Math.max(16, (int) (((float) scrollAreaH / detailContentHeight) * scrollAreaH)), thumbY = y + (int) ((detailScrollOffset / maxDetailScroll) * (scrollAreaH - thumbH));
@@ -324,7 +324,7 @@ public class JournalDetailPanel {
     }
 
     public boolean mouseDragged(double mx, double my, int y, int h) {
-        if (rewardsRenderer.mouseDragged(mx, my)) return true;
+        if (screen.mouseDraggedJournalRewards(mx, my)) return true;
         if (isDraggingDetailScrollbar) {
             updateScrollFromMouse(my, y, h - 40, Math.max(0, detailContentHeight - (h - 40)));
             return true;
@@ -333,7 +333,7 @@ public class JournalDetailPanel {
     }
 
     public boolean mouseReleased(int button) {
-        if (rewardsRenderer.mouseReleased(button)) return true;
+        if (screen.mouseReleasedJournalRewards(button)) return true;
         if (button == 0) {
             isDraggingDetailScrollbar = false;
             parallelPhaseRenderer.onMouseReleased();
@@ -342,7 +342,7 @@ public class JournalDetailPanel {
     }
 
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
-        if (rewardsRenderer.mouseScrolled(mx, my, delta)) return true;
+        if (screen.mouseScrolledJournalRewards(mx, my, delta)) return true;
         if (parallelPhaseRenderer.mouseScrolled(mx, my, delta, x, y, h - 40)) return true;
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
             detailTargetScroll -= delta * 25.0;

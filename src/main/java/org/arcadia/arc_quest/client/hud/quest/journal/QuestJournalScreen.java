@@ -526,6 +526,26 @@ public class QuestJournalScreen extends Screen {
         }
     }
 
+    public int renderJournalRewards(GuiGraphics graphics, QuestDefinition def, String selectedPhaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, int activeTheme, float detailAlpha, int safeAlpha, int localY, float dt) {
+        return arcRoot != null ? arcRoot.renderRewards(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt) : localY;
+    }
+
+    public boolean mouseClickedJournalRewards(double mouseX, double mouseY) {
+        return arcRoot != null && arcRoot.mouseClickedRewards(mouseX, mouseY);
+    }
+
+    public boolean mouseDraggedJournalRewards(double mouseX, double mouseY) {
+        return arcRoot != null && arcRoot.mouseDraggedRewards(mouseX, mouseY);
+    }
+
+    public boolean mouseReleasedJournalRewards(int button) {
+        return arcRoot != null && arcRoot.mouseReleasedRewards(button);
+    }
+
+    public boolean mouseScrolledJournalRewards(double mouseX, double mouseY, double delta) {
+        return arcRoot != null && arcRoot.mouseScrolledRewards(mouseX, mouseY, delta);
+    }
+
     public void playClick() {
         if (minecraft != null)
             minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));

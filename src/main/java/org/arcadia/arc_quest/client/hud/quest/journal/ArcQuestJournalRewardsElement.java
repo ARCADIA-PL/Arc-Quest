@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.client.hud.quest.journal.detail;
+package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
-import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
@@ -17,9 +17,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class JournalDetailRewards {
+public class ArcQuestJournalRewardsElement extends ArcGuiElement {
     private final QuestJournalScreen screen;
-    private final JournalDetailPanel parent;
+
     private final int[] phaseTabRect = new int[4], chapterTabRect = new int[4], rewardAreaRect = new int[4];
     private final Map<String, RewardCache> rewardCache = new HashMap<>();
     private final String phaseRewardText = Component.translatable("arc_quest.gui.journal.section.phase_rewards").getString();
@@ -29,9 +29,9 @@ public class JournalDetailRewards {
     private boolean isDragging = false;
     private float animTabX = -1, animTabW = -1, itemsAlphaAnim = 1f;
     private int parentClipY1 = 0, parentClipY2 = 0;
-    public JournalDetailRewards(QuestJournalScreen screen, JournalDetailPanel parent) {
+    public ArcQuestJournalRewardsElement(QuestJournalScreen screen) {
+        super(0, 0, 0, 0);
         this.screen = screen;
-        this.parent = parent;
     }
 
     private void safeScissor(GuiGraphics g, int x1, int y1, int x2, int y2) {
@@ -74,7 +74,7 @@ public class JournalDetailRewards {
         }
 
         int tabStartX = localW / 2 - totalTabW / 2, phaseTabX = tabStartX, chapTabX = tabStartX + (hasPhaseRewards ? phaseTw + 20 : 0);
-        int absTopY = (int) (scrollAreaY + 12 - parent.getDetailScrollOffset() + currentY);
+        int absTopY = (int) (scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + currentY);
         phaseTabRect[2] = 0;
         chapterTabRect[2] = 0;
 
@@ -122,7 +122,7 @@ public class JournalDetailRewards {
         scrollX += (targetScrollX - scrollX) * Math.min(1.0, dt * 14.0);
 
         int renderStartX = (totalRewardsW <= localW) ? (localW / 2 - totalRewardsW / 2) : (int) -scrollX;
-        int absItemsY = (int) (scrollAreaY + 12 - parent.getDetailScrollOffset() + currentY);
+        int absItemsY = (int) (scrollAreaY + 12 - screen.getDetailPanel().getDetailScrollOffset() + currentY);
 
         int renderWidth = Math.min(totalRewardsW, localW);
         int hitStartX = (totalRewardsW <= localW) ? renderStartX : 0;

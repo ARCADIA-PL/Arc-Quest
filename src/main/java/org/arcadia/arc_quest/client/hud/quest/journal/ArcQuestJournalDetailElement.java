@@ -21,6 +21,7 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 public class ArcQuestJournalDetailElement extends ArcGuiElement {
     private final QuestJournalScreen screen;
+    private final ArcQuestJournalRewardsElement rewardsElement;
     private float trackBtnHover = 0f;
     private float abandonBtnHover = 0f;
     private float failedRestartBtnHover = 0f;
@@ -29,6 +30,7 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
     public ArcQuestJournalDetailElement(QuestJournalScreen screen) {
         super(0, 0, 0, 0);
         this.screen = screen;
+        this.rewardsElement = new ArcQuestJournalRewardsElement(screen);
     }
 
     @Override
@@ -155,6 +157,26 @@ public class ArcQuestJournalDetailElement extends ArcGuiElement {
             return true;
         }
         return false;
+    }
+
+    public int renderRewards(GuiGraphics graphics, QuestDefinition def, String selectedPhaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, int activeTheme, float detailAlpha, int safeAlpha, int localY, float dt) {
+        return rewardsElement.render(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);
+    }
+
+    public boolean mouseClickedRewards(double mouseX, double mouseY) {
+        return rewardsElement.mouseClicked(mouseX, mouseY);
+    }
+
+    public boolean mouseDraggedRewards(double mouseX, double mouseY) {
+        return rewardsElement.mouseDragged(mouseX, mouseY);
+    }
+
+    public boolean mouseReleasedRewards(int button) {
+        return rewardsElement.mouseReleased(button);
+    }
+
+    public boolean mouseScrolledRewards(double mouseX, double mouseY, double delta) {
+        return rewardsElement.mouseScrolled(mouseX, mouseY, delta);
     }
 
     private DetailSelection selection() {

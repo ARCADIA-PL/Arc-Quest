@@ -96,4 +96,24 @@ public class ArcQuestJournalElement extends ArcGuiElement {
     public void resetListState() {
         listElement.resetState();
     }
+
+    public int renderRewards(GuiGraphics graphics, org.arcadia.arc_quest.quest.api.QuestDefinition def, String selectedPhaseId, int detailX, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mouseX, int mouseY, int activeTheme, float detailAlpha, int safeAlpha, int localY, float dt) {
+        return detailElement.renderRewards(graphics, def, selectedPhaseId, detailX, scrollAreaY, scrollAreaW, scrollAreaH, mouseX, mouseY, activeTheme, detailAlpha, safeAlpha, localY, dt);
+    }
+
+    public boolean mouseClickedRewards(double mouseX, double mouseY) {
+        return detailElement.mouseClickedRewards(mouseX, mouseY);
+    }
+
+    public boolean mouseDraggedRewards(double mouseX, double mouseY) {
+        return detailElement.mouseDraggedRewards(mouseX, mouseY);
+    }
+
+    public boolean mouseReleasedRewards(int button) {
+        return detailElement.mouseReleasedRewards(button);
+    }
+
+    public boolean mouseScrolledRewards(double mouseX, double mouseY, double delta) {
+        return detailElement.mouseScrolledRewards(mouseX, mouseY, delta);
+    }
 }
