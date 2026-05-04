@@ -1,7 +1,8 @@
 package org.arcadia.arc_quest.client.hud.quest.arcmutil.toast;
 
 import net.minecraft.client.Minecraft;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.core.ArcGuiTickContext;
 import org.arcadia.arc_quest.mutil.overlay.ArcOverlayRoot;
 
@@ -39,8 +40,8 @@ public class ArcQuestCenterToastOverlayRoot extends ArcOverlayRoot {
         if (currentPhaseY < 0 || !phaseActive) currentPhaseY = targetPhaseY;
         if (currentBranchY < 0 || !branchActive) currentBranchY = targetBranchY;
         if (phaseActive || branchActive) {
-            currentPhaseY = HudAnimUtil.lerp(currentPhaseY, targetPhaseY, 0.15f, context.deltaTime());
-            currentBranchY = HudAnimUtil.lerp(currentBranchY, targetBranchY, 0.15f, context.deltaTime());
+            currentPhaseY = ArcAnimClock.lerp(currentPhaseY, targetPhaseY, 0.15f, context.deltaTime());
+            currentBranchY = ArcAnimClock.lerp(currentBranchY, targetBranchY, 0.15f, context.deltaTime());
         }
         phaseElement.applyPhase(ArcQuestCenterToastManager.phaseToast(), LEFT_BASE_X, Math.round(currentPhaseY), false);
         branchElement.applyBranch(ArcQuestCenterToastManager.branchToast(), LEFT_BASE_X, Math.round(currentBranchY), false);

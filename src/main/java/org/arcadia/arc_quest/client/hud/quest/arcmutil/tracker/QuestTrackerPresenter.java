@@ -1,7 +1,8 @@
 package org.arcadia.arc_quest.client.hud.quest.arcmutil.tracker;
 
 import net.minecraft.resources.ResourceLocation;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.screen.ArcScaleResolver;
+import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestHudBlockState;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestHudSelectors;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
@@ -206,7 +207,7 @@ public class QuestTrackerPresenter implements ArcHudPresenter {
         model.themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(tracked.getQuestId(), ArcQuestTrackerConstants.COLOR_ACCENT_DEFAULT);
         model.collectionQuest = definition.isCollectionQuest();
         model.pushDownOffset = QuestToastManager.getPushDownOffset() + overlayPressure;
-        model.uiScale = HudRenderUtil.getUniversalUiScale(context.screenWidth(), context.screenHeight());
+        model.uiScale = ArcScaleResolver.resolveUniversalUiScale(context.screenWidth(), context.screenHeight());
         model.virtualScreenWidth = Math.round(context.screenWidth() / model.uiScale);
 
         model.activePhases.clear();

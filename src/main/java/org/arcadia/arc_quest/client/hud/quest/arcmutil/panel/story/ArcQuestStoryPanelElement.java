@@ -6,13 +6,12 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.input.ArcCyberButtonElement;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
-import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -211,7 +210,7 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
         int topBarH = 22;
         g.pose().pushPose();
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "SYS.ARC_QUEST // STORY ARCHIVE", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        g.drawString(font, "SYS.ARC_QUEST // STORY ARCHIVE", 16, 6, ArcDrawUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
         ArcPanelChrome.drawTopDivider(g, PW, topBarH, 0xCCCCCC, (int) (0x66 * alphaF));
 
@@ -235,14 +234,14 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
         boolean hoverPrev = !closing && currentPageIndex > 0 && ArcCyberButtonElement.containsLocal(lx, ly, 20, btnY, btnW, btnH);
         boolean hoverNext = !closing && currentPageIndex < pages.size() - 1 && ArcCyberButtonElement.containsLocal(lx, ly, PW - btnW - 20, btnY, btnW, btnH);
 
-        prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverPrev ? 1f : 0f, 15f, dt);
-        nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverNext ? 1f : 0f, 15f, dt);
+        prevHoverAnim = ArcAnimClock.step(prevHoverAnim, hoverPrev ? 1f : 0f, 15f, dt);
+        nextHoverAnim = ArcAnimClock.step(nextHoverAnim, hoverNext ? 1f : 0f, 15f, dt);
 
         ArcCyberButtonElement.renderCyber(g, font, 20, btnY, btnW, btnH, "<< PREV", prevHoverAnim, currentPageIndex <= 0, alpha, alphaF, themeColor);
         ArcCyberButtonElement.renderCyber(g, font, PW - btnW - 20, btnY, btnW, btnH, "NEXT >>", nextHoverAnim, currentPageIndex >= pages.size() - 1, alpha, alphaF, themeColor);
 
         String pageStr = "PAGE " + (currentPageIndex + 1) + " / " + Math.max(1, pages.size());
-        g.drawString(font, pageStr, PW / 2 - font.width(pageStr) / 2, btnY + 4, HudAnimUtil.withAlpha(0x778899, alpha), false);
+        g.drawString(font, pageStr, PW / 2 - font.width(pageStr) / 2, btnY + 4, ArcDrawUtil.withAlpha(0x778899, alpha), false);
     }
 
     private static void renderPage(GuiGraphics g, Font font, ArcTextLayoutUtil.Page page, int startY, int alpha, int offsetX) {
@@ -252,7 +251,7 @@ public class ArcQuestStoryPanelElement extends ArcGuiElement {
             g.pose().pushPose();
             g.pose().translate(line.x() + offsetX, currentY, 0);
             g.pose().scale(line.scale(), line.scale(), 1f);
-            g.drawString(font, line.text(), 0, 0, HudAnimUtil.withAlpha(line.color(), alpha), false);
+            g.drawString(font, line.text(), 0, 0, ArcDrawUtil.withAlpha(line.color(), alpha), false);
             g.pose().popPose();
             currentY += line.lineHeight();
         }

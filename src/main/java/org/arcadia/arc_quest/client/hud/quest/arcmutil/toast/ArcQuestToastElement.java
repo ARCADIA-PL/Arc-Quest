@@ -4,8 +4,10 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.screen.ArcScaleResolver;
+import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 
@@ -42,7 +44,7 @@ public class ArcQuestToastElement extends ArcGuiElement {
         int screenWidth = context.screenWidth();
         int screenHeight = context.screenHeight();
 
-        float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
+        float uiScale = ArcScaleResolver.resolveUniversalUiScale(screenWidth, screenHeight);
         float sw = screenWidth / uiScale;
         int vMarginRight = 16;
         int slotY = MARGIN_TOP + slotIndex * (TOAST_HEIGHT + TOAST_GAP);
@@ -54,7 +56,7 @@ public class ArcQuestToastElement extends ArcGuiElement {
 
         if (elapsed < ENTER) {
             float t = elapsed / ENTER;
-            float ease = HudAnimUtil.easeOutQuintic(t);
+            float ease = ArcAnimClock.easeOutQuintic(t);
             alpha = ease;
             slideX = (1f - ease) * slideDistance;
         } else if (elapsed < ENTER + HOLD) {
@@ -62,7 +64,7 @@ public class ArcQuestToastElement extends ArcGuiElement {
             slideX = 0f;
         } else {
             float t = Math.min(1f, (elapsed - ENTER - HOLD) / EXIT);
-            float ease = HudAnimUtil.easeInQuartic(t);
+            float ease = ArcAnimClock.easeInQuartic(t);
             alpha = 1f - (float) Math.pow(t, 6);
             slideX = ease * slideDistance;
         }
@@ -81,7 +83,7 @@ public class ArcQuestToastElement extends ArcGuiElement {
         int bgAlpha = (int) (0x88 * alpha);
         int accentAlpha = (int) (255 * alpha);
         int lineAlpha = (int) (80 * alpha);
-        HudRenderUtil.drawToastPanel(graphics, toastX, vSlotY, TOAST_WIDTH, TOAST_HEIGHT,
+        ArcPanelChrome.drawToastPanel(graphics, toastX, vSlotY, TOAST_WIDTH, TOAST_HEIGHT,
                 0x121212, bgAlpha,
                 model.type.accentColor & 0x00FFFFFF, accentAlpha, 3,
                 lineAlpha);
@@ -92,9 +94,9 @@ public class ArcQuestToastElement extends ArcGuiElement {
                 model.cachedNameWidth = TOAST_WIDTH - 16;
                 model.cachedNameStr = font.plainSubstrByWidth(model.text, model.cachedNameWidth);
             }
-            int subColor = HudAnimUtil.withAlpha(model.type.accentColor, textAlpha);
-            int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, textAlpha);
-            HudRenderUtil.drawDualText(graphics, font, toastX + 8, vSlotY + 4,
+            int subColor = ArcDrawUtil.withAlpha(model.type.accentColor, textAlpha);
+            int titleColor = ArcDrawUtil.withAlpha(0xFFFFFF, textAlpha);
+            ArcDrawUtil.drawDualText(graphics, font, toastX + 8, vSlotY + 4,
                     model.subtitle, model.cachedNameStr, subColor, titleColor, 1.0f);
         }
 

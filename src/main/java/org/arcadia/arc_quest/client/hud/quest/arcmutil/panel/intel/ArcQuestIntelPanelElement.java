@@ -15,8 +15,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
 import org.arcadia.arc_quest.client.hud.quest.ponder.IntelPonderUIStub;
 import org.arcadia.arc_quest.mutil.animation.ArcPanelTransition;
@@ -25,7 +25,6 @@ import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.input.ArcHologramButtonElement;
 import org.arcadia.arc_quest.mutil.primitive.ArcGuiProgressBar;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
-import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -254,7 +253,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
         String title = scene.getTitle();
         g.pose().pushPose();
         g.pose().scale(1.05f, 1.05f, 1f);
-        g.drawString(font, title, (int) (14 / 1.05f), (int) (12 / 1.05f), HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
+        g.drawString(font, title, (int) (14 / 1.05f), (int) (12 / 1.05f), ArcDrawUtil.withAlpha(0xFFFFFF, alpha), true);
         g.pose().popPose();
 
         if (activeScenes.size() > 1) {
@@ -262,7 +261,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
             g.pose().pushPose();
             g.pose().scale(0.75f, 0.75f, 1f);
             int titleW = font.width(title);
-            g.drawString(font, counter, (int) ((20 + titleW * 1.05f) / 0.75f), (int) (16 / 0.75f), HudAnimUtil.withAlpha(0x4488AA, alpha), false);
+            g.drawString(font, counter, (int) ((20 + titleW * 1.05f) / 0.75f), (int) (16 / 0.75f), ArcDrawUtil.withAlpha(0x4488AA, alpha), false);
             g.pose().popPose();
         }
 
@@ -298,7 +297,7 @@ public class ArcQuestIntelPanelElement extends ArcGuiElement {
         g.pose().scale(0.6f, 0.6f, 1f);
         String hint = "ESC / 点击外侧关闭";
         int hw = font.width(hint);
-        g.drawString(font, hint, (int) ((PW / 2f - hw * 0.6f / 2f) / 0.6f), (int) ((PH - 6) / 0.6f), HudAnimUtil.withAlpha(0x445566, alpha), false);
+        g.drawString(font, hint, (int) ((PW / 2f - hw * 0.6f / 2f) / 0.6f), (int) ((PH - 6) / 0.6f), ArcDrawUtil.withAlpha(0x445566, alpha), false);
         g.pose().popPose();
     }
 

@@ -6,8 +6,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
+import org.arcadia.arc_quest.mutil.screen.ArcScaleResolver;
+import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -64,7 +66,7 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
 
         if (elapsed < ArcQuestPhaseToastViewModel.PHASE_ENTER) {
             float t = elapsed / ArcQuestPhaseToastViewModel.PHASE_ENTER;
-            float ease = HudAnimUtil.easeOutQuintic(t);
+            float ease = ArcAnimClock.easeOutQuintic(t);
             revealProgress = ease;
             alpha = ease * inheritedOpacity;
             textDriftX = -(1f - ease) * ArcQuestPhaseToastViewModel.PHASE_FLY;
@@ -75,7 +77,7 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
             textDriftX = (float) Math.sin(t * Math.PI) * (ArcQuestPhaseToastViewModel.PHASE_DRIFT * 0.5f);
         } else {
             float t = (elapsed - ArcQuestPhaseToastViewModel.PHASE_ENTER - ArcQuestPhaseToastViewModel.PHASE_HOLD) / ArcQuestPhaseToastViewModel.PHASE_EXIT;
-            float ease = HudAnimUtil.easeInQuartic(t);
+            float ease = ArcAnimClock.easeInQuartic(t);
             revealProgress = 1f;
             wipeProgress = ease;
             alpha = (1f - (float) Math.pow(t, 6)) * inheritedOpacity;
@@ -91,7 +93,7 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
         else scRight = baseX + POPUP_W + 20;
 
         Minecraft mc = Minecraft.getInstance();
-        float uiScale = HudRenderUtil.getUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        float uiScale = ArcScaleResolver.resolveUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
         g.enableScissor((int) (scLeft * uiScale), (int) ((baseY - 10) * uiScale), (int) (scRight * uiScale), (int) ((baseY + POPUP_H + 20) * uiScale));
 
         RenderSystem.enableBlend();
@@ -99,15 +101,15 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
 
         int bgA = (int) (alpha * 0x66);
         int accentA = (int) (alpha * 255);
-        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0x151515, bgA));
-        g.fill(baseX, baseY, baseX + POPUP_W, baseY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
-        g.fill(baseX, baseY + POPUP_H - 1, baseX + POPUP_W, baseY + POPUP_H, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
-        HudRenderUtil.drawCyberneticEdge(g, baseX, baseY, POPUP_H, activeTheme, accentA);
+        g.fill(baseX, baseY, baseX + POPUP_W, baseY + POPUP_H, ArcDrawUtil.withAlpha(0x151515, bgA));
+        g.fill(baseX, baseY, baseX + POPUP_W, baseY + 1, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
+        g.fill(baseX, baseY + POPUP_H - 1, baseX + POPUP_W, baseY + POPUP_H, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x22 * alpha)));
+        ArcDrawUtil.drawCyberneticEdge(g, baseX, baseY, POPUP_H, activeTheme, accentA, 3);
 
         int decorX = baseX + POPUP_W - 14;
-        g.fill(decorX, baseY + 6, decorX + 4, baseY + 10, HudAnimUtil.withAlpha(activeTheme, (int) (0xAA * alpha)));
-        g.fill(decorX, baseY + 12, decorX + 4, baseY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * alpha)));
-        g.fill(decorX, baseY + 22, decorX + 4, baseY + 30, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x1A * alpha)));
+        g.fill(decorX, baseY + 6, decorX + 4, baseY + 10, ArcDrawUtil.withAlpha(activeTheme, (int) (0xAA * alpha)));
+        g.fill(decorX, baseY + 12, decorX + 4, baseY + 20, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x33 * alpha)));
+        g.fill(decorX, baseY + 22, decorX + 4, baseY + 30, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (0x1A * alpha)));
 
         float textBaseX = baseX + 16 + textDriftX;
         float textBaseY = baseY + 6;
@@ -115,12 +117,12 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
             Font font = Minecraft.getInstance().font;
             String subtitle = phaseSubtitle();
             String title = font.plainSubstrByWidth(phaseToast.phaseName, POPUP_W - 40);
-            HudRenderUtil.drawDualText(g, font, textBaseX, textBaseY, subtitle, title,
-                    HudAnimUtil.withAlpha(0x888888, accentA), HudAnimUtil.withAlpha(0xFFFFFF, accentA), 1.0f);
+            ArcDrawUtil.drawDualText(g, font, textBaseX, textBaseY, subtitle, title,
+                    ArcDrawUtil.withAlpha(0x888888, accentA), ArcDrawUtil.withAlpha(0xFFFFFF, accentA), 1.0f);
             float targetLineWidth = POPUP_W - 40f;
             float lineWidth = targetLineWidth * (elapsed < ArcQuestPhaseToastViewModel.PHASE_ENTER ? revealProgress : (elapsed >= ArcQuestPhaseToastViewModel.PHASE_ENTER + ArcQuestPhaseToastViewModel.PHASE_HOLD ? (1f - wipeProgress) : 1f));
-            g.fill((int) textBaseX, (int) textBaseY + 20, (int) (textBaseX + lineWidth), (int) textBaseY + 21, HudAnimUtil.withAlpha(activeTheme, accentA));
-            g.fill((int) textBaseX, (int) textBaseY + 20, (int) textBaseX + 1, (int) textBaseY + 24, HudAnimUtil.withAlpha(activeTheme, accentA));
+            g.fill((int) textBaseX, (int) textBaseY + 20, (int) (textBaseX + lineWidth), (int) textBaseY + 21, ArcDrawUtil.withAlpha(activeTheme, accentA));
+            g.fill((int) textBaseX, (int) textBaseY + 20, (int) textBaseX + 1, (int) textBaseY + 24, ArcDrawUtil.withAlpha(activeTheme, accentA));
         }
 
         g.disableScissor();
@@ -138,7 +140,7 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
 
         if (!branchToast.dismissing && elapsedEnter < ArcQuestBranchToastViewModel.TIME_ENTER) {
             float t = elapsedEnter / ArcQuestBranchToastViewModel.TIME_ENTER;
-            float ease = HudAnimUtil.easeOutQuintic(t);
+            float ease = ArcAnimClock.easeOutQuintic(t);
             alpha = ease;
             revealProgress = ease;
             textDriftX = -(1f - ease) * ArcQuestBranchToastViewModel.FLY_DIST;
@@ -149,7 +151,7 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
             long elapsedExit = now - branchToast.dismissStartTime;
             if (elapsedExit >= ArcQuestBranchToastViewModel.TIME_EXIT) return;
             float t = elapsedExit / ArcQuestBranchToastViewModel.TIME_EXIT;
-            float ease = HudAnimUtil.easeInQuartic(t);
+            float ease = ArcAnimClock.easeInQuartic(t);
             wipeProgress = ease;
             alpha = 1f - (float) Math.pow(t, 6);
             textDriftX = ease * ArcQuestBranchToastViewModel.FLY_DIST;
@@ -168,13 +170,13 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
         else if (branchToast.dismissing) scRight = baseX + (int) (POPUP_W * (1f - wipeProgress));
 
         Minecraft mc = Minecraft.getInstance();
-        float uiScale = HudRenderUtil.getUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+        float uiScale = ArcScaleResolver.resolveUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
         g.enableScissor((int) (scLeft * uiScale), (int) ((baseY - 10) * uiScale), (int) (scRight * uiScale), (int) ((baseY + POPUP_H + 20) * uiScale));
 
         int bgA = (int) (finalAlpha * 0x88);
         int accentA = (int) (finalAlpha * 255);
         int themeColor = ArcQuestBranchToastViewModel.COLOR_ACCENT & 0xFFFFFF;
-        HudRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H, 0x121212, bgA, themeColor, accentA, 4);
+        ArcPanelChrome.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H, 0x121212, bgA, themeColor, accentA, 4);
 
         String questName = ClientQuestCache.INSTANCE.getQuestDisplayName(branchToast.questId);
         String phaseName = branchToast.phaseId == null || branchToast.phaseId.isEmpty() ? null : ClientQuestCache.INSTANCE.getPhaseDisplayName(branchToast.questId, branchToast.phaseId);
@@ -191,16 +193,16 @@ public class ArcQuestCenterToastElement extends ArcGuiElement {
                 String phasePrefix = "• ";
                 line2 = phasePrefix + font.plainSubstrByWidth(phaseName, POPUP_W - 30 - font.width(phasePrefix));
             }
-            HudRenderUtil.drawDualText(g, font, contentX, contentY, subtitle, line1,
-                    HudAnimUtil.withAlpha(0xAAAAAA, accentA), HudAnimUtil.withAlpha(0xFFFFFF, accentA), 1.0f);
+            ArcDrawUtil.drawDualText(g, font, contentX, contentY, subtitle, line1,
+                    ArcDrawUtil.withAlpha(0xAAAAAA, accentA), ArcDrawUtil.withAlpha(0xFFFFFF, accentA), 1.0f);
             if (line2 != null) {
                 g.pose().pushPose();
                 g.pose().translate(contentX, contentY + 19, 0);
                 g.pose().scale(0.80f, 0.80f, 1f);
-                g.drawString(font, line2, 0, 0, HudAnimUtil.withAlpha(0xE8DFAF, accentA), false);
+                g.drawString(font, line2, 0, 0, ArcDrawUtil.withAlpha(0xE8DFAF, accentA), false);
                 g.pose().popPose();
             }
-            HudRenderUtil.drawTextWithLine(g, font, contentX, contentY + 10, "", HudAnimUtil.withAlpha(themeColor, accentA), lineWidth, 12);
+            ArcDrawUtil.drawTextWithLine(g, font, contentX, contentY + 10, "", ArcDrawUtil.withAlpha(themeColor, accentA), lineWidth, 12);
         }
 
         g.disableScissor();

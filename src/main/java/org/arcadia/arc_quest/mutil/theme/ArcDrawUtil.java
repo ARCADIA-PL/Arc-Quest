@@ -19,6 +19,42 @@ public final class ArcDrawUtil {
         return (color & 0x00FFFFFF) | (clampAlpha(alpha) << 24);
     }
 
+    public static void drawDualText(GuiGraphics graphics, Font font, float x, float y, String subtitle, String title, int subtitleColor, int titleColor, float alpha) {
+        int subAlpha = (int) (((subtitleColor >> 24) & 0xFF) * alpha);
+        int titleAlpha = (int) (((titleColor >> 24) & 0xFF) * alpha);
+        if (subAlpha < 5 && titleAlpha < 5) return;
+        if (subAlpha > 5) {
+            graphics.pose().pushPose();
+            graphics.pose().translate(Math.round(x), Math.round(y), 0);
+            graphics.pose().scale(0.7f, 0.7f, 1f);
+            graphics.drawString(font, subtitle, 0, 0, withAlpha(subtitleColor, subAlpha), true);
+            graphics.pose().popPose();
+        }
+        if (titleAlpha > 5) {
+            graphics.pose().pushPose();
+            graphics.pose().translate(Math.round(x), Math.round(y + 10), 0);
+            graphics.drawString(font, title, 0, 0, withAlpha(titleColor, titleAlpha), true);
+            graphics.pose().popPose();
+        }
+    }
+
+    public static int lerpColor(int c1, int c2, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int a1 = (c1 >> 24) & 0xFF;
+        int r1 = (c1 >> 16) & 0xFF;
+        int g1 = (c1 >> 8) & 0xFF;
+        int b1 = c1 & 0xFF;
+        int a2 = (c2 >> 24) & 0xFF;
+        int r2 = (c2 >> 16) & 0xFF;
+        int g2 = (c2 >> 8) & 0xFF;
+        int b2 = c2 & 0xFF;
+        int a = a1 + (int) ((a2 - a1) * t);
+        int r = r1 + (int) ((r2 - r1) * t);
+        int g = g1 + (int) ((g2 - g1) * t);
+        int b = b1 + (int) ((b2 - b1) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
     public static void drawFrame(GuiGraphics graphics, int x, int y, int width, int height, int backgroundColor, int borderColor) {
         int right = x + width;
         int bottom = y + height;

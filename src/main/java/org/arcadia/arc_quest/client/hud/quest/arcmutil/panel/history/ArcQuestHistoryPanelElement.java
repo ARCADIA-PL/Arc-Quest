@@ -12,14 +12,14 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
+import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuestCollectionHistoryManager;
 import org.arcadia.arc_quest.mutil.animation.ArcPanelTransition;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
-import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
 import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcRewardRenderer;
@@ -397,15 +397,15 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
                 g.pose().scale(nodeScale, nodeScale, 1f);
                 g.pose().mulPose(Axis.ZP.rotationDegrees(45));
 
-                if (glowA > 0) g.fill(-8, -8, 8, 8, HudAnimUtil.withAlpha(nodeColor, glowA));
-                g.fill(-6, -6, 6, 6, HudAnimUtil.withAlpha(0x222222, alpha));
-                g.fill(-5, -5, 5, 5, HudAnimUtil.withAlpha(nodeColor, (int) (220 * alphaF)));
+                if (glowA > 0) g.fill(-8, -8, 8, 8, ArcDrawUtil.withAlpha(nodeColor, glowA));
+                g.fill(-6, -6, 6, 6, ArcDrawUtil.withAlpha(0x222222, alpha));
+                g.fill(-5, -5, 5, 5, ArcDrawUtil.withAlpha(nodeColor, (int) (220 * alphaF)));
                 g.pose().popPose();
 
                 g.pose().pushPose();
                 g.pose().translate(node.x, node.y + 14, 0);
                 g.pose().scale(0.6f, 0.6f, 1f);
-                g.drawString(font, node.displayName, -node.displayNameWidth / 2, 0, HudAnimUtil.withAlpha(nodeColor, (int) ((isHovered || isPinned || node.active ? 255 : 150) * alphaF)), false);
+                g.drawString(font, node.displayName, -node.displayNameWidth / 2, 0, ArcDrawUtil.withAlpha(nodeColor, (int) ((isHovered || isPinned || node.active ? 255 : 150) * alphaF)), false);
                 g.pose().popPose();
             }
             activeTooltipPhase = (pinnedPhaseId != null) ? def.getPhase(pinnedPhaseId) : (hoveredPhaseId != null ? def.getPhase(hoveredPhaseId) : null);
@@ -464,15 +464,15 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
         // =========================================================================
         // PASS 1: 纯 2D 通道 (绘制 Tooltip 内所有文本和框)
         // =========================================================================
-        g.drawString(font, tooltipData.titleComponent, contentX, contentY, HudAnimUtil.withAlpha(0xFFFFFF, baseAlpha), false);
+        g.drawString(font, tooltipData.titleComponent, contentX, contentY, ArcDrawUtil.withAlpha(0xFFFFFF, baseAlpha), false);
         contentY += font.lineHeight;
 
         if (!tooltipData.descLines.isEmpty()) {
             contentY += 4;
-            g.fill(contentX, contentY, drawX + drawW - padding, contentY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (baseAlpha * 0.15)));
+            g.fill(contentX, contentY, drawX + drawW - padding, contentY + 1, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (baseAlpha * 0.15)));
             contentY += 4;
             for (FormattedCharSequence line : tooltipData.descLines) {
-                g.drawString(font, line, contentX, contentY, HudAnimUtil.withAlpha(0xAAAAAA, baseAlpha), false);
+                g.drawString(font, line, contentX, contentY, ArcDrawUtil.withAlpha(0xAAAAAA, baseAlpha), false);
                 contentY += font.lineHeight;
             }
         }
@@ -481,7 +481,7 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
 
         if (!tooltipData.rewards.isEmpty()) {
             contentY += 6;
-            g.drawString(font, REWARDS_TITLE, contentX, contentY, HudAnimUtil.withAlpha(0xFFCC00, baseAlpha), false);
+            g.drawString(font, REWARDS_TITLE, contentX, contentY, ArcDrawUtil.withAlpha(0xFFCC00, baseAlpha), false);
             contentY += font.lineHeight + 4;
 
             float localMouseX = (realMx - frame.centerX()) / easeScale + frame.centerX(), localMouseY = (realMy - frame.centerY()) / easeScale + frame.centerY();
@@ -504,7 +504,7 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
 
 
     private static void drawOrthogonalLine(GuiGraphics g, int x1, int y1, int x2, int y2, boolean isCompleted, float alphaF, int theme) {
-        int color = isCompleted ? HudAnimUtil.withAlpha(0x66FF88, (int) (180 * alphaF)) : HudAnimUtil.withAlpha(0x555555, (int) (100 * alphaF));
+        int color = isCompleted ? ArcDrawUtil.withAlpha(0x66FF88, (int) (180 * alphaF)) : ArcDrawUtil.withAlpha(0x555555, (int) (100 * alphaF));
         int midX = (x1 + x2) / 2;
         g.fill(x1, y1 - 1, midX, y1 + 1, color);
         g.fill(midX - 1, Math.min(y1, y2), midX + 1, Math.max(y1, y2), color);

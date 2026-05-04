@@ -38,6 +38,32 @@ public final class ArcAnimClock {
         return 1.0f - (inv2 * inv2 * inv);
     }
 
+    public static float step(float current, float target, float speedPerSecond, float dt) {
+        float amount = Math.max(0f, speedPerSecond) * Math.max(0f, dt);
+        if (current < target) return Math.min(current + amount, target);
+        if (current > target) return Math.max(current - amount, target);
+        return current;
+    }
+
+    public static float easeOutBack(float t) {
+        float f = clamp01(t) - 1.0f;
+        return 1.0f + f * f * (2.70158f * f + 1.70158f);
+    }
+
+    public static float easeInSextic(float t) {
+        t = clamp01(t);
+        float t3 = t * t * t;
+        return t3 * t3;
+    }
+
+    public static float easeOutElastic(float t) {
+        t = clamp01(t);
+        if (t <= 0f) return 0f;
+        if (t >= 1f) return 1f;
+        float c4 = (2f * 3.14159265f) / 3f;
+        return (float) Math.pow(2, -10 * t) * (float) Math.sin((t * 10f - 0.75f) * c4) + 1f;
+    }
+
     public static float smoothStep(float t) {
         t = clamp01(t);
         return t * t * (3.0f - 2.0f * t);
