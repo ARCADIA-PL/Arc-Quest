@@ -15,7 +15,6 @@ import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuestCollectionHistoryManager;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
-import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
@@ -36,7 +35,7 @@ import java.util.Map;
 public class QuestJournalScreen extends Screen {
 
     private static final float TIP_HOVER_DELAY = 0.05f;
-    private final JournalDetailPanel detailPanel;
+    private final ArcQuestJournalBodyElement detailPanel;
     private ArcQuestJournalRoot arcRoot;
     private final List<JournalTypes.QuestListEntry> currentEntries = new ArrayList<>();
     private JournalTypes.Tab currentTab = JournalTypes.Tab.ACTIVE;
@@ -58,7 +57,7 @@ public class QuestJournalScreen extends Screen {
 
     public QuestJournalScreen() {
         super(Component.translatable("gui.arc_quest.journal.title"));
-        this.detailPanel = new JournalDetailPanel(this);
+        this.detailPanel = new ArcQuestJournalBodyElement(this);
     }
 
     public void triggerEntranceAnimation() {
@@ -485,7 +484,7 @@ public class QuestJournalScreen extends Screen {
 
 
 
-    public JournalDetailPanel getDetailPanel() {
+    public ArcQuestJournalBodyElement getDetailPanel() {
         return detailPanel;
     }
 

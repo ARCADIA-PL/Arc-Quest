@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.client.hud.quest.journal.detail;
+package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
+import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
@@ -23,7 +24,7 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JournalDetailPanel {
+public class ArcQuestJournalBodyElement extends ArcGuiElement {
 
 
 
@@ -40,7 +41,8 @@ public class JournalDetailPanel {
     private int detailContentHeight = 0;
     private float detailReveal = 0f, historyBtnHoverAnim = 0f;
 
-    public JournalDetailPanel(QuestJournalScreen screen) {
+    public ArcQuestJournalBodyElement(QuestJournalScreen screen) {
+        super(0, 0, 0, 0);
         this.screen = screen;
 
 
