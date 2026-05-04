@@ -10,7 +10,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.ArcQuestPanelInputRouter;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.splash.ArcQuestSplashManager;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
@@ -47,13 +47,7 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenMouseClickPre(ScreenEvent.MouseButtonPressed.Pre event) {
-        // Intel 面板优先处理：转发鼠标点击，然后 cancel 防止穿透
-        if (ArcQuestIntelPanelElement.isActive()) {
-            if (event.getButton() == 0) {
-                ArcQuestIntelPanelElement.handleMouseClick(
-                        event.getMouseX(), event.getMouseY(),
-                        event.getScreen().width, event.getScreen().height);
-            }
+        if (ArcQuestPanelInputRouter.mouseClicked(event.getMouseX(), event.getMouseY(), event.getButton(), event.getScreen().width, event.getScreen().height)) {
             event.setCanceled(true);
             return;
         }
@@ -73,22 +67,22 @@ public class ClientHudEvents {
     }
 
     @SubscribeEvent
-    public static void onScreenKeyPressPre(ScreenEvent.KeyPressed.Pre event) {
-        // Intel 面板优先处理键盘
-        if (ArcQuestIntelPanelElement.isActive()) {
-            int key = event.getKeyCode();
-            int scan = event.getScanCode();
-            Minecraft mc = Minecraft.getInstance();
+    public static void onScreenMouseReleasePre(ScreenEvent.MouseButtonReleased.Pre event) {
+        if (ArcQuestPanelInputRouter.mouseReleased(event.getMouseX(), event.getMouseY(), event.getButton())) {
+            event.setCanceled(true);
+        }
+    }
 
-            if (key == 256 || mc.options.keyInventory.matches(key, scan)) {
-                ArcQuestIntelPanelElement.dismiss();
-            } else if (key == 32) {
-                ArcQuestIntelPanelElement.togglePause();
-            } else if (mc.options.keyLeft.matches(key, scan)) {
-                ArcQuestIntelPanelElement.scrollBack();
-            } else if (mc.options.keyRight.matches(key, scan)) {
-                ArcQuestIntelPanelElement.scrollForward();
-            }
+    @SubscribeEvent
+    public static void onScreenMouseDragPre(ScreenEvent.MouseDragged.Pre event) {
+        if (ArcQuestPanelInputRouter.mouseDragged(event.getMouseX(), event.getMouseY(), 0)) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onScreenKeyPressPre(ScreenEvent.KeyPressed.Pre event) {
+        if (ArcQuestPanelInputRouter.keyPressed(event.getKeyCode(), event.getScanCode())) {
             event.setCanceled(true);
             return;
         }
@@ -105,9 +99,7 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenScrollPre(ScreenEvent.MouseScrolled.Pre event) {
-        if (ArcQuestIntelPanelElement.isActive()) {
-            if (event.getScrollDelta() > 0) ArcQuestIntelPanelElement.scrollBack();
-            else if (event.getScrollDelta() < 0) ArcQuestIntelPanelElement.scrollForward();
+        if (ArcQuestPanelInputRouter.mouseScrolled(event.getMouseX(), event.getMouseY(), event.getScrollDelta())) {
             event.setCanceled(true);
             return;
         }

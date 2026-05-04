@@ -30,9 +30,6 @@ public class ArcQuestLegacyPanelOverlayRoot extends ArcOverlayRoot {
     @Override
     public void draw(GuiGraphics graphics, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
         if (!isAnyPanelActive()) return;
-        Minecraft mc = Minecraft.getInstance();
-        int mouseX = (int) (mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / (double) mc.getWindow().getScreenWidth());
-        int mouseY = (int) (mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / (double) mc.getWindow().getScreenHeight());
         if (ArcQuestIntelPanelElement.isActive()) intelPanelElement.draw(graphics, context, refX, refY, inheritedOpacity);
         if (ArcQuestOfferPanelElement.isActive()) offerPanelElement.draw(graphics, context, refX, refY, inheritedOpacity);
         if (ArcQuestHistoryPanelElement.isActive()) historyPanelElement.draw(graphics, context, refX, refY, inheritedOpacity);
@@ -41,10 +38,6 @@ public class ArcQuestLegacyPanelOverlayRoot extends ArcOverlayRoot {
     }
 
     public static boolean isAnyPanelActive() {
-        return ArcQuestIntelPanelElement.isActive()
-                || ArcQuestOfferPanelElement.isActive()
-                || ArcQuestHistoryPanelElement.isActive()
-                || ArcQuestCollectionHistoryManager.isActive()
-                || ArcQuestStoryPanelElement.isActive();
+        return ArcQuestPanelInputRouter.isAnyPanelActive();
     }
 }
