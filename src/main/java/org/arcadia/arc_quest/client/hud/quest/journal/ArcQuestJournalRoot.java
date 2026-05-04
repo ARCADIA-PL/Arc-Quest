@@ -21,4 +21,8 @@ public class ArcQuestJournalRoot extends ArcScreenRoot {
                 dragY / getUiScale()
         );
     }
+
+    public void resetListState() {
+        journalElement.resetListState();
+    }
 }

@@ -7,7 +7,6 @@ import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHis
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.story.ArcQuestStoryPanelElement;
-import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.core.ArcGuiTickContext;
@@ -92,5 +91,9 @@ public class ArcQuestJournalElement extends ArcGuiElement {
     public boolean onMouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (listElement.onMouseDragged(mouseX, mouseY)) return true;
         return detailElement.onMouseDragged(mouseX, mouseY);
+    }
+
+    public void resetListState() {
+        listElement.resetState();
     }
 }

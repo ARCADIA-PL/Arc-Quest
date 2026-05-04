@@ -13,7 +13,6 @@ import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
-import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuestCollectionHistoryManager;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
@@ -37,8 +36,6 @@ import java.util.Map;
 public class QuestJournalScreen extends Screen {
 
     private static final float TIP_HOVER_DELAY = 0.05f;
-    private final JournalTabPanel tabPanel;
-    private final JournalListPanel listPanel;
     private final JournalDetailPanel detailPanel;
     private ArcQuestJournalRoot arcRoot;
     private final List<JournalTypes.QuestListEntry> currentEntries = new ArrayList<>();
@@ -61,8 +58,6 @@ public class QuestJournalScreen extends Screen {
 
     public QuestJournalScreen() {
         super(Component.translatable("gui.arc_quest.journal.title"));
-        this.tabPanel = new JournalTabPanel(this);
-        this.listPanel = new JournalListPanel(this);
         this.detailPanel = new JournalDetailPanel(this);
     }
 
@@ -172,7 +167,7 @@ public class QuestJournalScreen extends Screen {
             }
         }
         selectedIndex = currentEntries.isEmpty() ? -1 : 0;
-        listPanel.resetState();
+        if (arcRoot != null) arcRoot.resetListState();
         detailPanel.resetState();
     }
 
@@ -293,48 +288,6 @@ public class QuestJournalScreen extends Screen {
         ensureArcRoot();
         if (arcRoot.mouseScrolled(mx, my, delta)) return true;
         return super.mouseScrolled(mx, my, delta);
-    }
-
-    public boolean handleJournalMouseClicked(double smx, double smy, int button) {
-        if (isClosing || button != 0) return false;
-        int sw = getScaledWidth();
-        int sh = getScaledHeight();
-        float slideOffset = (1f - getEaseProgress()) * 200f;
-        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
-        int listH = sh - 20 - listY;
-        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
-        int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
-        if (detailPanel.mouseClicked(smx, smy, detailX, listY, detailW, listH)) return true;
-        if (listPanel.mouseClicked(smx, smy, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
-        return tabPanel.mouseClicked(smx, smy, listX);
-    }
-
-    public boolean handleJournalMouseDragged(double smx, double smy, int button, double dragX, double dragY) {
-        int sh = getScaledHeight();
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
-        int listH = sh - 20 - listY;
-        if (listPanel.mouseDragged(smx, smy, listY, listH)) return true;
-        return detailPanel.mouseDragged(smx, smy, listY, listH);
-    }
-
-    public void handleJournalMouseReleased(double smx, double smy, int button) {
-        listPanel.mouseReleased(button);
-        detailPanel.mouseReleased(button);
-    }
-
-    public boolean handleJournalMouseScrolled(double smx, double smy, double delta) {
-        if (isClosing) return false;
-        int sw = getScaledWidth();
-        int sh = getScaledHeight();
-        float slideOffset = (1f - getEaseProgress()) * 200f;
-        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
-        int listH = sh - 20 - listY;
-        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
-        int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
-        if (listPanel.mouseScrolled(smx, smy, delta, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
-        return detailPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH);
     }
 
     private float getEaseProgress() {
@@ -530,13 +483,7 @@ public class QuestJournalScreen extends Screen {
         return this.title;
     }
 
-    public JournalTabPanel getTabPanel() {
-        return tabPanel;
-    }
 
-    public JournalListPanel getListPanel() {
-        return listPanel;
-    }
 
     public JournalDetailPanel getDetailPanel() {
         return detailPanel;
