@@ -2,6 +2,8 @@ package org.arcadia.arc_quest.client.hud.quest.arcmutil;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestCenterToastManager;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestCenterToastOverlayRoot;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.toast.ArcQuestToastOverlayRoot;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.tracker.ArcQuestTrackerOverlayRoot;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.tracker.QuestTrackerPresenter;
@@ -24,14 +26,18 @@ public final class QuestArcHudController {
         if (initialized) return;
         ArcQuestTrackerOverlayRoot trackerRoot = new ArcQuestTrackerOverlayRoot(Minecraft.getInstance(), trackerPresenter.model());
         ArcQuestToastOverlayRoot toastRoot = new ArcQuestToastOverlayRoot(Minecraft.getInstance());
+        ArcQuestCenterToastOverlayRoot centerToastRoot = new ArcQuestCenterToastOverlayRoot(Minecraft.getInstance());
         host.register(trackerRoot);
         host.register(toastRoot);
+        host.register(centerToastRoot);
         initialized = true;
     }
 
     public void tick() {
         ensureInitialized();
-        trackerPresenter.tick(ArcGuiTickContextFactory.create(Minecraft.getInstance()));
+        QuestHudBlockState blockState = QuestHudBlockState.current();
+        ArcQuestCenterToastManager.tick(blockState.freezeToasts());
+        trackerPresenter.tick(ArcGuiTickContextFactory.create(Minecraft.getInstance()), blockState);
         host.tickAll();
     }
 
