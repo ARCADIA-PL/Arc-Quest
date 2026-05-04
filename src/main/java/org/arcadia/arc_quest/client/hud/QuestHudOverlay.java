@@ -7,6 +7,8 @@ import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestArcHudController;
+import org.arcadia.arc_quest.client.hud.quest.arcmutil.QuestHudMigrationFlags;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.toast.BranchChoiceToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
@@ -45,18 +47,22 @@ public class QuestHudOverlay implements IGuiOverlay {
     }
 
     public void setTrackedQuest(String questId) {
+        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) QuestArcHudController.INSTANCE.setTrackedQuest(questId);
         trackerPanel.setTrackedQuest(questId);
     }
 
     public void setTrackedFocus(String questId, String phaseId) {
+        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) QuestArcHudController.INSTANCE.setTrackedFocus(questId, phaseId);
         trackerPanel.setTrackedFocus(questId, phaseId);
     }
 
     public String getTrackedPhaseId() {
+        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) return QuestArcHudController.INSTANCE.getTrackedPhaseId();
         return trackerPanel.getTrackedPhaseId();
     }
 
     public String getTrackedQuestId() {
+        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) return QuestArcHudController.INSTANCE.getTrackedQuestId();
         return trackerPanel.getTrackedQuestId();
     }
 
@@ -129,7 +135,11 @@ public class QuestHudOverlay implements IGuiOverlay {
         }
 
         // 解除强行截断，让 TrackerPanel 内部处理状态机，从而触发滑出/滑入动画！
-        trackerPanel.render(g, screenWidth, screenHeight, partialTick);
+        if (QuestHudMigrationFlags.ARC_TRACKER_ENABLED) {
+            QuestArcHudController.INSTANCE.render(g, partialTick);
+        } else {
+            trackerPanel.render(g, screenWidth, screenHeight, partialTick);
+        }
 
         if (!isSplashActive && !isBlockingScreen) {
             QuestToastManager.render(g, screenWidth, screenHeight);
