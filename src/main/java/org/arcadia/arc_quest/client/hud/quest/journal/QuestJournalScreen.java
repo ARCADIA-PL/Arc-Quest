@@ -40,6 +40,7 @@ public class QuestJournalScreen extends Screen {
     private final JournalTabPanel tabPanel;
     private final JournalListPanel listPanel;
     private final JournalDetailPanel detailPanel;
+    private ArcQuestJournalRoot arcRoot;
     private final List<JournalTypes.QuestListEntry> currentEntries = new ArrayList<>();
     private JournalTypes.Tab currentTab = JournalTypes.Tab.ACTIVE;
     private int selectedIndex = -1;
@@ -110,6 +111,9 @@ public class QuestJournalScreen extends Screen {
     protected void init() {
         super.init();
         this.lastRenderTime = 0;
+        if (this.minecraft != null && this.arcRoot == null) {
+            this.arcRoot = new ArcQuestJournalRoot(this.minecraft, this);
+        }
         rebuildEntries();
     }
 
@@ -240,16 +244,8 @@ public class QuestJournalScreen extends Screen {
 
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
-        float slideOffset = (1f - getEaseProgress()) * 200f;
-        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
-        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
-        int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
-
-        if (detailPanel.mouseClicked(smx, smy, detailX, listY, detailW, listH)) return true;
-        if (listPanel.mouseClicked(smx, smy, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
-        if (tabPanel.mouseClicked(smx, smy, listX)) return true;
-
+        ensureArcRoot();
+        if (arcRoot.mouseClicked(mx, my, button)) return true;
         return super.mouseClicked(mx, my, button);
     }
 
@@ -264,9 +260,8 @@ public class QuestJournalScreen extends Screen {
             return true;
         }
 
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
-        if (listPanel.mouseDragged(smx, smy, listY, listH)) return true;
-        if (detailPanel.mouseDragged(smx, smy, listY, listH)) return true;
+        ensureArcRoot();
+        if (arcRoot.mouseDragged(mx, my, button, dragX, dragY)) return true;
         return super.mouseDragged(mx, my, button, dragX, dragY);
     }
 
@@ -277,8 +272,8 @@ public class QuestJournalScreen extends Screen {
             ArcQuestHistoryPanelElement.mouseReleased(button);
             return true;
         }
-        listPanel.mouseReleased(button);
-        detailPanel.mouseReleased(button);
+        ensureArcRoot();
+        arcRoot.mouseReleased(mx, my, button);
         return super.mouseReleased(mx, my, button);
     }
 
@@ -295,15 +290,51 @@ public class QuestJournalScreen extends Screen {
         }
         if (isClosing) return false;
 
+        ensureArcRoot();
+        if (arcRoot.mouseScrolled(mx, my, delta)) return true;
+        return super.mouseScrolled(mx, my, delta);
+    }
+
+    public boolean handleJournalMouseClicked(double smx, double smy, int button) {
+        if (isClosing || button != 0) return false;
+        int sw = getScaledWidth();
+        int sh = getScaledHeight();
         float slideOffset = (1f - getEaseProgress()) * 200f;
         int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
+        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
+        int listH = sh - 20 - listY;
         int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
         int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
+        if (detailPanel.mouseClicked(smx, smy, detailX, listY, detailW, listH)) return true;
+        if (listPanel.mouseClicked(smx, smy, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
+        return tabPanel.mouseClicked(smx, smy, listX);
+    }
 
+    public boolean handleJournalMouseDragged(double smx, double smy, int button, double dragX, double dragY) {
+        int sh = getScaledHeight();
+        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
+        int listH = sh - 20 - listY;
+        if (listPanel.mouseDragged(smx, smy, listY, listH)) return true;
+        return detailPanel.mouseDragged(smx, smy, listY, listH);
+    }
+
+    public void handleJournalMouseReleased(double smx, double smy, int button) {
+        listPanel.mouseReleased(button);
+        detailPanel.mouseReleased(button);
+    }
+
+    public boolean handleJournalMouseScrolled(double smx, double smy, double delta) {
+        if (isClosing) return false;
+        int sw = getScaledWidth();
+        int sh = getScaledHeight();
+        float slideOffset = (1f - getEaseProgress()) * 200f;
+        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
+        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
+        int listH = sh - 20 - listY;
+        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
+        int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
         if (listPanel.mouseScrolled(smx, smy, delta, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
-        if (detailPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
-        return super.mouseScrolled(mx, my, delta);
+        return detailPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH);
     }
 
     private float getEaseProgress() {
@@ -314,17 +345,31 @@ public class QuestJournalScreen extends Screen {
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         this.hoveredRewardTooltip = null;
         this.hoveredCustomTooltip = null;
-        float uiScale = getUiScale();
-        int smx = (int) (mouseX / uiScale), smy = (int) (mouseY / uiScale);
-        int sw = getScaledWidth(), sh = getScaledHeight();
+        ensureArcRoot();
+        tickJournalAnimation(computeFrameDelta());
+        if (!shouldRenderJournalBody()) return;
 
+        arcRoot.setUiScale(getUiScale());
+        arcRoot.drawScaledRoot(g, partialTick);
+    }
+
+    private void ensureArcRoot() {
+        if (this.minecraft != null && this.arcRoot == null) {
+            this.arcRoot = new ArcQuestJournalRoot(this.minecraft, this);
+        }
+    }
+
+    private float computeFrameDelta() {
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
         float realDt = (now - lastRenderTime) / 1000f;
         lastRenderTime = now;
-        if (realDt > 0.1f) realDt = 0.1f;
+        return Math.min(realDt, 0.1f);
+    }
 
-        boolean intelActive = ArcQuestIntelPanelElement.isActive(), offerActive = ArcQuestOfferPanelElement.isActive(), historyActive = ArcQuestHistoryPanelElement.isActive() || ArcQuestCollectionHistoryManager.isActive(), storyActive = ArcQuestStoryPanelElement.isActive();
+    public void tickJournalAnimation(float realDt) {
+        boolean intelActive = ArcQuestIntelPanelElement.isActive();
+        boolean storyActive = ArcQuestStoryPanelElement.isActive();
 
         if (ArcQuestSplashManager.isActive()) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
@@ -335,57 +380,29 @@ public class QuestJournalScreen extends Screen {
         }
 
         transitionAlpha = ArcAnimClock.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
-        if (isClosing && transitionAlpha <= 0.01f) {
-            if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
-            return;
+        if (isClosing && transitionAlpha <= 0.01f && minecraft != null && minecraft.screen == this) {
+            minecraft.setScreen(null);
         }
-
         effectiveAlpha = transitionAlpha * suspendAlpha;
-        float easeProgress = getEaseProgress();
-        float slideOffset = (1f - easeProgress) * 200f;
-        int safeAlpha = (int) (255 * effectiveAlpha);
-
-        g.pose().pushPose();
-        g.pose().scale(uiScale, uiScale, 1f);
-
-        // === PASS 1: 纯 2D 极速渲染通道 (无物品干扰，极大利用底层批处理) ===
-        int bgTint = ArcDrawUtil.lerpColor(0x000000, currentThemeColor, 0.05f);
-        g.fill(0, 0, sw, sh, ArcDrawUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
-
-        if (safeAlpha > 8) {
-            g.pose().pushPose();
-            g.pose().translate(sw / 2f, 14, 0);
-            float titleScale = 0.95f + 0.05f * easeProgress;
-            g.pose().scale(titleScale, titleScale, 1f);
-            g.pose().translate(-sw / 2f, -14, 0);
-            g.drawCenteredString(font, this.title, sw / 2, 14, ArcDrawUtil.withAlpha(0xFFFFFF, safeAlpha));
-            g.pose().popPose();
-        }
-
-        int theme = getThemeColor();
-        tabPanel.render(g, smx, smy, safeAlpha, slideOffset, theme, dt);
-
-        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset, listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
-        ArcDrawUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH, ArcDrawUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), ArcDrawUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
-        listPanel.render(g, listX, listY, JournalConstants.LIST_WIDTH, listH, smx, smy, theme, dt);
-
-        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
-        int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
-
-        ArcDrawUtil.drawFrame(g, detailX, listY, detailW, listH, ArcDrawUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)), ArcDrawUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
-
-        // 此处的 DetailPanel 会内部管理自己的 Pass1(2D) 和 Pass2(3D)
-        detailPanel.render(g, detailX, listY, detailW, listH, smx, smy, theme, dt);
-
-        if (intelActive || offerActive || historyActive || storyActive) QuestArcHudController.INSTANCE.render(g, partialTick);
-
-        // === PASS 3: 顶层 Tooltip 渲染（原生含有 3D，自定义纯 2D，放到最后确保遮盖） ===
-        updateAndRenderTooltip(g, smx, smy);
-
-        g.pose().popPose();
     }
 
-    private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
+    public boolean shouldRenderJournalBody() {
+        return !(isClosing && transitionAlpha <= 0.01f);
+    }
+
+    public float getEaseProgressForRender() {
+        return getEaseProgress();
+    }
+
+    public float getJournalSlideOffset() {
+        return (1f - getEaseProgress()) * 200f;
+    }
+
+    public boolean isJournalClosing() {
+        return isClosing;
+    }
+
+    public void updateAndRenderJournalTooltip(GuiGraphics g, int mouseX, int mouseY) {
         boolean hasCustom = hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty();
         boolean hasItem = hoveredRewardTooltip != null;
         boolean isHoveringValid = (hasCustom || hasItem) && !ArcQuestIntelPanelElement.isActive() && !ArcQuestOfferPanelElement.isActive() && !ArcQuestHistoryPanelElement.isActive() && !ArcQuestStoryPanelElement.isActive();
@@ -507,6 +524,22 @@ public class QuestJournalScreen extends Screen {
 
     public Font getFont() {
         return this.font;
+    }
+
+    public Component getTitleComponent() {
+        return this.title;
+    }
+
+    public JournalTabPanel getTabPanel() {
+        return tabPanel;
+    }
+
+    public JournalListPanel getListPanel() {
+        return listPanel;
+    }
+
+    public JournalDetailPanel getDetailPanel() {
+        return detailPanel;
     }
 
     public float getEffectiveAlpha() {
