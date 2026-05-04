@@ -40,7 +40,7 @@ public class ArcQuestJournalListElement extends ArcGuiElement {
     protected void update(ArcGuiContext context, int refX, int refY) {
         this.x = JournalConstants.LIST_MARGIN - (int) screen.getJournalSlideOffset();
         this.y = 38 + JournalConstants.TAB_HEIGHT + 6;
-        this.height = screen.getScaledHeight() - 20 - y;
+        this.height = context.screenHeight() - 20 - y;
         if (entryHoverAnim.length != screen.getCurrentEntries().size()) {
             entryHoverAnim = new float[screen.getCurrentEntries().size()];
         }

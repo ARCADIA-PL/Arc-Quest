@@ -42,8 +42,8 @@ public class ArcQuestJournalElement extends ArcGuiElement {
     public void draw(GuiGraphics g, ArcGuiContext context, int refX, int refY, float inheritedOpacity) {
         if (!screen.shouldRenderJournalBody()) return;
 
-        int sw = screen.getScaledWidth();
-        int sh = screen.getScaledHeight();
+        int sw = context.screenWidth();
+        int sh = context.screenHeight();
         float effectiveAlpha = screen.getEffectiveAlpha();
         float easeProgress = screen.getEaseProgressForRender();
         int safeAlpha = (int) (255 * effectiveAlpha * inheritedOpacity);

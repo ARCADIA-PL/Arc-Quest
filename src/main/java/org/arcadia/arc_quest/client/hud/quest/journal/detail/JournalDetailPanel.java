@@ -27,7 +27,7 @@ public class JournalDetailPanel {
     public final JournalDetailSinglePhase singlePhaseRenderer;
     public final JournalDetailParallelPhase parallelPhaseRenderer;
     public final JournalDetailRewards rewardsRenderer;
-    public final JournalDetailControls controlsRenderer;
+
     public final JournalDetailCollection collectionRenderer;
     private final QuestJournalScreen screen;
     private final int[] historyBtnRect = new int[]{0, 0, 0, 0};
@@ -45,7 +45,7 @@ public class JournalDetailPanel {
         this.singlePhaseRenderer = new JournalDetailSinglePhase(screen, this);
         this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
         this.rewardsRenderer = new JournalDetailRewards(screen, this);
-        this.controlsRenderer = new JournalDetailControls(screen, this);
+
         this.collectionRenderer = new JournalDetailCollection(screen);
     }
 
@@ -253,7 +253,7 @@ public class JournalDetailPanel {
         g.pose().popPose();
         g.disableScissor();
         renderScrollbar(g, x + w - 6, scrollAreaY + 2, scrollAreaH - 4, detailContentHeight, Math.max(0, detailContentHeight - scrollAreaH));
-        controlsRenderer.render(g, entry, def, runtime, x, y, w, h, mx, my, dt, activeTheme);
+
     }
 
     private DetailHeaderCache getHeaderCache(JournalTypes.QuestListEntry entry, QuestDefinition def, int scrollAreaW) {
@@ -296,7 +296,7 @@ public class JournalDetailPanel {
             }
             return true;
         }
-        if (!panelsActive && controlsRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
+
         if (!panelsActive && entryIsCollectionActive() && collectionRenderer.mouseClicked(mx - (x + 12), my - (y + 12 - detailScrollOffset)))
             return true;
         if (!panelsActive && mx >= historyBtnRect[0] && mx <= historyBtnRect[0] + historyBtnRect[2] && my >= historyBtnRect[1] && my <= historyBtnRect[1] + historyBtnRect[3] && my >= y && my <= y + scrollAreaH) {

@@ -20,10 +20,12 @@ public class ArcScreenRoot extends ArcGuiRoot {
     @Override
     protected ArcGuiContext createContext(float partialTick) {
         ArcGuiContext base = super.createContext(partialTick);
+        int scaledWidth = Math.round(base.screenWidth() / uiScale);
+        int scaledHeight = Math.round(base.screenHeight() / uiScale);
         return new ArcGuiContext(
                 base.minecraft(),
-                base.screenWidth(),
-                base.screenHeight(),
+                scaledWidth,
+                scaledHeight,
                 Math.round(base.mouseX() / uiScale),
                 Math.round(base.mouseY() / uiScale),
                 base.partialTick(),
