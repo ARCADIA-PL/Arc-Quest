@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -14,7 +13,6 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.collection.ArcQuestCollectionHistoryManager;
 import org.arcadia.arc_quest.mutil.animation.ArcPanelTransition;
@@ -23,6 +21,8 @@ import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
+import org.arcadia.arc_quest.mutil.theme.ArcRewardRenderer;
+import org.arcadia.arc_quest.mutil.theme.ArcTooltipRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -326,7 +326,7 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
                         mcForTip.player,
                         mcForTip.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL
                 );
-                renderCyberTooltip(g, mcForTip.font, lines, mx, my, themeColor);
+                ArcTooltipRenderer.renderCyber(g, mcForTip.font, lines, mx, my, screenW, screenH, themeColor);
             }
         }
     }
@@ -454,26 +454,11 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
         if (easeScale < 0.01f) return;
 
         int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;
-        int baseAlpha = Math.min(255, Math.max(0, (int) (255 * easeScale))), bgAlpha = (int) (0xD0 * easeScale), borderAlpha = (int) (0x66 * easeScale);
+        ArcTooltipRenderer.CyberFrame frame = ArcTooltipRenderer.beginMorphingCyberFrame(g, drawX, drawY, drawW, drawH, easeScale, themeColor, 6000);
+        if (!frame.visible()) return;
 
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 6000);
-        float centerX = drawX + drawW / 2f, centerY = drawY + drawH / 2f;
-        g.pose().translate(centerX, centerY, 0);
-        g.pose().scale(easeScale, easeScale, 1f);
-        g.pose().translate(-centerX, -centerY, 0);
-
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        ArcPanelChrome.drawFastFrame(g, drawX + cyberEdgeWidth, drawY, drawW - cyberEdgeWidth, drawH, 1, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, themeColor, baseAlpha);
-
-        Minecraft mc = Minecraft.getInstance();
-        boolean scissored = true;
-        if (mc.screen instanceof QuestJournalScreen qjs)
-            qjs.enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
-        else g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
-
-        int contentX = drawX + cyberEdgeWidth + padding, contentY = drawY + padding;
+        int baseAlpha = frame.alpha();
+        int contentX = frame.contentX(), contentY = frame.contentY();
 
         // =========================================================================
         // PASS 1: 纯 2D 通道 (绘制 Tooltip 内所有文本和框)
@@ -498,81 +483,24 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
             g.drawString(font, REWARDS_TITLE, contentX, contentY, HudAnimUtil.withAlpha(0xFFCC00, baseAlpha), false);
             contentY += font.lineHeight + 4;
 
-            float localMouseX = (realMx - centerX) / easeScale + centerX, localMouseY = (realMy - centerY) / easeScale + centerY;
+            float localMouseX = (realMx - frame.centerX()) / easeScale + frame.centerX(), localMouseY = (realMy - frame.centerY()) / easeScale + frame.centerY();
 
-            for (RewardRenderData reward : tooltipData.rewards) {
-                g.fill(contentX, contentY, drawX + drawW - padding, contentY + 20, HudAnimUtil.withAlpha(0xFFFFFF, (int) (baseAlpha * 0.05)));
-                if (!reward.item)
-                    g.drawString(font, "■", contentX + 6, contentY + 6, HudAnimUtil.withAlpha(themeColor, baseAlpha), false);
-                g.drawString(font, reward.text, contentX + 24, contentY + 6, HudAnimUtil.withAlpha(reward.item ? 0xFFFFFF : 0xDDDDDD, baseAlpha), false);
-
-                if (reward.item && localMouseX >= contentX && localMouseX <= contentX + 24 && localMouseY >= contentY && localMouseY <= contentY + 22) {
-                    hoveredRewardStack = reward.stack;
-                }
-                contentY += 22;
-            }
+            ArcRewardRenderer.HoverResult hover = ArcRewardRenderer.renderTooltipRows(g, font, tooltipData.rewards, contentX, contentY, drawX + drawW - padding - contentX, baseAlpha, themeColor, localMouseX, localMouseY);
+            if (!hover.hoveredStack().isEmpty()) hoveredRewardStack = hover.hoveredStack();
+            contentY += ArcRewardRenderer.measureTooltipRowsHeight(tooltipData.rewards);
         }
 
         // =========================================================================
         // PASS 2: 纯 3D 通道 (在同样的位置叠加物品模型)
         // =========================================================================
         if (!tooltipData.rewards.isEmpty()) {
-            contentY = rewardStartY + 6 + font.lineHeight + 4; // 重置 Y 坐标到奖励区起始点
-            RenderSystem.enableDepthTest();
-            for (RewardRenderData reward : tooltipData.rewards) {
-                if (reward.item) {
-                    g.renderItem(reward.stack, contentX + 2, contentY + 2);
-                    g.renderItemDecorations(font, reward.stack, contentX + 2, contentY + 2);
-                }
-                contentY += 22;
-            }
-            RenderSystem.disableDepthTest();
+            contentY = rewardStartY + 6 + font.lineHeight + 4;
+            ArcRewardRenderer.renderTooltipRowItems(g, font, tooltipData.rewards, contentX, contentY);
         }
 
-        if (scissored) g.disableScissor();
-        g.pose().popPose();
+        ArcTooltipRenderer.endMorphingCyberFrame(g, frame);
     }
 
-    private static TooltipLayout getRewardTooltipLayout(ItemStack stack, Minecraft mc, boolean advanced) {
-        TooltipLayout layout = new TooltipLayout();
-        if (mc.player != null) {
-            layout.lines = stack.getTooltipLines(mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
-            for (Component line : layout.lines) {
-                int lw = mc.font.width(line);
-                if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;
-            }
-        }
-        return layout;
-    }
-
-    private static void renderCyberTooltip(GuiGraphics g, Font font, List<Component> lines, int mouseX, int mouseY, int theme) {
-        if (lines == null || lines.isEmpty()) return;
-        int textMaxWidth = 0;
-        for (Component line : lines) {
-            int lw = font.width(line);
-            if (lw > textMaxWidth) textMaxWidth = lw;
-        }
-        int padding = 6, cyberEdgeWidth = 3, drawW = textMaxWidth + padding * 2 + cyberEdgeWidth + 2, drawH = lines.size() * font.lineHeight + padding * 2;
-        Minecraft mc = Minecraft.getInstance();
-        int drawX = mouseX + 12, drawY = mouseY - 12;
-        if (drawX + drawW > mc.getWindow().getGuiScaledWidth()) drawX = mouseX - drawW - 8;
-        if (drawY + drawH > mc.getWindow().getGuiScaledHeight())
-            drawY = mc.getWindow().getGuiScaledHeight() - drawH - 2;
-        if (drawY < 2) drawY = 2;
-
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 8000);
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, 0xD0));
-        ArcPanelChrome.drawFastFrame(g, drawX + cyberEdgeWidth, drawY, drawW - cyberEdgeWidth, drawH, 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
-        HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, theme, 0xFF);
-
-        int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
-        for (Component line : lines) {
-            g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), false);
-            textY += font.lineHeight;
-        }
-        g.pose().popPose();
-    }
 
     private static void drawOrthogonalLine(GuiGraphics g, int x1, int y1, int x2, int y2, boolean isCompleted, float alphaF, int theme) {
         int color = isCompleted ? HudAnimUtil.withAlpha(0x66FF88, (int) (180 * alphaF)) : HudAnimUtil.withAlpha(0x555555, (int) (100 * alphaF));
@@ -633,19 +561,18 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
 
         if (!phase.getPhaseRewards().isEmpty()) {
             data.textMaxWidth = Math.max(data.textMaxWidth, font.width(REWARDS_TITLE));
-            List<RewardRenderData> rewards = new ArrayList<>(phase.getPhaseRewards().size());
+            List<ArcRewardRenderer.Row> rewards = new ArrayList<>(phase.getPhaseRewards().size());
             for (IReward reward : phase.getPhaseRewards()) {
-                RewardRenderData rd = new RewardRenderData();
+                ArcRewardRenderer.Row rd;
                 if (reward instanceof ItemReward ir) {
-                    rd.item = true;
-                    rd.stack = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
-                    rd.text = rd.stack.getHoverName().getString() + (ir.getCount() > 1 ? " x" + ir.getCount() : "");
+                    ItemStack stack = new ItemStack(ir.getItem(), Math.min(64, ir.getCount()));
+                    String text = stack.getHoverName().getString() + (ir.getCount() > 1 ? " x" + ir.getCount() : "");
+                    rd = new ArcRewardRenderer.Row(stack, text, 24 + font.width(text), true);
                 } else {
-                    rd.item = false;
-                    rd.text = reward.describe();
+                    String text = reward.describe();
+                    rd = new ArcRewardRenderer.Row(ItemStack.EMPTY, text, 24 + font.width(text), false);
                 }
-                rd.width = 24 + font.width(rd.text);
-                data.textMaxWidth = Math.max(data.textMaxWidth, rd.width);
+                data.textMaxWidth = Math.max(data.textMaxWidth, rd.width());
                 rewards.add(rd);
             }
             data.rewards = rewards;
@@ -677,25 +604,13 @@ public class ArcQuestHistoryPanelElement extends ArcGuiElement {
         panY = targetPanY;
     }
 
-    private static class TooltipLayout {
-        List<Component> lines = List.of();
-        int textMaxWidth = 0;
-    }
-
-    private static class RewardRenderData {
-        ItemStack stack = ItemStack.EMPTY;
-        String text = "";
-        int width = 0;
-        boolean item;
-    }
-
     private static class PhaseTooltipData {
         String title = "";
         Component titleComponent = Component.empty();
         int titleWidth = 0;
         List<FormattedCharSequence> descLines = List.of();
         int descMaxWidth = 0;
-        List<RewardRenderData> rewards = List.of();
+        List<ArcRewardRenderer.Row> rewards = List.of();
         int textMaxWidth = 0;
         int targetW = 0;
         int targetH = 0;

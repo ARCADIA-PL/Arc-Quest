@@ -15,13 +15,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.mutil.animation.ArcPanelTransition;
 import org.arcadia.arc_quest.mutil.core.ArcGuiContext;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
 import org.arcadia.arc_quest.mutil.screen.ArcScissorUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
 import org.arcadia.arc_quest.mutil.theme.ArcPanelChrome;
+import org.arcadia.arc_quest.mutil.theme.ArcTooltipRenderer;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -75,7 +75,7 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
     private static int cachedTrimmedTitleWidth = -1;
     private static int cachedRequired = 1;
     private static List<ItemStack> cachedIconCandidates = List.of();
-    private static TooltipLayout cachedTooltipLayout = null;
+    private static ArcTooltipRenderer.CyberLayout cachedTooltipLayout = null;
     private static String cachedTooltipKey = "";
     private static float submitHoverAnim = 0f;
     private static float itemSlotHoverAnim = 0f;
@@ -243,8 +243,8 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
         if (!hoveredStack.isEmpty() && !closing && !cleared) {
             Minecraft mcForTip = Minecraft.getInstance();
             if (mcForTip.player != null) {
-                TooltipLayout layout = getTooltipLayout(hoveredStack, mcForTip, mcForTip.options.advancedItemTooltips);
-                renderCyberTooltip(g, mcForTip.font, layout, mx, my, themeColor);
+                ArcTooltipRenderer.CyberLayout layout = getTooltipLayout(hoveredStack, mcForTip, mcForTip.options.advancedItemTooltips);
+                ArcTooltipRenderer.renderCyber(g, mcForTip.font, layout, mx, my, context.screenWidth(), context.screenHeight(), themeColor, 6000);
             }
         }
     }
@@ -546,58 +546,21 @@ public class ArcQuestOfferPanelElement extends ArcGuiElement {
         return total;
     }
 
-    private static TooltipLayout getTooltipLayout(ItemStack stack, Minecraft mc, boolean advanced) {
+    private static ArcTooltipRenderer.CyberLayout getTooltipLayout(ItemStack stack, Minecraft mc, boolean advanced) {
         String key = stack.getItem().builtInRegistryHolder().key().location() + "|" + stack.getCount() + "|" + stack.getHoverName().getString() + "|" + advanced;
         if (key.equals(cachedTooltipKey) && cachedTooltipLayout != null) return cachedTooltipLayout;
-        TooltipLayout layout = new TooltipLayout();
+        List<Component> lines = List.of();
         if (mc.player != null) {
-            layout.lines = stack.getTooltipLines(mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
-            for (Component line : layout.lines) {
-                int lw = mc.font.width(line);
-                if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;
-            }
+            lines = stack.getTooltipLines(mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
         }
+        ArcTooltipRenderer.CyberLayout layout = ArcTooltipRenderer.measure(mc.font, lines);
         cachedTooltipKey = key;
         cachedTooltipLayout = layout;
         return layout;
     }
-
-    private static void renderCyberTooltip(GuiGraphics g, Font font, TooltipLayout layout, int mouseX, int mouseY, int theme) {
-        if (layout == null || layout.lines == null || layout.lines.isEmpty()) return;
-        int padding = 6, cyberEdgeWidth = 3;
-        int drawW = layout.textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
-        int drawH = layout.lines.size() * font.lineHeight + padding * 2;
-        Minecraft mc = Minecraft.getInstance();
-        int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
-        int drawX = mouseX + 12, drawY = mouseY - 12;
-        if (drawX + drawW > sw) drawX = mouseX - drawW - 8;
-        if (drawY + drawH > sh) drawY = sh - drawH - 2;
-        if (drawY < 2) drawY = 2;
-
-        g.pose().pushPose();
-        g.pose().translate(0, 0, 6000);
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, 0xD0));
-        ArcPanelChrome.drawFastFrame(g, drawX + cyberEdgeWidth, drawY, drawW - cyberEdgeWidth, drawH, 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
-        HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, theme, 0xFF);
-
-        g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
-        int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
-        for (Component line : layout.lines) {
-            g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), true);
-            textY += font.lineHeight;
-        }
-        g.disableScissor();
-        g.pose().popPose();
-    }
-
     public static void onServerSubmitResult(String qid, String pid, int objIndex, S2COfferSubmitResultPacket.CloseMode mode) {
         if (!active || !questId.equals(qid) || !phaseId.equals(pid) || objectiveIndex != objIndex) return;
         if (mode != null) serverCloseMode = mode;
-    }
-
-    private static class TooltipLayout {
-        List<Component> lines = List.of();
-        int textMaxWidth = 0;
     }
 
     private record OfferVM(String title, int required, int current, int canSubmitNow, List<ItemStack> iconCandidates) {

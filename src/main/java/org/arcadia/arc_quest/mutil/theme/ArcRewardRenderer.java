@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.mutil.theme;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -36,6 +37,43 @@ public final class ArcRewardRenderer {
             }
         }
         return totalY;
+    }
+
+    public static HoverResult renderTooltipRows(GuiGraphics graphics, Font font, List<Row> rows, int x, int y, int width, int alpha, int themeColor, float mouseX, float mouseY) {
+        if (rows == null || rows.isEmpty() || alpha < 4) return HoverResult.NONE;
+        ItemStack hovered = ItemStack.EMPTY;
+        int rowY = y;
+        for (Row row : rows) {
+            graphics.fill(x, rowY, x + width, rowY + 20, ArcDrawUtil.withAlpha(0xFFFFFF, (int) (alpha * 0.05f)));
+            if (row.item()) {
+                if (mouseX >= x && mouseX <= x + 24 && mouseY >= rowY && mouseY <= rowY + 22) {
+                    hovered = row.stack();
+                }
+            } else {
+                graphics.drawString(font, "■", x + 6, rowY + 6, ArcDrawUtil.withAlpha(themeColor, alpha), false);
+            }
+            graphics.drawString(font, row.text(), x + 24, rowY + 6, ArcDrawUtil.withAlpha(row.item() ? 0xFFFFFF : 0xDDDDDD, alpha), false);
+            rowY += 22;
+        }
+        return new HoverResult(hovered);
+    }
+
+    public static void renderTooltipRowItems(GuiGraphics graphics, Font font, List<Row> rows, int x, int y) {
+        if (rows == null || rows.isEmpty()) return;
+        int rowY = y;
+        RenderSystem.enableDepthTest();
+        for (Row row : rows) {
+            if (row.item()) {
+                graphics.renderItem(row.stack(), x + 2, rowY + 2);
+                graphics.renderItemDecorations(font, row.stack(), x + 2, rowY + 2);
+            }
+            rowY += 22;
+        }
+        RenderSystem.disableDepthTest();
+    }
+
+    public static int measureTooltipRowsHeight(List<Row> rows) {
+        return rows == null ? 0 : rows.size() * 22;
     }
 
     public static int measureHeight(List<IReward> rewards) {
@@ -108,6 +146,13 @@ public final class ArcRewardRenderer {
 
     private static int withAlpha(int color, int alpha) {
         return (color & 0x00FFFFFF) | (Math.max(0, Math.min(255, alpha)) << 24);
+    }
+
+    public record Row(ItemStack stack, String text, int width, boolean item) {
+    }
+
+    public record HoverResult(ItemStack hoveredStack) {
+        public static final HoverResult NONE = new HoverResult(ItemStack.EMPTY);
     }
 
     private static class RewardRenderCache {
