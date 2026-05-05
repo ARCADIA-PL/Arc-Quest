@@ -28,11 +28,10 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
 
     private final QuestJournalScreen screen;
     private final ArcQuestJournalHeaderElement headerElement;
+    private final ArcQuestJournalDetailScrollbarElement scrollbarElement;
     private final String questCompletedText = Component.translatable("arc_quest.gui.journal.label.quest_completed").getString();
     private final String questFailedText = Component.translatable("arc_quest.gui.journal.label.quest_failed").getString();
     private final String selectQuestText = Component.translatable("arc_quest.gui.journal.label.select_quest").getString();
-    private double detailScrollOffset = 0, detailTargetScroll = 0, dragDetailYOffset = 0;
-    private boolean isDraggingDetailScrollbar = false;
     private int detailContentHeight = 0;
     private float detailReveal = 0f;
 
@@ -40,6 +39,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         super(0, 0, 0, 0);
         this.screen = screen;
         this.headerElement = new ArcQuestJournalHeaderElement(screen);
+        this.scrollbarElement = new ArcQuestJournalDetailScrollbarElement(screen);
 
 
 
@@ -48,21 +48,20 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
     }
 
     public double getDetailScrollOffset() {
-        return detailScrollOffset;
+        return scrollbarElement.getScrollOffset();
     }
 
     public void resetState() {
         detailReveal = 0f;
-        detailTargetScroll = 0;
-        detailScrollOffset = 0;
+        scrollbarElement.resetState();
         headerElement.resetState();
         screen.resetJournalPhaseState();
 
     }
 
     public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
-        clampScroll(h - 40);
-        detailScrollOffset += Math.abs(detailTargetScroll - detailScrollOffset) > 0.5 ? (detailTargetScroll - detailScrollOffset) * Math.min(1.0, dt * 14.0) : (detailTargetScroll - detailScrollOffset);
+        int scrollAreaHForTick = h - 40;
+        scrollbarElement.tick(scrollAreaHForTick, detailContentHeight, dt);
         int selectedIndex = screen.getSelectedIndex();
         if (selectedIndex < 0 || selectedIndex >= screen.getCurrentEntries().size()) {
             renderEmptyDetail(g, x, y, w, h);
@@ -94,6 +93,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         });
 
         g.pose().pushPose();
+        double detailScrollOffset = scrollbarElement.getScrollOffset();
         g.pose().translate(x + 12, scrollAreaY + 12 - detailScrollOffset, 0);
 
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
@@ -134,7 +134,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         detailContentHeight = localY + 12;
         g.pose().popPose();
         g.disableScissor();
-        renderScrollbar(g, x + w - 6, scrollAreaY + 2, scrollAreaH - 4, detailContentHeight, Math.max(0, detailContentHeight - scrollAreaH));
+        scrollbarElement.render(g, x + w - 6, scrollAreaY + 2, scrollAreaH - 4, detailContentHeight);
 
     }
 
@@ -143,27 +143,12 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
             g.drawCenteredString(screen.getFont(), selectQuestText, x + w / 2, y + h / 2, ArcDrawUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
     }
 
-    private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, int maxScroll) {
-        if (maxScroll <= 0) return;
-        int thumbH = Math.max(16, (int) (((float) viewH / contentH) * viewH)), thumbY = y + (int) ((detailScrollOffset / maxScroll) * (viewH - thumbH));
-        g.fill(x, y, x + 4, y + viewH, ArcDrawUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
-        g.fill(x, thumbY, x + 4, thumbY + thumbH, ArcDrawUtil.withAlpha(0xFFFFFF, (int) ((isDraggingDetailScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
-    }
-
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
-        int scrollAreaH = h - 40, maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
+        int scrollAreaH = h - 40;
+        double detailScrollOffset = scrollbarElement.getScrollOffset();
         boolean panelsActive = ArcQuestIntelPanelElement.isActive() || ArcQuestOfferPanelElement.isActive() || ArcQuestHistoryPanelElement.isActive() || ArcQuestStoryPanelElement.isActive();
         if (!panelsActive && screen.mouseClickedJournalRewards(mx, my)) return true;
-        if (!panelsActive && maxDetailScroll > 0 && mx >= x + w - 6 && mx <= x + w && my >= y && my <= y + scrollAreaH) {
-            isDraggingDetailScrollbar = true;
-            int thumbH = Math.max(16, (int) (((float) scrollAreaH / detailContentHeight) * scrollAreaH)), thumbY = y + (int) ((detailScrollOffset / maxDetailScroll) * (scrollAreaH - thumbH));
-            if (my >= thumbY && my <= thumbY + thumbH) dragDetailYOffset = my - thumbY;
-            else {
-                dragDetailYOffset = thumbH / 2.0;
-                updateScrollFromMouse(my, y, scrollAreaH, maxDetailScroll);
-            }
-            return true;
-        }
+        if (!panelsActive && scrollbarElement.mouseClicked(mx, my, x, y, w, scrollAreaH, detailContentHeight)) return true;
 
         if (!panelsActive && entryIsCollectionActive() && screen.mouseClickedJournalCollection(mx - (x + 12), my - (y + 12 - detailScrollOffset)))
             return true;
@@ -187,41 +172,25 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
 
     public boolean mouseDragged(double mx, double my, int y, int h) {
         if (screen.mouseDraggedJournalRewards(mx, my)) return true;
-        if (isDraggingDetailScrollbar) {
-            updateScrollFromMouse(my, y, h - 40, Math.max(0, detailContentHeight - (h - 40)));
-            return true;
-        }
+        if (scrollbarElement.mouseDragged(my, y, h - 40, detailContentHeight)) return true;
         return screen.mouseDraggedJournalParallelPhase(mx, my);
     }
 
     public boolean mouseReleased(int button) {
         if (screen.mouseReleasedJournalRewards(button)) return true;
-        if (button == 0) {
-            isDraggingDetailScrollbar = false;
-            screen.mouseReleasedJournalParallelPhase();
-        }
-        return isDraggingDetailScrollbar;
+        boolean scrollbarReleased = scrollbarElement.mouseReleased(button);
+        if (button == 0) screen.mouseReleasedJournalParallelPhase();
+        return scrollbarReleased;
     }
 
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
         if (screen.mouseScrolledJournalRewards(mx, my, delta)) return true;
         if (screen.mouseScrolledJournalParallelPhase(mx, my, delta, x, y, h - 40)) return true;
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
-            detailTargetScroll -= delta * 25.0;
-            clampScroll(h - 40);
+            scrollbarElement.mouseScrolled(delta, h - 40, detailContentHeight);
             return true;
         }
         return false;
-    }
-
-    public void clampScroll(int scrollAreaH) {
-        detailTargetScroll = Math.max(0, Math.min(detailTargetScroll, Math.max(0, detailContentHeight - scrollAreaH)));
-    }
-
-    private void updateScrollFromMouse(double my, int y0, int viewH, int maxScroll) {
-        if (maxScroll <= 0) return;
-        int thumbH = Math.max(16, (int) (((float) viewH / detailContentHeight) * viewH));
-        detailTargetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragDetailYOffset) / (viewH - thumbH))) * maxScroll;
     }
 
     private boolean entryIsCollectionActive() {
