@@ -261,6 +261,11 @@ public class QuestHudOverlay implements IGuiOverlay {
         if (this.branchChoiceToast != null) this.branchChoiceToast.dismiss();
     }
 
+    public void showPhaseUpdateToast(String phaseName, int themeColor, PhaseUpdateToast.Kind kind) {
+        if (phaseName == null || phaseName.isEmpty()) return;
+        this.phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, kind);
+    }
+
     public void clearBranchChoiceToast(String questId, String phaseId) {
         if (this.branchChoiceToast != null && this.branchChoiceToast.sameTarget(questId, phaseId))
             this.branchChoiceToast.dismiss();

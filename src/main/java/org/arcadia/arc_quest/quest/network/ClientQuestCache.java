@@ -6,7 +6,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -223,8 +225,11 @@ public final class ClientQuestCache {
                 QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_CLAIMED, questName);
         Set<String> beforeCompleted = previousData != null ? previousData.getCompletedPhaseIds() : Set.of();
         for (String phaseId : newData.getCompletedPhaseIds())
-            if (!beforeCompleted.contains(phaseId))
-                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_COMPLETED, questName);
+            if (!beforeCompleted.contains(phaseId)) {
+                String phaseName = getPhaseDisplayName(questId, phaseId);
+                int themeColor = getQuestThemeColor(questId, 0x66FF66);
+                QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.COMPLETED);
+            }
     }
 
     /**
