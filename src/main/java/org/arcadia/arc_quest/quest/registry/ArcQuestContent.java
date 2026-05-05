@@ -20,6 +20,7 @@ public final class ArcQuestContent {
         // Epic Demo：史诗级主线任务链（基于 MC 原版内容）
         EpicMainlineDemo.registerAll();
         EpicMainlineDemo.registerBranchChoice();
+        CollectionCodexDemo.registerAll();
 
         QuestRegistry.freeze();
 

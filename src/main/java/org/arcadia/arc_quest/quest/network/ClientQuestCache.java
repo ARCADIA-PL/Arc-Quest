@@ -14,6 +14,8 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionCategorySnapshot;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionCategoryStateResolver;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
@@ -215,6 +217,10 @@ public final class ClientQuestCache {
         for (String rewardId : after.getUnlockedRewardIds())
             if (!beforeUnlocked.contains(rewardId))
                 QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_UNLOCKED, questName);
+        Set<String> beforeClaimed = before != null ? before.getClaimedRewardIds() : Set.of();
+        for (String rewardId : after.getClaimedRewardIds())
+            if (!beforeClaimed.contains(rewardId))
+                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_CLAIMED, questName);
         Set<String> beforeCompleted = previousData != null ? previousData.getCompletedPhaseIds() : Set.of();
         for (String phaseId : newData.getCompletedPhaseIds())
             if (!beforeCompleted.contains(phaseId))
@@ -375,6 +381,30 @@ public final class ClientQuestCache {
     public boolean isCollectionRewardUnlocked(String questId, String rewardId) {
         CollectionRuntimeData data = getCollectionData(questId);
         return data != null && data.isRewardUnlocked(rewardId);
+    }
+
+    public boolean isCollectionRewardClaimable(String questId, String rewardId) {
+        CollectionRuntimeData data = getCollectionData(questId);
+        return data != null && data.isRewardClaimable(rewardId);
+    }
+
+    public List<CollectionCategorySnapshot> getCollectionCategorySnapshots(String questId) {
+        QuestRuntimeData runtime = activeQuests.get(questId);
+        CollectionRuntimeData collectionData = runtime != null ? runtime.getCollectionData() : null;
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
+        if (def == null || runtime == null || collectionData == null || !def.isCollectionQuest()) return List.of();
+        return CollectionCategoryStateResolver.snapshots(def, runtime, collectionData);
+    }
+
+    public int getCollectionClaimableRewardCount(String questId) {
+        CollectionRuntimeData data = getCollectionData(questId);
+        if (data == null) return 0;
+        int count = 0;
+        for (String rewardId : data.getUnlockedRewardIds()) {
+            if (!data.isRewardClaimed(rewardId)) count++;
+        }
+        return count;
     }
 
     public int getCollectionCompletedEntryCount(String questId) {

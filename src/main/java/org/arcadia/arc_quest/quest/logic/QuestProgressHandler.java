@@ -730,7 +730,7 @@ public final class QuestProgressHandler {
         return Math.max(1, computed);
     }
 
-    private static List<ResourceLocation> objectiveKeyTargets(ObjectiveEntry obj) {
+    public static List<ResourceLocation> objectiveKeyTargets(ObjectiveEntry obj) {
         String tag = obj.getExtra("target_tag");
         if (tag == null || tag.isEmpty()) {
             return List.of(obj.getTargetId());

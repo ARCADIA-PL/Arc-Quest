@@ -183,6 +183,7 @@ public final class CapabilityEventHandler {
         public static void onDimensionChange(PlayerEvent.PlayerChangedDimensionEvent event) {
             if (event.getEntity() instanceof ServerPlayer serverPlayer) {
                 serverPlayer.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
+                    QuestProgressHandler.rebuildTrackingIndex(serverPlayer, cap);
                     ArcQuestNetwork.syncFullData(serverPlayer, cap);
                 });
             }

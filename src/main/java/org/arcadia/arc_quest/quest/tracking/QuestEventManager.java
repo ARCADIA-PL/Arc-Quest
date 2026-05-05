@@ -16,9 +16,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.quest.api.CountingMode;
-import org.arcadia.arc_quest.quest.api.ObjectiveType;
-import org.arcadia.arc_quest.quest.api.QuestState;
+import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
@@ -161,6 +159,11 @@ public final class QuestEventManager {
 
         ObjectiveKey key = new ObjectiveKey(type, targetId);
         CollectionObjectiveDispatcher.dispatch(player, key, amount, collectionUniqueKey(type, targetId));
+        processProgressionMatches(player, key, amount);
+        processProgressionFallbackScan(player, type, targetId, amount);
+    }
+
+    private static void processProgressionMatches(ServerPlayer player, ObjectiveKey key, int amount) {
         Set<TrackedObjective> matches = ObjectiveTracker.INSTANCE.lookup(key);
         if (matches.isEmpty()) return;
 
@@ -181,6 +184,62 @@ public final class QuestEventManager {
             objectives.sort(Comparator.comparingInt(TrackedObjective::getObjectiveIndex));
             distributeAmountInPhase(player, groupKey.questId(), groupKey.phaseId(), objectives, amount);
         }
+    }
+
+    private static void processProgressionFallbackScan(ServerPlayer player,
+                                                       ObjectiveType type,
+                                                       ResourceLocation targetId,
+                                                       int amount) {
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        if (cap == null) return;
+
+        for (QuestRuntimeData data : cap.getAllActiveQuests().values()) {
+            if (data.getState() != QuestState.ACTIVE) continue;
+
+            QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
+            if (def == null || def.isCollectionQuest()) continue;
+
+            for (String phaseId : data.getActivePhaseIds()) {
+                PhaseDefinition phase = def.getPhase(phaseId);
+                if (phase == null) continue;
+
+                List<TrackedObjective> objectives = matchingObjectives(player, cap, def, phase, type, targetId);
+                if (objectives.isEmpty()) continue;
+                objectives.sort(Comparator.comparingInt(TrackedObjective::getObjectiveIndex));
+                distributeAmountInPhase(player, data.getQuestId(), phaseId, objectives, amount);
+            }
+        }
+    }
+
+    private static List<TrackedObjective> matchingObjectives(ServerPlayer player,
+                                                             IQuestCapability cap,
+                                                             QuestDefinition def,
+                                                             PhaseDefinition phase,
+                                                             ObjectiveType type,
+                                                             ResourceLocation targetId) {
+        List<TrackedObjective> matches = new ArrayList<>();
+        List<ObjectiveEntry> objectives = phase.getObjectives();
+        for (int i = 0; i < objectives.size(); i++) {
+            ObjectiveEntry obj = objectives.get(i);
+            if (obj.getType() != type) continue;
+            if (!objectiveMatchesTarget(obj, targetId)) continue;
+            matches.add(new TrackedObjective(
+                    player.getUUID(),
+                    def.getId(),
+                    phase.getPhaseId(),
+                    i,
+                    new ObjectiveKey(type, targetId),
+                    QuestProgressHandler.resolveRequiredCount(player, obj, cap)
+            ));
+        }
+        return matches;
+    }
+
+    private static boolean objectiveMatchesTarget(ObjectiveEntry obj, ResourceLocation targetId) {
+        if (targetId.equals(obj.getTargetId())) return true;
+        String tag = obj.getExtra("target_tag");
+        if (tag == null || tag.isEmpty()) return false;
+        return QuestProgressHandler.objectiveKeyTargets(obj).contains(targetId);
     }
 
     private static void distributeAmountInPhase(ServerPlayer player,
