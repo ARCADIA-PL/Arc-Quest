@@ -246,6 +246,8 @@ public final class CollectionQuestEngine {
         }
 
         runtime.completePhase(phaseId);
+        evaluateRewardUnlocks(player, cap, def, runtime, phaseId);
+        evaluateCategoryStates(player, cap, def, runtime, entryConfig.getCategoryId());
         evaluateQuestState(player, cap, def, runtime);
         return true;
     }
@@ -254,6 +256,34 @@ public final class CollectionQuestEngine {
                                              IQuestCapability cap,
                                              QuestDefinition def,
                                              QuestRuntimeData runtime) {
+        if (runtime.getState() == QuestState.COMPLETED) {
+            return false;
+        }
+        CollectionQuestConfig config = def.getCollectionConfig();
+        CollectionRuntimeData collectionData = runtime.getCollectionData();
+        if (config == null || collectionData == null) {
+            return false;
+        }
+
+        boolean completed;
+        if (config.getQuestCompletionRules().isEmpty()) {
+            completed = areAllCollectionEntriesCompleted(def, runtime);
+        } else {
+            CollectionRuleContext context = new CollectionRuleContext(player, def, runtime, collectionData, cap, null);
+            completed = config.getQuestCompletionRules().stream().allMatch(rule -> rule.test(context));
+        }
+        if (!completed) {
+            return false;
+        }
+
+        runtime.setState(QuestState.COMPLETED);
+        cap.markCompleted(def.getId().toString());
+        evaluateQuestRewardUnlocks(player, cap, def, runtime);
+        QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
+        return true;
+    }
+
+    private static boolean areAllCollectionEntriesCompleted(QuestDefinition def, QuestRuntimeData runtime) {
         LinkedHashSet<String> collectionPhaseIds = new LinkedHashSet<>();
         for (String phaseId : def.getPhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
@@ -269,10 +299,6 @@ public final class CollectionQuestEngine {
                 return false;
             }
         }
-
-        runtime.setState(QuestState.COMPLETED);
-        cap.markCompleted(def.getId().toString());
-        QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
         return true;
     }
 
@@ -299,6 +325,21 @@ public final class CollectionQuestEngine {
             }
         }
         return false;
+    }
+
+    private static void evaluateQuestRewardUnlocks(ServerPlayer player,
+                                                   IQuestCapability cap,
+                                                   QuestDefinition def,
+                                                   QuestRuntimeData runtime) {
+        CollectionQuestConfig config = def.getCollectionConfig();
+        CollectionRuntimeData collectionData = runtime.getCollectionData();
+        if (config == null || collectionData == null) return;
+
+        CollectionRuleContext questContext = new CollectionRuleContext(player, def, runtime, collectionData, cap, null);
+        String questOwnerId = def.getId().toString();
+        for (CollectionRewardNode node : config.getQuestRewardNodes()) {
+            tryGrantRewardNode(player, collectionData, questContext, node, questOwnerId);
+        }
     }
 
     public static void evaluateRewardUnlocks(ServerPlayer player,
