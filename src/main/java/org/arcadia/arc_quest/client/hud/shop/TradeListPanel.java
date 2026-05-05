@@ -19,7 +19,6 @@ import java.util.Map;
 
 public class TradeListPanel {
     public static final int CARD_HEIGHT = 48;
-    private static final int ITEM_RENDER_BUDGET = 36;
     private static final long CACHE_VALID_MS = 100;
     private static final int STRIDE = CARD_HEIGHT + 8;
     private final TradeScreen screen;
@@ -237,7 +236,6 @@ public class TradeListPanel {
         // PASS 2: 纯 3D 渲染通道
         // =========================================================================
         if (contentScale > 0.01f) {
-            int renderedItems = 0;
             for (int i = firstVisible; i <= lastVisible; i++) {
                 TradeEntry entry = entries.get(i);
                 EntryRenderState state = stateCache.get(entry.getEntryId());
@@ -255,13 +253,12 @@ public class TradeListPanel {
                 g.pose().scale(aScale, aScale, 1f);
                 g.pose().translate(-(cx + cw / 2f), -(cy + ch / 2f), 0);
 
-                if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty() && renderedItems < ITEM_RENDER_BUDGET) {
+                if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty()) {
                     g.pose().pushPose();
                     g.pose().translate(cx + 12, cy + 16, 0);
                     g.pose().scale(1.2f, 1.2f, 1f);
                     g.renderItem(visual.mainStack, 0, 0);
                     g.pose().popPose();
-                    renderedItems++;
                 }
 
                 int textX = cx + 52 + (int) (4 * hEase);
@@ -270,13 +267,12 @@ public class TradeListPanel {
                     CostVisual cost = visual.costs.get(j);
                     if (j > 0) cX += plusWidth + 2;
 
-                    if (cost.icon() == null && !cost.stack().isEmpty() && renderedItems < ITEM_RENDER_BUDGET) {
+                    if (cost.icon() == null && !cost.stack().isEmpty()) {
                         g.pose().pushPose();
                         g.pose().translate(cX, costY - 1, 0);
                         g.pose().scale(0.6f, 0.6f, 1f);
                         g.renderItem(cost.stack(), 0, 0);
                         g.pose().popPose();
-                        renderedItems++;
                     }
 
                     cX += 12 + cost.textWidth() + 4;
