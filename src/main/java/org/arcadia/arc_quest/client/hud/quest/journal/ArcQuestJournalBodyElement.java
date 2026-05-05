@@ -1,14 +1,10 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.mutil.animation.ArcAnimClock;
 import org.arcadia.arc_quest.mutil.theme.ArcDrawUtil;
-import org.arcadia.arc_quest.mutil.text.ArcTextLayoutUtil;
 import org.arcadia.arc_quest.mutil.core.ArcGuiElement;
-import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.history.ArcQuestHistoryPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.offer.ArcQuestOfferPanelElement;
 import org.arcadia.arc_quest.client.hud.quest.arcmutil.panel.intel.ArcQuestIntelPanelElement;
@@ -29,6 +25,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
     private final QuestJournalScreen screen;
     private final ArcQuestJournalHeaderElement headerElement;
     private final ArcQuestJournalDetailScrollbarElement scrollbarElement;
+    private final ArcQuestJournalWatermarkElement watermarkElement;
     private final String questCompletedText = Component.translatable("arc_quest.gui.journal.label.quest_completed").getString();
     private final String questFailedText = Component.translatable("arc_quest.gui.journal.label.quest_failed").getString();
     private final String selectQuestText = Component.translatable("arc_quest.gui.journal.label.select_quest").getString();
@@ -40,6 +37,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         this.screen = screen;
         this.headerElement = new ArcQuestJournalHeaderElement(screen);
         this.scrollbarElement = new ArcQuestJournalDetailScrollbarElement(screen);
+        this.watermarkElement = new ArcQuestJournalWatermarkElement();
 
 
 
@@ -82,15 +80,7 @@ public class ArcQuestJournalBodyElement extends ArcGuiElement {
         int scrollAreaY = y, scrollAreaH = h - 40, scrollAreaW = w - 8;
         screen.enableScissor(g, x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
 
-        def.getSplashConfig(SplashType.QUEST_DETAIL).ifPresent(asset -> {
-            RenderSystem.enableBlend();
-            float watermarkAlpha = 0.15f * dAlpha;
-            int rw = (int) (w * 0.7f), rh = rw;
-            int rx = x + w / 2 - rw / 2 + (int) ((1f - detailReveal) * 50f), ry = scrollAreaY + scrollAreaH / 2 - rh / 2;
-            RenderSystem.setShaderColor(1f, 1f, 1f, watermarkAlpha);
-            QuestIconRenderer.renderIcon(g, asset, rx, ry, rw, rh);
-            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        });
+        watermarkElement.render(g, def, x, scrollAreaY, w, scrollAreaH, detailReveal, dAlpha);
 
         g.pose().pushPose();
         double detailScrollOffset = scrollbarElement.getScrollOffset();
