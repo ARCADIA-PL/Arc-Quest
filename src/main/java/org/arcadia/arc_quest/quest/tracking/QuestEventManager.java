@@ -16,12 +16,14 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.quest.api.CountingMode;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveDispatcher;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
@@ -127,7 +129,16 @@ public final class QuestEventManager {
                     double dy = player.getY() - y;
                     double dz = player.getZ() - z;
                     if ((dx * dx + dy * dy + dz * dz) <= (radius * radius)) {
-                        QuestProgressHandler.incrementObjective(player, data.getQuestId(), phaseId, i, 1);
+                        if (def.isCollectionQuest()) {
+                            var entryConfig = phase.getCollectionEntryConfig();
+                            if (entryConfig != null && entryConfig.getCountingMode() == CountingMode.UNIQUE_SET) {
+                                QuestProgressHandler.addCollectionUniqueKey(player, data.getQuestId(), phaseId, collectionUniqueKey(ObjectiveType.REACH_LOCATION, obj.getTargetId()));
+                            } else {
+                                QuestProgressHandler.incrementCollectionEntry(player, data.getQuestId(), phaseId, 1);
+                            }
+                        } else {
+                            QuestProgressHandler.incrementObjective(player, data.getQuestId(), phaseId, i, 1);
+                        }
                     }
                 }
             }
@@ -149,6 +160,7 @@ public final class QuestEventManager {
         if (amount <= 0) return;
 
         ObjectiveKey key = new ObjectiveKey(type, targetId);
+        CollectionObjectiveDispatcher.dispatch(player, key, amount, collectionUniqueKey(type, targetId));
         Set<TrackedObjective> matches = ObjectiveTracker.INSTANCE.lookup(key);
         if (matches.isEmpty()) return;
 
@@ -240,6 +252,10 @@ public final class QuestEventManager {
             ServerPlayer sp = server.getPlayerList().getPlayer(uuid);
             if (sp != null) notifyExplore(sp, locationId);
         }
+    }
+
+    private static String collectionUniqueKey(ObjectiveType type, ResourceLocation targetId) {
+        return type.name().toLowerCase(Locale.ROOT) + ":" + targetId;
     }
 
     private static String firstNonEmpty(String... candidates) {
