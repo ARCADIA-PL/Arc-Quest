@@ -13,6 +13,7 @@ public class S2COfferSubmitResultPacket {
     private final String phaseId;
     private final int objectiveIndex;
     private final CloseMode closeMode;
+
     public S2COfferSubmitResultPacket(String questId, String phaseId, int objectiveIndex, CloseMode closeMode) {
         this.questId = questId;
         this.phaseId = phaseId;

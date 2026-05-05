@@ -183,6 +183,7 @@ public final class QuestToastManager {
         COLLECTION_ENTRY_DISCOVERED(0xA98BFF, "arc_quest.toast.prefix.collection_entry_discovered"),
         COLLECTION_ENTRY_COMPLETED(0x7CFFB2, "arc_quest.toast.prefix.collection_entry_completed"),
         COLLECTION_REWARD_UNLOCKED(0xFFD166, "arc_quest.toast.prefix.collection_reward_unlocked"),
+        COLLECTION_REWARD_CLAIMED(0xFFE6A3, "arc_quest.toast.prefix.collection_reward_claimed"),
         PHASE_ADVANCED(0xFFCC44, "arc_quest.toast.prefix.phase_advanced"),
         OBJECTIVE_COMPLETE(0x88DDFF, "arc_quest.toast.prefix.objective_complete");
 

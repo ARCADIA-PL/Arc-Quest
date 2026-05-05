@@ -11,6 +11,7 @@ public class S2CDialogueTranscriptDeltaPacket {
 
     private final UUID sessionId;
     private final Entry entry;
+
     public S2CDialogueTranscriptDeltaPacket(UUID sessionId, Entry entry) {
         this.sessionId = sessionId;
         this.entry = entry;
