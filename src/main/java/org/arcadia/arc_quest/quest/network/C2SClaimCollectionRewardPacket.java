@@ -10,6 +10,7 @@ import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.profile.CollectionQuestEngine;
+import org.arcadia.arc_quest.quest.logic.profile.CollectionRewardClaimResult;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import java.util.function.Supplier;
@@ -59,15 +60,12 @@ public class C2SClaimCollectionRewardPacket {
                 return;
             }
 
-            boolean ok = CollectionQuestEngine.claimReward(sender, cap, def, runtime, pkt.rewardNodeId);
-            if (ok) {
+            CollectionRewardClaimResult result = CollectionQuestEngine.claimRewardWithResult(sender, cap, def, runtime, pkt.rewardNodeId);
+            if (result.isOk()) {
                 QuestSyncCoordinator.syncQuestStateAndPush(sender, runtime);
-                ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender),
-                        new S2CQuestActionResultPacket(C2SRequestQuestActionPacket.Action.CLAIM_COLLECTION_REWARD, pkt.questId, QuestRejectCodeDictionary.Code.OK));
-            } else {
-                ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender),
-                        new S2CQuestActionResultPacket(C2SRequestQuestActionPacket.Action.CLAIM_COLLECTION_REWARD, pkt.questId, QuestRejectCodeDictionary.Code.UNKNOWN));
             }
+            ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> sender),
+                    new S2CQuestActionResultPacket(C2SRequestQuestActionPacket.Action.CLAIM_COLLECTION_REWARD, pkt.questId, result.toRejectCode()));
         });
         ctx.get().setPacketHandled(true);
     }

@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;
+import org.arcadia.arc_quest.quest.logic.profile.CollectionEntryUpdateResult;
 import org.arcadia.arc_quest.quest.logic.profile.CollectionQuestEngine;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
@@ -194,8 +195,8 @@ public final class QuestProgressHandler {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        int next = CollectionQuestEngine.incrementEntry(player, cap, def, data, phaseId, amount);
-        if (next > 0) {
+        CollectionEntryUpdateResult result = CollectionQuestEngine.incrementEntryWithResult(player, cap, def, data, phaseId, amount);
+        if (result.isChanged()) {
             syncQuestStateAndPush(player, data);
         }
     }
@@ -210,7 +211,8 @@ public final class QuestProgressHandler {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        if (CollectionQuestEngine.discoverEntry(def, data, phaseId)) {
+        CollectionEntryUpdateResult result = CollectionQuestEngine.discoverEntryWithResult(def, data, phaseId);
+        if (result.isChanged()) {
             syncQuestStateAndPush(player, data);
         }
     }
@@ -228,7 +230,8 @@ public final class QuestProgressHandler {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        if (CollectionQuestEngine.addUniqueProgress(player, cap, def, data, phaseId, uniqueKey)) {
+        CollectionEntryUpdateResult result = CollectionQuestEngine.addUniqueProgressWithResult(player, cap, def, data, phaseId, uniqueKey);
+        if (result.isChanged()) {
             syncQuestStateAndPush(player, data);
         }
     }

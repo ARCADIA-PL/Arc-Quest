@@ -115,17 +115,29 @@ public final class CollectionQuestEngine {
                                      QuestRuntimeData runtime,
                                      String phaseId,
                                      int amount) {
+        return incrementEntryWithResult(player, cap, def, runtime, phaseId, amount).getNextCount();
+    }
+
+    public static CollectionEntryUpdateResult incrementEntryWithResult(ServerPlayer player,
+                                                                       IQuestCapability cap,
+                                                                       QuestDefinition def,
+                                                                       QuestRuntimeData runtime,
+                                                                       String phaseId,
+                                                                       int amount) {
+        if (amount <= 0) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.INVALID_AMOUNT, phaseId);
+        }
         CollectionRuntimeData collectionData = runtime.getCollectionData();
-        if (collectionData == null || amount <= 0) {
-            return 0;
+        if (collectionData == null) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.NO_COLLECTION_DATA, phaseId);
         }
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) {
-            return 0;
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.PHASE_NOT_FOUND, phaseId);
         }
         CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
         if (entryConfig == null) {
-            return 0;
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.ENTRY_CONFIG_MISSING, phaseId);
         }
 
         int max = entryConfig.getMaxCount() > 0 ? entryConfig.getMaxCount() : entryConfig.getCompletionTarget();
@@ -134,23 +146,37 @@ public final class CollectionQuestEngine {
         collectionData.markVisible(phaseId);
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
         collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
-        evaluateEntryCompletion(player, cap, def, runtime, phaseId);
-        return next;
+        boolean entryCompleted = evaluateEntryCompletion(player, cap, def, runtime, phaseId);
+        boolean questCompleted = runtime.getState() == QuestState.COMPLETED;
+        return CollectionEntryUpdateResult.ok(phaseId, next, entryCompleted, questCompleted);
     }
 
     public static boolean discoverEntry(QuestDefinition def,
                                         QuestRuntimeData runtime,
                                         String phaseId) {
+        return discoverEntryWithResult(def, runtime, phaseId).isChanged();
+    }
+
+    public static CollectionEntryUpdateResult discoverEntryWithResult(QuestDefinition def,
+                                                                      QuestRuntimeData runtime,
+                                                                      String phaseId) {
         CollectionRuntimeData collectionData = runtime.getCollectionData();
+        if (collectionData == null) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.NO_COLLECTION_DATA, phaseId);
+        }
         PhaseDefinition phase = def.getPhase(phaseId);
-        if (collectionData == null || phase == null || !phase.hasCollectionEntryConfig()) {
-            return false;
+        if (phase == null) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.PHASE_NOT_FOUND, phaseId);
+        }
+        CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
+        if (entryConfig == null) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.ENTRY_CONFIG_MISSING, phaseId);
         }
         collectionData.markDiscovered(phaseId);
         collectionData.markVisible(phaseId);
-        collectionData.markUpdated(phaseId, phase.getCollectionEntryConfig().getCategoryId(), System.currentTimeMillis());
+        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
-        return true;
+        return CollectionEntryUpdateResult.ok(phaseId, collectionData.getEntryCount(phaseId), false, runtime.getState() == QuestState.COMPLETED);
     }
 
     public static boolean addUniqueProgress(ServerPlayer player,
@@ -159,26 +185,42 @@ public final class CollectionQuestEngine {
                                             QuestRuntimeData runtime,
                                             String phaseId,
                                             String uniqueKey) {
+        return addUniqueProgressWithResult(player, cap, def, runtime, phaseId, uniqueKey).isChanged();
+    }
+
+    public static CollectionEntryUpdateResult addUniqueProgressWithResult(ServerPlayer player,
+                                                                          IQuestCapability cap,
+                                                                          QuestDefinition def,
+                                                                          QuestRuntimeData runtime,
+                                                                          String phaseId,
+                                                                          String uniqueKey) {
+        if (uniqueKey == null || uniqueKey.isEmpty()) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.INVALID_UNIQUE_KEY, phaseId);
+        }
         CollectionRuntimeData collectionData = runtime.getCollectionData();
+        if (collectionData == null) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.NO_COLLECTION_DATA, phaseId);
+        }
         PhaseDefinition phase = def.getPhase(phaseId);
-        if (collectionData == null || phase == null || uniqueKey == null || uniqueKey.isEmpty()) {
-            return false;
+        if (phase == null) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.PHASE_NOT_FOUND, phaseId);
         }
         CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
         if (entryConfig == null) {
-            return false;
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.ENTRY_CONFIG_MISSING, phaseId);
         }
         boolean added = collectionData.addUniqueKey(phaseId, uniqueKey);
         if (!added) {
-            return false;
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.DUPLICATE_UNIQUE_KEY, phaseId);
         }
         collectionData.markDiscovered(phaseId);
         collectionData.markVisible(phaseId);
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
         int next = collectionData.incrementEntryCount(phaseId, 1, entryConfig.getMaxCount() > 0 ? entryConfig.getMaxCount() : entryConfig.getCompletionTarget());
         collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
-        evaluateEntryCompletion(player, cap, def, runtime, phaseId);
-        return next > 0;
+        boolean entryCompleted = evaluateEntryCompletion(player, cap, def, runtime, phaseId);
+        boolean questCompleted = runtime.getState() == QuestState.COMPLETED;
+        return CollectionEntryUpdateResult.ok(phaseId, next, entryCompleted, questCompleted);
     }
 
     public static boolean evaluateEntryCompletion(ServerPlayer player,
@@ -286,37 +328,62 @@ public final class CollectionQuestEngine {
                                       QuestDefinition def,
                                       QuestRuntimeData runtime,
                                       String rewardNodeId) {
+        return claimRewardWithResult(player, cap, def, runtime, rewardNodeId).isOk();
+    }
+
+    public static CollectionRewardClaimResult claimRewardWithResult(ServerPlayer player,
+                                                                    IQuestCapability cap,
+                                                                    QuestDefinition def,
+                                                                    QuestRuntimeData runtime,
+                                                                    String rewardNodeId) {
         CollectionQuestConfig config = def.getCollectionConfig();
         CollectionRuntimeData collectionData = runtime.getCollectionData();
-        if (config == null || collectionData == null || rewardNodeId == null || rewardNodeId.isEmpty()) return false;
-        if (!collectionData.isRewardUnlocked(rewardNodeId) || collectionData.isRewardClaimed(rewardNodeId))
-            return false;
+        if (rewardNodeId == null || rewardNodeId.isEmpty()) {
+            return CollectionRewardClaimResult.rejected(CollectionRewardClaimResult.Status.INVALID_REWARD_ID, rewardNodeId);
+        }
+        if (config == null) {
+            return CollectionRewardClaimResult.rejected(CollectionRewardClaimResult.Status.NO_COLLECTION_CONFIG, rewardNodeId);
+        }
+        if (collectionData == null) {
+            return CollectionRewardClaimResult.rejected(CollectionRewardClaimResult.Status.NO_COLLECTION_DATA, rewardNodeId);
+        }
+        if (!collectionData.isRewardUnlocked(rewardNodeId)) {
+            return CollectionRewardClaimResult.rejected(CollectionRewardClaimResult.Status.NOT_UNLOCKED, rewardNodeId);
+        }
+        if (collectionData.isRewardClaimed(rewardNodeId)) {
+            return CollectionRewardClaimResult.rejected(CollectionRewardClaimResult.Status.ALREADY_CLAIMED, rewardNodeId);
+        }
 
+        CollectionRewardNode node = findRewardNode(def, config, rewardNodeId);
+        if (node == null) {
+            return CollectionRewardClaimResult.rejected(CollectionRewardClaimResult.Status.REWARD_NODE_NOT_FOUND, rewardNodeId);
+        }
+        if (node.getGrantMode() != EntryRewardGrantMode.MANUAL) {
+            return CollectionRewardClaimResult.rejected(CollectionRewardClaimResult.Status.NOT_MANUAL_REWARD, rewardNodeId);
+        }
+        grantNodeRewards(player, collectionData, node);
+        return CollectionRewardClaimResult.ok(rewardNodeId);
+    }
+
+    private static CollectionRewardNode findRewardNode(QuestDefinition def,
+                                                       CollectionQuestConfig config,
+                                                       String rewardNodeId) {
         for (CollectionRewardNode node : config.getQuestRewardNodes()) {
-            if (rewardNodeId.equals(node.getRewardNodeId()) && node.getGrantMode() == EntryRewardGrantMode.MANUAL) {
-                grantNodeRewards(player, collectionData, node);
-                return true;
-            }
+            if (rewardNodeId.equals(node.getRewardNodeId())) return node;
         }
         for (CollectionCategoryDefinition category : config.getCategories()) {
             for (CollectionRewardNode node : category.getRewardNodes()) {
-                if (rewardNodeId.equals(node.getRewardNodeId()) && node.getGrantMode() == EntryRewardGrantMode.MANUAL) {
-                    grantNodeRewards(player, collectionData, node);
-                    return true;
-                }
+                if (rewardNodeId.equals(node.getRewardNodeId())) return node;
             }
         }
         for (String phaseId : def.getPhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
             if (phase == null || phase.getCollectionEntryConfig() == null) continue;
             for (CollectionRewardNode node : phase.getCollectionEntryConfig().getRewardNodes()) {
-                if (rewardNodeId.equals(node.getRewardNodeId()) && node.getGrantMode() == EntryRewardGrantMode.MANUAL) {
-                    grantNodeRewards(player, collectionData, node);
-                    return true;
-                }
+                if (rewardNodeId.equals(node.getRewardNodeId())) return node;
             }
         }
-        return false;
+        return null;
     }
 
     private static void tryGrantRewardNode(ServerPlayer player,
