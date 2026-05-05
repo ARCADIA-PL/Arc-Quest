@@ -187,7 +187,7 @@ public final class JournalDetailCollection {
             boolean hover = mx >= x && mx <= x + CW && my >= cy && my <= cy + CH;
 
             card(g, q, rt, p, x, cy, a, theme, time, hover, dt, i);
-            cards.add(new Card(x, cy, CW, CH, q, p.getPhaseId()));
+            cards.add(new Card(x, cy, CW, CH, q, p.getPhaseId(), !rt.isPhaseCompleted(p.getPhaseId())));
 
             if (hover) tooltip(q, p);
             i++;
@@ -200,7 +200,7 @@ public final class JournalDetailCollection {
         CollectionEntryConfig c = p.getCollectionEntryConfig();
         boolean seen = ClientQuestCache.INSTANCE.isCollectionEntryDiscovered(q, id);
         boolean done = rt.isPhaseCompleted(id);
-        boolean tracked = q.equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) && id.equals(QuestHudOverlay.INSTANCE.getTrackedPhaseId());
+        boolean tracked = !done && q.equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) && id.equals(QuestHudOverlay.INSTANCE.getTrackedPhaseId());
         boolean rewardReady = hasClaimableReward(q, c.getRewardNodes());
 
         int cnt = ClientQuestCache.INSTANCE.getCollectionEntryCount(q, id);
@@ -369,7 +369,7 @@ public final class JournalDetailCollection {
         lines.add(Component.literal("Progress: " + cnt + "/" + tar + " · " + c.getCountingMode().name()).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
         if (rewardReady)
             lines.add(Component.literal("Entry Reward: Claimable").withStyle(Style.EMPTY.withColor(0xFFD166)));
-        lines.add(Component.literal(done ? "Completed" : "Click to track this entry").withStyle(Style.EMPTY.withColor(done ? 0x88FF88 : 0xFFD166)));
+        lines.add(Component.literal(done ? "Completed · tracking disabled" : "Click to track this entry").withStyle(Style.EMPTY.withColor(done ? 0x88FF88 : 0xFFD166)));
         screen.setHoveredCustomTooltip(lines);
     }
 
@@ -438,6 +438,7 @@ public final class JournalDetailCollection {
             }
         for (Card c : cards)
             if (mx >= c.x && mx <= c.x + c.w && my >= c.y && my <= c.y + c.h) {
+                if (!c.trackable) return true;
                 QuestHudOverlay.INSTANCE.setTrackedFocus(c.questId, c.phaseId);
                 screen.playClick();
                 return true;
@@ -464,7 +465,7 @@ public final class JournalDetailCollection {
     private record Btn(int x, int y, int w, int h, String id) {
     }
 
-    private record Card(int x, int y, int w, int h, String questId, String phaseId) {
+    private record Card(int x, int y, int w, int h, String questId, String phaseId, boolean trackable) {
     }
 
     private record Row(String label, String id, State s) {
