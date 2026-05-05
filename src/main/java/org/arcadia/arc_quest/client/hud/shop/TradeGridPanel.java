@@ -19,6 +19,7 @@ import java.util.Map;
 
 public class TradeGridPanel {
 
+    private static final int ITEM_RENDER_BUDGET = 48;
     private static final long CACHE_VALID_MS = 100;
     private final SimpleTradePanel screen;
     private final Font font;
@@ -261,6 +262,7 @@ public class TradeGridPanel {
         // =========================================================================
         // PASS 2: 纯 3D 渲染通道 (原版 ItemStack)
         // =========================================================================
+        int renderedItems = 0;
         for (int i = 0; i < entries.size(); i++) {
             FrameAnimData fd = animData[i];
             if (!fd.visible || fd.contentScale <= 0.01f) continue;
@@ -280,8 +282,9 @@ public class TradeGridPanel {
             g.pose().translate(-cX, -cY, 0);
 
             int itemDrawY = (int) fd.drawY + (l.cardH() - 16) / 2;
-            if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty()) {
+            if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty() && renderedItems < ITEM_RENDER_BUDGET) {
                 g.renderItem(visual.mainStack, (int) fd.drawX + 6, itemDrawY);
+                renderedItems++;
             }
 
             int costX = (int) fd.drawX + 26;
@@ -291,12 +294,13 @@ public class TradeGridPanel {
                 CostVisual cost = visual.costs.get(j);
                 if (j > 0) costX += plusWidth + 2;
 
-                if (cost.icon() == null && !cost.stack().isEmpty()) {
+                if (cost.icon() == null && !cost.stack().isEmpty() && renderedItems < ITEM_RENDER_BUDGET) {
                     g.pose().pushPose();
                     g.pose().translate(costX, costY - 1, 0);
                     g.pose().scale(0.6f, 0.6f, 1f);
                     g.renderItem(cost.stack(), 0, 0);
                     g.pose().popPose();
+                    renderedItems++;
                 }
                 costX += 12;
 
