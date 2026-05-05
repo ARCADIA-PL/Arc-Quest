@@ -12,6 +12,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
@@ -111,11 +113,13 @@ public class QuestJournalScreen extends Screen {
     }
 
     public void rebuildEntries() {
-        String lastSelectedQuestId = null;
+        String targetQuestId = resolveTargetQuestForOpen();
         List<String> lastActivePhases = null;
+        boolean hadLiveSelectionBeforeRebuild = false;
         if (selectedIndex >= 0 && selectedIndex < currentEntries.size()) {
-            lastSelectedQuestId = currentEntries.get(selectedIndex).questId();
-            var rt = ClientQuestCache.INSTANCE.getActiveQuest(lastSelectedQuestId);
+            hadLiveSelectionBeforeRebuild = true;
+            targetQuestId = currentEntries.get(selectedIndex).questId();
+            var rt = ClientQuestCache.INSTANCE.getActiveQuest(targetQuestId);
             if (rt != null) lastActivePhases = new ArrayList<>(rt.getActivePhaseIds());
         }
 
@@ -144,10 +148,10 @@ public class QuestJournalScreen extends Screen {
             }
         }
 
-        if (lastSelectedQuestId != null) {
+        if (targetQuestId != null) {
             for (int i = 0; i < currentEntries.size(); i++) {
-                if (currentEntries.get(i).questId().equals(lastSelectedQuestId)) {
-                    var rt = ClientQuestCache.INSTANCE.getActiveQuest(lastSelectedQuestId);
+                if (currentEntries.get(i).questId().equals(targetQuestId)) {
+                    var rt = ClientQuestCache.INSTANCE.getActiveQuest(targetQuestId);
                     List<String> currentPhases = rt != null ? new ArrayList<>(rt.getActivePhaseIds()) : null;
                     boolean phasesChanged = false;
                     if (lastActivePhases == null && currentPhases != null) phasesChanged = true;
@@ -156,8 +160,10 @@ public class QuestJournalScreen extends Screen {
                         if (lastActivePhases.size() != currentPhases.size() || !lastActivePhases.containsAll(currentPhases))
                             phasesChanged = true;
                     }
-                    if (!phasesChanged) {
+                    if (!hadLiveSelectionBeforeRebuild || !phasesChanged) {
                         selectedIndex = i;
+                        listPanel.resetState();
+                        detailPanel.resetState();
                         return;
                     }
                     break;
@@ -180,6 +186,10 @@ public class QuestJournalScreen extends Screen {
         }
         if (QuestOfferPanel.isActive()) {
             QuestOfferPanel.keyPressed(keyCode);
+            return true;
+        }
+        if (CollectionHistoryPanel.isActive()) {
+            CollectionHistoryPanel.keyPressed(keyCode);
             return true;
         }
         if (QuestHistoryPanel.isActive()) {
@@ -221,6 +231,10 @@ public class QuestJournalScreen extends Screen {
             QuestOfferPanel.mouseClicked(smx, smy, button);
             return true;
         }
+        if (CollectionHistoryPanel.isActive()) {
+            CollectionHistoryPanel.mouseClicked(smx, smy, button);
+            return true;
+        }
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseClicked(smx, smy, button);
             return true;
@@ -251,6 +265,7 @@ public class QuestJournalScreen extends Screen {
         double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight();
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
+        if (CollectionHistoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseDragged(smx, smy);
             return true;
@@ -265,6 +280,7 @@ public class QuestJournalScreen extends Screen {
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
+        if (CollectionHistoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseReleased(button);
             return true;
@@ -281,6 +297,7 @@ public class QuestJournalScreen extends Screen {
         int sw = getScaledWidth(), sh = getScaledHeight();
 
         if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
+        if (CollectionHistoryPanel.isActive()) return true;
         if (QuestHistoryPanel.isActive()) {
             QuestHistoryPanel.mouseScrolled(smx, smy, delta);
             return true;
@@ -316,7 +333,7 @@ public class QuestJournalScreen extends Screen {
         lastRenderTime = now;
         if (realDt > 0.1f) realDt = 0.1f;
 
-        boolean intelActive = QuestIntelPanel.isActive(), offerActive = QuestOfferPanel.isActive(), historyActive = QuestHistoryPanel.isActive(), storyActive = QuestStoryPanel.isActive();
+        boolean intelActive = QuestIntelPanel.isActive(), offerActive = QuestOfferPanel.isActive(), collectionHistoryActive = CollectionHistoryPanel.isActive(), historyActive = QuestHistoryPanel.isActive(), storyActive = QuestStoryPanel.isActive();
 
         if (QuestSplashRenderer.isActive()) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
@@ -371,6 +388,7 @@ public class QuestJournalScreen extends Screen {
 
         if (intelActive) QuestIntelPanel.render(g, sw, sh, partialTick);
         if (offerActive) QuestOfferPanel.render(g, smx, smy, partialTick);
+        if (collectionHistoryActive) CollectionHistoryPanel.render(g, smx, smy, partialTick);
         if (historyActive) QuestHistoryPanel.render(g, smx, smy, partialTick);
         if (storyActive) QuestStoryPanel.render(g, smx, smy, partialTick);
 
@@ -383,7 +401,7 @@ public class QuestJournalScreen extends Screen {
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
         boolean hasCustom = hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty();
         boolean hasItem = hoveredRewardTooltip != null;
-        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive() && !QuestHistoryPanel.isActive() && !QuestStoryPanel.isActive();
+        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive() && !CollectionHistoryPanel.isActive() && !QuestHistoryPanel.isActive() && !QuestStoryPanel.isActive();
 
         if (isHoveringValid) {
             if (hasCustom) {
@@ -539,6 +557,24 @@ public class QuestJournalScreen extends Screen {
             this.detailPanel.resetState();
             playClick();
         }
+    }
+
+    private String resolveTargetQuestForOpen() {
+        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        if (trackedQuestId == null || trackedQuestId.isEmpty()) return null;
+        if (ClientQuestCache.INSTANCE.isQuestActive(trackedQuestId)) {
+            currentTab = JournalTypes.Tab.ACTIVE;
+            return trackedQuestId;
+        }
+        if (ClientQuestCache.INSTANCE.isQuestCompleted(trackedQuestId)) {
+            currentTab = JournalTypes.Tab.COMPLETED;
+            return trackedQuestId;
+        }
+        if (ClientQuestCache.INSTANCE.isQuestFailed(trackedQuestId)) {
+            currentTab = JournalTypes.Tab.FAILED;
+            return trackedQuestId;
+        }
+        return null;
     }
 
     public void playClick() {

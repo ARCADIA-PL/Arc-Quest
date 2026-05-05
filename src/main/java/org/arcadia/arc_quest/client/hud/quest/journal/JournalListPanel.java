@@ -26,9 +26,20 @@ public class JournalListPanel {
     public void resetState() {
         entryHoverAnim = new float[screen.getCurrentEntries().size()];
         selectedSlide = screen.getSelectedIndex();
-        targetScroll = 0;
-        scrollOffset = 0;
+        scrollToSelected();
         textCache.clear();
+    }
+
+    private void scrollToSelected() {
+        int idx = screen.getSelectedIndex();
+        if (idx < 0) {
+            targetScroll = 0;
+            scrollOffset = 0;
+            return;
+        }
+        int selectedTop = idx * JournalConstants.ENTRY_HEIGHT;
+        targetScroll = Math.max(0, selectedTop - JournalConstants.ENTRY_HEIGHT);
+        scrollOffset = targetScroll;
     }
 
     public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
