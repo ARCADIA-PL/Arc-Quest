@@ -11,6 +11,8 @@ import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionCategorySnapshot;
+import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionCategoryStateResolver;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 
@@ -287,7 +289,10 @@ public final class CollectionQuestEngine {
         for (CollectionCategoryDefinition category : config.getCategories()) {
             if (!categoryId.equals(category.getCategoryId())) continue;
             CollectionRuleContext context = new CollectionRuleContext(player, def, runtime, collectionData, cap, categoryId);
-            boolean completed = category.getCompletionRules().isEmpty() || category.getCompletionRules().stream().allMatch(rule -> rule.test(context));
+            CollectionCategorySnapshot snapshot = CollectionCategoryStateResolver.snapshot(context, categoryId);
+            boolean completed = category.getCompletionRules().isEmpty()
+                    ? snapshot.isCompleted()
+                    : category.getCompletionRules().stream().allMatch(rule -> rule.test(context));
             if (completed) {
                 evaluateRewardUnlocks(player, cap, def, runtime, categoryId);
                 return true;
