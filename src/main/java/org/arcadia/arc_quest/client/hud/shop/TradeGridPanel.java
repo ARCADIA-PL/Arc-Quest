@@ -334,10 +334,12 @@ public class TradeGridPanel {
             visual.name = entry.getDisplayName().getString();
             visual.nameWidth = font.width(visual.name);
             visual.mainStack = screen.getIconStackForEntry(entry);
+            visual.hasItemStackIcons = !visual.mainStack.isEmpty() && entry.getRewardIcon() == null;
             visual.costs = new ArrayList<>();
             for (ITradeOffer cost : entry.getCosts()) {
                 ItemStack stack = cost.getIcon() == null ? screen.getIconStackForOffer(cost) : ItemStack.EMPTY;
                 String text = cost.describe().getString();
+                if (!stack.isEmpty()) visual.hasItemStackIcons = true;
                 visual.costs.add(new CostVisual(cost.getIcon(), stack, text, font.width(text)));
             }
             return visual;
@@ -370,6 +372,7 @@ public class TradeGridPanel {
         String name;
         int nameWidth;
         ItemStack mainStack;
+        boolean hasItemStackIcons;
         List<CostVisual> costs;
         int lastMaxNameWidth = Integer.MIN_VALUE;
         String clippedName;
