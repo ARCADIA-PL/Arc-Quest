@@ -2,11 +2,8 @@ package org.arcadia.arc_quest.quest.logic.profile.collection;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
-import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
-import org.arcadia.arc_quest.quest.api.PhaseDefinition;
-import org.arcadia.arc_quest.quest.api.QuestDefinition;
-import org.arcadia.arc_quest.quest.api.QuestState;
+import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
@@ -35,9 +32,12 @@ public final class CollectionObjectiveDispatcher {
 
         int changed = 0;
         for (CollectionObjectiveBinding binding : findBindings(cap, key)) {
+            if (!shouldDispatch(cap, binding)) continue;
             switch (binding.getCountingMode()) {
-                case BINARY -> QuestProgressHandler.incrementCollectionEntry(player, binding.getQuestId(), binding.getPhaseId(), 1);
-                case ACCUMULATE -> QuestProgressHandler.incrementCollectionEntry(player, binding.getQuestId(), binding.getPhaseId(), amount);
+                case BINARY ->
+                        QuestProgressHandler.incrementCollectionEntry(player, binding.getQuestId(), binding.getPhaseId(), 1);
+                case ACCUMULATE ->
+                        QuestProgressHandler.incrementCollectionEntry(player, binding.getQuestId(), binding.getPhaseId(), amount);
                 case UNIQUE_SET -> {
                     if (uniqueKey != null && !uniqueKey.isEmpty()) {
                         QuestProgressHandler.addCollectionUniqueKey(player, binding.getQuestId(), binding.getPhaseId(), uniqueKey);
@@ -66,6 +66,16 @@ public final class CollectionObjectiveDispatcher {
         return List.copyOf(bindings);
     }
 
+    private static boolean shouldDispatch(IQuestCapability cap, CollectionObjectiveBinding binding) {
+        if (cap == null || binding == null) return false;
+        QuestRuntimeData runtime = cap.getActiveQuest(binding.getQuestId());
+        if (runtime == null || runtime.getState() != QuestState.ACTIVE) return false;
+        CollectionRuntimeData collectionData = runtime.getCollectionData();
+        if (collectionData == null || !collectionData.isVisible(binding.getPhaseId())) return false;
+        if (!runtime.isPhaseCompleted(binding.getPhaseId())) return true;
+        return binding.isRepeatableProgress() || binding.isRepeatableCompletion();
+    }
+
     private static void collectBindings(QuestDefinition def,
                                         QuestRuntimeData runtime,
                                         ObjectiveKey key,
@@ -78,7 +88,7 @@ public final class CollectionObjectiveDispatcher {
             if (entryConfig == null) continue;
             for (ObjectiveEntry objectiveEntry : phase.getObjectives()) {
                 if (objectiveEntry.getType() == key.getType() && key.getTargetId().equals(objectiveEntry.getTargetId())) {
-                    bindings.add(new CollectionObjectiveBinding(def.getId().toString(), phaseId, objectiveEntry, entryConfig.getCountingMode()));
+                    bindings.add(new CollectionObjectiveBinding(def.getId().toString(), phaseId, objectiveEntry, entryConfig));
                 }
             }
         }

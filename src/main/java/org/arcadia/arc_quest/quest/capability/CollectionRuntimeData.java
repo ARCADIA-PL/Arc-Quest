@@ -140,6 +140,27 @@ public final class CollectionRuntimeData {
         return entryCounts.getOrDefault(phaseId, 0);
     }
 
+    public boolean isEntryComplete(String phaseId, int target) {
+        return getEntryCount(phaseId) >= Math.max(1, target);
+    }
+
+    public boolean isRewardClaimable(String rewardId) {
+        return isRewardUnlocked(rewardId) && !isRewardClaimed(rewardId);
+    }
+
+    public int getUniqueKeyCount(String phaseId) {
+        LinkedHashSet<String> keys = entryUniqueKeys.get(phaseId);
+        return keys == null ? 0 : keys.size();
+    }
+
+    public void setEntryCount(String phaseId, int count, int max) {
+        Objects.requireNonNull(phaseId);
+        int next = Math.max(0, count);
+        if (max > 0) next = Math.min(next, max);
+        Integer previous = entryCounts.put(phaseId, next);
+        if (previous == null || previous != next) dirty = true;
+    }
+
     public int incrementEntryCount(String phaseId, int amount, int max) {
         int current = getEntryCount(phaseId);
         int next = current + Math.max(0, amount);

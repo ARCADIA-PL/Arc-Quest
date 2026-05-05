@@ -4,21 +4,12 @@ import javax.annotation.Nullable;
 
 public final class CollectionVisibilityUpdateResult {
 
-    public enum Status {
-        OK,
-        NO_COLLECTION_DATA,
-        PHASE_NOT_FOUND,
-        ENTRY_CONFIG_MISSING,
-        NO_VISIBILITY_CHANGE
-    }
-
     private final Status status;
     @Nullable
     private final String phaseId;
     private final boolean changed;
     private final boolean visible;
     private final boolean discovered;
-
     private CollectionVisibilityUpdateResult(Status status,
                                              @Nullable String phaseId,
                                              boolean changed,
@@ -58,5 +49,13 @@ public final class CollectionVisibilityUpdateResult {
 
     public boolean isDiscovered() {
         return discovered;
+    }
+
+    public enum Status {
+        OK,
+        NO_COLLECTION_DATA,
+        PHASE_NOT_FOUND,
+        ENTRY_CONFIG_MISSING,
+        NO_VISIBILITY_CHANGE
     }
 }

@@ -6,22 +6,10 @@ import javax.annotation.Nullable;
 
 public final class CollectionRewardClaimResult {
 
-    public enum Status {
-        OK,
-        INVALID_REWARD_ID,
-        NO_COLLECTION_CONFIG,
-        NO_COLLECTION_DATA,
-        NOT_UNLOCKED,
-        ALREADY_CLAIMED,
-        NOT_MANUAL_REWARD,
-        REWARD_NODE_NOT_FOUND
-    }
-
     private final Status status;
     @Nullable
     private final String rewardNodeId;
     private final boolean changed;
-
     private CollectionRewardClaimResult(Status status, @Nullable String rewardNodeId, boolean changed) {
         this.status = status;
         this.rewardNodeId = rewardNodeId;
@@ -64,5 +52,16 @@ public final class CollectionRewardClaimResult {
             case NOT_MANUAL_REWARD -> QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NOT_MANUAL;
             case REWARD_NODE_NOT_FOUND -> QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NODE_NOT_FOUND;
         };
+    }
+
+    public enum Status {
+        OK,
+        INVALID_REWARD_ID,
+        NO_COLLECTION_CONFIG,
+        NO_COLLECTION_DATA,
+        NOT_UNLOCKED,
+        ALREADY_CLAIMED,
+        NOT_MANUAL_REWARD,
+        REWARD_NODE_NOT_FOUND
     }
 }

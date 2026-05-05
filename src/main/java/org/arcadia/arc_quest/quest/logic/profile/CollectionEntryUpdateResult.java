@@ -4,17 +4,6 @@ import javax.annotation.Nullable;
 
 public final class CollectionEntryUpdateResult {
 
-    public enum Status {
-        OK,
-        INVALID_AMOUNT,
-        INVALID_UNIQUE_KEY,
-        NO_COLLECTION_DATA,
-        PHASE_NOT_FOUND,
-        ENTRY_CONFIG_MISSING,
-        DUPLICATE_UNIQUE_KEY,
-        NOT_CHANGED
-    }
-
     private final Status status;
     @Nullable
     private final String phaseId;
@@ -22,7 +11,6 @@ public final class CollectionEntryUpdateResult {
     private final boolean changed;
     private final boolean entryCompleted;
     private final boolean questCompleted;
-
     private CollectionEntryUpdateResult(Status status,
                                         @Nullable String phaseId,
                                         int nextCount,
@@ -71,5 +59,16 @@ public final class CollectionEntryUpdateResult {
 
     public boolean isQuestCompleted() {
         return questCompleted;
+    }
+
+    public enum Status {
+        OK,
+        INVALID_AMOUNT,
+        INVALID_UNIQUE_KEY,
+        NO_COLLECTION_DATA,
+        PHASE_NOT_FOUND,
+        ENTRY_CONFIG_MISSING,
+        DUPLICATE_UNIQUE_KEY,
+        NOT_CHANGED
     }
 }

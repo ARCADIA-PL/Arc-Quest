@@ -1,11 +1,6 @@
 package org.arcadia.arc_quest.quest.logic.profile.collection;
 
-import org.arcadia.arc_quest.quest.api.CollectionCategoryDefinition;
-import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
-import org.arcadia.arc_quest.quest.api.CollectionQuestConfig;
-import org.arcadia.arc_quest.quest.api.CollectionRuleContext;
-import org.arcadia.arc_quest.quest.api.PhaseDefinition;
-import org.arcadia.arc_quest.quest.api.QuestDefinition;
+import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 
