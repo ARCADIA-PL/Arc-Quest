@@ -111,7 +111,7 @@ public class TradeTooltipRenderer {
         tooltipAlpha += (targetAlpha - tooltipAlpha) * Math.min(1f, dt * 15f);
 
         if (tooltipAlpha > 0.02f && activeEntry != null) {
-            int gi = new ArrayList<>(screen.getShop().getAllEntries()).indexOf(activeEntry);
+            int gi = ClientTradeCache.INSTANCE.getGlobalIndex(screen.getShopId(), activeEntry.getEntryId());
             if (gi != -1) renderMorphingTooltip(g, activeEntry, gi, mx, my, dt, isClosing);
         } else {
             animBgW = 0;
