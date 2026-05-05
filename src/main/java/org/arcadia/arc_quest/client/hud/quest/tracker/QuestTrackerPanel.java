@@ -31,7 +31,7 @@ import java.util.Objects;
 public class QuestTrackerPanel {
 
     private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
-    private final TrackerCollectionWidget collectionWidget = new TrackerCollectionWidget();
+    private final TrackerCollectionProgressAdapter collectionProgressAdapter = new TrackerCollectionProgressAdapter();
     private float panelReveal = 0f;
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
@@ -176,7 +176,7 @@ public class QuestTrackerPanel {
         PhaseDefinition phase = resolveDisplayedPhase(def, tracked);
         if (phase == null) return;
 
-        List<ObjectiveEntry> objectives = def.isCollectionQuest() ? List.of() : phase.getObjectives();
+        List<ObjectiveEntry> objectives = def.isCollectionQuest() ? collectionProgressAdapter.buildObjectives(def, tracked, trackedPhaseId) : phase.getObjectives();
         Font font = mc.font;
 
         float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
@@ -186,7 +186,7 @@ public class QuestTrackerPanel {
         if (activePhaseOrder.size() > 1) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
         else targetH += 16;
         targetH += TrackerTitleWidget.computeDescriptionHeight(phase, font);
-        targetH += def.isCollectionQuest() ? collectionWidget.computeHeight() : objectives.size() * (TrackerConstants.OBJ_ROW_HEIGHT + TrackerConstants.PROGRESS_BAR_H + 6);
+        targetH += objectives.size() * (TrackerConstants.OBJ_ROW_HEIGHT + TrackerConstants.PROGRESS_BAR_H + 6);
         targetH += TrackerConstants.PADDING;
 
         if (currentPanelH < 0) currentPanelH = targetH;
@@ -234,10 +234,10 @@ public class QuestTrackerPanel {
         }
 
         textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
+        String phaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : displayedPhaseId;
         if (def.isCollectionQuest())
-            collectionWidget.render(g, font, tracked, def, phase, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha);
-        else
-            objectiveWidget.render(g, font, tracked, displayedPhaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
+            collectionProgressAdapter.applyProgress(tracked, phaseId, objectives, trackedPhaseId, def);
+        objectiveWidget.render(g, font, tracked, phaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
 
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
@@ -260,15 +260,25 @@ public class QuestTrackerPanel {
                 if (!next.contains(pid) && def.getPhase(pid) != null) next.add(pid);
             }
         } else {
-            for (String pid : def.getPhaseIds()) if (tracked.isPhaseActive(pid)) next.add(pid);
+            if (def.isCollectionQuest()) {
+                for (String pid : def.getPhaseIds()) {
+                    PhaseDefinition phase = def.getPhase(pid);
+                    if (phase != null && phase.getCollectionEntryConfig() != null) next.add(pid);
+                }
+            } else {
+                for (String pid : def.getPhaseIds()) if (tracked.isPhaseActive(pid)) next.add(pid);
+            }
             if (next.isEmpty()) next.addAll(tracked.getActivePhaseIds());
         }
         activePhaseOrder = next;
     }
 
     private String resolvePreferredPhaseId(QuestRuntimeData tracked, QuestDefinition def) {
-        if (trackedPhaseId != null && !trackedPhaseId.isEmpty() && tracked.isPhaseActive(trackedPhaseId) && def.getPhase(trackedPhaseId) != null)
-            return trackedPhaseId;
+        if (trackedPhaseId != null && !trackedPhaseId.isEmpty()) {
+            PhaseDefinition trackedPhase = def.getPhase(trackedPhaseId);
+            if (trackedPhase != null && (tracked.isPhaseActive(trackedPhaseId) || trackedPhase.getCollectionEntryConfig() != null))
+                return trackedPhaseId;
+        }
         String current = tracked.getCurrentPhaseId();
         if (current != null && !current.isEmpty() && tracked.isPhaseActive(current) && def.getPhase(current) != null)
             return current;
@@ -290,23 +300,16 @@ public class QuestTrackerPanel {
     }
 
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
-        QuestRuntimeData data = ClientQuestCache.INSTANCE.resolveTrackedQuest(trackedQuestId);
-        if (data != null) {
-            if (trackedQuestId == null) {
-                trackedQuestId = data.getQuestId();
-                resetObjectiveAnimations();
-            }
-            return data;
-        }
-        if (trackedQuestId != null) {
-            trackedQuestId = null;
-            trackedPhaseId = null;
-            displayedPhaseId = null;
-            targetPhaseId = null;
-            currentPanelH = -1f;
-            activePhaseOrder.clear();
-            resetObjectiveAnimations();
-        }
+        if (trackedQuestId == null || trackedQuestId.isEmpty()) return null;
+        QuestRuntimeData data = ClientQuestCache.INSTANCE.getActiveQuest(trackedQuestId);
+        if (data != null) return data;
+        trackedQuestId = null;
+        trackedPhaseId = null;
+        displayedPhaseId = null;
+        targetPhaseId = null;
+        currentPanelH = -1f;
+        activePhaseOrder.clear();
+        resetObjectiveAnimations();
         return null;
     }
 
@@ -321,6 +324,7 @@ public class QuestTrackerPanel {
 
     private void resetObjectiveAnimations() {
         objectiveWidget.reset();
+        collectionProgressAdapter.reset();
         panelSlide = 1f;
         completionDismissStart = 0;
     }
