@@ -66,7 +66,7 @@ public class TrackerObjectiveWidget {
 
         for (int i = 0; i < objCount; i++) {
             ObjectiveEntry obj = objectives.get(i);
-            int progress = tracked.getObjectiveProgress(phaseId, i);
+            int progress = resolveProgress(tracked, phaseId, i, obj);
             int required = obj.getRequiredCount();
             boolean complete = progress >= required;
 
@@ -177,6 +177,17 @@ public class TrackerObjectiveWidget {
 
             textY += TrackerConstants.PROGRESS_BAR_H + 6;
         }
+    }
+
+    private int resolveProgress(QuestRuntimeData tracked, String phaseId, int index, ObjectiveEntry obj) {
+        String explicit = obj.getExtra("tracker_progress");
+        if (explicit != null) {
+            try {
+                return Math.max(0, Integer.parseInt(explicit));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return tracked.getObjectiveProgress(phaseId, index);
     }
 
     private ObjectiveTextCache getTextCache(ObjectiveEntry obj, int progress, int required, Font font) {

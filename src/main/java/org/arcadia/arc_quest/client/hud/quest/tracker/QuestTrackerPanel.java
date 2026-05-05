@@ -114,8 +114,12 @@ public class QuestTrackerPanel {
         handleDismiss(tracked, now, isActive);
 
         if (isActive) {
-            String actualPhaseId = resolvePreferredPhaseId(tracked, def);
-            if (shouldShow) {
+            String actualPhaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : resolvePreferredPhaseId(tracked, def);
+            if (def.isCollectionQuest()) {
+                displayedPhaseId = actualPhaseId;
+                targetPhaseId = actualPhaseId;
+                isPhaseTransitioning = false;
+            } else if (shouldShow) {
                 if (displayedPhaseId == null) {
                     displayedPhaseId = actualPhaseId;
                     targetPhaseId = actualPhaseId;
@@ -173,8 +177,8 @@ public class QuestTrackerPanel {
 
         if (panelReveal < 0.01f && !shouldShow) return;
 
-        PhaseDefinition phase = resolveDisplayedPhase(def, tracked);
-        if (phase == null) return;
+        PhaseDefinition phase = def.isCollectionQuest() ? null : resolveDisplayedPhase(def, tracked);
+        if (!def.isCollectionQuest() && phase == null) return;
 
         List<ObjectiveEntry> objectives = def.isCollectionQuest() ? collectionProgressAdapter.buildObjectives(def, tracked, trackedPhaseId) : phase.getObjectives();
         Font font = mc.font;
@@ -183,9 +187,10 @@ public class QuestTrackerPanel {
         float virtualScreenWidth = screenWidth / uiScale;
 
         int targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
-        if (activePhaseOrder.size() > 1) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
-        else targetH += 16;
-        targetH += TrackerTitleWidget.computeDescriptionHeight(phase, font);
+        boolean showPhaseLanes = !def.isCollectionQuest() && activePhaseOrder.size() > 1;
+        if (showPhaseLanes) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
+        else if (!def.isCollectionQuest()) targetH += 16;
+        targetH += def.isCollectionQuest() ? 0 : TrackerTitleWidget.computeDescriptionHeight(phase, font);
         targetH += objectives.size() * (TrackerConstants.OBJ_ROW_HEIGHT + TrackerConstants.PROGRESS_BAR_H + 6);
         targetH += TrackerConstants.PADDING;
 
@@ -226,17 +231,16 @@ public class QuestTrackerPanel {
         TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font);
         textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
 
-        if (activePhaseOrder.size() > 1) {
+        if (showPhaseLanes) {
             textY = TrackerParallelWidget.render(g, font, tracked, def, activePhaseOrder, displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha);
-        } else {
+        } else if (!def.isCollectionQuest()) {
             TrackerTitleWidget.renderPhaseName(g, tracked, displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
             textY += 16;
         }
 
-        textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
+        if (!def.isCollectionQuest())
+            textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
         String phaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : displayedPhaseId;
-        if (def.isCollectionQuest())
-            collectionProgressAdapter.applyProgress(tracked, phaseId, objectives, trackedPhaseId, def);
         objectiveWidget.render(g, font, tracked, phaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
 
         RenderSystem.enableDepthTest();
