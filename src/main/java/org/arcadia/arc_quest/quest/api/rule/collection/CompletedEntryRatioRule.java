@@ -23,7 +23,8 @@ public final class CompletedEntryRatioRule implements CollectionCompletionRule {
             if (phase == null) continue;
             CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
             if (entryConfig == null) continue;
-            if (context.getCategoryId() != null && !context.getCategoryId().equals(entryConfig.getCategoryId())) continue;
+            if (context.getCategoryId() != null && !context.getCategoryId().equals(entryConfig.getCategoryId()))
+                continue;
             total++;
             if (context.getQuestRuntimeData().isPhaseCompleted(phaseId)) completed++;
         }
