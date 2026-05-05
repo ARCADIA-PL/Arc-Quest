@@ -97,9 +97,7 @@ public final class CollectionQuestEngine {
 
             boolean visible = revealAll || shouldBeVisible(player, completedQuests, flags, cap, entryConfig);
             if (visible) {
-                collectionData.markVisible(phaseId);
-                collectionData.markDiscovered(phaseId);
-                runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
+                markEntryVisible(runtime, collectionData, phase, entryConfig, phaseId, true);
             }
         }
 
@@ -109,6 +107,71 @@ public final class CollectionQuestEngine {
         collectionData.clearDirty();
         runtime.clearDirty();
         runtime.setState(QuestState.ACTIVE);
+    }
+
+    public static CollectionVisibilityUpdateResult revealEntry(QuestDefinition def,
+                                                               QuestRuntimeData runtime,
+                                                               String phaseId) {
+        CollectionRuntimeData collectionData = runtime.getCollectionData();
+        if (collectionData == null) {
+            return CollectionVisibilityUpdateResult.unchanged(CollectionVisibilityUpdateResult.Status.NO_COLLECTION_DATA, phaseId);
+        }
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null) {
+            return CollectionVisibilityUpdateResult.unchanged(CollectionVisibilityUpdateResult.Status.PHASE_NOT_FOUND, phaseId);
+        }
+        CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
+        if (entryConfig == null) {
+            return CollectionVisibilityUpdateResult.unchanged(CollectionVisibilityUpdateResult.Status.ENTRY_CONFIG_MISSING, phaseId);
+        }
+        boolean wasVisible = collectionData.isVisible(phaseId);
+        boolean wasDiscovered = collectionData.isDiscovered(phaseId);
+        markEntryVisible(runtime, collectionData, phase, entryConfig, phaseId, true);
+        if (wasVisible && wasDiscovered) {
+            return CollectionVisibilityUpdateResult.unchanged(CollectionVisibilityUpdateResult.Status.NO_VISIBILITY_CHANGE, phaseId);
+        }
+        return CollectionVisibilityUpdateResult.ok(phaseId, true, true);
+    }
+
+    public static int refreshVisibility(ServerPlayer player,
+                                        IQuestCapability cap,
+                                        QuestDefinition def,
+                                        QuestRuntimeData runtime) {
+        CollectionRuntimeData collectionData = runtime.getCollectionData();
+        CollectionQuestConfig config = def.getCollectionConfig();
+        if (collectionData == null || config == null) {
+            return 0;
+        }
+        boolean revealAll = config.isRevealAllEntriesByDefault();
+        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
+        Set<String> flags = cap.getAllFlags();
+        int changed = 0;
+        for (String phaseId : def.getPhaseIds()) {
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase == null) continue;
+            CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
+            if (entryConfig == null || collectionData.isVisible(phaseId)) continue;
+            boolean visible = revealAll || shouldBeVisible(player, completedQuests, flags, cap, entryConfig);
+            if (visible) {
+                markEntryVisible(runtime, collectionData, phase, entryConfig, phaseId, true);
+                changed++;
+            }
+        }
+        return changed;
+    }
+
+    private static void markEntryVisible(QuestRuntimeData runtime,
+                                         CollectionRuntimeData collectionData,
+                                         PhaseDefinition phase,
+                                         CollectionEntryConfig entryConfig,
+                                         String phaseId,
+                                         boolean discovered) {
+        collectionData.markVisible(phaseId);
+        if (discovered) {
+            collectionData.markDiscovered(phaseId);
+        }
+        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
+        runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
     }
 
     public static int incrementEntry(ServerPlayer player,
@@ -174,10 +237,12 @@ public final class CollectionQuestEngine {
         if (entryConfig == null) {
             return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.ENTRY_CONFIG_MISSING, phaseId);
         }
-        collectionData.markDiscovered(phaseId);
-        collectionData.markVisible(phaseId);
-        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
-        runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
+        boolean wasVisible = collectionData.isVisible(phaseId);
+        boolean wasDiscovered = collectionData.isDiscovered(phaseId);
+        markEntryVisible(runtime, collectionData, phase, entryConfig, phaseId, true);
+        if (wasVisible && wasDiscovered) {
+            return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.NOT_CHANGED, phaseId);
+        }
         return CollectionEntryUpdateResult.ok(phaseId, collectionData.getEntryCount(phaseId), false, runtime.getState() == QuestState.COMPLETED);
     }
 

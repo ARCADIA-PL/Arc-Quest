@@ -19,6 +19,7 @@ import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;
 import org.arcadia.arc_quest.quest.logic.profile.CollectionEntryUpdateResult;
 import org.arcadia.arc_quest.quest.logic.profile.CollectionQuestEngine;
+import org.arcadia.arc_quest.quest.logic.profile.CollectionVisibilityUpdateResult;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
@@ -197,6 +198,35 @@ public final class QuestProgressHandler {
 
         CollectionEntryUpdateResult result = CollectionQuestEngine.incrementEntryWithResult(player, cap, def, data, phaseId, amount);
         if (result.isChanged()) {
+            syncQuestStateAndPush(player, data);
+        }
+    }
+
+    public static void revealCollectionEntry(ServerPlayer player,
+                                             String questId,
+                                             String phaseId) {
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null || !def.isCollectionQuest()) return;
+
+        CollectionVisibilityUpdateResult result = CollectionQuestEngine.revealEntry(def, data, phaseId);
+        if (result.isChanged()) {
+            syncQuestStateAndPush(player, data);
+        }
+    }
+
+    public static void refreshCollectionVisibility(ServerPlayer player, String questId) {
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null || !def.isCollectionQuest()) return;
+
+        if (CollectionQuestEngine.refreshVisibility(player, cap, def, data) > 0) {
             syncQuestStateAndPush(player, data);
         }
     }
