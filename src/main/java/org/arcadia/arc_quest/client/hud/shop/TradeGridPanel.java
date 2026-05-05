@@ -31,6 +31,10 @@ public class TradeGridPanel {
     private float openAnimTime = 0f;
     private float[] hoverAnims;
     private FrameAnimData[] animData = new FrameAnimData[0];
+    private Layout cachedLayout;
+    private int cachedWidth = -1;
+    private int cachedHeight = -1;
+    private int cachedEntryCount = -1;
 
     public TradeGridPanel(SimpleTradePanel screen, Font font) {
         this.screen = screen;
@@ -60,6 +64,9 @@ public class TradeGridPanel {
 
     private Layout computeLayout() {
         List<TradeEntry> entries = screen.getEntries();
+        if (cachedLayout != null && cachedWidth == screen.width && cachedHeight == screen.height && cachedEntryCount == entries.size()) {
+            return cachedLayout;
+        }
         int gap = Math.max(4, screen.width / 80), availW = (int) (screen.width * 0.85f), minCardW = 105;
         int maxPossibleCols = Math.max(1, availW / (minCardW + gap));
         int cols = Math.min(maxPossibleCols, entries.isEmpty() ? 1 : entries.size());
@@ -67,7 +74,11 @@ public class TradeGridPanel {
         int cardH = Math.max(38, (int) (cardW * 0.32f));
         int rows = (entries.size() + cols - 1) / cols;
         int totalW = cols * cardW + (cols - 1) * gap, totalH = rows * cardH + (rows - 1) * gap;
-        return new Layout(cols, rows, cardW, cardH, gap, (screen.width - totalW) / 2, (screen.height - totalH) / 2, totalW, totalH);
+        cachedWidth = screen.width;
+        cachedHeight = screen.height;
+        cachedEntryCount = entries.size();
+        cachedLayout = new Layout(cols, rows, cardW, cardH, gap, (screen.width - totalW) / 2, (screen.height - totalH) / 2, totalW, totalH);
+        return cachedLayout;
     }
 
     // 【终极优化：内联矩形拼接边框，彻底并入 GuiGraphics 原生 Batching，无额外状态打断】
