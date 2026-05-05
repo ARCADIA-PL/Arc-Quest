@@ -78,6 +78,11 @@ public class TradeGridPanel {
         g.fill(x + w - thickness, y + thickness, x + w, y + h - thickness, color); // Right
     }
 
+    private boolean intersectsViewport(float x, float y, int w, int h, float scale) {
+        int margin = Math.max(32, (int) (Math.max(w, h) * Math.max(1f, scale)));
+        return x + w + margin >= 0 && x - margin <= screen.width && y + h + margin >= 0 && y - margin <= screen.height;
+    }
+
     public void render(GuiGraphics g, int mx, int my, float pt, float dt, float easeProgress, boolean isClosing) {
         if (!isClosing && dt > 0) openAnimTime += dt;
         Layout l = computeLayout();
@@ -112,8 +117,11 @@ public class TradeGridPanel {
                 fd.drawY = targetY - ((targetY + l.cardH() / 2f) - screen.height / 2f) * (1f - flyEase);
             }
 
-            fd.visible = (flyEase >= 0.01f || isClosing);
             fd.clampedEase = Math.max(0f, Math.min(1f, flyEase));
+            fd.bgScale = isClosing ? 1.0f : flyEase;
+            fd.contentScale = isClosing ? ArcAnimClock.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : fd.bgScale;
+            fd.visible = (flyEase >= 0.01f || isClosing) && intersectsViewport(fd.drawX, fd.drawY, l.cardW(), l.cardH(), fd.contentScale);
+            if (!fd.visible) continue;
 
             boolean hov = (!isClosing && screen.getTransitionAnim() >= 0.9f) && mx >= targetX && mx < targetX + l.cardW() && my >= targetY && my < targetY + l.cardH();
 
