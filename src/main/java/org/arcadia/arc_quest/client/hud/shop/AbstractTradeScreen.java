@@ -27,6 +27,10 @@ import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
 public abstract class AbstractTradeScreen extends Screen {
 
     private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 40;
@@ -47,6 +51,8 @@ public abstract class AbstractTradeScreen extends Screen {
     protected boolean triggeredParentReopen = false;
     private int authorityRefreshTicker = 0;
     private TradeTooltipRenderer tooltipRenderer;
+    private final Map<String, ItemStack> entryIconStackCache = new HashMap<>();
+    private final Map<ITradeOffer, ItemStack> offerIconStackCache = new IdentityHashMap<>();
 
     public AbstractTradeScreen(String title, String shopId) {
         super(Component.translatable(title));
@@ -302,6 +308,10 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     public ItemStack getIconStackForEntry(TradeEntry entry) {
+        return entryIconStackCache.computeIfAbsent(entry.getEntryId(), id -> createIconStackForEntry(entry));
+    }
+
+    private ItemStack createIconStackForEntry(TradeEntry entry) {
         if (!entry.getRewards().isEmpty() && entry.getRewards().get(0) instanceof ItemTradeOffer ito)
             return new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64));
         if (!entry.getCosts().isEmpty() && entry.getCosts().get(0) instanceof ItemTradeOffer ito)
@@ -310,6 +320,10 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     public ItemStack getIconStackForOffer(ITradeOffer offer) {
+        return offerIconStackCache.computeIfAbsent(offer, this::createIconStackForOffer);
+    }
+
+    private ItemStack createIconStackForOffer(ITradeOffer offer) {
         return offer instanceof ItemTradeOffer ito ? new ItemStack(ito.getItem(), Math.min(ito.getCount(), 64)) : ItemStack.EMPTY;
     }
 
