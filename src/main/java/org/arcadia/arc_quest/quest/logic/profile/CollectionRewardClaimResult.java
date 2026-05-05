@@ -56,8 +56,13 @@ public final class CollectionRewardClaimResult {
     public QuestRejectCodeDictionary.Code toRejectCode() {
         return switch (status) {
             case OK -> QuestRejectCodeDictionary.Code.OK;
-            case NO_COLLECTION_CONFIG, NO_COLLECTION_DATA -> QuestRejectCodeDictionary.Code.NOT_ACTIVE;
-            case INVALID_REWARD_ID, NOT_UNLOCKED, ALREADY_CLAIMED, NOT_MANUAL_REWARD, REWARD_NODE_NOT_FOUND -> QuestRejectCodeDictionary.Code.UNKNOWN;
+            case NO_COLLECTION_CONFIG -> QuestRejectCodeDictionary.Code.COLLECTION_CONFIG_MISSING;
+            case NO_COLLECTION_DATA -> QuestRejectCodeDictionary.Code.COLLECTION_DATA_MISSING;
+            case INVALID_REWARD_ID -> QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ID_INVALID;
+            case NOT_UNLOCKED -> QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NOT_UNLOCKED;
+            case ALREADY_CLAIMED -> QuestRejectCodeDictionary.Code.COLLECTION_REWARD_ALREADY_CLAIMED;
+            case NOT_MANUAL_REWARD -> QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NOT_MANUAL;
+            case REWARD_NODE_NOT_FOUND -> QuestRejectCodeDictionary.Code.COLLECTION_REWARD_NODE_NOT_FOUND;
         };
     }
 }

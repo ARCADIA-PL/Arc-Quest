@@ -95,6 +95,14 @@ public class S2CQuestActionResultPacket {
             case CHAPTER_SHOP_NOT_ACCESSIBLE -> "当前状态不可访问章节商店";
             case CHAPTER_SHOP_DEFINITION_NOT_FOUND -> "章节商店定义不存在";
 
+            case COLLECTION_REWARD_ID_INVALID -> "收集奖励 ID 无效";
+            case COLLECTION_REWARD_NOT_UNLOCKED -> "收集奖励尚未解锁";
+            case COLLECTION_REWARD_ALREADY_CLAIMED -> "收集奖励已领取";
+            case COLLECTION_REWARD_NOT_MANUAL -> "该收集奖励不可手动领取";
+            case COLLECTION_REWARD_NODE_NOT_FOUND -> "收集奖励节点不存在";
+            case COLLECTION_DATA_MISSING -> "任务缺少收集运行时数据";
+            case COLLECTION_CONFIG_MISSING -> "任务缺少收集配置";
+
             default -> "未知原因";
         };
 
