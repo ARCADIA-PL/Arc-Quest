@@ -28,6 +28,7 @@ public class JournalDetailRewards {
     private boolean isDragging = false;
     private float animTabX = -1, animTabW = -1, itemsAlphaAnim = 1f;
     private int parentClipY1 = 0, parentClipY2 = 0;
+
     public JournalDetailRewards(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
         this.parent = parent;

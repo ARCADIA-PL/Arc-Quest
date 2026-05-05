@@ -97,6 +97,7 @@ public class JournalDetailPanel {
         headerCache.clear();
         singlePhaseRenderer.reset();
         parallelPhaseRenderer.reset();
+        collectionRenderer.reset();
     }
 
     public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
@@ -226,7 +227,7 @@ public class JournalDetailPanel {
             if (activePhaseIds.isEmpty()) activePhaseIds.addAll(runtime.getActivePhaseIds());
 
             if (def.isCollectionQuest()) {
-                localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme);
+                localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme, mx - (x + 12), (int) (my - (scrollAreaY + 12 - detailScrollOffset)));
                 selectedPhaseIdForRewards = !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null;
             } else if (activePhaseIds.isEmpty()) {
                 g.drawString(screen.getFont(), "No active phase.", 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false);
