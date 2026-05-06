@@ -25,6 +25,10 @@ import java.util.Map;
 public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<ResourceLocation, QuestSpec>> {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static final QuestSpecResourceLoader STATIC_LOADER = new QuestSpecResourceLoader();
+    private static final QuestSpecValidator STATIC_VALIDATOR = new QuestSpecValidator();
+    private static final QuestSpecCompiler STATIC_COMPILER = new QuestSpecCompiler();
+
     private final QuestSpecResourceLoader loader = new QuestSpecResourceLoader();
     private final QuestSpecValidator validator = new QuestSpecValidator();
     private final QuestSpecCompiler compiler = new QuestSpecCompiler();
@@ -33,6 +37,41 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<R
     public static void onAddReloadListener(AddReloadListenerEvent event) {
         event.addListener(new ArcQuestReloadListener());
         LOGGER.info("[ArcQuest] Registered datapack reload listener.");
+    }
+
+    public static int reloadArcQuestDatapacksOnly(@NotNull ResourceManager manager) {
+        Map<ResourceLocation, QuestSpec> specs = STATIC_LOADER.load(manager);
+        EpicDialogueTrees.registerAll();
+        QuestRegistry.clearDatapack();
+
+        int loaded = 0;
+        int failed = 0;
+        for (Map.Entry<ResourceLocation, QuestSpec> entry : specs.entrySet()) {
+            QuestSpec spec = entry.getValue();
+            var report = STATIC_VALIDATOR.validate(spec);
+            if (report.hasErrors()) {
+                failed++;
+                for (var issue : report.getIssues()) {
+                    if (issue.severity == ValidationIssue.Severity.ERROR) {
+                        LOGGER.error("[ArcQuest]   - {}: {}", issue.path, issue.message);
+                    } else {
+                        LOGGER.warn("[ArcQuest]   - {}: {}", issue.path, issue.message);
+                    }
+                }
+                continue;
+            }
+            try {
+                QuestRegistry.registerDatapack(STATIC_COMPILER.compile(spec), entry.getKey().toString());
+                loaded++;
+            } catch (Exception e) {
+                failed++;
+                LOGGER.error("[ArcQuest] Failed to compile datapack quest '{}': {}", entry.getKey(), e.getMessage(), e);
+            }
+        }
+
+        LOGGER.info("[ArcQuest] ArcQuest-only datapack reload complete. loaded={}, failed={}, activeDatapack={}, merged={}",
+                loaded, failed, QuestRegistry.datapackSize(), QuestRegistry.size());
+        return loaded;
     }
 
     @Override
