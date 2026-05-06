@@ -1,0 +1,197 @@
+{
+  "id": "arc_quest:datapack_sample_quest",
+  "category": "ADVENTURE",
+  "displayName": { "mode": "translatable", "value": "arc_quest.sample.quest.title", "args": ["Demo"] },
+  "description": { "mode": "literal", "value": "A quest loaded from datapack with quest, phase, objective, and choice examples." },
+  "relatedMarks": [
+    {
+      "id": "arc_quest:datapack_sample_quest/quest_start_marker",
+      "target": {
+        "type": "dimension_pos",
+        "dimension": "minecraft:overworld",
+        "x": 0,
+        "y": 64,
+        "z": 0
+      },
+      "activateWhen": { "type": "always" },
+      "deactivateWhen": { "type": "flag_set", "flag": "datapack_sample_quest_complete" },
+      "markerType": "QUEST_MAIN",
+      "priority": 0,
+      "maxDistance": 256,
+      "refreshTicks": 20,
+      "trackMovingEntity": false,
+      "oneShot": false,
+      "styleHints": {
+        "label": "Sample Quest Start"
+      }
+    }
+  ],
+  "sortOrder": 999,
+  "repeatable": false,
+  "mode": "PROGRESSION",
+  "initialPhaseId": "start",
+  "phases": [
+    {
+      "phaseId": "start",
+      "displayName": { "mode": "literal", "value": "Start Phase" },
+      "description": { "mode": "literal", "value": "Collect one dirt, then choose where to go next." },
+      "story": { "mode": "literal", "value": "This phase demonstrates objective-level and phase-level markers." },
+      "objectives": [
+        {
+          "type": "COLLECT",
+          "targetId": "minecraft:dirt",
+          "requiredCount": 1,
+          "displayText": { "mode": "literal", "value": "Collect 1 dirt" },
+          "hidden": false,
+          "optional": false,
+          "relatedMarks": [
+            {
+              "id": "arc_quest:datapack_sample_quest/objective_dirt_marker",
+              "target": {
+                "type": "dimension_pos",
+                "dimension": "minecraft:overworld",
+                "x": 8,
+                "y": 64,
+                "z": 8
+              },
+              "activateWhen": { "type": "always" },
+              "deactivateWhen": { "type": "flag_set", "flag": "datapack_sample_done" },
+              "markerType": "QUEST_OBJECTIVE",
+              "priority": 5,
+              "maxDistance": 128,
+              "refreshTicks": 20,
+              "trackMovingEntity": false,
+              "oneShot": false,
+              "styleHints": {
+                "label": "Dirt Objective"
+              }
+            }
+          ],
+          "extraData": {}
+        }
+      ],
+      "transitions": [],
+      "choices": [
+        {
+          "text": { "mode": "literal", "value": "Take the village route" },
+          "flagToSet": "datapack_choice_village",
+          "targetPhaseId": "village_route",
+          "visibleCondition": { "type": "always" }
+        },
+        {
+          "text": { "mode": "literal", "value": "Take the forest route" },
+          "flagToSet": "datapack_choice_forest",
+          "targetPhaseId": "forest_route",
+          "visibleCondition": { "type": "always" }
+        }
+      ],
+      "phaseRewards": [
+        {
+          "type": "flag_set",
+          "flag": "datapack_sample_done"
+        }
+      ],
+      "flagsToSetOnEnter": [],
+      "flagsToSetOnComplete": [],
+      "relatedMarks": [
+        {
+          "id": "arc_quest:datapack_sample_quest/phase_start_marker",
+          "target": {
+            "type": "dimension_pos",
+            "dimension": "minecraft:overworld",
+            "x": 4,
+            "y": 64,
+            "z": 4
+          },
+          "activateWhen": { "type": "always" },
+          "deactivateWhen": { "type": "flag_set", "flag": "datapack_sample_done" },
+          "markerType": "QUEST_PHASE",
+          "priority": 1,
+          "maxDistance": 192,
+          "refreshTicks": 20,
+          "trackMovingEntity": false,
+          "oneShot": false,
+          "styleHints": {
+            "label": "Start Phase"
+          }
+        }
+      ],
+      "tradeShopId": "",
+      "enterCondition": null,
+      "autoEnterByCondition": true,
+      "visualConfig": { "themeColor": 16777215, "splashes": {}, "icons": {} }
+    },
+    {
+      "phaseId": "village_route",
+      "displayName": { "mode": "literal", "value": "Village Route" },
+      "description": { "mode": "literal", "value": "Reach the village route ending." },
+      "story": { "mode": "literal", "value": "This branch is unlocked by the village choice." },
+      "objectives": [
+        {
+          "type": "COLLECT",
+          "targetId": "minecraft:oak_log",
+          "requiredCount": 1,
+          "displayText": { "mode": "literal", "value": "Collect 1 oak log" },
+          "hidden": false,
+          "optional": false,
+          "extraData": {}
+        }
+      ],
+      "transitions": [],
+      "choices": [],
+      "phaseRewards": [],
+      "flagsToSetOnEnter": [],
+      "flagsToSetOnComplete": ["datapack_route_village_complete"],
+      "relatedMarks": [],
+      "tradeShopId": "",
+      "enterCondition": { "type": "flag_set", "flag": "datapack_choice_village" },
+      "autoEnterByCondition": true,
+      "visualConfig": { "themeColor": 16777215, "splashes": {}, "icons": {} }
+    },
+    {
+      "phaseId": "forest_route",
+      "displayName": { "mode": "literal", "value": "Forest Route" },
+      "description": { "mode": "literal", "value": "Reach the forest route ending." },
+      "story": { "mode": "literal", "value": "This branch is unlocked by the forest choice." },
+      "objectives": [
+        {
+          "type": "COLLECT",
+          "targetId": "minecraft:spruce_log",
+          "requiredCount": 1,
+          "displayText": { "mode": "literal", "value": "Collect 1 spruce log" },
+          "hidden": false,
+          "optional": false,
+          "extraData": {}
+        }
+      ],
+      "transitions": [],
+      "choices": [],
+      "phaseRewards": [],
+      "flagsToSetOnEnter": [],
+      "flagsToSetOnComplete": ["datapack_route_forest_complete"],
+      "relatedMarks": [],
+      "tradeShopId": "",
+      "enterCondition": { "type": "flag_set", "flag": "datapack_choice_forest" },
+      "autoEnterByCondition": true,
+      "visualConfig": { "themeColor": 16777215, "splashes": {}, "icons": {} }
+    }
+  ],
+  "unlockConditions": [],
+  "completionRewards": [
+    {
+      "type": "command",
+      "command": "tellraw {player} {\"text\":\"datapack_sample_quest completion reward fired\",\"color\":\"gold\"}"
+    }
+  ],
+  "flagsToSetOnAccept": [],
+  "flagsToSetOnComplete": ["datapack_sample_quest_complete"],
+  "chapterShopId": "",
+  "chapterShopType": "TRADE",
+  "chapterShopPersistent": false,
+  "completionPolicy": "ANY",
+  "completionRequiredCount": 0,
+  "completionTargetPhaseId": "",
+  "timeLimitType": null,
+  "timeLimitValue": 0,
+  "visualConfig": { "themeColor": 16777215, "splashes": {}, "icons": {} }
+}

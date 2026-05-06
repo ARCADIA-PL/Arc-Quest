@@ -19,7 +19,7 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import java.util.*;
 
 public final class JournalDetailCollection {
-    private static final int CW = 120, CH = 68, GAP = 8;
+    private static final int CW = 56, CH = 52, GAP = 6;
     private static final Map<String, String> CAT_MEMORY = new HashMap<>();
 
     private final QuestJournalScreen screen;
@@ -178,12 +178,13 @@ public final class JournalDetailCollection {
     private int drawCards(GuiGraphics g, String q, QuestDefinition def, QuestRuntimeData rt, List<String> ids, int y, int a, int theme, double mx, double my, float dt) {
         int i = 0;
         long time = Util.getMillis();
+        int cols = 4;
         for (String id : ids) {
             PhaseDefinition p = def.getPhase(id);
             if (p == null || p.getCollectionEntryConfig() == null) continue;
 
-            int x = (i % 2) * (CW + GAP);
-            int cy = y + (i / 2) * (CH + GAP);
+            int x = (i % cols) * (CW + GAP);
+            int cy = y + (i / cols) * (CH + GAP);
             boolean hover = mx >= x && mx <= x + CW && my >= cy && my <= cy + CH;
 
             card(g, q, rt, p, x, cy, a, theme, time, hover, dt, i);
@@ -192,7 +193,8 @@ public final class JournalDetailCollection {
             if (hover) tooltip(q, p);
             i++;
         }
-        return y + Math.max(1, (i + 1) / 2) * (CH + GAP);
+        int rows = Math.max(1, (i + cols - 1) / cols);
+        return y + rows * (CH + GAP);
     }
 
     private void card(GuiGraphics g, String q, QuestRuntimeData rt, PhaseDefinition p, int x, int y, int a, int theme, long time, boolean hover, float dt, int index) {
@@ -242,19 +244,12 @@ public final class JournalDetailCollection {
         g.fill(x + CW - 6, y + 7, x + CW - 4, y + 8, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (aa / 255f))));
 
         String displayName = name(p, c, id, seen);
-        txt(g, screen.getFont().plainSubstrByWidth(displayName, CW - 16), x + 8, y + 8, 0.85f, seen || done ? 0xFFFFFF : 0x777777, aa);
-        txt(g, c.getCountingMode().name(), x + 8, y + 20, 0.65f, 0x667788, aa);
+        txt(g, screen.getFont().plainSubstrByWidth(displayName, CW - 10), x + 5, y + 7, 0.7f, seen || done ? 0xFFFFFF : 0x777777, aa);
 
-        // 状态标签
-        if (done) txt(g, "DONE", x + 8, y + 36, 0.65f, 0x88FF88, aa);
-        else if (tracked) txt(g, "TRACK", x + 8, y + 36, 0.65f, theme, aa);
+        if (done) txt(g, "DONE", x + 5, y + CH - 16, 0.62f, 0x88FF88, aa);
+        else if (tracked) txt(g, "TRACK", x + 5, y + CH - 16, 0.62f, theme, aa);
 
-        // 进度比率文本
-        String pt = cnt + "/" + tar;
-        txt(g, pt, x + CW - 8 - (int) (screen.getFont().width(pt) * 0.75f), y + 35, 0.75f, done ? 0x88FF88 : 0xCCCCCC, aa);
-
-        // 机能风进度条
-        int bx = x + 8, by = y + CH - 14, bw = CW - 16;
+        int bx = x + 5, by = y + CH - 8, bw = CW - 10;
         g.fill(bx, by, bx + bw, by + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * (aa / 255f))));
         if (prog > 0) {
             int fw = Math.max(1, (int) (bw * prog));
@@ -366,10 +361,17 @@ public final class JournalDetailCollection {
 
         List<Component> lines = new ArrayList<>();
         lines.add(Component.literal(name(p, c, id, seen)).withStyle(Style.EMPTY.withColor(done ? 0x88FF88 : 0xFFFFFF).withBold(true)));
-        lines.add(Component.literal("Progress: " + cnt + "/" + tar + " · " + c.getCountingMode().name()).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
+        lines.add(Component.literal("Progress: " + cnt + "/" + tar).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
+        lines.add(Component.literal("Mode: " + c.getCountingMode().name()).withStyle(Style.EMPTY.withColor(0x8FA3B6)));
         if (rewardReady)
             lines.add(Component.literal("Entry Reward: Claimable").withStyle(Style.EMPTY.withColor(0xFFD166)));
-        lines.add(Component.literal(done ? "Completed · tracking disabled" : "Click to track this entry").withStyle(Style.EMPTY.withColor(done ? 0x88FF88 : 0xFFD166)));
+        if (done) {
+            lines.add(Component.literal("Completed").withStyle(Style.EMPTY.withColor(0x88FF88)));
+        } else if (q.equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) && id.equals(QuestHudOverlay.INSTANCE.getTrackedPhaseId())) {
+            lines.add(Component.literal("Tracked Entry").withStyle(Style.EMPTY.withColor(0x66CCFF)));
+        } else {
+            lines.add(Component.literal("Click to track this entry").withStyle(Style.EMPTY.withColor(0xFFD166)));
+        }
         screen.setHoveredCustomTooltip(lines);
     }
 

@@ -8,6 +8,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
 import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
@@ -163,6 +164,7 @@ public final class ClientQuestCache {
                 // 触发动画钩子：接取任务
                 if (oldState == null) {
                     onQuestAccepted(questId);
+                    QuestChangeHistoryStore.INSTANCE.recordQuestAccepted(questId);
                 }
 
                 // 触发 Phase 开始音效（如果是新阶段）
@@ -178,6 +180,7 @@ public final class ClientQuestCache {
                 // 触发动画钩子：完成任务
                 if (oldState != QuestState.COMPLETED) {
                     onQuestCompleted(questId);
+                    QuestChangeHistoryStore.INSTANCE.recordQuestCompleted(questId);
                 }
             }
             case FAILED -> {
@@ -187,6 +190,7 @@ public final class ClientQuestCache {
                 // 触发动画钩子：任务失败
                 if (oldState != QuestState.FAILED) {
                     onQuestFailed(questId);
+                    QuestChangeHistoryStore.INSTANCE.recordQuestFailed(questId);
                 }
             }
             default -> {
@@ -202,8 +206,33 @@ public final class ClientQuestCache {
         }
 
         LOGGER.debug("[ClientCache] Quest updated: {} → {}", questId, data.getState());
+        recordQuestDeltaHistory(questId, previousData, data);
         maybeShowCollectionToasts(questId, previousData, data);
         refreshJournalIfOpen();
+    }
+
+    private void recordQuestDeltaHistory(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
+        if (previousData == null || newData == null) return;
+
+        Set<String> beforeActive = previousData.getActivePhaseIds();
+        Set<String> afterActive = newData.getActivePhaseIds();
+        Set<String> beforeCompleted = previousData.getCompletedPhaseIds();
+        Set<String> afterCompleted = newData.getCompletedPhaseIds();
+
+        for (String phaseId : afterActive) {
+            if (!beforeActive.contains(phaseId)) QuestChangeHistoryStore.INSTANCE.recordPhaseAdded(questId, phaseId);
+        }
+        for (String phaseId : afterCompleted) {
+            if (!beforeCompleted.contains(phaseId)) QuestChangeHistoryStore.INSTANCE.recordPhaseCompleted(questId, phaseId);
+        }
+
+        String oldCurrent = previousData.getCurrentPhaseId();
+        String newCurrent = newData.getCurrentPhaseId();
+        if (!Objects.equals(oldCurrent, newCurrent) && newCurrent != null && !newCurrent.isEmpty()) {
+            QuestChangeHistoryStore.INSTANCE.recordPhaseSwitched(questId, oldCurrent, newCurrent);
+            if (oldCurrent != null && !oldCurrent.isEmpty() && afterCompleted.contains(oldCurrent))
+                QuestChangeHistoryStore.INSTANCE.recordPhaseAdvanced(questId, oldCurrent, newCurrent);
+        }
     }
 
     private void maybeShowCollectionToasts(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
@@ -213,23 +242,81 @@ public final class ClientQuestCache {
         String questName = getQuestDisplayName(questId);
         Set<String> beforeDiscovered = before != null ? before.getDiscoveredPhaseIds() : Set.of();
         for (String phaseId : after.getDiscoveredPhaseIds())
-            if (!beforeDiscovered.contains(phaseId))
+            if (!beforeDiscovered.contains(phaseId)) {
                 QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_DISCOVERED, questName);
+                QuestChangeHistoryStore.INSTANCE.recordCollectionEntryDiscovered(questId, phaseId);
+            }
         Set<String> beforeUnlocked = before != null ? before.getUnlockedRewardIds() : Set.of();
         for (String rewardId : after.getUnlockedRewardIds())
-            if (!beforeUnlocked.contains(rewardId))
+            if (!beforeUnlocked.contains(rewardId)) {
                 QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_UNLOCKED, questName);
+                QuestChangeHistoryStore.INSTANCE.recordCollectionRewardUnlocked(questId, rewardId);
+            }
         Set<String> beforeClaimed = before != null ? before.getClaimedRewardIds() : Set.of();
         for (String rewardId : after.getClaimedRewardIds())
-            if (!beforeClaimed.contains(rewardId))
+            if (!beforeClaimed.contains(rewardId)) {
                 QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_CLAIMED, questName);
+                QuestChangeHistoryStore.INSTANCE.recordCollectionRewardClaimed(questId, rewardId);
+            }
         Set<String> beforeCompleted = previousData != null ? previousData.getCompletedPhaseIds() : Set.of();
         for (String phaseId : newData.getCompletedPhaseIds())
             if (!beforeCompleted.contains(phaseId)) {
                 String phaseName = getPhaseDisplayName(questId, phaseId);
                 int themeColor = getQuestThemeColor(questId, 0x66FF66);
                 QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.COMPLETED);
+                QuestChangeHistoryStore.INSTANCE.recordCollectionEntryCompleted(questId, phaseId);
             }
+        recordCollectionCompletionHistory(questId, previousData, newData);
+    }
+
+    private void recordCollectionCompletionHistory(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
+        if (previousData == null || newData == null) return;
+        int beforeDone = countCompletedCollectionEntries(questId, previousData);
+        int afterDone = countCompletedCollectionEntries(questId, newData);
+        int total = getCollectionTotalEntryCount(questId);
+        if (total > 0 && beforeDone < total && afterDone >= total) {
+            QuestChangeHistoryStore.INSTANCE.recordCollectionQuestCompleted(questId);
+        }
+
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
+        if (def == null || !def.isCollectionQuest()) return;
+        Set<String> beforeCategories = completedCollectionCategories(def, previousData);
+        Set<String> afterCategories = completedCollectionCategories(def, newData);
+        for (String categoryId : afterCategories) {
+            if (!beforeCategories.contains(categoryId)) QuestChangeHistoryStore.INSTANCE.recordCollectionCategoryCompleted(questId, categoryId);
+        }
+    }
+
+    private int countCompletedCollectionEntries(String questId, QuestRuntimeData runtime) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
+        if (def == null || runtime == null) return 0;
+        int completed = 0;
+        for (String phaseId : def.getPhaseIds()) {
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase != null && phase.hasCollectionEntryConfig() && runtime.isPhaseCompleted(phaseId)) completed++;
+        }
+        return completed;
+    }
+
+    private Set<String> completedCollectionCategories(QuestDefinition def, QuestRuntimeData runtime) {
+        Set<String> completed = new LinkedHashSet<>();
+        if (def.getCollectionConfig() == null || runtime == null) return completed;
+        for (var category : def.getCollectionConfig().getCategories()) {
+            String categoryId = category.getCategoryId();
+            int total = 0;
+            int done = 0;
+            for (String phaseId : def.getPhaseIds()) {
+                PhaseDefinition phase = def.getPhase(phaseId);
+                if (phase == null || !phase.hasCollectionEntryConfig()) continue;
+                if (!categoryId.equals(phase.getCollectionEntryConfig().getCategoryId())) continue;
+                total++;
+                if (runtime.isPhaseCompleted(phaseId)) done++;
+            }
+            if (total > 0 && done >= total) completed.add(categoryId);
+        }
+        return completed;
     }
 
     /**
@@ -265,6 +352,7 @@ public final class ClientQuestCache {
         // 触发动画钩子：目标进度更新
         if (newProgress > oldProgress) {
             onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);
+            recordObjectiveHistory(questId, oldData.getCurrentPhaseId(), objIndex, oldProgress, newProgress);
         }
 
         LOGGER.debug("[ClientCache] Objective updated: {}#{}={}", questId, objIndex, newProgress);
@@ -294,9 +382,26 @@ public final class ClientQuestCache {
 
         if (newProgress > oldProgress) {
             onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);
+            recordObjectiveHistory(questId, phaseId, objIndex, oldProgress, newProgress);
         }
 
         LOGGER.debug("[ClientCache] Objective updated: {}/{}#{}={}", questId, phaseId, objIndex, newProgress);
+    }
+
+    private void recordObjectiveHistory(String questId, String phaseId, int objIndex, int oldProgress, int newProgress) {
+        int required = resolveObjectiveRequired(questId, phaseId, objIndex);
+        QuestChangeHistoryStore.INSTANCE.recordObjectiveProgress(questId, phaseId, objIndex, oldProgress, newProgress, required);
+        if (required > 0 && oldProgress < required && newProgress >= required) {
+            QuestChangeHistoryStore.INSTANCE.recordObjectiveCompleted(questId, phaseId, objIndex, required);
+        }
+    }
+
+    private int resolveObjectiveRequired(String questId, String phaseId, int objIndex) {
+        ResourceLocation rl = ResourceLocation.tryParse(questId);
+        QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
+        PhaseDefinition phase = def != null ? def.getPhase(phaseId) : null;
+        if (phase == null || objIndex < 0 || objIndex >= phase.getObjectives().size()) return -1;
+        return Math.max(1, phase.getObjectives().get(objIndex).getRequiredCount());
     }
 
     /**

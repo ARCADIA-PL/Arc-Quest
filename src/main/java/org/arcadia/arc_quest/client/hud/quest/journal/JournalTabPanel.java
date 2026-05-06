@@ -1,3 +1,4 @@
+// file_name: JournalTabPanel.java
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -27,13 +28,22 @@ public class JournalTabPanel {
 
         for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
             int tw = screen.getFont().width(getTabLabel(tab)) + 16;
-            if (tab == screen.getCurrentTab()) {
+            if (tab == screen.getCurrentTab() && !screen.isShowingChangeLog()) {
                 targetTabX = currentTabX;
                 targetTabW = tw;
             }
             currentTabX += tw + 4;
         }
 
+        // 伪装的第四个原生 Tab: HISTORY
+        String logLabel = "HISTORY";
+        int logTw = screen.getFont().width(logLabel) + 16;
+        if (screen.isShowingChangeLog()) {
+            targetTabX = currentTabX;
+            targetTabW = logTw;
+        }
+
+        // 滑块动画
         if (tabWidthAnim <= 0.1f) {
             tabSlideAnim = targetTabX;
             tabWidthAnim = targetTabW;
@@ -42,14 +52,14 @@ public class JournalTabPanel {
         tabSlideAnim += (targetTabX - tabSlideAnim) * lerpFactor;
         tabWidthAnim += (targetTabW - tabWidthAnim) * lerpFactor;
 
+        // 渲染基础 Tabs
         currentTabX = tabBaseX;
         for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
             String label = getTabLabel(tab);
             int tw = screen.getFont().width(label) + 16;
             boolean hovered = mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
-            int textColor = (tab == screen.getCurrentTab())
-                    ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha)
-                    : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
+            boolean active = tab == screen.getCurrentTab() && !screen.isShowingChangeLog();
+            int textColor = active ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
 
             if (safeAlpha > 8) {
                 g.drawString(screen.getFont(), label, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, textColor, true);
@@ -57,23 +67,46 @@ public class JournalTabPanel {
             currentTabX += tw + 4;
         }
 
-        if ((int) (255 * screen.getEffectiveAlpha()) > 8) {
-            g.fill((int) tabSlideAnim, tabY + JournalConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + JournalConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, (int) (255 * screen.getEffectiveAlpha())));
+        // 渲染 HISTORY Tab
+        boolean hoveredLog = mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
+        boolean activeLog = screen.isShowingChangeLog();
+        int logColor = activeLog ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hoveredLog ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
+
+        if (safeAlpha > 8) {
+            g.drawString(screen.getFont(), logLabel, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, logColor, true);
+        }
+
+        // 渲染底部滑动指示条
+        if (safeAlpha > 8 && tabWidthAnim > 0) {
+            g.fill((int) tabSlideAnim, tabY + JournalConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + JournalConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, safeAlpha));
         }
     }
 
     public boolean mouseClicked(double mx, double my, int tabBaseX) {
         int tabY = 38;
+        int currentTabX = tabBaseX;
+
         for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
             int tw = screen.getFont().width(getTabLabel(tab)) + 16;
-            if (mx >= tabBaseX && mx <= tabBaseX + tw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
-                if (screen.getCurrentTab() != tab) {
+            if (mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
+                if (screen.isShowingChangeLog() || screen.getCurrentTab() != tab) {
+                    screen.setShowingChangeLog(false);
                     screen.setCurrentTab(tab);
                     screen.playClick();
                 }
                 return true;
             }
-            tabBaseX += tw + 4;
+            currentTabX += tw + 4;
+        }
+
+        String logLabel = "HISTORY";
+        int logTw = screen.getFont().width(logLabel) + 16;
+        if (mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
+            if (!screen.isShowingChangeLog()) {
+                screen.setShowingChangeLog(true);
+                screen.playClick();
+            }
+            return true;
         }
         return false;
     }

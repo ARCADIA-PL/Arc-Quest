@@ -753,6 +753,7 @@ public final class QuestProgressHandler {
     private static void grantRewards(ServerPlayer player, List<IReward> rewards, String context) {
         for (IReward reward : rewards) {
             try {
+                LOGGER.info("[ArcQuest] Granting {} reward to {}: {}", context, player.getGameProfile().getName(), reward.describe());
                 reward.grant(player);
             } catch (Exception e) {
                 LOGGER.error("[ArcQuest] Error granting {} reward: {}", context, e.getMessage(), e);
