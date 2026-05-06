@@ -1,0 +1,35 @@
+package org.arcadia.arc_quest.quest.editor.model;
+
+import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.quest.spec.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class EditableQuestMeta {
+    public String questId = "";
+    public QuestCategory category = QuestCategory.ADVENTURE;
+    public QuestTextSpec displayName = QuestTextSpec.literal("");
+    public QuestTextSpec description = QuestTextSpec.literal("");
+    public String iconTexture = "";
+    public int sortOrder = 0;
+    public boolean repeatable = false;
+    public QuestMode mode = QuestMode.PROGRESSION;
+    public List<ConditionSpec> unlockConditions = new ArrayList<>();
+    public List<RewardSpec> completionRewards = new ArrayList<>();
+    public List<String> flagsToSetOnAccept = new ArrayList<>();
+    public List<String> flagsToSetOnComplete = new ArrayList<>();
+    public List<MarkSpecData> relatedMarks = new ArrayList<>();
+    public String chapterShopId = "";
+    public ChapterShopType chapterShopType = ChapterShopType.TRADE;
+    public boolean chapterShopPersistent = false;
+    public QuestCompletionPolicy completionPolicy = QuestCompletionPolicy.ALL;
+    public int completionRequiredCount = 0;
+    public String completionTargetPhaseId = "";
+    public QuestTimeLimitType timeLimitType = null;
+    public long timeLimitValue = 0L;
+    public String chapterStartSound = "";
+    public String chapterFailSound = "";
+    public String chapterCompleteSound = "";
+    public QuestVisualSpec visualConfig = new QuestVisualSpec();
+}
