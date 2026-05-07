@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.editor.service;
 
+import org.arcadia.arc_quest.quest.api.QuestMode;
 import org.arcadia.arc_quest.quest.editor.model.*;
 
 import java.util.HashSet;
@@ -19,6 +20,12 @@ public class EditableQuestValidationService {
         if (quest.meta.questId == null || quest.meta.questId.isBlank()) {
             report.add(EditableValidationSeverity.ERROR, "meta.questId", "Quest id is required");
         }
+
+        if (quest.meta.mode == QuestMode.COLLECTION) {
+            validateCollection(quest, report);
+            return report;
+        }
+
         if (quest.phases == null || quest.phases.isEmpty()) {
             report.add(EditableValidationSeverity.ERROR, "phases", "At least one phase is required");
             return report;
@@ -117,5 +124,50 @@ public class EditableQuestValidationService {
         }
 
         return report;
+    }
+
+    private void validateCollection(EditableQuest quest, EditableValidationReport report) {
+        if (quest.collectionConfig == null) {
+            report.add(EditableValidationSeverity.ERROR, "collection", "Collection config is required for COLLECTION mode");
+            return;
+        }
+
+        Set<String> categoryIds = new HashSet<>();
+        for (int i = 0; i < quest.collectionConfig.categories.size(); i++) {
+            EditableCollectionCategory category = quest.collectionConfig.categories.get(i);
+            String path = "collection.categories[" + i + "]";
+            if (category.categoryId == null || category.categoryId.isBlank()) {
+                report.add(EditableValidationSeverity.ERROR, path + ".categoryId", "Category id is required");
+            } else if (!categoryIds.add(category.categoryId)) {
+                report.add(EditableValidationSeverity.ERROR, path + ".categoryId", "Duplicate categoryId: " + category.categoryId);
+            }
+        }
+
+        if (quest.collectionConfig.categories.isEmpty()) {
+            report.add(EditableValidationSeverity.ERROR, "collection.categories", "At least one category is required");
+        }
+
+        Set<String> entryIds = new HashSet<>();
+        for (int i = 0; i < quest.collectionEntries.size(); i++) {
+            EditableCollectionEntry entry = quest.collectionEntries.get(i);
+            String path = "collection.entries[" + i + "]";
+            if (entry.entryId == null || entry.entryId.isBlank()) {
+                report.add(EditableValidationSeverity.ERROR, path + ".entryId", "Entry id is required");
+            } else if (!entryIds.add(entry.entryId)) {
+                report.add(EditableValidationSeverity.ERROR, path + ".entryId", "Duplicate entryId: " + entry.entryId);
+            }
+            if (entry.categoryId == null || entry.categoryId.isBlank() || !categoryIds.contains(entry.categoryId)) {
+                report.add(EditableValidationSeverity.ERROR, path + ".categoryId", "Entry categoryId is invalid");
+            }
+            if (entry.completionTarget < 0) {
+                report.add(EditableValidationSeverity.ERROR, path + ".completionTarget", "completionTarget must be >= 0");
+            }
+            if (entry.maxCount < 0) {
+                report.add(EditableValidationSeverity.ERROR, path + ".maxCount", "maxCount must be >= 0");
+            }
+            if (entry.countingMode == null) {
+                report.add(EditableValidationSeverity.ERROR, path + ".countingMode", "countingMode is required");
+            }
+        }
     }
 }

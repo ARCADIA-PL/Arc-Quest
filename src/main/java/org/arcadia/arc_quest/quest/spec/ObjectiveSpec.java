@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.spec;
 
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
+import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,4 +28,5 @@ public class ObjectiveSpec {
     public Integer countMax = null;
     public List<MarkSpecData> relatedMarks = new ArrayList<>();
     public Map<String, String> extraData = new LinkedHashMap<>();
+    public CollectionEntryConfig collectionEntryConfig = null;
 }

@@ -12,6 +12,7 @@ public final class EditableQuestToQuestSpecMapper {
         if (editable == null) return spec;
 
         mapMeta(spec, editable.meta);
+        mapCollection(spec, editable);
         spec.initialPhaseId = resolveInitialPhaseId(editable);
 
         Map<String, PhaseSpec> phaseByNodeId = new LinkedHashMap<>();
@@ -59,7 +60,7 @@ public final class EditableQuestToQuestSpecMapper {
         spec.iconTexture = meta.iconTexture;
         spec.sortOrder = meta.sortOrder;
         spec.repeatable = meta.repeatable;
-        spec.mode = meta.mode;
+        spec.mode = meta.mode == null ? org.arcadia.arc_quest.quest.api.QuestMode.PROGRESSION : meta.mode;
         spec.unlockConditions.addAll(meta.unlockConditions);
         spec.completionRewards.addAll(meta.completionRewards);
         spec.flagsToSetOnAccept.addAll(meta.flagsToSetOnAccept);
@@ -123,7 +124,91 @@ public final class EditableQuestToQuestSpecMapper {
         spec.countMax = editableObjective.countMax;
         spec.relatedMarks.addAll(editableObjective.relatedMarks);
         spec.extraData.putAll(editableObjective.extraData);
+        spec.collectionEntryConfig = editableObjective.collectionEntryConfig;
         return spec;
+    }
+
+    private void mapCollection(QuestSpec spec, EditableQuest editable) {
+        if (editable.collectionConfig == null) return;
+        spec.collection.trackerMode = editable.collectionConfig.trackerMode;
+        spec.collection.journalMode = editable.collectionConfig.journalMode;
+        spec.collection.revealAllEntriesByDefault = editable.collectionConfig.revealAllEntriesByDefault;
+        spec.collection.allowManualRewardClaim = editable.collectionConfig.allowManualRewardClaim;
+        spec.collection.showCategories = editable.collectionConfig.showCategories;
+
+        for (EditableCollectionCategory category : editable.collectionConfig.categories) {
+            org.arcadia.arc_quest.quest.spec.CollectionCategorySpec categorySpec = new org.arcadia.arc_quest.quest.spec.CollectionCategorySpec();
+            categorySpec.categoryId = category.categoryId;
+            categorySpec.displayName = category.displayName;
+            categorySpec.iconTexture = category.iconTexture;
+            categorySpec.sortOrder = category.sortOrder;
+            categorySpec.visibilityConditions.addAll(category.visibilityConditions);
+            for (EditableCollectionCompletionRule rule : category.completionRules) {
+                org.arcadia.arc_quest.quest.spec.CollectionCompletionRuleSpec ruleSpec = new org.arcadia.arc_quest.quest.spec.CollectionCompletionRuleSpec();
+                ruleSpec.type = rule.type;
+                ruleSpec.expression = rule.expression;
+                categorySpec.completionRules.add(ruleSpec);
+            }
+            for (EditableCollectionRewardNode rewardNode : category.rewardNodes) {
+                categorySpec.rewardNodes.add(mapCollectionRewardNode(rewardNode));
+            }
+            spec.collection.categories.add(categorySpec);
+        }
+
+        for (EditableCollectionCompletionRule rule : editable.collectionConfig.questCompletionRules) {
+            org.arcadia.arc_quest.quest.spec.CollectionCompletionRuleSpec ruleSpec = new org.arcadia.arc_quest.quest.spec.CollectionCompletionRuleSpec();
+            ruleSpec.type = rule.type;
+            ruleSpec.expression = rule.expression;
+            spec.collection.questCompletionRules.add(ruleSpec);
+        }
+
+        for (EditableCollectionRewardNode rewardNode : editable.collectionConfig.questRewardNodes) {
+            spec.collection.questRewardNodes.add(mapCollectionRewardNode(rewardNode));
+        }
+
+        if (editable.collectionEntries != null) {
+            for (EditableCollectionEntry entry : editable.collectionEntries) {
+                EditablePhase phase = editable.phases.stream().filter(p -> p.nodeId.equals(entry.ownerPhaseNodeId)).findFirst().orElse(null);
+                if (phase == null) continue;
+                EditableObjective objective = phase.objectives.stream().filter(o -> o.objectiveId.equals(entry.objectiveId)).findFirst().orElse(null);
+                if (objective == null) continue;
+                objective.collectionEntryConfig = toCollectionEntryConfig(entry);
+            }
+        }
+    }
+
+    private org.arcadia.arc_quest.quest.spec.CollectionRewardNodeSpec mapCollectionRewardNode(EditableCollectionRewardNode rewardNode) {
+        org.arcadia.arc_quest.quest.spec.CollectionRewardNodeSpec spec = new org.arcadia.arc_quest.quest.spec.CollectionRewardNodeSpec();
+        spec.rewardNodeId = rewardNode.rewardNodeId;
+        spec.scope = rewardNode.scope;
+        spec.grantMode = rewardNode.grantMode;
+        spec.rewards.addAll(rewardNode.rewards);
+        spec.ownerId = rewardNode.ownerId;
+        for (EditableCollectionCompletionRule unlockRule : rewardNode.unlockRules) {
+            org.arcadia.arc_quest.quest.spec.CollectionCompletionRuleSpec ruleSpec = new org.arcadia.arc_quest.quest.spec.CollectionCompletionRuleSpec();
+            ruleSpec.type = unlockRule.type;
+            ruleSpec.expression = unlockRule.expression;
+            spec.unlockRules.add(ruleSpec);
+        }
+        return spec;
+    }
+
+    private org.arcadia.arc_quest.quest.api.CollectionEntryConfig toCollectionEntryConfig(EditableCollectionEntry entry) {
+        return new org.arcadia.arc_quest.quest.api.CollectionEntryConfig(
+                entry.categoryId,
+                entry.visibilityMode,
+                entry.hiddenPresentationMode,
+                entry.visibilityConditions,
+                entry.countingMode,
+                entry.completionTarget,
+                entry.repeatableProgress,
+                entry.repeatableCompletion,
+                entry.maxCount,
+                entry.rewardGrantMode,
+                java.util.List.of(),
+                entry.sortOrder,
+                entry.showInTrackerByDefault
+        );
     }
 
     private String resolveInitialPhaseId(EditableQuest editable) {

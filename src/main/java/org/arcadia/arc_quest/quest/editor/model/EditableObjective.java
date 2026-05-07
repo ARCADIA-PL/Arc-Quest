@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.editor.model;
 
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
+import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
 import org.arcadia.arc_quest.quest.spec.MarkSpecData;
 import org.arcadia.arc_quest.quest.spec.QuestTextSpec;
 
@@ -30,4 +31,5 @@ public class EditableObjective {
     public Integer countMax = null;
     public List<MarkSpecData> relatedMarks = new ArrayList<>();
     public Map<String, String> extraData = new LinkedHashMap<>();
+    public CollectionEntryConfig collectionEntryConfig = null;
 }

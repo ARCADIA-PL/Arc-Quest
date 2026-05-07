@@ -33,4 +33,5 @@ public class QuestSpec {
     public String chapterFailSound = "";
     public String chapterCompleteSound = "";
     public QuestVisualSpec visualConfig = new QuestVisualSpec();
+    public CollectionQuestSpec collection = new CollectionQuestSpec();
 }
