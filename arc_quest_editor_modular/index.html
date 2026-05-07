@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arc Quest Datapack Visual Editor Modular</title>
+  <link rel="stylesheet" href="./styles/editor.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="bar">
+      <div class="title">Arc Quest Datapack Visual Editor</div>
+      <button id="newBtn" class="toolbar-btn">新建</button>
+      <label for="fileInput" class="toolbar-btn">导入JSON</label>
+      <input id="fileInput" type="file" accept=".json,application/json" />
+      <button id="exportBtn" class="toolbar-btn">导出JSON</button>
+      <button id="validateBtn" class="toolbar-btn">校验</button>
+    </div>
+    <div class="main">
+      <aside class="pane" id="left"></aside>
+      <main class="pane" id="mid"></main>
+      <aside class="pane right">
+        <div class="tabs" id="tabs"></div>
+        <div class="panel" id="right"></div>
+      </aside>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+  <script type="module" src="./scripts/app.js"></script>
+</body>
+</html>
