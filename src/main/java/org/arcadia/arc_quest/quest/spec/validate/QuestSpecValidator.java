@@ -13,12 +13,15 @@ public final class QuestSpecValidator {
             report.add(ValidationIssue.Severity.ERROR, "quest", "QuestSpec is null");
             return report;
         }
-        if (spec.id == null || spec.id.isBlank()) report.add(ValidationIssue.Severity.ERROR, "id", "Quest id is required");
+        if (spec.id == null || spec.id.isBlank())
+            report.add(ValidationIssue.Severity.ERROR, "id", "Quest id is required");
         validateText(report, spec.displayName, "displayName");
         validateText(report, spec.description, "description");
         validateMarks(report, spec.relatedMarks, "relatedMarks");
-        if (spec.phases == null || spec.phases.isEmpty()) report.add(ValidationIssue.Severity.ERROR, "phases", "Quest must contain at least one phase");
-        if (spec.initialPhaseId == null || spec.initialPhaseId.isBlank()) report.add(ValidationIssue.Severity.ERROR, "initialPhaseId", "Initial phase is required");
+        if (spec.phases == null || spec.phases.isEmpty())
+            report.add(ValidationIssue.Severity.ERROR, "phases", "Quest must contain at least one phase");
+        if (spec.initialPhaseId == null || spec.initialPhaseId.isBlank())
+            report.add(ValidationIssue.Severity.ERROR, "initialPhaseId", "Initial phase is required");
 
         Set<String> phaseIds = new HashSet<>();
         if (spec.phases != null) {
@@ -29,18 +32,23 @@ public final class QuestSpecValidator {
                 validateText(report, phase.description, path + ".description");
                 validateText(report, phase.story, path + ".story");
                 validateMarks(report, phase.relatedMarks, path + ".relatedMarks");
-                if (phase.phaseId == null || phase.phaseId.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".phaseId", "Phase id is required");
-                else if (!phaseIds.add(phase.phaseId)) report.add(ValidationIssue.Severity.ERROR, path + ".phaseId", "Duplicate phase id: " + phase.phaseId);
+                if (phase.phaseId == null || phase.phaseId.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".phaseId", "Phase id is required");
+                else if (!phaseIds.add(phase.phaseId))
+                    report.add(ValidationIssue.Severity.ERROR, path + ".phaseId", "Duplicate phase id: " + phase.phaseId);
             }
             for (int i = 0; i < spec.phases.size(); i++) {
                 PhaseSpec phase = spec.phases.get(i);
                 String path = "phases[" + i + "]";
-                if (phase.objectives == null || phase.objectives.isEmpty()) report.add(ValidationIssue.Severity.ERROR, path + ".objectives", "Phase must contain at least one objective");
+                if (phase.objectives == null || phase.objectives.isEmpty())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".objectives", "Phase must contain at least one objective");
                 if (phase.transitions != null) {
                     for (int t = 0; t < phase.transitions.size(); t++) {
                         TransitionSpec tr = phase.transitions.get(t);
-                        if (tr.targetPhaseId == null || tr.targetPhaseId.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".transitions[" + t + "]", "Transition targetPhaseId is required");
-                        else if (!phaseIds.contains(tr.targetPhaseId)) report.add(ValidationIssue.Severity.ERROR, path + ".transitions[" + t + "]", "Transition targetPhaseId not found: " + tr.targetPhaseId);
+                        if (tr.targetPhaseId == null || tr.targetPhaseId.isBlank())
+                            report.add(ValidationIssue.Severity.ERROR, path + ".transitions[" + t + "]", "Transition targetPhaseId is required");
+                        else if (!phaseIds.contains(tr.targetPhaseId))
+                            report.add(ValidationIssue.Severity.ERROR, path + ".transitions[" + t + "]", "Transition targetPhaseId not found: " + tr.targetPhaseId);
                         validateCondition(report, tr.condition, path + ".transitions[" + t + "].condition");
                     }
                 }
@@ -49,9 +57,12 @@ public final class QuestSpecValidator {
                         ChoiceSpec choice = phase.choices.get(c);
                         String choicePath = path + ".choices[" + c + "]";
                         validateText(report, choice.text, choicePath + ".text");
-                        if (choice.targetPhaseId == null || choice.targetPhaseId.isBlank()) report.add(ValidationIssue.Severity.ERROR, choicePath + ".targetPhaseId", "Choice targetPhaseId is required");
-                        else if (!phaseIds.contains(choice.targetPhaseId)) report.add(ValidationIssue.Severity.ERROR, choicePath + ".targetPhaseId", "Choice targetPhaseId not found: " + choice.targetPhaseId);
-                        if (choice.flagToSet == null || choice.flagToSet.isBlank()) report.add(ValidationIssue.Severity.WARNING, choicePath + ".flagToSet", "Choice flagToSet is empty");
+                        if (choice.targetPhaseId == null || choice.targetPhaseId.isBlank())
+                            report.add(ValidationIssue.Severity.ERROR, choicePath + ".targetPhaseId", "Choice targetPhaseId is required");
+                        else if (!phaseIds.contains(choice.targetPhaseId))
+                            report.add(ValidationIssue.Severity.ERROR, choicePath + ".targetPhaseId", "Choice targetPhaseId not found: " + choice.targetPhaseId);
+                        if (choice.flagToSet == null || choice.flagToSet.isBlank())
+                            report.add(ValidationIssue.Severity.WARNING, choicePath + ".flagToSet", "Choice flagToSet is empty");
                         validateCondition(report, choice.visibleCondition, choicePath + ".visibleCondition");
                     }
                 }
@@ -61,8 +72,10 @@ public final class QuestSpecValidator {
                         String objectivePath = path + ".objectives[" + o + "]";
                         validateText(report, objective.displayText, objectivePath + ".displayText");
                         validateMarks(report, objective.relatedMarks, objectivePath + ".relatedMarks");
-                        if (objective.type == null) report.add(ValidationIssue.Severity.ERROR, objectivePath + ".type", "Objective type is required");
-                        if (objective.targetId == null || objective.targetId.isBlank()) report.add(ValidationIssue.Severity.ERROR, objectivePath + ".targetId", "Objective targetId is required");
+                        if (objective.type == null)
+                            report.add(ValidationIssue.Severity.ERROR, objectivePath + ".type", "Objective type is required");
+                        if (objective.targetId == null || objective.targetId.isBlank())
+                            report.add(ValidationIssue.Severity.ERROR, objectivePath + ".targetId", "Objective targetId is required");
                         validateObjective(report, objective, objectivePath);
                     }
                 }
@@ -119,10 +132,14 @@ public final class QuestSpecValidator {
             report.add(ValidationIssue.Severity.ERROR, path, "MarkSpecData is required");
             return;
         }
-        if (mark.id == null || mark.id.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".id", "Mark id is required");
-        if (mark.markerType == null) report.add(ValidationIssue.Severity.ERROR, path + ".markerType", "Mark markerType is required");
-        if (mark.maxDistance <= 0) report.add(ValidationIssue.Severity.ERROR, path + ".maxDistance", "Mark maxDistance must be > 0");
-        if (mark.refreshTicks <= 0) report.add(ValidationIssue.Severity.ERROR, path + ".refreshTicks", "Mark refreshTicks must be > 0");
+        if (mark.id == null || mark.id.isBlank())
+            report.add(ValidationIssue.Severity.ERROR, path + ".id", "Mark id is required");
+        if (mark.markerType == null)
+            report.add(ValidationIssue.Severity.ERROR, path + ".markerType", "Mark markerType is required");
+        if (mark.maxDistance <= 0)
+            report.add(ValidationIssue.Severity.ERROR, path + ".maxDistance", "Mark maxDistance must be > 0");
+        if (mark.refreshTicks <= 0)
+            report.add(ValidationIssue.Severity.ERROR, path + ".refreshTicks", "Mark refreshTicks must be > 0");
         validateMarkTarget(report, mark.target, path + ".target");
         validateMarkActivation(report, mark.activateWhen, path + ".activateWhen", false);
         validateMarkActivation(report, mark.deactivateWhen, path + ".deactivateWhen", true);
@@ -140,25 +157,31 @@ public final class QuestSpecValidator {
         switch (target.type) {
             case "pos" -> validateXYZ(report, target, path);
             case "dimension_pos" -> {
-                if (target.dimension == null || target.dimension.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".dimension", "dimension_pos requires dimension");
+                if (target.dimension == null || target.dimension.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".dimension", "dimension_pos requires dimension");
                 validateXYZ(report, target, path);
             }
             case "entity_type_nearest" -> {
-                if (target.entityType == null || target.entityType.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".entityType", "entity_type_nearest requires entityType");
+                if (target.entityType == null || target.entityType.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".entityType", "entity_type_nearest requires entityType");
                 validatePositive(report, target.searchRadius, path + ".searchRadius", "entity_type_nearest requires searchRadius > 0");
             }
             case "entity_npc_id" -> {
-                if (target.npcId == null || target.npcId.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".npcId", "entity_npc_id requires npcId");
+                if (target.npcId == null || target.npcId.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".npcId", "entity_npc_id requires npcId");
                 validatePositive(report, target.searchRadius, path + ".searchRadius", "entity_npc_id requires searchRadius > 0");
             }
             case "structure_nearest" -> {
-                if (target.structureTag == null || target.structureTag.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".structureTag", "structure_nearest requires structureTag");
+                if (target.structureTag == null || target.structureTag.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".structureTag", "structure_nearest requires structureTag");
                 validatePositive(report, target.searchRadius, path + ".searchRadius", "structure_nearest requires searchRadius > 0");
             }
             case "custom" -> {
-                if (target.resolverId == null || target.resolverId.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".resolverId", "custom mark target requires resolverId");
+                if (target.resolverId == null || target.resolverId.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".resolverId", "custom mark target requires resolverId");
             }
-            default -> report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported mark target type: " + target.type);
+            default ->
+                    report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported mark target type: " + target.type);
         }
     }
 
@@ -172,24 +195,31 @@ public final class QuestSpecValidator {
             return;
         }
         switch (activation.type) {
-            case "always", "never" -> { }
+            case "always", "never" -> {
+            }
             case "flag_set", "flag_not_set" -> {
-                if (activation.flag == null || activation.flag.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".flag", activation.type + " requires flag");
+                if (activation.flag == null || activation.flag.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".flag", activation.type + " requires flag");
             }
             case "quest_active" -> {
-                if (activation.questId == null || activation.questId.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".questId", "quest_active requires questId");
+                if (activation.questId == null || activation.questId.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".questId", "quest_active requires questId");
             }
             case "and", "or" -> {
-                if (activation.left == null) report.add(ValidationIssue.Severity.ERROR, path + ".left", activation.type + " requires left activation");
-                if (activation.right == null) report.add(ValidationIssue.Severity.ERROR, path + ".right", activation.type + " requires right activation");
+                if (activation.left == null)
+                    report.add(ValidationIssue.Severity.ERROR, path + ".left", activation.type + " requires left activation");
+                if (activation.right == null)
+                    report.add(ValidationIssue.Severity.ERROR, path + ".right", activation.type + " requires right activation");
                 validateMarkActivation(report, activation.left, path + ".left", false);
                 validateMarkActivation(report, activation.right, path + ".right", false);
             }
             case "not" -> {
-                if (activation.left == null) report.add(ValidationIssue.Severity.ERROR, path + ".left", "not requires left activation");
+                if (activation.left == null)
+                    report.add(ValidationIssue.Severity.ERROR, path + ".left", "not requires left activation");
                 validateMarkActivation(report, activation.left, path + ".left", false);
             }
-            default -> report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported mark activation type: " + activation.type);
+            default ->
+                    report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported mark activation type: " + activation.type);
         }
     }
 
@@ -226,10 +256,14 @@ public final class QuestSpecValidator {
     }
 
     private void validateObjective(ValidationReport report, ObjectiveSpec objective, String path) {
-        if (objective.requiredCount < 1) report.add(ValidationIssue.Severity.ERROR, path + ".requiredCount", "Objective requiredCount must be >= 1");
-        if (objective.radius != null && objective.radius < 0) report.add(ValidationIssue.Severity.ERROR, path + ".radius", "Objective radius must be >= 0");
-        if (objective.countMin != null && objective.countMin < 1) report.add(ValidationIssue.Severity.ERROR, path + ".countMin", "Objective countMin must be >= 1");
-        if (objective.countMax != null && objective.countMax < 1) report.add(ValidationIssue.Severity.ERROR, path + ".countMax", "Objective countMax must be >= 1");
+        if (objective.requiredCount < 1)
+            report.add(ValidationIssue.Severity.ERROR, path + ".requiredCount", "Objective requiredCount must be >= 1");
+        if (objective.radius != null && objective.radius < 0)
+            report.add(ValidationIssue.Severity.ERROR, path + ".radius", "Objective radius must be >= 0");
+        if (objective.countMin != null && objective.countMin < 1)
+            report.add(ValidationIssue.Severity.ERROR, path + ".countMin", "Objective countMin must be >= 1");
+        if (objective.countMax != null && objective.countMax < 1)
+            report.add(ValidationIssue.Severity.ERROR, path + ".countMax", "Objective countMax must be >= 1");
         if (objective.countMin != null && objective.countMax != null && objective.countMin > objective.countMax) {
             report.add(ValidationIssue.Severity.ERROR, path + ".countMin", "Objective countMin cannot exceed countMax");
         }
@@ -242,18 +276,23 @@ public final class QuestSpecValidator {
         }
         switch (reward.type) {
             case "item" -> {
-                if (reward.itemId == null || reward.itemId.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".itemId", "Item reward requires itemId");
+                if (reward.itemId == null || reward.itemId.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".itemId", "Item reward requires itemId");
             }
             case "flag_set", "flag_clear" -> {
-                if (reward.flag == null || reward.flag.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".flag", "Flag reward requires flag");
+                if (reward.flag == null || reward.flag.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".flag", "Flag reward requires flag");
             }
             case "command" -> {
-                if (reward.command == null || reward.command.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".command", "Command reward requires command");
+                if (reward.command == null || reward.command.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".command", "Command reward requires command");
             }
             case "var_set", "var_add", "var_subtract", "var_multiply" -> {
-                if (reward.variable == null || reward.variable.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".variable", "Variable reward requires variable");
+                if (reward.variable == null || reward.variable.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".variable", "Variable reward requires variable");
             }
-            default -> report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported reward type: " + reward.type);
+            default ->
+                    report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported reward type: " + reward.type);
         }
     }
 
@@ -264,23 +303,29 @@ public final class QuestSpecValidator {
             return;
         }
         switch (condition.type) {
-            case "always" -> { }
+            case "always" -> {
+            }
             case "flag_set", "flag_not_set" -> {
-                if (condition.flag == null || condition.flag.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".flag", "Flag condition requires flag");
+                if (condition.flag == null || condition.flag.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".flag", "Flag condition requires flag");
             }
             case "quest_completed" -> {
-                if (condition.questId == null || condition.questId.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".questId", "Quest condition requires questId");
+                if (condition.questId == null || condition.questId.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".questId", "Quest condition requires questId");
             }
             case "variable" -> {
-                if (condition.variable == null || condition.variable.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".variable", "Variable condition requires variable");
-                if (condition.compareOp == null) report.add(ValidationIssue.Severity.ERROR, path + ".compareOp", "Variable condition requires compareOp");
+                if (condition.variable == null || condition.variable.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".variable", "Variable condition requires variable");
+                if (condition.compareOp == null)
+                    report.add(ValidationIssue.Severity.ERROR, path + ".compareOp", "Variable condition requires compareOp");
             }
             case "and", "or" -> {
                 validateCondition(report, condition.left, path + ".left");
                 validateCondition(report, condition.right, path + ".right");
             }
             case "not" -> validateCondition(report, condition.left, path + ".left");
-            default -> report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported condition type: " + condition.type);
+            default ->
+                    report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported condition type: " + condition.type);
         }
     }
 }

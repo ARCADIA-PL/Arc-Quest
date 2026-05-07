@@ -70,7 +70,8 @@ final class TrackerCollectionProgressAdapter {
     }
 
     private PhaseDefinition resolveTrackedCollectionPhase(QuestDefinition def, QuestRuntimeData runtime, String trackedPhaseId) {
-        if (def == null || runtime == null || trackedPhaseId == null || trackedPhaseId.isEmpty() || runtime.isPhaseCompleted(trackedPhaseId)) return null;
+        if (def == null || runtime == null || trackedPhaseId == null || trackedPhaseId.isEmpty() || runtime.isPhaseCompleted(trackedPhaseId))
+            return null;
         PhaseDefinition phase = def.getPhase(trackedPhaseId);
         return phase != null && phase.getCollectionEntryConfig() != null ? phase : null;
     }

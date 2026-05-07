@@ -7,8 +7,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.reward.CommandReward;
@@ -17,7 +15,10 @@ import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.quest.reward.VariableReward;
 import org.arcadia.arc_quest.quest.spec.*;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
-import org.arcadia.arc_quest.questmarker.api.*;
+import org.arcadia.arc_quest.questmarker.api.MarkActivation;
+import org.arcadia.arc_quest.questmarker.api.MarkActivations;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -157,11 +158,16 @@ public final class QuestSpecCompiler {
     private MarkableObject compileMarkTarget(MarkTargetSpec spec) {
         if (spec == null) throw new QuestCompileException("Mark target is required");
         return switch (spec.type) {
-            case "pos" -> new MarkableObject.Pos(requireInt(spec.x, "mark x"), requireInt(spec.y, "mark y"), requireInt(spec.z, "mark z"));
-            case "dimension_pos" -> new MarkableObject.DimensionPos(ResourceKey.create(Registries.DIMENSION, parseId(spec.dimension)), requireInt(spec.x, "mark x"), requireInt(spec.y, "mark y"), requireInt(spec.z, "mark z"));
-            case "entity_type_nearest" -> new MarkableObject.EntityByTypeNearest(requireEntityType(spec.entityType), requirePositiveInt(spec.searchRadius, "mark searchRadius"));
-            case "entity_npc_id" -> new MarkableObject.EntityByNpcId(spec.npcId, requirePositiveInt(spec.searchRadius, "mark searchRadius"));
-            case "structure_nearest" -> new MarkableObject.StructureNearest(TagKey.create(Registries.STRUCTURE, parseId(spec.structureTag)), requirePositiveInt(spec.searchRadius, "mark searchRadius"));
+            case "pos" ->
+                    new MarkableObject.Pos(requireInt(spec.x, "mark x"), requireInt(spec.y, "mark y"), requireInt(spec.z, "mark z"));
+            case "dimension_pos" ->
+                    new MarkableObject.DimensionPos(ResourceKey.create(Registries.DIMENSION, parseId(spec.dimension)), requireInt(spec.x, "mark x"), requireInt(spec.y, "mark y"), requireInt(spec.z, "mark z"));
+            case "entity_type_nearest" ->
+                    new MarkableObject.EntityByTypeNearest(requireEntityType(spec.entityType), requirePositiveInt(spec.searchRadius, "mark searchRadius"));
+            case "entity_npc_id" ->
+                    new MarkableObject.EntityByNpcId(spec.npcId, requirePositiveInt(spec.searchRadius, "mark searchRadius"));
+            case "structure_nearest" ->
+                    new MarkableObject.StructureNearest(TagKey.create(Registries.STRUCTURE, parseId(spec.structureTag)), requirePositiveInt(spec.searchRadius, "mark searchRadius"));
             case "custom" -> new MarkableObject.CustomResolver(spec.resolverId, spec.args);
             default -> throw new QuestCompileException("Unsupported mark target type: " + spec.type);
         };

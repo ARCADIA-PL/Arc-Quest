@@ -24,7 +24,8 @@ public class QuestEditorTreeLayoutService {
 
         Map<String, List<String>> next = new HashMap<>();
         for (EditableConnection c : quest.connections) {
-            if (!phaseByNode.containsKey(c.sourcePhaseNodeId) || !phaseByNode.containsKey(c.targetPhaseNodeId)) continue;
+            if (!phaseByNode.containsKey(c.sourcePhaseNodeId) || !phaseByNode.containsKey(c.targetPhaseNodeId))
+                continue;
             next.computeIfAbsent(c.sourcePhaseNodeId, k -> new ArrayList<>()).add(c.targetPhaseNodeId);
 
             EditorEdgeLayout e = new EditorEdgeLayout();

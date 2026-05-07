@@ -1,8 +1,8 @@
 package org.arcadia.arc_quest.client.hud.quest.editor;
 
+import org.arcadia.arc_quest.quest.editor.service.EditableValidationReport;
 import org.arcadia.arc_quest.quest.editor.service.QuestEditorDocument;
 import org.arcadia.arc_quest.quest.editor.service.SaveReport;
-import org.arcadia.arc_quest.quest.editor.service.EditableValidationReport;
 
 import java.util.LinkedHashSet;
 import java.util.Set;

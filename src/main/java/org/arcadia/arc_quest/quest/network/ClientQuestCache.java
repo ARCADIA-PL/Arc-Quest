@@ -223,7 +223,8 @@ public final class ClientQuestCache {
             if (!beforeActive.contains(phaseId)) QuestChangeHistoryStore.INSTANCE.recordPhaseAdded(questId, phaseId);
         }
         for (String phaseId : afterCompleted) {
-            if (!beforeCompleted.contains(phaseId)) QuestChangeHistoryStore.INSTANCE.recordPhaseCompleted(questId, phaseId);
+            if (!beforeCompleted.contains(phaseId))
+                QuestChangeHistoryStore.INSTANCE.recordPhaseCompleted(questId, phaseId);
         }
 
         String oldCurrent = previousData.getCurrentPhaseId();
@@ -284,7 +285,8 @@ public final class ClientQuestCache {
         Set<String> beforeCategories = completedCollectionCategories(def, previousData);
         Set<String> afterCategories = completedCollectionCategories(def, newData);
         for (String categoryId : afterCategories) {
-            if (!beforeCategories.contains(categoryId)) QuestChangeHistoryStore.INSTANCE.recordCollectionCategoryCompleted(questId, categoryId);
+            if (!beforeCategories.contains(categoryId))
+                QuestChangeHistoryStore.INSTANCE.recordCollectionCategoryCompleted(questId, categoryId);
         }
     }
 

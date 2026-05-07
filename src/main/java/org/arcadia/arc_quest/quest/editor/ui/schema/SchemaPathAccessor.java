@@ -39,7 +39,8 @@ public class SchemaPathAccessor {
             case "countPerLevel" -> o.countPerLevel == null ? "" : Integer.toString(o.countPerLevel);
             case "countMin" -> o.countMin == null ? "" : Integer.toString(o.countMin);
             case "countMax" -> o.countMax == null ? "" : Integer.toString(o.countMax);
-            case "collectionEntryConfig.categoryId" -> o.collectionEntryConfig == null ? "" : o.collectionEntryConfig.getCategoryId();
+            case "collectionEntryConfig.categoryId" ->
+                    o.collectionEntryConfig == null ? "" : o.collectionEntryConfig.getCategoryId();
             case "compareOp" -> "";
             default -> "";
         };
@@ -51,7 +52,8 @@ public class SchemaPathAccessor {
                 case "targetId" -> o.targetId = nvl(value);
                 case "requiredCount" -> o.requiredCount = parseInt(value, 1);
                 case "displayText.value" -> {
-                    if (o.displayText == null) o.displayText = org.arcadia.arc_quest.quest.spec.QuestTextSpec.literal("");
+                    if (o.displayText == null)
+                        o.displayText = org.arcadia.arc_quest.quest.spec.QuestTextSpec.literal("");
                     o.displayText = org.arcadia.arc_quest.quest.spec.QuestTextSpec.literal(nvl(value));
                 }
                 case "type" -> o.type = org.arcadia.arc_quest.quest.api.ObjectiveType.valueOf(nvl(value).toUpperCase());
@@ -88,7 +90,8 @@ public class SchemaPathAccessor {
             case "condition.flag" -> c.condition == null ? "" : c.condition.flag;
             case "condition.questId" -> c.condition == null ? "" : c.condition.questId;
             case "condition.variable" -> c.condition == null ? "" : c.condition.variable;
-            case "condition.compareOp" -> c.condition == null || c.condition.compareOp == null ? "" : c.condition.compareOp.name();
+            case "condition.compareOp" ->
+                    c.condition == null || c.condition.compareOp == null ? "" : c.condition.compareOp.name();
             case "condition.value" -> c.condition == null ? "0" : Integer.toString(c.condition.value);
             default -> "";
         };
@@ -99,15 +102,36 @@ public class SchemaPathAccessor {
             switch (path) {
                 case "connectionId" -> c.connectionId = nvl(value);
                 case "targetPhaseNodeId" -> c.targetPhaseNodeId = nvl(value);
-                case "connectionType" -> c.connectionType = org.arcadia.arc_quest.quest.editor.model.EditableConnectionType.valueOf(nvl(value).toUpperCase());
+                case "connectionType" ->
+                        c.connectionType = org.arcadia.arc_quest.quest.editor.model.EditableConnectionType.valueOf(nvl(value).toUpperCase());
                 case "priority" -> c.priority = parseInt(value, 0);
-                case "condition.type" -> { ensureCond(c); c.condition.type = nvl(value); }
-                case "condition.flag" -> { ensureCond(c); c.condition.flag = nvl(value); }
-                case "condition.questId" -> { ensureCond(c); c.condition.questId = nvl(value); }
-                case "condition.variable" -> { ensureCond(c); c.condition.variable = nvl(value); }
-                case "condition.compareOp" -> { ensureCond(c); c.condition.compareOp = org.arcadia.arc_quest.quest.api.CompareOp.valueOf(nvl(value).toUpperCase()); }
-                case "condition.value" -> { ensureCond(c); c.condition.value = parseInt(value, 0); }
-                default -> { return false; }
+                case "condition.type" -> {
+                    ensureCond(c);
+                    c.condition.type = nvl(value);
+                }
+                case "condition.flag" -> {
+                    ensureCond(c);
+                    c.condition.flag = nvl(value);
+                }
+                case "condition.questId" -> {
+                    ensureCond(c);
+                    c.condition.questId = nvl(value);
+                }
+                case "condition.variable" -> {
+                    ensureCond(c);
+                    c.condition.variable = nvl(value);
+                }
+                case "condition.compareOp" -> {
+                    ensureCond(c);
+                    c.condition.compareOp = org.arcadia.arc_quest.quest.api.CompareOp.valueOf(nvl(value).toUpperCase());
+                }
+                case "condition.value" -> {
+                    ensureCond(c);
+                    c.condition.value = parseInt(value, 0);
+                }
+                default -> {
+                    return false;
+                }
             }
             return true;
         } catch (Exception ex) {
@@ -133,8 +157,11 @@ public class SchemaPathAccessor {
             switch (path) {
                 case "rewardNodeId" -> r.rewardNodeId = nvl(value);
                 case "scope" -> r.scope = org.arcadia.arc_quest.quest.api.RewardScope.valueOf(nvl(value).toUpperCase());
-                case "grantMode" -> r.grantMode = org.arcadia.arc_quest.quest.api.EntryRewardGrantMode.valueOf(nvl(value).toUpperCase());
-                default -> { return false; }
+                case "grantMode" ->
+                        r.grantMode = org.arcadia.arc_quest.quest.api.EntryRewardGrantMode.valueOf(nvl(value).toUpperCase());
+                default -> {
+                    return false;
+                }
             }
             return true;
         } catch (Exception ex) {
@@ -143,8 +170,14 @@ public class SchemaPathAccessor {
     }
 
     private int parseInt(String s, int fallback) {
-        try { return Integer.parseInt(s); } catch (Exception ignored) { return fallback; }
+        try {
+            return Integer.parseInt(s);
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
 
-    private String nvl(String s) { return s == null ? "" : s; }
+    private String nvl(String s) {
+        return s == null ? "" : s;
+    }
 }

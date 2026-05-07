@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.quest.spec;
 
-import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
+import org.arcadia.arc_quest.quest.api.ObjectiveType;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

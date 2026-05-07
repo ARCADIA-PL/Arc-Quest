@@ -50,6 +50,7 @@ public final class QuestEditorRoundTripVerifier {
         }
     }
 
-    public record RoundTripReport(boolean success, List<String> errors, EditableQuest editable, QuestSpec remappedSpec) {
+    public record RoundTripReport(boolean success, List<String> errors, EditableQuest editable,
+                                  QuestSpec remappedSpec) {
     }
 }

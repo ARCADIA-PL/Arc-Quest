@@ -1,14 +1,11 @@
 // file_name: CollectionHistoryPanel.java
 package org.arcadia.arc_quest.client.hud.quest.history;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -27,29 +24,24 @@ public final class CollectionHistoryPanel {
     private static final int PANEL_H = 270;
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
-
+    // 数据缓存
+    private static final List<CategoryData> categories = new ArrayList<>();
     private static boolean active = false;
     private static boolean closing = false;
     private static String questId;
     private static int themeColor = 0x5AD7FF;
-
     private static long lastRenderMs = 0L;
     private static float enterTimer = 0f;
     private static float exitTimer = 0f;
-
     private static float currentScale = 1.0f;
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
-
     // 滚动系统
     private static float scroll = 0f;
     private static float targetScroll = 0f;
     private static float maxScroll = 0f;
     private static boolean panning = false;
     private static double lastDragY = 0;
-
-    // 数据缓存
-    private static final List<CategoryData> categories = new ArrayList<>();
     private static String hoveredPhaseId = null;
     private static int claimableCount = 0;
 
@@ -236,7 +228,7 @@ public final class CollectionHistoryPanel {
             String claimText = "CLAIMABLE REWARDS: " + claimableCount;
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
-            g.drawString(font, claimText, (int)((PW - 10) / 0.85f) - font.width(claimText), 6, HudAnimUtil.withAlpha(0xFFD166, alpha), true);
+            g.drawString(font, claimText, (int) ((PW - 10) / 0.85f) - font.width(claimText), 6, HudAnimUtil.withAlpha(0xFFD166, alpha), true);
             g.pose().popPose();
         }
 
@@ -272,7 +264,7 @@ public final class CollectionHistoryPanel {
         for (CategoryData cat : categories) {
             if (currentY + 20 > listY && currentY < listY + listH) {
                 g.drawString(font, "// " + cat.name.toUpperCase(), listX, currentY + 4, HudAnimUtil.withAlpha(themeColor, alpha), false);
-                g.fill(listX + font.width("// " + cat.name) + 10, currentY + 9, listX + listW, currentY + 10, HudAnimUtil.withAlpha(0x445566, (int)(100 * alphaF)));
+                g.fill(listX + font.width("// " + cat.name) + 10, currentY + 9, listX + listW, currentY + 10, HudAnimUtil.withAlpha(0x445566, (int) (100 * alphaF)));
             }
             currentY += 20;
 
@@ -316,7 +308,7 @@ public final class CollectionHistoryPanel {
                     g.pose().pushPose();
                     g.pose().translate(cx + 6, cy + 6, 0);
                     g.pose().scale(0.85f, 0.85f, 1f);
-                    g.drawString(font, font.plainSubstrByWidth(entry.name, (int)((cardW - 40) / 0.85f)), 0, 0, HudAnimUtil.withAlpha(textColor, alpha), false);
+                    g.drawString(font, font.plainSubstrByWidth(entry.name, (int) ((cardW - 40) / 0.85f)), 0, 0, HudAnimUtil.withAlpha(textColor, alpha), false);
                     g.pose().popPose();
 
                     // 数字比例
@@ -342,14 +334,14 @@ public final class CollectionHistoryPanel {
         if (mc.screen instanceof QuestJournalScreen qjs) g.disableScissor();
 
         // 6. 极简滚动条计算
-        int totalContentH = currentY - (listY - (int)scroll);
+        int totalContentH = currentY - (listY - (int) scroll);
         maxScroll = Math.max(0, totalContentH - listH);
 
         if (maxScroll > 0) {
             int thumbH = Math.max(20, (int) (((float) listH / totalContentH) * listH));
             int thumbY = listY + (int) ((scroll / maxScroll) * (listH - thumbH));
-            g.fill(PW - 5, listY, PW - 4, listY + listH, HudAnimUtil.withAlpha(0x000000, (int)(50 * alphaF)));
-            g.fill(PW - 5, thumbY, PW - 4, thumbY + thumbH, HudAnimUtil.withAlpha(themeColor, (int)(150 * alphaF)));
+            g.fill(PW - 5, listY, PW - 4, listY + listH, HudAnimUtil.withAlpha(0x000000, (int) (50 * alphaF)));
+            g.fill(PW - 5, thumbY, PW - 4, thumbY + thumbH, HudAnimUtil.withAlpha(themeColor, (int) (150 * alphaF)));
         }
     }
 
@@ -402,8 +394,12 @@ public final class CollectionHistoryPanel {
     private static class CategoryData {
         String name;
         List<EntryData> entries = new ArrayList<>();
-        CategoryData(String name) { this.name = name; }
+
+        CategoryData(String name) {
+            this.name = name;
+        }
     }
 
-    private record EntryData(String phaseId, String name, int count, int target, boolean completed) {}
+    private record EntryData(String phaseId, String name, int count, int target, boolean completed) {
+    }
 }

@@ -107,7 +107,8 @@ public class EditableCollectionService {
         Map<String, Integer> order = new HashMap<>();
         for (int i = 0; i < list.size(); i++) order.put(list.get(i).entryId, i);
         for (EditableCollectionEntry raw : quest.collectionEntries) {
-            if (categoryId.equals(raw.categoryId) && order.containsKey(raw.entryId)) raw.sortOrder = order.get(raw.entryId);
+            if (categoryId.equals(raw.categoryId) && order.containsKey(raw.entryId))
+                raw.sortOrder = order.get(raw.entryId);
         }
         return true;
     }
@@ -199,7 +200,11 @@ public class EditableCollectionService {
     }
 
     private int parseRuleIndex(String id) {
-        try { return Integer.parseInt(id); } catch (Exception ex) { return -1; }
+        try {
+            return Integer.parseInt(id);
+        } catch (Exception ex) {
+            return -1;
+        }
     }
 
     private EditableCollectionCategory getCategory(EditableQuest quest, String categoryId) {
@@ -234,7 +239,8 @@ public class EditableCollectionService {
     }
 
     private void normalizeCategorySort(EditableQuest quest) {
-        for (int i = 0; i < quest.collectionConfig.categories.size(); i++) quest.collectionConfig.categories.get(i).sortOrder = i;
+        for (int i = 0; i < quest.collectionConfig.categories.size(); i++)
+            quest.collectionConfig.categories.get(i).sortOrder = i;
     }
 
     private void normalizeEntrySort(EditableQuest quest, String categoryId) {
@@ -242,7 +248,8 @@ public class EditableCollectionService {
         Map<String, Integer> order = new HashMap<>();
         for (int i = 0; i < list.size(); i++) order.put(list.get(i).entryId, i);
         for (EditableCollectionEntry raw : quest.collectionEntries) {
-            if (categoryId.equals(raw.categoryId) && order.containsKey(raw.entryId)) raw.sortOrder = order.get(raw.entryId);
+            if (categoryId.equals(raw.categoryId) && order.containsKey(raw.entryId))
+                raw.sortOrder = order.get(raw.entryId);
         }
     }
 }

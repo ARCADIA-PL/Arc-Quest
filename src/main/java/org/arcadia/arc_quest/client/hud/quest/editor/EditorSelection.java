@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.editor;
 
-public record EditorSelection(EditorSelectionType type, String phaseNodeId, String objectiveId, String choiceId, String connectionId) {
+public record EditorSelection(EditorSelectionType type, String phaseNodeId, String objectiveId, String choiceId,
+                              String connectionId) {
     public static EditorSelection none() {
         return new EditorSelection(EditorSelectionType.NONE, "", "", "", "");
     }

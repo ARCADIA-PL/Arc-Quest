@@ -36,7 +36,8 @@ public class EditableQuestGraphService {
     }
 
     public Set<String> getReachablePhaseNodeIds(EditableQuest quest, String startPhaseNodeId) {
-        if (quest == null || quest.connections == null || startPhaseNodeId == null || startPhaseNodeId.isBlank()) return Set.of();
+        if (quest == null || quest.connections == null || startPhaseNodeId == null || startPhaseNodeId.isBlank())
+            return Set.of();
         Set<String> visited = new LinkedHashSet<>();
         Deque<String> queue = new ArrayDeque<>();
         visited.add(startPhaseNodeId);

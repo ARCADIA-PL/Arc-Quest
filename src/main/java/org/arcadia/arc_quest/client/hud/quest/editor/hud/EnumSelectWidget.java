@@ -23,6 +23,17 @@ public class EnumSelectWidget {
         this.itemHeight = itemHeight;
     }
 
+    private static boolean inside(double px, double py, double x, double y, double w, double h) {
+        return px >= x && px <= x + w && py >= y && py <= y + h;
+    }
+
+    private static void outline(GuiGraphics g, int x, int y, int w, int h, int c) {
+        g.fill(x, y, x + w, y + 1, c);
+        g.fill(x, y + h - 1, x + w, y + h, c);
+        g.fill(x, y, x + 1, y + h, c);
+        g.fill(x + w - 1, y, x + w, y + h, c);
+    }
+
     public void setOptions(List<String> options) {
         this.options.clear();
         if (options != null) this.options.addAll(options);
@@ -63,16 +74,5 @@ public class EnumSelectWidget {
         }
         expanded = false;
         return false;
-    }
-
-    private static boolean inside(double px, double py, double x, double y, double w, double h) {
-        return px >= x && px <= x + w && py >= y && py <= y + h;
-    }
-
-    private static void outline(GuiGraphics g, int x, int y, int w, int h, int c) {
-        g.fill(x, y, x + w, y + 1, c);
-        g.fill(x, y + h - 1, x + w, y + h, c);
-        g.fill(x, y, x + 1, y + h, c);
-        g.fill(x + w - 1, y, x + w, y + h, c);
     }
 }

@@ -28,9 +28,24 @@ public class QuestEditorSnapshotHistory {
         return redoStack.removeLast();
     }
 
-    public boolean canUndo() { return !undoStack.isEmpty(); }
-    public boolean canRedo() { return !redoStack.isEmpty(); }
-    public int undoSize() { return undoStack.size(); }
-    public int redoSize() { return redoStack.size(); }
-    public void clear() { undoStack.clear(); redoStack.clear(); }
+    public boolean canUndo() {
+        return !undoStack.isEmpty();
+    }
+
+    public boolean canRedo() {
+        return !redoStack.isEmpty();
+    }
+
+    public int undoSize() {
+        return undoStack.size();
+    }
+
+    public int redoSize() {
+        return redoStack.size();
+    }
+
+    public void clear() {
+        undoStack.clear();
+        redoStack.clear();
+    }
 }

@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -9,11 +8,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryCategory;
-import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryEntry;
-import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryFilters;
-import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryFormatter;
-import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.*;
 
 import java.util.List;
 
@@ -81,7 +76,8 @@ final class JournalDetailHistory {
             for (QuestChangeHistoryEntry entry : rows) {
                 if (rowY > listY - ROW_H && rowY < listY + listH) {
                     drawEntry(g, font, entry, 0, rowY, listW, alpha);
-                    if (inside(mx, my, x, y + rowY, listW, ROW_H - 4)) screen.setHoveredCustomTooltip(List.of(Component.literal("Time: " + QuestChangeHistoryFormatter.fullTime(entry.timeMs)).withStyle(Style.EMPTY.withColor(0xFFD166))));
+                    if (inside(mx, my, x, y + rowY, listW, ROW_H - 4))
+                        screen.setHoveredCustomTooltip(List.of(Component.literal("Time: " + QuestChangeHistoryFormatter.fullTime(entry.timeMs)).withStyle(Style.EMPTY.withColor(0xFFD166))));
                 }
                 rowY += ROW_H;
             }

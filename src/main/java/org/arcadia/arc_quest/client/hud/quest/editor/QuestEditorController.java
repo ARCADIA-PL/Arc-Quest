@@ -36,12 +36,12 @@ public class QuestEditorController {
     private final FormRuntime formRuntime = new FormRuntime(schemaRegistry, schemaPathAccessor);
 
     private final QuestEditorState state = new QuestEditorState();
+    private final LinkedHashSet<String> selectedPhaseNodeIds = new LinkedHashSet<>();
     private EditableQuest quest = new EditableQuest();
     private EditorSelection selection = EditorSelection.none();
     private EditableValidationReport validationReport = new EditableValidationReport();
     private String statusText = "未加载任务";
     private EditableConnectionType linkCreateType = EditableConnectionType.TRANSITION;
-    private final LinkedHashSet<String> selectedPhaseNodeIds = new LinkedHashSet<>();
     private double autoLayoutLayerGap = 260;
     private double autoLayoutRowGap = 120;
     private int autoLayoutUnreachablePerLayer = 8;
@@ -188,7 +188,8 @@ public class QuestEditorController {
 
     public EditableCollectionCategory collectionCategory(String categoryId) {
         if (quest == null || quest.collectionConfig == null) return null;
-        for (EditableCollectionCategory c : quest.collectionConfig.categories) if (categoryId.equals(c.categoryId)) return c;
+        for (EditableCollectionCategory c : quest.collectionConfig.categories)
+            if (categoryId.equals(c.categoryId)) return c;
         return null;
     }
 
@@ -335,7 +336,8 @@ public class QuestEditorController {
             EditableObjective objective = selectedObjective();
             if (objective == null) return false;
             FormRuntime.ApplyResult result = formRuntime.applyValues("phase.objective", objective, values == null ? java.util.Map.of() : values);
-            if (extraKey != null && !extraKey.isBlank()) objective.extraData.put(extraKey.trim(), extraValue == null ? "" : extraValue);
+            if (extraKey != null && !extraKey.isBlank())
+                objective.extraData.put(extraKey.trim(), extraValue == null ? "" : extraValue);
             if (objective.collectionEntryConfig == null && objective.type == org.arcadia.arc_quest.quest.api.ObjectiveType.COLLECT) {
                 objective.collectionEntryConfig = new org.arcadia.arc_quest.quest.api.CollectionEntryConfig(
                         "default",
@@ -580,7 +582,8 @@ public class QuestEditorController {
         Map<String, List<String>> out = new HashMap<>();
         for (EditableConnection connection : quest.connections) {
             if (connection.sourcePhaseNodeId == null || connection.targetPhaseNodeId == null) continue;
-            if (!phaseById.containsKey(connection.sourcePhaseNodeId) || !phaseById.containsKey(connection.targetPhaseNodeId)) continue;
+            if (!phaseById.containsKey(connection.sourcePhaseNodeId) || !phaseById.containsKey(connection.targetPhaseNodeId))
+                continue;
             out.computeIfAbsent(connection.sourcePhaseNodeId, k -> new ArrayList<>()).add(connection.targetPhaseNodeId);
         }
 
@@ -660,11 +663,21 @@ public class QuestEditorController {
         return true;
     }
 
-    public double autoLayoutLayerGap() { return autoLayoutLayerGap; }
-    public double autoLayoutRowGap() { return autoLayoutRowGap; }
-    public int autoLayoutUnreachablePerLayer() { return autoLayoutUnreachablePerLayer; }
+    public double autoLayoutLayerGap() {
+        return autoLayoutLayerGap;
+    }
 
-    public EditableConnectionType linkCreateType() { return linkCreateType; }
+    public double autoLayoutRowGap() {
+        return autoLayoutRowGap;
+    }
+
+    public int autoLayoutUnreachablePerLayer() {
+        return autoLayoutUnreachablePerLayer;
+    }
+
+    public EditableConnectionType linkCreateType() {
+        return linkCreateType;
+    }
 
     public boolean beginPlacePhase() {
         if (!isProgressMode()) return false;
@@ -868,7 +881,8 @@ public class QuestEditorController {
             statusText = "Collection API 仅 Collection 模式可用";
             return null;
         }
-        if (entryId == null || entryId.isBlank() || quest.collectionEntries.stream().anyMatch(e -> entryId.equals(e.entryId))) return null;
+        if (entryId == null || entryId.isBlank() || quest.collectionEntries.stream().anyMatch(e -> entryId.equals(e.entryId)))
+            return null;
         final EditableCollectionEntry[] created = new EditableCollectionEntry[1];
         boolean changed = executeMutation("已新增 Collection Entry", () -> {
             created[0] = collectionService.addEntry(quest, categoryId, entryId);
@@ -925,8 +939,14 @@ public class QuestEditorController {
             if (entry == null || entry.rewardNodes.isEmpty()) return false;
             EditableCollectionRewardNode node = entry.rewardNodes.get(0);
             node.rewardNodeId = rewardNodeId == null ? "" : rewardNodeId;
-            try { node.scope = org.arcadia.arc_quest.quest.api.RewardScope.valueOf(scope == null ? "ENTRY" : scope.trim().toUpperCase()); } catch (Exception ignored) { }
-            try { node.grantMode = org.arcadia.arc_quest.quest.api.EntryRewardGrantMode.valueOf(grantMode == null ? "AUTO" : grantMode.trim().toUpperCase()); } catch (Exception ignored) { }
+            try {
+                node.scope = org.arcadia.arc_quest.quest.api.RewardScope.valueOf(scope == null ? "ENTRY" : scope.trim().toUpperCase());
+            } catch (Exception ignored) {
+            }
+            try {
+                node.grantMode = org.arcadia.arc_quest.quest.api.EntryRewardGrantMode.valueOf(grantMode == null ? "AUTO" : grantMode.trim().toUpperCase());
+            } catch (Exception ignored) {
+            }
             return true;
         });
     }
@@ -1017,7 +1037,8 @@ public class QuestEditorController {
     }
 
     public boolean createConnection(String sourceNodeId, String targetNodeId) {
-        if (sourceNodeId == null || targetNodeId == null || sourceNodeId.isBlank() || targetNodeId.isBlank()) return false;
+        if (sourceNodeId == null || targetNodeId == null || sourceNodeId.isBlank() || targetNodeId.isBlank())
+            return false;
         if (sourceNodeId.equals(targetNodeId)) {
             statusText = "连接失败: 不支持自环";
             return false;
@@ -1029,14 +1050,16 @@ public class QuestEditorController {
                 return false;
             }
             return executeMutation("已创建 Transition 连接", () -> {
-                if (questService.getPhase(quest, sourceNodeId) == null || questService.getPhase(quest, targetNodeId) == null) return false;
+                if (questService.getPhase(quest, sourceNodeId) == null || questService.getPhase(quest, targetNodeId) == null)
+                    return false;
                 questService.connectTransition(quest, sourceNodeId, targetNodeId, null);
                 return true;
             });
         }
 
         return executeMutation("已创建 Choice 连接", () -> {
-            if (questService.getPhase(quest, sourceNodeId) == null || questService.getPhase(quest, targetNodeId) == null) return false;
+            if (questService.getPhase(quest, sourceNodeId) == null || questService.getPhase(quest, targetNodeId) == null)
+                return false;
             EditableChoice choice = questService.addChoice(quest, sourceNodeId, targetNodeId, "", "", null);
             if (choice == null) return false;
             selection = EditorSelection.choice(sourceNodeId, choice.choiceId);
@@ -1124,12 +1147,16 @@ public class QuestEditorController {
             if (conditionType == null || conditionType.isBlank()) {
                 connection.condition = null;
             } else {
-                if (connection.condition == null) connection.condition = new org.arcadia.arc_quest.quest.spec.ConditionSpec();
+                if (connection.condition == null)
+                    connection.condition = new org.arcadia.arc_quest.quest.spec.ConditionSpec();
                 connection.condition.type = conditionType;
                 connection.condition.flag = conditionFlag == null ? "" : conditionFlag;
                 connection.condition.questId = conditionQuestId == null ? "" : conditionQuestId;
                 connection.condition.variable = conditionVariable == null ? "" : conditionVariable;
-                try { connection.condition.compareOp = org.arcadia.arc_quest.quest.api.CompareOp.valueOf(conditionCompareOp == null ? "GREATER_OR_EQUAL" : conditionCompareOp.trim().toUpperCase()); } catch (Exception ignored) { }
+                try {
+                    connection.condition.compareOp = org.arcadia.arc_quest.quest.api.CompareOp.valueOf(conditionCompareOp == null ? "GREATER_OR_EQUAL" : conditionCompareOp.trim().toUpperCase());
+                } catch (Exception ignored) {
+                }
                 connection.condition.value = conditionValue;
             }
             return true;
@@ -1156,7 +1183,11 @@ public class QuestEditorController {
         if (quest == null || quest.connections == null || quest.connections.isEmpty()) return false;
         int idx = -1;
         if (state.selectedConnectionId != null && !state.selectedConnectionId.isBlank()) {
-            for (int i = 0; i < quest.connections.size(); i++) if (state.selectedConnectionId.equals(quest.connections.get(i).connectionId)) { idx = i; break; }
+            for (int i = 0; i < quest.connections.size(); i++)
+                if (state.selectedConnectionId.equals(quest.connections.get(i).connectionId)) {
+                    idx = i;
+                    break;
+                }
         }
         int next = Math.min(quest.connections.size() - 1, idx + 1);
         return selectConnection(quest.connections.get(next).connectionId);
@@ -1166,7 +1197,11 @@ public class QuestEditorController {
         if (quest == null || quest.connections == null || quest.connections.isEmpty()) return false;
         int idx = quest.connections.size();
         if (state.selectedConnectionId != null && !state.selectedConnectionId.isBlank()) {
-            for (int i = 0; i < quest.connections.size(); i++) if (state.selectedConnectionId.equals(quest.connections.get(i).connectionId)) { idx = i; break; }
+            for (int i = 0; i < quest.connections.size(); i++)
+                if (state.selectedConnectionId.equals(quest.connections.get(i).connectionId)) {
+                    idx = i;
+                    break;
+                }
         }
         int prev = Math.max(0, idx - 1);
         return selectConnection(quest.connections.get(prev).connectionId);
@@ -1229,7 +1264,8 @@ public class QuestEditorController {
 
     public EditablePhase selectedPhase() {
         if (selection == null) return null;
-        if (selection.type() != EditorSelectionType.PHASE && selection.type() != EditorSelectionType.OBJECTIVE && selection.type() != EditorSelectionType.CHOICE) return null;
+        if (selection.type() != EditorSelectionType.PHASE && selection.type() != EditorSelectionType.OBJECTIVE && selection.type() != EditorSelectionType.CHOICE)
+            return null;
         for (EditablePhase phase : phases()) {
             if (selection.phaseNodeId().equals(phase.nodeId)) return phase;
         }
@@ -1403,11 +1439,25 @@ public class QuestEditorController {
         return true;
     }
 
-    public boolean canUndo() { return snapshotHistory.canUndo(); }
-    public boolean canRedo() { return snapshotHistory.canRedo(); }
-    public String undoDescription() { return canUndo() ? "Undo" : ""; }
-    public String redoDescription() { return canRedo() ? "Redo" : ""; }
-    public boolean isDirty() { return revision != savepointRevision; }
+    public boolean canUndo() {
+        return snapshotHistory.canUndo();
+    }
+
+    public boolean canRedo() {
+        return snapshotHistory.canRedo();
+    }
+
+    public String undoDescription() {
+        return canUndo() ? "Undo" : "";
+    }
+
+    public String redoDescription() {
+        return canRedo() ? "Redo" : "";
+    }
+
+    public boolean isDirty() {
+        return revision != savepointRevision;
+    }
 
     private boolean executeMutation(String description, Mutation mutation) {
         QuestEditorSnapshot before = captureSnapshot();
@@ -1460,11 +1510,6 @@ public class QuestEditorController {
             boolean exists = quest.phases.stream().anyMatch(p -> id.equals(p.phaseId));
             if (!exists) return id;
         }
-    }
-
-    @FunctionalInterface
-    private interface Mutation {
-        boolean apply();
     }
 
     private int indexOfObjective(EditablePhase phase, String objectiveId) {
@@ -1542,5 +1587,10 @@ public class QuestEditorController {
         } else if (selection == null || selection.type() == EditorSelectionType.NONE || selection.type() == EditorSelectionType.CONNECTION || selection.type() == EditorSelectionType.QUEST) {
             selectedPhaseNodeIds.clear();
         }
+    }
+
+    @FunctionalInterface
+    private interface Mutation {
+        boolean apply();
     }
 }

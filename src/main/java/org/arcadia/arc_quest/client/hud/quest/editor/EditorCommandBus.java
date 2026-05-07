@@ -33,10 +33,21 @@ public class EditorCommandBus {
         return true;
     }
 
-    public boolean canUndo() { return !undoStack.isEmpty(); }
-    public boolean canRedo() { return !redoStack.isEmpty(); }
-    public String lastUndoDescription() { return undoStack.isEmpty() ? "" : undoStack.peek().description(); }
-    public String lastRedoDescription() { return redoStack.isEmpty() ? "" : redoStack.peek().description(); }
+    public boolean canUndo() {
+        return !undoStack.isEmpty();
+    }
+
+    public boolean canRedo() {
+        return !redoStack.isEmpty();
+    }
+
+    public String lastUndoDescription() {
+        return undoStack.isEmpty() ? "" : undoStack.peek().description();
+    }
+
+    public String lastRedoDescription() {
+        return redoStack.isEmpty() ? "" : redoStack.peek().description();
+    }
 
     public void clear() {
         undoStack.clear();

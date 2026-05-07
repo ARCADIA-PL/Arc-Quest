@@ -10,6 +10,7 @@ public final class CollectionRewardClaimResult {
     @Nullable
     private final String rewardNodeId;
     private final boolean changed;
+
     private CollectionRewardClaimResult(Status status, @Nullable String rewardNodeId, boolean changed) {
         this.status = status;
         this.rewardNodeId = rewardNodeId;

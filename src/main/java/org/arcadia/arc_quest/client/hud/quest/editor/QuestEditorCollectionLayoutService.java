@@ -4,7 +4,10 @@ import org.arcadia.arc_quest.quest.editor.model.EditableCollectionCategory;
 import org.arcadia.arc_quest.quest.editor.model.EditableCollectionEntry;
 import org.arcadia.arc_quest.quest.editor.model.EditableQuest;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
 
 public class QuestEditorCollectionLayoutService {
     private static final double CAT_W = 300;

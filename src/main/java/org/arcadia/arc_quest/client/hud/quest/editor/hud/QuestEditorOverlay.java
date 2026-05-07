@@ -8,7 +8,6 @@ import org.arcadia.arc_quest.client.hud.quest.editor.QuestEditorState;
 import org.arcadia.arc_quest.quest.api.QuestMode;
 
 public class QuestEditorOverlay {
-
     private final QuestEditorScreen screen;
     private final QuestEditorController controller;
 
@@ -41,16 +40,23 @@ public class QuestEditorOverlay {
         int ry = 50;
         boolean isProgress = hasQuest && controller.quest() != null && controller.quest().meta.mode == QuestMode.PROGRESSION;
         if (isProgress) {
-            drawButton(g, font, w - 130, ry, 120, 20, "+ PHASE", mouseX, mouseY); ry += 30;
-            drawButton(g, font, w - 130, ry, 120, 20, "- DELETE", mouseX, mouseY); ry += 30;
-            drawButton(g, font, w - 130, ry, 120, 20, "CONNECT", mouseX, mouseY); ry += 30;
+            drawButton(g, font, w - 130, ry, 120, 20, "+ PHASE", mouseX, mouseY);
+            ry += 30;
+            drawButton(g, font, w - 130, ry, 120, 20, "- DELETE", mouseX, mouseY);
+            ry += 30;
+            drawButton(g, font, w - 130, ry, 120, 20, "CONNECT", mouseX, mouseY);
+            ry += 30;
         } else {
-            drawButton(g, font, w - 130, ry, 120, 20, "+ CATEGORY", mouseX, mouseY); ry += 30;
-            drawButton(g, font, w - 130, ry, 120, 20, "+ ENTRY", mouseX, mouseY); ry += 30;
-            drawButton(g, font, w - 130, ry, 120, 20, "- DELETE", mouseX, mouseY); ry += 30;
+            drawButton(g, font, w - 130, ry, 120, 20, "+ CATEGORY", mouseX, mouseY);
+            ry += 30;
+            drawButton(g, font, w - 130, ry, 120, 20, "+ ENTRY", mouseX, mouseY);
+            ry += 30;
+            drawButton(g, font, w - 130, ry, 120, 20, "- DELETE", mouseX, mouseY);
+            ry += 30;
         }
         ry += 10;
-        drawButton(g, font, w - 130, ry, 120, 20, "UNDO", mouseX, mouseY); ry += 30;
+        drawButton(g, font, w - 130, ry, 120, 20, "UNDO", mouseX, mouseY);
+        ry += 30;
         drawButton(g, font, w - 130, ry, 120, 20, "REDO", mouseX, mouseY);
 
         if (!hasQuest) {
@@ -74,11 +80,26 @@ public class QuestEditorOverlay {
         QuestEditorState state = controller.state();
 
         if (my >= 5 && my <= 25) {
-            if (mx >= 10 && mx <= 60) { screen.getMinecraft().setScreen(null); return true; }
-            if (mx >= 65 && mx <= 125) { screen.openModal(QuestEditorScreen.ModalType.IMPORT_PICKER); return true; }
-            if (mx >= 130 && mx <= 210) { screen.openModal(QuestEditorScreen.ModalType.NEW_QUEST); return true; }
-            if (mx >= 215 && mx <= 285) { controller.validate(); return true; }
-            if (mx >= 290 && mx <= 360) { screen.performExport(); return true; }
+            if (mx >= 10 && mx <= 60) {
+                screen.getMinecraft().setScreen(null);
+                return true;
+            }
+            if (mx >= 65 && mx <= 125) {
+                screen.openModal(QuestEditorScreen.ModalType.IMPORT_PICKER);
+                return true;
+            }
+            if (mx >= 130 && mx <= 210) {
+                screen.openModal(QuestEditorScreen.ModalType.NEW_QUEST);
+                return true;
+            }
+            if (mx >= 215 && mx <= 285) {
+                controller.validate();
+                return true;
+            }
+            if (mx >= 290 && mx <= 360) {
+                screen.performExport();
+                return true;
+            }
         }
 
         if (!screen.hasActiveQuest()) return false;
@@ -86,28 +107,60 @@ public class QuestEditorOverlay {
         if (mx >= w - 130 && mx <= w - 10 && my > 30) {
             boolean isProgress = controller.quest().meta.mode == QuestMode.PROGRESSION;
             if (isProgress) {
-                if (my >= 50 && my <= 70) { controller.beginPlacePhase(); return true; }
-                if (my >= 80 && my <= 100) { controller.beginDeletePhaseSelection(); return true; }
+                if (my >= 50 && my <= 70) {
+                    controller.beginPlacePhase();
+                    return true;
+                }
+                if (my >= 80 && my <= 100) {
+                    controller.beginDeletePhaseSelection();
+                    return true;
+                }
                 if (my >= 110 && my <= 130) {
                     var selected = controller.selectedPhaseNodeIds();
                     if (!selected.isEmpty()) controller.beginGotoConnection(selected.iterator().next());
                     return true;
                 }
-                if (my >= 150 && my <= 170) { controller.undo(); screen.refreshLayout(); return true; }
-                if (my >= 180 && my <= 200) { controller.redo(); screen.refreshLayout(); return true; }
+                if (my >= 150 && my <= 170) {
+                    controller.undo();
+                    screen.refreshLayout();
+                    return true;
+                }
+                if (my >= 180 && my <= 200) {
+                    controller.redo();
+                    screen.refreshLayout();
+                    return true;
+                }
             } else {
-                if (my >= 50 && my <= 70) { screen.openModal(QuestEditorScreen.ModalType.CATEGORY_EDIT); return true; }
-                if (my >= 80 && my <= 100) { screen.openModal(QuestEditorScreen.ModalType.ENTRY_EDIT); return true; }
-                if (my >= 110 && my <= 130) { controller.beginDeleteCollectionObjectSelection(); return true; }
-                if (my >= 150 && my <= 170) { controller.undo(); screen.refreshLayout(); return true; }
-                if (my >= 180 && my <= 200) { controller.redo(); screen.refreshLayout(); return true; }
+                if (my >= 50 && my <= 70) {
+                    screen.openModal(QuestEditorScreen.ModalType.CATEGORY_EDIT);
+                    return true;
+                }
+                if (my >= 80 && my <= 100) {
+                    screen.openModal(QuestEditorScreen.ModalType.ENTRY_EDIT);
+                    return true;
+                }
+                if (my >= 110 && my <= 130) {
+                    controller.beginDeleteCollectionObjectSelection();
+                    return true;
+                }
+                if (my >= 150 && my <= 170) {
+                    controller.undo();
+                    screen.refreshLayout();
+                    return true;
+                }
+                if (my >= 180 && my <= 200) {
+                    controller.redo();
+                    screen.refreshLayout();
+                    return true;
+                }
             }
         }
 
         if (my >= h - 40 && (!state.pendingDeletePhaseNodeIds.isEmpty() || !state.pendingDeleteCollectionObjectRefs.isEmpty())) {
             if (mx >= w - 260 && mx <= w - 160) {
                 if (!state.pendingDeletePhaseNodeIds.isEmpty()) controller.confirmDeletePendingPhases();
-                else controller.confirmDeletePendingCollectionObjects(CategoryDeletePolicy.BLOCK_IF_NOT_EMPTY, "default");
+                else
+                    controller.confirmDeletePendingCollectionObjects(CategoryDeletePolicy.BLOCK_IF_NOT_EMPTY, "default");
                 screen.refreshLayout();
                 return true;
             }
@@ -117,7 +170,6 @@ public class QuestEditorOverlay {
                 return true;
             }
         }
-
         return false;
     }
 
