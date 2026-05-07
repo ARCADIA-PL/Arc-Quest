@@ -8,7 +8,7 @@ import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.client.hud.quest.editor.QuestEditorScreen;
+import org.arcadia.arc_quest.client.hud.quest.editor.hud.QuestEditorScreen;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class ClientEditorCommandHandler {

@@ -6,6 +6,9 @@ import org.arcadia.arc_quest.quest.editor.mapper.QuestSpecToEditableQuestMapper;
 import org.arcadia.arc_quest.quest.editor.mapper.SampleQuestRoundTripDebugHelper;
 import org.arcadia.arc_quest.quest.editor.model.*;
 import org.arcadia.arc_quest.quest.editor.service.*;
+import org.arcadia.arc_quest.quest.editor.ui.schema.FormRuntime;
+import org.arcadia.arc_quest.quest.editor.ui.schema.SchemaPathAccessor;
+import org.arcadia.arc_quest.quest.editor.ui.schema.SchemaRegistry;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.QuestTextSpec;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecJsonWriter;
@@ -26,6 +29,11 @@ public class QuestEditorController {
     private final EditableQuestGraphService graphService = new EditableQuestGraphService();
     private final QuestEditorSaveService saveService = new QuestEditorSaveService();
     private final QuestEditorSnapshotHistory snapshotHistory = new QuestEditorSnapshotHistory();
+    private final QuestDatapackScanService datapackScanService = new QuestDatapackScanService();
+    private final QuestEditorDocumentService documentService = new QuestEditorDocumentService();
+    private final SchemaRegistry schemaRegistry = new SchemaRegistry();
+    private final SchemaPathAccessor schemaPathAccessor = new SchemaPathAccessor();
+    private final FormRuntime formRuntime = new FormRuntime(schemaRegistry, schemaPathAccessor);
 
     private final QuestEditorState state = new QuestEditorState();
     private EditableQuest quest = new EditableQuest();
@@ -40,6 +48,33 @@ public class QuestEditorController {
     private long revision = 0;
     private long savepointRevision = 0;
     private int phaseAutoIndex = 1;
+
+    public List<QuestDatapackEntry> scanWorkspace(Path workspaceRoot) {
+        return datapackScanService.scanWorkspace(workspaceRoot);
+    }
+
+    public boolean importDatapack(Path file) {
+        if (file == null) return false;
+        try {
+            QuestEditorDocument doc = documentService.importFromFile(file);
+            this.quest = doc.quest;
+            this.state.document = doc;
+            this.selection = quest.phases.isEmpty() ? EditorSelection.quest() : EditorSelection.phase(resolveInitialPhaseNodeId());
+            this.snapshotHistory.clear();
+            this.revision = 0;
+            this.savepointRevision = 0;
+            selectedPhaseNodeIds.clear();
+            if (selection.type() == EditorSelectionType.PHASE) selectedPhaseNodeIds.add(selection.phaseNodeId());
+            validate();
+            this.statusText = "已导入: " + file.getFileName();
+            syncStateFromRuntime();
+            return true;
+        } catch (Exception ex) {
+            this.statusText = "导入失败: " + ex.getMessage();
+            syncStateFromRuntime();
+            return false;
+        }
+    }
 
     public void loadSampleQuest(Path workspaceRoot) {
         try {
@@ -81,6 +116,28 @@ public class QuestEditorController {
         syncStateFromRuntime();
     }
 
+    public boolean createNewQuest(CreateQuestRequest request, Path workspaceRoot) {
+        try {
+            QuestEditorDocument doc = documentService.createNew(request, workspaceRoot);
+            this.quest = doc.quest;
+            this.state.document = doc;
+            this.selection = quest.phases.isEmpty() ? EditorSelection.quest() : EditorSelection.phase(resolveInitialPhaseNodeId());
+            this.snapshotHistory.clear();
+            this.revision = 0;
+            this.savepointRevision = 0;
+            selectedPhaseNodeIds.clear();
+            if (selection.type() == EditorSelectionType.PHASE) selectedPhaseNodeIds.add(selection.phaseNodeId());
+            validate();
+            this.statusText = "已新建 Quest: " + quest.meta.questId + " (" + quest.meta.mode + ")";
+            syncStateFromRuntime();
+            return true;
+        } catch (Exception ex) {
+            this.statusText = "新建 Quest 失败: " + ex.getMessage();
+            syncStateFromRuntime();
+            return false;
+        }
+    }
+
     public void validate() {
         this.validationReport = validationService.validate(quest);
     }
@@ -101,6 +158,44 @@ public class QuestEditorController {
             changed |= questService.updatePhaseDisplay(quest, phase.nodeId, QuestTextSpec.literal(displayName), phase.description, phase.story);
             return changed;
         });
+    }
+
+    public boolean updateSelectedPhaseDetails(String displayName, String description, String story, String tradeShopId, String intelSceneId,
+                                              String startSound, String completeSound, String enterFlag, String completeFlag) {
+        return executeMutation("Phase 详细信息已更新", () -> {
+            EditablePhase phase = selectedPhase();
+            if (phase == null) return false;
+            phase.displayName = QuestTextSpec.literal(displayName == null ? "" : displayName);
+            phase.description = QuestTextSpec.literal(description == null ? "" : description);
+            phase.story = QuestTextSpec.literal(story == null ? "" : story);
+            phase.tradeShopId = tradeShopId == null ? "" : tradeShopId;
+            phase.intelSceneId = intelSceneId == null ? "" : intelSceneId;
+            phase.phaseStartSound = startSound == null ? "" : startSound;
+            phase.phaseCompleteSound = completeSound == null ? "" : completeSound;
+            phase.flagsToSetOnEnter.clear();
+            if (enterFlag != null && !enterFlag.isBlank()) phase.flagsToSetOnEnter.add(enterFlag.trim());
+            phase.flagsToSetOnComplete.clear();
+            if (completeFlag != null && !completeFlag.isBlank()) phase.flagsToSetOnComplete.add(completeFlag.trim());
+            return true;
+        });
+    }
+
+    public boolean updateCollectionEntryBasics(String entryId, String categoryId, int completionTarget, int maxCount) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已更新 Collection Entry", () -> collectionService.moveEntryToCategory(quest, entryId, categoryId)
+                | collectionService.updateEntryCounting(quest, entryId, null, completionTarget, maxCount, false, false));
+    }
+
+    public EditableCollectionCategory collectionCategory(String categoryId) {
+        if (quest == null || quest.collectionConfig == null) return null;
+        for (EditableCollectionCategory c : quest.collectionConfig.categories) if (categoryId.equals(c.categoryId)) return c;
+        return null;
+    }
+
+    public EditableCollectionEntry collectionEntry(String entryId) {
+        if (quest == null || quest.collectionEntries == null) return null;
+        for (EditableCollectionEntry e : quest.collectionEntries) if (entryId.equals(e.entryId)) return e;
+        return null;
     }
 
     public EditableObjective addObjectiveToSelectedPhase() {
@@ -180,6 +275,87 @@ public class QuestEditorController {
         });
     }
 
+    public boolean updateSelectedObjectiveAdvanced(String targetId, int requiredCount, String displayText,
+                                                   String objectiveType, boolean hidden, boolean optional,
+                                                   String npcId, String itemTag, Integer radius, String countMode,
+                                                   String extraKey, String extraValue,
+                                                   Integer x, Integer y, Integer z,
+                                                   Integer countBase, Integer countPerLevel, Integer countMin, Integer countMax) {
+        return executeMutation("Objective 高级字段已更新", () -> {
+            EditablePhase phase = selectedPhase();
+            EditableObjective objective = selectedObjective();
+            if (phase == null || objective == null) return false;
+            boolean changed = questService.updateObjectiveBasic(quest, phase.nodeId, objective.objectiveId, targetId, requiredCount, QuestTextSpec.literal(displayText));
+            try {
+                if (objectiveType != null && !objectiveType.isBlank()) {
+                    objective.type = org.arcadia.arc_quest.quest.api.ObjectiveType.valueOf(objectiveType.trim().toUpperCase());
+                    changed = true;
+                }
+            } catch (Exception ignored) {
+            }
+            objective.hidden = hidden;
+            objective.optional = optional;
+            objective.npcId = npcId == null ? "" : npcId;
+            objective.itemTag = itemTag == null ? "" : itemTag;
+            objective.radius = radius;
+            objective.countMode = countMode == null ? "" : countMode;
+            objective.x = x;
+            objective.y = y;
+            objective.z = z;
+            objective.countBase = countBase;
+            objective.countPerLevel = countPerLevel;
+            objective.countMin = countMin;
+            objective.countMax = countMax;
+            if (objective.collectionEntryConfig == null && objective.type == org.arcadia.arc_quest.quest.api.ObjectiveType.COLLECT) {
+                objective.collectionEntryConfig = new org.arcadia.arc_quest.quest.api.CollectionEntryConfig(
+                        "default",
+                        org.arcadia.arc_quest.quest.api.VisibilityMode.VISIBLE_BY_DEFAULT,
+                        org.arcadia.arc_quest.quest.api.HiddenPresentationMode.FULLY_HIDDEN,
+                        java.util.List.of(),
+                        org.arcadia.arc_quest.quest.api.CountingMode.BINARY,
+                        1,
+                        false,
+                        false,
+                        1,
+                        org.arcadia.arc_quest.quest.api.EntryRewardGrantMode.AUTO,
+                        java.util.List.of(),
+                        0,
+                        true);
+            }
+            if (extraKey != null && !extraKey.isBlank()) {
+                objective.extraData.put(extraKey.trim(), extraValue == null ? "" : extraValue);
+                changed = true;
+            }
+            return changed || true;
+        });
+    }
+
+    public boolean updateSelectedObjectiveFromSchema(java.util.Map<String, String> values, String extraKey, String extraValue) {
+        return executeMutation("Objective Schema字段已更新", () -> {
+            EditableObjective objective = selectedObjective();
+            if (objective == null) return false;
+            FormRuntime.ApplyResult result = formRuntime.applyValues("phase.objective", objective, values == null ? java.util.Map.of() : values);
+            if (extraKey != null && !extraKey.isBlank()) objective.extraData.put(extraKey.trim(), extraValue == null ? "" : extraValue);
+            if (objective.collectionEntryConfig == null && objective.type == org.arcadia.arc_quest.quest.api.ObjectiveType.COLLECT) {
+                objective.collectionEntryConfig = new org.arcadia.arc_quest.quest.api.CollectionEntryConfig(
+                        "default",
+                        org.arcadia.arc_quest.quest.api.VisibilityMode.VISIBLE_BY_DEFAULT,
+                        org.arcadia.arc_quest.quest.api.HiddenPresentationMode.FULLY_HIDDEN,
+                        java.util.List.of(),
+                        org.arcadia.arc_quest.quest.api.CountingMode.BINARY,
+                        1,
+                        false,
+                        false,
+                        1,
+                        org.arcadia.arc_quest.quest.api.EntryRewardGrantMode.AUTO,
+                        java.util.List.of(),
+                        0,
+                        true);
+            }
+            return result.success();
+        });
+    }
+
     public EditableChoice addChoiceToSelectedPhase() {
         EditablePhase phase = selectedPhase();
         if (phase == null) return null;
@@ -230,6 +406,18 @@ public class QuestEditorController {
             if (phase == null || choice == null) return false;
             boolean changed = questService.updateChoiceText(quest, phase.nodeId, choice.choiceId, QuestTextSpec.literal(text), choice.flagToSet, choice.visibleCondition);
             changed |= questService.updateChoiceTarget(quest, phase.nodeId, choice.choiceId, targetPhaseNodeId);
+            return changed;
+        });
+    }
+
+    public boolean updateSelectedChoiceAdvanced(String text, String targetPhaseNodeId, String flagToSet) {
+        return executeMutation("Choice 高级字段已更新", () -> {
+            EditablePhase phase = selectedPhase();
+            EditableChoice choice = selectedChoice();
+            if (phase == null || choice == null) return false;
+            boolean changed = questService.updateChoiceText(quest, phase.nodeId, choice.choiceId,
+                    QuestTextSpec.literal(text == null ? "" : text), flagToSet == null ? "" : flagToSet, choice.visibleCondition);
+            changed |= questService.updateChoiceTarget(quest, phase.nodeId, choice.choiceId, targetPhaseNodeId == null ? "" : targetPhaseNodeId);
             return changed;
         });
     }
@@ -730,6 +918,19 @@ public class QuestEditorController {
         return executeMutation("已更新 RewardNode", () -> collectionService.updateEntryRewardNode(quest, entryId, rewardNodeId, grantMode));
     }
 
+    public boolean updateCollectionEntryRewardNodeAdvanced(String entryId, String rewardNodeId, String scope, String grantMode) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已更新 RewardNode 高级字段", () -> {
+            EditableCollectionEntry entry = collectionEntry(entryId);
+            if (entry == null || entry.rewardNodes.isEmpty()) return false;
+            EditableCollectionRewardNode node = entry.rewardNodes.get(0);
+            node.rewardNodeId = rewardNodeId == null ? "" : rewardNodeId;
+            try { node.scope = org.arcadia.arc_quest.quest.api.RewardScope.valueOf(scope == null ? "ENTRY" : scope.trim().toUpperCase()); } catch (Exception ignored) { }
+            try { node.grantMode = org.arcadia.arc_quest.quest.api.EntryRewardGrantMode.valueOf(grantMode == null ? "AUTO" : grantMode.trim().toUpperCase()); } catch (Exception ignored) { }
+            return true;
+        });
+    }
+
     public boolean removeCollectionEntryRewardNode(String entryId, String rewardNodeId) {
         if (!isCollectionMode()) return false;
         return executeMutation("已删除 RewardNode", () -> collectionService.removeEntryRewardNode(quest, entryId, rewardNodeId));
@@ -904,6 +1105,73 @@ public class QuestEditorController {
         });
     }
 
+    public boolean updateSelectedConnectionAdvanced(String targetNodeId, int priority, String conditionType, String conditionFlag,
+                                                    String conditionQuestId, String conditionVariable, String conditionCompareOp, int conditionValue) {
+        EditableConnection selected = selectedConnection();
+        if (selected == null) return false;
+        return executeMutation("已更新连接高级字段", () -> {
+            EditableConnection connection = selectedConnection();
+            if (connection == null) return false;
+            if (targetNodeId != null && !targetNodeId.isBlank()) {
+                if (questService.getPhase(quest, targetNodeId) == null) return false;
+                if (connection.connectionType == EditableConnectionType.CHOICE && connection.choiceId != null && !connection.choiceId.isBlank()) {
+                    questService.updateChoiceTarget(quest, connection.sourcePhaseNodeId, connection.choiceId, targetNodeId);
+                } else {
+                    connection.targetPhaseNodeId = targetNodeId;
+                }
+            }
+            connection.priority = priority;
+            if (conditionType == null || conditionType.isBlank()) {
+                connection.condition = null;
+            } else {
+                if (connection.condition == null) connection.condition = new org.arcadia.arc_quest.quest.spec.ConditionSpec();
+                connection.condition.type = conditionType;
+                connection.condition.flag = conditionFlag == null ? "" : conditionFlag;
+                connection.condition.questId = conditionQuestId == null ? "" : conditionQuestId;
+                connection.condition.variable = conditionVariable == null ? "" : conditionVariable;
+                try { connection.condition.compareOp = org.arcadia.arc_quest.quest.api.CompareOp.valueOf(conditionCompareOp == null ? "GREATER_OR_EQUAL" : conditionCompareOp.trim().toUpperCase()); } catch (Exception ignored) { }
+                connection.condition.value = conditionValue;
+            }
+            return true;
+        });
+    }
+
+    public boolean updateSelectedConnectionFromSchema(java.util.Map<String, String> values) {
+        EditableConnection selected = selectedConnection();
+        if (selected == null) return false;
+        return executeMutation("已更新连接Schema字段", () -> {
+            EditableConnection connection = selectedConnection();
+            if (connection == null) return false;
+            FormRuntime.ApplyResult result = formRuntime.applyValues("phase.connection", connection, values == null ? java.util.Map.of() : values);
+            if (result.errors.containsKey("targetNode")) return false;
+            if (questService.getPhase(quest, connection.targetPhaseNodeId) == null) return false;
+            if (connection.connectionType == EditableConnectionType.CHOICE && connection.choiceId != null && !connection.choiceId.isBlank()) {
+                questService.updateChoiceTarget(quest, connection.sourcePhaseNodeId, connection.choiceId, connection.targetPhaseNodeId);
+            }
+            return result.success();
+        });
+    }
+
+    public boolean selectNextConnection() {
+        if (quest == null || quest.connections == null || quest.connections.isEmpty()) return false;
+        int idx = -1;
+        if (state.selectedConnectionId != null && !state.selectedConnectionId.isBlank()) {
+            for (int i = 0; i < quest.connections.size(); i++) if (state.selectedConnectionId.equals(quest.connections.get(i).connectionId)) { idx = i; break; }
+        }
+        int next = Math.min(quest.connections.size() - 1, idx + 1);
+        return selectConnection(quest.connections.get(next).connectionId);
+    }
+
+    public boolean selectPreviousConnection() {
+        if (quest == null || quest.connections == null || quest.connections.isEmpty()) return false;
+        int idx = quest.connections.size();
+        if (state.selectedConnectionId != null && !state.selectedConnectionId.isBlank()) {
+            for (int i = 0; i < quest.connections.size(); i++) if (state.selectedConnectionId.equals(quest.connections.get(i).connectionId)) { idx = i; break; }
+        }
+        int prev = Math.max(0, idx - 1);
+        return selectConnection(quest.connections.get(prev).connectionId);
+    }
+
     public EditableQuest quest() {
         return quest;
     }
@@ -917,6 +1185,8 @@ public class QuestEditorController {
         if (this.selection.type() == EditorSelectionType.PHASE) {
             selectedPhaseNodeIds.clear();
             selectedPhaseNodeIds.add(this.selection.phaseNodeId());
+        } else {
+            selectedPhaseNodeIds.clear();
         }
         syncStateFromRuntime();
     }
@@ -981,6 +1251,14 @@ public class QuestEditorController {
             if (selection.connectionId().equals(connection.connectionId)) return connection;
         }
         return null;
+    }
+
+    public FormRuntime formRuntime() {
+        return formRuntime;
+    }
+
+    public SchemaRegistry schemaRegistry() {
+        return schemaRegistry;
     }
 
     public EditablePhase phaseByNodeId(String nodeId) {

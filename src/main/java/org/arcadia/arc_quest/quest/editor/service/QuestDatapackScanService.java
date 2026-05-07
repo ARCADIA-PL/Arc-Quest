@@ -13,7 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public class QuestDatapackScanService {
-    private static final String QUEST_DIR = "src/main/resources/data/arc_quest/arc_quest/quests";
+    private static final String QUEST_DIR = "arc_quest/datapack";
 
     private final QuestSpecToEditableQuestMapper mapper = new QuestSpecToEditableQuestMapper();
     private final EditableQuestValidationService validationService = new EditableQuestValidationService();

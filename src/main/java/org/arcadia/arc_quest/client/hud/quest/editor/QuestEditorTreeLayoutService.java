@@ -65,8 +65,10 @@ public class QuestEditorTreeLayoutService {
             int d = layer.getKey();
             List<String> ids = layer.getValue();
             for (int i = 0; i < ids.size(); i++) {
-                double x = START_X + d * X_GAP;
-                double y = START_Y + i * Y_GAP;
+                var manual = quest.layout.phasePositions.get(ids.get(i));
+                boolean useManual = manual != null && (Math.abs(manual.x) > 1e-6 || Math.abs(manual.y) > 1e-6);
+                double x = useManual ? manual.x : START_X + d * X_GAP;
+                double y = useManual ? manual.y : START_Y + i * Y_GAP;
                 out.nodePositions.put(ids.get(i), new EditorNodePosition(x, y));
             }
         }
@@ -79,8 +81,10 @@ public class QuestEditorTreeLayoutService {
             if (depth.containsKey(nodeId)) continue;
             int row = idx % 8;
             int col = idx / 8;
-            double x = START_X + (maxDepth + 2 + col) * X_GAP;
-            double y = START_Y + row * Y_GAP;
+            var manual = quest.layout.phasePositions.get(nodeId);
+            boolean useManual = manual != null && (Math.abs(manual.x) > 1e-6 || Math.abs(manual.y) > 1e-6);
+            double x = useManual ? manual.x : START_X + (maxDepth + 2 + col) * X_GAP;
+            double y = useManual ? manual.y : START_Y + row * Y_GAP;
             out.nodePositions.put(nodeId, new EditorNodePosition(x, y));
             out.unreachableNodeIds.add(nodeId);
             idx++;
