@@ -9,31 +9,17 @@ import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
-import org.arcadia.arc_quest.quest.registry.QuestRegistry;
-import org.arcadia.arc_quest.quest.spec.QuestSpec;
-import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
-import org.arcadia.arc_quest.quest.spec.io.QuestSpecResourceLoader;
-import org.arcadia.arc_quest.quest.spec.io.QuestSpecResourceLoader2;
-import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
-import org.arcadia.arc_quest.quest.spec.validate.ValidationIssue;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
+import java.util.Collections;
 import java.util.Map;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<ResourceLocation, QuestSpec>> {
+public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<ResourceLocation, Object>> {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final QuestSpecResourceLoader STATIC_LOADER = new QuestSpecResourceLoader();
-    private static final QuestSpecResourceLoader2 STATIC_DATAPACK_LOADER = new QuestSpecResourceLoader2();
-    private static final QuestSpecValidator STATIC_VALIDATOR = new QuestSpecValidator();
-    private static final QuestSpecCompiler STATIC_COMPILER = new QuestSpecCompiler();
-
-    private final QuestSpecResourceLoader loader = new QuestSpecResourceLoader();
-    private final QuestSpecValidator validator = new QuestSpecValidator();
-    private final QuestSpecCompiler compiler = new QuestSpecCompiler();
+    private static final ArcQuestDatapackHotReloadService HOT_RELOAD_SERVICE = new ArcQuestDatapackHotReloadService();
 
     @SubscribeEvent
     public static void onAddReloadListener(AddReloadListenerEvent event) {
@@ -42,99 +28,23 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<R
     }
 
     public static int reloadArcQuestDatapacksOnly(@NotNull ResourceManager manager) {
-        Map<ResourceLocation, QuestSpec> specs = new java.util.LinkedHashMap<>();
-
-        var datapackReport = STATIC_DATAPACK_LOADER.loadFromDatapack();
-        for (var e : datapackReport.specs().entrySet()) {
-            var id = ResourceLocation.tryParse(e.getValue().id);
-            if (id != null) specs.put(id, e.getValue());
-        }
-
-        if (specs.isEmpty()) {
-            specs.putAll(STATIC_LOADER.load(manager));
-            LOGGER.info("[ArcQuest] Datapack folder had no valid quest specs; fallback to resource manager path.");
-        } else {
-            LOGGER.info("[ArcQuest] Loaded {} quest spec(s) from @datapack path. failed={}", datapackReport.loadedCount(), datapackReport.failedCount());
-            for (var err : datapackReport.errors()) {
-                LOGGER.error("[ArcQuest] Datapack load error: file={}, message={}", err.file(), err.message(), err.cause());
-            }
-        }
-
-        EpicDialogueTrees.registerAll();
-        QuestRegistry.clearDatapack();
-
-        int loaded = 0;
-        int failed = 0;
-        for (Map.Entry<ResourceLocation, QuestSpec> entry : specs.entrySet()) {
-            QuestSpec spec = entry.getValue();
-            var report = STATIC_VALIDATOR.validate(spec);
-            if (report.hasErrors()) {
-                failed++;
-                for (var issue : report.getIssues()) {
-                    if (issue.severity == ValidationIssue.Severity.ERROR) {
-                        LOGGER.error("[ArcQuest]   - {}: {}", issue.path, issue.message);
-                    } else {
-                        LOGGER.warn("[ArcQuest]   - {}: {}", issue.path, issue.message);
-                    }
-                }
-                continue;
-            }
-            try {
-                QuestRegistry.registerDatapack(STATIC_COMPILER.compile(spec), entry.getKey().toString());
-                loaded++;
-            } catch (Exception e) {
-                failed++;
-                LOGGER.error("[ArcQuest] Failed to compile datapack quest '{}': {}", entry.getKey(), e.getMessage(), e);
-            }
-        }
-
-        LOGGER.info("[ArcQuest] ArcQuest-only datapack reload complete. loaded={}, failed={}, activeDatapack={}, merged={}",
-                loaded, failed, QuestRegistry.datapackSize(), QuestRegistry.size());
-        return loaded;
+        var result = HOT_RELOAD_SERVICE.reload(manager);
+        LOGGER.info("[ArcQuest] ArcQuest-only datapack reload complete. scanned={}, loaded={}, failed={}, activeDatapack={}, merged={}, source={}",
+                result.scanned(), result.loaded(), result.failed(), result.activeDatapack(), result.merged(), result.usedFallback() ? "fallback" : "@datapack");
+        return result.loaded();
     }
 
     @Override
-    protected @NotNull Map<ResourceLocation, QuestSpec> prepare(@NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
-        profiler.startTick();
-        Map<ResourceLocation, QuestSpec> specs = loader.load(manager);
-        LOGGER.info("[ArcQuest] Prepared {} datapack quest spec resource(s).", specs.size());
-        profiler.endTick();
-        return specs;
+    protected @NotNull Map<ResourceLocation, Object> prepare(@NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
+        return Collections.emptyMap();
     }
 
     @Override
-    protected void apply(@NotNull Map<ResourceLocation, QuestSpec> specs, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
+    protected void apply(@NotNull Map<ResourceLocation, Object> ignored,
+                         @NotNull ResourceManager manager,
+                         @NotNull ProfilerFiller profiler) {
         profiler.startTick();
-        EpicDialogueTrees.registerAll();
-        QuestRegistry.clearDatapack();
-        int loaded = 0;
-        int failed = 0;
-        for (Map.Entry<ResourceLocation, QuestSpec> entry : specs.entrySet()) {
-            QuestSpec spec = entry.getValue();
-            LOGGER.info("[ArcQuest] Loading quest spec resource '{}' with quest id '{}'", entry.getKey(), spec == null ? "<null>" : spec.id);
-            var report = validator.validate(spec);
-            if (report.hasErrors()) {
-                failed++;
-                LOGGER.error("[ArcQuest] Failed to load quest spec '{}': validation errors", entry.getKey());
-                for (var issue : report.getIssues()) {
-                    if (issue.severity == ValidationIssue.Severity.ERROR) {
-                        LOGGER.error("[ArcQuest]   - {}: {}", issue.path, issue.message);
-                    } else {
-                        LOGGER.warn("[ArcQuest]   - {}: {}", issue.path, issue.message);
-                    }
-                }
-                continue;
-            }
-            try {
-                QuestRegistry.registerDatapack(compiler.compile(spec), entry.getKey().toString());
-                loaded++;
-            } catch (Exception e) {
-                failed++;
-                LOGGER.error("[ArcQuest] Failed to compile datapack quest '{}': {}", entry.getKey(), e.getMessage(), e);
-            }
-        }
-        LOGGER.info("[ArcQuest] Datapack quest reload complete. loaded={}, failed={}, activeDatapack={}, merged={}", loaded, failed, QuestRegistry.datapackSize(), QuestRegistry.size());
-        LOGGER.info("[ArcQuest] Epic dialogues re-registered after reload.");
+        reloadArcQuestDatapacksOnly(manager);
         profiler.endTick();
     }
 }
