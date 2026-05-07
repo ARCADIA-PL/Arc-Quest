@@ -1,4 +1,4 @@
-import { splitList } from './utils.js';
+import {splitList} from './utils.js';
 
 function setLooseJson(target, key, value) {
   if (!value?.trim()) {

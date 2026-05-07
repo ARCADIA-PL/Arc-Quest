@@ -1,5 +1,22 @@
 export function renderStatus(state, statusEl) {
   const errs = state.diag.filter(x => x.lvl === 'err').length;
   const warns = state.diag.filter(x => x.lvl === 'warn').length;
-  statusEl.textContent = `文件: ${state.meta.file} | 状态: ${state.meta.dirty ? '未导出' : '已同步'} | Error: ${errs} | Warning: ${warns} | 当前: ${state.ui.sel.t}`;
+
+  const errBadge = errs > 0 ? `<span style="color:var(--danger); font-weight:600;">Errors: ${errs}</span>` : `<span style="color:var(--success)">No Errors</span>`;
+  const warnBadge = warns > 0 ? `<span style="color:var(--warning); font-weight:600;">Warns: ${warns}</span>` : ``;
+  const dirtyBadge = state.meta.dirty ? `<span style="color:var(--warning)">● Unsaved</span>` : `<span style="color:var(--text-mut)">○ Synced</span>`;
+
+  statusEl.innerHTML = `
+    <div style="display:flex; gap:16px; align-items:center; flex:1;">
+      <span style="color:var(--text-main); font-weight:600;">${state.meta.file}</span>
+      <span style="opacity:0.3">|</span>
+      ${dirtyBadge}
+    </div>
+    <div style="display:flex; gap:16px; align-items:center;">
+      <span style="color:var(--text-mut)">Context: <span style="color:var(--accent); text-transform:uppercase">${state.ui.sel.t}</span></span>
+      <span style="opacity:0.3">|</span>
+      ${errBadge}
+      ${warnBadge ? `<span style="opacity:0.3">|</span> ${warnBadge}` : ''}
+    </div>
+  `;
 }

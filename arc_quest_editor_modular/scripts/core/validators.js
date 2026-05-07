@@ -1,4 +1,4 @@
-import { ensureQuestShape } from '../core/quest-shape.js';
+import {ensureQuestShape} from '../core/quest-shape.js';
 
 export function validateQuest(state) {
   const q = state.q;

@@ -18,6 +18,12 @@ export const createBlankQuest = () => ({
 export const state = {
   meta: { file: 'new_quest.json', dirty: false },
   q: createBlankQuest(),
-  ui: { sel: { t: 'quest' }, tab: 'preview' },
+  ui: {
+    sel: { t: 'quest' },
+    tab: 'preview',
+    graphView: { x: 0, y: 0, k: 1 },
+    graphExpanded: false,
+    paneSizes: { left: 280, center: null, right: 380 }
+  },
   diag: []
 };
