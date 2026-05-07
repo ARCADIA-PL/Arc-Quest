@@ -27,9 +27,9 @@ public class DialogueScreen extends Screen {
     private static final float CLICK_ANIM_SPEED_OTHERS = 5.5f;
     private static final float CLICK_SEND_THRESHOLD = 0.35f;
 
-    private String speaker;
-    private String fullText;
-    private String[] choices;
+    private Component speaker;
+    private Component fullText;
+    private Component[] choices;
     private boolean isTerminal;
     private boolean hasAutoNext;
     private int delayMs;
@@ -62,15 +62,15 @@ public class DialogueScreen extends Screen {
     private List<String> wrappedLines;
     private float historyHoverAnim = 0f;
 
-    public DialogueScreen(String dialogueId, String speaker, String text, String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
+    public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
         this(dialogueId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, -1);
     }
 
-    public DialogueScreen(String dialogueId, String speaker, String text, String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId) {
+    public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId) {
         this(dialogueId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId, null, null, null, null, null, null);
     }
 
-    public DialogueScreen(String dialogueId, String speaker, String text, String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId, long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes, int[] choiceCooldownTypes, long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
+    public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId, long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes, int[] choiceCooldownTypes, long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
         super(Component.translatable("screen.dialogue.title"));
         this.entityId = entityId;
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
@@ -99,7 +99,7 @@ public class DialogueScreen extends Screen {
         return (int) (this.height / getUiScale());
     }
 
-    public void updateNode(String speaker, String text, String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes, int[] choiceCooldownTypes, long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
+    public void updateNode(Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes, int[] choiceCooldownTypes, long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
@@ -110,10 +110,14 @@ public class DialogueScreen extends Screen {
         }
     }
 
-    private void applyNodeData(String speaker, String text, String[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
-        this.speaker = speaker;
-        this.fullText = text;
-        this.choices = choices != null ? choices : new String[0];
+    private static String textOf(Component c) {
+        return c == null ? "" : c.getString();
+    }
+
+    private void applyNodeData(Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
+        this.speaker = speaker == null ? Component.empty() : speaker;
+        this.fullText = text == null ? Component.empty() : text;
+        this.choices = choices != null ? choices : new Component[0];
         this.isTerminal = isTerminal;
         this.hasAutoNext = hasAutoNext;
         this.delayMs = delayMs;
@@ -244,7 +248,7 @@ public class DialogueScreen extends Screen {
         }
         if (keyCode == 32 || keyCode == 257) {
             if (!typewriterDone) {
-                typewriterProgress = fullText.length();
+                typewriterProgress = textOf(fullText).length();
                 typewriterDone = true;
                 typewriterDoneTime = Util.getMillis();
                 return true;
@@ -289,7 +293,7 @@ public class DialogueScreen extends Screen {
         if (DialogueHistoryPanel.isActive()) return true;
 
         if (!typewriterDone) {
-            typewriterProgress = fullText.length();
+            typewriterProgress = textOf(fullText).length();
             typewriterDone = true;
             typewriterDoneTime = Util.getMillis();
             playClick();
@@ -389,8 +393,8 @@ public class DialogueScreen extends Screen {
 
         if (!typewriterDone && masterAnim > 0.1f) {
             typewriterProgress += CHARS_PER_SECOND * dt;
-            if (typewriterProgress >= fullText.length()) {
-                typewriterProgress = fullText.length();
+            if (typewriterProgress >= textOf(fullText).length()) {
+                typewriterProgress = textOf(fullText).length();
                 typewriterDone = true;
                 typewriterDoneTime = now;
             }
@@ -419,10 +423,10 @@ public class DialogueScreen extends Screen {
 
         int baseChoiceX = getChoiceX(), textBaseX = Math.max(30, (int) (sw * 0.05f));
         int maxTextWidth = (choices.length > 0) ? (baseChoiceX - textBaseX - Math.max(20, (int) (sw * 0.05f))) : (sw - textBaseX - Math.max(40, (int) (sw * 0.1f)));
-        if (wrappedLines == null) wrappedLines = HudRenderUtil.wrapText(fullText, maxTextWidth, font);
+        if (wrappedLines == null) wrappedLines = HudRenderUtil.wrapText(textOf(fullText), maxTextWidth, font);
 
         int lineHeight = font.lineHeight + 6;
-        int totalContentHeight = ((speaker != null && !speaker.isBlank()) ? 28 : 10) + wrappedLines.size() * lineHeight;
+        int totalContentHeight = ((!textOf(speaker).isBlank()) ? 28 : 10) + wrappedLines.size() * lineHeight;
 
         int targetBarHeight = Math.max(24, (int) (sh * 0.08f));
         int barHeight = Math.round(targetBarHeight * baseMasterEase);
@@ -460,13 +464,13 @@ public class DialogueScreen extends Screen {
         }
 
         int yOffsetAnim = Math.round((1f - baseMasterEase) * 15f), textBaseY = targetBaseY + yOffsetAnim;
-        if (speaker != null && !speaker.isBlank() && safeContentAlpha > 5) {
+        if (!textOf(speaker).isBlank() && safeContentAlpha > 5) {
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
             g.pose().scale(1.1f, 1.1f, 1f);
-            g.drawString(font, speaker, 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
+            g.drawString(font, textOf(speaker), 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
             g.pose().popPose();
-            int spkW = (int) (font.width(speaker) * 1.1f);
+            int spkW = (int) (font.width(textOf(speaker)) * 1.1f);
             g.fill(textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13, HudAnimUtil.withAlpha(0x44FFFFFF, safeContentAlpha));
             textBaseY += 28;
         } else textBaseY += 10;
@@ -537,10 +541,10 @@ public class DialogueScreen extends Screen {
                 }
 
                 int textGray = Math.round(170 + (255 - 170) * hEase), textOffsetX = 12 + Math.round(10 * hEase);
-                String displayText = choices[i];
+                String displayText = textOf(choices[i]);
                 if (onCooldown) {
                     String cooldownText = getChoiceCooldownText(i);
-                    if (!cooldownText.isEmpty()) displayText = choices[i] + " §7" + cooldownText;
+                    if (!cooldownText.isEmpty()) displayText = textOf(choices[i]) + " §7" + cooldownText;
                 }
 
                 String safeChoice = font.plainSubstrByWidth(displayText, currentW - textOffsetX - 10);

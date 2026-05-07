@@ -125,17 +125,17 @@ public final class DialogueSessionManager {
             if (choiceIndex >= 0 && choiceIndex < visibleChoices.size()) {
                 Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
                 var choice = visibleChoices.get(choiceIndex);
-                String choiceText = session.processDialogueText(choice.text()).getString();
+                Component choiceText = session.processDialogueText(choice.text());
 
                 MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(
                         player, npc, session.getTree().dialogueId(),
-                        currentNode.nodeId(), choiceIndex, choice.choiceId(), choiceText
+                        currentNode.nodeId(), choiceIndex, choice.choiceId(), choiceText.getString()
                 ));
 
                 appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
                         System.currentTimeMillis(),
                         "player",
-                        player.getName().getString(),
+                        Component.literal(player.getName().getString()),
                         choiceText,
                         currentNode.nodeId(),
                         null,
@@ -295,40 +295,40 @@ public final class DialogueSessionManager {
             );
         }
 
-        String speaker = "";
+        Component speaker = Component.empty();
         if (node.speaker() != null) {
-            speaker = session.processDialogueText(node.speaker()).getString();
+            speaker = session.processDialogueText(node.speaker());
         }
 
-        if (speaker == null || speaker.isBlank()) {
+        if (speaker == null || speaker.getString().isBlank()) {
             Entity npcEntity = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
             if (npcEntity instanceof IDialogueNpc dialogueNpc) {
                 Component display = dialogueNpc.getDialogueDisplayName();
                 if (display != null) {
                     String s = display.getString();
                     if (s != null && !s.isBlank()) {
-                        speaker = s;
+                        speaker = Component.literal(s);
                     }
                 }
             }
         }
 
-        if (speaker == null || speaker.isBlank()) {
+        if (speaker == null || speaker.getString().isBlank()) {
             Object fallback = session.getContext().get("defaultNpc");
             if (fallback instanceof String s && !s.isBlank()) {
-                speaker = s;
+                speaker = Component.literal(s);
             }
         }
 
         if (speaker == null) {
-            speaker = "";
+            speaker = Component.empty();
         }
         var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
         DialogueProgressStore progress = cap != null ? cap.getDialogueProgress() : null;
         Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
         DialogueEvalContext ctx = DialogueEvalContext.of(session.getPlayer(), npc, session.getNamespace(), progress);
         ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(ctx, node.conditionalTexts(), session.processDialogueText(node.text()).getString());
-        String text = session.processText(sayIfResult.text);
+        Component text = Component.literal(session.processText(sayIfResult.text));
         SoundEvent matchedSaySound = sayIfResult.sound;
         String selectedSayId = sayIfResult.sayId;
         if (cap != null) syncDialogueMarkers(session, node, sayIfResult);
@@ -345,14 +345,14 @@ public final class DialogueSessionManager {
         ));
 
         ResourceLocation saySoundId = matchedSaySound != null ? ForgeRegistries.SOUND_EVENTS.getKey(matchedSaySound) : null;
-        MinecraftForge.EVENT_BUS.post(new DialogueNodeStartedEvent(player, npc, session.getTree().dialogueId(), node.nodeId(), selectedSayId, text, matchedSaySound, saySoundId));
+        MinecraftForge.EVENT_BUS.post(new DialogueNodeStartedEvent(player, npc, session.getTree().dialogueId(), node.nodeId(), selectedSayId, text.getString(), matchedSaySound, saySoundId));
 
         var visibleChoices = session.getVisibleChoices();
-        String[] choiceTexts = new String[visibleChoices.size()];
+        Component[] choiceTexts = new Component[visibleChoices.size()];
         ResourceLocation[] choiceSounds = new ResourceLocation[visibleChoices.size()];
         String[] choiceIds = new String[visibleChoices.size()];
         for (int i = 0; i < visibleChoices.size(); i++) {
-            choiceTexts[i] = session.processDialogueText(visibleChoices.get(i).text()).getString();
+            choiceTexts[i] = session.processDialogueText(visibleChoices.get(i).text());
             var sound = visibleChoices.get(i).selectSound();
             if (sound != null) choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getKey(sound);
             choiceIds[i] = visibleChoices.get(i).choiceId();

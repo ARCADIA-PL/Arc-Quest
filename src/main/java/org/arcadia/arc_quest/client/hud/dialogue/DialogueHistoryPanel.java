@@ -4,6 +4,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -275,8 +276,8 @@ public final class DialogueHistoryPanel {
             boolean isPlayer = "player".equalsIgnoreCase(entry.role());
             RenderBlock block = new RenderBlock();
             block.isPlayer = isPlayer;
-            block.speaker = (entry.speaker() == null || entry.speaker().isBlank()) ? (isPlayer ? "YOU" : "UNKNOWN") : entry.speaker();
-            block.lines = HudRenderUtil.wrapText(entry.text(), wrapWidth, font);
+            block.speaker = (entry.speaker() == null || entry.speaker().getString().isBlank()) ? (isPlayer ? "YOU" : "UNKNOWN") : entry.speaker().getString();
+            block.lines = HudRenderUtil.wrapText(entry.text() == null ? "" : entry.text().getString(), wrapWidth, font);
             block.height = 14 + (block.lines.size() * (font.lineHeight + 6)) + 16;
             blocks.add(block);
             totalHeight += block.height;
@@ -300,6 +301,11 @@ public final class DialogueHistoryPanel {
             lastKey = curKey;
         }
         return compact;
+    }
+
+    private static String localizeIfPresent(String value) {
+        if (value == null || value.isBlank()) return value == null ? "" : value;
+        return I18n.exists(value) ? I18n.get(value) : value;
     }
 
     private static void drawHorizontalCyberBase(GuiGraphics g, int startX, int endX, int bottomY, int themeColor, float alphaPercentage) {
@@ -408,7 +414,15 @@ public final class DialogueHistoryPanel {
         }
 
         static EntryKey of(TranscriptEntry e) {
-            return new EntryKey(normFast(e.role()), normFast(e.speaker()), normFast(e.text()), normFast(e.nodeId()), normFast(e.sayId()), normFast(e.choiceId()), e.choiceIndex() == null ? Integer.MIN_VALUE : e.choiceIndex());
+            return new EntryKey(
+                    normFast(e.role()),
+                    normFast(e.speaker() == null ? "" : e.speaker().getString()),
+                    normFast(e.text() == null ? "" : e.text().getString()),
+                    normFast(e.nodeId()),
+                    normFast(e.sayId()),
+                    normFast(e.choiceId()),
+                    e.choiceIndex() == null ? Integer.MIN_VALUE : e.choiceIndex()
+            );
         }
 
         @Override

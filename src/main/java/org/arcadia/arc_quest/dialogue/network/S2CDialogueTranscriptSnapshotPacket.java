@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.dialogue.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
@@ -25,8 +26,8 @@ public class S2CDialogueTranscriptSnapshotPacket {
         for (int i = 0; i < n; i++) {
             long ms = buf.readLong();
             String role = buf.readUtf();
-            String speaker = buf.readUtf();
-            String text = buf.readUtf(4096);
+            Component speaker = buf.readComponent();
+            Component text = buf.readComponent();
             String nodeId = buf.readBoolean() ? buf.readUtf() : null;
             String sayId = buf.readBoolean() ? buf.readUtf() : null;
             String choiceId = buf.readBoolean() ? buf.readUtf() : null;
@@ -49,8 +50,8 @@ public class S2CDialogueTranscriptSnapshotPacket {
         for (S2CDialogueTranscriptDeltaPacket.Entry e : entries) {
             buf.writeLong(e.clientMs());
             buf.writeUtf(e.role());
-            buf.writeUtf(e.speaker() != null ? e.speaker() : "");
-            buf.writeUtf(e.text() != null ? e.text() : "", 4096);
+            buf.writeComponent(e.speaker() != null ? e.speaker() : Component.empty());
+            buf.writeComponent(e.text() != null ? e.text() : Component.empty());
 
             if (e.nodeId() != null) {
                 buf.writeBoolean(true);

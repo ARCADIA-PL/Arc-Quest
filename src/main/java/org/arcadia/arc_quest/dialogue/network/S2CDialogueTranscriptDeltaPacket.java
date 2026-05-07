@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.dialogue.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.network.NetworkEvent;
 
 import javax.annotation.Nullable;
@@ -21,8 +22,8 @@ public class S2CDialogueTranscriptDeltaPacket {
         UUID sid = buf.readUUID();
         long ms = buf.readLong();
         String role = buf.readUtf();
-        String speaker = buf.readUtf();
-        String text = buf.readUtf(4096);
+        Component speaker = buf.readComponent();
+        Component text = buf.readComponent();
         String nodeId = buf.readBoolean() ? buf.readUtf() : null;
         String sayId = buf.readBoolean() ? buf.readUtf() : null;
         String choiceId = buf.readBoolean() ? buf.readUtf() : null;
@@ -52,8 +53,8 @@ public class S2CDialogueTranscriptDeltaPacket {
         buf.writeUUID(sessionId);
         buf.writeLong(entry.clientMs());
         buf.writeUtf(entry.role());
-        buf.writeUtf(entry.speaker() != null ? entry.speaker() : "");
-        buf.writeUtf(entry.text() != null ? entry.text() : "", 4096);
+        buf.writeComponent(entry.speaker() != null ? entry.speaker() : Component.empty());
+        buf.writeComponent(entry.text() != null ? entry.text() : Component.empty());
 
         if (entry.nodeId() != null) {
             buf.writeBoolean(true);
@@ -73,7 +74,7 @@ public class S2CDialogueTranscriptDeltaPacket {
         buf.writeVarInt(entry.choiceIndexOrNeg1());
     }
 
-    public record Entry(long clientMs, String role, String speaker, String text,
+    public record Entry(long clientMs, String role, Component speaker, Component text,
                         @Nullable String nodeId, @Nullable String sayId,
                         @Nullable String choiceId, int choiceIndexOrNeg1) {
     }

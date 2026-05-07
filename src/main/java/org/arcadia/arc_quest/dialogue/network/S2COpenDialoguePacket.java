@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.dialogue.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraftforge.network.NetworkEvent;
@@ -26,9 +27,9 @@ public class S2COpenDialoguePacket {
      */
     private final String dialogueId;
     private final String nodeId;
-    private final String speaker;
-    private final String text;
-    private final String[] choices;
+    private final Component speaker;
+    private final Component text;
+    private final Component[] choices;
     private final boolean isTerminal;
     private final boolean hasAutoNext;
     private final int delayMs;
@@ -86,8 +87,8 @@ public class S2COpenDialoguePacket {
     /**
      * 原有构造器（向后兼容，entityId = -1）。
      */
-    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
-                                 String text, String[] choices,
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
+                                 Component text, Component[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs) {
         this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, -1);
     }
@@ -95,8 +96,8 @@ public class S2COpenDialoguePacket {
     /**
      * 完整构造器（带 entityId）。
      */
-    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
-                                 String text, String[] choices,
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
+                                 Component text, Component[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs,
                                  int entityId) {
         this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
@@ -106,8 +107,8 @@ public class S2COpenDialoguePacket {
     /**
      * 完整构造器（带冷却信息）。
      */
-    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
-                                 String text, String[] choices,
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
+                                 Component text, Component[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs,
                                  int entityId, long[] choiceLastSelectTimes,
                                  long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
@@ -121,8 +122,8 @@ public class S2COpenDialoguePacket {
     /**
      * 完整构造器（带音效）。
      */
-    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
-                                 String text, String[] choices,
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
+                                 Component text, Component[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs,
                                  int entityId, long[] choiceLastSelectTimes,
                                  long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
@@ -137,8 +138,8 @@ public class S2COpenDialoguePacket {
     /**
      * 完整构造器（带 SayIf 音效）。
      */
-    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
-                                 String text, String[] choices,
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
+                                 Component text, Component[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs,
                                  int entityId, long[] choiceLastSelectTimes,
                                  long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
@@ -154,8 +155,8 @@ public class S2COpenDialoguePacket {
     /**
      * 完整构造器（带 SayIf ID 和 Choice IDs）。
      */
-    public S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
-                                 String text, String[] choices,
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
+                                 Component text, Component[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs,
                                  int entityId, long[] choiceLastSelectTimes,
                                  long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
@@ -170,8 +171,8 @@ public class S2COpenDialoguePacket {
                 choiceSelectSoundIds, matchedSaySoundId, matchedSayId, choiceIds, Mode.OPEN);
     }
 
-    private S2COpenDialoguePacket(String dialogueId, String nodeId, String speaker,
-                                  String text, String[] choices,
+    private S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
+                                  Component text, Component[] choices,
                                   boolean isTerminal, boolean hasAutoNext, int delayMs,
                                   int entityId, long[] choiceLastSelectTimes,
                                   long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
@@ -207,9 +208,9 @@ public class S2COpenDialoguePacket {
     private S2COpenDialoguePacket() {
         this.dialogueId = "";
         this.nodeId = "";
-        this.speaker = "";
-        this.text = "";
-        this.choices = new String[0];
+        this.speaker = Component.empty();
+        this.text = Component.empty();
+        this.choices = new Component[0];
         this.isTerminal = true;
         this.hasAutoNext = false;
         this.delayMs = 0;
@@ -263,12 +264,12 @@ public class S2COpenDialoguePacket {
 
         String dId = buf.readUtf();
         String nId = buf.readUtf();
-        String spk = buf.readUtf();
-        String txt = buf.readUtf(4096);
+        Component spk = buf.readComponent();
+        Component txt = buf.readComponent();
         int count = buf.readVarInt();
-        String[] choices = new String[count];
+        Component[] choices = new Component[count];
         for (int i = 0; i < count; i++) {
-            choices[i] = buf.readUtf(512);
+            choices[i] = buf.readComponent();
         }
         boolean terminal = buf.readBoolean();
         boolean autoNext = buf.readBoolean();
@@ -397,11 +398,11 @@ public class S2COpenDialoguePacket {
         if (mode != Mode.CLOSE && !isClose) {
             buf.writeUtf(dialogueId);
             buf.writeUtf(nodeId);
-            buf.writeUtf(speaker);
-            buf.writeUtf(text, 4096);
+            buf.writeComponent(speaker != null ? speaker : Component.empty());
+            buf.writeComponent(text != null ? text : Component.empty());
             buf.writeVarInt(choices.length);
-            for (String c : choices) {
-                buf.writeUtf(c, 512);
+            for (Component c : choices) {
+                buf.writeComponent(c != null ? c : Component.empty());
             }
             buf.writeBoolean(isTerminal);
             buf.writeBoolean(hasAutoNext);

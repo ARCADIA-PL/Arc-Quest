@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.dialogue.network;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
@@ -41,7 +42,7 @@ public final class ClientDialogueCache {
     /**
      * 从网络包更新会话状态。
      */
-    public void updateFromPacket(String treeId, String nodeId, String speaker, String text, String[] choices,
+    public void updateFromPacket(String treeId, String nodeId, Component speaker, Component text, Component[] choices,
                                  boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId,
                                  long[] lastSelectTimes, long[] purchaseGTs, long[] purchaseDTs,
                                  int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
@@ -170,7 +171,7 @@ public final class ClientDialogueCache {
         transcripts.put(sessionId, mapped);
     }
 
-    public void appendTranscriptEntry(UUID sessionId, long clientMs, String role, String speaker, String text,
+    public void appendTranscriptEntry(UUID sessionId, long clientMs, String role, Component speaker, Component text,
                                       @Nullable String nodeId, @Nullable String sayId,
                                       @Nullable String choiceId, @Nullable Integer choiceIndex) {
         transcripts.computeIfAbsent(sessionId, k -> new ArrayList<>())
@@ -188,7 +189,7 @@ public final class ClientDialogueCache {
         LOGGER.debug("[DialogueCache] Cleared {} session(s)", count);
     }
 
-    public record TranscriptEntry(long clientMs, String role, String speaker, String text,
+    public record TranscriptEntry(long clientMs, String role, Component speaker, Component text,
                                   @Nullable String nodeId, @Nullable String sayId,
                                   @Nullable String choiceId, @Nullable Integer choiceIndex) {
     }
@@ -199,9 +200,9 @@ public final class ClientDialogueCache {
     public static class DialogueSessionData {
         public final String treeId;
         public String nodeId;
-        public String speaker;
-        public String text;
-        public String[] choices;
+        public Component speaker;
+        public Component text;
+        public Component[] choices;
         public boolean isTerminal;
         public boolean hasAutoNext;
         public int delayMs;
@@ -224,7 +225,7 @@ public final class ClientDialogueCache {
             this.treeId = treeId;
         }
 
-        public void updateNode(String nodeId, String speaker, String text, String[] choices,
+        public void updateNode(String nodeId, Component speaker, Component text, Component[] choices,
                                boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId,
                                long[] lastSelectTimes, long[] purchaseGTs, long[] purchaseDTs,
                                int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
@@ -232,7 +233,7 @@ public final class ClientDialogueCache {
             this.nodeId = nodeId;
             this.speaker = speaker;
             this.text = text;
-            this.choices = choices != null ? choices : new String[0];
+            this.choices = choices != null ? choices : new Component[0];
             this.isTerminal = isTerminal;
             this.hasAutoNext = hasAutoNext;
             this.delayMs = delayMs;
