@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecResourceLoader;
+import org.arcadia.arc_quest.quest.spec.io.QuestSpecResourceLoader2;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
 import org.arcadia.arc_quest.quest.spec.validate.ValidationIssue;
 import org.jetbrains.annotations.NotNull;
@@ -26,6 +27,7 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<R
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final QuestSpecResourceLoader STATIC_LOADER = new QuestSpecResourceLoader();
+    private static final QuestSpecResourceLoader2 STATIC_DATAPACK_LOADER = new QuestSpecResourceLoader2();
     private static final QuestSpecValidator STATIC_VALIDATOR = new QuestSpecValidator();
     private static final QuestSpecCompiler STATIC_COMPILER = new QuestSpecCompiler();
 
@@ -40,7 +42,24 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<R
     }
 
     public static int reloadArcQuestDatapacksOnly(@NotNull ResourceManager manager) {
-        Map<ResourceLocation, QuestSpec> specs = STATIC_LOADER.load(manager);
+        Map<ResourceLocation, QuestSpec> specs = new java.util.LinkedHashMap<>();
+
+        var datapackReport = STATIC_DATAPACK_LOADER.loadFromDatapack();
+        for (var e : datapackReport.specs().entrySet()) {
+            var id = ResourceLocation.tryParse(e.getValue().id);
+            if (id != null) specs.put(id, e.getValue());
+        }
+
+        if (specs.isEmpty()) {
+            specs.putAll(STATIC_LOADER.load(manager));
+            LOGGER.info("[ArcQuest] Datapack folder had no valid quest specs; fallback to resource manager path.");
+        } else {
+            LOGGER.info("[ArcQuest] Loaded {} quest spec(s) from @datapack path. failed={}", datapackReport.loadedCount(), datapackReport.failedCount());
+            for (var err : datapackReport.errors()) {
+                LOGGER.error("[ArcQuest] Datapack load error: file={}, message={}", err.file(), err.message(), err.cause());
+            }
+        }
+
         EpicDialogueTrees.registerAll();
         QuestRegistry.clearDatapack();
 
