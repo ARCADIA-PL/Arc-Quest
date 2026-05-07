@@ -4,17 +4,8 @@ import org.arcadia.arc_quest.quest.editor.mapper.EditableQuestToQuestSpecMapper;
 import org.arcadia.arc_quest.quest.editor.mapper.QuestEditorRoundTripVerifier;
 import org.arcadia.arc_quest.quest.editor.mapper.QuestSpecToEditableQuestMapper;
 import org.arcadia.arc_quest.quest.editor.mapper.SampleQuestRoundTripDebugHelper;
-import org.arcadia.arc_quest.quest.editor.model.EditableConnection;
-import org.arcadia.arc_quest.quest.editor.model.EditableConnectionType;
-import org.arcadia.arc_quest.quest.editor.model.EditableChoice;
-import org.arcadia.arc_quest.quest.editor.model.EditableObjective;
-import org.arcadia.arc_quest.quest.editor.model.EditablePhase;
-import org.arcadia.arc_quest.quest.editor.model.EditableQuest;
-import org.arcadia.arc_quest.quest.editor.service.EditableQuestGraphService;
-import org.arcadia.arc_quest.quest.editor.service.EditableQuestService;
-import org.arcadia.arc_quest.quest.editor.service.EditableQuestValidationService;
-import org.arcadia.arc_quest.quest.editor.service.EditableValidationIssue;
-import org.arcadia.arc_quest.quest.editor.service.EditableValidationReport;
+import org.arcadia.arc_quest.quest.editor.model.*;
+import org.arcadia.arc_quest.quest.editor.service.*;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.QuestTextSpec;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecJsonWriter;
@@ -27,41 +18,48 @@ import java.util.*;
 
 public class QuestEditorController {
     private final EditableQuestService questService = new EditableQuestService();
+    private final EditableCollectionService collectionService = new EditableCollectionService();
     private final EditableQuestToQuestSpecMapper editableToSpecMapper = new EditableQuestToQuestSpecMapper();
     private final QuestSpecToEditableQuestMapper specToEditableMapper = new QuestSpecToEditableQuestMapper();
     private final QuestEditorRoundTripVerifier roundTripVerifier = new QuestEditorRoundTripVerifier();
     private final EditableQuestValidationService validationService = new EditableQuestValidationService();
     private final EditableQuestGraphService graphService = new EditableQuestGraphService();
-    private final EditorCommandBus commandBus = new EditorCommandBus();
+    private final QuestEditorSaveService saveService = new QuestEditorSaveService();
+    private final QuestEditorSnapshotHistory snapshotHistory = new QuestEditorSnapshotHistory();
+
+    private final QuestEditorState state = new QuestEditorState();
     private EditableQuest quest = new EditableQuest();
     private EditorSelection selection = EditorSelection.none();
     private EditableValidationReport validationReport = new EditableValidationReport();
     private String statusText = "未加载任务";
     private EditableConnectionType linkCreateType = EditableConnectionType.TRANSITION;
     private final LinkedHashSet<String> selectedPhaseNodeIds = new LinkedHashSet<>();
-    private long revision = 0;
-    private long savepointRevision = 0;
     private double autoLayoutLayerGap = 260;
     private double autoLayoutRowGap = 120;
     private int autoLayoutUnreachablePerLayer = 8;
+    private long revision = 0;
+    private long savepointRevision = 0;
+    private int phaseAutoIndex = 1;
 
     public void loadSampleQuest(Path workspaceRoot) {
         try {
             var report = SampleQuestRoundTripDebugHelper.verifySampleQuestFromWorkspace(workspaceRoot);
             this.quest = report.editable();
             this.selection = quest.phases.isEmpty() ? EditorSelection.quest() : EditorSelection.phase(resolveInitialPhaseNodeId());
-            this.commandBus.clear();
+            this.snapshotHistory.clear();
             this.revision = 0;
             this.savepointRevision = 0;
             selectedPhaseNodeIds.clear();
             if (selection.type() == EditorSelectionType.PHASE) selectedPhaseNodeIds.add(selection.phaseNodeId());
             validate();
             this.statusText = report.success() ? "Sample quest 已导入" : "Sample quest 已导入，但 round-trip 存在差异";
+            syncStateFromRuntime();
         } catch (Exception ex) {
             this.quest = new EditableQuest();
             this.selection = EditorSelection.none();
             this.validationReport = new EditableValidationReport();
             this.statusText = "导入 sample 失败: " + ex.getMessage();
+            syncStateFromRuntime();
         }
     }
 
@@ -73,13 +71,14 @@ public class QuestEditorController {
         EditablePhase first = questService.addPhase(quest, "start", 40, 40);
         quest.initialPhaseNodeId = first.nodeId;
         this.selection = EditorSelection.phase(first.nodeId);
-        this.commandBus.clear();
+        this.snapshotHistory.clear();
         this.revision = 0;
         this.savepointRevision = 0;
         selectedPhaseNodeIds.clear();
         selectedPhaseNodeIds.add(first.nodeId);
         validate();
         this.statusText = "已新建 Quest: " + normalizedId;
+        syncStateFromRuntime();
     }
 
     public void validate() {
@@ -479,6 +478,338 @@ public class QuestEditorController {
 
     public EditableConnectionType linkCreateType() { return linkCreateType; }
 
+    public boolean beginPlacePhase() {
+        if (!isProgressMode()) return false;
+        state.mode = QuestEditorMode.PLACE_PHASE;
+        statusText = "进入 Phase 放置模式";
+        syncStateFromRuntime();
+        return true;
+    }
+
+    public EditablePhase placePhaseAt(double graphX, double graphY) {
+        if (!isProgressMode() || state.mode != QuestEditorMode.PLACE_PHASE) return null;
+        final EditablePhase[] created = new EditablePhase[1];
+        boolean changed = executeMutation("已放置 Phase", () -> {
+            String phaseId = nextAutoPhaseId();
+            created[0] = questService.addPhase(quest, phaseId, graphX, graphY);
+            selection = EditorSelection.phase(created[0].nodeId);
+            state.mode = QuestEditorMode.IDLE;
+            return true;
+        });
+        return changed ? created[0] : null;
+    }
+
+    public boolean cancelPlacePhase() {
+        if (state.mode != QuestEditorMode.PLACE_PHASE) return false;
+        state.mode = QuestEditorMode.IDLE;
+        statusText = "已取消 Phase 放置";
+        syncStateFromRuntime();
+        return true;
+    }
+
+    public boolean beginDeletePhaseSelection() {
+        if (!isProgressMode()) return false;
+        state.mode = QuestEditorMode.DELETE_PHASE_SELECT;
+        statusText = "进入 Phase 删除选择模式";
+        syncStateFromRuntime();
+        return true;
+    }
+
+    public boolean addPhaseToPendingDelete(String nodeId) {
+        if (nodeId == null || nodeId.isBlank() || phaseByNodeId(nodeId) == null) return false;
+        boolean added = state.pendingDeletePhaseNodeIds.add(nodeId);
+        if (added) syncStateFromRuntime();
+        return added;
+    }
+
+    public boolean removePhaseFromPendingDelete(String nodeId) {
+        boolean removed = state.pendingDeletePhaseNodeIds.remove(nodeId);
+        if (removed) syncStateFromRuntime();
+        return removed;
+    }
+
+    public void clearPendingDelete() {
+        state.pendingDeletePhaseNodeIds.clear();
+        syncStateFromRuntime();
+    }
+
+    public boolean openDeleteConfirm() {
+        if (state.pendingDeletePhaseNodeIds.isEmpty()) return false;
+        state.mode = QuestEditorMode.DELETE_CONFIRM_MODAL;
+        syncStateFromRuntime();
+        return true;
+    }
+
+    public boolean confirmDeletePendingPhases() {
+        if (state.pendingDeletePhaseNodeIds.isEmpty()) return false;
+        var ids = new java.util.LinkedHashSet<>(state.pendingDeletePhaseNodeIds);
+        return executeMutation("已删除选中 Phase", () -> {
+            boolean changed = false;
+            for (String id : ids) changed |= questService.removePhase(quest, id);
+            state.pendingDeletePhaseNodeIds.clear();
+            state.mode = QuestEditorMode.IDLE;
+            if (selection != null && selection.type() == EditorSelectionType.PHASE && phaseByNodeId(selection.phaseNodeId()) == null) {
+                selection = quest.phases.isEmpty() ? EditorSelection.none() : EditorSelection.phase(quest.phases.get(0).nodeId);
+            }
+            return changed;
+        });
+    }
+
+    public boolean cancelDeletePhases() {
+        state.pendingDeletePhaseNodeIds.clear();
+        if (state.mode == QuestEditorMode.DELETE_PHASE_SELECT || state.mode == QuestEditorMode.DELETE_CONFIRM_MODAL) {
+            state.mode = QuestEditorMode.IDLE;
+            syncStateFromRuntime();
+            return true;
+        }
+        return false;
+    }
+
+    public CreateConnectionReport beginGotoConnection(String sourceNodeId) {
+        CreateConnectionReport report = new CreateConnectionReport();
+        if (!isProgressMode()) {
+            report.message = "仅 Progress 模式可连线";
+            return report;
+        }
+        if (phaseByNodeId(sourceNodeId) == null) {
+            report.message = "来源 Phase 不存在";
+            return report;
+        }
+        state.connectSourcePhaseNodeId = sourceNodeId;
+        state.mode = QuestEditorMode.CONNECT_GOTO;
+        report.created = false;
+        report.message = "已进入 Goto 连线模式";
+        syncStateFromRuntime();
+        return report;
+    }
+
+    public CreateConnectionReport finishGotoConnection(String targetNodeId) {
+        return finishGotoConnection(targetNodeId, GotoConnectionPolicy.AUTO);
+    }
+
+    public CreateConnectionReport finishGotoConnection(String targetNodeId, GotoConnectionPolicy policy) {
+        CreateConnectionReport report = new CreateConnectionReport();
+        String sourceNodeId = state.connectSourcePhaseNodeId;
+        if (sourceNodeId == null || sourceNodeId.isBlank() || state.mode != QuestEditorMode.CONNECT_GOTO) {
+            report.message = "未处于 Goto 连线模式";
+            return report;
+        }
+        if (sourceNodeId.equals(targetNodeId)) {
+            report.message = "连接失败: 不支持自环";
+            return report;
+        }
+        if (phaseByNodeId(targetNodeId) == null) {
+            report.message = "目标 Phase 不存在";
+            return report;
+        }
+
+        EditableConnectionType type = resolveConnectionTypeForGoto(sourceNodeId, policy);
+        if (type == null) {
+            report.requiresPolicySelection = true;
+            report.message = "无法自动判断连接类型，需要用户选择";
+            return report;
+        }
+
+        if (type == EditableConnectionType.TRANSITION && hasTransitionConnection(sourceNodeId, targetNodeId)) {
+            report.message = "连接失败: 已存在 Transition";
+            return report;
+        }
+
+        final EditableConnectionType finalType = type;
+        boolean changed = executeMutation("已创建 Goto 连接", () -> {
+            if (finalType == EditableConnectionType.TRANSITION) {
+                var connection = questService.connectTransition(quest, sourceNodeId, targetNodeId, null);
+                selection = new EditorSelection(EditorSelectionType.CONNECTION, "", "", "", connection.connectionId);
+                state.selectedConnectionId = connection.connectionId;
+            } else {
+                EditableChoice choice = questService.addChoice(quest, sourceNodeId, targetNodeId, "", "", null);
+                selection = EditorSelection.choice(sourceNodeId, choice.choiceId);
+                var connection = quest.connections.stream().filter(c -> c.connectionType == EditableConnectionType.CHOICE && choice.choiceId.equals(c.choiceId)).findFirst().orElse(null);
+                if (connection != null) state.selectedConnectionId = connection.connectionId;
+            }
+            state.mode = QuestEditorMode.IDLE;
+            state.connectSourcePhaseNodeId = "";
+            return true;
+        });
+
+        report.created = changed;
+        report.connectionType = type;
+        report.message = changed ? "创建成功" : "创建失败";
+        if (changed && state.selectedConnectionId != null) report.connectionId = state.selectedConnectionId;
+        return report;
+    }
+
+    public boolean cancelGotoConnection() {
+        if (state.mode != QuestEditorMode.CONNECT_GOTO) return false;
+        state.mode = QuestEditorMode.IDLE;
+        state.connectSourcePhaseNodeId = "";
+        syncStateFromRuntime();
+        return true;
+    }
+
+    public EditableCollectionCategory addCollectionCategory(String categoryId) {
+        if (!isCollectionMode()) {
+            statusText = "Collection API 仅 Collection 模式可用";
+            return null;
+        }
+        if (categoryId == null || categoryId.isBlank() || quest.collectionConfig.categories.stream().anyMatch(c -> categoryId.equals(c.categoryId))) {
+            statusText = "Category id 无效或重复";
+            return null;
+        }
+        final EditableCollectionCategory[] created = new EditableCollectionCategory[1];
+        boolean changed = executeMutation("已新增 Collection Category", () -> {
+            created[0] = collectionService.addCategory(quest, categoryId);
+            state.mode = QuestEditorMode.COLLECTION_CATEGORY_SELECTED;
+            return created[0] != null;
+        });
+        return changed ? created[0] : null;
+    }
+
+    public boolean updateCollectionCategoryBasics(String categoryId, String displayName, String iconTexture) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已更新 Collection Category", () -> collectionService.updateCategoryBasics(quest, categoryId, displayName, iconTexture));
+    }
+
+    public boolean moveCollectionCategory(String categoryId, int toIndex) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已重排 Collection Category", () -> collectionService.moveCategory(quest, categoryId, toIndex));
+    }
+
+    public EditableCollectionEntry addCollectionEntry(String categoryId, String entryId) {
+        if (!isCollectionMode()) {
+            statusText = "Collection API 仅 Collection 模式可用";
+            return null;
+        }
+        if (entryId == null || entryId.isBlank() || quest.collectionEntries.stream().anyMatch(e -> entryId.equals(e.entryId))) return null;
+        final EditableCollectionEntry[] created = new EditableCollectionEntry[1];
+        boolean changed = executeMutation("已新增 Collection Entry", () -> {
+            created[0] = collectionService.addEntry(quest, categoryId, entryId);
+            state.mode = QuestEditorMode.COLLECTION_ENTRY_SELECTED;
+            return created[0] != null;
+        });
+        return changed ? created[0] : null;
+    }
+
+    public boolean moveCollectionEntryToCategory(String entryId, String categoryId) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已移动 Collection Entry", () -> collectionService.moveEntryToCategory(quest, entryId, categoryId));
+    }
+
+    public boolean moveCollectionEntry(String entryId, int toIndex) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已重排 Collection Entry", () -> collectionService.moveEntry(quest, entryId, toIndex));
+    }
+
+    public boolean updateCollectionEntryVisibility(String entryId, org.arcadia.arc_quest.quest.api.VisibilityMode mode, org.arcadia.arc_quest.quest.api.HiddenPresentationMode hidden, boolean showInTracker) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已更新 Entry Visibility", () -> collectionService.updateEntryVisibility(quest, entryId, mode, hidden, showInTracker));
+    }
+
+    public boolean updateCollectionEntryCounting(String entryId, org.arcadia.arc_quest.quest.api.CountingMode countingMode, int completionTarget, int maxCount, boolean repeatableProgress, boolean repeatableCompletion) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已更新 Entry Counting", () -> collectionService.updateEntryCounting(quest, entryId, countingMode, completionTarget, maxCount, repeatableProgress, repeatableCompletion));
+    }
+
+    public boolean updateCollectionEntryRewardGrantMode(String entryId, org.arcadia.arc_quest.quest.api.EntryRewardGrantMode grantMode) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已更新 Entry RewardGrantMode", () -> collectionService.updateEntryRewardGrantMode(quest, entryId, grantMode));
+    }
+
+    public EditableCollectionRewardNode addCollectionEntryRewardNode(String entryId, String rewardNodeId) {
+        if (!isCollectionMode()) return null;
+        final EditableCollectionRewardNode[] created = new EditableCollectionRewardNode[1];
+        boolean changed = executeMutation("已新增 RewardNode", () -> {
+            created[0] = collectionService.addEntryRewardNode(quest, entryId, rewardNodeId);
+            return created[0] != null;
+        });
+        return changed ? created[0] : null;
+    }
+
+    public boolean updateCollectionEntryRewardNode(String entryId, String rewardNodeId, org.arcadia.arc_quest.quest.api.EntryRewardGrantMode grantMode) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已更新 RewardNode", () -> collectionService.updateEntryRewardNode(quest, entryId, rewardNodeId, grantMode));
+    }
+
+    public boolean removeCollectionEntryRewardNode(String entryId, String rewardNodeId) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已删除 RewardNode", () -> collectionService.removeEntryRewardNode(quest, entryId, rewardNodeId));
+    }
+
+    public EditableCollectionCompletionRule addCollectionCategoryCompletionRule(String categoryId, String type, String expression) {
+        if (!isCollectionMode()) return null;
+        final EditableCollectionCompletionRule[] created = new EditableCollectionCompletionRule[1];
+        boolean changed = executeMutation("已新增 CompletionRule", () -> {
+            created[0] = collectionService.addCategoryCompletionRule(quest, categoryId, type, expression);
+            return created[0] != null;
+        });
+        return changed ? created[0] : null;
+    }
+
+    public boolean updateCollectionCategoryCompletionRule(String categoryId, int index, String type, String expression) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已更新 CompletionRule", () -> collectionService.updateCategoryCompletionRule(quest, categoryId, index, type, expression));
+    }
+
+    public boolean removeCollectionCategoryCompletionRule(String categoryId, int index) {
+        if (!isCollectionMode()) return false;
+        return executeMutation("已删除 CompletionRule", () -> collectionService.removeCategoryCompletionRule(quest, categoryId, index));
+    }
+
+    public boolean beginDeleteCollectionObjectSelection() {
+        if (!isCollectionMode()) return false;
+        state.mode = QuestEditorMode.DELETE_COLLECTION_OBJECT_SELECT;
+        syncStateFromRuntime();
+        return true;
+    }
+
+    public boolean addCollectionObjectToPendingDelete(EditorObjectRef ref) {
+        if (!isCollectionMode() || ref == null) return false;
+        boolean added = state.pendingDeleteCollectionObjectRefs.add(ref.type().name() + "::" + ref.ownerId() + "::" + ref.id());
+        if (added) syncStateFromRuntime();
+        return added;
+    }
+
+    public boolean removeCollectionObjectFromPendingDelete(EditorObjectRef ref) {
+        if (!isCollectionMode() || ref == null) return false;
+        boolean removed = state.pendingDeleteCollectionObjectRefs.remove(ref.type().name() + "::" + ref.ownerId() + "::" + ref.id());
+        if (removed) syncStateFromRuntime();
+        return removed;
+    }
+
+    public boolean confirmDeletePendingCollectionObjects(CategoryDeletePolicy categoryPolicy, String defaultCategoryId) {
+        if (!isCollectionMode() || state.pendingDeleteCollectionObjectRefs.isEmpty()) return false;
+        var refs = new java.util.ArrayList<>(state.pendingDeleteCollectionObjectRefs);
+        return executeMutation("已确认删除 Collection 对象", () -> {
+            boolean changed = false;
+            for (String raw : refs) {
+                EditorObjectRef ref = parseObjectRef(raw);
+                changed |= collectionService.deleteObject(quest, ref, categoryPolicy, defaultCategoryId);
+            }
+            state.pendingDeleteCollectionObjectRefs.clear();
+            state.mode = QuestEditorMode.IDLE;
+            return changed;
+        });
+    }
+
+    public boolean cancelDeleteCollectionObjects() {
+        state.pendingDeleteCollectionObjectRefs.clear();
+        if (state.mode == QuestEditorMode.DELETE_COLLECTION_OBJECT_SELECT || state.mode == QuestEditorMode.DELETE_CONFIRM_MODAL) {
+            state.mode = QuestEditorMode.IDLE;
+            syncStateFromRuntime();
+            return true;
+        }
+        return false;
+    }
+
+    private EditorObjectRef parseObjectRef(String raw) {
+        if (raw == null) return new EditorObjectRef(EditorObjectType.ENTRY, "", "");
+        String[] p = raw.split("::", 3);
+        EditorObjectType type = p.length > 0 ? EditorObjectType.valueOf(p[0]) : EditorObjectType.ENTRY;
+        String owner = p.length > 1 ? p[1] : "";
+        String id = p.length > 2 ? p[2] : "";
+        return new EditorObjectRef(type, id, owner);
+    }
+
     public void toggleLinkCreateType() {
         linkCreateType = (linkCreateType == EditableConnectionType.TRANSITION) ? EditableConnectionType.CHOICE : EditableConnectionType.TRANSITION;
         statusText = "连线模式: " + (linkCreateType == EditableConnectionType.TRANSITION ? "TRANSITION" : "CHOICE");
@@ -527,6 +858,34 @@ public class QuestEditorController {
         });
     }
 
+    public boolean selectConnection(String connectionId) {
+        if (connectionId == null || connectionId.isBlank()) return false;
+        EditableConnection connection = quest.connections.stream().filter(c -> connectionId.equals(c.connectionId)).findFirst().orElse(null);
+        if (connection == null) return false;
+        selection = new EditorSelection(EditorSelectionType.CONNECTION, "", "", "", connection.connectionId);
+        state.mode = QuestEditorMode.CONNECTION_SELECTED;
+        state.selectedConnectionId = connection.connectionId;
+        syncStateFromRuntime();
+        return true;
+    }
+
+    public ConnectionSummary connectionSummary(String connectionId) {
+        EditableConnection connection = quest.connections.stream().filter(c -> connectionId.equals(c.connectionId)).findFirst().orElse(null);
+        if (connection == null) return null;
+        ConnectionSummary summary = new ConnectionSummary();
+        summary.connectionId = connection.connectionId;
+        summary.connectionType = connection.connectionType;
+        summary.sourcePhaseNodeId = connection.sourcePhaseNodeId;
+        summary.targetPhaseNodeId = connection.targetPhaseNodeId;
+        summary.choiceId = connection.choiceId == null ? "" : connection.choiceId;
+        summary.priority = connection.priority;
+        return summary;
+    }
+
+    public boolean deleteSelectedConnection() {
+        return removeSelectedConnection();
+    }
+
     public boolean updateSelectedConnectionTarget(String targetNodeId) {
         EditableConnection selected = selectedConnection();
         if (selected == null || targetNodeId == null || targetNodeId.isBlank()) return false;
@@ -559,6 +918,7 @@ public class QuestEditorController {
             selectedPhaseNodeIds.clear();
             selectedPhaseNodeIds.add(this.selection.phaseNodeId());
         }
+        syncStateFromRuntime();
     }
 
     public EditableValidationReport validationReport() {
@@ -742,73 +1102,48 @@ public class QuestEditorController {
     }
 
     public boolean undo() {
-        boolean changed = commandBus.undo();
-        if (changed) {
-            revision = Math.max(0, revision - 1);
-            syncMultiSelectionFromSelection();
-            validate();
-            statusText = "Undo: " + commandBus.lastRedoDescription();
-        }
-        return changed;
+        QuestEditorSnapshot target = snapshotHistory.undo(captureSnapshot());
+        if (target == null) return false;
+        restoreSnapshot(target);
+        validate();
+        state.lastSaveReport = saveService.autosave(state.document);
+        revision = Math.max(0, revision - 1);
+        statusText = "Undo";
+        syncStateFromRuntime();
+        return true;
     }
 
     public boolean redo() {
-        boolean changed = commandBus.redo();
-        if (changed) {
-            revision++;
-            syncMultiSelectionFromSelection();
-            validate();
-            statusText = "Redo: " + commandBus.lastUndoDescription();
-        }
-        return changed;
+        QuestEditorSnapshot target = snapshotHistory.redo(captureSnapshot());
+        if (target == null) return false;
+        restoreSnapshot(target);
+        validate();
+        state.lastSaveReport = saveService.autosave(state.document);
+        revision++;
+        statusText = "Redo";
+        syncStateFromRuntime();
+        return true;
     }
 
-    public boolean canUndo() { return commandBus.canUndo(); }
-    public boolean canRedo() { return commandBus.canRedo(); }
-    public String undoDescription() { return commandBus.lastUndoDescription(); }
-    public String redoDescription() { return commandBus.lastRedoDescription(); }
+    public boolean canUndo() { return snapshotHistory.canUndo(); }
+    public boolean canRedo() { return snapshotHistory.canRedo(); }
+    public String undoDescription() { return canUndo() ? "Undo" : ""; }
+    public String redoDescription() { return canRedo() ? "Redo" : ""; }
     public boolean isDirty() { return revision != savepointRevision; }
 
     private boolean executeMutation(String description, Mutation mutation) {
-        QuestSpec beforeSpec = editableToSpecMapper.map(quest);
-        EditorSelection beforeSelection = selection;
-        EditorCommand command = new EditorCommand() {
-            private QuestSpec afterSpec;
-            private EditorSelection afterSelection;
+        QuestEditorSnapshot before = captureSnapshot();
+        boolean changed = mutation.apply();
+        if (!changed) return false;
 
-            @Override
-            public boolean apply() {
-                if (afterSpec != null) {
-                    quest = specToEditableMapper.map(afterSpec);
-                    selection = afterSelection;
-                    return true;
-                }
-                boolean changed = mutation.apply();
-                if (!changed) return false;
-                afterSpec = editableToSpecMapper.map(quest);
-                afterSelection = selection;
-                return true;
-            }
-
-            @Override
-            public void revert() {
-                quest = specToEditableMapper.map(beforeSpec);
-                selection = beforeSelection;
-            }
-
-            @Override
-            public String description() {
-                return description;
-            }
-        };
-
-        boolean changed = commandBus.execute(command);
-        if (changed) {
-            revision++;
-            validate();
-            statusText = description;
-        }
-        return changed;
+        snapshotHistory.pushUndo(before);
+        validate();
+        state.document.quest = quest;
+        state.lastSaveReport = saveService.autosave(state.document);
+        revision++;
+        statusText = description;
+        syncStateFromRuntime();
+        return true;
     }
 
     private boolean hasTransitionConnection(String sourceNodeId, String targetNodeId) {
@@ -820,6 +1155,33 @@ public class QuestEditorController {
             }
         }
         return false;
+    }
+
+    private boolean isProgressMode() {
+        return quest != null && quest.meta != null && quest.meta.mode == org.arcadia.arc_quest.quest.api.QuestMode.PROGRESSION;
+    }
+
+    private boolean isCollectionMode() {
+        return quest != null && quest.meta != null && quest.meta.mode == org.arcadia.arc_quest.quest.api.QuestMode.COLLECTION;
+    }
+
+    private EditableConnectionType resolveConnectionTypeForGoto(String sourceNodeId, GotoConnectionPolicy policy) {
+        if (policy == GotoConnectionPolicy.FORCE_TRANSITION) return EditableConnectionType.TRANSITION;
+        if (policy == GotoConnectionPolicy.FORCE_CHOICE) return EditableConnectionType.CHOICE;
+
+        EditablePhase source = phaseByNodeId(sourceNodeId);
+        if (source == null) return null;
+        if (source.choices == null || source.choices.isEmpty()) return EditableConnectionType.TRANSITION;
+        if (source.choices.size() == 1) return EditableConnectionType.CHOICE;
+        return null;
+    }
+
+    private String nextAutoPhaseId() {
+        while (true) {
+            String id = "phase_" + phaseAutoIndex++;
+            boolean exists = quest.phases.stream().anyMatch(p -> id.equals(p.phaseId));
+            if (!exists) return id;
+        }
     }
 
     @FunctionalInterface
@@ -844,6 +1206,55 @@ public class QuestEditorController {
     private String resolveInitialPhaseNodeId() {
         if (quest.initialPhaseNodeId != null && !quest.initialPhaseNodeId.isBlank()) return quest.initialPhaseNodeId;
         return quest.phases.isEmpty() ? "" : quest.phases.get(0).nodeId;
+    }
+
+    public QuestEditorSnapshot captureSnapshot() {
+        QuestEditorSnapshot snapshot = new QuestEditorSnapshot();
+        snapshot.quest = specToEditableMapper.map(editableToSpecMapper.map(quest));
+        snapshot.selection = selection;
+        snapshot.mode = state.mode;
+        snapshot.cameraX = state.cameraX;
+        snapshot.cameraY = state.cameraY;
+        snapshot.zoom = state.zoom;
+        snapshot.pendingDeletePhaseNodeIds.addAll(state.pendingDeletePhaseNodeIds);
+        snapshot.pendingDeleteCollectionObjectRefs.addAll(state.pendingDeleteCollectionObjectRefs);
+        snapshot.selectedConnectionId = state.selectedConnectionId;
+        snapshot.connectSourcePhaseNodeId = state.connectSourcePhaseNodeId;
+        snapshot.draggingObjectId = state.draggingObjectId;
+        snapshot.statusText = statusText;
+        return snapshot;
+    }
+
+    public void restoreSnapshot(QuestEditorSnapshot snapshot) {
+        if (snapshot == null || snapshot.quest == null) return;
+        this.quest = specToEditableMapper.map(editableToSpecMapper.map(snapshot.quest));
+        this.selection = snapshot.selection == null ? EditorSelection.none() : snapshot.selection;
+        this.state.mode = snapshot.mode == null ? QuestEditorMode.IDLE : snapshot.mode;
+        this.state.cameraX = snapshot.cameraX;
+        this.state.cameraY = snapshot.cameraY;
+        this.state.zoom = snapshot.zoom;
+        this.state.pendingDeletePhaseNodeIds.clear();
+        this.state.pendingDeletePhaseNodeIds.addAll(snapshot.pendingDeletePhaseNodeIds);
+        this.state.pendingDeleteCollectionObjectRefs.clear();
+        this.state.pendingDeleteCollectionObjectRefs.addAll(snapshot.pendingDeleteCollectionObjectRefs);
+        this.state.selectedConnectionId = snapshot.selectedConnectionId;
+        this.state.connectSourcePhaseNodeId = snapshot.connectSourcePhaseNodeId;
+        this.state.draggingObjectId = snapshot.draggingObjectId;
+        this.statusText = snapshot.statusText == null ? "" : snapshot.statusText;
+        syncMultiSelectionFromSelection();
+        syncStateFromRuntime();
+    }
+
+    public QuestEditorState state() {
+        syncStateFromRuntime();
+        return state;
+    }
+
+    private void syncStateFromRuntime() {
+        state.document.quest = quest;
+        state.selection = selection;
+        state.statusText = statusText;
+        state.lastValidationReport = validationReport;
     }
 
     private void syncMultiSelectionFromSelection() {
