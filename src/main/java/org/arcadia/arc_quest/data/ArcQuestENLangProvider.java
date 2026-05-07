@@ -33,6 +33,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addChapter2ExplorationQuest();
         addFinaleQuest();
         addBranchChoiceQuest();
+        addCollectionCodexDemoQuest();
     }
 
     // ═══════════════════════════════════════════════════════
@@ -1199,6 +1200,32 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     }
 
     // ═══════════════════════════════════════════════════════
+        private void addCollectionCodexDemoQuest() {
+        addQuest("collection_codex_demo",
+                "Collection Codex Demo",
+                "Objective Framework 2.0 collection quest demo.");
+
+        add("arc_quest.phase.collection_codex_demo.codex_zombie", "Zombie Record");
+        add("arc_quest.phase.collection_codex_demo.codex_zombie.desc", "Defeat one zombie to record it in the codex.");
+        add("arc_quest.phase.collection_codex_demo.codex_skeleton", "Skeleton Record");
+        add("arc_quest.phase.collection_codex_demo.codex_skeleton.desc", "Defeat skeletons to complete this entry.");
+        add("arc_quest.phase.collection_codex_demo.codex_spider_hidden", "Spider Record");
+        add("arc_quest.phase.collection_codex_demo.codex_spider_hidden.desc", "A hidden entry used to verify placeholder presentation.");
+        add("arc_quest.phase.collection_codex_demo.codex_bone", "Bone Sample");
+        add("arc_quest.phase.collection_codex_demo.codex_bone.desc", "Collect bones to test accumulated collection progress.");
+        add("arc_quest.phase.collection_codex_demo.codex_rotten_flesh_unique", "Rotten Flesh Sample");
+        add("arc_quest.phase.collection_codex_demo.codex_rotten_flesh_unique.desc", "A unique-set entry for collection dispatcher coverage.");
+
+        add("arc_quest.objective.collection_codex_demo.codex_zombie.0", "Defeat 1 zombie");
+        add("arc_quest.objective.collection_codex_demo.codex_skeleton.0", "Defeat 3 skeletons");
+        add("arc_quest.objective.collection_codex_demo.codex_spider_hidden.0", "Defeat 1 spider");
+        add("arc_quest.objective.collection_codex_demo.codex_bone.0", "Collect 5 bones");
+        add("arc_quest.objective.collection_codex_demo.codex_rotten_flesh_unique.0", "Collect 1 rotten flesh");
+
+        add("arc_quest.collection.collection_codex_demo.category.hostile_mobs", "Hostile Mobs");
+        add("arc_quest.collection.collection_codex_demo.category.field_resources", "Field Resources");
+    }
+
     //  Item Tag Translations
     // ═══════════════════════════════════════════════════════
 

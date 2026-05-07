@@ -15,6 +15,9 @@ import org.arcadia.arc_quest.quest.reward.CommandReward;
 import org.arcadia.arc_quest.quest.reward.FlagReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.quest.reward.VariableReward;
+import org.arcadia.arc_quest.quest.api.rule.collection.AllEntriesCompleteRule;
+import org.arcadia.arc_quest.quest.api.rule.collection.CategoryCompletedCountRule;
+import org.arcadia.arc_quest.quest.api.rule.collection.CompletedEntryCountRule;
 import org.arcadia.arc_quest.quest.spec.*;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
 import org.arcadia.arc_quest.questmarker.api.*;
@@ -55,7 +58,7 @@ public final class QuestSpecCompiler {
                 compileMarks(spec.relatedMarks),
                 compileVisual(spec.visualConfig),
                 spec.mode,
-                null,
+                compileCollectionConfig(spec.collectionConfig),
                 blankToNull(spec.chapterShopId),
                 spec.chapterShopType,
                 spec.chapterShopPersistent,
@@ -105,11 +108,93 @@ public final class QuestSpecCompiler {
                 blankToNull(spec.tradeShopId),
                 parseNullableSound(spec.phaseStartSound),
                 parseNullableSound(spec.phaseCompleteSound),
-                null,
+                compileCollectionEntryConfig(spec.collectionEntryConfig),
                 parseNullableId(spec.intelSceneId),
                 compileCondition(spec.enterCondition),
                 spec.autoEnterByCondition
         );
+    }
+
+    private CollectionQuestConfig compileCollectionConfig(CollectionQuestSpecData spec) {
+        if (spec == null) return null;
+        List<CollectionCategoryDefinition> categories = new ArrayList<>();
+        for (CollectionCategorySpecData categorySpec : listOrEmpty(spec.categories)) {
+            categories.add(new CollectionCategoryDefinition(
+                    categorySpec.categoryId,
+                    compileText(categorySpec.displayName),
+                    null,
+                    categorySpec.sortOrder,
+                    compileCollectionRules(categorySpec.completionRules),
+                    compileCollectionRewardNodes(categorySpec.rewardNodes),
+                    List.of()
+            ));
+        }
+        return new CollectionQuestConfig(
+                categories,
+                compileCollectionRules(spec.completionRules),
+                compileCollectionRewardNodes(spec.rewardNodes),
+                enumOrNull(TrackerPresentationMode.class, spec.trackerPresentationMode),
+                enumOrNull(CollectionPresentationMode.class, spec.collectionPresentationMode),
+                spec.allowCategoryCollapse,
+                spec.showCompletedEntries,
+                spec.showProgressInTracker
+        );
+    }
+
+    private CollectionEntryConfig compileCollectionEntryConfig(CollectionEntryConfigSpecData spec) {
+        if (spec == null) return null;
+        return new CollectionEntryConfig(
+                spec.categoryId,
+                enumOrNull(VisibilityMode.class, spec.visibilityMode),
+                enumOrNull(HiddenPresentationMode.class, spec.hiddenPresentationMode),
+                compileConditions(spec.visibilityConditions),
+                enumOrNull(CountingMode.class, spec.countingMode),
+                spec.completionTarget,
+                spec.repeatableProgress,
+                spec.repeatableCompletion,
+                spec.maxCount,
+                enumOrNull(EntryRewardGrantMode.class, spec.rewardGrantMode),
+                compileCollectionRewardNodes(spec.rewardNodes),
+                spec.sortOrder,
+                spec.showInTrackerByDefault
+        );
+    }
+
+    private List<CollectionRewardNode> compileCollectionRewardNodes(List<CollectionRewardNodeSpecData> specs) {
+        List<CollectionRewardNode> nodes = new ArrayList<>();
+        for (CollectionRewardNodeSpecData spec : listOrEmpty(specs)) {
+            nodes.add(new CollectionRewardNode(
+                    spec.nodeId,
+                    enumOrNull(RewardScope.class, spec.scope),
+                    enumOrNull(EntryRewardGrantMode.class, spec.grantMode),
+                    compileRewards(spec.rewards),
+                    compileCollectionRules(spec.completionRules),
+                    blankToNull(spec.scopeRefId)
+            ));
+        }
+        return nodes;
+    }
+
+    private List<CollectionCompletionRule> compileCollectionRules(List<ConditionSpec> specs) {
+        List<CollectionCompletionRule> rules = new ArrayList<>();
+        for (ConditionSpec spec : listOrEmpty(specs)) rules.add(compileCollectionRule(spec));
+        return rules;
+    }
+
+    private CollectionCompletionRule compileCollectionRule(ConditionSpec spec) {
+        if (spec == null || spec.type == null || spec.type.isBlank() || "all_entries_complete".equals(spec.type)) {
+            return new AllEntriesCompleteRule();
+        }
+        return switch (spec.type) {
+            case "completed_entry_count" -> new CompletedEntryCountRule(spec.value);
+            case "category_completed_count" -> new CategoryCompletedCountRule(spec.value);
+            default -> throw new QuestCompileException("Unsupported collection rule type: " + spec.type);
+        };
+    }
+
+    private <E extends Enum<E>> E enumOrNull(Class<E> enumType, String value) {
+        if (value == null || value.isBlank()) return null;
+        return Enum.valueOf(enumType, value);
     }
 
     private ObjectiveEntry compileObjective(ObjectiveSpec spec) {

@@ -16,7 +16,7 @@ public final class DatapackPathResolver {
         if (configured != null && !configured.isBlank()) {
             return Paths.get(configured).toAbsolutePath().normalize();
         }
-        return Paths.get("datapack").toAbsolutePath().normalize();
+        return Paths.get("arc_quest", "datapack").toAbsolutePath().normalize();
     }
 
     public static Path resolveQuestsDir() {

@@ -14,6 +14,7 @@ public class QuestSpec {
     public int sortOrder = 0;
     public boolean repeatable = false;
     public QuestMode mode = QuestMode.PROGRESSION;
+    public CollectionQuestSpecData collectionConfig = null;
     public String initialPhaseId = "";
     public List<PhaseSpec> phases = new ArrayList<>();
     public List<ConditionSpec> unlockConditions = new ArrayList<>();

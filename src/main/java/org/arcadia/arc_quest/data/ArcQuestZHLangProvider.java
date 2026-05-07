@@ -33,6 +33,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addChapter2ExplorationQuest();
         addFinaleQuest();
         addBranchChoiceQuest();
+        addCollectionCodexDemoQuest();
     }
 
     // ═══════════════════════════════════════════════════════
@@ -1201,6 +1202,32 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     }
 
     // ═══════════════════════════════════════════════════════
+        private void addCollectionCodexDemoQuest() {
+        addQuest("collection_codex_demo",
+                "图鉴收录演示",
+                "Objective Framework 2.0 收集任务演示。" );
+
+        add("arc_quest.phase.collection_codex_demo.codex_zombie", "僵尸图鉴");
+        add("arc_quest.phase.collection_codex_demo.codex_zombie.desc", "击败 1 只僵尸并完成收录。");
+        add("arc_quest.phase.collection_codex_demo.codex_skeleton", "骷髅图鉴");
+        add("arc_quest.phase.collection_codex_demo.codex_skeleton.desc", "击败骷髅以完成该条目。");
+        add("arc_quest.phase.collection_codex_demo.codex_spider_hidden", "蜘蛛图鉴");
+        add("arc_quest.phase.collection_codex_demo.codex_spider_hidden.desc", "用于验证隐藏占位显示的条目。");
+        add("arc_quest.phase.collection_codex_demo.codex_bone", "骨头样本");
+        add("arc_quest.phase.collection_codex_demo.codex_bone.desc", "收集骨头以验证累计进度。");
+        add("arc_quest.phase.collection_codex_demo.codex_rotten_flesh_unique", "腐肉样本");
+        add("arc_quest.phase.collection_codex_demo.codex_rotten_flesh_unique.desc", "用于覆盖 UNIQUE_SET 收集逻辑的条目。");
+
+        add("arc_quest.objective.collection_codex_demo.codex_zombie.0", "击败 1 只僵尸");
+        add("arc_quest.objective.collection_codex_demo.codex_skeleton.0", "击败 3 只骷髅");
+        add("arc_quest.objective.collection_codex_demo.codex_spider_hidden.0", "击败 1 只蜘蛛");
+        add("arc_quest.objective.collection_codex_demo.codex_bone.0", "收集 5 个骨头");
+        add("arc_quest.objective.collection_codex_demo.codex_rotten_flesh_unique.0", "收集 1 个腐肉");
+
+        add("arc_quest.collection.collection_codex_demo.category.hostile_mobs", "敌对生物");
+        add("arc_quest.collection.collection_codex_demo.category.field_resources", "野外资源");
+    }
+
     //  Item Tag 翻译
     // ═══════════════════════════════════════════════════════
 

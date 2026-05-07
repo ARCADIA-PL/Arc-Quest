@@ -21,5 +21,6 @@ public class PhaseSpec {
     public String phaseCompleteSound = "";
     public ConditionSpec enterCondition = null;
     public boolean autoEnterByCondition = true;
+    public CollectionEntryConfigSpecData collectionEntryConfig = null;
     public QuestVisualSpec visualConfig = new QuestVisualSpec();
 }
