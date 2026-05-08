@@ -154,6 +154,15 @@ function setDropOverlayVisible(visible, message = '松开以导入 Arc Quest 任
 }
 
 function exportJson() {
+  validateQuest(state);
+  const blockingErrors = (state.diag || []).filter(x => x.lvl === 'err');
+  if (blockingErrors.length > 0) {
+    state.ui.tab = 'validate';
+    rerender();
+    showToast('导出已阻止', `存在 ${blockingErrors.length} 个错误，请先修复后再导出。`, 'error', 3600);
+    return;
+  }
+
   const exported = exportQuestToDatapack(state.q);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' }));
