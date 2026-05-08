@@ -10,31 +10,35 @@ function boolSelect(label, bind, value) {
 
 function objectiveTypeSelect(bind, value) {
   const types = [
-    { id: 'kill', label: 'kill（击杀）' },
-    { id: 'collect', label: 'collect（收集）' },
-    { id: 'submit', label: 'submit（提交）' },
-    { id: 'talk', label: 'talk（对话）' },
-    { id: 'interact', label: 'interact（交互）' },
-    { id: 'custom_counter', label: 'custom_counter（计数）' },
-    { id: 'reach', label: 'reach（坐标）' }
+    { id: 'KILL', label: 'KILL（击杀）' },
+    { id: 'COLLECT', label: 'COLLECT（收集）' },
+    { id: 'TALK', label: 'TALK（对话）' },
+    { id: 'INTERACT', label: 'INTERACT（交互）' },
+    { id: 'REACH_LOCATION', label: 'REACH_LOCATION（坐标）' },
+    { id: 'DELIVER', label: 'DELIVER（交付）' },
+    { id: 'CRAFT', label: 'CRAFT（制作）' },
+    { id: 'OFFER', label: 'OFFER（提交）' },
+    { id: 'CUSTOM', label: 'CUSTOM（自定义）' }
   ];
   return `<div class="f"><label>类型</label><select data-b="${bind}">${types.map(t => `<option value="${t.id}" ${value === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>`;
 }
 
 function renderTypeSummary(type) {
   const map = {
-    kill: '字段：entityType + count',
-    collect: '字段：itemId + count',
-    submit: '字段：itemId + count + consumeOnSubmit',
-    talk: '字段：npcId + dialogueId',
-    interact: '字段：targetType + targetId',
-    custom_counter: '字段：counterId + count',
-    reach: '字段：x + y + z + count'
+    KILL: '字段：targetId(entityType) + count',
+    COLLECT: '字段：targetId(itemId 或 itemTag) + count',
+    TALK: '字段：targetId/npcId',
+    INTERACT: '字段：targetId',
+    REACH_LOCATION: '字段：targetId + x/y/z/radius',
+    DELIVER: '字段：targetId(itemId) + npcId + count',
+    CRAFT: '字段：targetId(itemId) + count',
+    OFFER: '字段：targetId(itemId 或 itemTag) + count',
+    CUSTOM: '字段：targetId + count (+ extraData)'
   };
-  return `<div class="small" style="margin-top:6px">${map[type] || '字段：按 fallback 渲染'}</div>`;
+  return `<div class="small" style="margin-top:6px">${map[type] || '字段：按标准 ObjectiveSpec 渲染'}</div>`;
 }
 
-export function renderObjectiveEditor(state, field) {
+export function renderObjectiveEditor(state, field, area) {
   const s = state.ui.sel;
   const o = state.q.phases[s.pi].objectives[s.oi];
   const base = `ob.${s.pi}.${s.oi}`;
@@ -50,12 +54,26 @@ export function renderObjectiveEditor(state, field) {
       </div>
       <div class="row">
         ${field('目标数量', `${base}.count`, o.count ?? 1, 'number')}
-        ${(o.type === 'interact' || o.type === 'talk') ? field('targetId（兼容字段）', `${base}.targetId`, o.targetId || '') : '<div class="f"></div>'}
+        ${(o.type === 'INTERACT' || o.type === 'TALK' || o.type === 'DELIVER') ? field('targetId（兼容字段）', `${base}.targetId`, o.targetId || '') : '<div class="f"></div>'}
       </div>
       <div class="row">
         ${boolSelect('Hidden', `${base}.hidden`, !!o.hidden)}
         ${boolSelect('Optional', `${base}.optional`, !!o.optional)}
       </div>
+      <div class="row">
+        ${enumSelect('countMode', `${base}.countMode`, o.countMode || 'fixed', ['fixed', 'level_scale', 'variable'])}
+        ${field('countBase', `${base}.countBase`, o.countBase ?? o.count ?? 1, 'number')}
+      </div>
+      <div class="row">
+        ${field('countPerLevel', `${base}.countPerLevel`, o.countPerLevel ?? 0, 'number')}
+        ${field('countMin', `${base}.countMin`, o.countMin ?? 1, 'number')}
+      </div>
+      <div class="row">
+        ${field('countMax', `${base}.countMax`, o.countMax ?? -1, 'number')}
+        ${field('itemTag', `${base}.itemTag`, o.itemTag || '')}
+      </div>
+      ${area('extraData JSON', `${base}.extraData`, o.extraData ? JSON.stringify(o.extraData, null, 2) : '')}
+      ${area('relatedMarks JSON', `${base}.relatedMarks`, o.relatedMarks ? JSON.stringify(o.relatedMarks, null, 2) : '')}
       <div class="card" style="margin-top:10px; border-color: rgba(255,255,255,0.12)">
         ${renderObjectiveExtra(o, base, field)}
       </div>

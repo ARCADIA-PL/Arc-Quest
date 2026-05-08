@@ -111,23 +111,33 @@ function normalizeObjectiveByType(obj) {
     count: obj.count ?? 1,
     targetId: obj.targetId || '',
     hidden: !!obj.hidden,
-    optional: !!obj.optional
+    optional: !!obj.optional,
+    npcId: obj.npcId || '',
+    itemTag: obj.itemTag || '',
+    x: obj.x ?? null,
+    y: obj.y ?? null,
+    z: obj.z ?? null,
+    radius: obj.radius ?? null,
+    extraData: obj.extraData || {}
   };
-  if (obj.type === 'kill') return { ...base, entityType: obj.entityType || obj.targetId || 'minecraft:zombie' };
-  if (obj.type === 'collect') return { ...base, itemId: obj.itemId || obj.targetId || 'minecraft:iron_ingot' };
-  if (obj.type === 'talk') return { ...base, dialogueId: obj.dialogueId || '', npcId: obj.npcId || obj.targetId || '' };
-  if (obj.type === 'interact') return { ...base, targetType: obj.targetType || 'entity' };
-  if (obj.type === 'submit') return { ...base, itemId: obj.itemId || obj.targetId || 'minecraft:iron_ingot', consumeOnSubmit: !!obj.consumeOnSubmit };
-  if (obj.type === 'custom_counter') return { ...base, counterId: obj.counterId || obj.targetId || '' };
-  return { ...base, x: obj.x ?? 0, y: obj.y ?? 64, z: obj.z ?? 0 };
+  if (obj.type === 'KILL') return { ...base, targetId: obj.targetId || 'minecraft:zombie' };
+  if (obj.type === 'COLLECT') return { ...base, targetId: obj.targetId || 'minecraft:iron_ingot' };
+  if (obj.type === 'TALK') return { ...base, npcId: obj.npcId || obj.targetId || 'arc_quest:npc_guard' };
+  if (obj.type === 'INTERACT') return { ...base, targetId: obj.targetId || 'minecraft:crafting_table' };
+  if (obj.type === 'OFFER') return { ...base, targetId: obj.targetId || 'minecraft:iron_ingot' };
+  if (obj.type === 'DELIVER') return { ...base, targetId: obj.targetId || 'minecraft:iron_ingot', npcId: obj.npcId || 'arc_quest:npc_guard' };
+  if (obj.type === 'REACH_LOCATION') return { ...base, x: obj.x ?? 0, y: obj.y ?? 64, z: obj.z ?? 0, radius: obj.radius ?? 4 };
+  if (obj.type === 'CRAFT') return { ...base, targetId: obj.targetId || 'minecraft:torch' };
+  return { ...base, targetId: obj.targetId || 'arc_quest:custom_target' };
 }
 
 function normalizeRewardByType(reward) {
   const type = reward?.type || 'item';
-  if (type === 'var_add') return { type, variable: reward?.variable || '', value: reward?.value ?? 0 };
   if (type === 'command') return { type, command: reward?.command || '' };
-  if (type === 'flag') return { type, flag: reward?.flag || '', enabled: reward?.enabled !== false };
-  if (type === 'currency') return { type, currencyId: reward?.currencyId || 'arc_quest:coin', amount: reward?.amount ?? 1 };
+  if (type === 'flag_set' || type === 'flag_clear') return { type, flag: reward?.flag || '' };
+  if (type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') {
+    return { type, variable: reward?.variable || '', value: reward?.value ?? 0 };
+  }
   return { type: 'item', itemId: reward?.itemId || 'minecraft:iron_ingot', count: reward?.count ?? 1 };
 }
 
@@ -137,6 +147,10 @@ function addChipValue(q, key, value) {
   if (key === 'q.tags') {
     q.tags ||= [];
     if (!q.tags.includes(v)) q.tags.push(v);
+  }
+  if (key === 'q.flagsToSetOnAccept') {
+    q.flagsToSetOnAccept ||= [];
+    if (!q.flagsToSetOnAccept.includes(v)) q.flagsToSetOnAccept.push(v);
   }
   if (key === 'q.flagsToSetOnComplete') {
     q.flagsToSetOnComplete ||= [];
@@ -148,6 +162,7 @@ function removeChipValue(q, key, index) {
   const i = Number(index);
   if (!Number.isInteger(i) || i < 0) return;
   if (key === 'q.tags') q.tags?.splice(i, 1);
+  if (key === 'q.flagsToSetOnAccept') q.flagsToSetOnAccept?.splice(i, 1);
   if (key === 'q.flagsToSetOnComplete') q.flagsToSetOnComplete?.splice(i, 1);
 }
 
@@ -203,10 +218,10 @@ function fixCollectionRuleDefaults(q) {
     if (!rule) return;
     rule.type ||= 'completed_entry_count';
     if (rule.value === undefined || rule.value === null || Number.isNaN(Number(rule.value))) rule.value = 1;
-    if ((rule.type === 'and' || rule.type === 'or') && !rule.expr) {
-      rule.expr = '{"left":{"type":"completed_entry_count","value":1},"right":{"type":"completed_entry_count","value":1}}';
+    if ((rule.type === 'and' || rule.type === 'or' || rule.type === 'not')) {
+      rule.left ||= { type: 'all_entries_complete', value: 1 };
+      if (rule.type !== 'not') rule.right ||= { type: 'all_entries_complete', value: 1 };
     }
-    if (rule.refId === undefined || rule.refId === null) rule.refId = '';
   };
   (q.collectionConfig.completionRules || []).forEach(fixRule);
   (q.collectionConfig.rewardNodes || []).forEach(node => (node.completionRules || []).forEach(fixRule));
@@ -412,6 +427,10 @@ export function bindEditorActions(midEl, state, rerender, setByPath) {
 
     if (id === 'addPhaseRewardBtn') q.phases[s.pi].rewards.push(createReward());
     if (id === 'addTransitionBtn') q.phases[s.pi].transitions.push(createTransition());
+    if (id === 'addChoiceBtn') {
+      q.phases[s.pi].choices ||= [];
+      q.phases[s.pi].choices.push({ text: '', flagToSet: '', targetPhaseId: '', visibleCondition: { type: 'always' } });
+    }
 
     if (id === 'movePhaseUpBtn' && s.pi > 0) { [q.phases[s.pi - 1], q.phases[s.pi]] = [q.phases[s.pi], q.phases[s.pi - 1]]; state.ui.sel = { t: 'phase', pi: s.pi - 1 }; }
     if (id === 'movePhaseDownBtn' && s.pi < q.phases.length - 1) { [q.phases[s.pi + 1], q.phases[s.pi]] = [q.phases[s.pi], q.phases[s.pi + 1]]; state.ui.sel = { t: 'phase', pi: s.pi + 1 }; }
@@ -448,6 +467,7 @@ export function bindEditorActions(midEl, state, rerender, setByPath) {
       state.ui.sel = { t: 'phase', pi: s.pi };
     }
     if (d.dt !== undefined) q.phases[s.pi].transitions.splice(+d.dt, 1);
+    if (d.dch !== undefined) q.phases[s.pi].choices.splice(+d.dch, 1);
 
     // 只有真正的按钮操作走到了这里，才标记脏数据并全量重绘！
     state.meta.dirty = true;

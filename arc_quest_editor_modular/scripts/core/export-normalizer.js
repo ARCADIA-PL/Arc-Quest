@@ -29,7 +29,26 @@ function exportSplashes(splashes) {
 
 function cleanCondition(node) {
   if (!node?.type || node.type === 'always') return { type: 'always' };
-  if (node.type === 'flag_set') return { type: 'flag_set', flag: node.flag || '' };
+  if (node.type === 'flag_set' || node.type === 'flag_not_set') {
+    return { type: node.type, flag: node.flag || '' };
+  }
+  if (node.type === 'quest_completed') {
+    return { type: 'quest_completed', questId: node.questId || '' };
+  }
+  if (node.type === 'variable') {
+    return {
+      type: 'variable',
+      variable: node.variable || '',
+      compareOp: node.compareOp || 'EQUAL',
+      value: Number(node.value ?? 0)
+    };
+  }
+  if (node.type === 'not') {
+    return {
+      type: 'not',
+      left: cleanCondition(node.left)
+    };
+  }
   return {
     type: node.type,
     left: cleanCondition(node.left),
@@ -43,11 +62,15 @@ function cleanCollectionEntryConfig(config) {
     categoryId: config.categoryId || undefined,
     visibilityMode: config.visibilityMode || undefined,
     hiddenPresentationMode: config.hiddenPresentationMode || undefined,
+    visibilityConditions: config.visibilityConditions || undefined,
     countingMode: config.countingMode || undefined,
     completionTarget: config.completionTarget === undefined ? undefined : Number(config.completionTarget),
+    repeatableProgress: config.repeatableProgress === undefined ? undefined : !!config.repeatableProgress,
+    repeatableCompletion: config.repeatableCompletion === undefined ? undefined : !!config.repeatableCompletion,
     sortOrder: config.sortOrder === undefined ? undefined : Number(config.sortOrder),
     maxCount: config.maxCount === undefined ? undefined : Number(config.maxCount),
     rewardGrantMode: config.rewardGrantMode || undefined,
+    rewardNodes: config.rewardNodes || undefined,
     showInTrackerByDefault: config.showInTrackerByDefault === undefined ? undefined : !!config.showInTrackerByDefault
   };
   Object.keys(out).forEach(key => out[key] === undefined && delete out[key]);
@@ -56,31 +79,23 @@ function cleanCollectionEntryConfig(config) {
 
 function exportReward(reward) {
   const type = reward?.type || 'item';
-  if (type === 'var_add') {
-    return {
-      type: 'var_add',
-      variable: reward?.variable || '',
-      value: Number(reward?.value ?? 0)
-    };
-  }
   if (type === 'command') {
     return {
       type: 'command',
       command: reward?.command || ''
     };
   }
-  if (type === 'flag') {
+  if (type === 'flag_set' || type === 'flag_clear') {
     return {
-      type: 'flag',
-      flag: reward?.flag || '',
-      enabled: reward?.enabled !== false
+      type,
+      flag: reward?.flag || ''
     };
   }
-  if (type === 'currency') {
+  if (type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') {
     return {
-      type: 'currency',
-      currencyId: reward?.currencyId || 'arc_quest:coin',
-      amount: Number(reward?.amount ?? 1)
+      type,
+      variable: reward?.variable || '',
+      value: Number(reward?.value ?? 0)
     };
   }
   return {
@@ -91,17 +106,16 @@ function exportReward(reward) {
 }
 
 function objectiveType(type) {
-  if (type === 'kill') return 'KILL';
-  if (type === 'collect') return 'COLLECT';
-  if (type === 'interact') return 'INTERACT';
-  if (type === 'submit') return 'OFFER';
-  if (type === 'talk') return 'TALK';
-  return 'CUSTOM_COUNTER';
+  const t = String(type || '').toUpperCase();
+  if (t === 'KILL' || t === 'COLLECT' || t === 'TALK' || t === 'INTERACT' || t === 'REACH_LOCATION' || t === 'DELIVER' || t === 'CRAFT' || t === 'OFFER' || t === 'CUSTOM') {
+    return t;
+  }
+  return 'CUSTOM';
 }
 
 function exportObjective(o) {
   const type = objectiveType(o.type);
-  const targetId = o.entityType || o.itemId || o.targetId || o.npcId || o.counterId || '';
+  const targetId = o.targetId || '';
   const out = {
     type,
     targetId,
@@ -109,14 +123,23 @@ function exportObjective(o) {
     displayText: textNode(o.text, o.textMode || 'translatable', ''),
     hidden: !!o.hidden,
     optional: !!o.optional,
-    extraData: {}
+    countMode: o.countMode || 'fixed',
+    countBase: Number(o.countBase ?? o.count ?? 1),
+    countPerLevel: Number(o.countPerLevel ?? 0),
+    countMin: Number(o.countMin ?? 1),
+    countMax: Number(o.countMax ?? -1),
+    extraData: { ...(o.extraData || {}) }
   };
-  if (type === 'OFFER') {
-    out.itemTag = o.itemId || o.targetId || '';
-    out.consumeOnSubmit = !!o.consumeOnSubmit;
-  }
-  if (type === 'INTERACT' && isNonEmptyString(o.targetType)) out.targetType = o.targetType;
-  if (type === 'TALK' && isNonEmptyString(o.dialogueId)) out.dialogueId = o.dialogueId;
+
+  if (o.relatedMarks?.length) out.relatedMarks = o.relatedMarks;
+
+  if (o.npcId) out.npcId = o.npcId;
+  if (o.itemTag) out.itemTag = o.itemTag;
+  if (o.x !== null && o.x !== undefined) out.x = Number(o.x);
+  if (o.y !== null && o.y !== undefined) out.y = Number(o.y);
+  if (o.z !== null && o.z !== undefined) out.z = Number(o.z);
+  if (o.radius !== null && o.radius !== undefined) out.radius = Number(o.radius);
+
   return out;
 }
 
@@ -138,6 +161,12 @@ function exportPhase(phase) {
   if (isNonEmptyString(phase.description)) out.description = descriptionNode(phase.description, phase.descriptionMode || 'translatable');
   if (isNonEmptyString(phase.story)) out.story = descriptionNode(phase.story, phase.storyMode || 'literal');
   if (phase.intelSceneId) out.intelSceneId = phase.intelSceneId;
+  if (phase.tradeShopId) out.tradeShopId = phase.tradeShopId;
+  if (phase.phaseStartSound) out.phaseStartSound = phase.phaseStartSound;
+  if (phase.phaseCompleteSound) out.phaseCompleteSound = phase.phaseCompleteSound;
+  if (phase.relatedMarks?.length) out.relatedMarks = phase.relatedMarks;
+  if (phase.visualConfig) out.visualConfig = phase.visualConfig;
+  if (phase.choices?.length) out.choices = phase.choices;
   if (phase.flagsToSetOnEnter?.length) out.flagsToSetOnEnter = phase.flagsToSetOnEnter;
   if (phase.flagsToSetOnComplete?.length) out.flagsToSetOnComplete = phase.flagsToSetOnComplete;
   if (enterCondition.type !== 'always') out.enterCondition = enterCondition;
@@ -164,7 +193,18 @@ export function exportQuestToDatapack(stateQuest) {
   if (q.chapterShopType) out.chapterShopType = q.chapterShopType;
   if (q.chapterShopPersistent) out.chapterShopPersistent = true;
   if (q.iconTexture) out.iconTexture = q.iconTexture;
+  if (q.flagsToSetOnAccept?.length) out.flagsToSetOnAccept = q.flagsToSetOnAccept;
   if (q.flagsToSetOnComplete?.length) out.flagsToSetOnComplete = q.flagsToSetOnComplete;
+  if (q.completionPolicy) out.completionPolicy = q.completionPolicy;
+  if (q.completionRequiredCount !== undefined && q.completionRequiredCount !== null) out.completionRequiredCount = Number(q.completionRequiredCount);
+  if (q.completionTargetPhaseId) out.completionTargetPhaseId = q.completionTargetPhaseId;
+  if (q.timeLimitType) out.timeLimitType = q.timeLimitType;
+  if (q.timeLimitValue !== undefined && q.timeLimitValue !== null && Number(q.timeLimitValue) > 0) out.timeLimitValue = Number(q.timeLimitValue);
+  if (q.chapterStartSound) out.chapterStartSound = q.chapterStartSound;
+  if (q.chapterFailSound) out.chapterFailSound = q.chapterFailSound;
+  if (q.chapterCompleteSound) out.chapterCompleteSound = q.chapterCompleteSound;
+  if (q.unlockConditions) out.unlockConditions = q.unlockConditions;
+  if (q.relatedMarks?.length) out.relatedMarks = q.relatedMarks;
   if (q.visualConfig) {
     const splashes = exportSplashes(q.visualConfig.splashes);
     const icons = q.visualConfig.icons && Object.keys(q.visualConfig.icons).length ? q.visualConfig.icons : undefined;

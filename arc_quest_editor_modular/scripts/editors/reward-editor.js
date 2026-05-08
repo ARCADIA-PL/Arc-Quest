@@ -16,43 +16,28 @@ function renderItemReward(reward, bindBase) {
   `;
 }
 
-function renderVarAddReward(reward, bindBase) {
+function renderVarReward(reward, bindBase) {
   return `
     <div class="row">
-      <div class="f"><label>Variable</label><input data-b="${bindBase}.variable" value="${reward.variable || ''}" placeholder="quest.progress"></div>
+      <div class="f"><label>Variable</label><input data-b="${bindBase}.variable" value="${reward.variable || ''}" placeholder="arc_quest:progress"></div>
       <div class="f"><label>Value</label><input data-b="${bindBase}.value" type="number" value="${reward.value ?? 0}"></div>
     </div>
   `;
 }
 
 function renderCommandReward(reward, bindBase) {
-  return `<div class="f"><label>Command</label><textarea data-b="${bindBase}.command" placeholder="/give @p minecraft:diamond">${reward.command || ''}</textarea></div>`;
+  return `<div class="f"><label>Command</label><textarea data-b="${bindBase}.command" placeholder="say quest_complete">${reward.command || ''}</textarea></div>`;
 }
 
 function renderFlagReward(reward, bindBase) {
-  return `
-    <div class="row">
-      <div class="f"><label>Flag</label><input data-b="${bindBase}.flag" value="${reward.flag || ''}" placeholder="arc_quest:chapter_1_done"></div>
-      <div class="f"><label>Enabled</label><select data-b="${bindBase}.enabled"><option value="true" ${reward.enabled !== false ? 'selected' : ''}>true</option><option value="false" ${reward.enabled === false ? 'selected' : ''}>false</option></select></div>
-    </div>
-  `;
-}
-
-function renderCurrencyReward(reward, bindBase) {
-  return `
-    <div class="row">
-      <div class="f"><label>Currency</label><input data-b="${bindBase}.currencyId" value="${reward.currencyId || 'arc_quest:coin'}" placeholder="arc_quest:coin"></div>
-      <div class="f"><label>Amount</label><input data-b="${bindBase}.amount" type="number" value="${reward.amount ?? 1}"></div>
-    </div>
-  `;
+  return `<div class="f"><label>Flag</label><input data-b="${bindBase}.flag" value="${reward.flag || ''}" placeholder="arc_quest:chapter_1_done"></div>`;
 }
 
 function renderRewardFields(reward, bindBase) {
   const type = reward.type || 'item';
-  if (type === 'var_add') return renderVarAddReward(reward, bindBase);
+  if (type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') return renderVarReward(reward, bindBase);
   if (type === 'command') return renderCommandReward(reward, bindBase);
-  if (type === 'flag') return renderFlagReward(reward, bindBase);
-  if (type === 'currency') return renderCurrencyReward(reward, bindBase);
+  if (type === 'flag_set' || type === 'flag_clear') return renderFlagReward(reward, bindBase);
   return renderItemReward(reward, bindBase);
 }
 
@@ -66,7 +51,7 @@ export function renderRewardList(list, scope, phaseIndex, field) {
     return `
       <div class="card">
         <div class="row">
-          ${enumSelect('Type', `${bindBase}.type`, r.type || 'item', ['item', 'var_add', 'command', 'flag', 'currency'])}
+          ${enumSelect('Type', `${bindBase}.type`, r.type || 'item', ['item', 'flag_set', 'flag_clear', 'command', 'var_set', 'var_add', 'var_subtract', 'var_multiply'])}
         </div>
         ${renderRewardFields(r, bindBase, field)}
         <div class="actions"><button data-dr="${scope}:${phaseIndex ?? ''}:${i}">删除</button></div>

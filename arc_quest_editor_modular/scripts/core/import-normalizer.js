@@ -17,21 +17,25 @@ function normalizeSplashMap(splashes) {
 
 function normalizeReward(reward) {
   const type = reward?.type || 'item';
-  if (type === 'var_add') return { type, variable: reward?.variable || '', value: reward?.value ?? 0, ...reward };
   if (type === 'command') return { type, command: reward?.command || '', ...reward };
-  if (type === 'flag') return { type, flag: reward?.flag || '', enabled: reward?.enabled !== false, ...reward };
-  if (type === 'currency') return { type, currencyId: reward?.currencyId || 'arc_quest:coin', amount: reward?.amount ?? 1, ...reward };
-  return { type, itemId: reward?.itemId || '', count: reward?.count ?? 1, ...reward };
+  if (type === 'flag_set' || type === 'flag_clear') return { type, flag: reward?.flag || '', ...reward };
+  if (type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') {
+    return { type, variable: reward?.variable || '', value: reward?.value ?? 0, ...reward };
+  }
+  return { type: 'item', itemId: reward?.itemId || '', count: reward?.count ?? 1, ...reward };
 }
 
 function mapObjectiveType(type) {
   const t = String(type || '').toUpperCase();
-  if (t === 'KILL') return 'kill';
-  if (t === 'COLLECT') return 'collect';
-  if (t === 'INTERACT') return 'interact';
-  if (t === 'OFFER') return 'submit';
-  if (t === 'TALK') return 'talk';
-  return 'custom_counter';
+  if (t === 'KILL') return 'KILL';
+  if (t === 'COLLECT') return 'COLLECT';
+  if (t === 'TALK') return 'TALK';
+  if (t === 'INTERACT') return 'INTERACT';
+  if (t === 'REACH_LOCATION') return 'REACH_LOCATION';
+  if (t === 'DELIVER') return 'DELIVER';
+  if (t === 'CRAFT') return 'CRAFT';
+  if (t === 'OFFER') return 'OFFER';
+  return 'CUSTOM';
 }
 
 function normalizeObjective(obj, idx) {
@@ -43,16 +47,30 @@ function normalizeObjective(obj, idx) {
     text: textNode.text,
     textMode: textNode.mode,
     count: obj?.requiredCount ?? 1,
+    countMode: obj?.countMode || 'fixed',
+    countBase: obj?.countBase ?? obj?.requiredCount ?? 1,
+    countPerLevel: obj?.countPerLevel ?? 0,
+    countMin: obj?.countMin ?? 1,
+    countMax: obj?.countMax ?? -1,
     hidden: !!obj?.hidden,
     optional: !!obj?.optional,
-    targetId: obj?.targetId || ''
+    targetId: obj?.targetId || '',
+    npcId: obj?.npcId || '',
+    itemTag: obj?.itemTag || '',
+    x: obj?.x ?? null,
+    y: obj?.y ?? null,
+    z: obj?.z ?? null,
+    radius: obj?.radius ?? null,
+    extraData: obj?.extraData || {},
+    relatedMarks: obj?.relatedMarks || []
   };
-  if (type === 'kill') return { ...base, entityType: obj?.targetId || '' };
-  if (type === 'collect') return { ...base, itemId: obj?.targetId || '' };
-  if (type === 'interact') return { ...base, targetType: 'entity', targetId: obj?.targetId || '' };
-  if (type === 'submit') return { ...base, itemId: obj?.targetId || obj?.itemTag || '', consumeOnSubmit: true };
-  if (type === 'talk') return { ...base, npcId: obj?.targetId || '' };
-  return { ...base, counterId: obj?.targetId || '' };
+  if (!base.npcId && base.extraData?.npc_id) base.npcId = base.extraData.npc_id;
+  if (!base.itemTag && base.extraData?.target_tag) base.itemTag = base.extraData.target_tag;
+  if (base.x === null && base.extraData?.x !== undefined) base.x = Number(base.extraData.x);
+  if (base.y === null && base.extraData?.y !== undefined) base.y = Number(base.extraData.y);
+  if (base.z === null && base.extraData?.z !== undefined) base.z = Number(base.extraData.z);
+  if (base.radius === null && base.extraData?.radius !== undefined) base.radius = Number(base.extraData.radius);
+  return base;
 }
 
 function normalizePhase(phase, idx) {
@@ -72,10 +90,16 @@ function normalizePhase(phase, idx) {
     story: storyNode.text,
     storyMode: storyNode.mode,
     intelSceneId: phase?.intelSceneId || '',
+    tradeShopId: phase?.tradeShopId || '',
+    phaseStartSound: phase?.phaseStartSound || '',
+    phaseCompleteSound: phase?.phaseCompleteSound || '',
+    relatedMarks: phase?.relatedMarks || [],
+    visualConfig: phase?.visualConfig || null,
     autoStart: !!phase?.autoEnterByCondition,
     parallelPhaseIds: mode === 'parallel' ? targetIds : [],
     choicePhaseIds: mode === 'choice' ? targetIds : [],
     transitions,
+    choices: phase?.choices || [],
     rawEnterCondition: phase?.enterCondition || null,
     flagsToSetOnEnter: phase?.flagsToSetOnEnter || [],
     flagsToSetOnComplete: phase?.flagsToSetOnComplete || [],
@@ -107,7 +131,18 @@ export function normalizeImportedQuest(input) {
     chapterShopPersistent: !!q.chapterShopPersistent,
     initialPhaseId: q.initialPhaseId || '',
     iconTexture: q.iconTexture || '',
+    flagsToSetOnAccept: q.flagsToSetOnAccept || [],
     flagsToSetOnComplete: q.flagsToSetOnComplete || [],
+    completionPolicy: q.completionPolicy || 'ALL',
+    completionRequiredCount: q.completionRequiredCount ?? 1,
+    completionTargetPhaseId: q.completionTargetPhaseId || '',
+    timeLimitType: q.timeLimitType || '',
+    timeLimitValue: q.timeLimitValue ?? 0,
+    chapterStartSound: q.chapterStartSound || '',
+    chapterFailSound: q.chapterFailSound || '',
+    chapterCompleteSound: q.chapterCompleteSound || '',
+    unlockConditions: q.unlockConditions || null,
+    relatedMarks: q.relatedMarks || [],
     visualConfig: {
       themeColor: toHexColor(q.visualConfig?.themeColor),
       splashes: normalizeSplashMap(q.visualConfig?.splashes),

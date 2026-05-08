@@ -12,11 +12,20 @@ export const createPhase = index => ({
 });
 
 export const createObjective = index => ({
-  type: 'kill',
+  type: 'KILL',
   id: `objective_${index + 1}`,
   text: '',
   count: 1,
-  entityType: 'minecraft:zombie'
+  targetId: 'minecraft:zombie',
+  hidden: false,
+  optional: false,
+  npcId: '',
+  itemTag: '',
+  x: null,
+  y: null,
+  z: null,
+  radius: null,
+  extraData: {}
 });
 
 export const createReward = () => ({ type: 'item', itemId: 'minecraft:iron_ingot', count: 1 });
@@ -41,6 +50,5 @@ export const createRewardNode = index => ({
 
 export const createCompletionRule = () => ({
   type: 'completed_entry_count',
-  value: 1,
-  refId: ''
+  value: 1
 });

@@ -12,46 +12,57 @@ function suggestInput(label, bind, value, suggestions, listId) {
 }
 
 export function renderObjectiveExtra(o, base, field) {
-  if (o.type === 'kill') {
-    return suggestInput('entityType', `${base}.entityType`, o.entityType || '', ['minecraft:zombie', 'minecraft:skeleton', 'minecraft:creeper', 'minecraft:spider'], `${base}-entityType`);
+  if (o.type === 'KILL') {
+    return suggestInput('entityType', `${base}.targetId`, o.targetId || o.entityType || '', ['minecraft:zombie', 'minecraft:skeleton', 'minecraft:creeper', 'minecraft:spider'], `${base}-entityType`);
   }
-  if (o.type === 'collect') {
-    return suggestInput('itemId', `${base}.itemId`, o.itemId || '', ['minecraft:iron_ingot', 'minecraft:stick', 'minecraft:wheat', 'minecraft:oak_log'], `${base}-itemId`);
-  }
-  if (o.type === 'talk') {
+  if (o.type === 'COLLECT') {
     return `
       <div class="row">
-        ${suggestInput('npcId', `${base}.npcId`, o.npcId || '', ['arc_quest:npc_guard', 'arc_quest:npc_blacksmith', 'arc_quest:npc_villager'], `${base}-npcId`)}
-        ${suggestInput('dialogueId', `${base}.dialogueId`, o.dialogueId || '', ['arc_quest:intro', 'arc_quest:chapter_1', 'arc_quest:quest_hint'], `${base}-dialogueId`)}
+        ${suggestInput('itemId', `${base}.targetId`, o.targetId || o.itemId || '', ['minecraft:iron_ingot', 'minecraft:stick', 'minecraft:wheat', 'minecraft:oak_log'], `${base}-itemId`)}
+        ${field('itemTag', `${base}.itemTag`, o.itemTag || '')}
       </div>
     `;
   }
-  if (o.type === 'interact') {
+  if (o.type === 'TALK') {
     return `
       <div class="row">
-        ${enumSelect('targetType', `${base}.targetType`, o.targetType || 'entity', ['entity', 'block', 'npc'])}
-        ${field('targetId', `${base}.targetId`, o.targetId || '')}
+        ${suggestInput('npcId', `${base}.npcId`, o.npcId || o.targetId || '', ['arc_quest:npc_guard', 'arc_quest:npc_blacksmith', 'arc_quest:npc_villager'], `${base}-npcId`)}
       </div>
     `;
   }
-  if (o.type === 'submit') {
+  if (o.type === 'INTERACT') {
+    return field('targetId', `${base}.targetId`, o.targetId || '');
+  }
+  if (o.type === 'OFFER') {
     return `
       <div class="row">
-        ${suggestInput('itemId', `${base}.itemId`, o.itemId || '', ['minecraft:iron_ingot', 'minecraft:gold_ingot', 'minecraft:diamond'], `${base}-submit-itemId`)}
-        ${boolSelect('consumeOnSubmit', `${base}.consumeOnSubmit`, !!o.consumeOnSubmit)}
+        ${suggestInput('itemId', `${base}.targetId`, o.targetId || '', ['minecraft:iron_ingot', 'minecraft:gold_ingot', 'minecraft:diamond'], `${base}-offer-itemId`)}
+        ${field('itemTag', `${base}.itemTag`, o.itemTag || '')}
       </div>
     `;
   }
-  if (o.type === 'custom_counter') {
-    return field('counterId', `${base}.counterId`, o.counterId || '');
+  if (o.type === 'DELIVER') {
+    return `
+      <div class="row">
+        ${suggestInput('itemId', `${base}.targetId`, o.targetId || '', ['minecraft:iron_ingot', 'minecraft:gold_ingot', 'minecraft:diamond'], `${base}-deliver-itemId`)}
+        ${suggestInput('npcId', `${base}.npcId`, o.npcId || '', ['arc_quest:npc_guard', 'arc_quest:npc_blacksmith', 'arc_quest:npc_villager'], `${base}-deliver-npcId`)}
+      </div>
+    `;
   }
-  return `
-    <div class="row">
-      ${field('x', `${base}.x`, o.x ?? 0, 'number')}
-      ${field('y', `${base}.y`, o.y ?? 64, 'number')}
-      ${field('z', `${base}.z`, o.z ?? 0, 'number')}
-    </div>
-  `;
+  if (o.type === 'REACH_LOCATION') {
+    return `
+      <div class="row">
+        ${field('x', `${base}.x`, o.x ?? 0, 'number')}
+        ${field('y', `${base}.y`, o.y ?? 64, 'number')}
+        ${field('z', `${base}.z`, o.z ?? 0, 'number')}
+        ${field('radius', `${base}.radius`, o.radius ?? 4, 'number')}
+      </div>
+    `;
+  }
+  if (o.type === 'CRAFT') {
+    return suggestInput('itemId', `${base}.targetId`, o.targetId || '', ['minecraft:torch', 'minecraft:crafting_table', 'minecraft:iron_sword'], `${base}-craft-itemId`);
+  }
+  return field('customTargetId', `${base}.targetId`, o.targetId || '');
 }
 
 export function renderPhaseModeSummary(phase) {

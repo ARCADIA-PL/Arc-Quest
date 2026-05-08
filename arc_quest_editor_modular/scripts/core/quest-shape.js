@@ -26,8 +26,12 @@ function syncPhaseTransitions(phase) {
 
 function setCollectionEntryField(phase, fieldName, value, inputType) {
   phase.collectionEntryConfig ||= {};
-  if (fieldName === 'showInTrackerByDefault') {
+  if (fieldName === 'showInTrackerByDefault' || fieldName === 'repeatableProgress' || fieldName === 'repeatableCompletion') {
     phase.collectionEntryConfig[fieldName] = value === 'true';
+    return;
+  }
+  if (fieldName === 'visibilityConditions' || fieldName === 'rewardNodes') {
+    setLooseJson(phase.collectionEntryConfig, fieldName, value);
     return;
   }
   phase.collectionEntryConfig[fieldName] = inputType === 'number' ? Number(value || 0) : value;
@@ -45,19 +49,65 @@ function setConditionNodeField(rootNode, pathParts, value) {
     cursor.type = value;
     if (value === 'always') {
       delete cursor.flag;
+      delete cursor.questId;
+      delete cursor.variable;
+      delete cursor.compareOp;
+      delete cursor.value;
       delete cursor.left;
       delete cursor.right;
       return;
     }
-    if (value === 'flag_set') {
+    if (value === 'flag_set' || value === 'flag_not_set') {
       cursor.flag ||= '';
+      delete cursor.questId;
+      delete cursor.variable;
+      delete cursor.compareOp;
+      delete cursor.value;
       delete cursor.left;
+      delete cursor.right;
+      return;
+    }
+    if (value === 'quest_completed') {
+      cursor.questId ||= '';
+      delete cursor.flag;
+      delete cursor.variable;
+      delete cursor.compareOp;
+      delete cursor.value;
+      delete cursor.left;
+      delete cursor.right;
+      return;
+    }
+    if (value === 'variable') {
+      cursor.variable ||= '';
+      cursor.compareOp ||= 'EQUAL';
+      if (cursor.value === undefined) cursor.value = 0;
+      delete cursor.flag;
+      delete cursor.questId;
+      delete cursor.left;
+      delete cursor.right;
+      return;
+    }
+    if (value === 'not') {
+      cursor.left ||= { type: 'always' };
+      delete cursor.flag;
+      delete cursor.questId;
+      delete cursor.variable;
+      delete cursor.compareOp;
+      delete cursor.value;
       delete cursor.right;
       return;
     }
     cursor.left ||= { type: 'always' };
     cursor.right ||= { type: 'always' };
     delete cursor.flag;
+    delete cursor.questId;
+    delete cursor.variable;
+    delete cursor.compareOp;
+    delete cursor.value;
+    return;
+  }
+  if (fieldName === 'value') {
+    cursor[fieldName] = Number(value || 0);
     return;
   }
   cursor[fieldName] = value;
@@ -96,7 +146,7 @@ function setTopCollectionConfigField(target, fieldName, value) {
 function setTopCompletionRuleField(target, ruleIndex, fieldName, value, inputType) {
   target.collectionConfig ||= { categories: [], rewardNodes: [], completionRules: [] };
   target.collectionConfig.completionRules ||= [];
-  target.collectionConfig.completionRules[ruleIndex] ||= { type: 'completed_entry_count', value: 1, refId: '' };
+  target.collectionConfig.completionRules[ruleIndex] ||= { type: 'completed_entry_count', value: 1 };
   target.collectionConfig.completionRules[ruleIndex][fieldName] = inputType === 'number' ? Number(value || 0) : value;
 }
 
@@ -112,7 +162,7 @@ function setTopRewardNodeCompletionRuleField(target, rewardNodeIndex, ruleIndex,
   target.collectionConfig.rewardNodes ||= [];
   target.collectionConfig.rewardNodes[rewardNodeIndex] ||= { nodeId: '', scope: 'QUEST', grantMode: 'MANUAL', rewards: [], completionRules: [], scopeRefId: '' };
   target.collectionConfig.rewardNodes[rewardNodeIndex].completionRules ||= [];
-  target.collectionConfig.rewardNodes[rewardNodeIndex].completionRules[ruleIndex] ||= { type: 'completed_entry_count', value: 1, refId: '' };
+  target.collectionConfig.rewardNodes[rewardNodeIndex].completionRules[ruleIndex] ||= { type: 'completed_entry_count', value: 1 };
   target.collectionConfig.rewardNodes[rewardNodeIndex].completionRules[ruleIndex][fieldName] = inputType === 'number' ? Number(value || 0) : value;
 }
 
@@ -171,7 +221,7 @@ function setCategoryCompletionRuleField(target, categoryIndex, ruleIndex, fieldN
   target.collectionConfig.categories[categoryIndex] ||= { categoryId: '', displayName: { mode: 'translatable', value: '' }, sortOrder: categoryIndex, completionRules: [], rewardNodes: [] };
   const cat = target.collectionConfig.categories[categoryIndex];
   cat.completionRules ||= [];
-  cat.completionRules[ruleIndex] ||= { type: 'completed_entry_count', value: 1, refId: '' };
+  cat.completionRules[ruleIndex] ||= { type: 'completed_entry_count', value: 1 };
   cat.completionRules[ruleIndex][fieldName] = inputType === 'number' ? Number(value || 0) : value;
 }
 
@@ -183,7 +233,7 @@ function setRewardNodeCompletionRuleField(target, categoryIndex, rewardNodeIndex
   cat.rewardNodes ||= [];
   cat.rewardNodes[rewardNodeIndex] ||= { nodeId: '', scope: 'CATEGORY', grantMode: 'AUTO', rewards: [], completionRules: [], scopeRefId: '' };
   cat.rewardNodes[rewardNodeIndex].completionRules ||= [];
-  cat.rewardNodes[rewardNodeIndex].completionRules[ruleIndex] ||= { type: 'completed_entry_count', value: 1, refId: '' };
+  cat.rewardNodes[rewardNodeIndex].completionRules[ruleIndex] ||= { type: 'completed_entry_count', value: 1 };
   cat.rewardNodes[rewardNodeIndex].completionRules[ruleIndex][fieldName] = inputType === 'number' ? Number(value || 0) : value;
 }
 
@@ -194,10 +244,25 @@ export function ensureQuestShape(q) {
   q.visualConfig ||= {};
   q.visualConfig.themeColor ||= '#63c7ff';
   q.visualConfig.splashes ||= [];
+  q.visualConfig.icons ||= {};
+  q.flagsToSetOnAccept ||= [];
   q.flagsToSetOnComplete ||= [];
-  q.collectionConfig ||= null;
+  q.unlockConditions ||= null;
+  q.relatedMarks ||= [];
+  q.completionPolicy ||= 'ALL';
+  q.completionRequiredCount ||= 1;
+  q.completionTargetPhaseId ||= '';
+  q.timeLimitType ||= '';
+  q.timeLimitValue ||= 0;
+  q.chapterStartSound ||= '';
+  q.chapterFailSound ||= '';
+  q.chapterCompleteSound ||= '';
   q.titleMode ||= 'translatable';
   q.descriptionMode ||= 'translatable';
+  if (q.collectionConfig) {
+    q.collectionConfig.trackerPresentationMode ||= 'DETAILED';
+    q.collectionConfig.collectionPresentationMode ||= 'GROUPED';
+  }
   q.phases.forEach((p, i) => {
     p.id ||= `phase_${i + 1}`;
     p.mode ||= 'normal';
@@ -206,10 +271,25 @@ export function ensureQuestShape(q) {
     p.parallelPhaseIds ||= [];
     p.choicePhaseIds ||= [];
     p.objectives ||= [];
-    p.objectives.forEach(o => { o.textMode ||= 'translatable'; });
+    p.objectives.forEach(o => {
+      o.textMode ||= 'translatable';
+      o.countMode ||= 'fixed';
+      o.countBase ??= o.count ?? 1;
+      o.countPerLevel ??= 0;
+      o.countMin ??= 1;
+      o.countMax ??= -1;
+      o.extraData ||= {};
+      o.relatedMarks ||= [];
+    });
     p.rewards ||= [];
     p.flagsToSetOnEnter ||= [];
     p.flagsToSetOnComplete ||= [];
+    p.tradeShopId ||= '';
+    p.phaseStartSound ||= '';
+    p.phaseCompleteSound ||= '';
+    p.relatedMarks ||= [];
+    p.visualConfig ||= null;
+    p.choices ||= [];
     p.transitions ||= [];
   });
 }
@@ -224,14 +304,22 @@ export function setByPath(target, bind, value, inputType, phaseIndexResolver) {
   if (bind === 'q.repeatable') return target.repeatable = value === 'true';
   if (bind === 'q.tags') return target.tags = splitList(value);
   if (bind === 'q.theme') return target.visualConfig.themeColor = value;
+  if (bind === 'q.icons') return setLooseJson(target.visualConfig, 'icons', value);
   if (bind === 'q.category') return target.category = value;
   if (bind === 'q.mode') return target.mode = value;
   if (bind === 'q.chapterShopId') return target.chapterShopId = value;
   if (bind === 'q.chapterShopType') return target.chapterShopType = value;
-  if (bind === 'q.chapterShopPersistent') return target.chapterShopPersistent = value === 'true';
-  if (bind === 'q.initialPhaseId') return target.initialPhaseId = value;
-  if (bind === 'q.iconTexture') return target.iconTexture = value;
-  if (bind === 'q.flagsToSetOnComplete') return target.flagsToSetOnComplete = splitList(value);
+  if (bind === 'q.chapterStartSound') return target.chapterStartSound = value;
+  if (bind === 'q.chapterFailSound') return target.chapterFailSound = value;
+  if (bind === 'q.chapterCompleteSound') return target.chapterCompleteSound = value;
+  if (bind === 'q.completionPolicy') return target.completionPolicy = value;
+  if (bind === 'q.completionRequiredCount') return target.completionRequiredCount = inputType === 'number' ? Number(value || 0) : Number(value || 0);
+  if (bind === 'q.completionTargetPhaseId') return target.completionTargetPhaseId = value;
+  if (bind === 'q.timeLimitType') return target.timeLimitType = value;
+  if (bind === 'q.timeLimitValue') return target.timeLimitValue = inputType === 'number' ? Number(value || 0) : Number(value || 0);
+  if (bind === 'q.flagsToSetOnAccept') return target.flagsToSetOnAccept = splitList(value);
+  if (bind === 'q.unlockConditions') return setLooseJson(target, 'unlockConditions', value);
+  if (bind === 'q.relatedMarks') return setLooseJson(target, 'relatedMarks', value);
   if (bind === 'q.collectionConfig') return setLooseJson(target, 'collectionConfig', value);
   if (bind.startsWith('q.cc.')) {
     const [, , fieldName] = bind.split('.');
@@ -272,17 +360,35 @@ export function setByPath(target, bind, value, inputType, phaseIndexResolver) {
       if (parts[4] === 'c') setTransitionField(target.phases[+i], +sub, 'c', value, parts.slice(5));
       else setTransitionField(target.phases[+i], +sub, leaf, value);
     }
+    else if (k === 'ch') {
+      const parts = bind.split('.');
+      const ci = Number(parts[3]);
+      target.phases[+i].choices ||= [];
+      target.phases[+i].choices[ci] ||= { text: '', flagToSet: '', targetPhaseId: '', visibleCondition: { type: 'always' } };
+      if (parts[4] === 'vc') {
+        setConditionNodeField(target.phases[+i].choices[ci].visibleCondition ||= { type: 'always' }, parts.slice(5), value);
+      } else {
+        target.phases[+i].choices[ci][parts[4]] = value;
+      }
+    }
     else if (k === 'autoStart') target.phases[+i][k] = value === 'true';
     else if (k === 'titleMode' || k === 'descriptionMode' || k === 'storyMode') target.phases[+i][k] = value;
     else if (k === 'parallelPhaseIds' || k === 'choicePhaseIds' || k === 'flagsToSetOnEnter' || k === 'flagsToSetOnComplete') target.phases[+i][k] = splitList(value);
-    else if (k === 'rawEnterCondition' || k === 'transitions' || k === 'collectionEntryConfig') setLooseJson(target.phases[+i], k, value);
-    else target.phases[+i][k] = value;
+    else if (k === 'relatedMarks') setLooseJson(target.phases[+i], 'relatedMarks', value);
+    else if (k === 'visualConfig') setLooseJson(target.phases[+i], 'visualConfig', value);
+    else if (k === 'rawEnterCondition' || k === 'transitions' || k === 'collectionEntryConfig' || k === 'choices') setLooseJson(target.phases[+i], k, value);
+    else target.phases[+i][k] = inputType === 'number' ? Number(value || 0) : value;
     if (k === 'mode' || k === 'parallelPhaseIds' || k === 'choicePhaseIds') syncPhaseTransitions(target.phases[+i]);
     return;
   }
   if (bind.startsWith('ob.')) {
     const [, pi, oi, k] = bind.split('.');
-    if (k === 'textMode' || k === 'targetType') {
+    if (k === 'extraData' || k === 'relatedMarks') {
+      const obj = target.phases[+pi].objectives[+oi];
+      setLooseJson(obj, k, value);
+      return;
+    }
+    if (k === 'textMode' || k === 'targetType' || k === 'countMode') {
       target.phases[+pi].objectives[+oi][k] = value;
       return;
     }
