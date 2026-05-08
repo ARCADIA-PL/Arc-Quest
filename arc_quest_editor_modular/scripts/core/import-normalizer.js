@@ -18,6 +18,9 @@ function normalizeSplashMap(splashes) {
 function normalizeReward(reward) {
   const type = reward?.type || 'item';
   if (type === 'var_add') return { type, variable: reward?.variable || '', value: reward?.value ?? 0, ...reward };
+  if (type === 'command') return { type, command: reward?.command || '', ...reward };
+  if (type === 'flag') return { type, flag: reward?.flag || '', enabled: reward?.enabled !== false, ...reward };
+  if (type === 'currency') return { type, currencyId: reward?.currencyId || 'arc_quest:coin', amount: reward?.amount ?? 1, ...reward };
   return { type, itemId: reward?.itemId || '', count: reward?.count ?? 1, ...reward };
 }
 

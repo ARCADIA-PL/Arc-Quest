@@ -1,29 +1,239 @@
 function boolSelect(label, bind, value) {
-    return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="false" ${!value ? 'selected' : ''}>False</option><option value="true" ${value ? 'selected' : ''}>True</option></select></div>`;
+  return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="false" ${!value ? 'selected' : ''}>False</option><option value="true" ${value ? 'selected' : ''}>True</option></select></div>`;
+}
+
+function modeSelect(label, bind, value) {
+  return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="translatable" ${value === 'translatable' ? 'selected' : ''}>Translatable</option><option value="literal" ${value === 'literal' ? 'selected' : ''}>Literal</option></select></div>`;
+}
+
+function phaseSingleSelect(label, bind, value, phaseIds) {
+  const options = ['<option value="">(未设置)</option>', ...phaseIds.map(id => `<option value="${id}" ${value === id ? 'selected' : ''}>${id}</option>`)];
+  return `<div class="f"><label>${label}</label><select data-b="${bind}">${options.join('')}</select></div>`;
+}
+
+function suggestInput(label, bind, value, suggestions, listId, placeholder = '') {
+  const opts = (suggestions || []).map(v => `<option value="${v}"></option>`).join('');
+  return `<div class="f"><label>${label}</label><input data-b="${bind}" list="${listId}" value="${value || ''}" placeholder="${placeholder || label}"><datalist id="${listId}">${opts}</datalist></div>`;
+}
+
+function chipEditor(label, list, addKey, removeKey, placeholder) {
+  const chips = (list || []).map((v, i) => `<span class="chip-item">${v}<button type="button" class="chip-remove" data-chip-remove="${removeKey}:${i}">×</button></span>`).join('');
+  return `
+    <div class="f">
+      <label>${label}</label>
+      <div class="chip-editor" data-chip-add-wrap="${addKey}">
+        <div class="chip-list">${chips || '<span class="tiny">暂无</span>'}</div>
+        <div class="chip-input-row">
+          <input type="text" data-chip-add-input="${addKey}" placeholder="${placeholder}">
+          <button type="button" data-chip-add="${addKey}">添加</button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function enumSelect(label, bind, value, options) {
-    return `<div class="f"><label>${label}</label><select data-b="${bind}">${options.map(option => `<option value="${option}" ${value === option ? 'selected' : ''}>${option}</option>`).join('')}</select></div>`;
+  return `<div class="f"><label>${label}</label><select data-b="${bind}">${options.map(o => `<option value="${o}" ${value === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>`;
 }
 
-// ... 保持 renderCompletionRulesEditor, renderTopLevelRewardItemsEditor 等函数的内部逻辑不变 ...
-// 为了篇幅限制，这里只展示顶层 renderQuestEditor 的重构排版（子函数只需复用即可，因为 CSS 已经重写了 .card 和 .row）
+function refSelect(label, bind, value, options, empty = '(未设置)') {
+  const deduped = Array.from(new Set((options || []).filter(Boolean)));
+  const opts = [`<option value="">${empty}</option>`, ...deduped.map(o => `<option value="${o}" ${value === o ? 'selected' : ''}>${o}</option>`)];
+  return `<div class="f"><label>${label}</label><select data-b="${bind}">${opts.join('')}</select></div>`;
+}
 
-// --- 省略其他内部 helper 函数 (直接拷贝你原有的内部函数即可，无需修改逻辑) ---
-// *注意*: 在实际覆盖时，请将你原有的 helper 函数 (renderCompletionRulesEditor 等) 放在这里。
-// 下面只提供修改过的 renderQuestEditor 主入口。
+function scopeRefOptions(scope, categoryIds, phaseIds, questId) {
+  if (scope === 'CATEGORY') return categoryIds;
+  if (scope === 'PHASE') return phaseIds;
+  if (scope === 'QUEST') return [questId].filter(Boolean);
+  return [...categoryIds, ...phaseIds];
+}
 
-function modeSelect(label, bind, value) {
-    return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="translatable" ${value === 'translatable' ? 'selected' : ''}>Translatable</option><option value="literal" ${value === 'literal' ? 'selected' : ''}>Literal</option></select></div>`;
+
+function ruleEditor(rule, bindBase, refs) {
+  const isComposite = rule?.type === 'and' || rule?.type === 'or';
+  return `
+    <div class="card" style="margin:8px 0; border-color: rgba(255,255,255,0.1)">
+      <div class="row">
+        ${enumSelect('Rule Type', `${bindBase}.type`, rule?.type || 'completed_entry_count', ['completed_entry_count', 'node_completed', 'flag_set', 'and', 'or'])}
+        <div class="f"><label>Value</label><input type="number" data-b="${bindBase}.value" value="${rule?.value ?? 1}"></div>
+      </div>
+      <div class="row">
+        ${refSelect('refId', `${bindBase}.refId`, rule?.refId || '', refs, '(无引用)')}
+      </div>
+      ${isComposite ? `
+      <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
+        <div class="small"><b>组合子条件</b>（基础可视化）</div>
+        <div class="row">
+          ${enumSelect('Left Type', `${bindBase}.leftType`, rule?.leftType || 'completed_entry_count', ['completed_entry_count', 'node_completed', 'flag_set'])}
+          <div class="f"><label>Left Value</label><input type="number" data-b="${bindBase}.leftValue" value="${rule?.leftValue ?? 1}"></div>
+        </div>
+        <div class="row">
+          ${enumSelect('Right Type', `${bindBase}.rightType`, rule?.rightType || 'completed_entry_count', ['completed_entry_count', 'node_completed', 'flag_set'])}
+          <div class="f"><label>Right Value</label><input type="number" data-b="${bindBase}.rightValue" value="${rule?.rightValue ?? 1}"></div>
+        </div>
+      </div>
+      ` : ''}
+      <div class="tiny">摘要：${rule?.type || 'completed_entry_count'} / value=${rule?.value ?? 1} / ref=${rule?.refId || '-'}${isComposite ? ` / left(${rule?.leftType || 'completed_entry_count'}:${rule?.leftValue ?? 1}) right(${rule?.rightType || 'completed_entry_count'}:${rule?.rightValue ?? 1})` : ''}</div>
+    </div>
+  `;
+}
+
+function renderCollectionTreeView(q) {
+  const categories = q.collectionConfig?.categories || [];
+  const topNodes = q.collectionConfig?.rewardNodes || [];
+  return `
+    <div class="card">
+      <div class="small"><b>Collection Tree View</b></div>
+      <div class="tree-view-block" style="margin-top:8px">
+        <div class="tree-view-item">collectionConfig</div>
+        <div class="tree-view-children">
+          <div class="tree-view-item">topRules: ${(q.collectionConfig?.completionRules || []).length}</div>
+          <div class="tree-view-item">topRewardNodes: ${topNodes.length}</div>
+          ${topNodes.map((n, i) => `<div class="tree-view-children"><div class="tree-view-item">[TopNode ${i}] ${n.nodeId || '(no-id)'} | rules=${(n.completionRules || []).length} rewards=${(n.rewards || []).length}</div></div>`).join('')}
+          <div class="tree-view-item">categories: ${categories.length}</div>
+          ${categories.map((c, i) => `<div class="tree-view-children"><div class="tree-view-item">[Category ${i}] ${c.categoryId || '(no-id)'} | rules=${(c.completionRules || []).length} nodes=${(c.rewardNodes || []).length}</div>${(c.rewardNodes || []).map((n, ni) => `<div class="tree-view-children"><div class="tree-view-item">[Node ${ni}] ${n.nodeId || '(no-id)'} | rules=${(n.completionRules || []).length} rewards=${(n.rewards || []).length}</div></div>`).join('')}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCollectionWorkspace(state, q, field) {
+  q.collectionConfig ||= { categories: [], rewardNodes: [], completionRules: [] };
+  const categories = q.collectionConfig.categories || [];
+  const topNodes = q.collectionConfig.rewardNodes || [];
+  const categoryIds = categories.map(c => c.categoryId).filter(Boolean);
+  const allNodeIds = [
+    ...topNodes.map(n => n.nodeId),
+    ...categories.flatMap(c => (c.rewardNodes || []).map(n => n.nodeId))
+  ].filter(Boolean);
+  const phaseIds = (q.phases || []).map(p => p.id).filter(Boolean);
+
+  return `
+    <h4>Collection Workspace</h4>
+    <div class="actions" style="margin:8px 0 12px;">
+      <button type="button" data-collection-view="card" class="${state.ui.collectionView !== 'tree' ? 'primary' : ''}">Card View</button>
+      <button type="button" data-collection-view="tree" class="${state.ui.collectionView === 'tree' ? 'primary' : ''}">Tree View</button>
+      <button type="button" id="fixCollectionRefsBtn">一键修复引用</button>
+      <button type="button" id="fixCollectionRulesBtn">补齐 Rule 默认值</button>
+    </div>
+    ${state.ui.collectionView === 'tree' ? renderCollectionTreeView(q) : `
+    <div class="card">
+      <div class="row">
+        ${boolSelect('allowCategoryCollapse', 'q.cc.allowCategoryCollapse', !!q.collectionConfig.allowCategoryCollapse)}
+        ${boolSelect('showCompletedEntries', 'q.cc.showCompletedEntries', !!q.collectionConfig.showCompletedEntries)}
+      </div>
+      <div class="row">
+        ${boolSelect('showProgressInTracker', 'q.cc.showProgressInTracker', !!q.collectionConfig.showProgressInTracker)}
+      </div>
+    </div>
+
+    <h4>Top Completion Rules</h4>
+    <div class="card">
+      ${(q.collectionConfig.completionRules || []).map((rule, ri) => `
+        ${ruleEditor(rule, `q.tcr.${ri}`, [...categoryIds, ...allNodeIds, ...phaseIds])}
+        <div class="actions"><button data-dtcr="${ri}" class="danger">删除 Rule</button></div>
+      `).join('')}
+      <div class="actions"><button id="addTopCompletionRuleBtn">+ 添加 Top Rule</button></div>
+    </div>
+
+    <h4>Top Reward Nodes</h4>
+    <div class="card">
+      ${topNodes.map((node, ni) => `
+        <div class="card" style="margin:10px 0; border-color: rgba(255,255,255,0.1)">
+          <div class="row">
+            ${field('Node ID', `q.trn.${ni}.nodeId`, node.nodeId || '')}
+            ${enumSelect('Scope', `q.trn.${ni}.scope`, node.scope || 'QUEST', ['QUEST', 'CATEGORY', 'PHASE'])}
+          </div>
+          <div class="row">
+            ${enumSelect('Grant Mode', `q.trn.${ni}.grantMode`, node.grantMode || 'MANUAL', ['MANUAL', 'AUTO'])}
+            ${refSelect('scopeRefId', `q.trn.${ni}.scopeRefId`, node.scopeRefId || '', scopeRefOptions(node.scope, categoryIds, phaseIds, q.id))}
+          </div>
+          <div class="small">Completion Rules</div>
+          ${(node.completionRules || []).map((rule, ri) => `${ruleEditor(rule, `q.trn.${ni}.cr.${ri}`, [...allNodeIds, ...categoryIds, ...phaseIds])}<div class="actions"><button data-dtrcr="${ni}:${ri}" class="danger">删除 Rule</button></div>`).join('')}
+          <div class="actions"><button data-atrcr="${ni}">+ 添加 Rule</button></div>
+          <div class="small" style="margin-top:10px">Rewards</div>
+          ${(node.rewards || []).map((rw, rwi) => `
+            <div class="row">
+              ${enumSelect('Type', `q.trn.${ni}.rw.${rwi}.type`, rw.type || 'item', ['item', 'var_add', 'command', 'flag', 'currency'])}
+              ${field('itemId', `q.trn.${ni}.rw.${rwi}.itemId`, rw.itemId || '')}
+              ${field('count', `q.trn.${ni}.rw.${rwi}.count`, rw.count ?? 1, 'number')}
+            </div>
+            <div class="actions"><button data-dtrr="${ni}:${rwi}" class="danger">删除 Reward</button></div>
+          `).join('')}
+          <div class="actions"><button data-atrr="${ni}">+ 添加 Reward</button></div>
+          <div class="actions"><button data-dtrn="${ni}" class="danger">删除 Top Node</button></div>
+        </div>
+      `).join('')}
+      <div class="actions"><button id="addTopRewardNodeBtn">+ 添加 Top Reward Node</button></div>
+    </div>
+
+    <h4>Categories</h4>
+    <div class="card">
+      ${categories.map((cat, ci) => `
+        <div class="card" style="margin:10px 0; border-color: rgba(255,255,255,0.1)">
+          <div class="row">
+            ${field('Category ID', `q.cat.${ci}.categoryId`, cat.categoryId || '')}
+            ${field('Sort Order', `q.cat.${ci}.sortOrder`, cat.sortOrder ?? ci, 'number')}
+          </div>
+          <div class="row">
+            ${enumSelect('Display Mode', `q.cat.${ci}.displayMode`, cat.displayName?.mode || 'translatable', ['translatable', 'literal'])}
+            ${field('Display Value', `q.cat.${ci}.displayValue`, cat.displayName?.value || '')}
+          </div>
+
+          <div class="small">Category Completion Rules</div>
+          ${(cat.completionRules || []).map((rule, ri) => `${ruleEditor(rule, `q.cat.${ci}.cr.${ri}`, [...categoryIds, ...allNodeIds, ...phaseIds])}<div class="actions"><button data-dcr="${ci}:${ri}" class="danger">删除 Rule</button></div>`).join('')}
+          <div class="actions"><button data-acr="${ci}">+ 添加 Category Rule</button></div>
+
+          <div class="small" style="margin-top:10px">Reward Nodes</div>
+          ${(cat.rewardNodes || []).map((node, ni) => `
+            <div class="card" style="margin:8px 0; border-color: rgba(255,255,255,0.08)">
+              <div class="row">
+                ${field('Node ID', `q.cat.${ci}.rn.${ni}.nodeId`, node.nodeId || '')}
+                ${enumSelect('Scope', `q.cat.${ci}.rn.${ni}.scope`, node.scope || 'CATEGORY', ['CATEGORY', 'PHASE', 'QUEST'])}
+              </div>
+              <div class="row">
+                ${enumSelect('Grant Mode', `q.cat.${ci}.rn.${ni}.grantMode`, node.grantMode || 'AUTO', ['AUTO', 'MANUAL'])}
+                ${refSelect('scopeRefId', `q.cat.${ci}.rn.${ni}.scopeRefId`, node.scopeRefId || '', scopeRefOptions(node.scope, categoryIds, phaseIds, q.id))}
+              </div>
+
+              <div class="small">Node Completion Rules</div>
+              ${(node.completionRules || []).map((rule, nri) => `${ruleEditor(rule, `q.cat.${ci}.rn.${ni}.cr.${nri}`, [...allNodeIds, ...categoryIds, ...phaseIds])}<div class="actions"><button data-drcr="${ci}:${ni}:${nri}" class="danger">删除 Rule</button></div>`).join('')}
+              <div class="actions"><button data-arcr="${ci}:${ni}">+ 添加 Node Rule</button></div>
+
+              <div class="small" style="margin-top:10px">Node Rewards</div>
+              ${(node.rewards || []).map((rw, rwi) => `
+                <div class="row">
+                  ${enumSelect('Type', `q.cat.${ci}.rn.${ni}.rw.${rwi}.type`, rw.type || 'item', ['item', 'var_add', 'command', 'flag', 'currency'])}
+                  ${field('itemId', `q.cat.${ci}.rn.${ni}.rw.${rwi}.itemId`, rw.itemId || '')}
+                  ${field('count', `q.cat.${ci}.rn.${ni}.rw.${rwi}.count`, rw.count ?? 1, 'number')}
+                </div>
+                <div class="actions"><button data-drr="${ci}:${ni}:${rwi}" class="danger">删除 Reward</button></div>
+              `).join('')}
+              <div class="actions"><button data-arr="${ci}:${ni}">+ 添加 Node Reward</button></div>
+
+              <div class="actions"><button data-drn="${ci}:${ni}" class="danger">删除 Node</button></div>
+            </div>
+          `).join('')}
+          <div class="actions"><button data-arn="${ci}">+ 添加 Reward Node</button></div>
+          <div class="actions"><button data-dc="${ci}" class="danger">删除 Category</button></div>
+        </div>
+      `).join('')}
+      <div class="actions"><button id="addCategoryBtn">+ 添加 Category</button></div>
+    </div>
+    `}
+  `;
 }
 
 export function renderQuestEditor(state, field, area) {
-    const q = state.q;
-    // 此处我将原来的零散表单包裹在不同主题的 .card 中，实现 Apple 风格的“分组表单”
-    return `
+  const q = state.q;
+  const phaseIds = (q.phases || []).map(p => p.id).filter(Boolean);
+
+  return `
     <div class="sec">
       <h3 style="font-size:20px; font-weight:700; color:var(--text-main); margin-bottom: 20px;">架构参数设定 (Quest Info)</h3>
-      
+
       <div class="card">
         ${field('任务唯一标识 (Quest ID)', 'q.id', q.id)}
         <div class="row">
@@ -38,7 +248,7 @@ export function renderQuestEditor(state, field, area) {
           ${field('排序权重 (Sort Order)', 'q.sortOrder', q.sortOrder, 'number')}
           ${boolSelect('允许重复执行 (Repeatable)', 'q.repeatable', q.repeatable)}
         </div>
-        ${field('标签池 (Tags, 逗号分隔)', 'q.tags', q.tags.join(', '))}
+        ${chipEditor('标签池 (Tags)', q.tags || [], 'q.tags', 'q.tags', '输入 tag 后点击添加')}
       </div>
 
       <h4>Datapack 顶层设置 (Top-level Specs)</h4>
@@ -48,8 +258,8 @@ export function renderQuestEditor(state, field, area) {
           ${field('模式 (Mode)', 'q.mode', q.mode || '')}
         </div>
         <div class="row">
-           ${field('初始阶段ID (Initial Phase ID)', 'q.initialPhaseId', q.initialPhaseId || '')}
-           ${field('图标路径 (Icon Texture)', 'q.iconTexture', q.iconTexture || '')}
+          ${phaseSingleSelect('初始阶段ID (Initial Phase ID)', 'q.initialPhaseId', q.initialPhaseId || '', phaseIds)}
+          ${suggestInput('图标路径 (Icon Texture)', 'q.iconTexture', q.iconTexture || '', ['minecraft:textures/item/iron_ingot.png', 'minecraft:textures/item/diamond.png', 'arc_quest:textures/gui/quest.png'], 'iconTextureSuggest', 'namespace:path/to/texture.png')}
         </div>
         <div class="row">
           ${field('商店ID (Chapter Shop ID)', 'q.chapterShopId', q.chapterShopId || '')}
@@ -57,13 +267,15 @@ export function renderQuestEditor(state, field, area) {
         </div>
         <div class="row">
           ${boolSelect('商店常驻 (Persistent)', 'q.chapterShopPersistent', q.chapterShopPersistent)}
-          ${field('完成时触发标记 (flagsToSetOnComplete)', 'q.flagsToSetOnComplete', (q.flagsToSetOnComplete || []).join(', '))}
+          ${chipEditor('完成时触发标记 (flagsToSetOnComplete)', q.flagsToSetOnComplete || [], 'q.flagsToSetOnComplete', 'q.flagsToSetOnComplete', '输入 flag 后点击添加')}
         </div>
       </div>
-      
+
+      ${renderCollectionWorkspace(state, q, field)}
+
       <div class="actions" style="margin-top: 24px;">
         <button id="addPhaseBtn" class="primary">
-           <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg> 新增执行阶段 (Phase)
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg> 新增执行阶段 (Phase)
         </button>
       </div>
     </div>

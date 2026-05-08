@@ -196,12 +196,17 @@ export function ensureQuestShape(q) {
   q.visualConfig.splashes ||= [];
   q.flagsToSetOnComplete ||= [];
   q.collectionConfig ||= null;
+  q.titleMode ||= 'translatable';
+  q.descriptionMode ||= 'translatable';
   q.phases.forEach((p, i) => {
     p.id ||= `phase_${i + 1}`;
     p.mode ||= 'normal';
+    p.titleMode ||= 'translatable';
+    p.descriptionMode ||= 'translatable';
     p.parallelPhaseIds ||= [];
     p.choicePhaseIds ||= [];
     p.objectives ||= [];
+    p.objectives.forEach(o => { o.textMode ||= 'translatable'; });
     p.rewards ||= [];
     p.flagsToSetOnEnter ||= [];
     p.flagsToSetOnComplete ||= [];

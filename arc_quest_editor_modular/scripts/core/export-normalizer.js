@@ -55,11 +55,32 @@ function cleanCollectionEntryConfig(config) {
 }
 
 function exportReward(reward) {
-  if ((reward?.type || 'item') === 'var_add') {
+  const type = reward?.type || 'item';
+  if (type === 'var_add') {
     return {
       type: 'var_add',
       variable: reward?.variable || '',
       value: Number(reward?.value ?? 0)
+    };
+  }
+  if (type === 'command') {
+    return {
+      type: 'command',
+      command: reward?.command || ''
+    };
+  }
+  if (type === 'flag') {
+    return {
+      type: 'flag',
+      flag: reward?.flag || '',
+      enabled: reward?.enabled !== false
+    };
+  }
+  if (type === 'currency') {
+    return {
+      type: 'currency',
+      currencyId: reward?.currencyId || 'arc_quest:coin',
+      amount: Number(reward?.amount ?? 1)
     };
   }
   return {
