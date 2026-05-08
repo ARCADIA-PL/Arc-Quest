@@ -21,10 +21,10 @@ export function renderCenterEditor(state, midEl) {
   const wrap = (content) => `<div class="fade-in">${content}</div>`;
 
   if (s.t === 'quest') html = wrap(renderQuestEditor(state, field, area));
-  else if (s.t === 'visual') html = wrap(renderVisualEditor(state, field));
+  else if (s.t === 'visual') html = wrap(renderVisualEditor(state, field, area));
   else if (s.t === 'rewards') html = wrap(`<div class="sec"><h3>Global Rewards</h3><div class="card">${renderRewardList(state.q.rewards, 'quest', null, field)}<div class="actions"><button class="primary" id="addQuestRewardBtn">+ 添加全局奖励</button></div></div></div>`);
   else if (s.t === 'phase') html = wrap(renderPhaseEditor(state, field, area));
-  else if (s.t === 'obj') html = wrap(renderObjectiveEditor(state, field));
+  else if (s.t === 'obj') html = wrap(renderObjectiveEditor(state, field, area));
   else html = wrap(renderRawEditor(state, esc));
 
   midEl.innerHTML = html;

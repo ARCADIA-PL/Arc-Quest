@@ -50,31 +50,35 @@ function scopeRefOptions(scope, categoryIds, phaseIds, questId) {
 }
 
 
-function ruleEditor(rule, bindBase, refs) {
-  const isComposite = rule?.type === 'and' || rule?.type === 'or';
+function ruleEditor(rule, bindBase) {
+  const type = rule?.type || 'completed_entry_count';
+  const isComposite = type === 'and' || type === 'or';
+  const hasSingleLeft = type === 'not';
+  const needsValue = type === 'completed_entry_count' || type === 'category_completed_count' || type === 'completed_entry_ratio' || type === 'category_completed_ratio';
   return `
     <div class="card" style="margin:8px 0; border-color: rgba(255,255,255,0.1)">
       <div class="row">
-        ${enumSelect('Rule Type', `${bindBase}.type`, rule?.type || 'completed_entry_count', ['completed_entry_count', 'node_completed', 'flag_set', 'and', 'or'])}
-        <div class="f"><label>Value</label><input type="number" data-b="${bindBase}.value" value="${rule?.value ?? 1}"></div>
-      </div>
-      <div class="row">
-        ${refSelect('refId', `${bindBase}.refId`, rule?.refId || '', refs, '(无引用)')}
+        ${enumSelect('Rule Type', `${bindBase}.type`, type, ['all_entries_complete', 'completed_entry_count', 'category_completed_count', 'completed_entry_ratio', 'category_completed_ratio', 'and', 'or', 'not'])}
+        ${needsValue ? `<div class="f"><label>Value</label><input type="number" data-b="${bindBase}.value" value="${rule?.value ?? 1}"></div>` : '<div class="f"></div>'}
       </div>
       ${isComposite ? `
       <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
-        <div class="small"><b>组合子条件</b>（基础可视化）</div>
-        <div class="row">
-          ${enumSelect('Left Type', `${bindBase}.leftType`, rule?.leftType || 'completed_entry_count', ['completed_entry_count', 'node_completed', 'flag_set'])}
-          <div class="f"><label>Left Value</label><input type="number" data-b="${bindBase}.leftValue" value="${rule?.leftValue ?? 1}"></div>
-        </div>
-        <div class="row">
-          ${enumSelect('Right Type', `${bindBase}.rightType`, rule?.rightType || 'completed_entry_count', ['completed_entry_count', 'node_completed', 'flag_set'])}
-          <div class="f"><label>Right Value</label><input type="number" data-b="${bindBase}.rightValue" value="${rule?.rightValue ?? 1}"></div>
-        </div>
+        <div class="small"><b>Left Rule</b></div>
+        ${enumSelect('Left Type', `${bindBase}.left.type`, rule?.left?.type || 'all_entries_complete', ['all_entries_complete', 'completed_entry_count', 'category_completed_count', 'completed_entry_ratio', 'category_completed_ratio'])}
+        <div class="f"><label>Left Value</label><input type="number" data-b="${bindBase}.left.value" value="${rule?.left?.value ?? 1}"></div>
+        <div class="small" style="margin-top:8px"><b>Right Rule</b></div>
+        ${enumSelect('Right Type', `${bindBase}.right.type`, rule?.right?.type || 'all_entries_complete', ['all_entries_complete', 'completed_entry_count', 'category_completed_count', 'completed_entry_ratio', 'category_completed_ratio'])}
+        <div class="f"><label>Right Value</label><input type="number" data-b="${bindBase}.right.value" value="${rule?.right?.value ?? 1}"></div>
       </div>
       ` : ''}
-      <div class="tiny">摘要：${rule?.type || 'completed_entry_count'} / value=${rule?.value ?? 1} / ref=${rule?.refId || '-'}${isComposite ? ` / left(${rule?.leftType || 'completed_entry_count'}:${rule?.leftValue ?? 1}) right(${rule?.rightType || 'completed_entry_count'}:${rule?.rightValue ?? 1})` : ''}</div>
+      ${hasSingleLeft ? `
+      <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
+        <div class="small"><b>Inner Rule</b></div>
+        ${enumSelect('Inner Type', `${bindBase}.left.type`, rule?.left?.type || 'all_entries_complete', ['all_entries_complete', 'completed_entry_count', 'category_completed_count', 'completed_entry_ratio', 'category_completed_ratio'])}
+        <div class="f"><label>Inner Value</label><input type="number" data-b="${bindBase}.left.value" value="${rule?.left?.value ?? 1}"></div>
+      </div>
+      ` : ''}
+      <div class="tiny">摘要：${type}${needsValue ? ` / value=${rule?.value ?? 1}` : ''}</div>
     </div>
   `;
 }
@@ -126,6 +130,11 @@ function renderCollectionWorkspace(state, q, field) {
       </div>
       <div class="row">
         ${boolSelect('showProgressInTracker', 'q.cc.showProgressInTracker', !!q.collectionConfig.showProgressInTracker)}
+        ${enumSelect('trackerPresentationMode', 'q.cc.trackerPresentationMode', q.collectionConfig.trackerPresentationMode || 'DETAILED', ['DETAILED', 'COMPACT'])}
+      </div>
+      <div class="row">
+        ${enumSelect('collectionPresentationMode', 'q.cc.collectionPresentationMode', q.collectionConfig.collectionPresentationMode || 'GROUPED', ['GROUPED', 'FLAT'])}
+        <div class="f"></div>
       </div>
     </div>
 
@@ -156,7 +165,7 @@ function renderCollectionWorkspace(state, q, field) {
           <div class="small" style="margin-top:10px">Rewards</div>
           ${(node.rewards || []).map((rw, rwi) => `
             <div class="row">
-              ${enumSelect('Type', `q.trn.${ni}.rw.${rwi}.type`, rw.type || 'item', ['item', 'var_add', 'command', 'flag', 'currency'])}
+              ${enumSelect('Type', `q.trn.${ni}.rw.${rwi}.type`, rw.type || 'item', ['item', 'flag_set', 'flag_clear', 'command', 'var_set', 'var_add', 'var_subtract', 'var_multiply'])}
               ${field('itemId', `q.trn.${ni}.rw.${rwi}.itemId`, rw.itemId || '')}
               ${field('count', `q.trn.${ni}.rw.${rwi}.count`, rw.count ?? 1, 'number')}
             </div>
@@ -205,7 +214,7 @@ function renderCollectionWorkspace(state, q, field) {
               <div class="small" style="margin-top:10px">Node Rewards</div>
               ${(node.rewards || []).map((rw, rwi) => `
                 <div class="row">
-                  ${enumSelect('Type', `q.cat.${ci}.rn.${ni}.rw.${rwi}.type`, rw.type || 'item', ['item', 'var_add', 'command', 'flag', 'currency'])}
+                  ${enumSelect('Type', `q.cat.${ci}.rn.${ni}.rw.${rwi}.type`, rw.type || 'item', ['item', 'flag_set', 'flag_clear', 'command', 'var_set', 'var_add', 'var_subtract', 'var_multiply'])}
                   ${field('itemId', `q.cat.${ci}.rn.${ni}.rw.${rwi}.itemId`, rw.itemId || '')}
                   ${field('count', `q.cat.${ci}.rn.${ni}.rw.${rwi}.count`, rw.count ?? 1, 'number')}
                 </div>
@@ -248,7 +257,10 @@ export function renderQuestEditor(state, field, area) {
           ${field('排序权重 (Sort Order)', 'q.sortOrder', q.sortOrder, 'number')}
           ${boolSelect('允许重复执行 (Repeatable)', 'q.repeatable', q.repeatable)}
         </div>
-        ${chipEditor('标签池 (Tags)', q.tags || [], 'q.tags', 'q.tags', '输入 tag 后点击添加')}
+        <div class="row">
+          ${chipEditor('标签池 (Tags)', q.tags || [], 'q.tags', 'q.tags', '输入 tag 后点击添加')}
+          ${chipEditor('接取时触发标记 (flagsToSetOnAccept)', q.flagsToSetOnAccept || [], 'q.flagsToSetOnAccept', 'q.flagsToSetOnAccept', '输入 flag 后点击添加')}
+        </div>
       </div>
 
       <h4>Datapack 顶层设置 (Top-level Specs)</h4>
@@ -258,16 +270,36 @@ export function renderQuestEditor(state, field, area) {
           ${field('模式 (Mode)', 'q.mode', q.mode || '')}
         </div>
         <div class="row">
+          ${enumSelect('完成策略 (completionPolicy)', 'q.completionPolicy', q.completionPolicy || 'ALL', ['ALL', 'ANY', 'N_OF_M', 'SPECIFIC_PHASE'])}
+          ${field('完成数量阈值 (completionRequiredCount)', 'q.completionRequiredCount', q.completionRequiredCount ?? 1, 'number')}
+        </div>
+        <div class="row">
+          ${phaseSingleSelect('完成目标阶段 (completionTargetPhaseId)', 'q.completionTargetPhaseId', q.completionTargetPhaseId || '', phaseIds)}
+          ${enumSelect('时限类型 (timeLimitType)', 'q.timeLimitType', q.timeLimitType || 'REAL_SECONDS', ['REAL_SECONDS', 'GAME_DAY_TIME'])}
+        </div>
+        <div class="row">
+          ${field('时限值 (timeLimitValue)', 'q.timeLimitValue', q.timeLimitValue ?? 0, 'number')}
           ${phaseSingleSelect('初始阶段ID (Initial Phase ID)', 'q.initialPhaseId', q.initialPhaseId || '', phaseIds)}
-          ${suggestInput('图标路径 (Icon Texture)', 'q.iconTexture', q.iconTexture || '', ['minecraft:textures/item/iron_ingot.png', 'minecraft:textures/item/diamond.png', 'arc_quest:textures/gui/quest.png'], 'iconTextureSuggest', 'namespace:path/to/texture.png')}
         </div>
         <div class="row">
           ${field('商店ID (Chapter Shop ID)', 'q.chapterShopId', q.chapterShopId || '')}
           ${field('商店类型 (Chapter Shop Type)', 'q.chapterShopType', q.chapterShopType || '')}
         </div>
         <div class="row">
+          ${suggestInput('图标路径 (Icon Texture)', 'q.iconTexture', q.iconTexture || '', ['minecraft:textures/item/iron_ingot.png', 'minecraft:textures/item/diamond.png', 'arc_quest:textures/gui/quest.png'], 'iconTextureSuggest', 'namespace:path/to/texture.png')}
+          ${field('章节开始音效 (chapterStartSound)', 'q.chapterStartSound', q.chapterStartSound || '')}
+        </div>
+        <div class="row">
+          ${field('章节失败音效 (chapterFailSound)', 'q.chapterFailSound', q.chapterFailSound || '')}
+          ${field('章节完成音效 (chapterCompleteSound)', 'q.chapterCompleteSound', q.chapterCompleteSound || '')}
+        </div>
+        <div class="row">
           ${boolSelect('商店常驻 (Persistent)', 'q.chapterShopPersistent', q.chapterShopPersistent)}
           ${chipEditor('完成时触发标记 (flagsToSetOnComplete)', q.flagsToSetOnComplete || [], 'q.flagsToSetOnComplete', 'q.flagsToSetOnComplete', '输入 flag 后点击添加')}
+        </div>
+        <div class="row">
+          ${area('解锁条件 (unlockConditions JSON)', 'q.unlockConditions', q.unlockConditions ? JSON.stringify(q.unlockConditions, null, 2) : '')}
+          ${area('相关标记 (relatedMarks JSON)', 'q.relatedMarks', q.relatedMarks ? JSON.stringify(q.relatedMarks, null, 2) : '')}
         </div>
       </div>
 
