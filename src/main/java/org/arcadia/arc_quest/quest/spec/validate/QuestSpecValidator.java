@@ -264,7 +264,7 @@ public final class QuestSpecValidator {
             return;
         }
         switch (condition.type) {
-            case "always" -> { }
+            case "always", "all_entries_complete", "completed_entry_count", "category_completed_count", "completed_entry_ratio", "category_completed_ratio" -> { }
             case "flag_set", "flag_not_set" -> {
                 if (condition.flag == null || condition.flag.isBlank()) report.add(ValidationIssue.Severity.ERROR, path + ".flag", "Flag condition requires flag");
             }
@@ -276,10 +276,15 @@ public final class QuestSpecValidator {
                 if (condition.compareOp == null) report.add(ValidationIssue.Severity.ERROR, path + ".compareOp", "Variable condition requires compareOp");
             }
             case "and", "or" -> {
+                if (condition.left == null) report.add(ValidationIssue.Severity.ERROR, path + ".left", condition.type + " requires left condition");
+                if (condition.right == null) report.add(ValidationIssue.Severity.ERROR, path + ".right", condition.type + " requires right condition");
                 validateCondition(report, condition.left, path + ".left");
                 validateCondition(report, condition.right, path + ".right");
             }
-            case "not" -> validateCondition(report, condition.left, path + ".left");
+            case "not" -> {
+                if (condition.left == null) report.add(ValidationIssue.Severity.ERROR, path + ".left", "not requires left condition");
+                validateCondition(report, condition.left, path + ".left");
+            }
             default -> report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported condition type: " + condition.type);
         }
     }

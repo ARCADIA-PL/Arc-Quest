@@ -16,8 +16,13 @@ import org.arcadia.arc_quest.quest.reward.FlagReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.quest.reward.VariableReward;
 import org.arcadia.arc_quest.quest.api.rule.collection.AllEntriesCompleteRule;
+import org.arcadia.arc_quest.quest.api.rule.collection.AndCollectionRule;
 import org.arcadia.arc_quest.quest.api.rule.collection.CategoryCompletedCountRule;
+import org.arcadia.arc_quest.quest.api.rule.collection.CategoryCompletedRatioRule;
 import org.arcadia.arc_quest.quest.api.rule.collection.CompletedEntryCountRule;
+import org.arcadia.arc_quest.quest.api.rule.collection.CompletedEntryRatioRule;
+import org.arcadia.arc_quest.quest.api.rule.collection.NotCollectionRule;
+import org.arcadia.arc_quest.quest.api.rule.collection.OrCollectionRule;
 import org.arcadia.arc_quest.quest.spec.*;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
 import org.arcadia.arc_quest.questmarker.api.*;
@@ -188,6 +193,11 @@ public final class QuestSpecCompiler {
         return switch (spec.type) {
             case "completed_entry_count" -> new CompletedEntryCountRule(spec.value);
             case "category_completed_count" -> new CategoryCompletedCountRule(spec.value);
+            case "completed_entry_ratio" -> new CompletedEntryRatioRule(Math.max(0f, Math.min(1f, spec.value / 100f)));
+            case "category_completed_ratio" -> new CategoryCompletedRatioRule(Math.max(0f, Math.min(1f, spec.value / 100f)));
+            case "and" -> new AndCollectionRule(List.of(compileCollectionRule(spec.left), compileCollectionRule(spec.right)));
+            case "or" -> new OrCollectionRule(List.of(compileCollectionRule(spec.left), compileCollectionRule(spec.right)));
+            case "not" -> new NotCollectionRule(compileCollectionRule(spec.left));
             default -> throw new QuestCompileException("Unsupported collection rule type: " + spec.type);
         };
     }
