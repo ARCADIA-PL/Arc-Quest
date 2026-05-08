@@ -39,7 +39,7 @@ public final class QuestOfferService {
 
         if (objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return OfferSubmitResult.REJECTED;
         ObjectiveEntry obj = phase.getObjectives().get(objectiveIndex);
-        if (obj.getType() != ObjectiveType.OFFER) return OfferSubmitResult.REJECTED;
+        if (!isOfferLikeObjective(obj.getType())) return OfferSubmitResult.REJECTED;
 
         int required = Math.max(1, obj.getRequiredCount());
         int current = data.getObjectiveProgress(phaseId, objectiveIndex);
@@ -67,6 +67,10 @@ public final class QuestOfferService {
         boolean phaseChanged = (after == null) || !after.isPhaseActive(phaseId);
 
         return new OfferSubmitResult(true, reached, phaseChanged);
+    }
+
+    public static boolean isOfferLikeObjective(ObjectiveType type) {
+        return type == ObjectiveType.OFFER || type == ObjectiveType.DELIVER;
     }
 
     public static int countOfferable(ServerPlayer player, ObjectiveEntry obj) {

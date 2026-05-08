@@ -707,26 +707,51 @@ public final class QuestProgressHandler {
     public static int resolveRequiredCount(ServerPlayer player, ObjectiveEntry obj, IQuestCapability cap) {
         int fromModifier = obj.resolveRequiredCount(player);
 
-        String mode = obj.getExtra("count_mode");
-        if (mode == null || mode.isEmpty()) return Math.max(1, fromModifier);
+        String modeRaw = obj.getExtra("count_mode");
+        String mode = modeRaw == null ? "" : modeRaw.trim().toLowerCase(Locale.ROOT);
+        if (mode.isEmpty()) return Math.max(1, fromModifier);
 
         int base = obj.getExtraInt("count_base", fromModifier);
         int min = obj.getExtraInt("count_min", 1);
         int max = obj.getExtraInt("count_max", -1);
 
-        int computed = base;
-        if ("player_level".equals(mode)) {
-            int perLevel = obj.getExtraInt("count_per_level", 0);
-            computed = base + Math.max(0, player.experienceLevel) * perLevel;
-        } else if ("variable".equals(mode)) {
+        int variableValue = 0;
+        if ("variable".equals(mode)) {
             String var = obj.getExtra("count_var");
-            int perVar = obj.getExtraInt("count_per_var", 0);
-            int varVal = (var == null || var.isEmpty()) ? 0 : cap.getVariable(var);
-            computed = base + varVal * perVar;
+            variableValue = (var == null || var.isEmpty()) ? 0 : cap.getVariable(var);
         }
 
-        computed = Math.max(min, computed);
-        if (max > 0) computed = Math.min(max, computed);
+        return computeRequiredCount(modeRaw, mode, fromModifier, base, min, max, player.experienceLevel, obj.getExtraInt("count_per_level", 0), variableValue, obj.getExtraInt("count_per_var", 0), obj.getTargetId().toString());
+    }
+
+    static int computeRequiredCount(String modeRaw,
+                                    String normalizedMode,
+                                    int fallbackRequired,
+                                    int base,
+                                    int min,
+                                    int max,
+                                    int playerLevel,
+                                    int countPerLevel,
+                                    int variableValue,
+                                    int countPerVar,
+                                    String objectiveDebugId) {
+        int safeMin = Math.max(1, min);
+        int safeMax = max;
+        if (safeMax > 0 && safeMax < safeMin) safeMax = safeMin;
+
+        int computed;
+        switch (normalizedMode) {
+            case "player_level", "level_scale" -> computed = base + Math.max(0, playerLevel) * countPerLevel;
+            case "variable" -> computed = base + variableValue * countPerVar;
+            case "fixed" -> computed = base;
+            default -> {
+                LOGGER.warn("[ArcQuest] Unknown count_mode '{}' for objective {}, fallback to requiredCount", modeRaw, objectiveDebugId);
+                computed = fallbackRequired;
+            }
+        }
+
+        computed = Math.max(safeMin, computed);
+        if (safeMax > 0) computed = Math.min(safeMax, computed);
         return Math.max(1, computed);
     }
 
