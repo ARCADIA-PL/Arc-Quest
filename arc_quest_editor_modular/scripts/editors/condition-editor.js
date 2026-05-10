@@ -11,11 +11,41 @@ function conditionTypeSelect(bind, value) {
   return enumSelect('条件类型', bind, value || 'always', ['always', 'flag_set', 'flag_not_set', 'quest_completed', 'variable', 'and', 'or', 'not']);
 }
 
+function appendButtons(bindBase, type) {
+  if (type !== 'and' && type !== 'or') return '';
+  return `
+    <div class="actions" style="margin-top:8px;">
+      <button type="button" data-cond-append="${bindBase}:left">+ 在左侧继续追加 ${type.toUpperCase()}</button>
+      <button type="button" data-cond-append="${bindBase}:right">+ 在右侧继续追加 ${type.toUpperCase()}</button>
+    </div>
+  `;
+}
+
+function deleteButton(bindBase, deletable) {
+  if (!deletable) return '';
+  return `<div class="actions" style="margin-top:8px;"><button type="button" data-cond-delete="${bindBase}" class="danger">删除当前子条件</button></div>`;
+}
+
+function summarizeCondition(node) {
+  const c = node || { type: 'always' };
+  const type = c.type || 'always';
+  if (type === 'always') return 'always';
+  if (type === 'flag_set') return `flag_set(${c.flag || '?'})`;
+  if (type === 'flag_not_set') return `flag_not_set(${c.flag || '?'})`;
+  if (type === 'quest_completed') return `quest_completed(${c.questId || '?'})`;
+  if (type === 'variable') return `variable(${c.variable || '?'}, ${c.compareOp || 'EQUAL'}, ${c.value ?? 0})`;
+  if (type === 'not') return `NOT(${summarizeCondition(c.left)})`;
+  if (type === 'and') return `(${summarizeCondition(c.left)} AND ${summarizeCondition(c.right)})`;
+  if (type === 'or') return `(${summarizeCondition(c.left)} OR ${summarizeCondition(c.right)})`;
+  return type;
+}
+
 export function renderConditionTree(bindBase, condition, options = {}) {
   const c = condition || { type: 'always' };
   const type = c.type || 'always';
   const flagSuggestions = options.flagSuggestions || [];
   const questSuggestions = options.questSuggestions || [];
+  const deletable = !!options.deletable;
   let body = '';
 
   if (type === 'flag_set' || type === 'flag_not_set') {
@@ -34,16 +64,17 @@ export function renderConditionTree(bindBase, condition, options = {}) {
     body = `
       <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
         <div class="small"><b>Inner</b></div>
-        ${renderConditionTree(`${bindBase}.left`, c.left || { type: 'always' }, options)}
+        ${renderConditionTree(`${bindBase}.left`, c.left || { type: 'always' }, { ...options, deletable: true })}
       </div>
     `;
   } else if (type === 'and' || type === 'or') {
     body = `
       <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
         <div class="small"><b>Left</b></div>
-        ${renderConditionTree(`${bindBase}.left`, c.left || { type: 'always' }, options)}
+        ${renderConditionTree(`${bindBase}.left`, c.left || { type: 'always' }, { ...options, deletable: true })}
         <div class="small" style="margin-top:8px"><b>Right</b></div>
-        ${renderConditionTree(`${bindBase}.right`, c.right || { type: 'always' }, options)}
+        ${renderConditionTree(`${bindBase}.right`, c.right || { type: 'always' }, { ...options, deletable: true })}
+        ${appendButtons(bindBase, type)}
       </div>
     `;
   }
@@ -51,7 +82,9 @@ export function renderConditionTree(bindBase, condition, options = {}) {
   return `
     <div class="condition-node">
       <div class="row">${conditionTypeSelect(`${bindBase}.type`, type)}</div>
+      <div class="tiny" style="margin-top:4px; font-family:monospace">摘要：${summarizeCondition(c)}</div>
       ${body}
+      ${deleteButton(bindBase, deletable)}
     </div>
   `;
 }
