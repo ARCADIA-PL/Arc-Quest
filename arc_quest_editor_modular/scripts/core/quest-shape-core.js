@@ -202,6 +202,13 @@ export function setQuestRootField(target, bind, value, inputType) {
     setConditionNodeField(target.unlockConditions[index], parts.slice(3), value);
     return;
   }
+  if (bind.startsWith('ph.') && bind.endsWith('.hasEnterCondition')) {
+    const parts = bind.split('.');
+    const phase = target.phases[Number(parts[1])];
+    if (value === 'true') phase.rawEnterCondition ||= { type: 'always' };
+    else phase.rawEnterCondition = null;
+    return;
+  }
   if (bind === 'q.relatedMarks') return setLooseJson(target, 'relatedMarks', value);
   if (bind === 'q.collectionConfig') return setLooseJson(target, 'collectionConfig', value);
   return undefined;

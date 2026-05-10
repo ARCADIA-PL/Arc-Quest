@@ -12,7 +12,6 @@ export function renderPhaseEditor(state, field, area) {
   const s = state.ui.sel;
   const p = state.q.phases[s.pi];
   const phaseIds = (state.q.phases || []).map(x => x.id).filter(Boolean);
-  const questIds = [state.q.id, ...(state.q.tags || [])].filter(Boolean);
   const flagSuggestions = Array.from(new Set([
     ...(state.q.flagsToSetOnAccept || []),
     ...(state.q.flagsToSetOnComplete || []),
@@ -24,7 +23,8 @@ export function renderPhaseEditor(state, field, area) {
       ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
     ])
   ].filter(Boolean)));
-  const conditionOptions = { flagSuggestions, questSuggestions: questIds };
+  const questSuggestions = Array.from(new Set([state.q.id].filter(Boolean)));
+  const conditionOptions = { flagSuggestions, questSuggestions };
   const isCollectionQuest = state.q.mode === 'COLLECTION';
 
   return `
@@ -35,7 +35,7 @@ export function renderPhaseEditor(state, field, area) {
       </div>
 
       ${renderPhaseHeaderSection(s, p, field, area)}
-      ${renderPhaseFlowSection(s, p, phaseIds, field, area)}
+      ${renderPhaseFlowSection(s, p, phaseIds, field, area, conditionOptions)}
       ${renderPhaseTransitionsSection(s, p, phaseIds, conditionOptions)}
       ${renderPhaseChoicesSection(s, p, phaseIds, field, conditionOptions)}
 
