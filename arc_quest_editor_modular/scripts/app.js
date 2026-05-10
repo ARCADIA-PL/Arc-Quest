@@ -1,4 +1,5 @@
-﻿import { state, createBlankQuest } from './core/state.js';
+﻿import '../styles/editor.css';
+import { state, createBlankQuest } from './core/state.js';
 import { getDomRefs } from './core/dom.js';
 import { setByPath, ensureQuestShape } from './core/quest-shape.js';
 import { validateQuest } from './core/validators.js';
