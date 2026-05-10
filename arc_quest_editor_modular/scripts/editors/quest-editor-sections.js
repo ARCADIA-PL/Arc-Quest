@@ -153,4 +153,4 @@ export function renderQuestTopLevelSection(q, phaseIds, field, area) {
   `;
 }
 
-export { boolSelect, enumSelect, field, modeSelect, phaseSingleSelect, refSelect, renderCollectionTreeView, ruleEditor, scopeRefOptions, suggestInput, chipEditor };
+export { boolSelect, enumSelect, modeSelect, phaseSingleSelect, refSelect, renderCollectionTreeView, ruleEditor, scopeRefOptions, suggestInput, chipEditor };
