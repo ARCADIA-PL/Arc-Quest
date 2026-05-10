@@ -40,12 +40,21 @@ function summarizeCondition(node) {
   return type;
 }
 
+function summaryBadge(type) {
+  if (type === 'and' || type === 'or' || type === 'not') return { className: 'logic', label: type.toUpperCase(), nodeClass: 'logic' };
+  if (type === 'flag_set' || type === 'flag_not_set') return { className: 'flag', label: 'FLAG', nodeClass: 'flag' };
+  if (type === 'quest_completed') return { className: 'quest', label: 'QUEST', nodeClass: 'quest' };
+  if (type === 'variable') return { className: 'variable', label: 'VAR', nodeClass: 'variable' };
+  return { className: 'neutral', label: 'BASE', nodeClass: 'neutral' };
+}
+
 export function renderConditionTree(bindBase, condition, options = {}) {
   const c = condition || { type: 'always' };
   const type = c.type || 'always';
   const flagSuggestions = options.flagSuggestions || [];
   const questSuggestions = options.questSuggestions || [];
   const deletable = !!options.deletable;
+  const badge = summaryBadge(type);
   let body = '';
 
   if (type === 'flag_set' || type === 'flag_not_set') {
@@ -80,9 +89,12 @@ export function renderConditionTree(bindBase, condition, options = {}) {
   }
 
   return `
-    <div class="condition-node">
+    <div class="condition-node condition-node-${badge.nodeClass}">
       <div class="row">${conditionTypeSelect(`${bindBase}.type`, type)}</div>
-      <div class="tiny" style="margin-top:4px; font-family:monospace">摘要：${summarizeCondition(c)}</div>
+      <div class="condition-summary">
+        <span class="condition-badge ${badge.className}">${badge.label}</span>
+        <span class="condition-summary-text">${summarizeCondition(c)}</span>
+      </div>
       ${body}
       ${deleteButton(bindBase, deletable)}
     </div>
