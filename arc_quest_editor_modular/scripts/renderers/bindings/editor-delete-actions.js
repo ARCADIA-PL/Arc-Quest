@@ -82,6 +82,9 @@ export function handleDeleteButtonAction(btn, state) {
   if (d.dch !== undefined) {
     return { handled: true, mutate: true, apply: () => q.phases[s.pi].choices.splice(+d.dch, 1) };
   }
+  if (d.duc !== undefined) {
+    return { handled: true, mutate: true, apply: () => q.unlockConditions?.splice(+d.duc, 1) };
+  }
 
   return { handled: false, mutate: false };
 }

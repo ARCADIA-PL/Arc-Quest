@@ -12,6 +12,82 @@ export function setLooseJson(target, key, value) {
   }
 }
 
+export function setConditionNodeField(rootNode, pathParts, value) {
+  let cursor = rootNode;
+  for (let i = 0; i < pathParts.length - 1; i++) {
+    const key = pathParts[i];
+    cursor[key] ||= { type: 'always' };
+    cursor = cursor[key];
+  }
+  const fieldName = pathParts[pathParts.length - 1];
+  if (fieldName === 'type') {
+    cursor.type = value;
+    if (value === 'always') {
+      delete cursor.flag;
+      delete cursor.questId;
+      delete cursor.variable;
+      delete cursor.compareOp;
+      delete cursor.value;
+      delete cursor.left;
+      delete cursor.right;
+      return;
+    }
+    if (value === 'flag_set' || value === 'flag_not_set') {
+      cursor.flag ||= '';
+      delete cursor.questId;
+      delete cursor.variable;
+      delete cursor.compareOp;
+      delete cursor.value;
+      delete cursor.left;
+      delete cursor.right;
+      return;
+    }
+    if (value === 'quest_completed') {
+      cursor.questId ||= '';
+      delete cursor.flag;
+      delete cursor.variable;
+      delete cursor.compareOp;
+      delete cursor.value;
+      delete cursor.left;
+      delete cursor.right;
+      return;
+    }
+    if (value === 'variable') {
+      cursor.variable ||= '';
+      cursor.compareOp ||= 'EQUAL';
+      if (cursor.value === undefined) cursor.value = 0;
+      delete cursor.flag;
+      delete cursor.questId;
+      delete cursor.left;
+      delete cursor.right;
+      return;
+    }
+    if (value === 'not') {
+      cursor.left ||= { type: 'always' };
+      delete cursor.flag;
+      delete cursor.questId;
+      delete cursor.variable;
+      delete cursor.compareOp;
+      delete cursor.value;
+      delete cursor.right;
+      return;
+    }
+    cursor.left ||= { type: 'always' };
+    cursor.right ||= { type: 'always' };
+    delete cursor.flag;
+    delete cursor.questId;
+    delete cursor.variable;
+    delete cursor.compareOp;
+    delete cursor.value;
+    return;
+  }
+  if (fieldName === 'value') {
+    cursor[fieldName] = Number(value || 0);
+    return;
+  }
+  cursor[fieldName] = value;
+}
+
 export function syncPhaseTransitions(phase) {
   if (phase.mode === 'parallel') {
     phase.transitions = (phase.parallelPhaseIds || []).filter(Boolean).map(targetPhaseId => ({ targetPhaseId, condition: { type: 'always' } }));
@@ -44,6 +120,8 @@ export function ensureQuestShape(q) {
   q.chapterStartSound ||= '';
   q.chapterFailSound ||= '';
   q.chapterCompleteSound ||= '';
+  q.chapterShopType ||= 'TRADE';
+  q.mode ||= 'PROGRESSION';
   q.titleMode ||= 'translatable';
   q.descriptionMode ||= 'translatable';
   if (q.collectionConfig) {
@@ -102,10 +180,28 @@ export function setQuestRootField(target, bind, value, inputType) {
   if (bind === 'q.completionPolicy') return target.completionPolicy = value;
   if (bind === 'q.completionRequiredCount') return target.completionRequiredCount = Number(value || 0);
   if (bind === 'q.completionTargetPhaseId') return target.completionTargetPhaseId = value;
+  if (bind === 'q.hasTimeLimit') {
+    if (value === 'true') {
+      target.timeLimitType ||= 'REAL_SECONDS';
+      if (!Number(target.timeLimitValue || 0)) target.timeLimitValue = 60;
+    } else {
+      target.timeLimitType = '';
+      target.timeLimitValue = 0;
+    }
+    return;
+  }
   if (bind === 'q.timeLimitType') return target.timeLimitType = value;
   if (bind === 'q.timeLimitValue') return target.timeLimitValue = Number(value || 0);
   if (bind === 'q.flagsToSetOnAccept') return target.flagsToSetOnAccept = splitList(value);
   if (bind === 'q.unlockConditions') return setLooseJson(target, 'unlockConditions', value);
+  if (bind.startsWith('q.uc.')) {
+    const parts = bind.split('.');
+    const index = Number(parts[2]);
+    target.unlockConditions ||= [];
+    target.unlockConditions[index] ||= { type: 'always' };
+    setConditionNodeField(target.unlockConditions[index], parts.slice(3), value);
+    return;
+  }
   if (bind === 'q.relatedMarks') return setLooseJson(target, 'relatedMarks', value);
   if (bind === 'q.collectionConfig') return setLooseJson(target, 'collectionConfig', value);
   return undefined;

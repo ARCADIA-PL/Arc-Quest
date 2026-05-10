@@ -131,6 +131,11 @@ export function handleNonDeleteButtonAction(btn, state) {
     q.rewards.push(createReward());
     return true;
   }
+  if (id === 'addUnlockConditionBtn') {
+    q.unlockConditions ||= [];
+    q.unlockConditions.push({ type: 'always' });
+    return true;
+  }
   if (id === 'addObjectiveBtn') {
     q.phases[s.pi].objectives.push(createObjective(q.phases[s.pi].objectives.length));
     const newObjectiveIndex = q.phases[s.pi].objectives.length - 1;

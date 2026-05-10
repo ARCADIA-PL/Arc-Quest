@@ -60,6 +60,13 @@ export function addChipValue(q, key, value) {
     q.flagsToSetOnComplete ||= [];
     if (!q.flagsToSetOnComplete.includes(v)) q.flagsToSetOnComplete.push(v);
   }
+  if (key.startsWith('ph.') && (key.endsWith('.flagsToSetOnEnter') || key.endsWith('.flagsToSetOnComplete'))) {
+    const [, phaseIndex, fieldName] = key.split('.');
+    q.phases ||= [];
+    q.phases[+phaseIndex] ||= {};
+    q.phases[+phaseIndex][fieldName] ||= [];
+    if (!q.phases[+phaseIndex][fieldName].includes(v)) q.phases[+phaseIndex][fieldName].push(v);
+  }
 }
 
 export function removeChipValue(q, key, index) {
@@ -68,6 +75,10 @@ export function removeChipValue(q, key, index) {
   if (key === 'q.tags') q.tags?.splice(i, 1);
   if (key === 'q.flagsToSetOnAccept') q.flagsToSetOnAccept?.splice(i, 1);
   if (key === 'q.flagsToSetOnComplete') q.flagsToSetOnComplete?.splice(i, 1);
+  if (key.startsWith('ph.') && (key.endsWith('.flagsToSetOnEnter') || key.endsWith('.flagsToSetOnComplete'))) {
+    const [, phaseIndex, fieldName] = key.split('.');
+    q.phases?.[+phaseIndex]?.[fieldName]?.splice(i, 1);
+  }
 }
 
 export function markInputValidity(el, bind) {
