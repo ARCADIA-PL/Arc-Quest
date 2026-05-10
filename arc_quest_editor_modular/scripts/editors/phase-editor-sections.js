@@ -1,14 +1,8 @@
+import { renderConditionTree } from './condition-editor.js';
+import { chipEditor } from './quest-editor-sections.js';
+
 function modeSelect(label, bind, value) {
   return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="translatable" ${value === 'translatable' ? 'selected' : ''}>Translatable</option><option value="literal" ${value === 'literal' ? 'selected' : ''}>Literal</option></select></div>`;
-}
-
-function multiPhaseSelect(label, bind, selectedIds, phaseIds, selfId) {
-  const selected = new Set(selectedIds || []);
-  const options = phaseIds
-    .filter(id => id && id !== selfId)
-    .map(id => `<option value="${id}" ${selected.has(id) ? 'selected' : ''}>${id}</option>`)
-    .join('');
-  return `<div class="f"><label>${label}</label><select data-b="${bind}" multiple size="5">${options}</select></div>`;
 }
 
 function transitionTargetSelect(label, bind, value, phaseIds, selfId) {
@@ -18,63 +12,14 @@ function transitionTargetSelect(label, bind, value, phaseIds, selfId) {
   return `<div class="f"><label>${label}</label><select data-b="${bind}">${options.join('')}</select></div>`;
 }
 
-function transitionConditionTypeSelect(bind, value) {
-  const options = ['always', 'flag_set', 'flag_not_set', 'quest_completed', 'variable', 'and', 'or', 'not'];
-  return `<div class="f"><label>条件类型</label><select data-b="${bind}">${options.map(op => `<option value="${op}" ${value === op ? 'selected' : ''}>${op}</option>`).join('')}</select></div>`;
-}
-
-function conditionField(label, bind, value, type = 'text') {
-  return `<div class="f"><label>${label}</label><input data-b="${bind}" type="${type}" value="${value ?? ''}"></div>`;
-}
-
-export function renderConditionEditor(bindBase, condition) {
-  const c = condition || { type: 'always' };
-  const type = c.type || 'always';
-  if (type === 'flag_set' || type === 'flag_not_set') {
-    return `<div class="row">${conditionField('Flag', `${bindBase}.flag`, c.flag || '')}</div>`;
-  }
-  if (type === 'quest_completed') {
-    return `<div class="row">${conditionField('Quest ID', `${bindBase}.questId`, c.questId || '')}</div>`;
-  }
-  if (type === 'variable') {
-    return `
-      <div class="row">
-        ${conditionField('Variable', `${bindBase}.variable`, c.variable || '')}
-        <div class="f"><label>CompareOp</label><select data-b="${bindBase}.compareOp">${['EQUAL', 'NOT_EQUAL', 'GREATER', 'GREATER_OR_EQUAL', 'LESS', 'LESS_OR_EQUAL'].map(op => `<option value="${op}" ${c.compareOp === op ? 'selected' : ''}>${op}</option>`).join('')}</select></div>
-        ${conditionField('Value', `${bindBase}.value`, c.value ?? 0, 'number')}
-      </div>
-    `;
-  }
-  if (type === 'and' || type === 'or') {
-    return `
-      <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
-        <div class="small"><b>Left</b></div>
-        <div class="row">${transitionConditionTypeSelect(`${bindBase}.left.type`, c.left?.type || 'always')}</div>
-        ${renderConditionEditor(`${bindBase}.left`, c.left)}
-        <div class="small" style="margin-top:8px"><b>Right</b></div>
-        <div class="row">${transitionConditionTypeSelect(`${bindBase}.right.type`, c.right?.type || 'always')}</div>
-        ${renderConditionEditor(`${bindBase}.right`, c.right)}
-      </div>
-    `;
-  }
-  if (type === 'not') {
-    return `
-      <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
-        <div class="small"><b>Inner</b></div>
-        <div class="row">${transitionConditionTypeSelect(`${bindBase}.left.type`, c.left?.type || 'always')}</div>
-        ${renderConditionEditor(`${bindBase}.left`, c.left)}
-      </div>
-    `;
-  }
-  return '';
-}
-
 export function renderPhaseFlowSection(s, p, phaseIds, field, area) {
+  const isParallel = p.mode === 'parallel';
+  const isChoice = p.mode === 'choice';
   return `
     <h4>流程与执行策略 (Phase Flow)</h4>
     <div class="card">
       <div class="row">
-        <div class="f"><label>运行模式 (Mode)</label><select data-b="ph.${s.pi}.mode"><option value="normal" ${p.mode === 'normal' ? 'selected' : ''}>Normal (常规)</option><option value="parallel" ${p.mode === 'parallel' ? 'selected' : ''}>Parallel (平行)</option><option value="choice" ${p.mode === 'choice' ? 'selected' : ''}>Choice (选择)</option></select></div>
+        <div class="f"><label>运行模式 (Mode)</label><select data-b="ph.${s.pi}.mode"><option value="normal" ${p.mode === 'normal' ? 'selected' : ''}>Normal (常规)</option><option value="parallel" ${isParallel ? 'selected' : ''}>Parallel (平行)</option><option value="choice" ${isChoice ? 'selected' : ''}>Choice (选择)</option></select></div>
         <div class="f"><label>自动启动 (Auto Start)</label><select data-b="ph.${s.pi}.autoStart"><option value="false" ${!p.autoStart ? 'selected' : ''}>False</option><option value="true" ${p.autoStart ? 'selected' : ''}>True</option></select></div>
       </div>
       <div class="row">
@@ -86,10 +31,10 @@ export function renderPhaseFlowSection(s, p, phaseIds, field, area) {
         ${field('phaseCompleteSound', `ph.${s.pi}.phaseCompleteSound`, p.phaseCompleteSound || '')}
       </div>
       <div class="row">
-        ${multiPhaseSelect('平行阶段关联 (parallelPhaseIds)', `ph.${s.pi}.parallelPhaseIds`, p.parallelPhaseIds || [], phaseIds, p.id)}
-        ${multiPhaseSelect('选择阶段关联 (choicePhaseIds)', `ph.${s.pi}.choicePhaseIds`, p.choicePhaseIds || [], phaseIds, p.id)}
+        ${chipEditor('接取时触发标记 (setFlagOnEnter)', p.flagsToSetOnEnter || [], `ph.${s.pi}.flagsToSetOnEnter`, `ph.${s.pi}.flagsToSetOnEnter`, '输入 flag 后点击添加')}
+        ${chipEditor('完成时触发标记 (setFlagOnComplete)', p.flagsToSetOnComplete || [], `ph.${s.pi}.flagsToSetOnComplete`, `ph.${s.pi}.flagsToSetOnComplete`, '输入 flag 后点击添加')}
       </div>
-      <div class="small">提示：按住 Ctrl / Cmd 可多选，当前 phase 不会出现在候选列表中。</div>
+      <div class="small">${isParallel ? '并行阶段请直接在下方“过渡连接”中维护多个目标阶段。' : isChoice ? 'Choice 阶段请直接在下方“阶段分支选项”中维护分支文本与目标。' : '当前为普通阶段，不显示并行/分支子配置。'}</div>
     </div>
 
     <h4>Phase 附加结构</h4>
@@ -100,17 +45,17 @@ export function renderPhaseFlowSection(s, p, phaseIds, field, area) {
   `;
 }
 
-export function renderPhaseTransitionsSection(s, p, phaseIds) {
+export function renderPhaseTransitionsSection(s, p, phaseIds, conditionOptions) {
+  const title = p.mode === 'choice' ? '阶段去向 (Choice Targets / Transitions)' : '过渡连接 (Transitions)';
   return `
-    <h4>过渡连接 (Transitions)</h4>
+    <h4>${title}</h4>
     <div class="card">
       ${(p.transitions || []).map((t, ti) => `
         <div class="card" style="margin:8px 0; border-color: rgba(255,255,255,0.1);">
           <div class="row">
             ${transitionTargetSelect('目标阶段 (targetPhaseId)', `ph.${s.pi}.tr.${ti}.targetPhaseId`, t.targetPhaseId || '', phaseIds, p.id)}
-            ${transitionConditionTypeSelect(`ph.${s.pi}.tr.${ti}.conditionType`, t.condition?.type || 'always')}
           </div>
-          ${renderConditionEditor(`ph.${s.pi}.tr.${ti}.c`, t.condition)}
+          ${renderConditionTree(`ph.${s.pi}.tr.${ti}.c`, t.condition, conditionOptions)}
           <div class="actions"><button data-dt="${ti}" class="danger">删除过渡</button></div>
         </div>
       `).join('')}
@@ -119,7 +64,8 @@ export function renderPhaseTransitionsSection(s, p, phaseIds) {
   `;
 }
 
-export function renderPhaseChoicesSection(s, p, phaseIds, field) {
+export function renderPhaseChoicesSection(s, p, phaseIds, field, conditionOptions) {
+  if (p.mode !== 'choice') return '';
   return `
     <h4>阶段分支选项 (Choices)</h4>
     <div class="card">
@@ -131,9 +77,8 @@ export function renderPhaseChoicesSection(s, p, phaseIds, field) {
           </div>
           <div class="row">
             ${field('flagToSet', `ph.${s.pi}.ch.${ci}.flagToSet`, c.flagToSet || '')}
-            ${transitionConditionTypeSelect(`ph.${s.pi}.ch.${ci}.vc.type`, c.visibleCondition?.type || 'always')}
           </div>
-          ${renderConditionEditor(`ph.${s.pi}.ch.${ci}.vc`, c.visibleCondition)}
+          ${renderConditionTree(`ph.${s.pi}.ch.${ci}.vc`, c.visibleCondition, conditionOptions)}
           <div class="actions"><button data-dch="${ci}" class="danger">删除 Choice</button></div>
         </div>
       `).join('')}

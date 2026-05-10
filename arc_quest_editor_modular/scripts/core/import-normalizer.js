@@ -73,10 +73,18 @@ function normalizeObjective(obj, idx) {
   return base;
 }
 
+function inferPhaseMode(phase) {
+  const transitions = phase?.transitions || [];
+  const choices = phase?.choices || [];
+  if (choices.length > 0) return 'choice';
+  if (transitions.length > 1) return 'parallel';
+  return 'normal';
+}
+
 function normalizePhase(phase, idx) {
   const transitions = phase?.transitions || [];
   const targetIds = transitions.map(t => t?.targetPhaseId).filter(Boolean);
-  const mode = targetIds.length > 1 ? 'parallel' : 'normal';
+  const mode = inferPhaseMode(phase);
   const titleNode = asTextNode(phase?.displayName, '');
   const descNode = asTextNode(phase?.description, '');
   const storyNode = asTextNode(phase?.story, '');
@@ -99,7 +107,7 @@ function normalizePhase(phase, idx) {
     parallelPhaseIds: mode === 'parallel' ? targetIds : [],
     choicePhaseIds: mode === 'choice' ? targetIds : [],
     transitions,
-    choices: phase?.choices || [],
+    choices: mode === 'choice' ? (phase?.choices || []) : [],
     rawEnterCondition: phase?.enterCondition || null,
     flagsToSetOnEnter: phase?.flagsToSetOnEnter || [],
     flagsToSetOnComplete: phase?.flagsToSetOnComplete || [],

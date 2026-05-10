@@ -12,6 +12,20 @@ export function renderPhaseEditor(state, field, area) {
   const s = state.ui.sel;
   const p = state.q.phases[s.pi];
   const phaseIds = (state.q.phases || []).map(x => x.id).filter(Boolean);
+  const questIds = [state.q.id, ...(state.q.tags || [])].filter(Boolean);
+  const flagSuggestions = Array.from(new Set([
+    ...(state.q.flagsToSetOnAccept || []),
+    ...(state.q.flagsToSetOnComplete || []),
+    ...(p.flagsToSetOnEnter || []),
+    ...(p.flagsToSetOnComplete || []),
+    ...(state.q.phases || []).flatMap(phase => [
+      ...(phase.flagsToSetOnEnter || []),
+      ...(phase.flagsToSetOnComplete || []),
+      ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
+    ])
+  ].filter(Boolean)));
+  const conditionOptions = { flagSuggestions, questSuggestions: questIds };
+  const isCollectionQuest = state.q.mode === 'COLLECTION';
 
   return `
     <div class="sec">
@@ -22,8 +36,8 @@ export function renderPhaseEditor(state, field, area) {
 
       ${renderPhaseHeaderSection(s, p, field, area)}
       ${renderPhaseFlowSection(s, p, phaseIds, field, area)}
-      ${renderPhaseTransitionsSection(s, p, phaseIds)}
-      ${renderPhaseChoicesSection(s, p, phaseIds, field)}
+      ${renderPhaseTransitionsSection(s, p, phaseIds, conditionOptions)}
+      ${renderPhaseChoicesSection(s, p, phaseIds, field, conditionOptions)}
 
       <h4>阶段目标 (Objectives)</h4>
       <div class="card" style="background: rgba(0,0,0,0.2)">
@@ -44,7 +58,10 @@ export function renderPhaseEditor(state, field, area) {
         <div class="actions"><button id="addObjectiveBtn" class="primary">+ 添加新目标 (Objective)</button></div>
       </div>
 
-      ${renderPhaseCollectionSection(s, p, field, area)}
+      ${isCollectionQuest ? renderPhaseCollectionSection(s, p, field, area) : `
+        <h4>Collection Entry Config</h4>
+        <div class="card"><div class="small">当前 Quest Mode 为 PROGRESSION，Collection 子配置仅在 COLLECTION 模式下显示。</div></div>
+      `}
 
       <h4>阶段奖励 (Phase Rewards)</h4>
       <div class="card">

@@ -13,17 +13,14 @@ import {
 export function renderQuestEditor(state, field, area) {
   const q = state.q;
   const phaseIds = (q.phases || []).map(p => p.id).filter(Boolean);
+  const isCollectionQuest = q.mode === 'COLLECTION';
 
   q.collectionConfig ||= { categories: [], rewardNodes: [], completionRules: [] };
   const categories = q.collectionConfig.categories || [];
   const topNodes = q.collectionConfig.rewardNodes || [];
   const categoryIds = categories.map(c => c.categoryId).filter(Boolean);
-  const allNodeIds = [
-    ...topNodes.map(n => n.nodeId),
-    ...categories.flatMap(c => (c.rewardNodes || []).map(n => n.nodeId))
-  ].filter(Boolean);
 
-  const collectionWorkspace = `
+  const collectionWorkspace = isCollectionQuest ? `
     <h4>Collection Workspace</h4>
     <div class="actions" style="margin:8px 0 12px;">
       <button type="button" data-collection-view="card" class="${state.ui.collectionView !== 'tree' ? 'primary' : ''}">Card View</button>
@@ -136,6 +133,9 @@ export function renderQuestEditor(state, field, area) {
       <div class="actions"><button id="addCategoryBtn">+ 添加 Category</button></div>
     </div>
     `}
+  ` : `
+    <h4>Collection Workspace</h4>
+    <div class="card"><div class="small">当前 Quest Mode 为 PROGRESSION，Collection 专属配置已隐藏。切换到 COLLECTION 后才显示。</div></div>
   `;
 
   return `

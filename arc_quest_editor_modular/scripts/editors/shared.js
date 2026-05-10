@@ -11,6 +11,10 @@ function suggestInput(label, bind, value, suggestions, listId) {
   return `<div class="f"><label>${label}</label><input data-b="${bind}" list="${listId}" value="${value || ''}" placeholder="${label}"><datalist id="${listId}">${opts}</datalist></div>`;
 }
 
+function isObjectiveCountingType(type) {
+  return type === 'KILL' || type === 'COLLECT' || type === 'DELIVER' || type === 'CRAFT' || type === 'OFFER' || type === 'CUSTOM';
+}
+
 export function renderObjectiveExtra(o, base, field) {
   if (o.type === 'KILL') {
     return suggestInput('entityType', `${base}.targetId`, o.targetId || o.entityType || '', ['minecraft:zombie', 'minecraft:skeleton', 'minecraft:creeper', 'minecraft:spider'], `${base}-entityType`);
@@ -63,6 +67,34 @@ export function renderObjectiveExtra(o, base, field) {
     return suggestInput('itemId', `${base}.targetId`, o.targetId || '', ['minecraft:torch', 'minecraft:crafting_table', 'minecraft:iron_sword'], `${base}-craft-itemId`);
   }
   return field('customTargetId', `${base}.targetId`, o.targetId || '');
+}
+
+export function renderObjectiveCommonSection(o, base, field) {
+  const supportsCount = isObjectiveCountingType(o.type);
+  return `
+    <div class="row">
+      ${supportsCount ? field('目标数量', `${base}.count`, o.count ?? 1, 'number') : '<div class="f"><label>目标数量</label><div class="tiny">该类型固定为一次触发</div></div>'}
+      ${(o.type === 'INTERACT' || o.type === 'TALK' || o.type === 'DELIVER') ? field('targetId（兼容字段）', `${base}.targetId`, o.targetId || '') : '<div class="f"></div>'}
+    </div>
+    <div class="row">
+      ${boolSelect('Hidden', `${base}.hidden`, !!o.hidden)}
+      ${boolSelect('Optional', `${base}.optional`, !!o.optional)}
+    </div>
+    ${supportsCount ? `
+    <div class="row">
+      ${enumSelect('countMode', `${base}.countMode`, o.countMode || 'fixed', ['fixed', 'level_scale', 'variable'])}
+      ${field('countBase', `${base}.countBase`, o.countBase ?? o.count ?? 1, 'number')}
+    </div>
+    <div class="row">
+      ${field('countPerLevel', `${base}.countPerLevel`, o.countPerLevel ?? 0, 'number')}
+      ${field('countMin', `${base}.countMin`, o.countMin ?? 1, 'number')}
+    </div>
+    <div class="row">
+      ${field('countMax', `${base}.countMax`, o.countMax ?? -1, 'number')}
+      <div class="f"></div>
+    </div>
+    ` : ''}
+  `;
 }
 
 export function renderPhaseModeSummary(phase) {
