@@ -1,25 +1,22 @@
-﻿import { createPhase, createObjective, createReward, createSplash, createTransition, createCollectionCategory, createRewardNode, createCompletionRule } from '../core/factories.js';
-import { buildReferenceIndex } from '../core/utils.js';
-import { handleClickPrelude, handleNonDeleteButtonAction } from './bindings/editor-click-actions.js';
+﻿import { handleClickPrelude, handleNonDeleteButtonAction } from './bindings/editor-click-actions.js';
 import { handleDeleteButtonAction } from './bindings/editor-delete-actions.js';
-import {
-  removePhaseReferences,
-  autoGeneratePhaseKeys
-} from './bindings/editor-helpers.js';
 import { bindEditorInputs } from './bindings/editor-inputs.js';
+
 export function bindTreeSelection(leftEl, state, rerender) {
   leftEl.onclick = e => {
     const id = e.target.closest('[data-id]')?.dataset.id;
     if (!id) return;
     if (id === 'quest' || id === 'visual' || id === 'rewards' || id === 'raw') state.ui.sel = { t: id };
     else if (id.startsWith('phase-')) state.ui.sel = { t: 'phase', pi: +id.split('-')[1] };
-    else { const [, pi, oi] = id.split('-'); state.ui.sel = { t: 'obj', pi: +pi, oi: +oi }; }
+    else {
+      const [, pi, oi] = id.split('-');
+      state.ui.sel = { t: 'obj', pi: +pi, oi: +oi };
+    }
     rerender();
   };
 }
 
 export function bindEditorActions(midEl, state, rerender, setByPath) {
-
   bindEditorInputs(midEl, state, rerender, setByPath);
 
   midEl.onclick = e => {
@@ -27,11 +24,6 @@ export function bindEditorActions(midEl, state, rerender, setByPath) {
 
     const btn = e.target.closest('button');
     if (!btn) return;
-
-    const d = btn.dataset;
-    const id = btn.id;
-    const s = state.ui.sel;
-    const q = state.q;
 
     if (handleNonDeleteButtonAction(btn, state)) {
       state.meta.dirty = true;
@@ -50,18 +42,6 @@ export function bindEditorActions(midEl, state, rerender, setByPath) {
         state.meta.dirty = true;
         rerender();
       }
-      return;
     }
-
-    state.meta.dirty = true;
-    rerender();
   };
 }
-
-
-
-
-
-
-
-
