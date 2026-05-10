@@ -1,3 +1,8 @@
+@import url("./editor/chips.css");
+@import url("./editor/condition-tree.css");
+@import url("./editor/forms.css");
+
+
 :root {
   --bg-gradient:radial-gradient(circle at 10% 20%,#1c1c1e 0%,#000 100%);
   --pane-bg:rgba(28,28,30,.65);
@@ -431,59 +436,6 @@ button.danger:hover {
   border-color:rgba(255,255,255,.15)
 }
 
-.row {
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px
-}
-
-.f {
-  margin-bottom:12px
-}
-
-.f label {
-  display:block;
-  margin-bottom:6px;
-  font-size:12px;
-  color:var(--text-mut);
-  font-weight:500
-}
-
-.f input,.f textarea,.f select {
-  width:100%;
-  background:rgba(0,0,0,.3);
-  color:var(--text-main);
-  border:1px solid var(--card-border);
-  border-radius:8px;
-  padding:10px 12px;
-  font-family:var(--font-family);
-  font-size:13px;
-  transition:all .2s
-}
-
-.f textarea {
-  min-height:80px;
-  resize:vertical;
-  line-height:1.5
-}
-
-.f input:focus,.f textarea:focus,.f select:focus {
-  outline:none;
-  border-color:var(--accent);
-  background:rgba(0,0,0,.5);
-  box-shadow:0 0 0 3px var(--accent-glow)
-}
-
-.small {
-  font-size:11px;
-  color:var(--text-mut)
-}
-
-.tiny {
-  font-size:10px;
-  color:rgba(235,235,245,.3)
-}
-
 .chip {
   display:inline-flex;
   align-items:center;
@@ -814,56 +766,6 @@ button.danger:hover {
   transform:scale(.9)
 }
 
-.chip-editor {
-  border:1px solid var(--card-border);
-  border-radius:10px;
-  padding:10px;
-  background:rgba(0,0,0,.28)
-}
-
-.chip-list {
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  min-height:28px;
-  margin-bottom:10px
-}
-
-.chip-item {
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:4px 10px;
-  border-radius:999px;
-  background:rgba(10,132,255,.14);
-  border:1px solid rgba(10,132,255,.28);
-  font-size:11px;
-  color:var(--text-soft)
-}
-
-.chip-remove {
-  border:none;
-  background:transparent;
-  color:var(--text-mut);
-  cursor:pointer;
-  font-size:12px;
-  line-height:1
-}
-
-.chip-input-row {
-  display:flex;
-  gap:8px
-}
-
-.chip-input-row input {
-  flex:1
-}
-
-.input-invalid {
-  border-color:var(--danger) !important;
-  box-shadow:0 0 0 2px rgba(255,69,58,.15) !important
-}
-
 .tree-view-block {
   border:1px solid var(--card-border);
   border-radius:10px;
@@ -884,94 +786,7 @@ button.danger:hover {
 }
 
 
-.condition-node {
-  margin-top:8px;
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid rgba(255,255,255,.08);
-  background:rgba(255,255,255,.02);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.02)
-}
 
-.condition-node-logic {
-  border-color:rgba(191,90,242,.35);
-  box-shadow:inset 0 0 0 1px rgba(191,90,242,.08)
-}
 
-.condition-node-flag {
-  border-color:rgba(255,159,10,.32);
-  box-shadow:inset 0 0 0 1px rgba(255,159,10,.06)
-}
 
-.condition-node-quest {
-  border-color:rgba(10,132,255,.32);
-  box-shadow:inset 0 0 0 1px rgba(10,132,255,.08)
-}
 
-.condition-node-variable {
-  border-color:rgba(50,215,75,.3);
-  box-shadow:inset 0 0 0 1px rgba(50,215,75,.07)
-}
-
-.condition-node-neutral {
-  border-color:rgba(255,255,255,.12)
-}
-
-.condition-summary {
-  display:flex;
-  align-items:center;
-  flex-wrap:wrap;
-  gap:6px;
-  margin-top:6px
-}
-
-.condition-badge {
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-width:54px;
-  padding:2px 8px;
-  border-radius:999px;
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.3px;
-  text-transform:uppercase;
-  border:1px solid rgba(255,255,255,.12)
-}
-
-.condition-badge.logic {
-  color:#f5ecff;
-  background:rgba(191,90,242,.18);
-  border-color:rgba(191,90,242,.38)
-}
-
-.condition-badge.flag {
-  color:#fff6e8;
-  background:rgba(255,159,10,.18);
-  border-color:rgba(255,159,10,.35)
-}
-
-.condition-badge.quest {
-  color:#eaf5ff;
-  background:rgba(10,132,255,.18);
-  border-color:rgba(10,132,255,.35)
-}
-
-.condition-badge.variable {
-  color:#ebfff0;
-  background:rgba(50,215,75,.16);
-  border-color:rgba(50,215,75,.32)
-}
-
-.condition-badge.neutral {
-  color:#f0f0f5;
-  background:rgba(255,255,255,.08);
-  border-color:rgba(255,255,255,.16)
-}
-
-.condition-summary-text {
-  font-family:var(--font-mono);
-  font-size:11px;
-  color:var(--text-soft);
-  opacity:.92
-}
