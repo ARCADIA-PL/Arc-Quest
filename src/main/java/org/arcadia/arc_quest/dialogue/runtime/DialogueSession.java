@@ -14,12 +14,12 @@ import org.slf4j.Logger;
 import java.util.*;
 
 /**
- * 单次对话会话（服务端状态）。
+ * 单次对话会话（服务端状态）�?
  * <p>
  * <b>v2.1 时间系统重构变更</b>:
  * <ul>
- *   <li>所有时间获取统一通过 {@link #snapshot()} 一次性采样三个时钟</li>
- *   <li>所有 record/cooldown 调用传递完整的三时钟快照</li>
+ *   <li>所有时间获取统一通过 {@link #snapshot()} 一次性采样三个时�?/li>
+ *   <li>所�?record/cooldown 调用传递完整的三时钟快�?/li>
  *   <li>GAME_TICK 冷却剩余时间正确计算</li>
  * </ul>
  */
@@ -41,9 +41,9 @@ public class DialogueSession {
     private List<DialogueChoice> visibleChoices = List.of();
     private int[] visibleChoiceOriginalIndices = new int[0];
 
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
     //  构造器
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
 
     public DialogueSession(ServerPlayer player, DialogueTree tree) {
         this(player, tree, new DialogueContext(), -1);
@@ -60,7 +60,7 @@ public class DialogueSession {
 
         namespace = resolveNamespace();
 
-        // 显式校验 Capability，避免创建临时实例导致数据丢失
+        // 显式校验 Capability，避免创建临时实例导致数据丢�?
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
         progress = cap.getDialogueProgress();
@@ -68,9 +68,9 @@ public class DialogueSession {
         evaluateVisibleChoices();
     }
 
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
     //  公开查询
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
 
     public UUID getSessionId() {
         return sessionId;
@@ -89,7 +89,7 @@ public class DialogueSession {
     }
 
     /**
-     * 设置当前节点（包级私有，仅供 DialogueSessionManager 调用）。
+     * 设置当前节点（包级私有，仅供 DialogueSessionManager 调用）�?
      */
     void setCurrentNode(DialogueNode node) {
         currentNode = node;
@@ -117,16 +117,16 @@ public class DialogueSession {
     }
 
     /**
-     * 一次性采样三个时钟，确保同一操作内的所有记录和检查使用一致的时间值。
+     * 一次性采样三个时钟，确保同一操作内的所有记录和检查使用一致的时间值�?
      */
     private DialogueProgressStore.TimeSnapshot snapshot() {
         return DialogueProgressStore.TimeSnapshot.capture(player);
     }
 
     /**
-     * 获取每个可见选项的冷却剩余时间（秒）。
+     * 获取每个可见选项的冷却剩余时间（秒）�?
      *
-     * @return 数组，长度与 visibleChoices 相同，0 = 可用，>0 = 剩余秒数
+     * @return 数组，长度与 visibleChoices 相同�? = 可用�?0 = 剩余秒数
      */
     public int[] getChoiceCooldowns() {
         if (visibleChoices.isEmpty()) {
@@ -145,10 +145,10 @@ public class DialogueSession {
                 continue;
             }
 
-            // 使用 ProgressKey + TimeSnapshot 检查冷却
+            // 使用 ProgressKey + TimeSnapshot 检查冷�?
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
 
-            // 先检测时间回退，如果检测到则清除记录
+            // 先检测时间回退，如果检测到则清除记�?
             if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
                 cooldowns[i] = 0;
                 continue;
@@ -232,7 +232,7 @@ public class DialogueSession {
     }
 
     /**
-     * 根据冷却类型计算剩余秒数。
+     * 根据冷却类型计算剩余秒数�?
      */
     private int computeRemainingSeconds(DialogueProgressStore.Entry entry,
                                         DialogueChoice choice, DialogueProgressStore.TimeSnapshot ts) {
@@ -255,7 +255,7 @@ public class DialogueSession {
             }
 
             case GAME_TICK -> {
-                // 用 tick 数除以 20 转秒
+                // �?tick 数除�?20 转秒
                 int remainTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
                         entry, choice.resetTimeTicks(), ts.gameTime(), ts.dayTime());
                 yield Math.max(1, remainTicks / 20);
@@ -264,7 +264,7 @@ public class DialogueSession {
     }
 
     /**
-     * 玩家做出选择。
+     * 玩家做出选择�?
      */
     public DialogueNode choose(int choiceIndex) {
         if (ended) return null;
@@ -276,14 +276,14 @@ public class DialogueSession {
         DialogueChoice choice = visibleChoices.get(choiceIndex);
         int originalIndex = visibleChoiceOriginalIndices[choiceIndex];
 
-        // 一次性采样时间
+        // 一次性采样时�?
         DialogueProgressStore.TimeSnapshot ts = snapshot();
 
         if (!DialogueActionExecutor.checkChoiceAvailable(this, choice, originalIndex, progress, ts)) {
             return currentNode;
         }
 
-        // 检查目标节点
+        // 检查目标节�?
         String nextNodeId = choice.nextNodeId();
         if (nextNodeId != null) {
             DialogueNode nextNode = tree.getNode(nextNodeId);
@@ -292,7 +292,7 @@ public class DialogueSession {
             }
         }
 
-        // 记录选项选择（使用 ProgressKey）
+        // 记录选项选择（使�?ProgressKey�?
         ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
         progress.recordChoiceSelection(choiceKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
@@ -301,7 +301,7 @@ public class DialogueSession {
 
         // 跳转
         if (choice.nextNodeId() == null) {
-            // 如果动作中包含打开商店，不结束会话（等待商店关闭后恢复）
+            // 如果动作中包含打开商店，不结束会话（等待商店关闭后恢复�?
             boolean hasShopAction = choice.actions().stream()
                     .anyMatch(a -> a instanceof DialogueAction.OpenTrade || a instanceof DialogueAction.OpenSimpleTrade);
 
@@ -309,7 +309,7 @@ public class DialogueSession {
                 end();
                 return null;
             }
-            // 有商店动作，保持会话活跃，返回当前节点
+            // 有商店动作，保持会话活跃，返回当前节�?
             return currentNode;
         }
 
@@ -320,7 +320,7 @@ public class DialogueSession {
             return null;
         }
 
-        // 记录目标节点访问（使用 ProgressKey）
+        // 记录目标节点访问（使�?ProgressKey�?
         ProgressKey nodeKey = ProgressKey.ofNode(namespace, nextNode.nodeId());
         progress.recordNodeVisit(nodeKey, ts.realTime(), ts.gameTime(), ts.dayTime());
 
@@ -333,12 +333,12 @@ public class DialogueSession {
         return currentNode;
     }
 
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
     //  核心逻辑
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
 
     /**
-     * 自动跳转（无选择节点）。
+     * 自动跳转（无选择节点）�?
      */
     public DialogueNode autoAdvance() {
         if (ended || currentNode == null) return null;
@@ -379,16 +379,16 @@ public class DialogueSession {
         if (raw == null) return "";
         String result = raw
                 .replace("%player%", player.getName().getString())
-                .replace("%npc%", tree.defaultNpc());
+                .replace("%npc%", processDialogueText(tree.defaultNpc()).getString());
         if (!context.isEmpty()) {
             result = context.resolve(result);
         }
         return result;
     }
 
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
     //  文本处理
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
 
     public Component processDialogueText(DialogueText text) {
         Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
@@ -408,7 +408,7 @@ public class DialogueSession {
         );
 
         Component resolved = (text == null ? DialogueText.literal("") : text).resolve(ctx);
-        return Component.literal(processText(resolved.getString()));
+        return resolved;
     }
 
     private Map<String, Object> buildDialogueVars(IQuestCapability cap) {
@@ -480,18 +480,18 @@ public class DialogueSession {
         return tree.dialogueId();
     }
 
-    // ═══════════════════════════════════════════════
-    // 内部：命名空间解析
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
+    // 内部：命名空间解�?
+    // ══════════════════════════════════════════════�?
 
     private DialogueEvalContext buildEvalContext() {
         Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
         return DialogueEvalContext.of(player, npc, namespace, progress);
     }
 
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
     //  内部：构建评估上下文
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
 
     private void evaluateVisibleChoices() {
         if (currentNode == null || !currentNode.hasChoices()) {
@@ -500,7 +500,7 @@ public class DialogueSession {
             return;
         }
 
-        //开始评估周期,启用缓存
+        //开始评估周�?启用缓存
         EvalCache cache = EvalCache.current();
         cache.beginCycle();
 
@@ -543,7 +543,7 @@ public class DialogueSession {
                         .filter(c -> c.priority() == maxPriority)
                         .toList();
 
-                // 根据最终选择的 choice 重新构建 indices 数组（O(1) 查找）
+                // 根据最终选择�?choice 重新构建 indices 数组（O(1) 查找�?
                 List<Integer> finalIndices = new ArrayList<>();
                 for (DialogueChoice fc : finalChoices) {
                     finalIndices.add(choiceToIndexMap.get(fc));
@@ -558,19 +558,19 @@ public class DialogueSession {
         }
     }
 
-    // ═══════════════════════════════════════════════
-    // 内部：条件评估
-    // ═══════════════════════════════════════════════
+    // ══════════════════════════════════════════════�?
+    // 内部：条件评�?
+    // ══════════════════════════════════════════════�?
 
     /**
-     * 获取选项的原始冷却数据（用于客户端实时计算）。
+     * 获取选项的原始冷却数据（用于客户端实时计算）�?
      * <p>
      * 返回四个数组，分别对应每个可见选项的：
      * <ul>
-     *   <li>lastSelectTimes - 最后选择时间戳（毫秒）</li>
+     *   <li>lastSelectTimes - 最后选择时间戳（毫秒�?/li>
      *   <li>cooldownTypes - 冷却类型 ordinal</li>
-     *   <li>cooldownValues - 冷却值</li>
-     *   <li>resetTimeTicks - 重置刻</li>
+     *   <li>cooldownValues - 冷却�?/li>
+     *   <li>resetTimeTicks - 重置�?/li>
      * </ul>
      */
     public record ChoiceCooldownData(

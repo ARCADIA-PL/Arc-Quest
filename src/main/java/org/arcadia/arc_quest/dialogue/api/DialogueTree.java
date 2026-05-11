@@ -13,7 +13,7 @@ import java.util.Map;
  */
 public record DialogueTree(
         String dialogueId,
-        String defaultNpc,
+        DialogueText defaultNpc,
         String startNodeId,
         Map<String, DialogueNode> nodes,
         @Nullable QuestVisualConfig visualConfig,
@@ -24,7 +24,7 @@ public record DialogueTree(
         List<MarkSpec> relatedMarks
 ) {
 
-    public DialogueTree(String dialogueId, String defaultNpc, String startNodeId,
+    public DialogueTree(String dialogueId, DialogueText defaultNpc, String startNodeId,
                         Map<String, DialogueNode> nodes, @Nullable QuestVisualConfig visualConfig) {
         this(dialogueId, defaultNpc, startNodeId, nodes, visualConfig, true, 0, CooldownType.NONE, 0, List.of());
     }
