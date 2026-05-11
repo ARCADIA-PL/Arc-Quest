@@ -46,6 +46,7 @@ public final class PhaseBuilder {
     @Nullable
     private ICondition enterCondition = null;
     private boolean autoEnterByCondition = true;
+    private boolean autoAdvanceOnComplete = true;
 
     @Nullable
     private SoundEvent phaseStartSound;
@@ -174,6 +175,11 @@ public final class PhaseBuilder {
         return this;
     }
 
+    public PhaseBuilder autoAdvanceOnComplete(boolean autoAdvanceOnComplete) {
+        this.autoAdvanceOnComplete = autoAdvanceOnComplete;
+        return this;
+    }
+
     public PhaseBuilder markRelatedObject(MarkableObject object) {
         return markRelatedObject(object, MarkActivations.always());
     }
@@ -295,7 +301,8 @@ public final class PhaseBuilder {
                 this.collectionEntryConfig,
                 this.intelSceneId,
                 this.enterCondition,
-                this.autoEnterByCondition
+                this.autoEnterByCondition,
+                this.autoAdvanceOnComplete
         );
     }
 }

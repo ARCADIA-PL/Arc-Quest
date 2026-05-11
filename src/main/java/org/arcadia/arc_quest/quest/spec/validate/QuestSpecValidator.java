@@ -62,7 +62,9 @@ public final class QuestSpecValidator {
                         validateText(report, objective.displayText, objectivePath + ".displayText");
                         validateMarks(report, objective.relatedMarks, objectivePath + ".relatedMarks");
                         if (objective.type == null) report.add(ValidationIssue.Severity.ERROR, objectivePath + ".type", "Objective type is required");
-                        if (objective.targetId == null || objective.targetId.isBlank()) report.add(ValidationIssue.Severity.ERROR, objectivePath + ".targetId", "Objective targetId is required");
+                        if (objective.type != org.arcadia.arc_quest.quest.api.ObjectiveType.NULL && (objective.targetId == null || objective.targetId.isBlank())) {
+                            report.add(ValidationIssue.Severity.ERROR, objectivePath + ".targetId", "Objective targetId is required");
+                        }
                         validateObjective(report, objective, objectivePath);
                     }
                 }

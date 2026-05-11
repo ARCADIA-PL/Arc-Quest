@@ -29,6 +29,10 @@ public final class QuestRuntimeData {
      */
     private final LinkedHashSet<String> completedPhaseIds;
     /**
+     * 已满足目标、等待玩家手动确认推进的阶段
+     */
+    private final LinkedHashSet<String> pendingManualAdvancePhaseIds;
+    /**
      * 每个阶段的目标进度
      */
     private final LinkedHashMap<String, int[]> phaseProgress;
@@ -51,6 +55,7 @@ public final class QuestRuntimeData {
 
         this.activePhaseIds = new LinkedHashSet<>();
         this.completedPhaseIds = new LinkedHashSet<>();
+        this.pendingManualAdvancePhaseIds = new LinkedHashSet<>();
         this.phaseProgress = new LinkedHashMap<>();
         this.collectionData = null;
 
@@ -62,6 +67,7 @@ public final class QuestRuntimeData {
                              QuestState state,
                              LinkedHashSet<String> activePhaseIds,
                              LinkedHashSet<String> completedPhaseIds,
+                             LinkedHashSet<String> pendingManualAdvancePhaseIds,
                              LinkedHashMap<String, int[]> phaseProgress,
                              @Nullable CollectionRuntimeData collectionData,
                              long acceptedAtTick,
@@ -71,6 +77,7 @@ public final class QuestRuntimeData {
         this.state = state;
         this.activePhaseIds = activePhaseIds;
         this.completedPhaseIds = completedPhaseIds;
+        this.pendingManualAdvancePhaseIds = pendingManualAdvancePhaseIds;
         this.phaseProgress = phaseProgress;
         this.collectionData = collectionData;
         this.acceptedAtTick = acceptedAtTick;
@@ -94,6 +101,7 @@ public final class QuestRuntimeData {
 
         LinkedHashSet<String> active = new LinkedHashSet<>();
         LinkedHashSet<String> completed = new LinkedHashSet<>();
+        LinkedHashSet<String> pendingManualAdvance = new LinkedHashSet<>();
         LinkedHashMap<String, int[]> progress = new LinkedHashMap<>();
 
         if (tag.contains("ActivePhases", Tag.TAG_LIST)) {
@@ -109,6 +117,14 @@ public final class QuestRuntimeData {
             for (int i = 0; i < completedList.size(); i++) {
                 String pid = completedList.getString(i);
                 if (pid != null && !pid.isEmpty()) completed.add(pid);
+            }
+        }
+
+        if (tag.contains("PendingManualAdvancePhases", Tag.TAG_LIST)) {
+            ListTag pendingList = tag.getList("PendingManualAdvancePhases", Tag.TAG_STRING);
+            for (int i = 0; i < pendingList.size(); i++) {
+                String pid = pendingList.getString(i);
+                if (pid != null && !pid.isEmpty()) pendingManualAdvance.add(pid);
             }
         }
 
@@ -143,7 +159,7 @@ public final class QuestRuntimeData {
             collectionData = CollectionRuntimeData.deserializeNBT(tag.getCompound("CollectionData"));
         }
 
-        return new QuestRuntimeData(questId, state, active, completed, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
+        return new QuestRuntimeData(questId, state, active, completed, pendingManualAdvance, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
     }
 
     public static QuestRuntimeData readFromNetwork(FriendlyByteBuf buf) {
@@ -160,6 +176,12 @@ public final class QuestRuntimeData {
         LinkedHashSet<String> completed = new LinkedHashSet<>();
         for (int i = 0; i < completedSize; i++) {
             completed.add(buf.readUtf(256));
+        }
+
+        int pendingManualAdvanceSize = buf.readVarInt();
+        LinkedHashSet<String> pendingManualAdvance = new LinkedHashSet<>();
+        for (int i = 0; i < pendingManualAdvanceSize; i++) {
+            pendingManualAdvance.add(buf.readUtf(256));
         }
 
         int progressSize = buf.readVarInt();
@@ -179,7 +201,7 @@ public final class QuestRuntimeData {
         long accepted = buf.readLong();
         long acceptedRealMs = buf.readLong();
         long acceptedDayTime = buf.readLong();
-        return new QuestRuntimeData(questId, state, active, completed, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
+        return new QuestRuntimeData(questId, state, active, completed, pendingManualAdvance, progress, collectionData, accepted, acceptedRealMs, acceptedDayTime);
     }
 
     public String getQuestId() {
@@ -275,6 +297,7 @@ public final class QuestRuntimeData {
         if (!phaseProgress.containsKey(phaseId)) phaseProgress.put(phaseId, new int[Math.max(0, objectiveCount)]);
         if (activePhaseIds.add(phaseId)) {
             completedPhaseIds.remove(phaseId);
+            pendingManualAdvancePhaseIds.remove(phaseId);
             isDirty = true;
         }
     }
@@ -282,8 +305,37 @@ public final class QuestRuntimeData {
     public void completePhase(String phaseId) {
         if (activePhaseIds.remove(phaseId)) {
             completedPhaseIds.add(phaseId);
+            pendingManualAdvancePhaseIds.remove(phaseId);
             isDirty = true;
         }
+    }
+
+    public void markPhasePendingManualAdvance(String phaseId) {
+        if (phaseId == null || phaseId.isEmpty()) return;
+        if (activePhaseIds.contains(phaseId) && pendingManualAdvancePhaseIds.add(phaseId)) {
+            isDirty = true;
+        }
+    }
+
+    public void clearPhasePendingManualAdvance(String phaseId) {
+        if (pendingManualAdvancePhaseIds.remove(phaseId)) {
+            isDirty = true;
+        }
+    }
+
+    public boolean isPhasePendingManualAdvance(String phaseId) {
+        return pendingManualAdvancePhaseIds.contains(phaseId);
+    }
+
+    public Set<String> getPendingManualAdvancePhaseIds() {
+        return Set.copyOf(pendingManualAdvancePhaseIds);
+    }
+
+    public String getCurrentPendingManualAdvancePhaseId() {
+        for (String phaseId : activePhaseIds) {
+            if (pendingManualAdvancePhaseIds.contains(phaseId)) return phaseId;
+        }
+        return "";
     }
 
     public boolean isDirty() {
@@ -312,6 +364,10 @@ public final class QuestRuntimeData {
         for (String id : completedPhaseIds) completedList.add(StringTag.valueOf(id));
         tag.put("CompletedPhases", completedList);
 
+        ListTag pendingList = new ListTag();
+        for (String id : pendingManualAdvancePhaseIds) pendingList.add(StringTag.valueOf(id));
+        tag.put("PendingManualAdvancePhases", pendingList);
+
         CompoundTag progressTag = new CompoundTag();
         for (Map.Entry<String, int[]> e : phaseProgress.entrySet()) progressTag.putIntArray(e.getKey(), e.getValue());
         tag.put("PhaseProgress", progressTag);
@@ -328,6 +384,9 @@ public final class QuestRuntimeData {
 
         buf.writeVarInt(completedPhaseIds.size());
         for (String id : completedPhaseIds) buf.writeUtf(id);
+
+        buf.writeVarInt(pendingManualAdvancePhaseIds.size());
+        for (String id : pendingManualAdvancePhaseIds) buf.writeUtf(id);
 
         buf.writeVarInt(phaseProgress.size());
         for (Map.Entry<String, int[]> e : phaseProgress.entrySet()) {
@@ -351,7 +410,7 @@ public final class QuestRuntimeData {
         for (Map.Entry<String, int[]> e : phaseProgress.entrySet())
             progress.put(e.getKey(), Arrays.copyOf(e.getValue(), e.getValue().length));
         CollectionRuntimeData collectionDataCopy = collectionData != null ? collectionData.copy() : null;
-        return new QuestRuntimeData(questId, state, active, completed, progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
+        return new QuestRuntimeData(questId, state, active, completed, new LinkedHashSet<>(pendingManualAdvancePhaseIds), progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
     }
 
     public String getCurrentPhaseId() {

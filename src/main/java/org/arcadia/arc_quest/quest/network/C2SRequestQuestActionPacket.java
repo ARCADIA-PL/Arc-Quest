@@ -66,6 +66,10 @@ public class C2SRequestQuestActionPacket {
         return new C2SRequestQuestActionPacket(Action.OPEN_CHAPTER_SHOP, questId, -1, "");
     }
 
+    public static C2SRequestQuestActionPacket confirmPhaseAdvance(String questId, String phaseId) {
+        return new C2SRequestQuestActionPacket(Action.CONFIRM_PHASE_ADVANCE, questId, -1, phaseId);
+    }
+
     public static void encode(C2SRequestQuestActionPacket pkt, FriendlyByteBuf buf) {
         buf.writeEnum(pkt.action);
         buf.writeUtf(pkt.questId, 256);
@@ -128,6 +132,13 @@ public class C2SRequestQuestActionPacket {
                             new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
                     );
                 }
+                case CONFIRM_PHASE_ADVANCE -> {
+                    Code code = QuestProgressHandler.confirmManualPhaseAdvance(sender, pkt.questId, pkt.phaseId);
+                    ArcQuestNetwork.CHANNEL.send(
+                            PacketDistributor.PLAYER.with(() -> sender),
+                            new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
+                    );
+                }
                 case OPEN_CHAPTER_SHOP -> {
                     Code code = openChapterShopWithCode(sender, pkt.questId);
                     SyncObservability.trace("quest", pkt.questId, sender.getGameProfile().getName(),
@@ -153,6 +164,7 @@ public class C2SRequestQuestActionPacket {
             case ABANDON -> ok ? Reason.QUEST_ABANDON_SUCCESS : Reason.QUEST_ABANDON_REJECTED;
             case CHOOSE -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
             case OPEN_CHAPTER_SHOP -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
+            case CONFIRM_PHASE_ADVANCE -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
             case CLAIM_COLLECTION_REWARD -> ok ? Reason.QUEST_CHOOSE_SUCCESS : Reason.QUEST_CHOOSE_REJECTED;
         };
     }
@@ -210,6 +222,7 @@ public class C2SRequestQuestActionPacket {
         ABANDON,
         CHOOSE,
         OPEN_CHAPTER_SHOP,
+        CONFIRM_PHASE_ADVANCE,
         CLAIM_COLLECTION_REWARD
     }
 }

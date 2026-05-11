@@ -280,7 +280,11 @@ public final class QuestProgressHandler {
 
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int i = 0; i < objectives.size(); i++) {
-            if (data.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objectives.get(i), cap)) {
+            ObjectiveEntry objective = objectives.get(i);
+            if (objective.getType() == ObjectiveType.NULL) {
+                continue;
+            }
+            if (data.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, cap)) {
                 return;
             }
         }
@@ -366,6 +370,45 @@ public final class QuestProgressHandler {
     // ═══════════════════════════════════════════════════════
     // 阶段推进（显式推进，用于 choice 等）
     // ═══════════════════════════════════════════════════════
+
+    public static QuestRejectCodeDictionary.Code confirmManualPhaseAdvance(ServerPlayer player,
+                                                                           String questId,
+                                                                           String phaseId) {
+        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        QuestRuntimeData data = cap.getActiveQuest(questId);
+        if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        if (phaseId == null || phaseId.isEmpty() || !data.isPhasePendingManualAdvance(phaseId)) {
+            return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
+        }
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
+        data.clearPhasePendingManualAdvance(phaseId);
+        data.completePhase(phaseId);
+        ActivationContext ctx = new ActivationContext();
+        if (phase.hasChoices()) {
+            tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+            refreshQuestMarkersForQuest(player, cap, data, def);
+            syncQuestStateAndPush(player, data);
+            return QuestRejectCodeDictionary.Code.OK;
+        }
+        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
+        for (PhaseTransition tr : phase.getTransitions()) {
+            boolean ok = tr.getCondition() == null || tr.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+            if (ok) activatePhase(player, cap, data, def, phaseId, tr.getTargetPhaseId(), true, ctx);
+        }
+        tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+        processImmediatelySatisfiedPhases(player, cap, data, def);
+        if (shouldCompleteQuest(def, data)) {
+            completeQuest(player, cap, data, def);
+        } else {
+            refreshQuestMarkersForQuest(player, cap, data, def);
+            syncQuestStateAndPush(player, data);
+        }
+        if (ctx.flagsChanged) syncFlagsVarsAndPush(player, cap);
+        return QuestRejectCodeDictionary.Code.OK;
+    }
 
     public static boolean handlePlayerChoice(ServerPlayer player,
                                              String questId,
@@ -753,6 +796,36 @@ public final class QuestProgressHandler {
         computed = Math.max(safeMin, computed);
         if (safeMax > 0) computed = Math.min(safeMax, computed);
         return Math.max(1, computed);
+    }
+
+    private static void processImmediatelySatisfiedPhases(ServerPlayer player,
+                                                         IQuestCapability cap,
+                                                         QuestRuntimeData data,
+                                                         QuestDefinition def) {
+        boolean changed;
+        do {
+            changed = false;
+            for (String phaseId : List.copyOf(data.getActivePhaseIds())) {
+                PhaseDefinition phase = def.getPhase(phaseId);
+                if (phase == null) continue;
+                boolean allSatisfied = true;
+                for (int i = 0; i < phase.getObjectives().size(); i++) {
+                    ObjectiveEntry objective = phase.getObjectives().get(i);
+                    if (objective.getType() == ObjectiveType.NULL) continue;
+                    if (data.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, cap)) {
+                        allSatisfied = false;
+                        break;
+                    }
+                }
+                if (!allSatisfied) continue;
+                int beforeCompleted = data.getCompletedPhaseIds().size();
+                int beforePending = data.getPendingManualAdvancePhaseIds().size();
+                checkPhaseCompletion(player, cap, data, def, phaseId);
+                if (data.getCompletedPhaseIds().size() != beforeCompleted || data.getPendingManualAdvancePhaseIds().size() != beforePending) {
+                    changed = true;
+                }
+            }
+        } while (changed);
     }
 
     public static List<ResourceLocation> objectiveKeyTargets(ObjectiveEntry obj) {

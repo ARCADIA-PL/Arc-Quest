@@ -7,6 +7,11 @@ package org.arcadia.arc_quest.quest.api;
 public enum ObjectiveType {
 
     /**
+     * 空目标/占位目标，用于纯说明或手动确认推进场景。
+     */
+    NULL,
+
+    /**
      * 击杀指定实体类型
      */
     KILL,
@@ -50,7 +55,7 @@ public enum ObjectiveType {
 
     /**
      * 该类型是否需要累计计数
-     * （TALK / REACH_LOCATION 通常只需触发一次）
+     * （TALK / REACH_LOCATION / NULL 通常只需触发一次）
      */
     public boolean isCounting() {
         return this == KILL || this == COLLECT || this == DELIVER;

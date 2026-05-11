@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 
 public final class QuestSpecCompiler {
+    private static final ResourceLocation NULL_OBJECTIVE_TARGET = ResourceLocation.fromNamespaceAndPath("arc_quest", "null_objective");
+
     private final QuestSpecValidator validator = new QuestSpecValidator();
 
     public QuestDefinition compile(QuestSpec spec) {
@@ -116,7 +118,8 @@ public final class QuestSpecCompiler {
                 compileCollectionEntryConfig(spec.collectionEntryConfig),
                 parseNullableId(spec.intelSceneId),
                 compileCondition(spec.enterCondition),
-                spec.autoEnterByCondition
+                spec.autoEnterByCondition,
+                spec.autoAdvanceOnComplete
         );
     }
 
@@ -220,7 +223,12 @@ public final class QuestSpecCompiler {
         putIfPresent(extraData, "count_per_level", spec.countPerLevel);
         putIfPresent(extraData, "count_min", spec.countMin);
         putIfPresent(extraData, "count_max", spec.countMax);
-        return new ObjectiveEntry(spec.type, parseId(spec.targetId), spec.requiredCount, compileText(spec.displayText), spec.hidden, spec.optional, extraData, compileMarks(spec.relatedMarks), null);
+        return new ObjectiveEntry(spec.type, resolveObjectiveTarget(spec), spec.requiredCount, compileText(spec.displayText), spec.hidden, spec.optional, extraData, compileMarks(spec.relatedMarks), null);
+    }
+
+    private ResourceLocation resolveObjectiveTarget(ObjectiveSpec spec) {
+        if (spec.type == ObjectiveType.NULL) return NULL_OBJECTIVE_TARGET;
+        return parseId(spec.targetId);
     }
 
     private List<IReward> compileRewards(List<RewardSpec> specs) {

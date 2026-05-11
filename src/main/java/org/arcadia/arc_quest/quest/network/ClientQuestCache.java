@@ -218,12 +218,21 @@ public final class ClientQuestCache {
         Set<String> afterActive = newData.getActivePhaseIds();
         Set<String> beforeCompleted = previousData.getCompletedPhaseIds();
         Set<String> afterCompleted = newData.getCompletedPhaseIds();
+        Set<String> beforePending = previousData.getPendingManualAdvancePhaseIds();
+        Set<String> afterPending = newData.getPendingManualAdvancePhaseIds();
 
         for (String phaseId : afterActive) {
             if (!beforeActive.contains(phaseId)) QuestChangeHistoryStore.INSTANCE.recordPhaseAdded(questId, phaseId);
         }
         for (String phaseId : afterCompleted) {
             if (!beforeCompleted.contains(phaseId)) QuestChangeHistoryStore.INSTANCE.recordPhaseCompleted(questId, phaseId);
+        }
+        for (String phaseId : afterPending) {
+            if (!beforePending.contains(phaseId)) {
+                String phaseName = getPhaseDisplayName(questId, phaseId);
+                int themeColor = getQuestThemeColor(questId, 0xFFD166);
+                QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.PENDING_CONFIRM);
+            }
         }
 
         String oldCurrent = previousData.getCurrentPhaseId();
