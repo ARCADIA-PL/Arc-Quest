@@ -1,40 +1,40 @@
-import { createObjective, createPhase, createQuestSkeleton, createSplash } from './factories.js';
+import {createObjective, createPhase, createQuestSkeleton, createSplash} from './factories.js';
 
 export const createBlankQuest = () => {
-  const quest = createQuestSkeleton();
-  quest.id = 'new_quest';
-  quest.title = 'arc_quest.quest.new_quest.title';
-  quest.description = 'arc_quest.quest.new_quest.description';
-  quest.visualConfig.splashes = [
-    createSplash('QUEST_ACQUIRED'),
-    createSplash('QUEST_COMPLETED')
-  ];
+    const quest = createQuestSkeleton();
+    quest.id = 'new_quest';
+    quest.title = 'arc_quest.quest.new_quest.title';
+    quest.description = 'arc_quest.quest.new_quest.description';
+    quest.visualConfig.splashes = [
+        createSplash('QUEST_ACQUIRED'),
+        createSplash('QUEST_COMPLETED')
+    ];
 
-  const phase = createPhase(0);
-  phase.id = 'phase_1';
-  phase.title = 'arc_quest.phase.new_quest.phase_1.title';
-  phase.description = 'arc_quest.phase.new_quest.phase_1.description';
+    const phase = createPhase(0);
+    phase.id = 'phase_1';
+    phase.title = 'arc_quest.phase.new_quest.phase_1.title';
+    phase.description = 'arc_quest.phase.new_quest.phase_1.description';
 
-  const objective = createObjective(0);
-  objective.id = 'objective_1';
-  objective.text = 'arc_quest.objective.new_quest.phase_1.1';
+    const objective = createObjective(0);
+    objective.id = 'objective_1';
+    objective.text = 'arc_quest.objective.new_quest.phase_1.1';
 
-  phase.objectives = [objective];
-  quest.phases = [phase];
+    phase.objectives = [objective];
+    quest.phases = [phase];
 
-  return quest;
+    return quest;
 };
 
 export const state = {
-  meta: { file: 'new_quest.json', dirty: false },
-  q: createBlankQuest(),
-  ui: {
-    sel: { t: 'quest' },
-    tab: 'preview',
-    graphView: { x: 0, y: 0, k: 1 },
-    graphExpanded: false,
-    collectionView: 'card',
-    paneSizes: { left: 280, center: null, right: 380 }
-  },
-  diag: []
+    meta: {file: 'new_quest.json', dirty: false},
+    q: createBlankQuest(),
+    ui: {
+        sel: {t: 'quest'},
+        tab: 'preview',
+        graphView: {x: 0, y: 0, k: 1},
+        graphExpanded: false,
+        collectionView: 'card',
+        paneSizes: {left: 280, center: null, right: 380}
+    },
+    diag: []
 };

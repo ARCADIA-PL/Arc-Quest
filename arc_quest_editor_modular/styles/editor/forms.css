@@ -1,57 +1,57 @@
 .row {
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px
+    display: grid;
+    grid-template-columns:1fr 1fr;
+    gap: 16px
 }
 
 .f {
-  margin-bottom:12px
+    margin-bottom: 12px
 }
 
 .f label {
-  display:block;
-  margin-bottom:6px;
-  font-size:12px;
-  color:var(--text-mut);
-  font-weight:500
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--text-mut);
+    font-weight: 500
 }
 
-.f input,.f textarea,.f select {
-  width:100%;
-  background:rgba(0,0,0,.3);
-  color:var(--text-main);
-  border:1px solid var(--card-border);
-  border-radius:8px;
-  padding:10px 12px;
-  font-family:var(--font-family);
-  font-size:13px;
-  transition:all .2s
+.f input, .f textarea, .f select {
+    width: 100%;
+    background: rgba(0, 0, 0, .3);
+    color: var(--text-main);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: var(--font-family);
+    font-size: 13px;
+    transition: all .2s
 }
 
 .f textarea {
-  min-height:80px;
-  resize:vertical;
-  line-height:1.5
+    min-height: 80px;
+    resize: vertical;
+    line-height: 1.5
 }
 
-.f input:focus,.f textarea:focus,.f select:focus {
-  outline:none;
-  border-color:var(--accent);
-  background:rgba(0,0,0,.5);
-  box-shadow:0 0 0 3px var(--accent-glow)
+.f input:focus, .f textarea:focus, .f select:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(0, 0, 0, .5);
+    box-shadow: 0 0 0 3px var(--accent-glow)
 }
 
 .small {
-  font-size:11px;
-  color:var(--text-mut)
+    font-size: 11px;
+    color: var(--text-mut)
 }
 
 .tiny {
-  font-size:10px;
-  color:rgba(235,235,245,.3)
+    font-size: 10px;
+    color: rgba(235, 235, 245, .3)
 }
 
 .input-invalid {
-  border-color:var(--danger) !important;
-  box-shadow:0 0 0 2px rgba(255,69,58,.15) !important
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 2px rgba(255, 69, 58, .15) !important
 }

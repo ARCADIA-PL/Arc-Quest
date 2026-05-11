@@ -5,122 +5,250 @@ const REWARD_TYPES = new Set(['item', 'flag_set', 'flag_clear', 'command', 'var_
 const CONDITION_TYPES = new Set(['always', 'flag_set', 'flag_not_set', 'quest_completed', 'variable', 'and', 'or', 'not']);
 
 function hasLegacyObjectiveShape(obj) {
-  return ['entityType', 'itemId', 'targetType', 'counterId', 'dialogueId', 'consumeOnSubmit'].some(k => Object.prototype.hasOwnProperty.call(obj || {}, k));
+    return ['entityType', 'itemId', 'targetType', 'counterId', 'dialogueId', 'consumeOnSubmit'].some(k => Object.prototype.hasOwnProperty.call(obj || {}, k));
 }
 
 function validateConditionNode(node, path, d) {
-  if (!node) return;
-  const type = node.type || 'always';
-  if (!CONDITION_TYPES.has(type)) {
-    d.push({ lvl: 'err', path, msg: `Condition type 非法: ${type}` });
-    return;
-  }
-  if ((type === 'flag_set' || type === 'flag_not_set') && !node.flag) {
-    d.push({ lvl: 'warn', path, msg: `${type} 缺少 flag` });
-  }
-  if (type === 'quest_completed' && !node.questId) {
-    d.push({ lvl: 'warn', path, msg: 'quest_completed 缺少 questId' });
-  }
-  if (type === 'variable') {
-    if (!node.variable) d.push({ lvl: 'warn', path, msg: 'variable 条件缺少 variable' });
-    if (!['EQUAL','NOT_EQUAL','GREATER','GREATER_OR_EQUAL','LESS','LESS_OR_EQUAL'].includes(node.compareOp || '')) d.push({ lvl: 'warn', path, msg: 'variable.compareOp 非标准' });
-  }
-  if (type === 'and' || type === 'or') {
-    validateConditionNode(node.left, `${path}.left`, d);
-    validateConditionNode(node.right, `${path}.right`, d);
-  }
-  if (type === 'not') {
-    validateConditionNode(node.left, `${path}.left`, d);
-  }
+    if (!node) return;
+    const type = node.type || 'always';
+    if (!CONDITION_TYPES.has(type)) {
+        d.push({lvl: 'err', path, msg: `Condition type 非法: ${type}`});
+        return;
+    }
+    if ((type === 'flag_set' || type === 'flag_not_set') && !node.flag) {
+        d.push({lvl: 'warn', path, msg: `${type} 缺少 flag`});
+    }
+    if (type === 'quest_completed' && !node.questId) {
+        d.push({lvl: 'warn', path, msg: 'quest_completed 缺少 questId'});
+    }
+    if (type === 'variable') {
+        if (!node.variable) d.push({lvl: 'warn', path, msg: 'variable 条件缺少 variable'});
+        if (!['EQUAL', 'NOT_EQUAL', 'GREATER', 'GREATER_OR_EQUAL', 'LESS', 'LESS_OR_EQUAL'].includes(node.compareOp || '')) d.push({
+            lvl: 'warn',
+            path,
+            msg: 'variable.compareOp 非标准'
+        });
+    }
+    if (type === 'and' || type === 'or') {
+        validateConditionNode(node.left, `${path}.left`, d);
+        validateConditionNode(node.right, `${path}.right`, d);
+    }
+    if (type === 'not') {
+        validateConditionNode(node.left, `${path}.left`, d);
+    }
 }
 
 export function validateQuest(state) {
-  const q = state.q;
-  ensureQuestShape(q);
-  const d = [];
-  if (!q.id?.trim()) d.push({ lvl: 'err', path: 'quest', msg: 'Quest id 不能为空' });
-  if (!q.phases.length) d.push({ lvl: 'err', path: 'phases', msg: '至少需要一个 phase' });
-  const ids = new Set();
-  q.phases.forEach((p, pi) => {
-    if (!p.id?.trim()) d.push({ lvl: 'err', path: `phase:${pi}`, msg: `Phase ${pi + 1} 缺少 id` });
-    if (ids.has(p.id)) d.push({ lvl: 'err', path: `phase:${pi}`, msg: `Phase id 重复: ${p.id}` });
-    ids.add(p.id);
-    if (!['normal', 'parallel', 'choice'].includes(p.mode)) d.push({ lvl: 'warn', path: `phase:${pi}`, msg: `Phase ${p.id} mode 非法` });
-    if (p.mode !== 'normal') d.push({ lvl: 'warn', path: `phase:${pi}`, msg: `Phase.mode(${p.mode}) 为历史模型字段，建议迁移至 transitions/choices` });
-    if (!p.objectives.length) d.push({ lvl: 'warn', path: `phase:${pi}`, msg: `Phase ${p.id} 没有 objective` });
-    if (q.mode === 'COLLECTION' && p.collectionEntryConfig && !p.collectionEntryConfig.categoryId) d.push({ lvl: 'warn', path: `phase:${pi}`, msg: `Collection phase ${p.id} 缺少 categoryId` });
-    if (q.mode === 'COLLECTION' && p.collectionEntryConfig && !(p.collectionEntryConfig.completionTarget > 0)) d.push({ lvl: 'warn', path: `phase:${pi}`, msg: `Collection phase ${p.id} completionTarget 应大于 0` });
-    (p.parallelPhaseIds || []).forEach(id => { if (p.mode === 'parallel' && !q.phases.some(x => x.id === id)) d.push({ lvl: 'err', path: `phase:${pi}`, msg: `parallelPhaseIds 引用了不存在的 phase: ${id}` }); });
-    (p.choicePhaseIds || []).forEach(id => { if (p.mode === 'choice' && !q.phases.some(x => x.id === id)) d.push({ lvl: 'err', path: `phase:${pi}`, msg: `choicePhaseIds 引用了不存在的 phase: ${id}` }); });
-    (p.transitions || []).forEach((tr, ti) => {
-      if (tr?.targetPhaseId && !q.phases.some(x => x.id === tr.targetPhaseId)) {
-        d.push({ lvl: 'err', path: `phase:${pi}`, msg: `transition[${ti}] 引用了不存在的 phase: ${tr.targetPhaseId}` });
-      }
-      validateConditionNode(tr?.condition, `phase:${pi}:transition:${ti}:condition`, d);
+    const q = state.q;
+    ensureQuestShape(q);
+    const d = [];
+    if (!q.id?.trim()) d.push({lvl: 'err', path: 'quest', msg: 'Quest id 不能为空'});
+    if (!q.phases.length) d.push({lvl: 'err', path: 'phases', msg: '至少需要一个 phase'});
+    const ids = new Set();
+    q.phases.forEach((p, pi) => {
+        if (!p.id?.trim()) d.push({lvl: 'err', path: `phase:${pi}`, msg: `Phase ${pi + 1} 缺少 id`});
+        if (ids.has(p.id)) d.push({lvl: 'err', path: `phase:${pi}`, msg: `Phase id 重复: ${p.id}`});
+        ids.add(p.id);
+        if (!['normal', 'parallel', 'choice'].includes(p.mode)) d.push({
+            lvl: 'warn',
+            path: `phase:${pi}`,
+            msg: `Phase ${p.id} mode 非法`
+        });
+        if (p.mode !== 'normal') d.push({
+            lvl: 'warn',
+            path: `phase:${pi}`,
+            msg: `Phase.mode(${p.mode}) 为历史模型字段，建议迁移至 transitions/choices`
+        });
+        if (!p.objectives.length) d.push({lvl: 'warn', path: `phase:${pi}`, msg: `Phase ${p.id} 没有 objective`});
+        if (q.mode === 'COLLECTION' && p.collectionEntryConfig && !p.collectionEntryConfig.categoryId) d.push({
+            lvl: 'warn',
+            path: `phase:${pi}`,
+            msg: `Collection phase ${p.id} 缺少 categoryId`
+        });
+        if (q.mode === 'COLLECTION' && p.collectionEntryConfig && !(p.collectionEntryConfig.completionTarget > 0)) d.push({
+            lvl: 'warn',
+            path: `phase:${pi}`,
+            msg: `Collection phase ${p.id} completionTarget 应大于 0`
+        });
+        (p.parallelPhaseIds || []).forEach(id => {
+            if (p.mode === 'parallel' && !q.phases.some(x => x.id === id)) d.push({
+                lvl: 'err',
+                path: `phase:${pi}`,
+                msg: `parallelPhaseIds 引用了不存在的 phase: ${id}`
+            });
+        });
+        (p.choicePhaseIds || []).forEach(id => {
+            if (p.mode === 'choice' && !q.phases.some(x => x.id === id)) d.push({
+                lvl: 'err',
+                path: `phase:${pi}`,
+                msg: `choicePhaseIds 引用了不存在的 phase: ${id}`
+            });
+        });
+        (p.transitions || []).forEach((tr, ti) => {
+            if (tr?.targetPhaseId && !q.phases.some(x => x.id === tr.targetPhaseId)) {
+                d.push({
+                    lvl: 'err',
+                    path: `phase:${pi}`,
+                    msg: `transition[${ti}] 引用了不存在的 phase: ${tr.targetPhaseId}`
+                });
+            }
+            validateConditionNode(tr?.condition, `phase:${pi}:transition:${ti}:condition`, d);
+        });
+        (p.choices || []).forEach((ch, ci) => {
+            if (ch?.targetPhaseId && !q.phases.some(x => x.id === ch.targetPhaseId)) {
+                d.push({
+                    lvl: 'err',
+                    path: `phase:${pi}`,
+                    msg: `choice[${ci}] 引用了不存在的 phase: ${ch.targetPhaseId}`
+                });
+            }
+            validateConditionNode(ch?.visibleCondition, `phase:${pi}:choice:${ci}:visibleCondition`, d);
+        });
+        p.objectives.forEach((o, oi) => {
+            if (!o.type) d.push({lvl: 'err', path: `objective:${pi}:${oi}`, msg: 'Objective 缺少 type'});
+            if (!OBJECTIVE_TYPES.has(o.type)) d.push({
+                lvl: 'err',
+                path: `objective:${pi}:${oi}`,
+                msg: `Objective type 非法: ${o.type}`
+            });
+            if (!o.text) d.push({lvl: 'warn', path: `objective:${pi}:${oi}`, msg: 'Objective 缺少文案 key'});
+            if (hasLegacyObjectiveShape(o)) d.push({
+                lvl: 'warn',
+                path: `objective:${pi}:${oi}`,
+                msg: '检测到旧 objective 字段（entityType/itemId/targetType/...），建议迁移'
+            });
+            if (o.type === 'KILL' && !o.targetId) d.push({
+                lvl: 'err',
+                path: `objective:${pi}:${oi}`,
+                msg: 'KILL objective 缺少 targetId(entityType)'
+            });
+            if (o.type === 'COLLECT' && !o.targetId && !o.itemTag) d.push({
+                lvl: 'err',
+                path: `objective:${pi}:${oi}`,
+                msg: 'COLLECT objective 缺少 targetId/itemTag'
+            });
+            if (o.type === 'TALK' && !o.npcId && !o.targetId) d.push({
+                lvl: 'warn',
+                path: `objective:${pi}:${oi}`,
+                msg: 'TALK objective 建议填写 npcId 或 targetId'
+            });
+            if (o.type === 'INTERACT' && !o.targetId) d.push({
+                lvl: 'warn',
+                path: `objective:${pi}:${oi}`,
+                msg: 'INTERACT objective 缺少 targetId'
+            });
+            if (o.type === 'OFFER' && !o.targetId && !o.itemTag) d.push({
+                lvl: 'warn',
+                path: `objective:${pi}:${oi}`,
+                msg: 'OFFER objective 缺少 targetId/itemTag'
+            });
+            if (o.type === 'DELIVER' && (!o.targetId || !o.npcId)) d.push({
+                lvl: 'warn',
+                path: `objective:${pi}:${oi}`,
+                msg: 'DELIVER objective 建议填写 targetId 与 npcId'
+            });
+            if (o.type === 'REACH_LOCATION' && (o.x === null || o.y === null || o.z === null)) d.push({
+                lvl: 'warn',
+                path: `objective:${pi}:${oi}`,
+                msg: 'REACH_LOCATION objective 建议填写 x/y/z'
+            });
+        });
+        (p.rewards || []).forEach((r, ri) => {
+            const type = r?.type || 'item';
+            if (!REWARD_TYPES.has(type)) d.push({
+                lvl: 'err',
+                path: `phase:${pi}`,
+                msg: `Phase reward[${ri}] type 非法: ${type}`
+            });
+            if (type === 'item' && !r.itemId) d.push({
+                lvl: 'err',
+                path: `phase:${pi}`,
+                msg: `Phase reward[${ri}] item 缺少 itemId`
+            });
+            if ((type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') && !r.variable) d.push({
+                lvl: 'warn',
+                path: `phase:${pi}`,
+                msg: `Phase reward[${ri}] ${type} 建议填写 variable`
+            });
+            if (type === 'command' && !r.command) d.push({
+                lvl: 'warn',
+                path: `phase:${pi}`,
+                msg: `Phase reward[${ri}] command 为空`
+            });
+            if ((type === 'flag_set' || type === 'flag_clear') && !r.flag) d.push({
+                lvl: 'warn',
+                path: `phase:${pi}`,
+                msg: `Phase reward[${ri}] ${type} flag 为空`
+            });
+        });
     });
-    (p.choices || []).forEach((ch, ci) => {
-      if (ch?.targetPhaseId && !q.phases.some(x => x.id === ch.targetPhaseId)) {
-        d.push({ lvl: 'err', path: `phase:${pi}`, msg: `choice[${ci}] 引用了不存在的 phase: ${ch.targetPhaseId}` });
-      }
-      validateConditionNode(ch?.visibleCondition, `phase:${pi}:choice:${ci}:visibleCondition`, d);
+    if (q.initialPhaseId && !q.phases.some(p => p.id === q.initialPhaseId)) {
+        d.push({lvl: 'err', path: 'quest', msg: `initialPhaseId 引用了不存在的 phase: ${q.initialPhaseId}`});
+    }
+    if (q.unlockConditions) validateConditionNode(q.unlockConditions, 'quest:unlockConditions', d);
+    const sp = new Set((q.visualConfig.splashes || []).map(x => x.eventType));
+    if (!sp.has('QUEST_ACQUIRED')) d.push({lvl: 'warn', path: 'visual', msg: '未配置 QUEST_ACQUIRED splash'});
+    if (!sp.has('QUEST_COMPLETED')) d.push({lvl: 'warn', path: 'visual', msg: '未配置 QUEST_COMPLETED splash'});
+    if (q.mode === 'COLLECTION' && !q.collectionConfig) d.push({
+        lvl: 'warn',
+        path: 'quest',
+        msg: 'Collection quest 缺少 collectionConfig'
     });
-    p.objectives.forEach((o, oi) => {
-      if (!o.type) d.push({ lvl: 'err', path: `objective:${pi}:${oi}`, msg: 'Objective 缺少 type' });
-      if (!OBJECTIVE_TYPES.has(o.type)) d.push({ lvl: 'err', path: `objective:${pi}:${oi}`, msg: `Objective type 非法: ${o.type}` });
-      if (!o.text) d.push({ lvl: 'warn', path: `objective:${pi}:${oi}`, msg: 'Objective 缺少文案 key' });
-      if (hasLegacyObjectiveShape(o)) d.push({ lvl: 'warn', path: `objective:${pi}:${oi}`, msg: '检测到旧 objective 字段（entityType/itemId/targetType/...），建议迁移' });
-      if (o.type === 'KILL' && !o.targetId) d.push({ lvl: 'err', path: `objective:${pi}:${oi}`, msg: 'KILL objective 缺少 targetId(entityType)' });
-      if (o.type === 'COLLECT' && !o.targetId && !o.itemTag) d.push({ lvl: 'err', path: `objective:${pi}:${oi}`, msg: 'COLLECT objective 缺少 targetId/itemTag' });
-      if (o.type === 'TALK' && !o.npcId && !o.targetId) d.push({ lvl: 'warn', path: `objective:${pi}:${oi}`, msg: 'TALK objective 建议填写 npcId 或 targetId' });
-      if (o.type === 'INTERACT' && !o.targetId) d.push({ lvl: 'warn', path: `objective:${pi}:${oi}`, msg: 'INTERACT objective 缺少 targetId' });
-      if (o.type === 'OFFER' && !o.targetId && !o.itemTag) d.push({ lvl: 'warn', path: `objective:${pi}:${oi}`, msg: 'OFFER objective 缺少 targetId/itemTag' });
-      if (o.type === 'DELIVER' && (!o.targetId || !o.npcId)) d.push({ lvl: 'warn', path: `objective:${pi}:${oi}`, msg: 'DELIVER objective 建议填写 targetId 与 npcId' });
-      if (o.type === 'REACH_LOCATION' && (o.x === null || o.y === null || o.z === null)) d.push({ lvl: 'warn', path: `objective:${pi}:${oi}`, msg: 'REACH_LOCATION objective 建议填写 x/y/z' });
+    if (q.collectionConfig) {
+        const categoryIds = new Set();
+        (q.collectionConfig.categories || []).forEach((cat, ci) => {
+            if (!cat?.categoryId) return;
+            if (categoryIds.has(cat.categoryId)) d.push({
+                lvl: 'err',
+                path: 'quest',
+                msg: `categoryId 重复: ${cat.categoryId} (index ${ci})`
+            });
+            categoryIds.add(cat.categoryId);
+            const nodeIds = new Set();
+            (cat.rewardNodes || []).forEach((node, ni) => {
+                if (!node?.nodeId) return;
+                if (nodeIds.has(node.nodeId)) d.push({
+                    lvl: 'err',
+                    path: 'quest',
+                    msg: `rewardNode nodeId 重复: ${node.nodeId} (category ${cat.categoryId}, index ${ni})`
+                });
+                nodeIds.add(node.nodeId);
+            });
+        });
+        const topNodeIds = new Set();
+        (q.collectionConfig.rewardNodes || []).forEach((node, ni) => {
+            if (!node?.nodeId) return;
+            if (topNodeIds.has(node.nodeId)) d.push({
+                lvl: 'err',
+                path: 'quest',
+                msg: `top rewardNode nodeId 重复: ${node.nodeId} (index ${ni})`
+            });
+            topNodeIds.add(node.nodeId);
+        });
+    }
+    (q.rewards || []).forEach((r, ri) => {
+        const type = r?.type || 'item';
+        if (!REWARD_TYPES.has(type)) d.push({lvl: 'err', path: 'quest', msg: `Quest reward[${ri}] type 非法: ${type}`});
+        if (type === 'item' && !r.itemId) d.push({
+            lvl: 'err',
+            path: 'quest',
+            msg: `Quest reward[${ri}] item 缺少 itemId`
+        });
+        if ((type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') && !r.variable) d.push({
+            lvl: 'warn',
+            path: 'quest',
+            msg: `Quest reward[${ri}] ${type} 建议填写 variable`
+        });
+        if (type === 'command' && !r.command) d.push({
+            lvl: 'warn',
+            path: 'quest',
+            msg: `Quest reward[${ri}] command 为空`
+        });
+        if ((type === 'flag_set' || type === 'flag_clear') && !r.flag) d.push({
+            lvl: 'warn',
+            path: 'quest',
+            msg: `Quest reward[${ri}] ${type} flag 为空`
+        });
     });
-    (p.rewards || []).forEach((r, ri) => {
-      const type = r?.type || 'item';
-      if (!REWARD_TYPES.has(type)) d.push({ lvl: 'err', path: `phase:${pi}`, msg: `Phase reward[${ri}] type 非法: ${type}` });
-      if (type === 'item' && !r.itemId) d.push({ lvl: 'err', path: `phase:${pi}`, msg: `Phase reward[${ri}] item 缺少 itemId` });
-      if ((type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') && !r.variable) d.push({ lvl: 'warn', path: `phase:${pi}`, msg: `Phase reward[${ri}] ${type} 建议填写 variable` });
-      if (type === 'command' && !r.command) d.push({ lvl: 'warn', path: `phase:${pi}`, msg: `Phase reward[${ri}] command 为空` });
-      if ((type === 'flag_set' || type === 'flag_clear') && !r.flag) d.push({ lvl: 'warn', path: `phase:${pi}`, msg: `Phase reward[${ri}] ${type} flag 为空` });
-    });
-  });
-  if (q.initialPhaseId && !q.phases.some(p => p.id === q.initialPhaseId)) {
-    d.push({ lvl: 'err', path: 'quest', msg: `initialPhaseId 引用了不存在的 phase: ${q.initialPhaseId}` });
-  }
-  if (q.unlockConditions) validateConditionNode(q.unlockConditions, 'quest:unlockConditions', d);
-  const sp = new Set((q.visualConfig.splashes || []).map(x => x.eventType));
-  if (!sp.has('QUEST_ACQUIRED')) d.push({ lvl: 'warn', path: 'visual', msg: '未配置 QUEST_ACQUIRED splash' });
-  if (!sp.has('QUEST_COMPLETED')) d.push({ lvl: 'warn', path: 'visual', msg: '未配置 QUEST_COMPLETED splash' });
-  if (q.mode === 'COLLECTION' && !q.collectionConfig) d.push({ lvl: 'warn', path: 'quest', msg: 'Collection quest 缺少 collectionConfig' });
-  if (q.collectionConfig) {
-    const categoryIds = new Set();
-    (q.collectionConfig.categories || []).forEach((cat, ci) => {
-      if (!cat?.categoryId) return;
-      if (categoryIds.has(cat.categoryId)) d.push({ lvl: 'err', path: 'quest', msg: `categoryId 重复: ${cat.categoryId} (index ${ci})` });
-      categoryIds.add(cat.categoryId);
-      const nodeIds = new Set();
-      (cat.rewardNodes || []).forEach((node, ni) => {
-        if (!node?.nodeId) return;
-        if (nodeIds.has(node.nodeId)) d.push({ lvl: 'err', path: 'quest', msg: `rewardNode nodeId 重复: ${node.nodeId} (category ${cat.categoryId}, index ${ni})` });
-        nodeIds.add(node.nodeId);
-      });
-    });
-    const topNodeIds = new Set();
-    (q.collectionConfig.rewardNodes || []).forEach((node, ni) => {
-      if (!node?.nodeId) return;
-      if (topNodeIds.has(node.nodeId)) d.push({ lvl: 'err', path: 'quest', msg: `top rewardNode nodeId 重复: ${node.nodeId} (index ${ni})` });
-      topNodeIds.add(node.nodeId);
-    });
-  }
-  (q.rewards || []).forEach((r, ri) => {
-    const type = r?.type || 'item';
-    if (!REWARD_TYPES.has(type)) d.push({ lvl: 'err', path: 'quest', msg: `Quest reward[${ri}] type 非法: ${type}` });
-    if (type === 'item' && !r.itemId) d.push({ lvl: 'err', path: 'quest', msg: `Quest reward[${ri}] item 缺少 itemId` });
-    if ((type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') && !r.variable) d.push({ lvl: 'warn', path: 'quest', msg: `Quest reward[${ri}] ${type} 建议填写 variable` });
-    if (type === 'command' && !r.command) d.push({ lvl: 'warn', path: 'quest', msg: `Quest reward[${ri}] command 为空` });
-    if ((type === 'flag_set' || type === 'flag_clear') && !r.flag) d.push({ lvl: 'warn', path: 'quest', msg: `Quest reward[${ri}] ${type} flag 为空` });
-  });
-  state.diag = d;
+    state.diag = d;
 }

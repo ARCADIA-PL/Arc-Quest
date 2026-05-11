@@ -1,10 +1,10 @@
-import { renderConditionTree } from '../condition-editor.js';
-import { chipEditor } from '../chip-editor.js';
-import { boolSelect, enumSelect, phaseSingleSelect, suggestInput } from '../quest-editor-sections.js';
+import {renderConditionTree} from '../condition-editor.js';
+import {chipEditor} from '../chip-editor.js';
+import {boolSelect, enumSelect, phaseSingleSelect, suggestInput} from '../quest-editor-sections.js';
 
 function renderUnlockConditionsSection(q, conditionOptions) {
-  const conditions = Array.isArray(q.unlockConditions) ? q.unlockConditions : [];
-  return `
+    const conditions = Array.isArray(q.unlockConditions) ? q.unlockConditions : [];
+    return `
     <h4>解锁条件 (unlockConditions)</h4>
     <div class="card">
       ${conditions.length ? conditions.map((condition, index) => `
@@ -20,22 +20,22 @@ function renderUnlockConditionsSection(q, conditionOptions) {
 }
 
 export function renderQuestTopLevelSection(q, phaseIds, field, area) {
-  const isCollectionQuest = q.mode === 'COLLECTION';
-  const isTimed = !!q.timeLimitType && Number(q.timeLimitValue || 0) > 0;
-  const requiresCount = q.completionPolicy === 'N_OF_M';
-  const requiresTargetPhase = q.completionPolicy === 'SPECIFIC_PHASE';
-  const flagSuggestions = Array.from(new Set([
-    ...(q.flagsToSetOnAccept || []),
-    ...(q.flagsToSetOnComplete || []),
-    ...(q.phases || []).flatMap(phase => [
-      ...(phase.flagsToSetOnEnter || []),
-      ...(phase.flagsToSetOnComplete || []),
-      ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
-    ])
-  ].filter(Boolean)));
-  const questSuggestions = Array.from(new Set([q.id, ...(q.phases || []).map(phase => phase.id).filter(Boolean)])).filter(Boolean);
-  const conditionOptions = { flagSuggestions, questSuggestions };
-  return `
+    const isCollectionQuest = q.mode === 'COLLECTION';
+    const isTimed = !!q.timeLimitType && Number(q.timeLimitValue || 0) > 0;
+    const requiresCount = q.completionPolicy === 'N_OF_M';
+    const requiresTargetPhase = q.completionPolicy === 'SPECIFIC_PHASE';
+    const flagSuggestions = Array.from(new Set([
+        ...(q.flagsToSetOnAccept || []),
+        ...(q.flagsToSetOnComplete || []),
+        ...(q.phases || []).flatMap(phase => [
+            ...(phase.flagsToSetOnEnter || []),
+            ...(phase.flagsToSetOnComplete || []),
+            ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
+        ])
+    ].filter(Boolean)));
+    const questSuggestions = Array.from(new Set([q.id, ...(q.phases || []).map(phase => phase.id).filter(Boolean)])).filter(Boolean);
+    const conditionOptions = {flagSuggestions, questSuggestions};
+    return `
     <h4>Datapack 顶层设置 (Top-level Specs)</h4>
     <div class="card">
       <div class="row">

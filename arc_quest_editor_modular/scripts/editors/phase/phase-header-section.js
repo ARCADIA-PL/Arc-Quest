@@ -1,9 +1,9 @@
 function modeSelect(label, bind, value) {
-  return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="translatable" ${value === 'translatable' ? 'selected' : ''}>Translatable</option><option value="literal" ${value === 'literal' ? 'selected' : ''}>Literal</option></select></div>`;
+    return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="translatable" ${value === 'translatable' ? 'selected' : ''}>Translatable</option><option value="literal" ${value === 'literal' ? 'selected' : ''}>Literal</option></select></div>`;
 }
 
 export function renderPhaseHeaderSection(s, p, field, area) {
-  return `
+    return `
     <div class="card">
       ${field('阶段标识 (Phase ID)', `ph.${s.pi}.id`, p.id)}
       <div class="row">

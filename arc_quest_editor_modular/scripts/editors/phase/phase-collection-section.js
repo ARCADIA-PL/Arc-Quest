@@ -1,5 +1,5 @@
 export function renderPhaseCollectionSection(s, p, field, area) {
-  return `
+    return `
     <h4>Collection Entry Config</h4>
     <div class="card">
       <div class="row">

@@ -1,27 +1,27 @@
 import {
-  boolSelect,
-  enumSelect,
-  refSelect,
-  renderCollectionTreeView,
-  ruleEditor,
-  scopeRefOptions
+    boolSelect,
+    enumSelect,
+    refSelect,
+    renderCollectionTreeView,
+    ruleEditor,
+    scopeRefOptions
 } from '../quest-editor-sections.js';
 
 export function renderQuestCollectionWorkspace(state, q, field, phaseIds) {
-  const isCollectionQuest = q.mode === 'COLLECTION';
-  q.collectionConfig ||= { categories: [], rewardNodes: [], completionRules: [] };
-  const categories = q.collectionConfig.categories || [];
-  const topNodes = q.collectionConfig.rewardNodes || [];
-  const categoryIds = categories.map(c => c.categoryId).filter(Boolean);
+    const isCollectionQuest = q.mode === 'COLLECTION';
+    q.collectionConfig ||= {categories: [], rewardNodes: [], completionRules: []};
+    const categories = q.collectionConfig.categories || [];
+    const topNodes = q.collectionConfig.rewardNodes || [];
+    const categoryIds = categories.map(c => c.categoryId).filter(Boolean);
 
-  if (!isCollectionQuest) {
-    return `
+    if (!isCollectionQuest) {
+        return `
       <h4>Collection Workspace</h4>
       <div class="card"><div class="small">当前 Quest Mode 为 PROGRESSION，Collection 专属配置已隐藏。切换到 COLLECTION 后才显示。</div></div>
     `;
-  }
+    }
 
-  return `
+    return `
     <h4>Collection Workspace</h4>
     <div class="actions" style="margin:8px 0 12px;">
       <button type="button" data-collection-view="card" class="${state.ui.collectionView !== 'tree' ? 'primary' : ''}">Card View</button>

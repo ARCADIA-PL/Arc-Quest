@@ -1,8 +1,8 @@
-import { chipEditor } from '../chip-editor.js';
-import { boolSelect, modeSelect } from '../quest-editor-sections.js';
+import {chipEditor} from '../chip-editor.js';
+import {boolSelect, modeSelect} from '../quest-editor-sections.js';
 
 export function renderQuestInfoSection(q, field, area) {
-  return `
+    return `
     <div class="card">
       ${field('任务唯一标识 (Quest ID)', 'q.id', q.id)}
       <div class="row">

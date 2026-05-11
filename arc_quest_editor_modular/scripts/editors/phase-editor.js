@@ -1,33 +1,33 @@
-import { renderRewardList } from './reward-editor.js';
-import { renderPhaseModeSummary } from './shared.js';
+import {renderRewardList} from './reward-editor.js';
+import {renderPhaseModeSummary} from './shared.js';
 import {
-  renderPhaseHeaderSection,
-  renderPhaseFlowSection,
-  renderPhaseTransitionsSection,
-  renderPhaseChoicesSection,
-  renderPhaseCollectionSection
+    renderPhaseHeaderSection,
+    renderPhaseFlowSection,
+    renderPhaseTransitionsSection,
+    renderPhaseChoicesSection,
+    renderPhaseCollectionSection
 } from './phase-editor-sections.js';
 
 export function renderPhaseEditor(state, field, area) {
-  const s = state.ui.sel;
-  const p = state.q.phases[s.pi];
-  const phaseIds = (state.q.phases || []).map(x => x.id).filter(Boolean);
-  const flagSuggestions = Array.from(new Set([
-    ...(state.q.flagsToSetOnAccept || []),
-    ...(state.q.flagsToSetOnComplete || []),
-    ...(p.flagsToSetOnEnter || []),
-    ...(p.flagsToSetOnComplete || []),
-    ...(state.q.phases || []).flatMap(phase => [
-      ...(phase.flagsToSetOnEnter || []),
-      ...(phase.flagsToSetOnComplete || []),
-      ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
-    ])
-  ].filter(Boolean)));
-  const questSuggestions = Array.from(new Set([state.q.id].filter(Boolean)));
-  const conditionOptions = { flagSuggestions, questSuggestions };
-  const isCollectionQuest = state.q.mode === 'COLLECTION';
+    const s = state.ui.sel;
+    const p = state.q.phases[s.pi];
+    const phaseIds = (state.q.phases || []).map(x => x.id).filter(Boolean);
+    const flagSuggestions = Array.from(new Set([
+        ...(state.q.flagsToSetOnAccept || []),
+        ...(state.q.flagsToSetOnComplete || []),
+        ...(p.flagsToSetOnEnter || []),
+        ...(p.flagsToSetOnComplete || []),
+        ...(state.q.phases || []).flatMap(phase => [
+            ...(phase.flagsToSetOnEnter || []),
+            ...(phase.flagsToSetOnComplete || []),
+            ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
+        ])
+    ].filter(Boolean)));
+    const questSuggestions = Array.from(new Set([state.q.id].filter(Boolean)));
+    const conditionOptions = {flagSuggestions, questSuggestions};
+    const isCollectionQuest = state.q.mode === 'COLLECTION';
 
-  return `
+    return `
     <div class="sec">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
         <h3 style="font-size:20px; font-weight:700; color:var(--text-main); margin:0;">阶段节点配置 (Phase: ${s.pi})</h3>

@@ -1,6 +1,6 @@
 export function renderVisualEditor(state, field, area) {
-  const v = state.q.visualConfig;
-  return `
+    const v = state.q.visualConfig;
+    return `
     <div class="sec">
       <h3>VisualConfig</h3>
       ${field('ThemeColor', 'q.theme', v.themeColor, 'color')}

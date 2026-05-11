@@ -1,59 +1,71 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Arc Quest // Datapack Editor Pro</title>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>Arc Quest // Datapack Editor Pro</title>
 </head>
 <body>
 <div class="ambient-bg"></div>
 
 <div class="app" id="appRoot">
-  <header class="bar">
-    <div class="title-area">
-      <div class="app-icon">AQ</div>
-      <div class="title">Arc Quest Editor <span class="badge">Pro</span></div>
-    </div>
-    <div class="toolbar">
-      <button id="newBtn" class="toolbar-btn">
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M12 5v14M5 12h14"/></svg> 新建架构
-      </button>
-      <label for="fileInput" class="toolbar-btn">
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 15V5"/></svg> 导入 JSON
-      </label>
-      <input id="fileInput" type="file" accept=".json,application/json" />
-      <button id="exportBtn" class="toolbar-btn primary">
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 14l5 5 5-5M12 15V3"/></svg> 导出序列
-      </button>
-      <button id="validateBtn" class="toolbar-btn">
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3"/></svg> 系统校验
-      </button>
-    </div>
-  </header>
+    <header class="bar">
+        <div class="title-area">
+            <div class="app-icon">AQ</div>
+            <div class="title">Arc Quest Editor <span class="badge">Pro</span></div>
+        </div>
+        <div class="toolbar">
+            <button class="toolbar-btn" id="newBtn">
+                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                新建架构
+            </button>
+            <label class="toolbar-btn" for="fileInput">
+                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 15V5"/>
+                </svg>
+                导入 JSON
+            </label>
+            <input accept=".json,application/json" id="fileInput" type="file"/>
+            <button class="toolbar-btn primary" id="exportBtn">
+                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 14l5 5 5-5M12 15V3"/>
+                </svg>
+                导出序列
+            </button>
+            <button class="toolbar-btn" id="validateBtn">
+                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3"/>
+                </svg>
+                系统校验
+            </button>
+        </div>
+    </header>
 
-  <div class="main" id="mainLayout">
-    <aside class="pane glass-pane" id="left"></aside>
-    <div class="pane-resizer" id="resizerLeft" aria-label="调整左侧宽度" role="separator"></div>
-    <main class="pane center-pane" id="mid"></main>
-    <div class="pane-resizer" id="resizerRight" aria-label="调整右侧宽度" role="separator"></div>
-    <aside class="pane glass-pane right" id="right-container">
-      <div class="tabs" id="tabs"></div>
-      <div class="panel" id="right"></div>
-    </aside>
-  </div>
+    <div class="main" id="mainLayout">
+        <aside class="pane glass-pane" id="left"></aside>
+        <div aria-label="调整左侧宽度" class="pane-resizer" id="resizerLeft" role="separator"></div>
+        <main class="pane center-pane" id="mid"></main>
+        <div aria-label="调整右侧宽度" class="pane-resizer" id="resizerRight" role="separator"></div>
+        <aside class="pane glass-pane right" id="right-container">
+            <div class="tabs" id="tabs"></div>
+            <div class="panel" id="right"></div>
+        </aside>
+    </div>
 
-  <footer class="status glass-pane" id="status"></footer>
+    <footer class="status glass-pane" id="status"></footer>
 </div>
 
-<div class="drop-overlay" id="dropOverlay" aria-hidden="true">
-  <div class="drop-card">
-    <div class="drop-title">拖入 Quest JSON</div>
-    <div class="drop-subtitle" id="dropSubtitle">松开以导入 Arc Quest 任务文件</div>
-  </div>
+<div aria-hidden="true" class="drop-overlay" id="dropOverlay">
+    <div class="drop-card">
+        <div class="drop-title">拖入 Quest JSON</div>
+        <div class="drop-subtitle" id="dropSubtitle">松开以导入 Arc Quest 任务文件</div>
+    </div>
 </div>
 
-<div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+<div aria-atomic="true" aria-live="polite" class="toast-stack" id="toastStack"></div>
 
-<script type="module" src="./scripts/app.js"></script>
+<script src="./scripts/app.js" type="module"></script>
 </body>
 </html>

@@ -1,15 +1,15 @@
-import { renderConditionTree } from '../condition-editor.js';
+import {renderConditionTree} from '../condition-editor.js';
 
 function transitionTargetSelect(label, bind, value, phaseIds, selfId) {
-  const options = ['<option value="">(未设置)</option>', ...phaseIds
-    .filter(id => id && id !== selfId)
-    .map(id => `<option value="${id}" ${value === id ? 'selected' : ''}>${id}</option>`)];
-  return `<div class="f"><label>${label}</label><select data-b="${bind}">${options.join('')}</select></div>`;
+    const options = ['<option value="">(未设置)</option>', ...phaseIds
+        .filter(id => id && id !== selfId)
+        .map(id => `<option value="${id}" ${value === id ? 'selected' : ''}>${id}</option>`)];
+    return `<div class="f"><label>${label}</label><select data-b="${bind}">${options.join('')}</select></div>`;
 }
 
 export function renderPhaseChoicesSection(s, p, phaseIds, field, conditionOptions) {
-  if (p.mode !== 'choice') return '';
-  return `
+    if (p.mode !== 'choice') return '';
+    return `
     <h4>阶段分支选项 (Choices)</h4>
     <div class="card">
       ${(p.choices || []).map((c, ci) => `

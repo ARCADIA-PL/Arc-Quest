@@ -1,15 +1,15 @@
-import { renderConditionTree } from './condition-editor.js';
-import { chipEditor } from './chip-editor.js';
+import {renderConditionTree} from './condition-editor.js';
+import {chipEditor} from './chip-editor.js';
 
 export function renderPhaseFlowSection(s, p, phaseIds, field, area, conditionOptions) {
-  const isParallel = p.mode === 'parallel';
-  const isChoice = p.mode === 'choice';
-  const hasEnterCondition = !!p.rawEnterCondition;
-  const transitionTargetOptions = ['<option value="">(未设置)</option>', ...phaseIds
-    .filter(id => id && id !== p.id)
-    .map(id => `<option value="${id}" ${p.targetPhaseId === id ? 'selected' : ''}>${id}</option>`)].join('');
+    const isParallel = p.mode === 'parallel';
+    const isChoice = p.mode === 'choice';
+    const hasEnterCondition = !!p.rawEnterCondition;
+    const transitionTargetOptions = ['<option value="">(未设置)</option>', ...phaseIds
+        .filter(id => id && id !== p.id)
+        .map(id => `<option value="${id}" ${p.targetPhaseId === id ? 'selected' : ''}>${id}</option>`)].join('');
 
-  return `
+    return `
     <h4>流程与执行策略 (Phase Flow)</h4>
     <div class="card">
       <div class="row">
