@@ -381,9 +381,9 @@ public final class CollectionHistoryPanel {
             }
         } else {
             CategoryData defaultCat = new CategoryData("ALL ASSETS");
-            for (String phaseId : def.getPhaseIds()) {
-                PhaseDefinition phase = def.getPhase(phaseId);
-                if (phase == null || !phase.hasCollectionEntryConfig()) continue;
+        for (String phaseId : def.getPhaseIds()) {
+            PhaseDefinition phase = def.getPhase(phaseId);
+            if (phase == null || !phase.hasCollectionEntryConfig()) continue;
                 defaultCat.entries.add(createEntry(phaseId, phase, phase.getCollectionEntryConfig(), runtime));
             }
             if (!defaultCat.entries.isEmpty()) categories.add(defaultCat);
@@ -391,13 +391,13 @@ public final class CollectionHistoryPanel {
     }
 
     private static EntryData createEntry(String phaseId, PhaseDefinition phase, CollectionEntryConfig config, QuestRuntimeData runtime) {
-        int count = ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, phaseId);
+            int count = ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, phaseId);
         int target = Math.max(1, config.getCompletionTarget());
-        boolean completed = runtime != null && runtime.isPhaseCompleted(phaseId);
-        String name = phase.getDisplayName().getString();
-        if (name == null || name.isEmpty()) name = phaseId;
+            boolean completed = runtime != null && runtime.isPhaseCompleted(phaseId);
+            String name = phase.getDisplayName().getString();
+            if (name == null || name.isEmpty()) name = phaseId;
         return new EntryData(phaseId, name, count, target, completed);
-    }
+        }
 
     private static class CategoryData {
         String name;
