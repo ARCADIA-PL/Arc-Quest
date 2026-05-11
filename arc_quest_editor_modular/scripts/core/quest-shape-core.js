@@ -1,3 +1,4 @@
+import { createQuestSkeleton } from './factories.js';
 import { splitList } from './utils.js';
 
 export function setLooseJson(target, key, value) {
@@ -101,16 +102,27 @@ export function syncPhaseTransitions(phase) {
 }
 
 export function ensureQuestShape(q) {
-  q.tags ||= [];
-  q.rewards ||= [];
-  q.phases ||= [];
+  const defaults = createQuestSkeleton();
+
+  q.id ??= defaults.id;
+  q.title ??= defaults.title;
+  q.titleMode ||= defaults.titleMode;
+  q.description ??= defaults.description;
+  q.descriptionMode ||= defaults.descriptionMode;
+  q.sortOrder ??= defaults.sortOrder;
+  q.repeatable ??= defaults.repeatable;
+  q.mode ||= defaults.mode;
+  q.category ||= defaults.category;
+  q.tags ||= [...defaults.tags];
+  q.flagsToSetOnAccept ||= [...defaults.flagsToSetOnAccept];
+  q.flagsToSetOnComplete ||= [...defaults.flagsToSetOnComplete];
+  q.rewards ||= [...defaults.rewards];
+  q.phases ||= [...defaults.phases];
+  q.unlockConditions ??= defaults.unlockConditions;
   q.visualConfig ||= {};
-  q.visualConfig.themeColor ||= '#63c7ff';
-  q.visualConfig.splashes ||= [];
+  q.visualConfig.themeColor ||= defaults.visualConfig.themeColor;
+  q.visualConfig.splashes ||= [...defaults.visualConfig.splashes];
   q.visualConfig.icons ||= {};
-  q.flagsToSetOnAccept ||= [];
-  q.flagsToSetOnComplete ||= [];
-  q.unlockConditions ||= null;
   q.relatedMarks ||= [];
   q.completionPolicy ||= 'ALL';
   q.completionRequiredCount ||= 1;
@@ -121,9 +133,6 @@ export function ensureQuestShape(q) {
   q.chapterFailSound ||= '';
   q.chapterCompleteSound ||= '';
   q.chapterShopType ||= 'TRADE';
-  q.mode ||= 'PROGRESSION';
-  q.titleMode ||= 'translatable';
-  q.descriptionMode ||= 'translatable';
   if (q.collectionConfig) {
     q.collectionConfig.trackerPresentationMode ||= 'DETAILED';
     q.collectionConfig.collectionPresentationMode ||= 'GROUPED';

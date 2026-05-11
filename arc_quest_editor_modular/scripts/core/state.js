@@ -1,19 +1,29 @@
-export const createBlankQuest = () => ({
-  id: 'new_quest',
-  title: 'arc_quest.quest.new_quest.title',
-  description: 'arc_quest.quest.new_quest.description',
-  sortOrder: 0,
-  repeatable: false,
-  tags: [],
-  visualConfig: { themeColor: '#63c7ff', splashes: [] },
-  rewards: [],
-  phases: [{
-    id: 'phase_1', mode: 'normal', title: 'arc_quest.phase.new_quest.phase_1', description: '', autoStart: false,
-    parallelPhaseIds: [], choicePhaseIds: [],
-    objectives: [{ type: 'kill', id: 'kill_target_1', text: 'arc_quest.objective.new_quest.phase_1.0', count: 1, entityType: 'minecraft:zombie' }],
-    rewards: []
-  }]
-});
+import { createObjective, createPhase, createQuestSkeleton, createSplash } from './factories.js';
+
+export const createBlankQuest = () => {
+  const quest = createQuestSkeleton();
+  quest.id = 'new_quest';
+  quest.title = 'arc_quest.quest.new_quest.title';
+  quest.description = 'arc_quest.quest.new_quest.description';
+  quest.visualConfig.splashes = [
+    createSplash('QUEST_ACQUIRED'),
+    createSplash('QUEST_COMPLETED')
+  ];
+
+  const phase = createPhase(0);
+  phase.id = 'phase_1';
+  phase.title = 'arc_quest.phase.new_quest.phase_1.title';
+  phase.description = 'arc_quest.phase.new_quest.phase_1.description';
+
+  const objective = createObjective(0);
+  objective.id = 'objective_1';
+  objective.text = 'arc_quest.objective.new_quest.phase_1.1';
+
+  phase.objectives = [objective];
+  quest.phases = [phase];
+
+  return quest;
+};
 
 export const state = {
   meta: { file: 'new_quest.json', dirty: false },

@@ -1,11 +1,37 @@
+export const createQuestSkeleton = () => ({
+  id: '',
+  title: '',
+  titleMode: 'translatable',
+  description: '',
+  descriptionMode: 'translatable',
+  sortOrder: 0,
+  repeatable: false,
+  mode: 'PROGRESSION',
+  category: '',
+  tags: [],
+  flagsToSetOnAccept: [],
+  flagsToSetOnComplete: [],
+  rewards: [],
+  phases: [],
+  unlockConditions: [],
+  visualConfig: {
+    themeColor: '#63c7ff',
+    splashes: []
+  }
+});
+
 export const createPhase = index => ({
   id: `phase_${index + 1}`,
   mode: 'normal',
   title: '',
+  titleMode: 'translatable',
   description: '',
+  descriptionMode: 'translatable',
   autoStart: false,
   parallelPhaseIds: [],
   choicePhaseIds: [],
+  flagsToSetOnEnter: [],
+  flagsToSetOnComplete: [],
   objectives: [],
   rewards: [],
   transitions: []
@@ -29,7 +55,7 @@ export const createObjective = index => ({
 });
 
 export const createReward = () => ({ type: 'item', itemId: 'minecraft:iron_ingot', count: 1 });
-export const createSplash = () => ({ eventType: 'QUEST_ACQUIRED', texture: '', scale: 1 });
+export const createSplash = (eventType = 'QUEST_ACQUIRED') => ({ eventType, texture: '', scale: 1 });
 export const createTransition = () => ({ targetPhaseId: '', condition: { type: 'always' } });
 export const createCollectionCategory = index => ({
   categoryId: `category_${index + 1}`,
