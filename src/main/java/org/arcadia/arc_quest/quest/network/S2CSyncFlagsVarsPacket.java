@@ -26,8 +26,8 @@ public class S2CSyncFlagsVarsPacket {
     private final Map<String, Integer> variables;
 
     public S2CSyncFlagsVarsPacket(IQuestCapability cap) {
-        this.flags = new HashSet<>(cap.getAllFlags());
-        this.variables = new HashMap<>(cap.getAllVariables());
+        flags = new HashSet<>(cap.getAllFlags());
+        variables = new HashMap<>(cap.getAllVariables());
     }
 
     private S2CSyncFlagsVarsPacket(Set<String> flags, Map<String, Integer> variables) {

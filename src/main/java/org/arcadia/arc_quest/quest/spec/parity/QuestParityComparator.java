@@ -10,8 +10,6 @@ import java.util.Objects;
 
 public final class QuestParityComparator {
 
-    public record Diff(String path, Object expected, Object actual) {}
-
     public List<Diff> compare(QuestSpec expected, QuestSpec actual) {
         List<Diff> diffs = new ArrayList<>();
         if (expected == null || actual == null) {
@@ -65,5 +63,8 @@ public final class QuestParityComparator {
         if (!Objects.equals(expected, actual)) {
             diffs.add(new Diff(path, expected, actual));
         }
+    }
+
+    public record Diff(String path, Object expected, Object actual) {
     }
 }

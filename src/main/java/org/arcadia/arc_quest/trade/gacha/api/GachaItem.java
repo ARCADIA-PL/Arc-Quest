@@ -78,7 +78,7 @@ public class GachaItem {
         this.baseWeight = baseWeight;
         this.rarity = rarity;
         this.countsTowardsPity = countsTowardsPity;
-        this.weightModifiers = new ArrayList<>();
+        weightModifiers = new ArrayList<>();
         this.minCount = minCount;
         this.maxCount = maxCount;
         this.visibleCondition = visibleCondition;
@@ -98,7 +98,7 @@ public class GachaItem {
      */
     public GachaItem addWeightModifier(ICondition condition, int weightDelta) {
         if (condition != null) {
-            this.weightModifiers.add(new WeightModifier(condition, weightDelta));
+            weightModifiers.add(new WeightModifier(condition, weightDelta));
         }
         return this;
     }

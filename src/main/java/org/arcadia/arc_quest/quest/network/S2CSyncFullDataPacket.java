@@ -20,11 +20,11 @@ public class S2CSyncFullDataPacket {
     // ── 构造（服务端）──────────────────────────────────
 
     public S2CSyncFullDataPacket(IQuestCapability cap) {
-        this.capabilityData = cap.serializeNBT();
+        capabilityData = cap.serializeNBT();
     }
 
     private S2CSyncFullDataPacket(CompoundTag data) {
-        this.capabilityData = data;
+        capabilityData = data;
     }
 
     // ── 编码 ──────────────────────────────────────────

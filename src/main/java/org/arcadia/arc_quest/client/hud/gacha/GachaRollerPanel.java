@@ -37,16 +37,16 @@ public class GachaRollerPanel {
     }
 
     public void init(int w, int h) {
-        this.width = w;
-        this.height = h;
+        width = w;
+        height = h;
     }
 
     public void startRoll(ClientGachaCache.DrawRecord result) {
-        this.confirmedResult = result;
-        this.isRolling = true;
-        this.currentState = State.ENTER;
-        this.masterAnim = this.rollElapsed = this.holdElapsed = this.exitElapsed = 0f;
-        this.rollSpeedMult = 1.0f;
+        confirmedResult = result;
+        isRolling = true;
+        currentState = State.ENTER;
+        masterAnim = rollElapsed = holdElapsed = exitElapsed = 0f;
+        rollSpeedMult = 1.0f;
         generateRollStrip(result.itemId());
     }
 
@@ -60,7 +60,7 @@ public class GachaRollerPanel {
         GachaItem targetItem = pool.stream().filter(i -> i.getItemId().equals(targetItemId)).findFirst().orElse(pool.get(0));
         rollStrip.set(targetItemIndex, targetItem);
 
-        this.targetThemeHighContrast = HudAnimUtil.blend(parent.getShopDef().getEffectiveThemeColor(targetItem), 0xFFFFFF, 0.15f);
+        targetThemeHighContrast = HudAnimUtil.blend(parent.getShopDef().getEffectiveThemeColor(targetItem), 0xFFFFFF, 0.15f);
 
         scrollX = 0;
         lastTickCard = 0;
@@ -116,12 +116,12 @@ public class GachaRollerPanel {
         int bgAlpha = (int) (0x8C * easeMaster * (1.0f - wipeOut));
         if (bgAlpha > 0) g.fill(0, 0, width, height, bgAlpha << 24);
 
-        int targetBarHeight = (int) (this.height * 0.10f);
+        int targetBarHeight = (int) (height * 0.10f);
         int barHeight = Math.round(targetBarHeight * easeMaster * (1.0f - wipeOut));
 
         if (barHeight > 0) {
-            g.fill(0, 0, this.width, barHeight, 0xFF000000);
-            g.fill(0, this.height - barHeight, this.width, this.height, 0xFF000000);
+            g.fill(0, 0, width, barHeight, 0xFF000000);
+            g.fill(0, height - barHeight, width, height, 0xFF000000);
         }
 
         int safeAlpha = (int) (255 * easeMaster);
@@ -277,8 +277,8 @@ public class GachaRollerPanel {
     }
 
     public void onScreenClose() {
-        this.currentState = State.EXIT;
-        this.exitElapsed = 0f;
+        currentState = State.EXIT;
+        exitElapsed = 0f;
     }
 
     private enum State {ENTER, ROLLING, HOLD, EXIT}

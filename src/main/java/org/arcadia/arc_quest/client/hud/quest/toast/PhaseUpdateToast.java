@@ -39,8 +39,8 @@ public class PhaseUpdateToast {
         this.phaseName = phaseName;
         this.themeColor = themeColor;
         this.kind = kind == null ? Kind.ADDED : kind;
-        this.startTime = Util.getMillis();
-        this.lastRenderTime = this.startTime;
+        startTime = Util.getMillis();
+        lastRenderTime = startTime;
     }
 
     public Kind getKind() {
@@ -50,10 +50,10 @@ public class PhaseUpdateToast {
     public boolean render(GuiGraphics g, Font font, int baseX, int baseY, float parentAlpha, boolean isFrozen) {
         long now = Util.getMillis();
         long dt = now - lastRenderTime;
-        this.lastRenderTime = now;
+        lastRenderTime = now;
 
         if (isFrozen) {
-            this.startTime += dt;
+            startTime += dt;
             return true;
         }
 

@@ -50,7 +50,7 @@ public final class ClientDialogueCache {
                                  @Nullable String matchedSayId, @Nullable String[] choiceIds) {
 
         // 更新当前活跃的对话树 ID
-        this.currentTreeId = treeId;
+        currentTreeId = treeId;
 
         DialogueSessionData session = activeSessions.computeIfAbsent(treeId, DialogueSessionData::new);
         session.updateNode(nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
@@ -159,7 +159,7 @@ public final class ClientDialogueCache {
     }
 
     public void replaceTranscriptSnapshot(UUID sessionId, List<S2CDialogueTranscriptDeltaPacket.Entry> entries) {
-        this.currentSessionId = sessionId;
+        currentSessionId = sessionId;
         List<TranscriptEntry> mapped = new ArrayList<>(entries.size());
         for (S2CDialogueTranscriptDeltaPacket.Entry e : entries) {
             mapped.add(new TranscriptEntry(
@@ -240,8 +240,8 @@ public final class ClientDialogueCache {
             this.entityId = entityId;
 
             this.lastSelectTimes = (lastSelectTimes != null) ? lastSelectTimes.clone() : new long[this.choices.length];
-            this.purchaseGameTimes = (purchaseGTs != null) ? purchaseGTs.clone() : new long[this.choices.length];
-            this.purchaseDayTimes = (purchaseDTs != null) ? purchaseDTs.clone() : new long[this.choices.length];
+            purchaseGameTimes = (purchaseGTs != null) ? purchaseGTs.clone() : new long[this.choices.length];
+            purchaseDayTimes = (purchaseDTs != null) ? purchaseDTs.clone() : new long[this.choices.length];
             this.cooldownTypes = (cooldownTypes != null) ? cooldownTypes.clone() : new int[this.choices.length];
             this.cooldownValues = (cooldownValues != null) ? cooldownValues.clone() : new long[this.choices.length];
             this.resetTimeTicks = (resetTimeTicks != null) ? resetTimeTicks.clone() : new int[this.choices.length];

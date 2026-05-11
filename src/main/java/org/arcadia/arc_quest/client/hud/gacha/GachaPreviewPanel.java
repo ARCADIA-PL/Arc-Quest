@@ -64,8 +64,8 @@ public class GachaPreviewPanel {
     }
 
     public void init(int w, int h) {
-        this.width = w;
-        this.height = h;
+        width = w;
+        height = h;
         if (hoverAnims == null || hoverAnims.length != parent.getShopDef().getGachaPool().getItems().size()) {
             int size = parent.getShopDef().getGachaPool().getItems().size();
             hoverAnims = new float[size];
@@ -79,13 +79,13 @@ public class GachaPreviewPanel {
         String shopId = parent.getShopId();
         ClientGachaCache cache = ClientGachaCache.INSTANCE;
 
-        this.snapshotPityProgress = cache.getPityProgress(shopId);
-        this.snapshotHistory = new ArrayList<>(cache.getDrawHistory(shopId));
-        this.snapshotCanDraw = cache.canDraw(shopId);
-        this.snapshotRemainingDraws = cache.getRemainingDraws(shopId);
-        this.snapshotFailReason = cache.getLastFailReason(shopId);
-        this.snapshotShortfall = new ArrayList<>(cache.getLastShortfall(shopId));
-        this.snapshotCooldownText = cache.getCooldownText(shopId);
+        snapshotPityProgress = cache.getPityProgress(shopId);
+        snapshotHistory = new ArrayList<>(cache.getDrawHistory(shopId));
+        snapshotCanDraw = cache.canDraw(shopId);
+        snapshotRemainingDraws = cache.getRemainingDraws(shopId);
+        snapshotFailReason = cache.getLastFailReason(shopId);
+        snapshotShortfall = new ArrayList<>(cache.getLastShortfall(shopId));
+        snapshotCooldownText = cache.getCooldownText(shopId);
     }
 
     // 【终极优化：内联矩形拼接边框】
@@ -244,7 +244,7 @@ public class GachaPreviewPanel {
         int pityThreshold = shopDef.getPityConfig() != null ? shopDef.getPityConfig().getPityThreshold() : 0;
         if (pityThreshold <= 0) return;
 
-        int current = Math.max(0, this.snapshotPityProgress);
+        int current = Math.max(0, snapshotPityProgress);
         float percent = (float) current / pityThreshold;
         int startX = centerX - w / 2;
 
@@ -607,7 +607,7 @@ public class GachaPreviewPanel {
         g.drawString(Minecraft.getInstance().font, title, titleX, y, HudAnimUtil.withAlpha(termColor, safeA), true);
 
         int textStartX = titleX + 4, maxTextW = (spineX - 10) - textStartX;
-        List<ClientGachaCache.DrawRecord> history = this.snapshotHistory;
+        List<ClientGachaCache.DrawRecord> history = snapshotHistory;
         if (lastHistorySize == -1) lastHistorySize = history.size();
 
         if (!isWiping && !isClosing && history.size() > lastHistorySize) {

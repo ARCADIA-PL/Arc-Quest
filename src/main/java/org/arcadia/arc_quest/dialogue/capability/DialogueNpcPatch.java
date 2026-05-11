@@ -47,8 +47,8 @@ public class DialogueNpcPatch {
     }
 
     public void clearConversing() {
-        this.conversingPlayer = null;
-        this.conversingPlayerUUID = null;
+        conversingPlayer = null;
+        conversingPlayerUUID = null;
     }
 
     public boolean isConversing() {
@@ -56,8 +56,8 @@ public class DialogueNpcPatch {
     }
 
     public void setConversing(@Nullable Player player) {
-        this.conversingPlayer = player;
-        this.conversingPlayerUUID = player != null ? player.getUUID() : null;
+        conversingPlayer = player;
+        conversingPlayerUUID = player != null ? player.getUUID() : null;
     }
 
     @Nullable

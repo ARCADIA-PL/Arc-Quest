@@ -31,7 +31,7 @@ public class GachaEvents {
             this.shopId = shopId;
             this.capability = capability;
             this.pityCounter = pityCounter;
-            this.cancelled = false;
+            cancelled = false;
         }
 
         public ServerPlayer getPlayer() {

@@ -1278,10 +1278,10 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     }
 
     // ═══════════════════════════════════════════════════════
-        private void addCollectionCodexDemoQuest() {
+    private void addCollectionCodexDemoQuest() {
         addQuest("collection_codex_demo",
                 "图鉴收录演示",
-                "Objective Framework 2.0 收集任务演示。" );
+                "Objective Framework 2.0 收集任务演示。");
 
         add("arc_quest.phase.collection_codex_demo.codex_zombie", "僵尸图鉴");
         add("arc_quest.phase.collection_codex_demo.codex_zombie.desc", "击败 1 只僵尸并完成收录。");

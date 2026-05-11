@@ -51,19 +51,19 @@ public class DialogueSession {
 
     public DialogueSession(ServerPlayer player, DialogueTree tree,
                            DialogueContext context, int entityId) {
-        this.sessionId = UUID.randomUUID();
+        sessionId = UUID.randomUUID();
         this.player = player;
         this.tree = tree;
         this.context = context != null ? context : new DialogueContext();
         this.entityId = entityId;
-        this.currentNode = tree.getStartNode();
+        currentNode = tree.getStartNode();
 
-        this.namespace = resolveNamespace();
+        namespace = resolveNamespace();
 
         // 显式校验 Capability，避免创建临时实例导致数据丢失
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
 
-        this.progress = cap.getDialogueProgress();
+        progress = cap.getDialogueProgress();
 
         evaluateVisibleChoices();
     }
@@ -92,7 +92,7 @@ public class DialogueSession {
      * 设置当前节点（包级私有，仅供 DialogueSessionManager 调用）。
      */
     void setCurrentNode(DialogueNode node) {
-        this.currentNode = node;
+        currentNode = node;
         evaluateVisibleChoices();
     }
 

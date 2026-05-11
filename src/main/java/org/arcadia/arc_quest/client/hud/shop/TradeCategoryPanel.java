@@ -19,7 +19,7 @@ public class TradeCategoryPanel {
     }
 
     public void resetAnims() {
-        this.catHoverAnims = new float[screen.getShop() != null ? screen.getShop().getCategories().size() + 1 : 1];
+        catHoverAnims = new float[screen.getShop() != null ? screen.getShop().getCategories().size() + 1 : 1];
     }
 
     public int getSelectedIndex() {

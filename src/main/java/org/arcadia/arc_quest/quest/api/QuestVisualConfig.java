@@ -35,14 +35,14 @@ public class QuestVisualConfig {
     private final int themeColor;
 
     private QuestVisualConfig(Builder builder) {
-        this.splashAssets = new EnumMap<>(SplashType.class);
-        this.iconAssets = new EnumMap<>(IconPosition.class);
+        splashAssets = new EnumMap<>(SplashType.class);
+        iconAssets = new EnumMap<>(IconPosition.class);
 
         // 复制Builder中的配置
-        this.splashAssets.putAll(builder.splashAssets);
-        this.iconAssets.putAll(builder.iconAssets);
+        splashAssets.putAll(builder.splashAssets);
+        iconAssets.putAll(builder.iconAssets);
 
-        this.themeColor = builder.themeColor;
+        themeColor = builder.themeColor;
     }
 
     /**
@@ -174,7 +174,7 @@ public class QuestVisualConfig {
          * 设置主题色。
          */
         public Builder themeColor(int color) {
-            this.themeColor = color;
+            themeColor = color;
             return this;
         }
 
@@ -184,7 +184,7 @@ public class QuestVisualConfig {
         public Builder themeColorFromChatFormatting(ChatFormatting formatting) {
             Integer color = formatting.getColor();
             if (color != null) {
-                this.themeColor = 0xFF000000 | color;
+                themeColor = 0xFF000000 | color;
             }
             return this;
         }

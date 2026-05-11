@@ -23,9 +23,9 @@ public final class CollectionObjectiveBinding {
         this.questId = questId == null ? "" : questId;
         this.phaseId = phaseId == null ? "" : phaseId;
         this.objectiveEntry = Objects.requireNonNull(objectiveEntry);
-        this.countingMode = entryConfig != null && entryConfig.getCountingMode() != null ? entryConfig.getCountingMode() : CountingMode.BINARY;
-        this.repeatableProgress = entryConfig != null && entryConfig.isRepeatableProgress();
-        this.repeatableCompletion = entryConfig != null && entryConfig.isRepeatableCompletion();
+        countingMode = entryConfig != null && entryConfig.getCountingMode() != null ? entryConfig.getCountingMode() : CountingMode.BINARY;
+        repeatableProgress = entryConfig != null && entryConfig.isRepeatableProgress();
+        repeatableCompletion = entryConfig != null && entryConfig.isRepeatableCompletion();
     }
 
     public String getQuestId() {

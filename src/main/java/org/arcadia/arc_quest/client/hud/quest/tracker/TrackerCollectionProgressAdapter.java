@@ -8,6 +8,7 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 final class TrackerCollectionProgressAdapter {
 
@@ -70,7 +71,8 @@ final class TrackerCollectionProgressAdapter {
     }
 
     private PhaseDefinition resolveTrackedCollectionPhase(QuestDefinition def, QuestRuntimeData runtime, String trackedPhaseId) {
-        if (def == null || runtime == null || trackedPhaseId == null || trackedPhaseId.isEmpty() || runtime.isPhaseCompleted(trackedPhaseId)) return null;
+        if (def == null || runtime == null || trackedPhaseId == null || trackedPhaseId.isEmpty() || runtime.isPhaseCompleted(trackedPhaseId))
+            return null;
         PhaseDefinition phase = def.getPhase(trackedPhaseId);
         return phase != null && phase.getCollectionEntryConfig() != null ? phase : null;
     }
@@ -83,7 +85,7 @@ final class TrackerCollectionProgressAdapter {
                 Component.literal(label),
                 false,
                 false,
-                java.util.Map.of("tracker_progress", String.valueOf(Math.max(0, current)))
+                Map.of("tracker_progress", String.valueOf(Math.max(0, current)))
         );
     }
 }

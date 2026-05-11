@@ -40,8 +40,8 @@ public class JournalDetailRewards {
     }
 
     public int render(GuiGraphics g, QuestDefinition def, String selectedPhaseId, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, int activeTheme, float dAlpha, int safeA, int localY, float dt) {
-        this.parentClipY1 = scrollAreaY;
-        this.parentClipY2 = scrollAreaY + scrollAreaH;
+        parentClipY1 = scrollAreaY;
+        parentClipY2 = scrollAreaY + scrollAreaH;
 
         List<IReward> phaseRewards = null;
         if (selectedPhaseId != null && !selectedPhaseId.isEmpty()) {

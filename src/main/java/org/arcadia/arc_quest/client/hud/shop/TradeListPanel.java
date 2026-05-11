@@ -38,13 +38,13 @@ public class TradeListPanel {
     public TradeListPanel(TradeScreen screen, Font font) {
         this.screen = screen;
         this.font = font;
-        this.plusWidth = font.width(plusText);
-        this.statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
-        this.statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
-        this.purchaseText = Component.translatable("arc_quest.gui.trade.btn.purchase").getString();
-        this.waitText = Component.translatable("arc_quest.gui.trade.btn.wait").getString();
-        this.lockedText = Component.translatable("arc_quest.gui.trade.btn.locked").getString();
-        this.emptyText = Component.translatable("arc_quest.gui.trade.btn.empty").getString();
+        plusWidth = font.width(plusText);
+        statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
+        statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
+        purchaseText = Component.translatable("arc_quest.gui.trade.btn.purchase").getString();
+        waitText = Component.translatable("arc_quest.gui.trade.btn.wait").getString();
+        lockedText = Component.translatable("arc_quest.gui.trade.btn.locked").getString();
+        emptyText = Component.translatable("arc_quest.gui.trade.btn.empty").getString();
         resetAnims();
     }
 

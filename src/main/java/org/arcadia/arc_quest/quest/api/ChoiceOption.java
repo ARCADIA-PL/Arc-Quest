@@ -33,19 +33,19 @@ public final class ChoiceOption {
     }
 
     public Component getDisplayText() {
-        return this.displayText;
+        return displayText;
     }
 
     public String getFlagToSet() {
-        return this.flagToSet;
+        return flagToSet;
     }
 
     public String getTargetPhaseId() {
-        return this.targetPhaseId;
+        return targetPhaseId;
     }
 
     @Nullable
     public ICondition getVisibleCondition() {
-        return this.visibleCondition;
+        return visibleCondition;
     }
 }

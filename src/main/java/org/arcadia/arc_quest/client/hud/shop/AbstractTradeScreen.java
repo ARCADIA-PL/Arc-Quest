@@ -51,7 +51,7 @@ public abstract class AbstractTradeScreen extends Screen {
     public AbstractTradeScreen(String title, String shopId) {
         super(Component.translatable(title));
         this.shopId = shopId;
-        this.shop = TradeRegistry.get(shopId);
+        shop = TradeRegistry.get(shopId);
     }
 
     public static void setParentScreen(Screen screen) {
@@ -61,9 +61,9 @@ public abstract class AbstractTradeScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        if (this.lastRenderTime == 0) {
-            this.transitionAnim = 0f;
-            this.suspendAlpha = 1.0f;
+        if (lastRenderTime == 0) {
+            transitionAnim = 0f;
+            suspendAlpha = 1.0f;
         }
         if (tooltipRenderer == null) tooltipRenderer = new TradeTooltipRenderer(this, font);
     }
@@ -247,7 +247,7 @@ public abstract class AbstractTradeScreen extends Screen {
         int safeAlpha = (int) (255 * effectiveAlpha);
 
         // 渲染商店自身半透明遮罩
-        g.fill(0, 0, this.width, this.height, ((int) (140 * effectiveAlpha) << 24));
+        g.fill(0, 0, width, height, ((int) (140 * effectiveAlpha) << 24));
         if (safeAlpha <= 5) return;
 
         renderContent(g, mx, my, pt);

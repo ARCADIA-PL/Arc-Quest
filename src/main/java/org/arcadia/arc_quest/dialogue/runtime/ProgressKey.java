@@ -37,11 +37,11 @@ public final class ProgressKey {
         this.keyType = keyType;
 
         if (index >= 0) {
-            this.keyString = namespace + ":" + id + ":" + index;
+            keyString = namespace + ":" + id + ":" + index;
         } else {
-            this.keyString = namespace + ":" + id;
+            keyString = namespace + ":" + id;
         }
-        this.hash = keyString.hashCode();
+        hash = keyString.hashCode();
     }
 
     /**
@@ -123,7 +123,7 @@ public final class ProgressKey {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ProgressKey other)) return false;
-        return this.hash == other.hash && this.keyString.equals(other.keyString);
+        return hash == other.hash && keyString.equals(other.keyString);
     }
 
     @Override

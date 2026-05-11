@@ -19,7 +19,7 @@ public class JournalTypes {
             this.y = y;
             this.w = w;
             this.h = h;
-            this.choiceIndex = idx;
+            choiceIndex = idx;
             this.phaseId = phaseId;
         }
     }

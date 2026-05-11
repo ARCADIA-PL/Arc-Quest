@@ -28,16 +28,16 @@ public final class PhaseTransition implements Comparable<PhaseTransition> {
     }
 
     public String getTargetPhaseId() {
-        return this.targetPhaseId;
+        return targetPhaseId;
     }
 
     @Nullable
     public ICondition getCondition() {
-        return this.condition;
+        return condition;
     }
 
     public int getPriority() {
-        return this.priority;
+        return priority;
     }
 
     /**
@@ -45,11 +45,11 @@ public final class PhaseTransition implements Comparable<PhaseTransition> {
      * 如果 condition 为 null，则自动跳转；否则需要满足条件。
      */
     public boolean requiresChoice() {
-        return this.condition != null;
+        return condition != null;
     }
 
     @Override
     public int compareTo(PhaseTransition o) {
-        return Integer.compare(this.priority, o.priority);
+        return Integer.compare(priority, o.priority);
     }
 }

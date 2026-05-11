@@ -96,32 +96,32 @@ public final class TradeShopBuilder {
     // ════════════════════════════════════════
 
     public TradeShopBuilder displayName(String literal) {
-        this.displayName = TradeText.literal(literal);
+        displayName = TradeText.literal(literal);
         return this;
     }
 
     public TradeShopBuilder displayName(Component name) {
-        this.displayName = TradeText.component(name);
+        displayName = TradeText.component(name);
         return this;
     }
 
     public TradeShopBuilder displayName(TradeText name) {
-        this.displayName = name;
+        displayName = name;
         return this;
     }
 
     public TradeShopBuilder description(String literal) {
-        this.description = TradeText.literal(literal);
+        description = TradeText.literal(literal);
         return this;
     }
 
     public TradeShopBuilder description(Component desc) {
-        this.description = TradeText.component(desc);
+        description = TradeText.component(desc);
         return this;
     }
 
     public TradeShopBuilder description(TradeText desc) {
-        this.description = desc;
+        description = desc;
         return this;
     }
 
@@ -129,7 +129,7 @@ public final class TradeShopBuilder {
      * 标记为简易模式（弹窗而非完整窗口）
      */
     public TradeShopBuilder simpleMode() {
-        this.simpleMode = true;
+        simpleMode = true;
         return this;
     }
 
@@ -137,7 +137,7 @@ public final class TradeShopBuilder {
      * 设置开启条件
      */
     public TradeShopBuilder openCondition(ICondition condition) {
-        this.openCondition = condition;
+        openCondition = condition;
         return this;
     }
 
@@ -153,7 +153,7 @@ public final class TradeShopBuilder {
      * @param color ARGB 颜色值
      */
     public TradeShopBuilder themeColor(int color) {
-        this.themeColor = color;
+        themeColor = color;
         return this;
     }
 
@@ -165,7 +165,7 @@ public final class TradeShopBuilder {
      * @param b 蓝 (0-255)
      */
     public TradeShopBuilder themeColorRGB(int r, int g, int b) {
-        this.themeColor = (0xFF << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+        themeColor = (0xFF << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
         return this;
     }
 
@@ -175,7 +175,7 @@ public final class TradeShopBuilder {
     public TradeShopBuilder themeColor(ChatFormatting formatting) {
         Integer rgb = formatting.getColor();
         if (rgb != null) {
-            this.themeColor = 0xFF000000 | rgb;
+            themeColor = 0xFF000000 | rgb;
         }
         return this;
     }
@@ -196,7 +196,7 @@ public final class TradeShopBuilder {
      * @return 当前构建器
      */
     public TradeShopBuilder openSound(SoundEvent sound) {
-        this.openSound = sound;
+        openSound = sound;
         return this;
     }
 
@@ -212,7 +212,7 @@ public final class TradeShopBuilder {
      * @return 当前构建器
      */
     public TradeShopBuilder openSound(Holder.Reference<SoundEvent> sound) {
-        this.openSound = sound.get();
+        openSound = sound.get();
         return this;
     }
 
@@ -228,7 +228,7 @@ public final class TradeShopBuilder {
      * @return 当前构建器
      */
     public TradeShopBuilder closeSound(SoundEvent sound) {
-        this.closeSound = sound;
+        closeSound = sound;
         return this;
     }
 
@@ -244,7 +244,7 @@ public final class TradeShopBuilder {
      * @return 当前构建器
      */
     public TradeShopBuilder closeSound(Holder.Reference<SoundEvent> sound) {
-        this.closeSound = sound.get();
+        closeSound = sound.get();
         return this;
     }
 
@@ -253,17 +253,17 @@ public final class TradeShopBuilder {
     // ════════════════════════════════════════
 
     public TradeShopBuilder category(TradeCategory category) {
-        this.categories.add(category);
+        categories.add(category);
         return this;
     }
 
     public TradeShopBuilder category(String id, String name) {
-        this.categories.add(TradeCategory.of(id, name));
+        categories.add(TradeCategory.of(id, name));
         return this;
     }
 
     public TradeShopBuilder category(String id, String name, int sortOrder, int color) {
-        this.categories.add(TradeCategory.of(id, name, sortOrder, color));
+        categories.add(TradeCategory.of(id, name, sortOrder, color));
         return this;
     }
 
@@ -271,7 +271,7 @@ public final class TradeShopBuilder {
      * 从 ChatFormatting 创建分类。
      */
     public TradeShopBuilder categoryColor(String id, String name, ChatFormatting formatting) {
-        this.categories.add(TradeCategory.ofColor(id, name, formatting));
+        categories.add(TradeCategory.ofColor(id, name, formatting));
         return this;
     }
 
@@ -279,7 +279,7 @@ public final class TradeShopBuilder {
      * 从 ChatFormatting 创建分类（带排序）。
      */
     public TradeShopBuilder categoryColor(String id, String name, int sortOrder, ChatFormatting formatting) {
-        this.categories.add(TradeCategory.ofColor(id, name, sortOrder, formatting));
+        categories.add(TradeCategory.ofColor(id, name, sortOrder, formatting));
         return this;
     }
 
@@ -287,7 +287,7 @@ public final class TradeShopBuilder {
      * 从 RGB 值创建分类（自动添加完全不透明 Alpha 通道）。
      */
     public TradeShopBuilder categoryRGB(String id, String name, int r, int g, int b) {
-        this.categories.add(TradeCategory.ofRGB(id, name, r, g, b));
+        categories.add(TradeCategory.ofRGB(id, name, r, g, b));
         return this;
     }
 
@@ -295,7 +295,7 @@ public final class TradeShopBuilder {
      * 从 RGB 值创建分类（带排序）。
      */
     public TradeShopBuilder categoryRGB(String id, String name, int sortOrder, int r, int g, int b) {
-        this.categories.add(TradeCategory.ofRGB(id, name, sortOrder, r, g, b));
+        categories.add(TradeCategory.ofRGB(id, name, sortOrder, r, g, b));
         return this;
     }
 

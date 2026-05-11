@@ -27,18 +27,18 @@ public class QuestNotificationToast {
     public QuestNotificationToast(QuestToastManager.ToastType type, String text) {
         this.type = type;
         this.text = text;
-        this.subtitle = type.getLocalizedPrefix();
+        subtitle = type.getLocalizedPrefix();
         long now = Util.getMillis();
-        this.startTime = now;
-        this.lastUpdateTime = now;
+        startTime = now;
+        lastUpdateTime = now;
     }
 
     public void tick(boolean isFrozen) {
         long now = Util.getMillis();
         long dt = now - lastUpdateTime;
-        this.lastUpdateTime = now;
+        lastUpdateTime = now;
         if (isFrozen) {
-            this.startTime += dt;
+            startTime += dt;
         }
     }
 

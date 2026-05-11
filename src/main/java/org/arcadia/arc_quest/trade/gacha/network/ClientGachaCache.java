@@ -452,13 +452,13 @@ public final class ClientGachaCache {
         public GachaSessionData(int pityCounter, int totalDraws, boolean canDraw, int remainingDraws,
                                 long lastDrawRealTime, long lastDrawGameTime, long lastDrawDayTime,
                                 int cooldownType, long cooldownValue, int resetTimeTicks) {
-            this.authority = new AuthorityState(
+            authority = new AuthorityState(
                     pityCounter, totalDraws, canDraw, remainingDraws,
                     lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
                     cooldownType, cooldownValue, resetTimeTicks
             );
-            this.feedback = new FeedbackState();
-            this.history = new HistoryState();
+            feedback = new FeedbackState();
+            history = new HistoryState();
         }
 
         // 兼容旧 API

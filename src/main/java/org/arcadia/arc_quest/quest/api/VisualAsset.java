@@ -66,20 +66,20 @@ public record VisualAsset(
         }
 
         public Builder offset(float x, float y) {
-            this.offsetX = x;
-            this.offsetY = y;
+            offsetX = x;
+            offsetY = y;
             return this;
         }
 
         public Builder tintColor(int color) {
-            this.tintColor = color;
+            tintColor = color;
             return this;
         }
 
         public Builder tintColorFromChatFormatting(ChatFormatting formatting) {
             Integer color = formatting.getColor();
             if (color != null) {
-                this.tintColor = 0xFF000000 | color;
+                tintColor = 0xFF000000 | color;
             }
             return this;
         }

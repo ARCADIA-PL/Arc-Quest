@@ -68,47 +68,47 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder displayName(String literal) {
-        this.displayName = QuestText.literal(literal);
+        displayName = QuestText.literal(literal);
         return this;
     }
 
     public QuestBuilder displayName(Component component) {
-        this.displayName = QuestText.component(component);
+        displayName = QuestText.component(component);
         return this;
     }
 
     public QuestBuilder displayName(QuestText text) {
-        this.displayName = text;
+        displayName = text;
         return this;
     }
 
     public QuestBuilder description(String literal) {
-        this.description = QuestText.literal(literal);
+        description = QuestText.literal(literal);
         return this;
     }
 
     public QuestBuilder description(Component component) {
-        this.description = QuestText.component(component);
+        description = QuestText.component(component);
         return this;
     }
 
     public QuestBuilder description(QuestText text) {
-        this.description = text;
+        description = text;
         return this;
     }
 
     public QuestBuilder icon(ResourceLocation texture) {
-        this.iconTexture = texture;
+        iconTexture = texture;
         return this;
     }
 
     public QuestBuilder sortOrder(int order) {
-        this.sortOrder = order;
+        sortOrder = order;
         return this;
     }
 
     public QuestBuilder repeatable() {
-        this.repeatable = true;
+        repeatable = true;
         return this;
     }
 
@@ -123,37 +123,37 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder completionPolicy(QuestCompletionPolicy policy) {
-        this.completionPolicy = policy;
+        completionPolicy = policy;
         return this;
     }
 
     public QuestBuilder completionRequiredCount(int count) {
-        this.completionRequiredCount = count;
+        completionRequiredCount = count;
         return this;
     }
 
     public QuestBuilder completionTargetPhase(String phaseId) {
-        this.completionTargetPhaseId = phaseId;
+        completionTargetPhaseId = phaseId;
         return this;
     }
 
     public QuestBuilder questTimeLimitSeconds(long seconds) {
         if (seconds <= 0L) throw new IllegalArgumentException("questTimeLimitSeconds requires seconds > 0");
-        this.timeLimitType = QuestTimeLimitType.REAL_SECONDS;
-        this.timeLimitValue = seconds;
+        timeLimitType = QuestTimeLimitType.REAL_SECONDS;
+        timeLimitValue = seconds;
         return this;
     }
 
     public QuestBuilder questTimeLimitDayTicks(long dayTicks) {
         if (dayTicks <= 0L) throw new IllegalArgumentException("questTimeLimitDayTicks requires dayTicks > 0");
-        this.timeLimitType = QuestTimeLimitType.GAME_DAY_TIME;
-        this.timeLimitValue = dayTicks;
+        timeLimitType = QuestTimeLimitType.GAME_DAY_TIME;
+        timeLimitValue = dayTicks;
         return this;
     }
 
     public QuestBuilder clearQuestTimeLimit() {
-        this.timeLimitType = null;
-        this.timeLimitValue = 0L;
+        timeLimitType = null;
+        timeLimitValue = 0L;
         return this;
     }
 
@@ -162,64 +162,64 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
-        String markId = this.id + "::quest_mark_" + relatedMarks.size();
-        this.relatedMarks.add(new MarkSpec(markId, object, activation, MarkActivations.never(), QuestMarkerType.QUEST_MAIN, 0, 256, 20, true, false, Map.of()));
+        String markId = id + "::quest_mark_" + relatedMarks.size();
+        relatedMarks.add(new MarkSpec(markId, object, activation, MarkActivations.never(), QuestMarkerType.QUEST_MAIN, 0, 256, 20, true, false, Map.of()));
         return this;
     }
 
     public QuestBuilder markRelatedObject(MarkSpec spec) {
-        this.relatedMarks.add(spec);
+        relatedMarks.add(spec);
         return this;
     }
 
     public QuestBuilder unlockCondition(ICondition condition) {
-        this.unlockConditions.add(condition);
+        unlockConditions.add(condition);
         return this;
     }
 
     public QuestBuilder requiresQuest(String questId) {
         ResourceLocation location = questId.contains(":") ? ResourceLocation.tryParse(questId) : ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, questId);
-        this.unlockConditions.add(ICondition.questCompleted(location));
+        unlockConditions.add(ICondition.questCompleted(location));
         return this;
     }
 
     public QuestBuilder requiresQuest(ResourceLocation questId) {
-        this.unlockConditions.add(ICondition.questCompleted(questId));
+        unlockConditions.add(ICondition.questCompleted(questId));
         return this;
     }
 
     public QuestBuilder requiresFlag(String flag) {
-        this.unlockConditions.add(ICondition.flagSet(flag));
+        unlockConditions.add(ICondition.flagSet(flag));
         return this;
     }
 
     public QuestBuilder phase(PhaseBuilder phaseBuilder) {
-        return this.phase(phaseBuilder.build());
+        return phase(phaseBuilder.build());
     }
 
     public QuestBuilder phase(PhaseDefinition phase) {
         String pid = phase.getPhaseId();
-        if (this.phases.containsKey(pid))
-            throw new IllegalArgumentException("Duplicate phase id '" + pid + "' in quest '" + this.id + "'");
-        this.phases.put(pid, phase);
-        if (this.initialPhaseId == null) this.initialPhaseId = pid;
+        if (phases.containsKey(pid))
+            throw new IllegalArgumentException("Duplicate phase id '" + pid + "' in quest '" + id + "'");
+        phases.put(pid, phase);
+        if (initialPhaseId == null) initialPhaseId = pid;
         return this;
     }
 
     public QuestBuilder startAt(String phaseId) {
-        this.initialPhaseId = phaseId;
+        initialPhaseId = phaseId;
         return this;
     }
 
     public QuestBuilder reward(IReward reward) {
-        this.completionRewards.add(reward);
+        completionRewards.add(reward);
         return this;
     }
 
     public QuestBuilder chapterShop(String shopId, boolean persistent) {
-        this.chapterShopId = shopId;
-        this.chapterShopType = ChapterShopType.TRADE;
-        this.chapterShopPersistent = persistent;
+        chapterShopId = shopId;
+        chapterShopType = ChapterShopType.TRADE;
+        chapterShopPersistent = persistent;
         return this;
     }
 
@@ -228,9 +228,9 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder chapterTradeShop(String shopId, boolean persistent) {
-        this.chapterShopId = shopId;
-        this.chapterShopType = ChapterShopType.TRADE;
-        this.chapterShopPersistent = persistent;
+        chapterShopId = shopId;
+        chapterShopType = ChapterShopType.TRADE;
+        chapterShopPersistent = persistent;
         return this;
     }
 
@@ -239,9 +239,9 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder chapterGachaShop(String shopId, boolean persistent) {
-        this.chapterShopId = shopId;
-        this.chapterShopType = ChapterShopType.GACHA;
-        this.chapterShopPersistent = persistent;
+        chapterShopId = shopId;
+        chapterShopType = ChapterShopType.GACHA;
+        chapterShopPersistent = persistent;
         return this;
     }
 
@@ -250,43 +250,43 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder chapterStartSound(SoundEvent sound) {
-        this.chapterStartSound = sound;
+        chapterStartSound = sound;
         return this;
     }
 
     public QuestBuilder chapterFailSound(SoundEvent sound) {
-        this.chapterFailSound = sound;
+        chapterFailSound = sound;
         return this;
     }
 
     public QuestBuilder chapterCompleteSound(SoundEvent sound) {
-        this.chapterCompleteSound = sound;
+        chapterCompleteSound = sound;
         return this;
     }
 
     public QuestBuilder setFlagOnAccept(String flag) {
-        this.flagsOnAccept.add(flag);
+        flagsOnAccept.add(flag);
         return this;
     }
 
     public QuestBuilder setFlagOnComplete(String flag) {
-        this.flagsOnComplete.add(flag);
+        flagsOnComplete.add(flag);
         return this;
     }
 
     public QuestBuilder visualConfig(QuestVisualConfig config) {
         if (config != null) {
-            this.visualConfigBuilder = QuestVisualConfig.builder().themeColor(config.getThemeColor());
+            visualConfigBuilder = QuestVisualConfig.builder().themeColor(config.getThemeColor());
             for (SplashType type : SplashType.values())
-                config.getSplash(type).ifPresent(asset -> this.visualConfigBuilder.splash(type, asset));
+                config.getSplash(type).ifPresent(asset -> visualConfigBuilder.splash(type, asset));
             for (IconPosition pos : IconPosition.values())
-                config.getIcon(pos).ifPresent(asset -> this.visualConfigBuilder.icon(pos, asset));
+                config.getIcon(pos).ifPresent(asset -> visualConfigBuilder.icon(pos, asset));
         }
         return this;
     }
 
     public QuestBuilder acquisitionSplash(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.splash(SplashType.QUEST_ACQUIRED, texture, scale);
+        visualConfigBuilder.splash(SplashType.QUEST_ACQUIRED, texture, scale);
         return this;
     }
 
@@ -295,7 +295,7 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder detailSplash(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.splash(SplashType.QUEST_DETAIL, texture, scale);
+        visualConfigBuilder.splash(SplashType.QUEST_DETAIL, texture, scale);
         return this;
     }
 
@@ -304,7 +304,7 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder completionSplash(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.splash(SplashType.QUEST_COMPLETED, texture, scale);
+        visualConfigBuilder.splash(SplashType.QUEST_COMPLETED, texture, scale);
         return this;
     }
 
@@ -313,7 +313,7 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder listIcon(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.icon(IconPosition.QUEST_LIST, texture, scale);
+        visualConfigBuilder.icon(IconPosition.QUEST_LIST, texture, scale);
         return this;
     }
 
@@ -322,7 +322,7 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder titleIcon(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.icon(IconPosition.QUEST_TITLE, texture, scale);
+        visualConfigBuilder.icon(IconPosition.QUEST_TITLE, texture, scale);
         return this;
     }
 
@@ -331,116 +331,116 @@ public final class QuestBuilder {
     }
 
     public QuestBuilder themeColor(int color) {
-        this.visualConfigBuilder.themeColor(color);
+        visualConfigBuilder.themeColor(color);
         return this;
     }
 
     public QuestBuilder themeColor(ChatFormatting formatting) {
-        this.visualConfigBuilder.themeColorFromChatFormatting(formatting);
+        visualConfigBuilder.themeColorFromChatFormatting(formatting);
         return this;
     }
 
     public QuestDefinition build() {
-        if (this.displayName == null) this.displayName = QuestText.literal(this.id.getPath());
-        if (this.phases.isEmpty()) throw new IllegalStateException("Quest '" + this.id + "' has no phases");
-        if (this.initialPhaseId == null) this.initialPhaseId = this.phases.keySet().iterator().next();
-        for (PhaseDefinition phase : this.phases.values()) {
+        if (displayName == null) displayName = QuestText.literal(id.getPath());
+        if (phases.isEmpty()) throw new IllegalStateException("Quest '" + id + "' has no phases");
+        if (initialPhaseId == null) initialPhaseId = phases.keySet().iterator().next();
+        for (PhaseDefinition phase : phases.values()) {
             for (PhaseTransition tr : phase.getTransitions())
-                if (!this.phases.containsKey(tr.getTargetPhaseId()))
-                    throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "' references unknown phase '" + tr.getTargetPhaseId() + "'");
+                if (!phases.containsKey(tr.getTargetPhaseId()))
+                    throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "' references unknown phase '" + tr.getTargetPhaseId() + "'");
             for (ChoiceOption ch : phase.getChoices())
-                if (!this.phases.containsKey(ch.getTargetPhaseId()))
-                    throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "' choice references unknown phase '" + ch.getTargetPhaseId() + "'");
+                if (!phases.containsKey(ch.getTargetPhaseId()))
+                    throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "' choice references unknown phase '" + ch.getTargetPhaseId() + "'");
         }
-        int phaseCount = this.phases.size();
-        if ((this.completionPolicy == QuestCompletionPolicy.ALL || this.completionPolicy == QuestCompletionPolicy.ANY) && this.completionRequiredCount > 0)
-            throw new IllegalStateException("Quest '" + this.id + "': completionRequiredCount only valid for N_OF_M");
-        if (this.completionPolicy == QuestCompletionPolicy.N_OF_M) {
-            if (this.completionRequiredCount < 1 || this.completionRequiredCount > phaseCount)
-                throw new IllegalStateException("Quest '" + this.id + "': N_OF_M requires completionRequiredCount in [1," + phaseCount + "], got " + this.completionRequiredCount);
-            if (this.completionTargetPhaseId != null && !this.completionTargetPhaseId.isEmpty())
-                throw new IllegalStateException("Quest '" + this.id + "': completionTargetPhase not allowed with N_OF_M");
+        int phaseCount = phases.size();
+        if ((completionPolicy == QuestCompletionPolicy.ALL || completionPolicy == QuestCompletionPolicy.ANY) && completionRequiredCount > 0)
+            throw new IllegalStateException("Quest '" + id + "': completionRequiredCount only valid for N_OF_M");
+        if (completionPolicy == QuestCompletionPolicy.N_OF_M) {
+            if (completionRequiredCount < 1 || completionRequiredCount > phaseCount)
+                throw new IllegalStateException("Quest '" + id + "': N_OF_M requires completionRequiredCount in [1," + phaseCount + "], got " + completionRequiredCount);
+            if (completionTargetPhaseId != null && !completionTargetPhaseId.isEmpty())
+                throw new IllegalStateException("Quest '" + id + "': completionTargetPhase not allowed with N_OF_M");
         }
-        if (this.completionPolicy == QuestCompletionPolicy.SPECIFIC_PHASE) {
-            if (this.completionTargetPhaseId == null || this.completionTargetPhaseId.isEmpty())
-                throw new IllegalStateException("Quest '" + this.id + "': SPECIFIC_PHASE requires completionTargetPhase");
-            if (!this.phases.containsKey(this.completionTargetPhaseId))
-                throw new IllegalStateException("Quest '" + this.id + "': completionTargetPhase '" + this.completionTargetPhaseId + "' not found");
-            if (this.completionRequiredCount > 0)
-                throw new IllegalStateException("Quest '" + this.id + "': completionRequiredCount not allowed with SPECIFIC_PHASE");
+        if (completionPolicy == QuestCompletionPolicy.SPECIFIC_PHASE) {
+            if (completionTargetPhaseId == null || completionTargetPhaseId.isEmpty())
+                throw new IllegalStateException("Quest '" + id + "': SPECIFIC_PHASE requires completionTargetPhase");
+            if (!phases.containsKey(completionTargetPhaseId))
+                throw new IllegalStateException("Quest '" + id + "': completionTargetPhase '" + completionTargetPhaseId + "' not found");
+            if (completionRequiredCount > 0)
+                throw new IllegalStateException("Quest '" + id + "': completionRequiredCount not allowed with SPECIFIC_PHASE");
         }
-        if (this.completionPolicy != QuestCompletionPolicy.SPECIFIC_PHASE && this.completionTargetPhaseId != null && !this.completionTargetPhaseId.isEmpty())
-            throw new IllegalStateException("Quest '" + this.id + "': completionTargetPhase only valid for SPECIFIC_PHASE");
+        if (completionPolicy != QuestCompletionPolicy.SPECIFIC_PHASE && completionTargetPhaseId != null && !completionTargetPhaseId.isEmpty())
+            throw new IllegalStateException("Quest '" + id + "': completionTargetPhase only valid for SPECIFIC_PHASE");
         validateCollectionDefinition();
-        return new QuestDefinition(this.id, this.category, this.displayName, this.description, this.iconTexture, this.sortOrder, this.repeatable, new ArrayList<>(this.unlockConditions), new LinkedHashMap<>(this.phases), this.initialPhaseId, new ArrayList<>(this.completionRewards), new ArrayList<>(this.flagsOnAccept), new ArrayList<>(this.flagsOnComplete), new ArrayList<>(this.relatedMarks), this.visualConfigBuilder.build(), this.mode, this.collectionConfig, this.chapterShopId, this.chapterShopType, this.chapterShopPersistent, this.chapterStartSound, this.chapterFailSound, this.chapterCompleteSound, this.completionPolicy, this.completionRequiredCount, this.completionTargetPhaseId, this.timeLimitType, this.timeLimitValue);
+        return new QuestDefinition(id, category, displayName, description, iconTexture, sortOrder, repeatable, new ArrayList<>(unlockConditions), new LinkedHashMap<>(phases), initialPhaseId, new ArrayList<>(completionRewards), new ArrayList<>(flagsOnAccept), new ArrayList<>(flagsOnComplete), new ArrayList<>(relatedMarks), visualConfigBuilder.build(), mode, collectionConfig, chapterShopId, chapterShopType, chapterShopPersistent, chapterStartSound, chapterFailSound, chapterCompleteSound, completionPolicy, completionRequiredCount, completionTargetPhaseId, timeLimitType, timeLimitValue);
     }
 
     private void validateCollectionDefinition() {
-        QuestMode effectiveMode = this.mode != null ? this.mode : QuestMode.PROGRESSION;
+        QuestMode effectiveMode = mode != null ? mode : QuestMode.PROGRESSION;
         if (effectiveMode == QuestMode.PROGRESSION) {
-            if (this.collectionConfig != null) {
-                throw new IllegalStateException("Quest '" + this.id + "': collectionConfig requires QuestMode.COLLECTION");
+            if (collectionConfig != null) {
+                throw new IllegalStateException("Quest '" + id + "': collectionConfig requires QuestMode.COLLECTION");
             }
             return;
         }
 
-        if (this.collectionConfig == null) {
-            throw new IllegalStateException("Quest '" + this.id + "': COLLECTION mode requires collectionConfig");
+        if (collectionConfig == null) {
+            throw new IllegalStateException("Quest '" + id + "': COLLECTION mode requires collectionConfig");
         }
 
         Set<String> categoryIds = new HashSet<>();
-        for (CollectionCategoryDefinition category : this.collectionConfig.getCategories()) {
+        for (CollectionCategoryDefinition category : collectionConfig.getCategories()) {
             String categoryId = category.getCategoryId();
             if (categoryId == null || categoryId.isBlank()) {
-                throw new IllegalStateException("Quest '" + this.id + "': collection category id must not be blank");
+                throw new IllegalStateException("Quest '" + id + "': collection category id must not be blank");
             }
             if (!categoryIds.add(categoryId)) {
-                throw new IllegalStateException("Quest '" + this.id + "': duplicate collection category id '" + categoryId + "'");
+                throw new IllegalStateException("Quest '" + id + "': duplicate collection category id '" + categoryId + "'");
             }
         }
         if (categoryIds.isEmpty()) {
-            throw new IllegalStateException("Quest '" + this.id + "': COLLECTION mode requires at least one category");
+            throw new IllegalStateException("Quest '" + id + "': COLLECTION mode requires at least one category");
         }
 
         int entryCount = 0;
-        for (PhaseDefinition phase : this.phases.values()) {
+        for (PhaseDefinition phase : phases.values()) {
             CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
             if (entryConfig == null) continue;
             entryCount++;
             validateCollectionEntryConfig(phase, entryConfig, categoryIds);
         }
         if (entryCount <= 0) {
-            throw new IllegalStateException("Quest '" + this.id + "': COLLECTION mode requires at least one collection entry phase");
+            throw new IllegalStateException("Quest '" + id + "': COLLECTION mode requires at least one collection entry phase");
         }
     }
 
     private void validateCollectionEntryConfig(PhaseDefinition phase, CollectionEntryConfig entryConfig, Set<String> categoryIds) {
         String categoryId = entryConfig.getCategoryId();
         if (categoryId == null || categoryId.isBlank()) {
-            throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "': collection category id must not be blank");
+            throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "': collection category id must not be blank");
         }
         if (!categoryIds.contains(categoryId)) {
-            throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "': unknown collection category id '" + categoryId + "'");
+            throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "': unknown collection category id '" + categoryId + "'");
         }
         if (entryConfig.getCompletionTarget() <= 0) {
-            throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "': collection completionTarget must be > 0");
+            throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "': collection completionTarget must be > 0");
         }
         if (entryConfig.getMaxCount() > 0 && entryConfig.getMaxCount() < entryConfig.getCompletionTarget()) {
-            throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "': collection maxCount must be 0 or >= completionTarget");
+            throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "': collection maxCount must be 0 or >= completionTarget");
         }
         if (entryConfig.getCountingMode() == null) {
-            throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "': collection countingMode must not be null");
+            throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "': collection countingMode must not be null");
         }
         if (entryConfig.getVisibilityMode() == null) {
-            throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "': collection visibilityMode must not be null");
+            throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "': collection visibilityMode must not be null");
         }
         if (entryConfig.getRewardGrantMode() == null) {
-            throw new IllegalStateException("Quest '" + this.id + "', phase '" + phase.getPhaseId() + "': collection rewardGrantMode must not be null");
+            throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "': collection rewardGrantMode must not be null");
         }
     }
 
     public QuestDefinition buildAndRegister() {
-        QuestDefinition def = this.build();
+        QuestDefinition def = build();
         QuestRegistry.register(def);
         return def;
     }

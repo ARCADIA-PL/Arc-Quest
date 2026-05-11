@@ -17,35 +17,15 @@ import java.util.Objects;
 
 public final class QuestChangeHistoryPanel {
     private final QuestJournalScreen screen;
-
+    private final int rowH = 42; // 更紧凑的行高
     // UI 状态
     private float scroll = 0f;
     private float targetScroll = 0f;
     private float revealAnim = 0f;
-
     // 数据缓存
     private List<QuestChangeHistoryEntry> cachedRows = new ArrayList<>();
     private String lastQuestId = null;
     private FilterTab selectedTab = FilterTab.ALL;
-
-    private final int rowH = 42; // 更紧凑的行高
-
-    // 现代化的单排过滤标签定义
-    private enum FilterTab {
-        ALL("ALL LOGS", null),
-        PHASE("STAGES", QuestChangeHistoryCategory.PHASE),
-        OBJ("TASKS", QuestChangeHistoryCategory.OBJECTIVE),
-        REWARD("REWARDS", QuestChangeHistoryCategory.REWARD),
-        COLL("ITEMS", QuestChangeHistoryCategory.COLLECTION);
-
-        final String label;
-        final QuestChangeHistoryCategory category;
-
-        FilterTab(String label, QuestChangeHistoryCategory category) {
-            this.label = label;
-            this.category = category;
-        }
-    }
 
     public QuestChangeHistoryPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -268,5 +248,22 @@ public final class QuestChangeHistoryPanel {
 
     private String safe(String primary, String fallback) {
         return primary != null && !primary.isEmpty() ? primary : fallback != null ? fallback : "";
+    }
+
+    // 现代化的单排过滤标签定义
+    private enum FilterTab {
+        ALL("ALL LOGS", null),
+        PHASE("STAGES", QuestChangeHistoryCategory.PHASE),
+        OBJ("TASKS", QuestChangeHistoryCategory.OBJECTIVE),
+        REWARD("REWARDS", QuestChangeHistoryCategory.REWARD),
+        COLL("ITEMS", QuestChangeHistoryCategory.COLLECTION);
+
+        final String label;
+        final QuestChangeHistoryCategory category;
+
+        FilterTab(String label, QuestChangeHistoryCategory category) {
+            this.label = label;
+            this.category = category;
+        }
     }
 }

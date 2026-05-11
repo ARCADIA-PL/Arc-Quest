@@ -52,10 +52,10 @@ public class S2COpenTradePacket {
                               String openSoundId, String closeSoundId) {
         this.mode = mode;
         this.shopId = shopId;
-        this.entryId = null;
-        this.failReason = null;
-        this.errorKey = null;
-        this.shortfallLines = List.of();
+        entryId = null;
+        failReason = null;
+        errorKey = null;
+        shortfallLines = List.of();
         this.purchaseCounts = purchaseCounts;
         this.maxPurchases = maxPurchases;
         this.lastPurchaseTimes = lastPurchaseTimes;
@@ -82,18 +82,18 @@ public class S2COpenTradePacket {
         this.failReason = failReason;
         this.errorKey = errorKey;
         this.shortfallLines = shortfallLines != null ? List.copyOf(shortfallLines) : List.of();
-        this.purchaseCounts = null;
-        this.maxPurchases = null;
-        this.lastPurchaseTimes = null;
-        this.purchaseGameTimes = null;
-        this.purchaseDayTimes = null;
-        this.cooldownTypes = null;
-        this.cooldownValues = null;
-        this.resetTimeTicks = null;
-        this.visibility = null;
-        this.canBuyConditions = null;
-        this.openSoundId = null;
-        this.closeSoundId = null;
+        purchaseCounts = null;
+        maxPurchases = null;
+        lastPurchaseTimes = null;
+        purchaseGameTimes = null;
+        purchaseDayTimes = null;
+        cooldownTypes = null;
+        cooldownValues = null;
+        resetTimeTicks = null;
+        visibility = null;
+        canBuyConditions = null;
+        openSoundId = null;
+        closeSoundId = null;
     }
 
     public static S2COpenTradePacket close() {

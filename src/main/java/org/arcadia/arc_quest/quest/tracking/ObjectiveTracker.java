@@ -43,15 +43,15 @@ public final class ObjectiveTracker {
      * 当玩家断开连接时，移除该玩家的所有追踪。
      */
     public void unregisterPlayer(UUID playerId) {
-        ObjectOpenHashSet<TrackedObjective> playerSet = this.byPlayer.remove(playerId);
+        ObjectOpenHashSet<TrackedObjective> playerSet = byPlayer.remove(playerId);
         if (playerSet == null) return;
 
         for (TrackedObjective tracked : playerSet) {
-            ObjectOpenHashSet<TrackedObjective> keySet = this.index.get(tracked.getKey());
+            ObjectOpenHashSet<TrackedObjective> keySet = index.get(tracked.getKey());
             if (keySet != null) {
                 keySet.remove(tracked);
                 if (keySet.isEmpty()) {
-                    this.index.remove(tracked.getKey());
+                    index.remove(tracked.getKey());
                 }
             }
         }
@@ -63,7 +63,7 @@ public final class ObjectiveTracker {
      * 注销特定任务的所有追踪（用于任务完成/失败/放弃）
      */
     public void unregisterQuest(UUID playerId, String questId) {
-        ObjectOpenHashSet<TrackedObjective> playerSet = this.byPlayer.get(playerId);
+        ObjectOpenHashSet<TrackedObjective> playerSet = byPlayer.get(playerId);
         if (playerSet == null) return;
 
         Iterator<TrackedObjective> it = playerSet.iterator();
@@ -73,11 +73,11 @@ public final class ObjectiveTracker {
             if (tracked.getQuestId().toString().equals(questId)) {
                 it.remove();
                 // 同步从主索引移除
-                ObjectOpenHashSet<TrackedObjective> keySet = this.index.get(tracked.getKey());
+                ObjectOpenHashSet<TrackedObjective> keySet = index.get(tracked.getKey());
                 if (keySet != null) {
                     keySet.remove(tracked);
                     if (keySet.isEmpty()) {
-                        this.index.remove(tracked.getKey());
+                        index.remove(tracked.getKey());
                     }
                 }
                 removed++;
@@ -85,7 +85,7 @@ public final class ObjectiveTracker {
         }
 
         if (playerSet.isEmpty()) {
-            this.byPlayer.remove(playerId);
+            byPlayer.remove(playerId);
         }
 
         LOGGER.debug("[ObjTracker] Unregistered {} objectives for quest {} player {}",
@@ -97,27 +97,27 @@ public final class ObjectiveTracker {
      */
     public void register(TrackedObjective tracked) {
         ObjectiveKey key = tracked.getKey();
-        this.index.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tracked);
-        this.byPlayer.computeIfAbsent(tracked.getPlayerId(), k -> new ObjectOpenHashSet<>()).add(tracked);
+        index.computeIfAbsent(key, k -> new ObjectOpenHashSet<>()).add(tracked);
+        byPlayer.computeIfAbsent(tracked.getPlayerId(), k -> new ObjectOpenHashSet<>()).add(tracked);
     }
 
     /**
      * 注销单个追踪目标（便捷方法）
      */
     public void unregister(TrackedObjective tracked) {
-        ObjectOpenHashSet<TrackedObjective> keySet = this.index.get(tracked.getKey());
+        ObjectOpenHashSet<TrackedObjective> keySet = index.get(tracked.getKey());
         if (keySet != null) {
             keySet.remove(tracked);
             if (keySet.isEmpty()) {
-                this.index.remove(tracked.getKey());
+                index.remove(tracked.getKey());
             }
         }
 
-        ObjectOpenHashSet<TrackedObjective> playerSet = this.byPlayer.get(tracked.getPlayerId());
+        ObjectOpenHashSet<TrackedObjective> playerSet = byPlayer.get(tracked.getPlayerId());
         if (playerSet != null) {
             playerSet.remove(tracked);
             if (playerSet.isEmpty()) {
-                this.byPlayer.remove(tracked.getPlayerId());
+                byPlayer.remove(tracked.getPlayerId());
             }
         }
     }
@@ -136,7 +136,7 @@ public final class ObjectiveTracker {
      * @return 匹配的追踪目标集合（只读视图），可能为空集
      */
     public Set<TrackedObjective> lookup(ObjectiveKey key) {
-        ObjectOpenHashSet<TrackedObjective> result = this.index.get(key);
+        ObjectOpenHashSet<TrackedObjective> result = index.get(key);
         return result != null ? Collections.unmodifiableSet(result) : Collections.emptySet();
     }
 
@@ -144,7 +144,7 @@ public final class ObjectiveTracker {
      * 按玩家+键联合查询（用于只关心特定玩家的场景）
      */
     public List<TrackedObjective> lookup(UUID playerId, ObjectiveKey key) {
-        ObjectOpenHashSet<TrackedObjective> all = this.index.get(key);
+        ObjectOpenHashSet<TrackedObjective> all = index.get(key);
         if (all == null || all.isEmpty()) return Collections.emptyList();
 
         List<TrackedObjective> result = new ArrayList<>(2);  // 通常很少
@@ -161,18 +161,18 @@ public final class ObjectiveTracker {
     // ════════════════════════════════════════
 
     public int getIndexSize() {
-        return this.index.size();
+        return index.size();
     }
 
     public int getTrackedCount() {
         int count = 0;
-        for (ObjectOpenHashSet<TrackedObjective> set : this.index.values()) {
+        for (ObjectOpenHashSet<TrackedObjective> set : index.values()) {
             count += set.size();
         }
         return count;
     }
 
     public int getPlayerCount() {
-        return this.byPlayer.size();
+        return byPlayer.size();
     }
 }

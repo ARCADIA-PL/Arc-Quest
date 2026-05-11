@@ -13,11 +13,6 @@ import java.util.Map;
 
 public final class QuestSpecResourceLoader2 {
 
-    public record LoadReport(Map<Path, QuestSpec> specs, List<QuestDatapackLoadError> errors, int scannedFiles) {
-        public int loadedCount() { return specs.size(); }
-        public int failedCount() { return errors.size(); }
-    }
-
     public LoadReport loadFromDatapack() {
         Path questsDir = DatapackPathResolver.resolveQuestsDir();
         Map<Path, QuestSpec> specs = new LinkedHashMap<>();
@@ -49,5 +44,15 @@ public final class QuestSpecResourceLoader2 {
         }
 
         return new LoadReport(specs, errors, scanned);
+    }
+
+    public record LoadReport(Map<Path, QuestSpec> specs, List<QuestDatapackLoadError> errors, int scannedFiles) {
+        public int loadedCount() {
+            return specs.size();
+        }
+
+        public int failedCount() {
+            return errors.size();
+        }
     }
 }

@@ -48,19 +48,19 @@ public final class QuestRuntimeData {
                             long acceptedAtRealMs,
                             long acceptedAtDayTime) {
         this.questId = Objects.requireNonNull(questId);
-        this.state = QuestState.ACTIVE;
+        state = QuestState.ACTIVE;
         this.acceptedAtTick = acceptedAtTick;
         this.acceptedAtRealMs = acceptedAtRealMs;
         this.acceptedAtDayTime = acceptedAtDayTime;
 
-        this.activePhaseIds = new LinkedHashSet<>();
-        this.completedPhaseIds = new LinkedHashSet<>();
-        this.pendingManualAdvancePhaseIds = new LinkedHashSet<>();
-        this.phaseProgress = new LinkedHashMap<>();
-        this.collectionData = null;
+        activePhaseIds = new LinkedHashSet<>();
+        completedPhaseIds = new LinkedHashSet<>();
+        pendingManualAdvancePhaseIds = new LinkedHashSet<>();
+        phaseProgress = new LinkedHashMap<>();
+        collectionData = null;
 
-        this.activePhaseIds.add(Objects.requireNonNull(initialPhaseId));
-        this.phaseProgress.put(initialPhaseId, new int[Math.max(0, objectiveCount)]);
+        activePhaseIds.add(Objects.requireNonNull(initialPhaseId));
+        phaseProgress.put(initialPhaseId, new int[Math.max(0, objectiveCount)]);
     }
 
     private QuestRuntimeData(String questId,
@@ -214,7 +214,7 @@ public final class QuestRuntimeData {
 
     public void setState(QuestState state) {
         this.state = Objects.requireNonNull(state);
-        this.isDirty = true;
+        isDirty = true;
     }
 
     public long getAcceptedAtTick() {
@@ -252,7 +252,7 @@ public final class QuestRuntimeData {
 
     public void setCollectionData(@Nullable CollectionRuntimeData collectionData) {
         this.collectionData = collectionData;
-        this.isDirty = true;
+        isDirty = true;
     }
 
     public boolean hasCollectionData() {
@@ -343,7 +343,7 @@ public final class QuestRuntimeData {
     }
 
     public void clearDirty() {
-        this.isDirty = false;
+        isDirty = false;
         if (collectionData != null) collectionData.clearDirty();
     }
 

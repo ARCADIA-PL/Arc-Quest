@@ -26,8 +26,8 @@ public class TradeScreen extends AbstractTradeScreen {
 
     public TradeScreen(String shopId) {
         super("arc_quest.gui.trade.full_title", shopId);
-        this.allEntries = shop != null ? new ArrayList<>(shop.getAllEntries()) : List.of();
-        this.filteredEntries = new ArrayList<>(allEntries);
+        allEntries = shop != null ? new ArrayList<>(shop.getAllEntries()) : List.of();
+        filteredEntries = new ArrayList<>(allEntries);
     }
 
     public List<TradeEntry> getFilteredEntries() {

@@ -34,14 +34,14 @@ public class TradeGridPanel {
     public TradeGridPanel(SimpleTradePanel screen, Font font) {
         this.screen = screen;
         this.font = font;
-        this.hoverAnims = new float[screen.getEntries().size()];
-        this.statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
-        this.statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
-        this.plusWidth = font.width(plusText);
+        hoverAnims = new float[screen.getEntries().size()];
+        statusMaxedText = Component.translatable("arc_quest.gui.trade.status.maxed").getString();
+        statusLockedText = Component.translatable("arc_quest.gui.trade.status.locked").getString();
+        plusWidth = font.width(plusText);
     }
 
     public void updateHoverAnimsSize(int size) {
-        this.hoverAnims = new float[size];
+        hoverAnims = new float[size];
     }
 
     public void setHoverAnim(int index, float val) {

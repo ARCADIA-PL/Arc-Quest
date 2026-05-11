@@ -35,8 +35,8 @@ public class BranchChoiceToast {
     public BranchChoiceToast(String questId, String phaseId) {
         this.questId = questId;
         this.phaseId = phaseId;
-        this.startTime = Util.getMillis();
-        this.lastRenderTime = this.startTime;
+        startTime = Util.getMillis();
+        lastRenderTime = startTime;
     }
 
     public void dismiss() {
@@ -61,9 +61,9 @@ public class BranchChoiceToast {
 
     public boolean sameTarget(String otherQuestId, String otherPhaseId) {
         if (otherQuestId == null) return false;
-        if (!otherQuestId.equals(this.questId)) return false;
-        if (this.phaseId == null) return otherPhaseId == null || otherPhaseId.isEmpty();
-        return this.phaseId.equals(otherPhaseId);
+        if (!otherQuestId.equals(questId)) return false;
+        if (phaseId == null) return otherPhaseId == null || otherPhaseId.isEmpty();
+        return phaseId.equals(otherPhaseId);
     }
 
     public boolean render(GuiGraphics g, int baseX, int baseY, float parentAlpha, float partialTick, boolean isFrozen) {
@@ -71,12 +71,12 @@ public class BranchChoiceToast {
 
         if (isFrozen) {
             long dt = now - lastRenderTime;
-            this.startTime += dt;
-            if (isDismissing) this.dismissStartTime += dt;
-            this.lastRenderTime = now;
+            startTime += dt;
+            if (isDismissing) dismissStartTime += dt;
+            lastRenderTime = now;
             return true;
         }
-        this.lastRenderTime = now;
+        lastRenderTime = now;
 
         long elapsedEnter = now - startTime;
         float alpha = 1f, textDriftX = 0f, revealProgress = 1f, wipeProgress = 0f;

@@ -187,76 +187,76 @@ public final class PhaseDefinition {
     }
 
     public String getPhaseId() {
-        return this.phaseId;
+        return phaseId;
     }
 
     public Component getDisplayName() {
-        return this.displayName.resolve(null, QuestTextContext.empty());
+        return displayName.resolve(null, QuestTextContext.empty());
     }
 
     public Component getDisplayName(ServerPlayer player, QuestTextContext context) {
-        return this.displayName.resolve(player, context);
+        return displayName.resolve(player, context);
     }
 
     public Component getDescription() {
-        return this.description.resolve(null, QuestTextContext.empty());
+        return description.resolve(null, QuestTextContext.empty());
     }
 
     public Component getDescription(ServerPlayer player, QuestTextContext context) {
-        return this.description.resolve(player, context);
+        return description.resolve(player, context);
     }
 
     public boolean hasDescription() {
-        return !this.description.resolve(null, QuestTextContext.empty()).getString().isEmpty();
+        return !description.resolve(null, QuestTextContext.empty()).getString().isEmpty();
     }
 
     public Component getStory() {
-        return this.story.resolve(null, QuestTextContext.empty());
+        return story.resolve(null, QuestTextContext.empty());
     }
 
     public Component getStory(ServerPlayer player, QuestTextContext context) {
-        return this.story.resolve(player, context);
+        return story.resolve(player, context);
     }
 
     public boolean hasStory() {
-        return !this.story.resolve(null, QuestTextContext.empty()).getString().isEmpty();
+        return !story.resolve(null, QuestTextContext.empty()).getString().isEmpty();
     }
 
     public List<ObjectiveEntry> getObjectives() {
-        return this.objectives;
+        return objectives;
     }
 
     public int getRequiredObjectiveCount() {
         int count = 0;
-        for (ObjectiveEntry obj : this.objectives) {
+        for (ObjectiveEntry obj : objectives) {
             if (!obj.isOptional()) count++;
         }
         return count;
     }
 
     public List<PhaseTransition> getTransitions() {
-        return this.transitions;
+        return transitions;
     }
 
     public List<ChoiceOption> getChoices() {
-        return this.choices;
+        return choices;
     }
 
     public boolean hasChoices() {
-        return !this.choices.isEmpty();
+        return !choices.isEmpty();
     }
 
     public List<IReward> getPhaseRewards() {
-        return this.phaseRewards;
+        return phaseRewards;
     }
 
     @Nullable
     public CollectionEntryConfig getCollectionEntryConfig() {
-        return this.collectionEntryConfig;
+        return collectionEntryConfig;
     }
 
     public boolean hasCollectionEntryConfig() {
-        return this.collectionEntryConfig != null;
+        return collectionEntryConfig != null;
     }
 
     @Nullable
@@ -269,7 +269,7 @@ public final class PhaseDefinition {
     }
 
     public boolean hasEnterCondition() {
-        return this.enterCondition != null;
+        return enterCondition != null;
     }
 
     public boolean shouldAutoEnterByCondition() {
@@ -281,11 +281,11 @@ public final class PhaseDefinition {
     }
 
     public List<String> getFlagsToSetOnEnter() {
-        return this.flagsToSetOnEnter;
+        return flagsToSetOnEnter;
     }
 
     public List<String> getFlagsToSetOnComplete() {
-        return this.flagsToSetOnComplete;
+        return flagsToSetOnComplete;
     }
 
     public List<MarkSpec> getRelatedMarks() {
@@ -293,52 +293,52 @@ public final class PhaseDefinition {
     }
 
     public QuestVisualConfig getVisualConfig() {
-        return this.visualConfig;
+        return visualConfig;
     }
 
     public int getThemeColor(int parentQuestThemeColor) {
-        int phaseColor = this.visualConfig.getThemeColor();
+        int phaseColor = visualConfig.getThemeColor();
         return (phaseColor != 0xFFFFFFFF) ? phaseColor : parentQuestThemeColor;
     }
 
     public Optional<VisualAsset> getSplashConfig(SplashType type) {
-        return this.visualConfig.getSplash(type);
+        return visualConfig.getSplash(type);
     }
 
     public Optional<VisualAsset> getIconConfig(IconPosition position) {
-        return this.visualConfig.getIcon(position);
+        return visualConfig.getIcon(position);
     }
 
     @Nullable
     public String getTradeShopId() {
-        return this.tradeShopId;
+        return tradeShopId;
     }
 
     @Nullable
     public SoundEvent getPhaseStartSound() {
-        return this.phaseStartSound;
+        return phaseStartSound;
     }
 
     @Nullable
     public SoundEvent getPhaseCompleteSound() {
-        return this.phaseCompleteSound;
+        return phaseCompleteSound;
     }
 
     public boolean hasTradeShop() {
-        return this.tradeShopId != null;
+        return tradeShopId != null;
     }
 
     @Nullable
     public ResourceLocation getIntelSceneId() {
-        return this.intelSceneId;
+        return intelSceneId;
     }
 
     public boolean hasIntelScene() {
-        return this.intelSceneId != null;
+        return intelSceneId != null;
     }
 
     @Override
     public String toString() {
-        return "Phase[" + this.phaseId + ", " + this.objectives.size() + " obj]";
+        return "Phase[" + phaseId + ", " + objectives.size() + " obj]";
     }
 }

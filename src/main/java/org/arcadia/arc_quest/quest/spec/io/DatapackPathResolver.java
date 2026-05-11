@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.spec.io;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,7 +45,7 @@ public final class DatapackPathResolver {
         }
     }
 
-    public static void ensureDatapackDirsExist() throws java.io.IOException {
+    public static void ensureDatapackDirsExist() throws IOException {
         Files.createDirectories(resolveQuestsDir());
     }
 }

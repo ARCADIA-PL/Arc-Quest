@@ -29,23 +29,23 @@ public final class VariableReward implements IReward {
     }
 
     public String getVariableName() {
-        return this.variableName;
+        return variableName;
     }
 
     public Op getOperation() {
-        return this.operation;
+        return operation;
     }
 
     public int getValue() {
-        return this.value;
+        return value;
     }
 
     public int apply(int current) {
-        return switch (this.operation) {
-            case SET -> this.value;
-            case ADD -> current + this.value;
-            case SUBTRACT -> current - this.value;
-            case MULTIPLY -> current * this.value;
+        return switch (operation) {
+            case SET -> value;
+            case ADD -> current + value;
+            case SUBTRACT -> current - value;
+            case MULTIPLY -> current * value;
         };
     }
 
@@ -53,13 +53,13 @@ public final class VariableReward implements IReward {
     public void grant(ServerPlayer player) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         if (cap == null) return;
-        int current = cap.getVariable(this.variableName);
-        cap.setVariable(this.variableName, this.apply(current));
+        int current = cap.getVariable(variableName);
+        cap.setVariable(variableName, apply(current));
     }
 
     @Override
     public String describe() {
-        return "Var(" + this.variableName + " " + this.operation + " " + this.value + ")";
+        return "Var(" + variableName + " " + operation + " " + value + ")";
     }
 
     public enum Op {SET, ADD, SUBTRACT, MULTIPLY}

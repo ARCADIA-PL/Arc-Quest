@@ -1276,7 +1276,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     }
 
     // ═══════════════════════════════════════════════════════
-        private void addCollectionCodexDemoQuest() {
+    private void addCollectionCodexDemoQuest() {
         addQuest("collection_codex_demo",
                 "Collection Codex Demo",
                 "Objective Framework 2.0 collection quest demo.");

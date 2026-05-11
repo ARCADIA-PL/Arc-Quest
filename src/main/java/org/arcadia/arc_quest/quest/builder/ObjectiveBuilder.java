@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestText;
@@ -113,6 +114,13 @@ public final class ObjectiveBuilder {
         return b;
     }
 
+    public static ObjectiveBuilder nullObjective() {
+        ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.NULL);
+        b.targetId = ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "null");
+        b.requiredCount = 1;
+        return b;
+    }
+
     public static ObjectiveBuilder offer(Item item, int count) {
         ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
         Objects.requireNonNull(key, "Item not registered: " + item);
@@ -137,27 +145,27 @@ public final class ObjectiveBuilder {
     }
 
     public ObjectiveBuilder display(String literal) {
-        this.displayText = QuestText.literal(literal);
+        displayText = QuestText.literal(literal);
         return this;
     }
 
     public ObjectiveBuilder display(Component component) {
-        this.displayText = QuestText.component(component);
+        displayText = QuestText.component(component);
         return this;
     }
 
     public ObjectiveBuilder display(QuestText text) {
-        this.displayText = text;
+        displayText = text;
         return this;
     }
 
     public ObjectiveBuilder count(int count) {
-        this.requiredCount = count;
+        requiredCount = count;
         return this;
     }
 
     public ObjectiveBuilder countModifier(ToIntFunction<ServerPlayer> resolver) {
-        this.countModifier = resolver;
+        countModifier = resolver;
         return this;
     }
 
@@ -166,17 +174,17 @@ public final class ObjectiveBuilder {
     }
 
     public ObjectiveBuilder hidden() {
-        this.hidden = true;
+        hidden = true;
         return this;
     }
 
     public ObjectiveBuilder optional() {
-        this.optional = true;
+        optional = true;
         return this;
     }
 
     public ObjectiveBuilder extra(String key, String value) {
-        this.extraData.put(key, value);
+        extraData.put(key, value);
         return this;
     }
 
@@ -185,20 +193,20 @@ public final class ObjectiveBuilder {
     }
 
     public ObjectiveBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
-        String id = this.type.name().toLowerCase() + "::obj_mark_" + relatedMarks.size();
-        this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+        String id = type.name().toLowerCase() + "::obj_mark_" + relatedMarks.size();
+        relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
                 QuestMarkerType.QUEST_OBJECTIVE, 0, 128, 20, true, false, Map.of()));
         return this;
     }
 
     public ObjectiveBuilder markRelatedObject(MarkSpec spec) {
-        this.relatedMarks.add(spec);
+        relatedMarks.add(spec);
         return this;
     }
 
     public ObjectiveEntry build() {
-        Objects.requireNonNull(this.targetId, "targetId not set for ObjectiveBuilder");
-        return new ObjectiveEntry(this.type, this.targetId, this.requiredCount, this.displayText,
-                this.hidden, this.optional, new LinkedHashMap<>(this.extraData), new ArrayList<>(this.relatedMarks), this.countModifier);
+        Objects.requireNonNull(targetId, "targetId not set for ObjectiveBuilder");
+        return new ObjectiveEntry(type, targetId, requiredCount, displayText,
+                hidden, optional, new LinkedHashMap<>(extraData), new ArrayList<>(relatedMarks), countModifier);
     }
 }

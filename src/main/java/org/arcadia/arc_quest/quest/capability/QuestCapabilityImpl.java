@@ -512,7 +512,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
     @Override
     public void copyFrom(IQuestCapability other) {
-        this.deserializeNBT(other.serializeNBT());
+        deserializeNBT(other.serializeNBT());
     }
 
     @Override

@@ -128,6 +128,7 @@ public final class QuestProgressHandler {
         // 仅对 autoEnterByCondition=true 的 phase 扫描自动入场
         ActivationContext ctx = new ActivationContext();
         tryAutoEnterPhases(player, cap, data, def, firstPhase.getPhaseId(), ctx);
+        processImmediatelySatisfiedPhases(player, cap, data, def);
         flagsChanged = flagsChanged || ctx.flagsChanged;
 
         syncQuestStateAndPush(player, data);
@@ -294,13 +295,24 @@ public final class QuestProgressHandler {
 
         grantRewards(player, phase.getPhaseRewards(), "phase");
         unregisterPhaseObjectives(player, def, phase);
-        data.completePhase(phaseId);
 
         ActivationContext ctx = new ActivationContext();
         for (String flag : phase.getFlagsToSetOnComplete()) {
             cap.setFlag(flag);
             ctx.flagsChanged = true;
         }
+
+        if (!phase.shouldAutoAdvanceOnComplete()) {
+            data.markPhasePendingManualAdvance(phaseId);
+            refreshQuestMarkersForQuest(player, cap, data, def);
+            syncQuestStateAndPush(player, data);
+            if (ctx.flagsChanged) {
+                syncFlagsVarsAndPush(player, cap);
+            }
+            return;
+        }
+
+        data.completePhase(phaseId);
 
         // choices：该 phase 完成后等待玩家选路，不自动推进 transition
         if (phase.hasChoices()) {
@@ -333,6 +345,7 @@ public final class QuestProgressHandler {
 
         // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
         tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+        processImmediatelySatisfiedPhases(player, cap, data, def);
 
         if (shouldCompleteQuest(def, data)) {
             completeQuest(player, cap, data, def);
@@ -359,6 +372,7 @@ public final class QuestProgressHandler {
         }
 
         tryAutoEnterPhases(player, cap, data, def, fromPhaseId, ctx);
+        processImmediatelySatisfiedPhases(player, cap, data, def);
 
         refreshQuestMarkersForQuest(player, cap, data, def);
         syncQuestStateAndPush(player, data);
@@ -387,10 +401,15 @@ public final class QuestProgressHandler {
         data.clearPhasePendingManualAdvance(phaseId);
         data.completePhase(phaseId);
         ActivationContext ctx = new ActivationContext();
+        for (String flag : phase.getFlagsToSetOnComplete()) {
+            cap.setFlag(flag);
+            ctx.flagsChanged = true;
+        }
         if (phase.hasChoices()) {
             tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
             refreshQuestMarkersForQuest(player, cap, data, def);
             syncQuestStateAndPush(player, data);
+            if (ctx.flagsChanged) syncFlagsVarsAndPush(player, cap);
             return QuestRejectCodeDictionary.Code.OK;
         }
         Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
@@ -531,6 +550,7 @@ public final class QuestProgressHandler {
 
         // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
         tryAutoEnterPhases(player, cap, data, def, resolvedPhaseId, ctx);
+        processImmediatelySatisfiedPhases(player, cap, data, def);
 
         if (shouldCompleteQuest(def, data)) {
             completeQuest(player, cap, data, def);
@@ -799,9 +819,9 @@ public final class QuestProgressHandler {
     }
 
     private static void processImmediatelySatisfiedPhases(ServerPlayer player,
-                                                         IQuestCapability cap,
-                                                         QuestRuntimeData data,
-                                                         QuestDefinition def) {
+                                                          IQuestCapability cap,
+                                                          QuestRuntimeData data,
+                                                          QuestDefinition def) {
         boolean changed;
         do {
             changed = false;

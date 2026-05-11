@@ -18,7 +18,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
 
     public SimpleTradePanel(String shopId) {
         super("arc_quest.gui.trade.quick_title", shopId);
-        this.entries = new ArrayList<>();
+        entries = new ArrayList<>();
         if (shop != null) {
             int i = 0;
             for (TradeEntry e : shop.getAllEntries()) {
@@ -92,13 +92,13 @@ public class SimpleTradePanel extends AbstractTradeScreen {
     public void refreshData() {
         super.refreshData();
         TradeEntry hov = getHoveredEntry(-999, -999);
-        this.entries.clear();
+        entries.clear();
         if (shop != null) {
             List<TradeEntry> all = new ArrayList<>(shop.getAllEntries());
             for (int i = 0; i < all.size(); i++)
                 if (ClientTradeCache.INSTANCE.isVisible(shopId, i)) entries.add(all.get(i));
         }
-        gridPanel.updateHoverAnimsSize(this.entries.size());
+        gridPanel.updateHoverAnimsSize(entries.size());
         if (hov != null) {
             int idx = entries.indexOf(hov);
             if (idx != -1) gridPanel.setHoverAnim(idx, 1f);

@@ -41,11 +41,11 @@ public class JournalDetailPanel {
 
     public JournalDetailPanel(QuestJournalScreen screen) {
         this.screen = screen;
-        this.singlePhaseRenderer = new JournalDetailSinglePhase(screen, this);
-        this.parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
-        this.rewardsRenderer = new JournalDetailRewards(screen, this);
-        this.controlsRenderer = new JournalDetailControls(screen, this);
-        this.collectionRenderer = new JournalDetailCollection(screen);
+        singlePhaseRenderer = new JournalDetailSinglePhase(screen, this);
+        parallelPhaseRenderer = new JournalDetailParallelPhase(screen, this);
+        rewardsRenderer = new JournalDetailRewards(screen, this);
+        controlsRenderer = new JournalDetailControls(screen, this);
+        collectionRenderer = new JournalDetailCollection(screen);
     }
 
     public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {

@@ -104,7 +104,7 @@ public class DialogueTreeBuilder {
      * 设置默认 NPC 名称（所有节点的 fallback speaker）。
      */
     public DialogueTreeBuilder npc(String npcName) {
-        this.defaultNpc = npcName != null ? npcName : "";
+        defaultNpc = npcName != null ? npcName : "";
         return this;
     }
 
@@ -112,13 +112,13 @@ public class DialogueTreeBuilder {
      * 显式指定起始节点 ID（默认为第一个 .node() 调用的节点）。
      */
     public DialogueTreeBuilder startNode(String nodeId) {
-        this.startNodeId = nodeId;
+        startNodeId = nodeId;
         return this;
     }
 
 
     public DialogueTreeBuilder visualConfig(QuestVisualConfig config) {
-        this.visualConfig = config;
+        visualConfig = config;
         return this;
     }
 
@@ -126,8 +126,8 @@ public class DialogueTreeBuilder {
      * 设置为一次性对话（不可重复）。
      */
     public DialogueTreeBuilder oneTime() {
-        this.repeatable = false;
-        this.cooldownSeconds = 0;
+        repeatable = false;
+        cooldownSeconds = 0;
         return this;
     }
 
@@ -135,9 +135,9 @@ public class DialogueTreeBuilder {
      * 设置对话为可重复，并添加冷却时间（秒）。
      */
     public DialogueTreeBuilder cooldown(long seconds) {
-        this.repeatable = true;
-        this.cooldownSeconds = Math.max(0, seconds);
-        this.treeCooldownType = CooldownType.SECONDS;
+        repeatable = true;
+        cooldownSeconds = Math.max(0, seconds);
+        treeCooldownType = CooldownType.SECONDS;
         return this;
     }
 
@@ -145,9 +145,9 @@ public class DialogueTreeBuilder {
      * 设置对话树为游戏日冷却（每天一次）。
      */
     public DialogueTreeBuilder cooldownGameDay() {
-        this.repeatable = true;
-        this.cooldownSeconds = 1;
-        this.treeCooldownType = CooldownType.GAME_DAY;
+        repeatable = true;
+        cooldownSeconds = 1;
+        treeCooldownType = CooldownType.GAME_DAY;
         return this;
     }
 
@@ -170,10 +170,10 @@ public class DialogueTreeBuilder {
      * @return 当前构建器
      */
     public DialogueTreeBuilder cooldownGameTick(int resetTick) {
-        this.repeatable = true;
-        this.cooldownSeconds = 0;
-        this.treeCooldownType = CooldownType.GAME_TICK;
-        this.treeCooldownResetTicks = Math.max(0, Math.min(resetTick, 24000));
+        repeatable = true;
+        cooldownSeconds = 0;
+        treeCooldownType = CooldownType.GAME_TICK;
+        treeCooldownResetTicks = Math.max(0, Math.min(resetTick, 24000));
         return this;
     }
 
@@ -183,7 +183,7 @@ public class DialogueTreeBuilder {
     public DialogueTreeBuilder repeatable(boolean repeatable) {
         this.repeatable = repeatable;
         if (!repeatable) {
-            this.cooldownSeconds = 0;
+            cooldownSeconds = 0;
         }
         return this;
     }
@@ -193,14 +193,14 @@ public class DialogueTreeBuilder {
     }
 
     public DialogueTreeBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
-        String id = this.dialogueId + "::dialogue_mark_" + treeMarks.size();
-        this.treeMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+        String id = dialogueId + "::dialogue_mark_" + treeMarks.size();
+        treeMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
                 QuestMarkerType.NPC_INTERACT, 0, 256, 20, true, false, Map.of()));
         return this;
     }
 
     public DialogueTreeBuilder markRelatedObject(MarkSpec spec) {
-        this.treeMarks.add(spec);
+        treeMarks.add(spec);
         return this;
     }
 
@@ -208,19 +208,19 @@ public class DialogueTreeBuilder {
     public DialogueTreeBuilder node(String nodeId) {
         commitCurrentNode();
 
-        this.curNodeId = Objects.requireNonNull(nodeId);
-        this.curSpeaker = null;
-        this.curText = DialogueText.literal("");
-        this.curConditionalTexts.clear();
-        this.curAutoNextId = null;
-        this.curDelayMs = 0;
-        this.curChoices.clear();
-        this.hasOpenNode = true;
-        this.curRepeatable = true;
-        this.curCooldownSeconds = 0;
-        this.curCooldownType = CooldownType.NONE;
-        this.curResetTimeTicks = 0;
-        this.curNodeEnterSound = null;
+        curNodeId = Objects.requireNonNull(nodeId);
+        curSpeaker = null;
+        curText = DialogueText.literal("");
+        curConditionalTexts.clear();
+        curAutoNextId = null;
+        curDelayMs = 0;
+        curChoices.clear();
+        hasOpenNode = true;
+        curRepeatable = true;
+        curCooldownSeconds = 0;
+        curCooldownType = CooldownType.NONE;
+        curResetTimeTicks = 0;
+        curNodeEnterSound = null;
 
         if (startNodeId == null) {
             startNodeId = nodeId;
@@ -234,13 +234,13 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder speaker(String speaker) {
         ensureOpenNode();
-        this.curSpeaker = DialogueText.literal(speaker);
+        curSpeaker = DialogueText.literal(speaker);
         return this;
     }
 
     public DialogueTreeBuilder speaker(DialogueText speaker) {
         ensureOpenNode();
-        this.curSpeaker = speaker;
+        curSpeaker = speaker;
         return this;
     }
 
@@ -249,15 +249,15 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder say(String text, String sayId) {
         ensureOpenNode();
-        this.curText = DialogueText.literal(text);
-        this.curDefaultSayId = resolveId(sayId);
+        curText = DialogueText.literal(text);
+        curDefaultSayId = resolveId(sayId);
         return this;
     }
 
     public DialogueTreeBuilder say(DialogueText text, String sayId) {
         ensureOpenNode();
-        this.curText = text == null ? DialogueText.literal("") : text;
-        this.curDefaultSayId = resolveId(sayId);
+        curText = text == null ? DialogueText.literal("") : text;
+        curDefaultSayId = resolveId(sayId);
         return this;
     }
 
@@ -338,13 +338,13 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder enterSound(SoundEvent sound) {
         ensureOpenNode();
-        this.curNodeEnterSound = sound;
+        curNodeEnterSound = sound;
         return this;
     }
 
     public DialogueTreeBuilder enterSound(Holder.Reference<SoundEvent> sound) {
         ensureOpenNode();
-        this.curNodeEnterSound = sound.get();
+        curNodeEnterSound = sound.get();
         return this;
     }
 
@@ -353,7 +353,7 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder delay(int delayMs) {
         ensureOpenNode();
-        this.curDelayMs = Math.max(0, delayMs);
+        curDelayMs = Math.max(0, delayMs);
         return this;
     }
 
@@ -451,7 +451,7 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder autoNext(String nextNodeId) {
         ensureOpenNode();
-        this.curAutoNextId = nextNodeId;
+        curAutoNextId = nextNodeId;
         return this;
     }
 
@@ -460,8 +460,8 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder nodeOneTime() {
         ensureOpenNode();
-        this.curRepeatable = false;
-        this.curCooldownSeconds = 0;
+        curRepeatable = false;
+        curCooldownSeconds = 0;
         return this;
     }
 
@@ -470,9 +470,9 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder nodeCooldown(long seconds) {
         ensureOpenNode();
-        this.curRepeatable = true;
-        this.curCooldownSeconds = Math.max(0, seconds);
-        this.curCooldownType = CooldownType.SECONDS;
+        curRepeatable = true;
+        curCooldownSeconds = Math.max(0, seconds);
+        curCooldownType = CooldownType.SECONDS;
         return this;
     }
 
@@ -481,9 +481,9 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder nodeCooldownGameDay() {
         ensureOpenNode();
-        this.curRepeatable = true;
-        this.curCooldownSeconds = 1;
-        this.curCooldownType = CooldownType.GAME_DAY;
+        curRepeatable = true;
+        curCooldownSeconds = 1;
+        curCooldownType = CooldownType.GAME_DAY;
         return this;
     }
 
@@ -492,10 +492,10 @@ public class DialogueTreeBuilder {
      */
     public DialogueTreeBuilder nodeCooldownGameTick(int resetTick) {
         ensureOpenNode();
-        this.curRepeatable = true;
-        this.curCooldownSeconds = 0;  // GAME_TICK 类型不使用秒数
-        this.curCooldownType = CooldownType.GAME_TICK;
-        this.curResetTimeTicks = resetTick;
+        curRepeatable = true;
+        curCooldownSeconds = 0;  // GAME_TICK 类型不使用秒数
+        curCooldownType = CooldownType.GAME_TICK;
+        curResetTimeTicks = resetTick;
         return this;
     }
 
@@ -692,14 +692,14 @@ public class DialogueTreeBuilder {
         }
 
         public SayIfBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
-            String id = this.sayId + "::say_mark_" + relatedMarks.size();
-            this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+            String id = sayId + "::say_mark_" + relatedMarks.size();
+            relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
                     QuestMarkerType.NPC_INTERACT, 0, 128, 20, true, false, Map.of()));
             return this;
         }
 
         public SayIfBuilder markRelatedObject(MarkSpec spec) {
-            this.relatedMarks.add(spec);
+            relatedMarks.add(spec);
             return this;
         }
     }
@@ -740,7 +740,7 @@ public class DialogueTreeBuilder {
             this.condition = condition;
             this.text = text;
             this.priority = priority;
-            this.soundEvent = sound;
+            soundEvent = sound;
             this.sayId = sayId;
             this.relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
         }
@@ -783,7 +783,7 @@ public class DialogueTreeBuilder {
         }
 
         public ChoiceBuilder goTo(String nodeId) {
-            this.nextNodeId = nodeId;
+            nextNodeId = nodeId;
             return this;
         }
 
@@ -849,8 +849,8 @@ public class DialogueTreeBuilder {
          */
         public ChoiceBuilder openTrade(String shopId) {
             // 自动启用恢复到当前节点
-            if (this.restoreNodeId == null) {
-                this.restoreNodeId = "__CURRENT__";
+            if (restoreNodeId == null) {
+                restoreNodeId = "__CURRENT__";
             }
             actions.add(new DialogueAction.OpenTrade(shopId, restoreNodeId));
             return this;
@@ -863,8 +863,8 @@ public class DialogueTreeBuilder {
          */
         public ChoiceBuilder openSimpleTrade(String shopId) {
             // 自动启用恢复到当前节点
-            if (this.restoreNodeId == null) {
-                this.restoreNodeId = "__CURRENT__";
+            if (restoreNodeId == null) {
+                restoreNodeId = "__CURRENT__";
             }
             actions.add(new DialogueAction.OpenSimpleTrade(shopId, restoreNodeId));
             return this;
@@ -876,8 +876,8 @@ public class DialogueTreeBuilder {
          * 默认启用 {@code restoreToCurrentNode()}，抽奖界面关闭后自动恢复对话。
          */
         public ChoiceBuilder openGacha(String shopId) {
-            if (this.restoreNodeId == null) {
-                this.restoreNodeId = "__CURRENT__";
+            if (restoreNodeId == null) {
+                restoreNodeId = "__CURRENT__";
             }
             actions.add(new DialogueAction.OpenGacha(shopId, restoreNodeId));
             return this;
@@ -986,14 +986,14 @@ public class DialogueTreeBuilder {
         }
 
         public ChoiceBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
-            String id = this.choiceId + "::choice_mark_" + relatedMarks.size();
-            this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+            String id = choiceId + "::choice_mark_" + relatedMarks.size();
+            relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
                     QuestMarkerType.NPC_INTERACT, 0, 128, 20, true, false, Map.of()));
             return this;
         }
 
         public ChoiceBuilder markRelatedObject(MarkSpec spec) {
-            this.relatedMarks.add(spec);
+            relatedMarks.add(spec);
             return this;
         }
 
@@ -1028,8 +1028,8 @@ public class DialogueTreeBuilder {
          * 设置为一次性选项（不可重复选择）。
          */
         public ChoiceBuilder oneTime() {
-            this.repeatable = false;
-            this.cooldownSeconds = 0;
+            repeatable = false;
+            cooldownSeconds = 0;
             return this;
         }
 
@@ -1037,9 +1037,9 @@ public class DialogueTreeBuilder {
          * 设置选项冷却时间（秒）。
          */
         public ChoiceBuilder cooldown(long seconds) {
-            this.repeatable = true;
-            this.cooldownSeconds = Math.max(0, seconds);
-            this.cooldownType = CooldownType.SECONDS;
+            repeatable = true;
+            cooldownSeconds = Math.max(0, seconds);
+            cooldownType = CooldownType.SECONDS;
             return this;
         }
 
@@ -1047,9 +1047,9 @@ public class DialogueTreeBuilder {
          * 设置游戏日冷却。
          */
         public ChoiceBuilder cooldownGameDay() {
-            this.repeatable = true;
-            this.cooldownSeconds = 1;
-            this.cooldownType = CooldownType.GAME_DAY;
+            repeatable = true;
+            cooldownSeconds = 1;
+            cooldownType = CooldownType.GAME_DAY;
             return this;
         }
 
@@ -1072,10 +1072,10 @@ public class DialogueTreeBuilder {
          * @return 当前构建器
          */
         public ChoiceBuilder cooldownGameTick(int resetTick) {
-            this.repeatable = true;
-            this.cooldownSeconds = 0;  // GAME_TICK 类型不使用秒数
-            this.cooldownType = CooldownType.GAME_TICK;
-            this.resetTimeTicks = Math.max(0, Math.min(resetTick, 24000));
+            repeatable = true;
+            cooldownSeconds = 0;  // GAME_TICK 类型不使用秒数
+            cooldownType = CooldownType.GAME_TICK;
+            resetTimeTicks = Math.max(0, Math.min(resetTick, 24000));
             return this;
         }
 
@@ -1105,7 +1105,7 @@ public class DialogueTreeBuilder {
          * @return 当前构建器
          */
         public ChoiceBuilder restoreToNode(String nodeId) {
-            this.restoreNodeId = nodeId;
+            restoreNodeId = nodeId;
             return this;
         }
 
@@ -1118,7 +1118,7 @@ public class DialogueTreeBuilder {
          * @return 当前构建器
          */
         public ChoiceBuilder restoreToCurrentNode() {
-            this.restoreNodeId = "__CURRENT__";  // 特殊标记，在 build() 时替换为实际节点 ID
+            restoreNodeId = "__CURRENT__";  // 特殊标记，在 build() 时替换为实际节点 ID
             return this;
         }
 
@@ -1137,12 +1137,12 @@ public class DialogueTreeBuilder {
          * @return 当前构建器
          */
         public ChoiceBuilder selectSound(SoundEvent sound) {
-            this.selectSound = sound;
+            selectSound = sound;
             return this;
         }
 
         public ChoiceBuilder selectSound(Holder.Reference<SoundEvent> sound) {
-            this.selectSound = sound.get();
+            selectSound = sound.get();
             return this;
         }
 

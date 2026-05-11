@@ -31,27 +31,27 @@ public class QuestMarkerData {
     private final boolean allowOffscreenArrow;
 
     private QuestMarkerData(Builder builder) {
-        this.id = builder.id;
-        this.worldX = builder.worldX;
-        this.worldY = builder.worldY;
-        this.worldZ = builder.worldZ;
-        this.label = builder.label;
-        this.dimension = builder.dimension;
+        id = builder.id;
+        worldX = builder.worldX;
+        worldY = builder.worldY;
+        worldZ = builder.worldZ;
+        label = builder.label;
+        dimension = builder.dimension;
 
-        this.questId = builder.questId;
-        this.phaseId = builder.phaseId;
-        this.objectiveIndex = builder.objectiveIndex;
+        questId = builder.questId;
+        phaseId = builder.phaseId;
+        objectiveIndex = builder.objectiveIndex;
 
-        this.followEntityId = builder.followEntityId;
-        this.followEntityUuid = builder.followEntityUuid;
-        this.followEntityGuid = builder.followEntityGuid;
-        this.attachPoint = builder.attachPoint;
+        followEntityId = builder.followEntityId;
+        followEntityUuid = builder.followEntityUuid;
+        followEntityGuid = builder.followEntityGuid;
+        attachPoint = builder.attachPoint;
 
-        this.colorARGB = builder.colorARGB;
-        this.type = builder.type.canonical();
-        this.state = builder.state;
-        this.showDistance = builder.showDistance;
-        this.allowOffscreenArrow = builder.allowOffscreenArrow;
+        colorARGB = builder.colorARGB;
+        type = builder.type.canonical();
+        state = builder.state;
+        showDistance = builder.showDistance;
+        allowOffscreenArrow = builder.allowOffscreenArrow;
     }
 
     public static QuestMarkerData mainQuest(String id, double x, double y, double z, String label) {
@@ -226,9 +226,9 @@ public class QuestMarkerData {
 
         public Builder(String id, double x, double y, double z, String label) {
             this.id = id;
-            this.worldX = x;
-            this.worldY = y;
-            this.worldZ = z;
+            worldX = x;
+            worldY = y;
+            worldZ = z;
             this.label = label;
         }
 
@@ -253,17 +253,17 @@ public class QuestMarkerData {
         }
 
         public Builder followEntity(int entityId) {
-            this.followEntityId = entityId;
+            followEntityId = entityId;
             return this;
         }
 
         public Builder followEntityUuid(String entityUuid) {
-            this.followEntityUuid = entityUuid == null ? "" : entityUuid;
+            followEntityUuid = entityUuid == null ? "" : entityUuid;
             return this;
         }
 
         public Builder followEntityGuid(String entityGuid) {
-            this.followEntityGuid = entityGuid == null ? "" : entityGuid;
+            followEntityGuid = entityGuid == null ? "" : entityGuid;
             return this;
         }
 
@@ -273,28 +273,28 @@ public class QuestMarkerData {
         }
 
         public Builder followEntity(int entityId, EntityAttachPoint attachPoint) {
-            this.followEntityId = entityId;
+            followEntityId = entityId;
             this.attachPoint = attachPoint == null ? EntityAttachPoint.HEAD : attachPoint;
             return this;
         }
 
         public Builder followEntity(int entityId, String entityUuid, EntityAttachPoint attachPoint) {
-            this.followEntityId = entityId;
-            this.followEntityUuid = entityUuid == null ? "" : entityUuid;
+            followEntityId = entityId;
+            followEntityUuid = entityUuid == null ? "" : entityUuid;
             this.attachPoint = attachPoint == null ? EntityAttachPoint.HEAD : attachPoint;
             return this;
         }
 
         public Builder followEntity(int entityId, String entityUuid, String entityGuid, EntityAttachPoint attachPoint) {
-            this.followEntityId = entityId;
-            this.followEntityUuid = entityUuid == null ? "" : entityUuid;
-            this.followEntityGuid = entityGuid == null ? "" : entityGuid;
+            followEntityId = entityId;
+            followEntityUuid = entityUuid == null ? "" : entityUuid;
+            followEntityGuid = entityGuid == null ? "" : entityGuid;
             this.attachPoint = attachPoint == null ? EntityAttachPoint.HEAD : attachPoint;
             return this;
         }
 
         public Builder bindQuestState(QuestState questState) {
-            this.state = QuestMarkerState.fromQuestState(questState);
+            state = QuestMarkerState.fromQuestState(questState);
             return this;
         }
 
@@ -314,12 +314,12 @@ public class QuestMarkerData {
         }
 
         public Builder showDistance(boolean show) {
-            this.showDistance = show;
+            showDistance = show;
             return this;
         }
 
         public Builder allowOffscreenArrow(boolean allow) {
-            this.allowOffscreenArrow = allow;
+            allowOffscreenArrow = allow;
             return this;
         }
 

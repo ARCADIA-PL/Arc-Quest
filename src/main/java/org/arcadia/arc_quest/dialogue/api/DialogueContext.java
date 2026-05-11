@@ -22,7 +22,7 @@ public class DialogueContext {
     private final CompoundTag data;
 
     public DialogueContext() {
-        this.data = new CompoundTag();
+        data = new CompoundTag();
     }
 
     public DialogueContext(CompoundTag data) {
@@ -157,7 +157,7 @@ public class DialogueContext {
      */
     public DialogueContext merge(DialogueContext other) {
         if (other != null && !other.isEmpty()) {
-            this.data.merge(other.data);
+            data.merge(other.data);
         }
         return this;
     }

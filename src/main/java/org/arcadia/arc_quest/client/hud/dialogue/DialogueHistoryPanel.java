@@ -410,7 +410,7 @@ public final class DialogueHistoryPanel {
             h = 31 * h + nodeId.hashCode();
             h = 31 * h + sayId.hashCode();
             h = 31 * h + choiceId.hashCode();
-            this.hash = 31 * h + choiceIndex;
+            hash = 31 * h + choiceIndex;
         }
 
         static EntryKey of(TranscriptEntry e) {

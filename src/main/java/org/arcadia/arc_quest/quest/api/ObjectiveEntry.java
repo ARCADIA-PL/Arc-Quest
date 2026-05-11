@@ -62,15 +62,15 @@ public final class ObjectiveEntry {
     }
 
     public ObjectiveType getType() {
-        return this.type;
+        return type;
     }
 
     public ResourceLocation getTargetId() {
-        return this.targetId;
+        return targetId;
     }
 
     public int getRequiredCount() {
-        return this.requiredCount;
+        return requiredCount;
     }
 
     public int resolveRequiredCount(@Nullable ServerPlayer player) {
@@ -79,27 +79,27 @@ public final class ObjectiveEntry {
     }
 
     public Component getDisplayText() {
-        return this.displayText.resolve(null, QuestTextContext.empty());
+        return displayText.resolve(null, QuestTextContext.empty());
     }
 
     public Component getDisplayText(@Nullable ServerPlayer player, @Nullable QuestTextContext ctx) {
-        return this.displayText.resolve(player, ctx);
+        return displayText.resolve(player, ctx);
     }
 
     public QuestText getDisplayQuestText() {
-        return this.displayText;
+        return displayText;
     }
 
     public boolean isHidden() {
-        return this.hidden;
+        return hidden;
     }
 
     public boolean isOptional() {
-        return this.optional;
+        return optional;
     }
 
     public Map<String, String> getExtraData() {
-        return this.extraData;
+        return extraData;
     }
 
     public List<MarkSpec> getRelatedMarks() {
@@ -108,16 +108,16 @@ public final class ObjectiveEntry {
 
     @Nullable
     public String getExtra(String key) {
-        return this.extraData.get(key);
+        return extraData.get(key);
     }
 
     public boolean hasTargetTag() {
-        return this.extraData.containsKey("target_tag");
+        return extraData.containsKey("target_tag");
     }
 
     @Nullable
     public String getTargetTagId() {
-        return this.extraData.get("target_tag");
+        return extraData.get("target_tag");
     }
 
     @Nullable
@@ -134,7 +134,7 @@ public final class ObjectiveEntry {
     }
 
     public int getExtraInt(String key, int fallback) {
-        String val = this.extraData.get(key);
+        String val = extraData.get(key);
         if (val == null) return fallback;
         try {
             return Integer.parseInt(val);

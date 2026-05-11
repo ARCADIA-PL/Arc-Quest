@@ -191,7 +191,7 @@ public final class QuestToastManager {
         public final String translationKey;
 
         ToastType(int color, String translationKey) {
-            this.accentColor = color;
+            accentColor = color;
             this.translationKey = translationKey;
         }
 

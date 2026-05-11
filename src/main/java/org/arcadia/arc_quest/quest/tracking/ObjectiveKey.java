@@ -19,31 +19,31 @@ public final class ObjectiveKey {
         this.type = Objects.requireNonNull(type);
         this.targetId = Objects.requireNonNull(targetId);
         // 预计算 hashCode（不可变对象）
-        this.hashCode = Objects.hash(type, targetId);
+        hashCode = Objects.hash(type, targetId);
     }
 
     public ObjectiveType getType() {
-        return this.type;
+        return type;
     }
 
     public ResourceLocation getTargetId() {
-        return this.targetId;
+        return targetId;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ObjectiveKey other)) return false;
-        return this.type == other.type && this.targetId.equals(other.targetId);
+        return type == other.type && targetId.equals(other.targetId);
     }
 
     @Override
     public int hashCode() {
-        return this.hashCode;
+        return hashCode;
     }
 
     @Override
     public String toString() {
-        return "ObjKey[" + this.type + ":" + this.targetId + "]";
+        return "ObjKey[" + type + ":" + targetId + "]";
     }
 }

@@ -66,85 +66,85 @@ public final class PhaseBuilder {
     }
 
     public PhaseBuilder displayName(String literal) {
-        this.displayName = QuestText.literal(literal);
+        displayName = QuestText.literal(literal);
         return this;
     }
 
     public PhaseBuilder displayName(Component component) {
-        this.displayName = QuestText.component(component);
+        displayName = QuestText.component(component);
         return this;
     }
 
     public PhaseBuilder displayName(QuestText text) {
-        this.displayName = text;
+        displayName = text;
         return this;
     }
 
     public PhaseBuilder description(String literal) {
-        this.description = QuestText.literal(literal);
+        description = QuestText.literal(literal);
         return this;
     }
 
     public PhaseBuilder description(Component component) {
-        this.description = QuestText.component(component);
+        description = QuestText.component(component);
         return this;
     }
 
     public PhaseBuilder description(QuestText text) {
-        this.description = text;
+        description = text;
         return this;
     }
 
     public PhaseBuilder story(String literal) {
-        this.story = QuestText.literal(literal);
+        story = QuestText.literal(literal);
         return this;
     }
 
     public PhaseBuilder story(Component component) {
-        this.story = QuestText.component(component);
+        story = QuestText.component(component);
         return this;
     }
 
     public PhaseBuilder story(QuestText text) {
-        this.story = text;
+        story = text;
         return this;
     }
 
     public PhaseBuilder objective(ObjectiveBuilder objectiveBuilder) {
-        this.objectives.add(objectiveBuilder.build());
+        objectives.add(objectiveBuilder.build());
         return this;
     }
 
     public PhaseBuilder objective(ObjectiveEntry entry) {
-        this.objectives.add(entry);
+        objectives.add(entry);
         return this;
     }
 
     public PhaseBuilder thenGoTo(String targetPhaseId) {
-        this.transitions.add(new PhaseTransition(
-                targetPhaseId, null, this.transitionPriorityCounter++));
+        transitions.add(new PhaseTransition(
+                targetPhaseId, null, transitionPriorityCounter++));
         return this;
     }
 
     public PhaseBuilder thenGoToIf(String targetPhaseId, ICondition condition) {
-        this.transitions.add(new PhaseTransition(
-                targetPhaseId, condition, this.transitionPriorityCounter++));
+        transitions.add(new PhaseTransition(
+                targetPhaseId, condition, transitionPriorityCounter++));
         return this;
     }
 
     public PhaseBuilder choice(Component text, String flagToSet, String targetPhaseId) {
-        this.choices.add(new ChoiceOption(text, flagToSet, targetPhaseId, null));
+        choices.add(new ChoiceOption(text, flagToSet, targetPhaseId, null));
         return this;
     }
 
     public PhaseBuilder choice(Component text, String flagToSet, String targetPhaseId,
                                ICondition visibleCondition) {
-        this.choices.add(new ChoiceOption(text, flagToSet, targetPhaseId, visibleCondition));
+        choices.add(new ChoiceOption(text, flagToSet, targetPhaseId, visibleCondition));
         return this;
     }
 
     public PhaseBuilder reward(IReward reward) {
-        this.phaseRewards.add(reward);
+        phaseRewards.add(reward);
         return this;
     }
 
@@ -154,23 +154,23 @@ public final class PhaseBuilder {
     }
 
     public PhaseBuilder setFlagOnEnter(String flag) {
-        this.flagsOnEnter.add(flag);
+        flagsOnEnter.add(flag);
         return this;
     }
 
     public PhaseBuilder setFlagOnComplete(String flag) {
-        this.flagsOnComplete.add(flag);
+        flagsOnComplete.add(flag);
         return this;
     }
 
     public PhaseBuilder enterWhen(ICondition condition) {
-        this.enterCondition = condition;
-        this.autoEnterByCondition = true;
+        enterCondition = condition;
+        autoEnterByCondition = true;
         return this;
     }
 
     public PhaseBuilder enterWhen(ICondition condition, boolean autoEnterByCondition) {
-        this.enterCondition = condition;
+        enterCondition = condition;
         this.autoEnterByCondition = autoEnterByCondition;
         return this;
     }
@@ -185,60 +185,60 @@ public final class PhaseBuilder {
     }
 
     public PhaseBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
-        String id = this.phaseId + "::phase_mark_" + relatedMarks.size();
-        this.relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
+        String id = phaseId + "::phase_mark_" + relatedMarks.size();
+        relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
                 QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false, Map.of()));
         return this;
     }
 
     public PhaseBuilder markRelatedObject(MarkSpec spec) {
-        this.relatedMarks.add(spec);
+        relatedMarks.add(spec);
         return this;
     }
 
     public PhaseBuilder phaseTrade(String shopId) {
-        this.tradeShopId = shopId;
+        tradeShopId = shopId;
         return this;
     }
 
     public PhaseBuilder intelScene(ResourceLocation sceneId) {
-        this.intelSceneId = sceneId;
+        intelSceneId = sceneId;
         return this;
     }
 
     public PhaseBuilder intelScene(String questId, String phaseId) {
-        this.intelSceneId = ArcQuestPonderHelper.questPhaseId(questId, phaseId);
+        intelSceneId = ArcQuestPonderHelper.questPhaseId(questId, phaseId);
         return this;
     }
 
     public PhaseBuilder phaseStartSound(SoundEvent sound) {
-        this.phaseStartSound = sound;
+        phaseStartSound = sound;
         return this;
     }
 
     public PhaseBuilder phaseCompleteSound(SoundEvent sound) {
-        this.phaseCompleteSound = sound;
+        phaseCompleteSound = sound;
         return this;
     }
 
     public PhaseBuilder visualConfig(QuestVisualConfig config) {
         if (config != null) {
-            this.visualConfigBuilder = QuestVisualConfig.builder()
+            visualConfigBuilder = QuestVisualConfig.builder()
                     .themeColor(config.getThemeColor());
             for (SplashType type : SplashType.values()) {
                 config.getSplash(type).ifPresent(asset ->
-                        this.visualConfigBuilder.splash(type, asset));
+                        visualConfigBuilder.splash(type, asset));
             }
             for (IconPosition pos : IconPosition.values()) {
                 config.getIcon(pos).ifPresent(asset ->
-                        this.visualConfigBuilder.icon(pos, asset));
+                        visualConfigBuilder.icon(pos, asset));
             }
         }
         return this;
     }
 
     public PhaseBuilder startSplash(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.splash(SplashType.PHASE_START, texture, scale);
+        visualConfigBuilder.splash(SplashType.PHASE_START, texture, scale);
         return this;
     }
 
@@ -247,7 +247,7 @@ public final class PhaseBuilder {
     }
 
     public PhaseBuilder completeSplash(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.splash(SplashType.PHASE_COMPLETE, texture, scale);
+        visualConfigBuilder.splash(SplashType.PHASE_COMPLETE, texture, scale);
         return this;
     }
 
@@ -256,7 +256,7 @@ public final class PhaseBuilder {
     }
 
     public PhaseBuilder labelIcon(ResourceLocation texture, float scale) {
-        this.visualConfigBuilder.icon(IconPosition.PHASE_LABEL, texture, scale);
+        visualConfigBuilder.icon(IconPosition.PHASE_LABEL, texture, scale);
         return this;
     }
 
@@ -265,44 +265,44 @@ public final class PhaseBuilder {
     }
 
     public PhaseBuilder themeColor(int color) {
-        this.visualConfigBuilder.themeColor(color);
+        visualConfigBuilder.themeColor(color);
         return this;
     }
 
     public PhaseBuilder themeColor(ChatFormatting formatting) {
-        this.visualConfigBuilder.themeColorFromChatFormatting(formatting);
+        visualConfigBuilder.themeColorFromChatFormatting(formatting);
         return this;
     }
 
     public PhaseDefinition build() {
-        if (this.displayName == null) {
-            this.displayName = QuestText.literal(this.phaseId);
+        if (displayName == null) {
+            displayName = QuestText.literal(phaseId);
         }
-        if (this.objectives.isEmpty()) {
+        if (objectives.isEmpty()) {
             throw new IllegalStateException(
-                    "Phase '" + this.phaseId + "' has no objectives defined");
+                    "Phase '" + phaseId + "' has no objectives defined");
         }
         return new PhaseDefinition(
-                this.phaseId,
-                this.displayName,
-                this.description,
-                this.story,
-                new ArrayList<>(this.objectives),
-                new ArrayList<>(this.transitions),
-                new ArrayList<>(this.choices),
-                new ArrayList<>(this.phaseRewards),
-                new ArrayList<>(this.flagsOnEnter),
-                new ArrayList<>(this.flagsOnComplete),
-                new ArrayList<>(this.relatedMarks),
-                this.visualConfigBuilder.build(),
-                this.tradeShopId,
-                this.phaseStartSound,
-                this.phaseCompleteSound,
-                this.collectionEntryConfig,
-                this.intelSceneId,
-                this.enterCondition,
-                this.autoEnterByCondition,
-                this.autoAdvanceOnComplete
+                phaseId,
+                displayName,
+                description,
+                story,
+                new ArrayList<>(objectives),
+                new ArrayList<>(transitions),
+                new ArrayList<>(choices),
+                new ArrayList<>(phaseRewards),
+                new ArrayList<>(flagsOnEnter),
+                new ArrayList<>(flagsOnComplete),
+                new ArrayList<>(relatedMarks),
+                visualConfigBuilder.build(),
+                tradeShopId,
+                phaseStartSound,
+                phaseCompleteSound,
+                collectionEntryConfig,
+                intelSceneId,
+                enterCondition,
+                autoEnterByCondition,
+                autoAdvanceOnComplete
         );
     }
 }

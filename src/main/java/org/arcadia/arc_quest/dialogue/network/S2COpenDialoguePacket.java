@@ -190,7 +190,7 @@ public class S2COpenDialoguePacket {
         this.isTerminal = isTerminal;
         this.hasAutoNext = hasAutoNext;
         this.delayMs = delayMs;
-        this.isClose = mode == Mode.CLOSE;
+        isClose = mode == Mode.CLOSE;
         this.mode = mode;
         this.entityId = entityId;
         this.choiceLastSelectTimes = choiceLastSelectTimes;
@@ -206,27 +206,27 @@ public class S2COpenDialoguePacket {
     }
 
     private S2COpenDialoguePacket() {
-        this.dialogueId = "";
-        this.nodeId = "";
-        this.speaker = Component.empty();
-        this.text = Component.empty();
-        this.choices = new Component[0];
-        this.isTerminal = true;
-        this.hasAutoNext = false;
-        this.delayMs = 0;
-        this.isClose = true;
-        this.mode = Mode.CLOSE;
-        this.entityId = -1;
-        this.choiceLastSelectTimes = null;
-        this.choicePurchaseGameTimes = null;
-        this.choicePurchaseDayTimes = null;
-        this.choiceCooldownTypes = null;
-        this.choiceCooldownValues = null;
-        this.choiceResetTimeTicks = null;
-        this.choiceSelectSoundIds = null;
-        this.matchedSaySoundId = null;
-        this.matchedSayId = null;
-        this.choiceIds = null;
+        dialogueId = "";
+        nodeId = "";
+        speaker = Component.empty();
+        text = Component.empty();
+        choices = new Component[0];
+        isTerminal = true;
+        hasAutoNext = false;
+        delayMs = 0;
+        isClose = true;
+        mode = Mode.CLOSE;
+        entityId = -1;
+        choiceLastSelectTimes = null;
+        choicePurchaseGameTimes = null;
+        choicePurchaseDayTimes = null;
+        choiceCooldownTypes = null;
+        choiceCooldownValues = null;
+        choiceResetTimeTicks = null;
+        choiceSelectSoundIds = null;
+        matchedSaySoundId = null;
+        matchedSayId = null;
+        choiceIds = null;
     }
 
     public static S2COpenDialoguePacket close() {

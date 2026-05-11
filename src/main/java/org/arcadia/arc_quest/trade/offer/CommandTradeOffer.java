@@ -36,7 +36,7 @@ public final class CommandTradeOffer implements ITradeOffer {
 
     @Override
     public void execute(ServerPlayer player) {
-        CommandExecutor.runAsServer(player, this.commandTemplate);
+        CommandExecutor.runAsServer(player, commandTemplate);
     }
 
     @Override

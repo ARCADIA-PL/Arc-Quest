@@ -25,14 +25,14 @@ public enum QuestCategory {
     }
 
     public String getId() {
-        return this.id;
+        return id;
     }
 
     public Component getDisplayName() {
-        return Component.translatable(this.translationKey);
+        return Component.translatable(translationKey);
     }
 
     public int getThemeColor() {
-        return this.themeColor;
+        return themeColor;
     }
 }

@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +32,7 @@ final class QuestChangeHistoryPersistence {
             return data;
         } catch (Exception e) {
             try {
-                Files.move(file, file.resolveSibling(FILE_NAME + ".broken"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Files.move(file, file.resolveSibling(FILE_NAME + ".broken"), StandardCopyOption.REPLACE_EXISTING);
             } catch (Exception ignored) {
             }
             LOGGER.warn("[ArcQuest] Failed to load quest change history, starting fresh.", e);

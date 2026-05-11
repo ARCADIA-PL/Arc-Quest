@@ -204,10 +204,10 @@ public final class CollectionRuntimeData {
     }
 
     public void markUpdated(@Nullable String phaseId, @Nullable String categoryId, long updatedAtMs) {
-        this.lastUpdatedPhaseId = phaseId;
-        this.lastUpdatedCategoryId = categoryId;
-        this.lastUpdatedAtMs = Math.max(0L, updatedAtMs);
-        this.dirty = true;
+        lastUpdatedPhaseId = phaseId;
+        lastUpdatedCategoryId = categoryId;
+        lastUpdatedAtMs = Math.max(0L, updatedAtMs);
+        dirty = true;
     }
 
     public Set<String> getVisiblePhaseIds() {
@@ -254,7 +254,7 @@ public final class CollectionRuntimeData {
     }
 
     public void clearDirty() {
-        this.dirty = false;
+        dirty = false;
     }
 
     public CompoundTag serializeNBT() {

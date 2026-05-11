@@ -34,7 +34,7 @@ public final class TrackedObjective {
         this.objectiveIndex = objectiveIndex;
         this.key = Objects.requireNonNull(key);
         this.requiredCount = requiredCount;
-        this.entry = null;
+        entry = null;
     }
 
     /**
@@ -50,54 +50,54 @@ public final class TrackedObjective {
         this.phaseId = Objects.requireNonNull(phaseId);
         this.objectiveIndex = objectiveIndex;
         this.entry = Objects.requireNonNull(entry);
-        this.key = new ObjectiveKey(entry.getType(), entry.getTargetId());
-        this.requiredCount = entry.getRequiredCount();
+        key = new ObjectiveKey(entry.getType(), entry.getTargetId());
+        requiredCount = entry.getRequiredCount();
     }
 
     public UUID getPlayerId() {
-        return this.playerId;
+        return playerId;
     }
 
     public ResourceLocation getQuestId() {
-        return this.questId;
+        return questId;
     }
 
     public String getPhaseId() {
-        return this.phaseId;
+        return phaseId;
     }
 
     public int getObjectiveIndex() {
-        return this.objectiveIndex;
+        return objectiveIndex;
     }
 
     public ObjectiveKey getKey() {
-        return this.key;
+        return key;
     }
 
     public int getRequiredCount() {
-        return this.requiredCount;
+        return requiredCount;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof TrackedObjective t)) return false;
-        return this.objectiveIndex == t.objectiveIndex
-                && this.playerId.equals(t.playerId)
-                && this.questId.equals(t.questId)
-                && this.phaseId.equals(t.phaseId);
+        return objectiveIndex == t.objectiveIndex
+                && playerId.equals(t.playerId)
+                && questId.equals(t.questId)
+                && phaseId.equals(t.phaseId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.playerId, this.questId, this.phaseId, this.objectiveIndex);
+        return Objects.hash(playerId, questId, phaseId, objectiveIndex);
     }
 
     @Override
     public String toString() {
-        return "Tracked[" + this.playerId.toString().substring(0, 8)
-                + ":" + this.questId.getPath()
-                + "/" + this.phaseId
-                + "#" + this.objectiveIndex + "]";
+        return "Tracked[" + playerId.toString().substring(0, 8)
+                + ":" + questId.getPath()
+                + "/" + phaseId
+                + "#" + objectiveIndex + "]";
     }
 }

@@ -36,13 +36,13 @@ public class GachaResultRenderer {
     }
 
     public void showResult(GachaScreen parent, GachaShopDefinition shopDef, ClientGachaCache.DrawRecord result) {
-        this.parentScreen = parent;
+        parentScreen = parent;
         this.shopDef = shopDef;
         this.result = result;
-        this.active = true;
-        this.currentState = State.ENTER;
-        this.startTime = Util.getMillis();
-        this.rewardConfirmed = false;
+        active = true;
+        currentState = State.ENTER;
+        startTime = Util.getMillis();
+        rewardConfirmed = false;
         resolveResultCache();
         Minecraft.getInstance().mouseHandler.releaseMouse();
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.2f));
@@ -165,8 +165,8 @@ public class GachaResultRenderer {
     public boolean mouseClicked() {
         if (!active || currentState == State.EXIT || (currentState == State.ENTER && (Util.getMillis() - startTime < TIME_ENTER)))
             return false;
-        this.currentState = State.EXIT;
-        this.exitStartTime = Util.getMillis();
+        currentState = State.EXIT;
+        exitStartTime = Util.getMillis();
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f));
         return true;
     }

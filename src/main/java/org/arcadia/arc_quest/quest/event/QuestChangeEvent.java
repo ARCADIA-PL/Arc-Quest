@@ -36,15 +36,15 @@ public final class QuestChangeEvent {
     private final int requiredProgress;
 
     private QuestChangeEvent(Builder builder) {
-        this.type = builder.type;
-        this.questId = builder.questId;
-        this.oldState = builder.oldState;
-        this.newState = builder.newState;
-        this.oldPhaseId = builder.oldPhaseId;
-        this.newPhaseId = builder.newPhaseId;
-        this.objectiveIndex = builder.objectiveIndex;
-        this.currentProgress = builder.currentProgress;
-        this.requiredProgress = builder.requiredProgress;
+        type = builder.type;
+        questId = builder.questId;
+        oldState = builder.oldState;
+        newState = builder.newState;
+        oldPhaseId = builder.oldPhaseId;
+        newPhaseId = builder.newPhaseId;
+        objectiveIndex = builder.objectiveIndex;
+        currentProgress = builder.currentProgress;
+        requiredProgress = builder.requiredProgress;
     }
 
     public static QuestChangeEvent questUnlocked(ResourceLocation questId) {
@@ -110,12 +110,12 @@ public final class QuestChangeEvent {
     }
 
     public Type getType() {
-        return this.type;
+        return type;
     }
 
     @Nullable
     public ResourceLocation getQuestId() {
-        return this.questId;
+        return questId;
     }
 
     // ════════════════════════════════════════
@@ -124,40 +124,40 @@ public final class QuestChangeEvent {
 
     @Nullable
     public QuestState getOldState() {
-        return this.oldState;
+        return oldState;
     }
 
     @Nullable
     public QuestState getNewState() {
-        return this.newState;
+        return newState;
     }
 
     @Nullable
     public String getOldPhaseId() {
-        return this.oldPhaseId;
+        return oldPhaseId;
     }
 
     @Nullable
     public String getNewPhaseId() {
-        return this.newPhaseId;
+        return newPhaseId;
     }
 
     public int getObjectiveIndex() {
-        return this.objectiveIndex;
+        return objectiveIndex;
     }
 
     public int getCurrentProgress() {
-        return this.currentProgress;
+        return currentProgress;
     }
 
     public int getRequiredProgress() {
-        return this.requiredProgress;
+        return requiredProgress;
     }
 
     @Override
     public String toString() {
-        return "QuestChangeEvent{" + this.type
-                + (this.questId != null ? ", quest=" + this.questId : "")
+        return "QuestChangeEvent{" + type
+                + (questId != null ? ", quest=" + questId : "")
                 + "}";
     }
 
@@ -214,7 +214,7 @@ public final class QuestChangeEvent {
         }
 
         Builder questId(ResourceLocation id) {
-            this.questId = id;
+            questId = id;
             return this;
         }
 
@@ -231,9 +231,9 @@ public final class QuestChangeEvent {
         }
 
         Builder objective(int index, int current, int required) {
-            this.objectiveIndex = index;
-            this.currentProgress = current;
-            this.requiredProgress = required;
+            objectiveIndex = index;
+            currentProgress = current;
+            requiredProgress = required;
             return this;
         }
 

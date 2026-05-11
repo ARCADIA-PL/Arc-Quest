@@ -22,7 +22,7 @@ public class GachaPool {
         this.items = Collections.unmodifiableList(new ArrayList<>(items));
 
         // 按稀有度分组
-        this.itemsByRarity = new EnumMap<>(GachaItem.Rarity.class);
+        itemsByRarity = new EnumMap<>(GachaItem.Rarity.class);
         for (GachaItem.Rarity rarity : GachaItem.Rarity.values()) {
             itemsByRarity.put(rarity, new ArrayList<>());
         }

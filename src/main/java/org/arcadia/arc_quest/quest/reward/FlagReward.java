@@ -27,26 +27,26 @@ public final class FlagReward implements IReward {
     }
 
     public String getFlag() {
-        return this.flag;
+        return flag;
     }
 
     public boolean isSet() {
-        return this.set;
+        return set;
     }
 
     @Override
     public void grant(ServerPlayer player) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         if (cap == null) return;
-        if (this.set) {
-            cap.setFlag(this.flag);
+        if (set) {
+            cap.setFlag(flag);
         } else {
-            cap.removeFlag(this.flag);
+            cap.removeFlag(flag);
         }
     }
 
     @Override
     public String describe() {
-        return (this.set ? "SetFlag" : "ClearFlag") + "(" + this.flag + ")";
+        return (set ? "SetFlag" : "ClearFlag") + "(" + flag + ")";
     }
 }

@@ -10,6 +10,7 @@ public final class CollectionVisibilityUpdateResult {
     private final boolean changed;
     private final boolean visible;
     private final boolean discovered;
+
     private CollectionVisibilityUpdateResult(Status status,
                                              @Nullable String phaseId,
                                              boolean changed,

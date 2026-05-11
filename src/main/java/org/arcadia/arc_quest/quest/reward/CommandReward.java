@@ -20,11 +20,11 @@ public final class CommandReward implements IReward {
 
     @Override
     public void grant(ServerPlayer player) {
-        CommandExecutor.runAsServer(player, this.commandTemplate);
+        CommandExecutor.runAsServer(player, commandTemplate);
     }
 
     @Override
     public String describe() {
-        return "Command(" + this.commandTemplate + ")";
+        return "Command(" + commandTemplate + ")";
     }
 }

@@ -134,7 +134,7 @@ public interface ICondition {
     default boolean testClient(Set<ResourceLocation> completedQuests,
                                Set<String> flags,
                                Map<String, Integer> variables) {
-        return this.test(null, completedQuests, flags, variables);
+        return test(null, completedQuests, flags, variables);
     }
 
     /**

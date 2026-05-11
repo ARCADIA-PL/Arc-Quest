@@ -73,7 +73,7 @@ public final class NbtVersionManager {
         this.capabilityName = capabilityName;
         this.currentVersion = currentVersion;
         this.logger = logger;
-        this.migrations = new Consumer[currentVersion];
+        migrations = new Consumer[currentVersion];
     }
 
     /**

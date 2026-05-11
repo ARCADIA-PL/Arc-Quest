@@ -179,5 +179,7 @@ public final class QuestRegistry {
         if (warnings > 0) LOGGER.warn("[ArcQuest] Cross-reference validation: {} warning(s)", warnings);
     }
 
-    public record QuestTextBundle(Component questDisplayName, Component questDescription, Component phaseDisplayName, Component phaseDescription) {}
+    public record QuestTextBundle(Component questDisplayName, Component questDescription, Component phaseDisplayName,
+                                  Component phaseDescription) {
+    }
 }

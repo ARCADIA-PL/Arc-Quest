@@ -76,27 +76,31 @@ public class DialogueScreen extends Screen {
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
+    private static String textOf(Component c) {
+        return c == null ? "" : c.getString();
+    }
+
     public float getUiScale() {
-        if (this.minecraft == null) return 1.0f;
-        double guiScale = this.minecraft.getWindow().getGuiScale();
+        if (minecraft == null) return 1.0f;
+        double guiScale = minecraft.getWindow().getGuiScale();
         if (guiScale == 0) guiScale = 1.0;
         float scale = (float) (3.0 / guiScale);
-        float sw = this.width / scale, sh = this.height / scale;
+        float sw = width / scale, sh = height / scale;
         float minW = 480f, minH = 260f;
         if (sw < minW) {
-            scale = this.width / minW;
-            sh = this.height / scale;
+            scale = width / minW;
+            sh = height / scale;
         }
-        if (sh < minH) scale = this.height / minH;
+        if (sh < minH) scale = height / minH;
         return scale;
     }
 
     public int getScaledWidth() {
-        return (int) (this.width / getUiScale());
+        return (int) (width / getUiScale());
     }
 
     public int getScaledHeight() {
-        return (int) (this.height / getUiScale());
+        return (int) (height / getUiScale());
     }
 
     public void updateNode(Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes, int[] choiceCooldownTypes, long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
@@ -106,33 +110,29 @@ public class DialogueScreen extends Screen {
     public void updateEntityId(int entityId) {
         if (this.entityId != entityId) {
             this.entityId = entityId;
-            this.cachedNpcEntity = null;
+            cachedNpcEntity = null;
         }
-    }
-
-    private static String textOf(Component c) {
-        return c == null ? "" : c.getString();
     }
 
     private void applyNodeData(Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
         this.speaker = speaker == null ? Component.empty() : speaker;
-        this.fullText = text == null ? Component.empty() : text;
+        fullText = text == null ? Component.empty() : text;
         this.choices = choices != null ? choices : new Component[0];
         this.isTerminal = isTerminal;
         this.hasAutoNext = hasAutoNext;
         this.delayMs = delayMs;
-        this.typewriterProgress = 0f;
-        this.typewriterDone = false;
-        this.typewriterDoneTime = 0;
-        this.choicesVisible = false;
-        this.autoAdvanceSent = false;
-        this.autoAdvanceTime = 0;
-        this.choiceReveal = new float[this.choices.length];
-        this.choiceHover = new float[this.choices.length];
-        this.wrappedLines = null;
-        this.clickedIndex = -1;
-        this.clickSent = false;
-        this.clickAnim = new float[this.choices.length];
+        typewriterProgress = 0f;
+        typewriterDone = false;
+        typewriterDoneTime = 0;
+        choicesVisible = false;
+        autoAdvanceSent = false;
+        autoAdvanceTime = 0;
+        choiceReveal = new float[this.choices.length];
+        choiceHover = new float[this.choices.length];
+        wrappedLines = null;
+        clickedIndex = -1;
+        clickSent = false;
+        clickAnim = new float[this.choices.length];
     }
 
     @Nullable
@@ -167,9 +167,9 @@ public class DialogueScreen extends Screen {
     }
 
     public void resetSelectionState() {
-        this.clickedIndex = -1;
-        this.clickSent = false;
-        if (this.clickAnim != null) for (int i = 0; i < this.clickAnim.length; i++) this.clickAnim[i] = 0f;
+        clickedIndex = -1;
+        clickSent = false;
+        if (clickAnim != null) for (int i = 0; i < clickAnim.length; i++) clickAnim[i] = 0f;
     }
 
     @Nullable
@@ -182,19 +182,19 @@ public class DialogueScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        this.lastRenderTime = 0;
-        this.masterAnim = 0f;
-        this.suspendAlpha = 1f;
-        this.isClosing = false;
-        this.autoAdvanceSent = false;
-        this.autoAdvanceTime = 0;
-        this.cachedNpcEntity = null;
+        lastRenderTime = 0;
+        masterAnim = 0f;
+        suspendAlpha = 1f;
+        isClosing = false;
+        autoAdvanceSent = false;
+        autoAdvanceTime = 0;
+        cachedNpcEntity = null;
         if (DialogueHistoryPanel.isActive()) DialogueHistoryPanel.close();
     }
 
     @Override
     public void resize(@NotNull Minecraft mc, int width, int height) {
-        this.wrappedLines = null;
+        wrappedLines = null;
         super.resize(mc, width, height);
     }
 

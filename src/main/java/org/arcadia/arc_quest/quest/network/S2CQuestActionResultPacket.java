@@ -21,7 +21,7 @@ public class S2CQuestActionResultPacket {
                                       QuestRejectCodeDictionary.Code code) {
         this.action = action;
         this.questId = questId;
-        this.codeName = (code != null ? code : QuestRejectCodeDictionary.Code.UNKNOWN).name();
+        codeName = (code != null ? code : QuestRejectCodeDictionary.Code.UNKNOWN).name();
     }
 
     private S2CQuestActionResultPacket(C2SRequestQuestActionPacket.Action action,

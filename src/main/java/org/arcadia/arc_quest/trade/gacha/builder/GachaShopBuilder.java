@@ -134,17 +134,17 @@ public class GachaShopBuilder {
     }
 
     public GachaShopBuilder category(TradeCategory category) {
-        this.categories.add(category);
+        categories.add(category);
         return this;
     }
 
     public GachaShopBuilder entry(String entryId, TradeEntry entry) {
-        this.entries.put(entryId, entry);
+        entries.put(entryId, entry);
         return this;
     }
 
     public GachaShopBuilder openCondition(@Nullable ICondition condition) {
-        this.openCondition = condition;
+        openCondition = condition;
         return this;
     }
 
@@ -159,14 +159,14 @@ public class GachaShopBuilder {
     }
 
     public GachaShopBuilder openSound(@Nullable SoundEvent sound) {
-        this.openSound = sound;
+        openSound = sound;
         return this;
     }
 
     // === 抽奖特有配置 ===
 
     public GachaShopBuilder closeSound(@Nullable SoundEvent sound) {
-        this.closeSound = sound;
+        closeSound = sound;
         return this;
     }
 
@@ -174,7 +174,7 @@ public class GachaShopBuilder {
      * 设置抽奖成本。
      */
     public GachaShopBuilder drawCost(ITradeOffer cost) {
-        this.drawCost = cost;
+        drawCost = cost;
         return this;
     }
 
@@ -186,7 +186,7 @@ public class GachaShopBuilder {
      * @param icon 图标资源位置
      */
     public GachaShopBuilder drawCostIcon(@Nullable ResourceLocation icon) {
-        this.drawCostIcon = icon;
+        drawCostIcon = icon;
         return this;
     }
 
@@ -194,8 +194,8 @@ public class GachaShopBuilder {
      * 设置冷却时间（秒）。
      */
     public GachaShopBuilder cooldown(long seconds) {
-        this.cooldownType = CooldownType.SECONDS;
-        this.cooldownValue = Math.max(0, seconds);
+        cooldownType = CooldownType.SECONDS;
+        cooldownValue = Math.max(0, seconds);
         return this;
     }
 
@@ -203,8 +203,8 @@ public class GachaShopBuilder {
      * 设置游戏日冷却。
      */
     public GachaShopBuilder cooldownGameDay() {
-        this.cooldownType = CooldownType.GAME_DAY;
-        this.cooldownValue = 1;
+        cooldownType = CooldownType.GAME_DAY;
+        cooldownValue = 1;
         return this;
     }
 
@@ -217,9 +217,9 @@ public class GachaShopBuilder {
      * @param resetTick 重置时间点（0-24000）
      */
     public GachaShopBuilder cooldownGameTick(int resetTick) {
-        this.cooldownType = CooldownType.GAME_TICK;
-        this.cooldownValue = 0;
-        this.resetTimeTicks = Math.max(0, Math.min(resetTick, 24000));
+        cooldownType = CooldownType.GAME_TICK;
+        cooldownValue = 0;
+        resetTimeTicks = Math.max(0, Math.min(resetTick, 24000));
         return this;
     }
 
@@ -227,7 +227,7 @@ public class GachaShopBuilder {
      * 设置抽奖执行条件（类似商店的 canBuy）。
      */
     public GachaShopBuilder drawCondition(@Nullable ICondition condition) {
-        this.drawCondition = condition;
+        drawCondition = condition;
         return this;
     }
 
@@ -245,7 +245,7 @@ public class GachaShopBuilder {
      * 设置抽奖次数重置条件。
      */
     public GachaShopBuilder resetCondition(@Nullable ICondition condition) {
-        this.resetCondition = condition;
+        resetCondition = condition;
         return this;
     }
 
@@ -259,7 +259,7 @@ public class GachaShopBuilder {
      */
     public GachaShopBuilder drawResetByCooldown() {
         // 标记为需要基于冷却恢复，实际逻辑在 GachaSession 中处理
-        this.resetCondition = (player, completedQuests, flags, variables) -> false; // 占位
+        resetCondition = (player, completedQuests, flags, variables) -> false; // 占位
         return this;
     }
 
@@ -272,7 +272,7 @@ public class GachaShopBuilder {
      * @param resetOnLimitReached 是否自动重置
      */
     public GachaShopBuilder resetOnLimitReached(boolean resetOnLimitReached) {
-        this.resetOnLimitReachedByCoolDown = resetOnLimitReached;
+        resetOnLimitReachedByCoolDown = resetOnLimitReached;
         return this;
     }
 
@@ -295,7 +295,7 @@ public class GachaShopBuilder {
      * 设置抽奖冷却中的音效。
      */
     public GachaShopBuilder drawCooldownSound(@Nullable SoundEvent sound) {
-        this.drawCooldownSound = sound;
+        drawCooldownSound = sound;
         return this;
     }
 
@@ -303,7 +303,7 @@ public class GachaShopBuilder {
      * 设置抽奖冷却中的音效（支持 Holder.Reference）。
      */
     public GachaShopBuilder drawCooldownSound(Holder.Reference<SoundEvent> sound) {
-        this.drawCooldownSound = sound.get();
+        drawCooldownSound = sound.get();
         return this;
     }
 
@@ -311,7 +311,7 @@ public class GachaShopBuilder {
      * 设置达到抽奖上限的音效。
      */
     public GachaShopBuilder drawLimitReachedSound(@Nullable SoundEvent sound) {
-        this.drawLimitReachedSound = sound;
+        drawLimitReachedSound = sound;
         return this;
     }
 
@@ -319,7 +319,7 @@ public class GachaShopBuilder {
      * 设置达到抽奖上限的音效（支持 Holder.Reference）。
      */
     public GachaShopBuilder drawLimitReachedSound(Holder.Reference<SoundEvent> sound) {
-        this.drawLimitReachedSound = sound.get();
+        drawLimitReachedSound = sound.get();
         return this;
     }
 
@@ -327,7 +327,7 @@ public class GachaShopBuilder {
      * 设置抽奖条件不满足的音效。
      */
     public GachaShopBuilder drawConditionFailSound(@Nullable SoundEvent sound) {
-        this.drawConditionFailSound = sound;
+        drawConditionFailSound = sound;
         return this;
     }
 
@@ -335,7 +335,7 @@ public class GachaShopBuilder {
      * 设置抽奖条件不满足的音效（支持 Holder.Reference）。
      */
     public GachaShopBuilder drawConditionFailSound(Holder.Reference<SoundEvent> sound) {
-        this.drawConditionFailSound = sound.get();
+        drawConditionFailSound = sound.get();
         return this;
     }
 
@@ -343,7 +343,7 @@ public class GachaShopBuilder {
      * 设置抽奖通用失败音效。
      */
     public GachaShopBuilder drawFailSound(@Nullable SoundEvent sound) {
-        this.drawFailSound = sound;
+        drawFailSound = sound;
         return this;
     }
 
@@ -351,7 +351,7 @@ public class GachaShopBuilder {
      * 设置抽奖通用失败音效（支持 Holder.Reference）。
      */
     public GachaShopBuilder drawFailSound(Holder.Reference<SoundEvent> sound) {
-        this.drawFailSound = sound.get();
+        drawFailSound = sound.get();
         return this;
     }
 
@@ -465,7 +465,7 @@ public class GachaShopBuilder {
      */
     public GachaShopBuilder pitySystem(int threshold, GachaItem.Rarity guaranteedRarity,
                                        boolean resetOnTrigger) {
-        this.pityConfig = new PityConfig(threshold, guaranteedRarity, resetOnTrigger);
+        pityConfig = new PityConfig(threshold, guaranteedRarity, resetOnTrigger);
         return this;
     }
 
@@ -474,7 +474,7 @@ public class GachaShopBuilder {
      */
     public GachaShopBuilder pitySystem(int threshold, String guaranteedItemId,
                                        boolean resetOnTrigger) {
-        this.pityConfig = new PityConfig(threshold, guaranteedItemId, resetOnTrigger);
+        pityConfig = new PityConfig(threshold, guaranteedItemId, resetOnTrigger);
         return this;
     }
 
@@ -496,7 +496,7 @@ public class GachaShopBuilder {
                                        int resetCooldownValue,
                                        @Nullable ICondition resetCondition,
                                        boolean resetOnTrigger) {
-        this.pityConfig = new PityConfig(
+        pityConfig = new PityConfig(
                 threshold, guaranteedItemId, guaranteedRarity,
                 resetCooldownType, resetCooldownValue, resetCondition, resetOnTrigger
         );

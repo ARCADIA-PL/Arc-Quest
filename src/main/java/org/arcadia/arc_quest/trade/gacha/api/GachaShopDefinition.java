@@ -73,7 +73,7 @@ public class GachaShopDefinition {
                                @Nullable SoundEvent drawLimitReachedSound,
                                @Nullable SoundEvent drawConditionFailSound,
                                @Nullable SoundEvent drawFailSound) {
-        this.shopDefinition = new TradeShopDefinition(
+        shopDefinition = new TradeShopDefinition(
                 shopId, displayName, description, categories, entries,
                 openCondition, simpleMode, themeColor, openSound, closeSound
         );

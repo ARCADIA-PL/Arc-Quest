@@ -48,11 +48,11 @@ public class TradeTooltipRenderer {
     }
 
     public void triggerTradeSuccess() {
-        this.feedbackScale = 1.15f;
+        feedbackScale = 1.15f;
     }
 
     public void triggerTradeFail() {
-        this.feedbackShake = 6f;
+        feedbackShake = 6f;
     }
 
     public void updateAndRender(GuiGraphics g, TradeEntry newHovered, int mx, int my, float dt, boolean isClosing) {

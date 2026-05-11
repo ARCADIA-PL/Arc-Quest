@@ -25,8 +25,6 @@ public class ArcQuestDatapackHotReloadService {
     private final QuestSpecValidator validator = new QuestSpecValidator();
     private final QuestSpecCompiler compiler = new QuestSpecCompiler();
 
-    public record ReloadResult(int scanned, int loaded, int failed, int activeDatapack, int merged, boolean usedFallback) {}
-
     public ReloadResult reload(ResourceManager manager) {
         var report = datapackLoader.loadFromDatapack();
 
@@ -75,5 +73,9 @@ public class ArcQuestDatapackHotReloadService {
         }
 
         return new ReloadResult(report.scannedFiles(), loaded, failed, QuestRegistry.datapackSize(), QuestRegistry.size(), usedFallback);
+    }
+
+    public record ReloadResult(int scanned, int loaded, int failed, int activeDatapack, int merged,
+                               boolean usedFallback) {
     }
 }

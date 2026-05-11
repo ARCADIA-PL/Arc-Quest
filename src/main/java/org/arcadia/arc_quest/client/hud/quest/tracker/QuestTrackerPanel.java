@@ -50,25 +50,25 @@ public class QuestTrackerPanel {
     private int currentThemeColor = TrackerConstants.COLOR_ACCENT_DEFAULT;
 
     public void setTrackedQuest(String questId) {
-        if (!Objects.equals(this.trackedQuestId, questId)) {
-            this.trackedQuestId = questId;
-            this.trackedPhaseId = null;
-            this.displayedPhaseId = null;
-            this.targetPhaseId = null;
-            this.currentPanelH = -1f;
-            this.activePhaseOrder.clear();
+        if (!Objects.equals(trackedQuestId, questId)) {
+            trackedQuestId = questId;
+            trackedPhaseId = null;
+            displayedPhaseId = null;
+            targetPhaseId = null;
+            currentPanelH = -1f;
+            activePhaseOrder.clear();
             resetObjectiveAnimations();
         }
     }
 
     public void setTrackedFocus(String questId, String phaseId) {
-        if (Objects.equals(this.trackedQuestId, questId) && Objects.equals(this.trackedPhaseId, phaseId)) return;
-        this.trackedQuestId = questId;
-        this.trackedPhaseId = phaseId;
-        this.displayedPhaseId = null;
-        this.targetPhaseId = null;
-        this.currentPanelH = -1f;
-        this.activePhaseOrder.clear();
+        if (Objects.equals(trackedQuestId, questId) && Objects.equals(trackedPhaseId, phaseId)) return;
+        trackedQuestId = questId;
+        trackedPhaseId = phaseId;
+        displayedPhaseId = null;
+        targetPhaseId = null;
+        currentPanelH = -1f;
+        activePhaseOrder.clear();
         resetObjectiveAnimations();
     }
 
@@ -81,10 +81,10 @@ public class QuestTrackerPanel {
     }
 
     public void resetPanelAnimation() {
-        this.panelReveal = 0f;
-        this.panelSlide = 1f;
-        this.currentPanelH = -1f;
-        this.currentPanelY = TrackerConstants.MARGIN_TOP;
+        panelReveal = 0f;
+        panelSlide = 1f;
+        currentPanelH = -1f;
+        currentPanelY = TrackerConstants.MARGIN_TOP;
     }
 
     public void render(GuiGraphics g, int screenWidth, int screenHeight, float partialTick) {

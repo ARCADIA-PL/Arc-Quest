@@ -40,17 +40,17 @@ public class GachaScreen extends Screen {
     public GachaScreen(String shopId) {
         super(Component.translatable("arc_quest.gui.gacha.title"));
         this.shopId = shopId;
-        this.shopDef = GachaRegistry.get(shopId);
-        this.previewPanel = new GachaPreviewPanel(this);
-        this.rollerPanel = new GachaRollerPanel(this);
+        shopDef = GachaRegistry.get(shopId);
+        previewPanel = new GachaPreviewPanel(this);
+        rollerPanel = new GachaRollerPanel(this);
     }
 
     @Override
     protected void init() {
         super.init();
         if (lastRenderTime == 0) transitionAnim = 0f;
-        this.previewPanel.init(width, height);
-        this.rollerPanel.init(width, height);
+        previewPanel.init(width, height);
+        rollerPanel.init(width, height);
     }
 
     @Override
@@ -102,9 +102,9 @@ public class GachaScreen extends Screen {
 
         LOGGER.info("[Gacha-Client] Starting draw request for shop: {}", shopId);
         currentPhase = Phase.WAITING_SERVER;
-        this.hasPendingDraw = true;
-        this.requestTimestamp = System.currentTimeMillis();
-        this.authorityRefreshTicker = 0;
+        hasPendingDraw = true;
+        requestTimestamp = System.currentTimeMillis();
+        authorityRefreshTicker = 0;
         previewPanel.updateDataSnapshot();
 
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SDrawGachaPacket(shopId));
@@ -112,13 +112,13 @@ public class GachaScreen extends Screen {
     }
 
     public void triggerRollingAnimation(ClientGachaCache.DrawRecord result) {
-        if (this.currentPhase == Phase.WAITING_SERVER) {
+        if (currentPhase == Phase.WAITING_SERVER) {
             LOGGER.info("[Gacha-Client] Triggering rolling animation for item: {}", result.itemId());
-            this.currentPhase = Phase.ROLLING;
-            this.authorityRefreshTicker = 0;
-            this.rollerPanel.startRoll(result);
+            currentPhase = Phase.ROLLING;
+            authorityRefreshTicker = 0;
+            rollerPanel.startRoll(result);
         } else {
-            LOGGER.warn("[Gacha-Client] Cannot trigger animation: currentPhase={}, expected WAITING_SERVER", this.currentPhase);
+            LOGGER.warn("[Gacha-Client] Cannot trigger animation: currentPhase={}, expected WAITING_SERVER", currentPhase);
         }
     }
 
@@ -145,15 +145,15 @@ public class GachaScreen extends Screen {
     }
 
     public void onDrawFailedAndReturnToPreview() {
-        if (this.currentPhase == Phase.WAITING_SERVER) {
+        if (currentPhase == Phase.WAITING_SERVER) {
             LOGGER.info("[Gacha-Client] Draw failed, returning to preview: shop={}", shopId);
-            this.currentPhase = Phase.PREVIEW;
-            this.hasPendingDraw = false;
-            this.requestTimestamp = 0;
-            this.authorityRefreshTicker = 0;
-            this.previewPanel.updateDataSnapshot();
+            currentPhase = Phase.PREVIEW;
+            hasPendingDraw = false;
+            requestTimestamp = 0;
+            authorityRefreshTicker = 0;
+            previewPanel.updateDataSnapshot();
         } else {
-            this.previewPanel.updateDataSnapshot();
+            previewPanel.updateDataSnapshot();
         }
     }
 

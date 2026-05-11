@@ -11,6 +11,7 @@ public final class CollectionEntryUpdateResult {
     private final boolean changed;
     private final boolean entryCompleted;
     private final boolean questCompleted;
+
     private CollectionEntryUpdateResult(Status status,
                                         @Nullable String phaseId,
                                         int nextCount,

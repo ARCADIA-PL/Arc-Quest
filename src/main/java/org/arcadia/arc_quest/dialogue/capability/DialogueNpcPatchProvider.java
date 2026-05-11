@@ -18,8 +18,8 @@ public class DialogueNpcPatchProvider implements ICapabilitySerializable<Compoun
     private final LazyOptional<DialogueNpcPatch> lazy;
 
     public DialogueNpcPatchProvider(Entity entity) {
-        this.patch = new DialogueNpcPatch(entity);
-        this.lazy = LazyOptional.of(() -> patch);
+        patch = new DialogueNpcPatch(entity);
+        lazy = LazyOptional.of(() -> patch);
     }
 
     @Override

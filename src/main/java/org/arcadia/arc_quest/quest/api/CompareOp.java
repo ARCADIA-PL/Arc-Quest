@@ -56,6 +56,6 @@ public enum CompareOp {
 
     @Override
     public String toString() {
-        return this.symbol;
+        return symbol;
     }
 }

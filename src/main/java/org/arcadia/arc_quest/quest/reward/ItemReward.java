@@ -24,7 +24,7 @@ public final class ItemReward implements IReward {
 
     @Override
     public void grant(ServerPlayer player) {
-        ItemStack stack = new ItemStack(this.item, this.count);
+        ItemStack stack = new ItemStack(item, count);
         boolean added = player.getInventory().add(stack);
         if (!added) {
             // 背包满则掉落在地
@@ -36,7 +36,7 @@ public final class ItemReward implements IReward {
 
     @Override
     public String describe() {
-        return "Item(" + ForgeRegistries.ITEMS.getKey(this.item) + " x" + this.count + ")";
+        return "Item(" + ForgeRegistries.ITEMS.getKey(item) + " x" + count + ")";
     }
 
     /**

@@ -306,90 +306,90 @@ public final class QuestDefinition {
     // ── Getters ──
 
     public ResourceLocation getId() {
-        return this.id;
+        return id;
     }
 
     public QuestCategory getCategory() {
-        return this.category;
+        return category;
     }
 
     public Component getDisplayName() {
-        return this.displayName.resolve(null, QuestTextContext.empty());
+        return displayName.resolve(null, QuestTextContext.empty());
     }
 
     public Component getDisplayName(ServerPlayer player, QuestTextContext context) {
-        return this.displayName.resolve(player, context);
+        return displayName.resolve(player, context);
     }
 
     public Component getDescription() {
-        return this.description.resolve(null, QuestTextContext.empty());
+        return description.resolve(null, QuestTextContext.empty());
     }
 
     public Component getDescription(ServerPlayer player, QuestTextContext context) {
-        return this.description.resolve(player, context);
+        return description.resolve(player, context);
     }
 
     @Nullable
     public ResourceLocation getIconTexture() {
-        return this.iconTexture;
+        return iconTexture;
     }
 
     public int getSortOrder() {
-        return this.sortOrder;
+        return sortOrder;
     }
 
     public boolean isRepeatable() {
-        return this.repeatable;
+        return repeatable;
     }
 
     public QuestMode getMode() {
-        return this.mode;
+        return mode;
     }
 
     @Nullable
     public CollectionQuestConfig getCollectionConfig() {
-        return this.collectionConfig;
+        return collectionConfig;
     }
 
     public boolean isCollectionQuest() {
-        return this.mode == QuestMode.COLLECTION;
+        return mode == QuestMode.COLLECTION;
     }
 
     public List<ICondition> getUnlockConditions() {
-        return this.unlockConditions;
+        return unlockConditions;
     }
 
     public String getInitialPhaseId() {
-        return this.initialPhaseId;
+        return initialPhaseId;
     }
 
     @Nullable
     public PhaseDefinition getPhase(String phaseId) {
-        return this.phases.get(phaseId);
+        return phases.get(phaseId);
     }
 
     public PhaseDefinition getInitialPhase() {
-        return this.phases.get(this.initialPhaseId);
+        return phases.get(initialPhaseId);
     }
 
     public Collection<PhaseDefinition> getAllPhases() {
-        return Collections.unmodifiableCollection(this.phases.values());
+        return Collections.unmodifiableCollection(phases.values());
     }
 
     public Set<String> getPhaseIds() {
-        return Collections.unmodifiableSet(this.phases.keySet());
+        return Collections.unmodifiableSet(phases.keySet());
     }
 
     public List<IReward> getCompletionRewards() {
-        return this.completionRewards;
+        return completionRewards;
     }
 
     public List<String> getFlagsToSetOnAccept() {
-        return this.flagsToSetOnAccept;
+        return flagsToSetOnAccept;
     }
 
     public List<String> getFlagsToSetOnComplete() {
-        return this.flagsToSetOnComplete;
+        return flagsToSetOnComplete;
     }
 
     public List<MarkSpec> getRelatedMarks() {
@@ -398,19 +398,19 @@ public final class QuestDefinition {
 
     @Nullable
     public String getChapterShopId() {
-        return this.chapterShopId;
+        return chapterShopId;
     }
 
     public ChapterShopType getChapterShopType() {
-        return this.chapterShopType;
+        return chapterShopType;
     }
 
     public boolean isChapterShopPersistent() {
-        return this.chapterShopPersistent;
+        return chapterShopPersistent;
     }
 
     public boolean hasChapterShop() {
-        return this.chapterShopId != null;
+        return chapterShopId != null;
     }
 
     @Nullable
@@ -430,12 +430,12 @@ public final class QuestDefinition {
 
 
     public QuestVisualConfig getVisualConfig() {
-        return this.visualConfig;
+        return visualConfig;
     }
 
     @Nullable
     public ResourceLocation getLegacyIcon() {
-        return this.iconTexture;
+        return iconTexture;
     }
 
     public QuestCompletionPolicy getCompletionPolicy() {
@@ -466,24 +466,24 @@ public final class QuestDefinition {
 
     @Nullable
     public ResourceLocation getIconFor(IconPosition position) {
-        return this.visualConfig.getIcon(position)
+        return visualConfig.getIcon(position)
                 .map(VisualAsset::texture)
-                .orElse(this.iconTexture);  // 回退到旧字段
+                .orElse(iconTexture);  // 回退到旧字段
     }
 
 
     public int getThemeColor() {
-        return this.visualConfig.getThemeColor();
+        return visualConfig.getThemeColor();
     }
 
 
     public boolean hasSplash(SplashType type) {
-        return this.visualConfig.getSplash(type).isPresent();
+        return visualConfig.getSplash(type).isPresent();
     }
 
 
     public Optional<VisualAsset> getSplashConfig(SplashType type) {
-        return this.visualConfig.getSplash(type);
+        return visualConfig.getSplash(type);
     }
 
     /**
@@ -493,7 +493,7 @@ public final class QuestDefinition {
                              Set<ResourceLocation> completedQuests,
                              Set<String> flags,
                              Map<String, Integer> variables) {
-        for (ICondition cond : this.unlockConditions) {
+        for (ICondition cond : unlockConditions) {
             if (!cond.test(player, completedQuests, flags, variables)) {
                 return false;
             }
@@ -532,6 +532,6 @@ public final class QuestDefinition {
 
     @Override
     public String toString() {
-        return "Quest[" + this.id + ", " + this.phases.size() + " phases]";
+        return "Quest[" + id + ", " + phases.size() + " phases]";
     }
 }
