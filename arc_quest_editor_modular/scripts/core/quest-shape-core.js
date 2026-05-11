@@ -142,6 +142,7 @@ export function ensureQuestShape(q) {
     p.mode ||= 'normal';
     p.titleMode ||= 'translatable';
     p.descriptionMode ||= 'translatable';
+    p.autoAdvanceOnComplete ??= true;
     p.parallelPhaseIds ||= [];
     p.choicePhaseIds ||= [];
     p.objectives ||= [];

@@ -28,6 +28,7 @@ export const createPhase = index => ({
   description: '',
   descriptionMode: 'translatable',
   autoStart: false,
+  autoAdvanceOnComplete: true,
   parallelPhaseIds: [],
   choicePhaseIds: [],
   flagsToSetOnEnter: [],

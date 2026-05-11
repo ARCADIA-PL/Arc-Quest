@@ -27,8 +27,12 @@ export function renderPhaseFlowSection(s, p, phaseIds, field, area, conditionOpt
       </div>
       ` : '<div class="small">当前未启用 enterWhen，因此不显示进入条件 (enterCondition) 和 autoEnterByCondition。</div>'}
       <div class="row">
-        ${field('tradeShopId', `ph.${s.pi}.tradeShopId`, p.tradeShopId || '')}
+        <div class="f"><label>完成后自动推进 (autoAdvanceOnComplete)</label><select data-b="ph.${s.pi}.autoAdvanceOnComplete"><option value="true" ${(p.autoAdvanceOnComplete ?? true) ? 'selected' : ''}>True</option><option value="false" ${!(p.autoAdvanceOnComplete ?? true) ? 'selected' : ''}>False</option></select></div>
         ${field('intelSceneId', `ph.${s.pi}.intelSceneId`, p.intelSceneId || '')}
+      </div>
+      <div class="row">
+        ${field('tradeShopId', `ph.${s.pi}.tradeShopId`, p.tradeShopId || '')}
+        <div class="f"></div>
       </div>
       <div class="row">
         ${field('phaseStartSound', `ph.${s.pi}.phaseStartSound`, p.phaseStartSound || '')}

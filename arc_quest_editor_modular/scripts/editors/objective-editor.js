@@ -14,7 +14,8 @@ function objectiveTypeSelect(bind, value) {
     { id: 'DELIVER', label: 'DELIVER（交付）' },
     { id: 'CRAFT', label: 'CRAFT（制作）' },
     { id: 'OFFER', label: 'OFFER（提交）' },
-    { id: 'CUSTOM', label: 'CUSTOM（自定义）' }
+    { id: 'CUSTOM', label: 'CUSTOM（自定义）' },
+    { id: 'NULL', label: 'NULL（空目标/手动确认）' }
   ];
   return `<div class="f"><label>类型</label><select data-b="${bind}">${types.map(t => `<option value="${t.id}" ${value === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>`;
 }
@@ -29,7 +30,8 @@ function renderTypeSummary(type) {
     DELIVER: '字段：targetId(itemId) + npcId + count',
     CRAFT: '字段：targetId(itemId) + count',
     OFFER: '字段：targetId(itemId 或 itemTag) + count',
-    CUSTOM: '字段：targetId，可附带额外数据'
+    CUSTOM: '字段：targetId，可附带额外数据',
+    NULL: '字段：无目标，可配合手动确认推进使用'
   };
   return `<div class="small" style="margin-top:6px">${map[type] || '字段：按标准 ObjectiveSpec 渲染'}</div>`;
 }

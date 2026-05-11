@@ -76,6 +76,9 @@ export function renderObjectiveExtra(o, base, field) {
   if (o.type === 'CRAFT') {
     return suggestInput('itemId', `${base}.targetId`, o.targetId || '', ['minecraft:torch', 'minecraft:crafting_table', 'minecraft:iron_sword'], `${base}-craft-itemId`);
   }
+  if (o.type === 'NULL') {
+    return '<div class="small">该目标类型不需要 targetId；通常与手动确认推进阶段搭配使用。</div>';
+  }
   return field('customTargetId', `${base}.targetId`, o.targetId || '');
 }
 
