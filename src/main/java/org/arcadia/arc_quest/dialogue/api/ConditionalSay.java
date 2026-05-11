@@ -40,14 +40,6 @@ public record ConditionalSay(
         return new ConditionalSay(sayId, text, sound, List.of());
     }
 
-    public static ConditionalSay of(String sayId, String text) {
-        return of(sayId, DialogueText.literal(text));
-    }
-
-    public static ConditionalSay of(String sayId, String text, SoundEvent sound) {
-        return of(sayId, DialogueText.literal(text), sound);
-    }
-
     public boolean hasValidId() {
         return sayId != null && !sayId.isEmpty();
     }

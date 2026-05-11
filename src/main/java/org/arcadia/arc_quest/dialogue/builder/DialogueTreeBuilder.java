@@ -27,7 +27,7 @@ public class DialogueTreeBuilder {
     private final List<ConditionalText> curConditionalTexts = new ArrayList<>();
     private final List<DialogueChoice> curChoices = new ArrayList<>();
     private final List<MarkSpec> treeMarks = new ArrayList<>();
-    private String defaultNpc = "";
+    private DialogueText defaultNpc = DialogueText.literal("");
     private String startNodeId = null;
     private QuestVisualConfig visualConfig = null;
     private boolean repeatable = true;
@@ -103,8 +103,9 @@ public class DialogueTreeBuilder {
     /**
      * 设置默认 NPC 名称（所有节点的 fallback speaker）。
      */
-    public DialogueTreeBuilder npc(String npcName) {
-        defaultNpc = npcName != null ? npcName : "";
+
+    public DialogueTreeBuilder npc(DialogueText npcName) {
+        defaultNpc = npcName != null ? npcName : DialogueText.literal("");
         return this;
     }
 
@@ -363,7 +364,7 @@ public class DialogueTreeBuilder {
      * <b>Choice 必须提供唯一 ID</b>
      * </p>
      */
-    public DialogueTreeBuilder choice(String choiceId, String text, String nextNodeId) {
+    public DialogueTreeBuilder choice(String choiceId, DialogueText text, String nextNodeId) {
         ensureOpenNode();
         if (choiceId == null || choiceId.isEmpty()) {
             throw new IllegalArgumentException("Choice ID cannot be null or empty");
@@ -378,7 +379,7 @@ public class DialogueTreeBuilder {
      * <b>Choice 必须提供唯一 ID</b>
      * </p>
      */
-    public DialogueTreeBuilder choice(String choiceId, String text, String nextNodeId, int priority) {
+    public DialogueTreeBuilder choice(String choiceId, DialogueText text, String nextNodeId, int priority) {
         ensureOpenNode();
         if (choiceId == null || choiceId.isEmpty()) {
             throw new IllegalArgumentException("Choice ID cannot be null or empty");
@@ -393,17 +394,6 @@ public class DialogueTreeBuilder {
      * <b>Choice 必须提供唯一 ID</b>
      * </p>
      */
-    public DialogueTreeBuilder choice(String choiceId, String text, Consumer<ChoiceBuilder> configurator) {
-        ensureOpenNode();
-        if (choiceId == null || choiceId.isEmpty()) {
-            throw new IllegalArgumentException("Choice ID cannot be null or empty");
-        }
-        ChoiceBuilder cb = new ChoiceBuilder(choiceId, text);
-        configurator.accept(cb);
-        curChoices.add(cb.build());
-        return this;
-    }
-
     public DialogueTreeBuilder choice(String choiceId, DialogueText text, Consumer<ChoiceBuilder> configurator) {
         ensureOpenNode();
         if (choiceId == null || choiceId.isEmpty()) {
@@ -421,7 +411,7 @@ public class DialogueTreeBuilder {
      * <b>Choice 必须提供唯一 ID</b>
      * </p>
      */
-    public DialogueTreeBuilder choiceIf(String choiceId, DialogueCondition condition, String text,
+    public DialogueTreeBuilder choiceIf(String choiceId, DialogueCondition condition, DialogueText text,
                                         Consumer<ChoiceBuilder> configurator) {
         ensureOpenNode();
         if (choiceId == null || choiceId.isEmpty()) {
@@ -437,7 +427,7 @@ public class DialogueTreeBuilder {
     /**
      * 添加一个带前置条件和优先级的选项（必须提供 ID）。
      */
-    public DialogueTreeBuilder choiceIf(String choiceId, DialogueCondition condition, String text, String nextNodeId, int priority) {
+    public DialogueTreeBuilder choiceIf(String choiceId, DialogueCondition condition, DialogueText text, String nextNodeId, int priority) {
         ensureOpenNode();
         if (choiceId == null || choiceId.isEmpty()) {
             throw new IllegalArgumentException("Choice ID cannot be null or empty");
@@ -544,7 +534,7 @@ public class DialogueTreeBuilder {
 
         DialogueText speaker = curSpeaker != null
                 ? curSpeaker
-                : DialogueText.literal((defaultNpc != null && !defaultNpc.isBlank()) ? defaultNpc : "");
+                : (defaultNpc != null ? defaultNpc : DialogueText.literal(""));
 
         // 序列化条件文本
         Map<String, ConditionalSay> conditionalTextsMap = serializeConditionalTexts();
@@ -1025,7 +1015,7 @@ public class DialogueTreeBuilder {
         }
 
         /**
-         * 设置为一次性选项（不可重复选择）。
+         * 一次性选项，不可重复
          */
         public ChoiceBuilder oneTime() {
             repeatable = false;

@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.api.ConditionalSay;
+import org.arcadia.arc_quest.dialogue.api.DialogueText;
 import org.arcadia.arc_quest.dialogue.api.RegisteredConditions;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.api.QuestState;
@@ -200,7 +201,7 @@ public final class ConditionalTextEvaluator {
      */
     public static ConditionalSay evaluateWithSound(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts, String defaultText) {
         if (conditionalTexts == null || conditionalTexts.isEmpty()) {
-            return ConditionalSay.of("default", defaultText);
+            return ConditionalSay.of("default", DialogueText.literal(defaultText));
         }
 
         IQuestCapability cap = ctx.questCap();
@@ -228,7 +229,7 @@ public final class ConditionalTextEvaluator {
         }
 
         if (matches.isEmpty()) {
-            return ConditionalSay.of("default", defaultText);
+            return ConditionalSay.of("default", DialogueText.literal(defaultText));
         }
 
         int maxPriority = matches.stream().mapToInt(m -> m.priority).max().orElse(0);
@@ -237,7 +238,7 @@ public final class ConditionalTextEvaluator {
                 return match.say;
             }
         }
-        return ConditionalSay.of("default", defaultText);
+        return ConditionalSay.of("default", DialogueText.literal(defaultText));
     }
 
     /**
