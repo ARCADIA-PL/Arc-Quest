@@ -260,13 +260,14 @@ public class JournalDetailParallelPhase {
 
         int currentX1 = 0;
 
+        String parallelLanesText = Component.translatable("arc_quest.gui.journal.section.parallel_lanes").getString();
         g.pose().pushPose();
         g.pose().translate(currentX1, headerBaseY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "PARALLEL LANES", 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
+        g.drawString(font, Component.translatable("arc_quest.gui.journal.section.parallel_lanes").getString(), 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, safeA), false);
         g.pose().popPose();
 
-        currentX1 += (int) (font.width("PARALLEL LANES") * 0.8f) + 8;
+        currentX1 += (int) (font.width(parallelLanesText) * 0.8f) + 8;
 
         g.pose().pushPose();
         g.pose().translate(currentX1, headerBaseY, 0);
@@ -278,7 +279,7 @@ public class JournalDetailParallelPhase {
 
         if (focusPhase != null) {
             String pName = getPhaseDisplayName(focusPhase);
-            String prefix = "FOCUS: ";
+            String prefix = Component.translatable("arc_quest.gui.journal.section.focus_phase").getString();
 
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
@@ -677,7 +678,7 @@ public class JournalDetailParallelPhase {
 
             cy += FIXED_OBJ_VIEW_H + 4;
             if (phase.hasChoices() && !JournalDetailPanel.shouldShowBranchChoices(def, runtime, phaseId)) {
-                g.drawString(font, "Choices locked", cardX + 8 + contentShiftX, cy, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
+                g.drawString(font, Component.translatable("arc_quest.gui.journal.label.choices_locked").getString(), cardX + 8 + contentShiftX, cy, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
             }
 
             if (!visibleChoices.isEmpty()) {

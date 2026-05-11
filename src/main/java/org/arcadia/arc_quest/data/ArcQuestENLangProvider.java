@@ -82,6 +82,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
         // ── Journal Sections ──
         addGuiSection("journal", "current_phase", "▸ PHASE: %s");
+        addGuiSection("journal", "parallel_lanes", "PARALLEL LANES");
+        addGuiSection("journal", "focus_phase", "FOCUS: ");
         addGuiSection("journal", "completed_phases", "▸ COMPLETED PHASES");
         addGuiSection("journal", "choose_path", "▸ CHOOSE YOUR PATH");
         addGuiSection("journal", "phase_rewards", "▸ Phase Rewards");
@@ -95,15 +97,85 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiLabel("journal", "quest_failed",
                 "§c✘ This quest has failed.");
         addGuiLabel("journal", "select_quest", "Select a quest");
+        addGuiLabel("journal", "no_active_phase", "No active phase.");
+        addGuiLabel("journal", "choices_locked", "Choices locked");
+        addGuiLabel("journal", "topology_map", "Topology MAP");
+        addGuiLabel("journal", "view_node_graph_history", "View node graph & history");
+        add("arc_quest.quest_action_result.template", "[Quest] %1$s failed: %2$s (%3$s)");
+        add("arc_quest.quest_action.accept", "Accept quest");
+        add("arc_quest.quest_action.abandon", "Abandon quest");
+        add("arc_quest.quest_action.choose", "Choose branch");
+        add("arc_quest.quest_action.open_chapter_shop", "Open chapter shop");
+        add("arc_quest.quest_action.claim_collection_reward", "Claim collection reward");
+        add("arc_quest.quest_action.confirm_phase_advance", "Confirm phase completion");
+        add("arc_quest.quest_reject.quest_not_found", "Quest not found");
+        add("arc_quest.quest_reject.already_active", "Quest is already active");
+        add("arc_quest.quest_reject.already_completed_not_repeatable", "Quest is already completed and not repeatable");
+        add("arc_quest.quest_reject.unlock_condition_not_met", "Unlock condition not met");
+        add("arc_quest.quest_reject.no_initial_phase", "Quest has no initial phase");
+        add("arc_quest.quest_reject.not_active", "Quest is not active");
+        add("arc_quest.quest_reject.phase_not_found", "Current phase not found");
+        add("arc_quest.quest_reject.invalid_choice_index", "Invalid branch index");
+        add("arc_quest.quest_reject.choice_condition_not_met", "Branch condition not met");
+        add("arc_quest.quest_reject.choice_target_phase_missing", "Branch target phase missing");
+        add("arc_quest.quest_reject.chapter_shop_not_configured", "Chapter shop is not configured for this quest");
+        add("arc_quest.quest_reject.chapter_shop_not_accessible", "Chapter shop is not accessible in the current state");
+        add("arc_quest.quest_reject.chapter_shop_definition_not_found", "Chapter shop definition not found");
+        add("arc_quest.quest_reject.collection_reward_id_invalid", "Collection reward ID is invalid");
+        add("arc_quest.quest_reject.collection_reward_not_unlocked", "Collection reward is not unlocked yet");
+        add("arc_quest.quest_reject.collection_reward_already_claimed", "Collection reward has already been claimed");
+        add("arc_quest.quest_reject.collection_reward_not_manual", "This collection reward cannot be claimed manually");
+        add("arc_quest.quest_reject.collection_reward_node_not_found", "Collection reward node not found");
+        add("arc_quest.quest_reject.collection_data_missing", "Quest runtime collection data is missing");
+        add("arc_quest.quest_reject.collection_config_missing", "Quest collection config is missing");
+        add("arc_quest.gui.quest_offer.header", "SYS.ARC_QUEST // UPLOAD PROTOCOL");
+        add("arc_quest.gui.quest_offer.status", "STATUS: %1$s / %2$s");
+        add("arc_quest.gui.quest_intel.header", "SYS.ARC_QUEST // PHASE INTEL");
+        add("arc_quest.gui.quest_intel.hint_close", "ESC / Click outside to close");
+        add("arc_quest.gui.quest_story.header", "SYS.ARC_QUEST // STORY ARCHIVE");
+        add("arc_quest.gui.quest_story.prev", "<< PREV");
+        add("arc_quest.gui.quest_story.next", "NEXT >>");
+        add("arc_quest.gui.quest_story.page", "PAGE %1$s / %2$s");
+        add("arc_quest.message.quest_action_failed", "[Quest] %1$s failed: %2$s (%3$s)");
+        add("arc_quest.message.quest_action.accept", "Accept quest");
+        add("arc_quest.message.quest_action.abandon", "Abandon quest");
+        add("arc_quest.message.quest_action.choose", "Choose branch");
+        add("arc_quest.message.quest_action.open_chapter_shop", "Open chapter shop");
+        add("arc_quest.message.quest_action.claim_collection_reward", "Claim collection reward");
+        add("arc_quest.message.quest_action.confirm_phase_advance", "Confirm phase completion");
+        add("arc_quest.message.quest_reason.quest_not_found", "Quest not found");
+        add("arc_quest.message.quest_reason.already_active", "Quest is already active");
+        add("arc_quest.message.quest_reason.already_completed_not_repeatable", "Quest is already completed and not repeatable");
+        add("arc_quest.message.quest_reason.unlock_condition_not_met", "Unlock condition not met");
+        add("arc_quest.message.quest_reason.no_initial_phase", "Quest has no initial phase");
+        add("arc_quest.message.quest_reason.not_active", "Quest is not active");
+        add("arc_quest.message.quest_reason.phase_not_found", "Phase not found");
+        add("arc_quest.message.quest_reason.invalid_choice_index", "Invalid choice index");
+        add("arc_quest.message.quest_reason.choice_condition_not_met", "Choice condition not met");
+        add("arc_quest.message.quest_reason.choice_target_phase_missing", "Choice target phase is missing");
+        add("arc_quest.message.quest_reason.chapter_shop_not_configured", "Chapter shop is not configured");
+        add("arc_quest.message.quest_reason.chapter_shop_not_accessible", "Chapter shop is not accessible right now");
+        add("arc_quest.message.quest_reason.chapter_shop_definition_not_found", "Chapter shop definition not found");
+        add("arc_quest.message.quest_reason.collection_reward_id_invalid", "Invalid collection reward ID");
+        add("arc_quest.message.quest_reason.collection_reward_not_unlocked", "Collection reward is not unlocked");
+        add("arc_quest.message.quest_reason.collection_reward_already_claimed", "Collection reward already claimed");
+        add("arc_quest.message.quest_reason.collection_reward_not_manual", "Collection reward cannot be claimed manually");
+        add("arc_quest.message.quest_reason.collection_reward_node_not_found", "Collection reward node not found");
+        add("arc_quest.message.quest_reason.collection_data_missing", "Collection runtime data is missing");
+        add("arc_quest.message.quest_reason.collection_config_missing", "Collection config is missing");
+        add("arc_quest.message.quest_reason.unknown", "Unknown reason");
         addGuiLabel("journal", "click_to_submit", "Click to submit items");
         addGuiLabel("journal", "story_archive", "Phase Story");
         addGuiLabel("journal", "read_story", "Read");
         addGuiLabel("journal", "objective_complete_prefix", "§a✔ ");
         addGuiLabel("journal", "objective_active_prefix", "§f○ ");
+        addGuiLabel("journal", "pending_phase_prefix", "Awaiting confirmation: ");
 
         // ── Journal Buttons ──
         addGuiButton("journal", "track", "⊕ TRACK");
         addGuiButton("journal", "tracked", "§a⊕ TRACKED");
+        addGuiButton("journal", "untrack", "⊖ UNTRACK");
+        addGuiButton("journal", "confirm_phase_complete", "✔ CONFIRM PHASE");
         addGuiButton("journal", "chapter_shop", "Chapter Shop");
         addGuiButton("journal", "abandon", "✘ ABANDON");
         addGuiButton("journal", "restart", "↻ RESTART");
@@ -122,6 +194,10 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addHudText("phase_completed", "ARC QUEST // PHASE COMPLETED");
         addHudText("parallel_lanes", "Parallel Lanes");
         addHudText("parallel_more", "+%s more lanes...");
+        addHudText("toast.phase_added", "[// PARALLEL LANE INITIATED ]");
+        addHudText("toast.phase_switched", "[// FOCUS SHIFTED ]");
+        addHudText("toast.phase_completed", "[// LANE SECURED ]");
+        addHudText("toast.phase_pending_confirm", "[// AWAITING MANUAL CONFIRM ]");
     }
 
     // ═══════════════════════════════════════════════════════

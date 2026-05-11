@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -291,7 +292,7 @@ public final class QuestIntelPanel {
         int topBarH = 26;
         g.pose().pushPose();
         g.pose().scale(0.7f, 0.7f, 1f);
-        g.drawString(font, "SYS.ARC_QUEST // PHASE INTEL", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        g.drawString(font, Component.translatable("arc_quest.gui.quest_intel.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
 
         String title = scene.getTitle();
@@ -339,7 +340,7 @@ public final class QuestIntelPanel {
         // 底部提示
         g.pose().pushPose();
         g.pose().scale(0.6f, 0.6f, 1f);
-        String hint = "ESC / 点击外侧关闭";
+        String hint = Component.translatable("arc_quest.gui.quest_intel.hint_close").getString();
         int hw = font.width(hint);
         g.drawString(font, hint, (int) ((PW / 2f - hw * 0.6f / 2f) / 0.6f), (int) ((PH - 6) / 0.6f), HudAnimUtil.withAlpha(0x445566, alpha), false);
         g.pose().popPose();

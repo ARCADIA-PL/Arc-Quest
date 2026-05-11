@@ -5,6 +5,7 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 
@@ -152,21 +153,25 @@ public class PhaseUpdateToast {
         return switch (kind) {
             case COMPLETED -> 0x66FF66;
             case SWITCHED -> 0x8CD8FF;
+            case PENDING_CONFIRM -> 0xFFD166;
             case ADDED -> (themeColor & 0x00FFFFFF);
         };
     }
 
     private String subtitleByKind() {
-        return switch (kind) {
-            case ADDED -> "[// PARALLEL LANE INITIATED ]";
-            case SWITCHED -> "[// FOCUS SHIFTED ]";
-            case COMPLETED -> "[// LANE SECURED ]";
+        String key = switch (kind) {
+            case ADDED -> "arc_quest.hud.toast.phase_added";
+            case SWITCHED -> "arc_quest.hud.toast.phase_switched";
+            case COMPLETED -> "arc_quest.hud.toast.phase_completed";
+            case PENDING_CONFIRM -> "arc_quest.hud.toast.phase_pending_confirm";
         };
+        return Component.translatable(key).getString();
     }
 
     public enum Kind {
         ADDED,
         SWITCHED,
-        COMPLETED
+        COMPLETED,
+        PENDING_CONFIRM
     }
 }

@@ -71,41 +71,42 @@ public class S2CQuestActionResultPacket {
     private static Component toClientMessage(C2SRequestQuestActionPacket.Action action,
                                              String questId,
                                              QuestRejectCodeDictionary.Code code) {
-        String actionText = switch (action) {
-            case ACCEPT -> "接受任务";
-            case ABANDON -> "放弃任务";
-            case CHOOSE -> "选择分支";
-            case OPEN_CHAPTER_SHOP -> "打开章节商店";
-            case CLAIM_COLLECTION_REWARD -> "领取收集奖励";
+        String actionKey = switch (action) {
+            case ACCEPT -> "arc_quest.quest_action.accept";
+            case ABANDON -> "arc_quest.quest_action.abandon";
+            case CHOOSE -> "arc_quest.quest_action.choose";
+            case OPEN_CHAPTER_SHOP -> "arc_quest.quest_action.open_chapter_shop";
+            case CLAIM_COLLECTION_REWARD -> "arc_quest.quest_action.claim_collection_reward";
+            case CONFIRM_PHASE_ADVANCE -> "arc_quest.quest_action.confirm_phase_advance";
         };
 
-        String reason = switch (code) {
-            case QUEST_NOT_FOUND -> "任务不存在";
-            case ALREADY_ACTIVE -> "任务已在进行中";
-            case ALREADY_COMPLETED_NOT_REPEATABLE -> "任务已完成且不可重复";
-            case UNLOCK_CONDITION_NOT_MET -> "未满足前置条件";
-            case NO_INITIAL_PHASE -> "任务缺少初始阶段";
-            case NOT_ACTIVE -> "任务未激活";
-            case PHASE_NOT_FOUND -> "当前阶段不存在";
-            case INVALID_CHOICE_INDEX -> "分支索引无效";
-            case CHOICE_CONDITION_NOT_MET -> "分支条件不满足";
-            case CHOICE_TARGET_PHASE_MISSING -> "分支目标阶段缺失";
-
-            case CHAPTER_SHOP_NOT_CONFIGURED -> "该任务未配置章节商店";
-            case CHAPTER_SHOP_NOT_ACCESSIBLE -> "当前状态不可访问章节商店";
-            case CHAPTER_SHOP_DEFINITION_NOT_FOUND -> "章节商店定义不存在";
-
-            case COLLECTION_REWARD_ID_INVALID -> "收集奖励 ID 无效";
-            case COLLECTION_REWARD_NOT_UNLOCKED -> "收集奖励尚未解锁";
-            case COLLECTION_REWARD_ALREADY_CLAIMED -> "收集奖励已领取";
-            case COLLECTION_REWARD_NOT_MANUAL -> "该收集奖励不可手动领取";
-            case COLLECTION_REWARD_NODE_NOT_FOUND -> "收集奖励节点不存在";
-            case COLLECTION_DATA_MISSING -> "任务缺少收集运行时数据";
-            case COLLECTION_CONFIG_MISSING -> "任务缺少收集配置";
-
-            default -> "未知原因";
+        String reasonKey = switch (code) {
+            case QUEST_NOT_FOUND -> "arc_quest.quest_reject.quest_not_found";
+            case ALREADY_ACTIVE -> "arc_quest.quest_reject.already_active";
+            case ALREADY_COMPLETED_NOT_REPEATABLE -> "arc_quest.quest_reject.already_completed_not_repeatable";
+            case UNLOCK_CONDITION_NOT_MET -> "arc_quest.quest_reject.unlock_condition_not_met";
+            case NO_INITIAL_PHASE -> "arc_quest.quest_reject.no_initial_phase";
+            case NOT_ACTIVE -> "arc_quest.quest_reject.not_active";
+            case PHASE_NOT_FOUND -> "arc_quest.quest_reject.phase_not_found";
+            case INVALID_CHOICE_INDEX -> "arc_quest.quest_reject.invalid_choice_index";
+            case CHOICE_CONDITION_NOT_MET -> "arc_quest.quest_reject.choice_condition_not_met";
+            case CHOICE_TARGET_PHASE_MISSING -> "arc_quest.quest_reject.choice_target_phase_missing";
+            case CHAPTER_SHOP_NOT_CONFIGURED -> "arc_quest.quest_reject.chapter_shop_not_configured";
+            case CHAPTER_SHOP_NOT_ACCESSIBLE -> "arc_quest.quest_reject.chapter_shop_not_accessible";
+            case CHAPTER_SHOP_DEFINITION_NOT_FOUND -> "arc_quest.quest_reject.chapter_shop_definition_not_found";
+            case COLLECTION_REWARD_ID_INVALID -> "arc_quest.quest_reject.collection_reward_id_invalid";
+            case COLLECTION_REWARD_NOT_UNLOCKED -> "arc_quest.quest_reject.collection_reward_not_unlocked";
+            case COLLECTION_REWARD_ALREADY_CLAIMED -> "arc_quest.quest_reject.collection_reward_already_claimed";
+            case COLLECTION_REWARD_NOT_MANUAL -> "arc_quest.quest_reject.collection_reward_not_manual";
+            case COLLECTION_REWARD_NODE_NOT_FOUND -> "arc_quest.quest_reject.collection_reward_node_not_found";
+            case COLLECTION_DATA_MISSING -> "arc_quest.quest_reject.collection_data_missing";
+            case COLLECTION_CONFIG_MISSING -> "arc_quest.quest_reject.collection_config_missing";
+            default -> "arc_quest.quest_reject.unknown";
         };
 
-        return Component.literal("[Quest] " + actionText + "失败: " + reason + " (" + questId + ")");
+        return Component.translatable("arc_quest.quest_action_result.template",
+                Component.translatable(actionKey),
+                Component.translatable(reasonKey),
+                questId);
     }
 }

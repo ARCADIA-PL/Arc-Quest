@@ -329,7 +329,7 @@ public final class QuestOfferPanel {
             int topBarH = 22;
             g.pose().pushPose();
             g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, "SYS.ARC_QUEST // UPLOAD PROTOCOL", 16, 6, HudAnimUtil.withAlpha(0x667788, contentAlpha), false);
+            g.drawString(font, Component.translatable("arc_quest.gui.quest_offer.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, contentAlpha), false);
             g.pose().popPose();
             g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(borderRgb, (int) (borderAlpha * contentAlphaMult)));
 
@@ -338,7 +338,7 @@ public final class QuestOfferPanel {
 
             g.pose().pushPose();
             g.pose().scale(0.85f, 0.85f, 1f);
-            g.drawString(font, "STATUS: " + renderVm.current + " / " + renderVm.required, (int) (50 / 0.85f), (int) ((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, contentAlpha), false);
+            g.drawString(font, Component.translatable("arc_quest.gui.quest_offer.status", renderVm.current, renderVm.required).getString(), (int) (50 / 0.85f), (int) ((contentY + 14) / 0.85f), HudAnimUtil.withAlpha(0x99AABB, contentAlpha), false);
             g.pose().popPose();
 
             boolean isHoverSlot = !cleared && lx >= iconX - 2 && lx <= iconX + 20 && ly >= iconY - 2 && ly <= iconY + 20;

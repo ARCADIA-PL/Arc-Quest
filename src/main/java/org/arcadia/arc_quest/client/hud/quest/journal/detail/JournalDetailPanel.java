@@ -176,8 +176,8 @@ public class JournalDetailPanel {
         historyBtnRect[3] = hBtnR * 2 + 8;
         if (hHover && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH && !panelsActive) {
             screen.setHoveredCustomTooltip(List.of(
-                    Component.literal("Topology MAP").withStyle(Style.EMPTY.withColor(activeTheme).withBold(true)),
-                    Component.literal("View node graph & history").withStyle(Style.EMPTY.withColor(0xAAAAAA))
+                    Component.translatable("arc_quest.gui.journal.label.topology_map").withStyle(Style.EMPTY.withColor(activeTheme).withBold(true)),
+                    Component.translatable("arc_quest.gui.journal.label.view_node_graph_history").withStyle(Style.EMPTY.withColor(0xAAAAAA))
             ));
         }
 
@@ -219,6 +219,15 @@ public class JournalDetailPanel {
 
         g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (120 * dAlpha)));
         localY += 10;
+        if (entry.state() == QuestState.ACTIVE && runtime != null) {
+            String pendingPhaseId = runtime.getCurrentPendingManualAdvancePhaseId();
+            if (!pendingPhaseId.isEmpty()) {
+                String pendingPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(entry.questId(), pendingPhaseId);
+                String pendingPrefix = Component.translatable("arc_quest.gui.journal.label.pending_phase_prefix").getString();
+                g.drawString(screen.getFont(), pendingPrefix + pendingPhaseName, 0, localY, HudAnimUtil.withAlpha(0xFFD166, safeA), false);
+                localY += 14;
+            }
+        }
         String selectedPhaseIdForRewards = null;
 
         if (entry.state() == QuestState.ACTIVE && runtime != null) {
@@ -230,7 +239,7 @@ public class JournalDetailPanel {
                 localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme, mx - (x + 12), (int) (my - (scrollAreaY + 12 - detailScrollOffset)));
                 selectedPhaseIdForRewards = !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null;
             } else if (activePhaseIds.isEmpty()) {
-                g.drawString(screen.getFont(), "No active phase.", 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false);
+                g.drawString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.no_active_phase").getString(), 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false);
                 localY += 16;
             } else if (activePhaseIds.size() == 1) {
                 selectedPhaseIdForRewards = activePhaseIds.get(0);

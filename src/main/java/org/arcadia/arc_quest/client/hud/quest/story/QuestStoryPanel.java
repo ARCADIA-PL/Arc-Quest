@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -213,7 +214,7 @@ public final class QuestStoryPanel {
         int topBarH = 22;
         g.pose().pushPose();
         g.pose().scale(0.8f, 0.8f, 1f);
-        g.drawString(font, "SYS.ARC_QUEST // STORY ARCHIVE", 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
+        g.drawString(font, Component.translatable("arc_quest.gui.quest_story.header").getString(), 16, 6, HudAnimUtil.withAlpha(0x667788, alpha), false);
         g.pose().popPose();
         g.fill(10, topBarH - 1, PW - 10, topBarH, HudAnimUtil.withAlpha(0xCCCCCC, (int) (0x66 * alphaF)));
 
@@ -240,10 +241,10 @@ public final class QuestStoryPanel {
         prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverPrev ? 1f : 0f, 15f, dt);
         nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverNext ? 1f : 0f, 15f, dt);
 
-        drawCyberButton(g, font, 20, btnY, btnW, btnH, "<< PREV", prevHoverAnim, currentPageIndex <= 0, alpha, alphaF);
-        drawCyberButton(g, font, PW - btnW - 20, btnY, btnW, btnH, "NEXT >>", nextHoverAnim, currentPageIndex >= pages.size() - 1, alpha, alphaF);
+        drawCyberButton(g, font, 20, btnY, btnW, btnH, Component.translatable("arc_quest.gui.quest_story.prev").getString(), prevHoverAnim, currentPageIndex <= 0, alpha, alphaF);
+        drawCyberButton(g, font, PW - btnW - 20, btnY, btnW, btnH, Component.translatable("arc_quest.gui.quest_story.next").getString(), nextHoverAnim, currentPageIndex >= pages.size() - 1, alpha, alphaF);
 
-        String pageStr = "PAGE " + (currentPageIndex + 1) + " / " + Math.max(1, pages.size());
+        String pageStr = Component.translatable("arc_quest.gui.quest_story.page", currentPageIndex + 1, Math.max(1, pages.size())).getString();
         g.drawString(font, pageStr, PW / 2 - font.width(pageStr) / 2, btnY + 4, HudAnimUtil.withAlpha(0x778899, alpha), false);
     }
 

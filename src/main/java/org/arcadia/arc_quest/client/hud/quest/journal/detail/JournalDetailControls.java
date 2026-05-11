@@ -25,6 +25,7 @@ public class JournalDetailControls {
     private float abandonBtnHover = 0f;
     private float failedRestartBtnHover = 0f;
     private float chapterShopBtnHover = 0f;
+    private float confirmBtnHover = 0f;
 
     public JournalDetailControls(QuestJournalScreen screen, JournalDetailPanel parent) {
         this.screen = screen;
@@ -39,6 +40,10 @@ public class JournalDetailControls {
         return screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && runtime != null;
     }
 
+    private boolean shouldShowConfirmBtn(QuestRuntimeData runtime) {
+        return runtime != null && !runtime.getCurrentPendingManualAdvancePhaseId().isEmpty();
+    }
+
     private boolean shouldShowFailedBtns(JournalTypes.QuestListEntry entry) {
         return screen.getCurrentTab() == JournalTypes.Tab.FAILED && entry.state() == QuestState.FAILED;
     }
@@ -49,15 +54,17 @@ public class JournalDetailControls {
 
         boolean bShop = shouldShowShop(def);
         boolean bActive = shouldShowActiveBtns(runtime);
+        boolean bConfirm = shouldShowConfirmBtn(runtime);
         boolean bFailed = shouldShowFailedBtns(entry);
 
-        int btnCount = (bShop ? 1 : 0) + (bActive ? 2 : 0) + (bFailed ? 1 : 0);
+        int btnCount = (bShop ? 1 : 0) + (bActive ? (bConfirm ? 3 : 2) : 0) + (bFailed ? 1 : 0);
         if (btnCount == 0) return;
 
         int btnW = Math.min(110, (w - 8 * (btnCount + 1)) / btnCount);
 
         int trackX = x + w - 8 - btnW;
-        int abanX = trackX - 8 - btnW;
+        int confirmX = trackX - 8 - btnW;
+        int abanX = (bConfirm ? confirmX : trackX) - 8 - btnW;
         int restartX = trackX;
         int shopBtnX = x + 8;
 
@@ -70,7 +77,13 @@ public class JournalDetailControls {
         if (bActive) {
             boolean tHover = !active && mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH;
             trackBtnHover = HudAnimUtil.step(trackBtnHover, tHover ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.tracked").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
+            JournalDetailPanel.drawCyberButton(g, screen, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.untrack").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
+
+            if (bConfirm) {
+                boolean cHover = !active && mx >= confirmX && mx <= confirmX + btnW && my >= btnY && my <= btnY + btnH;
+                confirmBtnHover = HudAnimUtil.step(confirmBtnHover, cHover ? 1f : 0f, 8f, dt);
+                JournalDetailPanel.drawCyberButton(g, screen, confirmX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.confirm_phase_complete").getString(), activeTheme, HudAnimUtil.easeOutCubic(confirmBtnHover), cHover);
+            }
 
             boolean aHover = !active && mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH;
             abandonBtnHover = HudAnimUtil.step(abandonBtnHover, aHover ? 1f : 0f, 8f, dt);
@@ -96,14 +109,16 @@ public class JournalDetailControls {
 
         boolean bShop = shouldShowShop(def);
         boolean bActive = shouldShowActiveBtns(runtime);
+        boolean bConfirm = shouldShowConfirmBtn(runtime);
         boolean bFailed = shouldShowFailedBtns(entry);
 
-        int btnCount = (bShop ? 1 : 0) + (bActive ? 2 : 0) + (bFailed ? 1 : 0);
+        int btnCount = (bShop ? 1 : 0) + (bActive ? (bConfirm ? 3 : 2) : 0) + (bFailed ? 1 : 0);
         if (btnCount == 0) return false;
 
         int btnW = Math.min(110, (w - 8 * (btnCount + 1)) / btnCount);
         int trackX = x + w - 8 - btnW;
-        int abanX = trackX - 8 - btnW;
+        int confirmX = trackX - 8 - btnW;
+        int abanX = (bConfirm ? confirmX : trackX) - 8 - btnW;
         int restartX = trackX;
         int shopBtnX = x + 8;
 
@@ -115,7 +130,16 @@ public class JournalDetailControls {
 
         if (bActive) {
             if (mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH) {
-                QuestHudOverlay.INSTANCE.setTrackedQuest(entry.questId());
+                if (entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId())) {
+                    QuestHudOverlay.INSTANCE.setTrackedQuest(null);
+                } else {
+                    QuestHudOverlay.INSTANCE.setTrackedQuest(entry.questId());
+                }
+                screen.playClick();
+                return true;
+            }
+            if (bConfirm && mx >= confirmX && mx <= confirmX + btnW && my >= btnY && my <= btnY + btnH) {
+                ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.confirmPhaseAdvance(entry.questId(), runtime.getCurrentPendingManualAdvancePhaseId()));
                 screen.playClick();
                 return true;
             }

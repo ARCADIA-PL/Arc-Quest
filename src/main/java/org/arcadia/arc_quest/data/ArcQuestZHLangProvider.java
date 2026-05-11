@@ -82,6 +82,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
         // ── Journal Sections ──
         addGuiSection("journal", "current_phase", "▸ 当前阶段: %s");
+        addGuiSection("journal", "parallel_lanes", "并行阶段");
+        addGuiSection("journal", "focus_phase", "焦点阶段：");
         addGuiSection("journal", "completed_phases", "▸ 已通过阶段");
         addGuiSection("journal", "choose_path", "▸ 选择你的道路");
         addGuiSection("journal", "phase_rewards", "▸ 阶段奖励");
@@ -95,15 +97,85 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiLabel("journal", "quest_failed",
                 "§c✘ 该任务已失败。");
         addGuiLabel("journal", "select_quest", "选择一个任务");
+        addGuiLabel("journal", "no_active_phase", "当前没有激活阶段。 ");
+        addGuiLabel("journal", "choices_locked", "分支尚未解锁");
+        addGuiLabel("journal", "topology_map", "拓扑视图");
+        addGuiLabel("journal", "view_node_graph_history", "查看节点图与历史");
+        add("arc_quest.quest_action_result.template", "[任务] %1$s失败：%2$s（%3$s）");
+        add("arc_quest.quest_action.accept", "接受任务");
+        add("arc_quest.quest_action.abandon", "放弃任务");
+        add("arc_quest.quest_action.choose", "选择分支");
+        add("arc_quest.quest_action.open_chapter_shop", "打开章节商店");
+        add("arc_quest.quest_action.claim_collection_reward", "领取收集奖励");
+        add("arc_quest.quest_action.confirm_phase_advance", "确认阶段完成");
+        add("arc_quest.quest_reject.quest_not_found", "任务不存在");
+        add("arc_quest.quest_reject.already_active", "任务已在进行中");
+        add("arc_quest.quest_reject.already_completed_not_repeatable", "任务已完成且不可重复");
+        add("arc_quest.quest_reject.unlock_condition_not_met", "未满足前置条件");
+        add("arc_quest.quest_reject.no_initial_phase", "任务缺少初始阶段");
+        add("arc_quest.quest_reject.not_active", "任务未激活");
+        add("arc_quest.quest_reject.phase_not_found", "当前阶段不存在");
+        add("arc_quest.quest_reject.invalid_choice_index", "分支索引无效");
+        add("arc_quest.quest_reject.choice_condition_not_met", "分支条件不满足");
+        add("arc_quest.quest_reject.choice_target_phase_missing", "分支目标阶段缺失");
+        add("arc_quest.quest_reject.chapter_shop_not_configured", "该任务未配置章节商店");
+        add("arc_quest.quest_reject.chapter_shop_not_accessible", "当前状态不可访问章节商店");
+        add("arc_quest.quest_reject.chapter_shop_definition_not_found", "章节商店定义不存在");
+        add("arc_quest.quest_reject.collection_reward_id_invalid", "收集奖励 ID 无效");
+        add("arc_quest.quest_reject.collection_reward_not_unlocked", "收集奖励尚未解锁");
+        add("arc_quest.quest_reject.collection_reward_already_claimed", "收集奖励已领取");
+        add("arc_quest.quest_reject.collection_reward_not_manual", "该收集奖励不可手动领取");
+        add("arc_quest.quest_reject.collection_reward_node_not_found", "收集奖励节点不存在");
+        add("arc_quest.quest_reject.collection_data_missing", "任务缺少收集运行时数据");
+        add("arc_quest.quest_reject.collection_config_missing", "任务缺少收集配置");
+        add("arc_quest.gui.quest_offer.header", "SYS.ARC_QUEST // 上传协议");
+        add("arc_quest.gui.quest_offer.status", "状态：%1$s / %2$s");
+        add("arc_quest.gui.quest_intel.header", "SYS.ARC_QUEST // 阶段情报");
+        add("arc_quest.gui.quest_intel.hint_close", "ESC / 点击外侧关闭");
+        add("arc_quest.gui.quest_story.header", "SYS.ARC_QUEST // 阶段档案");
+        add("arc_quest.gui.quest_story.prev", "<< 上一页");
+        add("arc_quest.gui.quest_story.next", "下一页 >>");
+        add("arc_quest.gui.quest_story.page", "第 %1$s / %2$s 页");
+        add("arc_quest.message.quest_action_failed", "[Quest] %1$s失败：%2$s（%3$s）");
+        add("arc_quest.message.quest_action.accept", "接受任务");
+        add("arc_quest.message.quest_action.abandon", "放弃任务");
+        add("arc_quest.message.quest_action.choose", "选择分支");
+        add("arc_quest.message.quest_action.open_chapter_shop", "打开章节商店");
+        add("arc_quest.message.quest_action.claim_collection_reward", "领取收集奖励");
+        add("arc_quest.message.quest_action.confirm_phase_advance", "确认阶段完成");
+        add("arc_quest.message.quest_reason.quest_not_found", "任务不存在");
+        add("arc_quest.message.quest_reason.already_active", "任务已在进行中");
+        add("arc_quest.message.quest_reason.already_completed_not_repeatable", "任务已完成且不可重复");
+        add("arc_quest.message.quest_reason.unlock_condition_not_met", "未满足前置条件");
+        add("arc_quest.message.quest_reason.no_initial_phase", "任务缺少初始阶段");
+        add("arc_quest.message.quest_reason.not_active", "任务未激活");
+        add("arc_quest.message.quest_reason.phase_not_found", "当前阶段不存在");
+        add("arc_quest.message.quest_reason.invalid_choice_index", "分支索引无效");
+        add("arc_quest.message.quest_reason.choice_condition_not_met", "分支条件不满足");
+        add("arc_quest.message.quest_reason.choice_target_phase_missing", "分支目标阶段缺失");
+        add("arc_quest.message.quest_reason.chapter_shop_not_configured", "该任务未配置章节商店");
+        add("arc_quest.message.quest_reason.chapter_shop_not_accessible", "当前状态不可访问章节商店");
+        add("arc_quest.message.quest_reason.chapter_shop_definition_not_found", "章节商店定义不存在");
+        add("arc_quest.message.quest_reason.collection_reward_id_invalid", "收集奖励 ID 无效");
+        add("arc_quest.message.quest_reason.collection_reward_not_unlocked", "收集奖励尚未解锁");
+        add("arc_quest.message.quest_reason.collection_reward_already_claimed", "收集奖励已领取");
+        add("arc_quest.message.quest_reason.collection_reward_not_manual", "该收集奖励不可手动领取");
+        add("arc_quest.message.quest_reason.collection_reward_node_not_found", "收集奖励节点不存在");
+        add("arc_quest.message.quest_reason.collection_data_missing", "任务缺少收集运行时数据");
+        add("arc_quest.message.quest_reason.collection_config_missing", "任务缺少收集配置");
+        add("arc_quest.message.quest_reason.unknown", "未知原因");
         addGuiLabel("journal", "story_archive", "阶段叙事");
         addGuiLabel("journal", "read_story", "阅读");
         addGuiLabel("journal", "click_to_submit", "点击提交物品");
         addGuiLabel("journal", "objective_complete_prefix", "§a✔ ");
         addGuiLabel("journal", "objective_active_prefix", "§f○ ");
+        addGuiLabel("journal", "pending_phase_prefix", "等待确认阶段：");
 
         // ── Journal Buttons ──
         addGuiButton("journal", "track", "⊕ 追踪");
         addGuiButton("journal", "tracked", "§a⊕ 追踪中");
+        addGuiButton("journal", "untrack", "⊖ 取消追踪");
+        addGuiButton("journal", "confirm_phase_complete", "✔ 确认阶段完成");
         addGuiButton("journal", "abandon", "✘ 放弃");
         addGuiButton("journal", "chapter_shop", "章节商店");
         addGuiButton("journal", "restart", "↻ 重新开始");
@@ -122,6 +194,10 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("phase_completed", "ARC QUEST // 阶段完成");
         addHudText("parallel_lanes", "并行线路");
         addHudText("parallel_more", "+%s 条并行阶段…");
+        addHudText("toast.phase_added", "[// 并行阶段已接入 ]");
+        addHudText("toast.phase_switched", "[// 当前焦点已切换 ]");
+        addHudText("toast.phase_completed", "[// 阶段已完成 ]");
+        addHudText("toast.phase_pending_confirm", "[// 等待手动确认 ]");
     }
 
     // ═══════════════════════════════════════════════════════
