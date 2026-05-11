@@ -15,6 +15,16 @@ function isObjectiveCountingType(type) {
   return type === 'KILL' || type === 'COLLECT' || type === 'DELIVER' || type === 'CRAFT' || type === 'OFFER' || type === 'CUSTOM';
 }
 
+function hasAdvancedCountSettings(objective) {
+  return !!(
+    objective?.countMode && objective.countMode !== 'fixed'
+    || objective?.countBase !== undefined && objective.countBase !== null && objective.countBase !== (objective.count ?? 1)
+    || objective?.countPerLevel
+    || objective?.countMin !== undefined && objective.countMin !== null && objective.countMin !== 1
+    || objective?.countMax !== undefined && objective.countMax !== null && objective.countMax !== -1
+  );
+}
+
 export function renderObjectiveExtra(o, base, field) {
   if (o.type === 'KILL') {
     return suggestInput('entityType', `${base}.targetId`, o.targetId || o.entityType || '', ['minecraft:zombie', 'minecraft:skeleton', 'minecraft:creeper', 'minecraft:spider'], `${base}-entityType`);
@@ -71,6 +81,7 @@ export function renderObjectiveExtra(o, base, field) {
 
 export function renderObjectiveCommonSection(o, base, field) {
   const supportsCount = isObjectiveCountingType(o.type);
+  const showAdvancedCount = supportsCount && hasAdvancedCountSettings(o);
   return `
     <div class="row">
       ${supportsCount ? field('目标数量', `${base}.count`, o.count ?? 1, 'number') : '<div class="f"><label>目标数量</label><div class="tiny">该类型固定为一次触发</div></div>'}
@@ -81,17 +92,23 @@ export function renderObjectiveCommonSection(o, base, field) {
       ${boolSelect('Optional', `${base}.optional`, !!o.optional)}
     </div>
     ${supportsCount ? `
-    <div class="row">
-      ${enumSelect('countMode', `${base}.countMode`, o.countMode || 'fixed', ['fixed', 'level_scale', 'variable'])}
-      ${field('countBase', `${base}.countBase`, o.countBase ?? o.count ?? 1, 'number')}
-    </div>
-    <div class="row">
-      ${field('countPerLevel', `${base}.countPerLevel`, o.countPerLevel ?? 0, 'number')}
-      ${field('countMin', `${base}.countMin`, o.countMin ?? 1, 'number')}
-    </div>
-    <div class="row">
-      ${field('countMax', `${base}.countMax`, o.countMax ?? -1, 'number')}
-      <div class="f"></div>
+    <div class="card" style="margin-top:10px; border-color: rgba(255,255,255,0.08)">
+      <div class="small"><b>高级计数设置</b></div>
+      <div class="tiny" style="margin-top:4px">仅当目标需求需要按等级/变量动态缩放时启用。常规 objective 只使用“目标数量”。</div>
+      ${showAdvancedCount ? `
+      <div class="row" style="margin-top:10px">
+        ${enumSelect('countMode', `${base}.countMode`, o.countMode || 'fixed', ['fixed', 'level_scale', 'variable'])}
+        ${field('countBase', `${base}.countBase`, o.countBase ?? o.count ?? 1, 'number')}
+      </div>
+      <div class="row">
+        ${field('countPerLevel', `${base}.countPerLevel`, o.countPerLevel ?? 0, 'number')}
+        ${field('countMin', `${base}.countMin`, o.countMin ?? 1, 'number')}
+      </div>
+      <div class="row">
+        ${field('countMax', `${base}.countMax`, o.countMax ?? -1, 'number')}
+        <div class="f"></div>
+      </div>
+      ` : '<div class="small" style="margin-top:10px">当前未启用高级计数字段；如导入了带动态计数的 objective，会自动显示。</div>'}
     </div>
     ` : ''}
   `;
