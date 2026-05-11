@@ -172,22 +172,12 @@ public class QuestJournalScreen extends Screen {
         if (targetQuestId != null) {
             for (int i = 0; i < currentEntries.size(); i++) {
                 if (currentEntries.get(i).questId().equals(targetQuestId)) {
-                    var rt = ClientQuestCache.INSTANCE.getActiveQuest(targetQuestId);
-                    List<String> currentPhases = rt != null ? new ArrayList<>(rt.getActivePhaseIds()) : null;
-                    boolean phasesChanged = false;
-                    if (lastActivePhases == null && currentPhases != null) phasesChanged = true;
-                    else if (lastActivePhases != null && currentPhases == null) phasesChanged = true;
-                    else if (lastActivePhases != null && currentPhases != null) {
-                        if (lastActivePhases.size() != currentPhases.size() || !lastActivePhases.containsAll(currentPhases))
-                            phasesChanged = true;
-                    }
-                    if (!hadLiveSelectionBeforeRebuild || !phasesChanged) {
-                        selectedIndex = i;
+                    selectedIndex = i;
+                    if (!hadLiveSelectionBeforeRebuild) {
                         listPanel.resetState();
                         detailPanel.resetState();
-                        return;
                     }
-                    break;
+                    return;
                 }
             }
         }

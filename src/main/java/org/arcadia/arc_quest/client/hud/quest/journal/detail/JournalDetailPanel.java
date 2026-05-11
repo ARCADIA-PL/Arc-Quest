@@ -38,6 +38,8 @@ public class JournalDetailPanel {
     private boolean isDraggingDetailScrollbar = false;
     private int detailContentHeight = 0;
     private float detailReveal = 0f, historyBtnHoverAnim = 0f;
+    private String lastPhaseVisualSignature = "";
+    private float phaseTransitionAnim = 1f;
 
     public JournalDetailPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -48,6 +50,32 @@ public class JournalDetailPanel {
         collectionRenderer = new JournalDetailCollection(screen);
     }
 
+    private String buildPhaseVisualSignature(QuestDefinition def, QuestRuntimeData runtime, JournalTypes.QuestListEntry entry) {
+        if (entry == null || def == null) return "";
+        if (entry.state() != QuestState.ACTIVE || runtime == null) {
+            return entry.questId() + "|" + entry.state();
+        }
+
+        List<String> activePhaseIds = new ArrayList<>();
+        for (String pid : def.getPhaseIds()) {
+            if (runtime.isPhaseActive(pid)) activePhaseIds.add(pid);
+        }
+        if (activePhaseIds.isEmpty()) activePhaseIds.addAll(runtime.getActivePhaseIds());
+
+        String pendingPhaseId = runtime.getCurrentPendingManualAdvancePhaseId();
+        return entry.questId() + "|ACTIVE|" + String.join(",", activePhaseIds) + "|PENDING|" + pendingPhaseId;
+    }
+
+    private void updatePhaseTransitionSignature(QuestDefinition def, QuestRuntimeData runtime, JournalTypes.QuestListEntry entry, float dt) {
+        String signature = buildPhaseVisualSignature(def, runtime, entry);
+        if (!signature.equals(lastPhaseVisualSignature)) {
+            if (!lastPhaseVisualSignature.isEmpty()) {
+                phaseTransitionAnim = 0f;
+            }
+            lastPhaseVisualSignature = signature;
+        }
+        phaseTransitionAnim = HudAnimUtil.lerp(phaseTransitionAnim, 1f, 0.2f, dt);
+    }
     public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
         int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * screen.getEffectiveAlpha()), borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * screen.getEffectiveAlpha());
         int borderRgb = hovered ? (themeColor & 0xFFFFFF) : 0xCCCCCC;
@@ -182,6 +210,11 @@ public class JournalDetailPanel {
         }
 
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
+        updatePhaseTransitionSignature(def, runtime, entry, dt);
+        float phaseTransitionEase = HudAnimUtil.easeOutCubic(Math.min(1f, phaseTransitionAnim));
+        float phaseContentAlpha = dAlpha * (0.72f + 0.28f * phaseTransitionEase);
+        int phaseContentSafeA = (int) (255 * phaseContentAlpha);
+        int phaseContentShiftX = (int) ((1f - phaseTransitionEase) * 16f);
         long remainSec = getQuestRemainSeconds(def, runtime);
         if (remainSec >= 0) {
             String timeStr = formatAsClock(remainSec);
@@ -224,7 +257,7 @@ public class JournalDetailPanel {
             if (!pendingPhaseId.isEmpty()) {
                 String pendingPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(entry.questId(), pendingPhaseId);
                 String pendingPrefix = Component.translatable("arc_quest.gui.journal.label.pending_phase_prefix").getString();
-                g.drawString(screen.getFont(), pendingPrefix + pendingPhaseName, 0, localY, HudAnimUtil.withAlpha(0xFFD166, safeA), false);
+                g.drawString(screen.getFont(), pendingPrefix + pendingPhaseName, phaseContentShiftX, localY, HudAnimUtil.withAlpha(0xFFD166, phaseContentSafeA), false);
                 localY += 14;
             }
         }
@@ -239,13 +272,13 @@ public class JournalDetailPanel {
                 localY = collectionRenderer.render(g, entry, def, runtime, localY, safeA, activeTheme, mx - (x + 12), (int) (my - (scrollAreaY + 12 - detailScrollOffset)));
                 selectedPhaseIdForRewards = !activePhaseIds.isEmpty() ? activePhaseIds.get(0) : null;
             } else if (activePhaseIds.isEmpty()) {
-                g.drawString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.no_active_phase").getString(), 0, localY, HudAnimUtil.withAlpha(0x888888, safeA), false);
+                g.drawString(screen.getFont(), Component.translatable("arc_quest.gui.journal.label.no_active_phase").getString(), phaseContentShiftX, localY, HudAnimUtil.withAlpha(0x888888, phaseContentSafeA), false);
                 localY += 16;
             } else if (activePhaseIds.size() == 1) {
                 selectedPhaseIdForRewards = activePhaseIds.get(0);
-                localY = singlePhaseRenderer.render(g, entry, def, runtime, activePhaseIds.get(0), x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
+                localY = singlePhaseRenderer.render(g, entry, def, runtime, activePhaseIds.get(0), x + phaseContentShiftX, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, phaseContentAlpha, phaseContentSafeA, localY);
             } else {
-                localY = parallelPhaseRenderer.render(g, entry, def, runtime, activePhaseIds, x, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, dAlpha, safeA, localY);
+                localY = parallelPhaseRenderer.render(g, entry, def, runtime, activePhaseIds, x + phaseContentShiftX, scrollAreaY, scrollAreaW, scrollAreaH, mx, my, dt, activeTheme, phaseContentAlpha, phaseContentSafeA, localY);
                 selectedPhaseIdForRewards = parallelPhaseRenderer.getSelectedPhaseId();
             }
         } else if (entry.state() == QuestState.COMPLETED) {
