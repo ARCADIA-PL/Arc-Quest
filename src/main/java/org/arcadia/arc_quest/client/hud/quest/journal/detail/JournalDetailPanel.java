@@ -74,7 +74,7 @@ public class JournalDetailPanel {
             }
             lastPhaseVisualSignature = signature;
         }
-        phaseTransitionAnim = HudAnimUtil.lerp(phaseTransitionAnim, 1f, 0.2f, dt);
+        phaseTransitionAnim = HudAnimUtil.lerp(phaseTransitionAnim, 1f, 0.08f, dt);
     }
     public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
         int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * screen.getEffectiveAlpha()), borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * screen.getEffectiveAlpha());
@@ -211,10 +211,12 @@ public class JournalDetailPanel {
 
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(entry.questId());
         updatePhaseTransitionSignature(def, runtime, entry, dt);
-        float phaseTransitionEase = HudAnimUtil.easeOutCubic(Math.min(1f, phaseTransitionAnim));
-        float phaseContentAlpha = dAlpha * (0.72f + 0.28f * phaseTransitionEase);
+        float phaseTransitionT = Math.min(1f, phaseTransitionAnim);
+        float fadeOut = Math.max(0f, 1f - phaseTransitionT / 0.35f);
+        float fadeIn = Math.max(0f, (phaseTransitionT - 0.35f) / 0.65f);
+        float phaseContentAlpha = dAlpha * (0.05f + 0.95f * fadeIn);
         int phaseContentSafeA = (int) (255 * phaseContentAlpha);
-        int phaseContentShiftX = (int) ((1f - phaseTransitionEase) * 16f);
+        int phaseContentShiftX = (int) (14f * (1f - fadeIn) - 10f * fadeOut);
         long remainSec = getQuestRemainSeconds(def, runtime);
         if (remainSec >= 0) {
             String timeStr = formatAsClock(remainSec);

@@ -212,8 +212,17 @@ public class QuestHudOverlay implements IGuiOverlay {
         if (data == null && trackedQuestId != null) {
             trackerPanel.setTrackedQuest(null);
             saveTrackedSelectionAsync();
-            return null;
+            trackedQuestId = null;
         }
+
+        if (data == null && !active.isEmpty()) {
+            data = ClientQuestCache.INSTANCE.resolveTrackedQuest(null);
+            if (data != null) {
+                trackerPanel.setTrackedQuest(data.getQuestId());
+                saveTrackedSelectionAsync();
+            }
+        }
+
         return data;
     }
 
