@@ -9,6 +9,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.arcadia.arc_quest.client.ponder.ArcQuestPonderHelper;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.api.rule.collection.*;
 import org.arcadia.arc_quest.quest.reward.CommandReward;
@@ -111,13 +112,36 @@ public final class QuestSpecCompiler {
                 parseNullableSound(spec.phaseStartSound),
                 parseNullableSound(spec.phaseCompleteSound),
                 compileCollectionEntryConfig(spec.collectionEntryConfig),
-                parseNullableId(spec.intelSceneId),
+                compileIntelSceneId(spec.intelSceneId, spec.phaseId),
                 compileCondition(spec.enterCondition),
                 spec.autoEnterByCondition,
                 spec.autoAdvanceOnComplete
         );
     }
 
+    private ResourceLocation compileIntelSceneId(String rawIntelSceneId, String phaseId) {
+        String value = blankToNull(rawIntelSceneId);
+        if (value == null) return null;
+
+        ResourceLocation parsed = parseNullableId(value);
+        if (parsed == null) return null;
+
+        String path = parsed.getPath();
+        if ("quest_phase".equals(path) || path.startsWith("quest_phase/")) {
+            return parsed;
+        }
+
+        // 单段 path 视为原生 Ponder scene id，直接透传。
+        if (!path.contains("/")) {
+            return parsed;
+        }
+
+        // 双段 path 视为任务阶段简写：namespace:questPath/phasePath。
+        String phasePath = phaseId;
+        int colon = phasePath.indexOf(':');
+        if (colon >= 0) phasePath = phasePath.substring(colon + 1);
+        return ArcQuestPonderHelper.questPhaseId(parsed.toString(), phasePath);
+    }
     private CollectionQuestConfig compileCollectionConfig(CollectionQuestSpecData spec) {
         if (spec == null) return null;
         List<CollectionCategoryDefinition> categories = new ArrayList<>();

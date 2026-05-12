@@ -16,6 +16,12 @@ public class PhaseSpec {
     public List<String> flagsToSetOnComplete = new ArrayList<>();
     public List<MarkSpecData> relatedMarks = new ArrayList<>();
     public String tradeShopId = "";
+    /**
+     * 支持三种写法：
+     * 1) 原生 scene id：mymod:my_scene
+     * 2) 任务阶段简写：arc_quest:quest_path/phase_path
+     * 3) 标准任务阶段 scene id：arc_quest:quest_phase/quest_path/phase_path
+     */
     public String intelSceneId = "";
     public String phaseStartSound = "";
     public String phaseCompleteSound = "";
