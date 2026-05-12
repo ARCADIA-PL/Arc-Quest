@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.ponder;
 
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.quest.util.IntelSceneIdHelper;
 
 /**
  * Arc Quest Ponder 场景 ID 生成工具。
@@ -83,8 +84,7 @@ public final class ArcQuestPonderHelper {
      * @return {@code arc_quest:quest_phase/{encodedQuestId}/{encodedPhaseId}}
      */
     public static ResourceLocation questPhaseId(String questId, String phaseId) {
-        return ResourceLocation.fromNamespaceAndPath(MOD,
-                "quest_phase/" + encodePath(questId) + "/" + encodePath(phaseId));
+        return IntelSceneIdHelper.questPhaseId(questId, phaseId);
     }
 
     /**

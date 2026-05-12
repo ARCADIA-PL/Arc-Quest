@@ -48,6 +48,7 @@ public class GachaShopDefinition {
     private final Map<String, RarityConfig> rarityConfigs = new HashMap<>();
 
     // === 稀有度级别配置（对标 TradeEntry 的音效系统）===
+    @Deprecated
     public GachaShopDefinition(String shopId,
                                TradeText displayName,
                                @Nullable TradeText description,

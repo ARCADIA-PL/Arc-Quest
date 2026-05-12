@@ -47,93 +47,92 @@ public final class PhaseDefinition {
     @Nullable
     private final ResourceLocation intelSceneId;
 
-    public PhaseDefinition(String phaseId,
-                           QuestText displayName,
-                           List<ObjectiveEntry> objectives,
-                           List<PhaseTransition> transitions,
-                           List<ChoiceOption> choices,
-                           List<IReward> phaseRewards,
-                           List<String> flagsToSetOnEnter,
-                           List<String> flagsToSetOnComplete,
-                           QuestVisualConfig visualConfig, boolean autoEnterByCondition) {
+    @Deprecated
+    PhaseDefinition(String phaseId,
+                    QuestText displayName,
+                    List<ObjectiveEntry> objectives,
+                    List<PhaseTransition> transitions,
+                    List<ChoiceOption> choices,
+                    List<IReward> phaseRewards,
+                    List<String> flagsToSetOnEnter,
+                    List<String> flagsToSetOnComplete,
+                    QuestVisualConfig visualConfig, boolean autoEnterByCondition) {
         this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()),
                 objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete,
                 List.of(), visualConfig, null, null, null, null, null, null, autoEnterByCondition, true);
     }
 
-    public PhaseDefinition(String phaseId,
-                           QuestText displayName,
-                           List<ObjectiveEntry> objectives,
-                           List<PhaseTransition> transitions,
-                           List<ChoiceOption> choices,
-                           List<IReward> phaseRewards,
-                           List<String> flagsToSetOnEnter,
-                           List<String> flagsToSetOnComplete,
-                           QuestVisualConfig visualConfig,
-                           @Nullable String tradeShopId, boolean autoEnterByCondition) {
+    @Deprecated
+    PhaseDefinition(String phaseId,
+                    QuestText displayName,
+                    List<ObjectiveEntry> objectives,
+                    List<PhaseTransition> transitions,
+                    List<ChoiceOption> choices,
+                    List<IReward> phaseRewards,
+                    List<String> flagsToSetOnEnter,
+                    List<String> flagsToSetOnComplete,
+                    QuestVisualConfig visualConfig,
+                    @Nullable String tradeShopId, boolean autoEnterByCondition) {
         this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()),
                 objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete,
                 List.of(), visualConfig, tradeShopId, null, null, null, null, null, autoEnterByCondition, true);
     }
 
-    public PhaseDefinition(String phaseId,
-                           QuestText displayName,
-                           List<ObjectiveEntry> objectives,
-                           List<PhaseTransition> transitions,
-                           List<ChoiceOption> choices,
-                           List<IReward> phaseRewards,
-                           List<String> flagsToSetOnEnter,
-                           List<String> flagsToSetOnComplete,
-                           QuestVisualConfig visualConfig,
-                           @Nullable String tradeShopId,
-                           @Nullable SoundEvent phaseStartSound,
-                           @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
+    @Deprecated
+    PhaseDefinition(String phaseId,
+                    QuestText displayName,
+                    List<ObjectiveEntry> objectives,
+                    List<PhaseTransition> transitions,
+                    List<ChoiceOption> choices,
+                    List<IReward> phaseRewards,
+                    List<String> flagsToSetOnEnter,
+                    List<String> flagsToSetOnComplete,
+                    QuestVisualConfig visualConfig,
+                    @Nullable String tradeShopId,
+                    @Nullable SoundEvent phaseStartSound,
+                    @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
         this(phaseId, displayName, QuestText.component(Component.empty()), QuestText.component(Component.empty()),
                 objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete,
                 List.of(), visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, null, autoEnterByCondition, true);
     }
 
-    /**
-     * 旧的完整构造器（含 description），委托给带 story 的新构造器。
-     */
-    public PhaseDefinition(String phaseId,
-                           QuestText displayName,
-                           QuestText description,
-                           List<ObjectiveEntry> objectives,
-                           List<PhaseTransition> transitions,
-                           List<ChoiceOption> choices,
-                           List<IReward> phaseRewards,
-                           List<String> flagsToSetOnEnter,
-                           List<String> flagsToSetOnComplete,
-                           QuestVisualConfig visualConfig,
-                           @Nullable String tradeShopId,
-                           @Nullable SoundEvent phaseStartSound,
-                           @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
+    @Deprecated
+    PhaseDefinition(String phaseId,
+                    QuestText displayName,
+                    QuestText description,
+                    List<ObjectiveEntry> objectives,
+                    List<PhaseTransition> transitions,
+                    List<ChoiceOption> choices,
+                    List<IReward> phaseRewards,
+                    List<String> flagsToSetOnEnter,
+                    List<String> flagsToSetOnComplete,
+                    QuestVisualConfig visualConfig,
+                    @Nullable String tradeShopId,
+                    @Nullable SoundEvent phaseStartSound,
+                    @Nullable SoundEvent phaseCompleteSound, boolean autoEnterByCondition) {
         this(phaseId, displayName, description, QuestText.component(Component.empty()),
                 objectives, transitions, choices, phaseRewards, flagsToSetOnEnter, flagsToSetOnComplete,
                 List.of(), visualConfig, tradeShopId, phaseStartSound, phaseCompleteSound, null, null, null, autoEnterByCondition, true);
     }
 
-    /**
-     * 含 story 和 intelSceneId 的最终构造器，所有其他构造器最终委托至此。
-     */
-    public PhaseDefinition(String phaseId,
-                           QuestText displayName,
-                           QuestText description,
-                           QuestText story,
-                           List<ObjectiveEntry> objectives,
-                           List<PhaseTransition> transitions,
-                           List<ChoiceOption> choices,
-                           List<IReward> phaseRewards,
-                           List<String> flagsToSetOnEnter,
-                           List<String> flagsToSetOnComplete,
-                           QuestVisualConfig visualConfig,
-                           @Nullable String tradeShopId,
-                           @Nullable SoundEvent phaseStartSound,
-                           @Nullable SoundEvent phaseCompleteSound,
-                           @Nullable CollectionEntryConfig collectionEntryConfig,
-                           @Nullable ResourceLocation intelSceneId,
-                           @Nullable ICondition enterCondition, boolean autoEnterByCondition) {
+    @Deprecated
+    PhaseDefinition(String phaseId,
+                    QuestText displayName,
+                    QuestText description,
+                    QuestText story,
+                    List<ObjectiveEntry> objectives,
+                    List<PhaseTransition> transitions,
+                    List<ChoiceOption> choices,
+                    List<IReward> phaseRewards,
+                    List<String> flagsToSetOnEnter,
+                    List<String> flagsToSetOnComplete,
+                    QuestVisualConfig visualConfig,
+                    @Nullable String tradeShopId,
+                    @Nullable SoundEvent phaseStartSound,
+                    @Nullable SoundEvent phaseCompleteSound,
+                    @Nullable CollectionEntryConfig collectionEntryConfig,
+                    @Nullable ResourceLocation intelSceneId,
+                    @Nullable ICondition enterCondition, boolean autoEnterByCondition) {
         this(phaseId, displayName, description, story, objectives, transitions, choices, phaseRewards,
                 flagsToSetOnEnter, flagsToSetOnComplete, List.of(), visualConfig,
                 tradeShopId, phaseStartSound, phaseCompleteSound, collectionEntryConfig, intelSceneId, enterCondition, autoEnterByCondition, true);

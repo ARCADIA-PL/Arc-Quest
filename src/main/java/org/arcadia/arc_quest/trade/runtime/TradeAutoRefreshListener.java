@@ -42,17 +42,14 @@ import org.slf4j.Logger;
 public class TradeAutoRefreshListener {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    /**
-     * 防抖间隔（毫秒）
-     */
     private static final long REFRESH_DEBOUNCE_MS = 1000;
-    /**
-     * 上次刷新时间戳（毫秒），用于防抖
-     */
     private static long lastRefreshTime = 0;
+    private static boolean initialized = false;
 
     @SubscribeEvent
     public static void onClientInit(FMLClientSetupEvent event) {
+        if (initialized) return;
+        initialized = true;
         QuestEventBus.subscribe(TradeAutoRefreshListener::onQuestEvent);
     }
 

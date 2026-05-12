@@ -9,9 +9,11 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.arcadia.arc_quest.client.ponder.ArcQuestPonderHelper;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.api.rule.collection.*;
+import org.arcadia.arc_quest.quest.builder.QuestBuilder;
+import org.arcadia.arc_quest.quest.builder.PhaseBuilder;
+import org.arcadia.arc_quest.quest.util.IntelSceneIdHelper;
 import org.arcadia.arc_quest.quest.reward.CommandReward;
 import org.arcadia.arc_quest.quest.reward.FlagReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
@@ -44,36 +46,45 @@ public final class QuestSpecCompiler {
             phases.put(phaseSpec.phaseId, compilePhase(phaseSpec));
         }
 
-        return new QuestDefinition(
-                parseId(spec.id),
-                spec.category,
-                compileText(spec.displayName),
-                compileText(spec.description),
-                parseNullableId(spec.iconTexture),
-                spec.sortOrder,
-                spec.repeatable,
-                compileConditions(spec.unlockConditions),
-                phases,
-                spec.initialPhaseId,
-                compileRewards(spec.completionRewards),
-                listOrEmpty(spec.flagsToSetOnAccept),
-                listOrEmpty(spec.flagsToSetOnComplete),
-                compileMarks(spec.relatedMarks),
-                compileVisual(spec.visualConfig),
-                spec.mode,
-                compileCollectionConfig(spec.collectionConfig),
-                blankToNull(spec.chapterShopId),
-                spec.chapterShopType,
-                spec.chapterShopPersistent,
-                parseNullableSound(spec.chapterStartSound),
-                parseNullableSound(spec.chapterFailSound),
-                parseNullableSound(spec.chapterCompleteSound),
-                spec.completionPolicy,
-                spec.completionRequiredCount,
-                blankToNull(spec.completionTargetPhaseId),
-                spec.timeLimitType,
-                spec.timeLimitValue
-        );
+        QuestBuilder builder = QuestBuilder.create(parseId(spec.id))
+                .category(spec.category)
+                .displayName(compileText(spec.displayName))
+                .description(compileText(spec.description))
+                .icon(parseNullableId(spec.iconTexture))
+                .sortOrder(spec.sortOrder)
+                .mode(spec.mode)
+                .collectionConfig(compileCollectionConfig(spec.collectionConfig))
+                .completionPolicy(spec.completionPolicy)
+                .completionRequiredCount(spec.completionRequiredCount)
+                .completionTargetPhase(blankToNull(spec.completionTargetPhaseId))
+                .visualConfig(compileVisual(spec.visualConfig));
+
+        if (spec.repeatable) builder.repeatable();
+        if (blankToNull(spec.chapterShopId) != null) {
+            if (spec.chapterShopType == ChapterShopType.GACHA) {
+                builder.chapterGachaShop(blankToNull(spec.chapterShopId), spec.chapterShopPersistent);
+            } else {
+                builder.chapterShop(blankToNull(spec.chapterShopId), spec.chapterShopPersistent);
+            }
+        }
+        if (spec.timeLimitType != null && spec.timeLimitValue > 0) {
+            if (spec.timeLimitType == QuestTimeLimitType.REAL_SECONDS) builder.questTimeLimitSeconds(spec.timeLimitValue);
+            else if (spec.timeLimitType == QuestTimeLimitType.GAME_DAY_TIME) builder.questTimeLimitDayTicks(spec.timeLimitValue);
+        }
+
+        for (ICondition cond : compileConditions(spec.unlockConditions)) builder.unlockCondition(cond);
+        for (IReward reward : compileRewards(spec.completionRewards)) builder.reward(reward);
+        for (String flag : listOrEmpty(spec.flagsToSetOnAccept)) builder.setFlagOnAccept(flag);
+        for (String flag : listOrEmpty(spec.flagsToSetOnComplete)) builder.setFlagOnComplete(flag);
+        for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
+        for (PhaseDefinition phase : phases.values()) builder.phase(phase);
+        if (spec.initialPhaseId != null) builder.startAt(spec.initialPhaseId);
+
+        if (parseNullableSound(spec.chapterStartSound) != null) builder.chapterStartSound(parseNullableSound(spec.chapterStartSound));
+        if (parseNullableSound(spec.chapterFailSound) != null) builder.chapterFailSound(parseNullableSound(spec.chapterFailSound));
+        if (parseNullableSound(spec.chapterCompleteSound) != null) builder.chapterCompleteSound(parseNullableSound(spec.chapterCompleteSound));
+
+        return builder.build();
     }
 
     private PhaseDefinition compilePhase(PhaseSpec spec) {
@@ -95,28 +106,31 @@ public final class QuestSpecCompiler {
                     compileCondition(choiceSpec.visibleCondition)
             ));
         }
-        return new PhaseDefinition(
-                spec.phaseId,
-                compileText(spec.displayName),
-                compileText(spec.description),
-                compileText(spec.story),
-                objectives,
-                transitions,
-                choices,
-                compileRewards(spec.phaseRewards),
-                listOrEmpty(spec.flagsToSetOnEnter),
-                listOrEmpty(spec.flagsToSetOnComplete),
-                compileMarks(spec.relatedMarks),
-                compileVisual(spec.visualConfig),
-                blankToNull(spec.tradeShopId),
-                parseNullableSound(spec.phaseStartSound),
-                parseNullableSound(spec.phaseCompleteSound),
-                compileCollectionEntryConfig(spec.collectionEntryConfig),
-                compileIntelSceneId(spec.intelSceneId, spec.phaseId),
-                compileCondition(spec.enterCondition),
-                spec.autoEnterByCondition,
-                spec.autoAdvanceOnComplete
-        );
+
+        PhaseBuilder builder = PhaseBuilder.create(spec.phaseId)
+                .displayName(compileText(spec.displayName))
+                .description(compileText(spec.description))
+                .story(compileText(spec.story))
+                .visualConfig(compileVisual(spec.visualConfig))
+                .collectionEntryConfig(compileCollectionEntryConfig(spec.collectionEntryConfig))
+                .intelScene(compileIntelSceneId(spec.intelSceneId, spec.phaseId))
+                .autoAdvanceOnComplete(spec.autoAdvanceOnComplete);
+
+        ICondition enterCond = compileCondition(spec.enterCondition);
+        if (enterCond != null) builder.enterWhen(enterCond, spec.autoEnterByCondition);
+
+        for (ObjectiveEntry obj : objectives) builder.objective(obj);
+        for (PhaseTransition tr : transitions) builder.transition(tr);
+        for (ChoiceOption ch : choices) builder.choice(ch);
+        for (IReward reward : compileRewards(spec.phaseRewards)) builder.reward(reward);
+        for (String flag : listOrEmpty(spec.flagsToSetOnEnter)) builder.setFlagOnEnter(flag);
+        for (String flag : listOrEmpty(spec.flagsToSetOnComplete)) builder.setFlagOnComplete(flag);
+        for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
+        if (blankToNull(spec.tradeShopId) != null) builder.phaseTrade(blankToNull(spec.tradeShopId));
+        if (parseNullableSound(spec.phaseStartSound) != null) builder.phaseStartSound(parseNullableSound(spec.phaseStartSound));
+        if (parseNullableSound(spec.phaseCompleteSound) != null) builder.phaseCompleteSound(parseNullableSound(spec.phaseCompleteSound));
+
+        return builder.build();
     }
 
     private ResourceLocation compileIntelSceneId(String rawIntelSceneId, String phaseId) {
@@ -140,7 +154,7 @@ public final class QuestSpecCompiler {
         String phasePath = phaseId;
         int colon = phasePath.indexOf(':');
         if (colon >= 0) phasePath = phasePath.substring(colon + 1);
-        return ArcQuestPonderHelper.questPhaseId(parsed.toString(), phasePath);
+        return IntelSceneIdHelper.questPhaseId(parsed.toString(), phasePath);
     }
     private CollectionQuestConfig compileCollectionConfig(CollectionQuestSpecData spec) {
         if (spec == null) return null;

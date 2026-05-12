@@ -4,7 +4,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import org.arcadia.arc_quest.client.ponder.ArcQuestPonderHelper;
+import org.arcadia.arc_quest.quest.util.IntelSceneIdHelper;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questmarker.api.*;
 
@@ -120,6 +120,16 @@ public final class PhaseBuilder {
         return this;
     }
 
+    public PhaseBuilder transition(PhaseTransition transition) {
+        transitions.add(transition);
+        return this;
+    }
+
+    public PhaseBuilder choice(ChoiceOption choice) {
+        choices.add(choice);
+        return this;
+    }
+
     public PhaseBuilder thenGoTo(String targetPhaseId) {
         transitions.add(new PhaseTransition(
                 targetPhaseId, null, transitionPriorityCounter++));
@@ -207,7 +217,7 @@ public final class PhaseBuilder {
     }
 
     public PhaseBuilder intelScene(String questId, String phaseId) {
-        intelSceneId = ArcQuestPonderHelper.questPhaseId(questId, phaseId);
+        intelSceneId = IntelSceneIdHelper.questPhaseId(questId, phaseId);
         return this;
     }
 

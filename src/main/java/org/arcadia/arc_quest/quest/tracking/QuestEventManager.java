@@ -22,6 +22,7 @@ import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveDispatcher;
+import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
@@ -147,7 +148,8 @@ public final class QuestEventManager {
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
-            LOGGER.debug("[QuestEvent] Cleared tracking for: {}", player.getGameProfile().getName());
+            ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
+            LOGGER.debug("[QuestEvent] Cleared tracking and marker state for: {}", player.getGameProfile().getName());
         }
     }
 

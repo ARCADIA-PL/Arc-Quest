@@ -27,17 +27,12 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveKey;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveTracker;
 import org.arcadia.arc_quest.quest.tracking.TrackedObjective;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 import org.slf4j.Logger;
 
 import java.util.*;
 
 /**
- * 任务进度推进核心逻辑（服务端）。
- * 并行模型：同一 Quest 内可有多个 active phase 同时推进。
- */
+ * 任务进度推进核心逻辑（服务端）�? * 并行模型：同一 Quest 内可有多�?active phase 同时推进�? */
 public final class QuestProgressHandler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -49,10 +44,8 @@ public final class QuestProgressHandler {
         return acceptQuestWithCode(player, questId) == QuestRejectCodeDictionary.Code.OK;
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  接受任务
-    // ═══════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════�?    //  接受任务
+    // ══════════════════════════════════════════════════════�?
     private static boolean shouldCompleteQuest(QuestDefinition def, QuestRuntimeData data) {
         int done = data.getCompletedPhaseIds().size();
         return switch (def.getCompletionPolicy()) {
@@ -123,9 +116,9 @@ public final class QuestProgressHandler {
         }
 
         registerPhaseObjectives(player, def, firstPhase);
-        refreshQuestMarkersForQuest(player, cap, data, def);
+        QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
 
-        // 仅对 autoEnterByCondition=true 的 phase 扫描自动入场
+        // 仅对 autoEnterByCondition=true �?phase 扫描自动入场
         ActivationContext ctx = new ActivationContext();
         tryAutoEnterPhases(player, cap, data, def, firstPhase.getPhaseId(), ctx);
         processImmediatelySatisfiedPhases(player, cap, data, def);
@@ -267,10 +260,7 @@ public final class QuestProgressHandler {
         }
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  目标推进（并行 phase 维度）
-    // ═══════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════�?    //  目标推进（并�?phase 维度�?    // ══════════════════════════════════════════════════════�?
     private static void checkPhaseCompletion(ServerPlayer player,
                                              IQuestCapability cap,
                                              QuestRuntimeData data,
@@ -304,7 +294,7 @@ public final class QuestProgressHandler {
 
         if (!phase.shouldAutoAdvanceOnComplete()) {
             data.markPhasePendingManualAdvance(phaseId);
-            refreshQuestMarkersForQuest(player, cap, data, def);
+            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
             syncQuestStateAndPush(player, data);
             if (ctx.flagsChanged) {
                 syncFlagsVarsAndPush(player, cap);
@@ -316,15 +306,14 @@ public final class QuestProgressHandler {
 
         // choices：该 phase 完成后等待玩家选路，不自动推进 transition
         if (phase.hasChoices()) {
-            // 但允许 auto enter phase 扫描（如配置了 autoEnterByCondition=true）
-            tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+            // 但允�?auto enter phase 扫描（如配置�?autoEnterByCondition=true�?            tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
 
             if (shouldCompleteQuest(def, data)) {
                 completeQuest(player, cap, data, def);
                 return;
             }
 
-            refreshQuestMarkersForQuest(player, cap, data, def);
+            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
             syncQuestStateAndPush(player, data);
             if (ctx.flagsChanged) {
                 syncFlagsVarsAndPush(player, cap);
@@ -334,8 +323,7 @@ public final class QuestProgressHandler {
 
         Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
 
-        // 自动解锁后继（可多条，支持 thenGoToIf）
-        for (PhaseTransition tr : phase.getTransitions()) {
+        // 自动解锁后继（可多条，支�?thenGoToIf�?        for (PhaseTransition tr : phase.getTransitions()) {
             boolean ok = tr.getCondition() == null
                     || tr.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
             if (!ok) continue;
@@ -343,8 +331,7 @@ public final class QuestProgressHandler {
             activatePhase(player, cap, data, def, phaseId, tr.getTargetPhaseId(), true, ctx);
         }
 
-        // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
-        tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+        // enterCondition 自动扫描（仅 autoEnterByCondition=true �?phase�?        tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
         processImmediatelySatisfiedPhases(player, cap, data, def);
 
         if (shouldCompleteQuest(def, data)) {
@@ -374,17 +361,15 @@ public final class QuestProgressHandler {
         tryAutoEnterPhases(player, cap, data, def, fromPhaseId, ctx);
         processImmediatelySatisfiedPhases(player, cap, data, def);
 
-        refreshQuestMarkersForQuest(player, cap, data, def);
+        QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
         syncQuestStateAndPush(player, data);
         if (ctx.flagsChanged) {
             syncFlagsVarsAndPush(player, cap);
         }
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 阶段推进（显式推进，用于 choice 等）
-    // ═══════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════�?    // 阶段推进（显式推进，用于 choice 等）
+    // ══════════════════════════════════════════════════════�?
     public static QuestRejectCodeDictionary.Code confirmManualPhaseAdvance(ServerPlayer player,
                                                                            String questId,
                                                                            String phaseId) {
@@ -407,7 +392,7 @@ public final class QuestProgressHandler {
         }
         if (phase.hasChoices()) {
             tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
-            refreshQuestMarkersForQuest(player, cap, data, def);
+            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
             syncQuestStateAndPush(player, data);
             if (ctx.flagsChanged) syncFlagsVarsAndPush(player, cap);
             return QuestRejectCodeDictionary.Code.OK;
@@ -422,7 +407,7 @@ public final class QuestProgressHandler {
         if (shouldCompleteQuest(def, data)) {
             completeQuest(player, cap, data, def);
         } else {
-            refreshQuestMarkersForQuest(player, cap, data, def);
+            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
             syncQuestStateAndPush(player, data);
         }
         if (ctx.flagsChanged) syncFlagsVarsAndPush(player, cap);
@@ -436,12 +421,9 @@ public final class QuestProgressHandler {
         return handlePlayerChoiceWithCode(player, questId, phaseId, choiceIndex) == QuestRejectCodeDictionary.Code.OK;
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 分支选择
-    // ═══════════════════════════════════════════════════════
-
-    // 兼容旧入口
-    public static boolean handlePlayerChoice(ServerPlayer player,
+    // ══════════════════════════════════════════════════════�?    // 分支选择
+    // ══════════════════════════════════════════════════════�?
+    // 兼容旧入�?    public static boolean handlePlayerChoice(ServerPlayer player,
                                              String questId,
                                              int choiceIndex) {
         return handlePlayerChoiceWithCode(player, questId, "", choiceIndex) == QuestRejectCodeDictionary.Code.OK;
@@ -520,8 +502,7 @@ public final class QuestProgressHandler {
             ctx.flagsChanged = true;
         }
 
-        // 并行增强：激活“选择目标 + 当前 phase 里其它满足条件的 transition”
-        Set<String> toActivate = new LinkedHashSet<>();
+        // 并行增强：激活“选择目标 + 当前 phase 里其它满足条件的 transition�?        Set<String> toActivate = new LinkedHashSet<>();
         toActivate.add(targetPhaseId);
 
         for (PhaseTransition tr : currentPhase.getTransitions()) {
@@ -548,14 +529,13 @@ public final class QuestProgressHandler {
                 targetPhaseId
         ));
 
-        // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
-        tryAutoEnterPhases(player, cap, data, def, resolvedPhaseId, ctx);
+        // enterCondition 自动扫描（仅 autoEnterByCondition=true �?phase�?        tryAutoEnterPhases(player, cap, data, def, resolvedPhaseId, ctx);
         processImmediatelySatisfiedPhases(player, cap, data, def);
 
         if (shouldCompleteQuest(def, data)) {
             completeQuest(player, cap, data, def);
         } else {
-            refreshQuestMarkersForQuest(player, cap, data, def);
+            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
             syncQuestStateAndPush(player, data);
             if (ctx.flagsChanged) {
                 syncFlagsVarsAndPush(player, cap);
@@ -578,10 +558,8 @@ public final class QuestProgressHandler {
         doCompleteQuest(player, cap, data, def, "completed");
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 任务完成 / 失败 / 放弃
-    // ═══════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════�?    // 任务完成 / 失败 / 放弃
+    // ══════════════════════════════════════════════════════�?
     public static void failQuest(ServerPlayer player, String questId) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         QuestRuntimeData data = cap.getActiveQuest(questId);
@@ -590,7 +568,7 @@ public final class QuestProgressHandler {
         data.setState(QuestState.FAILED);
         cap.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
-        clearQuestMarkers(cap, questId);
+        QuestMarkerService.clearQuestMarkers(cap, questId);
 
         syncQuestStateAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
@@ -616,7 +594,7 @@ public final class QuestProgressHandler {
 
         cap.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
-        clearQuestMarkers(cap, questId);
+        QuestMarkerService.clearQuestMarkers(cap, questId);
 
         syncFullDataAndPush(player, cap);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
@@ -652,7 +630,7 @@ public final class QuestProgressHandler {
         cap.markCompleted(questId);
 
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
-        clearQuestMarkers(cap, questId);
+        QuestMarkerService.clearQuestMarkers(cap, questId);
 
         LOGGER.info("[ArcQuest] Player {} {} quest: {}",
                 player.getGameProfile().getName(), logPrefix, questId);
@@ -715,16 +693,14 @@ public final class QuestProgressHandler {
                 registerPhaseObjectives(player, def, phase);
             }
 
-            refreshQuestMarkersForQuest(player, cap, data, def);
+            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
         }
 
         MinecraftForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 索引管理
-    // ═══════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════�?    // 索引管理
+    // ══════════════════════════════════════════════════════�?
     public static void registerPhaseObjectives(ServerPlayer player,
                                                QuestDefinition def,
                                                PhaseDefinition phase) {
@@ -887,10 +863,7 @@ public final class QuestProgressHandler {
         return cond.test(player, cap.getCompletedQuestLocations(), cap.getAllFlags(), cap.getAllVariables());
     }
 
-    // ═══════════════════════════════════════════════════════
-    // enterCondition / 激活辅助
-    // ═══════════════════════════════════════════════════════
-
+    // ══════════════════════════════════════════════════════�?    // enterCondition / 激活辅�?    // ══════════════════════════════════════════════════════�?
     private static boolean activatePhase(ServerPlayer player,
                                          IQuestCapability cap,
                                          QuestRuntimeData data,
@@ -950,100 +923,6 @@ public final class QuestProgressHandler {
         } while (changed);
 
         return ctx.activatedCount - before;
-    }
-
-    private static void refreshQuestMarkersForQuest(ServerPlayer player,
-                                                    IQuestCapability cap,
-                                                    QuestRuntimeData data,
-                                                    QuestDefinition def) {
-        List<String> removedIds = clearQuestMarkers(cap, data.getQuestId());
-        for (String markerId : removedIds) {
-            ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId);
-        }
-
-        String dimension = player.level().dimension().location().toString();
-        QuestMarkerType questType = def.getCategory() == QuestCategory.ARCHON
-                ? QuestMarkerType.QUEST_MAIN
-                : QuestMarkerType.QUEST_SIDE;
-
-        for (String phaseId : data.getActivePhaseIds()) {
-            PhaseDefinition phase = def.getPhase(phaseId);
-            if (phase == null) continue;
-
-            List<ObjectiveEntry> objectives = phase.getObjectives();
-            for (int i = 0; i < objectives.size(); i++) {
-                ObjectiveEntry obj = objectives.get(i);
-                if (obj.isHidden()) continue;
-
-                if (obj.getType() != ObjectiveType.REACH_LOCATION) continue;
-
-                Double x = parseDouble(obj.getExtra("x"));
-                Double y = parseDouble(obj.getExtra("y"));
-                Double z = parseDouble(obj.getExtra("z"));
-                if (x == null || y == null || z == null) continue;
-
-                String markerDimension = firstNonEmpty(
-                        obj.getExtra("dimension"),
-                        obj.getExtra("dim"),
-                        obj.getExtra("world"),
-                        dimension
-                );
-
-                String markerId = markerId(data.getQuestId(), phaseId, i);
-                String label = obj.getDisplayText().getString();
-
-                QuestMarkerData marker = new QuestMarkerData.Builder(markerId, x, y, z, label)
-                        .dimension(markerDimension)
-                        .bindQuest(data.getQuestId())
-                        .bindPhase(phaseId)
-                        .bindObjective(i)
-                        .type(questType)
-                        .state(QuestMarkerState.fromQuestState(data.getState()))
-                        .color(0xFF000000 | def.getCategory().getThemeColor())
-                        .showDistance(true)
-                        .allowOffscreenArrow(true)
-                        .build();
-                cap.upsertMarker(marker);
-                ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
-            }
-        }
-
-        MinecraftForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
-                player,
-                ResourceLocation.parse(data.getQuestId()),
-                data.getActivePhaseIds().size()
-        ));
-    }
-
-    private static List<String> clearQuestMarkers(IQuestCapability cap, String questId) {
-        List<String> toRemove = cap.getAllMarkers().values().stream()
-                .filter(m -> m.hasQuestBinding() && questId.equals(m.getQuestId()))
-                .map(QuestMarkerData::getId)
-                .toList();
-        for (String id : toRemove) {
-            cap.removeMarker(id);
-        }
-        return toRemove;
-    }
-
-    private static String markerId(String questId, String phaseId, int objectiveIndex) {
-        return "quest:" + questId + ":" + phaseId + ":" + objectiveIndex;
-    }
-
-    private static String firstNonEmpty(String... candidates) {
-        for (String s : candidates) {
-            if (s != null && !s.isEmpty()) return s;
-        }
-        return "";
-    }
-
-    private static Double parseDouble(String v) {
-        if (v == null || v.isEmpty()) return null;
-        try {
-            return Double.parseDouble(v);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
     }
 
     private static final class ActivationContext {
