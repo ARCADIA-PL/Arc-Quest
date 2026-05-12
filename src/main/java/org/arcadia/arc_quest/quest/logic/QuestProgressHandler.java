@@ -32,7 +32,9 @@ import org.slf4j.Logger;
 import java.util.*;
 
 /**
- * 任务进度推进核心逻辑（服务端）�? * 并行模型：同一 Quest 内可有多�?active phase 同时推进�? */
+ * 任务进度推进核心逻辑（服务端）。
+ * 并行模型：同一 Quest 内可有多个 active phase 同时推进。
+ */
 public final class QuestProgressHandler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -44,8 +46,9 @@ public final class QuestProgressHandler {
         return acceptQuestWithCode(player, questId) == QuestRejectCodeDictionary.Code.OK;
     }
 
-    // ══════════════════════════════════════════════════════�?    //  接受任务
-    // ══════════════════════════════════════════════════════�?
+    // ═══════════════════════════════════════════════════════
+    //  接受任务
+    // ═══════════════════════════════════════════════════════
     private static boolean shouldCompleteQuest(QuestDefinition def, QuestRuntimeData data) {
         int done = data.getCompletedPhaseIds().size();
         return switch (def.getCompletionPolicy()) {
@@ -118,7 +121,7 @@ public final class QuestProgressHandler {
         registerPhaseObjectives(player, def, firstPhase);
         QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
 
-        // 仅对 autoEnterByCondition=true �?phase 扫描自动入场
+        // 仅对 autoEnterByCondition=true 的 phase 扫描自动入场
         ActivationContext ctx = new ActivationContext();
         tryAutoEnterPhases(player, cap, data, def, firstPhase.getPhaseId(), ctx);
         processImmediatelySatisfiedPhases(player, cap, data, def);
@@ -260,7 +263,9 @@ public final class QuestProgressHandler {
         }
     }
 
-    // ══════════════════════════════════════════════════════�?    //  目标推进（并�?phase 维度�?    // ══════════════════════════════════════════════════════�?
+    // ═══════════════════════════════════════════════════════
+    //  目标推进（并行 phase 维度）
+    // ═══════════════════════════════════════════════════════
     private static void checkPhaseCompletion(ServerPlayer player,
                                              IQuestCapability cap,
                                              QuestRuntimeData data,
@@ -306,7 +311,8 @@ public final class QuestProgressHandler {
 
         // choices：该 phase 完成后等待玩家选路，不自动推进 transition
         if (phase.hasChoices()) {
-            // 但允�?auto enter phase 扫描（如配置�?autoEnterByCondition=true�?            tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+            // 但允许 auto enter phase 扫描（如配置了 autoEnterByCondition=true）
+            tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
 
             if (shouldCompleteQuest(def, data)) {
                 completeQuest(player, cap, data, def);
@@ -323,7 +329,8 @@ public final class QuestProgressHandler {
 
         Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
 
-        // 自动解锁后继（可多条，支�?thenGoToIf�?        for (PhaseTransition tr : phase.getTransitions()) {
+        // 自动解锁后继（可多条，支持 thenGoToIf）
+        for (PhaseTransition tr : phase.getTransitions()) {
             boolean ok = tr.getCondition() == null
                     || tr.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
             if (!ok) continue;
@@ -331,7 +338,8 @@ public final class QuestProgressHandler {
             activatePhase(player, cap, data, def, phaseId, tr.getTargetPhaseId(), true, ctx);
         }
 
-        // enterCondition 自动扫描（仅 autoEnterByCondition=true �?phase�?        tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+        // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
+        tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
         processImmediatelySatisfiedPhases(player, cap, data, def);
 
         if (shouldCompleteQuest(def, data)) {
@@ -368,8 +376,9 @@ public final class QuestProgressHandler {
         }
     }
 
-    // ══════════════════════════════════════════════════════�?    // 阶段推进（显式推进，用于 choice 等）
-    // ══════════════════════════════════════════════════════�?
+    // ═══════════════════════════════════════════════════════
+    // 阶段推进（显式推进，用于 choice 等）
+    // ═══════════════════════════════════════════════════════
     public static QuestRejectCodeDictionary.Code confirmManualPhaseAdvance(ServerPlayer player,
                                                                            String questId,
                                                                            String phaseId) {
@@ -421,9 +430,12 @@ public final class QuestProgressHandler {
         return handlePlayerChoiceWithCode(player, questId, phaseId, choiceIndex) == QuestRejectCodeDictionary.Code.OK;
     }
 
-    // ══════════════════════════════════════════════════════�?    // 分支选择
-    // ══════════════════════════════════════════════════════�?
-    // 兼容旧入�?    public static boolean handlePlayerChoice(ServerPlayer player,
+    // ═══════════════════════════════════════════════════════
+    // 分支选择
+    // ═══════════════════════════════════════════════════════
+
+    // 兼容旧入口
+    public static boolean handlePlayerChoice(ServerPlayer player,
                                              String questId,
                                              int choiceIndex) {
         return handlePlayerChoiceWithCode(player, questId, "", choiceIndex) == QuestRejectCodeDictionary.Code.OK;
@@ -502,7 +514,8 @@ public final class QuestProgressHandler {
             ctx.flagsChanged = true;
         }
 
-        // 并行增强：激活“选择目标 + 当前 phase 里其它满足条件的 transition�?        Set<String> toActivate = new LinkedHashSet<>();
+        // 并行增强：激活"选择目标 + 当前 phase 里其它满足条件的 transition"
+        Set<String> toActivate = new LinkedHashSet<>();
         toActivate.add(targetPhaseId);
 
         for (PhaseTransition tr : currentPhase.getTransitions()) {
@@ -529,7 +542,8 @@ public final class QuestProgressHandler {
                 targetPhaseId
         ));
 
-        // enterCondition 自动扫描（仅 autoEnterByCondition=true �?phase�?        tryAutoEnterPhases(player, cap, data, def, resolvedPhaseId, ctx);
+        // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
+        tryAutoEnterPhases(player, cap, data, def, resolvedPhaseId, ctx);
         processImmediatelySatisfiedPhases(player, cap, data, def);
 
         if (shouldCompleteQuest(def, data)) {
@@ -558,8 +572,9 @@ public final class QuestProgressHandler {
         doCompleteQuest(player, cap, data, def, "completed");
     }
 
-    // ══════════════════════════════════════════════════════�?    // 任务完成 / 失败 / 放弃
-    // ══════════════════════════════════════════════════════�?
+    // ═══════════════════════════════════════════════════════
+    // 任务完成 / 失败 / 放弃
+    // ═══════════════════════════════════════════════════════
     public static void failQuest(ServerPlayer player, String questId) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         QuestRuntimeData data = cap.getActiveQuest(questId);
@@ -699,8 +714,9 @@ public final class QuestProgressHandler {
         MinecraftForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
     }
 
-    // ══════════════════════════════════════════════════════�?    // 索引管理
-    // ══════════════════════════════════════════════════════�?
+    // ═══════════════════════════════════════════════════════
+    // 索引管理
+    // ═══════════════════════════════════════════════════════
     public static void registerPhaseObjectives(ServerPlayer player,
                                                QuestDefinition def,
                                                PhaseDefinition phase) {
@@ -863,7 +879,9 @@ public final class QuestProgressHandler {
         return cond.test(player, cap.getCompletedQuestLocations(), cap.getAllFlags(), cap.getAllVariables());
     }
 
-    // ══════════════════════════════════════════════════════�?    // enterCondition / 激活辅�?    // ══════════════════════════════════════════════════════�?
+    // ═══════════════════════════════════════════════════════
+    // enterCondition / 激活辅助
+    // ═══════════════════════════════════════════════════════
     private static boolean activatePhase(ServerPlayer player,
                                          IQuestCapability cap,
                                          QuestRuntimeData data,
