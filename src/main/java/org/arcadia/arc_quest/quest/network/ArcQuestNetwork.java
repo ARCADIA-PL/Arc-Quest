@@ -461,6 +461,11 @@ public final class ArcQuestNetwork {
         MARKER_REVISION.put(player.getUUID(), 0L);
     }
 
+    public static void clearPlayerMarkerState(java.util.UUID uuid) {
+        MARKER_EPOCH.remove(uuid);
+        MARKER_REVISION.remove(uuid);
+    }
+
     private static S2CSyncMarkersPacket.MarkerEntry toMarkerEntry(QuestMarkerData m) {
         return new S2CSyncMarkersPacket.MarkerEntry(
                 m.getId(),

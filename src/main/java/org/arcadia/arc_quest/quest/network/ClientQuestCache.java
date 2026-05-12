@@ -8,9 +8,6 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
-import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
-import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
-import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -69,7 +66,14 @@ public final class ClientQuestCache {
     private final Map<String, Integer> variables = new HashMap<>();
     private boolean hasAppliedFullSync = false;
 
+    private final List<QuestCacheListener> listeners = new ArrayList<>();
+
     private ClientQuestCache() {
+        addListener(new QuestHistoryAndToastListener());
+    }
+
+    public void addListener(QuestCacheListener listener) {
+        listeners.add(Objects.requireNonNull(listener));
     }
 
     // ═══════════════════════════════════════════════════════
@@ -122,8 +126,7 @@ public final class ClientQuestCache {
         if (hasAppliedFullSync) {
             for (String questId : failedQuests) {
                 if (!oldFailed.contains(questId)) {
-                    String name = getQuestDisplayName(questId);
-                    QuestToastManager.show(QuestToastManager.ToastType.QUEST_FAILED, name);
+                    for (QuestCacheListener l : listeners) l.onQuestFailed(questId);
                 }
             }
         }
@@ -144,7 +147,6 @@ public final class ClientQuestCache {
         String oldPhaseId = null;
         QuestRuntimeData previousData = activeQuests.get(questId);
 
-        // 记录旧状态用于动画和音效触发
         if (activeQuests.containsKey(questId)) {
             QuestRuntimeData oldData = activeQuests.get(questId);
             oldState = oldData.getState();
@@ -155,179 +157,84 @@ public final class ClientQuestCache {
             oldState = QuestState.FAILED;
         }
 
+        applyQuestStateUpdate(data, questId, oldState, oldPhaseId);
+
+        LOGGER.debug("[ClientCache] Quest updated: {} → {}", questId, data.getState());
+
+        try {
+            fireQuestSideEffects(questId, data, oldState, oldPhaseId, previousData);
+        } catch (Exception e) {
+            LOGGER.error("[ClientCache] Error firing side effects for quest {}", questId, e);
+        }
+
+        try {
+            for (QuestCacheListener l : listeners) {
+                l.onQuestUpdated(questId, data, oldState, oldPhaseId, previousData);
+            }
+        } catch (Exception e) {
+            LOGGER.error("[ClientCache] Error notifying listeners for quest {}", questId, e);
+        }
+
+        refreshJournalIfOpen();
+    }
+
+    private void applyQuestStateUpdate(QuestRuntimeData data, String questId,
+                                       @Nullable QuestState oldState, @Nullable String oldPhaseId) {
         switch (data.getState()) {
             case ACTIVE -> {
                 activeQuests.put(questId, data);
                 completedQuests.remove(questId);
                 failedQuests.remove(questId);
-
-                // 触发动画钩子：接取任务
-                if (oldState == null) {
-                    onQuestAccepted(questId);
-                    QuestChangeHistoryStore.INSTANCE.recordQuestAccepted(questId);
-                }
-
-                // 触发 Phase 开始音效（如果是新阶段）
-                if (oldPhaseId != null && !oldPhaseId.equals(data.getCurrentPhaseId())) {
-                    onPhaseStarted(questId, data.getCurrentPhaseId());
-                }
             }
             case COMPLETED -> {
                 activeQuests.remove(questId);
                 completedQuests.add(questId);
                 failedQuests.remove(questId);
-
-                // 触发动画钩子：完成任务
-                if (oldState != QuestState.COMPLETED) {
-                    onQuestCompleted(questId);
-                    QuestChangeHistoryStore.INSTANCE.recordQuestCompleted(questId);
-                }
             }
             case FAILED -> {
                 activeQuests.remove(questId);
                 failedQuests.add(questId);
+            }
+            default -> activeQuests.put(questId, data);
+        }
+    }
 
-                // 触发动画钩子：任务失败
+    private void fireQuestSideEffects(String questId, QuestRuntimeData data,
+                                      @Nullable QuestState oldState, @Nullable String oldPhaseId,
+                                      @Nullable QuestRuntimeData previousData) {
+        switch (data.getState()) {
+            case ACTIVE -> {
+                if (oldState == null) {
+                    onQuestAccepted(questId);
+                    for (QuestCacheListener l : listeners) l.onQuestAccepted(questId);
+                }
+                if (oldPhaseId != null && !oldPhaseId.equals(data.getCurrentPhaseId())) {
+                    onPhaseStarted(questId, data.getCurrentPhaseId());
+                    for (QuestCacheListener l : listeners) l.onPhaseStarted(questId, data.getCurrentPhaseId());
+                }
+            }
+            case COMPLETED -> {
+                if (oldState != QuestState.COMPLETED) {
+                    onQuestCompleted(questId);
+                    for (QuestCacheListener l : listeners) l.onQuestCompleted(questId);
+                }
+            }
+            case FAILED -> {
                 if (oldState != QuestState.FAILED) {
                     onQuestFailed(questId);
-                    QuestChangeHistoryStore.INSTANCE.recordQuestFailed(questId);
+                    for (QuestCacheListener l : listeners) l.onQuestFailed(questId);
                 }
             }
             default -> {
-                // 处理阶段切换（即使状态没变，阶段也可能变了）
-                if (activeQuests.containsKey(questId)) {
-                    String curPhase = activeQuests.get(questId).getCurrentPhaseId();
+                if (previousData != null) {
+                    String curPhase = previousData.getCurrentPhaseId();
                     if (!curPhase.equals(data.getCurrentPhaseId())) {
                         onPhaseStarted(questId, data.getCurrentPhaseId());
+                        for (QuestCacheListener l : listeners) l.onPhaseStarted(questId, data.getCurrentPhaseId());
                     }
                 }
-                activeQuests.put(questId, data);
             }
         }
-
-        LOGGER.debug("[ClientCache] Quest updated: {} → {}", questId, data.getState());
-        recordQuestDeltaHistory(questId, previousData, data);
-        maybeShowCollectionToasts(questId, previousData, data);
-        refreshJournalIfOpen();
-    }
-
-    private void recordQuestDeltaHistory(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
-        if (previousData == null || newData == null) return;
-
-        Set<String> beforeActive = previousData.getActivePhaseIds();
-        Set<String> afterActive = newData.getActivePhaseIds();
-        Set<String> beforeCompleted = previousData.getCompletedPhaseIds();
-        Set<String> afterCompleted = newData.getCompletedPhaseIds();
-        Set<String> beforePending = previousData.getPendingManualAdvancePhaseIds();
-        Set<String> afterPending = newData.getPendingManualAdvancePhaseIds();
-
-        for (String phaseId : afterActive) {
-            if (!beforeActive.contains(phaseId)) QuestChangeHistoryStore.INSTANCE.recordPhaseAdded(questId, phaseId);
-        }
-        for (String phaseId : afterCompleted) {
-            if (!beforeCompleted.contains(phaseId))
-                QuestChangeHistoryStore.INSTANCE.recordPhaseCompleted(questId, phaseId);
-        }
-        for (String phaseId : afterPending) {
-            if (!beforePending.contains(phaseId)) {
-                String phaseName = getPhaseDisplayName(questId, phaseId);
-                int themeColor = getQuestThemeColor(questId, 0xFFD166);
-                QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.PENDING_CONFIRM);
-            }
-        }
-
-        String oldCurrent = previousData.getCurrentPhaseId();
-        String newCurrent = newData.getCurrentPhaseId();
-        if (!Objects.equals(oldCurrent, newCurrent) && newCurrent != null && !newCurrent.isEmpty()) {
-            QuestChangeHistoryStore.INSTANCE.recordPhaseSwitched(questId, oldCurrent, newCurrent);
-            if (oldCurrent != null && !oldCurrent.isEmpty() && afterCompleted.contains(oldCurrent))
-                QuestChangeHistoryStore.INSTANCE.recordPhaseAdvanced(questId, oldCurrent, newCurrent);
-        }
-    }
-
-    private void maybeShowCollectionToasts(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
-        CollectionRuntimeData before = previousData != null ? previousData.getCollectionData() : null;
-        CollectionRuntimeData after = newData.getCollectionData();
-        if (after == null) return;
-        String questName = getQuestDisplayName(questId);
-        Set<String> beforeDiscovered = before != null ? before.getDiscoveredPhaseIds() : Set.of();
-        for (String phaseId : after.getDiscoveredPhaseIds())
-            if (!beforeDiscovered.contains(phaseId)) {
-                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_ENTRY_DISCOVERED, questName);
-                QuestChangeHistoryStore.INSTANCE.recordCollectionEntryDiscovered(questId, phaseId);
-            }
-        Set<String> beforeUnlocked = before != null ? before.getUnlockedRewardIds() : Set.of();
-        for (String rewardId : after.getUnlockedRewardIds())
-            if (!beforeUnlocked.contains(rewardId)) {
-                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_UNLOCKED, questName);
-                QuestChangeHistoryStore.INSTANCE.recordCollectionRewardUnlocked(questId, rewardId);
-            }
-        Set<String> beforeClaimed = before != null ? before.getClaimedRewardIds() : Set.of();
-        for (String rewardId : after.getClaimedRewardIds())
-            if (!beforeClaimed.contains(rewardId)) {
-                QuestToastManager.show(QuestToastManager.ToastType.COLLECTION_REWARD_CLAIMED, questName);
-                QuestChangeHistoryStore.INSTANCE.recordCollectionRewardClaimed(questId, rewardId);
-            }
-        Set<String> beforeCompleted = previousData != null ? previousData.getCompletedPhaseIds() : Set.of();
-        for (String phaseId : newData.getCompletedPhaseIds())
-            if (!beforeCompleted.contains(phaseId)) {
-                String phaseName = getPhaseDisplayName(questId, phaseId);
-                int themeColor = getQuestThemeColor(questId, 0x66FF66);
-                QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.COMPLETED);
-                QuestChangeHistoryStore.INSTANCE.recordCollectionEntryCompleted(questId, phaseId);
-            }
-        recordCollectionCompletionHistory(questId, previousData, newData);
-    }
-
-    private void recordCollectionCompletionHistory(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {
-        if (previousData == null || newData == null) return;
-        int beforeDone = countCompletedCollectionEntries(questId, previousData);
-        int afterDone = countCompletedCollectionEntries(questId, newData);
-        int total = getCollectionTotalEntryCount(questId);
-        if (total > 0 && beforeDone < total && afterDone >= total) {
-            QuestChangeHistoryStore.INSTANCE.recordCollectionQuestCompleted(questId);
-        }
-
-        ResourceLocation rl = ResourceLocation.tryParse(questId);
-        QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
-        if (def == null || !def.isCollectionQuest()) return;
-        Set<String> beforeCategories = completedCollectionCategories(def, previousData);
-        Set<String> afterCategories = completedCollectionCategories(def, newData);
-        for (String categoryId : afterCategories) {
-            if (!beforeCategories.contains(categoryId))
-                QuestChangeHistoryStore.INSTANCE.recordCollectionCategoryCompleted(questId, categoryId);
-        }
-    }
-
-    private int countCompletedCollectionEntries(String questId, QuestRuntimeData runtime) {
-        ResourceLocation rl = ResourceLocation.tryParse(questId);
-        QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
-        if (def == null || runtime == null) return 0;
-        int completed = 0;
-        for (String phaseId : def.getPhaseIds()) {
-            PhaseDefinition phase = def.getPhase(phaseId);
-            if (phase != null && phase.hasCollectionEntryConfig() && runtime.isPhaseCompleted(phaseId)) completed++;
-        }
-        return completed;
-    }
-
-    private Set<String> completedCollectionCategories(QuestDefinition def, QuestRuntimeData runtime) {
-        Set<String> completed = new LinkedHashSet<>();
-        if (def.getCollectionConfig() == null || runtime == null) return completed;
-        for (var category : def.getCollectionConfig().getCategories()) {
-            String categoryId = category.getCategoryId();
-            int total = 0;
-            int done = 0;
-            for (String phaseId : def.getPhaseIds()) {
-                PhaseDefinition phase = def.getPhase(phaseId);
-                if (phase == null || !phase.hasCollectionEntryConfig()) continue;
-                if (!categoryId.equals(phase.getCollectionEntryConfig().getCategoryId())) continue;
-                total++;
-                if (runtime.isPhaseCompleted(phaseId)) done++;
-            }
-            if (total > 0 && done >= total) completed.add(categoryId);
-        }
-        return completed;
     }
 
     /**
@@ -401,9 +308,8 @@ public final class ClientQuestCache {
 
     private void recordObjectiveHistory(String questId, String phaseId, int objIndex, int oldProgress, int newProgress) {
         int required = resolveObjectiveRequired(questId, phaseId, objIndex);
-        QuestChangeHistoryStore.INSTANCE.recordObjectiveProgress(questId, phaseId, objIndex, oldProgress, newProgress, required);
-        if (required > 0 && oldProgress < required && newProgress >= required) {
-            QuestChangeHistoryStore.INSTANCE.recordObjectiveCompleted(questId, phaseId, objIndex, required);
+        for (QuestCacheListener l : listeners) {
+            l.onObjectiveProgress(questId, phaseId, objIndex, oldProgress, newProgress, required);
         }
     }
 
