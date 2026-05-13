@@ -80,6 +80,7 @@ public class QuestJournalScreen extends Screen {
     public void setShowingChangeLog(boolean showing) {
         showingChangeLog = showing;
         if (showing) {
+            selectedIndex = -1;
             changeHistoryPanel.reset();
         }
     }
@@ -130,6 +131,16 @@ public class QuestJournalScreen extends Screen {
         super.init();
         QuestChangeHistoryStore.INSTANCE.ensureLoaded();
         lastRenderTime = 0;
+
+        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        if (trackedQuestId != null && !trackedQuestId.isEmpty()) {
+            if (ClientQuestCache.INSTANCE.isQuestCompleted(trackedQuestId)) {
+                currentTab = JournalTypes.Tab.COMPLETED;
+            } else if (ClientQuestCache.INSTANCE.isQuestFailed(trackedQuestId)) {
+                currentTab = JournalTypes.Tab.FAILED;
+            }
+        }
+
         rebuildEntries();
     }
 
@@ -581,6 +592,11 @@ public class QuestJournalScreen extends Screen {
     }
 
     public void onEntrySelected(int idx) {
+        if (showingChangeLog && selectedIndex == idx) {
+            selectedIndex = -1;
+            playClick();
+            return;
+        }
         if (selectedIndex != idx) {
             selectedIndex = idx;
             detailPanel.resetState();
@@ -592,15 +608,12 @@ public class QuestJournalScreen extends Screen {
         String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
         if (trackedQuestId == null || trackedQuestId.isEmpty()) return null;
         if (ClientQuestCache.INSTANCE.isQuestActive(trackedQuestId)) {
-            currentTab = JournalTypes.Tab.ACTIVE;
             return trackedQuestId;
         }
         if (ClientQuestCache.INSTANCE.isQuestCompleted(trackedQuestId)) {
-            currentTab = JournalTypes.Tab.COMPLETED;
             return trackedQuestId;
         }
         if (ClientQuestCache.INSTANCE.isQuestFailed(trackedQuestId)) {
-            currentTab = JournalTypes.Tab.FAILED;
             return trackedQuestId;
         }
         return null;

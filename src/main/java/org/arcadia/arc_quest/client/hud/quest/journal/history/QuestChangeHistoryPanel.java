@@ -53,12 +53,12 @@ public final class QuestChangeHistoryPanel {
         int contentX = x + 16;
         int contentW = w - 32;
 
-        // 1. 顶部大标题 (动态显示当前任务名)
+        // 1. 顶部大标题 (动态显示当前任务名，未选中时显示全局)
         String qName = currentQuestName();
         g.pose().pushPose();
         g.pose().translate(contentX, localY, 0);
         g.pose().scale(1.05f, 1.05f, 1f);
-        g.drawString(font, "// ARCHIVE: " + (qName.isEmpty() ? "UNKNOWN" : qName.toUpperCase()), 0, 0, HudAnimUtil.withAlpha(theme, alpha), true);
+        g.drawString(font, "// ARCHIVE: " + (qName.isEmpty() ? "ALL QUESTS" : qName.toUpperCase()), 0, 0, HudAnimUtil.withAlpha(theme, alpha), true);
         g.pose().popPose();
         localY += 24;
 
@@ -103,13 +103,11 @@ public final class QuestChangeHistoryPanel {
     }
 
     private void updateRowsIfNeeded() {
-        String currentQ = currentQuestId();
-        // 只有当任务改变，或者切换了标签时，才重新拉取数据
+        String currentQ = selectedTab == FilterTab.GLOBAL ? "" : currentQuestId();
         if (cachedRows.isEmpty() || !Objects.equals(lastQuestId, currentQ)) {
             QuestChangeHistoryFilters filters = new QuestChangeHistoryFilters();
             filters.category = selectedTab.category;
             filters.limit = 240;
-            // 强制且唯一锁定当前任务
             if (!currentQ.isEmpty()) {
                 filters.questId = currentQ;
             }
@@ -252,6 +250,7 @@ public final class QuestChangeHistoryPanel {
 
     // 现代化的单排过滤标签定义
     private enum FilterTab {
+        GLOBAL("GLOBAL", null),
         ALL("ALL LOGS", null),
         PHASE("STAGES", QuestChangeHistoryCategory.PHASE),
         OBJ("TASKS", QuestChangeHistoryCategory.OBJECTIVE),
