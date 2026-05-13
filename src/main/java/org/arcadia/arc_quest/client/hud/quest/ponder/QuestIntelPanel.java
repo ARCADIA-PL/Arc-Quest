@@ -19,6 +19,7 @@ import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
+import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 

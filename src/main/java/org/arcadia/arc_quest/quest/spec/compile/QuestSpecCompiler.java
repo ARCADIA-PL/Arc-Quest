@@ -145,16 +145,18 @@ public final class QuestSpecCompiler {
             return parsed;
         }
 
-        // 单段 path 视为原生 Ponder scene id，直接透传。
         if (!path.contains("/")) {
             return parsed;
         }
 
-        // 双段 path 视为任务阶段简写：namespace:questPath/phasePath。
-        String phasePath = phaseId;
-        int colon = phasePath.indexOf(':');
-        if (colon >= 0) phasePath = phasePath.substring(colon + 1);
-        return IntelSceneIdHelper.questPhaseId(parsed.toString(), phasePath);
+        String[] segments = path.split("/", 2);
+        if (segments.length == 2 && !segments[0].isBlank() && !segments[1].isBlank()) {
+            String questId = parsed.getNamespace() + ":" + segments[0];
+            String intelPhaseId = parsed.getNamespace() + ":" + segments[1];
+            return IntelSceneIdHelper.questPhaseId(questId, intelPhaseId);
+        }
+
+        throw new QuestCompileException("Invalid intelSceneId shorthand: '" + rawIntelSceneId + "' for phase '" + phaseId + "'");
     }
     private CollectionQuestConfig compileCollectionConfig(CollectionQuestSpecData spec) {
         if (spec == null) return null;
