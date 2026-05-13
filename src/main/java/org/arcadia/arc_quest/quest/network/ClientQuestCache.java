@@ -8,6 +8,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -86,6 +87,8 @@ public final class ClientQuestCache {
     public void applyFullSync(CompoundTag capData) {
         Set<String> oldFailed = new LinkedHashSet<>(failedQuests);
 
+        boolean hadData = !activeQuests.isEmpty() || !completedQuests.isEmpty() || !failedQuests.isEmpty();
+
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();
@@ -121,6 +124,10 @@ public final class ClientQuestCache {
         CompoundTag varsTag = capData.getCompound("Variables");
         for (String key : varsTag.getAllKeys()) {
             variables.put(key, varsTag.getInt(key));
+        }
+
+        if (hadData && activeQuests.isEmpty() && completedQuests.isEmpty() && failedQuests.isEmpty()) {
+            QuestChangeHistoryStore.INSTANCE.clear();
         }
 
         if (hasAppliedFullSync) {
