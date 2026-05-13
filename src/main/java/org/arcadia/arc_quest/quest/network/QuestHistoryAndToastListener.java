@@ -1,8 +1,11 @@
 package org.arcadia.arc_quest.quest.network;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -63,19 +66,26 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         Set<String> beforePending = previousData.getPendingManualAdvancePhaseIds();
         Set<String> afterPending = newData.getPendingManualAdvancePhaseIds();
 
+        boolean hasPhaseChange = false;
+
         for (String phaseId : afterActive) {
-            if (!beforeActive.contains(phaseId))
+            if (!beforeActive.contains(phaseId)) {
                 QuestChangeHistoryStore.INSTANCE.recordPhaseAdded(questId, phaseId);
+                hasPhaseChange = true;
+            }
         }
         for (String phaseId : afterCompleted) {
-            if (!beforeCompleted.contains(phaseId))
+            if (!beforeCompleted.contains(phaseId)) {
                 QuestChangeHistoryStore.INSTANCE.recordPhaseCompleted(questId, phaseId);
+                hasPhaseChange = true;
+            }
         }
         for (String phaseId : afterPending) {
             if (!beforePending.contains(phaseId)) {
                 String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, phaseId);
                 int themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, 0xFFD166);
                 QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.PENDING_CONFIRM);
+                hasPhaseChange = true;
             }
         }
 
@@ -85,7 +95,25 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
             QuestChangeHistoryStore.INSTANCE.recordPhaseSwitched(questId, oldCurrent, newCurrent);
             if (oldCurrent != null && !oldCurrent.isEmpty() && afterCompleted.contains(oldCurrent))
                 QuestChangeHistoryStore.INSTANCE.recordPhaseAdvanced(questId, oldCurrent, newCurrent);
+            hasPhaseChange = true;
         }
+
+        if (hasPhaseChange) {
+            markUnreadIfNotTracked(questId);
+        }
+    }
+
+    private void markUnreadIfNotTracked(String questId) {
+        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        if (questId.equals(trackedQuestId)) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof QuestJournalScreen journal) {
+            String selectedId = journal.getSelectedQuestId();
+            if (questId.equals(selectedId)) return;
+        }
+
+        QuestChangeNotificationManager.INSTANCE.markUnread(questId);
     }
 
     private void maybeShowCollectionToasts(String questId, @Nullable QuestRuntimeData previousData, QuestRuntimeData newData) {

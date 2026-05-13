@@ -19,6 +19,7 @@ import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -30,6 +31,7 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -591,6 +593,14 @@ public class QuestJournalScreen extends Screen {
         return selectedIndex;
     }
 
+    @Nullable
+    public String getSelectedQuestId() {
+        if (selectedIndex >= 0 && selectedIndex < currentEntries.size()) {
+            return currentEntries.get(selectedIndex).questId();
+        }
+        return null;
+    }
+
     public void onEntrySelected(int idx) {
         if (showingChangeLog && selectedIndex == idx) {
             selectedIndex = -1;
@@ -600,6 +610,9 @@ public class QuestJournalScreen extends Screen {
         if (selectedIndex != idx) {
             selectedIndex = idx;
             detailPanel.resetState();
+            if (idx >= 0 && idx < currentEntries.size()) {
+                QuestChangeNotificationManager.INSTANCE.markRead(currentEntries.get(idx).questId());
+            }
             playClick();
         }
     }
