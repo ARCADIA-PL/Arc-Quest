@@ -41,17 +41,26 @@ public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
     @Override
     @Nullable
     public String getDialogueTreeId(ServerPlayer player, Villager villager, InteractionHand hand) {
-        // 1. 优先检查 PersistentData
-        if (villager.getPersistentData().contains("ArcQuestNpcId")) {
-            String npcId = villager.getPersistentData().getString("ArcQuestNpcId");
+        CompoundTag persistentData = villager.getPersistentData();
+
+        if (persistentData.contains("ArcQuestDialogueId")) {
+            return persistentData.getString("ArcQuestDialogueId");
+        }
+
+        if (persistentData.contains("ArcQuestNpcId")) {
+            String npcId = persistentData.getString("ArcQuestNpcId");
             if ("blacksmith".equals(npcId)) {
                 return "arc_quest:epic_blacksmith";
             }
         }
 
-        // 2. 尝试从根 NBT 读取 ArcQuestNpcId
         CompoundTag fullNbt = new CompoundTag();
-        villager.save(fullNbt);
+        villager.saveWithoutId(fullNbt);
+
+        if (fullNbt.contains("ArcQuestDialogueId")) {
+            return fullNbt.getString("ArcQuestDialogueId");
+        }
+
         if (fullNbt.contains("ArcQuestNpcId")) {
             String npcId = fullNbt.getString("ArcQuestNpcId");
             if ("blacksmith".equals(npcId)) {
@@ -59,7 +68,6 @@ public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
             }
         }
 
-        // 3. 通过自定义名称识别
         if (villager.hasCustomName()) {
             String name = villager.getCustomName().getString();
             if (name.contains("铁匠") || name.contains("Blacksmith")) {

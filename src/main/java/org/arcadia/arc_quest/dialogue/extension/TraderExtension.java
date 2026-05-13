@@ -43,8 +43,12 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
     @Override
     @Nullable
     public String getDialogueTreeId(ServerPlayer player, WanderingTrader wanderingTrader, InteractionHand hand) {
-        // 1. 优先检查 PersistentData
-        var persistentData = wanderingTrader.getPersistentData();
+        CompoundTag persistentData = wanderingTrader.getPersistentData();
+
+        if (persistentData.contains("ArcQuestDialogueId")) {
+            return persistentData.getString("ArcQuestDialogueId");
+        }
+
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
             if ("merchant".equals(npcId)) {
@@ -55,24 +59,23 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
             }
         }
 
-        // 2. 尝试从根 NBT 读取 ArcQuestNpcId
-        try {
-            CompoundTag fullNbt = new CompoundTag();
-            wanderingTrader.save(fullNbt);
-            if (fullNbt.contains("ArcQuestNpcId")) {
-                String npcId = fullNbt.getString("ArcQuestNpcId");
-                if ("merchant".equals(npcId)) {
-                    return "arc_quest:epic_merchant";
-                }
-                if ("wandering_trader".equals(npcId)) {
-                    return "arc_quest:epic_wandering_trader";
-                }
-            }
-        } catch (Exception e) {
-            Arc_Quest.LOGGER.debug("[TraderExtension] Failed to read root NBT: {}", e.getMessage());
+        CompoundTag fullNbt = new CompoundTag();
+        wanderingTrader.saveWithoutId(fullNbt);
+
+        if (fullNbt.contains("ArcQuestDialogueId")) {
+            return fullNbt.getString("ArcQuestDialogueId");
         }
 
-        // 3. 通过自定义名称识别（最简单）
+        if (fullNbt.contains("ArcQuestNpcId")) {
+            String npcId = fullNbt.getString("ArcQuestNpcId");
+            if ("merchant".equals(npcId)) {
+                return "arc_quest:epic_merchant";
+            }
+            if ("wandering_trader".equals(npcId)) {
+                return "arc_quest:epic_wandering_trader";
+            }
+        }
+
         if (wanderingTrader.hasCustomName()) {
             String name = Objects.requireNonNull(wanderingTrader.getCustomName()).getString();
             if (name.contains("商人") || name.contains("Merchant")) {

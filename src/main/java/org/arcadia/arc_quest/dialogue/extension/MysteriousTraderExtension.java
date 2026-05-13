@@ -44,8 +44,12 @@ public class MysteriousTraderExtension implements IEntityDialogueExtension<Wande
     @Override
     @Nullable
     public String getDialogueTreeId(ServerPlayer player, WanderingTrader wanderingTrader, InteractionHand hand) {
-        // 1. 优先检查 PersistentData
-        var persistentData = wanderingTrader.getPersistentData();
+        CompoundTag persistentData = wanderingTrader.getPersistentData();
+
+        if (persistentData.contains("ArcQuestDialogueId")) {
+            return persistentData.getString("ArcQuestDialogueId");
+        }
+
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
             if ("mysterious_merchant".equals(npcId)) {
@@ -53,21 +57,20 @@ public class MysteriousTraderExtension implements IEntityDialogueExtension<Wande
             }
         }
 
-        // 2. 尝试从根 NBT 读取 ArcQuestNpcId
-        try {
-            CompoundTag fullNbt = new CompoundTag();
-            wanderingTrader.save(fullNbt);
-            if (fullNbt.contains("ArcQuestNpcId")) {
-                String npcId = fullNbt.getString("ArcQuestNpcId");
-                if ("mysterious_merchant".equals(npcId)) {
-                    return "arc_quest:epic_mysterious_merchant";
-                }
-            }
-        } catch (Exception e) {
-            Arc_Quest.LOGGER.debug("[TraderExtension] Failed to read root NBT: {}", e.getMessage());
+        CompoundTag fullNbt = new CompoundTag();
+        wanderingTrader.saveWithoutId(fullNbt);
+
+        if (fullNbt.contains("ArcQuestDialogueId")) {
+            return fullNbt.getString("ArcQuestDialogueId");
         }
 
-        // 3. 通过自定义名称识别（最简单）
+        if (fullNbt.contains("ArcQuestNpcId")) {
+            String npcId = fullNbt.getString("ArcQuestNpcId");
+            if ("mysterious_merchant".equals(npcId)) {
+                return "arc_quest:epic_mysterious_merchant";
+            }
+        }
+
         if (wanderingTrader.hasCustomName()) {
             String name = Objects.requireNonNull(wanderingTrader.getCustomName()).getString();
             if (name.contains("神秘人") || name.contains("MysteriousMerchant")) {

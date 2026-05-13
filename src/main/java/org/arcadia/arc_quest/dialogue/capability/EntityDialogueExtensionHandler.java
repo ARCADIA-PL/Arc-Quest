@@ -23,9 +23,11 @@ import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.dialogue.util.AnnotatedInstanceUtil;
+import org.arcadia.arc_quest.npc.NpcInteractionHandler;
 import org.slf4j.Logger;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 实体对话扩展系统 - 处理扩展注册、实体交互和 tick 更新。
@@ -68,31 +70,44 @@ public class EntityDialogueExtensionHandler {
         if (DialogueSessionManager.INSTANCE.isInDialogue(player)) return;
 
         if (!EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(target.getType())) {
-            return; // 没有扩展，使用原有的 NBT 绑定方式
+            return;
         }
 
-        // 执行扩展的交互逻辑
+        AtomicReference<String> resolvedId = new AtomicReference<>(null);
+        AtomicReference<IEntityDialogueExtension<Entity>> resolvedExt = new AtomicReference<>(null);
+
         EntityDialogueExtensionManager.INSTANCE.runIfExtensionExists(player, target, extension -> {
             @SuppressWarnings("unchecked")
             IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extension;
 
             String dialogueId = ext.getDialogueTreeId(player, target, event.getHand());
-            if (dialogueId == null) {
-                return;
+            if (dialogueId != null) {
+                resolvedId.set(dialogueId);
+                resolvedExt.set(ext);
             }
+        });
 
-            DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
-            if (tree == null) {
-                LOGGER.warn("[EntityDialogueExtension] Dialogue '{}' not found for entity {}",
-                        dialogueId, target.getName().getString());
-                return;
-            }
+        String dialogueId = resolvedId.get();
+        if (dialogueId == null) {
+            dialogueId = NpcInteractionHandler.resolveDialogueId(target);
+        }
 
-            ensureDialogueNpcPatch(target, player);
+        if (dialogueId == null) return;
 
-            DialogueSession session = DialogueSessionManager.INSTANCE.startDialogue(
-                    player, target, tree.dialogueId(), new DialogueContext());
+        DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
+        if (tree == null) {
+            LOGGER.warn("[EntityDialogueExtension] Dialogue '{}' not found for entity {}",
+                    dialogueId, target.getName().getString());
+            return;
+        }
 
+        ensureDialogueNpcPatch(target, player);
+
+        DialogueSession session = DialogueSessionManager.INSTANCE.startDialogue(
+                player, target, tree.dialogueId(), new DialogueContext());
+
+        IEntityDialogueExtension<Entity> ext = resolvedExt.get();
+        if (ext != null) {
             ext.onDialogueStart(player, target, session);
 
             InteractionResult cancelResult = ext.shouldCancelInteract(player, target);
@@ -100,10 +115,13 @@ public class EntityDialogueExtensionHandler {
                 event.setCancellationResult(cancelResult);
                 event.setCanceled(true);
             }
+        } else {
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            event.setCanceled(true);
+        }
 
-            LOGGER.debug("[EntityDialogueExtension] Player '{}' started dialogue '{}' with '{}' via extension",
-                    player.getName().getString(), dialogueId, target.getName().getString());
-        });
+        LOGGER.debug("[EntityDialogueExtension] Player '{}' started dialogue '{}' with '{}'",
+                player.getName().getString(), dialogueId, target.getName().getString());
     }
 
     /**

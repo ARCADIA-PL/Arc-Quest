@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "arc_quest.refmap.json",
   "mixins": [
+    "MixinEntity"
   ],
   "client": [
     "client.MixinForgeGui",
