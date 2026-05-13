@@ -64,9 +64,8 @@ public final class QuestChangeHistoryPanel {
 
         // 2. 现代化的药丸式(Pill)单排过滤标签
         drawFilterChips(g, font, contentX, localY, mouseX, mouseY, theme, alpha);
-        localY += 28; // 留出呼吸空间
+        localY += 28;
 
-        // 3. 数据更新与滚动限制
         updateRowsIfNeeded();
 
         int listY = localY;
@@ -146,19 +145,26 @@ public final class QuestChangeHistoryPanel {
         boolean hovered = inside(mx, my, x, y, w, rowH - 4);
         int color = entry.themeColor != 0 ? entry.themeColor : entry.type.accentColor();
 
-        // 1. 悬停反馈 (科幻边框发光)
+        boolean isPhaseEntry = entry.type == QuestChangeHistoryType.PHASE_ADDED
+                || entry.type == QuestChangeHistoryType.PHASE_SWITCHED
+                || entry.type == QuestChangeHistoryType.PHASE_ADVANCED
+                || entry.type == QuestChangeHistoryType.PHASE_COMPLETED;
+        boolean isUnread = isPhaseEntry && QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId);
+
+        if (hovered && isUnread) {
+            QuestChangeNotificationManager.INSTANCE.markRead(entry.questId);
+        }
+
         if (hovered) {
             g.fill(x + 46, y, x + w, y + rowH - 4, HudAnimUtil.withAlpha(color, (int) (0.08f * alpha)));
             HudRenderUtil.drawCyberneticEdge(g, x + 46, y, rowH - 4, color, (int) (0.6f * alpha));
         }
 
-        // 2. 左侧时间文本
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(entry.timeMs);
         String timeStr = String.format("%02d:%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND));
         drawScaled(g, font, timeStr, x, y + 15, 0.75f, HudAnimUtil.withAlpha(0x8899AA, alpha), false);
 
-        // 3. 贯穿的时间轴竖线与节点
         int axisX = x + 40;
         g.fill(axisX, y, axisX + 1, y + rowH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0.1f * alpha)));
 
@@ -169,7 +175,6 @@ public final class QuestChangeHistoryPanel {
             g.fill(axisX - nodeSize + 1, nodeY - nodeSize + 1, axisX + nodeSize, nodeY + nodeSize, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
         }
 
-        // 4. 右侧内容详情
         int contentX = axisX + 12;
         drawScaled(g, font, entry.type.displayName(), contentX, y + 7, 0.7f, HudAnimUtil.withAlpha(color, alpha), false);
 
@@ -177,7 +182,12 @@ public final class QuestChangeHistoryPanel {
         title = font.plainSubstrByWidth(title, (int) ((w - contentX + x) / 0.85f));
         drawScaled(g, font, title, contentX, y + 18, 0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
 
-        // 5. 悬停提示 Tooltip
+        if (isUnread) {
+            int rhombusX = x + w - 12;
+            int rhombusY = y + rowH / 2;
+            HudRenderUtil.drawBreathingRhombus(g, rhombusX, rhombusY, color | 0xFF000000, (System.currentTimeMillis() / 1000f), alpha / 255f);
+        }
+
         if (hovered) {
             screen.setHoveredCustomTooltip(List.of(
                     Component.literal("Exact Time: " + QuestChangeHistoryFormatter.fullTime(entry.timeMs)).withStyle(Style.EMPTY.withColor(0xFFD166)),
@@ -189,7 +199,7 @@ public final class QuestChangeHistoryPanel {
     public boolean mouseClicked(double mx, double my, int button, int x, int y, int w, int h) {
         if (button != 0) return false;
         int contentX = x + 16;
-        int py = y + 40; // 过滤标签的Y轴位置
+        int py = y + 40;
 
         int fx = contentX;
         for (FilterTab tab : FilterTab.values()) {

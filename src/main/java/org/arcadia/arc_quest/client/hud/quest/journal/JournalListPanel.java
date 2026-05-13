@@ -2,7 +2,9 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.quest.api.IconPosition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
@@ -138,12 +140,35 @@ public class JournalListPanel {
                     g.drawString(screen.getFont(), summary, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)), false);
                     g.pose().popPose();
                 }
+
+                if (QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())) {
+                    int questTheme = ClientQuestCache.INSTANCE.getQuestThemeColor(entry.questId(), 0xFFD166);
+                    int rhombusX = x + w - 14;
+                    int rhombusY = entryY + JournalConstants.ENTRY_HEIGHT / 2;
+                    HudRenderUtil.drawBreathingRhombus(g, rhombusX, rhombusY, questTheme | 0xFF000000, (System.currentTimeMillis() / 1000f), effectiveAlpha);
+                }
             }
         }
         g.disableScissor();
 
         int maxScroll = Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - h);
         renderScrollbar(g, x + w - 6, y + 2, h - 4, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT, maxScroll);
+
+        if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()) {
+            int btnX = x + 4;
+            int btnY = y + h - 18;
+            int btnW = 80;
+            int btnH = 14;
+            boolean hoverBtn = mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH;
+            int btnBg = hoverBtn ? HudAnimUtil.withAlpha(theme, (int) (0.25f * effectiveAlpha)) : HudAnimUtil.withAlpha(theme, (int) (0.10f * effectiveAlpha));
+            g.fill(btnX, btnY, btnX + btnW, btnY + btnH, btnBg);
+            g.fill(btnX, btnY, btnX + 1, btnY + btnH, HudAnimUtil.withAlpha(theme, (int) (0.5f * effectiveAlpha)));
+            g.pose().pushPose();
+            g.pose().translate(btnX + 4, btnY + 3, 0);
+            g.pose().scale(0.65f, 0.65f, 1f);
+            g.drawString(screen.getFont(), "MARK ALL READ", 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)), false);
+            g.pose().popPose();
+        }
     }
 
     private TextCache getTextCache(JournalTypes.QuestListEntry entry) {
@@ -185,6 +210,12 @@ public class JournalListPanel {
         }
 
         if (mx >= x && mx <= x + w - 6 && my >= y && my <= y + h) {
+            if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+                    && mx >= x + 4 && mx <= x + 84 && my >= y + h - 18 && my <= y + h - 4) {
+                QuestChangeNotificationManager.INSTANCE.markAllRead();
+                screen.playClick();
+                return true;
+            }
             double relY = my - y + scrollOffset;
             int idx = (int) (relY / JournalConstants.ENTRY_HEIGHT);
             if (idx >= 0 && idx < screen.getCurrentEntries().size()) {
