@@ -27,6 +27,44 @@ public final class HudAnimUtil {
         return current;
     }
 
+    public static float advanceByDuration(float current, float durationSeconds, float dt) {
+        if (durationSeconds <= 0f) return 1f;
+        return Math.min(1f, current + dt / durationSeconds);
+    }
+
+    public static float retreatByDuration(float current, float durationSeconds, float dt) {
+        if (durationSeconds <= 0f) return 0f;
+        return Math.max(0f, current - dt / durationSeconds);
+    }
+
+    public static float expDecayFactor(float sharpnessPerSecond, float dt) {
+        if (sharpnessPerSecond <= 0f || dt <= 0f) return 0f;
+        return 1f - (float) Math.exp(-sharpnessPerSecond * dt);
+    }
+
+    public static float smoothExp(float current, float target, float sharpnessPerSecond, float dt) {
+        return current + (target - current) * expDecayFactor(sharpnessPerSecond, dt);
+    }
+
+    public static float halfLifeFactor(float halfLifeSeconds, float dt) {
+        if (halfLifeSeconds <= 0f || dt <= 0f) return dt > 0f ? 1f : 0f;
+        return 1f - (float) Math.pow(0.5, dt / halfLifeSeconds);
+    }
+
+    public static float smoothHalfLife(float current, float target, float halfLifeSeconds, float dt) {
+        return current + (target - current) * halfLifeFactor(halfLifeSeconds, dt);
+    }
+
+    public static int substepCount(float dt, float referenceFps) {
+        if (dt <= 0f || referenceFps <= 0f) return 1;
+        float step = 1f / referenceFps;
+        return Math.max(1, (int) Math.ceil(dt / step));
+    }
+
+    public static float substepDt(float dt, int substeps) {
+        return substeps <= 1 ? dt : dt / substeps;
+    }
+
     // 【保留精华】安全的乘法展开，比 Math.pow 快 10 倍且结果完全一致
     public static float easeOutCubic(float t) {
         float inv = 1.0f - t;

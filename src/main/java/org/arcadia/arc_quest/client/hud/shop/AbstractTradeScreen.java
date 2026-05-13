@@ -180,10 +180,10 @@ public abstract class AbstractTradeScreen extends Screen {
         lastRenderTime = now;
 
         if (QuestSplashRenderer.isActive()) {
-            suspendAlpha = Math.max(0f, suspendAlpha - realDt * 6f);
+            suspendAlpha = HudAnimUtil.retreatByDuration(suspendAlpha, 1f / 6f, realDt);
             dt = 0f;
         } else {
-            suspendAlpha = Math.min(1f, suspendAlpha + realDt * 4f);
+            suspendAlpha = HudAnimUtil.advanceByDuration(suspendAlpha, 1f / 4f, realDt);
             dt = realDt;
         }
 
@@ -212,9 +212,9 @@ public abstract class AbstractTradeScreen extends Screen {
         // ====================================================================
 
         if (!isClosing) {
-            transitionAnim = Math.min(1f, transitionAnim + dt / 0.35f);
+            transitionAnim = HudAnimUtil.advanceByDuration(transitionAnim, 0.35f, dt);
         } else {
-            transitionAnim = Math.max(0f, transitionAnim - dt / 0.25f);
+            transitionAnim = HudAnimUtil.retreatByDuration(transitionAnim, 0.25f, dt);
             if (transitionAnim <= 0.001f && minecraft != null) {
                 if (pendingParentScreen != null) {
                     if (pendingParentScreen instanceof DialogueScreen ds) {
@@ -238,7 +238,7 @@ public abstract class AbstractTradeScreen extends Screen {
         effectiveAlpha = transEase * HudAnimUtil.easeOutCubic(suspendAlpha);
 
         if (feedbackAnim > 0) {
-            feedbackAnim = Math.max(0, feedbackAnim - dt * 0.5f);
+            feedbackAnim = HudAnimUtil.retreatByDuration(feedbackAnim, 2.0f, dt);
             if (feedbackAnim <= 0) {
                 ClientTradeCache.INSTANCE.clearFeedback(shopId);
             }

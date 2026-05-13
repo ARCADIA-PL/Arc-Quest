@@ -84,7 +84,7 @@ public class TradeListPanel {
 
     public void render(GuiGraphics g, int rx, int ry, int rw, int rh, int mx, int my, float dt, float alpha, boolean isClosing, float fastClose) {
         clampScroll(rh);
-        scrollOffset += (targetScroll - scrollOffset) * Math.min(1.0, dt * 12.0);
+        scrollOffset = HudAnimUtil.smoothHalfLife((float) scrollOffset, (float) targetScroll, 0.06f, dt);
         g.enableScissor(rx, ry, rx + rw, ry + rh);
 
         float contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
@@ -125,7 +125,7 @@ public class TradeListPanel {
             if (gi == -1) continue;
 
             boolean hov = !isClosing && dt > 0 && mx >= rx && mx < rx + rw && my >= drawY && my < drawY + CARD_HEIGHT && my >= ry && my <= ry + rh;
-            entryHoverAnims[i] = HudAnimUtil.step(entryHoverAnims[i], hov && state.canBuy ? 1f : 0f, 6f, dt);
+            entryHoverAnims[i] = HudAnimUtil.smoothHalfLife(entryHoverAnims[i], hov && state.canBuy ? 1f : 0f, 0.08f, dt);
             float hEase = HudAnimUtil.easeOutCubic(entryHoverAnims[i]);
 
             int bgA = (int) ((0x22 + 0x33 * hEase) * alpha);

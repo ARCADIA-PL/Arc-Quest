@@ -78,7 +78,7 @@ public class TradeGridPanel {
     }
 
     public void render(GuiGraphics g, int mx, int my, float pt, float dt, float easeProgress, boolean isClosing) {
-        if (!isClosing && dt > 0) openAnimTime += dt;
+        if (!isClosing && dt > 0) openAnimTime = HudAnimUtil.advanceByDuration(openAnimTime, 0.45f + Math.max(0, entriesCountForOpenDelay(screen.getEntries().size())), dt);
         Layout l = computeLayout();
         List<TradeEntry> entries = screen.getEntries();
         float alpha = screen.getEffectiveAlpha();
@@ -106,7 +106,8 @@ public class TradeGridPanel {
                 fd.drawX = targetX + dir * ((1f - easeProgress) * (screen.width / 2f + 100f));
                 fd.drawY = targetY + (1f - easeProgress) * 30f;
             } else {
-                flyEase = HudAnimUtil.easeOutBack(Math.max(0, Math.min(1, (openAnimTime - i * 0.025f) / 0.45f)));
+                float flyProgress = Math.max(0f, Math.min(1f, (openAnimTime - i * 0.025f) / 0.45f));
+                flyEase = HudAnimUtil.easeOutBack(flyProgress);
                 fd.drawX = targetX - ((targetX + l.cardW() / 2f) - screen.width / 2f) * (1f - flyEase);
                 fd.drawY = targetY - ((targetY + l.cardH() / 2f) - screen.height / 2f) * (1f - flyEase);
             }
@@ -129,7 +130,7 @@ public class TradeGridPanel {
                 state.lastUpdateTime = now;
             }
 
-            hoverAnims[i] = HudAnimUtil.step(hoverAnims[i], hov && state.canBuy ? 1f : 0f, 10f, dt);
+            hoverAnims[i] = HudAnimUtil.smoothHalfLife(hoverAnims[i], hov && state.canBuy ? 1f : 0f, 0.05f, dt);
             fd.hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
             fd.bgScale = (isClosing ? 1.0f : flyEase) + fd.hEase * 0.06f;
             fd.contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : fd.bgScale;
@@ -299,7 +300,10 @@ public class TradeGridPanel {
         }
     }
 
-    public TradeEntry getHoveredEntry(int mx, int my) {
+
+    private float entriesCountForOpenDelay(int size) {
+        return Math.max(0, size - 1) * 0.025f;
+    }    public TradeEntry getHoveredEntry(int mx, int my) {
         Layout l = computeLayout();
         for (int i = 0; i < screen.getEntries().size(); i++) {
             int tx = l.startX() + (i % l.cols()) * (l.cardW() + l.gap()), ty = l.startY() + (i / l.cols()) * (l.cardH() + l.gap());

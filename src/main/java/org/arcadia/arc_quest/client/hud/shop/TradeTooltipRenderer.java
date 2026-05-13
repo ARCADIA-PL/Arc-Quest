@@ -107,7 +107,7 @@ public class TradeTooltipRenderer {
         }
 
         float targetAlpha = (hoveredEntry != null && hoverTimer >= HOVER_DELAY && !isClosing) ? 1f : 0f;
-        tooltipAlpha += (targetAlpha - tooltipAlpha) * Math.min(1f, dt * 15f);
+        tooltipAlpha = HudAnimUtil.smoothHalfLife(tooltipAlpha, targetAlpha, 0.05f, dt);
 
         if (tooltipAlpha > 0.02f && activeEntry != null) {
             int gi = new ArrayList<>(screen.getShop().getAllEntries()).indexOf(activeEntry);
@@ -223,26 +223,26 @@ public class TradeTooltipRenderer {
                 animThemeColor = target.themeColor;
             } else {
                 float ms = 18f;
-                animBgX += (target.x - animBgX) * Math.min(1f, dt * ms);
-                animBgY += (target.y - animBgY) * Math.min(1f, dt * ms);
-                animBgW += (target.w - animBgW) * Math.min(1f, dt * ms);
-                animBgH += (target.h - animBgH) * Math.min(1f, dt * ms);
-                animThemeColor = screen.lerpColor(animThemeColor, target.themeColor, Math.min(1f, dt * 10f));
+                animBgX = HudAnimUtil.smoothHalfLife(animBgX, target.x, 0.04f, dt);
+                animBgY = HudAnimUtil.smoothHalfLife(animBgY, target.y, 0.04f, dt);
+                animBgW = HudAnimUtil.smoothHalfLife(animBgW, target.w, 0.04f, dt);
+                animBgH = HudAnimUtil.smoothHalfLife(animBgH, target.h, 0.04f, dt);
+                animThemeColor = screen.lerpColor(animThemeColor, target.themeColor, HudAnimUtil.expDecayFactor(10f, dt));
             }
         }
 
         float targetProgress = target.maxP > 0 ? Math.min(1f, (float) target.purchases / target.maxP) : 0f;
-        animProgress += (targetProgress - animProgress) * Math.min(1f, dt * 8f);
+        animProgress = HudAnimUtil.smoothHalfLife(animProgress, targetProgress, 0.08f, dt);
 
         if (feedbackScale > 1.0f) {
-            feedbackScale += (1.0f - feedbackScale) * Math.min(1f, dt * 12f);
+            feedbackScale = HudAnimUtil.smoothHalfLife(feedbackScale, 1.0f, 0.06f, dt);
             if (Math.abs(feedbackScale - 1.0f) < 0.01f) feedbackScale = 1.0f;
         }
 
         int currentShake = 0;
         if (Math.abs(feedbackShake) > 0.1f) {
             currentShake = (int) (Math.sin(Util.getMillis() / 30.0) * feedbackShake);
-            feedbackShake *= Math.max(0, 1f - dt * 15f);
+            feedbackShake = HudAnimUtil.smoothHalfLife(feedbackShake, 0f, 0.05f, dt);
         } else feedbackShake = 0f;
 
         float scale = isClosing ? HudAnimUtil.easeInCubic(tooltipAlpha) : HudAnimUtil.easeOutCubic(tooltipAlpha);
