@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.events;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -71,6 +72,17 @@ public class ClientHudEvents {
             event.setCanceled(true);
             if (event.getButton() == 0) {
                 GachaResultRenderer.INSTANCE.mouseClicked();
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onInputMouseClickPre(InputEvent.MouseButton.Pre event) {
+        if (Minecraft.getInstance().screen != null) return;
+
+        if (QuestSplashRenderer.isActive() && event.getButton() == 0) {
+            if (QuestSplashRenderer.mouseClicked()) {
+                event.setCanceled(true);
             }
         }
     }
