@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -232,5 +233,23 @@ public final class HudRenderUtil {
             if (source.contains(needle)) return true;
         }
         return false;
+    }
+
+    public static void drawBreathingRhombus(GuiGraphics g, int cx, int cy, int themeColor, float time, float alpha) {
+        if (alpha < 0.05f) return;
+
+        float breath = ((float) Math.sin(time * 3.5f) + 1.0f) * 0.5f;
+        float scale = 0.7f + breath * 0.3f;
+        int a = (int) (alpha * 255f);
+        if (a < 5) return;
+
+        int color = (themeColor & 0x00FFFFFF) | (a << 24);
+
+        g.pose().pushPose();
+        g.pose().translate(cx, cy, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.pose().mulPose(Axis.ZP.rotationDegrees(45));
+        g.fill(-3, -3, 3, 3, color);
+        g.pose().popPose();
     }
 }
