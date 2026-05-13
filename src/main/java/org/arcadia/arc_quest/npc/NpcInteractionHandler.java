@@ -77,7 +77,7 @@ public class NpcInteractionHandler {
                 player.getName().getString(), dialogueId, target.getName().getString());
     }
 
-    private static String resolveDialogueId(Entity entity) {
+    public static String resolveDialogueId(Entity entity) {
         CompoundTag persistentData = entity.getPersistentData();
 
         // 方式 1：PersistentData 中直接指定对话 ID

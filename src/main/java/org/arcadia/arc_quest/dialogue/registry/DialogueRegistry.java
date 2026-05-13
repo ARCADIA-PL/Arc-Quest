@@ -76,8 +76,8 @@ public final class DialogueRegistry {
 
     @Nullable
     private DialogueTree getMergedTree(String dialogueId) {
-        DialogueTree tree = datapackTrees.get(dialogueId);
-        return tree != null ? tree : codeTrees.get(dialogueId);
+        DialogueTree tree = codeTrees.get(dialogueId);
+        return tree != null ? tree : datapackTrees.get(dialogueId);
     }
 
     public Collection<DialogueTree> getAll() {
@@ -88,9 +88,21 @@ public final class DialogueRegistry {
         return Collections.unmodifiableSet(getMergedTrees().keySet());
     }
 
+    public int datapackSize() {
+        return datapackTrees.size();
+    }
+
+    public int codeSize() {
+        return codeTrees.size();
+    }
+
+    public int size() {
+        return getMergedTrees().size();
+    }
+
     private Map<String, DialogueTree> getMergedTrees() {
-        Map<String, DialogueTree> merged = new LinkedHashMap<>(codeTrees);
-        merged.putAll(datapackTrees);
+        Map<String, DialogueTree> merged = new LinkedHashMap<>(datapackTrees);
+        merged.putAll(codeTrees);
         return merged;
     }
 
@@ -108,8 +120,8 @@ public final class DialogueRegistry {
 
     @Nullable
     public String getDialogueForNpc(String npcId) {
-        String dialogueId = datapackNpcBindings.get(npcId);
-        return dialogueId != null ? dialogueId : codeNpcBindings.get(npcId);
+        String dialogueId = codeNpcBindings.get(npcId);
+        return dialogueId != null ? dialogueId : datapackNpcBindings.get(npcId);
     }
 
     public void bindEntity(EntityType<?> entityType, String dialogueId) {
@@ -147,18 +159,18 @@ public final class DialogueRegistry {
     public String getDialogueForEntity(Entity entity, ServerPlayer player) {
         EntityType<?> type = entity.getType();
 
-        String dynamicResult = applyDynamicSelector(datapackEntityDynamicBindings.get(type), entity, player, type);
+        String dynamicResult = applyDynamicSelector(codeEntityDynamicBindings.get(type), entity, player, type);
         if (dynamicResult != null) {
             return dynamicResult;
         }
 
-        dynamicResult = applyDynamicSelector(codeEntityDynamicBindings.get(type), entity, player, type);
+        dynamicResult = applyDynamicSelector(datapackEntityDynamicBindings.get(type), entity, player, type);
         if (dynamicResult != null) {
             return dynamicResult;
         }
 
-        String dialogueId = datapackEntityBindings.get(type);
-        return dialogueId != null ? dialogueId : codeEntityBindings.get(type);
+        String dialogueId = codeEntityBindings.get(type);
+        return dialogueId != null ? dialogueId : datapackEntityBindings.get(type);
     }
 
     @Nullable

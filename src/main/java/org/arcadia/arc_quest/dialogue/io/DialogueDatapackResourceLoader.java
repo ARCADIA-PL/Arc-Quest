@@ -1,55 +1,63 @@
 package org.arcadia.arc_quest.dialogue.io;
 
+import org.arcadia.arc_quest.dialogue.spec.DialogueSpec;
+import org.arcadia.arc_quest.dialogue.spec.io.DialogueSpecJsonReader;
 import org.arcadia.arc_quest.quest.spec.io.DatapackPathResolver;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-/**
- * 预留给 dialogue datapack 的目录扫描器。
- * <p>
- * 当前阶段只负责发现和统计 datapack 下的对话 JSON 文件，
- * 让 reload 链先稳定到 quest-style 的「dialogue datapack layer」语义。
- */
 public final class DialogueDatapackResourceLoader {
 
-    public LoadReport scan() {
+    public LoadReport loadFromDatapack() {
         Path dialoguesDir = DatapackPathResolver.resolveDialoguesDir();
-        List<Path> files = new ArrayList<>();
-        List<Path> failed = new ArrayList<>();
+        Map<Path, DialogueSpec> specs = new LinkedHashMap<>();
+        List<DialogueDatapackLoadError> errors = new ArrayList<>();
 
         if (!Files.exists(dialoguesDir)) {
-            return new LoadReport(dialoguesDir, files, failed, 0);
+            return new LoadReport(specs, errors, 0);
         }
 
         int scanned = 0;
         try (var stream = Files.walk(dialoguesDir)) {
             for (Path file : (Iterable<Path>) stream.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".json"))::iterator) {
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))::iterator) {
                 scanned++;
                 try {
-                    files.add(file.toAbsolutePath().normalize());
+                    String json = Files.readString(file, StandardCharsets.UTF_8);
+                    DialogueSpec spec = DialogueSpecJsonReader.read(json);
+                    if (spec == null) {
+                        errors.add(new DialogueDatapackLoadError(file, "Parsed dialogue spec is null", null));
+                    } else {
+                        specs.put(file.toAbsolutePath().normalize(), spec);
+                    }
                 } catch (Exception ex) {
-                    failed.add(file.toAbsolutePath().normalize());
+                    errors.add(new DialogueDatapackLoadError(file, "Failed to load dialogue spec", ex));
                 }
             }
-        } catch (IOException ex) {
-            failed.add(dialoguesDir.toAbsolutePath().normalize());
+        } catch (IOException e) {
+            errors.add(new DialogueDatapackLoadError(dialoguesDir, "Failed to scan dialogues directory", e));
         }
 
-        return new LoadReport(dialoguesDir, files, failed, scanned);
+        return new LoadReport(specs, errors, scanned);
     }
 
-    public record LoadReport(Path rootDir, List<Path> files, List<Path> failedFiles, int scannedFiles) {
+    public record LoadReport(Map<Path, DialogueSpec> specs, List<DialogueDatapackLoadError> errors, int scannedFiles) {
         public int loadedCount() {
-            return files.size();
+            return specs.size();
         }
 
         public int failedCount() {
-            return failedFiles.size();
+            return errors.size();
         }
+    }
+
+    public record DialogueDatapackLoadError(Path file, String message, Exception exception) {
     }
 }
