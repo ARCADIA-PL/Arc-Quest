@@ -25,13 +25,12 @@ import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.dialogue.util.AnnotatedInstanceUtil;
-import org.arcadia.arc_quest.npc.NpcInteractionHandler;
-import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
+import org.arcadia.arc_quest.npc.NpcBinding;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.slf4j.Logger;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.Nullable;
 
 /**
  * 实体对话扩展系统 - 处理扩展注册、实体交互和 tick 更新。
@@ -61,7 +60,10 @@ public class EntityDialogueExtensionHandler {
     }
 
     /**
-     * 处理玩家与实体的交互事件
+     * 处理玩家与实体的交互事件。
+     * <p>
+     * 对话 ID 由 Extension 内部通过 {@link NpcBinding} 注册并返回，
+     * 行为控制（取消交互、注视、移动等）由匹配到的扩展决定。
      */
     @SubscribeEvent
     public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
@@ -73,36 +75,33 @@ public class EntityDialogueExtensionHandler {
 
         if (DialogueSessionManager.INSTANCE.isInDialogue(player)) return;
 
-        boolean hasExtensions = EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(target.getType());
-
-        AtomicReference<String> resolvedId = new AtomicReference<>(null);
-        AtomicReference<IEntityDialogueExtension<Entity>> resolvedExt = new AtomicReference<>(null);
-        AtomicReference<NpcSpec> resolvedNpcSpec = new AtomicReference<>(null);
-
-        if (hasExtensions) {
-            EntityDialogueExtensionManager.INSTANCE.runIfExtensionExists(player, target, extension -> {
-                @SuppressWarnings("unchecked")
-                IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extension;
-
-                String dialogueId = ext.getDialogueTreeId(player, target, event.getHand());
-                if (dialogueId != null) {
-                    resolvedId.set(dialogueId);
-                    resolvedExt.set(ext);
-                }
-            });
+        if (!EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(target.getType())) {
+            return;
         }
 
-        String dialogueId = resolvedId.get();
-
-        if (dialogueId == null && NpcBindingRegistry.INSTANCE.hasBindingsFor(target.getType())) {
-            dialogueId = NpcBindingRegistry.INSTANCE.resolveDialogueId(target, player);
-            if (dialogueId != null) {
-                resolvedNpcSpec.set(NpcBindingRegistry.INSTANCE.resolveSpec(target, player));
+        boolean canInteract = true;
+        for (var extension : EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(target.getType())) {
+            @SuppressWarnings("unchecked")
+            IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extension;
+            if (!ext.canInteractWith(player, target)) {
+                canInteract = false;
+                break;
             }
         }
+        if (!canInteract) return;
 
-        if (dialogueId == null) {
-            dialogueId = NpcInteractionHandler.resolveDialogueId(target);
+        NpcBinding npcBinding = new NpcBinding();
+        String dialogueId = null;
+        IEntityDialogueExtension<Entity> matchedExt = null;
+
+        for (var extension : EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(target.getType())) {
+            @SuppressWarnings("unchecked")
+            IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extension;
+            dialogueId = ext.getDialogueTreeId(player, target, event.getHand(), npcBinding);
+            if (dialogueId != null) {
+                matchedExt = ext;
+                break;
+            }
         }
 
         if (dialogueId == null) return;
@@ -119,27 +118,18 @@ public class EntityDialogueExtensionHandler {
         DialogueSession session = DialogueSessionManager.INSTANCE.startDialogue(
                 player, target, tree.dialogueId(), new DialogueContext());
 
-        IEntityDialogueExtension<Entity> ext = resolvedExt.get();
-        NpcSpec npcSpec = resolvedNpcSpec.get();
+        if (matchedExt != null) {
+            matchedExt.onDialogueStart(player, target, session);
 
-        if (ext != null) {
-            ext.onDialogueStart(player, target, session);
-
-            InteractionResult cancelResult = ext.shouldCancelInteract(player, target);
+            InteractionResult cancelResult = matchedExt.shouldCancelInteract(player, target);
             if (cancelResult != null) {
                 event.setCancellationResult(cancelResult);
                 event.setCanceled(true);
             }
-        } else if (npcSpec != null) {
-            executeCommands(npcSpec.onDialogueStartCommands, player);
+        }
 
-            if (npcSpec.cancelVanillaInteract) {
-                event.setCancellationResult(InteractionResult.SUCCESS);
-                event.setCanceled(true);
-            }
-        } else {
-            event.setCancellationResult(InteractionResult.SUCCESS);
-            event.setCanceled(true);
+        for (NpcBinding.Entry entry : npcBinding.getEntries()) {
+            LOGGER.debug("[EntityDialogueExtension] Binding hit: {} -> {}", entry.bindingId(), entry.dialogueId());
         }
 
         LOGGER.debug("[EntityDialogueExtension] Player '{}' started dialogue '{}' with '{}'",
@@ -155,9 +145,7 @@ public class EntityDialogueExtensionHandler {
             return;
         }
 
-        if (!NpcBindingRegistry.INSTANCE.hasBindingsFor(npc.getType())) return;
-
-        NpcSpec npcSpec = NpcBindingRegistry.INSTANCE.resolveSpec(npc, event.getPlayer());
+        NpcSpec npcSpec = resolveNpcSpec(npc, event.getPlayer());
         if (npcSpec != null) {
             executeCommands(npcSpec.onDialogueEndCommands, event.getPlayer());
         }
@@ -204,8 +192,8 @@ public class EntityDialogueExtensionHandler {
                 maxDist = ext.maxTalkDistance();
                 break;
             }
-        } else if (NpcBindingRegistry.INSTANCE.hasBindingsFor(entity.getType())) {
-            NpcSpec npcSpec = NpcBindingRegistry.INSTANCE.resolveSpec(entity, player);
+        } else {
+            NpcSpec npcSpec = resolveNpcSpec(entity, player);
             if (npcSpec != null) {
                 maxDist = npcSpec.dialogueDistance;
             }
@@ -236,8 +224,8 @@ public class EntityDialogueExtensionHandler {
                 stopMoving = livingExt.shouldStopMoving(player, entity);
                 break;
             }
-        } else if (NpcBindingRegistry.INSTANCE.hasBindingsFor(entity.getType())) {
-            NpcSpec npcSpec = NpcBindingRegistry.INSTANCE.resolveSpec(entity, player);
+        } else {
+            NpcSpec npcSpec = resolveNpcSpec(entity, player);
             if (npcSpec != null) {
                 lookAt = npcSpec.shouldLookAtPlayer;
                 stopMoving = npcSpec.shouldStopMoving;
@@ -285,6 +273,11 @@ public class EntityDialogueExtensionHandler {
             server.getCommands().performPrefixedCommand(
                     server.createCommandSourceStack().withEntity(player), resolved);
         }
+    }
+
+    @Nullable
+    private static NpcSpec resolveNpcSpec(Entity entity, ServerPlayer player) {
+        return org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry.INSTANCE.resolveSpec(entity, player);
     }
 
     @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)

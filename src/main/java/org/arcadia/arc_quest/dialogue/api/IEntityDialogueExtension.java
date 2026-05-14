@@ -7,6 +7,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
+import org.arcadia.arc_quest.npc.NpcBinding;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -82,14 +83,16 @@ public interface IEntityDialogueExtension<T extends Entity> {
      * 获取对话树 ID。
      * <p>
      * 可以根据实体状态、玩家状态等动态返回不同的对话树。
+     * 通过 {@link NpcBinding#bindDialogueForNpc(String, String)} 注册绑定并返回对话 ID。
      *
-     * @param player 服务端玩家
-     * @param entity 目标实体
-     * @param hand   交互手
+     * @param player     服务端玩家
+     * @param entity     目标实体
+     * @param hand       交互手
+     * @param npcBinding 绑定注册器，用于记录命中的绑定链路
      * @return 对话树 ID，返回 null 则不打开对话
      */
     @Nullable
-    String getDialogueTreeId(ServerPlayer player, T entity, InteractionHand hand);
+    String getDialogueTreeId(ServerPlayer player, T entity, InteractionHand hand, NpcBinding npcBinding);
 
     /**
      * 对话开始前的预处理（服务端）。

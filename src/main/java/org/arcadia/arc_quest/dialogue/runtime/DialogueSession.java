@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
+import org.arcadia.arc_quest.npc.NpcBinding;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
@@ -462,7 +463,7 @@ public class DialogueSession {
             @SuppressWarnings("unchecked")
             IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extObj;
 
-            String dialogueId = ext.getDialogueTreeId(player, npc, null);
+            String dialogueId = ext.getDialogueTreeId(player, npc, null, new NpcBinding());
             if (dialogueId != null && dialogueId.equals(tree.dialogueId())) {
                 ProgressScope scope = ext.getProgressScope();
 
