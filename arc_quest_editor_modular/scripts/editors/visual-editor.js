@@ -1,5 +1,5 @@
 export function renderVisualEditor(state, field, area) {
-    const v = state.q.visualConfig;
+    const v = state.quest.q.visualConfig;
     return `
     <div class="sec">
       <h3>VisualConfig</h3>

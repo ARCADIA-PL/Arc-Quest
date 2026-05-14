@@ -9,23 +9,23 @@ import {
 } from './phase-editor-sections.js';
 
 export function renderPhaseEditor(state, field, area) {
-    const s = state.ui.sel;
-    const p = state.q.phases[s.pi];
-    const phaseIds = (state.q.phases || []).map(x => x.id).filter(Boolean);
+    const s = state.quest.ui.sel;
+    const p = state.quest.q.phases[s.pi];
+    const phaseIds = (state.quest.q.phases || []).map(x => x.id).filter(Boolean);
     const flagSuggestions = Array.from(new Set([
-        ...(state.q.flagsToSetOnAccept || []),
-        ...(state.q.flagsToSetOnComplete || []),
+        ...(state.quest.q.flagsToSetOnAccept || []),
+        ...(state.quest.q.flagsToSetOnComplete || []),
         ...(p.flagsToSetOnEnter || []),
         ...(p.flagsToSetOnComplete || []),
-        ...(state.q.phases || []).flatMap(phase => [
+        ...(state.quest.q.phases || []).flatMap(phase => [
             ...(phase.flagsToSetOnEnter || []),
             ...(phase.flagsToSetOnComplete || []),
             ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
         ])
     ].filter(Boolean)));
-    const questSuggestions = Array.from(new Set([state.q.id].filter(Boolean)));
+    const questSuggestions = Array.from(new Set([state.quest.q.id].filter(Boolean)));
     const conditionOptions = {flagSuggestions, questSuggestions};
-    const isCollectionQuest = state.q.mode === 'COLLECTION';
+    const isCollectionQuest = state.quest.q.mode === 'COLLECTION';
 
     return `
     <div class="sec">

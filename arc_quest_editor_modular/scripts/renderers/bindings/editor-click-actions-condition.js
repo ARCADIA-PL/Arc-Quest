@@ -1,9 +1,9 @@
-export function bindConditionEditorClicks(state, descriptor, action) {
+﻿export function bindConditionEditorClicks(state, descriptor, action) {
     if (action === 'append') {
-        return appendConditionBranch(state.q, descriptor);
+        return appendConditionBranch(state.quest.q, descriptor);
     }
     if (action === 'delete') {
-        return deleteConditionBranch(state.q, descriptor);
+        return deleteConditionBranch(state.quest.q, descriptor);
     }
     return false;
 }

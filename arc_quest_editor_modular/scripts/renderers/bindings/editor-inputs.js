@@ -17,68 +17,68 @@ export function bindEditorInputs(midEl, state, rerender, setByPath) {
         const b = e.target.dataset.b;
         if (!b) return;
         markInputValidity(e.target, b);
-        const beforeType = b.startsWith('ob.') && b.endsWith('.type') ? state.q.phases[state.ui.sel.pi].objectives[state.ui.sel.oi].type : null;
+        const beforeType = b.startsWith('ob.') && b.endsWith('.type') ? state.quest.q.phases[state.quest.ui.sel.pi].objectives[state.quest.ui.sel.oi].type : null;
         const isQuestRewardTypeChange = b.startsWith('rw.quest.') && b.endsWith('.type');
         const isPhaseRewardTypeChange = b.startsWith('rw.phase.') && b.endsWith('.type');
         const phaseIdChange = b.startsWith('ph.') && b.endsWith('.id');
         const phaseIdChangeParts = phaseIdChange ? b.split('.') : null;
         const phaseIndex = phaseIdChange ? Number(phaseIdChangeParts[1]) : -1;
-        const oldPhaseId = phaseIdChange ? state.q.phases?.[phaseIndex]?.id : null;
+        const oldPhaseId = phaseIdChange ? state.quest.q.phases?.[phaseIndex]?.id : null;
         const resolvedValue = e.target.multiple
             ? Array.from(e.target.selectedOptions || []).map(option => option.value).filter(Boolean).join(', ')
             : e.target.value;
 
-        const meta = setByPath(state.q, b, resolvedValue, e.target.type);
+        const meta = setByPath(state.quest.q, b, resolvedValue, e.target.type);
 
-        if (meta?.fileName) state.meta.file = meta.fileName;
+        if (meta?.fileName) state.quest.meta.file = meta.fileName;
 
         if (phaseIdChange) {
-            const newPhaseId = state.q.phases?.[phaseIndex]?.id;
-            syncPhaseIdReferences(state.q, oldPhaseId, newPhaseId);
-            ensureUniquePhaseId(state.q, phaseIndex);
+            const newPhaseId = state.quest.q.phases?.[phaseIndex]?.id;
+            syncPhaseIdReferences(state.quest.q, oldPhaseId, newPhaseId);
+            ensureUniquePhaseId(state.quest.q, phaseIndex);
         }
 
         if (b.startsWith('ob.') && b.endsWith('.id')) {
             const [, pi, oi] = b.split('.');
-            ensureUniqueObjectiveId(state.q, Number(pi), Number(oi));
+            ensureUniqueObjectiveId(state.quest.q, Number(pi), Number(oi));
         }
 
         if (b.startsWith('q.cat.') && b.endsWith('.categoryId')) {
             const parts = b.split('.');
-            ensureUniqueCategoryId(state.q, Number(parts[2]));
+            ensureUniqueCategoryId(state.quest.q, Number(parts[2]));
         }
 
         if (b.startsWith('q.cat.') && b.includes('.rn.') && b.endsWith('.nodeId')) {
             const parts = b.split('.');
-            ensureUniqueCategoryNodeId(state.q, Number(parts[2]), Number(parts[4]));
+            ensureUniqueCategoryNodeId(state.quest.q, Number(parts[2]), Number(parts[4]));
         }
 
         if (b.startsWith('q.trn.') && b.endsWith('.nodeId')) {
             const parts = b.split('.');
-            ensureUniqueTopNodeId(state.q, Number(parts[2]));
+            ensureUniqueTopNodeId(state.quest.q, Number(parts[2]));
         }
 
-        applyAutoKeysByBind(state.q, b);
+        applyAutoKeysByBind(state.quest.q, b);
 
         if (beforeType && beforeType !== e.target.value) {
-            const obj = state.q.phases[state.ui.sel.pi].objectives[state.ui.sel.oi];
-            state.q.phases[state.ui.sel.pi].objectives[state.ui.sel.oi] = normalizeObjectiveByType(obj);
+            const obj = state.quest.q.phases[state.quest.ui.sel.pi].objectives[state.quest.ui.sel.oi];
+            state.quest.q.phases[state.quest.ui.sel.pi].objectives[state.quest.ui.sel.oi] = normalizeObjectiveByType(obj);
         }
 
         if (isQuestRewardTypeChange) {
             const parts = b.split('.');
             const rewardIndex = Number(parts[2]);
-            state.q.rewards[rewardIndex] = normalizeRewardByType(state.q.rewards[rewardIndex]);
+            state.quest.q.rewards[rewardIndex] = normalizeRewardByType(state.quest.q.rewards[rewardIndex]);
         }
 
         if (isPhaseRewardTypeChange) {
             const parts = b.split('.');
             const phaseIndexForReward = Number(parts[2]);
             const rewardIndex = Number(parts[3]);
-            state.q.phases[phaseIndexForReward].rewards[rewardIndex] = normalizeRewardByType(state.q.phases[phaseIndexForReward].rewards[rewardIndex]);
+            state.quest.q.phases[phaseIndexForReward].rewards[rewardIndex] = normalizeRewardByType(state.quest.q.phases[phaseIndexForReward].rewards[rewardIndex]);
         }
 
-        state.meta.dirty = true;
+        state.quest.meta.dirty = true;
         rerender();
     };
 
@@ -93,9 +93,9 @@ export function bindEditorInputs(midEl, state, rerender, setByPath) {
         if (!chipKey) return;
         if (e.key !== 'Enter') return;
         e.preventDefault();
-        addChipValue(state.q, chipKey, e.target.value);
+        addChipValue(state.quest.q, chipKey, e.target.value);
         e.target.value = '';
-        state.meta.dirty = true;
+        state.quest.meta.dirty = true;
         rerender();
     };
 }

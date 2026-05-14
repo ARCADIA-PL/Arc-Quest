@@ -24,12 +24,12 @@ export function renderQuestCollectionWorkspace(state, q, field, phaseIds) {
     return `
     <h4>Collection Workspace</h4>
     <div class="actions" style="margin:8px 0 12px;">
-      <button type="button" data-collection-view="card" class="${state.ui.collectionView !== 'tree' ? 'primary' : ''}">Card View</button>
-      <button type="button" data-collection-view="tree" class="${state.ui.collectionView === 'tree' ? 'primary' : ''}">Tree View</button>
+      <button type="button" data-collection-view="card" class="${state.quest.ui.collectionView !== 'tree' ? 'primary' : ''}">Card View</button>
+      <button type="button" data-collection-view="tree" class="${state.quest.ui.collectionView === 'tree' ? 'primary' : ''}">Tree View</button>
       <button type="button" id="fixCollectionRefsBtn">一键修复引用</button>
       <button type="button" id="fixCollectionRulesBtn">补齐 Rule 默认值</button>
     </div>
-    ${state.ui.collectionView === 'tree' ? renderCollectionTreeView(q) : `
+    ${state.quest.ui.collectionView === 'tree' ? renderCollectionTreeView(q) : `
     <div class="card">
       <div class="row">
         ${boolSelect('allowCategoryCollapse', 'q.cc.allowCategoryCollapse', !!q.collectionConfig.allowCategoryCollapse)}

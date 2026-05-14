@@ -1,9 +1,9 @@
-import {renderQuestInfoSection} from './quest/quest-basic-section.js';
+﻿import {renderQuestInfoSection} from './quest/quest-basic-section.js';
 import {renderQuestTopLevelSection} from './quest/quest-top-level-section.js';
 import {renderQuestCollectionWorkspace} from './quest/quest-collection-section.js';
 
 export function renderQuestEditor(state, field, area) {
-    const q = state.q;
+    const q = state.quest.q;
     const phaseIds = (q.phases || []).map(p => p.id).filter(Boolean);
 
     return `

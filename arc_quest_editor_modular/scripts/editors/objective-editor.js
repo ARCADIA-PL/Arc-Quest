@@ -37,8 +37,8 @@ function renderTypeSummary(type) {
 }
 
 export function renderObjectiveEditor(state, field, area) {
-    const s = state.ui.sel;
-    const o = state.q.phases[s.pi].objectives[s.oi];
+    const s = state.quest.ui.sel;
+    const o = state.quest.q.phases[s.pi].objectives[s.oi];
     const base = `ob.${s.pi}.${s.oi}`;
     return `
     <div class="sec">

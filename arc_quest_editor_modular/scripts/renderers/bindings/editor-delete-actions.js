@@ -4,8 +4,8 @@ import {removePhaseReferences, autoGeneratePhaseKeys} from './editor-helpers.js'
 export function handleDeleteButtonAction(btn, state) {
     const d = btn.dataset;
     const id = btn.id;
-    const s = state.ui.sel;
-    const q = state.q;
+    const s = state.quest.ui.sel;
+    const q = state.quest.q;
 
     if (id === 'deletePhaseBtn') {
         if (q.phases.length <= 1) return {handled: true, mutate: false, message: '至少保留一个 phase。'};
@@ -20,7 +20,7 @@ export function handleDeleteButtonAction(btn, state) {
             apply: () => {
                 q.phases.splice(s.pi, 1);
                 removePhaseReferences(q, removedId);
-                state.ui.sel = {t: 'quest'};
+                state.quest.ui.sel = {t: 'quest'};
             }
         };
     }
@@ -100,7 +100,7 @@ export function handleDeleteButtonAction(btn, state) {
             apply: () => {
                 q.phases[s.pi].objectives.splice(+d.do, 1);
                 autoGeneratePhaseKeys(q, s.pi);
-                state.ui.sel = {t: 'phase', pi: s.pi};
+                state.quest.ui.sel = {t: 'phase', pi: s.pi};
             }
         };
     }

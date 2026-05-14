@@ -28,8 +28,8 @@ export function handleClickPrelude(e, midEl, state, rerender) {
     const removeTarget = e.target.closest('[data-chip-remove]');
     if (removeTarget) {
         const [key, index] = String(removeTarget.dataset.chipRemove || '').split(':');
-        removeChipValue(state.q, key, index);
-        state.meta.dirty = true;
+        removeChipValue(state.quest.q, key, index);
+        state.quest.meta.dirty = true;
         rerender();
         return true;
     }
@@ -39,9 +39,9 @@ export function handleClickPrelude(e, midEl, state, rerender) {
         const key = addTarget.dataset.chipAdd;
         const input = midEl.querySelector(`[data-chip-add-input="${key}"]`);
         if (input) {
-            addChipValue(state.q, key, input.value);
+            addChipValue(state.quest.q, key, input.value);
             input.value = '';
-            state.meta.dirty = true;
+            state.quest.meta.dirty = true;
             rerender();
         }
         return true;
@@ -50,7 +50,7 @@ export function handleClickPrelude(e, midEl, state, rerender) {
     const appendConditionTarget = e.target.closest('[data-cond-append]');
     if (appendConditionTarget) {
         if (bindConditionEditorClicks(state, appendConditionTarget.dataset.condAppend, 'append')) {
-            state.meta.dirty = true;
+            state.quest.meta.dirty = true;
             rerender();
         }
         return true;
@@ -59,7 +59,7 @@ export function handleClickPrelude(e, midEl, state, rerender) {
     const deleteConditionTarget = e.target.closest('[data-cond-delete]');
     if (deleteConditionTarget) {
         if (bindConditionEditorClicks(state, deleteConditionTarget.dataset.condDelete, 'delete')) {
-            state.meta.dirty = true;
+            state.quest.meta.dirty = true;
             rerender();
         }
         return true;
@@ -67,7 +67,7 @@ export function handleClickPrelude(e, midEl, state, rerender) {
 
     const collectionViewBtn = e.target.closest('[data-collection-view]');
     if (collectionViewBtn) {
-        state.ui.collectionView = collectionViewBtn.dataset.collectionView === 'tree' ? 'tree' : 'card';
+        state.quest.ui.collectionView = collectionViewBtn.dataset.collectionView === 'tree' ? 'tree' : 'card';
         rerender();
         return true;
     }
@@ -78,15 +78,15 @@ export function handleClickPrelude(e, midEl, state, rerender) {
 export function handleNonDeleteButtonAction(btn, state) {
     const d = btn.dataset;
     const id = btn.id;
-    const s = state.ui.sel;
-    const q = state.q;
+    const s = state.quest.ui.sel;
+    const q = state.quest.q;
 
     if (id === 'addPhaseBtn') {
         q.phases.push(createPhase(q.phases.length));
         const newPhaseIndex = q.phases.length - 1;
         ensureUniquePhaseId(q, newPhaseIndex);
         autoGeneratePhaseKeys(q, newPhaseIndex);
-        state.ui.sel = {t: 'phase', pi: newPhaseIndex};
+        state.quest.ui.sel = {t: 'phase', pi: newPhaseIndex};
         return true;
     }
     if (id === 'fixCollectionRefsBtn') {
@@ -169,7 +169,7 @@ export function handleNonDeleteButtonAction(btn, state) {
         const newObjectiveIndex = q.phases[s.pi].objectives.length - 1;
         ensureUniqueObjectiveId(q, s.pi, newObjectiveIndex);
         autoGeneratePhaseKeys(q, s.pi);
-        state.ui.sel = {t: 'obj', pi: s.pi, oi: newObjectiveIndex};
+        state.quest.ui.sel = {t: 'obj', pi: s.pi, oi: newObjectiveIndex};
         return true;
     }
     if (id === 'addPhaseRewardBtn') {
@@ -187,16 +187,16 @@ export function handleNonDeleteButtonAction(btn, state) {
     }
     if (id === 'movePhaseUpBtn' && s.pi > 0) {
         [q.phases[s.pi - 1], q.phases[s.pi]] = [q.phases[s.pi], q.phases[s.pi - 1]];
-        state.ui.sel = {t: 'phase', pi: s.pi - 1};
+        state.quest.ui.sel = {t: 'phase', pi: s.pi - 1};
         return true;
     }
     if (id === 'movePhaseDownBtn' && s.pi < q.phases.length - 1) {
         [q.phases[s.pi + 1], q.phases[s.pi]] = [q.phases[s.pi], q.phases[s.pi + 1]];
-        state.ui.sel = {t: 'phase', pi: s.pi + 1};
+        state.quest.ui.sel = {t: 'phase', pi: s.pi + 1};
         return true;
     }
     if (d.open !== undefined) {
-        state.ui.sel = {t: 'obj', pi: s.pi, oi: +d.open};
+        state.quest.ui.sel = {t: 'obj', pi: s.pi, oi: +d.open};
         return true;
     }
 
