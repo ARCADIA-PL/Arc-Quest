@@ -75,6 +75,10 @@ public final class ConditionEvaluator {
         return evaluate(spec, null, completedQuests, flags, variables);
     }
 
+    public boolean evaluate(ConditionSpec spec, @Nullable ServerPlayer player) {
+        return evaluate(spec, player, Set.of(), Set.of(), Map.of());
+    }
+
     private boolean evaluateVanillaPredicate(ConditionSpec spec, @Nullable ServerPlayer player) {
         if (player == null) return true;
 

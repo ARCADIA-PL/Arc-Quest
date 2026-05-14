@@ -1,7 +1,6 @@
 package org.arcadia.arc_quest.npc.io;
 
 import com.mojang.logging.LogUtils;
-import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.arcadia.arc_quest.npc.spec.validate.NpcSpecValidator;
 import org.arcadia.arc_quest.npc.spec.validate.NpcValidationIssue;
@@ -20,7 +19,7 @@ public final class NpcDatapackHotReloadService {
     public ReloadResult reload() {
         var report = resourceLoader.loadFromDatapack();
 
-        NpcBindingRegistry.INSTANCE.clear();
+        org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry.INSTANCE.clear();
 
         int loaded = 0;
         int failed = report.failedCount();
@@ -40,7 +39,7 @@ public final class NpcDatapackHotReloadService {
                 continue;
             }
             try {
-                NpcBindingRegistry.INSTANCE.register(spec);
+                org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry.INSTANCE.register(spec);
                 loaded++;
             } catch (Exception ex) {
                 failed++;
@@ -48,10 +47,10 @@ public final class NpcDatapackHotReloadService {
             }
         }
 
-        LOGGER.info("[NpcRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}, activeBindings={}",
-                report.scannedFiles(), loaded, failed, NpcBindingRegistry.INSTANCE.size());
+        LOGGER.info("[NpcRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}",
+                report.scannedFiles(), loaded, failed);
 
-        return new ReloadResult(report.scannedFiles(), loaded, failed, NpcBindingRegistry.INSTANCE.size());
+        return new ReloadResult(report.scannedFiles(), loaded, failed, 0);
     }
 
     public record ReloadResult(int scanned, int discovered, int failed, int activeBindings) {
