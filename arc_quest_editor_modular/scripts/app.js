@@ -14,7 +14,7 @@ import {bindTreeSelection, bindEditorActions} from './renderers/event-bindings.j
 
 const dom = getDomRefs();
 
-function rerender() {
+function renderQuest() {
     ensureQuestShape(state.quest.q);
     ensureValidSelection(state);
     validateQuest(state);
@@ -40,6 +40,34 @@ function rerender() {
     bindEditorActions(dom.mid, state, rerender, setByPath);
 }
 
+function renderNpc() {
+    dom.mid.innerHTML = `<div class="fade-in sec" style="text-align:center;padding:60px 20px;">
+        <div style="font-size:48px;margin-bottom:16px;opacity:.3;">—</div>
+        <h3 style="font-size:18px;color:var(--text-main);">NPC 实体绑定编辑器</h3>
+        <div class="small" style="margin-top:8px;">即将推出</div>
+    </div>`;
+    dom.left.innerHTML = '';
+    dom.right.innerHTML = '';
+    dom.status.innerHTML = '<span style="color:var(--text-mut)">NPC Mode · Coming Soon</span>';
+}
+
+function renderDialogue() {
+    dom.mid.innerHTML = `<div class="fade-in sec" style="text-align:center;padding:60px 20px;">
+        <div style="font-size:48px;margin-bottom:16px;opacity:.3;">—</div>
+        <h3 style="font-size:18px;color:var(--text-main);">对话树编辑器</h3>
+        <div class="small" style="margin-top:8px;">即将推出</div>
+    </div>`;
+    dom.left.innerHTML = '';
+    dom.right.innerHTML = '';
+    dom.status.innerHTML = '<span style="color:var(--text-mut)">Dialogue Mode · Coming Soon</span>';
+}
+
+function rerender() {
+    if (state.mode === 'npc') return renderNpc();
+    if (state.mode === 'dialogue') return renderDialogue();
+    renderQuest();
+}
+
 dom.newBtn.onclick = () => {
     state.quest.q = createBlankQuest();
     state.quest.meta = {file: 'new_quest.json', dirty: false};
@@ -59,4 +87,23 @@ dom.fileInput.onchange = e => {
 
 bindPaneResizers(state, dom);
 bindDragAndDropImport(state, rerender, dom);
+
+if (dom.modeBar) {
+    dom.modeBar.onclick = e => {
+        const tab = e.target.closest('[data-mode]');
+        if (!tab) return;
+        state.mode = tab.dataset.mode;
+        dom.modeBar.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        rerender();
+    };
+}
+
+if (dom.importLibBtn) {
+    dom.importLibBtn.onclick = () => {
+        dom.fileInput.click();
+        dom.fileInput.dataset.libraryImport = 'true';
+    };
+}
+
 rerender();

@@ -785,8 +785,48 @@ button.danger:hover {
     padding-left: 10px
 }
 
+.mode-bar {
+    display: flex;
+    gap: 0;
+    padding: 0 20px;
+    background: rgba(0, 0, 0, .3);
+    border-bottom: 1px solid var(--card-border);
+    z-index: 9;
+}
 
+.mode-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-mut);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+}
 
+.mode-tab:hover {
+    color: var(--text-soft);
+    background: rgba(255, 255, 255, .04);
+}
 
+.mode-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: rgba(10, 132, 255, .06);
+}
+
+.mode-tab svg {
+    opacity: .6;
+}
+
+.mode-tab.active svg {
+    opacity: 1;
+}
 
 

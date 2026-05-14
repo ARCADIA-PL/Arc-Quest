@@ -28,6 +28,12 @@
                 导入 JSON
             </label>
             <input accept=".json,application/json" id="fileInput" type="file"/>
+            <button class="toolbar-btn" id="importLibBtn" title="导入到共享注册表，不替换当前编辑内容">
+                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                    <path d="M19 21H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2zM16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                导入到库
+            </button>
             <button class="toolbar-btn primary" id="exportBtn">
                 <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 14l5 5 5-5M12 15V3"/>
@@ -42,6 +48,21 @@
             </button>
         </div>
     </header>
+
+    <div class="mode-bar" id="modeBar">
+        <button class="mode-tab active" data-mode="quest">
+            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5h6"/><polyline points="9 14 11 16 15 12"/></svg>
+            Quest 任务
+        </button>
+        <button class="mode-tab" data-mode="npc">
+            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.4 8 12 8 12s8-6.6 8-12a8 8 0 0 0-8-8z"/></svg>
+            NPC 绑定
+        </button>
+        <button class="mode-tab" data-mode="dialogue">
+            <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            对话树
+        </button>
+    </div>
 
     <div class="main" id="mainLayout">
         <aside class="pane glass-pane" id="left"></aside>

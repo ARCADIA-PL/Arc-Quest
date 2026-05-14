@@ -1,6 +1,7 @@
 import {validateQuest} from '../core/validators.js';
 import {normalizeImportedQuest} from '../core/import-normalizer.js';
 import {exportQuestToDatapack} from '../core/export-normalizer.js';
+import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
 
 export function exportJson(state, rerender, dom) {
@@ -24,14 +25,40 @@ export function exportJson(state, rerender, dom) {
 
 export function importJson(state, rerender, dom, file) {
     const r = new FileReader();
+    const isLibraryImport = dom.fileInput?.dataset?.libraryImport === 'true';
     r.onload = () => {
         try {
-            state.quest.q = normalizeImportedQuest(JSON.parse(r.result));
-            state.quest.meta.file = file.name;
-            state.quest.meta.dirty = false;
-            state.quest.ui.sel = {t: 'quest'};
-            rerender();
-            showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
+            const json = JSON.parse(r.result);
+            const normalized = normalizeImportedQuest(json);
+            importToRegistry(state, normalized, 'quest');
+
+            if (isLibraryImport) {
+                delete dom.fileInput.dataset.libraryImport;
+                showToast(dom, '已导入到库', `${file.name} 已加入注册表`, 'info');
+            } else {
+                state.quest.q = normalized;
+                state.quest.meta.file = file.name;
+                state.quest.meta.dirty = false;
+                state.quest.ui.sel = {t: 'quest'};
+                rerender();
+                showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
+            }
+        } catch (err) {
+            showToast(dom, '导入失败', `JSON 解析失败：${err.message}`, 'error', 3600);
+            alert('JSON 解析失败: ' + err.message);
+        }
+    };
+    r.readAsText(file, 'utf-8');
+}
+
+export function importToLibrary(state, rerender, dom, file) {
+    const r = new FileReader();
+    r.onload = () => {
+        try {
+            const json = JSON.parse(r.result);
+            const normalized = normalizeImportedQuest(json);
+            importToRegistry(state, normalized, 'quest');
+            showToast(dom, '已导入到库', `${file.name} 已加入注册表`, 'info');
         } catch (err) {
             showToast(dom, '导入失败', `JSON 解析失败：${err.message}`, 'error', 3600);
             alert('JSON 解析失败: ' + err.message);
