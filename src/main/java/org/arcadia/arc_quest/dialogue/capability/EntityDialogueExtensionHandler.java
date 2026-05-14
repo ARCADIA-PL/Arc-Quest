@@ -26,6 +26,7 @@ import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.dialogue.util.AnnotatedInstanceUtil;
 import org.arcadia.arc_quest.npc.NpcBinding;
+import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.slf4j.Logger;
 
@@ -62,8 +63,8 @@ public class EntityDialogueExtensionHandler {
     /**
      * 处理玩家与实体的交互事件。
      * <p>
-     * 对话 ID 由 Extension 内部通过 {@link NpcBinding} 注册并返回，
-     * 行为控制（取消交互、注视、移动等）由匹配到的扩展决定。
+     * 统一入口：代码扩展优先，无匹配时 fallback 到数据包注册表。
+     * 行为控制（取消交互、注视、移动等）由匹配到的扩展或 NpcSpec 决定。
      */
     @SubscribeEvent
     public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
@@ -75,17 +76,22 @@ public class EntityDialogueExtensionHandler {
 
         if (DialogueSessionManager.INSTANCE.isInDialogue(player)) return;
 
-        if (!EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(target.getType())) {
-            return;
-        }
+        boolean hasExtensions = EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(target.getType());
 
         boolean canInteract = true;
-        for (var extension : EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(target.getType())) {
-            @SuppressWarnings("unchecked")
-            IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extension;
-            if (!ext.canInteractWith(player, target)) {
+        if (hasExtensions) {
+            for (var extension : EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(target.getType())) {
+                @SuppressWarnings("unchecked")
+                IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extension;
+                if (!ext.canInteractWith(player, target)) {
+                    canInteract = false;
+                    break;
+                }
+            }
+        } else {
+            NpcSpec npcSpec = resolveNpcSpec(target, player);
+            if (npcSpec != null && npcSpec.interactCondition != null && !npcSpec.interactCondition.isAlways()) {
                 canInteract = false;
-                break;
             }
         }
         if (!canInteract) return;
@@ -94,14 +100,24 @@ public class EntityDialogueExtensionHandler {
         String dialogueId = null;
         IEntityDialogueExtension<Entity> matchedExt = null;
 
-        for (var extension : EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(target.getType())) {
-            @SuppressWarnings("unchecked")
-            IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extension;
-            dialogueId = ext.getDialogueTreeId(player, target, event.getHand(), npcBinding);
-            if (dialogueId != null) {
-                matchedExt = ext;
-                break;
+        if (hasExtensions) {
+            for (var extension : EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(target.getType())) {
+                @SuppressWarnings("unchecked")
+                IEntityDialogueExtension<Entity> ext = (IEntityDialogueExtension<Entity>) extension;
+                dialogueId = ext.getDialogueTreeId(player, target, event.getHand(), npcBinding);
+                if (dialogueId != null) {
+                    matchedExt = ext;
+                    break;
+                }
             }
+
+            for (NpcBinding.Entry entry : npcBinding.getEntries()) {
+                NpcBindingRegistry.INSTANCE.registerCodeBindingId(entry.bindingId());
+            }
+        }
+
+        if (dialogueId == null) {
+            dialogueId = NpcBindingRegistry.INSTANCE.resolveDialogueId(target, player);
         }
 
         if (dialogueId == null) return;
@@ -124,6 +140,12 @@ public class EntityDialogueExtensionHandler {
             InteractionResult cancelResult = matchedExt.shouldCancelInteract(player, target);
             if (cancelResult != null) {
                 event.setCancellationResult(cancelResult);
+                event.setCanceled(true);
+            }
+        } else {
+            NpcSpec npcSpec = resolveNpcSpec(target, player);
+            if (npcSpec != null && npcSpec.cancelVanillaInteract) {
+                event.setCancellationResult(InteractionResult.SUCCESS);
                 event.setCanceled(true);
             }
         }
