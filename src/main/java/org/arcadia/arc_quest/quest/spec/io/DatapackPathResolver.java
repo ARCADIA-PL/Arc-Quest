@@ -28,6 +28,10 @@ public final class DatapackPathResolver {
         return resolveDatapackRoot().resolve("dialogues").normalize();
     }
 
+    public static Path resolveNpcDir() {
+        return resolveDatapackRoot().resolve("npc").normalize();
+    }
+
     public static Path resolveQuestFile(String questFileName) {
         if (questFileName == null || questFileName.isBlank()) {
             throw new IllegalArgumentException("questFileName must not be blank");
@@ -52,5 +56,6 @@ public final class DatapackPathResolver {
     public static void ensureDatapackDirsExist() throws IOException {
         Files.createDirectories(resolveQuestsDir());
         Files.createDirectories(resolveDialoguesDir());
+        Files.createDirectories(resolveNpcDir());
     }
 }

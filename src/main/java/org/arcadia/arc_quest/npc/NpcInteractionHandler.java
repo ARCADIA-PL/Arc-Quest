@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.dialogue.capability.DialogueNpcPatch;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
+import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.slf4j.Logger;
 
 /**
@@ -57,7 +58,16 @@ public class NpcInteractionHandler {
             return;
         }
 
-        String dialogueId = resolveDialogueId(target);
+        String dialogueId = null;
+
+        if (NpcBindingRegistry.INSTANCE.hasBindingsFor(target.getType())) {
+            dialogueId = NpcBindingRegistry.INSTANCE.resolveDialogueId(target, player);
+        }
+
+        if (dialogueId == null) {
+            dialogueId = resolveDialogueId(target);
+        }
+
         if (dialogueId == null) return;
 
         DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
