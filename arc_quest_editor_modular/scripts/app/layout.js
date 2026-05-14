@@ -1,7 +1,7 @@
 export function applyPaneLayout(state, dom) {
     if (!dom.mainLayout) return;
-    const left = Math.max(220, Math.min(520, Number(state.ui.paneSizes?.left) || 280));
-    const right = Math.max(280, Math.min(720, Number(state.ui.paneSizes?.right) || 380));
+    const left = Math.max(220, Math.min(520, Number(state.quest.ui.paneSizes?.left) || 280));
+    const right = Math.max(280, Math.min(720, Number(state.quest.ui.paneSizes?.right) || 380));
     dom.mainLayout.style.gridTemplateColumns = `${left}px 8px minmax(420px, 1fr) 8px ${right}px`;
 }
 
@@ -18,8 +18,8 @@ export function bindPaneResizers(state, dom) {
         event.preventDefault();
         const rect = dom.mainLayout.getBoundingClientRect();
         const startX = event.clientX;
-        const startLeft = Number(state.ui.paneSizes.left) || 280;
-        const startRight = Number(state.ui.paneSizes.right) || 380;
+        const startLeft = Number(state.quest.ui.paneSizes.left) || 280;
+        const startRight = Number(state.quest.ui.paneSizes.right) || 380;
 
         document.body.classList.add('is-resizing-panes');
 
@@ -29,14 +29,14 @@ export function bindPaneResizers(state, dom) {
                 const nextLeft = Math.max(minLeft, Math.min(maxLeft, startLeft + dx));
                 const centerWidth = rect.width - nextLeft - startRight - 16;
                 if (centerWidth >= minCenter) {
-                    state.ui.paneSizes.left = nextLeft;
+                    state.quest.ui.paneSizes.left = nextLeft;
                     applyPaneLayout(state, dom);
                 }
             } else {
                 const nextRight = Math.max(minRight, Math.min(maxRight, startRight - dx));
                 const centerWidth = rect.width - startLeft - nextRight - 16;
                 if (centerWidth >= minCenter) {
-                    state.ui.paneSizes.right = nextRight;
+                    state.quest.ui.paneSizes.right = nextRight;
                     applyPaneLayout(state, dom);
                 }
             }

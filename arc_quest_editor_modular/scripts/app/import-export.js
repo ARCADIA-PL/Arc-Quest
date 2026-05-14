@@ -5,20 +5,20 @@ import {showToast, setDropOverlayVisible} from './toast.js';
 
 export function exportJson(state, rerender, dom) {
     validateQuest(state);
-    const blockingErrors = (state.diag || []).filter(x => x.lvl === 'err');
+    const blockingErrors = (state.quest.diag || []).filter(x => x.lvl === 'err');
     if (blockingErrors.length > 0) {
-        state.ui.tab = 'validate';
+        state.quest.ui.tab = 'validate';
         rerender();
         showToast(dom, '导出已阻止', `存在 ${blockingErrors.length} 个错误，请先修复后再导出。`, 'error', 3600);
         return;
     }
 
-    const exported = exportQuestToDatapack(state.q);
+    const exported = exportQuestToDatapack(state.quest.q);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(exported, null, 2)], {type: 'application/json'}));
-    a.download = state.meta.file;
+    a.download = state.quest.meta.file;
     a.click();
-    state.meta.dirty = false;
+    state.quest.meta.dirty = false;
     rerender();
 }
 
@@ -26,10 +26,10 @@ export function importJson(state, rerender, dom, file) {
     const r = new FileReader();
     r.onload = () => {
         try {
-            state.q = normalizeImportedQuest(JSON.parse(r.result));
-            state.meta.file = file.name;
-            state.meta.dirty = false;
-            state.ui.sel = {t: 'quest'};
+            state.quest.q = normalizeImportedQuest(JSON.parse(r.result));
+            state.quest.meta.file = file.name;
+            state.quest.meta.dirty = false;
+            state.quest.ui.sel = {t: 'quest'};
             rerender();
             showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
         } catch (err) {

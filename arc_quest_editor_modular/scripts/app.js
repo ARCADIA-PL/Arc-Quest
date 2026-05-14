@@ -1,4 +1,4 @@
-﻿import '../styles/editor.css';
+import '../styles/editor.css';
 import {state, createBlankQuest} from './core/state.js';
 import {getDomRefs} from './core/dom.js';
 import {setByPath, ensureQuestShape} from './core/quest-shape.js';
@@ -15,7 +15,7 @@ import {bindTreeSelection, bindEditorActions} from './renderers/event-bindings.j
 const dom = getDomRefs();
 
 function rerender() {
-    ensureQuestShape(state.q);
+    ensureQuestShape(state.quest.q);
     ensureValidSelection(state);
     validateQuest(state);
     applyPaneLayout(state, dom);
@@ -26,12 +26,12 @@ function rerender() {
         dom.tabs,
         dom.right,
         tab => {
-            state.ui.tab = tab;
+            state.quest.ui.tab = tab;
             rerender();
         },
         path => navigateToPath(state, rerender, path),
         pi => {
-            state.ui.sel = {t: 'phase', pi};
+            state.quest.ui.sel = {t: 'phase', pi};
             rerender();
         }
     );
@@ -41,13 +41,13 @@ function rerender() {
 }
 
 dom.newBtn.onclick = () => {
-    state.q = createBlankQuest();
-    state.meta = {file: 'new_quest.json', dirty: false};
-    state.ui.sel = {t: 'quest'};
+    state.quest.q = createBlankQuest();
+    state.quest.meta = {file: 'new_quest.json', dirty: false};
+    state.quest.ui.sel = {t: 'quest'};
     rerender();
 };
 dom.validateBtn.onclick = () => {
-    state.ui.tab = 'validate';
+    state.quest.ui.tab = 'validate';
     rerender();
 };
 dom.exportBtn.onclick = () => exportJson(state, rerender, dom);
