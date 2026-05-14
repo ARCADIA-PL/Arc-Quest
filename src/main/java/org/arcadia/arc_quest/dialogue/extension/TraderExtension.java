@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
+import org.arcadia.arc_quest.npc.NpcBinding;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -42,20 +43,26 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
 
     @Override
     @Nullable
-    public String getDialogueTreeId(ServerPlayer player, WanderingTrader wanderingTrader, InteractionHand hand) {
+    public String getDialogueTreeId(ServerPlayer player, WanderingTrader wanderingTrader, InteractionHand hand, NpcBinding npcBinding) {
         CompoundTag persistentData = wanderingTrader.getPersistentData();
 
         if (persistentData.contains("ArcQuestDialogueId")) {
-            return persistentData.getString("ArcQuestDialogueId");
+            return npcBinding.bindDialogueForNpc(
+                    "arc_quest:trader_nbt_dialogue_id",
+                    persistentData.getString("ArcQuestDialogueId"));
         }
 
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
             if ("merchant".equals(npcId)) {
-                return "arc_quest:epic_merchant";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:trader_merchant_npc_id",
+                        "arc_quest:epic_merchant");
             }
             if ("wandering_trader".equals(npcId)) {
-                return "arc_quest:epic_wandering_trader";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:trader_wandering_npc_id",
+                        "arc_quest:epic_wandering_trader");
             }
         }
 
@@ -63,26 +70,36 @@ public class TraderExtension implements IEntityDialogueExtension<WanderingTrader
         wanderingTrader.saveWithoutId(fullNbt);
 
         if (fullNbt.contains("ArcQuestDialogueId")) {
-            return fullNbt.getString("ArcQuestDialogueId");
+            return npcBinding.bindDialogueForNpc(
+                    "arc_quest:trader_full_nbt_dialogue_id",
+                    fullNbt.getString("ArcQuestDialogueId"));
         }
 
         if (fullNbt.contains("ArcQuestNpcId")) {
             String npcId = fullNbt.getString("ArcQuestNpcId");
             if ("merchant".equals(npcId)) {
-                return "arc_quest:epic_merchant";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:trader_full_nbt_merchant_npc_id",
+                        "arc_quest:epic_merchant");
             }
             if ("wandering_trader".equals(npcId)) {
-                return "arc_quest:epic_wandering_trader";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:trader_full_nbt_wandering_npc_id",
+                        "arc_quest:epic_wandering_trader");
             }
         }
 
         if (wanderingTrader.hasCustomName()) {
             String name = Objects.requireNonNull(wanderingTrader.getCustomName()).getString();
             if (name.contains("商人") || name.contains("Merchant")) {
-                return "arc_quest:epic_merchant";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:trader_merchant_custom_name",
+                        "arc_quest:epic_merchant");
             }
             if (name.contains("行商") || name.contains("WanderingTrader")) {
-                return "arc_quest:epic_wandering_trader";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:trader_wandering_custom_name",
+                        "arc_quest:epic_wandering_trader");
             }
         }
 

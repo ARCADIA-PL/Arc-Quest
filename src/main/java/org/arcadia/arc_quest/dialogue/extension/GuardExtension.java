@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.ProgressScope;
+import org.arcadia.arc_quest.npc.NpcBinding;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -43,17 +44,21 @@ public class GuardExtension implements IEntityDialogueExtension<Villager> {
 
     @Override
     @Nullable
-    public String getDialogueTreeId(ServerPlayer player, Villager villager, InteractionHand hand) {
+    public String getDialogueTreeId(ServerPlayer player, Villager villager, InteractionHand hand, NpcBinding npcBinding) {
         CompoundTag persistentData = villager.getPersistentData();
 
         if (persistentData.contains("ArcQuestDialogueId")) {
-            return persistentData.getString("ArcQuestDialogueId");
+            return npcBinding.bindDialogueForNpc(
+                    "arc_quest:guard_nbt_dialogue_id",
+                    persistentData.getString("ArcQuestDialogueId"));
         }
 
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
             if ("village_guard".equals(npcId)) {
-                return "arc_quest:epic_village_guard";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:guard_npc_id",
+                        "arc_quest:epic_village_guard");
             }
         }
 
@@ -61,20 +66,26 @@ public class GuardExtension implements IEntityDialogueExtension<Villager> {
         villager.saveWithoutId(fullNbt);
 
         if (fullNbt.contains("ArcQuestDialogueId")) {
-            return fullNbt.getString("ArcQuestDialogueId");
+            return npcBinding.bindDialogueForNpc(
+                    "arc_quest:guard_full_nbt_dialogue_id",
+                    fullNbt.getString("ArcQuestDialogueId"));
         }
 
         if (fullNbt.contains("ArcQuestNpcId")) {
             String npcId = fullNbt.getString("ArcQuestNpcId");
             if ("village_guard".equals(npcId)) {
-                return "arc_quest:epic_village_guard";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:guard_full_nbt_npc_id",
+                        "arc_quest:epic_village_guard");
             }
         }
 
         if (villager.hasCustomName()) {
             String name = Objects.requireNonNull(villager.getCustomName()).getString();
             if (name.contains("村庄守卫") || name.contains("Village Guard")) {
-                return "arc_quest:epic_village_guard";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:guard_custom_name",
+                        "arc_quest:epic_village_guard");
             }
         }
 

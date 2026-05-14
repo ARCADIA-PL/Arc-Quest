@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.ProgressScope;
+import org.arcadia.arc_quest.npc.NpcBinding;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -43,17 +44,21 @@ public class MysteriousTraderExtension implements IEntityDialogueExtension<Wande
 
     @Override
     @Nullable
-    public String getDialogueTreeId(ServerPlayer player, WanderingTrader wanderingTrader, InteractionHand hand) {
+    public String getDialogueTreeId(ServerPlayer player, WanderingTrader wanderingTrader, InteractionHand hand, NpcBinding npcBinding) {
         CompoundTag persistentData = wanderingTrader.getPersistentData();
 
         if (persistentData.contains("ArcQuestDialogueId")) {
-            return persistentData.getString("ArcQuestDialogueId");
+            return npcBinding.bindDialogueForNpc(
+                    "arc_quest:mysterious_trader_nbt_dialogue_id",
+                    persistentData.getString("ArcQuestDialogueId"));
         }
 
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
             if ("mysterious_merchant".equals(npcId)) {
-                return "arc_quest:epic_mysterious_merchant";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:mysterious_trader_npc_id",
+                        "arc_quest:epic_mysterious_merchant");
             }
         }
 
@@ -61,20 +66,26 @@ public class MysteriousTraderExtension implements IEntityDialogueExtension<Wande
         wanderingTrader.saveWithoutId(fullNbt);
 
         if (fullNbt.contains("ArcQuestDialogueId")) {
-            return fullNbt.getString("ArcQuestDialogueId");
+            return npcBinding.bindDialogueForNpc(
+                    "arc_quest:mysterious_trader_full_nbt_dialogue_id",
+                    fullNbt.getString("ArcQuestDialogueId"));
         }
 
         if (fullNbt.contains("ArcQuestNpcId")) {
             String npcId = fullNbt.getString("ArcQuestNpcId");
             if ("mysterious_merchant".equals(npcId)) {
-                return "arc_quest:epic_mysterious_merchant";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:mysterious_trader_full_nbt_npc_id",
+                        "arc_quest:epic_mysterious_merchant");
             }
         }
 
         if (wanderingTrader.hasCustomName()) {
             String name = Objects.requireNonNull(wanderingTrader.getCustomName()).getString();
             if (name.contains("神秘人") || name.contains("MysteriousMerchant")) {
-                return "arc_quest:epic_mysterious_merchant";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:mysterious_trader_custom_name",
+                        "arc_quest:epic_mysterious_merchant");
             }
         }
 

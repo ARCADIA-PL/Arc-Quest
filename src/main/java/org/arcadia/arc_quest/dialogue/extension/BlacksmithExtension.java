@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
+import org.arcadia.arc_quest.npc.NpcBinding;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -40,17 +41,21 @@ public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
 
     @Override
     @Nullable
-    public String getDialogueTreeId(ServerPlayer player, Villager villager, InteractionHand hand) {
+    public String getDialogueTreeId(ServerPlayer player, Villager villager, InteractionHand hand, NpcBinding npcBinding) {
         CompoundTag persistentData = villager.getPersistentData();
 
         if (persistentData.contains("ArcQuestDialogueId")) {
-            return persistentData.getString("ArcQuestDialogueId");
+            return npcBinding.bindDialogueForNpc(
+                    "arc_quest:blacksmith_nbt_dialogue_id",
+                    persistentData.getString("ArcQuestDialogueId"));
         }
 
         if (persistentData.contains("ArcQuestNpcId")) {
             String npcId = persistentData.getString("ArcQuestNpcId");
             if ("blacksmith".equals(npcId)) {
-                return "arc_quest:epic_blacksmith";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:blacksmith_npc_id",
+                        "arc_quest:epic_blacksmith");
             }
         }
 
@@ -58,20 +63,26 @@ public class BlacksmithExtension implements IEntityDialogueExtension<Villager> {
         villager.saveWithoutId(fullNbt);
 
         if (fullNbt.contains("ArcQuestDialogueId")) {
-            return fullNbt.getString("ArcQuestDialogueId");
+            return npcBinding.bindDialogueForNpc(
+                    "arc_quest:blacksmith_full_nbt_dialogue_id",
+                    fullNbt.getString("ArcQuestDialogueId"));
         }
 
         if (fullNbt.contains("ArcQuestNpcId")) {
             String npcId = fullNbt.getString("ArcQuestNpcId");
             if ("blacksmith".equals(npcId)) {
-                return "arc_quest:epic_blacksmith";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:blacksmith_full_nbt_npc_id",
+                        "arc_quest:epic_blacksmith");
             }
         }
 
         if (villager.hasCustomName()) {
             String name = villager.getCustomName().getString();
             if (name.contains("铁匠") || name.contains("Blacksmith")) {
-                return "arc_quest:epic_blacksmith";
+                return npcBinding.bindDialogueForNpc(
+                        "arc_quest:blacksmith_custom_name",
+                        "arc_quest:epic_blacksmith");
             }
         }
 
