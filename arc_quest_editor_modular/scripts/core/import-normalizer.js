@@ -88,6 +88,54 @@ function inferPhaseMode(phase) {
     return 'normal';
 }
 
+function normalizeCondition(node) {
+    if (!node) return {condition: 'arc_quest:always'};
+    if (node.condition) {
+        if (node.condition === 'arc_quest:and' || node.condition === 'arc_quest:or') {
+            return {
+                condition: node.condition,
+                conditions: (node.conditions || []).map(normalizeCondition)
+            };
+        }
+        if (node.condition === 'arc_quest:not') {
+            return {
+                condition: 'arc_quest:not',
+                inner: normalizeCondition(node.inner)
+            };
+        }
+        return {...node};
+    }
+    if (node.type) {
+        return convertOldCondition(node);
+    }
+    return {condition: 'arc_quest:always'};
+}
+
+function convertOldCondition(node) {
+    const type = node.type || 'always';
+    if (type === 'always') return {condition: 'arc_quest:always'};
+    if (type === 'flag_set') return {condition: 'arc_quest:has_flag', flag: node.flag || ''};
+    if (type === 'flag_not_set') return {condition: 'arc_quest:not_has_flag', flag: node.flag || ''};
+    if (type === 'quest_completed') return {condition: 'arc_quest:quest_completed', quest_id: node.questId || ''};
+    if (type === 'variable') return {
+        condition: 'arc_quest:variable_check',
+        key: node.variable || '',
+        op: node.compareOp || 'EQUAL',
+        value: Number(node.value ?? 0)
+    };
+    if (type === 'not') return {
+        condition: 'arc_quest:not',
+        inner: convertOldCondition(node.left)
+    };
+    if (type === 'and' || type === 'or') {
+        const conditions = [];
+        if (node.left) conditions.push(convertOldCondition(node.left));
+        if (node.right) conditions.push(convertOldCondition(node.right));
+        return {condition: `arc_quest:${type}`, conditions};
+    }
+    return {condition: 'arc_quest:always'};
+}
+
 function normalizePhase(phase, idx) {
     const transitions = phase?.transitions || [];
     const targetIds = transitions.map(t => t?.targetPhaseId).filter(Boolean);
@@ -113,9 +161,9 @@ function normalizePhase(phase, idx) {
         autoStart: !!phase?.autoEnterByCondition,
         parallelPhaseIds: mode === 'parallel' ? targetIds : [],
         choicePhaseIds: mode === 'choice' ? targetIds : [],
-        transitions,
-        choices: mode === 'choice' ? (phase?.choices || []) : [],
-        rawEnterCondition: phase?.enterCondition || null,
+        transitions: transitions.map(t => ({...t, condition: normalizeCondition(t?.condition)})),
+        choices: mode === 'choice' ? (phase?.choices || []).map(c => ({...c, visibleCondition: normalizeCondition(c?.visibleCondition)})) : [],
+        rawEnterCondition: normalizeCondition(phase?.enterCondition),
         flagsToSetOnEnter: phase?.flagsToSetOnEnter || [],
         flagsToSetOnComplete: phase?.flagsToSetOnComplete || [],
         objectives: (phase?.objectives || []).map(normalizeObjective),

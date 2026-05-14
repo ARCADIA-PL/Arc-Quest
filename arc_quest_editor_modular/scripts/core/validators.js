@@ -2,7 +2,22 @@ import {ensureQuestShape} from '../core/quest-shape.js';
 
 const OBJECTIVE_TYPES = new Set(['KILL', 'COLLECT', 'TALK', 'INTERACT', 'REACH_LOCATION', 'DELIVER', 'CRAFT', 'OFFER', 'CUSTOM']);
 const REWARD_TYPES = new Set(['item', 'flag_set', 'flag_clear', 'command', 'var_set', 'var_add', 'var_subtract', 'var_multiply']);
-const CONDITION_TYPES = new Set(['always', 'flag_set', 'flag_not_set', 'quest_completed', 'variable', 'and', 'or', 'not']);
+const CONDITION_TYPES = new Set([
+    'arc_quest:always',
+    'arc_quest:quest_completed',
+    'arc_quest:quest_accepted',
+    'arc_quest:quest_not_started',
+    'arc_quest:quest_phase',
+    'arc_quest:quest_phase_completed',
+    'arc_quest:quest_phase_reached',
+    'arc_quest:has_flag',
+    'arc_quest:not_has_flag',
+    'arc_quest:variable_check',
+    'arc_quest:and',
+    'arc_quest:or',
+    'arc_quest:not',
+    'minecraft:entity_properties'
+]);
 
 function hasLegacyObjectiveShape(obj) {
     return ['entityType', 'itemId', 'targetType', 'counterId', 'dialogueId', 'consumeOnSubmit'].some(k => Object.prototype.hasOwnProperty.call(obj || {}, k));
@@ -10,31 +25,39 @@ function hasLegacyObjectiveShape(obj) {
 
 function validateConditionNode(node, path, d) {
     if (!node) return;
-    const type = node.type || 'always';
-    if (!CONDITION_TYPES.has(type)) {
-        d.push({lvl: 'err', path, msg: `Condition type 非法: ${type}`});
+    const cond = node.condition || 'arc_quest:always';
+    if (!CONDITION_TYPES.has(cond)) {
+        d.push({lvl: 'err', path, msg: `Condition type 非法: ${cond}`});
         return;
     }
-    if ((type === 'flag_set' || type === 'flag_not_set') && !node.flag) {
-        d.push({lvl: 'warn', path, msg: `${type} 缺少 flag`});
+    if ((cond === 'arc_quest:has_flag' || cond === 'arc_quest:not_has_flag') && !node.flag) {
+        d.push({lvl: 'warn', path, msg: `${cond} 缺少 flag`});
     }
-    if (type === 'quest_completed' && !node.questId) {
-        d.push({lvl: 'warn', path, msg: 'quest_completed 缺少 questId'});
+    if ((cond === 'arc_quest:quest_completed' || cond === 'arc_quest:quest_accepted' || cond === 'arc_quest:quest_not_started') && !node.quest_id) {
+        d.push({lvl: 'warn', path, msg: `${cond} 缺少 quest_id`});
     }
-    if (type === 'variable') {
-        if (!node.variable) d.push({lvl: 'warn', path, msg: 'variable 条件缺少 variable'});
-        if (!['EQUAL', 'NOT_EQUAL', 'GREATER', 'GREATER_OR_EQUAL', 'LESS', 'LESS_OR_EQUAL'].includes(node.compareOp || '')) d.push({
+    if ((cond === 'arc_quest:quest_phase' || cond === 'arc_quest:quest_phase_completed' || cond === 'arc_quest:quest_phase_reached')) {
+        if (!node.quest_id) d.push({lvl: 'warn', path, msg: `${cond} 缺少 quest_id`});
+        if (!node.phase_id) d.push({lvl: 'warn', path, msg: `${cond} 缺少 phase_id`});
+    }
+    if (cond === 'arc_quest:variable_check') {
+        if (!node.key) d.push({lvl: 'warn', path, msg: 'variable_check 缺少 key'});
+        if (!['EQUAL', 'NOT_EQUAL', 'GREATER', 'GREATER_OR_EQUAL', 'LESS', 'LESS_OR_EQUAL'].includes(node.op || '')) d.push({
             lvl: 'warn',
             path,
-            msg: 'variable.compareOp 非标准'
+            msg: 'variable_check.op 非标准'
         });
     }
-    if (type === 'and' || type === 'or') {
-        validateConditionNode(node.left, `${path}.left`, d);
-        validateConditionNode(node.right, `${path}.right`, d);
+    if (cond === 'arc_quest:and' || cond === 'arc_quest:or') {
+        (node.conditions || []).forEach((sub, idx) => {
+            validateConditionNode(sub, `${path}.conditions.${idx}`, d);
+        });
     }
-    if (type === 'not') {
-        validateConditionNode(node.left, `${path}.left`, d);
+    if (cond === 'arc_quest:not') {
+        validateConditionNode(node.inner, `${path}.inner`, d);
+    }
+    if (cond === 'minecraft:entity_properties' && !node.predicate) {
+        d.push({lvl: 'warn', path, msg: 'entity_properties 缺少 predicate'});
     }
 }
 

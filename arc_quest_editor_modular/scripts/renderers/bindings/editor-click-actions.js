@@ -161,7 +161,7 @@ export function handleNonDeleteButtonAction(btn, state) {
     }
     if (id === 'addUnlockConditionBtn') {
         q.unlockConditions ||= [];
-        q.unlockConditions.push({type: 'always'});
+        q.unlockConditions.push({condition: 'arc_quest:always'});
         return true;
     }
     if (id === 'addObjectiveBtn') {
@@ -182,7 +182,7 @@ export function handleNonDeleteButtonAction(btn, state) {
     }
     if (id === 'addChoiceBtn') {
         q.phases[s.pi].choices ||= [];
-        q.phases[s.pi].choices.push({text: '', flagToSet: '', targetPhaseId: '', visibleCondition: {type: 'always'}});
+        q.phases[s.pi].choices.push({text: '', flagToSet: '', targetPhaseId: '', visibleCondition: {condition: 'arc_quest:always'}});
         return true;
     }
     if (id === 'movePhaseUpBtn' && s.pi > 0) {

@@ -1,4 +1,4 @@
-import {exportPhase, exportReward} from './export-normalizer-phase.js';
+import {exportPhase, exportReward, cleanCondition} from './export-normalizer-phase.js';
 
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -51,7 +51,7 @@ export function exportQuestToDatapack(stateQuest) {
     if (q.chapterStartSound) out.chapterStartSound = q.chapterStartSound;
     if (q.chapterFailSound) out.chapterFailSound = q.chapterFailSound;
     if (q.chapterCompleteSound) out.chapterCompleteSound = q.chapterCompleteSound;
-    if (q.unlockConditions) out.unlockConditions = q.unlockConditions;
+    if (q.unlockConditions) out.unlockConditions = q.unlockConditions.map(cleanCondition);
     if (q.relatedMarks?.length) out.relatedMarks = q.relatedMarks;
     if (q.visualConfig) {
         const splashes = exportSplashes(q.visualConfig.splashes);

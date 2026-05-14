@@ -17,73 +17,123 @@ export function setConditionNodeField(rootNode, pathParts, value) {
     let cursor = rootNode;
     for (let i = 0; i < pathParts.length - 1; i++) {
         const key = pathParts[i];
-        cursor[key] ||= {type: 'always'};
+        if (key === 'conditions' && !Array.isArray(cursor.conditions)) {
+            cursor.conditions = [{condition: 'arc_quest:always'}];
+        }
+        cursor[key] ||= {condition: 'arc_quest:always'};
         cursor = cursor[key];
     }
     const fieldName = pathParts[pathParts.length - 1];
-    if (fieldName === 'type') {
-        cursor.type = value;
-        if (value === 'always') {
+    if (fieldName === 'condition') {
+        cursor.condition = value;
+        if (value === 'arc_quest:always') {
             delete cursor.flag;
-            delete cursor.questId;
-            delete cursor.variable;
-            delete cursor.compareOp;
+            delete cursor.quest_id;
+            delete cursor.phase_id;
+            delete cursor.key;
+            delete cursor.op;
             delete cursor.value;
-            delete cursor.left;
-            delete cursor.right;
+            delete cursor.inner;
+            delete cursor.conditions;
+            delete cursor.predicate;
             return;
         }
-        if (value === 'flag_set' || value === 'flag_not_set') {
+        if (value === 'arc_quest:has_flag' || value === 'arc_quest:not_has_flag') {
             cursor.flag ||= '';
-            delete cursor.questId;
-            delete cursor.variable;
-            delete cursor.compareOp;
+            delete cursor.quest_id;
+            delete cursor.phase_id;
+            delete cursor.key;
+            delete cursor.op;
             delete cursor.value;
-            delete cursor.left;
-            delete cursor.right;
+            delete cursor.inner;
+            delete cursor.conditions;
+            delete cursor.predicate;
             return;
         }
-        if (value === 'quest_completed') {
-            cursor.questId ||= '';
+        if (value === 'arc_quest:quest_completed' || value === 'arc_quest:quest_accepted' || value === 'arc_quest:quest_not_started') {
+            cursor.quest_id ||= '';
             delete cursor.flag;
-            delete cursor.variable;
-            delete cursor.compareOp;
+            delete cursor.phase_id;
+            delete cursor.key;
+            delete cursor.op;
             delete cursor.value;
-            delete cursor.left;
-            delete cursor.right;
+            delete cursor.inner;
+            delete cursor.conditions;
+            delete cursor.predicate;
             return;
         }
-        if (value === 'variable') {
-            cursor.variable ||= '';
-            cursor.compareOp ||= 'EQUAL';
+        if (value === 'arc_quest:quest_phase' || value === 'arc_quest:quest_phase_completed' || value === 'arc_quest:quest_phase_reached') {
+            cursor.quest_id ||= '';
+            cursor.phase_id ||= '';
+            delete cursor.flag;
+            delete cursor.key;
+            delete cursor.op;
+            delete cursor.value;
+            delete cursor.inner;
+            delete cursor.conditions;
+            delete cursor.predicate;
+            return;
+        }
+        if (value === 'arc_quest:variable_check') {
+            cursor.key ||= '';
+            cursor.op ||= 'EQUAL';
             if (cursor.value === undefined) cursor.value = 0;
             delete cursor.flag;
-            delete cursor.questId;
-            delete cursor.left;
-            delete cursor.right;
+            delete cursor.quest_id;
+            delete cursor.phase_id;
+            delete cursor.inner;
+            delete cursor.conditions;
+            delete cursor.predicate;
             return;
         }
-        if (value === 'not') {
-            cursor.left ||= {type: 'always'};
+        if (value === 'arc_quest:not') {
+            cursor.inner ||= {condition: 'arc_quest:always'};
             delete cursor.flag;
-            delete cursor.questId;
-            delete cursor.variable;
-            delete cursor.compareOp;
+            delete cursor.quest_id;
+            delete cursor.phase_id;
+            delete cursor.key;
+            delete cursor.op;
             delete cursor.value;
-            delete cursor.right;
+            delete cursor.conditions;
+            delete cursor.predicate;
             return;
         }
-        cursor.left ||= {type: 'always'};
-        cursor.right ||= {type: 'always'};
-        delete cursor.flag;
-        delete cursor.questId;
-        delete cursor.variable;
-        delete cursor.compareOp;
-        delete cursor.value;
+        if (value === 'arc_quest:and' || value === 'arc_quest:or') {
+            cursor.conditions ||= [{condition: 'arc_quest:always'}, {condition: 'arc_quest:always'}];
+            delete cursor.flag;
+            delete cursor.quest_id;
+            delete cursor.phase_id;
+            delete cursor.key;
+            delete cursor.op;
+            delete cursor.value;
+            delete cursor.inner;
+            delete cursor.predicate;
+            return;
+        }
+        if (value === 'minecraft:entity_properties') {
+            cursor.predicate ||= {};
+            delete cursor.flag;
+            delete cursor.quest_id;
+            delete cursor.phase_id;
+            delete cursor.key;
+            delete cursor.op;
+            delete cursor.value;
+            delete cursor.inner;
+            delete cursor.conditions;
+            return;
+        }
         return;
     }
     if (fieldName === 'value') {
         cursor[fieldName] = Number(value || 0);
+        return;
+    }
+    if (fieldName === 'predicate') {
+        try {
+            cursor.predicate = JSON.parse(value || '{}');
+        } catch {
+            cursor.predicate = {};
+        }
         return;
     }
     cursor[fieldName] = value;
@@ -93,14 +143,14 @@ export function syncPhaseTransitions(phase) {
     if (phase.mode === 'parallel') {
         phase.transitions = (phase.parallelPhaseIds || []).filter(Boolean).map(targetPhaseId => ({
             targetPhaseId,
-            condition: {type: 'always'}
+            condition: {condition: 'arc_quest:always'}
         }));
         return;
     }
     if (phase.mode === 'choice') {
         phase.transitions = (phase.choicePhaseIds || []).filter(Boolean).map(targetPhaseId => ({
             targetPhaseId,
-            condition: {type: 'always'}
+            condition: {condition: 'arc_quest:always'}
         }));
         return;
     }
@@ -217,14 +267,14 @@ export function setQuestRootField(target, bind, value, inputType) {
         const parts = bind.split('.');
         const index = Number(parts[2]);
         target.unlockConditions ||= [];
-        target.unlockConditions[index] ||= {type: 'always'};
+        target.unlockConditions[index] ||= {condition: 'arc_quest:always'};
         setConditionNodeField(target.unlockConditions[index], parts.slice(3), value);
         return;
     }
     if (bind.startsWith('ph.') && bind.endsWith('.hasEnterCondition')) {
         const parts = bind.split('.');
         const phase = target.phases[Number(parts[1])];
-        if (value === 'true') phase.rawEnterCondition ||= {type: 'always'};
+        if (value === 'true') phase.rawEnterCondition ||= {condition: 'arc_quest:always'};
         else phase.rawEnterCondition = null;
         return;
     }

@@ -11,33 +11,44 @@ function descriptionNode(value, mode = 'translatable') {
     return {mode: mode || 'translatable', value};
 }
 
-function cleanCondition(node) {
-    if (!node?.type || node.type === 'always') return {type: 'always'};
-    if (node.type === 'flag_set' || node.type === 'flag_not_set') {
-        return {type: node.type, flag: node.flag || ''};
+export function cleanCondition(node) {
+    if (!node?.condition || node.condition === 'arc_quest:always') return {condition: 'arc_quest:always'};
+    if (node.condition === 'arc_quest:has_flag' || node.condition === 'arc_quest:not_has_flag') {
+        return {condition: node.condition, flag: node.flag || ''};
     }
-    if (node.type === 'quest_completed') {
-        return {type: 'quest_completed', questId: node.questId || ''};
+    if (node.condition === 'arc_quest:quest_completed' || node.condition === 'arc_quest:quest_accepted' || node.condition === 'arc_quest:quest_not_started') {
+        return {condition: node.condition, quest_id: node.quest_id || ''};
     }
-    if (node.type === 'variable') {
+    if (node.condition === 'arc_quest:quest_phase' || node.condition === 'arc_quest:quest_phase_completed' || node.condition === 'arc_quest:quest_phase_reached') {
+        return {condition: node.condition, quest_id: node.quest_id || '', phase_id: node.phase_id || ''};
+    }
+    if (node.condition === 'arc_quest:variable_check') {
         return {
-            type: 'variable',
-            variable: node.variable || '',
-            compareOp: node.compareOp || 'EQUAL',
+            condition: 'arc_quest:variable_check',
+            key: node.key || '',
+            op: node.op || 'EQUAL',
             value: Number(node.value ?? 0)
         };
     }
-    if (node.type === 'not') {
+    if (node.condition === 'arc_quest:not') {
         return {
-            type: 'not',
-            left: cleanCondition(node.left)
+            condition: 'arc_quest:not',
+            inner: cleanCondition(node.inner)
         };
     }
-    return {
-        type: node.type,
-        left: cleanCondition(node.left),
-        right: cleanCondition(node.right)
-    };
+    if (node.condition === 'arc_quest:and' || node.condition === 'arc_quest:or') {
+        return {
+            condition: node.condition,
+            conditions: (node.conditions || []).map(cleanCondition)
+        };
+    }
+    if (node.condition === 'minecraft:entity_properties') {
+        return {
+            condition: 'minecraft:entity_properties',
+            predicate: node.predicate || {}
+        };
+    }
+    return {condition: 'arc_quest:always'};
 }
 
 function cleanCollectionEntryConfig(config) {
@@ -152,7 +163,7 @@ export function exportPhase(phase) {
     if (phase.choices?.length) out.choices = phase.choices;
     if (phase.flagsToSetOnEnter?.length) out.flagsToSetOnEnter = phase.flagsToSetOnEnter;
     if (phase.flagsToSetOnComplete?.length) out.flagsToSetOnComplete = phase.flagsToSetOnComplete;
-    if (enterCondition.type !== 'always') out.enterCondition = enterCondition;
+    if (enterCondition.condition !== 'arc_quest:always') out.enterCondition = enterCondition;
     if (phase.autoStart) out.autoEnterByCondition = true;
     const collectionEntryConfig = cleanCollectionEntryConfig(phase.collectionEntryConfig);
     if (collectionEntryConfig) out.collectionEntryConfig = collectionEntryConfig;
