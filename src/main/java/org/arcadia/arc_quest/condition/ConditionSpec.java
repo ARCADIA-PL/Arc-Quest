@@ -40,6 +40,11 @@ public class ConditionSpec {
     public int endTick;
     public String name;
 
+    public String nbtScope;
+    public String nbtKey;
+    public String nbtValue;
+    public String namePattern;
+
     public boolean isAlways() {
         return "arc_quest:always".equals(condition) || condition == null || condition.isBlank();
     }

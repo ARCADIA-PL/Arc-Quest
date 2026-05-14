@@ -3,9 +3,11 @@ package org.arcadia.arc_quest.condition;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import net.minecraft.advancements.critereon.EntityPredicate;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
@@ -76,6 +78,22 @@ public final class ConditionEvaluator {
     }
 
     public boolean evaluate(ConditionSpec spec, @Nullable ServerPlayer player) {
+        return evaluate(spec, player, Set.of(), Set.of(), Map.of());
+    }
+
+    public boolean evaluateWithEntity(ConditionSpec spec, @Nullable ServerPlayer player, @Nullable Entity entity) {
+        if (spec == null || spec.isAlways()) return true;
+
+        String cond = spec.condition;
+        if (cond == null || cond.isBlank()) return true;
+
+        if ("arc_quest:entity_nbt".equals(cond)) {
+            return evaluateEntityNbt(spec, entity);
+        }
+        if ("arc_quest:entity_name".equals(cond)) {
+            return evaluateEntityName(spec, entity);
+        }
+
         return evaluate(spec, player, Set.of(), Set.of(), Map.of());
     }
 
@@ -244,5 +262,34 @@ public final class ConditionEvaluator {
         } else {
             return endTick == 0 ? t >= startTick : (t >= startTick || t < endTick);
         }
+    }
+
+    private boolean evaluateEntityNbt(ConditionSpec spec, @Nullable Entity entity) {
+        if (entity == null || spec.nbtKey == null || spec.nbtKey.isBlank()) return false;
+
+        CompoundTag nbt;
+        if ("full".equals(spec.nbtScope)) {
+            nbt = new CompoundTag();
+            entity.saveWithoutId(nbt);
+        } else {
+            nbt = entity.getPersistentData();
+        }
+
+        if (!nbt.contains(spec.nbtKey)) return false;
+
+        if (spec.nbtValue != null && !spec.nbtValue.isBlank()) {
+            String actual = nbt.getString(spec.nbtKey);
+            return spec.nbtValue.equals(actual);
+        }
+
+        return true;
+    }
+
+    private boolean evaluateEntityName(ConditionSpec spec, @Nullable Entity entity) {
+        if (entity == null || spec.namePattern == null || spec.namePattern.isBlank()) return false;
+        if (!entity.hasCustomName()) return false;
+
+        String name = entity.getCustomName().getString();
+        return name.contains(spec.namePattern);
     }
 }
