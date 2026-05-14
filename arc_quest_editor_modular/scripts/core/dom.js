@@ -9,6 +9,8 @@ export function getDomRefs() {
         validateBtn: document.querySelector('#validateBtn'),
         exportBtn: document.querySelector('#exportBtn'),
         fileInput: document.querySelector('#fileInput'),
+        importLibBtn: document.querySelector('#importLibBtn'),
+        modeBar: document.querySelector('#modeBar'),
         appRoot: document.querySelector('#appRoot'),
         mainLayout: document.querySelector('#mainLayout'),
         rightContainer: document.querySelector('#right-container'),
