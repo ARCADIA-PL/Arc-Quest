@@ -7,7 +7,7 @@ function transitionTargetSelect(label, bind, value, phaseIds, selfId) {
     return `<div class="f"><label>${label}</label><select data-b="${bind}">${options.join('')}</select></div>`;
 }
 
-export function renderPhaseChoicesSection(s, p, phaseIds, field, conditionOptions) {
+export function renderPhaseChoicesSection(s, p, phaseIds, field, registry) {
     if (p.mode !== 'choice') return '';
     return `
     <h4>阶段分支选项 (Choices)</h4>
@@ -21,7 +21,7 @@ export function renderPhaseChoicesSection(s, p, phaseIds, field, conditionOption
           <div class="row">
             ${field('flagToSet', `ph.${s.pi}.ch.${ci}.flagToSet`, c.flagToSet || '')}
           </div>
-          ${renderConditionTree(`ph.${s.pi}.ch.${ci}.vc`, c.visibleCondition, conditionOptions)}
+          ${renderConditionTree(`ph.${s.pi}.ch.${ci}.vc`, c.visibleCondition, {}, registry)}
           <div class="actions"><button data-dch="${ci}" class="danger">删除 Choice</button></div>
         </div>
       `).join('')}

@@ -12,20 +12,8 @@ export function renderPhaseEditor(state, field, area) {
     const s = state.quest.ui.sel;
     const p = state.quest.q.phases[s.pi];
     const phaseIds = (state.quest.q.phases || []).map(x => x.id).filter(Boolean);
-    const flagSuggestions = Array.from(new Set([
-        ...(state.quest.q.flagsToSetOnAccept || []),
-        ...(state.quest.q.flagsToSetOnComplete || []),
-        ...(p.flagsToSetOnEnter || []),
-        ...(p.flagsToSetOnComplete || []),
-        ...(state.quest.q.phases || []).flatMap(phase => [
-            ...(phase.flagsToSetOnEnter || []),
-            ...(phase.flagsToSetOnComplete || []),
-            ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
-        ])
-    ].filter(Boolean)));
-    const questSuggestions = Array.from(new Set([state.quest.q.id].filter(Boolean)));
-    const conditionOptions = {flagSuggestions, questSuggestions};
     const isCollectionQuest = state.quest.q.mode === 'COLLECTION';
+    const registry = state.registry;
 
     return `
     <div class="sec">
@@ -35,9 +23,9 @@ export function renderPhaseEditor(state, field, area) {
       </div>
 
       ${renderPhaseHeaderSection(s, p, field, area)}
-      ${renderPhaseFlowSection(s, p, phaseIds, field, area, conditionOptions)}
-      ${renderPhaseTransitionsSection(s, p, phaseIds, conditionOptions)}
-      ${renderPhaseChoicesSection(s, p, phaseIds, field, conditionOptions)}
+      ${renderPhaseFlowSection(s, p, phaseIds, field, area, registry)}
+      ${renderPhaseTransitionsSection(s, p, phaseIds, registry)}
+      ${renderPhaseChoicesSection(s, p, phaseIds, field, registry)}
 
       <h4>阶段目标 (Objectives)</h4>
       <div class="card" style="background: rgba(0,0,0,0.2)">

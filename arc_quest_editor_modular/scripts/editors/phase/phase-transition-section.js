@@ -7,7 +7,7 @@ function transitionTargetSelect(label, bind, value, phaseIds, selfId) {
     return `<div class="f"><label>${label}</label><select data-b="${bind}">${options.join('')}</select></div>`;
 }
 
-export function renderPhaseTransitionsSection(s, p, phaseIds, conditionOptions) {
+export function renderPhaseTransitionsSection(s, p, phaseIds, registry) {
     const title = p.mode === 'choice' ? '阶段去向 (Choice Targets / Transitions)' : '过渡连接 (Transitions)';
     return `
     <h4>${title}</h4>
@@ -17,7 +17,7 @@ export function renderPhaseTransitionsSection(s, p, phaseIds, conditionOptions) 
           <div class="row">
             ${transitionTargetSelect('目标阶段 (targetPhaseId)', `ph.${s.pi}.tr.${ti}.targetPhaseId`, t.targetPhaseId || '', phaseIds, p.id)}
           </div>
-          ${renderConditionTree(`ph.${s.pi}.tr.${ti}.c`, t.condition, conditionOptions)}
+          ${renderConditionTree(`ph.${s.pi}.tr.${ti}.c`, t.condition, {}, registry)}
           <div class="actions"><button data-dt="${ti}" class="danger">删除过渡</button></div>
         </div>
       `).join('')}

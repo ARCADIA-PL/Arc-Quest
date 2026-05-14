@@ -36,6 +36,31 @@
     box-shadow: inset 0 0 0 1px rgba(255, 215, 0, .08)
 }
 
+.condition-node-phase {
+    border-color: rgba(94, 92, 230, .32);
+    box-shadow: inset 0 0 0 1px rgba(94, 92, 230, .08)
+}
+
+.condition-node-entity {
+    border-color: rgba(255, 69, 58, .3);
+    box-shadow: inset 0 0 0 1px rgba(255, 69, 58, .06)
+}
+
+.condition-node-dialogue {
+    border-color: rgba(48, 209, 88, .3);
+    box-shadow: inset 0 0 0 1px rgba(48, 209, 88, .06)
+}
+
+.condition-node-node {
+    border-color: rgba(100, 210, 255, .3);
+    box-shadow: inset 0 0 0 1px rgba(100, 210, 255, .06)
+}
+
+.condition-node-time {
+    border-color: rgba(255, 159, 10, .3);
+    box-shadow: inset 0 0 0 1px rgba(255, 159, 10, .06)
+}
+
 .condition-summary {
     display: flex;
     align-items: center;
@@ -92,6 +117,36 @@
     color: #fffde8;
     background: rgba(255, 215, 0, .18);
     border-color: rgba(255, 215, 0, .35)
+}
+
+.condition-badge.phase {
+    color: #f0edff;
+    background: rgba(94, 92, 230, .16);
+    border-color: rgba(94, 92, 230, .32)
+}
+
+.condition-badge.entity {
+    color: #ffeded;
+    background: rgba(255, 69, 58, .14);
+    border-color: rgba(255, 69, 58, .3)
+}
+
+.condition-badge.dialogue {
+    color: #eafff0;
+    background: rgba(48, 209, 88, .14);
+    border-color: rgba(48, 209, 88, .3)
+}
+
+.condition-badge.node {
+    color: #e8f7ff;
+    background: rgba(100, 210, 255, .14);
+    border-color: rgba(100, 210, 255, .3)
+}
+
+.condition-badge.time {
+    color: #fff4e0;
+    background: rgba(255, 159, 10, .14);
+    border-color: rgba(255, 159, 10, .3)
 }
 
 .condition-summary-text {

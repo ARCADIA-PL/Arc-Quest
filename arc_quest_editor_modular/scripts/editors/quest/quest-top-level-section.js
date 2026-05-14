@@ -2,7 +2,7 @@ import {renderConditionTree} from '../condition-editor.js';
 import {chipEditor} from '../chip-editor.js';
 import {boolSelect, enumSelect, phaseSingleSelect, suggestInput} from '../quest-editor-sections.js';
 
-function renderUnlockConditionsSection(q, conditionOptions) {
+function renderUnlockConditionsSection(q, registry) {
     const conditions = Array.isArray(q.unlockConditions) ? q.unlockConditions : [];
     return `
     <h4>解锁条件 (unlockConditions)</h4>
@@ -10,7 +10,7 @@ function renderUnlockConditionsSection(q, conditionOptions) {
       ${conditions.length ? conditions.map((condition, index) => `
         <div class="card" style="margin:8px 0; border-color: rgba(255,255,255,0.1)">
           <div class="small"><b>Condition ${index + 1}</b></div>
-          ${renderConditionTree(`q.uc.${index}`, condition, conditionOptions)}
+          ${renderConditionTree(`q.uc.${index}`, condition, {}, registry)}
           <div class="actions"><button data-duc="${index}" class="danger">删除条件</button></div>
         </div>
       `).join('') : '<div class="tiny">暂无解锁条件</div>'}
@@ -19,22 +19,11 @@ function renderUnlockConditionsSection(q, conditionOptions) {
   `;
 }
 
-export function renderQuestTopLevelSection(q, phaseIds, field, area) {
+export function renderQuestTopLevelSection(q, phaseIds, field, area, registry = null) {
     const isCollectionQuest = q.mode === 'COLLECTION';
     const isTimed = !!q.timeLimitType && Number(q.timeLimitValue || 0) > 0;
     const requiresCount = q.completionPolicy === 'N_OF_M';
     const requiresTargetPhase = q.completionPolicy === 'SPECIFIC_PHASE';
-    const flagSuggestions = Array.from(new Set([
-        ...(q.flagsToSetOnAccept || []),
-        ...(q.flagsToSetOnComplete || []),
-        ...(q.phases || []).flatMap(phase => [
-            ...(phase.flagsToSetOnEnter || []),
-            ...(phase.flagsToSetOnComplete || []),
-            ...(phase.choices || []).map(choice => choice.flagToSet).filter(Boolean)
-        ])
-    ].filter(Boolean)));
-    const questSuggestions = Array.from(new Set([q.id, ...(q.phases || []).map(phase => phase.id).filter(Boolean)])).filter(Boolean);
-    const conditionOptions = {flagSuggestions, questSuggestions};
     return `
     <h4>Datapack 顶层设置 (Top-level Specs)</h4>
     <div class="card">
@@ -79,7 +68,7 @@ export function renderQuestTopLevelSection(q, phaseIds, field, area) {
         ${chipEditor('完成时触发标记 (setFlagOnComplete)', q.flagsToSetOnComplete || [], 'q.flagsToSetOnComplete', 'q.flagsToSetOnComplete', '输入 flag 后点击添加')}
       </div>
       <div class="row">
-        <div class="f">${renderUnlockConditionsSection(q, conditionOptions)}</div>
+        <div class="f">${renderUnlockConditionsSection(q, registry)}</div>
         ${area('相关标记 (relatedMarks JSON)', 'q.relatedMarks', q.relatedMarks ? JSON.stringify(q.relatedMarks, null, 2) : '')}
       </div>
     </div>

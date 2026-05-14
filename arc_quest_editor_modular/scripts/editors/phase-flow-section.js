@@ -1,7 +1,7 @@
 import {renderConditionTree} from './condition-editor.js';
 import {chipEditor} from './chip-editor.js';
 
-export function renderPhaseFlowSection(s, p, phaseIds, field, area, conditionOptions) {
+export function renderPhaseFlowSection(s, p, phaseIds, field, area, registry) {
     const isParallel = p.mode === 'parallel';
     const isChoice = p.mode === 'choice';
     const hasEnterCondition = !!p.rawEnterCondition;
@@ -23,7 +23,7 @@ export function renderPhaseFlowSection(s, p, phaseIds, field, area, conditionOpt
       </div>
       <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
         <div class="small"><b>进入条件 (enterCondition)</b></div>
-        ${renderConditionTree(`ph.${s.pi}.ec`, p.rawEnterCondition, conditionOptions)}
+        ${renderConditionTree(`ph.${s.pi}.ec`, p.rawEnterCondition, {}, registry)}
       </div>
       ` : '<div class="small">当前未启用 enterWhen，因此不显示进入条件 (enterCondition) 和 autoEnterByCondition。</div>'}
       <div class="row">

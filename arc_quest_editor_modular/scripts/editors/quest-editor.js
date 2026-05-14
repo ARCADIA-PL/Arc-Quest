@@ -1,16 +1,17 @@
-﻿import {renderQuestInfoSection} from './quest/quest-basic-section.js';
+import {renderQuestInfoSection} from './quest/quest-basic-section.js';
 import {renderQuestTopLevelSection} from './quest/quest-top-level-section.js';
 import {renderQuestCollectionWorkspace} from './quest/quest-collection-section.js';
 
 export function renderQuestEditor(state, field, area) {
     const q = state.quest.q;
     const phaseIds = (q.phases || []).map(p => p.id).filter(Boolean);
+    const registry = state.registry;
 
     return `
     <div class="sec">
       <h3 style="font-size:20px; font-weight:700; color:var(--text-main); margin-bottom: 20px;">架构参数设定 (Quest Info)</h3>
       ${renderQuestInfoSection(q, field, area)}
-      ${renderQuestTopLevelSection(q, phaseIds, field, area)}
+      ${renderQuestTopLevelSection(q, phaseIds, field, area, registry)}
       ${renderQuestCollectionWorkspace(state, q, field, phaseIds)}
       <div class="actions" style="margin-top: 24px;">
         <button id="addPhaseBtn" class="primary">
