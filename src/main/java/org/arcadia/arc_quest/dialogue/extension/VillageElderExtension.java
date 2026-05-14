@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.arcadia.arc_quest.npc.NpcBinding;
+import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -42,6 +43,11 @@ public class VillageElderExtension implements IEntityDialogueExtension<Villager>
     @Override
     @Nullable
     public String getDialogueTreeId(ServerPlayer player, Villager villager, InteractionHand hand, NpcBinding npcBinding) {
+        String datapackId = NpcBindingRegistry.INSTANCE.resolveDialogueId(villager, player);
+        if (datapackId != null) {
+            return datapackId;
+        }
+
         CompoundTag persistentData = villager.getPersistentData();
 
         if (persistentData.contains("ArcQuestDialogueId")) {

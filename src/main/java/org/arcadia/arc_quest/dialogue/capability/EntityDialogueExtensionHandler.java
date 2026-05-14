@@ -131,8 +131,12 @@ public class EntityDialogueExtensionHandler {
 
         ensureDialogueNpcPatch(target, player);
 
+        DialogueContext ctx = new DialogueContext();
+        ctx.put("npcName", target.getDisplayName().getString());
+        ctx.put("defaultNpc", target.getDisplayName().getString());
+
         DialogueSession session = DialogueSessionManager.INSTANCE.startDialogue(
-                player, target, tree.dialogueId(), new DialogueContext());
+                player, target, tree.dialogueId(), ctx);
 
         if (matchedExt != null) {
             matchedExt.onDialogueStart(player, target, session);
@@ -152,6 +156,17 @@ public class EntityDialogueExtensionHandler {
 
         for (NpcBinding.Entry entry : npcBinding.getEntries()) {
             LOGGER.debug("[EntityDialogueExtension] Binding hit: {} -> {}", entry.bindingId(), entry.dialogueId());
+        }
+
+        List<NpcBinding.Entry> bindingEntries = npcBinding.getEntries();
+        if (bindingEntries.isEmpty()) {
+            LOGGER.info("[EntityDialogueExtension] Dialogue started. tree={}, source=datapack_registry", dialogueId);
+        } else {
+            LOGGER.info("[EntityDialogueExtension] Dialogue started. tree={}, bindings={}",
+                    dialogueId,
+                    bindingEntries.stream()
+                            .map(e -> e.bindingId() + "->" + e.dialogueId())
+                            .toList());
         }
 
         LOGGER.debug("[EntityDialogueExtension] Player '{}' started dialogue '{}' with '{}'",
@@ -299,7 +314,7 @@ public class EntityDialogueExtensionHandler {
 
     @Nullable
     private static NpcSpec resolveNpcSpec(Entity entity, ServerPlayer player) {
-        return org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry.INSTANCE.resolveSpec(entity, player);
+        return NpcBindingRegistry.INSTANCE.resolveSpec(entity, player);
     }
 
     @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)

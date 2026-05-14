@@ -37,9 +37,11 @@ public final class NpcSpecValidator {
     private void validateBinding(NpcValidationReport report, NpcBindingSpec binding, int idx) {
         String prefix = "bindings[" + idx + "]";
 
-        if (binding.dialogueId == null || binding.dialogueId.isBlank()) {
+        boolean hasDialogue = (binding.dialogueId != null && !binding.dialogueId.isBlank())
+                || (binding.dialogueIdFromNbt != null && !binding.dialogueIdFromNbt.isBlank());
+        if (!hasDialogue) {
             report.add(NpcValidationIssue.Severity.ERROR, prefix + ".dialogue_id",
-                    "dialogue_id is required for binding");
+                    "dialogue_id or dialogue_id_from_nbt is required for binding");
         }
     }
 

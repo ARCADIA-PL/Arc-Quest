@@ -29,6 +29,7 @@ public class ArcQuestCommands {
                         .then(DialogueCommands.registerSubtree(dispatcher))
                         .then(TradeCommands.registerSubtree(dispatcher))
                         .then(GachaCommands.registerSubtree(dispatcher))
+                        .then(NpcCommands.registerSubtree(dispatcher))
                         .then(AdminCommands.registerSubtree(dispatcher))
                         .then(Commands.literal("reload_arcquest")
                                 .executes(ArcQuestHotReloadCommand::reloadArcQuest))

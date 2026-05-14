@@ -54,9 +54,11 @@ public final class DialogueSpecCompiler {
         if (spec.conditionalTexts != null) {
             for (var entry : spec.conditionalTexts.entrySet()) {
                 ConditionalSaySpec saySpec = entry.getValue();
-                if (saySpec != null) {
-                    conditionalTexts.put(entry.getKey(), compileConditionalSay(saySpec));
-                }
+                if (saySpec == null) continue;
+                String conditionKey = ConditionBridge.compileConditionKey(saySpec.conditions);
+                if (conditionKey == null) continue;
+                String mapKey = saySpec.priority + "|" + conditionKey;
+                conditionalTexts.put(mapKey, compileConditionalSay(saySpec));
             }
         }
 

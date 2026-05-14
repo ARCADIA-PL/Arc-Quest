@@ -95,17 +95,25 @@ public final class NpcBindingRegistry {
                     String nbtKey = binding.dialogueIdFromNbt;
                     CompoundTag persistentData = entity.getPersistentData();
                     if (persistentData.contains(nbtKey)) {
-                        return persistentData.getString(nbtKey);
+                        String result = persistentData.getString(nbtKey);
+                        LOGGER.info("[NpcBinding] Matched bindingId={} via nbtKey={}, dialogueId={}",
+                                binding.bindingId, nbtKey, result);
+                        return result;
                     }
                     CompoundTag fullNbt = new CompoundTag();
                     entity.saveWithoutId(fullNbt);
                     if (fullNbt.contains(nbtKey)) {
-                        return fullNbt.getString(nbtKey);
+                        String result = fullNbt.getString(nbtKey);
+                        LOGGER.info("[NpcBinding] Matched bindingId={} via fullNbt nbtKey={}, dialogueId={}",
+                                binding.bindingId, nbtKey, result);
+                        return result;
                     }
                     continue;
                 }
 
                 if (binding.dialogueId != null && !binding.dialogueId.isBlank()) {
+                    LOGGER.info("[NpcBinding] Matched bindingId={}, dialogueId={}",
+                            binding.bindingId, binding.dialogueId);
                     return binding.dialogueId;
                 }
             }
@@ -148,5 +156,14 @@ public final class NpcBindingRegistry {
 
     public int size() {
         return specsByType.values().stream().mapToInt(List::size).sum();
+    }
+
+    public Set<EntityType<?>> getAllEntityTypes() {
+        return Collections.unmodifiableSet(specsByType.keySet());
+    }
+
+    public List<NpcSpec> getSpecsFor(EntityType<?> entityType) {
+        List<NpcSpec> specs = specsByType.get(entityType);
+        return specs == null ? List.of() : Collections.unmodifiableList(specs);
     }
 }

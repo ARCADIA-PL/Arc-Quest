@@ -161,14 +161,14 @@ public final class DialogueSpecValidator {
             case "arc_quest:quest_phase_completed":
             case "arc_quest:quest_phase_reached":
             case "arc_quest:phase_enterable":
-                if (cond.questId.isBlank() || cond.phaseId.isBlank()) {
+                if (isBlank(cond.questId) || isBlank(cond.phaseId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Condition type '" + cond.condition + "' requires questId and phaseId");
                 }
                 break;
             case "arc_quest:phase_before":
             case "arc_quest:phase_after":
-                if (cond.questId.isBlank() || cond.targetPhaseId.isBlank()) {
+                if (isBlank(cond.questId) || isBlank(cond.targetPhaseId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Condition type '" + cond.condition + "' requires questId and targetPhaseId");
                 }
@@ -176,7 +176,7 @@ public final class DialogueSpecValidator {
             case "arc_quest:phase_between":
             case "arc_quest:any_active_in_range":
             case "arc_quest:all_completed_in_range":
-                if (cond.questId.isBlank() || cond.fromPhaseId.isBlank() || cond.toPhaseId.isBlank()) {
+                if (isBlank(cond.questId) || isBlank(cond.fromPhaseId) || isBlank(cond.toPhaseId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Condition type '" + cond.condition + "' requires questId, fromPhaseId and toPhaseId");
                 }
@@ -187,20 +187,20 @@ public final class DialogueSpecValidator {
             case "arc_quest:quest_failed":
             case "arc_quest:dialogue_completed":
             case "arc_quest:dialogue_on_cooldown":
-                if (cond.questId.isBlank() && cond.dialogueId.isBlank()) {
+                if (isBlank(cond.questId) && isBlank(cond.dialogueId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Condition type '" + cond.condition + "' requires questId or dialogueId");
                 }
                 break;
             case "arc_quest:has_flag":
             case "arc_quest:not_has_flag":
-                if (cond.flag.isBlank()) {
+                if (isBlank(cond.flag)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Condition type '" + cond.condition + "' requires flag");
                 }
                 break;
             case "arc_quest:variable_check":
-                if (cond.key.isBlank()) {
+                if (isBlank(cond.key)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Condition type 'variable_check' requires key");
                 }
@@ -213,20 +213,20 @@ public final class DialogueSpecValidator {
                 break;
             case "arc_quest:node_visited":
             case "arc_quest:node_on_cooldown":
-                if (cond.nodeId.isBlank()) {
+                if (isBlank(cond.nodeId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Condition type '" + cond.condition + "' requires nodeId");
                 }
                 break;
             case "arc_quest:choice_selected":
             case "arc_quest:choice_on_cooldown":
-                if (cond.choiceId.isBlank()) {
+                if (isBlank(cond.choiceId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Condition type '" + cond.condition + "' requires choiceId");
                 }
                 break;
             case "arc_quest:custom":
-                if (cond.name.isBlank()) {
+                if (isBlank(cond.name)) {
                     report.add(DialogueValidationIssue.Severity.WARNING, prefix,
                             "Custom condition has empty name");
                 }
@@ -246,43 +246,43 @@ public final class DialogueSpecValidator {
             case "start_quest":
             case "complete_quest":
             case "advance_phase":
-                if (action.questId.isBlank()) {
+                if (isBlank(action.questId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type '" + action.type + "' requires questId");
                 }
                 break;
             case "give_item":
-                if (action.itemId.isBlank()) {
+                if (isBlank(action.itemId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type 'give_item' requires itemId");
                 }
                 break;
             case "notify_talk":
-                if (action.npcId.isBlank()) {
+                if (isBlank(action.npcId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type 'notify_talk' requires npcId");
                 }
                 break;
             case "notify_interact":
-                if (action.targetId.isBlank()) {
+                if (isBlank(action.targetId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type 'notify_interact' requires targetId");
                 }
                 break;
             case "run_command":
-                if (action.command.isBlank()) {
+                if (isBlank(action.command)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type 'run_command' requires command");
                 }
                 break;
             case "set_flag":
-                if (action.flagName.isBlank()) {
+                if (isBlank(action.flagName)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type 'set_flag' requires flagName");
                 }
                 break;
             case "set_variable":
-                if (action.key.isBlank()) {
+                if (isBlank(action.key)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type 'set_variable' requires key");
                 }
@@ -290,13 +290,13 @@ public final class DialogueSpecValidator {
             case "open_trade":
             case "open_simple_trade":
             case "open_gacha":
-                if (action.shopId.isBlank()) {
+                if (isBlank(action.shopId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type '" + action.type + "' requires shopId");
                 }
                 break;
             case "custom":
-                if (action.customTypeId.isBlank()) {
+                if (isBlank(action.customTypeId)) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
                             "Action type 'custom' requires customTypeId");
                 }
@@ -337,5 +337,9 @@ public final class DialogueSpecValidator {
         if (binding.entityType == null || binding.entityType.isBlank()) {
             report.add(DialogueValidationIssue.Severity.ERROR, prefix + ".entityType", "Entity binding requires entityType");
         }
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

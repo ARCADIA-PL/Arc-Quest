@@ -212,6 +212,68 @@ public final class ConditionBridge {
     }
 
     // ═══════════════════════════════════════════════
+    //  条件序列化（供 ConditionalTextEvaluator 使用）
+    // ═══════════════════════════════════════════════
+
+    /**
+     * 将 {@link DialogueCondition} 序列化为条件键字符串，
+     * 格式与 {@code ConditionalTextEvaluator.matchesCondition()} 的解析逻辑一致。
+     */
+    public static String serializeConditionKey(DialogueCondition condition) {
+        if (condition instanceof DialogueCondition.HasQuest q) {
+            return "HAS_QUEST:" + q.questId();
+        } else if (condition instanceof DialogueCondition.QuestActive q) {
+            return "QUEST_ACTIVE:" + q.questId();
+        } else if (condition instanceof DialogueCondition.QuestCompleted q) {
+            return "QUEST_COMPLETED:" + q.questId();
+        } else if (condition instanceof DialogueCondition.QuestPhase q) {
+            return "QUEST_PHASE:" + q.questId() + "|" + q.phaseId();
+        } else if (condition instanceof DialogueCondition.Not n) {
+            return "NOT:" + serializeConditionKey(n.inner());
+        } else if (condition instanceof DialogueCondition.All a) {
+            StringBuilder sb = new StringBuilder("ALL:");
+            for (int i = 0; i < a.conditions().size(); i++) {
+                if (i > 0) sb.append(";");
+                sb.append(serializeConditionKey(a.conditions().get(i)));
+            }
+            return sb.toString();
+        } else if (condition instanceof DialogueCondition.Any any) {
+            StringBuilder sb = new StringBuilder("ANY:");
+            for (int i = 0; i < any.conditions().size(); i++) {
+                if (i > 0) sb.append(";");
+                sb.append(serializeConditionKey(any.conditions().get(i)));
+            }
+            return sb.toString();
+        } else if (condition instanceof DialogueCondition.CustomCondition cc) {
+            return "CUSTOM:" + cc.nameOrPredicate();
+        } else if (condition instanceof DialogueCondition.IsMorning) {
+            return "IS_MORNING";
+        } else if (condition instanceof DialogueCondition.IsAfternoon) {
+            return "IS_AFTERNOON";
+        } else if (condition instanceof DialogueCondition.IsNight) {
+            return "IS_NIGHT";
+        } else if (condition instanceof DialogueCondition.GameTimeInRange g) {
+            return "GAME_TIME_IN_RANGE:" + g.startTick() + "|" + g.endTick();
+        }
+        return "UNKNOWN";
+    }
+
+    /**
+     * 将条件 Spec 列表编译为单个序列化条件键。
+     * 多条条件以 AND 语义组合。
+     */
+    @Nullable
+    public static String compileConditionKey(@Nullable List<ConditionSpec> specs) {
+        if (specs == null || specs.isEmpty()) return null;
+        List<DialogueCondition> conds = toDialogueConditions(specs);
+        if (conds.isEmpty()) return null;
+        DialogueCondition combined = conds.size() == 1
+                ? conds.get(0)
+                : new DialogueCondition.All(conds);
+        return serializeConditionKey(combined);
+    }
+
+    // ═══════════════════════════════════════════════
     //  原版 predicate → ICondition
     // ═══════════════════════════════════════════════
 

@@ -314,6 +314,13 @@ public final class DialogueSessionManager {
         }
 
         if (speaker == null || speaker.getString().isBlank()) {
+            DialogueText treeDefaultNpc = session.getTree().defaultNpc();
+            if (treeDefaultNpc != null) {
+                speaker = session.processDialogueText(treeDefaultNpc);
+            }
+        }
+
+        if (speaker == null || speaker.getString().isBlank()) {
             Object fallback = session.getContext().get("defaultNpc");
             if (fallback instanceof String s && !s.isBlank()) {
                 speaker = Component.literal(s);
