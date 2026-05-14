@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.dialogue.io;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.spec.DialogueSpec;
@@ -64,7 +65,7 @@ public final class DialogueDatapackHotReloadService {
                 }
                 if (entry.getValue().entityBindings != null) {
                     for (var binding : entry.getValue().entityBindings) {
-                        var entityType = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getValue(ResourceLocation.tryParse(binding.entityType));
+                        var entityType = ForgeRegistries.ENTITY_TYPES.getValue(ResourceLocation.tryParse(binding.entityType));
                         if (entityType != null) {
                             DialogueRegistry.INSTANCE.bindEntityDatapack(entityType, binding.dialogueId);
                         } else {

@@ -461,7 +461,7 @@ public final class ArcQuestNetwork {
         MARKER_REVISION.put(player.getUUID(), 0L);
     }
 
-    public static void clearPlayerMarkerState(java.util.UUID uuid) {
+    public static void clearPlayerMarkerState(UUID uuid) {
         MARKER_EPOCH.remove(uuid);
         MARKER_REVISION.remove(uuid);
     }

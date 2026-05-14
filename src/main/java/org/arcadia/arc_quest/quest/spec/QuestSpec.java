@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.spec;
 
+import org.arcadia.arc_quest.condition.ConditionSpec;
 import org.arcadia.arc_quest.quest.api.*;
 
 import java.util.ArrayList;

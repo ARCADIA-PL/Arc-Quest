@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.spec.*;
 import org.arcadia.arc_quest.dialogue.spec.validate.DialogueSpecValidator;
@@ -85,15 +86,7 @@ public final class DialogueSpecCompiler {
     }
 
     private DialogueChoice compileChoice(DialogueChoiceSpec spec) {
-        List<DialogueCondition> conditions = new ArrayList<>();
-        if (spec.conditions != null) {
-            for (DialogueConditionSpec condSpec : spec.conditions) {
-                DialogueCondition cond = compileCondition(condSpec);
-                if (cond != null) {
-                    conditions.add(cond);
-                }
-            }
-        }
+        List<DialogueCondition> conditions = ConditionBridge.toDialogueConditions(spec.conditions);
 
         List<DialogueAction> actions = new ArrayList<>();
         if (spec.actions != null) {
@@ -158,68 +151,6 @@ public final class DialogueSpecCompiler {
             case "npc_display_name" -> DialogueText.DialogueArg.npcDisplayName();
             default -> DialogueText.DialogueArg.of(ctx -> argName);
         };
-    }
-
-    private DialogueCondition compileCondition(DialogueConditionSpec spec) {
-        if (spec == null || spec.type == null || spec.type.isBlank() || "always".equals(spec.type)) {
-            return null;
-        }
-
-        return switch (spec.type) {
-            case "not" -> spec.inner != null
-                    ? new DialogueCondition.Not(compileCondition(spec.inner))
-                    : null;
-            case "all" -> {
-                List<DialogueCondition> conds = compileConditionList(spec.conditions);
-                yield conds.isEmpty() ? null : new DialogueCondition.All(conds);
-            }
-            case "any" -> {
-                List<DialogueCondition> conds = compileConditionList(spec.conditions);
-                yield conds.isEmpty() ? null : new DialogueCondition.Any(conds);
-            }
-            case "has_quest" -> new DialogueCondition.HasQuest(spec.questId);
-            case "quest_active" -> new DialogueCondition.QuestActive(spec.questId);
-            case "quest_completed" -> new DialogueCondition.QuestCompleted(spec.questId);
-            case "quest_failed" -> new DialogueCondition.QuestFailed(spec.questId);
-            case "quest_phase" -> new DialogueCondition.QuestPhase(spec.questId, spec.phaseId);
-            case "quest_phase_active" -> new DialogueCondition.QuestPhaseActive(spec.questId, spec.phaseId);
-            case "quest_phase_completed" -> new DialogueCondition.QuestPhaseCompleted(spec.questId, spec.phaseId);
-            case "quest_phase_reached" -> new DialogueCondition.QuestPhaseReached(spec.questId, spec.phaseId);
-            case "phase_before" -> new DialogueCondition.PhaseBefore(spec.questId, spec.targetPhaseId);
-            case "phase_after" -> new DialogueCondition.PhaseAfter(spec.questId, spec.targetPhaseId);
-            case "phase_between" -> new DialogueCondition.PhaseBetween(spec.questId, spec.fromPhaseId, spec.toPhaseId);
-            case "any_active_in_range" -> new DialogueCondition.AnyActiveInRange(spec.questId, spec.fromPhaseId, spec.toPhaseId);
-            case "all_completed_in_range" -> new DialogueCondition.AllCompletedInRange(spec.questId, spec.fromPhaseId, spec.toPhaseId);
-            case "phase_enterable" -> new DialogueCondition.PhaseEnterable(spec.questId, spec.phaseId);
-            case "has_flag" -> new DialogueCondition.HasFlag(spec.flagName);
-            case "variable_check" -> new DialogueCondition.VariableCheck(spec.variableKey, spec.op, spec.value);
-            case "is_morning" -> new DialogueCondition.IsMorning();
-            case "is_afternoon" -> new DialogueCondition.IsAfternoon();
-            case "is_night" -> new DialogueCondition.IsNight();
-            case "game_time_in_range" -> new DialogueCondition.GameTimeInRange(spec.startTick, spec.endTick);
-            case "node_visited" -> new DialogueCondition.NodeVisited(spec.nodeId);
-            case "choice_selected" -> new DialogueCondition.ChoiceSelected(spec.choiceId);
-            case "dialogue_completed" -> new DialogueCondition.DialogueCompleted(spec.dialogueId);
-            case "node_on_cooldown" -> new DialogueCondition.NodeOnCooldown(spec.nodeId, (int)spec.cooldownSeconds);
-            case "choice_on_cooldown" -> new DialogueCondition.ChoiceOnCooldown(spec.choiceId, (int)spec.cooldownSeconds);
-            case "dialogue_on_cooldown" -> new DialogueCondition.DialogueOnCooldown(spec.dialogueId, (int)spec.cooldownSeconds);
-            case "custom" -> new DialogueCondition.CustomCondition(spec.name);
-            default -> {
-                yield null;
-            }
-        };
-    }
-
-    private List<DialogueCondition> compileConditionList(List<DialogueConditionSpec> specs) {
-        if (specs == null) return List.of();
-        List<DialogueCondition> result = new ArrayList<>();
-        for (DialogueConditionSpec spec : specs) {
-            DialogueCondition cond = compileCondition(spec);
-            if (cond != null) {
-                result.add(cond);
-            }
-        }
-        return result;
     }
 
     private DialogueAction compileAction(DialogueActionSpec spec) {

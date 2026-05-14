@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.dialogue.spec;
 
+import org.arcadia.arc_quest.condition.ConditionSpec;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,7 +9,7 @@ public class DialogueChoiceSpec {
     public String choiceId = "";
     public DialogueTextSpec text = new DialogueTextSpec();
     public String nextNodeId = "";
-    public List<DialogueConditionSpec> conditions = new ArrayList<>();
+    public List<ConditionSpec> conditions = new ArrayList<>();
     public List<DialogueActionSpec> actions = new ArrayList<>();
     public boolean repeatable = true;
     public long cooldownSeconds = 0;

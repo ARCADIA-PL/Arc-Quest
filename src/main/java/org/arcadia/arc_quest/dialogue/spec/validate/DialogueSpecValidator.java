@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.dialogue.spec.validate;
 
+import org.arcadia.arc_quest.condition.ConditionSpec;
 import org.arcadia.arc_quest.dialogue.spec.*;
 
 import java.util.Set;
@@ -133,98 +134,98 @@ public final class DialogueSpecValidator {
         }
     }
 
-    private void validateCondition(DialogueValidationReport report, DialogueConditionSpec cond, String prefix) {
+    private void validateCondition(DialogueValidationReport report, ConditionSpec cond, String prefix) {
         if (cond == null) return;
 
-        if (cond.type == null || cond.type.isBlank()) {
-            report.add(DialogueValidationIssue.Severity.WARNING, prefix + ".type", "Condition type is empty, defaulting to always");
+        if (cond.condition == null || cond.condition.isBlank()) {
+            report.add(DialogueValidationIssue.Severity.WARNING, prefix + ".condition", "Condition type is empty, defaulting to always");
             return;
         }
 
-        switch (cond.type) {
-            case "not":
+        switch (cond.condition) {
+            case "arc_quest:not":
                 if (cond.inner == null) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix + ".inner", "NOT condition requires inner condition");
                 } else {
                     validateCondition(report, cond.inner, prefix + ".inner");
                 }
                 break;
-            case "all":
-            case "any":
+            case "arc_quest:and":
+            case "arc_quest:or":
                 if (cond.conditions == null || cond.conditions.isEmpty()) {
                     report.add(DialogueValidationIssue.Severity.WARNING, prefix + ".conditions",
-                            cond.type.toUpperCase() + " condition has no sub-conditions");
+                            cond.condition.toUpperCase() + " condition has no sub-conditions");
                 }
                 break;
-            case "quest_phase":
-            case "quest_phase_active":
-            case "quest_phase_completed":
-            case "quest_phase_reached":
-            case "phase_enterable":
+            case "arc_quest:quest_phase":
+            case "arc_quest:quest_phase_completed":
+            case "arc_quest:quest_phase_reached":
+            case "arc_quest:phase_enterable":
                 if (cond.questId.isBlank() || cond.phaseId.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
-                            "Condition type '" + cond.type + "' requires questId and phaseId");
+                            "Condition type '" + cond.condition + "' requires questId and phaseId");
                 }
                 break;
-            case "phase_before":
-            case "phase_after":
+            case "arc_quest:phase_before":
+            case "arc_quest:phase_after":
                 if (cond.questId.isBlank() || cond.targetPhaseId.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
-                            "Condition type '" + cond.type + "' requires questId and targetPhaseId");
+                            "Condition type '" + cond.condition + "' requires questId and targetPhaseId");
                 }
                 break;
-            case "phase_between":
-            case "any_active_in_range":
-            case "all_completed_in_range":
+            case "arc_quest:phase_between":
+            case "arc_quest:any_active_in_range":
+            case "arc_quest:all_completed_in_range":
                 if (cond.questId.isBlank() || cond.fromPhaseId.isBlank() || cond.toPhaseId.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
-                            "Condition type '" + cond.type + "' requires questId, fromPhaseId and toPhaseId");
+                            "Condition type '" + cond.condition + "' requires questId, fromPhaseId and toPhaseId");
                 }
                 break;
-            case "has_quest":
-            case "quest_active":
-            case "quest_completed":
-            case "quest_failed":
-            case "dialogue_completed":
-            case "dialogue_on_cooldown":
+            case "arc_quest:has_quest":
+            case "arc_quest:quest_accepted":
+            case "arc_quest:quest_completed":
+            case "arc_quest:quest_failed":
+            case "arc_quest:dialogue_completed":
+            case "arc_quest:dialogue_on_cooldown":
                 if (cond.questId.isBlank() && cond.dialogueId.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
-                            "Condition type '" + cond.type + "' requires questId or dialogueId");
+                            "Condition type '" + cond.condition + "' requires questId or dialogueId");
                 }
                 break;
-            case "has_flag":
-                if (cond.flagName.isBlank()) {
+            case "arc_quest:has_flag":
+            case "arc_quest:not_has_flag":
+                if (cond.flag.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
-                            "Condition type 'has_flag' requires flagName");
+                            "Condition type '" + cond.condition + "' requires flag");
                 }
                 break;
-            case "variable_check":
-                if (cond.variableKey.isBlank()) {
+            case "arc_quest:variable_check":
+                if (cond.key.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
-                            "Condition type 'variable_check' requires variableKey");
+                            "Condition type 'variable_check' requires key");
                 }
                 break;
-            case "game_time_in_range":
+            case "arc_quest:game_time_in_range":
                 if (cond.startTick == 0 && cond.endTick == 0) {
                     report.add(DialogueValidationIssue.Severity.WARNING, prefix,
                             "Condition type 'game_time_in_range' has startTick=0 and endTick=0");
                 }
                 break;
-            case "node_visited":
-            case "node_on_cooldown":
+            case "arc_quest:node_visited":
+            case "arc_quest:node_on_cooldown":
                 if (cond.nodeId.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
-                            "Condition type '" + cond.type + "' requires nodeId");
+                            "Condition type '" + cond.condition + "' requires nodeId");
                 }
                 break;
-            case "choice_selected":
-            case "choice_on_cooldown":
+            case "arc_quest:choice_selected":
+            case "arc_quest:choice_on_cooldown":
                 if (cond.choiceId.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.ERROR, prefix,
-                            "Condition type '" + cond.type + "' requires choiceId");
+                            "Condition type '" + cond.condition + "' requires choiceId");
                 }
                 break;
-            case "custom":
+            case "arc_quest:custom":
                 if (cond.name.isBlank()) {
                     report.add(DialogueValidationIssue.Severity.WARNING, prefix,
                             "Custom condition has empty name");

@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.spec.validate;
 
+import org.arcadia.arc_quest.condition.ConditionSpec;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestCompletionPolicy;
 import org.arcadia.arc_quest.quest.spec.*;
@@ -301,43 +302,58 @@ public final class QuestSpecValidator {
 
     private void validateCondition(ValidationReport report, ConditionSpec condition, String path) {
         if (condition == null) return;
-        if (condition.type == null || condition.type.isBlank()) {
-            report.add(ValidationIssue.Severity.ERROR, path + ".type", "Condition type is required");
+        if (condition.isAlways()) return;
+
+        String cond = condition.condition;
+        if (cond == null || cond.isBlank()) {
+            report.add(ValidationIssue.Severity.ERROR, path + ".condition", "Condition type is required");
             return;
         }
-        switch (condition.type) {
-            case "always", "all_entries_complete", "completed_entry_count", "category_completed_count",
-                 "completed_entry_ratio", "category_completed_ratio" -> {
-            }
-            case "flag_set", "flag_not_set" -> {
-                if (condition.flag == null || condition.flag.isBlank())
-                    report.add(ValidationIssue.Severity.ERROR, path + ".flag", "Flag condition requires flag");
-            }
-            case "quest_completed" -> {
+
+        if (cond.startsWith("minecraft:")) {
+            if (condition.predicate == null)
+                report.add(ValidationIssue.Severity.WARNING, path + ".predicate", "Vanilla predicate condition has no predicate JSON");
+            return;
+        }
+
+        switch (cond) {
+            case "arc_quest:always" -> {}
+            case "arc_quest:quest_completed", "arc_quest:quest_accepted", "arc_quest:quest_not_started" -> {
                 if (condition.questId == null || condition.questId.isBlank())
-                    report.add(ValidationIssue.Severity.ERROR, path + ".questId", "Quest condition requires questId");
+                    report.add(ValidationIssue.Severity.ERROR, path + ".questId", cond + " requires questId");
             }
-            case "variable" -> {
-                if (condition.variable == null || condition.variable.isBlank())
-                    report.add(ValidationIssue.Severity.ERROR, path + ".variable", "Variable condition requires variable");
-                if (condition.compareOp == null)
-                    report.add(ValidationIssue.Severity.ERROR, path + ".compareOp", "Variable condition requires compareOp");
+            case "arc_quest:quest_phase", "arc_quest:quest_phase_completed", "arc_quest:quest_phase_reached" -> {
+                if (condition.questId == null || condition.questId.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".questId", cond + " requires questId");
+                if (condition.phaseId == null || condition.phaseId.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".phaseId", cond + " requires phaseId");
             }
-            case "and", "or" -> {
-                if (condition.left == null)
-                    report.add(ValidationIssue.Severity.ERROR, path + ".left", condition.type + " requires left condition");
-                if (condition.right == null)
-                    report.add(ValidationIssue.Severity.ERROR, path + ".right", condition.type + " requires right condition");
-                validateCondition(report, condition.left, path + ".left");
-                validateCondition(report, condition.right, path + ".right");
+            case "arc_quest:has_flag", "arc_quest:not_has_flag" -> {
+                if (condition.flag == null || condition.flag.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".flag", cond + " requires flag");
             }
-            case "not" -> {
-                if (condition.left == null)
-                    report.add(ValidationIssue.Severity.ERROR, path + ".left", "not requires left condition");
-                validateCondition(report, condition.left, path + ".left");
+            case "arc_quest:variable_check" -> {
+                if (condition.key == null || condition.key.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".key", "variable_check requires key");
+                if (condition.op == null || condition.op.isBlank())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".op", "variable_check requires op");
+            }
+            case "arc_quest:and", "arc_quest:or" -> {
+                if (condition.conditions == null || condition.conditions.isEmpty())
+                    report.add(ValidationIssue.Severity.ERROR, path + ".conditions", cond + " requires conditions list");
+                else {
+                    for (int i = 0; i < condition.conditions.size(); i++)
+                        validateCondition(report, condition.conditions.get(i), path + ".conditions[" + i + "]");
+                }
+            }
+            case "arc_quest:not" -> {
+                if (condition.inner == null)
+                    report.add(ValidationIssue.Severity.ERROR, path + ".inner", "not requires inner condition");
+                else
+                    validateCondition(report, condition.inner, path + ".inner");
             }
             default ->
-                    report.add(ValidationIssue.Severity.ERROR, path + ".type", "Unsupported condition type: " + condition.type);
+                    report.add(ValidationIssue.Severity.ERROR, path + ".condition", "Unsupported condition type: " + cond);
         }
     }
 }

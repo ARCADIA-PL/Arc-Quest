@@ -9,6 +9,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.api.rule.collection.*;
 import org.arcadia.arc_quest.quest.builder.QuestBuilder;
@@ -72,7 +73,7 @@ public final class QuestSpecCompiler {
             else if (spec.timeLimitType == QuestTimeLimitType.GAME_DAY_TIME) builder.questTimeLimitDayTicks(spec.timeLimitValue);
         }
 
-        for (ICondition cond : compileConditions(spec.unlockConditions)) builder.unlockCondition(cond);
+        for (ICondition cond : ConditionBridge.toQuestConditions(spec.unlockConditions)) builder.unlockCondition(cond);
         for (IReward reward : compileRewards(spec.completionRewards)) builder.reward(reward);
         for (String flag : listOrEmpty(spec.flagsToSetOnAccept)) builder.setFlagOnAccept(flag);
         for (String flag : listOrEmpty(spec.flagsToSetOnComplete)) builder.setFlagOnComplete(flag);
@@ -95,7 +96,7 @@ public final class QuestSpecCompiler {
         List<PhaseTransition> transitions = new ArrayList<>();
         int priority = 0;
         for (TransitionSpec transitionSpec : listOrEmpty(spec.transitions)) {
-            transitions.add(new PhaseTransition(transitionSpec.targetPhaseId, compileCondition(transitionSpec.condition), priority++));
+            transitions.add(new PhaseTransition(transitionSpec.targetPhaseId, ConditionBridge.toQuestCondition(transitionSpec.condition), priority++));
         }
         List<ChoiceOption> choices = new ArrayList<>();
         for (ChoiceSpec choiceSpec : listOrEmpty(spec.choices)) {
@@ -103,7 +104,7 @@ public final class QuestSpecCompiler {
                     compileText(choiceSpec.text).resolve(null, QuestTextContext.empty()),
                     choiceSpec.flagToSet == null ? "" : choiceSpec.flagToSet,
                     choiceSpec.targetPhaseId,
-                    compileCondition(choiceSpec.visibleCondition)
+                    ConditionBridge.toQuestCondition(choiceSpec.visibleCondition)
             ));
         }
 
@@ -116,7 +117,7 @@ public final class QuestSpecCompiler {
                 .intelScene(compileIntelSceneId(spec.intelSceneId, spec.phaseId))
                 .autoAdvanceOnComplete(spec.autoAdvanceOnComplete);
 
-        ICondition enterCond = compileCondition(spec.enterCondition);
+        ICondition enterCond = ConditionBridge.toQuestCondition(spec.enterCondition);
         if (enterCond != null) builder.enterWhen(enterCond, spec.autoEnterByCondition);
 
         for (ObjectiveEntry obj : objectives) builder.objective(obj);
@@ -190,7 +191,7 @@ public final class QuestSpecCompiler {
                 spec.categoryId,
                 enumOrNull(VisibilityMode.class, spec.visibilityMode),
                 enumOrNull(HiddenPresentationMode.class, spec.hiddenPresentationMode),
-                compileConditions(spec.visibilityConditions),
+                ConditionBridge.toQuestConditions(spec.visibilityConditions),
                 enumOrNull(CountingMode.class, spec.countingMode),
                 spec.completionTarget,
                 spec.repeatableProgress,
@@ -339,27 +340,6 @@ public final class QuestSpecCompiler {
             case "var_subtract" -> new VariableReward(spec.variable, VariableReward.Op.SUBTRACT, spec.value);
             case "var_multiply" -> new VariableReward(spec.variable, VariableReward.Op.MULTIPLY, spec.value);
             default -> throw new QuestCompileException("Unsupported reward type: " + spec.type);
-        };
-    }
-
-    private List<ICondition> compileConditions(List<ConditionSpec> specs) {
-        List<ICondition> conditions = new ArrayList<>();
-        for (ConditionSpec spec : listOrEmpty(specs)) conditions.add(compileCondition(spec));
-        return conditions;
-    }
-
-    private ICondition compileCondition(ConditionSpec spec) {
-        if (spec == null) return null;
-        return switch (spec.type) {
-            case "always" -> ICondition.always();
-            case "flag_set" -> ICondition.flagSet(spec.flag);
-            case "flag_not_set" -> ICondition.flagNotSet(spec.flag);
-            case "quest_completed" -> ICondition.questCompleted(parseId(spec.questId));
-            case "variable" -> ICondition.variable(spec.variable, spec.compareOp, spec.value);
-            case "and" -> compileCondition(spec.left).and(compileCondition(spec.right));
-            case "or" -> compileCondition(spec.left).or(compileCondition(spec.right));
-            case "not" -> compileCondition(spec.left).negate();
-            default -> throw new QuestCompileException("Unsupported condition type: " + spec.type);
         };
     }
 
