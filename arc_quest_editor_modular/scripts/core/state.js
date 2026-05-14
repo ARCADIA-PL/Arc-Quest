@@ -26,15 +26,29 @@ export const createBlankQuest = () => {
 };
 
 export const state = {
-    meta: {file: 'new_quest.json', dirty: false},
-    q: createBlankQuest(),
-    ui: {
-        sel: {t: 'quest'},
-        tab: 'preview',
-        graphView: {x: 0, y: 0, k: 1},
-        graphExpanded: false,
-        collectionView: 'card',
-        paneSizes: {left: 280, center: null, right: 380}
+    mode: 'quest',
+    registry: {
+        quests: {},
+        dialogues: {},
+        npcs: {},
+        npcBindings: {
+            dialogue: {},
+            npc: {}
+        }
     },
-    diag: []
+    quest: {
+        q: createBlankQuest(),
+        meta: {file: 'new_quest.json', dirty: false},
+        ui: {
+            sel: {t: 'quest'},
+            tab: 'preview',
+            graphView: {x: 0, y: 0, k: 1},
+            graphExpanded: false,
+            collectionView: 'card',
+            paneSizes: {left: 280, center: null, right: 380}
+        },
+        diag: []
+    },
+    npc: null,
+    dialogue: null
 };

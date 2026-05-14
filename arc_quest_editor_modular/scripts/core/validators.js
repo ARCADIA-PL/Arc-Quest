@@ -62,7 +62,7 @@ function validateConditionNode(node, path, d) {
 }
 
 export function validateQuest(state) {
-    const q = state.q;
+    const q = state.quest.q;
     ensureQuestShape(q);
     const d = [];
     if (!q.id?.trim()) d.push({lvl: 'err', path: 'quest', msg: 'Quest id 不能为空'});
@@ -273,5 +273,5 @@ export function validateQuest(state) {
             msg: `Quest reward[${ri}] ${type} flag 为空`
         });
     });
-    state.diag = d;
+    state.quest.diag = d;
 }

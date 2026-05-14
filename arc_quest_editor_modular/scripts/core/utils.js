@@ -110,11 +110,11 @@ export function buildReferenceIndex(q) {
 }
 
 export function resolveSelectionRefKey(state) {
-    const s = state.ui.sel;
+    const s = state.quest.ui.sel;
     if (s.t === 'phase') {
-        const id = state.q.phases?.[s.pi]?.id;
+        const id = state.quest.q.phases?.[s.pi]?.id;
         return id ? `phase:${id}` : '';
     }
-    return `quest:${state.q.id || 'quest'}`;
+    return `quest:${state.quest.q.id || 'quest'}`;
 }
 
