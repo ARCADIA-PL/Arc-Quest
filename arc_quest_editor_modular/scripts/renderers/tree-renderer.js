@@ -1,8 +1,8 @@
 import {esc} from '../core/utils.js';
 
 export function renderTree(state, target) {
-    const s = state.ui.sel;
-    const q = state.q;
+    const s = state.quest.ui.sel;
+    const q = state.quest.q;
 
     // Icon helpers
     const icFolder = `<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;

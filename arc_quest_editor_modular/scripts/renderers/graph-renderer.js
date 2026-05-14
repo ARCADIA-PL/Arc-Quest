@@ -118,9 +118,9 @@ function controlsHtml() {
 
 function viewportHtml(state, cls = '') {
     const orientation = cls.includes('compact') ? 'vertical' : 'horizontal';
-    const {nodes, edges} = buildGraph(state.q.phases || []);
+    const {nodes, edges} = buildGraph(state.quest.q.phases || []);
     applyLayout(nodes, orientation);
-    const ns = nodes.map(n => nodeHtml(n, state.ui.sel.t === 'phase' && state.ui.sel.pi === n.index, state.diag.some(d => d.path.startsWith(`phase:${n.index}`)))).join('');
+    const ns = nodes.map(n => nodeHtml(n, state.quest.ui.sel.t === 'phase' && state.quest.ui.sel.pi === n.index, state.quest.diag.some(d => d.path.startsWith(`phase:${n.index}`)))).join('');
     return `<div class="graph-viewport ${cls}" data-orientation="${orientation}"><svg width="100%" height="100%" class="graph-svg"><defs><marker id="arrow-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 10 5 L 0 9 z" fill="rgba(255,255,255,0.4)" /></marker></defs><g class="graph-canvas" style="transform-origin:0 0">${edges.map(e => edgeSvg(e, orientation)).join('')}${ns}</g></svg>${controlsHtml()}</div>`;
 }
 
@@ -154,7 +154,7 @@ export function renderGraph(state) {
 
 export function bindGraphEvents(viewport, state, onClick) {
     const canvas = viewport.querySelector('.graph-canvas');
-    const view = state.ui.graphView;
+    const view = state.quest.ui.graphView;
     let dragging = false;
     let startX = 0;
     let startY = 0;
@@ -268,12 +268,12 @@ export function bindGraphShellEvents(shell, state, onClick) {
     const overlay = ensureOverlay();
     const body = overlay.querySelector('[data-graph-body]');
     const close = () => {
-        state.ui.graphExpanded = false;
+        state.quest.ui.graphExpanded = false;
         overlay.classList.remove('open');
         document.body.classList.remove('graph-expanded-open');
     };
     const open = () => {
-        state.ui.graphExpanded = true;
+        state.quest.ui.graphExpanded = true;
         body.innerHTML = viewportHtml(state, 'graph-viewport-expanded');
         placeOverlay(shell, overlay);
         overlay.classList.add('open');

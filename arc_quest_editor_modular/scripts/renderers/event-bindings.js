@@ -1,4 +1,4 @@
-﻿import {handleClickPrelude, handleNonDeleteButtonAction} from './bindings/editor-click-actions.js';
+import {handleClickPrelude, handleNonDeleteButtonAction} from './bindings/editor-click-actions.js';
 import {handleDeleteButtonAction} from './bindings/editor-delete-actions.js';
 import {bindEditorInputs} from './bindings/editor-inputs.js';
 
@@ -6,11 +6,11 @@ export function bindTreeSelection(leftEl, state, rerender) {
     leftEl.onclick = e => {
         const id = e.target.closest('[data-id]')?.dataset.id;
         if (!id) return;
-        if (id === 'quest' || id === 'visual' || id === 'rewards' || id === 'raw') state.ui.sel = {t: id};
-        else if (id.startsWith('phase-')) state.ui.sel = {t: 'phase', pi: +id.split('-')[1]};
+        if (id === 'quest' || id === 'visual' || id === 'rewards' || id === 'raw') state.quest.ui.sel = {t: id};
+        else if (id.startsWith('phase-')) state.quest.ui.sel = {t: 'phase', pi: +id.split('-')[1]};
         else {
             const [, pi, oi] = id.split('-');
-            state.ui.sel = {t: 'obj', pi: +pi, oi: +oi};
+            state.quest.ui.sel = {t: 'obj', pi: +pi, oi: +oi};
         }
         rerender();
     };
@@ -26,7 +26,7 @@ export function bindEditorActions(midEl, state, rerender, setByPath) {
         if (!btn) return;
 
         if (handleNonDeleteButtonAction(btn, state)) {
-            state.meta.dirty = true;
+            state.quest.meta.dirty = true;
             rerender();
             return;
         }
@@ -39,7 +39,7 @@ export function bindEditorActions(midEl, state, rerender, setByPath) {
             }
             if (deleteResult.mutate) {
                 deleteResult.apply();
-                state.meta.dirty = true;
+                state.quest.meta.dirty = true;
                 rerender();
             }
         }

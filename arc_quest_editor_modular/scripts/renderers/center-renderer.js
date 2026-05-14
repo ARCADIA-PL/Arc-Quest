@@ -8,7 +8,7 @@ import {field, area} from './center/form-fields.js';
 import {renderRewardsView} from './center/rewards-view.js';
 
 export function renderCenterEditor(state, midEl) {
-    const s = state.ui.sel;
+    const s = state.quest.ui.sel;
     let html = '';
     const wrap = content => `<div class="fade-in">${content}</div>`;
 
