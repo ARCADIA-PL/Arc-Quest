@@ -26,105 +26,104 @@ export function setConditionNodeField(rootNode, pathParts, value) {
     const fieldName = pathParts[pathParts.length - 1];
     if (fieldName === 'condition') {
         cursor.condition = value;
-        if (value === 'arc_quest:always') {
-            delete cursor.flag;
-            delete cursor.quest_id;
-            delete cursor.phase_id;
-            delete cursor.key;
-            delete cursor.op;
-            delete cursor.value;
-            delete cursor.inner;
-            delete cursor.conditions;
-            delete cursor.predicate;
-            return;
-        }
-        if (value === 'arc_quest:has_flag' || value === 'arc_quest:not_has_flag') {
-            cursor.flag ||= '';
-            delete cursor.quest_id;
-            delete cursor.phase_id;
-            delete cursor.key;
-            delete cursor.op;
-            delete cursor.value;
-            delete cursor.inner;
-            delete cursor.conditions;
-            delete cursor.predicate;
-            return;
-        }
-        if (value === 'arc_quest:quest_completed' || value === 'arc_quest:quest_accepted' || value === 'arc_quest:quest_not_started') {
-            cursor.quest_id ||= '';
-            delete cursor.flag;
-            delete cursor.phase_id;
-            delete cursor.key;
-            delete cursor.op;
-            delete cursor.value;
-            delete cursor.inner;
-            delete cursor.conditions;
-            delete cursor.predicate;
-            return;
-        }
-        if (value === 'arc_quest:quest_phase' || value === 'arc_quest:quest_phase_completed' || value === 'arc_quest:quest_phase_reached') {
-            cursor.quest_id ||= '';
-            cursor.phase_id ||= '';
-            delete cursor.flag;
-            delete cursor.key;
-            delete cursor.op;
-            delete cursor.value;
-            delete cursor.inner;
-            delete cursor.conditions;
-            delete cursor.predicate;
-            return;
-        }
-        if (value === 'arc_quest:variable_check') {
-            cursor.key ||= '';
-            cursor.op ||= 'EQUAL';
-            if (cursor.value === undefined) cursor.value = 0;
-            delete cursor.flag;
-            delete cursor.quest_id;
-            delete cursor.phase_id;
-            delete cursor.inner;
-            delete cursor.conditions;
-            delete cursor.predicate;
-            return;
-        }
-        if (value === 'arc_quest:not') {
-            cursor.inner ||= {condition: 'arc_quest:always'};
-            delete cursor.flag;
-            delete cursor.quest_id;
-            delete cursor.phase_id;
-            delete cursor.key;
-            delete cursor.op;
-            delete cursor.value;
-            delete cursor.conditions;
-            delete cursor.predicate;
-            return;
-        }
-        if (value === 'arc_quest:and' || value === 'arc_quest:or') {
-            cursor.conditions ||= [{condition: 'arc_quest:always'}, {condition: 'arc_quest:always'}];
-            delete cursor.flag;
-            delete cursor.quest_id;
-            delete cursor.phase_id;
-            delete cursor.key;
-            delete cursor.op;
-            delete cursor.value;
-            delete cursor.inner;
-            delete cursor.predicate;
-            return;
-        }
-        if (value === 'minecraft:entity_properties') {
-            cursor.predicate ||= {};
-            delete cursor.flag;
-            delete cursor.quest_id;
-            delete cursor.phase_id;
-            delete cursor.key;
-            delete cursor.op;
-            delete cursor.value;
-            delete cursor.inner;
-            delete cursor.conditions;
-            return;
+        const ALL_DATA_FIELDS = ['flag', 'questId', 'phaseId', 'targetPhaseId', 'fromPhaseId', 'toPhaseId',
+            'key', 'op', 'value', 'inner', 'conditions', 'predicate',
+            'nbtScope', 'nbtKey', 'nbtValue', 'namePattern',
+            'dialogueId', 'nodeId', 'choiceId', 'startTick', 'endTick',
+            'quest_id', 'phase_id', 'questId'];
+        const clearAll = () => { for (const f of ALL_DATA_FIELDS) delete cursor[f]; };
+
+        switch (value) {
+            case 'arc_quest:always':
+                clearAll();
+                return;
+            case 'arc_quest:has_flag':
+            case 'arc_quest:not_has_flag':
+                clearAll();
+                cursor.flag = '';
+                return;
+            case 'arc_quest:quest_completed':
+            case 'arc_quest:quest_accepted':
+            case 'arc_quest:quest_not_started':
+            case 'arc_quest:has_quest':
+                clearAll();
+                cursor.questId = '';
+                return;
+            case 'arc_quest:quest_phase':
+            case 'arc_quest:quest_phase_completed':
+            case 'arc_quest:quest_phase_reached':
+            case 'arc_quest:phase_enterable':
+                clearAll();
+                cursor.questId = '';
+                cursor.phaseId = '';
+                return;
+            case 'arc_quest:phase_before':
+            case 'arc_quest:phase_after':
+                clearAll();
+                cursor.questId = '';
+                cursor.targetPhaseId = '';
+                return;
+            case 'arc_quest:phase_between':
+            case 'arc_quest:any_active_in_range':
+            case 'arc_quest:all_completed_in_range':
+                clearAll();
+                cursor.questId = '';
+                cursor.fromPhaseId = '';
+                cursor.toPhaseId = '';
+                return;
+            case 'arc_quest:variable_check':
+                clearAll();
+                cursor.key = '';
+                cursor.op = 'EQUAL';
+                if (cursor.value === undefined) cursor.value = 0;
+                return;
+            case 'arc_quest:entity_nbt':
+                clearAll();
+                cursor.nbtScope = 'default';
+                cursor.nbtKey = '';
+                cursor.nbtValue = '';
+                return;
+            case 'arc_quest:entity_name':
+                clearAll();
+                cursor.namePattern = '';
+                return;
+            case 'arc_quest:dialogue_completed':
+            case 'arc_quest:dialogue_on_cooldown':
+                clearAll();
+                cursor.dialogueId = '';
+                return;
+            case 'arc_quest:node_visited':
+            case 'arc_quest:node_on_cooldown':
+                clearAll();
+                cursor.nodeId = '';
+                return;
+            case 'arc_quest:choice_selected':
+            case 'arc_quest:choice_on_cooldown':
+                clearAll();
+                cursor.choiceId = '';
+                return;
+            case 'arc_quest:game_time_in_range':
+                clearAll();
+                cursor.startTick = 0;
+                cursor.endTick = 0;
+                return;
+            case 'arc_quest:not':
+                clearAll();
+                cursor.inner = {condition: 'arc_quest:always'};
+                return;
+            case 'arc_quest:and':
+            case 'arc_quest:or':
+                clearAll();
+                cursor.conditions = [{condition: 'arc_quest:always'}, {condition: 'arc_quest:always'}];
+                return;
+            case 'minecraft:entity_properties':
+                clearAll();
+                cursor.predicate = {};
+                return;
         }
         return;
     }
-    if (fieldName === 'value') {
+    if (fieldName === 'value' || fieldName === 'startTick' || fieldName === 'endTick') {
         cursor[fieldName] = Number(value || 0);
         return;
     }

@@ -116,7 +116,7 @@ function convertOldCondition(node) {
     if (type === 'always') return {condition: 'arc_quest:always'};
     if (type === 'flag_set') return {condition: 'arc_quest:has_flag', flag: node.flag || ''};
     if (type === 'flag_not_set') return {condition: 'arc_quest:not_has_flag', flag: node.flag || ''};
-    if (type === 'quest_completed') return {condition: 'arc_quest:quest_completed', quest_id: node.questId || ''};
+    if (type === 'quest_completed') return {condition: 'arc_quest:quest_completed', questId: node.questId || ''};
     if (type === 'variable') return {
         condition: 'arc_quest:variable_check',
         key: node.variable || '',

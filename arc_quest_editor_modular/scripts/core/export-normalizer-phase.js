@@ -13,41 +13,68 @@ function descriptionNode(value, mode = 'translatable') {
 
 export function cleanCondition(node) {
     if (!node?.condition || node.condition === 'arc_quest:always') return {condition: 'arc_quest:always'};
-    if (node.condition === 'arc_quest:has_flag' || node.condition === 'arc_quest:not_has_flag') {
-        return {condition: node.condition, flag: node.flag || ''};
+
+    switch (node.condition) {
+        case 'arc_quest:has_flag':
+        case 'arc_quest:not_has_flag':
+            return {condition: node.condition, flag: node.flag || ''};
+
+        case 'arc_quest:quest_completed':
+        case 'arc_quest:quest_accepted':
+        case 'arc_quest:quest_not_started':
+        case 'arc_quest:has_quest':
+            return {condition: node.condition, questId: node.questId || ''};
+
+        case 'arc_quest:quest_phase':
+        case 'arc_quest:quest_phase_completed':
+        case 'arc_quest:quest_phase_reached':
+        case 'arc_quest:phase_enterable':
+            return {condition: node.condition, questId: node.questId || '', phaseId: node.phaseId || ''};
+
+        case 'arc_quest:phase_before':
+        case 'arc_quest:phase_after':
+            return {condition: node.condition, questId: node.questId || '', targetPhaseId: node.targetPhaseId || ''};
+
+        case 'arc_quest:phase_between':
+        case 'arc_quest:any_active_in_range':
+        case 'arc_quest:all_completed_in_range':
+            return {condition: node.condition, questId: node.questId || '', fromPhaseId: node.fromPhaseId || '', toPhaseId: node.toPhaseId || ''};
+
+        case 'arc_quest:variable_check':
+            return {condition: 'arc_quest:variable_check', key: node.key || '', op: node.op || 'EQUAL', value: Number(node.value ?? 0)};
+
+        case 'arc_quest:entity_nbt':
+            return {condition: 'arc_quest:entity_nbt', nbtScope: node.nbtScope || 'default', nbtKey: node.nbtKey || '', nbtValue: node.nbtValue || ''};
+
+        case 'arc_quest:entity_name':
+            return {condition: 'arc_quest:entity_name', namePattern: node.namePattern || ''};
+
+        case 'arc_quest:dialogue_completed':
+        case 'arc_quest:dialogue_on_cooldown':
+            return {condition: node.condition, dialogueId: node.dialogueId || '', cooldownSeconds: node.cooldownSeconds};
+
+        case 'arc_quest:node_visited':
+        case 'arc_quest:node_on_cooldown':
+            return {condition: node.condition, nodeId: node.nodeId || ''};
+
+        case 'arc_quest:choice_selected':
+        case 'arc_quest:choice_on_cooldown':
+            return {condition: node.condition, choiceId: node.choiceId || ''};
+
+        case 'arc_quest:game_time_in_range':
+            return {condition: 'arc_quest:game_time_in_range', startTick: Number(node.startTick ?? 0), endTick: Number(node.endTick ?? 0)};
+
+        case 'arc_quest:not':
+            return {condition: 'arc_quest:not', inner: cleanCondition(node.inner)};
+
+        case 'arc_quest:and':
+        case 'arc_quest:or':
+            return {condition: node.condition, conditions: (node.conditions || []).map(cleanCondition)};
+
+        case 'minecraft:entity_properties':
+            return {condition: 'minecraft:entity_properties', predicate: node.predicate || {}};
     }
-    if (node.condition === 'arc_quest:quest_completed' || node.condition === 'arc_quest:quest_accepted' || node.condition === 'arc_quest:quest_not_started') {
-        return {condition: node.condition, quest_id: node.quest_id || ''};
-    }
-    if (node.condition === 'arc_quest:quest_phase' || node.condition === 'arc_quest:quest_phase_completed' || node.condition === 'arc_quest:quest_phase_reached') {
-        return {condition: node.condition, quest_id: node.quest_id || '', phase_id: node.phase_id || ''};
-    }
-    if (node.condition === 'arc_quest:variable_check') {
-        return {
-            condition: 'arc_quest:variable_check',
-            key: node.key || '',
-            op: node.op || 'EQUAL',
-            value: Number(node.value ?? 0)
-        };
-    }
-    if (node.condition === 'arc_quest:not') {
-        return {
-            condition: 'arc_quest:not',
-            inner: cleanCondition(node.inner)
-        };
-    }
-    if (node.condition === 'arc_quest:and' || node.condition === 'arc_quest:or') {
-        return {
-            condition: node.condition,
-            conditions: (node.conditions || []).map(cleanCondition)
-        };
-    }
-    if (node.condition === 'minecraft:entity_properties') {
-        return {
-            condition: 'minecraft:entity_properties',
-            predicate: node.predicate || {}
-        };
-    }
+
     return {condition: 'arc_quest:always'};
 }
 
