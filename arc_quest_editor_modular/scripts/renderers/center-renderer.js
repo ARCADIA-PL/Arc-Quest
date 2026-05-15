@@ -12,7 +12,7 @@ import {renderRewardsView} from './center/rewards-view.js';
 export function renderCenterEditor(state, midEl) {
     const s = state.quest.ui.sel;
     let html = '';
-    const wrap = content => `<div class="fade-in">${content}</div>`;
+    const wrap = content => `<div class="center-content">${content}</div>`;
 
     if (s.t === 'quest') html = wrap(renderQuestEditor(state, field, area));
     else if (s.t === 'visual') html = wrap(renderVisualEditor(state, field, area));
@@ -26,10 +26,10 @@ export function renderCenterEditor(state, midEl) {
 
 export function renderNpcCenter(state, midEl) {
     const html = renderNpcEditor(state.npc.q, state.registry, field, area);
-    midEl.innerHTML = `<div class="fade-in">${html}</div>`;
+    midEl.innerHTML = `<div class="center-content">${html}</div>`;
 }
 
 export function renderDiagCenter(state, midEl) {
     const html = renderDialogueCenter(state);
-    midEl.innerHTML = `<div class="fade-in">${html}</div>`;
+    midEl.innerHTML = `<div class="center-content">${html}</div>`;
 }

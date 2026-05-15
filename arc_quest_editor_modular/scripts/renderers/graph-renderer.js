@@ -149,7 +149,7 @@ function placeOverlay(shell, overlay) {
 }
 
 export function renderGraph(state) {
-    return `<div class="graph-shell"><div class="graph-compact-row"><button class="graph-side-toggle" data-graph-toggle="expand" title="展开拓扑图"><span class="graph-side-toggle-icon">⤢</span><span class="graph-side-toggle-text">展开</span></button><div class="graph-wrapper fade-in">${viewportHtml(state, 'graph-viewport-compact')}</div></div></div>`;
+    return `<div class="graph-shell"><div class="graph-compact-row"><button class="graph-side-toggle" data-graph-toggle="expand" title="展开拓扑图"><span class="graph-side-toggle-icon">⤢</span><span class="graph-side-toggle-text">展开</span></button><div class="graph-wrapper">${viewportHtml(state, 'graph-viewport-compact')}</div></div></div>`;
 }
 
 export function bindGraphEvents(viewport, state, onClick) {

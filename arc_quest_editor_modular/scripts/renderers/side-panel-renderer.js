@@ -17,7 +17,7 @@ export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate,
     };
 
     let h = '';
-    const wrap = content => `<div class="fade-in" style="height:100%; display:flex; flex-direction:column;">${content}</div>`;
+    const wrap = content => `<div class="right-pane-content" style="height:100%; display:flex; flex-direction:column;">${content}</div>`;
 
     if (isQuestMode && state.quest.ui.tab === 'preview') h = wrap(`<div class="sec"><h3 style="color:var(--text-main); font-size:14px; font-weight:600; text-transform:none;">${esc(state.quest.q.id)}</h3><div class="card"><div class="small" style="margin-bottom:8px;"><b>Title:</b> ${esc(state.quest.q.title)}</div><div class="small" style="margin-bottom:8px;"><b>Theme:</b> <span class="chip" style="background:${esc(clr(state.quest.q.visualConfig.themeColor))}20; color:${esc(clr(state.quest.q.visualConfig.themeColor))}">${esc(clr(state.quest.q.visualConfig.themeColor))}</span></div><div class="small" style="margin-bottom:8px;"><b>Scale:</b> ${state.quest.q.phases.length} Phases / ${state.quest.q.rewards.length} Rewards</div><div class="small"><b>Mode:</b> ${esc(state.quest.q.mode || 'Standard')}</div></div></div>`);
     if (state.quest.ui.tab === 'json') h = wrap(`<div class="json" style="flex:1; overflow:auto">${esc(JSON.stringify(q, null, 2))}</div>`);

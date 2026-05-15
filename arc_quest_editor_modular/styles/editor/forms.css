@@ -25,7 +25,9 @@
     padding: 10px 12px;
     font-family: var(--font-family);
     font-size: 13px;
-    transition: all .2s
+    transition: border-color var(--anim-fast) var(--ease-out),
+                box-shadow var(--anim-fast) var(--ease-out),
+                background var(--anim-fast) var(--ease-out)
 }
 
 .f textarea {
@@ -38,7 +40,7 @@
     outline: none;
     border-color: var(--accent);
     background: rgba(0, 0, 0, .5);
-    box-shadow: 0 0 0 3px var(--accent-glow)
+    box-shadow: 0 0 0 1px rgba(10,132,255,.15)
 }
 
 .small {
