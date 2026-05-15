@@ -939,8 +939,9 @@ button.danger:hover {
 .card-strip-bar {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-bottom: 6px
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 0 2px
 }
 
 .card-strip {
@@ -956,17 +957,50 @@ button.danger:hover {
     display: none
 }
 
+.strip-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px
+}
+
+.strip-label {
+    font-size: 13px;
+    width: auto;
+    white-space: nowrap;
+    opacity: .7;
+    user-select: none
+}
+
 .strip-card {
     display: inline-flex;
     align-items: center;
-    padding: 3px 8px;
+    padding: 6px 14px;
     border-radius: 6px;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 500;
     margin-bottom: 0;
+    background: rgba(255,255,255,.04);
+    border: 1px solid transparent;
     transition: .15s
+}
+
+.strip-card:hover {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.06)
+}
+
+.strip-card:active {
+    transform: scale(.96)
+}
+
+.strip-card.on {
+    background: rgba(10,132,255,.12);
+    border-color: rgba(10,132,255,.25);
+    color: var(--accent)
 }
 
 
