@@ -1,399 +1,601 @@
-# Arc Quest Editor — 共享注册表 + 智能补全 施工蓝图
+# Arc Quest Editor — NPC & 对话数据包编辑器 施工蓝图
 
-> 三轮多 Agent 研讨修订。
+> **研讨历程**
 >
-> 第一轮（设计层面）：架构师 + 后端/数据包 + UX 交互 + 工程管理。10 项议题裁决。
+> 第一轮（3 轮 Agent 研讨 · 架构层）：24 项议题裁决 — state 重构、共享注册表、condition 全面统合、智能补全、跨文件校验。
 >
-> 第二轮（结合代码）：`setConditionNodeField()`/`cleanCondition()` 与新类型同步、`oninput` 可行性、分批计划。4 项新增议题。
+> 第二轮（5 轮 Agent 研讨 · 实现层）：Java 代码方 ↔ 编辑器方深度对撞。核证 `DialogueSpec`/`NpcSpec` 全字段语义、Gson 序列化行为、编译器内部逻辑、运行时冷却系统。
+> 新增 **36 项合意裁决**，覆盖数据绑定、JSON 序列化、UI 组件设计、导入导出路由、校验规则。
 >
-> 第三轮（代码侧 vs 编辑器侧）：Java Spec 作者 + 编辑器作者 对撞。核证三大数据包全部使用同一套 `ConditionSpec`（camelCase）、quest JSON 旧格式现状、`cleanCondition()` 输出格式错误。**发现前版蓝图的字段命名策略从根本上错误**。
->
-> 24 项议题全部裁决。
+> 合计 **60 项议题全部裁决**。
 
 ---
 
 ## 目标
 
-将任务编辑器升级为**多模式编辑器**，核心能力：
-1. 多次导入不同类型 JSON 后自动存入共享注册表
-2. 条件编辑器的 quest/phase/flag 从注册表自动补全
-3. 跨文件引用完整性校验
-4. 为后续 NPC/对话编辑器提供基础设施
-5. 统一三大数据包的 condition 格式为 camelCase（与 `org.arcadia.arc_quest.condition.ConditionSpec` 对齐）
+在现有 quest 编辑器基础上，正式落地 NPC 编辑器和对话编辑器，使编辑器成为**真正的三模式数据包编辑器**。
+
+核心能力：
+1. NPC 模式 — 完整的 `NpcSpec` 编辑、导入、导出
+2. 对话模式 — 完整的 `DialogueSpec` 编辑（节点树 + conditionalTexts + choices + actions）、导入、导出
+3. 跨模式智能导入 — 自动检测 JSON 类型，路由到对应编辑区或仅入库
+4. 三层校验 — quest/NPC/dialogue 各自的结构校验 + 跨文件引用完整性检查
+5. 组件复用 — condition 编辑器、visual 编辑器、chip 编辑器、冷却字段组全部零修改复用
 
 ---
 
-## 跨层对齐：Java Spec ↔ JSON ↔ 编辑器
-
-> 第三轮研讨核心发现：三大数据包（quest/dialogue/npc）全部使用同一个 Java 类 `org.arcadia.arc_quest.condition.ConditionSpec`，字段命名全部是 camelCase。编辑器必须与之对齐。
+## 跨层对齐总表
 
 ```text
-ConditionSpec.java (单一真相源)
+ConditionSpec.java (单一真相源，已统合)
     ├── quest.spec.TransitionSpec.condition
     ├── quest.spec.QuestSpec.unlockConditions
+    ├── quest.spec.PhaseSpec.enterCondition
+    ├── quest.spec.ChoiceSpec.visibleCondition
     ├── dialogue.spec.ConditionalSaySpec.conditions
     ├── dialogue.spec.DialogueChoiceSpec.conditions
     └── npc.spec.NpcBindingSpec.condition
+    └── npc.spec.NpcSpec.interactCondition
 
-全部字段：questId, phaseId, targetPhaseId, fromPhaseId, toPhaseId,
+全部字段: questId, phaseId, targetPhaseId, fromPhaseId, toPhaseId,
           flag, key, op, value, inner, conditions, predicate,
           nodeId, choiceId, dialogueId, cooldownSeconds, startTick, endTick,
           name, nbtScope, nbtKey, nbtValue, namePattern
 ```
 
-### 数据包 condition 格式现状
-
-| 数据包 | 当前 JSON 格式 | 示例 | 与 ConditionSpec 对齐？ |
-|---|---|---|---|
-| quest | 旧格式 `{"type": "always"}` | `"condition": {"type": "always"}` | ❌ 仅 always 可用，非 always 条件因字段不匹配被静默忽略 |
-| dialogue | 新格式 camelCase | `{"condition": "arc_quest:quest_phase", "questId": "..."}` | ✅ |
-| NPC | 新格式 camelCase | `{"condition": "arc_quest:entity_nbt", "nbtKey": "..."}` | ✅ |
-
-**编辑器 `cleanCondition()` 当前输出的是错误的 hybrid 格式**——新格式 condition 键名 + snake_case 字段名（`quest_id`）。这导致：
-- dialogue/NPC 导出：`quest_id` 不匹配 Java `questId` → 静默字段丢失
-- quest 导出：旧格式 `type` 被写为 `condition` 但字段仍是 snake_case → 两不兼容
-
-**结论**：第三阶段必须把 condition 字段统一为 camelCase（`quest_id` → `questId`）。原蓝图第五阶段废弃，合并到第三阶段。
-
 ---
 
-## 架构变更
+## 一、state 架构（第一阶段已完成 + 本次扩展）
 
-### state 结构
-
-```
+```text
 state
-├── mode: 'quest'           # 当前编辑模式
-├── registry                 # 跨模式共享
-│   ├── quests: {}           # { "arc_quest:epic_prologue": { id, category, tags, phases[], flags[], repeatable, ... } }
-│   ├── dialogues: {}        # (未来) { "arc_quest:epic_village_elder": { id, nodes[] } }
-│   ├── npcs: {}             # (未来) { "minecraft:villager": { entityType, bindings[] } }
-│   └── npcBindings: {}      # 区分两类同名 NpcBindingSpec
-│       ├── dialogue: {}     # dialogue.spec.NpcBindingSpec (npcId + dialogueId)
-│       └── npc: {}          # npc.spec.NpcBindingSpec (bindingId + dialogueId + condition + priority)
-├── quest                    # 任务模式工作区
+├── mode: 'quest' | 'npc' | 'dialogue'
+├── registry
+│   ├── quests: {}           { "arc_quest:epic_prologue": { id, phases[], flags[], ... } }
+│   ├── dialogues: {}        { "arc_quest:epic_village_elder": { id, nodes[] } }
+│   ├── npcs: {}             { "minecraft:villager": { entityType, bindings[] } }
+│   └── npcBindings:
+│       ├── dialogue: {}     dialogue.spec.NpcBindingSpec { npcId, dialogueId }
+│       └── npc: {}          npc.spec.NpcBindingSpec { bindingId, dialogueId, ... }
+├── quest
 │   ├── q: {}
 │   ├── meta: { file, dirty }
-│   ├── ui: { sel, tab, graphView, ... }
-│   └── diag: []
-├── npc                      # (未来) NPC 模式工作区
-└── dialogue                 # (未来) 对话模式工作区
+│   ├── ui: { sel, tab, graphView, paneSizes, ... }
+│   ├── diag: []            quest 结构校验结果
+│   └── crossResults: {}    跨文件校验结果
+├── npc                      ← 本次新增
+│   ├── q: {}               NpcSpec 完整对象
+│   ├── meta: { file, dirty }
+│   └── diag: []            NPC 结构校验结果
+└── dialogue                 ← 本次新增
+    ├── q: {}               DialogueSpec 完整对象
+    ├── meta: { file, dirty }
+    ├── ui: { selNodeId }   当前选中的节点 ID
+    └── diag: []            对话结构校验结果
 ```
 
-### 补全优先级
-
-```
-suggestions.js
-├── getQuestSuggestions(registry)        → quest 列表
-├── getPhaseSuggestions(registry, questId) → questId 所在 quest 的 phase 列表
-├── getFlagSuggestions(registry)         → 所有已导入 quest 的全部 flag
-└── getDialogueSuggestions(registry)     → 对话 ID 列表
-```
-
-### 导入行为定义
-
-| 按钮 | 行为 |
-|---|---|
-| "打开"（现有 `importJson`） | 替换当前编辑区 + 写入 registry |
-| "导入到库"（新增） | 只写入 registry，不替换当前编辑区。多次导入同名 ID 时覆盖旧条目 |
-
-### 同名类区分
-
-Java 中存在两个 `NpcBindingSpec` 类：
-
-| 包 | 字段 |
-|---|---|
-| `dialogue.spec.NpcBindingSpec` | `npcId`, `dialogueId` |
-| `npc.spec.NpcBindingSpec` | `bindingId`, `dialogueId`, `dialogueIdFromNbt`, `condition`, `priority` |
-
-注册表键名区分为 `registry.npcBindings.dialogue` 和 `registry.npcBindings.npc`。
-
----
-
-## 新增 condition 类型涉及文件对照
-
-新增一种 condition 类型需要**同步修改 5 个位置**（第三轮新增 `cleanCondition()` 字段名修正）：
-
-| 文件 | 位置 | 职责 | 需新增 |
-|---|---|---|---|
-| `condition-editor.js` | `CONDITION_TYPE_OPTIONS` | 下拉列表 + 摘要 + 徽标 | 12 种 |
-| `condition-editor.js` | `renderConditionTree()` | 渲染输入控件 | 12 种 |
-| `quest-shape-core.js` | `setConditionNodeField()` | 字段初始化 + 切换清理 | 12 种 |
-| `export-normalizer-phase.js` | `cleanCondition()` | 导出清洗 + **字段名统一为 camelCase** | 12 种 |
-
-单改一处会导致：无控件 / 垃圾字段残留 / 导出静默丢数据。
-
----
-
-## 施工阶段
-
-### 第一阶段：state 重构
-
-| # | 文件 | 操作 | 说明 |
-|---|---|---|---|
-| 1a | `core/state.js` | 重构 | 引入 `mode` + `registry`，`q`/`meta`/`ui`/`diag` 收进 `quest` 槽位。不做兼容别名 |
-| 1b | 全局 (20 个文件) | 分批替换 | `state.q` → `state.quest.q` 等。每约 5 个文件 `npm run build` 一次 |
-
-#### 1b 分批计划
-
-| 批次 | 文件 | 验证 |
-|---|---|---|
-| 第 1 批 | `state.js` + `validators.js` + `quest-shape.js` + `quest-shape-core.js` + `quest-shape-phase.js` + `quest-shape-collection.js` | build |
-| 第 2 批 | `export-normalizer.js` + `export-normalizer-phase.js` + `import-normalizer.js` + `app.js` + `import-export.js` + `navigation.js` + `layout.js` | build |
-| 第 3 批 | `tree-renderer.js` + `center-renderer.js` + `side-panel-renderer.js` + `status-renderer.js` + `graph-renderer.js` + `event-bindings.js` | build |
-| 第 4 批 | `bindings/editor-click-actions.js` + `editor-delete-actions.js` + `editor-helpers.js` + `editor-helpers-identity.js` + `editor-helpers-collection.js` + `editor-inputs.js` | build |
-
-#### 关键映射表
-
-| 旧引用 | 新引用 |
-|---|---|
-| `state.q` | `state.quest.q` |
-| `state.meta` | `state.quest.meta` |
-| `state.ui` | `state.quest.ui` |
-| `state.diag` | `state.quest.diag` |
-| `state.mode` | 保持不变 |
-
----
-
-### 第二阶段：页面模式切换 + 共享注册表引擎
-
-| # | 文件 | 操作 | 说明 |
-|---|---|---|---|
-| 2.1 | `index.html` | 修改 | toolbar 加 mode bar — 3 个 tab `[Quest] [NPC] [Dialogue]` |
-| 2.2 | `app.js` | 修改 | `rerender()` 按 `state.mode` 路由；新增"导入到库"按钮；占位页面 |
-| 2.3 | **新建** `core/registry.js` | 创建 | `initRegistry(state)`、`importToRegistry(state, json, type)`、`clearRegistry(state, type)` |
-| 2.4 | `app/import-export.js` | 修改 | `importJson()` 替换编辑区 + 写 registry；新增 `importToLibrary()` |
-
-验证：三个 tab 可切换；quest 编辑功能不受影响
-
----
-
-### 第三阶段：condition 全面统合 + 智能补全（6 维同步）
-
-> 此阶段合并原蓝图第三、第五阶段。核心目标：condition 编辑器输出与 Java `ConditionSpec` 完全对齐。
-
-| # | 文件 | 操作 | 说明 |
-|---|---|---|---|
-| 3.1 | **新建** `core/suggestions.js` | 创建 | `getQuestSuggestions(registry)`, `getPhaseSuggestions(registry, questId)`, `getFlagSuggestions(registry)`, `getDialogueSuggestions(registry)` |
-| 3.2 | `editors/condition-editor.js` | 修改 | **四合一改造**：① 所有读取字段 `quest_id`→`questId`、`phase_id`→`phaseId`、`nbt_key`→`nbtKey`、`nbt_value`→`nbtValue`、`nbt_scope`→`nbtScope`；② `CONDITION_TYPE_OPTIONS` 补全 12 种；③ `renderConditionTree()` 新增对应输入控件；④ 接受 `registry` 做双通道补全 |
-| 3.3 | `core/quest-shape-core.js` | 修改 | `setConditionNodeField()` 全部字段 camelCase + 12 种新类型初始化和清理 |
-| 3.4 | `core/export-normalizer-phase.js` | 修改 | `cleanCondition()` 全部字段 camelCase + 12 种新类型白名单（不再回退为 `always`） |
-| 3.5 | `core/import-normalizer.js` | 修改 | `normalizeCondition()` 确保导入数据字段为 camelCase；移除 snake_case 残留 |
-| 3.6 | `editors/phase-editor.js` | 修改 | 删除手动 `flagSuggestions`/`questSuggestions` (~12行)，传 registry |
-| 3.7 | `editors/quest/quest-top-level-section.js` | 修改 | 同上 (~10行)，修复 questSuggestions 混淆 phase ID 的 bug |
-| 3.8 | `editors/phase-flow-section.js` / `phase-transition-section.js` / `phase-choice-section.js` | 修改 | 签名加 `registry`，透传 |
-
-#### 回滚策略
-
-`renderConditionTree(bindBase, condition, options = {}, registry = null)` — registry 为空时行为与旧版一致。若引入 bug，删除 `suggestions.js` 并去掉 `registry` 参数即可回退。
-
-#### 新 condition 类型输入控件对应关系
-
-| condition 类型 | 输入控件 |
-|---|---|
-| `arc_quest:entity_nbt` | `nbtScope` (select), `nbtKey`, `nbtValue` |
-| `arc_quest:entity_name` | `namePattern` |
-| `arc_quest:phase_before`, `arc_quest:phase_after` | `questId`, `targetPhaseId` |
-| `arc_quest:phase_between`, `arc_quest:any_active_in_range`, `arc_quest:all_completed_in_range` | `questId`, `fromPhaseId`, `toPhaseId` |
-| `arc_quest:phase_enterable` | `questId`, `phaseId` |
-| `arc_quest:has_quest` | `questId` |
-| `arc_quest:dialogue_completed`, `arc_quest:dialogue_on_cooldown` | `dialogueId` |
-| `arc_quest:node_visited`, `arc_quest:node_on_cooldown` | `nodeId` |
-| `arc_quest:choice_selected`, `arc_quest:choice_on_cooldown` | `choiceId` |
-| `arc_quest:game_time_in_range` | `startTick`, `endTick` |
-
-验证：导出 JSON 字段名与 `ConditionSpec.java` 一致；12 种类型正常渲染；旧 quest JSON 导入兼容
-
----
-
-### 第四阶段：实时联动 + 移除 conditionOptions
-
-| # | 文件 | 操作 | 说明 |
-|---|---|---|---|
-| 4.1 | `editors/condition-editor.js` | 修改 | `renderConditionTree()` 移除 `options` 参数，只接受 `registry` |
-| 4.2 | `renderers/event-bindings.js` | 修改 | `bindEditorInputs()` 追加 phase 实时联动 DOM 事件 |
-| 4.3 | 透传链 (6个) | 修改 | 删除 `conditionOptions`，只传 `registry` |
-
-#### post-render DOM 绑定方案
+### NPC 骨架工厂
 
 ```js
-// event-bindings.js → bindEditorInputs() 追加：
-midEl.addEventListener('input', e => {
-    const target = e.target;
-    const bind = target.dataset.b;
-    if (!bind || !bind.endsWith('.questId')) return;
+// factories.js 新增
+export const createNpcSkeleton = () => ({
+    entityType: '',
+    bindings: [],
+    cancelVanillaInteract: true,
+    dialogueDistance: 8.0,
+    shouldLookAtPlayer: true,
+    shouldStopMoving: true,
+    interactCondition: null,
+    onDialogueStartCommands: [],
+    onDialogueEndCommands: []
+});
 
-    const bindBase = bind.replace(/\.questId$/, '');
-    const phaseList = midEl.querySelector(`#${CSS.escape(bindBase)}-phase-list`);
-    if (!phaseList) return;
-
-    const phaseIds = getPhaseSuggestions(state.registry, target.value);
-    phaseList.innerHTML = phaseIds
-        .map(id => `<option value="${id}"></option>`)
-        .join('');
+export const createNpcBinding = () => ({
+    bindingId: '',
+    dialogueId: '',
+    dialogueIdFromNbt: '',
+    condition: null,
+    priority: 0
 });
 ```
 
-验证：输入 questId 后 phaseId datalist 即时更新
-
----
-
-### 第五阶段：quest JSON condition 格式迁移
-
-| # | 文件 | 操作 | 说明 |
-|---|---|---|---|
-| 5.1 | `run/arc_quest/datapack/quests/*.json` | 数据迁移 | 全部 quest JSON 的 condition 从旧格式 `{"type": "always"}` 迁移到 `{"condition": "arc_quest:always"}` |
-| 5.2 | `import-normalizer.js` | 修改 | 保留 `convertOldCondition()` 兼容旧 quest JSON；新导入的 quest 使用新格式 |
-| 5.3 | `epic_prologue.json` 等 | 重写 | 逐字段改为 camelCase，transitions condition 改为新格式 |
-
-验证：quest JSON 重新加载到 Minecraft 后 quest 逻辑正常
-
----
-
-## 修复的 bug
-
-| 位置 | 问题 | 严重程度 |
-|---|---|---|
-| `quest/quest-top-level-section.js:L36` | `questSuggestions` 混入了 phase ID | 中 |
-| `condition-editor.js` | `phaseSuggestions` 始终为空数组 | 高 |
-| `condition-editor.js` | `CONDITION_TYPE_OPTIONS` 缺少 ~12 种 condition 类型 | 高 |
-| `quest-shape-core.js` | `setConditionNodeField()` 不支持 12 种新类型 | 中 |
-| `export-normalizer-phase.js` | `cleanCondition()` 不支持 12 种新类型 | 高 |
-| `export-normalizer-phase.js` | `cleanCondition()` 输出 snake_case（`quest_id`）而非 camelCase（`questId`）→ Java 侧静默字段丢失 | **极严重** |
-| `condition-editor.js` | 内部存取字段为 snake_case（`quest_id`）→ 导入 camelCase JSON 时出现双字段并存 | 高 |
-
----
-
-## 删除的冗余代码
-
-| 位置 | 删除内容 | 行数 |
-|---|---|---|
-| `phase-editor.js:L15-L27` | 手动 `flagSuggestions`/`questSuggestions` 构建 | ~12 |
-| `quest/quest-top-level-section.js:L27-L36` | 同上 | ~10 |
-| 第三阶段 | import/export normalizer 中 snake_case ↔ camelCase 转换 | ~25 |
-
----
-
-## 改动量
-
-| 阶段 | 新增文件 | 修改独立文件 | 删除行 |
-|---|---|---|---|
-| 一 | 0 | ~20 | 0 |
-| 二 | 1 | 3 | 0 |
-| 三 | 1 | 8 | ~35 |
-| 四 | 0 | ~8 | ~15 |
-| 五 | 0 | ~8 | 0 |
-| **合计** | **2** | **~18-20** (有重叠) | **~50** |
-
----
-
-## 注册表 quest 条目的最小结构
+### 对话骨架工厂
 
 ```js
-{
-  id: "arc_quest:epic_prologue",
-  category: "main",
-  mode: "PROGRESSION",
-  repeatable: false,
-  initialPhaseId: "arc_quest:gather_wood",
-  completionPolicy: "ALL",
-  phases: [
-    {
-      id: "arc_quest:gather_wood",
-      mode: "normal",
-      flagsToSetOnEnter: [],
-      flagsToSetOnComplete: [],
-    },
-  ],
-  flagsToSetOnAccept: [],
-  flagsToSetOnComplete: ["prologue_done"],
-}
+// factories.js 新增
+export const createDialogueSkeleton = () => ({
+    id: '',
+    defaultNpc: { mode: 'translatable', value: '', args: [] },
+    startNodeId: '',
+    nodes: [],
+    visualConfig: null,
+    repeatable: true,
+    cooldownSeconds: 0,
+    cooldownType: 'NONE',
+    resetTimeTicks: 0,
+    npcBindings: [],
+    entityBindings: []
+});
+
+export const createDialogueNode = () => ({
+    nodeId: '',
+    speaker: { mode: 'literal', value: '', args: [] },
+    text: { mode: 'literal', value: '', args: [] },
+    conditionalTexts: {},
+    choices: [],
+    autoNextId: '',
+    delayMs: 0,
+    repeatable: true,
+    cooldownSeconds: 0,
+    cooldownType: 'NONE',
+    resetTimeTicks: 0,
+    nodeEnterSound: ''
+});
+
+export const createConditionalSay = () => ({
+    sayId: '',
+    text: { mode: 'literal', value: '', args: [] },
+    soundEvent: '',
+    conditions: [],
+    priority: 0
+});
+
+export const createDialogueChoice = () => ({
+    choiceId: '',
+    text: { mode: 'literal', value: '', args: [] },
+    nextNodeId: '',
+    conditions: [],
+    actions: [],
+    repeatable: true,
+    cooldownSeconds: 0,
+    cooldownType: 'NONE',
+    resetTimeTicks: 0,
+    priority: 0,
+    restoreNodeId: '',
+    selectSound: ''
+});
+
+export const createDialogueAction = (type = 'no_op') => ({
+    type,
+    questId: '',
+    amount: 0,
+    itemId: '',
+    count: 1,
+    npcId: '',
+    targetId: '',
+    command: '',
+    flagName: '',
+    key: '',
+    value: 0,
+    shopId: '',
+    restoreNodeId: '',
+    customTypeId: '',
+    customData: {}
+});
 ```
 
 ---
 
-## NPC 编辑器预设计
+## 二、数据绑定架构
 
-> 对照 [`npc.spec.NpcSpec.java`](file:///d:/Arc%20Quest/src/main/java/org/arcadia/arc_quest/npc/spec/NpcSpec.java) + [`NpcBindingSpec.java`](file:///d:/Arc%20Quest/src/main/java/org/arcadia/arc_quest/npc/spec/NpcBindingSpec.java)
+### 绑定前缀体系
 
-| 编辑器部件 | 对应 Java 字段 | UI 类型 |
-|---|---|---|
-| 实体类型 | `NpcSpec.entityType` | input + datalist（从 `registry.npcs` 补全） |
-| 绑定列表 | `NpcSpec.bindings` (List\<NpcBindingSpec\>) | 列表 + 添加/删除/排序 |
-| → 绑定 ID | `NpcBindingSpec.bindingId` | input |
-| → 对话 ID | `NpcBindingSpec.dialogueId` | input + datalist（从 `registry.dialogues` 补全） |
-| → NBT 对话 ID | `NpcBindingSpec.dialogueIdFromNbt` | input |
-| → 条件 | `NpcBindingSpec.condition` | `renderConditionTree(registry)` |
-| → 优先级 | `NpcBindingSpec.priority` | number input |
-| 取消原版交互 | `NpcSpec.cancelVanillaInteract` | checkbox |
-| 对话距离 | `NpcSpec.dialogueDistance` | number input |
-| 注视玩家 | `NpcSpec.shouldLookAtPlayer` | checkbox |
-| 停止移动 | `NpcSpec.shouldStopMoving` | checkbox |
-| 交互条件 | `NpcSpec.interactCondition` | `renderConditionTree(registry)` |
-| 对话开始命令 | `NpcSpec.onDialogueStartCommands` | chip 列表 |
-| 对话结束命令 | `NpcSpec.onDialogueEndCommands` | chip 列表 |
+| 模式 | 前缀 | 路径示例 | 语义 |
+|------|------|----------|------|
+| quest | `q.*` | `q.id` | Quest 顶层字段 |
+| quest | `ph.N.*` | `ph.0.title` | Phase[N] 字段 |
+| quest | `ob.N.M.*` | `ob.0.1.targetId` | Phase[N].objectives[M] 字段 |
+| quest | `rw.quest.N.*` | `rw.quest.0.itemId` | 全局 Rewards[N] 字段 |
+| quest | `rw.phase.N.M.*` | `rw.phase.0.2.itemId` | Phase[N].rewards[M] 字段 |
+| NPC | `npc.*` | `npc.entityType` | NpcSpec 顶层字段 |
+| NPC | `npc.bind.N.*` | `npc.bind.0.dialogueId` | bindings[N] 字段 |
+| NPC | `npc.interactCond` | — | interactCondition (走 renderConditionTree) |
+| dialogue | `diag.*` | `diag.id` | DialogueSpec 顶层字段 |
+| dialogue | `diag.node.N.*` | `diag.node.0.nodeId` | nodes[N] 字段基路径 |
+| dialogue | `diag.node.N.ch.C.*` | `diag.node.0.ch.1.nextNodeId` | nodes[N].choices[C] 字段 |
+| dialogue | `diag.node.N.ch.C.actions.A.*` | `diag.node.0.ch.1.actions.2.type` | actions[A] 字段 |
+| dialogue | `diag.node.N.condText.K.*` | `diag.node.0.condText.newcomer.text.value` | conditionalTexts[K] 字段 |
 
----
+### conditionalTexts Map key 约束
 
-## 对话编辑器预设计
+- 最大长度：64 字符
+- 允许字符：`[a-zA-Z0-9_-]`
+- **禁止 `.`**（会破坏 `split('.')` 路径解析）
+- 编辑器在 key 输入框上直接限制 + oninput 实时过滤非法字符
 
-> 对照 [`dialogue.spec.DialogueSpec.java`](file:///d:/Arc%20Quest/src/main/java/org/arcadia/arc_quest/dialogue/spec/DialogueSpec.java) + [`DialogueNodeSpec.java`](file:///d:/Arc%20Quest/src/main/java/org/arcadia/arc_quest/dialogue/spec/DialogueNodeSpec.java) + [`DialogueChoiceSpec.java`](file:///d:/Arc%20Quest/src/main/java/org/arcadia/arc_quest/dialogue/spec/DialogueChoiceSpec.java) + [`DialogueActionSpec.java`](file:///d:/Arc%20Quest/src/main/java/org/arcadia/arc_quest/dialogue/spec/DialogueActionSpec.java)
+### setByPath 拆分
 
-### 对话树顶层
+| 文件 | 导出函数 | 负责模式 |
+|------|----------|----------|
+| `quest-shape.js` | `setByPath(target, bind, value, inputType)` | quest（不变） |
+| **新建** `npc-shape.js` | `setNpcByPath(target, bind, value, inputType)` | NPC |
+| **新建** `dialogue-shape.js` | `setDialogueByPath(target, bind, value, inputType)` | dialogue |
 
-| 编辑器部件 | 对应 Java 字段 | UI 类型 |
-|---|---|---|
-| 对话 ID | `DialogueSpec.id` | input |
-| 默认 NPC 名 | `DialogueSpec.defaultNpc` | text（mode select + value input） |
-| 起始节点 | `DialogueSpec.startNodeId` | select（从节点列表） |
-| 可重复 | `DialogueSpec.repeatable` | checkbox |
-| 冷却 | `DialogueSpec.cooldownSeconds` + `cooldownType` | number + select |
-| 视觉配置 | `DialogueSpec.visualConfig` | 复用 visual-editor |
-
-### 节点列表编辑器（树状结构）
-
-| 编辑器部件 | 对应 Java 字段 | UI 类型 |
-|---|---|---|
-| 节点 ID | `DialogueNodeSpec.nodeId` | input |
-| Speaker | `DialogueNodeSpec.speaker` | text（mode + value） |
-| 文本 | `DialogueNodeSpec.text` | textarea（mode + value） |
-| 条件文本 | `DialogueNodeSpec.conditionalTexts` (Map\<String, ConditionalSaySpec\>) | 条目列表 + 条件编辑器 |
-| → sayId | `ConditionalSaySpec.sayId` | input |
-| → text | `ConditionalSaySpec.text` | text（mode + value） |
-| → conditions | `ConditionalSaySpec.conditions` | `renderConditionTree(registry)` |
-| → 优先级 | `ConditionalSaySpec.priority` | number |
-| 选项列表 | `DialogueNodeSpec.choices` | 列表 + 添加/删除 |
-| → 选项 ID | `DialogueChoiceSpec.choiceId` | input |
-| → 文本 | `DialogueChoiceSpec.text` | text（mode + value） |
-| → 目标节点 | `DialogueChoiceSpec.nextNodeId` | select（节点列表） |
-| → 条件 | `DialogueChoiceSpec.conditions` | `renderConditionTree(registry)` |
-| → 动作 | `DialogueChoiceSpec.actions` | 动作列表编辑器 |
-| →→ start_quest | `DialogueActionSpec.questId` | input + datalist（registry.quests） |
-| →→ open_trade/open_gacha | `DialogueActionSpec.shopId` | input |
-| →→ notify_talk/npc_id | `DialogueActionSpec.npcId` | input |
-| →→ give_item | `DialogueActionSpec.itemId` + `count` | input + number |
-| →→ run_command | `DialogueActionSpec.command` | input |
-| →→ set_flag/set_variable | `DialogueActionSpec.flagName`/`key` + `value` | input + number |
-| →→ custom | `DialogueActionSpec.customTypeId` + `customData` | input + JSON area |
-| 自动下一节点 | `DialogueNodeSpec.autoNextId` | input |
-| 延迟 | `DialogueNodeSpec.delayMs` | number |
-| 进入音效 | `DialogueNodeSpec.nodeEnterSound` | input |
-
-### NPB/Entity 绑定
-
-| 编辑器部件 | 对应 Java 字段 | UI 类型 |
-|---|---|---|
-| NPC 绑定 | `dialogue.spec.NpcBindingSpec` (npcId + dialogueId) | 简单键值对列表 |
-| 实体绑定 | `dialogue.spec.EntityBindingSpec` (entityType + dialogueId) | 简单键值对列表 |
+`event-bindings.js` 按 `state.mode` 路由调用不同的 setByPath。NPC/对话模式各自有独立的中栏事件绑定。
 
 ---
 
-## 后续扩展（完成五阶段后）
+## 三、UI 组件设计
 
-NPC/对话编辑器的代码增量：
-- `factories.js` 追加 `createNpcSkeleton`, `createNpcBinding`, `createDialogueSkeleton`, `createDialogueNode`, `createDialogueChoice` (~60行)
-- `editors/npc-editor.js` (~150行)
-- `editors/dialogue-editor.js` + `node-editor.js` + `action-editor.js` (~400行)
-- `core/npc-normalizer.js` (~80行)
-- `core/dialogue-normalizer.js` (~120行)
-- `core/cross-validator.js` — 跨文件引用完整性校验 (~60行)
+### 复用组件（零修改）
+
+| 组件 | 文件 | 复用方式 |
+|------|------|----------|
+| condition 编辑器 | `condition-editor.js` | `renderConditionTree(bindBase, condition, registry)` — 直接调用 |
+| visual 编辑器 | `visual-editor.js` | 参数化 source 对象，quest/dialogue 共用 |
+| chip 编辑器 | `chip-editor.js` | chip 列表（命令列表 / args） |
+| 冷却字段组 | **新建** `cooldown-editor.js` | `renderCooldownGroup(bindBase, obj)` — 3 处复用 |
+| TextSpec 编辑器 | **新建** `textspec-editor.js` | `renderTextSpec(bindBase, spec, label)` — ≈8 处复用 |
+
+### 新建通用组件
+
+#### `cooldown-editor.js` — 冷却字段组
+
+```js
+// 在 DialogueSpec / DialogueNodeSpec / DialogueChoiceSpec 三层复用
+export function renderCooldownGroup(bindBase, obj) {
+    return `
+    <div class="row">
+      <div class="f"><label>Repeatable</label>
+        <select data-b="${bindBase}.repeatable">
+          <option value="true" ${obj.repeatable !== false ? 'selected' : ''}>是</option>
+          <option value="false" ${obj.repeatable === false ? 'selected' : ''}>否（仅一次）</option>
+        </select>
+      </div>
+      <div class="f"><label>Cooldown Type</label>
+        <select data-b="${bindBase}.cooldownType">
+          <option value="NONE" ${obj.cooldownType === 'NONE' ? 'selected' : ''}>无冷却</option>
+          <option value="SECONDS" ${obj.cooldownType === 'SECONDS' ? 'selected' : ''}>秒</option>
+          <option value="GAME_DAY" ${obj.cooldownType === 'GAME_DAY' ? 'selected' : ''}>游戏日</option>
+          <option value="GAME_TICK" ${obj.cooldownType === 'GAME_TICK' ? 'selected' : ''}>游戏 Tick</option>
+        </select>
+      </div>
+      <div class="f"><label>Cooldown Seconds</label>
+        <input type="number" data-b="${bindBase}.cooldownSeconds" value="${obj.cooldownSeconds ?? 0}" min="0" max="86400">
+      </div>
+      <div class="f"><label>Reset Ticks</label>
+        <input type="number" data-b="${bindBase}.resetTimeTicks" value="${obj.resetTimeTicks ?? 0}" min="0" max="24000">
+      </div>
+    </div>`;
+}
+```
+
+#### `textspec-editor.js` — 通用 TextSpec
+
+```js
+// mode select + value input + args chip 列表
+export function renderTextSpec(bindBase, spec, label) {
+    const modeBind = `${bindBase}.mode`;
+    const valueBind = `${bindBase}.value`;
+    const argsBind = `${bindBase}.args`;
+    return `
+    <div class="card">
+      <div class="small"><b>${label}</b></div>
+      <div class="row">
+        <div class="f">
+          <label>Mode</label>
+          <select data-b="${modeBind}">
+            <option value="literal" ${spec.mode === 'literal' ? 'selected' : ''}>字面</option>
+            <option value="translatable" ${spec.mode === 'translatable' ? 'selected' : ''}>可翻译</option>
+          </select>
+        </div>
+        <div class="f"><label>Value</label>
+          <input data-b="${valueBind}" value="${esc(spec.value || '')}">
+        </div>
+      </div>
+      ${spec.mode === 'translatable' ? renderArgsEditor(argsBind, spec.args || []) : ''}
+    </div>`;
+}
+
+function renderArgsEditor(bindBase, args) {
+    const chips = (args || []).map((v, i) =>
+        `<span class="chip-item">${esc(v)}<button type="button" class="chip-remove" data-chip-remove="${bindBase}:${i}">×</button></span>`
+    ).join('');
+    return `
+    <div class="f" style="margin-top:6px">
+      <label>Args</label>
+      <div class="chip-editor">
+        <div class="chip-list">${chips || '<span class="tiny">内置: player_name, npc_name, npc_pos, npc_display_name</span>'}</div>
+        <div class="chip-input-row">
+          <input type="text" data-chip-add-input="${bindBase}" placeholder="player_name">
+          <button type="button" data-chip-add="${bindBase}">添加</button>
+        </div>
+      </div>
+    </div>`;
+}
+```
+
+### NPC 模式布局
+
+```
+┌─────────┐  ┌──────────────────────────────────┐  ┌─────────────┐
+│  左栏   │  │           中栏                   │  │   右栏      │
+│  (空)   │  │  ┌─ NPC 属性 ──────────────────┐ │  │  拓扑(禁用) │
+│         │  │  │ entityType  [input+datalist] │ │  │  引用       │
+│         │  │  │ cancelVanillaInteract [✓]    │ │  │  跨文件     │
+│         │  │  │ dialogueDistance  [8.0]      │ │  │  大纲       │
+│         │  │  │ shouldLookAtPlayer [✓]       │ │  │  诊断       │
+│         │  │  │ shouldStopMoving   [✓]       │ │  │  JSON       │
+│         │  │  └──────────────────────────────┘ │  │  指南       │
+│         │  │  ┌─ 交互条件 ───────────────────┐ │  │             │
+│         │  │  │ renderConditionTree()         │ │  │             │
+│         │  │  └──────────────────────────────┘ │  │             │
+│         │  │  ┌─ 绑定列表 ───────────────────┐ │  │             │
+│         │  │  │ [Binding 0] bindingId        │ │  │             │
+│         │  │  │ [Binding 1] dialogueId       │ │  │             │
+│         │  │  │ [+ 添加绑定]                  │ │  │             │
+│         │  │  └──────────────────────────────┘ │  │             │
+│         │  │  ┌─ 命令列表 ───────────────────┐ │  │             │
+│         │  │  │ chip-editor (start)           │ │  │             │
+│         │  │  │ chip-editor (end)             │ │  │             │
+│         │  │  └──────────────────────────────┘ │  │             │
+└─────────┘  └──────────────────────────────────┘  └─────────────┘
+```
+
+### 对话模式布局
+
+```
+┌──────────────┐  ┌──────────────────────────────────┐  ┌─────────────┐
+│    左栏      │  │           中栏                   │  │   右栏      │
+│  ┌─节点树──┐ │  │  ┌─ 对话顶层 ─────────────────┐ │  │  拓扑       │
+│  │ ★ start │ │  │  │ id / defaultNpc / startNode│ │  │  引用       │
+│  │   intro  │ │  │  │ visualConfig / 冷却         │ │  │  跨文件     │
+│  │   outro  │ │  │  └────────────────────────────┘ │  │  大纲       │
+│  └─────────┘ │  │  ┌─ 节点: start ───────────────┐│  │  诊断       │
+│  [+添加节点] │  │  │ nodeId / speaker / text      ││  │  JSON       │
+│              │  │  │ delayMs / autoNextId / 冷却  ││  │  指南       │
+│              │  │  │ ┌─ ConditionalTexts ────────┐││  │             │
+│              │  │  │ │ [newcomer] sayId          │││  │             │
+│              │  │  │ │ conditions[]              │││  │             │
+│              │  │  │ └──────────────────────────┘││  │             │
+│              │  │  │ ┌─ Choices ────────────────┐││  │             │
+│              │  │  │ │ [choice_intro] text       │││  │             │
+│              │  │  │ │ nextNodeId / conditions[] │││  │             │
+│              │  │  │ │ ┌─ Actions ──────────────┐│││  │             │
+│              │  │  │ │ │ [0] start_quest        ││││  │             │
+│              │  │  │ │ └───────────────────────┘│││  │             │
+│              │  │  │ └──────────────────────────┘││  │             │
+│              │  │  └──────────────────────────────┘│  │             │
+│              │  │  ┌─ 绑定 ──────────────────────┐│  │             │
+│              │  │  │ npcBindings[]               ││  │             │
+│              │  │  │ entityBindings[]            ││  │             │
+│              │  │  └──────────────────────────────┘│  │             │
+└──────────────┘  └──────────────────────────────────┘  └─────────────┘
+```
+
+---
+
+## 四、导入/导出路由
+
+### 类型检测
+
+```js
+function detectJsonType(json) {
+    if (json && json.nodes && Array.isArray(json.nodes)) return 'dialogue';
+    if (json && json.entityType && Array.isArray(json.bindings)) return 'npc';
+    if (json && (Array.isArray(json.phases) || json.id)) return 'quest';
+    return 'unknown';
+}
+```
+
+### 场景矩阵
+
+| 当前 mode | 操作 | JSON 类型 | 行为 |
+|-----------|------|-----------|------|
+| quest | 导入 JSON | quest | 替换 quest 编辑区 + 写入 registry + 跨文件校验 |
+| quest | 导入 JSON | npc/dialogue | 仅写入 registry + Toast "已导入到 {type} 注册表" |
+| npc | 导入 JSON | npc | 替换 NPC 编辑区 + 写入 registry |
+| npc | 导入 JSON | quest/dialogue | 仅写入 registry |
+| dialogue | 导入 JSON | dialogue | 替换 dialogue 编辑区 + 写入 registry |
+| dialogue | 导入 JSON | quest/npc | 仅写入 registry |
+| 任意 | 导入到库 | 任意 | 仅写入 registry，不替换编辑区 |
+| 任意 | 导出序列 | — | 按当前 mode 导出对应 JSON |
+| unknown | 任意 | unknown | Toast "无法识别 JSON 类型" |
+
+### 导出文件名
+
+- quest → `{quest_id}_quest.json`
+- npc → `{entityType}_npc.json`
+- dialogue → `{dialogue_id}_dialogue.json`
+
+### 拖拽导入
+
+拖拽 overlay 文案按 mode 动态切换：
+- quest → "拖入 Quest JSON"
+- npc → "拖入 NPC JSON 或任意 JSON 入库"
+- dialogue → "拖入 Dialogue JSON 或任意 JSON 入库"
+
+---
+
+## 五、校验体系（三层）
+
+### NPC 校验规则 (`npc-validators.js`)
+
+| # | 规则 | 级别 |
+|---|------|------|
+| 1 | `entityType` 非空 | ERROR |
+| 2 | `dialogueDistance >= 1.0` | WARN |
+| 3 | `bindings[].dialogueId` 和 `bindings[].dialogueIdFromNbt` 至少一个非空 | ERROR |
+| 4 | `bindings[].condition` condition 类型有效（走 `validateConditionNode`） | WARN |
+| 5 | `interactCondition` condition 类型有效 | WARN |
+
+### Dialogue 校验规则 (`dialogue-validators.js`)
+
+| # | 规则 | 级别 |
+|---|------|------|
+| 1 | `id` 非空 | ERROR |
+| 2 | `nodes` 非空 | ERROR |
+| 3 | `startNodeId` 在 nodes 列表内 | ERROR |
+| 4 | 每个 node 的 `nodeId` 非空 | ERROR |
+| 5 | nodeId 不重复 | ERROR |
+| 6 | `autoNextId` 非空时在 nodes 内 | ERROR |
+| 7 | `nextNodeId` 非空时在 nodes 内 | ERROR |
+| 8 | `restoreNodeId`（choice 级）非空时在 nodes 内 | ERROR |
+| 9 | `restoreNodeId`（action 级）非空时在 nodes 内 | ERROR |
+| 10 | `choiceId` 非空 | WARN |
+| 11 | `conditionalTexts.sayId` 非空 | WARN |
+| 12 | `actions[].type` 在白名单（16 种）外 | ERROR |
+| 13 | `start_quest` action 的 `questId` 非空 | ERROR |
+| 14 | `open_trade`/`open_gacha` action 的 `shopId` 非空 | ERROR |
+| 15 | TextSpec `mode` 是 `literal` 或 `translatable` | ERROR |
+| 16 | `conditionalTexts` Map key 不含 `.` 字符 | WARN |
+
+### 跨文件校验增强 (`cross-validator.js`)
+
+原有规则全部保留，对话编辑器落地后增强：
+- dialogue 内部节点引用的 `nextNodeId`/`restoreNodeId`/`autoNextId` 存在性检查
+- dialogue action `start_quest` 的 `questId` 在 `registry.quests` 中存在
+
+---
+
+## 六、Action 类型白名单
+
+```js
+const DIALOGUE_ACTION_TYPES = [
+    'start_quest',      // → questId
+    'complete_quest',   // → questId
+    'advance_phase',    // → questId
+    'give_xp',          // → amount
+    'give_item',        // → itemId + count
+    'notify_talk',      // → npcId
+    'notify_interact',  // → targetId
+    'no_op',            // (无)
+    'close',            // (无)
+    'run_command',      // → command
+    'set_flag',         // → flagName
+    'set_variable',     // → key + value
+    'open_trade',       // → shopId + restoreNodeId
+    'open_simple_trade', // → shopId + restoreNodeId
+    'open_gacha',       // → shopId + restoreNodeId
+    'custom',           // → customTypeId + customData (JSON area)
+];
+```
+
+### Action 字段映射表
+
+| type | 显示字段 |
+|------|----------|
+| `start_quest` / `complete_quest` / `advance_phase` | `questId` (input + registry datalist) |
+| `give_xp` | `amount` (number) |
+| `give_item` | `itemId` (input) + `count` (number) |
+| `notify_talk` | `npcId` (input, placeholder: `namespace:npc_id`) |
+| `notify_interact` | `targetId` (input, placeholder: `namespace:npc_id`) |
+| `no_op` / `close` | 无额外字段，仅显示描述 |
+| `run_command` | `command` (textarea) |
+| `set_flag` | `flagName` (input, registry flag 补全) |
+| `set_variable` | `key` (input) + `value` (number) |
+| `open_trade` / `open_simple_trade` / `open_gacha` | `shopId` (input) + `restoreNodeId` (select, 从节点列表补全) |
+| `custom` | `customTypeId` (input) + `customData` (JSON textarea) |
+
+---
+
+## 七、新增文件清单
+
+| 文件 | 职责 | 预估行数 |
+|------|------|----------|
+| `core/factories.js` | 追加 7 个骨架工厂函数 | +55 |
+| `core/npc-shape.js` | `setNpcByPath` 数据绑定 | 60 |
+| `core/dialogue-shape.js` | `setDialogueByPath` 数据绑定 | 80 |
+| `core/npc-normalizer.js` | NPC 导入规范化 + 导出清洗 | 80 |
+| `core/dialogue-normalizer.js` | Dialogue 导入规范化 + 导出清洗 | 120 |
+| `core/npc-validators.js` | NPC 结构校验 | 40 |
+| `core/dialogue-validators.js` | Dialogue 结构校验 | 80 |
+| `editors/npc-editor.js` | NPC 完整编辑器 | 150 |
+| `editors/dialogue-editor.js` | 对话顶层 + 节点列表管理 | 200 |
+| `editors/dialogue-node-editor.js` | 单节点编辑（speaker/text/conditionalTexts） | 150 |
+| `editors/dialogue-choice-editor.js` | Choice 编辑（conditions/actions/冷却） | 120 |
+| `editors/dialogue-action-editor.js` | Action 编辑器（16 种 type switch） | 100 |
+| `editors/cooldown-editor.js` | 冷却字段组通用组件 | 30 |
+| `editors/textspec-editor.js` | TextSpec 通用编辑器 | 50 |
+| `renderers/npc-tree-renderer.js` | NPC 模式左栏（空占位或节点摘要） | 20 |
+| `renderers/dialogue-tree-renderer.js` | 对话模式左栏（节点列表导航） | 60 |
+| `renderers/bindings/npc-click-actions.js` | NPC 按钮事件（添加/删除 binding 等） | 60 |
+| `renderers/bindings/dialogue-click-actions.js` | 对话按钮事件（添加/删除 node/choice/action 等） | 120 |
+
+### 修改文件清单
+
+| 文件 | 改动 | 说明 |
+|------|------|------|
+| `state.js` | `npc`/`dialogue` 槽位初始化 | `npc: { q: createNpcSkeleton(), ... }` |
+| `app.js` | `renderNpc()`/`renderDialogue()` 替换占位 | ~30 行 |
+| `import-export.js` | 类型检测 + 多模式 routing | ~50 行 |
+| `dom.js` | 无新增 DOM 元素（已足够） | 0 |
+| `event-bindings.js` | 按 mode 路由到 NpcClickActions/DialogueClickActions | ~20 行 |
+| `side-panel-renderer.js` | 已支持 `cross` tab，新增适配对话模式的 refs 渲染 | ~20 行 |
+| `status-renderer.js` | 适配 NPC/对话模式的 fileName 显示 | ~15 行 |
+| `cross-validator.js` | 增强 dialogue 内部引用校验 | ~40 行 |
+| `editor.css` | NPC/对话相关样式（node 卡片、choice 折叠等） | ~60 行 |
+
+---
+
+## 八、施工阶段
+
+### 第〇阶段：骨架 + 基础设施 (`state.js` / `factories.js`)
+
+| # | 文件 | 操作 |
+|---|------|------|
+| 0.1 | `factories.js` | 追加 7 个骨架函数 |
+| 0.2 | `state.js` | `state.npc` / `state.dialogue` 槽位初始化 |
+| 0.3 | 构建验证 | — |
+
+### 第一阶段：NPC 编辑器
+
+| # | 文件 | 操作 |
+|---|------|------|
+| 1.1 | `npc-shape.js` | 创建 `setNpcByPath` |
+| 1.2 | `npc-normalizer.js` | 导入/导出规范化 |
+| 1.3 | `npc-validators.js` | 5 条校验规则 |
+| 1.4 | `npc-editor.js` | 完整编辑表单 |
+| 1.5 | `npc-click-actions.js` | 添加/删除 binding、chip 事件 |
+| 1.6 | `app.js` | `renderNpc()` 替换占位 |
+| 1.7 | `import-export.js` | NPC JSON 导入/导出分支 |
+| 1.8 | `event-bindings.js` | NPC click actions 绑定 |
+| 1.9 | `status-renderer.js` | NPC mode 状态栏适配 |
+| 1.10 | 构建验证 + 提交 | — |
+
+### 第二阶段：对话编辑器 — 基础
+
+| # | 文件 | 操作 |
+|---|------|------|
+| 2.1 | `dialogue-shape.js` | 创建 `setDialogueByPath` |
+| 2.2 | `dialogue-normalizer.js` | 导入/导出规范化 |
+| 2.3 | `dialogue-validators.js` | 16 条校验规则 |
+| 2.4 | `cooldown-editor.js` | 冷却字段组通用组件 |
+| 2.5 | `textspec-editor.js` | TextSpec 通用组件 |
+| 2.6 | `dialogue-editor.js` | 对话顶层 + 节点列表管理 |
+| 2.7 | `dialogue-node-editor.js` | 单节点编辑（speaker/text/conditionalTexts/autoNextId/delayMs） |
+| 2.8 | `dialogue-tree-renderer.js` | 左栏节点列表导航 |
+| 2.9 | `dialogue-click-actions.js` | 添加/删除 node/choice/conditionalText |
+| 2.10 | `app.js` | `renderDialogue()` 替换占位 |
+| 2.11 | `import-export.js` | dialogue JSON 导入/导出分支 |
+| 2.12 | `event-bindings.js` | dialogue click actions 绑定 |
+| 2.13 | `status-renderer.js` | dialogue mode 状态栏适配 |
+| 2.14 | 构建验证 + 提交 | — |
+
+### 第三阶段：对话编辑器 — 高级
+
+| # | 文件 | 操作 |
+|---|------|------|
+| 3.1 | `dialogue-choice-editor.js` | Choice 编辑（conditions/actions/冷却/restoreNode） |
+| 3.2 | `dialogue-action-editor.js` | Action 编辑器（16 种 type switch） |
+| 3.3 | `dialogue-click-actions.js` | 补充 choice/action 的添加/删除事件 |
+| 3.4 | `cross-validator.js` | 增强对话内部引用校验 |
+| 3.5 | `editor.css` | NPC/对话样式补充 |
+| 3.6 | 构建验证 + 提交 | — |
+
+---
+
+## 九、关键设计决策速查
+
+| # | 决策 | 理由 |
+|---|------|------|
+| 1 | 条件编辑器零修改 | 30 种 condition + 双通道补全已在第三阶段统合完成 |
+| 2 | 独立 `setXxxByPath` | quest/NPC/dialogue 数据结构完全不同，共享函数会臃肿 |
+| 3 | 跨模式导入不切换 mode | 防止用户丢失上下文（正在编辑 quest 时导入 dialogue 只入库） |
+| 4 | conditionalTexts Map key 禁 `.` | 保护 `split('.')` 路径解析不被破坏 |
+| 5 | `dialogue.spec.NpcBindingSpec` vs `npc.spec.NpcBindingSpec` 严格分离 | Gson 静默忽略不匹配字段，跨类字段污染会导致运行时失效 |
+| 6 | 导出清洗删空字段 | `"" / [] / {} / null` 全部删除，防止 JSON 臃肿 |
+| 7 | 对话节点左栏为线性列表 | 节点之间是图结构，树形展开无意义 |
+| 8 | visualEditor 参数化复用 | quest/dialogue 共用同一 `QuestVisualSpec` |
+| 9 | cooldownType 编辑器统一大写 | 编译器 `toUpperCase()` 容错，但规范化减少混淆 |
+| 10 | restoreNodeId 两个层级独立 | choice 级和 action 级语义不同，不合并 |
