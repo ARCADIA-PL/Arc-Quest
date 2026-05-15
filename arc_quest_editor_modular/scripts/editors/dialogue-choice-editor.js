@@ -56,21 +56,30 @@ export function renderDialogueChoiceEditor(node, choice, ni, ci, dialogue, regis
     const choices = node.choices || [];
     const total = choices.length;
 
+    const stripCards = choices.map((ch, i) => {
+        const isActive = i === ci;
+        return `<span class="strip-card detail-card ${isActive ? 'on' : ''}" data-jump-choice="${ni}:${i}">${esc(ch.choiceId || `#${i + 1}`)}</span>`;
+    }).join('');
+
+    const needsScroll = total > 6;
+
     return `
     <div class="sec">
+      <div class="card-strip-bar">
+        <button data-goto-node="${ni}" class="toolbar-btn small-btn" style="font-weight:700;color:var(--accent)">← 节点</button>
+        ${needsScroll ? '<button data-strip-scroll="left" class="toolbar-btn small-btn">⏮</button>' : ''}
+        <div class="card-strip" data-strip-id="choice-${ni}">
+          ${stripCards}
+        </div>
+        ${needsScroll ? '<button data-strip-scroll="right" class="toolbar-btn small-btn">⏩</button>' : ''}
+        <span class="tiny" style="opacity:.5;margin-left:6px">${ci + 1}/${total}</span>
+      </div>
       <div class="breadcrumb">
         <span data-goto-config class="breadcrumb-link">⚙ 对话配置</span>
         <span class="breadcrumb-sep">›</span>
         <span data-goto-node="${ni}" class="breadcrumb-link">${esc(node.nodeId || '')}</span>
         <span class="breadcrumb-sep">›</span>
         <span class="breadcrumb-current">${esc(choice.choiceId || `#${ci + 1}`)}</span>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="display:flex;gap:6px">
-          ${ci > 0 ? `<button data-nav-choice="${ni}:${ci - 1}" class="toolbar-btn small-btn">◀ ${esc(choices[ci - 1]?.choiceId || `#${ci}`)}</button>` : '<span class="toolbar-btn small-btn" style="opacity:.3">◀</span>'}
-          ${ci < total - 1 ? `<button data-nav-choice="${ni}:${ci + 1}" class="toolbar-btn small-btn">${esc(choices[ci + 1]?.choiceId || `#${ci + 2}`)} ▶</button>` : '<span class="toolbar-btn small-btn" style="opacity:.3">▶</span>'}
-        </div>
-        <span class="tiny" style="opacity:.5">${ci + 1}/${total}</span>
       </div>
       <div class="row">
         <div class="f"><label>Choice ID</label><input data-b="${cp}.choiceId" value="${esc(choice.choiceId || '')}"></div>

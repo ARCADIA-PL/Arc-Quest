@@ -97,10 +97,32 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         return true;
     }
 
+    if (d.jumpSayif !== undefined) {
+        const [ni, key] = d.jumpSayif.split(':');
+        state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        return true;
+    }
+
     if (d.navChoice !== undefined) {
         const [ni, ci] = d.navChoice.split(':');
         state.dialogue.ui.sel = {t: 'choice', ni: +ni, ci: +ci};
         return true;
+    }
+
+    if (d.jumpChoice !== undefined) {
+        const [ni, ci] = d.jumpChoice.split(':');
+        state.dialogue.ui.sel = {t: 'choice', ni: +ni, ci: +ci};
+        return true;
+    }
+
+    if (d.stripScroll !== undefined) {
+        const ni = state.dialogue.ui.sel.ni;
+        const dir = d.stripScroll;
+        const strip = document.querySelector(`[data-strip-id="sayif-${ni}"]`) || document.querySelector(`[data-strip-id="choice-${ni}"]`);
+        if (strip) {
+            strip.scrollTo({left: dir === 'left' ? 0 : strip.scrollWidth, behavior: 'smooth'});
+        }
+        return false;
     }
 
     if (d.editSayif !== undefined) {

@@ -4,29 +4,35 @@ import {renderConditionTree} from './condition-editor.js';
 
 export function renderDialogueSayIfEditor(node, key, sayIf, ni, registry, dialogue) {
     const sp = `diag.node.${ni}.condText.${key}`;
-    const nodeObj = dialogue.nodes[ni];
-    const entries = nodeObj ? Object.entries(nodeObj.conditionalTexts || {}) : [];
+    const entries = Object.entries(node.conditionalTexts || {});
     const keys = entries.map(([k]) => k);
     const curIdx = keys.indexOf(key);
     const total = keys.length;
-    const prevKey = curIdx > 0 ? keys[curIdx - 1] : null;
-    const nextKey = curIdx < total - 1 ? keys[curIdx + 1] : null;
+
+    const stripCards = entries.map(([k]) => {
+        const isActive = k === key;
+        return `<span class="strip-card detail-card ${isActive ? 'on' : ''}" data-jump-sayif="${ni}:${k}">${esc(k)}</span>`;
+    }).join('');
+
+    const needsScroll = total > 6;
 
     return `
     <div class="sec">
+      <div class="card-strip-bar">
+        <button data-goto-node="${ni}" class="toolbar-btn small-btn" style="font-weight:700;color:var(--accent)">← 节点</button>
+        ${needsScroll ? '<button data-strip-scroll="left" class="toolbar-btn small-btn">⏮</button>' : ''}
+        <div class="card-strip" data-strip-id="sayif-${ni}">
+          ${stripCards}
+        </div>
+        ${needsScroll ? '<button data-strip-scroll="right" class="toolbar-btn small-btn">⏩</button>' : ''}
+        <span class="tiny" style="opacity:.5;margin-left:6px">${curIdx + 1}/${total}</span>
+      </div>
       <div class="breadcrumb">
         <span data-goto-config class="breadcrumb-link">⚙ 对话配置</span>
         <span class="breadcrumb-sep">›</span>
         <span data-goto-node="${ni}" class="breadcrumb-link">${esc(node.nodeId || '')}</span>
         <span class="breadcrumb-sep">›</span>
         <span class="breadcrumb-current">${esc(key)}</span>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="display:flex;gap:6px">
-          ${prevKey ? `<button data-nav-sayif="${ni}:${prevKey}" class="toolbar-btn small-btn">◀ ${esc(prevKey)}</button>` : '<span class="toolbar-btn small-btn" style="opacity:.3">◀</span>'}
-          ${nextKey ? `<button data-nav-sayif="${ni}:${nextKey}" class="toolbar-btn small-btn">${esc(nextKey)} ▶</button>` : '<span class="toolbar-btn small-btn" style="opacity:.3">▶</span>'}
-        </div>
-        <span class="tiny" style="opacity:.5">${curIdx + 1}/${total}</span>
       </div>
       <div class="row">
         <div class="f"><label>Identifier</label>

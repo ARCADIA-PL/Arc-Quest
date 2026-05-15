@@ -936,4 +936,37 @@ button.danger:hover {
     border-left: 2px solid var(--accent)
 }
 
+.card-strip-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px
+}
+
+.card-strip {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    flex: 1;
+    scrollbar-width: none;
+    padding: 2px 0
+}
+
+.card-strip::-webkit-scrollbar {
+    display: none
+}
+
+.strip-card {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 11px;
+    margin-bottom: 0;
+    transition: .15s
+}
+
 
