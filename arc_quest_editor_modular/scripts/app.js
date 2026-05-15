@@ -115,10 +115,65 @@ function renderDialogue() {
     bindDialogueDirectoryClicks(dom.right, state, rerender);
 }
 
+let _prevUiState = null;
+
+function getUiState(state) {
+    if (state.mode === 'dialogue') return state.dialogue.ui.sel;
+    if (state.mode === 'npc') return {t: 'npc'};
+    return state.quest.ui.sel;
+}
+
+function computeNavDir(prev, next) {
+    if (!prev || !next) return null;
+    if (prev.t === next.t) return null;
+    const depth = {
+        config: 0, quest: 0, visual: 0, rewards: 0,
+        node: 1, phase: 1,
+        sayIf: 2, choice: 2, obj: 2
+    };
+    const prevDepth = depth[prev.t] ?? 0;
+    const nextDepth = depth[next.t] ?? 0;
+    if (nextDepth > prevDepth) return 'forward';
+    if (nextDepth < prevDepth) return 'back';
+    return 'tab';
+}
+
+function saveStripScrollPositions() {
+    const map = {};
+    document.querySelectorAll('[data-strip-id]').forEach(el => {
+        map[el.dataset.stripId] = el.scrollLeft;
+    });
+    return map;
+}
+
+function restoreStripScrollPositions(map) {
+    requestAnimationFrame(() => {
+        Object.entries(map).forEach(([id, left]) => {
+            const el = document.querySelector(`[data-strip-id="${id}"]`);
+            if (el) el.scrollLeft = left;
+        });
+    });
+}
+
 function rerender() {
-    if (state.mode === 'npc') return renderNpc();
-    if (state.mode === 'dialogue') return renderDialogue();
-    renderQuest();
+    const prevUi = _prevUiState;
+    const stripScrollMap = saveStripScrollPositions();
+
+    if (state.mode === 'npc') renderNpc();
+    else if (state.mode === 'dialogue') renderDialogue();
+    else renderQuest();
+
+    _prevUiState = getUiState(state);
+
+    restoreStripScrollPositions(stripScrollMap);
+
+    const navDir = computeNavDir(prevUi, _prevUiState);
+    if (navDir) {
+        dom.mid.dataset.navDir = navDir;
+        dom.mid.addEventListener('animationend', () => {
+            delete dom.mid.dataset.navDir;
+        }, {once: true});
+    }
 }
 
 dom.newBtn.onclick = () => {

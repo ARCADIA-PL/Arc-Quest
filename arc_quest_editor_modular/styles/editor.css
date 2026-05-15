@@ -22,7 +22,11 @@
     --choice: #FF9F0A;
     --blur: blur(24px) saturate(180%);
     --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Helvetica Neue", sans-serif;
-    --font-mono: "SF Mono", "Menlo", "Consolas", monospace
+    --font-mono: "SF Mono", "Menlo", "Consolas", monospace;
+    --anim-fast: 0.1s;
+    --anim-normal: 0.18s;
+    --anim-slow: 0.25s;
+    --ease-out: cubic-bezier(.16, 1, .3, 1)
 }
 
 * {
@@ -59,7 +63,7 @@ body.graph-expanded-open {
     backdrop-filter: blur(12px);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .18s ease;
+    transition: opacity var(--anim-fast) ease;
     z-index: 100
 }
 
@@ -111,7 +115,14 @@ body.graph-expanded-open {
     box-shadow: 0 14px 40px rgba(0, 0, 0, .28);
     color: var(--text-soft);
     backdrop-filter: blur(18px);
-    animation: toastIn .18s ease-out
+    animation: toastIn .18s ease-out;
+    transition: opacity var(--anim-fast) ease-in,
+                transform var(--anim-fast) ease-in
+}
+
+.toast.exit {
+    opacity: 0;
+    transform: translateX(20px) scale(.95)
 }
 
 .toast.success {
@@ -224,7 +235,8 @@ input[type=file] {
     display: grid;
     grid-template-columns:280px 8px 1fr 8px 380px;
     min-height: 0;
-    transition: box-shadow .18s ease, outline-color .18s ease
+    transition: box-shadow var(--anim-fast) var(--ease-out),
+                outline-color var(--anim-fast) var(--ease-out)
 }
 
 .pane-resizer {
@@ -244,7 +256,8 @@ input[type=file] {
     left: 3px;
     width: 2px;
     background: rgba(255, 255, 255, .08);
-    transition: background .18s ease, box-shadow .18s ease
+    transition: background var(--anim-fast) var(--ease-out),
+                box-shadow var(--anim-fast) var(--ease-out)
 }
 
 .pane-resizer:hover::before,
@@ -276,8 +289,17 @@ body.is-resizing-panes .pane-resizer::before {
     flex-direction: column
 }
 
+.right-pane-content {
+    animation: panelFade var(--anim-fast) ease
+}
+
+@keyframes panelFade {
+    from { opacity: 0 }
+    to   { opacity: 1 }
+}
+
 .fade-in {
-    animation: scaleFadeIn .3s cubic-bezier(.16, 1, .3, 1) forwards
+    animation: none
 }
 
 @keyframes scaleFadeIn {
@@ -291,6 +313,33 @@ body.is-resizing-panes .pane-resizer::before {
         transform: translateY(0) scale(1)
     }
 
+}
+
+[data-nav-dir="forward"] > .center-content {
+    animation: navForward var(--anim-normal) var(--ease-out)
+}
+
+[data-nav-dir="back"] > .center-content {
+    animation: navBack var(--anim-normal) var(--ease-out)
+}
+
+[data-nav-dir="tab"] > .center-content {
+    animation: navTab var(--anim-fast) ease
+}
+
+@keyframes navForward {
+    from { opacity: 0; transform: translateX(8px) scale(.985) }
+    to   { opacity: 1; transform: translateX(0) scale(1) }
+}
+
+@keyframes navBack {
+    from { opacity: 0; transform: translateX(-8px) scale(.985) }
+    to   { opacity: 1; transform: translateX(0) scale(1) }
+}
+
+@keyframes navTab {
+    from { opacity: 0 }
+    to   { opacity: 1 }
 }
 
 ::-webkit-scrollbar {
@@ -312,8 +361,7 @@ body.is-resizing-panes .pane-resizer::before {
 }
 
 .sec {
-    padding: 16px;
-    animation: scaleFadeIn .3s ease-out
+    padding: 16px
 }
 
 .sec h3 {
@@ -341,7 +389,8 @@ body.is-resizing-panes .pane-resizer::before {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: all .2s;
+    transition: background var(--anim-fast) var(--ease-out),
+                color var(--anim-fast) var(--ease-out);
     font-size: 13px
 }
 
@@ -376,7 +425,9 @@ button, .toolbar-btn {
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition: all .2s cubic-bezier(.16, 1, .3, 1);
+    transition: background var(--anim-fast) var(--ease-out),
+                transform var(--anim-fast) var(--ease-out),
+                box-shadow var(--anim-fast) var(--ease-out);
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -389,7 +440,8 @@ button:hover, .toolbar-btn:hover {
 }
 
 button:active, .toolbar-btn:active {
-    transform: scale(.96)
+    transform: scale(.97);
+    transition-duration: .05s
 }
 
 .toolbar-btn.primary, button.primary {
@@ -429,7 +481,7 @@ button.danger:hover {
     margin: 12px 0;
     box-shadow: 0 4px 20px rgba(0, 0, 0, .15);
     backdrop-filter: var(--blur);
-    transition: border-color .3s
+    transition: border-color var(--anim-fast) var(--ease-out)
 }
 
 .card:hover {
@@ -468,10 +520,28 @@ button.danger:hover {
     cursor: pointer;
     color: var(--text-mut);
     font-weight: 500;
-    transition: .2s;
+    transition: color var(--anim-fast) var(--ease-out),
+                background var(--anim-fast) var(--ease-out);
     font-size: 12px;
     border-bottom: 2px solid transparent;
-    white-space: nowrap
+    white-space: nowrap;
+    position: relative
+}
+
+.tab::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform var(--anim-fast) var(--ease-out)
+}
+
+.tab.active::after {
+    transform: scaleX(1)
 }
 
 .tab:hover {
@@ -511,7 +581,8 @@ button.danger:hover {
     padding: 12px;
     margin: 8px 0;
     backdrop-filter: var(--blur);
-    transition: .2s;
+    transition: background var(--anim-fast) var(--ease-out),
+                transform var(--anim-fast) var(--ease-out);
     cursor: pointer
 }
 
@@ -581,7 +652,7 @@ button.danger:hover {
     background: rgba(0, 0, 0, .42);
     backdrop-filter: blur(4px);
     opacity: 0;
-    transition: opacity .28s ease
+    transition: opacity var(--anim-slow) ease
 }
 
 .graph-global-overlay.open .graph-global-backdrop {
@@ -595,7 +666,8 @@ button.danger:hover {
     gap: 12px;
     opacity: 0;
     transform: translateX(36px) scale(.98);
-    transition: opacity .28s ease, transform .32s cubic-bezier(.16, 1, .3, 1);
+    transition: opacity var(--anim-slow) ease,
+                transform var(--anim-slow) var(--ease-out);
     pointer-events: none
 }
 
@@ -666,7 +738,9 @@ button.danger:hover {
     height: calc(100% - 4px);
     overflow: hidden;
     color: var(--text-main);
-    transition: all .2s cubic-bezier(.16, 1, .3, 1);
+    transition: transform var(--anim-fast) var(--ease-out),
+                border-color var(--anim-fast) var(--ease-out),
+                box-shadow var(--anim-fast) var(--ease-out);
     position: relative;
     cursor: pointer;
     box-shadow: 0 4px 16px rgba(0, 0, 0, .2)
@@ -762,7 +836,7 @@ button.danger:hover {
     border-radius: 6px;
     color: var(--text-main);
     cursor: pointer;
-    transition: .2s;
+    transition: background var(--anim-fast) var(--ease-out);
     font-size: 11px;
     font-weight: 600
 }
@@ -816,7 +890,9 @@ button.danger:hover {
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: all .2s;
+    transition: color var(--anim-fast) var(--ease-out),
+                background var(--anim-fast) var(--ease-out),
+                border-color var(--anim-fast) var(--ease-out);
 }
 
 .mode-tab:hover {
@@ -846,7 +922,8 @@ button.danger:hover {
     border: 1px solid rgba(255,255,255,.08);
     color: var(--text-mut);
     cursor: pointer;
-    transition: .15s
+    transition: background var(--anim-fast) var(--ease-out),
+                color var(--anim-fast) var(--ease-out)
 }
 
 .small-btn:hover {
@@ -881,7 +958,7 @@ button.danger:hover {
 .breadcrumb-link {
     cursor: pointer;
     color: var(--accent);
-    transition: .15s
+    transition: color var(--anim-fast) var(--ease-out)
 }
 
 .breadcrumb-link:hover {
@@ -922,7 +999,8 @@ button.danger:hover {
     border-radius: 8px;
     background: rgba(255,255,255,.04);
     border: 1px solid rgba(255,255,255,.06);
-    transition: .15s
+    transition: background var(--anim-fast) var(--ease-out),
+                border-color var(--anim-fast) var(--ease-out)
 }
 
 .detail-card:hover {
@@ -944,53 +1022,105 @@ button.danger:hover {
     padding: 0 2px
 }
 
-.card-strip {
+.strip-nav {
     display: flex;
-    gap: 4px;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 10px;
+    background: rgba(255,255,255,.025);
+    border: 1px solid rgba(255,255,255,.05);
+    border-radius: 10px;
+    overflow: hidden;
+    height: 36px
+}
+
+.strip-nav-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-mut);
+    white-space: nowrap;
+    border-right: 1px solid rgba(255,255,255,.06);
+    height: 100%;
+    flex-shrink: 0;
+    user-select: none
+}
+
+.strip-nav-cards {
+    display: flex;
+    gap: 2px;
     overflow-x: auto;
     flex: 1;
     scrollbar-width: none;
-    padding: 2px 0
+    padding: 0 8px;
+    align-items: center;
+    height: 100%;
+    mask-image: linear-gradient(to right, transparent 0%, black 4px, black calc(100% - 4px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 4px, black calc(100% - 4px), transparent 100%)
 }
 
-.card-strip::-webkit-scrollbar {
+.strip-nav-cards::-webkit-scrollbar {
     display: none
 }
 
-.strip-row {
+.strip-nav-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 100%;
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-bottom: 8px
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-left: 1px solid rgba(255,255,255,.05);
+    color: var(--text-mut);
+    cursor: pointer;
+    transition: background var(--anim-fast) var(--ease-out),
+                color var(--anim-fast) var(--ease-out)
 }
 
-.strip-label {
-    font-size: 13px;
-    width: auto;
-    white-space: nowrap;
-    opacity: .7;
-    user-select: none
+.strip-nav-btn:hover {
+    background: rgba(255,255,255,.06);
+    color: var(--text-soft)
+}
+
+.strip-nav-count {
+    flex-shrink: 0;
+    padding: 0 10px;
+    font-size: 10px;
+    color: var(--text-mut);
+    opacity: .6;
+    border-left: 1px solid rgba(255,255,255,.05);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    white-space: nowrap
 }
 
 .strip-card {
     display: inline-flex;
     align-items: center;
-    padding: 6px 14px;
+    padding: 4px 12px;
     border-radius: 6px;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
-    margin-bottom: 0;
-    background: rgba(255,255,255,.04);
+    background: transparent;
     border: 1px solid transparent;
-    transition: .15s
+    color: var(--text-mut);
+    transition: background var(--anim-fast) var(--ease-out),
+                color var(--anim-fast) var(--ease-out),
+                border-color var(--anim-fast) var(--ease-out)
 }
 
 .strip-card:hover {
-    background: rgba(255,255,255,.08);
-    border-color: rgba(255,255,255,.06)
+    background: rgba(255,255,255,.06);
+    color: var(--text-soft)
 }
 
 .strip-card:active {
@@ -998,9 +1128,10 @@ button.danger:hover {
 }
 
 .strip-card.on {
-    background: rgba(10,132,255,.12);
-    border-color: rgba(10,132,255,.25);
-    color: var(--accent)
+    background: rgba(10,132,255,.15);
+    border-color: rgba(10,132,255,.3);
+    color: var(--accent);
+    font-weight: 600
 }
 
 

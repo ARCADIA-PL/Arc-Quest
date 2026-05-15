@@ -3,14 +3,15 @@ import {renderTextSpec} from './textspec-editor.js';
 import {renderConditionTree} from './condition-editor.js';
 
 export function renderCardStrip({cardsHtml, count, stripPrefix, ni, countText, label}) {
-    const overflow = count > 5;
+    const leftSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>';
+    const rightSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
     return `
-    <div class="strip-row">
-      <span class="strip-label">${label}</span>
-      ${overflow ? `<button data-strip-scroll="${stripPrefix}-left" class="toolbar-btn small-btn strip-scroll-btn">⏮</button>` : ''}
-      <div class="card-strip" data-strip-id="${stripPrefix}-${ni}">${cardsHtml}</div>
-      ${overflow ? `<button data-strip-scroll="${stripPrefix}-right" class="toolbar-btn small-btn strip-scroll-btn">⏩</button>` : ''}
-      <span class="tiny" style="opacity:.5;margin-left:4px">${countText}</span>
+    <div class="strip-nav">
+      <span class="strip-nav-label">${label}</span>
+      <div class="strip-nav-cards" data-strip-id="${stripPrefix}-${ni}">${cardsHtml}</div>
+      <button class="strip-nav-btn" data-strip-scroll="${stripPrefix}-left" title="滚动到最左">${leftSvg}</button>
+      <button class="strip-nav-btn" data-strip-scroll="${stripPrefix}-right" title="滚动到最右">${rightSvg}</button>
+      <span class="strip-nav-count">${countText}</span>
     </div>`;
 }
 
