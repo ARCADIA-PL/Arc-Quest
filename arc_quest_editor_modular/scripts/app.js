@@ -14,7 +14,7 @@ import {applyPaneLayout, bindPaneResizers} from './app/layout.js';
 import {ensureValidSelection, navigateToPath} from './app/navigation.js';
 import {renderTree} from './renderers/tree-renderer.js';
 import {renderDialogueTree} from './renderers/dialogue-tree-renderer.js';
-import {renderCenterEditor, renderNpcCenter, renderDialogueCenter} from './renderers/center-renderer.js';
+import {renderCenterEditor, renderNpcCenter, renderDiagCenter} from './renderers/center-renderer.js';
 import {renderSidePanel} from './renderers/side-panel-renderer.js';
 import {renderStatus} from './renderers/status-renderer.js';
 import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions} from './renderers/event-bindings.js';
@@ -71,12 +71,30 @@ function renderNpc() {
     bindNpcEditorActions(dom.mid, state, rerender, setNpcByPath);
 }
 
+function ensureValidDialogueSelection() {
+    const sel = state.dialogue.ui.sel;
+    const nodes = state.dialogue.q.nodes || [];
+    if (sel.t === 'config') return;
+    if (typeof sel.ni !== 'number' || sel.ni >= nodes.length) {
+        state.dialogue.ui.sel = {t: 'config'};
+        return;
+    }
+    const node = nodes[sel.ni];
+    if (sel.t === 'sayIf' && sel.key && !node?.conditionalTexts?.[sel.key]) {
+        state.dialogue.ui.sel = {t: 'node', ni: sel.ni};
+    }
+    if (sel.t === 'choice' && typeof sel.ci === 'number' && sel.ci >= (node?.choices || []).length) {
+        state.dialogue.ui.sel = {t: 'node', ni: sel.ni};
+    }
+}
+
 function renderDialogue() {
+    ensureValidDialogueSelection();
     validateDialogue(state.dialogue.q);
     state.dialogue.diag = validateDialogue(state.dialogue.q);
     applyPaneLayout(state, dom);
     renderDialogueTree(state, dom.left);
-    renderDialogueCenter(state, dom.mid);
+    renderDiagCenter(state, dom.mid);
     renderSidePanel(
         state,
         dom.tabs,
@@ -93,17 +111,6 @@ function renderDialogue() {
     );
     renderStatus(state, dom.status);
     bindDialogueEditorActions(dom.mid, state, rerender, setDialogueByPath);
-    bindDialogueTreeSelection(dom.left, state, rerender);
-}
-
-function bindDialogueTreeSelection(leftEl, state, rerender) {
-    leftEl.onclick = e => {
-        const nodeId = e.target.closest('[data-node-id]')?.dataset.nodeId;
-        if (nodeId) {
-            state.dialogue.ui.selNodeId = nodeId;
-            rerender();
-        }
-    };
 }
 
 function rerender() {
@@ -144,6 +151,20 @@ dom.fileInput.onchange = e => {
 
 bindPaneResizers(state, dom);
 bindDragAndDropImport(state, rerender, dom);
+
+dom.left.addEventListener('click', e => {
+    if (state.mode !== 'dialogue') return;
+    const treeItem = e.target.closest('.tree');
+    if (!treeItem) return;
+    const ds = treeItem.dataset;
+    if (ds.t === 'config') { state.dialogue.ui.sel = {t: 'config'}; rerender(); return; }
+    if (ds.t === 'node' && ds.ni !== undefined) { state.dialogue.ui.sel = {t: 'node', ni: +ds.ni}; rerender(); return; }
+    if (ds.t === 'say' && ds.ni !== undefined) { state.dialogue.ui.sel = {t: 'say', ni: +ds.ni}; rerender(); return; }
+    if (ds.t === 'sayIf' && ds.ni !== undefined && ds.key) { state.dialogue.ui.sel = {t: 'sayIf', ni: +ds.ni, key: ds.key}; rerender(); return; }
+    if (ds.t === 'choice' && ds.ni !== undefined && ds.ci !== undefined) { state.dialogue.ui.sel = {t: 'choice', ni: +ds.ni, ci: +ds.ci}; rerender(); return; }
+    if (ds.t === 'toggle-sayIf') { state.dialogue.ui.sayIfFold = !state.dialogue.ui.sayIfFold; rerender(); return; }
+    if (ds.t === 'toggle-choice') { state.dialogue.ui.choiceFold = !state.dialogue.ui.choiceFold; rerender(); return; }
+});
 
 if (dom.modeBar) {
     dom.modeBar.onclick = e => {

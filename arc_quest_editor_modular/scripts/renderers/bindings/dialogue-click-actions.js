@@ -49,6 +49,7 @@ export function handleDialogueClickPrelude(e, midEl, state, rerender) {
 export function handleDialogueNonDeleteButtonAction(btn, state) {
     const d = btn.dataset;
     const id = btn.id;
+    const sel = state.dialogue.ui.sel;
 
     if (id === 'addDialogueNodeBtn') {
         const newNode = createDialogueNode();
@@ -57,7 +58,8 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         if (state.dialogue.q.nodes.length === 1) {
             state.dialogue.q.startNodeId = newNode.nodeId;
         }
-        state.dialogue.ui.selNodeId = newNode.nodeId;
+        const newNi = state.dialogue.q.nodes.length - 1;
+        state.dialogue.ui.sel = {t: 'node', ni: newNi};
         return true;
     }
 
@@ -67,34 +69,61 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         if (!node) return true;
         let keyNum = Object.keys(node.conditionalTexts || {}).length + 1;
         let key = `conditional_${keyNum}`;
-        while (node.conditionalTexts[key]) {
-            keyNum++;
-            key = `conditional_${keyNum}`;
-        }
+        while (node.conditionalTexts[key]) { keyNum++; key = `conditional_${keyNum}`; }
         node.conditionalTexts[key] = createConditionalSay();
+        return true;
+    }
+
+    if (d.t !== undefined && d.ni !== undefined) {
+        const ni = +d.ni;
+        const t = d.t;
+        if (t === 'node') { state.dialogue.ui.sel = {t: 'node', ni}; return true; }
+        if (t === 'say') { state.dialogue.ui.sel = {t: 'say', ni}; return true; }
+        if (t === 'sayIf' && d.key) { state.dialogue.ui.sel = {t: 'sayIf', ni, key: d.key}; return true; }
+        if (t === 'choice' && d.ci !== undefined) { state.dialogue.ui.sel = {t: 'choice', ni, ci: +d.ci}; return true; }
+        if (t === 'config') { state.dialogue.ui.sel = {t: 'config'}; return true; }
+        if (t === 'toggle-sayIf') { state.dialogue.ui.sayIfFold = !state.dialogue.ui.sayIfFold; return true; }
+        if (t === 'toggle-choice') { state.dialogue.ui.choiceFold = !state.dialogue.ui.choiceFold; return true; }
+    }
+
+    if (d.gotoNode !== undefined) {
+        state.dialogue.ui.sel = {t: 'node', ni: +d.gotoNode};
+        return true;
+    }
+
+    if (d.editSayif !== undefined) {
+        const [ni, key] = d.editSayif.split(':');
+        state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        return true;
+    }
+    if (d.editChoice !== undefined) {
+        const [ni, ci] = d.editChoice.split(':');
+        state.dialogue.ui.sel = {t: 'choice', ni: +ni, ci: +ci};
         return true;
     }
 
     if (d.ddnode !== undefined) {
         const idx = +d.ddnode;
-        const removed = state.dialogue.q.nodes.splice(idx, 1)[0];
-        if (removed && removed.nodeId === state.dialogue.ui.selNodeId) {
-            state.dialogue.ui.selNodeId = state.dialogue.q.nodes[0]?.nodeId || '';
-        }
+        state.dialogue.q.nodes.splice(idx, 1);
+        state.dialogue.ui.sel = state.dialogue.q.nodes.length > 0
+            ? {t: 'node', ni: Math.min(idx, state.dialogue.q.nodes.length - 1)}
+            : {t: 'config'};
         return true;
     }
 
     if (d.ddcondtext !== undefined) {
         const [ni, key] = d.ddcondtext.split(':');
         const node = state.dialogue.q.nodes[+ni];
-        if (node && node.conditionalTexts) {
-            delete node.conditionalTexts[key];
-        }
+        if (node?.conditionalTexts) delete node.conditionalTexts[key];
+        state.dialogue.ui.sel = {t: 'node', ni: +ni};
         return true;
     }
 
-    if (d.dnodeId !== undefined) {
-        state.dialogue.ui.selNodeId = d.dnodeId;
+    if (d.dchoiceDel !== undefined) {
+        const [ni, ci] = d.dchoiceDel.split(':');
+        const node = state.dialogue.q.nodes[+ni];
+        if (node?.choices) node.choices.splice(+ci, 1);
+        state.dialogue.ui.sel = {t: 'node', ni: +ni};
         return true;
     }
 
@@ -112,7 +141,7 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         const nodeIdx = +parts[0];
         const ci = +parts[1];
         const node = state.dialogue.q.nodes[nodeIdx];
-        if (!node || !node.choices[ci]) return true;
+        if (!node?.choices?.[ci]) return true;
         node.choices[ci].actions = node.choices[ci].actions || [];
         node.choices[ci].actions.push(createDialogueAction());
         return true;
@@ -125,7 +154,7 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         const ci = +restParts[0];
         const ai = +restParts[1];
         const node = state.dialogue.q.nodes[nodeIdx];
-        if (!node || !node.choices[ci]) return true;
+        if (!node?.choices?.[ci]) return true;
         node.choices[ci].actions.splice(ai, 1);
         return true;
     }

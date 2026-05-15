@@ -58,7 +58,7 @@ export const state = {
     dialogue: {
         q: createDialogueSkeleton(),
         meta: {file: 'new_dialogue.json', dirty: false},
-        ui: { selNodeId: '' },
+        ui: { sel: {t: 'config'}, sayIfFold: false, choiceFold: false },
         diag: []
     }
 };

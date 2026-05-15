@@ -838,4 +838,34 @@ button.danger:hover {
     opacity: 1;
 }
 
+.small-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    color: var(--text-mut);
+    cursor: pointer;
+    transition: .15s
+}
+
+.small-btn:hover {
+    color: var(--text-soft);
+    background: rgba(255,255,255,.1)
+}
+
+.summary-row {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.05)
+}
+
+.summary-row:hover {
+    background: rgba(255,255,255,.06)
+}
+
 

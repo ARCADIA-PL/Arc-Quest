@@ -4,7 +4,7 @@ import {renderPhaseEditor} from '../editors/phase-editor.js';
 import {renderObjectiveEditor} from '../editors/objective-editor.js';
 import {renderRawEditor} from '../editors/raw-editor.js';
 import {renderNpcEditor} from '../editors/npc-editor.js';
-import {renderDialogueCenterEditor} from '../editors/dialogue-editor.js';
+import {renderDialogueCenter} from '../editors/dialogue-editor.js';
 import {esc} from '../core/utils.js';
 import {field, area} from './center/form-fields.js';
 import {renderRewardsView} from './center/rewards-view.js';
@@ -29,7 +29,7 @@ export function renderNpcCenter(state, midEl) {
     midEl.innerHTML = `<div class="fade-in">${html}</div>`;
 }
 
-export function renderDialogueCenter(state, midEl) {
-    const html = renderDialogueCenterEditor(state);
-    midEl.innerHTML = html;
+export function renderDiagCenter(state, midEl) {
+    const html = renderDialogueCenter(state);
+    midEl.innerHTML = `<div class="fade-in">${html}</div>`;
 }
