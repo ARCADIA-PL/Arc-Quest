@@ -1,6 +1,7 @@
 import {handleClickPrelude, handleNonDeleteButtonAction} from './bindings/editor-click-actions.js';
 import {handleDeleteButtonAction} from './bindings/editor-delete-actions.js';
 import {handleNpcClickPrelude, handleNpcNonDeleteButtonAction} from './bindings/npc-click-actions.js';
+import {handleDialogueClickPrelude, handleDialogueNonDeleteButtonAction} from './bindings/dialogue-click-actions.js';
 import {bindEditorInputs} from './bindings/editor-inputs.js';
 import {getPhaseSuggestions} from '../core/suggestions.js';
 
@@ -15,6 +16,23 @@ export function bindTreeSelection(leftEl, state, rerender) {
             state.quest.ui.sel = {t: 'obj', pi: +pi, oi: +oi};
         }
         rerender();
+    };
+}
+
+export function bindDialogueEditorActions(midEl, state, rerender, setDialogueByPath) {
+    bindEditorInputs(midEl, state.dialogue, rerender, setDialogueByPath);
+
+    midEl.onclick = e => {
+        if (handleDialogueClickPrelude(e, midEl, state, rerender)) return;
+
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        if (handleDialogueNonDeleteButtonAction(btn, state)) {
+            state.dialogue.meta.dirty = true;
+            rerender();
+            return;
+        }
     };
 }
 

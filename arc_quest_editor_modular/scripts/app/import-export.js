@@ -1,7 +1,9 @@
 import {validateQuest} from '../core/validators.js';
 import {validateNpc} from '../core/npc-validators.js';
+import {validateDialogue} from '../core/dialogue-validators.js';
 import {normalizeImportedQuest} from '../core/import-normalizer.js';
 import {normalizeImportedNpc, exportNpcToDatapack} from '../core/npc-normalizer.js';
+import {normalizeImportedDialogue, exportDialogueToDatapack} from '../core/dialogue-normalizer.js';
 import {exportQuestToDatapack} from '../core/export-normalizer.js';
 import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
@@ -40,6 +42,24 @@ export function exportJson(state, rerender, dom) {
         exportBlob(exported, filename);
         state.npc.meta.dirty = false;
         state.npc.meta.file = filename;
+        rerender();
+        return;
+    }
+
+    if (state.mode === 'dialogue') {
+        const diag = validateDialogue(state.dialogue.q);
+        const blockingErrors = diag.filter(x => x.lvl === 'err');
+        if (blockingErrors.length > 0) {
+            state.quest.ui.tab = 'validate';
+            rerender();
+            showToast(dom, '导出已阻止', `存在 ${blockingErrors.length} 个错误`, 'error', 3600);
+            return;
+        }
+        const exported = exportDialogueToDatapack(state.dialogue.q);
+        const filename = (state.dialogue.q.id || 'unnamed') + '_dialogue.json';
+        exportBlob(exported, filename);
+        state.dialogue.meta.dirty = false;
+        state.dialogue.meta.file = filename;
         rerender();
         return;
     }
@@ -97,11 +117,12 @@ export function importJson(state, rerender, dom, file) {
             }
 
             if (detectedType === 'dialogue') {
-                importToRegistry(state, json, 'dialogue');
+                const normalized = normalizeImportedDialogue(json);
+                importToRegistry(state, normalized, 'dialogue');
                 if (state.mode !== 'dialogue') {
                     showToast(dom, '已导入注册表', `Dialogue JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
                 } else {
-                    state.dialogue.q = json;
+                    state.dialogue.q = normalized;
                     state.dialogue.meta = {file: file.name, dirty: false};
                     state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
                     rerender();
@@ -145,7 +166,7 @@ export function importToLibrary(state, rerender, dom, file) {
             const detectedType = detectJsonType(json);
             if (detectedType === 'quest') importToRegistry(state, normalizeImportedQuest(json), 'quest');
             else if (detectedType === 'npc') importToRegistry(state, normalizeImportedNpc(json), 'npc');
-            else if (detectedType === 'dialogue') importToRegistry(state, json, 'dialogue');
+            else if (detectedType === 'dialogue') importToRegistry(state, normalizeImportedDialogue(json), 'dialogue');
             else {
                 showToast(dom, '无法识别', 'JSON 类型未知', 'error', 3600);
                 return;

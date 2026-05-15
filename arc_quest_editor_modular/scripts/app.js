@@ -4,17 +4,20 @@ import {createNpcSkeleton, createDialogueSkeleton} from './core/factories.js';
 import {getDomRefs} from './core/dom.js';
 import {setByPath, ensureQuestShape} from './core/quest-shape.js';
 import {setNpcByPath} from './core/npc-shape.js';
+import {setDialogueByPath} from './core/dialogue-shape.js';
 import {validateQuest} from './core/validators.js';
 import {validateNpc} from './core/npc-validators.js';
+import {validateDialogue} from './core/dialogue-validators.js';
 import {exportJson, importJson, bindDragAndDropImport} from './app/import-export.js';
 import {validateCrossReferences} from './core/cross-validator.js';
 import {applyPaneLayout, bindPaneResizers} from './app/layout.js';
 import {ensureValidSelection, navigateToPath} from './app/navigation.js';
 import {renderTree} from './renderers/tree-renderer.js';
-import {renderCenterEditor, renderNpcCenter} from './renderers/center-renderer.js';
+import {renderDialogueTree} from './renderers/dialogue-tree-renderer.js';
+import {renderCenterEditor, renderNpcCenter, renderDialogueCenter} from './renderers/center-renderer.js';
 import {renderSidePanel} from './renderers/side-panel-renderer.js';
 import {renderStatus} from './renderers/status-renderer.js';
-import {bindTreeSelection, bindEditorActions, bindNpcEditorActions} from './renderers/event-bindings.js';
+import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions} from './renderers/event-bindings.js';
 
 const dom = getDomRefs();
 
@@ -69,14 +72,38 @@ function renderNpc() {
 }
 
 function renderDialogue() {
-    dom.mid.innerHTML = `<div class="fade-in sec" style="text-align:center;padding:60px 20px;">
-        <div style="font-size:48px;margin-bottom:16px;opacity:.3;">—</div>
-        <h3 style="font-size:18px;color:var(--text-main);">对话树编辑器</h3>
-        <div class="small" style="margin-top:8px;">即将推出</div>
-    </div>`;
-    dom.left.innerHTML = '';
-    dom.right.innerHTML = '';
-    dom.status.innerHTML = '<span style="color:var(--text-mut)">Dialogue Mode · Coming Soon</span>';
+    validateDialogue(state.dialogue.q);
+    state.dialogue.diag = validateDialogue(state.dialogue.q);
+    applyPaneLayout(state, dom);
+    renderDialogueTree(state, dom.left);
+    renderDialogueCenter(state, dom.mid);
+    renderSidePanel(
+        state,
+        dom.tabs,
+        dom.right,
+        tab => {
+            state.quest.ui.tab = tab;
+            rerender();
+        },
+        path => navigateToPath(state, rerender, path),
+        pi => {
+            state.quest.ui.sel = {t: 'phase', pi};
+            rerender();
+        }
+    );
+    renderStatus(state, dom.status);
+    bindDialogueEditorActions(dom.mid, state, rerender, setDialogueByPath);
+    bindDialogueTreeSelection(dom.left, state, rerender);
+}
+
+function bindDialogueTreeSelection(leftEl, state, rerender) {
+    leftEl.onclick = e => {
+        const nodeId = e.target.closest('[data-node-id]')?.dataset.nodeId;
+        if (nodeId) {
+            state.dialogue.ui.selNodeId = nodeId;
+            rerender();
+        }
+    };
 }
 
 function rerender() {
@@ -102,6 +129,8 @@ dom.newBtn.onclick = () => {
 dom.validateBtn.onclick = () => {
     if (state.mode === 'npc') {
         state.npc.diag = validateNpc(state.npc.q);
+    } else if (state.mode === 'dialogue') {
+        state.dialogue.diag = validateDialogue(state.dialogue.q);
     }
     state.quest.ui.tab = 'validate';
     rerender();
