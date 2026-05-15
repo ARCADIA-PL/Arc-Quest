@@ -1,4 +1,4 @@
-import {createDialogueNode, createConditionalSay} from '../../core/factories.js';
+import {createDialogueNode, createConditionalSay, createDialogueChoice, createDialogueAction} from '../../core/factories.js';
 import {addChipValue, removeChipValue} from './editor-helpers.js';
 import {bindConditionEditorClicks} from './editor-click-actions-condition.js';
 
@@ -95,6 +95,38 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
 
     if (d.dnodeId !== undefined) {
         state.dialogue.ui.selNodeId = d.dnodeId;
+        return true;
+    }
+
+    if (d.choiceAdd !== undefined) {
+        const nodeIdx = +d.choiceAdd;
+        const node = state.dialogue.q.nodes[nodeIdx];
+        if (!node) return true;
+        node.choices = node.choices || [];
+        node.choices.push(createDialogueChoice());
+        return true;
+    }
+
+    if (d.actionAdd !== undefined) {
+        const parts = d.actionAdd.split('.ch.');
+        const nodeIdx = +parts[0];
+        const ci = +parts[1];
+        const node = state.dialogue.q.nodes[nodeIdx];
+        if (!node || !node.choices[ci]) return true;
+        node.choices[ci].actions = node.choices[ci].actions || [];
+        node.choices[ci].actions.push(createDialogueAction());
+        return true;
+    }
+
+    if (d.dactionDel !== undefined) {
+        const parts = d.dactionDel.split('.ch.');
+        const nodeIdx = +parts[0];
+        const restParts = parts[1].split('.actions.');
+        const ci = +restParts[0];
+        const ai = +restParts[1];
+        const node = state.dialogue.q.nodes[nodeIdx];
+        if (!node || !node.choices[ci]) return true;
+        node.choices[ci].actions.splice(ai, 1);
         return true;
     }
 
