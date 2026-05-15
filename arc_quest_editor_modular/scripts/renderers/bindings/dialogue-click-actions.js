@@ -44,6 +44,35 @@ export function handleDialogueClickPrelude(e, midEl, state, rerender) {
         return true;
     }
 
+    const stripScrollBtn = e.target.closest('[data-strip-scroll]');
+    if (stripScrollBtn) {
+        const ds = stripScrollBtn.dataset;
+        const [prefix, dir] = ds.stripScroll.split('-');
+        const ni = state.dialogue.ui.sel.ni;
+        const strip = document.querySelector(`[data-strip-id="${prefix}-${ni}"]`);
+        if (strip) {
+            strip.scrollTo({left: dir === 'left' ? 0 : strip.scrollWidth, behavior: 'smooth'});
+        }
+        return true;
+    }
+
+    const stripCard = e.target.closest('.strip-card');
+    if (stripCard) {
+        const ds = stripCard.dataset;
+        if (ds.jumpSayif !== undefined) {
+            const [ni, key] = ds.jumpSayif.split(':');
+            state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+            state.dialogue.meta.dirty = true;
+            rerender();
+        } else if (ds.jumpChoice !== undefined) {
+            const [ni, ci] = ds.jumpChoice.split(':');
+            state.dialogue.ui.sel = {t: 'choice', ni: +ni, ci: +ci};
+            state.dialogue.meta.dirty = true;
+            rerender();
+        }
+        return true;
+    }
+
     return false;
 }
 
@@ -113,16 +142,6 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         const [ni, ci] = d.jumpChoice.split(':');
         state.dialogue.ui.sel = {t: 'choice', ni: +ni, ci: +ci};
         return true;
-    }
-
-    if (d.stripScroll !== undefined) {
-        const ni = state.dialogue.ui.sel.ni;
-        const dir = d.stripScroll;
-        const strip = document.querySelector(`[data-strip-id="sayif-${ni}"]`) || document.querySelector(`[data-strip-id="choice-${ni}"]`);
-        if (strip) {
-            strip.scrollTo({left: dir === 'left' ? 0 : strip.scrollWidth, behavior: 'smooth'});
-        }
-        return false;
     }
 
     if (d.editSayif !== undefined) {
