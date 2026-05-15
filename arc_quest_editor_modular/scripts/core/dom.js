@@ -10,6 +10,7 @@ export function getDomRefs() {
         exportBtn: document.querySelector('#exportBtn'),
         fileInput: document.querySelector('#fileInput'),
         importLibBtn: document.querySelector('#importLibBtn'),
+        crossBtn: document.querySelector('#crossBtn'),
         modeBar: document.querySelector('#modeBar'),
         appRoot: document.querySelector('#appRoot'),
         mainLayout: document.querySelector('#mainLayout'),

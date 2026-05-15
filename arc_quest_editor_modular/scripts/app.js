@@ -4,6 +4,7 @@ import {getDomRefs} from './core/dom.js';
 import {setByPath, ensureQuestShape} from './core/quest-shape.js';
 import {validateQuest} from './core/validators.js';
 import {exportJson, importJson, bindDragAndDropImport} from './app/import-export.js';
+import {validateCrossReferences} from './core/cross-validator.js';
 import {applyPaneLayout, bindPaneResizers} from './app/layout.js';
 import {ensureValidSelection, navigateToPath} from './app/navigation.js';
 import {renderTree} from './renderers/tree-renderer.js';
@@ -103,6 +104,18 @@ if (dom.importLibBtn) {
     dom.importLibBtn.onclick = () => {
         dom.fileInput.click();
         dom.fileInput.dataset.libraryImport = 'true';
+    };
+}
+
+if (dom.crossBtn) {
+    dom.crossBtn.onclick = () => {
+        state.mode = 'quest';
+        state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
+        state.quest.ui.tab = 'cross';
+        dom.modeBar.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        const questTab = dom.modeBar.querySelector('[data-mode="quest"]');
+        if (questTab) questTab.classList.add('active');
+        rerender();
     };
 }
 

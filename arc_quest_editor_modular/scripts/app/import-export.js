@@ -3,6 +3,7 @@ import {normalizeImportedQuest} from '../core/import-normalizer.js';
 import {exportQuestToDatapack} from '../core/export-normalizer.js';
 import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
+import {validateCrossReferences} from '../core/cross-validator.js';
 
 export function exportJson(state, rerender, dom) {
     validateQuest(state);
@@ -34,12 +35,14 @@ export function importJson(state, rerender, dom, file) {
 
             if (isLibraryImport) {
                 delete dom.fileInput.dataset.libraryImport;
+                state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
                 showToast(dom, '已导入到库', `${file.name} 已加入注册表`, 'info');
             } else {
                 state.quest.q = normalized;
                 state.quest.meta.file = file.name;
                 state.quest.meta.dirty = false;
                 state.quest.ui.sel = {t: 'quest'};
+                state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
                 rerender();
                 showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
             }
