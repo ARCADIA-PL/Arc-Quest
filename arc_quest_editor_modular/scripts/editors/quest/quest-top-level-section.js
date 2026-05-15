@@ -10,7 +10,7 @@ function renderUnlockConditionsSection(q, registry) {
       ${conditions.length ? conditions.map((condition, index) => `
         <div class="card" style="margin:8px 0; border-color: rgba(255,255,255,0.1)">
           <div class="small"><b>Condition ${index + 1}</b></div>
-          ${renderConditionTree(`q.uc.${index}`, condition, {}, registry)}
+          ${renderConditionTree(`q.uc.${index}`, condition, registry)}
           <div class="actions"><button data-duc="${index}" class="danger">删除条件</button></div>
         </div>
       `).join('') : '<div class="tiny">暂无解锁条件</div>'}

@@ -21,7 +21,7 @@ export function renderPhaseChoicesSection(s, p, phaseIds, field, registry) {
           <div class="row">
             ${field('flagToSet', `ph.${s.pi}.ch.${ci}.flagToSet`, c.flagToSet || '')}
           </div>
-          ${renderConditionTree(`ph.${s.pi}.ch.${ci}.vc`, c.visibleCondition, {}, registry)}
+          ${renderConditionTree(`ph.${s.pi}.ch.${ci}.vc`, c.visibleCondition, registry)}
           <div class="actions"><button data-dch="${ci}" class="danger">删除 Choice</button></div>
         </div>
       `).join('')}

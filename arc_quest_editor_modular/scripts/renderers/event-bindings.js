@@ -1,6 +1,7 @@
 import {handleClickPrelude, handleNonDeleteButtonAction} from './bindings/editor-click-actions.js';
 import {handleDeleteButtonAction} from './bindings/editor-delete-actions.js';
 import {bindEditorInputs} from './bindings/editor-inputs.js';
+import {getPhaseSuggestions} from '../core/suggestions.js';
 
 export function bindTreeSelection(leftEl, state, rerender) {
     leftEl.onclick = e => {
@@ -16,8 +17,29 @@ export function bindTreeSelection(leftEl, state, rerender) {
     };
 }
 
+function bindPhaseDatalistLinkage(midEl, state) {
+    midEl.addEventListener('input', e => {
+        const target = e.target;
+        const bind = target.dataset.b;
+        if (!bind) return;
+        if (!bind.endsWith('.questId')) return;
+
+        const bindBase = bind.replace(/\.questId$/, '');
+        const datalistId = `${bindBase}-phase-list`;
+        const phaseList = midEl.querySelector(`[id="${datalistId}"]`);
+        if (!phaseList) return;
+
+        const questId = target.value;
+        const phaseIds = getPhaseSuggestions(state.registry, questId);
+        phaseList.innerHTML = phaseIds
+            .map(id => `<option value="${id}"></option>`)
+            .join('');
+    });
+}
+
 export function bindEditorActions(midEl, state, rerender, setByPath) {
     bindEditorInputs(midEl, state, rerender, setByPath);
+    bindPhaseDatalistLinkage(midEl, state);
 
     midEl.onclick = e => {
         if (handleClickPrelude(e, midEl, state, rerender)) return;

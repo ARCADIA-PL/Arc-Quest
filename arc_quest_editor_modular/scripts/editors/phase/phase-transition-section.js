@@ -17,7 +17,7 @@ export function renderPhaseTransitionsSection(s, p, phaseIds, registry) {
           <div class="row">
             ${transitionTargetSelect('目标阶段 (targetPhaseId)', `ph.${s.pi}.tr.${ti}.targetPhaseId`, t.targetPhaseId || '', phaseIds, p.id)}
           </div>
-          ${renderConditionTree(`ph.${s.pi}.tr.${ti}.c`, t.condition, {}, registry)}
+          ${renderConditionTree(`ph.${s.pi}.tr.${ti}.c`, t.condition, registry)}
           <div class="actions"><button data-dt="${ti}" class="danger">删除过渡</button></div>
         </div>
       `).join('')}

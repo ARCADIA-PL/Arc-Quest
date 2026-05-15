@@ -121,9 +121,9 @@ function summaryBadge(cond) {
     return {className: 'neutral', label: 'BASE', nodeClass: 'neutral'};
 }
 
-function resolveSuggestions(registry, options) {
-    const quests = registry ? getQuestSuggestions(registry) : (options.questSuggestions || []);
-    const flags = registry ? getFlagSuggestions(registry) : (options.flagSuggestions || []);
+function resolveSuggestions(registry) {
+    const quests = registry ? getQuestSuggestions(registry) : [];
+    const flags = registry ? getFlagSuggestions(registry) : [];
     return {quests, flags};
 }
 
@@ -131,12 +131,11 @@ function resolvePhaseListId(bindBase) {
     return `${bindBase}-phase-list`;
 }
 
-export function renderConditionTree(bindBase, condition, options = {}, registry = null) {
+export function renderConditionTree(bindBase, condition, registry = null, deletable = false) {
     const c = condition || {condition: 'arc_quest:always'};
     const cond = c.condition || 'arc_quest:always';
-    const {quests: questSuggestions, flags: flagSuggestions} = resolveSuggestions(registry, options);
-    const phaseSuggestions = (registry && c.questId) ? getPhaseSuggestions(registry, c.questId) : (options.phaseSuggestions || []);
-    const deletable = !!options.deletable;
+    const {quests: questSuggestions, flags: flagSuggestions} = resolveSuggestions(registry);
+    const phaseSuggestions = (registry && c.questId) ? getPhaseSuggestions(registry, c.questId) : [];
     const badge = summaryBadge(cond);
     let body = '';
 
@@ -235,7 +234,7 @@ export function renderConditionTree(bindBase, condition, options = {}, registry 
             body = `
       <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
         <div class="small"><b>Inner</b></div>
-        ${renderConditionTree(`${bindBase}.inner`, c.inner || {condition: 'arc_quest:always'}, {...options, deletable: true}, registry)}
+        ${renderConditionTree(`${bindBase}.inner`, c.inner || {condition: 'arc_quest:always'}, registry, true)}
       </div>`;
             break;
 
@@ -245,7 +244,7 @@ export function renderConditionTree(bindBase, condition, options = {}, registry 
             const items = subs.map((sub, idx) => `
         <div class="card" style="margin-top:8px; border-color: rgba(255,255,255,0.08)">
           <div class="small"><b>#${idx + 1}</b></div>
-          ${renderConditionTree(`${bindBase}.conditions.${idx}`, sub, {...options, deletable: true}, registry)}
+          ${renderConditionTree(`${bindBase}.conditions.${idx}`, sub, registry, true)}
         </div>
       `).join('');
             body = `
