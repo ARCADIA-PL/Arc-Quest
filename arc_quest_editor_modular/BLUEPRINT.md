@@ -105,7 +105,7 @@ export const createNpcBinding = () => ({
 // factories.js 新增
 export const createDialogueSkeleton = () => ({
     id: '',
-    defaultNpc: { mode: 'translatable', value: '', args: [] },
+    defaultNpc: { mode: 'literal', value: '', args: [] },
     startNodeId: '',
     nodes: [],
     visualConfig: null,
@@ -432,13 +432,23 @@ function detectJsonType(json) {
 | 7 | `nextNodeId` 非空时在 nodes 内 | ERROR |
 | 8 | `restoreNodeId`（choice 级）非空时在 nodes 内 | ERROR |
 | 9 | `restoreNodeId`（action 级）非空时在 nodes 内 | ERROR |
-| 10 | `choiceId` 非空 | WARN |
+| 10 | `choiceId` 非空 | ERROR |
 | 11 | `conditionalTexts.sayId` 非空 | WARN |
 | 12 | `actions[].type` 在白名单（16 种）外 | ERROR |
-| 13 | `start_quest` action 的 `questId` 非空 | ERROR |
-| 14 | `open_trade`/`open_gacha` action 的 `shopId` 非空 | ERROR |
-| 15 | TextSpec `mode` 是 `literal` 或 `translatable` | ERROR |
-| 16 | `conditionalTexts` Map key 不含 `.` 字符 | WARN |
+| 13 | `start_quest` / `complete_quest` / `advance_phase` 的 `questId` 非空 | ERROR |
+| 14 | `give_item` 的 `itemId` 非空 | ERROR |
+| 15 | `open_trade` / `open_simple_trade` / `open_gacha` 的 `shopId` 非空 | ERROR |
+| 16 | `notify_talk` 的 `npcId` 非空 | ERROR |
+| 17 | `notify_interact` 的 `targetId` 非空 | ERROR |
+| 18 | `run_command` 的 `command` 非空 | ERROR |
+| 19 | `set_flag` 的 `flagName` 非空 | ERROR |
+| 20 | `set_variable` 的 `key` 非空 | ERROR |
+| 21 | `custom` 的 `customTypeId` 非空 | ERROR |
+| 22 | TextSpec `mode` 是 `literal` 或 `translatable` | ERROR |
+| 23 | TextSpec `value` 为空 | WARN |
+| 24 | `npcBindings[].npcId` 非空 | ERROR |
+| 25 | `entityBindings[].entityType` 非空 | ERROR |
+| 26 | `conditionalTexts` Map key 不含 `.` 字符 | WARN |
 
 ### 跨文件校验增强 (`cross-validator.js`)
 
@@ -517,12 +527,13 @@ const DIALOGUE_ACTION_TYPES = [
 | 文件 | 改动 | 说明 |
 |------|------|------|
 | `state.js` | `npc`/`dialogue` 槽位初始化 | `npc: { q: createNpcSkeleton(), ... }` |
-| `app.js` | `renderNpc()`/`renderDialogue()` 替换占位 | ~30 行 |
-| `import-export.js` | 类型检测 + 多模式 routing | ~50 行 |
+| `app.js` | `renderNpc()`/`renderDialogue()` 替换占位 + "新建架构" mode 感知 + rerender 模式路由 | ~50 行 |
+| `import-export.js` | 类型检测 + 多模式 routing + 拖拽 overlay 动态文案 | ~60 行 |
 | `dom.js` | 无新增 DOM 元素（已足够） | 0 |
-| `event-bindings.js` | 按 mode 路由到 NpcClickActions/DialogueClickActions | ~20 行 |
-| `side-panel-renderer.js` | 已支持 `cross` tab，新增适配对话模式的 refs 渲染 | ~20 行 |
-| `status-renderer.js` | 适配 NPC/对话模式的 fileName 显示 | ~15 行 |
+| `event-bindings.js` | 按 mode 路由到 NpcClickActions/DialogueClickActions + setByPath 路由 | ~40 行 |
+| `center-renderer.js` | 新增 `renderNpcCenter` / `renderDialogueCenter` 两个导出 | ~20 行 |
+| `side-panel-renderer.js` | 对话模式的 refs 渲染 + NPC/对话模式 tab 适配 | ~20 行 |
+| `status-renderer.js` | 适配 NPC/对话模式的文件名/entityType/id 显示 | ~25 行 |
 | `cross-validator.js` | 增强 dialogue 内部引用校验 | ~40 行 |
 | `editor.css` | NPC/对话相关样式（node 卡片、choice 折叠等） | ~60 行 |
 
@@ -547,11 +558,12 @@ const DIALOGUE_ACTION_TYPES = [
 | 1.3 | `npc-validators.js` | 5 条校验规则 |
 | 1.4 | `npc-editor.js` | 完整编辑表单 |
 | 1.5 | `npc-click-actions.js` | 添加/删除 binding、chip 事件 |
-| 1.6 | `app.js` | `renderNpc()` 替换占位 |
-| 1.7 | `import-export.js` | NPC JSON 导入/导出分支 |
-| 1.8 | `event-bindings.js` | NPC click actions 绑定 |
-| 1.9 | `status-renderer.js` | NPC mode 状态栏适配 |
-| 1.10 | 构建验证 + 提交 | — |
+| 1.6 | `app.js` | `renderNpc()` 替换占位 + "新建架构" mode 感知 |
+| 1.7 | `import-export.js` | NPC JSON 导入/导出分支 + 类型检测 + 拖拽 overlay 动态文案 |
+| 1.8 | `event-bindings.js` | NPC click actions 绑定 + mode 路由 setByPath |
+| 1.9 | `center-renderer.js` | 新增 `renderNpcCenter` 函数 |
+| 1.10 | `status-renderer.js` | NPC mode 状态栏适配 |
+| 1.11 | 构建验证 + 提交 | — |
 
 ### 第二阶段：对话编辑器 — 基础
 
@@ -563,14 +575,15 @@ const DIALOGUE_ACTION_TYPES = [
 | 2.4 | `cooldown-editor.js` | 冷却字段组通用组件 |
 | 2.5 | `textspec-editor.js` | TextSpec 通用组件 |
 | 2.6 | `dialogue-editor.js` | 对话顶层 + 节点列表管理 |
-| 2.7 | `dialogue-node-editor.js` | 单节点编辑（speaker/text/conditionalTexts/autoNextId/delayMs） |
+| 2.7 | `dialogue-node-editor.js` | 单节点编辑（speaker/text/conditionalTexts/autoNextId/delayMs/首节点 startNodeId 自动设置） |
 | 2.8 | `dialogue-tree-renderer.js` | 左栏节点列表导航 |
-| 2.9 | `dialogue-click-actions.js` | 添加/删除 node/choice/conditionalText |
-| 2.10 | `app.js` | `renderDialogue()` 替换占位 |
+| 2.9 | `dialogue-click-actions.js` | 添加/删除 node/choice/conditionalText + 首节点 startNodeId 自动设置 |
+| 2.10 | `app.js` | `renderDialogue()` 替换占位 + "新建架构" mode 感知 |
 | 2.11 | `import-export.js` | dialogue JSON 导入/导出分支 |
-| 2.12 | `event-bindings.js` | dialogue click actions 绑定 |
-| 2.13 | `status-renderer.js` | dialogue mode 状态栏适配 |
-| 2.14 | 构建验证 + 提交 | — |
+| 2.12 | `event-bindings.js` | dialogue click actions 绑定 + mode 路由 setByPath |
+| 2.13 | `center-renderer.js` | 新增 `renderDialogueCenter` 函数 |
+| 2.14 | `status-renderer.js` | dialogue mode 状态栏适配 |
+| 2.15 | 构建验证 + 提交 | — |
 
 ### 第三阶段：对话编辑器 — 高级
 
@@ -599,3 +612,13 @@ const DIALOGUE_ACTION_TYPES = [
 | 8 | visualEditor 参数化复用 | quest/dialogue 共用同一 `QuestVisualSpec` |
 | 9 | cooldownType 编辑器统一大写 | 编译器 `toUpperCase()` 容错，但规范化减少混淆 |
 | 10 | restoreNodeId 两个层级独立 | choice 级和 action 级语义不同，不合并 |
+| 11 | conditionalTexts conditions[] 绑定 | 按数组索引逐个渲染: `diag.node.N.condText.K.cond.0`, `diag.node.N.condText.K.cond.1`, ... — 通过 `data-cond-append` 和 `data-cond-delete` 管理 |
+| 12 | event-bindings mode 路由 | `bindEditorActions` 按 `state.mode` 路由: quest→`setByPath`, NPC→`setNpcByPath`, dialogue→`setDialogueByPath` |
+| 13 | center-renderer mode 路由 | 新建 `renderNpcCenter` / `renderDialogueCenter`, 取代 quest 的 `renderCenterEditor`, 由 `app.js` 按 mode 调用 |
+| 14 | status-renderer mode 适配 | 三种 mode 各自渲染: quest 显示 `state.quest.meta.file`, NPC 显示 `state.npc.q.entityType`, dialogue 显示 `state.dialogue.q.id` |
+| 15 | "新建架构" mode 感知 | NPC mode → 创建 `createNpcSkeleton()`; dialogue mode → 创建 `createDialogueSkeleton()` |
+| 16 | 首节点自动设 startNodeId | 在空 dialogue 中添加第一个节点时, `startNodeId` 自动设为该节点的 `nodeId` |
+| 17 | Gson visualConfig null | `QuestVisualSpec visualConfig = null` 时 Gson 不序列化; 非 null 时完整序列化; 编辑器导出清洗时保留 null→省略 |
+| 18 | crossBtn mode 切换扩展 | 跨文件校验按钮在 non-quest mode 下也强制切换到 quest mode (保持现有行为), 未来扩展 NPC/dialogue 独立校验 |
+| 19 | 拖拽 overlay 动态文案 | `bindDragAndDropImport` 按 mode 切换 overlay 文字 |
+| 20 | 导入到库的 type 自动检测 | `importToLibrary` 通过 `detectJsonType` 确定 registry 类型, 自动调用 `importToRegistry(state, json, type)` |
