@@ -2,19 +2,31 @@ import {esc} from '../core/utils.js';
 import {renderTextSpec} from './textspec-editor.js';
 import {renderConditionTree} from './condition-editor.js';
 
-export function renderDialogueSayIfEditor(node, key, sayIf, ni, registry) {
+export function renderDialogueSayIfEditor(node, key, sayIf, ni, registry, dialogue) {
     const sp = `diag.node.${ni}.condText.${key}`;
-    const condSummary = (sayIf.conditions || []).map(c => {
-        if (c.condition === 'arc_quest:always') return 'always';
-        if (c.condition === 'arc_quest:not' && c.inner) return `NOT(${c.inner.condition || '?'})`;
-        return c.condition ? c.condition.replace('arc_quest:', '') : '?';
-    }).join(', ') || '无';
+    const nodeObj = dialogue.nodes[ni];
+    const entries = nodeObj ? Object.entries(nodeObj.conditionalTexts || {}) : [];
+    const keys = entries.map(([k]) => k);
+    const curIdx = keys.indexOf(key);
+    const total = keys.length;
+    const prevKey = curIdx > 0 ? keys[curIdx - 1] : null;
+    const nextKey = curIdx < total - 1 ? keys[curIdx + 1] : null;
 
     return `
     <div class="sec">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <button data-goto-node="${ni}" class="toolbar-btn small-btn">← 返回节点</button>
-        <h3 style="margin:0">SayIf: ${esc(key)} · ${esc(node.nodeId || '')}</h3>
+      <div class="breadcrumb">
+        <span data-goto-config class="breadcrumb-link">⚙ 对话配置</span>
+        <span class="breadcrumb-sep">›</span>
+        <span data-goto-node="${ni}" class="breadcrumb-link">${esc(node.nodeId || '')}</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">${esc(key)}</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;gap:6px">
+          ${prevKey ? `<button data-nav-sayif="${ni}:${prevKey}" class="toolbar-btn small-btn">◀ ${esc(prevKey)}</button>` : '<span class="toolbar-btn small-btn" style="opacity:.3">◀</span>'}
+          ${nextKey ? `<button data-nav-sayif="${ni}:${nextKey}" class="toolbar-btn small-btn">${esc(nextKey)} ▶</button>` : '<span class="toolbar-btn small-btn" style="opacity:.3">▶</span>'}
+        </div>
+        <span class="tiny" style="opacity:.5">${curIdx + 1}/${total}</span>
       </div>
       <div class="row">
         <div class="f"><label>Identifier</label>
@@ -28,11 +40,11 @@ export function renderDialogueSayIfEditor(node, key, sayIf, ni, registry) {
       </div>
       ${renderTextSpec(`${sp}.text`, sayIf.text || {}, '条件匹配时显示的文本')}
       <div style="margin-top:8px">
-        <div class="small" style="margin-bottom:4px"><b>Conditions (${condSummary})</b></div>
+        <div class="small" style="margin-bottom:4px"><b>Conditions</b></div>
         ${(sayIf.conditions || []).map((cond, ci) =>
             renderConditionTree(`${sp}.cond.${ci}`, cond, registry, true)
         ).join('')}
-        <div class="actions"><button data-cond-append="${sp}">＋ 添加条件</button></div>
+        <div class="actions"><button data-cond-append="${sp}" data-cond-skip-rerender="true">＋ 添加条件</button></div>
       </div>
       <div class="actions" style="margin-top:12px">
         <button data-ddcondtext="${ni}:${key}">删除此 SayIf</button>

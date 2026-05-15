@@ -27,8 +27,9 @@ export function handleDialogueClickPrelude(e, midEl, state, rerender) {
 
     const appendCond = e.target.closest('[data-cond-append]');
     if (appendCond) {
-        if (bindConditionEditorClicks(state, appendCond.dataset.condAppend, 'append')) {
-            state.dialogue.meta.dirty = true;
+        const skipRerender = appendCond.dataset.condSkipRerender === 'true';
+        if (bindConditionEditorClicks(state, appendCond.dataset.condAppend, 'append', skipRerender)) {
+            if (!skipRerender) state.dialogue.meta.dirty = true;
             rerender();
         }
         return true;
@@ -49,7 +50,6 @@ export function handleDialogueClickPrelude(e, midEl, state, rerender) {
 export function handleDialogueNonDeleteButtonAction(btn, state) {
     const d = btn.dataset;
     const id = btn.id;
-    const sel = state.dialogue.ui.sel;
 
     if (id === 'addDialogueNodeBtn') {
         const newNode = createDialogueNode();
@@ -78,16 +78,28 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         const ni = +d.ni;
         const t = d.t;
         if (t === 'node') { state.dialogue.ui.sel = {t: 'node', ni}; return true; }
-        if (t === 'say') { state.dialogue.ui.sel = {t: 'say', ni}; return true; }
-        if (t === 'sayIf' && d.key) { state.dialogue.ui.sel = {t: 'sayIf', ni, key: d.key}; return true; }
-        if (t === 'choice' && d.ci !== undefined) { state.dialogue.ui.sel = {t: 'choice', ni, ci: +d.ci}; return true; }
         if (t === 'config') { state.dialogue.ui.sel = {t: 'config'}; return true; }
-        if (t === 'toggle-sayIf') { state.dialogue.ui.sayIfFold = !state.dialogue.ui.sayIfFold; return true; }
-        if (t === 'toggle-choice') { state.dialogue.ui.choiceFold = !state.dialogue.ui.choiceFold; return true; }
+    }
+
+    if (d.gotoConfig !== undefined) {
+        state.dialogue.ui.sel = {t: 'config'};
+        return true;
     }
 
     if (d.gotoNode !== undefined) {
         state.dialogue.ui.sel = {t: 'node', ni: +d.gotoNode};
+        return true;
+    }
+
+    if (d.navSayif !== undefined) {
+        const [ni, key] = d.navSayif.split(':');
+        state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        return true;
+    }
+
+    if (d.navChoice !== undefined) {
+        const [ni, ci] = d.navChoice.split(':');
+        state.dialogue.ui.sel = {t: 'choice', ni: +ni, ci: +ci};
         return true;
     }
 
@@ -96,9 +108,20 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
         return true;
     }
+
     if (d.editChoice !== undefined) {
         const [ni, ci] = d.editChoice.split(':');
         state.dialogue.ui.sel = {t: 'choice', ni: +ni, ci: +ci};
+        return true;
+    }
+
+    if (d.toggleSayifFold !== undefined) {
+        state.dialogue.ui.sayIfFold = !state.dialogue.ui.sayIfFold;
+        return true;
+    }
+
+    if (d.toggleChoiceFold !== undefined) {
+        state.dialogue.ui.choiceFold = !state.dialogue.ui.choiceFold;
         return true;
     }
 
@@ -119,11 +142,25 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
         return true;
     }
 
+    if (d.ddcondtextCard !== undefined) {
+        const [ni, key] = d.ddcondtextCard.split(':');
+        const node = state.dialogue.q.nodes[+ni];
+        if (node?.conditionalTexts) delete node.conditionalTexts[key];
+        return true;
+    }
+
     if (d.dchoiceDel !== undefined) {
         const [ni, ci] = d.dchoiceDel.split(':');
         const node = state.dialogue.q.nodes[+ni];
         if (node?.choices) node.choices.splice(+ci, 1);
         state.dialogue.ui.sel = {t: 'node', ni: +ni};
+        return true;
+    }
+
+    if (d.dchoiceDelCard !== undefined) {
+        const [ni, ci] = d.dchoiceDelCard.split(':');
+        const node = state.dialogue.q.nodes[+ni];
+        if (node?.choices) node.choices.splice(+ci, 1);
         return true;
     }
 

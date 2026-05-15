@@ -1,9 +1,18 @@
-﻿﻿export function bindConditionEditorClicks(state, descriptor, action) {
+﻿export function bindConditionEditorClicks(state, descriptor, action, skipRerender = false) {
+    let target;
+    if (descriptor.startsWith('npc.')) {
+        target = state.npc.q;
+    } else if (descriptor.startsWith('diag.')) {
+        target = state.dialogue.q;
+    } else {
+        target = state.quest.q;
+    }
+
     if (action === 'append') {
-        return appendConditionBranch(state.quest.q, descriptor);
+        return appendConditionBranch(target, descriptor);
     }
     if (action === 'delete') {
-        return deleteConditionBranch(state.quest.q, descriptor);
+        return deleteConditionBranch(target, descriptor);
     }
     return false;
 }
@@ -12,129 +21,153 @@ function cloneConditionNode(node) {
     return JSON.parse(JSON.stringify(node || {condition: 'arc_quest:always'}));
 }
 
-function getConditionNodeByBind(root, bindBase) {
+function navigateConditionPath(root, bindBase) {
     const parts = bindBase.split('.');
+    let cursor = root;
+
     if (parts[0] === 'q' && parts[1] === 'uc') {
-        let cursor = root.unlockConditions?.[Number(parts[2])];
-        for (let i = 3; i < parts.length; i++) {
-            const key = parts[i];
-            if (key === 'conditions') {
-                const idx = Number(parts[i + 1]);
-                cursor = cursor?.conditions?.[idx];
-                i++;
-            } else {
-                cursor = cursor?.[key];
-            }
-        }
-        return cursor;
+        cursor = root.unlockConditions?.[Number(parts[2])];
+        return followConditionPath(cursor, parts, 3);
     }
     if (parts[0] === 'ph') {
         const phase = root.phases?.[Number(parts[1])];
         if (!phase) return null;
         if (parts[2] === 'ec') {
-            let cursor = phase.rawEnterCondition;
-            for (let i = 3; i < parts.length; i++) {
-                const key = parts[i];
-                if (key === 'conditions') {
-                    const idx = Number(parts[i + 1]);
-                    cursor = cursor?.conditions?.[idx];
-                    i++;
-                } else {
-                    cursor = cursor?.[key];
-                }
-            }
-            return cursor;
+            return followConditionPath(phase.rawEnterCondition, parts, 3);
         }
         if (parts[2] === 'tr') {
-            let cursor = phase.transitions?.[Number(parts[3])]?.condition;
-            for (let i = 5; i < parts.length; i++) {
-                const key = parts[i];
-                if (key === 'conditions') {
-                    const idx = Number(parts[i + 1]);
-                    cursor = cursor?.conditions?.[idx];
-                    i++;
-                } else {
-                    cursor = cursor?.[key];
-                }
-            }
-            return cursor;
+            return followConditionPath(phase.transitions?.[Number(parts[3])]?.condition, parts, 5);
         }
         if (parts[2] === 'ch') {
-            let cursor = phase.choices?.[Number(parts[3])]?.visibleCondition;
-            for (let i = 5; i < parts.length; i++) {
-                const key = parts[i];
-                if (key === 'conditions') {
-                    const idx = Number(parts[i + 1]);
-                    cursor = cursor?.conditions?.[idx];
-                    i++;
-                } else {
-                    cursor = cursor?.[key];
-                }
+            return followConditionPath(phase.choices?.[Number(parts[3])]?.visibleCondition, parts, 5);
+        }
+    }
+    if (parts[0] === 'npc') {
+        if (parts[1] === 'interactCond') {
+            return followConditionPath(root.interactCondition, parts, 2);
+        }
+        if (parts[1] === 'bind') {
+            const binding = root.bindings?.[Number(parts[2])];
+            if (!binding) return null;
+            if (parts[3] === 'condition') {
+                return followConditionPath(binding.condition, parts, 4);
             }
-            return cursor;
+        }
+    }
+    if (parts[0] === 'diag') {
+        if (parts[1] === 'node') {
+            const node = root.nodes?.[Number(parts[2])];
+            if (!node) return null;
+            const subType = parts[3];
+            if (subType === 'condText') {
+                const sayIf = node.conditionalTexts?.[parts[4]];
+                if (!sayIf) return null;
+                if (parts[5] === 'cond') {
+                    return followConditionPath(sayIf.conditions?.[Number(parts[6])], parts, 7);
+                }
+                return followConditionPath(sayIf, parts, 5);
+            }
+            if (subType === 'ch') {
+                const choice = node.choices?.[Number(parts[4])];
+                if (!choice) return null;
+                if (parts[5] === 'cond') {
+                    return followConditionPath(choice.conditions?.[Number(parts[6])], parts, 7);
+                }
+                return followConditionPath(choice, parts, 5);
+            }
         }
     }
     return null;
+}
+
+function followConditionPath(cursor, parts, startIdx) {
+    if (!cursor) return null;
+    let c = cursor;
+    for (let i = startIdx; i < parts.length; i++) {
+        const key = parts[i];
+        if (key === 'conditions') {
+            const idx = Number(parts[i + 1]);
+            c = c?.conditions?.[idx];
+            i++;
+        } else if (key === 'inner') {
+            c = c?.inner;
+        } else {
+            c = c?.[key];
+        }
+    }
+    return c;
+}
+
+function findConditionParent(target, cursor, parts, startIdx) {
+    if (!cursor) return null;
+    let parent = target;
+    let c = cursor;
+    let lastKey = parts[startIdx];
+    for (let i = startIdx; i < parts.length - 1; i++) {
+        const key = parts[i];
+        parent = c;
+        if (key === 'conditions') {
+            const idx = Number(parts[i + 1]);
+            c = c?.conditions?.[idx];
+            i++;
+        } else if (key === 'inner') {
+            c = c?.inner;
+        } else {
+            c = c?.[key];
+        }
+        lastKey = parts[i + 1];
+    }
+    return {parent, key: lastKey, cursor: c};
 }
 
 function getConditionParentRef(root, bindBase) {
     const parts = bindBase.split('.');
     if (parts[0] === 'q' && parts[1] === 'uc') {
-        if (parts.length <= 3) return null;
         let cursor = root.unlockConditions?.[Number(parts[2])];
-        for (let i = 3; i < parts.length - 1; i++) {
-            const key = parts[i];
-            if (key === 'conditions') {
-                const idx = Number(parts[i + 1]);
-                cursor = cursor?.conditions?.[idx];
-                i++;
-            } else {
-                cursor = cursor?.[key];
-            }
-        }
-        const lastKey = parts[parts.length - 1];
-        if (lastKey === 'conditions') {
-            return {parent: cursor, key: 'conditions', isArray: true};
-        }
-        return {parent: cursor, key: lastKey};
+        return findConditionParent(root, cursor, parts, 3);
     }
     if (parts[0] === 'ph') {
         const phase = root.phases?.[Number(parts[1])];
         if (!phase) return null;
-        const startIdx = parts[2] === 'ec' ? 3 : parts[2] === 'tr' ? 5 : parts[2] === 'ch' ? 5 : 0;
-        if (parts.length <= startIdx) return null;
-
-        let cursor;
         if (parts[2] === 'ec') {
-            cursor = phase.rawEnterCondition;
-        } else if (parts[2] === 'tr') {
-            cursor = phase.transitions?.[Number(parts[3])]?.condition;
-        } else if (parts[2] === 'ch') {
-            cursor = phase.choices?.[Number(parts[3])]?.visibleCondition;
+            return findConditionParent(phase, phase.rawEnterCondition, parts, 3);
         }
-        if (!cursor) return null;
-
-        for (let i = startIdx; i < parts.length - 1; i++) {
-            const key = parts[i];
-            if (key === 'conditions') {
-                const idx = Number(parts[i + 1]);
-                cursor = cursor?.conditions?.[idx];
-                i++;
-            } else {
-                cursor = cursor?.[key];
-            }
+        if (parts[2] === 'tr') {
+            return findConditionParent(phase, phase.transitions?.[Number(parts[3])]?.condition, parts, 5);
         }
-        const lastKey = parts[parts.length - 1];
-        if (lastKey === 'conditions') {
-            return {parent: cursor, key: 'conditions', isArray: true};
+        if (parts[2] === 'ch') {
+            return findConditionParent(phase, phase.choices?.[Number(parts[3])]?.visibleCondition, parts, 5);
         }
-        return {parent: cursor, key: lastKey};
+    }
+    if (parts[0] === 'npc') {
+        if (parts[1] === 'interactCond') {
+            return findConditionParent(root, root.interactCondition, parts, 2);
+        }
+        if (parts[1] === 'bind') {
+            const binding = root.bindings?.[Number(parts[2])];
+            if (!binding) return null;
+            return findConditionParent(binding, binding.condition, parts, 4);
+        }
+    }
+    if (parts[0] === 'diag' && parts[1] === 'node') {
+        const node = root.nodes?.[Number(parts[2])];
+        if (!node) return null;
+        if (parts[3] === 'condText') {
+            const sayIf = node.conditionalTexts?.[parts[4]];
+            if (!sayIf) return null;
+            return findConditionParent(sayIf, sayIf.conditions?.[Number(parts[6])], parts, 7);
+        }
+        if (parts[3] === 'ch') {
+            const choice = node.choices?.[Number(parts[4])];
+            if (!choice) return null;
+            return findConditionParent(choice, choice.conditions?.[Number(parts[6])], parts, 7);
+        }
     }
     return null;
 }
 
 function appendConditionBranch(root, bindBase) {
-    const node = getConditionNodeByBind(root, bindBase);
+    const node = navigateConditionPath(root, bindBase);
     if (!node || (node.condition !== 'arc_quest:and' && node.condition !== 'arc_quest:or')) return false;
     node.conditions ||= [];
     node.conditions.push({condition: 'arc_quest:always'});
@@ -145,9 +178,8 @@ function deleteConditionBranch(root, bindBase) {
     const ref = getConditionParentRef(root, bindBase);
     if (!ref?.parent || !ref.key) return false;
     const parent = ref.parent;
-    const key = ref.key;
 
-    if (parent.condition === 'arc_quest:not' && key === 'inner') {
+    if (parent.condition === 'arc_quest:not' && ref.key === 'inner') {
         parent.inner = {condition: 'arc_quest:always'};
         return true;
     }
@@ -163,6 +195,6 @@ function deleteConditionBranch(root, bindBase) {
         }
     }
 
-    parent[key] = {condition: 'arc_quest:always'};
+    parent[ref.key] = {condition: 'arc_quest:always'};
     return true;
 }

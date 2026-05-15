@@ -159,11 +159,6 @@ dom.left.addEventListener('click', e => {
     const ds = treeItem.dataset;
     if (ds.t === 'config') { state.dialogue.ui.sel = {t: 'config'}; rerender(); return; }
     if (ds.t === 'node' && ds.ni !== undefined) { state.dialogue.ui.sel = {t: 'node', ni: +ds.ni}; rerender(); return; }
-    if (ds.t === 'say' && ds.ni !== undefined) { state.dialogue.ui.sel = {t: 'say', ni: +ds.ni}; rerender(); return; }
-    if (ds.t === 'sayIf' && ds.ni !== undefined && ds.key) { state.dialogue.ui.sel = {t: 'sayIf', ni: +ds.ni, key: ds.key}; rerender(); return; }
-    if (ds.t === 'choice' && ds.ni !== undefined && ds.ci !== undefined) { state.dialogue.ui.sel = {t: 'choice', ni: +ds.ni, ci: +ds.ci}; rerender(); return; }
-    if (ds.t === 'toggle-sayIf') { state.dialogue.ui.sayIfFold = !state.dialogue.ui.sayIfFold; rerender(); return; }
-    if (ds.t === 'toggle-choice') { state.dialogue.ui.choiceFold = !state.dialogue.ui.choiceFold; rerender(); return; }
 });
 
 if (dom.modeBar) {

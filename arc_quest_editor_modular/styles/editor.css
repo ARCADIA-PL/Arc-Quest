@@ -868,4 +868,66 @@ button.danger:hover {
     background: rgba(255,255,255,.06)
 }
 
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 4px 0;
+    margin-bottom: 12px;
+    color: var(--text-mut)
+}
+
+.breadcrumb-link {
+    cursor: pointer;
+    color: var(--accent);
+    transition: .15s
+}
+
+.breadcrumb-link:hover {
+    color: var(--accent-hover);
+    text-decoration: underline
+}
+
+.breadcrumb-sep {
+    opacity: .3
+}
+
+.breadcrumb-current {
+    color: var(--text-main);
+    font-weight: 600
+}
+
+.cond-chip {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(255,255,255,.08);
+    color: var(--text-mut)
+}
+
+.cond-chip.flag { background: rgba(50,215,75,.15); color: var(--success) }
+.cond-chip.not-flag { background: rgba(255,69,58,.15); color: var(--danger) }
+.cond-chip.quest { background: rgba(10,132,255,.15); color: var(--accent) }
+.cond-chip.quest-done { background: rgba(191,90,242,.15); color: var(--parallel) }
+.cond-chip.var { background: rgba(255,159,10,.12); color: var(--warning) }
+.cond-chip.not { background: rgba(142,142,147,.15); color: var(--text-mut) }
+.cond-chip.logic { background: rgba(255,159,10,.15); color: var(--warning) }
+
+.detail-card {
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.06);
+    transition: .15s
+}
+
+.detail-card:hover {
+    background: rgba(255,255,255,.07);
+    border-color: rgba(255,255,255,.1)
+}
+
 

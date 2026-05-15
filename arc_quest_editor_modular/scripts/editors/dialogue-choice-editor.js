@@ -53,12 +53,24 @@ function renderActionFields(prefix, action, registry) {
 export function renderDialogueChoiceEditor(node, choice, ni, ci, dialogue, registry) {
     const cp = `diag.node.${ni}.ch.${ci}`;
     const nodeIds = (dialogue.nodes || []).map(n => n.nodeId).filter(Boolean);
+    const choices = node.choices || [];
+    const total = choices.length;
 
     return `
     <div class="sec">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <button data-goto-node="${ni}" class="toolbar-btn small-btn">← 返回节点</button>
-        <h3 style="margin:0">Choice: ${esc(choice.choiceId || `#${ci + 1}`)} · ${esc(node.nodeId || '')}</h3>
+      <div class="breadcrumb">
+        <span data-goto-config class="breadcrumb-link">⚙ 对话配置</span>
+        <span class="breadcrumb-sep">›</span>
+        <span data-goto-node="${ni}" class="breadcrumb-link">${esc(node.nodeId || '')}</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">${esc(choice.choiceId || `#${ci + 1}`)}</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;gap:6px">
+          ${ci > 0 ? `<button data-nav-choice="${ni}:${ci - 1}" class="toolbar-btn small-btn">◀ ${esc(choices[ci - 1]?.choiceId || `#${ci}`)}</button>` : '<span class="toolbar-btn small-btn" style="opacity:.3">◀</span>'}
+          ${ci < total - 1 ? `<button data-nav-choice="${ni}:${ci + 1}" class="toolbar-btn small-btn">${esc(choices[ci + 1]?.choiceId || `#${ci + 2}`)} ▶</button>` : '<span class="toolbar-btn small-btn" style="opacity:.3">▶</span>'}
+        </div>
+        <span class="tiny" style="opacity:.5">${ci + 1}/${total}</span>
       </div>
       <div class="row">
         <div class="f"><label>Choice ID</label><input data-b="${cp}.choiceId" value="${esc(choice.choiceId || '')}"></div>
@@ -82,7 +94,7 @@ export function renderDialogueChoiceEditor(node, choice, ni, ci, dialogue, regis
         ${(choice.conditions || []).map((cond, cdi) =>
             renderConditionTree(`${cp}.cond.${cdi}`, cond, registry, true)
         ).join('')}
-        <div class="actions"><button data-cond-append="${cp}">＋ 添加条件</button></div>
+        <div class="actions"><button data-cond-append="${cp}" data-cond-skip-rerender="true">＋ 添加条件</button></div>
       </div>
       <div style="margin-top:12px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
