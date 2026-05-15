@@ -2,6 +2,7 @@ import {esc} from '../core/utils.js';
 import {renderTextSpec} from './textspec-editor.js';
 import {renderCooldownGroup} from './cooldown-editor.js';
 import {renderConditionTree} from './condition-editor.js';
+import {renderCardStrip} from './dialogue-sayif-editor.js';
 
 const ACTION_TYPES = [
     'start_quest', 'complete_quest', 'advance_phase',
@@ -56,31 +57,30 @@ export function renderDialogueChoiceEditor(node, choice, ni, ci, dialogue, regis
     const choices = node.choices || [];
     const total = choices.length;
 
-    const stripCards = choices.map((ch, i) => {
-        const isActive = i === ci;
-        return `<span class="strip-card detail-card ${isActive ? 'on' : ''}" data-jump-choice="${ni}:${i}">${esc(ch.choiceId || `#${i + 1}`)}</span>`;
+    const sayIfEntries = Object.entries(node.conditionalTexts || {});
+    const sayIfCardsHtml = sayIfEntries.map(([k]) => {
+        return `<span class="strip-card" data-jump-sayif="${ni}:${k}">${esc(k)}</span>`;
     }).join('');
 
-    const needsScroll = total > 6;
+    const choiceCardsHtml = choices.map((ch, i) => {
+        const isActive = i === ci;
+        return `<span class="strip-card ${isActive ? 'on' : ''}" data-jump-choice="${ni}:${i}">${esc(ch.choiceId || `#${i + 1}`)}</span>`;
+    }).join('');
 
     return `
     <div class="sec">
       <div class="card-strip-bar">
         <button data-goto-node="${ni}" class="toolbar-btn small-btn" style="font-weight:700;color:var(--accent)">← 节点</button>
-        ${needsScroll ? '<button data-strip-scroll="left" class="toolbar-btn small-btn">⏮</button>' : ''}
-        <div class="card-strip" data-strip-id="choice-${ni}">
-          ${stripCards}
-        </div>
-        ${needsScroll ? '<button data-strip-scroll="right" class="toolbar-btn small-btn">⏩</button>' : ''}
-        <span class="tiny" style="opacity:.5;margin-left:6px">${ci + 1}/${total}</span>
+        <span class="breadcrumb">
+          <span data-goto-config class="breadcrumb-link">⚙ 对话配置</span>
+          <span class="breadcrumb-sep">›</span>
+          <span data-goto-node="${ni}" class="breadcrumb-link">${esc(node.nodeId || '')}</span>
+          <span class="breadcrumb-sep">›</span>
+          <span class="breadcrumb-current">${esc(choice.choiceId || `#${ci + 1}`)}</span>
+        </span>
       </div>
-      <div class="breadcrumb">
-        <span data-goto-config class="breadcrumb-link">⚙ 对话配置</span>
-        <span class="breadcrumb-sep">›</span>
-        <span data-goto-node="${ni}" class="breadcrumb-link">${esc(node.nodeId || '')}</span>
-        <span class="breadcrumb-sep">›</span>
-        <span class="breadcrumb-current">${esc(choice.choiceId || `#${ci + 1}`)}</span>
-      </div>
+      ${renderCardStrip({cardsHtml: sayIfCardsHtml, count: sayIfEntries.length, stripPrefix: 'sayif', ni, countText: `${sayIfEntries.length}`, label: '🔀 SayIf'})}
+      ${renderCardStrip({cardsHtml: choiceCardsHtml, count: total, stripPrefix: 'choice', ni, countText: `${ci + 1}/${total}`, label: '🎯 Choice'})}
       <div class="row">
         <div class="f"><label>Choice ID</label><input data-b="${cp}.choiceId" value="${esc(choice.choiceId || '')}"></div>
         <div class="f"><label>Priority</label><input type="number" data-b="${cp}.priority" value="${choice.priority ?? 0}" min="0"></div>

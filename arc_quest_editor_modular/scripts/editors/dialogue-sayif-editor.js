@@ -2,6 +2,18 @@ import {esc} from '../core/utils.js';
 import {renderTextSpec} from './textspec-editor.js';
 import {renderConditionTree} from './condition-editor.js';
 
+export function renderCardStrip({cardsHtml, count, stripPrefix, ni, countText, label}) {
+    const overflow = count > 5;
+    return `
+    <div class="strip-row">
+      <span class="strip-label">${label}</span>
+      ${overflow ? `<button data-strip-scroll="${stripPrefix}-left" class="toolbar-btn small-btn strip-scroll-btn">⏮</button>` : ''}
+      <div class="card-strip" data-strip-id="${stripPrefix}-${ni}">${cardsHtml}</div>
+      ${overflow ? `<button data-strip-scroll="${stripPrefix}-right" class="toolbar-btn small-btn strip-scroll-btn">⏩</button>` : ''}
+      <span class="tiny" style="opacity:.5;margin-left:4px">${countText}</span>
+    </div>`;
+}
+
 export function renderDialogueSayIfEditor(node, key, sayIf, ni, registry, dialogue) {
     const sp = `diag.node.${ni}.condText.${key}`;
     const entries = Object.entries(node.conditionalTexts || {});
@@ -9,31 +21,30 @@ export function renderDialogueSayIfEditor(node, key, sayIf, ni, registry, dialog
     const curIdx = keys.indexOf(key);
     const total = keys.length;
 
-    const stripCards = entries.map(([k]) => {
+    const sayIfCardsHtml = entries.map(([k]) => {
         const isActive = k === key;
-        return `<span class="strip-card detail-card ${isActive ? 'on' : ''}" data-jump-sayif="${ni}:${k}">${esc(k)}</span>`;
+        return `<span class="strip-card ${isActive ? 'on' : ''}" data-jump-sayif="${ni}:${k}">${esc(k)}</span>`;
     }).join('');
 
-    const needsScroll = total > 6;
+    const choices = node.choices || [];
+    const choiceCardsHtml = choices.map((ch, ci) => {
+        return `<span class="strip-card" data-jump-choice="${ni}:${ci}">${esc(ch.choiceId || `#${ci + 1}`)}</span>`;
+    }).join('');
 
     return `
     <div class="sec">
       <div class="card-strip-bar">
         <button data-goto-node="${ni}" class="toolbar-btn small-btn" style="font-weight:700;color:var(--accent)">← 节点</button>
-        ${needsScroll ? '<button data-strip-scroll="left" class="toolbar-btn small-btn">⏮</button>' : ''}
-        <div class="card-strip" data-strip-id="sayif-${ni}">
-          ${stripCards}
-        </div>
-        ${needsScroll ? '<button data-strip-scroll="right" class="toolbar-btn small-btn">⏩</button>' : ''}
-        <span class="tiny" style="opacity:.5;margin-left:6px">${curIdx + 1}/${total}</span>
+        <span class="breadcrumb">
+          <span data-goto-config class="breadcrumb-link">⚙ 对话配置</span>
+          <span class="breadcrumb-sep">›</span>
+          <span data-goto-node="${ni}" class="breadcrumb-link">${esc(node.nodeId || '')}</span>
+          <span class="breadcrumb-sep">›</span>
+          <span class="breadcrumb-current">${esc(key)}</span>
+        </span>
       </div>
-      <div class="breadcrumb">
-        <span data-goto-config class="breadcrumb-link">⚙ 对话配置</span>
-        <span class="breadcrumb-sep">›</span>
-        <span data-goto-node="${ni}" class="breadcrumb-link">${esc(node.nodeId || '')}</span>
-        <span class="breadcrumb-sep">›</span>
-        <span class="breadcrumb-current">${esc(key)}</span>
-      </div>
+      ${renderCardStrip({cardsHtml: sayIfCardsHtml, count: total, stripPrefix: 'sayif', ni, countText: `${curIdx + 1}/${total}`, label: '🔀 SayIf'})}
+      ${renderCardStrip({cardsHtml: choiceCardsHtml, count: choices.length, stripPrefix: 'choice', ni, countText: `${choices.length}`, label: '🎯 Choice'})}
       <div class="row">
         <div class="f"><label>Identifier</label>
           <input value="${esc(key)}" disabled style="opacity:.6" title="Map key，不可修改">
