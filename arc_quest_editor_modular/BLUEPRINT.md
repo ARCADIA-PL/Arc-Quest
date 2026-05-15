@@ -622,3 +622,298 @@ const DIALOGUE_ACTION_TYPES = [
 | 18 | crossBtn mode 切换扩展 | 跨文件校验按钮在 non-quest mode 下也强制切换到 quest mode (保持现有行为), 未来扩展 NPC/dialogue 独立校验 |
 | 19 | 拖拽 overlay 动态文案 | `bindDragAndDropImport` 按 mode 切换 overlay 文字 |
 | 20 | 导入到库的 type 自动检测 | `importToLibrary` 通过 `detectJsonType` 确定 registry 类型, 自动调用 `importToRegistry(state, json, type)` |
+
+---
+
+## 十、对话编辑器 UX 重构（4 人设计师团队 · 10 轮研讨修订）
+
+> 研讨日期: 2026-05-15
+> 参与方: Leah (信息架构师) / Ren (交互设计师) / Sasha (视觉设计师) / Marcus (系统设计师)
+> 背景: 初版对话编辑器将所有 say/sayIf/choice/choiceIf 堆在同一页面，违反单一编辑页原则，用户要求对齐 quest 编辑器的分层模式
+
+---
+
+### UX 问题诊断（初版 9 项缺陷）
+
+| # | 问题 | 严重度 |
+|---|------|--------|
+| 1 | 中栏单页渲染整个节点 — 8 个 conditionalTexts + 12 个 choices + actions 全部堆积 | 严重 |
+| 2 | 无 say/sayIf/choice 独立编辑页 — 与 quest 的 phase/objective 分层模式背离 | 严重 |
+| 3 | 左栏树扁平 — 只有节点名，不展示 sayIf/choice 子项 | 严重 |
+| 4 | 无法单条编辑 — 改一个 sayIf 的 text 需要在整个节点页中滚动定位 | 中等 |
+| 5 | 无对话流可视化 — 看不到 choice 的目标节点流向 | 中等 |
+| 6 | 缺少导航上下文 — 编辑深层内容时不知道"我在哪里" | 中等 |
+| 7 | 删除子项后状态不安全 — 删除正在编辑的 sayIf/choice 时 sel 不自动修复 | 高 |
+| 8 | 顶层编辑器重复渲染 — `dialogue-editor.js` 和 `dialogue-node-editor.js` 都渲染了对话顶层 | 低 |
+| 9 | 摘要信息不足 — 节点摘要只显示 C:N CT:N 计数，不显示每条的具体内容 | 中等 |
+
+---
+
+### 重构目标
+
+对齐 quest 编辑器的分层编辑模式：**每个语义层一个独立编辑页**。
+
+| quest 模式 (参照) | dialogue 模式 (目标) |
+|-------------------|---------------------|
+| 左栏树: quest → phase → objective | 左栏树: config → node → say/sayIf/choice |
+| 点击 quest → 中栏渲染 Quest 编辑页 | 点击 config → 中栏渲染 Dialogue 顶层编辑 |
+| 点击 phase → 中栏渲染 Phase 编辑页 | 点击 node → 中栏渲染**节点摘要页**（仪表盘） |
+| 点击 objective → 中栏渲染 Obj 编辑页 | 点击 sayIf → 中栏渲染 SayIf 编辑页 |
+| — | 点击 choice → 中栏渲染 Choice 编辑页 |
+
+---
+
+### 一、左栏树新结构
+
+```
+⚙ 对话配置                   ← sel.t === 'config'
+──────────────────────────
+📋 节点列表
+  ├─ ★ start (S:8 C:12)     ← sel.t === 'node', sel.ni === 0
+  │    ├─ 📝 默认文本          ← sel.t === 'say', sel.ni === 0
+  │    ├─ 🔀 条件文本 (8)      ← 可折叠组
+  │    │    ├─ newcomer       ← sel.t === 'sayIf', sel.ni === 0, sel.key === 'newcomer'
+  │    │    ├─ phase_gather_wood
+  │    │    └─ ...
+  │    ├─ 🎯 选项 (12)         ← 可折叠组
+  │    │    ├─ choice_intro   ← sel.t === 'choice', sel.ni === 0, sel.ci === 0
+  │    │    ├─ choice_accept_mission
+  │    │    └─ ...
+  │    ├─ [删除节点]
+  │    └─ [＋SayIf] [＋Choice]
+  ├─ intro_story (S:1 C:2)
+  │    ├─ ...
+  └─ ...
+──────────────────────────
+[＋ 添加节点]
+```
+
+### state 模型
+
+```js
+dialogue: {
+    ui: {
+        // 旧: selNodeId: 'start'
+        // 新: 对齐 quest 的 sel 模式
+        sel: { t: 'config' }
+        //  或 { t: 'node', ni: 0 }
+        //  或 { t: 'say', ni: 0 }
+        //  或 { t: 'sayIf', ni: 0, key: 'newcomer' }
+        //  或 { t: 'choice', ni: 0, ci: 2 }
+        sayIfFold: true,     // 条件文本组折叠状态
+        choiceFold: true,    // 选项组折叠状态
+    }
+}
+```
+
+### 状态安全函数 `ensureValidDialogueSelection`
+
+每次 rerender 前调用，确保当前 sel 不指向已删除数据：
+
+| sel.t | 失效条件 | 回退目标 |
+|-------|----------|----------|
+| `node` | `ni >= nodes.length` | `config` |
+| `say` | 同 node | `config` |
+| `sayIf` | key 在 `nodes[ni].conditionalTexts` 中不存在 | `{t:'node', ni}` |
+| `choice` | `ci >= nodes[ni].choices.length` | `{t:'node', ni}` |
+
+---
+
+### 二、中栏编辑器路由
+
+| sel.t | 渲染函数 | 新文件 | 内容 |
+|-------|----------|--------|------|
+| `config` | `renderDialogueConfig` | `dialogue-editor.js` (重写) | id / defaultNpc / startNodeId / 冷却 / 顶层绑定 |
+| `node` | `renderDialogueNodeSummary` | **新建** `dialogue-node-summary.js` | nodeId / delayMs / autoNextId / speaker / 冷却 + sayIf/choice 摘要列表 |
+| `say` | `renderDialogueSayEditor` | **新建** `dialogue-say-editor.js` | speaker + 默认 text（无条件，无条件列表） |
+| `sayIf` | `renderDialogueSayIfEditor` | **新建** `dialogue-sayif-editor.js` | sayId + text + soundEvent + conditions[] inline + priority |
+| `choice` | `renderDialogueChoiceEditor` | **新建** `dialogue-choice-editor.js` | choiceId + text + nextNodeId + restoreNodeId + selectSound + 冷却 + conditions[] inline + actions[] inline |
+
+say / sayIf / choice 页面内 conditions 和 actions 保持 **inline 渲染**（不进一步拆分独立页面）。
+
+---
+
+### 三、节点摘要页（仪表盘）设计
+
+取代当前的全量渲染，只显示摘要行 + "[编辑]" 按钮跳转：
+
+```
+┌─ Node: start · ★ 起始节点 ──────────────────────┐
+│ nodeId: [start]  delay: [0]ms                   │
+│ autoNext: [—]  enterSound: [—]                  │
+│ ┌─ Speaker ─────────────────────────────────────┐│
+│ │ mode: [translatable ▼]  value: "..."          ││
+│ └───────────────────────────────────────────────┘│
+│ ┌─ 冷却 ────────────────────────────────────────┐│
+│ │ [repeatable ✓] [NONE ▼] [0s] [0 ticks]        ││
+│ └───────────────────────────────────────────────┘│
+│                                                  │
+│ ── 条件文本 (8) ────────────────── [＋添加] ─── │
+│ ┌──────────────────────────────────────────────┐ │
+│ │ newcomer · pri=0 · cond: NOT(has_quest(...)) │ │
+│ │   text: "欢迎来到村庄..."              [编辑] │ │
+│ ├──────────────────────────────────────────────┤ │
+│ │ phase_gather · pri=0 · cond: quest_phase(...)│ │
+│ │   text: "快去收集木材..."              [编辑] │ │
+│ └──────────────────────────────────────────────┘ │
+│                                                  │
+│ ── 选项 (12) ────────────────────── [＋添加] ── │
+│ ┌──────────────────────────────────────────────┐ │
+│ │ choice_intro → intro_story · act:1    [编辑] │ │
+│ │   text: "请告诉我更多..."                    │ │
+│ ├──────────────────────────────────────────────┤ │
+│ │ choice_accept → — · act:2             [编辑] │ │
+│ │   text: "我接受任务"                         │ │
+│ └──────────────────────────────────────────────┘ │
+│                                                  │
+│ [删除此节点]                                     │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+### 四、sayIf 编辑页设计
+
+```
+┌─ SayIf: newcomer · 节点: start ─────────────────┐
+│ sayId: [arc_quest:newcomer]  priority: [0]      │
+│ soundEvent: [minecraft:entity.villager.yes]     │
+│ ┌─ Text ────────────────────────────────────────┐│
+│ │ mode: [translatable ▼]  value: "..."          ││
+│ └──────────────────────────────────────────────┘│
+│ ┌─ Conditions ───────────────────────────────┐  ││
+│ │ ○ NOT(has_quest(epic_prologue))      [—删除]│  ││
+│ │ [＋ 添加条件]                                │  ││
+│ └──────────────────────────────────────────────┘  │
+│                                                  │
+│ [删除此 SayIf]   [← 返回节点摘要]               │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+### 五、choice 编辑页设计
+
+```
+┌─ Choice: choice_intro · 节点: start ────────────┐
+│ choiceId: [arc_quest:choice_intro]  priority: [0]│
+│ nextNodeId: [intro_story ▼]  restoreNodeId: [—] │
+│ selectSound: [—]                                 │
+│ ┌─ Text ────────────────────────────────────────┐│
+│ │ mode: [translatable ▼]  value: "请告诉我..."  ││
+│ └───────────────────────────────────────────────┘│
+│ ┌─ 冷却 ───────────────────────────────────────┐│
+│ │ [repeatable ✓] [NONE ▼] [0s] [0 ticks]       ││
+│ └───────────────────────────────────────────────┘│
+│ ┌─ Conditions ───────────────────────────────┐  ││
+│ │ ○ NOT(has_quest(epic_prologue))      [—删除]│  ││
+│ │ [＋ 添加条件]                                │  ││
+│ └──────────────────────────────────────────────┘  │
+│ ──────────────────────────────────────────────   │
+│ 动作                                             │
+│ ┌─ [0] start_quest · 接取任务 ──── [删除] ────┐ │
+│ │   questId: [arc_quest:epic_chapter1 ▼]       │ │
+│ └──────────────────────────────────────────────┘ │
+│ [＋ 添加动作]                                    │
+│                                                  │
+│ [删除此 Choice]   [← 返回节点摘要]              │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+### 六、click action 拆分
+
+当前 `dialogue-click-actions.js` 一个文件处理全部。重构后按层级拆为：
+
+| 文件 | 处理范围 |
+|------|----------|
+| `dialogue-click-actions.js` | config 层 + 节点添加/删除/选中 |
+| **新建** `dialogue-node-click-actions.js` | 节点摘要页: 添加 sayIf / 添加 choice / 点击编辑跳转 |
+| **新建** `dialogue-sayif-click-actions.js` | sayIf 编辑页: condition 管理 + 删除 sayIf |
+| **新建** `dialogue-choice-click-actions.js` | choice 编辑页: condition 管理 + action 添加/删除 + 删除 choice |
+
+`event-bindings.js` 中 `bindDialogueEditorActions` 按 `sel.t` 路由到不同 handler。
+
+---
+
+### 七、center-renderer 重构
+
+```js
+export function renderDialogueCenter(state, midEl) {
+    const sel = state.dialogue.ui.sel;
+    const dialogue = state.dialogue.q;
+    const registry = state.registry;
+    let html = '';
+
+    switch (sel.t) {
+        case 'config':
+            html = renderDialogueConfig(dialogue, registry);
+            break;
+        case 'node': {
+            const node = dialogue.nodes[sel.ni];
+            if (node) html = renderDialogueNodeSummary(dialogue, node, sel.ni, registry);
+            break;
+        }
+        case 'say': {
+            const node = dialogue.nodes[sel.ni];
+            if (node) html = renderDialogueSayEditor(node, sel.ni, registry);
+            break;
+        }
+        case 'sayIf': {
+            const node = dialogue.nodes[sel.ni];
+            const sayIf = node?.conditionalTexts?.[sel.key];
+            if (sayIf) html = renderDialogueSayIfEditor(node, sel.key, sayIf, sel.ni, registry);
+            break;
+        }
+        case 'choice': {
+            const node = dialogue.nodes[sel.ni];
+            const choice = node?.choices?.[sel.ci];
+            if (choice) html = renderDialogueChoiceEditor(node, choice, sel.ni, sel.ci, registry);
+            break;
+        }
+    }
+
+    midEl.innerHTML = `<div class="fade-in">${html}</div>`;
+}
+```
+
+---
+
+### 八、重构文件清单
+
+| 操作 | 文件 | 内容 |
+|------|------|------|
+| **重写** | `editors/dialogue-editor.js` | 改为 `renderDialogueConfig` + center 路由 switch |
+| **创建** | `editors/dialogue-node-summary.js` | 节点摘要页（sayIf/choice 摘要列表 + 跳转按钮） |
+| **创建** | `editors/dialogue-say-editor.js` | say 编辑页（speaker + 默认 text） |
+| **创建** | `editors/dialogue-sayif-editor.js` | sayIf 编辑页（sayId/text/soundEvent/conditions/priority） |
+| **创建** | `editors/dialogue-choice-editor.js` | choice 编辑页（choiceId/text/nextNodeId/restoreNodeId/冷却/conditions/actions） |
+| **重写** | `renderers/dialogue-tree-renderer.js` | 三层树结构 + 折叠 + icon |
+| **修改** | `renderers/bindings/dialogue-click-actions.js` | 按 sel.t 拆为 handler |
+| **修改** | `renderers/bindings/dialogue-node-click-actions.js` (原文件改名重组) | 节点摘要页事件 |
+| **创建** | `renderers/bindings/dialogue-sayif-click-actions.js` | sayIf 页事件 |
+| **创建** | `renderers/bindings/dialogue-choice-click-actions.js` | choice 页事件 |
+| **修改** | `renderers/event-bindings.js` | `bindDialogueEditorActions` 按 sel.t 路由 |
+| **修改** | `renderers/center-renderer.js` | `renderDialogueCenter` switch 路由 |
+| **修改** | `core/state.js` | `dialogue.ui.sel` 重构 |
+| **修改** | `scripts/app.js` | `ensureValidDialogueSelection` + 树点击适配 |
+| **删除** | `editors/dialogue-node-editor.js` | 内容已被拆到 4 个新文件 |
+| **删除** | `editors/dialogue-action-editor.js` | action 编辑器内联到 choice-editor |
+
+---
+
+### 九、设计决策速查（UX 专项）
+
+| # | 决策 | 理由 |
+|---|------|------|
+| 1 | say / sayIf / choice 各自独立编辑页 | 对齐 quest phase/objective 模式，避免信息过载 |
+| 2 | action 不独立页面 | action 体量小（1-3 字段），独立页面增加切换成本 |
+| 3 | condition 不独立页面 | 条件编辑器设计为 inline 组件，在所有页面复用 |
+| 4 | 左栏分组折叠 | 避免 20+ 子条目撑满左栏 |
+| 5 | 节点摘要页（仪表盘） | 概览节点全貌 + 快速跳转，不显示完整编辑表单 |
+| 6 | sel 存 ni + key 而非 nodeId | 对齐 quest 的 pi 模式；用 `ensureValidDialogueSelection` 修复越界 |
+| 7 | sayIf 的 Map key 不可编辑 | 保护 `split('.')` 绑定路径不破裂 |
+| 8 | 每个子编辑器有"返回节点摘要"按钮 | 面包屑导航，避免迷失上下文 |
+| 9 | "删除此节点/choice/sayIf"放在编辑页底部 | 危险操作需要明确意图，不放在列表里误触 |
+| 10 | 节点摘要 sayIf/choice 行显示 `[编辑]` 跳转 | 不自动进入编辑页——用户先看摘要再决定改哪个 |
