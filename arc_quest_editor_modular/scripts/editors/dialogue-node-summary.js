@@ -45,11 +45,11 @@ export function renderDialogueNodeDetail(dialogue, node, ni, registry, state) {
             <b class="small" style="flex:1">${esc(key)}</b>
             <span class="tiny" style="opacity:.5">pri:${say.priority ?? 0}</span>
             <div style="display:flex;gap:4px">${renderCondChips(say.conditions)}</div>
+            <button data-ddcondtext-card="${ni}:${key}" class="toolbar-btn small-btn" style="color:var(--danger);margin-left:4px" title="删除此 SayIf">✕</button>
           </div>
           <div class="small" style="color:var(--text-mut);margin:4px 0">${esc((say.text?.value || '').substring(0, 60))}${(say.text?.value || '').length > 60 ? '…' : ''}</div>
-          <div style="display:flex;gap:6px;justify-content:flex-end">
+          <div style="text-align:right">
             <button data-edit-sayif="${ni}:${key}" class="toolbar-btn small-btn">编辑</button>
-            <button data-ddcondtext-card="${ni}:${key}" class="toolbar-btn small-btn" style="color:var(--danger)" title="删除此 SayIf">✕</button>
           </div>
         </div>`;
     }).join('');
@@ -62,11 +62,11 @@ export function renderDialogueNodeDetail(dialogue, node, ni, registry, state) {
             <b class="small" style="flex:1">${esc(ch.choiceId || `#${ci + 1}`)}</b>
             <span class="tiny" style="opacity:.7">${nextLabel}</span>
             <span class="tiny" style="opacity:.5">act:${actCount}</span>
+            <button data-dchoice-del-card="${ni}:${ci}" class="toolbar-btn small-btn" style="color:var(--danger);margin-left:4px" title="删除此 Choice">✕</button>
           </div>
           <div class="small" style="color:var(--text-mut);margin:4px 0">${esc((ch.text?.value || '').substring(0, 60))}${(ch.text?.value || '').length > 60 ? '…' : ''}</div>
-          <div style="display:flex;gap:6px;justify-content:flex-end">
+          <div style="text-align:right">
             <button data-edit-choice="${ni}:${ci}" class="toolbar-btn small-btn">编辑</button>
-            <button data-dchoice-del-card="${ni}:${ci}" class="toolbar-btn small-btn" style="color:var(--danger)" title="删除此 Choice">✕</button>
           </div>
         </div>`;
     }).join('');
@@ -99,22 +99,18 @@ export function renderDialogueNodeDetail(dialogue, node, ni, registry, state) {
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <h3 style="margin:0">SayIf (${sayIfEntries.length})</h3>
         <button id="addCondTextBtn_${ni}" class="toolbar-btn small-btn">＋ 添加</button>
-        <button data-toggle-sayif-fold="${ni}" class="toolbar-btn small-btn" style="margin-left:auto">${sayIfFold ? '▸ 展开' : '▾ 收起'}</button>
+        <button data-toggle-sayif-fold="${ni}" class="toolbar-btn small-btn" style="margin-left:auto">${sayIfFold ? '▾ 展开' : '▴ 收起'}</button>
       </div>
-      ${sayIfFold
-        ? (sayIfCards || '<div class="small" style="color:var(--text-mut)">暂无条件文本</div>')
-        : (sayIfCards || '<div class="small" style="color:var(--text-mut)">暂无条件文本</div>')}
+      ${!sayIfFold ? (sayIfCards || '<div class="small" style="color:var(--text-mut)">暂无条件文本</div>') : ''}
     </div>
 
     <div class="sec">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <h3 style="margin:0">Choices (${choices.length})</h3>
         <button data-choice-add="${ni}" class="toolbar-btn small-btn">＋ 添加</button>
-        <button data-toggle-choice-fold="${ni}" class="toolbar-btn small-btn" style="margin-left:auto">${choiceFold ? '▸ 展开' : '▾ 收起'}</button>
+        <button data-toggle-choice-fold="${ni}" class="toolbar-btn small-btn" style="margin-left:auto">${choiceFold ? '▾ 展开' : '▴ 收起'}</button>
       </div>
-      ${choiceFold
-        ? (choiceCards || '<div class="small" style="color:var(--text-mut)">暂无选项</div>')
-        : (choiceCards || '<div class="small" style="color:var(--text-mut)">暂无选项</div>')}
+      ${!choiceFold ? (choiceCards || '<div class="small" style="color:var(--text-mut)">暂无选项</div>') : ''}
     </div>
 
     <div class="actions" style="margin-top:12px"><button data-ddnode="${ni}">删除此节点</button></div>
