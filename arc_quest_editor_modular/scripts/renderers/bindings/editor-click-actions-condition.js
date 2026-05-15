@@ -1,4 +1,4 @@
-﻿export function bindConditionEditorClicks(state, descriptor, action) {
+﻿﻿export function bindConditionEditorClicks(state, descriptor, action) {
     if (action === 'append') {
         return appendConditionBranch(state.quest.q, descriptor);
     }
