@@ -45,7 +45,7 @@ export const state = {
             graphView: {x: 0, y: 0, k: 1},
             graphExpanded: false,
             collectionView: 'card',
-            paneSizes: {left: 280, center: null, right: 380}
+            paneSizes: {left: 280, center: null, right: 420}
         },
         diag: []
     },

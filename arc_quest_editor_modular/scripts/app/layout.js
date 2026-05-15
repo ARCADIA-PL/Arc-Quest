@@ -1,7 +1,7 @@
 export function applyPaneLayout(state, dom) {
     if (!dom.mainLayout) return;
     const left = Math.max(220, Math.min(520, Number(state.quest.ui.paneSizes?.left) || 280));
-    const right = Math.max(280, Math.min(720, Number(state.quest.ui.paneSizes?.right) || 380));
+    const right = Math.max(300, Math.min(720, Number(state.quest.ui.paneSizes?.right) || 420));
     dom.mainLayout.style.gridTemplateColumns = `${left}px 8px minmax(420px, 1fr) 8px ${right}px`;
 }
 
@@ -19,7 +19,7 @@ export function bindPaneResizers(state, dom) {
         const rect = dom.mainLayout.getBoundingClientRect();
         const startX = event.clientX;
         const startLeft = Number(state.quest.ui.paneSizes.left) || 280;
-        const startRight = Number(state.quest.ui.paneSizes.right) || 380;
+        const startRight = Number(state.quest.ui.paneSizes.right) || 420;
 
         document.body.classList.add('is-resizing-panes');
 

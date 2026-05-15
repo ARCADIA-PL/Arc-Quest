@@ -451,18 +451,27 @@ button.danger:hover {
     display: flex;
     padding: 12px 12px 0;
     background: rgba(0, 0, 0, .2);
-    border-bottom: 1px solid var(--card-border)
+    border-bottom: 1px solid var(--card-border);
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none
+}
+
+.tabs::-webkit-scrollbar {
+    display: none
 }
 
 .tab {
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-radius: 8px 8px 0 0;
+    flex-shrink: 0;
     cursor: pointer;
     color: var(--text-mut);
     font-weight: 500;
     transition: .2s;
     font-size: 12px;
-    border-bottom: 2px solid transparent
+    border-bottom: 2px solid transparent;
+    white-space: nowrap
 }
 
 .tab:hover {
