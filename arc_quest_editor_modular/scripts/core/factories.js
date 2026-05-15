@@ -79,3 +79,93 @@ export const createCompletionRule = () => ({
     type: 'completed_entry_count',
     value: 1
 });
+
+export const createNpcSkeleton = () => ({
+    entityType: '',
+    bindings: [],
+    cancelVanillaInteract: true,
+    dialogueDistance: 8.0,
+    shouldLookAtPlayer: true,
+    shouldStopMoving: true,
+    interactCondition: null,
+    onDialogueStartCommands: [],
+    onDialogueEndCommands: []
+});
+
+export const createNpcBinding = () => ({
+    bindingId: '',
+    dialogueId: '',
+    dialogueIdFromNbt: '',
+    condition: null,
+    priority: 0
+});
+
+export const createDialogueSkeleton = () => ({
+    id: '',
+    defaultNpc: { mode: 'literal', value: '', args: [] },
+    startNodeId: '',
+    nodes: [],
+    visualConfig: null,
+    repeatable: true,
+    cooldownSeconds: 0,
+    cooldownType: 'NONE',
+    resetTimeTicks: 0,
+    npcBindings: [],
+    entityBindings: []
+});
+
+export const createDialogueNode = () => ({
+    nodeId: '',
+    speaker: { mode: 'literal', value: '', args: [] },
+    text: { mode: 'literal', value: '', args: [] },
+    conditionalTexts: {},
+    choices: [],
+    autoNextId: '',
+    delayMs: 0,
+    repeatable: true,
+    cooldownSeconds: 0,
+    cooldownType: 'NONE',
+    resetTimeTicks: 0,
+    nodeEnterSound: ''
+});
+
+export const createConditionalSay = () => ({
+    sayId: '',
+    text: { mode: 'literal', value: '', args: [] },
+    soundEvent: '',
+    conditions: [],
+    priority: 0
+});
+
+export const createDialogueChoice = () => ({
+    choiceId: '',
+    text: { mode: 'literal', value: '', args: [] },
+    nextNodeId: '',
+    conditions: [],
+    actions: [],
+    repeatable: true,
+    cooldownSeconds: 0,
+    cooldownType: 'NONE',
+    resetTimeTicks: 0,
+    priority: 0,
+    restoreNodeId: '',
+    selectSound: ''
+});
+
+export const createDialogueAction = (type = 'no_op') => ({
+    type,
+    questId: '',
+    amount: 0,
+    itemId: '',
+    count: 1,
+    npcId: '',
+    targetId: '',
+    command: '',
+    flagName: '',
+    key: '',
+    value: 0,
+    shopId: '',
+    restoreNodeId: '',
+    customTypeId: '',
+    customData: {}
+});

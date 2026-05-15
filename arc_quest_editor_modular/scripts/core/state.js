@@ -1,4 +1,5 @@
-import {createObjective, createPhase, createQuestSkeleton, createSplash} from './factories.js';
+import {createObjective, createPhase, createQuestSkeleton, createSplash,
+    createNpcSkeleton, createDialogueSkeleton} from './factories.js';
 
 export const createBlankQuest = () => {
     const quest = createQuestSkeleton();
@@ -49,6 +50,15 @@ export const state = {
         },
         diag: []
     },
-    npc: null,
-    dialogue: null
+    npc: {
+        q: createNpcSkeleton(),
+        meta: {file: 'new_npc.json', dirty: false},
+        diag: []
+    },
+    dialogue: {
+        q: createDialogueSkeleton(),
+        meta: {file: 'new_dialogue.json', dirty: false},
+        ui: { selNodeId: '' },
+        diag: []
+    }
 };
