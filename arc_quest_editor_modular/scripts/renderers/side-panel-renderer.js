@@ -1,5 +1,6 @@
 import {esc, clr, buildReferenceIndex, resolveSelectionRefKey} from '../core/utils.js';
 import {renderGraph, bindGraphEvents, bindGraphShellEvents} from './graph-renderer.js';
+import {renderDialogueDirectory} from './dialogue-side-panel.js';
 
 export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate, onGraphPhaseClick) {
     const q = state.mode === 'npc' ? state.npc.q : state.mode === 'dialogue' ? state.dialogue.q : state.quest.q;
@@ -8,7 +9,7 @@ export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate,
 
     const ns = isQuestMode
         ? {graph: '拓扑', refs: '引用', cross: '跨文件', preview: '大纲', validate: '诊断', json: 'JSON', help: '指南'}
-        : {cross: '跨文件', validate: '诊断', json: 'JSON', help: '指南'};
+        : {node: '目录', cross: '跨文件', validate: '诊断', json: 'JSON', help: '指南'};
     tabsEl.innerHTML = Object.keys(ns).map(k => `<div class="tab ${state.quest.ui.tab === k ? 'active' : ''}" data-t="${k}">${ns[k]}</div>`).join('');
     tabsEl.onclick = e => {
         const t = e.target.dataset.t;
@@ -47,6 +48,9 @@ export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate,
     `);
     }
     const LEVEL_LABELS = {err: '错误', warn: '警告', info: '信息'};
+    if (!isQuestMode && state.quest.ui.tab === 'node') {
+        h = wrap(renderDialogueDirectory(state));
+    }
     if (state.quest.ui.tab === 'cross') {
         const result = state.quest.crossResults;
         if (!result) {

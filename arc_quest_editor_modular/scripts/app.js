@@ -18,6 +18,7 @@ import {renderCenterEditor, renderNpcCenter, renderDiagCenter} from './renderers
 import {renderSidePanel} from './renderers/side-panel-renderer.js';
 import {renderStatus} from './renderers/status-renderer.js';
 import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions} from './renderers/event-bindings.js';
+import {bindDialogueDirectoryClicks} from './renderers/dialogue-side-panel.js';
 
 const dom = getDomRefs();
 
@@ -111,6 +112,7 @@ function renderDialogue() {
     );
     renderStatus(state, dom.status);
     bindDialogueEditorActions(dom.mid, state, rerender, setDialogueByPath);
+    bindDialogueDirectoryClicks(dom.right, state, rerender);
 }
 
 function rerender() {
@@ -166,6 +168,7 @@ if (dom.modeBar) {
         const tab = e.target.closest('[data-mode]');
         if (!tab) return;
         state.mode = tab.dataset.mode;
+        if (state.mode === 'dialogue') state.quest.ui.tab = 'node';
         dom.modeBar.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         rerender();

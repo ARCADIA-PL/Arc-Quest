@@ -930,4 +930,10 @@ button.danger:hover {
     border-color: rgba(255,255,255,.1)
 }
 
+.detail-card.on {
+    background: rgba(10,132,255,.12);
+    border-color: rgba(10,132,255,.3);
+    border-left: 2px solid var(--accent)
+}
+
 
