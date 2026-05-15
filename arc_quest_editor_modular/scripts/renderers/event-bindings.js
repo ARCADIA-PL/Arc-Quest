@@ -1,5 +1,6 @@
 import {handleClickPrelude, handleNonDeleteButtonAction} from './bindings/editor-click-actions.js';
 import {handleDeleteButtonAction} from './bindings/editor-delete-actions.js';
+import {handleNpcClickPrelude, handleNpcNonDeleteButtonAction} from './bindings/npc-click-actions.js';
 import {bindEditorInputs} from './bindings/editor-inputs.js';
 import {getPhaseSuggestions} from '../core/suggestions.js';
 
@@ -62,6 +63,39 @@ export function bindEditorActions(midEl, state, rerender, setByPath) {
             if (deleteResult.mutate) {
                 deleteResult.apply();
                 state.quest.meta.dirty = true;
+                rerender();
+            }
+        }
+    };
+}
+
+export function bindNpcEditorActions(midEl, state, rerender, setNpcByPath) {
+    bindEditorInputs(midEl, state.npc, rerender, setNpcByPath);
+
+    midEl.onclick = e => {
+        if (handleNpcClickPrelude(e, midEl, state, rerender)) return;
+
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        if (handleNpcNonDeleteButtonAction(btn, state)) {
+            state.npc.meta.dirty = true;
+            rerender();
+            return;
+        }
+
+        if (handleNonDeleteButtonAction(btn, state)) {
+            state.npc.meta.dirty = true;
+            rerender();
+            return;
+        }
+
+        const deleteResult = handleDeleteButtonAction(btn, state);
+        if (deleteResult.handled) {
+            if (deleteResult.message) return;
+            if (deleteResult.mutate) {
+                deleteResult.apply();
+                state.npc.meta.dirty = true;
                 rerender();
             }
         }

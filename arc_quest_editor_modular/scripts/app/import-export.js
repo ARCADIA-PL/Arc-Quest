@@ -1,11 +1,49 @@
 import {validateQuest} from '../core/validators.js';
+import {validateNpc} from '../core/npc-validators.js';
 import {normalizeImportedQuest} from '../core/import-normalizer.js';
+import {normalizeImportedNpc, exportNpcToDatapack} from '../core/npc-normalizer.js';
 import {exportQuestToDatapack} from '../core/export-normalizer.js';
 import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
 import {validateCrossReferences} from '../core/cross-validator.js';
 
+function detectJsonType(json) {
+    if (json && json.nodes && Array.isArray(json.nodes)) return 'dialogue';
+    if (json && json.entityType && Array.isArray(json.bindings)) return 'npc';
+    if (json && (Array.isArray(json.phases) || json.id)) return 'quest';
+    return 'unknown';
+}
+
+function getTypeLabel(type) {
+    return {quest: 'Quest', npc: 'NPC', dialogue: 'Dialogue'}[type] || '未知';
+}
+
+function exportBlob(json, filename) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(json, null, 2)], {type: 'application/json'}));
+    a.download = filename;
+    a.click();
+}
+
 export function exportJson(state, rerender, dom) {
+    if (state.mode === 'npc') {
+        const diag = validateNpc(state.npc.q);
+        const blockingErrors = diag.filter(x => x.lvl === 'err');
+        if (blockingErrors.length > 0) {
+            state.quest.ui.tab = 'validate';
+            rerender();
+            showToast(dom, '导出已阻止', `存在 ${blockingErrors.length} 个错误`, 'error', 3600);
+            return;
+        }
+        const exported = exportNpcToDatapack(state.npc.q);
+        const filename = (state.npc.q.entityType || 'unnamed') + '_npc.json';
+        exportBlob(exported, filename);
+        state.npc.meta.dirty = false;
+        state.npc.meta.file = filename;
+        rerender();
+        return;
+    }
+
     validateQuest(state);
     const blockingErrors = (state.quest.diag || []).filter(x => x.lvl === 'err');
     if (blockingErrors.length > 0) {
@@ -16,10 +54,7 @@ export function exportJson(state, rerender, dom) {
     }
 
     const exported = exportQuestToDatapack(state.quest.q);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(exported, null, 2)], {type: 'application/json'}));
-    a.download = state.quest.meta.file;
-    a.click();
+    exportBlob(exported, state.quest.meta.file);
     state.quest.meta.dirty = false;
     rerender();
 }
@@ -30,22 +65,70 @@ export function importJson(state, rerender, dom, file) {
     r.onload = () => {
         try {
             const json = JSON.parse(r.result);
-            const normalized = normalizeImportedQuest(json);
-            importToRegistry(state, normalized, 'quest');
+            const detectedType = detectJsonType(json);
 
             if (isLibraryImport) {
                 delete dom.fileInput.dataset.libraryImport;
+                if (detectedType === 'unknown') {
+                    showToast(dom, '无法识别', 'JSON 类型未知，无法导入到注册表', 'error', 3600);
+                    return;
+                }
+                if (detectedType === 'quest') importToRegistry(state, normalizeImportedQuest(json), 'quest');
+                else if (detectedType === 'npc') importToRegistry(state, normalizeImportedNpc(json), 'npc');
+                else importToRegistry(state, json, 'dialogue');
                 state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
-                showToast(dom, '已导入到库', `${file.name} 已加入注册表`, 'info');
-            } else {
-                state.quest.q = normalized;
-                state.quest.meta.file = file.name;
-                state.quest.meta.dirty = false;
-                state.quest.ui.sel = {t: 'quest'};
-                state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
-                rerender();
-                showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
+                showToast(dom, '已导入到库', `${file.name} → ${getTypeLabel(detectedType)} 注册表`, 'info');
+                return;
             }
+
+            if (detectedType === 'npc') {
+                const normalized = normalizeImportedNpc(json);
+                importToRegistry(state, normalized, 'npc');
+                if (state.mode !== 'npc') {
+                    showToast(dom, '已导入注册表', `NPC JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
+                } else {
+                    state.npc.q = normalized;
+                    state.npc.meta = {file: file.name, dirty: false};
+                    state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
+                    rerender();
+                    showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
+                }
+                return;
+            }
+
+            if (detectedType === 'dialogue') {
+                importToRegistry(state, json, 'dialogue');
+                if (state.mode !== 'dialogue') {
+                    showToast(dom, '已导入注册表', `Dialogue JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
+                } else {
+                    state.dialogue.q = json;
+                    state.dialogue.meta = {file: file.name, dirty: false};
+                    state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
+                    rerender();
+                    showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
+                }
+                return;
+            }
+
+            if (detectedType === 'unknown') {
+                showToast(dom, '无法识别', 'JSON 类型未知', 'error', 3600);
+                return;
+            }
+
+            const normalized = normalizeImportedQuest(json);
+            importToRegistry(state, normalized, 'quest');
+
+            if (state.mode !== 'quest') {
+                showToast(dom, '已导入注册表', `Quest JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
+                return;
+            }
+
+            state.quest.q = normalized;
+            state.quest.meta = {file: file.name, dirty: false};
+            state.quest.ui.sel = {t: 'quest'};
+            state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
+            rerender();
+            showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
         } catch (err) {
             showToast(dom, '导入失败', `JSON 解析失败：${err.message}`, 'error', 3600);
             alert('JSON 解析失败: ' + err.message);
@@ -59,9 +142,15 @@ export function importToLibrary(state, rerender, dom, file) {
     r.onload = () => {
         try {
             const json = JSON.parse(r.result);
-            const normalized = normalizeImportedQuest(json);
-            importToRegistry(state, normalized, 'quest');
-            showToast(dom, '已导入到库', `${file.name} 已加入注册表`, 'info');
+            const detectedType = detectJsonType(json);
+            if (detectedType === 'quest') importToRegistry(state, normalizeImportedQuest(json), 'quest');
+            else if (detectedType === 'npc') importToRegistry(state, normalizeImportedNpc(json), 'npc');
+            else if (detectedType === 'dialogue') importToRegistry(state, json, 'dialogue');
+            else {
+                showToast(dom, '无法识别', 'JSON 类型未知', 'error', 3600);
+                return;
+            }
+            showToast(dom, '已导入到库', `${file.name} → ${getTypeLabel(detectedType)} 注册表`, 'info');
         } catch (err) {
             showToast(dom, '导入失败', `JSON 解析失败：${err.message}`, 'error', 3600);
             alert('JSON 解析失败: ' + err.message);
@@ -77,8 +166,8 @@ export function getFirstSupportedFile(fileList) {
 export function importFirstSupportedFile(state, rerender, dom, fileList) {
     const file = getFirstSupportedFile(fileList);
     if (!file) {
-        showToast(dom, '无法导入', '请拖入 quest JSON 文件，而不是其它格式。', 'error', 3200);
-        alert('请拖入 quest JSON 文件。');
+        showToast(dom, '无法导入', '请拖入 JSON 文件，而不是其它格式。', 'error', 3200);
+        alert('请拖入 JSON 文件。');
         return;
     }
     importJson(state, rerender, dom, file);
@@ -88,18 +177,29 @@ export function bindDragAndDropImport(state, rerender, dom) {
     if (!dom.appRoot) return;
     let dragDepth = 0;
 
+    function getDropLabel() {
+        if (state.mode === 'npc') return '拖入 NPC JSON 或任意 JSON 入库';
+        if (state.mode === 'dialogue') return '拖入 Dialogue JSON 或任意 JSON 入库';
+        return '松开以导入 Arc Quest 任务文件';
+    }
+    function getDropNoFile() {
+        if (state.mode === 'npc') return '请拖入 .json 文件';
+        if (state.mode === 'dialogue') return '请拖入 .json 文件';
+        return '请拖入 .json quest 文件';
+    }
+
     window.addEventListener('dragenter', e => {
         e.preventDefault();
         dragDepth += 1;
         const hasSupportedFile = getFirstSupportedFile(e.dataTransfer?.files);
-        setDropOverlayVisible(dom, true, hasSupportedFile ? '松开以导入 Arc Quest 任务文件' : '请拖入 .json quest 文件');
+        setDropOverlayVisible(dom, true, hasSupportedFile ? getDropLabel() : getDropNoFile());
     });
 
     window.addEventListener('dragover', e => {
         e.preventDefault();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
         const hasSupportedFile = getFirstSupportedFile(e.dataTransfer?.files);
-        setDropOverlayVisible(dom, true, hasSupportedFile ? '松开以导入 Arc Quest 任务文件' : '请拖入 .json quest 文件');
+        setDropOverlayVisible(dom, true, hasSupportedFile ? getDropLabel() : getDropNoFile());
     });
 
     window.addEventListener('dragleave', e => {

@@ -1,17 +1,20 @@
 import '../styles/editor.css';
 import {state, createBlankQuest} from './core/state.js';
+import {createNpcSkeleton, createDialogueSkeleton} from './core/factories.js';
 import {getDomRefs} from './core/dom.js';
 import {setByPath, ensureQuestShape} from './core/quest-shape.js';
+import {setNpcByPath} from './core/npc-shape.js';
 import {validateQuest} from './core/validators.js';
+import {validateNpc} from './core/npc-validators.js';
 import {exportJson, importJson, bindDragAndDropImport} from './app/import-export.js';
 import {validateCrossReferences} from './core/cross-validator.js';
 import {applyPaneLayout, bindPaneResizers} from './app/layout.js';
 import {ensureValidSelection, navigateToPath} from './app/navigation.js';
 import {renderTree} from './renderers/tree-renderer.js';
-import {renderCenterEditor} from './renderers/center-renderer.js';
+import {renderCenterEditor, renderNpcCenter} from './renderers/center-renderer.js';
 import {renderSidePanel} from './renderers/side-panel-renderer.js';
 import {renderStatus} from './renderers/status-renderer.js';
-import {bindTreeSelection, bindEditorActions} from './renderers/event-bindings.js';
+import {bindTreeSelection, bindEditorActions, bindNpcEditorActions} from './renderers/event-bindings.js';
 
 const dom = getDomRefs();
 
@@ -42,14 +45,27 @@ function renderQuest() {
 }
 
 function renderNpc() {
-    dom.mid.innerHTML = `<div class="fade-in sec" style="text-align:center;padding:60px 20px;">
-        <div style="font-size:48px;margin-bottom:16px;opacity:.3;">—</div>
-        <h3 style="font-size:18px;color:var(--text-main);">NPC 实体绑定编辑器</h3>
-        <div class="small" style="margin-top:8px;">即将推出</div>
-    </div>`;
+    validateNpc(state.npc.q);
+    state.npc.diag = validateNpc(state.npc.q);
+    applyPaneLayout(state, dom);
     dom.left.innerHTML = '';
-    dom.right.innerHTML = '';
-    dom.status.innerHTML = '<span style="color:var(--text-mut)">NPC Mode · Coming Soon</span>';
+    renderNpcCenter(state, dom.mid);
+    renderSidePanel(
+        state,
+        dom.tabs,
+        dom.right,
+        tab => {
+            state.quest.ui.tab = tab;
+            rerender();
+        },
+        path => navigateToPath(state, rerender, path),
+        pi => {
+            state.quest.ui.sel = {t: 'phase', pi};
+            rerender();
+        }
+    );
+    renderStatus(state, dom.status);
+    bindNpcEditorActions(dom.mid, state, rerender, setNpcByPath);
 }
 
 function renderDialogue() {
@@ -70,12 +86,23 @@ function rerender() {
 }
 
 dom.newBtn.onclick = () => {
-    state.quest.q = createBlankQuest();
-    state.quest.meta = {file: 'new_quest.json', dirty: false};
-    state.quest.ui.sel = {t: 'quest'};
+    if (state.mode === 'npc') {
+        state.npc.q = createNpcSkeleton();
+        state.npc.meta = {file: 'new_npc.json', dirty: false};
+    } else if (state.mode === 'dialogue') {
+        state.dialogue.q = createDialogueSkeleton();
+        state.dialogue.meta = {file: 'new_dialogue.json', dirty: false};
+    } else {
+        state.quest.q = createBlankQuest();
+        state.quest.meta = {file: 'new_quest.json', dirty: false};
+        state.quest.ui.sel = {t: 'quest'};
+    }
     rerender();
 };
 dom.validateBtn.onclick = () => {
+    if (state.mode === 'npc') {
+        state.npc.diag = validateNpc(state.npc.q);
+    }
     state.quest.ui.tab = 'validate';
     rerender();
 };
