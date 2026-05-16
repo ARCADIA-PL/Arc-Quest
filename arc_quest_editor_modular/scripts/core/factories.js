@@ -116,6 +116,7 @@ export const createDialogueSkeleton = () => ({
 
 export const createDialogueNode = () => ({
     nodeId: '',
+    sayId: '',
     speaker: { mode: 'literal', value: '', args: [] },
     text: { mode: 'literal', value: '', args: [] },
     conditionalTexts: {},

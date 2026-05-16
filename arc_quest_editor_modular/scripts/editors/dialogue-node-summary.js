@@ -39,7 +39,20 @@ export function renderDialogueNodeDetail(dialogue, node, ni, registry, state) {
     const sayIfFold = !!(state?.dialogue?.ui?.sayIfFold);
     const choiceFold = !!(state?.dialogue?.ui?.choiceFold);
 
-    const sayIfCards = sayIfEntries.map(([key, say]) => {
+    const sayIfTotal = sayIfEntries.length + 1;
+
+    const defaultCardHtml = `<div class="detail-card sayif-anchor-card">
+      <div style="display:flex;align-items:center;gap:8px">
+        <b class="small" style="flex:1">🟢 默认</b>
+        <span class="tiny" style="opacity:.5">always</span>
+      </div>
+      <div class="small" style="color:var(--text-mut);margin:4px 0">${esc((node.text?.value || '').substring(0, 60))}${(node.text?.value || '').length > 60 ? '…' : ''}</div>
+      <div style="text-align:right">
+        <button data-edit-sayif="${ni}::default" class="toolbar-btn small-btn">编辑</button>
+      </div>
+    </div>`;
+
+    const sayIfCards = defaultCardHtml + sayIfEntries.map(([key, say]) => {
         return `<div class="detail-card">
           <div style="display:flex;align-items:center;gap:8px">
             <b class="small" style="flex:1">${esc(key)}</b>
@@ -91,13 +104,12 @@ export function renderDialogueNodeDetail(dialogue, node, ni, registry, state) {
         <div class="f"><label>Enter Sound</label><input data-b="${prefix}.nodeEnterSound" value="${esc(node.nodeEnterSound || '')}" placeholder="minecraft:entity.villager.yes"></div>
       </div>
       ${renderTextSpec(`${prefix}.speaker`, node.speaker || {}, 'Speaker')}
-      ${renderTextSpec(`${prefix}.text`, node.text || {}, '默认文本')}
       ${renderCooldownGroup(prefix, node)}
     </div>
 
     <div class="sec">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <h3 style="margin:0">SayIf (${sayIfEntries.length})</h3>
+        <h3 style="margin:0">SayIf · ${sayIfTotal}</h3>
         <button id="addCondTextBtn_${ni}" class="toolbar-btn small-btn">＋ 添加</button>
         <button data-toggle-sayif-fold="${ni}" class="toolbar-btn small-btn" style="margin-left:auto">${sayIfFold ? '▾ 展开' : '▴ 收起'}</button>
       </div>

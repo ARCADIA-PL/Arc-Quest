@@ -1014,6 +1014,44 @@ button.danger:hover {
     border-left: 2px solid var(--accent)
 }
 
+.sayif-anchor-card {
+    border-color: rgba(34,197,94,.3) !important;
+    background: rgba(34,197,94,.06)
+}
+
+.sayif-anchor-card:hover {
+    background: rgba(34,197,94,.1);
+    border-color: rgba(34,197,94,.4) !important
+}
+
+.sayif-anchor-card.on {
+    background: rgba(34,197,94,.15);
+    border-color: rgba(34,197,94,.5) !important;
+    border-left: 2px solid rgba(34,197,94,.7)
+}
+
+.sayif-anchor-strip {
+    flex-shrink: 0;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    border-color: rgba(34,197,94,.25) !important;
+    background: rgba(34,197,94,.06);
+    margin-right: 6px
+}
+
+.sayif-anchor-strip:hover {
+    background: rgba(34,197,94,.1);
+    border-color: rgba(34,197,94,.35) !important
+}
+
+.sayif-anchor-strip.on {
+    background: rgba(34,197,94,.15);
+    border-color: rgba(34,197,94,.45) !important;
+    color: rgba(34,197,94,.85);
+    font-weight: 600
+}
+
 .card-strip-bar {
     display: flex;
     align-items: center;

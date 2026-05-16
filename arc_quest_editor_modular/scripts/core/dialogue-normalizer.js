@@ -6,6 +6,7 @@ export function normalizeImportedDialogue(input) {
         startNodeId: d.startNodeId || '',
         nodes: (d.nodes || []).map(node => ({
             nodeId: node.nodeId || '',
+            sayId: node.sayId || '',
             speaker: normalizeTextSpec(node.speaker),
             text: normalizeTextSpec(node.text),
             conditionalTexts: normalizeConditionalTexts(node.conditionalTexts),

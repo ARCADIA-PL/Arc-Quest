@@ -60,8 +60,13 @@ export function handleDialogueClickPrelude(e, midEl, state, rerender) {
     if (stripCard) {
         const ds = stripCard.dataset;
         if (ds.jumpSayif !== undefined) {
+        if (ds.jumpSayif.includes('::default')) {
+            const ni = ds.jumpSayif.split('::')[0];
+            state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key: ':default'};
+        } else {
             const [ni, key] = ds.jumpSayif.split(':');
             state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        }
             state.dialogue.meta.dirty = true;
             rerender();
         } else if (ds.jumpChoice !== undefined) {
@@ -121,14 +126,24 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
     }
 
     if (d.navSayif !== undefined) {
-        const [ni, key] = d.navSayif.split(':');
-        state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        if (d.navSayif.includes('::default')) {
+            const ni = d.navSayif.split('::')[0];
+            state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key: ':default'};
+        } else {
+            const [ni, key] = d.navSayif.split(':');
+            state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        }
         return true;
     }
 
     if (d.jumpSayif !== undefined) {
-        const [ni, key] = d.jumpSayif.split(':');
-        state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        if (d.jumpSayif.includes('::default')) {
+            const ni = d.jumpSayif.split('::')[0];
+            state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key: ':default'};
+        } else {
+            const [ni, key] = d.jumpSayif.split(':');
+            state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        }
         return true;
     }
 
@@ -145,8 +160,13 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
     }
 
     if (d.editSayif !== undefined) {
-        const [ni, key] = d.editSayif.split(':');
-        state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        if (d.editSayif.includes('::default')) {
+            const ni = d.editSayif.split('::')[0];
+            state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key: ':default'};
+        } else {
+            const [ni, key] = d.editSayif.split(':');
+            state.dialogue.ui.sel = {t: 'sayIf', ni: +ni, key};
+        }
         return true;
     }
 

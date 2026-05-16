@@ -55,7 +55,9 @@ export function renderDialogueCenter(state) {
         else if (sel.t === 'node') {
             html = renderDialogueNodeDetail(dialogue, node, ni, registry, state);
         } else if (sel.t === 'sayIf') {
-            const sayIf = node.conditionalTexts?.[sel.key];
+            const sayIf = sel.key === ':default'
+                ? {sayId: node.sayId || '', text: node.text || {}, conditions: [], priority: 0, soundEvent: ''}
+                : node.conditionalTexts?.[sel.key];
             html = sayIf ? renderDialogueSayIfEditor(node, sel.key, sayIf, ni, registry, dialogue)
                 : renderDialogueNodeDetail(dialogue, node, ni, registry, state);
         } else if (sel.t === 'choice') {
