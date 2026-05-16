@@ -26,6 +26,8 @@ public class ConditionSpec {
     public String key;
     public String op;
     public int value;
+    public int count;
+    public String effectId;
 
     public ConditionSpec inner;
     public List<ConditionSpec> conditions = new ArrayList<>();

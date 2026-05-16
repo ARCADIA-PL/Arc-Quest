@@ -5,6 +5,8 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.advancements.critereon.EntityPredicate;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
 import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.quest.api.ICondition;
@@ -63,6 +65,11 @@ public final class ConditionBridge {
             case "arc_quest:and" -> toAndCondition(spec);
             case "arc_quest:or" -> toOrCondition(spec);
             case "arc_quest:not" -> toNotCondition(spec);
+            case "arc_quest:has_effect" -> {
+                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(ResourceLocation.parse(spec.effectId));
+                yield effect != null ? new HasEffectCondition(effect) : null;
+            }
+            case "arc_quest:xp_level" -> new XpLevelCondition(spec.count);
             default -> {
                 LOGGER.warn("[ConditionBridge] Unknown quest condition type: {}", cond);
                 yield null;
@@ -379,6 +386,30 @@ public final class ConditionBridge {
                 LOGGER.warn("[ConditionBridge] Failed to evaluate vanilla entity predicate '{}': {}", predicateId, e.getMessage());
                 return false;
             }
+        }
+
+        @Override
+        public boolean testClient(Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
+            return true;
+        }
+    }
+
+    private record HasEffectCondition(MobEffect effect) implements ICondition {
+        @Override
+        public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
+            return player != null && player.hasEffect(effect);
+        }
+
+        @Override
+        public boolean testClient(Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
+            return true;
+        }
+    }
+
+    private record XpLevelCondition(int threshold) implements ICondition {
+        @Override
+        public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
+            return player != null && player.experienceLevel >= threshold;
         }
 
         @Override
