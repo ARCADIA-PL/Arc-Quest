@@ -58,7 +58,15 @@ export function renderDialogueDirectory(state) {
     const choices = node.choices || [];
     const star = dialogue.startNodeId === node.nodeId ? ' ★ 起始节点' : '';
 
-    const sayIfList = sayIfEntries.map(([key, say]) => {
+    const defaultDirEntry = `<div class="detail-card dir-entry sayif-anchor-card ${sel.t === 'sayIf' && sel.key === ':default' ? 'on' : ''}" data-dir-goto="sayIf" data-dir-ni="${ni}" data-dir-key=":default">
+      <div class="small" style="display:flex;align-items:center;gap:4px">
+        <b>🟢 默认</b>
+        <span class="tiny" style="opacity:.4">always</span>
+      </div>
+      <div class="tiny" style="color:var(--text-mut);margin-top:3px">${esc((node.text?.value || '').substring(0, 50))}${(node.text?.value || '').length > 50 ? '…' : ''}</div>
+    </div>`;
+
+    const sayIfList = defaultDirEntry + sayIfEntries.map(([key, say]) => {
         const isActive = sel.t === 'sayIf' && sel.key === key;
         return `<div class="detail-card dir-entry ${isActive ? 'on' : ''}" data-dir-goto="sayIf" data-dir-ni="${ni}" data-dir-key="${key}">
           <div class="small" style="display:flex;align-items:center;gap:4px">
@@ -87,7 +95,7 @@ export function renderDialogueDirectory(state) {
     return `
     <div class="sec">
       <h3>${esc(node.nodeId)}${star}</h3>
-      <h4 style="margin-top:8px;margin-bottom:4px">SayIf (${sayIfEntries.length})</h4>
+      <h4 style="margin-top:8px;margin-bottom:4px">SayIf (${sayIfEntries.length + 1})</h4>
       ${sayIfList || '<div class="small" style="color:var(--text-mut)">暂无</div>'}
       <h4 style="margin-top:10px;margin-bottom:4px">Choices (${choices.length})</h4>
       ${choiceList || '<div class="small" style="color:var(--text-mut)">暂无</div>'}

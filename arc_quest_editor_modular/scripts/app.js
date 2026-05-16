@@ -81,7 +81,7 @@ function ensureValidDialogueSelection() {
         return;
     }
     const node = nodes[sel.ni];
-    if (sel.t === 'sayIf' && sel.key && !node?.conditionalTexts?.[sel.key]) {
+    if (sel.t === 'sayIf' && sel.key && sel.key !== ':default' && !node?.conditionalTexts?.[sel.key]) {
         state.dialogue.ui.sel = {t: 'node', ni: sel.ni};
     }
     if (sel.t === 'choice' && typeof sel.ci === 'number' && sel.ci >= (node?.choices || []).length) {
