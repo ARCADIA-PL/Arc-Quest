@@ -18,4 +18,5 @@ public class DialogueNodeSpec {
     public String cooldownType = "NONE";
     public int resetTimeTicks = 0;
     public String nodeEnterSound = "";
+    public String defaultSayId = "";
 }

@@ -83,7 +83,8 @@ public final class DialogueSpecCompiler {
                 spec.cooldownSeconds,
                 parseCooldownType(spec.cooldownType),
                 spec.resetTimeTicks,
-                enterSound
+                enterSound,
+                blankToNull(spec.defaultSayId)
         );
     }
 

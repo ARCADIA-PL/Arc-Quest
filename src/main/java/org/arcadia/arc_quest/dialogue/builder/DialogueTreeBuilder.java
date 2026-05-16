@@ -222,6 +222,7 @@ public class DialogueTreeBuilder {
         curCooldownType = CooldownType.NONE;
         curResetTimeTicks = 0;
         curNodeEnterSound = null;
+        curDefaultSayId = null;
 
         if (startNodeId == null) {
             startNodeId = nodeId;
@@ -595,9 +596,10 @@ public class DialogueTreeBuilder {
                 curDelayMs,
                 curRepeatable,
                 curCooldownSeconds,
-                curCooldownType,  // 使用当前冷却类型
-                curResetTimeTicks,  // 使用当前重置时间点
-                curNodeEnterSound
+                curCooldownType,
+                curResetTimeTicks,
+                curNodeEnterSound,
+                curDefaultSayId
         );
 
         committedNodes.put(curNodeId, node);

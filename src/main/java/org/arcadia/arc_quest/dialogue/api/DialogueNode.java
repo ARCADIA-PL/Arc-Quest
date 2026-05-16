@@ -21,7 +21,8 @@ public record DialogueNode(
         long cooldownSeconds,
         CooldownType cooldownType,
         int resetTimeTicks,
-        @Nullable SoundEvent nodeEnterSound
+        @Nullable SoundEvent nodeEnterSound,
+        @Nullable String defaultSayId
 ) {
     public DialogueNode(String nodeId, DialogueText speaker, DialogueText text,
                         Map<String, ConditionalSay> conditionalTexts,
@@ -37,7 +38,7 @@ public record DialogueNode(
                         boolean repeatable, long cooldownSeconds,
                         CooldownType cooldownType, int resetTimeTicks) {
         this(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs,
-                repeatable, cooldownSeconds, cooldownType, resetTimeTicks, null);
+                repeatable, cooldownSeconds, cooldownType, resetTimeTicks, null, null);
     }
 
     public DialogueNode(String nodeId, DialogueText speaker, DialogueText text,
@@ -46,7 +47,8 @@ public record DialogueNode(
                         String autoNextId, int delayMs,
                         boolean repeatable, long cooldownSeconds,
                         CooldownType cooldownType, int resetTimeTicks,
-                        @Nullable SoundEvent nodeEnterSound) {
+                        @Nullable SoundEvent nodeEnterSound,
+                        @Nullable String defaultSayId) {
         this.nodeId = nodeId;
         this.speaker = speaker == null ? DialogueText.literal("") : speaker;
         this.text = text == null ? DialogueText.literal("") : text;
@@ -59,6 +61,7 @@ public record DialogueNode(
         this.cooldownType = cooldownType != null ? cooldownType : CooldownType.NONE;
         this.resetTimeTicks = resetTimeTicks;
         this.nodeEnterSound = nodeEnterSound;
+        this.defaultSayId = defaultSayId != null && defaultSayId.isEmpty() ? null : defaultSayId;
     }
 
     public static Builder builder(String nodeId) {
@@ -86,6 +89,7 @@ public record DialogueNode(
         private CooldownType cooldownType = CooldownType.NONE;
         private int resetTimeTicks = 0;
         private SoundEvent nodeEnterSound = null;
+        private String defaultSayId = null;
 
         Builder(String nodeId) {
             this.nodeId = nodeId;
@@ -175,9 +179,14 @@ public record DialogueNode(
             return this;
         }
 
+        public Builder defaultSayId(String sayId) {
+            defaultSayId = sayId;
+            return this;
+        }
+
         public DialogueNode build() {
             return new DialogueNode(nodeId, speaker, text, conditionalTexts, choices, autoNextId, delayMs,
-                    repeatable, cooldownSeconds, cooldownType, resetTimeTicks, nodeEnterSound);
+                    repeatable, cooldownSeconds, cooldownType, resetTimeTicks, nodeEnterSound, defaultSayId);
         }
     }
 }
