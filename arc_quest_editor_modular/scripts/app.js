@@ -1,27 +1,30 @@
 import '../styles/editor.css';
 import {state, createBlankQuest} from './core/state.js';
-import {createNpcSkeleton, createDialogueSkeleton, createTradeSkeleton} from './core/factories.js';
+import {createNpcSkeleton, createDialogueSkeleton, createTradeSkeleton, createGachaSkeleton} from './core/factories.js';
 import {getDomRefs} from './core/dom.js';
 import {setByPath, ensureQuestShape} from './core/quest-shape.js';
 import {setNpcByPath} from './core/npc-shape.js';
 import {setDialogueByPath} from './core/dialogue-shape.js';
 import {setTradeByPath} from './core/trade-shape.js';
+import {setGachaByPath} from './core/gacha-shape.js';
 import {validateQuest} from './core/validators.js';
 import {validateNpc} from './core/npc-validators.js';
 import {validateDialogue} from './core/dialogue-validators.js';
 import {validateTrade} from './core/trade-validators.js';
+import {validateGacha} from './core/gacha-validators.js';
 import {exportJson, importJson, bindDragAndDropImport} from './app/import-export.js';
 import {validateCrossReferences} from './core/cross-validator.js';
 import {applyPaneLayout, bindPaneResizers} from './app/layout.js';
 import {ensureValidSelection, navigateToPath} from './app/navigation.js';
 import {renderTree} from './renderers/tree-renderer.js';
 import {renderDialogueTree} from './renderers/dialogue-tree-renderer.js';
-import {renderCenterEditor, renderNpcCenter, renderDiagCenter, renderTradeCenter} from './renderers/center-renderer.js';
+import {renderCenterEditor, renderNpcCenter, renderDiagCenter, renderTradeCenter, renderGachaCenter} from './renderers/center-renderer.js';
 import {renderSidePanel} from './renderers/side-panel-renderer.js';
 import {renderStatus} from './renderers/status-renderer.js';
 import {renderNpcTree, bindNpcTreeSelection} from './renderers/npc-tree-renderer.js';
 import {renderTradeTree, bindTradeTreeSelection} from './renderers/trade-tree-renderer.js';
-import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions, bindTradeEditorActions} from './renderers/event-bindings.js';
+import {renderGachaTree, bindGachaTreeSelection} from './renderers/gacha-tree-renderer.js';
+import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions, bindTradeEditorActions, bindGachaEditorActions} from './renderers/event-bindings.js';
 import {bindDialogueDirectoryClicks} from './renderers/dialogue-side-panel.js';
 
 const dom = getDomRefs();
@@ -169,12 +172,51 @@ function ensureValidTradeSelection() {
     }
 }
 
+function renderGacha() {
+    ensureValidGachaSelection();
+    validateGacha(state.gacha.q);
+    state.gacha.diag = validateGacha(state.gacha.q);
+    applyPaneLayout(state, dom);
+    renderGachaTree(state, dom.left);
+    renderGachaCenter(state, dom.mid);
+    renderSidePanel(
+        state,
+        dom.tabs,
+        dom.right,
+        tab => {
+            state.quest.ui.tab = tab;
+            rerender();
+        },
+        path => navigateToPath(state, rerender, path),
+        pi => {
+            state.quest.ui.sel = {t: 'phase', pi};
+            rerender();
+        }
+    );
+    renderStatus(state, dom.status);
+    bindGachaTreeSelection(dom.left, state, rerender);
+    bindGachaEditorActions(dom.mid, state, rerender, setGachaByPath);
+}
+
+function ensureValidGachaSelection() {
+    const sel = state.gacha.ui.sel;
+    if (sel.t === 'overview') return;
+    if (sel.t === 'item') {
+        const pools = state.gacha.q.pools || [];
+        if (typeof sel.pi !== 'number' || typeof sel.ii !== 'number'
+            || !pools[sel.pi] || !pools[sel.pi].items[sel.ii]) {
+            state.gacha.ui.sel = {t: 'overview'};
+        }
+    }
+}
+
 let _prevUiState = null;
 
 function getUiState(state) {
     if (state.mode === 'dialogue') return state.dialogue.ui.sel;
     if (state.mode === 'npc') return state.npc.ui.sel;
     if (state.mode === 'trade') return state.trade.ui.sel;
+    if (state.mode === 'gacha') return state.gacha.ui.sel;
     return state.quest.ui.sel;
 }
 
@@ -217,6 +259,7 @@ function rerender() {
     if (state.mode === 'npc') renderNpc();
     else if (state.mode === 'dialogue') renderDialogue();
     else if (state.mode === 'trade') renderTrade();
+    else if (state.mode === 'gacha') renderGacha();
     else renderQuest();
 
     _prevUiState = getUiState(state);
@@ -246,6 +289,10 @@ dom.newBtn.onclick = () => {
         state.trade.q = createTradeSkeleton();
         state.trade.meta = {file: 'new_shop.json', dirty: false};
         state.trade.ui.sel = {t: 'overview'};
+    } else if (state.mode === 'gacha') {
+        state.gacha.q = createGachaSkeleton();
+        state.gacha.meta = {file: 'new_gacha.json', dirty: false};
+        state.gacha.ui.sel = {t: 'overview'};
     } else {
         state.quest.q = createBlankQuest();
         state.quest.meta = {file: 'new_quest.json', dirty: false};
@@ -260,6 +307,8 @@ dom.validateBtn.onclick = () => {
         state.dialogue.diag = validateDialogue(state.dialogue.q);
     } else if (state.mode === 'trade') {
         state.trade.diag = validateTrade(state.trade.q);
+    } else if (state.mode === 'gacha') {
+        state.gacha.diag = validateGacha(state.gacha.q);
     }
     state.quest.ui.tab = 'validate';
     rerender();
@@ -290,6 +339,7 @@ if (dom.modeBar) {
         state.mode = tab.dataset.mode;
         if (state.mode === 'dialogue') state.quest.ui.tab = 'node';
         if (state.mode === 'trade') state.quest.ui.tab = 'validate';
+        if (state.mode === 'gacha') state.quest.ui.tab = 'validate';
         dom.modeBar.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         rerender();

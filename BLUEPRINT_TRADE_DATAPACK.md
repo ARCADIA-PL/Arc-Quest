@@ -1,6 +1,6 @@
-# 商店/抽奖模块完整数据包能力 — 施工蓝图 v2
+# 商店/抽奖模块完整数据包能力 — 施工蓝图 v3
 
-> 全栈 6 角色 20 轮研讨总结（初研 10 轮 + 深审 10 轮）· 2026-05-16
+> 全栈 6 角色 23 轮研讨总结（初研 10 轮 + 深审 10 轮 + Gacha 双边对撞 3 轮）· 2026-05-16
 
 ---
 
@@ -76,7 +76,7 @@ JSON 文件 (.json in datapack)
 | Content | `DemoGachaShops.java` | ✅ 硬编码示例 |
 | Network | `S2CGachaStatePacket.java`, `C2SDrawGachaPacket.java` 等 | ✅ 完整 |
 
-> **裁决 #8**：Gacha 模块 datapack 化作为 Phase 2，本次不纳入。但架构预留扩展点。
+> **裁决 #8**：Gacha 模块 datapack 化作为 Phase 2。现已规划完整 Spec→Compiler→Registry→Editor 链路。
 
 ---
 
@@ -524,3 +524,369 @@ trade: {
 | 12 | `scripts/app/import-export.js` | 修改 | 商店类型检测 + 导入/导出 |
 | 13 | `index.html` | 修改 | mode-tab 新增"商店"标签 |
 | 14 | `styles/editor.css` | 修改 | Trade 新增 class（按需） |
+
+---
+
+## 十五、Phase 2: Gacha（抽奖）Datapack 化
+
+> 代码方 vs 编辑器方双边对撞 3 轮研讨产出。
+
+### 15.1 Gacha 与 Trade 的核心差异
+
+| 维度 | Trade Shop | Gacha Shop |
+|------|-----------|------------|
+| 条目列表 | `entries: {}` — 用户手动选 | `pools[].items[]` — 随机抽 |
+| 成本 | per-entry `costs` | `drawCost` — 统一抽奖成本 |
+| 奖励 | per-entry `rewards` | `items[].item` + `minCount`/`maxCount` |
+| 限购 | per-entry `maxPurchases` + cooldown | `maxDraws` + cooldown |
+| 特有 | - | `rarities[]`, `pity`, `pools[]`, `weight` |
+| Registry | `TradeRegistry` | `GachaRegistry`（需新增 datapack 支持） |
+
+### 15.2 Gacha Spec 类设计
+
+#### GachaShopSpec
+```java
+package org.arcadia.arc_quest.trade.gacha.spec;
+
+import org.arcadia.arc_quest.condition.ConditionSpec;
+import org.arcadia.arc_quest.dialogue.spec.DialogueTextSpec;
+import org.arcadia.arc_quest.trade.spec.TradeCategorySpec;
+import org.arcadia.arc_quest.trade.spec.TradeOfferSpec;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class GachaShopSpec {
+    public String shopId = "";
+    public DialogueTextSpec displayName = new DialogueTextSpec();
+    public DialogueTextSpec description = null;
+    public List<TradeCategorySpec> categories = new ArrayList<>();
+    public ConditionSpec openCondition = null;
+    public int themeColor = 0xFFD700;
+    public boolean simpleMode = false;
+    public String openSound = "";
+    public String closeSound = "";
+
+    public TradeOfferSpec drawCost = null;
+    public int maxDraws = -1;
+    public String cooldownType = "NONE";
+    public long cooldownValue = 0;
+    public int resetTimeTicks = 0;
+
+    public List<GachaRaritySpec> rarities = new ArrayList<>();
+    public PityConfigSpec pity = null;
+    public List<GachaPoolSpec> pools = new ArrayList<>();
+}
+```
+
+#### GachaPoolSpec
+```java
+public class GachaPoolSpec {
+    public String poolId = "default";
+    public List<GachaItemSpec> items = new ArrayList<>();
+}
+```
+
+#### GachaItemSpec
+```java
+public class GachaItemSpec {
+    public String itemId = "";
+    public DialogueTextSpec displayName = new DialogueTextSpec();
+    public String item = "";
+    public int weight = 1;
+    public String rarity = "RARE";
+    public int minCount = 1;
+    public int maxCount = 1;
+    public int sortOrder = 0;
+    public String rewardIcon = "";
+    public int themeColor = -1;
+    public String drawSuccessSound = "";
+}
+```
+
+#### GachaRaritySpec
+```java
+public class GachaRaritySpec {
+    public String rarity = "RARE";
+    public int color = 0xFFFFFF;
+    public String drawSuccessSound = "";
+}
+```
+
+#### PityConfigSpec
+```java
+public class PityConfigSpec {
+    public int threshold = 10;
+    public String targetRarity = "LEGENDARY";
+    public String guaranteedItemId = "";
+    public boolean resetOnEarlyTrigger = true;
+}
+```
+
+### 15.3 Gacha Validator 校验规则
+
+| 路径 | 规则 | 严重度 |
+|------|------|--------|
+| `shopId` | 不能为空 | ERROR |
+| `displayName` | 不能为空 | ERROR |
+| `drawCost` | 不能为空（抽奖必须有成本） | ERROR |
+| `drawCost.type` | 必须是 item/command/effect/flag/composite | ERROR |
+| `rarities` | 至少一个稀有度 | ERROR |
+| `rarities[].rarity` | 必须是 LEGENDARY/EPIC/RARE/UNCOMMON/COMMON | ERROR |
+| `pools` | 至少一个奖池 | ERROR |
+| `pools[].items` | 不能为空 | ERROR |
+| `pools[].items[].itemId` | 不能为空，不能重复 | ERROR |
+| `pools[].items[].item` | 不能为空 | ERROR |
+| `pools[].items[].weight` | 必须 > 0 | ERROR |
+| `pools[].items[].rarity` | 必须在 rarities 中 | WARN |
+| `pity.threshold` | 必须 > 0 | ERROR |
+| `cooldownType` | 必须在 NONE/SECONDS/GAME_DAY/GAME_TICK 中 | ERROR |
+
+> 复用 `TradeSpecValidator` 中的 `validateOffers()` 校验 `drawCost`。
+
+### 15.4 Gacha Compiler 编译映射
+
+| Spec 字段 | API 目标 | 编译方式 |
+|-----------|----------|----------|
+| `shopId` | `TradeShopDefinition.shopId` | 直传 |
+| `displayName` | `TradeText` | 复用 `compileTradeText()` |
+| `categories` | `List<TradeCategory>` | 复用 TradeSpecCompiler |
+| `drawCost` | `ITradeOffer` | 复用 `TradeSpecCompiler.compileOffer(spec.drawCost, true)` |
+| `rarities[].color` | `setRarityConfig(Rarity, color, sound)` | `GachaItem.Rarity.valueOf()` |
+| `pools[].items[]` | `GachaItem` / `GachaPool` | `compileGachaItem()` |
+| `pity` | `PityConfig` | `new PityConfig(threshold, targetRarity, resetOnEarlyTrigger)` |
+
+> **Compiler 复用策略**：`GachaSpecCompiler` 持有一个 `TradeSpecCompiler` 实例，复用其 `compileTradeText()` 和 `compileOffer()` 方法。
+
+### 15.5 GachaRegistry 改造
+
+```java
+public final class GachaRegistry {
+    private static Map<String, GachaShopDefinition> codeShops = new LinkedHashMap<>();
+    private static volatile Map<String, GachaShopDefinition> datapackShops = Map.of();
+
+    public static void register(GachaShopDefinition definition) { ... }
+    public static void replaceDatapack(Map<String, GachaShopDefinition> shops) {
+        datapackShops = Collections.unmodifiableMap(new LinkedHashMap<>(shops));
+    }
+    public static void clearDatapack() { datapackShops = Map.of(); }
+    public static GachaShopDefinition get(String shopId) {
+        // codeShops 优先，datapackShops 回退
+    }
+}
+```
+
+### 15.6 Gacha 热重载链路
+
+```
+JSON 文件 (.json in datapack/trades/ 与 Trade 同级)
+  → GachaDatapackResourceLoader (扫描 trades/ 目录，检测 gacha JSON)
+    → GachaSpecValidator (校验)
+      → GachaSpecCompiler (编译)
+        → GachaRegistry.replaceDatapack() (注册)
+          → ArcQuestReloadListener (热重载入口)
+```
+
+> **类型区分**：Gacha JSON 通过 `drawCost` + `pools` 字段区分（与 Trade 的 `entries` 互斥）。
+
+### 15.7 Gacha JSON 输出格式
+
+```json
+{
+  "shopId": "arc_quest:weapon_gacha",
+  "displayName": { "mode": "literal", "value": "传说武器抽奖" },
+  "description": { "mode": "literal", "value": "抽取史诗级武器，10次必出LEGENDARY！" },
+  "themeColor": 16766720,
+  "drawCost": { "type": "item", "itemId": "minecraft:diamond", "count": 10 },
+  "maxDraws": 5,
+  "cooldownType": "GAME_TICK",
+  "cooldownValue": 0,
+  "resetTimeTicks": 0,
+  "rarities": [
+    { "rarity": "LEGENDARY", "color": 16766720 },
+    { "rarity": "EPIC", "color": 10526704 },
+    { "rarity": "RARE", "color": 4290721 }
+  ],
+  "pity": { "threshold": 10, "targetRarity": "LEGENDARY", "resetOnEarlyTrigger": true },
+  "pools": [{
+    "poolId": "default",
+    "items": [
+      { "itemId": "arc_quest:legendary_diamond_sword", "displayName": { "mode": "literal", "value": "传说钻石剑" }, "item": "minecraft:diamond_sword", "weight": 5, "rarity": "LEGENDARY", "count": 1 },
+      { "itemId": "arc_quest:epic_iron_sword", "displayName": { "mode": "literal", "value": "史诗铁剑" }, "item": "minecraft:iron_sword", "weight": 20, "rarity": "EPIC", "count": 1 },
+      { "itemId": "arc_quest:rare_stone_sword", "displayName": { "mode": "literal", "value": "稀有石剑" }, "item": "minecraft:stone_sword", "weight": 75, "rarity": "RARE", "minCount": 1, "maxCount": 3 }
+    ]
+  }]
+}
+```
+
+### 15.8 编辑器端：Gacha 新增
+
+#### State 扩展
+```javascript
+gacha: {
+    q: createGachaSkeleton(),
+    meta: {file: 'new_gacha.json', dirty: false},
+    ui: { sel: {t: 'overview'}, itemFold: false },
+    diag: []
+}
+```
+
+#### 工厂函数
+
+| 函数 | 说明 |
+|------|------|
+| `createGachaSkeleton()` | 抽奖骨架（shopId/drawCost/rarities/pity/pools） |
+| `createGachaItemSkeleton()` | 抽奖物品骨架（itemId/item/weight/rarity/minCount/maxCount） |
+
+#### 编辑器 UX
+
+```
+左栏: 目录树                        中栏: 页面
+┌─ 抽奖: weapon_gacha ────┐     ┌─ 🎰 抽奖配置 (概览页) ─────┐
+│ 📋 概览                   │     │ 商店 ID / 显示名称 / 主题色   │
+│ 🎲 抽奖成本               │     │ 抽奖成本 (drawCost) 行内编辑  │
+│ 💎 稀有度 (3)             │     │ [稀有度] [颜色方块] [音效]    │
+│ 📦 物品池 (6)             │     │ 保底配置 (threshold/rarity)   │
+│   ├─ legendary_sword      │     │ [物品摘要卡片] [物品摘要卡片]  │
+│   └─ ...                  │     │        ＋ 添加物品             │
+└───────────────────────────┘     └─────────────────────────────┘
+                                      点击卡片 → 物品编辑页
+                                          ← 返回 | itemId/displayName
+                                          item/weight/rarity/minCount/maxCount
+                                          rewardIcon/themeColor/drawSuccessSound
+```
+
+### 15.9 Gacha 编辑器 Mode Tab 波及清单
+
+新增第 5 模式"抽奖"需同步修改：
+
+| # | 文件 | 位置 | 改动 |
+|---|------|------|------|
+| 1 | `index.html` | `dom.modeBar` | 新增 `<div data-mode="gacha">抽奖</div>` |
+| 2 | `app.js` | `dom.newBtn.onclick` | gacha 分支 |
+| 3 | `app.js` | `dom.validateBtn.onclick` | gacha 校验分支 |
+| 4 | `app.js` | `modeBar.onclick` | `state.mode = 'gacha'` 时重置 tab |
+| 5 | `app.js` | `rerender()` | 新增 `else if (state.mode === 'gacha') renderGacha()` |
+| 6 | `app.js` | `getUiState()` | 新增 `state.mode === 'gacha'` 分支 |
+| 7 | `import-export.js` | 类型检测 | 新增检测 `json.pools && json.drawCost` |
+| 8 | `import-export.js` | 导出分支 | `exportGachaToDatapack(state.gacha.q)` |
+
+### 15.10 Gacha Phase 2 裁决清单
+
+| # | 议题 | 裁决 | 理由 | 优先级 |
+|---|------|------|------|--------|
+| 21 | Gacha 编辑器模式 | 独立 mode-tab "抽奖"（`data-mode="gacha"`） | 数据模型与 Trade 完全不同 | P0 |
+| 22 | Gacha Spec 层 | 新建 `trade/gacha/spec/` 5 文件 | 对标 Trade Spec 层 | P0 |
+| 23 | GachaRegistry datapack | 双 Map + replaceDatapack + clearDatapack | 对齐 TradeRegistry，Code 优先 | P0 |
+| 24 | Gacha Compiler | 新建 `GachaSpecCompiler`，复用 `TradeSpecCompiler` 的 text/offer 编译 | 最小化重复 | P0 |
+| 25 | Reload 集成 | `ArcQuestReloadListener` + `GachaDatapackHotReloadService` | 与 Trade 并列 | P0 |
+| 26 | 编辑器 detector | `detectJsonType` 新增 gacha（检测 `pools` + `drawCost`） | 与 trade 互斥 | P1 |
+| 27 | JS Spec 对齐 | `createGachaSkeleton` → 字段对齐 `GachaShopSpec` | 往返兼容 | P1 |
+| 28 | Rarity 编辑 | 下拉 selector（LEGENDARY/EPIC/RARE/UNCOMMON/COMMON） | 无需 Java enum 同步 | P1 |
+| 29 | drawCost 编辑 | 单 offer 行内编辑（复用 `renderOfferList` 逻辑） | UX 一致性 | P1 |
+| 30 | JSON 类型区分 | gacha JSON 含 `drawCost`+`pools`，trade JSON 含 `entries` | 互斥检测 | P0 |
+
+### 15.11 Gacha Phase 2 波及面评估
+
+#### Java 端
+
+| 模块 | 受影响类型 | 文件数 |
+|------|-----------|--------|
+| `trade/gacha/spec/` | **新建** | 5 Spec + 3 Validator |
+| `trade/gacha/spec/compile/` | **新建** | 1 Compiler + 1 Exception |
+| `trade/gacha/spec/io/` | **新建** | 1 Reader + 1 Writer |
+| `trade/gacha/io/` | **新建** | 1 Loader + 1 HotReload |
+| `trade/gacha/registry/GachaRegistry.java` | 修改 | 双 Map + replaceDatapack |
+| `data/ArcQuestReloadListener.java` | 修改 | 注册 GachaService |
+| `quest/spec/io/DatapackPathResolver.java` | 修改 | 新增 resolveGachaDir |
+
+**小计**：12 新建文件 + 3 修改 = **15 文件**
+
+#### 编辑器端
+
+| 模块 | 受影响类型 | 文件数 |
+|------|-----------|--------|
+| `core/` | 修改 + 新建 | state.js, factories.js (改); gacha-normalizer.js, gacha-validators.js, gacha-shape.js (新) |
+| `editors/` | **新建** | gacha-editor.js, gacha-item-editor.js |
+| `renderers/` | **新建** | gacha-tree-renderer.js, bindings/gacha-click-actions.js |
+| `renderers/center-renderer.js` | 修改 | renderGachaCenter |
+| `renderers/event-bindings.js` | 修改 | bindGachaEditorActions |
+| `app.js` | 修改 | renderGacha + ensureValid + 5 处 mode 分支 |
+| `app/import-export.js` | 修改 | gacha 检测 + 导入/导出 |
+| `index.html` | 修改 | mode-tab "抽奖" |
+
+**小计**：7 新建文件 + 7 修改 = **14 文件**
+
+### 15.12 Gacha Phase 2 施工顺序
+
+```
+Phase A: Java Spec + Validator (8 文件)
+  1. trade/gacha/spec/GachaShopSpec.java
+  2. trade/gacha/spec/GachaPoolSpec.java
+  3. trade/gacha/spec/GachaItemSpec.java
+  4. trade/gacha/spec/GachaRaritySpec.java
+  5. trade/gacha/spec/PityConfigSpec.java
+  6. trade/gacha/spec/validate/GachaValidationIssue.java
+  7. trade/gacha/spec/validate/GachaValidationReport.java
+  8. trade/gacha/spec/validate/GachaSpecValidator.java
+
+Phase B: Java Compiler + IO (4 文件)
+  9.  trade/gacha/spec/compile/GachaCompileException.java
+  10. trade/gacha/spec/compile/GachaSpecCompiler.java
+  11. trade/gacha/spec/io/GachaSpecJsonReader.java
+  12. trade/gacha/spec/io/GachaSpecJsonWriter.java
+
+Phase C: Java Loader + HotReload + Registry (4 文件)
+  13. trade/gacha/io/GachaDatapackResourceLoader.java
+  14. trade/gacha/io/GachaDatapackHotReloadService.java
+  15. trade/gacha/registry/GachaRegistry.java (修改)
+  16. data/ArcQuestReloadListener.java (修改)
+
+Phase D: 编辑器基础设施 (5 文件)
+  17. core/state.js (修改)
+  18. core/factories.js (修改)
+  19. core/gacha-normalizer.js
+  20. core/gacha-validators.js
+  21. core/gacha-shape.js
+
+Phase E: 编辑器 UI (4 文件)
+  22. editors/gacha-editor.js
+  23. editors/gacha-item-editor.js
+  24. renderers/gacha-tree-renderer.js
+  25. renderers/bindings/gacha-click-actions.js
+
+Phase F: 编辑器集成 (7 文件)
+  26. renderers/center-renderer.js (修改)
+  27. renderers/event-bindings.js (修改)
+  28. app.js (修改)
+  29. app/import-export.js (修改)
+  30. index.html (修改)
+```
+
+> Phase A-C 完成后执行 `./gradlew compileJava` 验证。
+
+### 15.13 裁决总表（30 条）
+
+| # | 议题 | 裁决 | 优先级 |
+|---|------|------|--------|
+| 1-20 | 见 §十一 Trade Phase 1 裁决 | — | — |
+| 21 | Gacha 独立 mode-tab | `data-mode="gacha"` | P0 |
+| 22 | Gacha Spec 层 | `trade/gacha/spec/` 5 文件 | P0 |
+| 23 | GachaRegistry datapack | 双 Map + replaceDatapack | P0 |
+| 24 | Gacha Compiler 复用 | 持 TradeSpecCompiler 实例复用 text/offer | P0 |
+| 25 | Reload 集成 | GachaDatapackHotReloadService + clearDatapack | P0 |
+| 26 | 编辑器 gacha detector | `pools` + `drawCost` | P1 |
+| 27 | JS Spec 对齐 | `createGachaSkeleton` → `GachaShopSpec` | P1 |
+| 28 | Rarity 编辑 | 下拉 selector | P1 |
+| 29 | drawCost UI | 单 offer 行内编辑 | P1 |
+| 30 | JSON 类型互斥 | gacha(`pools`) vs trade(`entries`) | P0 |
+
+---
+
+## 十六、总变更文件清单（Phase 1 + Phase 2）
+
+| 阶段 | 模块 | Java 新建 | Java 修改 | JS 新建 | JS 修改 | HTML 修改 |
+|------|------|----------|----------|---------|---------|----------|
+| Phase 1 | Trade | 12 | 3 | 5 | 7 | 1 |
+| Phase 2 | Gacha | 10 | 3 | 5 | 7 | 1 |
+| **合计** | | **22** | **6** | **10** | **14** | **1** |

@@ -2,10 +2,12 @@ import {validateQuest} from '../core/validators.js';
 import {validateNpc} from '../core/npc-validators.js';
 import {validateDialogue} from '../core/dialogue-validators.js';
 import {validateTrade} from '../core/trade-validators.js';
+import {validateGacha} from '../core/gacha-validators.js';
 import {normalizeImportedQuest} from '../core/import-normalizer.js';
 import {normalizeImportedNpc, exportNpcToDatapack} from '../core/npc-normalizer.js';
 import {normalizeImportedDialogue, exportDialogueToDatapack} from '../core/dialogue-normalizer.js';
 import {normalizeImportedTrade, exportTradeToDatapack} from '../core/trade-normalizer.js';
+import {normalizeImportedGacha, exportGachaToDatapack} from '../core/gacha-normalizer.js';
 import {exportQuestToDatapack} from '../core/export-normalizer.js';
 import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
@@ -14,13 +16,14 @@ import {validateCrossReferences} from '../core/cross-validator.js';
 function detectJsonType(json) {
     if (json && json.nodes && Array.isArray(json.nodes)) return 'dialogue';
     if (json && json.entityType && Array.isArray(json.bindings)) return 'npc';
+    if (json && json.pools && json.drawCost) return 'gacha';
     if (json && json.entries && json.shopId) return 'trade';
     if (json && (Array.isArray(json.phases) || json.id)) return 'quest';
     return 'unknown';
 }
 
 function getTypeLabel(type) {
-    return {quest: 'Quest', npc: 'NPC', dialogue: 'Dialogue', trade: 'Trade'}[type] || '未知';
+    return {quest: 'Quest', npc: 'NPC', dialogue: 'Dialogue', trade: 'Trade', gacha: 'Gacha'}[type] || '未知';
 }
 
 function exportBlob(json, filename) {
@@ -85,6 +88,24 @@ export function exportJson(state, rerender, dom) {
         return;
     }
 
+    if (state.mode === 'gacha') {
+        const diag = validateGacha(state.gacha.q);
+        const blockingErrors = diag.filter(x => x.lvl === 'err');
+        if (blockingErrors.length > 0) {
+            state.quest.ui.tab = 'validate';
+            rerender();
+            showToast(dom, '导出已阻止', `存在 ${blockingErrors.length} 个错误`, 'error', 3600);
+            return;
+        }
+        const exported = exportGachaToDatapack(state.gacha.q);
+        const filename = (state.gacha.q.shopId || 'unnamed') + '_gacha.json';
+        exportBlob(exported, filename);
+        state.gacha.meta.dirty = false;
+        state.gacha.meta.file = filename;
+        rerender();
+        return;
+    }
+
     validateQuest(state);
     const blockingErrors = (state.quest.diag || []).filter(x => x.lvl === 'err');
     if (blockingErrors.length > 0) {
@@ -117,6 +138,7 @@ export function importJson(state, rerender, dom, file) {
                 if (detectedType === 'quest') importToRegistry(state, normalizeImportedQuest(json), 'quest');
                 else if (detectedType === 'npc') importToRegistry(state, normalizeImportedNpc(json), 'npc');
                 else if (detectedType === 'trade') importToRegistry(state, normalizeImportedTrade(json), 'trade');
+                else if (detectedType === 'gacha') importToRegistry(state, normalizeImportedGacha(json), 'gacha');
                 else importToRegistry(state, json, 'dialogue');
                 state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
                 showToast(dom, '已导入到库', `${file.name} → ${getTypeLabel(detectedType)} 注册表`, 'info');
@@ -165,6 +187,22 @@ export function importJson(state, rerender, dom, file) {
                     state.trade.q = normalized;
                     state.trade.meta = {file: file.name, dirty: false};
                     state.trade.ui.sel = {t: 'overview'};
+                    state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
+                    rerender();
+                    showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
+                }
+                return;
+            }
+
+            if (detectedType === 'gacha') {
+                const normalized = normalizeImportedGacha(json);
+                importToRegistry(state, normalized, 'gacha');
+                if (state.mode !== 'gacha') {
+                    showToast(dom, '已导入注册表', `Gacha JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
+                } else {
+                    state.gacha.q = normalized;
+                    state.gacha.meta = {file: file.name, dirty: false};
+                    state.gacha.ui.sel = {t: 'overview'};
                     state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
                     rerender();
                     showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
@@ -244,12 +282,14 @@ export function bindDragAndDropImport(state, rerender, dom) {
         if (state.mode === 'npc') return '拖入 NPC JSON 或任意 JSON 入库';
         if (state.mode === 'dialogue') return '拖入 Dialogue JSON 或任意 JSON 入库';
         if (state.mode === 'trade') return '拖入 Trade JSON 或任意 JSON 入库';
+        if (state.mode === 'gacha') return '拖入 Gacha JSON 或任意 JSON 入库';
         return '松开以导入 Arc Quest 任务文件';
     }
     function getDropNoFile() {
         if (state.mode === 'npc') return '请拖入 .json 文件';
         if (state.mode === 'dialogue') return '请拖入 .json 文件';
         if (state.mode === 'trade') return '请拖入 .json 文件';
+        if (state.mode === 'gacha') return '请拖入 .json 文件';
         return '请拖入 .json quest 文件';
     }
 
