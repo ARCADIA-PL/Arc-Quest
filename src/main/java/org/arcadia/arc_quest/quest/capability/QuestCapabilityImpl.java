@@ -305,6 +305,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     public void setFlag(String flag) {
         flags.add(flag);
         flagsVarsDirty = true;
+        invalidateAllEnterConditionCaches();
     }
 
     @Override
@@ -316,6 +317,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     public void removeFlag(String flag) {
         flags.remove(flag);
         flagsVarsDirty = true;
+        invalidateAllEnterConditionCaches();
     }
 
     @Override
@@ -330,14 +332,16 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
     @Override
     public void setVariable(String key, int value) {
-        variables.put(key, value);
+        ((Object2IntOpenHashMap<String>) variables).put(key, value);
         flagsVarsDirty = true;
+        invalidateAllEnterConditionCaches();
     }
 
     @Override
     public void incrementVariable(String key, int amount) {
-        variables.merge(key, amount, Integer::sum);
+        ((Object2IntOpenHashMap<String>) variables).addTo(key, amount);
         flagsVarsDirty = true;
+        invalidateAllEnterConditionCaches();
     }
 
     @Override
@@ -601,6 +605,12 @@ public class QuestCapabilityImpl implements IQuestCapability {
         if (kind == DirtyKind.TRADE_GACHA) {
             tradeData.clearDirty();
             gachaData.clearDirty();
+        }
+    }
+
+    public void invalidateAllEnterConditionCaches() {
+        for (QuestRuntimeData data : activeQuests.values()) {
+            data.invalidateEnterConditionCache();
         }
     }
 

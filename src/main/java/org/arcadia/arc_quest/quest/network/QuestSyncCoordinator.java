@@ -95,6 +95,24 @@ public final class QuestSyncCoordinator {
     }
 
     /**
+     * 仅网络同步，不持久化（用于高频 tick sync）。
+     */
+    public static void syncIfChanged(ServerPlayer player, QuestCapabilityImpl impl) {
+        QuestCapabilityImpl.DirtyKind kind = impl.getDirtyKind();
+        if (kind == QuestCapabilityImpl.DirtyKind.NONE) return;
+
+        if (kind == QuestCapabilityImpl.DirtyKind.FULL) {
+            syncFullDataAndPush(player, impl);
+        } else if (kind == QuestCapabilityImpl.DirtyKind.FLAGS_VARS) {
+            syncFlagsVarsAndPush(player, impl);
+        } else {
+            syncQuestStateForDirty(player, impl);
+        }
+
+        impl.clearDirty(kind);
+    }
+
+    /**
      * 将能力快照写入玩家 PersistentData（运行时快照，不等同于立即磁盘落盘）。
      */
     public static void persistSnapshot(ServerPlayer player, QuestCapabilityImpl impl) {

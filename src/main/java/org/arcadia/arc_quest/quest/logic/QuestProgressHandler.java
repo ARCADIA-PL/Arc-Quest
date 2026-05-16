@@ -29,6 +29,7 @@ import org.arcadia.arc_quest.quest.tracking.ObjectiveTracker;
 import org.arcadia.arc_quest.quest.tracking.TrackedObjective;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -881,10 +882,16 @@ public final class QuestProgressHandler {
 
     private static boolean canEnterPhase(ServerPlayer player,
                                          IQuestCapability cap,
-                                         PhaseDefinition phase) {
+                                         PhaseDefinition phase,
+                                         @Nullable QuestRuntimeData data) {
+        if (data != null && data.isEnterConditionCached(phase.getPhaseId())) {
+            return data.canEnterPhaseCached(phase.getPhaseId());
+        }
         ICondition cond = phase.getEnterCondition();
         if (cond == null) return true;
-        return cond.test(player, cap.getCompletedQuestLocations(), cap.getAllFlags(), cap.getAllVariables());
+        boolean result = cond.test(player, cap.getCompletedQuestLocations(), cap.getAllFlags(), cap.getAllVariables());
+        if (data != null) data.setEnterConditionCached(phase.getPhaseId(), result);
+        return result;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -902,7 +909,7 @@ public final class QuestProgressHandler {
         if (next == null) return false;
         if (data.isPhaseActive(targetPhaseId) || data.isPhaseCompleted(targetPhaseId)) return false;
 
-        if (enforceEnterCondition && !canEnterPhase(player, cap, next)) {
+        if (enforceEnterCondition && !canEnterPhase(player, cap, next, data)) {
             return false;
         }
 
@@ -941,7 +948,7 @@ public final class QuestProgressHandler {
                 if (phase == null) continue;
                 if (!phase.isAutoEnterByCondition()) continue;
                 if (phase.getEnterCondition() == null) continue;
-                if (!canEnterPhase(player, cap, phase)) continue;
+                if (!canEnterPhase(player, cap, phase, data)) continue;
 
                 boolean ok = activatePhase(player, cap, data, def, fromPhaseId, pid, false, ctx);
                 if (ok) changed = true;
@@ -954,6 +961,8 @@ public final class QuestProgressHandler {
     private static final class ActivationContext {
         int activatedCount = 0;
         boolean flagsChanged = false;
+        boolean needsQuestStateSync = false;
+        boolean needsFlagsVarsSync = false;
     }
 }
 

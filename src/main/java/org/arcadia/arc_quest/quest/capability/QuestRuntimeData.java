@@ -47,6 +47,9 @@ public final class QuestRuntimeData {
     private transient final Object2ByteOpenHashMap<String> phaseCompletionCache
             = new Object2ByteOpenHashMap<>();
 
+    private transient final Object2ByteOpenHashMap<String> enterConditionCache
+            = new Object2ByteOpenHashMap<>();
+
     public QuestRuntimeData(String questId,
                             String initialPhaseId,
                             int objectiveCount,
@@ -371,6 +374,23 @@ public final class QuestRuntimeData {
 
     public void invalidatePhaseCache() {
         phaseCompletionCache.clear();
+        enterConditionCache.clear();
+    }
+
+    public boolean isEnterConditionCached(String phaseId) {
+        return enterConditionCache.getByte(phaseId) != 0;
+    }
+
+    public boolean canEnterPhaseCached(String phaseId) {
+        return enterConditionCache.getByte(phaseId) == 1;
+    }
+
+    public void setEnterConditionCached(String phaseId, boolean canEnter) {
+        enterConditionCache.put(phaseId, (byte) (canEnter ? 1 : 2));
+    }
+
+    public void invalidateEnterConditionCache() {
+        enterConditionCache.clear();
     }
 
     public CompoundTag serializeNBT() {
