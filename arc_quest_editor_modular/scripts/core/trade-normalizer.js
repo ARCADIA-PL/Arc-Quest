@@ -36,7 +36,7 @@ function normalizeEntriesMap(entries) {
             cooldownType: e.cooldownType || 'NONE',
             cooldownValue: e.cooldownValue ?? 0,
             resetTimeTicks: e.resetTimeTicks ?? 0,
-            maxPurchases: e.maxPurchases ?? 0,
+            maxPurchases: e.maxPurchases ?? -1,
             rewardIcon: e.rewardIcon || '',
             costIcon: e.costIcon || '',
             sortOrder: e.sortOrder ?? 0,

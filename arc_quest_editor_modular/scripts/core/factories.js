@@ -163,7 +163,7 @@ export const createTradeEntrySkeleton = () => ({
     cooldownType: 'NONE',
     cooldownValue: 0,
     resetTimeTicks: 0,
-    maxPurchases: 0,
+    maxPurchases: -1,
     rewardIcon: '',
     costIcon: '',
     sortOrder: 0,

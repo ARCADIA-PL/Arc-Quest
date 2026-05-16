@@ -18,7 +18,7 @@ public class TradeEntrySpec {
     public String cooldownType = "NONE";
     public long cooldownValue = 0;
     public int resetTimeTicks = 0;
-    public int maxPurchases = 0;
+    public int maxPurchases = -1;
     public String rewardIcon = "";
     public String costIcon = "";
     public int sortOrder = 0;
