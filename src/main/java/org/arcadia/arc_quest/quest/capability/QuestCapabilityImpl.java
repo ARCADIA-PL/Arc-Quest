@@ -131,7 +131,29 @@ public class QuestCapabilityImpl implements IQuestCapability {
      */
     private final GachaDataStore gachaData = new GachaDataStore();
 
-    private boolean isDirty = false;
+    public enum DirtyKind {
+        NONE,
+        FLAGS_VARS,
+        QUEST_STATE,
+        DIALOGUE,
+        TRADE_GACHA,
+        FULL;
+
+        public boolean has(DirtyKind other) {
+            return (this.ordinal() & other.ordinal()) != 0 || this == other;
+        }
+
+        public DirtyKind or(DirtyKind other) {
+            if (this == NONE) return other;
+            if (other == NONE) return this;
+            if (this == other) return this;
+            return FULL;
+        }
+    }
+
+    private boolean flagsVarsDirty;
+    private boolean questStateDirty;
+    private boolean fullDirty;
 
     private static QuestMarkerData.EntityAttachPoint parseAttachPoint(String value) {
         try {
@@ -168,13 +190,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public synchronized void incrementGachaDrawCount(String shopId) {
         gachaData.incrementDrawCount(shopId);
-        isDirty = true;
     }
 
     @Override
     public synchronized void resetGachaDrawCount(String shopId) {
         gachaData.resetDrawCount(shopId);
-        isDirty = true;
     }
 
     @Override
@@ -185,7 +205,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public synchronized void setGachaPityCounter(String shopId, int count) {
         gachaData.setPityCounter(shopId, count);
-        isDirty = true;
     }
 
     @Override
@@ -193,7 +212,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
                                                  int actualCount, boolean pityTriggered, long drawTime) {
         gachaData.addDrawHistory(shopId,
                 new IQuestCapability.GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime));
-        isDirty = true;
     }
 
     @Override
@@ -208,7 +226,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public synchronized void clearGachaDrawHistory(String shopId) {
         gachaData.clearDrawHistory(shopId);
-        isDirty = true;
     }
 
     @Override
@@ -217,13 +234,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
         String questId = data.getQuestId();
         activeQuests.put(questId, data);
         failedQuests.remove(questId);
-        isDirty = true;
+        questStateDirty = true;
     }
 
     @Override
     public synchronized void removeActiveQuest(String questId) {
         activeQuests.remove(questId);
-        isDirty = true;
+        questStateDirty = true;
     }
 
     @Override
@@ -231,14 +248,14 @@ public class QuestCapabilityImpl implements IQuestCapability {
         activeQuests.remove(questId);
         completedQuests.add(questId);
         failedQuests.remove(questId);
-        isDirty = true;
+        questStateDirty = true;
     }
 
     @Override
     public synchronized void markFailed(String questId) {
         activeQuests.remove(questId);
         failedQuests.add(questId);
-        isDirty = true;
+        questStateDirty = true;
     }
 
     @Nullable
@@ -284,7 +301,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public void setFlag(String flag) {
         flags.add(flag);
-        isDirty = true;
+        flagsVarsDirty = true;
     }
 
     @Override
@@ -295,7 +312,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public void removeFlag(String flag) {
         flags.remove(flag);
-        isDirty = true;
+        flagsVarsDirty = true;
     }
 
     @Override
@@ -311,13 +328,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
     @Override
     public void setVariable(String key, int value) {
         variables.put(key, value);
-        isDirty = true;
+        flagsVarsDirty = true;
     }
 
     @Override
     public void incrementVariable(String key, int amount) {
         variables.merge(key, amount, Integer::sum);
-        isDirty = true;
+        flagsVarsDirty = true;
     }
 
     @Override
@@ -329,19 +346,19 @@ public class QuestCapabilityImpl implements IQuestCapability {
     public synchronized void upsertMarker(QuestMarkerData marker) {
         Objects.requireNonNull(marker);
         markers.put(marker.getId(), marker);
-        isDirty = true;
+        questStateDirty = true;
     }
 
     @Override
     public synchronized void removeMarker(String markerId) {
         markers.remove(markerId);
-        isDirty = true;
+        questStateDirty = true;
     }
 
     @Override
     public synchronized void clearMarkers() {
         markers.clear();
-        isDirty = true;
+        questStateDirty = true;
     }
 
     // ═══════════════════════════════════════════════
@@ -526,21 +543,71 @@ public class QuestCapabilityImpl implements IQuestCapability {
         tradeData.clear();
         gachaData.clear();
         markers.clear();
-        isDirty = true;
+        fullDirty = true;
+    }
+
+    public DirtyKind getDirtyKind() {
+        if (fullDirty) return DirtyKind.FULL;
+
+        DirtyKind kind = DirtyKind.NONE;
+        if (flagsVarsDirty) kind = kind.or(DirtyKind.FLAGS_VARS);
+        if (questStateDirty) kind = kind.or(DirtyKind.QUEST_STATE);
+        if (dialogueProgress.isDirty()) kind = kind.or(DirtyKind.DIALOGUE);
+        if (tradeData.isDirty()) kind = kind.or(DirtyKind.TRADE_GACHA);
+        if (gachaData.isDirty()) kind = kind.or(DirtyKind.TRADE_GACHA);
+        for (QuestRuntimeData data : activeQuests.values()) {
+            if (data.isDirty()) { kind = kind.or(DirtyKind.QUEST_STATE); break; }
+        }
+        return kind;
+    }
+
+    public CompoundTag serializeFlagsVars() {
+        CompoundTag tag = new CompoundTag();
+        ListTag flagList = new ListTag();
+        for (String f : flags) flagList.add(StringTag.valueOf(f));
+        tag.put("Flags", flagList);
+        CompoundTag varsTag = new CompoundTag();
+        for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
+        tag.put("Variables", varsTag);
+        return tag;
     }
 
     public boolean isDirty() {
-        if (isDirty) return true;
-        if (dialogueProgress.isDirty()) return true;
-        for (QuestRuntimeData data : activeQuests.values()) {
-            if (data.isDirty()) return true;
+        return fullDirty || flagsVarsDirty || questStateDirty
+                || dialogueProgress.isDirty() || tradeData.isDirty() || gachaData.isDirty()
+                || activeQuests.values().stream().anyMatch(QuestRuntimeData::isDirty);
+    }
+
+    public void clearDirty(DirtyKind kind) {
+        if (kind == DirtyKind.FULL) {
+            fullDirty = false;
+            flagsVarsDirty = false;
+            questStateDirty = false;
+            dialogueProgress.clearDirty();
+            tradeData.clearDirty();
+            gachaData.clearDirty();
+            for (QuestRuntimeData data : activeQuests.values()) data.clearDirty();
+            return;
         }
-        return false;
+        if (kind == DirtyKind.FLAGS_VARS) flagsVarsDirty = false;
+        if (kind == DirtyKind.QUEST_STATE) {
+            questStateDirty = false;
+            for (QuestRuntimeData data : activeQuests.values()) data.clearDirty();
+        }
+        if (kind == DirtyKind.DIALOGUE) dialogueProgress.clearDirty();
+        if (kind == DirtyKind.TRADE_GACHA) {
+            tradeData.clearDirty();
+            gachaData.clearDirty();
+        }
     }
 
     public void clearDirty() {
-        isDirty = false;
+        fullDirty = false;
+        flagsVarsDirty = false;
+        questStateDirty = false;
         dialogueProgress.clearDirty();
+        tradeData.clearDirty();
+        gachaData.clearDirty();
         for (QuestRuntimeData data : activeQuests.values()) data.clearDirty();
     }
 }
