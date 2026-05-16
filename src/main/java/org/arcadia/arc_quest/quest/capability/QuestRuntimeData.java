@@ -5,6 +5,9 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
+import it.unimi.dsi.fastutil.objects.Object2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.arcadia.arc_quest.quest.api.QuestState;
 
 import javax.annotation.Nullable;
@@ -23,23 +26,26 @@ public final class QuestRuntimeData {
     /**
      * 当前活跃并行阶段
      */
-    private final LinkedHashSet<String> activePhaseIds;
+    private final ObjectOpenHashSet<String> activePhaseIds;
     /**
      * 已完成阶段
      */
-    private final LinkedHashSet<String> completedPhaseIds;
+    private final ObjectOpenHashSet<String> completedPhaseIds;
     /**
      * 已满足目标、等待玩家手动确认推进的阶段
      */
-    private final LinkedHashSet<String> pendingManualAdvancePhaseIds;
+    private final ObjectOpenHashSet<String> pendingManualAdvancePhaseIds;
     /**
      * 每个阶段的目标进度
      */
-    private final LinkedHashMap<String, int[]> phaseProgress;
+    private final Object2ObjectOpenHashMap<String, int[]> phaseProgress;
     @Nullable
     private CollectionRuntimeData collectionData;
     private QuestState state;
     private boolean isDirty = false;
+
+    private transient final Object2ByteOpenHashMap<String> phaseCompletionCache
+            = new Object2ByteOpenHashMap<>();
 
     public QuestRuntimeData(String questId,
                             String initialPhaseId,
@@ -53,10 +59,10 @@ public final class QuestRuntimeData {
         this.acceptedAtRealMs = acceptedAtRealMs;
         this.acceptedAtDayTime = acceptedAtDayTime;
 
-        activePhaseIds = new LinkedHashSet<>();
-        completedPhaseIds = new LinkedHashSet<>();
-        pendingManualAdvancePhaseIds = new LinkedHashSet<>();
-        phaseProgress = new LinkedHashMap<>();
+        activePhaseIds = new ObjectOpenHashSet<>();
+        completedPhaseIds = new ObjectOpenHashSet<>();
+        pendingManualAdvancePhaseIds = new ObjectOpenHashSet<>();
+        phaseProgress = new Object2ObjectOpenHashMap<>();
         collectionData = null;
 
         activePhaseIds.add(Objects.requireNonNull(initialPhaseId));
@@ -65,10 +71,10 @@ public final class QuestRuntimeData {
 
     private QuestRuntimeData(String questId,
                              QuestState state,
-                             LinkedHashSet<String> activePhaseIds,
-                             LinkedHashSet<String> completedPhaseIds,
-                             LinkedHashSet<String> pendingManualAdvancePhaseIds,
-                             LinkedHashMap<String, int[]> phaseProgress,
+                             ObjectOpenHashSet<String> activePhaseIds,
+                             ObjectOpenHashSet<String> completedPhaseIds,
+                             ObjectOpenHashSet<String> pendingManualAdvancePhaseIds,
+                             Object2ObjectOpenHashMap<String, int[]> phaseProgress,
                              @Nullable CollectionRuntimeData collectionData,
                              long acceptedAtTick,
                              long acceptedAtRealMs,
@@ -99,10 +105,10 @@ public final class QuestRuntimeData {
         long acceptedRealMs = tag.contains("AcceptedAtRealMs", Tag.TAG_LONG) ? tag.getLong("AcceptedAtRealMs") : 0L;
         long acceptedDayTime = tag.contains("AcceptedAtDayTime", Tag.TAG_LONG) ? tag.getLong("AcceptedAtDayTime") : 0L;
 
-        LinkedHashSet<String> active = new LinkedHashSet<>();
-        LinkedHashSet<String> completed = new LinkedHashSet<>();
-        LinkedHashSet<String> pendingManualAdvance = new LinkedHashSet<>();
-        LinkedHashMap<String, int[]> progress = new LinkedHashMap<>();
+        ObjectOpenHashSet<String> active = new ObjectOpenHashSet<>();
+        ObjectOpenHashSet<String> completed = new ObjectOpenHashSet<>();
+        ObjectOpenHashSet<String> pendingManualAdvance = new ObjectOpenHashSet<>();
+        Object2ObjectOpenHashMap<String, int[]> progress = new Object2ObjectOpenHashMap<>();
 
         if (tag.contains("ActivePhases", Tag.TAG_LIST)) {
             ListTag activeList = tag.getList("ActivePhases", Tag.TAG_STRING);
@@ -167,25 +173,25 @@ public final class QuestRuntimeData {
         QuestState state = buf.readEnum(QuestState.class);
 
         int activeSize = buf.readVarInt();
-        LinkedHashSet<String> active = new LinkedHashSet<>();
+        ObjectOpenHashSet<String> active = new ObjectOpenHashSet<>();
         for (int i = 0; i < activeSize; i++) {
             active.add(buf.readUtf(256));
         }
 
         int completedSize = buf.readVarInt();
-        LinkedHashSet<String> completed = new LinkedHashSet<>();
+        ObjectOpenHashSet<String> completed = new ObjectOpenHashSet<>();
         for (int i = 0; i < completedSize; i++) {
             completed.add(buf.readUtf(256));
         }
 
         int pendingManualAdvanceSize = buf.readVarInt();
-        LinkedHashSet<String> pendingManualAdvance = new LinkedHashSet<>();
+        ObjectOpenHashSet<String> pendingManualAdvance = new ObjectOpenHashSet<>();
         for (int i = 0; i < pendingManualAdvanceSize; i++) {
             pendingManualAdvance.add(buf.readUtf(256));
         }
 
         int progressSize = buf.readVarInt();
-        LinkedHashMap<String, int[]> progress = new LinkedHashMap<>();
+        Object2ObjectOpenHashMap<String, int[]> progress = new Object2ObjectOpenHashMap<>();
         for (int i = 0; i < progressSize; i++) {
             String phaseId = buf.readUtf(256);
             int len = buf.readVarInt();
@@ -215,6 +221,7 @@ public final class QuestRuntimeData {
     public void setState(QuestState state) {
         this.state = Objects.requireNonNull(state);
         isDirty = true;
+        phaseCompletionCache.clear();
     }
 
     public long getAcceptedAtTick() {
@@ -281,6 +288,7 @@ public final class QuestRuntimeData {
         arr[index] += amount;
         if (clampMax > 0 && arr[index] > clampMax) arr[index] = clampMax;
         isDirty = true;
+        phaseCompletionCache.removeByte(phaseId);
         return arr[index];
     }
 
@@ -299,6 +307,7 @@ public final class QuestRuntimeData {
             completedPhaseIds.remove(phaseId);
             pendingManualAdvancePhaseIds.remove(phaseId);
             isDirty = true;
+            phaseCompletionCache.clear();
         }
     }
 
@@ -307,6 +316,7 @@ public final class QuestRuntimeData {
             completedPhaseIds.add(phaseId);
             pendingManualAdvancePhaseIds.remove(phaseId);
             isDirty = true;
+            phaseCompletionCache.clear();
         }
     }
 
@@ -345,6 +355,22 @@ public final class QuestRuntimeData {
     public void clearDirty() {
         isDirty = false;
         if (collectionData != null) collectionData.clearDirty();
+    }
+
+    public boolean isPhaseCompletionCached(String phaseId) {
+        return phaseCompletionCache.getByte(phaseId) != 0;
+    }
+
+    public void setPhaseCompletionCached(String phaseId, boolean satisfied) {
+        phaseCompletionCache.put(phaseId, (byte) (satisfied ? 1 : 2));
+    }
+
+    public boolean isPhaseCompletionSatisfied(String phaseId) {
+        return phaseCompletionCache.getByte(phaseId) == 1;
+    }
+
+    public void invalidatePhaseCache() {
+        phaseCompletionCache.clear();
     }
 
     public CompoundTag serializeNBT() {
@@ -404,13 +430,13 @@ public final class QuestRuntimeData {
     }
 
     public QuestRuntimeData copy() {
-        LinkedHashSet<String> active = new LinkedHashSet<>(activePhaseIds);
-        LinkedHashSet<String> completed = new LinkedHashSet<>(completedPhaseIds);
-        LinkedHashMap<String, int[]> progress = new LinkedHashMap<>();
-        for (Map.Entry<String, int[]> e : phaseProgress.entrySet())
+        ObjectOpenHashSet<String> active = new ObjectOpenHashSet<>(activePhaseIds);
+        ObjectOpenHashSet<String> completed = new ObjectOpenHashSet<>(completedPhaseIds);
+        Object2ObjectOpenHashMap<String, int[]> progress = new Object2ObjectOpenHashMap<>();
+        for (Object2ObjectOpenHashMap.Entry<String, int[]> e : phaseProgress.object2ObjectEntrySet())
             progress.put(e.getKey(), Arrays.copyOf(e.getValue(), e.getValue().length));
         CollectionRuntimeData collectionDataCopy = collectionData != null ? collectionData.copy() : null;
-        return new QuestRuntimeData(questId, state, active, completed, new LinkedHashSet<>(pendingManualAdvancePhaseIds), progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
+        return new QuestRuntimeData(questId, state, active, completed, new ObjectOpenHashSet<>(pendingManualAdvancePhaseIds), progress, collectionDataCopy, acceptedAtTick, acceptedAtRealMs, acceptedAtDayTime);
     }
 
     public String getCurrentPhaseId() {

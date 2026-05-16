@@ -820,6 +820,11 @@ public final class QuestProgressHandler {
             for (String phaseId : List.copyOf(data.getActivePhaseIds())) {
                 PhaseDefinition phase = def.getPhase(phaseId);
                 if (phase == null) continue;
+
+                if (data.isPhaseCompletionCached(phaseId)) {
+                    if (!data.isPhaseCompletionSatisfied(phaseId)) continue;
+                }
+
                 boolean allSatisfied = true;
                 for (int i = 0; i < phase.getObjectives().size(); i++) {
                     ObjectiveEntry objective = phase.getObjectives().get(i);
@@ -829,7 +834,10 @@ public final class QuestProgressHandler {
                         break;
                     }
                 }
-                if (!allSatisfied) continue;
+                if (!allSatisfied) {
+                    data.setPhaseCompletionCached(phaseId, false);
+                    continue;
+                }
                 int beforeCompleted = data.getCompletedPhaseIds().size();
                 int beforePending = data.getPendingManualAdvancePhaseIds().size();
                 checkPhaseCompletion(player, cap, data, def, phaseId);
