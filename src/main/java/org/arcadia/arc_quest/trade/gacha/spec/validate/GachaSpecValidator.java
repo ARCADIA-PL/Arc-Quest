@@ -5,6 +5,7 @@ import org.arcadia.arc_quest.trade.spec.validate.TradeSpecValidator;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class GachaSpecValidator {
 
@@ -64,7 +65,7 @@ public final class GachaSpecValidator {
             report.add(GachaValidationIssue.Severity.ERROR, "pools", "At least one pool is required");
         } else {
             Set<String> rarityNames = spec.rarities != null
-                    ? spec.rarities.stream().map(r -> r.rarity).collect(java.util.stream.Collectors.toSet())
+                    ? spec.rarities.stream().map(r -> r.rarity).collect(Collectors.toSet())
                     : Set.of();
             for (int pi = 0; pi < spec.pools.size(); pi++) {
                 GachaPoolSpec pool = spec.pools.get(pi);

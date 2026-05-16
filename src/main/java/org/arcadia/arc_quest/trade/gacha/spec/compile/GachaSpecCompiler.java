@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.spec.DialogueTextSpec;
@@ -13,6 +14,7 @@ import org.arcadia.arc_quest.trade.gacha.api.*;
 import org.arcadia.arc_quest.trade.gacha.spec.*;
 import org.arcadia.arc_quest.trade.gacha.spec.validate.GachaSpecValidator;
 import org.arcadia.arc_quest.trade.offer.*;
+import org.arcadia.arc_quest.trade.spec.TradeCategorySpec;
 import org.arcadia.arc_quest.trade.spec.TradeOfferSpec;
 
 import java.util.*;
@@ -80,11 +82,11 @@ public final class GachaSpecCompiler {
         return def;
     }
 
-    private List<TradeCategory> compileCategories(List<? extends org.arcadia.arc_quest.trade.spec.TradeCategorySpec> specs) {
+    private List<TradeCategory> compileCategories(List<? extends TradeCategorySpec> specs) {
         List<TradeCategory> categories = new ArrayList<>();
         if (specs == null) return categories;
 
-        for (org.arcadia.arc_quest.trade.spec.TradeCategorySpec spec : specs) {
+        for (TradeCategorySpec spec : specs) {
             int color = 0xFFFFFFFF;
             if (spec.formatting != null && !spec.formatting.isBlank()) {
                 ChatFormatting fmt = ChatFormatting.getByName(spec.formatting);
@@ -126,7 +128,7 @@ public final class GachaSpecCompiler {
 
         return new GachaItem(
                 spec.itemId,
-                new net.minecraft.world.item.ItemStack(item, spec.maxCount),
+                new ItemStack(item, spec.maxCount),
                 new ItemTradeOffer(item, spec.minCount, false),
                 spec.weight,
                 rarity,

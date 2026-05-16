@@ -6,6 +6,7 @@ import org.arcadia.arc_quest.trade.spec.*;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class TradeSpecValidator {
 
@@ -74,7 +75,7 @@ public final class TradeSpecValidator {
 
                 if (e.category != null && !e.category.isBlank()) {
                     Set<String> catIds = spec.categories != null
-                            ? spec.categories.stream().map(c -> c.categoryId).collect(java.util.stream.Collectors.toSet())
+                            ? spec.categories.stream().map(c -> c.categoryId).collect(Collectors.toSet())
                             : Set.of();
                     if (!catIds.contains(e.category)) {
                         report.add(TradeValidationIssue.Severity.WARN, prefix + ".category",
