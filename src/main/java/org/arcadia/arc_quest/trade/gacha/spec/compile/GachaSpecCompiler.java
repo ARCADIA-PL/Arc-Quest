@@ -1,0 +1,219 @@
+package org.arcadia.arc_quest.trade.gacha.spec.compile;
+
+import net.minecraft.ChatFormatting;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.registries.ForgeRegistries;
+import org.arcadia.arc_quest.dialogue.api.CooldownType;
+import org.arcadia.arc_quest.dialogue.spec.DialogueTextSpec;
+import org.arcadia.arc_quest.trade.api.*;
+import org.arcadia.arc_quest.trade.gacha.api.*;
+import org.arcadia.arc_quest.trade.gacha.spec.*;
+import org.arcadia.arc_quest.trade.gacha.spec.validate.GachaSpecValidator;
+import org.arcadia.arc_quest.trade.offer.*;
+import org.arcadia.arc_quest.trade.spec.TradeOfferSpec;
+
+import java.util.*;
+
+import static org.arcadia.arc_quest.trade.spec.validate.TradeSpecValidator.VALID_OFFER_TYPES;
+
+public final class GachaSpecCompiler {
+
+    private final GachaSpecValidator validator = new GachaSpecValidator();
+
+    public GachaShopDefinition compile(GachaShopSpec spec) {
+        var report = validator.validate(spec);
+        if (report.hasErrors()) {
+            throw new GachaCompileException("GachaSpec validation failed for '" + (spec == null ? "null" : spec.shopId) + "'");
+        }
+
+        List<TradeCategory> categories = compileCategories(spec.categories);
+
+        LinkedHashMap<String, TradeEntry> entries = new LinkedHashMap<>();
+
+        GachaPool gachaPool = compilePool(spec.pools);
+
+        ITradeOffer drawCost = compileOffer(spec.drawCost, true);
+
+        PityConfig pityConfig = null;
+        if (spec.pity != null) {
+            pityConfig = compilePity(spec.pity);
+        }
+
+        GachaShopDefinition def = new GachaShopDefinition(
+                spec.shopId,
+                compileTradeText(spec.displayName),
+                spec.description != null ? compileTradeText(spec.description) : null,
+                categories,
+                entries,
+                null,
+                spec.simpleMode,
+                spec.themeColor,
+                parseNullableSound(spec.openSound),
+                parseNullableSound(spec.closeSound),
+                gachaPool,
+                drawCost,
+                parseCooldownType(spec.cooldownType),
+                spec.cooldownValue,
+                spec.resetTimeTicks,
+                null,
+                spec.maxDraws,
+                null,
+                true,
+                spec.pity != null && spec.pity.resetOnEarlyTrigger,
+                pityConfig,
+                null,
+                null,
+                null,
+                null
+        );
+
+        if (spec.rarities != null) {
+            for (GachaRaritySpec r : spec.rarities) {
+                GachaItem.Rarity rarity = GachaItem.Rarity.valueOf(r.rarity);
+                def.setRarityConfig(rarity, r.color, parseNullableSound(r.drawSuccessSound));
+            }
+        }
+
+        return def;
+    }
+
+    private List<TradeCategory> compileCategories(List<? extends org.arcadia.arc_quest.trade.spec.TradeCategorySpec> specs) {
+        List<TradeCategory> categories = new ArrayList<>();
+        if (specs == null) return categories;
+
+        for (org.arcadia.arc_quest.trade.spec.TradeCategorySpec spec : specs) {
+            int color = 0xFFFFFFFF;
+            if (spec.formatting != null && !spec.formatting.isBlank()) {
+                ChatFormatting fmt = ChatFormatting.getByName(spec.formatting);
+                if (fmt != null && fmt.getColor() != null) {
+                    color = 0xFF000000 | fmt.getColor();
+                }
+            }
+            categories.add(new TradeCategory(
+                    spec.categoryId,
+                    compileTradeText(spec.displayName).resolveFallback(),
+                    spec.sortOrder,
+                    color
+            ));
+        }
+        return categories;
+    }
+
+    private GachaPool compilePool(List<GachaPoolSpec> specs) {
+        List<GachaItem> allItems = new ArrayList<>();
+        if (specs == null) return new GachaPool(allItems);
+
+        for (GachaPoolSpec poolSpec : specs) {
+            if (poolSpec.items == null) continue;
+            for (GachaItemSpec itemSpec : poolSpec.items) {
+                GachaItem item = compileGachaItem(itemSpec);
+                if (item != null) {
+                    allItems.add(item);
+                }
+            }
+        }
+        return new GachaPool(allItems);
+    }
+
+    private GachaItem compileGachaItem(GachaItemSpec spec) {
+        Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(spec.item));
+        if (item == null) throw new GachaCompileException("Unknown item: " + spec.item);
+
+        GachaItem.Rarity rarity = parseRarity(spec.rarity);
+
+        return new GachaItem(
+                spec.itemId,
+                new net.minecraft.world.item.ItemStack(item, spec.maxCount),
+                new ItemTradeOffer(item, spec.minCount, false),
+                spec.weight,
+                rarity,
+                true,
+                spec.minCount,
+                spec.maxCount,
+                null,
+                blankToNull(spec.rewardIcon) != null ? ResourceLocation.tryParse(spec.rewardIcon) : null,
+                spec.themeColor,
+                parseNullableSound(spec.drawSuccessSound),
+                spec.sortOrder
+        );
+    }
+
+    private GachaItem.Rarity parseRarity(String rarity) {
+        if (rarity == null || rarity.isBlank()) return GachaItem.Rarity.RARE;
+        try {
+            return GachaItem.Rarity.valueOf(rarity.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return GachaItem.Rarity.RARE;
+        }
+    }
+
+    private PityConfig compilePity(PityConfigSpec spec) {
+        GachaItem.Rarity targetRarity = parseRarity(spec.targetRarity);
+        if (spec.guaranteedItemId != null && !spec.guaranteedItemId.isBlank()) {
+            return new PityConfig(spec.threshold, spec.guaranteedItemId, spec.resetOnEarlyTrigger);
+        }
+        return new PityConfig(spec.threshold, targetRarity, spec.resetOnEarlyTrigger);
+    }
+
+    private ITradeOffer compileOffer(TradeOfferSpec spec, boolean isCost) {
+        if (spec == null || spec.type == null) return null;
+
+        return switch (spec.type) {
+            case "item" -> {
+                Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(spec.itemId));
+                if (item == null) throw new GachaCompileException("Unknown item: " + spec.itemId);
+                yield new ItemTradeOffer(item, spec.count, isCost);
+            }
+            case "command" -> new CommandTradeOffer(spec.command);
+            case "effect" -> {
+                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(ResourceLocation.tryParse(spec.effectId));
+                if (effect == null) throw new GachaCompileException("Unknown effect: " + spec.effectId);
+                yield new EffectTradeOffer(effect, spec.duration, spec.amplifier, isCost);
+            }
+            case "flag" -> new FlagTradeOffer(spec.flagName, isCost);
+            case "composite" -> {
+                List<ITradeOffer> children = new ArrayList<>();
+                if (spec.offers != null) {
+                    for (TradeOfferSpec child : spec.offers) {
+                        ITradeOffer compiled = compileOffer(child, isCost);
+                        if (compiled != null) children.add(compiled);
+                    }
+                }
+                yield new CompositeTradeOffer(children);
+            }
+            default -> throw new GachaCompileException("Unknown offer type: " + spec.type);
+        };
+    }
+
+    private TradeText compileTradeText(DialogueTextSpec spec) {
+        if (spec == null) return TradeText.literal("");
+        if ("translatable".equals(spec.mode)) {
+            return TradeText.translatable(spec.value);
+        }
+        return TradeText.literal(spec.value);
+    }
+
+    private CooldownType parseCooldownType(String type) {
+        if (type == null || type.isBlank()) return CooldownType.NONE;
+        return switch (type.toUpperCase()) {
+            case "SECONDS" -> CooldownType.SECONDS;
+            case "GAME_DAY" -> CooldownType.GAME_DAY;
+            case "GAME_TICK" -> CooldownType.GAME_TICK;
+            default -> CooldownType.NONE;
+        };
+    }
+
+    private SoundEvent parseNullableSound(String id) {
+        if (id == null || id.isBlank()) return null;
+        ResourceLocation rl = ResourceLocation.tryParse(id);
+        if (rl == null) return null;
+        return ForgeRegistries.SOUND_EVENTS.getValue(rl);
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+}
