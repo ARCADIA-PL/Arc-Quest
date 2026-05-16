@@ -274,8 +274,10 @@ public final class QuestCapabilityTickHandler {
      * 统一语义入口：有变更才执行“快照持久化 + 客户端同步 + 清脏”。
      */
     private static void persistAndSyncIfChanged(ServerPlayer player) {
-        player.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap ->
-                QuestSyncCoordinator.persistAndSyncIfChanged(player, cap)
-        );
+        player.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
+            if (cap instanceof QuestCapabilityImpl impl) {
+                QuestSyncCoordinator.persistAndSyncIfChanged(player, impl);
+            }
+        });
     }
 }

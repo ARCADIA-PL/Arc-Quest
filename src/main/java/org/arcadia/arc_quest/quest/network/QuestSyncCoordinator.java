@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.network;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.capability.IQuestCapability;
 import org.arcadia.arc_quest.quest.capability.QuestCapabilityImpl;
@@ -48,21 +49,49 @@ public final class QuestSyncCoordinator {
     }
 
     /**
-     * 统一语义入口：有变更才执行“快照持久化 + 客户端同步 + 清脏”。
-     *
-     * @return true 如果执行了持久化与同步
+     * 统一语义入口：有变更才执行"快照持久化 + 客户端同步 + 清脏"。
+     * <p>
+     * v2: 按 {@code DirtyKind} 分类调度 —— 不同类别用不同持久化策略和网络包。
      */
-    public static void persistAndSyncIfChanged(ServerPlayer player, IQuestCapability cap) {
-        if (!(cap instanceof QuestCapabilityImpl impl) || !impl.isDirty()) {
-            return;
+    public static void persistAndSyncIfChanged(ServerPlayer player, QuestCapabilityImpl impl) {
+        QuestCapabilityImpl.DirtyKind kind = impl.getDirtyKind();
+        if (kind == QuestCapabilityImpl.DirtyKind.NONE) return;
+
+        if (kind == QuestCapabilityImpl.DirtyKind.FULL) {
+            persistSnapshot(player, impl);
+            syncFullDataAndPush(player, impl);
+        } else if (kind == QuestCapabilityImpl.DirtyKind.FLAGS_VARS) {
+            persistFlagsVars(player, impl);
+            syncFlagsVarsAndPush(player, impl);
+        } else {
+            persistSnapshot(player, impl);
+            if (kind == QuestCapabilityImpl.DirtyKind.QUEST_STATE) {
+                syncQuestStateForDirty(player, impl);
+            } else if (kind == QuestCapabilityImpl.DirtyKind.DIALOGUE) {
+            } else if (kind == QuestCapabilityImpl.DirtyKind.TRADE_GACHA) {
+            } else {
+                syncQuestStateForDirty(player, impl);
+            }
         }
 
-        persistSnapshot(player, impl);
-        syncFullDataAndPush(player, impl);
-        impl.clearDirty();
+        impl.clearDirty(kind);
 
-        LOGGER.debug("[QuestPersist] Player {} snapshot persisted and synced (dirty cleared)",
-                player.getGameProfile().getName());
+        LOGGER.debug("[QuestPersist] Player {} snapshot persisted (kind={})",
+                player.getGameProfile().getName(), kind);
+    }
+
+    private static void persistFlagsVars(ServerPlayer player, QuestCapabilityImpl impl) {
+        CompoundTag existing = player.getPersistentData().getCompound("ArcQuestAutosave");
+        CompoundTag flagsVars = impl.serializeFlagsVars();
+        if (existing.contains("Flags")) existing.remove("Flags");
+        if (existing.contains("Variables")) existing.remove("Variables");
+        existing.put("Flags", flagsVars.get("Flags"));
+        existing.put("Variables", flagsVars.get("Variables"));
+        player.getPersistentData().put("ArcQuestAutosave", existing);
+    }
+
+    private static void syncQuestStateForDirty(ServerPlayer player, QuestCapabilityImpl impl) {
+        syncFullDataAndPush(player, impl);
     }
 
     /**
