@@ -1,5 +1,5 @@
 import {createObjective, createPhase, createQuestSkeleton, createSplash,
-    createNpcSkeleton, createDialogueSkeleton, createTradeSkeleton} from './factories.js';
+    createNpcSkeleton, createDialogueSkeleton, createTradeSkeleton, createGachaSkeleton} from './factories.js';
 
 export const createBlankQuest = () => {
     const quest = createQuestSkeleton();
@@ -66,6 +66,12 @@ export const state = {
         q: createTradeSkeleton(),
         meta: {file: 'new_shop.json', dirty: false},
         ui: { sel: {t: 'overview'}, entryFold: false },
+        diag: []
+    },
+    gacha: {
+        q: createGachaSkeleton(),
+        meta: {file: 'new_gacha.json', dirty: false},
+        ui: { sel: {t: 'overview'}, itemFold: false },
         diag: []
     }
 };

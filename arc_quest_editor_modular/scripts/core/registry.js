@@ -33,6 +33,12 @@ export function importToRegistry(state, json, type) {
                 state.registry.shops[json.shopId] = json;
             }
             break;
+        case 'gacha':
+            if (json && json.shopId) {
+                if (!state.registry.gachas) state.registry.gachas = {};
+                state.registry.gachas[json.shopId] = json;
+            }
+            break;
     }
 }
 

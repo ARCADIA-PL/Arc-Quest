@@ -189,6 +189,42 @@ export const createTradeOfferSkeleton = () => ({
     offers: []
 });
 
+export const createGachaSkeleton = () => ({
+    shopId: '',
+    displayName: { mode: 'literal', value: '', args: [] },
+    description: null,
+    categories: [],
+    openCondition: null,
+    themeColor: 0xFFD700,
+    simpleMode: false,
+    openSound: '',
+    closeSound: '',
+    drawCost: createTradeOfferSkeleton(),
+    maxDraws: -1,
+    cooldownType: 'NONE',
+    cooldownValue: 0,
+    resetTimeTicks: 0,
+    rarities: [],
+    pity: null,
+    pools: [
+        { poolId: 'default', items: [] }
+    ]
+});
+
+export const createGachaItemSkeleton = () => ({
+    itemId: '',
+    displayName: { mode: 'literal', value: '', args: [] },
+    item: '',
+    weight: 1,
+    rarity: 'RARE',
+    minCount: 1,
+    maxCount: 1,
+    sortOrder: 0,
+    rewardIcon: '',
+    themeColor: -1,
+    drawSuccessSound: ''
+});
+
 export const createDialogueChoice = () => ({
     choiceId: '',
     text: { mode: 'literal', value: '', args: [] },
