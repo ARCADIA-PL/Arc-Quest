@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
@@ -18,9 +19,12 @@ import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ByteOpenHashMap;
+
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 玩家Tick事件处理器：以固定节流频率执行“变更检测 -> 持久化快照 -> 网络同步”。
@@ -28,7 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class QuestCapabilityTickHandler {
 
-    private static final Map<String, Long> markerRefreshClock = new ConcurrentHashMap<>();
+    private static final Object2LongOpenHashMap<String> markerRefreshClock = new Object2LongOpenHashMap<>();
+    private static final Map<UUID, Object2ByteOpenHashMap<String>> markerStateCache = new HashMap<>();
     private static int tickCounter = 0;
 
     private QuestCapabilityTickHandler() {
@@ -46,7 +51,7 @@ public final class QuestCapabilityTickHandler {
 
         checkQuestTimeouts(player);
         refreshDynamicMarkers(player);
-        persistAndSyncIfChanged(player);
+        syncIfChanged(player);
     }
 
     private static void checkQuestTimeouts(ServerPlayer player) {
@@ -54,7 +59,7 @@ public final class QuestCapabilityTickHandler {
             long nowRealMs = System.currentTimeMillis();
             long nowDayTime = player.level().getDayTime() % 24000L;
 
-            for (QuestRuntimeData data : cap.getAllActiveQuests().values().stream().toList()) {
+            for (QuestRuntimeData data : cap.getAllActiveQuests().values()) {
                 if (data.getState() != QuestState.ACTIVE) continue;
 
                 QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
@@ -87,6 +92,10 @@ public final class QuestCapabilityTickHandler {
     private static void refreshDynamicMarkers(ServerPlayer player) {
         player.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
             ServerLevel level = player.serverLevel();
+            UUID pid = player.getUUID();
+            Object2ByteOpenHashMap<String> states = markerStateCache.computeIfAbsent(
+                    pid, k -> new Object2ByteOpenHashMap<>());
+
             for (Map.Entry<String, QuestRuntimeData> e : cap.getAllActiveQuests().entrySet()) {
                 String questId = e.getKey();
                 QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -94,19 +103,7 @@ public final class QuestCapabilityTickHandler {
 
                 for (MarkSpec spec : def.getRelatedMarks()) {
                     String markerId = "aq:auto:" + questId + ":" + spec.id();
-                    boolean active = spec.activateWhen().test(player, cap) && !spec.deactivateWhen().test(player, cap);
-                    if (!active) {
-                        cap.removeMarker(markerId);
-                        continue;
-                    }
-                    if (!shouldRefresh(markerId, spec.refreshTicks(), player.tickCount)) {
-                        continue;
-                    }
-
-                    QuestMarkerData marker = resolveMarker(markerId, questId, spec, player, level);
-                    if (marker != null) {
-                        cap.upsertMarker(marker);
-                    }
+                    refreshMarker(markerId, questId, spec, player, cap, level, states, null, -1);
                 }
 
                 for (String phaseId : e.getValue().getActivePhaseIds()) {
@@ -115,29 +112,7 @@ public final class QuestCapabilityTickHandler {
 
                     for (MarkSpec spec : phase.getRelatedMarks()) {
                         String markerId = "aq:auto:" + questId + ":" + phaseId + ":phase:" + spec.id();
-                        boolean active = spec.activateWhen().test(player, cap) && !spec.deactivateWhen().test(player, cap);
-                        if (!active) {
-                            cap.removeMarker(markerId);
-                            continue;
-                        }
-                        if (!shouldRefresh(markerId, spec.refreshTicks(), player.tickCount)) {
-                            continue;
-                        }
-                        QuestMarkerData marker = resolveMarker(markerId, questId, spec, player, level);
-                        if (marker != null) {
-                            marker = new QuestMarkerData.Builder(marker.getId(), marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), marker.getLabel())
-                                    .dimension(marker.getDimension())
-                                    .bindQuest(questId)
-                                    .bindPhase(phaseId)
-                                    .followEntity(marker.getFollowEntityId(), marker.getFollowEntityUuid(), marker.getFollowEntityGuid(), marker.getAttachPoint())
-                                    .type(marker.getType())
-                                    .state(marker.getState())
-                                    .color(marker.getColorARGB())
-                                    .showDistance(marker.isShowDistance())
-                                    .allowOffscreenArrow(marker.isAllowOffscreenArrow())
-                                    .build();
-                            cap.upsertMarker(marker);
-                        }
+                        refreshMarker(markerId, questId, spec, player, cap, level, states, phaseId, -1);
                     }
 
                     int[] progress = e.getValue().getAllProgress(phaseId);
@@ -150,35 +125,62 @@ public final class QuestCapabilityTickHandler {
 
                         for (MarkSpec spec : obj.getRelatedMarks()) {
                             String markerId = "aq:auto:" + questId + ":" + phaseId + ":obj" + i + ":" + spec.id();
-                            boolean active = spec.activateWhen().test(player, cap) && !spec.deactivateWhen().test(player, cap);
-                            if (!active) {
-                                cap.removeMarker(markerId);
-                                continue;
-                            }
-                            if (!shouldRefresh(markerId, spec.refreshTicks(), player.tickCount)) {
-                                continue;
-                            }
-                            QuestMarkerData marker = resolveMarker(markerId, questId, spec, player, level);
-                            if (marker != null) {
-                                marker = new QuestMarkerData.Builder(marker.getId(), marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), marker.getLabel())
-                                        .dimension(marker.getDimension())
-                                        .bindQuest(questId)
-                                        .bindPhase(phaseId)
-                                        .bindObjective(i)
-                                        .followEntity(marker.getFollowEntityId(), marker.getFollowEntityUuid(), marker.getFollowEntityGuid(), marker.getAttachPoint())
-                                        .type(marker.getType())
-                                        .state(marker.getState())
-                                        .color(marker.getColorARGB())
-                                        .showDistance(marker.isShowDistance())
-                                        .allowOffscreenArrow(marker.isAllowOffscreenArrow())
-                                        .build();
-                                cap.upsertMarker(marker);
-                            }
+                            refreshMarker(markerId, questId, spec, player, cap, level, states, phaseId, i);
                         }
                     }
                 }
             }
         });
+    }
+
+    private static void refreshMarker(String markerId, String questId, MarkSpec spec,
+                                       ServerPlayer player, IQuestCapability cap, ServerLevel level,
+                                       Object2ByteOpenHashMap<String> states,
+                                       String phaseId, int objIndex) {
+        if (!shouldRefresh(markerId, spec.refreshTicks(), player.tickCount)) return;
+
+        byte newState = (byte) (spec.activateWhen().test(player, cap)
+                && !spec.deactivateWhen().test(player, cap) ? 1 : 0);
+        byte oldState = states.getByte(markerId);
+        if (oldState == newState && oldState != 0) return;
+
+        states.put(markerId, newState);
+        if (newState == 0) {
+            cap.removeMarker(markerId);
+            return;
+        }
+
+        QuestMarkerData marker = resolveMarker(markerId, questId, spec, player, level);
+        if (marker == null) return;
+
+        if (phaseId != null) {
+            marker = new QuestMarkerData.Builder(marker.getId(), marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), marker.getLabel())
+                    .dimension(marker.getDimension())
+                    .bindQuest(questId)
+                    .bindPhase(phaseId)
+                    .followEntity(marker.getFollowEntityId(), marker.getFollowEntityUuid(), marker.getFollowEntityGuid(), marker.getAttachPoint())
+                    .type(marker.getType())
+                    .state(marker.getState())
+                    .color(marker.getColorARGB())
+                    .showDistance(marker.isShowDistance())
+                    .allowOffscreenArrow(marker.isAllowOffscreenArrow())
+                    .build();
+            if (objIndex >= 0) {
+                marker = new QuestMarkerData.Builder(marker.getId(), marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), marker.getLabel())
+                        .dimension(marker.getDimension())
+                        .bindQuest(questId)
+                        .bindPhase(phaseId)
+                        .bindObjective(objIndex)
+                        .followEntity(marker.getFollowEntityId(), marker.getFollowEntityUuid(), marker.getFollowEntityGuid(), marker.getAttachPoint())
+                        .type(marker.getType())
+                        .state(marker.getState())
+                        .color(marker.getColorARGB())
+                        .showDistance(marker.isShowDistance())
+                        .allowOffscreenArrow(marker.isAllowOffscreenArrow())
+                        .build();
+            }
+        }
+        cap.upsertMarker(marker);
     }
 
     private static QuestMarkerData resolveMarker(String markerId,
@@ -262,16 +264,27 @@ public final class QuestCapabilityTickHandler {
 
     private static boolean shouldRefresh(String markerId, int refreshTicks, int playerTick) {
         int period = Math.max(1, refreshTicks);
-        Long last = markerRefreshClock.get(markerId);
-        if (last == null || (playerTick - last) >= period) {
-            markerRefreshClock.put(markerId, (long) playerTick);
+        long last = markerRefreshClock.getLong(markerId);
+        if (!markerRefreshClock.containsKey(markerId) || (playerTick - last) >= period) {
+            markerRefreshClock.put(markerId, playerTick);
             return true;
         }
         return false;
     }
 
     /**
-     * 统一语义入口：有变更才执行“快照持久化 + 客户端同步 + 清脏”。
+     * tick 中仅做网络同步，不做持久化（持久化交由 worldSave / playerLogout）。
+     */
+    private static void syncIfChanged(ServerPlayer player) {
+        player.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
+            if (cap instanceof QuestCapabilityImpl impl) {
+                QuestSyncCoordinator.syncIfChanged(player, impl);
+            }
+        });
+    }
+
+    /**
+     * 有变更时才执行"快照持久化 + 客户端同步 + 清脏"。
      */
     private static void persistAndSyncIfChanged(ServerPlayer player) {
         player.getCapability(QuestCapabilityProvider.QUEST_CAP).ifPresent(cap -> {
@@ -279,5 +292,13 @@ public final class QuestCapabilityTickHandler {
                 QuestSyncCoordinator.persistAndSyncIfChanged(player, impl);
             }
         });
+    }
+
+    @SubscribeEvent
+    public static void onWorldSave(LevelEvent.Save event) {
+        if (event.getLevel().isClientSide() || !(event.getLevel() instanceof ServerLevel serverLevel)) return;
+        for (ServerPlayer player : serverLevel.players()) {
+            persistAndSyncIfChanged(player);
+        }
     }
 }
