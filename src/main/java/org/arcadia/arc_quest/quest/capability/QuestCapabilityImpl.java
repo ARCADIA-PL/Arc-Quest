@@ -4,6 +4,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
@@ -109,11 +112,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
         });
     }
 
-    private final Map<String, QuestRuntimeData> activeQuests = new LinkedHashMap<>();
-    private final Set<String> completedQuests = new LinkedHashSet<>();
-    private final Set<String> failedQuests = new LinkedHashSet<>();
-    private final Set<String> flags = new HashSet<>();
-    private final Map<String, Integer> variables = new HashMap<>();
+    private final Map<String, QuestRuntimeData> activeQuests = new Object2ObjectOpenHashMap<>();
+    private final Set<String> completedQuests = new ObjectOpenHashSet<>();
+    private final Set<String> failedQuests = new ObjectOpenHashSet<>();
+    private final Set<String> flags = new ObjectOpenHashSet<>();
+    private final Map<String, Integer> variables = new Object2IntOpenHashMap<>();
     private final Map<String, QuestMarkerData> markers = new LinkedHashMap<>();
 
     /**
