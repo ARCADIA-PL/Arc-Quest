@@ -1,6 +1,7 @@
 import {esc} from '../core/utils.js';
 import {renderTextSpec} from './textspec-editor.js';
 import {renderConditionTree} from './condition-editor.js';
+import {renderColorInput} from './color-input.js';
 
 const OFFER_TYPES = [
     {v: 'item', l: '物品'},
@@ -40,7 +41,7 @@ export function renderTradeEntryEditor(trade, entryKey, registry) {
       ${renderTextSpec(`${prefix}.description`, e.description || {}, '描述', true)}
       <div class="row">
         <div class="f"><label>排序</label><input type="number" data-b="${prefix}.sortOrder" value="${e.sortOrder ?? 0}" min="0" max="1000"></div>
-        <div class="f"><label>主题色</label><input type="number" data-b="${prefix}.themeColor" value="${e.themeColor ?? -1}" min="-1"><span class="tiny" style="opacity:.5">-1=使用商店默认</span></div>
+        <div class="f"><label>主题色</label>${renderColorInput(`${prefix}.themeColor`, e.themeColor ?? -1, true)}</div>
       </div>
     </div>
 
@@ -63,7 +64,7 @@ export function renderTradeEntryEditor(trade, entryKey, registry) {
         <div class="f"><label>重置刻</label><input type="number" data-b="${prefix}.resetTimeTicks" value="${e.resetTimeTicks ?? 0}" min="0" max="24000"></div>
       </div>
       <div class="row">
-        <div class="f"><label>最大购买次数</label><input type="number" data-b="${prefix}.maxPurchases" value="${e.maxPurchases ?? 0}" min="0"><span class="tiny" style="opacity:.5">0=无限制</span></div>
+        <div class="f"><label>最大购买次数</label><input type="number" data-b="${prefix}.maxPurchases" value="${e.maxPurchases ?? -1}" min="-1"><span class="tiny" style="opacity:.5">-1=无限制</span></div>
       </div>
     </div>
 

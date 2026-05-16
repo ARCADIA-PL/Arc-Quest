@@ -1,6 +1,7 @@
 import {esc} from '../core/utils.js';
 import {renderTextSpec} from './textspec-editor.js';
 import {renderConditionTree} from './condition-editor.js';
+import {renderColorInput} from './color-input.js';
 
 function suggestInput(label, bind, value, suggestions, listId) {
     const opts = (suggestions || []).map(v => `<option value="${v}"></option>`).join('');
@@ -10,8 +11,6 @@ function suggestInput(label, bind, value, suggestions, listId) {
 export function renderTradeOverview(trade, registry, state) {
     const entryFold = !!(state?.trade?.ui?.entryFold);
     const entries = Object.entries(trade.entries || {});
-
-    const colorHex = '#' + (trade.themeColor & 0xFFFFFF).toString(16).padStart(6, '0').toUpperCase();
 
     const entryCards = entries.map(([key, e]) => {
         const costCount = (e.costs || []).length;
@@ -36,7 +35,7 @@ export function renderTradeOverview(trade, registry, state) {
       <h3 style="margin-top:4px">商店属性</h3>
       <div class="row">
         <div class="f"><label>商店 ID</label><input data-b="trade.shopId" value="${esc(trade.shopId || '')}" placeholder="namespace:shop_id"></div>
-        <div class="f"><label>主题色</label><input data-b="trade.themeColor" value="${trade.themeColor ?? 0xE0C860}" placeholder="15532032" style="flex:0 0 100px">&nbsp;<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:${colorHex};vertical-align:middle;border:1px solid rgba(255,255,255,.1)"></span></div>
+        <div class="f"><label>主题色</label>${renderColorInput('trade.themeColor', trade.themeColor ?? 0xE0C860)}</div>
       </div>
       ${renderTextSpec('trade.displayName', trade.displayName || {}, '显示名称')}
       ${renderTextSpec('trade.description', trade.description || {}, '描述', true)}

@@ -88,8 +88,21 @@ export function bindEditorInputs(midEl, state, rerender, setByPath) {
 
     midEl.oninput = e => {
         const b = e.target.dataset?.b;
-        if (!b) return;
-        markInputValidity(e.target, b);
+        const cpBind = e.target.dataset?.colorPicker;
+        if (!b && !cpBind) return;
+        if (b) markInputValidity(e.target, b);
+        if (cpBind) {
+            const hex = e.target.value;
+            const intVal = parseInt(hex.slice(1), 16) | 0xFF000000;
+            const dataInput = midEl.querySelector(`[data-b="${cpBind}"]`);
+            const row = e.target.closest('.color-input-row');
+            if (dataInput) {
+                dataInput.value = intVal;
+                dataInput.dispatchEvent(new Event('change', {bubbles: true}));
+            }
+            const swatch = row?.querySelector('.color-swatch');
+            if (swatch) swatch.style.background = hex;
+        }
     };
 
     midEl.onkeydown = e => {

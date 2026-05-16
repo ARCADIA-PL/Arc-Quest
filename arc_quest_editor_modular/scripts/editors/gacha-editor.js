@@ -1,22 +1,20 @@
 import {esc} from '../core/utils.js';
 import {renderTextSpec} from './textspec-editor.js';
+import {renderColorInput} from './color-input.js';
 
 const OFFER_TYPES = ['item', 'command', 'effect', 'flag', 'composite'];
 const OFFER_LABELS = {item: '物品', command: '命令', effect: '效果', flag: 'Flag', composite: '组合'};
 
 export function renderGachaOverview(gacha, registry, state) {
-    const colorHex = '#' + (gacha.themeColor & 0xFFFFFF).toString(16).padStart(6, '0').toUpperCase();
 
     const drawCostHtml = renderSingleOffer(gacha.drawCost, 'gacha.drawCost');
 
     const raritiesHtml = (gacha.rarities || []).map((r, i) => {
-        const rColor = '#' + (r.color & 0xFFFFFF).toString(16).padStart(6, '0').toUpperCase();
         return `<div class="card" style="margin-bottom:4px"><div style="display:flex;align-items:center;gap:8px">
           <select data-b="gacha.rarities.${i}.rarity" style="width:100px">
             ${['LEGENDARY','EPIC','RARE','UNCOMMON','COMMON'].map(v => `<option value="${v}" ${r.rarity===v?'selected':''}>${v}</option>`).join('')}
           </select>
-          <input data-b="gacha.rarities.${i}.color" value="${r.color ?? 0xFFFFFF}" style="width:80px">
-          <span style="display:inline-block;width:18px;height:18px;border-radius:4px;background:${rColor};border:1px solid rgba(255,255,255,.2)"></span>
+          ${renderColorInput(`gacha.rarities.${i}.color`, r.color ?? 0xFFFFFF)}
           <button data-dgachararity="${i}" class="toolbar-btn small-btn" style="color:var(--danger)">✕</button>
         </div></div>`;
     }).join('');
@@ -49,7 +47,7 @@ export function renderGachaOverview(gacha, registry, state) {
       <h3 style="margin-top:4px">商店属性</h3>
       <div class="row">
         <div class="f"><label>商店 ID</label><input data-b="gacha.shopId" value="${esc(gacha.shopId || '')}" placeholder="namespace:shop_id"></div>
-        <div class="f"><label>主题色</label><input data-b="gacha.themeColor" value="${gacha.themeColor ?? 0xFFD700}" style="flex:0 0 100px">&nbsp;<span style="display:inline-block;width:20px;height:20px;border-radius:4px;background:${colorHex};vertical-align:middle;border:1px solid rgba(255,255,255,.1)"></span></div>
+        <div class="f"><label>主题色</label>${renderColorInput('gacha.themeColor', gacha.themeColor ?? 0xFFD700)}</div>
       </div>
       ${renderTextSpec('gacha.displayName', gacha.displayName || {}, '显示名称')}
       ${renderTextSpec('gacha.description', gacha.description || {}, '描述', true)}
@@ -143,7 +141,7 @@ export function renderGachaItemEditor(gacha, pi, ii) {
     <div class="sec">
       <div class="row">
         <div class="f"><label>奖励图标</label><input data-b="${prefix}.rewardIcon" value="${esc(item.rewardIcon||'')}" placeholder="texture_path"></div>
-        <div class="f"><label>主题色</label><input type="number" data-b="${prefix}.themeColor" value="${item.themeColor ?? -1}" min="-1"><span class="tiny" style="opacity:.5">-1=使用默认</span></div>
+        <div class="f"><label>主题色</label>${renderColorInput(`${prefix}.themeColor`, item.themeColor ?? -1, true)}</div>
         <div class="f"><label>抽中音效</label><input data-b="${prefix}.drawSuccessSound" value="${esc(item.drawSuccessSound||'')}" placeholder="minecraft:entity.player.levelup"></div>
       </div>
     </div>
