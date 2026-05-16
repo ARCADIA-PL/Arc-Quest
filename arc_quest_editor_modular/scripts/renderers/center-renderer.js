@@ -3,7 +3,8 @@ import {renderVisualEditor} from '../editors/visual-editor.js';
 import {renderPhaseEditor} from '../editors/phase-editor.js';
 import {renderObjectiveEditor} from '../editors/objective-editor.js';
 import {renderRawEditor} from '../editors/raw-editor.js';
-import {renderNpcEditor} from '../editors/npc-editor.js';
+import {renderNpcOverview} from '../editors/npc-editor.js';
+import {renderNpcBindingEditor} from '../editors/npc-binding-editor.js';
 import {renderDialogueCenter} from '../editors/dialogue-editor.js';
 import {esc} from '../core/utils.js';
 import {field, area} from './center/form-fields.js';
@@ -25,8 +26,42 @@ export function renderCenterEditor(state, midEl) {
 }
 
 export function renderNpcCenter(state, midEl) {
-    const html = renderNpcEditor(state.npc.q, state.registry, field, area);
+    const sel = state.npc.ui.sel;
+    const npc = state.npc.q;
+    let html = '';
+    if (sel.t === 'binding' && typeof sel.bi === 'number') {
+        html = renderNpcBindingEditor(npc, sel.bi, state.registry);
+    } else if (sel.t === 'commands') {
+        html = renderNpcCommandsEditor(npc);
+    } else {
+        html = renderNpcOverview(npc, state.registry, state);
+    }
     midEl.innerHTML = `<div class="center-content">${html}</div>`;
+}
+
+function renderNpcCommandsEditor(npc) {
+    const startCmds = (npc.onDialogueStartCommands || []).join('\n');
+    const endCmds = (npc.onDialogueEndCommands || []).join('\n');
+    return `
+    <div class="sec">
+      <div class="card-strip-bar">
+        <button data-npc-nav="overview" class="toolbar-btn small-btn" style="font-weight:700;color:var(--accent)">← 返回</button>
+        <span class="breadcrumb">
+          <span data-npc-nav="overview" class="breadcrumb-link">⚙ NPC 配置</span>
+          <span class="breadcrumb-sep">›</span>
+          <span class="breadcrumb-current">命令</span>
+        </span>
+      </div>
+      <h3>对话开始命令</h3>
+      <div class="f">
+        <textarea data-b="npc.onDialogueStartCommands" data-b-array="true" rows="5" placeholder="每行一条命令">${startCmds}</textarea>
+      </div>
+      <h3 style="margin-top:12px">对话结束命令</h3>
+      <div class="f">
+        <textarea data-b="npc.onDialogueEndCommands" data-b-array="true" rows="5" placeholder="每行一条命令">${endCmds}</textarea>
+      </div>
+    </div>
+  `;
 }
 
 export function renderDiagCenter(state, midEl) {

@@ -1172,4 +1172,92 @@ button.danger:hover {
     font-weight: 600
 }
 
+.bind-card {
+    border-left: 3px solid var(--accent);
+    background: rgba(10,132,255,.04);
+    cursor: pointer;
+    transition: background var(--anim-fast) var(--ease-out),
+                border-color var(--anim-fast) var(--ease-out)
+}
+
+.bind-card:hover {
+    background: rgba(10,132,255,.09);
+    border-color: var(--accent)
+}
+
+.bind-priority-badge {
+    background: rgba(255,255,255,.08);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-mut)
+}
+
+.tree-section {
+    margin: 4px 0;
+    border-left: 1px solid rgba(255,255,255,.06);
+    margin-left: 6px;
+    padding-left: 6px
+}
+
+.tree-section-header {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-mut);
+    opacity: .6;
+    padding: 2px 8px;
+    user-select: none
+}
+
+.tree-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-mut);
+    transition: background var(--anim-fast) var(--ease-out),
+                color var(--anim-fast) var(--ease-out);
+    user-select: none
+}
+
+.tree-item:hover {
+    background: rgba(255,255,255,.04);
+    color: var(--text-soft)
+}
+
+.tree-item.active {
+    background: rgba(10,132,255,.1);
+    color: var(--accent);
+    font-weight: 600
+}
+
+.tree-item-hint {
+    font-size: 10px;
+    opacity: .5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
+}
+
+.tree-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-main);
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    user-select: none
+}
+
+.tree-list {
+    padding: 4px;
+    flex: 1;
+    overflow-y: auto
+}
+
 
