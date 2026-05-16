@@ -44,6 +44,18 @@ body {
     overflow: hidden
 }
 
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+    outline: none
+}
+
 body.graph-expanded-open {
     overflow: hidden
 }
@@ -122,7 +134,9 @@ body.graph-expanded-open {
 
 .toast.exit {
     opacity: 0;
-    transform: translateX(20px) scale(.95)
+    transform: translateX(20px) scale(.95);
+    transition: opacity var(--anim-normal) ease-in,
+                transform var(--anim-normal) ease-in
 }
 
 .toast.success {
@@ -173,7 +187,16 @@ input[type=file] {
     height: 200%;
     background: radial-gradient(circle at 50% 50%, rgba(10, 132, 255, .08), transparent 40%);
     z-index: -1;
-    pointer-events: none
+    pointer-events: none;
+    animation: bgDrift 60s linear infinite
+}
+
+@keyframes bgDrift {
+    0%   { transform: translate(0, 0) rotate(0deg) }
+    25%  { transform: translate(2%, 1%) rotate(90deg) }
+    50%  { transform: translate(0, 2%) rotate(180deg) }
+    75%  { transform: translate(-2%, 1%) rotate(270deg) }
+    100% { transform: translate(0, 0) rotate(360deg) }
 }
 
 .app {
@@ -228,7 +251,15 @@ input[type=file] {
 
 .toolbar {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
     gap: 10px
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 6px
 }
 
 .main {
@@ -342,22 +373,29 @@ body.is-resizing-panes .pane-resizer::before {
     to   { opacity: 1 }
 }
 
+@keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(6px) }
+    to   { opacity: 1; transform: translateY(0) }
+}
+
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px
+    width: 5px;
+    height: 5px
 }
 
 ::-webkit-scrollbar-track {
-    background: transparent
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, .15);
+    background: transparent;
     border-radius: 10px
 }
 
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .12);
+    border-radius: 10px;
+    transition: background var(--anim-fast) var(--ease-out)
+}
+
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, .3)
+    background: rgba(255, 255, 255, .25)
 }
 
 .sec {
@@ -436,7 +474,7 @@ button, .toolbar-btn {
 
 button:hover, .toolbar-btn:hover {
     background: rgba(255, 255, 255, .12);
-    transform: translateY(-1px)
+    transform: scale(1.02)
 }
 
 button:active, .toolbar-btn:active {
@@ -452,7 +490,7 @@ button:active, .toolbar-btn:active {
 
 .toolbar-btn.primary:hover, button.primary:hover {
     background: var(--accent-hover);
-    box-shadow: 0 4px 12px var(--accent-glow)
+    box-shadow: 0 4px 16px var(--accent-glow)
 }
 
 button.danger {
@@ -481,11 +519,15 @@ button.danger:hover {
     margin: 12px 0;
     box-shadow: 0 4px 20px rgba(0, 0, 0, .15);
     backdrop-filter: var(--blur);
-    transition: border-color var(--anim-fast) var(--ease-out)
+    transition: border-color var(--anim-fast) var(--ease-out),
+                transform var(--anim-fast) var(--ease-out),
+                box-shadow var(--anim-fast) var(--ease-out)
 }
 
 .card:hover {
-    border-color: rgba(255, 255, 255, .15)
+    border-color: rgba(255, 255, 255, .15);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .28)
 }
 
 .chip {
@@ -904,6 +946,7 @@ button.danger:hover {
     color: var(--accent);
     border-bottom-color: var(--accent);
     background: rgba(10, 132, 255, .06);
+    box-shadow: inset 0 -2px 0 var(--accent)
 }
 
 .mode-tab svg {
@@ -949,10 +992,10 @@ button.danger:hover {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 11px;
+    font-size: 12px;
     padding: 4px 0;
     margin-bottom: 12px;
-    color: var(--text-mut)
+    color: var(--text-soft)
 }
 
 .breadcrumb-link {
@@ -1000,12 +1043,16 @@ button.danger:hover {
     background: rgba(255,255,255,.04);
     border: 1px solid rgba(255,255,255,.06);
     transition: background var(--anim-fast) var(--ease-out),
-                border-color var(--anim-fast) var(--ease-out)
+                border-color var(--anim-fast) var(--ease-out),
+                transform var(--anim-fast) var(--ease-out),
+                box-shadow var(--anim-fast) var(--ease-out)
 }
 
 .detail-card:hover {
     background: rgba(255,255,255,.07);
-    border-color: rgba(255,255,255,.1)
+    border-color: rgba(255,255,255,.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,.18)
 }
 
 .detail-card.on {
