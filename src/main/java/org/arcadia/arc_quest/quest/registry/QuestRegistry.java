@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
+import org.arcadia.arc_quest.quest.tracking.ObjectiveTypeIndex;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -20,6 +21,7 @@ public final class QuestRegistry {
     private static Map<ResourceLocation, QuestDefinition> DATAPACK_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, QuestDefinition> MERGED_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, QuestSourceInfo> SOURCE_INFO = new LinkedHashMap<>();
+    private static volatile ObjectiveTypeIndex objectiveTypeIndex = ObjectiveTypeIndex.empty();
     private static boolean frozen = false;
     private static int datapackLoadOrder = 0;
 
@@ -74,6 +76,7 @@ public final class QuestRegistry {
         }
         MERGED_REGISTRY = Collections.unmodifiableMap(merged);
         SOURCE_INFO = Collections.unmodifiableMap(mergedSources);
+        objectiveTypeIndex = ObjectiveTypeIndex.build(merged);
         QuestRegistryMergeResult result = new QuestRegistryMergeResult(CODE_REGISTRY.size(), DATAPACK_REGISTRY.size(), MERGED_REGISTRY.size());
         LOGGER.info("[ArcQuest] Quest registry rebuilt. code={}, datapack={}, merged={}", result.codeCount(), result.datapackCount(), result.mergedCount());
         return result;
@@ -98,6 +101,10 @@ public final class QuestRegistry {
         if (questId.contains(":")) location = ResourceLocation.tryParse(questId);
         else location = ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, questId);
         return location != null ? MERGED_REGISTRY.get(location) : null;
+    }
+
+    public static ObjectiveTypeIndex getObjectiveIndex() {
+        return objectiveTypeIndex;
     }
 
     public static QuestDefinition getOrThrow(ResourceLocation id) {

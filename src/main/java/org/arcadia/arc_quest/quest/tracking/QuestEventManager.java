@@ -27,11 +27,14 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class QuestEventManager {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    private static final Map<String, int[]> reachLocationIndexCache = new ConcurrentHashMap<>();
 
     private QuestEventManager() {
     }
@@ -108,12 +111,15 @@ public final class QuestEventManager {
                 var phase = def.getPhase(phaseId);
                 if (phase == null) continue;
 
-                var objs = phase.getObjectives();
-                for (int i = 0; i < objs.size(); i++) {
-                    var obj = objs.get(i);
-                    if (obj.getType() != ObjectiveType.REACH_LOCATION) continue;
+                int[] reachIndices = reachLocationIndexCache.computeIfAbsent(
+                        def.getId() + ":" + phaseId,
+                        k -> computeReachLocationIndices(phase));
+                if (reachIndices.length == 0) continue;
+
+                for (int idx : reachIndices) {
+                    var obj = phase.getObjectives().get(idx);
                     int required = QuestProgressHandler.resolveRequiredCount(player, obj, cap);
-                    if (data.getObjectiveProgress(phaseId, i) >= required) continue;
+                    if (data.getObjectiveProgress(phaseId, idx) >= required) continue;
 
                     Double x = parseDouble(obj.getExtra("x"));
                     Double y = parseDouble(obj.getExtra("y"));
@@ -136,7 +142,7 @@ public final class QuestEventManager {
                                 QuestProgressHandler.incrementCollectionEntry(player, data.getQuestId(), phaseId, 1);
                             }
                         } else {
-                            QuestProgressHandler.incrementObjective(player, data.getQuestId(), phaseId, i, 1);
+                            QuestProgressHandler.incrementObjective(player, data.getQuestId(), phaseId, idx, 1);
                         }
                     }
                 }
@@ -153,6 +159,17 @@ public final class QuestEventManager {
         }
     }
 
+    private static int[] computeReachLocationIndices(PhaseDefinition phase) {
+        var objs = phase.getObjectives();
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < objs.size(); i++) {
+            if (objs.get(i).getType() == ObjectiveType.REACH_LOCATION) {
+                indices.add(i);
+            }
+        }
+        return indices.stream().mapToInt(Integer::intValue).toArray();
+    }
+
     private static void processMatch(ServerPlayer player,
                                      ObjectiveType type,
                                      ResourceLocation targetId,
@@ -161,117 +178,29 @@ public final class QuestEventManager {
 
         ObjectiveKey key = new ObjectiveKey(type, targetId);
         CollectionObjectiveDispatcher.dispatch(player, key, amount, collectionUniqueKey(type, targetId));
-        processProgressionMatches(player, key, amount);
-        processProgressionFallbackScan(player, type, targetId, amount);
-    }
 
-    private static void processProgressionMatches(ServerPlayer player, ObjectiveKey key, int amount) {
-        Set<TrackedObjective> matches = ObjectiveTracker.INSTANCE.lookup(key);
-        if (matches.isEmpty()) return;
-
-        Map<PhaseGroupKey, List<TrackedObjective>> grouped = new HashMap<>();
-        UUID playerId = player.getUUID();
-
-        for (TrackedObjective tracked : matches) {
-            if (!tracked.getPlayerId().equals(playerId)) continue;
-            PhaseGroupKey groupKey = new PhaseGroupKey(tracked.getQuestId().toString(), tracked.getPhaseId());
-            grouped.computeIfAbsent(groupKey, k -> new ArrayList<>()).add(tracked);
-        }
-
-        if (grouped.isEmpty()) return;
-
-        for (Map.Entry<PhaseGroupKey, List<TrackedObjective>> entry : grouped.entrySet()) {
-            PhaseGroupKey groupKey = entry.getKey();
-            List<TrackedObjective> objectives = entry.getValue();
-            objectives.sort(Comparator.comparingInt(TrackedObjective::getObjectiveIndex));
-            distributeAmountInPhase(player, groupKey.questId(), groupKey.phaseId(), objectives, amount);
-        }
-    }
-
-    private static void processProgressionFallbackScan(ServerPlayer player,
-                                                       ObjectiveType type,
-                                                       ResourceLocation targetId,
-                                                       int amount) {
         IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
         if (cap == null) return;
 
-        for (QuestRuntimeData data : cap.getAllActiveQuests().values()) {
-            if (data.getState() != QuestState.ACTIVE) continue;
+        ObjectiveTypeIndex index = QuestRegistry.getObjectiveIndex();
+        List<ObjectiveTypeIndex.ObjectiveRef> refs = index.find(type, targetId);
+        if (refs == null) return;
 
-            QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
+        for (ObjectiveTypeIndex.ObjectiveRef ref : refs) {
+            QuestRuntimeData data = cap.getActiveQuest(ref.questId().toString());
+            if (data == null || data.getState() != QuestState.ACTIVE) continue;
+            if (!data.isPhaseActive(ref.phaseId())) continue;
+
+            QuestDefinition def = QuestRegistry.get(ref.questId());
             if (def == null || def.isCollectionQuest()) continue;
 
-            for (String phaseId : data.getActivePhaseIds()) {
-                PhaseDefinition phase = def.getPhase(phaseId);
-                if (phase == null) continue;
-
-                List<TrackedObjective> objectives = matchingObjectives(player, cap, def, phase, type, targetId);
-                if (objectives.isEmpty()) continue;
-                objectives.sort(Comparator.comparingInt(TrackedObjective::getObjectiveIndex));
-                distributeAmountInPhase(player, data.getQuestId(), phaseId, objectives, amount);
-            }
-        }
-    }
-
-    private static List<TrackedObjective> matchingObjectives(ServerPlayer player,
-                                                             IQuestCapability cap,
-                                                             QuestDefinition def,
-                                                             PhaseDefinition phase,
-                                                             ObjectiveType type,
-                                                             ResourceLocation targetId) {
-        List<TrackedObjective> matches = new ArrayList<>();
-        List<ObjectiveEntry> objectives = phase.getObjectives();
-        for (int i = 0; i < objectives.size(); i++) {
-            ObjectiveEntry obj = objectives.get(i);
-            if (obj.getType() != type) continue;
-            if (!objectiveMatchesTarget(obj, targetId)) continue;
-            matches.add(new TrackedObjective(
-                    player.getUUID(),
-                    def.getId(),
-                    phase.getPhaseId(),
-                    i,
-                    new ObjectiveKey(type, targetId),
-                    QuestProgressHandler.resolveRequiredCount(player, obj, cap)
-            ));
-        }
-        return matches;
-    }
-
-    private static boolean objectiveMatchesTarget(ObjectiveEntry obj, ResourceLocation targetId) {
-        if (targetId.equals(obj.getTargetId())) return true;
-        String tag = obj.getExtra("target_tag");
-        if (tag == null || tag.isEmpty()) return false;
-        return QuestProgressHandler.objectiveKeyTargets(obj).contains(targetId);
-    }
-
-    private static void distributeAmountInPhase(ServerPlayer player,
-                                                String questId,
-                                                String phaseId,
-                                                List<TrackedObjective> objectives,
-                                                int amount) {
-        if (amount <= 0 || objectives.isEmpty()) return;
-
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        if (cap == null) return;
-
-        QuestRuntimeData data = cap.getActiveQuest(questId);
-        if (data == null || !data.isPhaseActive(phaseId)) return;
-
-        int remaining = amount;
-
-        for (TrackedObjective tracked : objectives) {
-            if (remaining <= 0) break;
-
-            int idx = tracked.getObjectiveIndex();
-            int required = Math.max(1, tracked.getRequiredCount());
-            int current = data.getObjectiveProgress(phaseId, idx);
+            int required = def.getPhase(ref.phaseId()).getObjectives().get(ref.objIndex()).getRequiredCount();
+            int current = data.getObjectiveProgress(ref.phaseId(), ref.objIndex());
             if (current >= required) continue;
 
-            int need = required - current;
-            int add = Math.min(remaining, need);
-
-            QuestProgressHandler.incrementObjective(player, questId, phaseId, idx, add);
-            remaining -= add;
+            int add = Math.min(amount, required - current);
+            QuestProgressHandler.incrementObjective(player,
+                    ref.questId().toString(), ref.phaseId(), ref.objIndex(), add);
         }
     }
 
@@ -333,8 +262,5 @@ public final class QuestEventManager {
         } catch (NumberFormatException ignored) {
             return null;
         }
-    }
-
-    private record PhaseGroupKey(String questId, String phaseId) {
     }
 }
