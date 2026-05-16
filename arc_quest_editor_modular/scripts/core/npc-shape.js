@@ -51,6 +51,14 @@ export function setNpcByPath(target, bind, value, inputType) {
         return;
     }
 
+    if (bind === 'npc.onDialogueStartCommands') {
+        target.onDialogueStartCommands = Array.isArray(value) ? value : [];
+        return;
+    }
+    if (bind === 'npc.onDialogueEndCommands') {
+        target.onDialogueEndCommands = Array.isArray(value) ? value : [];
+        return;
+    }
     if (bind.startsWith('npc.startCmd')) {
         const idx = Number(bind.split('.')[2]);
         if (Number.isNaN(idx)) return;

@@ -53,6 +53,7 @@ export const state = {
     npc: {
         q: createNpcSkeleton(),
         meta: {file: 'new_npc.json', dirty: false},
+        ui: { sel: {t: 'overview'}, condFold: false, cmdFold: false },
         diag: []
     },
     dialogue: {

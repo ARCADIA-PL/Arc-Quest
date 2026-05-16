@@ -24,7 +24,11 @@ export function bindEditorInputs(midEl, state, rerender, setByPath) {
         const phaseIdChangeParts = phaseIdChange ? b.split('.') : null;
         const phaseIndex = phaseIdChange ? Number(phaseIdChangeParts[1]) : -1;
         const oldPhaseId = phaseIdChange ? state.quest.q.phases?.[phaseIndex]?.id : null;
-        const resolvedValue = e.target.multiple
+        const resolvedValue = e.target.type === 'checkbox'
+            ? String(e.target.checked)
+            : e.target.dataset.bArray !== undefined
+            ? e.target.value.split('\n').map(s => s.trim()).filter(Boolean)
+            : e.target.multiple
             ? Array.from(e.target.selectedOptions || []).map(option => option.value).filter(Boolean).join(', ')
             : e.target.value;
 

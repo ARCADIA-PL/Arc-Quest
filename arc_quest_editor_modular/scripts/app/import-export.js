@@ -109,6 +109,9 @@ export function importJson(state, rerender, dom, file) {
                 } else {
                     state.npc.q = normalized;
                     state.npc.meta = {file: file.name, dirty: false};
+                    state.npc.ui.sel = {t: 'overview'};
+                    state.npc.ui.condFold = false;
+                    state.npc.ui.cmdFold = false;
                     state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
                     rerender();
                     showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
