@@ -50,17 +50,17 @@ public final class TradeRegistry {
 
     @Nullable
     public static TradeShopDefinition get(String shopId) {
-        TradeShopDefinition shop = datapackShops.get(shopId);
+        TradeShopDefinition shop = codeShops.get(shopId);
         if (shop != null) return shop;
 
-        shop = codeShops.get(shopId);
+        shop = datapackShops.get(shopId);
         if (shop != null) return shop;
 
         if (!shopId.contains(":")) {
             String fullId = Arc_Quest.MOD_ID + ":" + shopId;
-            shop = datapackShops.get(fullId);
+            shop = codeShops.get(fullId);
             if (shop != null) return shop;
-            return codeShops.get(fullId);
+            return datapackShops.get(fullId);
         }
 
         return null;
@@ -68,8 +68,8 @@ public final class TradeRegistry {
 
     public static Collection<TradeShopDefinition> getAll() {
         Map<String, TradeShopDefinition> merged = new LinkedHashMap<>();
-        merged.putAll(codeShops);
         merged.putAll(datapackShops);
+        merged.putAll(codeShops);
         return Collections.unmodifiableCollection(merged.values());
     }
 
@@ -82,6 +82,14 @@ public final class TradeRegistry {
 
     public static int size() {
         return codeShops.size() + datapackShops.size();
+    }
+
+    public static int codeSize() {
+        return codeShops.size();
+    }
+
+    public static int datapackSize() {
+        return datapackShops.size();
     }
 
     public static void clearAll() {

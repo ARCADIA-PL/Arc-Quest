@@ -6,11 +6,9 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import org.arcadia.arc_quest.data.ArcQuestDatapackHotReloadService;
+import org.arcadia.arc_quest.data.ArcQuestReloadListener;
 
 public final class ArcQuestHotReloadCommand {
-
-    private static final ArcQuestDatapackHotReloadService HOT_RELOAD_SERVICE = new ArcQuestDatapackHotReloadService();
 
     private ArcQuestHotReloadCommand() {
     }
@@ -24,15 +22,12 @@ public final class ArcQuestHotReloadCommand {
     }
 
     public static int reloadArcQuest(CommandContext<CommandSourceStack> ctx) {
-        var result = HOT_RELOAD_SERVICE.reload(ctx.getSource().getServer().getResourceManager());
-        ctx.getSource().sendSuccess(() -> Component.literal(formatReloadMessage(result)), true);
+        int loaded = ArcQuestReloadListener.reloadArcQuestDatapacksOnly(ctx.getSource().getServer().getResourceManager());
+        ctx.getSource().sendSuccess(() -> Component.literal(formatReloadMessage(loaded)), true);
         return Command.SINGLE_SUCCESS;
     }
 
-    static String formatReloadMessage(ArcQuestDatapackHotReloadService.ReloadResult result) {
-        return "[ArcQuest] ArcQuest datapack 重载完成，仅影响 ArcQuest 任务。scanned="
-                + result.scanned() + ", loaded=" + result.loaded() + ", failed=" + result.failed()
-                + ", activeDatapack=" + result.activeDatapack() + ", merged=" + result.merged()
-                + (result.usedFallback() ? ", source=fallback" : ", source=@datapack");
+    static String formatReloadMessage(int loaded) {
+        return "[ArcQuest] datapack 重载完成（Quest / Dialogue / NPC / Trade）。loaded=" + loaded;
     }
 }

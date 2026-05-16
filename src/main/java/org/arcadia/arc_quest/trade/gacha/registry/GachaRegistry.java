@@ -6,73 +6,66 @@ import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
-/**
- * 全局抽奖商店注册表（线程安全）。
- * <p>
- * 所有 {@link GachaShopDefinition} 在 commonSetup 阶段注册。
- * 使用 ConcurrentHashMap 确保多线程读取安全。
- */
 public final class GachaRegistry {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Map<String, GachaShopDefinition> REGISTRY = new ConcurrentHashMap<>();
+    private static Map<String, GachaShopDefinition> codeShops = new LinkedHashMap<>();
+    private static volatile Map<String, GachaShopDefinition> datapackShops = Map.of();
 
     private GachaRegistry() {
     }
 
-    /**
-     * 注册抽奖商店定义。
-     *
-     * @throws IllegalStateException ID 重复
-     */
     public static void register(GachaShopDefinition definition) {
         String id = definition.getShopId();
-        if (REGISTRY.containsKey(id)) {
+        if (codeShops.containsKey(id)) {
             throw new IllegalStateException("Duplicate gacha shop ID: " + id);
         }
-        REGISTRY.put(id, definition);
+        codeShops.put(id, definition);
         LOGGER.info("[ArcQuest] Registered gacha shop: {} ({} pool items)",
                 id, definition.getGachaPool().getAllItems().size());
     }
 
-    /**
-     * 获取抽奖商店定义（支持智能命名空间解析）。
-     *
-     * @param shopId 商店 ID
-     * @return 抽奖商店定义，未找到返回 null
-     */
+    public static void replaceDatapack(Map<String, GachaShopDefinition> shops) {
+        datapackShops = Collections.unmodifiableMap(new LinkedHashMap<>(shops));
+        LOGGER.info("[ArcQuest] GachaRegistry datapack replaced. Total datapack shops: {}", shops.size());
+    }
+
+    public static void clearDatapack() {
+        datapackShops = Map.of();
+        LOGGER.info("[ArcQuest] GachaRegistry datapack cleared.");
+    }
+
     @Nullable
     public static GachaShopDefinition get(String shopId) {
-        // 1. 直接查找
-        GachaShopDefinition def = REGISTRY.get(shopId);
-        if (def != null) {
-            return def;
-        }
+        GachaShopDefinition def = codeShops.get(shopId);
+        if (def != null) return def;
 
-        // 2. 如果没有命名空间，尝试添加 arc_quest: 前缀
+        def = datapackShops.get(shopId);
+        if (def != null) return def;
+
         if (!shopId.contains(":")) {
-            def = REGISTRY.get(Arc_Quest.MOD_ID + ":" + shopId);
+            def = codeShops.get(Arc_Quest.MOD_ID + ":" + shopId);
+            if (def != null) return def;
+            return datapackShops.get(Arc_Quest.MOD_ID + ":" + shopId);
         }
 
-        return def;
+        return null;
     }
 
-    /**
-     * 获取所有已注册的抽奖商店。
-     */
     public static Collection<GachaShopDefinition> getAllShops() {
-        return Collections.unmodifiableCollection(REGISTRY.values());
+        Map<String, GachaShopDefinition> merged = new LinkedHashMap<>();
+        merged.putAll(datapackShops);
+        merged.putAll(codeShops);
+        return Collections.unmodifiableCollection(merged.values());
     }
 
-    /**
-     * 清空注册表（仅用于测试）。
-     */
-    public static void clear() {
-        REGISTRY.clear();
+    public static int codeSize() {
+        return codeShops.size();
+    }
+
+    public static int datapackSize() {
+        return datapackShops.size();
     }
 }

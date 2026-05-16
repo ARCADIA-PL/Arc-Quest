@@ -9,7 +9,7 @@ import java.util.Set;
 
 public final class TradeSpecValidator {
 
-    private static final Set<String> VALID_OFFER_TYPES = Set.of("item", "command", "effect", "flag", "composite");
+    public static final Set<String> VALID_OFFER_TYPES = Set.of("item", "command", "effect", "flag", "composite");
     private static final Set<String> VALID_COOLDOWN_TYPES = Set.of("NONE", "SECONDS", "GAME_DAY", "GAME_TICK");
 
     public TradeValidationReport validate(TradeShopSpec spec) {
