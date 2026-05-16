@@ -1260,4 +1260,58 @@ button.danger:hover {
     overflow-y: auto
 }
 
+.color-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto
+}
+.color-picker {
+    width: 32px;
+    height: 28px;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    padding: 2px
+}
+.color-picker::-webkit-color-swatch-wrapper { padding: 0 }
+.color-picker::-webkit-color-swatch { border-radius: 2px; border: none }
+.color-hex-text {
+    width: 90px;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 4px 6px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 4px;
+    background: rgba(0,0,0,.2);
+    color: var(--text-main)
+}
+.color-swatch {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,.15);
+    flex-shrink: 0
+}
+.color-swatch-placeholder {
+    font-size: 11px;
+    color: var(--text-mut);
+    flex-shrink: 0
+}
+.color-default-tip {
+    font-size: 10px;
+    color: var(--text-mut);
+    opacity: .6;
+    margin-left: 4px
+}
+.color-input-disabled input {
+    opacity: .4;
+    pointer-events: none
+}
+.color-input-disabled .color-picker {
+    pointer-events: none
+}
+
 
