@@ -21,6 +21,10 @@ public class TradeDataStore {
 
     private final Map<String, Map<String, Integer>> purchaseCounts = new HashMap<>();
     private final Map<String, Map<String, TradeCooldownEntry>> cooldowns = new HashMap<>();
+    private boolean dirty;
+
+    public boolean isDirty() { return dirty; }
+    public void clearDirty() { dirty = false; }
 
     // ════════════════════════════════════════
     //  购买次数
@@ -34,6 +38,7 @@ public class TradeDataStore {
     public void incrementPurchase(String shopId, String entryId) {
         purchaseCounts.computeIfAbsent(shopId, k -> new HashMap<>())
                 .merge(entryId, 1, Integer::sum);
+        dirty = true;
     }
 
     // ════════════════════════════════════════
@@ -55,6 +60,7 @@ public class TradeDataStore {
     public void recordCooldown(String shopId, String entryId, long realTime, long gameTime, long dayTime) {
         cooldowns.computeIfAbsent(shopId, k -> new HashMap<>())
                 .put(entryId, new TradeCooldownEntry(realTime, gameTime, dayTime));
+        dirty = true;
     }
 
     /**
@@ -62,7 +68,7 @@ public class TradeDataStore {
      */
     public void removeCooldown(String shopId, String entryId) {
         Map<String, TradeCooldownEntry> shopCooldowns = cooldowns.get(shopId);
-        if (shopCooldowns != null) shopCooldowns.remove(entryId);
+        if (shopCooldowns != null) { shopCooldowns.remove(entryId); dirty = true; }
     }
 
     // ════════════════════════════════════════
@@ -76,15 +82,13 @@ public class TradeDataStore {
         Map<String, Integer> shopData = purchaseCounts.get(shopId);
         if (shopData != null) shopData.remove(entryId);
         removeCooldown(shopId, entryId);
+        dirty = true;
     }
-
-    // ════════════════════════════════════════
-    //  清空
-    // ════════════════════════════════════════
 
     public void clear() {
         purchaseCounts.clear();
         cooldowns.clear();
+        dirty = true;
     }
 
     // ════════════════════════════════════════

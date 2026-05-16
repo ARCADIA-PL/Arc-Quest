@@ -26,6 +26,10 @@ public class GachaDataStore {
      * 抽奖冷却时间戳，key=shopId，value=三时钟快照（realTime / gameTime / dayTime）。
      */
     private final Map<String, CooldownEntry> drawCooldowns = new HashMap<>();
+    private boolean dirty;
+
+    public boolean isDirty() { return dirty; }
+    public void clearDirty() { dirty = false; }
 
     // ════════════════════════════════════════
     //  抽奖次数
@@ -37,10 +41,12 @@ public class GachaDataStore {
 
     public void incrementDrawCount(String shopId) {
         drawCounts.merge(shopId, 1, Integer::sum);
+        dirty = true;
     }
 
     public void resetDrawCount(String shopId) {
         drawCounts.remove(shopId);
+        dirty = true;
     }
 
     // ════════════════════════════════════════
@@ -57,6 +63,7 @@ public class GachaDataStore {
         } else {
             pityCounters.put(shopId, count);
         }
+        dirty = true;
     }
 
     // ════════════════════════════════════════
@@ -70,6 +77,7 @@ public class GachaDataStore {
         if (history.size() > MAX_HISTORY_SIZE) {
             history.remove(0);
         }
+        dirty = true;
     }
 
     public List<IQuestCapability.GachaDrawRecord> getDrawHistory(String shopId) {
@@ -79,6 +87,7 @@ public class GachaDataStore {
 
     public void clearDrawHistory(String shopId) {
         drawHistories.remove(shopId);
+        dirty = true;
     }
 
     // ════════════════════════════════════════
@@ -120,6 +129,7 @@ public class GachaDataStore {
         pityCounters.clear();
         drawHistories.clear();
         drawCooldowns.clear();
+        dirty = true;
     }
 
     // ════════════════════════════════════════
