@@ -1,24 +1,27 @@
 import '../styles/editor.css';
 import {state, createBlankQuest} from './core/state.js';
-import {createNpcSkeleton, createDialogueSkeleton} from './core/factories.js';
+import {createNpcSkeleton, createDialogueSkeleton, createTradeSkeleton} from './core/factories.js';
 import {getDomRefs} from './core/dom.js';
 import {setByPath, ensureQuestShape} from './core/quest-shape.js';
 import {setNpcByPath} from './core/npc-shape.js';
 import {setDialogueByPath} from './core/dialogue-shape.js';
+import {setTradeByPath} from './core/trade-shape.js';
 import {validateQuest} from './core/validators.js';
 import {validateNpc} from './core/npc-validators.js';
 import {validateDialogue} from './core/dialogue-validators.js';
+import {validateTrade} from './core/trade-validators.js';
 import {exportJson, importJson, bindDragAndDropImport} from './app/import-export.js';
 import {validateCrossReferences} from './core/cross-validator.js';
 import {applyPaneLayout, bindPaneResizers} from './app/layout.js';
 import {ensureValidSelection, navigateToPath} from './app/navigation.js';
 import {renderTree} from './renderers/tree-renderer.js';
 import {renderDialogueTree} from './renderers/dialogue-tree-renderer.js';
-import {renderCenterEditor, renderNpcCenter, renderDiagCenter} from './renderers/center-renderer.js';
+import {renderCenterEditor, renderNpcCenter, renderDiagCenter, renderTradeCenter} from './renderers/center-renderer.js';
 import {renderSidePanel} from './renderers/side-panel-renderer.js';
 import {renderStatus} from './renderers/status-renderer.js';
 import {renderNpcTree, bindNpcTreeSelection} from './renderers/npc-tree-renderer.js';
-import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions} from './renderers/event-bindings.js';
+import {renderTradeTree, bindTradeTreeSelection} from './renderers/trade-tree-renderer.js';
+import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions, bindTradeEditorActions} from './renderers/event-bindings.js';
 import {bindDialogueDirectoryClicks} from './renderers/dialogue-side-panel.js';
 
 const dom = getDomRefs();
@@ -129,11 +132,49 @@ function renderDialogue() {
     bindDialogueDirectoryClicks(dom.right, state, rerender);
 }
 
+function renderTrade() {
+    ensureValidTradeSelection();
+    validateTrade(state.trade.q);
+    state.trade.diag = validateTrade(state.trade.q);
+    applyPaneLayout(state, dom);
+    renderTradeTree(state, dom.left);
+    renderTradeCenter(state, dom.mid);
+    renderSidePanel(
+        state,
+        dom.tabs,
+        dom.right,
+        tab => {
+            state.quest.ui.tab = tab;
+            rerender();
+        },
+        path => navigateToPath(state, rerender, path),
+        pi => {
+            state.quest.ui.sel = {t: 'phase', pi};
+            rerender();
+        }
+    );
+    renderStatus(state, dom.status);
+    bindTradeTreeSelection(dom.left, state, rerender);
+    bindTradeEditorActions(dom.mid, state, rerender, setTradeByPath);
+}
+
+function ensureValidTradeSelection() {
+    const sel = state.trade.ui.sel;
+    const entries = state.trade.q.entries || {};
+    if (sel.t === 'overview') return;
+    if (sel.t === 'entry') {
+        if (typeof sel.ei !== 'string' || !entries[sel.ei]) {
+            state.trade.ui.sel = {t: 'overview'};
+        }
+    }
+}
+
 let _prevUiState = null;
 
 function getUiState(state) {
     if (state.mode === 'dialogue') return state.dialogue.ui.sel;
     if (state.mode === 'npc') return state.npc.ui.sel;
+    if (state.mode === 'trade') return state.trade.ui.sel;
     return state.quest.ui.sel;
 }
 
@@ -141,8 +182,8 @@ function computeNavDir(prev, next) {
     if (!prev || !next) return null;
     if (prev.t === next.t) return null;
     const depth = {
-        config: 0, quest: 0, visual: 0, rewards: 0,
-        node: 1, phase: 1,
+        config: 0, quest: 0, visual: 0, rewards: 0, overview: 0,
+        node: 1, phase: 1, entry: 1,
         sayIf: 2, choice: 2, obj: 2
     };
     const prevDepth = depth[prev.t] ?? 0;
@@ -175,6 +216,7 @@ function rerender() {
 
     if (state.mode === 'npc') renderNpc();
     else if (state.mode === 'dialogue') renderDialogue();
+    else if (state.mode === 'trade') renderTrade();
     else renderQuest();
 
     _prevUiState = getUiState(state);
@@ -200,6 +242,10 @@ dom.newBtn.onclick = () => {
     } else if (state.mode === 'dialogue') {
         state.dialogue.q = createDialogueSkeleton();
         state.dialogue.meta = {file: 'new_dialogue.json', dirty: false};
+    } else if (state.mode === 'trade') {
+        state.trade.q = createTradeSkeleton();
+        state.trade.meta = {file: 'new_shop.json', dirty: false};
+        state.trade.ui.sel = {t: 'overview'};
     } else {
         state.quest.q = createBlankQuest();
         state.quest.meta = {file: 'new_quest.json', dirty: false};
@@ -212,6 +258,8 @@ dom.validateBtn.onclick = () => {
         state.npc.diag = validateNpc(state.npc.q);
     } else if (state.mode === 'dialogue') {
         state.dialogue.diag = validateDialogue(state.dialogue.q);
+    } else if (state.mode === 'trade') {
+        state.trade.diag = validateTrade(state.trade.q);
     }
     state.quest.ui.tab = 'validate';
     rerender();
@@ -241,6 +289,7 @@ if (dom.modeBar) {
         if (!tab) return;
         state.mode = tab.dataset.mode;
         if (state.mode === 'dialogue') state.quest.ui.tab = 'node';
+        if (state.mode === 'trade') state.quest.ui.tab = 'validate';
         dom.modeBar.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         rerender();

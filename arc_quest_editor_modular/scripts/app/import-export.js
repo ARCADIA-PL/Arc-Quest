@@ -1,9 +1,11 @@
 import {validateQuest} from '../core/validators.js';
 import {validateNpc} from '../core/npc-validators.js';
 import {validateDialogue} from '../core/dialogue-validators.js';
+import {validateTrade} from '../core/trade-validators.js';
 import {normalizeImportedQuest} from '../core/import-normalizer.js';
 import {normalizeImportedNpc, exportNpcToDatapack} from '../core/npc-normalizer.js';
 import {normalizeImportedDialogue, exportDialogueToDatapack} from '../core/dialogue-normalizer.js';
+import {normalizeImportedTrade, exportTradeToDatapack} from '../core/trade-normalizer.js';
 import {exportQuestToDatapack} from '../core/export-normalizer.js';
 import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
@@ -12,12 +14,13 @@ import {validateCrossReferences} from '../core/cross-validator.js';
 function detectJsonType(json) {
     if (json && json.nodes && Array.isArray(json.nodes)) return 'dialogue';
     if (json && json.entityType && Array.isArray(json.bindings)) return 'npc';
+    if (json && json.entries && json.shopId) return 'trade';
     if (json && (Array.isArray(json.phases) || json.id)) return 'quest';
     return 'unknown';
 }
 
 function getTypeLabel(type) {
-    return {quest: 'Quest', npc: 'NPC', dialogue: 'Dialogue'}[type] || '未知';
+    return {quest: 'Quest', npc: 'NPC', dialogue: 'Dialogue', trade: 'Trade'}[type] || '未知';
 }
 
 function exportBlob(json, filename) {
@@ -64,6 +67,24 @@ export function exportJson(state, rerender, dom) {
         return;
     }
 
+    if (state.mode === 'trade') {
+        const diag = validateTrade(state.trade.q);
+        const blockingErrors = diag.filter(x => x.lvl === 'err');
+        if (blockingErrors.length > 0) {
+            state.quest.ui.tab = 'validate';
+            rerender();
+            showToast(dom, '导出已阻止', `存在 ${blockingErrors.length} 个错误`, 'error', 3600);
+            return;
+        }
+        const exported = exportTradeToDatapack(state.trade.q);
+        const filename = (state.trade.q.shopId || 'unnamed') + '_shop.json';
+        exportBlob(exported, filename);
+        state.trade.meta.dirty = false;
+        state.trade.meta.file = filename;
+        rerender();
+        return;
+    }
+
     validateQuest(state);
     const blockingErrors = (state.quest.diag || []).filter(x => x.lvl === 'err');
     if (blockingErrors.length > 0) {
@@ -95,6 +116,7 @@ export function importJson(state, rerender, dom, file) {
                 }
                 if (detectedType === 'quest') importToRegistry(state, normalizeImportedQuest(json), 'quest');
                 else if (detectedType === 'npc') importToRegistry(state, normalizeImportedNpc(json), 'npc');
+                else if (detectedType === 'trade') importToRegistry(state, normalizeImportedTrade(json), 'trade');
                 else importToRegistry(state, json, 'dialogue');
                 state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
                 showToast(dom, '已导入到库', `${file.name} → ${getTypeLabel(detectedType)} 注册表`, 'info');
@@ -127,6 +149,22 @@ export function importJson(state, rerender, dom, file) {
                 } else {
                     state.dialogue.q = normalized;
                     state.dialogue.meta = {file: file.name, dirty: false};
+                    state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
+                    rerender();
+                    showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
+                }
+                return;
+            }
+
+            if (detectedType === 'trade') {
+                const normalized = normalizeImportedTrade(json);
+                importToRegistry(state, normalized, 'trade');
+                if (state.mode !== 'trade') {
+                    showToast(dom, '已导入注册表', `Trade JSON 已加入注册表（当前在 ${state.mode} 模式）`, 'info');
+                } else {
+                    state.trade.q = normalized;
+                    state.trade.meta = {file: file.name, dirty: false};
+                    state.trade.ui.sel = {t: 'overview'};
                     state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
                     rerender();
                     showToast(dom, '导入成功', `已载入 ${file.name}`, 'success');
@@ -170,6 +208,7 @@ export function importToLibrary(state, rerender, dom, file) {
             if (detectedType === 'quest') importToRegistry(state, normalizeImportedQuest(json), 'quest');
             else if (detectedType === 'npc') importToRegistry(state, normalizeImportedNpc(json), 'npc');
             else if (detectedType === 'dialogue') importToRegistry(state, normalizeImportedDialogue(json), 'dialogue');
+            else if (detectedType === 'trade') importToRegistry(state, normalizeImportedTrade(json), 'trade');
             else {
                 showToast(dom, '无法识别', 'JSON 类型未知', 'error', 3600);
                 return;
@@ -204,11 +243,13 @@ export function bindDragAndDropImport(state, rerender, dom) {
     function getDropLabel() {
         if (state.mode === 'npc') return '拖入 NPC JSON 或任意 JSON 入库';
         if (state.mode === 'dialogue') return '拖入 Dialogue JSON 或任意 JSON 入库';
+        if (state.mode === 'trade') return '拖入 Trade JSON 或任意 JSON 入库';
         return '松开以导入 Arc Quest 任务文件';
     }
     function getDropNoFile() {
         if (state.mode === 'npc') return '请拖入 .json 文件';
         if (state.mode === 'dialogue') return '请拖入 .json 文件';
+        if (state.mode === 'trade') return '请拖入 .json 文件';
         return '请拖入 .json quest 文件';
     }
 

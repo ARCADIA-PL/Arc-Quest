@@ -9,6 +9,10 @@ export function renderStatus(state, statusEl) {
         renderDialogueStatus(state, statusEl);
         return;
     }
+    if (state.mode === 'trade') {
+        renderTradeStatus(state, statusEl);
+        return;
+    }
 
     const errs = state.quest.diag.filter(x => x.lvl === 'err').length;
     const warns = state.quest.diag.filter(x => x.lvl === 'warn').length;
@@ -32,6 +36,31 @@ export function renderStatus(state, statusEl) {
       ${warnBadge ? `<span style="opacity:0.3">|</span> ${warnBadge}` : ''}
       <span style="opacity:0.3">|</span>
       ${refBadge}
+    </div>
+  `;
+}
+
+function renderTradeStatus(state, statusEl) {
+    const errs = state.trade.diag.filter(x => x.lvl === 'err').length;
+    const warns = state.trade.diag.filter(x => x.lvl === 'warn').length;
+    const errBadge = errs > 0 ? `<span style="color:var(--danger); font-weight:600;">Errors: ${errs}</span>` : `<span style="color:var(--success)">No Errors</span>`;
+    const warnBadge = warns > 0 ? `<span style="color:var(--warning); font-weight:600;">Warns: ${warns}</span>` : '';
+    const dirtyBadge = state.trade.meta.dirty ? `<span style="color:var(--warning)">● Unsaved</span>` : `<span style="color:var(--text-mut)">○ Synced</span>`;
+    const entryCount = Object.keys(state.trade.q.entries || {}).length;
+
+    statusEl.innerHTML = `
+    <div style="display:flex; gap:16px; align-items:center; flex:1;">
+      <span style="color:var(--text-main); font-weight:600;">${state.trade.meta.file}</span>
+      <span style="opacity:0.3">|</span>
+      <span style="color:var(--accent)">${state.trade.q.shopId || '<em>未设置 ID</em>'}</span>
+      <span style="opacity:0.3">|</span>
+      ${dirtyBadge}
+    </div>
+    <div style="display:flex; gap:16px; align-items:center;">
+      <span style="color:var(--text-mut)">Trade Mode · ${entryCount} entries</span>
+      <span style="opacity:0.3">|</span>
+      ${errBadge}
+      ${warnBadge ? `<span style="opacity:0.3">|</span> ${warnBadge}` : ''}
     </div>
   `;
 }
