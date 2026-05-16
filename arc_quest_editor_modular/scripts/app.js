@@ -17,6 +17,7 @@ import {renderDialogueTree} from './renderers/dialogue-tree-renderer.js';
 import {renderCenterEditor, renderNpcCenter, renderDiagCenter} from './renderers/center-renderer.js';
 import {renderSidePanel} from './renderers/side-panel-renderer.js';
 import {renderStatus} from './renderers/status-renderer.js';
+import {renderNpcTree, bindNpcTreeSelection} from './renderers/npc-tree-renderer.js';
 import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions} from './renderers/event-bindings.js';
 import {bindDialogueDirectoryClicks} from './renderers/dialogue-side-panel.js';
 
@@ -49,10 +50,11 @@ function renderQuest() {
 }
 
 function renderNpc() {
+    ensureValidNpcSelection();
     validateNpc(state.npc.q);
     state.npc.diag = validateNpc(state.npc.q);
     applyPaneLayout(state, dom);
-    dom.left.innerHTML = '';
+    renderNpcTree(state, dom.left);
     renderNpcCenter(state, dom.mid);
     renderSidePanel(
         state,
@@ -69,7 +71,19 @@ function renderNpc() {
         }
     );
     renderStatus(state, dom.status);
+    bindNpcTreeSelection(dom.left, state, rerender);
     bindNpcEditorActions(dom.mid, state, rerender, setNpcByPath);
+}
+
+function ensureValidNpcSelection() {
+    const sel = state.npc.ui.sel;
+    const bindings = state.npc.q.bindings || [];
+    if (sel.t === 'overview' || sel.t === 'commands') return;
+    if (sel.t === 'binding') {
+        if (typeof sel.bi !== 'number' || sel.bi >= bindings.length) {
+            state.npc.ui.sel = {t: 'overview'};
+        }
+    }
 }
 
 function ensureValidDialogueSelection() {
@@ -119,7 +133,7 @@ let _prevUiState = null;
 
 function getUiState(state) {
     if (state.mode === 'dialogue') return state.dialogue.ui.sel;
-    if (state.mode === 'npc') return {t: 'npc'};
+    if (state.mode === 'npc') return state.npc.ui.sel;
     return state.quest.ui.sel;
 }
 
@@ -180,6 +194,9 @@ dom.newBtn.onclick = () => {
     if (state.mode === 'npc') {
         state.npc.q = createNpcSkeleton();
         state.npc.meta = {file: 'new_npc.json', dirty: false};
+        state.npc.ui.sel = {t: 'overview'};
+        state.npc.ui.condFold = false;
+        state.npc.ui.cmdFold = false;
     } else if (state.mode === 'dialogue') {
         state.dialogue.q = createDialogueSkeleton();
         state.dialogue.meta = {file: 'new_dialogue.json', dirty: false};
