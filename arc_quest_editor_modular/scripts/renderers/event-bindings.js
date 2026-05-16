@@ -3,6 +3,7 @@ import {handleDeleteButtonAction} from './bindings/editor-delete-actions.js';
 import {handleNpcClickPrelude, handleNpcNonDeleteButtonAction} from './bindings/npc-click-actions.js';
 import {handleDialogueClickPrelude, handleDialogueNonDeleteButtonAction} from './bindings/dialogue-click-actions.js';
 import {handleTradeClickPrelude, handleTradeNonDeleteButtonAction} from './bindings/trade-click-actions.js';
+import {handleGachaClickPrelude, handleGachaNonDeleteButtonAction} from './bindings/gacha-click-actions.js';
 import {bindEditorInputs} from './bindings/editor-inputs.js';
 import {getPhaseSuggestions} from '../core/suggestions.js';
 
@@ -31,6 +32,23 @@ export function bindTradeEditorActions(midEl, state, rerender, setTradeByPath) {
 
         if (handleTradeNonDeleteButtonAction(btn, state)) {
             state.trade.meta.dirty = true;
+            rerender();
+            return;
+        }
+    };
+}
+
+export function bindGachaEditorActions(midEl, state, rerender, setGachaByPath) {
+    bindEditorInputs(midEl, state.gacha, rerender, setGachaByPath);
+
+    midEl.onclick = e => {
+        if (handleGachaClickPrelude(e, midEl, state, rerender)) return;
+
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        if (handleGachaNonDeleteButtonAction(btn, state)) {
+            state.gacha.meta.dirty = true;
             rerender();
             return;
         }

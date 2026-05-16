@@ -8,6 +8,7 @@ import {renderNpcBindingEditor} from '../editors/npc-binding-editor.js';
 import {renderDialogueCenter} from '../editors/dialogue-editor.js';
 import {renderTradeOverview} from '../editors/trade-editor.js';
 import {renderTradeEntryEditor} from '../editors/trade-entry-editor.js';
+import {renderGachaOverview, renderGachaItemEditor} from '../editors/gacha-editor.js';
 import {esc} from '../core/utils.js';
 import {field, area} from './center/form-fields.js';
 import {renderRewardsView} from './center/rewards-view.js';
@@ -37,6 +38,18 @@ export function renderNpcCenter(state, midEl) {
         html = renderNpcCommandsEditor(npc);
     } else {
         html = renderNpcOverview(npc, state.registry, state);
+    }
+    midEl.innerHTML = `<div class="center-content">${html}</div>`;
+}
+
+export function renderGachaCenter(state, midEl) {
+    const sel = state.gacha.ui.sel;
+    const gacha = state.gacha.q;
+    let html = '';
+    if (sel.t === 'item' && typeof sel.pi === 'number' && typeof sel.ii === 'number') {
+        html = renderGachaItemEditor(gacha, sel.pi, sel.ii);
+    } else {
+        html = renderGachaOverview(gacha, state.registry, state);
     }
     midEl.innerHTML = `<div class="center-content">${html}</div>`;
 }
