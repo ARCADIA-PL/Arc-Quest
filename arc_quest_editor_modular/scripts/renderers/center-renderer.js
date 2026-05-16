@@ -6,6 +6,8 @@ import {renderRawEditor} from '../editors/raw-editor.js';
 import {renderNpcOverview} from '../editors/npc-editor.js';
 import {renderNpcBindingEditor} from '../editors/npc-binding-editor.js';
 import {renderDialogueCenter} from '../editors/dialogue-editor.js';
+import {renderTradeOverview} from '../editors/trade-editor.js';
+import {renderTradeEntryEditor} from '../editors/trade-entry-editor.js';
 import {esc} from '../core/utils.js';
 import {field, area} from './center/form-fields.js';
 import {renderRewardsView} from './center/rewards-view.js';
@@ -66,5 +68,17 @@ function renderNpcCommandsEditor(npc) {
 
 export function renderDiagCenter(state, midEl) {
     const html = renderDialogueCenter(state);
+    midEl.innerHTML = `<div class="center-content">${html}</div>`;
+}
+
+export function renderTradeCenter(state, midEl) {
+    const sel = state.trade.ui.sel;
+    const trade = state.trade.q;
+    let html = '';
+    if (sel.t === 'entry' && typeof sel.ei === 'string') {
+        html = renderTradeEntryEditor(trade, sel.ei, state.registry);
+    } else {
+        html = renderTradeOverview(trade, state.registry, state);
+    }
     midEl.innerHTML = `<div class="center-content">${html}</div>`;
 }
