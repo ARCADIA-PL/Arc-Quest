@@ -256,6 +256,8 @@ function rerender() {
     const prevUi = _prevUiState;
     const stripScrollMap = saveStripScrollPositions();
 
+    updateNewBtnLabel();
+
     if (state.mode === 'npc') renderNpc();
     else if (state.mode === 'dialogue') renderDialogue();
     else if (state.mode === 'trade') renderTrade();
@@ -344,14 +346,7 @@ if (dom.modeBar) {
         tab.classList.add('active');
         rerender();
     };
-}
-
-if (dom.importLibBtn) {
-    dom.importLibBtn.onclick = () => {
-        dom.fileInput.click();
-        dom.fileInput.dataset.libraryImport = 'true';
-    };
-}
+};
 
 if (dom.crossBtn) {
     dom.crossBtn.onclick = () => {
@@ -363,6 +358,13 @@ if (dom.crossBtn) {
         if (questTab) questTab.classList.add('active');
         rerender();
     };
+}
+
+const MODE_LABELS = {quest: 'Quest', npc: 'NPC', dialogue: '对话', trade: '商店', gacha: '抽奖'};
+
+function updateNewBtnLabel() {
+    const label = dom.newBtnLabel;
+    if (label) label.textContent = '新建 ' + (MODE_LABELS[state.mode] || '');
 }
 
 rerender();

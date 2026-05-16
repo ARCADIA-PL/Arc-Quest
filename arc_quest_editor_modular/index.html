@@ -15,45 +15,43 @@
             <div class="title">Arc Quest Editor <span class="badge">Pro</span></div>
         </div>
         <div class="toolbar">
-            <button class="toolbar-btn" id="newBtn">
-                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
-                新建架构
-            </button>
-            <label class="toolbar-btn" for="fileInput">
-                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 15V5"/>
-                </svg>
-                导入 JSON
-            </label>
-            <input accept=".json,application/json" id="fileInput" type="file"/>
-            <button class="toolbar-btn" id="importLibBtn" title="导入到共享注册表，不替换当前编辑内容">
-                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
-                    <path d="M19 21H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2zM16 2v4M8 2v4M3 10h18"/>
-                </svg>
-                导入到库
-            </button>
-            <button class="toolbar-btn primary" id="exportBtn">
-                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 14l5 5 5-5M12 15V3"/>
-                </svg>
-                导出序列
-            </button>
-            <button class="toolbar-btn" id="validateBtn">
-                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3"/>
-                </svg>
-                系统校验
-            </button>
-            <button class="toolbar-btn" id="crossBtn" title="校验跨文件引用完整性">
-                <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="8.5" cy="7" r="4"/>
-                    <path d="M20 8v6M23 11h-6"/>
-                </svg>
-                跨文件校验
-            </button>
+            <div class="toolbar-group">
+                <button class="toolbar-btn" id="newBtn">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    <span id="newBtnLabel">新建 Quest</span>
+                </button>
+                <label class="toolbar-btn primary" for="fileInput" title="导入 JSON 文件并替换当前编辑">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 14l5 5 5-5M12 15V3"/>
+                    </svg>
+                    导入
+                </label>
+                <input accept=".json,application/json" id="fileInput" type="file"/>
+            </div>
+            <div class="toolbar-group">
+                <button class="toolbar-btn primary" id="exportBtn" title="导出为 JSON 文件 (Ctrl+S)">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 15V5"/>
+                    </svg>
+                    导出
+                </button>
+                <button class="toolbar-btn" id="validateBtn" title="校验当前数据">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3"/>
+                    </svg>
+                    校验
+                </button>
+                <button class="toolbar-btn" id="crossBtn" title="校验跨文件引用完整性">
+                    <svg fill="none" height="14" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="8.5" cy="7" r="4"/>
+                        <path d="M20 8v6M23 11h-6"/>
+                    </svg>
+                    跨文件
+                </button>
+            </div>
         </div>
     </header>
 

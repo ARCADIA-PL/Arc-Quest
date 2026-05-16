@@ -123,27 +123,10 @@ export function exportJson(state, rerender, dom) {
 
 export function importJson(state, rerender, dom, file) {
     const r = new FileReader();
-    const isLibraryImport = dom.fileInput?.dataset?.libraryImport === 'true';
     r.onload = () => {
         try {
             const json = JSON.parse(r.result);
             const detectedType = detectJsonType(json);
-
-            if (isLibraryImport) {
-                delete dom.fileInput.dataset.libraryImport;
-                if (detectedType === 'unknown') {
-                    showToast(dom, '无法识别', 'JSON 类型未知，无法导入到注册表', 'error', 3600);
-                    return;
-                }
-                if (detectedType === 'quest') importToRegistry(state, normalizeImportedQuest(json), 'quest');
-                else if (detectedType === 'npc') importToRegistry(state, normalizeImportedNpc(json), 'npc');
-                else if (detectedType === 'trade') importToRegistry(state, normalizeImportedTrade(json), 'trade');
-                else if (detectedType === 'gacha') importToRegistry(state, normalizeImportedGacha(json), 'gacha');
-                else importToRegistry(state, json, 'dialogue');
-                state.quest.crossResults = validateCrossReferences(state.registry, state.quest.q);
-                showToast(dom, '已导入到库', `${file.name} → ${getTypeLabel(detectedType)} 注册表`, 'info');
-                return;
-            }
 
             if (detectedType === 'npc') {
                 const normalized = normalizeImportedNpc(json);
