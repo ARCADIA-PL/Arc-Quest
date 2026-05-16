@@ -32,6 +32,10 @@ public final class DatapackPathResolver {
         return resolveDatapackRoot().resolve("npc").normalize();
     }
 
+    public static Path resolveTradesDir() {
+        return resolveDatapackRoot().resolve("trades").normalize();
+    }
+
     public static Path resolveQuestFile(String questFileName) {
         if (questFileName == null || questFileName.isBlank()) {
             throw new IllegalArgumentException("questFileName must not be blank");
@@ -57,5 +61,6 @@ public final class DatapackPathResolver {
         Files.createDirectories(resolveQuestsDir());
         Files.createDirectories(resolveDialoguesDir());
         Files.createDirectories(resolveNpcDir());
+        Files.createDirectories(resolveTradesDir());
     }
 }
