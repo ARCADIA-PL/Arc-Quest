@@ -1,5 +1,5 @@
 import {createObjective, createPhase, createQuestSkeleton, createSplash,
-    createNpcSkeleton, createDialogueSkeleton} from './factories.js';
+    createNpcSkeleton, createDialogueSkeleton, createTradeSkeleton} from './factories.js';
 
 export const createBlankQuest = () => {
     const quest = createQuestSkeleton();
@@ -60,6 +60,12 @@ export const state = {
         q: createDialogueSkeleton(),
         meta: {file: 'new_dialogue.json', dirty: false},
         ui: { sel: {t: 'config'}, sayIfFold: false, choiceFold: false },
+        diag: []
+    },
+    trade: {
+        q: createTradeSkeleton(),
+        meta: {file: 'new_shop.json', dirty: false},
+        ui: { sel: {t: 'overview'}, entryFold: false },
         diag: []
     }
 };

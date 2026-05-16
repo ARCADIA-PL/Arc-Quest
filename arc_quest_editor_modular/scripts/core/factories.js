@@ -138,6 +138,57 @@ export const createConditionalSay = () => ({
     priority: 0
 });
 
+export const createTradeSkeleton = () => ({
+    shopId: '',
+    displayName: { mode: 'literal', value: '', args: [] },
+    description: null,
+    categories: [],
+    entries: {},
+    openCondition: null,
+    simpleMode: false,
+    themeColor: 0xE0C860,
+    openSound: '',
+    closeSound: ''
+});
+
+export const createTradeEntrySkeleton = () => ({
+    entryId: '',
+    displayName: { mode: 'literal', value: '', args: [] },
+    description: null,
+    costs: [],
+    rewards: [],
+    category: '',
+    visibleCondition: null,
+    canBuyCondition: null,
+    cooldownType: 'NONE',
+    cooldownValue: 0,
+    resetTimeTicks: 0,
+    maxPurchases: 0,
+    rewardIcon: '',
+    costIcon: '',
+    sortOrder: 0,
+    themeColor: -1,
+    purchaseSuccessSound: '',
+    purchaseFailSound: '',
+    cooldownSound: '',
+    limitReachedSound: '',
+    conditionFailSound: ''
+});
+
+export const createTradeOfferSkeleton = () => ({
+    type: 'item',
+    itemId: '',
+    count: 1,
+    nbt: '',
+    command: '',
+    executeAs: 'console',
+    effectId: '',
+    duration: 0,
+    amplifier: 0,
+    flagName: '',
+    offers: []
+});
+
 export const createDialogueChoice = () => ({
     choiceId: '',
     text: { mode: 'literal', value: '', args: [] },

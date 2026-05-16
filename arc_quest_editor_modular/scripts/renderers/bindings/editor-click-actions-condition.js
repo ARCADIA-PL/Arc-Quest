@@ -1,9 +1,11 @@
-﻿export function bindConditionEditorClicks(state, descriptor, action, skipRerender = false) {
+export function bindConditionEditorClicks(state, descriptor, action, skipRerender = false) {
     let target;
     if (descriptor.startsWith('npc.')) {
         target = state.npc.q;
     } else if (descriptor.startsWith('diag.')) {
         target = state.dialogue.q;
+    } else if (descriptor.startsWith('trade.')) {
+        target = state.trade.q;
     } else {
         target = state.quest.q;
     }

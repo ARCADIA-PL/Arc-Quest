@@ -27,6 +27,12 @@ export function importToRegistry(state, json, type) {
                 state.registry.npcs[json.entityType] = json;
             }
             break;
+        case 'trade':
+            if (json && json.shopId) {
+                if (!state.registry.shops) state.registry.shops = {};
+                state.registry.shops[json.shopId] = json;
+            }
+            break;
     }
 }
 
