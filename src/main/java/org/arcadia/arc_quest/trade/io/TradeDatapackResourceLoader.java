@@ -31,6 +31,9 @@ public final class TradeDatapackResourceLoader {
                 scanned++;
                 try {
                     String json = Files.readString(file, StandardCharsets.UTF_8);
+
+                    if (isGachaJson(json)) continue;
+
                     TradeShopSpec spec = TradeSpecJsonReader.read(json);
                     if (spec == null) {
                         errors.add(new TradeDatapackLoadError(file, "Parsed trade spec is null", null));
@@ -46,6 +49,10 @@ public final class TradeDatapackResourceLoader {
         }
 
         return new LoadReport(specs, errors, scanned);
+    }
+
+    private static boolean isGachaJson(String json) {
+        return json.contains("\"pools\"") && json.contains("\"drawCost\"");
     }
 
     public record LoadReport(Map<Path, TradeShopSpec> specs, List<TradeDatapackLoadError> errors, int scannedFiles) {

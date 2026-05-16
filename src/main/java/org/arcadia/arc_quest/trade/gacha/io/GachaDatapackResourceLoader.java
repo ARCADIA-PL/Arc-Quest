@@ -31,6 +31,9 @@ public final class GachaDatapackResourceLoader {
                 scanned++;
                 try {
                     String json = Files.readString(file, StandardCharsets.UTF_8);
+
+                    if (isTradeJson(json)) continue;
+
                     GachaShopSpec spec = GachaSpecJsonReader.read(json);
                     if (spec == null) {
                         errors.add(new GachaDatapackLoadError(file, "Parsed gacha spec is null", null));
@@ -49,6 +52,10 @@ public final class GachaDatapackResourceLoader {
         }
 
         return new LoadReport(specs, errors, scanned);
+    }
+
+    private static boolean isTradeJson(String json) {
+        return json.contains("\"entries\"") && json.contains("\"shopId\"");
     }
 
     public record LoadReport(Map<Path, GachaShopSpec> specs, List<GachaDatapackLoadError> errors, int scannedFiles) {
