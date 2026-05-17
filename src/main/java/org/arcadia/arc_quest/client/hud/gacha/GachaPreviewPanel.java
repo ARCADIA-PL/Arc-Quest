@@ -91,7 +91,6 @@ public class GachaPreviewPanel {
         snapshotCooldownText = cache.getCooldownText(shopId);
     }
 
-    // 【终极优化：内联矩形拼接边框】
     private void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
         g.fill(x, y, x + w, y + thickness, color);
         g.fill(x, y + h - thickness, x + w, y + h, color);
@@ -165,7 +164,7 @@ public class GachaPreviewPanel {
         if (isWiping) g.enableScissor(0, wipeScY1, width, wipeScY2);
         g.pose().pushPose();
         g.pose().translate(0, slideY + splitOffset, 0);
-        renderGlassButton(g, l, mx, (int) (my - slideY - splitOffset), dt, alpha, waiting, isWiping, isClosing);
+        renderGlassButton(g, l, mx, (int) (my - slideY - splitOffset), dt, alpha, easeProgress, waiting, isWiping, isClosing);
         g.pose().popPose();
         if (isWiping) g.disableScissor();
 
@@ -217,9 +216,6 @@ public class GachaPreviewPanel {
             dynamicScale *= (float) Math.pow(wipeShrinkScale, WIPE_SHRINK_POWER);
             float finalIconScale = 2.5f * pulseScale * dynamicScale;
 
-            // =========================================================================
-            // PASS 1: 纯 2D 背景及文本
-            // =========================================================================
             g.fill(-50, 18, 50, 20, HudAnimUtil.withAlpha(themeC, safeA));
             g.fillGradient(-65, -5, 65, 18, 0x00000000, HudAnimUtil.withAlpha(themeC, glowA));
 
@@ -229,9 +225,6 @@ public class GachaPreviewPanel {
                 renderCompactPityBar(g, 0, 42, 100, 4, safeA, themeC);
             }
 
-            // =========================================================================
-            // PASS 2: 纯 3D 原版物品
-            // =========================================================================
             g.pose().pushPose();
             g.pose().translate(0, -2, 0);
             g.pose().scale(finalIconScale, finalIconScale, 1f);
@@ -294,9 +287,6 @@ public class GachaPreviewPanel {
         int firstIndex = Math.max(0, firstRow * cols);
         int lastIndex = Math.min(items.size() - 1, (lastRow + 1) * cols - 1);
 
-        // =========================================================================
-        // PASS 1: 纯 2D 渲染通道 (背景、边框、遮罩、文字、光效)
-        // =========================================================================
         for (int i = firstIndex; i <= lastIndex; i++) {
             float staggerProgress = Math.max(0f, Math.min(1f, easeProgress * 1.5f - i * 0.05f));
             float itemCascadeEase = HudAnimUtil.easeOutCubic(staggerProgress);
@@ -348,9 +338,6 @@ public class GachaPreviewPanel {
             g.pose().popPose();
         }
 
-        // =========================================================================
-        // PASS 2: 纯 3D 渲染通道 (只渲染物品)
-        // =========================================================================
         for (int i = firstIndex; i <= lastIndex; i++) {
             float staggerProgress = Math.max(0f, Math.min(1f, easeProgress * 1.5f - i * 0.05f));
             float itemCascadeEase = HudAnimUtil.easeOutCubic(staggerProgress);
@@ -520,40 +507,99 @@ public class GachaPreviewPanel {
         g.pose().popPose();
     }
 
-    private void renderCostRow(GuiGraphics g, Layout l, float alpha, int drawX) {
+    // 辅助记录类：用于精准测算每个成本项的宽度
+    private record CostVisual(ItemStack stack, String name, String count, int width, boolean isShortfall) {}
+
+    // 【核心重构：赛博风格成本展示与双通道渲染】
+    private void renderCostRow(GuiGraphics g, Layout l, float alpha, float easeProgress, boolean isClosing, int drawX) {
         java.util.List<ITradeOffer> costs = parent.getShopDef().getDrawCosts();
         if (costs.isEmpty()) return;
 
-        int iconSize = 16;
-        int gap = 4;
-        int btnCenterX = drawX + l.btnW() / 2;
+        int safeAlpha = (int) (255 * alpha);
+        if (safeAlpha <= 5) return;
+        var font = Minecraft.getInstance().font;
 
-        int displayCount = Math.min(costs.size(), 5);
-        int totalW = displayCount * (iconSize + gap) - gap;
-        int startX = btnCenterX - totalW / 2;
-        int y = l.btnY() - iconSize - 8;
+        // 1. 动态自适应测算总宽度
+        List<CostVisual> visuals = new ArrayList<>();
+        int totalW = 0;
+        int gap = 16; // 每个成本项目之间的间距
 
-        for (int i = 0; i < displayCount; i++) {
-            ITradeOffer cost = costs.get(i);
-            int x = startX + i * (iconSize + gap);
+        for (ITradeOffer cost : costs) {
+            ItemStack stack = ItemStack.EMPTY;
+            String nameText;
+            String countText;
 
             if (cost instanceof ItemTradeOffer ito) {
-                ItemStack stack = new ItemStack(ito.getItem(), 1);
-                g.renderItem(stack, x, y);
-                g.renderItemDecorations(Minecraft.getInstance().font, stack, x, y);
+                stack = new ItemStack(ito.getItem(), 1);
+                nameText = stack.getHoverName().getString();
+                countText = "x" + ito.getCount();
+            } else {
+                nameText = cost.describe().getString();
+                countText = ""; // 非物品类型的描述自带数量
             }
 
-            String desc = cost.describe().getString();
-            int textColor = HudAnimUtil.withAlpha(0xCCCCCC, (int) (255 * alpha));
-            g.drawString(Minecraft.getInstance().font, desc,
-                    x + iconSize + 1, y + iconSize / 2 - 4, textColor);
+            // 智能联动：检查该项是否在缺失列表(Shortfall)中
+            boolean isShort = false;
+            for (CostShortfallLine sf : snapshotShortfall) {
+                if (sf.label().getString().equals(nameText)) {
+                    isShort = true;
+                    break;
+                }
+            }
+
+            // 宽度 = (如果有图标则+18) + 名字宽 + (如果有数量则+4+数量宽)
+            int w = (stack.isEmpty() ? 0 : 18) + font.width(nameText) + (countText.isEmpty() ? 0 : 4 + font.width(countText));
+            visuals.add(new CostVisual(stack, nameText, countText, w, isShort));
+            totalW += w + gap;
+        }
+        if (!visuals.isEmpty()) totalW -= gap; // 减去最后一个多余的间距
+
+        // 2. 坐标与边框定位
+        int startX = drawX + l.btnW() / 2 - totalW / 2;
+        int boxY = l.btnY() - 26; // 放置在按钮正上方
+        int boxH = 20;
+        int themeC = parent.getShopDef().getThemeColor();
+
+        // 3. 纯 2D 通道：渲染赛博边框和文本
+        g.fill(startX - 12, boxY, startX + totalW + 12, boxY + boxH, HudAnimUtil.withAlpha(0x08080C, (int)(safeAlpha * 0.85f)));
+        g.fill(startX - 12, boxY, startX - 10, boxY + boxH, HudAnimUtil.withAlpha(themeC, safeAlpha));
+        g.fill(startX + totalW + 10, boxY, startX + totalW + 12, boxY + boxH, HudAnimUtil.withAlpha(themeC, safeAlpha));
+        g.fillGradient(startX - 10, boxY, startX + totalW + 10, boxY + boxH, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * 0.15f)), 0);
+        drawFastFrame(g, startX - 12, boxY, totalW + 24, boxH, 1, HudAnimUtil.withAlpha(0x333333, safeAlpha));
+
+        // 装饰性微型角标
+        g.drawString(font, "COST", startX - 12, boxY - 9, HudAnimUtil.withAlpha(0x555555, safeAlpha), false);
+
+        int currentX = startX;
+        for (CostVisual v : visuals) {
+            int textX = currentX + (v.stack.isEmpty() ? 0 : 18);
+            int textY = boxY + boxH / 2 - font.lineHeight / 2;
+
+            int nameColor = v.isShortfall ? 0xFF5555 : 0xDDDDDD; // 缺失时标红
+            int countColor = v.isShortfall ? 0xFF3333 : 0xFFCC00; // 缺失时标红，否则显示尊贵的金色
+
+            g.drawString(font, v.name, textX, textY, HudAnimUtil.withAlpha(nameColor, safeAlpha), false);
+            if (!v.count.isEmpty()) {
+                g.drawString(font, v.count, textX + font.width(v.name) + 4, textY, HudAnimUtil.withAlpha(countColor, safeAlpha), false);
+            }
+            currentX += v.width + gap;
         }
 
-        if (costs.size() > 5) {
-            String more = "+" + (costs.size() - 5);
-            int moreX = startX + displayCount * (iconSize + gap);
-            g.drawString(Minecraft.getInstance().font, more,
-                    moreX, y + iconSize / 2 - 4, HudAnimUtil.withAlpha(0x999999, (int) (255 * alpha)));
+        // 4. 纯 3D 通道：基于 easeProgress 控制缩放动画，完美掩盖无 Alpha 的闪烁问题
+        float itemScaleAnim = isClosing ? (float)Math.pow(alpha, 2.0) : HudAnimUtil.easeOutBack(easeProgress);
+        if (itemScaleAnim > 0.05f) { // 只有缩放值大于 0.05 才有必要渲染 3D 物品
+            currentX = startX;
+            for (CostVisual v : visuals) {
+                if (!v.stack.isEmpty()) {
+                    g.pose().pushPose();
+                    g.pose().translate(currentX + 8, boxY + boxH / 2f, 0);
+                    g.pose().scale(itemScaleAnim, itemScaleAnim, 1f); // 执行防闪烁缩放魔法
+                    g.pose().translate(-8, -8, 0);
+                    g.renderItem(v.stack, 0, 0);
+                    g.pose().popPose();
+                }
+                currentX += v.width + gap;
+            }
         }
     }
 
@@ -577,7 +623,7 @@ public class GachaPreviewPanel {
         boxW += padding * 2;
         int boxH = padding * 2 + 18 + (shortfalls.size() * 18);
         int boxX = drawX + l.btnW() / 2 - boxW / 2;
-        int boxY = l.btnY() - boxH - 8;
+        int boxY = l.btnY() - boxH - 8 - 20; // 往上提避开新做的 CostRow
 
         g.fill(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
         g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int) (40 * alpha * ease)), 0);
@@ -685,7 +731,7 @@ public class GachaPreviewPanel {
         g.pose().popPose();
     }
 
-    private void renderGlassButton(GuiGraphics g, Layout l, int mx, int my, float dt, float alpha, boolean waiting, boolean isWiping, boolean isClosing) {
+    private void renderGlassButton(GuiGraphics g, Layout l, int mx, int my, float dt, float alpha, float easeProgress, boolean waiting, boolean isWiping, boolean isClosing) {
         String cooldownText = ClientGachaCache.INSTANCE.getCooldownText(parent.getShopId());
         boolean onCooldown = cooldownText != null && !cooldownText.isEmpty();
         boolean hasShortfall = snapshotShortfall != null && !snapshotShortfall.isEmpty();
@@ -705,11 +751,12 @@ public class GachaPreviewPanel {
         }
 
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
-        float costAlpha = alpha * (0.75f + 0.25f * hEase);
         int baseColor = waiting ? 0x666666 : onCooldown ? 0x777777 : maxed ? 0x8A5A5A : locked ? 0x7A6A8A : insufficientFunds ? 0x8A5A5A : unavailable ? 0x888888 : parent.getShopDef().getThemeColor();
         int drawX = l.btnX() + ((feedbackAnim > 0 && !feedbackSuccess) ? (int) (Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0);
 
-        renderCostRow(g, l, costAlpha, drawX);
+        // 调用重构后的方法，传入 easeProgress 和 isClosing 以处理动画防闪烁
+        renderCostRow(g, l, alpha, easeProgress, isClosing, drawX);
+
         g.fill(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x151515, (int) (200 * alpha)));
         g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((40 + 60 * hEase) * alpha)), 0);
         drawFastFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
