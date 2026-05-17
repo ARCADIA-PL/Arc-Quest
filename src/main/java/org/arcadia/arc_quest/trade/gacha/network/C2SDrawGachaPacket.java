@@ -119,33 +119,37 @@ public class C2SDrawGachaPacket {
             }
 
             // 2) 扣费预检查 + 扣费执行（锁外）
-            ITradeOffer drawCost = gachaShop.getDrawCost();
-            if (drawCost != null && !drawCost.canAfford(player)) {
-                GachaRequestValidator.reject(
-                        RejectCodeDictionary.Code.CANNOT_AFFORD,
-                        "draw",
-                        player,
-                        pkt.shopId,
-                        "draw cost cannot afford"
-                );
-                var reason = GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD;
-                MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
-
-                ArcQuestNetwork.CHANNEL.send(
-                        PacketDistributor.PLAYER.with(() -> player),
-                        new S2CDrawFailedPacket(
+            List<ITradeOffer> drawCosts = gachaShop.getDrawCosts();
+            if (!drawCosts.isEmpty()) {
+                for (ITradeOffer cost : drawCosts) {
+                    if (!cost.canAfford(player)) {
+                        GachaRequestValidator.reject(
+                                RejectCodeDictionary.Code.CANNOT_AFFORD,
+                                "draw",
+                                player,
                                 pkt.shopId,
-                                reason.name(),
-                                GachaRequestValidator.toErrorKey(RejectCodeDictionary.Code.CANNOT_AFFORD),
-                                drawCost.buildShortfallLines(player)
-                        )
-                );
-                SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
-                        SyncObservability.Stage.RESULT, "draw_failed:" + reason.name());
-                return;
-            }
-            if (drawCost != null) {
-                drawCost.execute(player);
+                                "draw cost cannot afford"
+                        );
+                        var reason = GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD;
+                        MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
+
+                        ArcQuestNetwork.CHANNEL.send(
+                                PacketDistributor.PLAYER.with(() -> player),
+                                new S2CDrawFailedPacket(
+                                        pkt.shopId,
+                                        reason.name(),
+                                        GachaRequestValidator.toErrorKey(RejectCodeDictionary.Code.CANNOT_AFFORD),
+                                        buildShortfallLines(drawCosts, player)
+                                )
+                        );
+                        SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
+                                SyncObservability.Stage.RESULT, "draw_failed:" + reason.name());
+                        return;
+                    }
+                }
+                for (ITradeOffer cost : drawCosts) {
+                    cost.execute(player);
+                }
             }
 
             // 3) 锁内：只做状态推进 + 产出权威快照（不发包/不日志/不派发事件）
@@ -254,9 +258,9 @@ public class C2SDrawGachaPacket {
             // 尽量在锁内计算 shortfall（但这里不再调用 canAfford/execute，避免与锁外扣费冲突）
             List<CostShortfallLine> shortfallLines = List.of();
             if (reason == GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD) {
-                ITradeOffer drawCost = gachaShop.getDrawCost();
-                if (drawCost != null) {
-                    shortfallLines = drawCost.buildShortfallLines(player);
+                List<ITradeOffer> costs = gachaShop.getDrawCosts();
+                if (!costs.isEmpty()) {
+                    shortfallLines = buildShortfallLines(costs, player);
                 }
             }
 
@@ -446,6 +450,14 @@ public class C2SDrawGachaPacket {
             case CANNOT_AFFORD -> GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD;
             default -> GachaEvents.DrawFailedEvent.FailReason.UNKNOWN;
         };
+    }
+
+    private static List<CostShortfallLine> buildShortfallLines(List<ITradeOffer> costs, ServerPlayer player) {
+        List<CostShortfallLine> lines = new java.util.ArrayList<>();
+        for (ITradeOffer cost : costs) {
+            lines.addAll(cost.buildShortfallLines(player));
+        }
+        return lines;
     }
 
     private record DrawResolution(

@@ -6,11 +6,14 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
+import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
+import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -517,6 +520,43 @@ public class GachaPreviewPanel {
         g.pose().popPose();
     }
 
+    private void renderCostRow(GuiGraphics g, Layout l, float alpha, int drawX) {
+        java.util.List<ITradeOffer> costs = parent.getShopDef().getDrawCosts();
+        if (costs.isEmpty()) return;
+
+        int iconSize = 16;
+        int gap = 4;
+        int btnCenterX = drawX + l.btnW() / 2;
+
+        int displayCount = Math.min(costs.size(), 5);
+        int totalW = displayCount * (iconSize + gap) - gap;
+        int startX = btnCenterX - totalW / 2;
+        int y = l.btnY() - iconSize - 8;
+
+        for (int i = 0; i < displayCount; i++) {
+            ITradeOffer cost = costs.get(i);
+            int x = startX + i * (iconSize + gap);
+
+            if (cost instanceof ItemTradeOffer ito) {
+                ItemStack stack = new ItemStack(ito.getItem(), 1);
+                g.renderItem(stack, x, y);
+                g.renderItemDecorations(Minecraft.getInstance().font, stack, x, y);
+            }
+
+            String desc = cost.describe().getString();
+            int textColor = HudAnimUtil.withAlpha(0xCCCCCC, (int) (255 * alpha));
+            g.drawString(Minecraft.getInstance().font, desc,
+                    x + iconSize + 1, y + iconSize / 2 - 4, textColor);
+        }
+
+        if (costs.size() > 5) {
+            String more = "+" + (costs.size() - 5);
+            int moreX = startX + displayCount * (iconSize + gap);
+            g.drawString(Minecraft.getInstance().font, more,
+                    moreX, y + iconSize / 2 - 4, HudAnimUtil.withAlpha(0x999999, (int) (255 * alpha)));
+        }
+    }
+
     private void renderShortfallTooltip(GuiGraphics g, Layout l, float alpha, int drawX) {
         var font = Minecraft.getInstance().font;
         List<CostShortfallLine> shortfalls = snapshotShortfall;
@@ -665,9 +705,11 @@ public class GachaPreviewPanel {
         }
 
         float hEase = HudAnimUtil.easeOutCubic(btnHoverAnim);
+        float costAlpha = alpha * (0.75f + 0.25f * hEase);
         int baseColor = waiting ? 0x666666 : onCooldown ? 0x777777 : maxed ? 0x8A5A5A : locked ? 0x7A6A8A : insufficientFunds ? 0x8A5A5A : unavailable ? 0x888888 : parent.getShopDef().getThemeColor();
         int drawX = l.btnX() + ((feedbackAnim > 0 && !feedbackSuccess) ? (int) (Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0);
 
+        renderCostRow(g, l, costAlpha, drawX);
         g.fill(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x151515, (int) (200 * alpha)));
         g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((40 + 60 * hEase) * alpha)), 0);
         drawFastFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
