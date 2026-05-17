@@ -507,22 +507,21 @@ public class GachaPreviewPanel {
         g.pose().popPose();
     }
 
-    // 辅助记录类：用于精准测算每个成本项的宽度
     private record CostVisual(ItemStack stack, String name, String count, int width, boolean isShortfall) {}
 
-    // 【核心重构：赛博风格成本展示与双通道渲染】
-    private void renderCostRow(GuiGraphics g, Layout l, float alpha, float easeProgress, boolean isClosing, int drawX) {
+    private void renderCostRow(GuiGraphics g, Layout l, float alpha, float easeProgress, boolean isClosing, int drawX, int centerY, float hEase) {
         java.util.List<ITradeOffer> costs = parent.getShopDef().getDrawCosts();
         if (costs.isEmpty()) return;
 
-        int safeAlpha = (int) (255 * alpha);
-        if (safeAlpha <= 5) return;
+        float costAlpha = alpha * (1.0f - hEase);
+        int safeCostAlpha = (int) (255 * costAlpha);
+        if (safeCostAlpha <= 5) return;
+
         var font = Minecraft.getInstance().font;
 
-        // 1. 动态自适应测算总宽度
         List<CostVisual> visuals = new ArrayList<>();
         int totalW = 0;
-        int gap = 16; // 每个成本项目之间的间距
+        int gap = 14;
 
         for (ITradeOffer cost : costs) {
             ItemStack stack = ItemStack.EMPTY;
@@ -535,10 +534,9 @@ public class GachaPreviewPanel {
                 countText = "x" + ito.getCount();
             } else {
                 nameText = cost.describe().getString();
-                countText = ""; // 非物品类型的描述自带数量
+                countText = "";
             }
 
-            // 智能联动：检查该项是否在缺失列表(Shortfall)中
             boolean isShort = false;
             for (CostShortfallLine sf : snapshotShortfall) {
                 if (sf.label().getString().equals(nameText)) {
@@ -547,53 +545,43 @@ public class GachaPreviewPanel {
                 }
             }
 
-            // 宽度 = (如果有图标则+18) + 名字宽 + (如果有数量则+4+数量宽)
             int w = (stack.isEmpty() ? 0 : 18) + font.width(nameText) + (countText.isEmpty() ? 0 : 4 + font.width(countText));
             visuals.add(new CostVisual(stack, nameText, countText, w, isShort));
             totalW += w + gap;
         }
-        if (!visuals.isEmpty()) totalW -= gap; // 减去最后一个多余的间距
+        if (!visuals.isEmpty()) totalW -= gap;
 
-        // 2. 坐标与边框定位
         int startX = drawX + l.btnW() / 2 - totalW / 2;
-        int boxY = l.btnY() - 26; // 放置在按钮正上方
-        int boxH = 20;
-        int themeC = parent.getShopDef().getThemeColor();
 
-        // 3. 纯 2D 通道：渲染赛博边框和文本
-        g.fill(startX - 12, boxY, startX + totalW + 12, boxY + boxH, HudAnimUtil.withAlpha(0x08080C, (int)(safeAlpha * 0.85f)));
-        g.fill(startX - 12, boxY, startX - 10, boxY + boxH, HudAnimUtil.withAlpha(themeC, safeAlpha));
-        g.fill(startX + totalW + 10, boxY, startX + totalW + 12, boxY + boxH, HudAnimUtil.withAlpha(themeC, safeAlpha));
-        g.fillGradient(startX - 10, boxY, startX + totalW + 10, boxY + boxH, HudAnimUtil.withAlpha(themeC, (int)(safeAlpha * 0.15f)), 0);
-        drawFastFrame(g, startX - 12, boxY, totalW + 24, boxH, 1, HudAnimUtil.withAlpha(0x333333, safeAlpha));
-
-        // 装饰性微型角标
-        g.drawString(font, "COST", startX - 12, boxY - 9, HudAnimUtil.withAlpha(0x555555, safeAlpha), false);
+        float slideOutY = -hEase * 12f;
 
         int currentX = startX;
         for (CostVisual v : visuals) {
             int textX = currentX + (v.stack.isEmpty() ? 0 : 18);
-            int textY = boxY + boxH / 2 - font.lineHeight / 2;
+            int textY = centerY - font.lineHeight / 2;
 
-            int nameColor = v.isShortfall ? 0xFF5555 : 0xDDDDDD; // 缺失时标红
-            int countColor = v.isShortfall ? 0xFF3333 : 0xFFCC00; // 缺失时标红，否则显示尊贵的金色
+            int nameColor = v.isShortfall ? 0xFF5555 : 0xDDDDDD;
+            int countColor = v.isShortfall ? 0xFF3333 : 0x00FFCC;
 
-            g.drawString(font, v.name, textX, textY, HudAnimUtil.withAlpha(nameColor, safeAlpha), false);
+            g.pose().pushPose();
+            g.pose().translate(0, slideOutY, 0);
+            g.drawString(font, v.name, textX, textY, HudAnimUtil.withAlpha(nameColor, safeCostAlpha), false);
             if (!v.count.isEmpty()) {
-                g.drawString(font, v.count, textX + font.width(v.name) + 4, textY, HudAnimUtil.withAlpha(countColor, safeAlpha), false);
+                g.drawString(font, v.count, textX + font.width(v.name) + 4, textY, HudAnimUtil.withAlpha(countColor, safeCostAlpha), false);
             }
+            g.pose().popPose();
+
             currentX += v.width + gap;
         }
 
-        // 4. 纯 3D 通道：基于 easeProgress 控制缩放动画，完美掩盖无 Alpha 的闪烁问题
-        float itemScaleAnim = isClosing ? (float)Math.pow(alpha, 2.0) : HudAnimUtil.easeOutBack(easeProgress);
-        if (itemScaleAnim > 0.05f) { // 只有缩放值大于 0.05 才有必要渲染 3D 物品
+        float itemScaleAnim = isClosing ? (float) Math.pow(alpha, 2.0) : (1.0f - hEase) * HudAnimUtil.easeOutBack(easeProgress);
+        if (itemScaleAnim > 0.05f) {
             currentX = startX;
             for (CostVisual v : visuals) {
                 if (!v.stack.isEmpty()) {
                     g.pose().pushPose();
-                    g.pose().translate(currentX + 8, boxY + boxH / 2f, 0);
-                    g.pose().scale(itemScaleAnim, itemScaleAnim, 1f); // 执行防闪烁缩放魔法
+                    g.pose().translate(currentX + 8, centerY + slideOutY, 150);
+                    g.pose().scale(itemScaleAnim, itemScaleAnim, 1f);
                     g.pose().translate(-8, -8, 0);
                     g.renderItem(v.stack, 0, 0);
                     g.pose().popPose();
@@ -623,7 +611,7 @@ public class GachaPreviewPanel {
         boxW += padding * 2;
         int boxH = padding * 2 + 18 + (shortfalls.size() * 18);
         int boxX = drawX + l.btnW() / 2 - boxW / 2;
-        int boxY = l.btnY() - boxH - 8 - 20; // 往上提避开新做的 CostRow
+        int boxY = l.btnY() - boxH - 6; // 缩进紧贴按钮边缘
 
         g.fill(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0x050508, safeAlpha));
         g.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, HudAnimUtil.withAlpha(0xAA3333, (int) (40 * alpha * ease)), 0);
@@ -741,10 +729,10 @@ public class GachaPreviewPanel {
         boolean canInteract = !waiting && !onCooldown && !maxed && !locked && !insufficientFunds && snapshotCanDraw;
         boolean unavailable = !waiting && !canInteract;
 
-        boolean hov = canInteract && mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH();
+        boolean hov = !isWiping && !isClosing && mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH();
 
         if (!isWiping && !isClosing) {
-            btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 10f, dt);
+            btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 12f, dt); // Snappy 的 12F 加速步进
             if (feedbackAnim > 0) feedbackAnim = Math.max(0, feedbackAnim - dt * 2.5f);
             if (shortfallTooltipAnim > 0)
                 shortfallTooltipAnim = Math.max(0, shortfallTooltipAnim - dt / SHORTFALL_TOOLTIP_DURATION);
@@ -754,17 +742,23 @@ public class GachaPreviewPanel {
         int baseColor = waiting ? 0x666666 : onCooldown ? 0x777777 : maxed ? 0x8A5A5A : locked ? 0x7A6A8A : insufficientFunds ? 0x8A5A5A : unavailable ? 0x888888 : parent.getShopDef().getThemeColor();
         int drawX = l.btnX() + ((feedbackAnim > 0 && !feedbackSuccess) ? (int) (Math.sin(Util.getMillis() / 30.0) * feedbackAnim * 5) : 0);
 
-        // 调用重构后的方法，传入 easeProgress 和 isClosing 以处理动画防闪烁
-        renderCostRow(g, l, alpha, easeProgress, isClosing, drawX);
+        int centerY = l.btnY() + l.btnH() / 2;
+        var font = Minecraft.getInstance().font;
 
-        g.fill(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x151515, (int) (200 * alpha)));
-        g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((40 + 60 * hEase) * alpha)), 0);
+        g.fill(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(0x121218, (int) (200 * alpha)));
+        g.fillGradient(drawX, l.btnY(), drawX + l.btnW(), l.btnY() + l.btnH(), HudAnimUtil.withAlpha(baseColor, (int) ((35 + 55 * hEase) * alpha)), 0);
         drawFastFrame(g, drawX, l.btnY(), l.btnW(), l.btnH(), 1, HudAnimUtil.withAlpha(baseColor, (int) ((150 + 105 * hEase) * alpha)));
 
-        int btnTextAlpha = (int) (255 * alpha);
-        if (btnTextAlpha > 5) {
+        renderCostRow(g, l, alpha, easeProgress, isClosing, drawX, centerY, hEase);
+
+        float textAlpha = alpha * hEase;
+        int safeTextAlpha = (int) (255 * textAlpha);
+        if (safeTextAlpha > 5) {
             Component text = waiting ? Component.translatable("arc_quest.gui.gacha.btn.decrypting") : HudRenderUtil.resolveGachaFailButtonText(snapshotFailReason, onCooldown, maxed, locked, insufficientFunds, cooldownText);
-            g.drawCenteredString(Minecraft.getInstance().font, text, drawX + l.btnW() / 2, l.btnY() + l.btnH() / 2 - 4, HudAnimUtil.withAlpha(0xFFFFFF, btnTextAlpha));
+            g.pose().pushPose();
+            g.pose().translate(0, (1.0f - hEase) * 12f, 0);
+            g.drawCenteredString(font, text, drawX + l.btnW() / 2, centerY - font.lineHeight / 2, HudAnimUtil.withAlpha(0xFFFFFF, safeTextAlpha));
+            g.pose().popPose();
         }
 
         renderShortfallTooltip(g, l, alpha, drawX);

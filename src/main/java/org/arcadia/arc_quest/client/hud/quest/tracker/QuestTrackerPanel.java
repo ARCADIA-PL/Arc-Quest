@@ -10,6 +10,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
+import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailParallelPhase;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -91,7 +92,9 @@ public class QuestTrackerPanel {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) return;
 
-        boolean isBlockingScreen = mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen || mc.screen instanceof AbstractTradeScreen || QuestSplashRenderer.isActive() || GachaResultRenderer.INSTANCE.isActive();
+        boolean isBlockingScreen = mc.screen != null ||
+                QuestSplashRenderer.isActive() ||
+                GachaResultRenderer.INSTANCE.isActive();
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
