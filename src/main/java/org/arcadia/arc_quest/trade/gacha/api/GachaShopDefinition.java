@@ -20,7 +20,7 @@ public class GachaShopDefinition {
 
     private final TradeShopDefinition shopDefinition;
     private final GachaPool gachaPool;
-    private final ITradeOffer drawCost;
+    private final List<ITradeOffer> drawCosts;
     private final PityConfig pityConfig;
     private final CooldownType cooldownType;      // 抽奖冷却类型
     private final long cooldownValue;             // 抽奖冷却值（对标 TradeEntry）
@@ -60,7 +60,7 @@ public class GachaShopDefinition {
                                @Nullable SoundEvent openSound,
                                @Nullable SoundEvent closeSound,
                                GachaPool gachaPool,
-                               ITradeOffer drawCost,
+                               List<ITradeOffer> drawCosts,
                                CooldownType cooldownType,
                                long cooldownValue,
                                int resetTimeTicks,
@@ -79,7 +79,7 @@ public class GachaShopDefinition {
                 openCondition, simpleMode, themeColor, openSound, closeSound
         );
         this.gachaPool = gachaPool;
-        this.drawCost = drawCost;
+        this.drawCosts = drawCosts;
         this.cooldownType = cooldownType;
         this.cooldownValue = cooldownValue;
         this.resetTimeTicks = resetTimeTicks;
@@ -155,8 +155,13 @@ public class GachaShopDefinition {
         return gachaPool;
     }
 
+    public List<ITradeOffer> getDrawCosts() {
+        return drawCosts;
+    }
+
+    @Deprecated
     public ITradeOffer getDrawCost() {
-        return drawCost;
+        return drawCosts.isEmpty() ? null : drawCosts.get(0);
     }
 
     public CooldownType getCooldownType() {

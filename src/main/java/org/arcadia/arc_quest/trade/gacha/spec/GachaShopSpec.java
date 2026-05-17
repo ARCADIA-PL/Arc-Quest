@@ -20,6 +20,7 @@ public class GachaShopSpec {
     public String closeSound = "";
 
     public TradeOfferSpec drawCost = null;
+    public List<TradeOfferSpec> drawCosts = new ArrayList<>();
     public int maxDraws = -1;
     public String cooldownType = "NONE";
     public long cooldownValue = 0;

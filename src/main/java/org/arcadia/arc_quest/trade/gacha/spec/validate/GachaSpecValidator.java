@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.trade.gacha.spec.validate;
 
 import org.arcadia.arc_quest.trade.gacha.spec.*;
+import org.arcadia.arc_quest.trade.spec.TradeOfferSpec;
 import org.arcadia.arc_quest.trade.spec.validate.TradeSpecValidator;
 
 import java.util.HashSet;
@@ -32,9 +33,20 @@ public final class GachaSpecValidator {
             report.add(GachaValidationIssue.Severity.ERROR, "cooldownType", "Invalid cooldownType: " + spec.cooldownType);
         }
 
-        if (spec.drawCost == null) {
-            report.add(GachaValidationIssue.Severity.ERROR, "drawCost", "drawCost is required");
-        } else {
+        boolean hasDrawCost = (spec.drawCosts != null && !spec.drawCosts.isEmpty()) || spec.drawCost != null;
+        if (!hasDrawCost) {
+            report.add(GachaValidationIssue.Severity.ERROR, "drawCost", "At least one drawCost or drawCosts entry is required");
+        } else if (spec.drawCosts != null && !spec.drawCosts.isEmpty()) {
+            for (int i = 0; i < spec.drawCosts.size(); i++) {
+                TradeOfferSpec offer = spec.drawCosts.get(i);
+                String prefix = "drawCosts[" + i + "]";
+                if (offer.type == null || !TradeSpecValidator.VALID_OFFER_TYPES.contains(offer.type)) {
+                    report.add(GachaValidationIssue.Severity.ERROR, prefix + ".type", "Invalid offer type: " + offer.type);
+                } else if ("item".equals(offer.type) && (offer.itemId == null || offer.itemId.isBlank())) {
+                    report.add(GachaValidationIssue.Severity.ERROR, prefix + ".itemId", "itemId is required");
+                }
+            }
+        } else if (spec.drawCost != null) {
             if (spec.drawCost.type == null || !TradeSpecValidator.VALID_OFFER_TYPES.contains(spec.drawCost.type)) {
                 report.add(GachaValidationIssue.Severity.ERROR, "drawCost.type", "Invalid offer type: " + spec.drawCost.type);
             } else if ("item".equals(spec.drawCost.type) && (spec.drawCost.itemId == null || spec.drawCost.itemId.isBlank())) {

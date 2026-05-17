@@ -37,7 +37,14 @@ public final class GachaSpecCompiler {
 
         GachaPool gachaPool = compilePool(spec.pools);
 
-        ITradeOffer drawCost = compileOffer(spec.drawCost, true);
+        List<ITradeOffer> drawCosts;
+        if (spec.drawCosts != null && !spec.drawCosts.isEmpty()) {
+            drawCosts = compileOffers(spec.drawCosts, true);
+        } else if (spec.drawCost != null) {
+            drawCosts = List.of(compileOffer(spec.drawCost, true));
+        } else {
+            drawCosts = List.of();
+        }
 
         PityConfig pityConfig = null;
         if (spec.pity != null) {
@@ -56,7 +63,7 @@ public final class GachaSpecCompiler {
                 parseNullableSound(spec.openSound),
                 parseNullableSound(spec.closeSound),
                 gachaPool,
-                drawCost,
+                drawCosts,
                 parseCooldownType(spec.cooldownType),
                 spec.cooldownValue,
                 spec.resetTimeTicks,
@@ -158,6 +165,16 @@ public final class GachaSpecCompiler {
             return new PityConfig(spec.threshold, spec.guaranteedItemId, spec.resetOnEarlyTrigger);
         }
         return new PityConfig(spec.threshold, targetRarity, spec.resetOnEarlyTrigger);
+    }
+
+    private List<ITradeOffer> compileOffers(List<TradeOfferSpec> specs, boolean isCost) {
+        List<ITradeOffer> offers = new ArrayList<>();
+        if (specs == null) return offers;
+        for (TradeOfferSpec spec : specs) {
+            ITradeOffer offer = compileOffer(spec, isCost);
+            if (offer != null) offers.add(offer);
+        }
+        return offers;
     }
 
     private ITradeOffer compileOffer(TradeOfferSpec spec, boolean isCost) {
