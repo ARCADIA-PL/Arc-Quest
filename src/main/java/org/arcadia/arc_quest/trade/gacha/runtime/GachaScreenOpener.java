@@ -219,10 +219,17 @@ public final class GachaScreenOpener {
         boolean canAfford = true;
 
         if (canDrawByRule) {
-            ITradeOffer drawCost = shop.getDrawCost();
-            if (drawCost != null && !drawCost.canAfford(player)) {
-                canAfford = false;
-                shortfalls = drawCost.buildShortfallLines(player);
+            List<ITradeOffer> costs = shop.getDrawCosts();
+            if (!costs.isEmpty()) {
+                for (ITradeOffer cost : costs) {
+                    if (!cost.canAfford(player)) {
+                        canAfford = false;
+                        break;
+                    }
+                }
+                if (!canAfford) {
+                    shortfalls = buildShortfallLines(costs, player);
+                }
             }
         }
 
@@ -282,8 +289,8 @@ public final class GachaScreenOpener {
     }
 
     private static int buildShortfallFingerprint(List<CostShortfallLine> lines) {
+        if (lines == null || lines.isEmpty()) return 0;
         int h = 1;
-        if (lines == null || lines.isEmpty()) return h;
         for (CostShortfallLine line : lines) {
             h = 31 * h + line.label().getString().hashCode();
             h = 31 * h + line.required();
@@ -291,6 +298,14 @@ public final class GachaScreenOpener {
             h = 31 * h + line.missing();
         }
         return h;
+    }
+
+    private static List<CostShortfallLine> buildShortfallLines(List<ITradeOffer> costs, ServerPlayer player) {
+        List<CostShortfallLine> lines = new java.util.ArrayList<>();
+        for (ITradeOffer cost : costs) {
+            lines.addAll(cost.buildShortfallLines(player));
+        }
+        return lines;
     }
 
     private record ActiveGachaContext(String shopId, long lastSeenMs) {

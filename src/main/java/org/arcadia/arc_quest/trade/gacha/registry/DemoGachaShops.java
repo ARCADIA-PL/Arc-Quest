@@ -52,6 +52,7 @@ public final class DemoGachaShops {
 
                 // 抽奖成本：10个钻石
                 .drawCost(new ItemTradeOffer(Items.DIAMOND, 10, true))
+                .drawCost(new ItemTradeOffer(Items.IRON_INGOT, 10, true))
 
                 // 限购：每天5次（6点刷新）
                 .maxDraws(5)

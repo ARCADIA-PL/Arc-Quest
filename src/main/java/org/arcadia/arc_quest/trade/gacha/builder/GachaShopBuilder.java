@@ -55,7 +55,7 @@ public class GachaShopBuilder {
     @Nullable
     private SoundEvent closeSound;
     // 抽奖特有配置
-    private ITradeOffer drawCost;
+    private final List<ITradeOffer> drawCosts = new ArrayList<>();
     @Nullable
     private ResourceLocation drawCostIcon;  // 自定义成本图标
     private CooldownType cooldownType = CooldownType.NONE;
@@ -171,10 +171,10 @@ public class GachaShopBuilder {
     }
 
     /**
-     * 设置抽奖成本。
+     * 添加抽奖成本（支持多次调用以添加多个成本项）。
      */
     public GachaShopBuilder drawCost(ITradeOffer cost) {
-        drawCost = cost;
+        drawCosts.add(cost);
         return this;
     }
 
@@ -530,8 +530,8 @@ public class GachaShopBuilder {
      * 构建并注册商店。
      */
     public GachaShopDefinition buildAndRegister() {
-        if (drawCost == null) {
-            throw new IllegalStateException("Gacha shop '" + shopId + "' must have a draw cost");
+        if (drawCosts.isEmpty()) {
+            throw new IllegalStateException("Gacha shop '" + shopId + "' must have at least one draw cost");
         }
         if (poolItems.isEmpty()) {
             throw new IllegalStateException("Gacha shop '" + shopId + "' must have at least one pool item");
@@ -541,7 +541,7 @@ public class GachaShopBuilder {
         GachaShopDefinition shop = new GachaShopDefinition(
                 shopId, displayName, description, categories, entries,
                 openCondition, simpleMode, themeColor, openSound, closeSound,
-                pool, drawCost, cooldownType, cooldownValue, resetTimeTicks,
+                pool, drawCosts, cooldownType, cooldownValue, resetTimeTicks,
                 drawCondition, maxDraws, resetCondition, resetOnLimitReachedByCoolDown, resetPityOnEarlyTrigger, pityConfig,
                 drawCooldownSound, drawLimitReachedSound, drawConditionFailSound, drawFailSound
         );
