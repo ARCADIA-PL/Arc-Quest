@@ -3,10 +3,10 @@ package org.arcadia.arc_quest.dialogue.runtime;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -17,11 +17,8 @@ import java.util.Map;
  */
 public class DialogueProgressStore {
 
-    private final Map<String, Entry> store = new HashMap<>();
-    /**
-     * 记录每个 key 对应的语义类型，用于 serialize 分区（写入时同步维护）。
-     */
-    private final Map<String, ProgressKey.KeyType> keyTypes = new HashMap<>();
+    private final Object2ObjectOpenHashMap<String, Entry> store = new Object2ObjectOpenHashMap<>();
+    private final Object2ObjectOpenHashMap<String, ProgressKey.KeyType> keyTypes = new Object2ObjectOpenHashMap<>();
     private boolean dirty = false;
 
     // ── Key 构建 ──────────────────────────────────────────

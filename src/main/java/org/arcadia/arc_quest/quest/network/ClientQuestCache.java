@@ -21,6 +21,8 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.*;
 
 /**
@@ -59,12 +61,12 @@ public final class ClientQuestCache {
     /**
      * 全局 Flags
      */
-    private final Set<String> flags = new HashSet<>();
+    private final ObjectOpenHashSet<String> flags = new ObjectOpenHashSet<>();
 
     /**
      * 全局 Variables
      */
-    private final Map<String, Integer> variables = new HashMap<>();
+    private final Object2IntOpenHashMap<String> variables = new Object2IntOpenHashMap<>();
     private boolean hasAppliedFullSync = false;
 
     private final List<QuestCacheListener> listeners = new ArrayList<>();
@@ -269,10 +271,8 @@ public final class ClientQuestCache {
             LOGGER.debug("[ClientCache] Objective progress decreased: {}#{} {}→{}", questId, objIndex, oldProgress, newProgress);
         }
 
-        // 【修复】创建深拷贝并替换，确保原子性更新
-        QuestRuntimeData newData = oldData.copy();
-        newData.setObjectiveProgress(objIndex, newProgress);
-        activeQuests.put(questId, newData);
+        // 就地修改（网络包通过 enqueueWork 切回主线程, 与渲染同线程无需拷贝）
+        oldData.setObjectiveProgress(objIndex, newProgress);
 
         // 触发动画钩子：目标进度更新
         if (newProgress > oldProgress) {
@@ -301,9 +301,7 @@ public final class ClientQuestCache {
             LOGGER.debug("[ClientCache] Objective progress decreased: {}/{}#{} {}→{}", questId, phaseId, objIndex, oldProgress, newProgress);
         }
 
-        QuestRuntimeData newData = oldData.copy();
-        newData.setObjectiveProgress(phaseId, objIndex, newProgress);
-        activeQuests.put(questId, newData);
+        oldData.setObjectiveProgress(phaseId, objIndex, newProgress);
 
         if (newProgress > oldProgress) {
             onObjectiveProgressed(questId, objIndex, oldProgress, newProgress);

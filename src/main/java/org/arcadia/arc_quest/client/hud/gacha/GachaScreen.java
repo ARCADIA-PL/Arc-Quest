@@ -20,7 +20,7 @@ public class GachaScreen extends Screen {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final long DRAW_REQUEST_TIMEOUT = 5000;
-    private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 10;
+    private static final int AUTHORITY_REFRESH_INTERVAL_TICKS = 30;
 
     private final String shopId;
     private final GachaShopDefinition shopDef;

@@ -22,19 +22,19 @@ import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveDispatcher;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class QuestEventManager {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final Map<String, int[]> reachLocationIndexCache = new ConcurrentHashMap<>();
+    private static final Object2ObjectOpenHashMap<String, int[]> reachLocationIndexCache = new Object2ObjectOpenHashMap<>();
 
     private QuestEventManager() {
     }
@@ -111,9 +111,12 @@ public final class QuestEventManager {
                 var phase = def.getPhase(phaseId);
                 if (phase == null) continue;
 
-                int[] reachIndices = reachLocationIndexCache.computeIfAbsent(
-                        def.getId() + ":" + phaseId,
-                        k -> computeReachLocationIndices(phase));
+                String cacheKey = def.getId() + ":" + phaseId;
+                int[] reachIndices = reachLocationIndexCache.get(cacheKey);
+                if (reachIndices == null) {
+                    reachIndices = computeReachLocationIndices(phase);
+                    reachLocationIndexCache.put(cacheKey, reachIndices);
+                }
                 if (reachIndices.length == 0) continue;
 
                 for (int idx : reachIndices) {

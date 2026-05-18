@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.registry;
 
 import com.mojang.logging.LogUtils;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,6 +23,7 @@ public final class QuestRegistry {
     private static Map<ResourceLocation, QuestDefinition> MERGED_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, QuestSourceInfo> SOURCE_INFO = new LinkedHashMap<>();
     private static volatile ObjectiveTypeIndex objectiveTypeIndex = ObjectiveTypeIndex.empty();
+    private static final Object2ObjectOpenHashMap<String, ResourceLocation> rlCache = new Object2ObjectOpenHashMap<>();
     private static boolean frozen = false;
     private static int datapackLoadOrder = 0;
 
@@ -52,6 +54,7 @@ public final class QuestRegistry {
     public static void clearDatapack() {
         int previous = DATAPACK_REGISTRY.size();
         DATAPACK_REGISTRY = new LinkedHashMap<>();
+        rlCache.clear();
         rebuildMergedRegistry();
         LOGGER.info("[ArcQuest] Cleared {} datapack quest(s) before reload.", previous);
     }
@@ -97,9 +100,12 @@ public final class QuestRegistry {
 
     @Nullable
     public static QuestDefinition get(String questId) {
-        ResourceLocation location;
-        if (questId.contains(":")) location = ResourceLocation.tryParse(questId);
-        else location = ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, questId);
+        ResourceLocation location = rlCache.get(questId);
+        if (location == null) {
+            if (questId.contains(":")) location = ResourceLocation.tryParse(questId);
+            else location = ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, questId);
+            if (location != null) rlCache.put(questId, location);
+        }
         return location != null ? MERGED_REGISTRY.get(location) : null;
     }
 
