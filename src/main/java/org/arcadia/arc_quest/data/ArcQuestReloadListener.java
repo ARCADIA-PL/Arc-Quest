@@ -12,10 +12,11 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.io.DialogueDatapackHotReloadService;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.npc.io.NpcDatapackHotReloadService;
-import org.arcadia.arc_quest.trade.io.TradeDatapackHotReloadService;
-import org.arcadia.arc_quest.trade.registry.TradeRegistry;
+import org.arcadia.arc_quest.quest.network.ArcQuestWebSocketServer;
 import org.arcadia.arc_quest.trade.gacha.io.GachaDatapackHotReloadService;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.arcadia.arc_quest.trade.io.TradeDatapackHotReloadService;
+import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -53,6 +54,7 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<R
                 tradeResult.scanned(), tradeResult.loaded(), tradeResult.failed(),
                 gachaResult.scanned(), gachaResult.loaded(), gachaResult.failed(),
                 result.scanned(), result.loaded(), result.failed(), result.activeDatapack(), result.merged(), result.usedFallback() ? "fallback" : "@datapack");
+        ArcQuestWebSocketServer.rebuildAndBroadcast();
         return result.loaded();
     }
 

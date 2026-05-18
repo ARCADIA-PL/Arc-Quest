@@ -26,8 +26,11 @@ import {renderTradeTree, bindTradeTreeSelection} from './renderers/trade-tree-re
 import {renderGachaTree, bindGachaTreeSelection} from './renderers/gacha-tree-renderer.js';
 import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions, bindTradeEditorActions, bindGachaEditorActions} from './renderers/event-bindings.js';
 import {bindDialogueDirectoryClicks} from './renderers/dialogue-side-panel.js';
+import RegistryClient from './core/registry-client.js';
 
 const dom = getDomRefs();
+
+RegistryClient.init();
 
 function renderQuest() {
     ensureQuestShape(state.quest.q);

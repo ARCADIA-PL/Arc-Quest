@@ -1,3 +1,5 @@
+import RegistryClient from '../core/registry-client.js';
+
 function boolSelect(label, bind, value) {
     return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="false" ${!value ? 'selected' : ''}>false</option><option value="true" ${value ? 'selected' : ''}>true</option></select></div>`;
 }
@@ -8,6 +10,15 @@ function enumSelect(label, bind, value, options) {
 
 function suggestInput(label, bind, value, suggestions, listId) {
     const opts = (suggestions || []).map(v => `<option value="${v}"></option>`).join('');
+    return `<div class="f"><label>${label}</label><input data-b="${bind}" list="${listId}" value="${value || ''}" placeholder="${label}"><datalist id="${listId}">${opts}</datalist></div>`;
+}
+
+function registryInput(label, bind, value, registryName, listId, fallback) {
+    const wsSuggestions = RegistryClient.search(registryName, '');
+    const suggestions = wsSuggestions.length > 0
+        ? wsSuggestions.map(v => ({ id: v.id, label: v.label || v.id }))
+        : (fallback || []).map(v => ({ id: v, label: v }));
+    const opts = suggestions.map(v => `<option value="${v.id}">${v.label}</option>`).join('');
     return `<div class="f"><label>${label}</label><input data-b="${bind}" list="${listId}" value="${value || ''}" placeholder="${label}"><datalist id="${listId}">${opts}</datalist></div>`;
 }
 
@@ -27,12 +38,12 @@ function hasAdvancedCountSettings(objective) {
 
 export function renderObjectiveExtra(o, base, field) {
     if (o.type === 'KILL') {
-        return suggestInput('entityType', `${base}.targetId`, o.targetId || o.entityType || '', ['minecraft:zombie', 'minecraft:skeleton', 'minecraft:creeper', 'minecraft:spider'], `${base}-entityType`);
+        return registryInput('entityType', `${base}.targetId`, o.targetId || o.entityType || '', 'entityTypes', `${base}-entityType`, ['minecraft:zombie', 'minecraft:skeleton', 'minecraft:creeper', 'minecraft:spider']);
     }
     if (o.type === 'COLLECT') {
         return `
       <div class="row">
-        ${suggestInput('itemId', `${base}.targetId`, o.targetId || o.itemId || '', ['minecraft:iron_ingot', 'minecraft:stick', 'minecraft:wheat', 'minecraft:oak_log'], `${base}-itemId`)}
+        ${registryInput('itemId', `${base}.targetId`, o.targetId || o.itemId || '', 'items', `${base}-itemId`, ['minecraft:iron_ingot', 'minecraft:stick', 'minecraft:wheat', 'minecraft:oak_log'])}
         ${field('itemTag', `${base}.itemTag`, o.itemTag || '')}
       </div>
     `;
@@ -50,7 +61,7 @@ export function renderObjectiveExtra(o, base, field) {
     if (o.type === 'OFFER') {
         return `
       <div class="row">
-        ${suggestInput('itemId', `${base}.targetId`, o.targetId || '', ['minecraft:iron_ingot', 'minecraft:gold_ingot', 'minecraft:diamond'], `${base}-offer-itemId`)}
+        ${registryInput('itemId', `${base}.targetId`, o.targetId || '', 'items', `${base}-offer-itemId`, ['minecraft:iron_ingot', 'minecraft:gold_ingot', 'minecraft:diamond'])}
         ${field('itemTag', `${base}.itemTag`, o.itemTag || '')}
       </div>
     `;
@@ -58,7 +69,7 @@ export function renderObjectiveExtra(o, base, field) {
     if (o.type === 'DELIVER') {
         return `
       <div class="row">
-        ${suggestInput('itemId', `${base}.targetId`, o.targetId || '', ['minecraft:iron_ingot', 'minecraft:gold_ingot', 'minecraft:diamond'], `${base}-deliver-itemId`)}
+        ${registryInput('itemId', `${base}.targetId`, o.targetId || '', 'items', `${base}-deliver-itemId`, ['minecraft:iron_ingot', 'minecraft:gold_ingot', 'minecraft:diamond'])}
         ${suggestInput('npcId', `${base}.npcId`, o.npcId || '', ['arc_quest:npc_guard', 'arc_quest:npc_blacksmith', 'arc_quest:npc_villager'], `${base}-deliver-npcId`)}
       </div>
     `;
@@ -74,7 +85,7 @@ export function renderObjectiveExtra(o, base, field) {
     `;
     }
     if (o.type === 'CRAFT') {
-        return suggestInput('itemId', `${base}.targetId`, o.targetId || '', ['minecraft:torch', 'minecraft:crafting_table', 'minecraft:iron_sword'], `${base}-craft-itemId`);
+        return registryInput('itemId', `${base}.targetId`, o.targetId || '', 'items', `${base}-craft-itemId`, ['minecraft:torch', 'minecraft:crafting_table', 'minecraft:iron_sword']);
     }
     if (o.type === 'NULL') {
         return '<div class="small">该目标类型不需要 targetId；通常与手动确认推进阶段搭配使用。</div>';
