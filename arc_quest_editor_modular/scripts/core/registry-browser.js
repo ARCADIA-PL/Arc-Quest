@@ -11,7 +11,6 @@ const REG_TYPES = [
 
 const PANEL_CLASS = 'reg-browser';
 const POPUP_CLASS = 'reg-browser--popup';
-const STATE_CLASS = 'reg-browser--expanded';
 
 export const REG_BROWSER_CLASS = PANEL_CLASS;
 
@@ -26,38 +25,27 @@ function buildRegTypeTabs(currentType) {
     ).join('');
 }
 
-function buildNamespaceGroup(nsName, entries, filter, expandedGroups) {
-    const isExpanded = expandedGroups.has(nsName);
-    const count = entries.length;
+function buildNamespaceGroup(nsName, entries, expanded) {
+    const total = entries.length;
 
-    let rows;
-    if (filter) {
-        const q = filter.toLowerCase();
-        rows = entries.filter(e =>
-            e.id.toLowerCase().includes(q)
-            || (e.label && e.label.toLowerCase().includes(q))
-            || ns(e.id).toLowerCase().includes(q)
-        );
-    } else {
-        rows = entries;
-    }
-
-    if (rows.length === 0) return '';
+    const rowsHtml = expanded
+        ? entries.map(e => `
+            <div class="reg-entry" data-reg-id="${e.id}" tabindex="0">
+                <span class="reg-entry-label">${e.label || e.id}</span>
+                <span class="reg-entry-ns">${ns(e.id)}</span>
+            </div>
+        `).join('')
+        : `<div class="reg-placeholder">${total} 个条目（点击展开）</div>`;
 
     return `
         <div class="reg-ns-group">
             <div class="reg-ns-header" data-reg-ns="${nsName}">
-                <span class="reg-ns-arrow">${isExpanded ? '▾' : '▸'}</span>
+                <span class="reg-ns-arrow">${expanded ? '▾' : '▸'}</span>
                 <span class="reg-ns-name">${nsName}</span>
-                <span class="reg-ns-count">${count}</span>
+                <span class="reg-ns-count">${total}</span>
             </div>
-            <div class="reg-ns-body" style="display:${isExpanded ? 'block' : 'none'}">
-                ${rows.map(e => `
-                    <div class="reg-entry" data-reg-id="${e.id}" tabindex="0">
-                        <span class="reg-entry-label">${e.label || e.id}</span>
-                        <span class="reg-entry-ns">${ns(e.id)}</span>
-                    </div>
-                `).join('')}
+            <div class="reg-ns-body" style="display:${expanded ? 'block' : 'none'}">
+                ${rowsHtml}
             </div>
         </div>
     `;
@@ -73,17 +61,47 @@ function buildSearchBar(registryType, filter) {
     `;
 }
 
-export function renderRegBrowser({ registryType, filter, onSelect, mode, expandedGroups }) {
-    const groups = expandedGroups || new Set(['minecraft']);
-    const items = RegistryClient.listByNamespace(registryType);
-    const total = RegistryClient.count(registryType);
+function groupByNamespace(entries) {
+    const map = new Map();
+    for (const e of entries) {
+        const n = ns(e.id);
+        if (!map.has(n)) map.set(n, []);
+        map.get(n).push(e);
+    }
+    for (const [, v] of map) {
+        v.sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
+    }
+    return new Map(
+        [...map.entries()].sort((a, b) => {
+            if (a[0] === 'minecraft') return -1;
+            if (b[0] === 'minecraft') return 1;
+            return b[1].length - a[1].length || a[0].localeCompare(b[0]);
+        })
+    );
+}
+
+export function renderRegBrowser({ registryType, filter, mode, expandedGroups }) {
+    const q = (filter || '').trim();
+    let namespaces, total;
+    let groups;
+
+    if (q) {
+        const results = RegistryClient.search(registryType, q);
+        namespaces = groupByNamespace(results);
+        total = results.length;
+        groups = new Set([...namespaces.keys()]);
+    } else {
+        namespaces = RegistryClient.listByNamespace(registryType);
+        total = RegistryClient.count(registryType);
+        groups = expandedGroups || new Set();
+    }
 
     const typeTabs = buildRegTypeTabs(registryType);
     const searchBar = buildSearchBar(registryType, filter || '');
 
     let groupsHtml = '';
-    for (const [nsName, entries] of items) {
-        groupsHtml += buildNamespaceGroup(nsName, entries, filter || '', groups);
+    for (const [nsName, entries] of namespaces) {
+        groupsHtml += buildNamespaceGroup(nsName, entries, groups.has(nsName));
     }
     if (!groupsHtml) {
         groupsHtml = '<div class="reg-empty">暂无数据</div>';
@@ -99,8 +117,10 @@ export function renderRegBrowser({ registryType, filter, onSelect, mode, expande
     `;
 }
 
-export function bindRegBrowserEvents(rootEl, { onSelect, onTypeChange, onSearch }) {
+export function bindRegBrowserEvents(rootEl, { onSelect, onTypeChange, onSearch, onToggleNamespace }, opts) {
     if (!rootEl) return;
+
+    const signal = opts?.signal;
 
     rootEl.addEventListener('click', e => {
         const typeBtn = e.target.closest('[data-reg-type]');
@@ -110,15 +130,8 @@ export function bindRegBrowserEvents(rootEl, { onSelect, onTypeChange, onSearch 
         }
 
         const nsHeader = e.target.closest('[data-reg-ns]');
-        if (nsHeader) {
-            const nsName = nsHeader.dataset.regNs;
-            const body = nsHeader.nextElementSibling;
-            const arrow = nsHeader.querySelector('.reg-ns-arrow');
-            if (body) {
-                const isHidden = body.style.display === 'none';
-                body.style.display = isHidden ? 'block' : 'none';
-                if (arrow) arrow.textContent = isHidden ? '▾' : '▸';
-            }
+        if (nsHeader && onToggleNamespace) {
+            onToggleNamespace(nsHeader.dataset.regNs);
             return;
         }
 
@@ -126,7 +139,7 @@ export function bindRegBrowserEvents(rootEl, { onSelect, onTypeChange, onSearch 
         if (entry && onSelect) {
             onSelect(entry.dataset.regId);
         }
-    });
+    }, signal ? { signal } : undefined);
 
     rootEl.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
@@ -135,11 +148,11 @@ export function bindRegBrowserEvents(rootEl, { onSelect, onTypeChange, onSearch 
                 onSelect(entry.dataset.regId);
             }
         }
-    });
+    }, signal ? { signal } : undefined);
 
     rootEl.addEventListener('input', e => {
         if (e.target.dataset.regSearch !== undefined && onSearch) {
             onSearch(e.target.value);
         }
-    });
+    }, signal ? { signal } : undefined);
 }

@@ -8,6 +8,7 @@ const RegistryClient = {
     _ws: null,
     _state: 'DISCONNECTED',
     _cache: null,
+    _nsCache: {},
     _listeners: [],
     _pingTimer: null,
     _reconnectTimer: null,
@@ -95,6 +96,7 @@ const RegistryClient = {
         if (msg.type === 'full' || msg.type === 'delta') {
             if (msg.data && msg.data.registries) {
                 this._saveCache(msg.data);
+                this._nsCache = {};
                 this._notify('data');
             }
         }
@@ -108,6 +110,7 @@ const RegistryClient = {
     },
 
     listByNamespace(registryName) {
+        if (this._nsCache[registryName]) return this._nsCache[registryName];
         const all = this.getRegistry(registryName);
         const map = new Map();
         for (const e of all) {
@@ -126,6 +129,7 @@ const RegistryClient = {
                 return b[1].length - a[1].length || a[0].localeCompare(b[0]);
             })
         );
+        this._nsCache[registryName] = sorted;
         return sorted;
     },
 
