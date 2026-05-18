@@ -5,7 +5,8 @@
 }
 
 .f {
-    margin-bottom: 12px
+    margin-bottom: 12px;
+    position: relative
 }
 
 .f label {

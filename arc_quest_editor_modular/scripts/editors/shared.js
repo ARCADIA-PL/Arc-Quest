@@ -1,5 +1,3 @@
-import RegistryClient from '../core/registry-client.js';
-
 function boolSelect(label, bind, value) {
     return `<div class="f"><label>${label}</label><select data-b="${bind}"><option value="false" ${!value ? 'selected' : ''}>false</option><option value="true" ${value ? 'selected' : ''}>true</option></select></div>`;
 }
@@ -14,12 +12,7 @@ function suggestInput(label, bind, value, suggestions, listId) {
 }
 
 function registryInput(label, bind, value, registryName, listId, fallback) {
-    const wsSuggestions = RegistryClient.search(registryName, '');
-    const suggestions = wsSuggestions.length > 0
-        ? wsSuggestions.map(v => ({ id: v.id, label: v.label || v.id }))
-        : (fallback || []).map(v => ({ id: v, label: v }));
-    const opts = suggestions.map(v => `<option value="${v.id}">${v.label}</option>`).join('');
-    return `<div class="f"><label>${label}</label><input data-b="${bind}" list="${listId}" value="${value || ''}" placeholder="${label}"><datalist id="${listId}">${opts}</datalist></div>`;
+    return `<div class="f"><label>${label}</label><input data-b="${bind}" data-ac-registry="${registryName}" value="${value || ''}" placeholder="${label}"></div>`;
 }
 
 function isObjectiveCountingType(type) {

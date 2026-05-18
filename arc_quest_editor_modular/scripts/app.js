@@ -27,10 +27,15 @@ import {renderGachaTree, bindGachaTreeSelection} from './renderers/gacha-tree-re
 import {bindTreeSelection, bindEditorActions, bindNpcEditorActions, bindDialogueEditorActions, bindTradeEditorActions, bindGachaEditorActions} from './renderers/event-bindings.js';
 import {bindDialogueDirectoryClicks} from './renderers/dialogue-side-panel.js';
 import RegistryClient from './core/registry-client.js';
+import {bindAll as bindAllAutocomplete, unbindAll as unbindAllAutocomplete} from './core/registry-autocomplete.js';
 
 const dom = getDomRefs();
 
 RegistryClient.init();
+
+RegistryClient.onStateChange(event => {
+    if (event === 'data') rerender();
+});
 
 function renderQuest() {
     ensureQuestShape(state.quest.q);
@@ -261,11 +266,15 @@ function rerender() {
 
     updateNewBtnLabel();
 
+    unbindAllAutocomplete(dom.mid);
+
     if (state.mode === 'npc') renderNpc();
     else if (state.mode === 'dialogue') renderDialogue();
     else if (state.mode === 'trade') renderTrade();
     else if (state.mode === 'gacha') renderGacha();
     else renderQuest();
+
+    bindAllAutocomplete(dom.mid);
 
     _prevUiState = getUiState(state);
 

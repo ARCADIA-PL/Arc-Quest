@@ -1,6 +1,8 @@
 import {esc, clr, buildReferenceIndex, resolveSelectionRefKey} from '../core/utils.js';
 import {renderGraph, bindGraphEvents, bindGraphShellEvents} from './graph-renderer.js';
 import {renderDialogueDirectory} from './dialogue-side-panel.js';
+import {renderRegBrowser, bindRegBrowserEvents} from '../core/registry-browser.js';
+import RegistryClient from '../core/registry-client.js';
 
 export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate, onGraphPhaseClick) {
     const q = state.mode === 'npc' ? state.npc.q : state.mode === 'dialogue' ? state.dialogue.q : state.quest.q;
@@ -8,8 +10,8 @@ export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate,
     const isQuestMode = state.mode === 'quest';
 
     const ns = isQuestMode
-        ? {graph: '拓扑', refs: '引用', cross: '跨文件', preview: '大纲', validate: '诊断', json: 'JSON', help: '指南'}
-        : {node: '目录', cross: '跨文件', validate: '诊断', json: 'JSON', help: '指南'};
+        ? {graph: '拓扑', refs: '引用', cross: '跨文件', preview: '大纲', validate: '诊断', json: 'JSON', resources: '资源库', help: '指南'}
+        : {node: '目录', cross: '跨文件', validate: '诊断', json: 'JSON', resources: '资源库', help: '指南'};
     tabsEl.innerHTML = Object.keys(ns).map(k => `<div class="tab ${state.quest.ui.tab === k ? 'active' : ''}" data-t="${k}">${ns[k]}</div>`).join('');
     tabsEl.onclick = e => {
         const t = e.target.dataset.t;
@@ -100,11 +102,58 @@ export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate,
             `);
         }
     }
+    if (state.quest.ui.tab === 'resources') {
+        h = wrap(renderRegBrowser({
+            registryType: 'items',
+            filter: '',
+            mode: 'panel',
+            expandedGroups: new Set(['minecraft'])
+        }));
+    }
     if (state.quest.ui.tab === 'help') h = wrap('<div class="sec"><h3>Quick Guide</h3><div class="card" style="line-height:1.6"><b style="color:var(--text-main)">Pro Update:</b><br/>已采用全新流式界面引擎。<br/>- 支持沉浸式焦点编辑<br/>- 拓扑图支持智能点选联动<br/>- 诊断列表支持一键寻址定位<br/>- 全局支持亚克力磨砂透视。</div></div>');
     if (state.quest.ui.tab === 'graph') h = wrap(renderGraph(state));
 
     rightEl.innerHTML = h;
     rightEl.querySelectorAll('[data-path]').forEach(el => el.onclick = () => onNavigate(el.dataset.path));
+
+    if (state.quest.ui.tab === 'resources') {
+        const browserEl = rightEl.querySelector('.reg-browser');
+        if (browserEl) {
+            let panelType = 'items';
+            let panelFilter = '';
+            const rebindPanel = () => {
+                const el = rightEl.querySelector('.reg-browser');
+                if (!el) return;
+                bindRegBrowserEvents(el, {
+                    onSelect: (id) => {
+                        navigator.clipboard.writeText(id).catch(() => {});
+                    },
+                    onTypeChange: (type) => {
+                        panelType = type;
+                        panelFilter = '';
+                        el.innerHTML = renderRegBrowser({
+                            registryType: type,
+                            filter: '',
+                            mode: 'panel',
+                            expandedGroups: new Set(['minecraft'])
+                        });
+                        rebindPanel();
+                    },
+                    onSearch: (filter) => {
+                        panelFilter = filter;
+                        el.innerHTML = renderRegBrowser({
+                            registryType: panelType,
+                            filter,
+                            mode: 'panel',
+                            expandedGroups: filter ? new Set() : new Set(['minecraft'])
+                        });
+                        rebindPanel();
+                    }
+                });
+            };
+            rebindPanel();
+        }
+    }
 
     if (state.quest.ui.tab === 'graph') {
         const shell = rightEl.querySelector('.graph-shell');
