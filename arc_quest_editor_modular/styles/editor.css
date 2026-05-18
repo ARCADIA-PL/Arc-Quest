@@ -1511,4 +1511,61 @@ button.danger:hover {
     text-align: right;
 }
 
+/* —— registry modal (centered draggable) —— */
+.reg-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(4px);
+}
+.reg-modal {
+    display: none;
+    position: fixed;
+    z-index: 2001;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    width: 640px;
+    max-height: 70vh;
+    background: #1c1d25;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 12px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.7);
+    flex-direction: column;
+    overflow: hidden;
+}
+.reg-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    cursor: grab;
+    user-select: none;
+}
+.reg-modal-title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+.reg-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-mut);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+}
+.reg-modal-close:hover {
+    color: var(--text-main);
+}
+.reg-modal-body {
+    flex: 1;
+    overflow-y: auto;
+}
+
 

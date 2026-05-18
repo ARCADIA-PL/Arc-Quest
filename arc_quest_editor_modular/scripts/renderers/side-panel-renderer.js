@@ -103,11 +103,18 @@ export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate,
         }
     }
     if (state.quest.ui.tab === 'resources') {
+        if (!state._regPanel) {
+            state._regPanel = { type: 'items', filter: '', expanded: new Set(), ac: null };
+        }
+        const p = state._regPanel;
+        if (p.ac) p.ac.abort();
+        p.ac = new AbortController();
+
         h = wrap(renderRegBrowser({
-            registryType: 'items',
-            filter: '',
+            registryType: p.type,
+            filter: p.filter,
             mode: 'panel',
-            expandedGroups: new Set(['minecraft'])
+            expandedGroups: p.expanded
         }));
     }
     if (state.quest.ui.tab === 'help') h = wrap('<div class="sec"><h3>Quick Guide</h3><div class="card" style="line-height:1.6"><b style="color:var(--text-main)">Pro Update:</b><br/>已采用全新流式界面引擎。<br/>- 支持沉浸式焦点编辑<br/>- 拓扑图支持智能点选联动<br/>- 诊断列表支持一键寻址定位<br/>- 全局支持亚克力磨砂透视。</div></div>');
@@ -119,39 +126,56 @@ export function renderSidePanel(state, tabsEl, rightEl, onTabChange, onNavigate,
     if (state.quest.ui.tab === 'resources') {
         const browserEl = rightEl.querySelector('.reg-browser');
         if (browserEl) {
-            let panelType = 'items';
-            let panelFilter = '';
-            const rebindPanel = () => {
-                const el = rightEl.querySelector('.reg-browser');
-                if (!el) return;
+            const p = state._regPanel;
+            let searchTimer = null;
+
+            const rebind = (el) => {
                 bindRegBrowserEvents(el, {
                     onSelect: (id) => {
                         navigator.clipboard.writeText(id).catch(() => {});
                     },
                     onTypeChange: (type) => {
-                        panelType = type;
-                        panelFilter = '';
-                        el.innerHTML = renderRegBrowser({
-                            registryType: type,
-                            filter: '',
-                            mode: 'panel',
-                            expandedGroups: new Set(['minecraft'])
-                        });
-                        rebindPanel();
+                        p.type = type;
+                        p.filter = '';
+                        p.expanded = new Set();
+                        fillPanel(el, p);
                     },
                     onSearch: (filter) => {
-                        panelFilter = filter;
-                        el.innerHTML = renderRegBrowser({
-                            registryType: panelType,
-                            filter,
-                            mode: 'panel',
-                            expandedGroups: filter ? new Set() : new Set(['minecraft'])
-                        });
-                        rebindPanel();
+                        p.filter = filter;
+                        if (searchTimer) clearTimeout(searchTimer);
+                        searchTimer = setTimeout(() => {
+                            fillPanel(el, p);
+                        }, 200);
+                    },
+                    onToggleNamespace: (nsName) => {
+                        if (p.expanded.has(nsName)) {
+                            p.expanded.delete(nsName);
+                        } else {
+                            p.expanded.add(nsName);
+                        }
+                        fillPanel(el, p);
+                    }
+                }, { signal: p.ac.signal });
+            };
+
+            const fillPanel = (el, p) => {
+                if (p.ac) p.ac.abort();
+                p.ac = new AbortController();
+                el.innerHTML = renderRegBrowser({
+                    registryType: p.type, filter: p.filter,
+                    mode: 'panel', expandedGroups: p.expanded
+                });
+                rebind(el);
+                requestAnimationFrame(() => {
+                    const si = el.querySelector('[data-reg-search]');
+                    if (si && document.activeElement !== si) {
+                        si.focus();
+                        si.setSelectionRange(si.value.length, si.value.length);
                     }
                 });
             };
-            rebindPanel();
+
+            rebind(browserEl);
         }
     }
 
