@@ -17,10 +17,6 @@ const RegistryClient = {
     STALE_MS: 24 * 60 * 60 * 1000,
     RECONNECT_MS: 5000,
 
-    // ════════════════════════════════════════
-    //  初始化
-    // ════════════════════════════════════════
-
     init() {
         this._loadCache();
         this._connect();
@@ -44,10 +40,6 @@ const RegistryClient = {
             localStorage.setItem(this.CACHE_KEY, JSON.stringify(data));
         } catch (e) { /* quota exceeded */ }
     },
-
-    // ════════════════════════════════════════
-    //  连接管理
-    // ════════════════════════════════════════
 
     _connect() {
         if (this._state === 'CONNECTING' || this._state === 'CONNECTED') return;
@@ -99,10 +91,6 @@ const RegistryClient = {
         }, this.RECONNECT_MS);
     },
 
-    // ════════════════════════════════════════
-    //  消息处理
-    // ════════════════════════════════════════
-
     _handleMessage(msg) {
         if (msg.type === 'full' || msg.type === 'delta') {
             if (msg.data && msg.data.registries) {
@@ -112,10 +100,6 @@ const RegistryClient = {
         }
     },
 
-    // ════════════════════════════════════════
-    //  对外 API
-    // ════════════════════════════════════════
-
     getRegistry(registryName) {
         if (this._cache && this._cache.registries) {
             return this._cache.registries[registryName] || [];
@@ -123,18 +107,54 @@ const RegistryClient = {
         return [];
     },
 
-    search(registryName, filter) {
+    listByNamespace(registryName) {
         const all = this.getRegistry(registryName);
-        if (!filter) return all.slice(0, 100);
+        const map = new Map();
+        for (const e of all) {
+            const colon = e.id.indexOf(':');
+            const ns = colon >= 0 ? e.id.substring(0, colon) : 'unknown';
+            if (!map.has(ns)) map.set(ns, []);
+            map.get(ns).push(e);
+        }
+        for (const [ns, entries] of map) {
+            entries.sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
+        }
+        const sorted = new Map(
+            [...map.entries()].sort((a, b) => {
+                if (a[0] === 'minecraft') return -1;
+                if (b[0] === 'minecraft') return 1;
+                return b[1].length - a[1].length || a[0].localeCompare(b[0]);
+            })
+        );
+        return sorted;
+    },
+
+    search(registryName, filter, namespace) {
+        let all = this.getRegistry(registryName);
+        if (namespace) {
+            all = all.filter(e => {
+                const colon = e.id.indexOf(':');
+                return colon >= 0 && e.id.substring(0, colon) === namespace;
+            });
+        }
+        if (!filter) return all.slice();
         const q = filter.toLowerCase();
         const result = [];
         for (const e of all) {
-            if (e.id.toLowerCase().includes(q) || (e.label && e.label.toLowerCase().includes(q))) {
+            if (e.id.toLowerCase().includes(q)
+                    || (e.label && e.label.toLowerCase().includes(q))
+                    || this._matchNamespace(e.id, q)) {
                 result.push(e);
-                if (result.length >= 50) break;
             }
         }
+        result.sort((a, b) => (a.label || a.id).localeCompare(b.label || b.id));
         return result;
+    },
+
+    _matchNamespace(id, q) {
+        const colon = id.indexOf(':');
+        if (colon < 0) return false;
+        return id.substring(0, colon).toLowerCase().includes(q);
     },
 
     count(registryName) {
