@@ -61,14 +61,13 @@ public final class DialogueSessionManager {
 
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                           DialogueTree tree, DialogueContext context) {
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) {
-            LOGGER.warn("[Dialogue] Missing quest capability for player {}, cannot start dialogue '{}'",
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) {
+            LOGGER.warn("[Dialogue] Missing quest data for player {}, cannot start dialogue '{}'",
                     player.getName().getString(), tree.dialogueId());
             return null;
         }
         String dialogueId = tree.dialogueId();
-        var data = ArcQuestPlayerManager.get(player);
         var progress = data.getDialogueProgress();
         long nowReal = TimeSanitizer.getCurrentRealTime();
         long nowGame = TimeSanitizer.getCurrentGameTime(player);
@@ -240,10 +239,10 @@ public final class DialogueSessionManager {
         DialogueSession session = sessions.remove(player.getUUID());
         if (session == null) return;
 
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap != null) {
+        var data = ArcQuestPlayerManager.get(player);
+        if (data != null) {
             String cleanupPrefix = "aq:dlg:" + session.getTree().dialogueId() + ":";
-            for (String markerId : cap.getAllMarkers().keySet().stream().toList()) {
+            for (String markerId : data.getAllMarkers().keySet().stream().toList()) {
                 if (markerId.startsWith(cleanupPrefix)) cap.removeMarker(markerId);
             }
         }
@@ -331,16 +330,15 @@ public final class DialogueSessionManager {
         if (speaker == null) {
             speaker = Component.empty();
         }
-        var cap = ArcQuestPlayerManager.get(session.getPlayer());
-        var playerData = ArcQuestPlayerManager.get(player);
-        DialogueProgressStore progress = playerData != null ? playerData.getDialogueProgress() : null;
+        var data = ArcQuestPlayerManager.get(player);
+        DialogueProgressStore progress = data != null ? data.getDialogueProgress() : null;
         Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
         DialogueEvalContext ctx = DialogueEvalContext.of(session.getPlayer(), npc, session.getNamespace(), progress);
         ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(ctx, node.conditionalTexts(), session.processDialogueText(node.text()).getString());
         Component text = Component.literal(session.processText(sayIfResult.text));
         SoundEvent matchedSaySound = sayIfResult.sound;
         String selectedSayId = sayIfResult.sayId;
-        if (cap != null) syncDialogueMarkers(session, node, sayIfResult);
+        if (data != null) syncDialogueMarkers(session, node, sayIfResult);
 
         appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
                 System.currentTimeMillis(),
@@ -384,7 +382,7 @@ public final class DialogueSessionManager {
     private void syncDialogueMarkers(DialogueSession session,
                                      DialogueNode node,
                                      ConditionalTextEvaluator.SayIfResult sayIfResult) {
-        var cap = ArcQuestPlayerManager.get(session.getPlayer());
+        var data = ArcQuestPlayerManager.get(session.getPlayer());
         if (cap == null) return;
 
         String dialogueId = session.getTree().dialogueId();
@@ -393,7 +391,7 @@ public final class DialogueSessionManager {
         ServerLevel level = player.serverLevel();
 
         String cleanupPrefix = "aq:dlg:" + dialogueId + ":";
-        for (String markerId : cap.getAllMarkers().keySet().stream().toList()) {
+        for (String markerId : data.getAllMarkers().keySet().stream().toList()) {
             if (markerId.startsWith(cleanupPrefix)) cap.removeMarker(markerId);
         }
 

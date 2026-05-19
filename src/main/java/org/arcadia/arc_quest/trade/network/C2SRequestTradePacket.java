@@ -372,7 +372,7 @@ public class C2SRequestTradePacket {
      */
     private static void checkAndResetPurchases(TradeSession session, String entryId, TradeEntry entry) {
         ServerPlayer player = session.getPlayer();
-        var cap = ArcQuestPlayerManager.get(player);
+        var data = ArcQuestPlayerManager.get(player);
 
         boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, cap, session.getShop().getShopId(), entry);
 

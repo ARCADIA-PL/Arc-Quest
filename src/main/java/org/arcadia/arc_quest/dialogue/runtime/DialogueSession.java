@@ -395,7 +395,7 @@ public class DialogueSession {
         Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
         IDialogueNpc dialogueNpc = (npc instanceof IDialogueNpc d) ? d : null;
 
-        var cap = ArcQuestPlayerManager.get(player);
+        var data = ArcQuestPlayerManager.get(player);
         Map<String, Object> vars = buildDialogueVars(cap);
 
         DialogueTextContext ctx = new DialogueTextContext(
