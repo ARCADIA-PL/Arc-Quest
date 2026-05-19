@@ -82,8 +82,9 @@ public sealed interface DialogueAction {
 
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
+            if (data == null) return;
             QuestRuntimeData qdata = data.getActiveQuest(questId);
-            if (data == null || qdata.getState() != QuestState.ACTIVE) return;
+            if (qdata == null || qdata.getState() != QuestState.ACTIVE) return;
 
             PhaseDefinition currentPhase = def.getPhase(qdata.getCurrentPhaseId());
             if (currentPhase == null) return;

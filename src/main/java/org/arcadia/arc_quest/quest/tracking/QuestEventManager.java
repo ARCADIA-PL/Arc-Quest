@@ -191,7 +191,7 @@ public final class QuestEventManager {
 
         for (ObjectiveTypeIndex.ObjectiveRef ref : refs) {
             QuestRuntimeData qdata = data.getActiveQuest(ref.questId().toString());
-            if (data == null || qdata.getState() != QuestState.ACTIVE) continue;
+            if (qdata == null || qdata.getState() != QuestState.ACTIVE) continue;
             if (!qdata.isPhaseActive(ref.phaseId())) continue;
 
             QuestDefinition def = QuestRegistry.get(ref.questId());

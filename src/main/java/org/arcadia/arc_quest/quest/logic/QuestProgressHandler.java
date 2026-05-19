@@ -148,8 +148,9 @@ public final class QuestProgressHandler {
         if (amount <= 0) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || qdata.getState() != QuestState.ACTIVE) return;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
@@ -187,8 +188,9 @@ public final class QuestProgressHandler {
         if (amount <= 0) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
@@ -203,8 +205,9 @@ public final class QuestProgressHandler {
                                              String questId,
                                              String phaseId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
@@ -217,8 +220,9 @@ public final class QuestProgressHandler {
 
     public static void refreshCollectionVisibility(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
@@ -232,8 +236,9 @@ public final class QuestProgressHandler {
                                                String questId,
                                                String phaseId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
@@ -251,8 +256,9 @@ public final class QuestProgressHandler {
         if (uniqueKey == null || uniqueKey.isEmpty()) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
@@ -383,8 +389,8 @@ public final class QuestProgressHandler {
                                                                            String questId,
                                                                            String phaseId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (phaseId == null || phaseId.isEmpty() || !qdata.isPhasePendingManualAdvance(phaseId)) {
             return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
         }
@@ -447,8 +453,8 @@ public final class QuestProgressHandler {
                                                                             int choiceIndex) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
-        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
@@ -577,8 +583,8 @@ public final class QuestProgressHandler {
     // ═══════════════════════════════════════════════════════
     public static void failQuest(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
 
         qdata.setState(QuestState.FAILED);
         data.markFailed(questId);
@@ -622,8 +628,8 @@ public final class QuestProgressHandler {
 
     public static void forceComplete(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;

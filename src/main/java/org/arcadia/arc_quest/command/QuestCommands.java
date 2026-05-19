@@ -199,8 +199,9 @@ public class QuestCommands {
 
         ArcQuestPlayer data = getData(player);
 
+        if (data == null) return 0;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || qdata.getState() != QuestState.ACTIVE) {
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE) {
             error(ctx, Component.translatable("arc_quest.command.complete.error.not_active", questId).getString());
             return 0;
         }
@@ -229,8 +230,9 @@ public class QuestCommands {
 
         ArcQuestPlayer data = getData(player);
 
+        if (data == null) return 0;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null) {
+        if (qdata == null) {
             error(ctx, Component.translatable("arc_quest.command.fail.error.not_active", questId).getString());
             return 0;
         }
@@ -274,8 +276,9 @@ public class QuestCommands {
 
         ArcQuestPlayer data = getData(player);
 
+        if (data == null) return 0;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null) {
+        if (qdata == null) {
             QuestProgressHandler.acceptQuest(player, questId);
             qdata = data.getActiveQuest(questId);
         }
@@ -325,8 +328,9 @@ public class QuestCommands {
         }
 
         ArcQuestPlayer data = getData(player);
+        if (data == null) return 0;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || qdata.getState() != QuestState.ACTIVE) {
+        if (qdata == null || qdata.getState() != QuestState.ACTIVE) {
             error(ctx, Component.translatable("arc_quest.command.progress.error.not_active", questId).getString());
             return 0;
         }

@@ -28,8 +28,9 @@ public final class QuestOfferService {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return OfferSubmitResult.REJECTED;
 
+        if (data == null) return OfferSubmitResult.REJECTED;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data == null || !qdata.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
+        if (qdata == null || !qdata.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
 
         var qDef = QuestRegistry.get(ResourceLocation.parse(questId));
         if (qDef == null) return OfferSubmitResult.REJECTED;
