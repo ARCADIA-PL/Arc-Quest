@@ -24,8 +24,8 @@ import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.io.DialogueDatapackHotReloadService;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.slf4j.Logger;
 
 import java.util.Collection;
@@ -81,8 +81,8 @@ public class DialogueCommands {
     //  工具方法
     // ═══════════════════════════════════════════════════════
 
-    private static IQuestCapability getCap(ServerPlayer player) {
-        return QuestCapabilityProvider.getOrNull(player);
+    private static ArcQuestPlayer getData(ServerPlayer player) {
+        return ArcQuestPlayerManager.get(player);
     }
 
     private static void success(CommandContext<CommandSourceStack> ctx, String msg) {
@@ -114,11 +114,11 @@ public class DialogueCommands {
 
     private static int cmdDialogueReset(CommandContext<CommandSourceStack> ctx, String dialogueId) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         if (dialogueId == null) {
             // 重置所有对话进度
-            cap.clearAllData();
+            data.clearAllData();
             success(ctx, Component.translatable("arc_quest.command.dialogue.reset.all", player.getName().getString()).getString());
         } else {
             // 按对话树ID重置进度
@@ -129,7 +129,7 @@ public class DialogueCommands {
 
     private static int cmdDialogueStatus(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         MutableComponent msg = Component.translatable("arc_quest.command.dialogue.status.header");
         msg.append(Component.literal("\n"));

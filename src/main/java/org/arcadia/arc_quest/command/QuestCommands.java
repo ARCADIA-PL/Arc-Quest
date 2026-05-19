@@ -22,8 +22,8 @@ import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -131,8 +131,8 @@ public class QuestCommands {
     //  工具方法
     // ═══════════════════════════════════════════════════════
 
-    private static IQuestCapability getCap(ServerPlayer player) {
-        return QuestCapabilityProvider.getOrNull(player);
+    private static ArcQuestPlayer getData(ServerPlayer player) {
+        return ArcQuestPlayerManager.get(player);
     }
 
     private static QuestDefinition resolveQuest(CommandContext<CommandSourceStack> ctx, String questId) {
@@ -166,14 +166,14 @@ public class QuestCommands {
 
         if (resolveQuest(ctx, questId) == null) return 0;
 
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
-        if (cap.isQuestActive(questId)) {
+        if (data.isQuestActive(questId)) {
             error(ctx, Component.translatable("arc_quest.command.give.error.already_active", questId, player.getName().getString()).getString());
             return 0;
         }
 
-        if (cap.isQuestCompleted(questId)) {
+        if (data.isQuestCompleted(questId)) {
             QuestDefinition def = resolveQuest(ctx, questId);
             if (def != null && !def.isRepeatable()) {
                 error(ctx, Component.translatable("arc_quest.command.give.error.already_completed", questId).getString());
@@ -197,9 +197,9 @@ public class QuestCommands {
         QuestDefinition def = resolveQuest(ctx, questId);
         if (def == null) return 0;
 
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) {
             error(ctx, Component.translatable("arc_quest.command.complete.error.not_active", questId).getString());
             return 0;
@@ -227,9 +227,9 @@ public class QuestCommands {
 
         if (resolveQuest(ctx, questId) == null) return 0;
 
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null) {
             error(ctx, Component.translatable("arc_quest.command.fail.error.not_active", questId).getString());
             return 0;
@@ -242,13 +242,13 @@ public class QuestCommands {
 
     private static int cmdQuestReset(CommandContext<CommandSourceStack> ctx, String questId) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         if (questId == null) {
             // 重置所有任务进度
-            cap.clearAllData();
+            data.clearAllData();
             ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
-            ArcQuestNetwork.syncFullData(player, cap);
+            ArcQuestNetwork.syncFullData(player, data);
             success(ctx, Component.translatable("arc_quest.command.resetall.success", player.getName().getString()).getString());
         } else {
             // 重置单个任务
@@ -272,12 +272,12 @@ public class QuestCommands {
             return 0;
         }
 
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null) {
             QuestProgressHandler.acceptQuest(player, questId);
-            data = cap.getActiveQuest(questId);
+            data = data.getActiveQuest(questId);
         }
         if (data == null) {
             error(ctx, Component.translatable("arc_quest.command.phase.error.failed", questId).getString());
@@ -324,8 +324,8 @@ public class QuestCommands {
             return 0;
         }
 
-        IQuestCapability cap = getCap(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = getData(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) {
             error(ctx, Component.translatable("arc_quest.command.progress.error.not_active", questId).getString());
             return 0;
@@ -375,8 +375,8 @@ public class QuestCommands {
         MutableComponent msg = Component.translatable("arc_quest.command.list.header", player.getName().getString());
         msg.append(Component.literal("\n"));
 
-        IQuestCapability cap = getCap(player);
-        var allQuests = cap.getAllActiveQuests();
+        ArcQuestPlayer data = getData(player);
+        var allQuests = data.getAllActiveQuests();
         if (allQuests.isEmpty()) {
             msg.append(Component.translatable("arc_quest.command.list.no_quests"));
             msg.append(Component.literal("\n"));
@@ -452,8 +452,8 @@ public class QuestCommands {
         }
 
         // 运行时明细（并行phase）
-        IQuestCapability cap = getCap(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = getData(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data != null) {
             msg.append(Component.translatable("arc_quest.command.debug.runtime_header"));
             msg.append(Component.literal("\n"));

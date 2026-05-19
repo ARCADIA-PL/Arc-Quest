@@ -16,8 +16,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.dialogue.runtime.ProgressKey;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.gacha.api.GachaPool;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -92,8 +92,8 @@ public class GachaCommands {
     //  工具方法
     // ═══════════════════════════════════════════════════════
 
-    private static IQuestCapability getCap(ServerPlayer player) {
-        return QuestCapabilityProvider.getOrNull(player);
+    private static ArcQuestPlayer getData(ServerPlayer player) {
+        return ArcQuestPlayerManager.get(player);
     }
 
     private static void success(CommandContext<CommandSourceStack> ctx, String msg) {
@@ -123,14 +123,14 @@ public class GachaCommands {
         }
 
         // 获取玩家能力数据
-        IQuestCapability cap = getCap(player);
-        if (cap == null) {
+        ArcQuestPlayer data = getData(player);
+        if (data == null) {
             error(ctx, "无法获取玩家数据");
             return 0;
         }
 
         // 发送打开抽奖界面的网络包
-        GachaScreenOpener.openGachaScreen(player, shop, cap);
+        GachaScreenOpener.openGachaScreen(player, shop, data);
 
         success(ctx, String.format("已为 %s 打开抽奖界面: %s", player.getName().getString(), shopId));
         LOGGER.info("[GachaCommand] Opened gacha '{}' for player {}", shopId, player.getName().getString());
@@ -239,7 +239,7 @@ public class GachaCommands {
     private static int cmdGachaResetDraws(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         GachaShopDefinition shop = GachaRegistry.get(shopId);
         if (shop == null) {
@@ -248,7 +248,7 @@ public class GachaCommands {
         }
 
         // 重置抽奖次数
-        cap.resetGachaDrawCount(shopId);
+        data.resetGachaDrawCount(shopId);
 
         success(ctx, String.format("已重置 %s 在 %s 的抽奖次数", player.getName().getString(), shopId));
         LOGGER.info("[GachaCommand] Reset draw count for shop '{}' and player {}", shopId, player.getName().getString());
@@ -263,7 +263,7 @@ public class GachaCommands {
     private static int cmdGachaResetShop(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         GachaShopDefinition shop = GachaRegistry.get(shopId);
         if (shop == null) {
@@ -272,10 +272,10 @@ public class GachaCommands {
         }
 
         // 重置所有相关数据
-        cap.resetGachaDrawCount(shopId);           // 重置抽奖次数
-        cap.setGachaPityCounter(shopId, 0);        // 重置保底计数
-        cap.clearGachaDrawHistory(shopId);         // 【新增】清除抽奖历史
-        cap.getDialogueProgress().clearCooldownRecord(
+        data.resetGachaDrawCount(shopId);           // 重置抽奖次数
+        data.setGachaPityCounter(shopId, 0);        // 重置保底计数
+        data.clearGachaDrawHistory(shopId);         // 【新增】清除抽奖历史
+        data.getDialogueProgress().clearCooldownRecord(
                 ProgressKey.ofTrade(shopId, "draw")
         );                                         // 清除冷却记录
 
@@ -293,7 +293,7 @@ public class GachaCommands {
      */
     private static int cmdGachaResetAll(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         // 获取所有注册的抽奖商店
         Collection<GachaShopDefinition> allShops = GachaRegistry.getAllShops();
@@ -303,10 +303,10 @@ public class GachaCommands {
             String shopId = shop.getShopId();
 
             // 重置所有相关数据
-            cap.resetGachaDrawCount(shopId);
-            cap.setGachaPityCounter(shopId, 0);
-            cap.clearGachaDrawHistory(shopId);     // 【新增】清除抽奖历史
-            cap.getDialogueProgress().clearCooldownRecord(
+            data.resetGachaDrawCount(shopId);
+            data.setGachaPityCounter(shopId, 0);
+            data.clearGachaDrawHistory(shopId);     // 【新增】清除抽奖历史
+            data.getDialogueProgress().clearCooldownRecord(
                     ProgressKey.ofTrade(shopId, "draw")
             );
 

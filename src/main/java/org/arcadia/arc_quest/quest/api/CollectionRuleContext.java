@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.quest.api;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 
 import javax.annotation.Nullable;
@@ -14,7 +14,7 @@ public final class CollectionRuleContext {
     private final QuestDefinition questDefinition;
     private final QuestRuntimeData questRuntimeData;
     private final CollectionRuntimeData collectionRuntimeData;
-    private final IQuestCapability capability;
+    private final ArcQuestPlayer playerData;
     @Nullable
     private final String categoryId;
 
@@ -22,13 +22,13 @@ public final class CollectionRuleContext {
                                  QuestDefinition questDefinition,
                                  QuestRuntimeData questRuntimeData,
                                  CollectionRuntimeData collectionRuntimeData,
-                                 IQuestCapability capability,
+                                 ArcQuestPlayer playerData,
                                  @Nullable String categoryId) {
         this.player = Objects.requireNonNull(player);
         this.questDefinition = Objects.requireNonNull(questDefinition);
         this.questRuntimeData = Objects.requireNonNull(questRuntimeData);
         this.collectionRuntimeData = Objects.requireNonNull(collectionRuntimeData);
-        this.capability = Objects.requireNonNull(capability);
+        this.playerData = Objects.requireNonNull(playerData);
         this.categoryId = categoryId;
     }
 
@@ -48,8 +48,8 @@ public final class CollectionRuleContext {
         return collectionRuntimeData;
     }
 
-    public IQuestCapability getCapability() {
-        return capability;
+    public ArcQuestPlayer getCapability() {
+        return playerData;
     }
 
     @Nullable

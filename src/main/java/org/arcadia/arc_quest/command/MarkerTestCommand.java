@@ -14,7 +14,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
@@ -38,9 +38,9 @@ public class MarkerTestCommand {
                 .then(Commands.literal("clear")
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
-                            var cap = QuestCapabilityProvider.getOrNull(player);
+                            var data = ArcQuestPlayerManager.get(player);
 
-                            cap.clearMarkers();
+                            data.clearMarkers();
                             ArcQuestNetwork.syncMarkerDeltaClear(player);
 
                             ctx.getSource().sendSuccess(() -> Component.literal("已清除所有标记"), false);
@@ -160,7 +160,7 @@ public class MarkerTestCommand {
             QuestMarkerState state
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        var cap = QuestCapabilityProvider.getOrNull(player);
+        var data = ArcQuestPlayerManager.get(player);
 
         int color = colorFromPreset(preset);
         var pos = player.position();
@@ -180,10 +180,10 @@ public class MarkerTestCommand {
                 .allowOffscreenArrow(true)
                 .build();
 
-        cap.upsertMarker(marker);
+        data.upsertMarker(marker);
         ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
 
-        int total = cap.getAllMarkers().size();
+        int total = data.getAllMarkers().size();
         source.sendSuccess(() -> Component.literal(
                 "已追加测试标记: " + markerId
                         + "，preset=" + preset.toLowerCase(Locale.ROOT)
@@ -201,7 +201,7 @@ public class MarkerTestCommand {
             QuestMarkerState state
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        var cap = QuestCapabilityProvider.getOrNull(player);
+        var data = ArcQuestPlayerManager.get(player);
 
         if (target == null || !target.isAlive()) {
             source.sendFailure(Component.literal("实体不存在或已死亡"));
@@ -231,10 +231,10 @@ public class MarkerTestCommand {
                 .allowOffscreenArrow(true)
                 .build();
 
-        cap.upsertMarker(marker);
+        data.upsertMarker(marker);
         ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
 
-        int total = cap.getAllMarkers().size();
+        int total = data.getAllMarkers().size();
         source.sendSuccess(() -> Component.literal(
                 "已创建跟随标记: " + markerId
                         + " -> 实体#" + target.getId()
@@ -247,9 +247,9 @@ public class MarkerTestCommand {
 
     private static int setMarkerState(CommandSourceStack source, String markerId, QuestMarkerState newState) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        var cap = QuestCapabilityProvider.getOrNull(player);
+        var data = ArcQuestPlayerManager.get(player);
 
-        Map<String, QuestMarkerData> all = cap.getAllMarkers();
+        Map<String, QuestMarkerData> all = data.getAllMarkers();
         QuestMarkerData old = all.get(markerId);
         if (old == null) {
             source.sendFailure(Component.literal("未找到 marker: " + markerId));
@@ -283,7 +283,7 @@ public class MarkerTestCommand {
         }
 
         QuestMarkerData updated = builder.build();
-        cap.upsertMarker(updated);
+        data.upsertMarker(updated);
         ArcQuestNetwork.syncMarkerDeltaUpsert(player, updated);
 
         source.sendSuccess(() -> Component.literal(

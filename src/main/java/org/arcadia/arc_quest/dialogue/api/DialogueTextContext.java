@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.dialogue.api;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 
 import javax.annotation.Nullable;
 import java.util.Map;
@@ -13,7 +13,7 @@ public record DialogueTextContext(
         @Nullable IDialogueNpc dialogueNpc,
         @Nullable String dialogueId,
         @Nullable String nodeId,
-        @Nullable IQuestCapability questCap,
+        @Nullable ArcQuestPlayer questData,
         Map<String, Object> vars
 ) {
     public DialogueTextContext {

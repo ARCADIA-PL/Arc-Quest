@@ -16,8 +16,8 @@ import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeCategory;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -110,8 +110,8 @@ public class TradeCommands {
     //  工具方法
     // ═══════════════════════════════════════════════════════
 
-    private static IQuestCapability getCap(ServerPlayer player) {
-        return QuestCapabilityProvider.getOrNull(player);
+    private static ArcQuestPlayer getData(ServerPlayer player) {
+        return ArcQuestPlayerManager.get(player);
     }
 
     private static void success(CommandContext<CommandSourceStack> ctx, String msg) {
@@ -250,7 +250,7 @@ public class TradeCommands {
     private static int cmdTradeResetShop(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         TradeShopDefinition shop = TradeRegistry.get(shopId);
         if (shop == null) {
@@ -260,7 +260,7 @@ public class TradeCommands {
 
         // 重置整个商店的所有交易项
         for (TradeEntry entry : shop.getAllEntries()) {
-            cap.getTradeDataStore().resetEntry(shopId, entry.getEntryId());
+            data.getTradeDataStore().resetEntry(shopId, entry.getEntryId());
         }
         success(ctx, Component.translatable("arc_quest.command.trade.reset.shop_success",
                 shopId, player.getName().getString()).getString());
