@@ -136,9 +136,9 @@ public class PendingDrawManager {
     private static void grantAndRecord(ServerPlayer player, PendingDrawData data) {
         grantReward(player, data.drawnItem, data.actualCount);
 
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (cap != null) {
-            data.addGachaDrawHistory(
+        ArcQuestPlayer pdata = ArcQuestPlayerManager.get(player);
+        if (pdata != null) {
+            pdata.addGachaDrawHistory(
                     data.shopId,
                     data.drawnItem.getItemId(),
                     data.drawnItem.getRarity().getName(),

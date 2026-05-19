@@ -52,7 +52,7 @@ public final class VariableReward implements IReward {
     @Override
     public void grant(ServerPlayer player) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (cap == null) return;
+        if (data == null) return;
         int current = data.getVariable(variableName);
         data.setVariable(variableName, apply(current));
     }

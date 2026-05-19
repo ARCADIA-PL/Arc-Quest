@@ -52,7 +52,7 @@ public final class CollectionQuestEngine {
         );
 
         CollectionRuntimeData collectionData = new CollectionRuntimeData();
-        initializeQuest(player, cap, def, runtime, collectionData);
+        initializeQuest(player, data, def, runtime, collectionData);
         runtime.setCollectionData(collectionData);
         data.addActiveQuest(runtime);
 
@@ -64,7 +64,7 @@ public final class CollectionQuestEngine {
 
         QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
         if (flagsChanged) {
-            QuestSyncCoordinator.syncFlagsVarsAndPush(player, cap);
+            QuestSyncCoordinator.syncFlagsVarsAndPush(player, data);
         }
 
         QuestEventBus.fire(QuestChangeEvent.questAccepted(def.getId()));
@@ -93,7 +93,7 @@ public final class CollectionQuestEngine {
                 continue;
             }
 
-            boolean visible = revealAll || CollectionVisibilityResolver.shouldBeVisible(player, completedQuests, flags, cap, entryConfig);
+            boolean visible = revealAll || CollectionVisibilityResolver.shouldBeVisible(player, completedQuests, flags, data, entryConfig);
             if (visible) {
                 markEntryVisible(runtime, collectionData, phase, entryConfig, phaseId, true);
             }
@@ -149,7 +149,7 @@ public final class CollectionQuestEngine {
             if (phase == null) continue;
             CollectionEntryConfig entryConfig = phase.getCollectionEntryConfig();
             if (entryConfig == null || collectionData.isVisible(phaseId)) continue;
-            boolean visible = revealAll || CollectionVisibilityResolver.shouldBeVisible(player, completedQuests, flags, cap, entryConfig);
+            boolean visible = revealAll || CollectionVisibilityResolver.shouldBeVisible(player, completedQuests, flags, data, entryConfig);
             if (visible) {
                 markEntryVisible(runtime, collectionData, phase, entryConfig, phaseId, true);
                 changed++;
@@ -178,7 +178,7 @@ public final class CollectionQuestEngine {
                                      QuestRuntimeData runtime,
                                      String phaseId,
                                      int amount) {
-        return incrementEntryWithResult(player, cap, def, runtime, phaseId, amount).getNextCount();
+        return incrementEntryWithResult(player, data, def, runtime, phaseId, amount).getNextCount();
     }
 
     public static CollectionEntryUpdateResult incrementEntryWithResult(ServerPlayer player,
@@ -209,7 +209,7 @@ public final class CollectionQuestEngine {
         collectionData.markVisible(phaseId);
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
         collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
-        boolean entryCompleted = evaluateEntryCompletion(player, cap, def, runtime, phaseId);
+        boolean entryCompleted = evaluateEntryCompletion(player, data, def, runtime, phaseId);
         boolean questCompleted = runtime.getState() == QuestState.COMPLETED;
         return CollectionEntryUpdateResult.ok(phaseId, next, entryCompleted, questCompleted);
     }
@@ -250,7 +250,7 @@ public final class CollectionQuestEngine {
                                             QuestRuntimeData runtime,
                                             String phaseId,
                                             String uniqueKey) {
-        return addUniqueProgressWithResult(player, cap, def, runtime, phaseId, uniqueKey).isChanged();
+        return addUniqueProgressWithResult(player, data, def, runtime, phaseId, uniqueKey).isChanged();
     }
 
     public static CollectionEntryUpdateResult addUniqueProgressWithResult(ServerPlayer player,
@@ -283,7 +283,7 @@ public final class CollectionQuestEngine {
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
         int next = collectionData.incrementEntryCount(phaseId, 1, entryConfig.getMaxCount() > 0 ? entryConfig.getMaxCount() : entryConfig.getCompletionTarget());
         collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
-        boolean entryCompleted = evaluateEntryCompletion(player, cap, def, runtime, phaseId);
+        boolean entryCompleted = evaluateEntryCompletion(player, data, def, runtime, phaseId);
         boolean questCompleted = runtime.getState() == QuestState.COMPLETED;
         return CollectionEntryUpdateResult.ok(phaseId, next, entryCompleted, questCompleted);
     }
@@ -309,9 +309,9 @@ public final class CollectionQuestEngine {
         }
 
         runtime.completePhase(phaseId);
-        evaluateRewardUnlocks(player, cap, def, runtime, phaseId);
-        evaluateCategoryStates(player, cap, def, runtime, entryConfig.getCategoryId());
-        evaluateQuestState(player, cap, def, runtime);
+        evaluateRewardUnlocks(player, data, def, runtime, phaseId);
+        evaluateCategoryStates(player, data, def, runtime, entryConfig.getCategoryId());
+        evaluateQuestState(player, data, def, runtime);
         return true;
     }
 
@@ -332,7 +332,7 @@ public final class CollectionQuestEngine {
         if (config.getQuestCompletionRules().isEmpty()) {
             completed = CollectionCompletionEvaluator.areAllCollectionEntriesCompleted(def, runtime);
         } else {
-            CollectionRuleContext context = new CollectionRuleContext(player, def, runtime, collectionData, cap, null);
+            CollectionRuleContext context = new CollectionRuleContext(player, def, runtime, collectionData, data, null);
             completed = CollectionRuleEvaluator.all(context, config.getQuestCompletionRules());
         }
         if (!completed) {
@@ -341,7 +341,7 @@ public final class CollectionQuestEngine {
 
         runtime.setState(QuestState.COMPLETED);
         data.markCompleted(def.getId().toString());
-        evaluateQuestRewardUnlocks(player, cap, def, runtime);
+        evaluateQuestRewardUnlocks(player, data, def, runtime);
         QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
         return true;
     }
@@ -357,13 +357,13 @@ public final class CollectionQuestEngine {
 
         for (CollectionCategoryDefinition category : config.getCategories()) {
             if (!categoryId.equals(category.getCategoryId())) continue;
-            CollectionRuleContext context = new CollectionRuleContext(player, def, runtime, collectionData, cap, categoryId);
+            CollectionRuleContext context = new CollectionRuleContext(player, def, runtime, collectionData, data, categoryId);
             CollectionCategorySnapshot snapshot = CollectionCategoryStateResolver.snapshot(context, categoryId);
             boolean completed = category.getCompletionRules().isEmpty()
                     ? snapshot.isCompleted()
                     : CollectionRuleEvaluator.all(context, category.getCompletionRules());
             if (completed) {
-                evaluateRewardUnlocks(player, cap, def, runtime, categoryId);
+                evaluateRewardUnlocks(player, data, def, runtime, categoryId);
                 return true;
             }
         }
@@ -378,7 +378,7 @@ public final class CollectionQuestEngine {
         CollectionRuntimeData collectionData = runtime.getCollectionData();
         if (config == null || collectionData == null) return;
 
-        CollectionRuleContext questContext = new CollectionRuleContext(player, def, runtime, collectionData, cap, null);
+        CollectionRuleContext questContext = new CollectionRuleContext(player, def, runtime, collectionData, data, null);
         String questOwnerId = def.getId().toString();
         for (CollectionRewardNode node : config.getQuestRewardNodes()) {
             CollectionRewardResolver.tryGrantRewardNode(player, collectionData, questContext, node, questOwnerId);
@@ -394,12 +394,12 @@ public final class CollectionQuestEngine {
         CollectionRuntimeData collectionData = runtime.getCollectionData();
         if (config == null || collectionData == null) return;
 
-        CollectionRuleContext questContext = new CollectionRuleContext(player, def, runtime, collectionData, cap, null);
+        CollectionRuleContext questContext = new CollectionRuleContext(player, def, runtime, collectionData, data, null);
         for (CollectionRewardNode node : config.getQuestRewardNodes()) {
             CollectionRewardResolver.tryGrantRewardNode(player, collectionData, questContext, node, ownerId);
         }
         for (CollectionCategoryDefinition category : config.getCategories()) {
-            CollectionRuleContext categoryContext = new CollectionRuleContext(player, def, runtime, collectionData, cap, category.getCategoryId());
+            CollectionRuleContext categoryContext = new CollectionRuleContext(player, def, runtime, collectionData, data, category.getCategoryId());
             for (CollectionRewardNode node : category.getRewardNodes()) {
                 CollectionRewardResolver.tryGrantRewardNode(player, collectionData, categoryContext, node, ownerId);
             }
@@ -417,7 +417,7 @@ public final class CollectionQuestEngine {
                                       QuestDefinition def,
                                       QuestRuntimeData runtime,
                                       String rewardNodeId) {
-        return claimRewardWithResult(player, cap, def, runtime, rewardNodeId).isOk();
+        return claimRewardWithResult(player, data, def, runtime, rewardNodeId).isOk();
     }
 
     public static CollectionRewardClaimResult claimRewardWithResult(ServerPlayer player,

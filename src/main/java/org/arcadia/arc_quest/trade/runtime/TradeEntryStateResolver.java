@@ -75,14 +75,14 @@ public final class TradeEntryStateResolver {
      * 综合判断商品是否可购买（可见性 → 冷却 → 限购 → 购买资格）。
      */
     public static boolean canPurchase(ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
-        if (!isVisible(player, cap, entry)) return false;
+        if (!isVisible(player, data, entry)) return false;
 
-        if (isOnCooldown(player, cap, shopId, entry)) {
+        if (isOnCooldown(player, data, shopId, entry)) {
             LOGGER.debug("[Trade-State] Purchase blocked: on cooldown for {}", entry.getEntryId());
             return false;
         }
 
-        if (isPurchaseLimitReached(cap, shopId, entry)) {
+        if (isPurchaseLimitReached(data, shopId, entry)) {
             LOGGER.debug("[Trade-State] Purchase blocked: limit reached for {}", entry.getEntryId());
             return false;
         }

@@ -62,7 +62,7 @@ public sealed interface DialogueCondition permits
         DialogueCondition.IConditionWrapper {
 
     private static QuestRuntimeData getQuestData(DialogueEvalContext ctx, String questId) {
-        return ctx.questCap().getActiveQuest(questId);
+        return ctx.questData().getActiveQuest(questId);
     }
 
     // ═══════════════════════════════════════════════
@@ -169,7 +169,7 @@ public sealed interface DialogueCondition permits
     record HasQuest(String questId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            ArcQuestPlayer data = ctx.questCap();
+            ArcQuestPlayer data = ctx.questData();
             return data.isQuestActive(questId) || data.isQuestCompleted(questId) || data.isQuestFailed(questId);
         }
     }
@@ -177,21 +177,21 @@ public sealed interface DialogueCondition permits
     record QuestActive(String questId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            return ctx.questCap().isQuestActive(questId);
+            return ctx.questData().isQuestActive(questId);
         }
     }
 
     record QuestCompleted(String questId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            return ctx.questCap().isQuestCompleted(questId);
+            return ctx.questData().isQuestCompleted(questId);
         }
     }
 
     record QuestFailed(String questId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            return ctx.questCap().isQuestFailed(questId);
+            return ctx.questData().isQuestFailed(questId);
         }
     }
 
@@ -340,11 +340,11 @@ public sealed interface DialogueCondition permits
     record PhaseEnterable(String questId, String phaseId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            ArcQuestPlayer data = ctx.questCap();
-            QuestRuntimeData data = data.getActiveQuest(questId);
-            if (data == null) return false;
+            ArcQuestPlayer data = ctx.questData();
+            QuestRuntimeData qdata = data.getActiveQuest(questId);
+            if (qdata == null) return false;
 
-            if (data.isPhaseActive(phaseId) || data.isPhaseCompleted(phaseId)) {
+            if (qdata.isPhaseActive(phaseId) || qdata.isPhaseCompleted(phaseId)) {
                 return false;
             }
 
@@ -371,14 +371,14 @@ public sealed interface DialogueCondition permits
     record HasFlag(String flag) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            return ctx.questCap().hasFlag(flag);
+            return ctx.questData().hasFlag(flag);
         }
     }
 
     record VariableCheck(String key, String op, int value) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            int actual = ctx.questCap().getVariable(key);
+            int actual = ctx.questData().getVariable(key);
             return CompareOp.fromSymbol(op).evaluate(actual, value);
         }
     }
@@ -512,9 +512,9 @@ public sealed interface DialogueCondition permits
         public boolean test(DialogueEvalContext ctx) {
             return condition.test(
                     ctx.player(),
-                    ctx.questCap().getCompletedQuestLocations(),
-                    ctx.questCap().getAllFlags(),
-                    ctx.questCap().getAllVariables()
+                    ctx.questData().getCompletedQuestLocations(),
+                    ctx.questData().getAllFlags(),
+                    ctx.questData().getAllVariables()
             );
         }
     }

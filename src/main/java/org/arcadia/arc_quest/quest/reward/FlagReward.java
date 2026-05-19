@@ -37,11 +37,11 @@ public final class FlagReward implements IReward {
     @Override
     public void grant(ServerPlayer player) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (cap == null) return;
+        if (data == null) return;
         if (set) {
             data.setFlag(flag);
         } else {
-            cap.removeFlag(flag);
+            data.removeFlag(flag);
         }
     }
 

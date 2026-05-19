@@ -34,14 +34,14 @@ public final class FlagTradeOffer implements ITradeOffer {
     public boolean canAfford(ServerPlayer player) {
         if (!isCost) return true;
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        return cap != null && data.hasFlag(flag);
+        return data != null && data.hasFlag(flag);
     }
 
     @Override
     public void execute(ServerPlayer player) {
         if (!isCost) {
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-            if (cap != null) {
+            if (data != null) {
                 data.setFlag(flag);
             }
         }

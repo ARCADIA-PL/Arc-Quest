@@ -50,15 +50,15 @@ public final class QuestProgressHandler {
     // ═══════════════════════════════════════════════════════
     //  接受任务
     // ═══════════════════════════════════════════════════════
-    private static boolean shouldCompleteQuest(QuestDefinition def, QuestRuntimeData data) {
-        int done = data.getCompletedPhaseIds().size();
+    private static boolean shouldCompleteQuest(QuestDefinition def, QuestRuntimeData qdata) {
+        int done = qdata.getCompletedPhaseIds().size();
         return switch (def.getCompletionPolicy()) {
             case ALL -> done >= def.getPhaseIds().size();
             case ANY -> done >= 1;
             case N_OF_M -> done >= Math.max(1, def.getCompletionRequiredCount());
             case SPECIFIC_PHASE -> {
                 String target = def.getCompletionTargetPhaseId();
-                yield target != null && data.getCompletedPhaseIds().contains(target);
+                yield target != null && qdata.getCompletedPhaseIds().contains(target);
             }
         };
     }
@@ -73,7 +73,7 @@ public final class QuestProgressHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
         if (def.isCollectionQuest()) {
-            return CollectionQuestEngine.acceptQuest(player, cap, def);
+            return CollectionQuestEngine.acceptQuest(player, data, def);
         }
 
         if (data.isQuestActive(questId)) {
@@ -99,7 +99,7 @@ public final class QuestProgressHandler {
         long acceptedRealMs = System.currentTimeMillis();
         long acceptedDayTime = player.level().getDayTime() % 24000L;
 
-        QuestRuntimeData data = new QuestRuntimeData(
+        QuestRuntimeData qdata = new QuestRuntimeData(
                 questId,
                 firstPhase.getPhaseId(),
                 firstPhase.getObjectives().size(),
@@ -107,7 +107,7 @@ public final class QuestProgressHandler {
                 acceptedRealMs,
                 acceptedDayTime
         );
-        data.addActiveQuest(data);
+        data.addActiveQuest(qdata);
 
         boolean flagsChanged = false;
         for (String flag : def.getFlagsToSetOnAccept()) {
@@ -120,17 +120,17 @@ public final class QuestProgressHandler {
         }
 
         registerPhaseObjectives(player, def, firstPhase);
-        QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
+        QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
 
         // 仅对 autoEnterByCondition=true 的 phase 扫描自动入场
         ActivationContext ctx = new ActivationContext();
-        tryAutoEnterPhases(player, cap, data, def, firstPhase.getPhaseId(), ctx);
-        processImmediatelySatisfiedPhases(player, cap, data, def);
+        tryAutoEnterPhases(player, data, qdata, def, firstPhase.getPhaseId(), ctx);
+        processImmediatelySatisfiedPhases(player, data, qdata, def);
         flagsChanged = flagsChanged || ctx.flagsChanged;
 
-        syncQuestStateAndPush(player, data);
+        syncQuestStateAndPush(player, qdata);
         if (flagsChanged) {
-            syncFlagsVarsAndPush(player, cap);
+            syncFlagsVarsAndPush(player, data);
         }
 
         QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
@@ -149,25 +149,25 @@ public final class QuestProgressHandler {
         if (amount <= 0) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || data.getState() != QuestState.ACTIVE) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || qdata.getState() != QuestState.ACTIVE) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
         if (def.isCollectionQuest()) return;
-        if (!data.isPhaseActive(phaseId)) return;
+        if (!qdata.isPhaseActive(phaseId)) return;
 
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) return;
         if (objIndex < 0 || objIndex >= phase.getObjectives().size()) return;
 
         ObjectiveEntry objEntry = phase.getObjectives().get(objIndex);
-        int required = resolveRequiredCount(player, objEntry, cap);
+        int required = resolveRequiredCount(player, objEntry, data);
 
-        int currentProgress = data.getObjectiveProgress(phaseId, objIndex);
+        int currentProgress = qdata.getObjectiveProgress(phaseId, objIndex);
         if (currentProgress >= required) return;
 
-        int newProgress = data.incrementProgress(phaseId, objIndex, amount, required);
+        int newProgress = qdata.incrementProgress(phaseId, objIndex, amount, required);
 
         syncDeltaProgressAndPush(player, questId, phaseId, objIndex, newProgress);
 
@@ -178,7 +178,7 @@ public final class QuestProgressHandler {
                 player, ResourceLocation.parse(questId), phaseId,
                 objIndex, currentProgress, newProgress, required));
 
-        checkPhaseCompletion(player, cap, data, def, phaseId);
+        checkPhaseCompletion(player, data, qdata, def, phaseId);
     }
 
     public static void incrementCollectionEntry(ServerPlayer player,
@@ -188,15 +188,15 @@ public final class QuestProgressHandler {
         if (amount <= 0) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        CollectionEntryUpdateResult result = CollectionQuestEngine.incrementEntryWithResult(player, cap, def, data, phaseId, amount);
+        CollectionEntryUpdateResult result = CollectionQuestEngine.incrementEntryWithResult(player, data, def, qdata, phaseId, amount);
         if (result.isChanged()) {
-            syncQuestStateAndPush(player, data);
+            syncQuestStateAndPush(player, qdata);
         }
     }
 
@@ -204,28 +204,28 @@ public final class QuestProgressHandler {
                                              String questId,
                                              String phaseId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        CollectionVisibilityUpdateResult result = CollectionQuestEngine.revealEntry(def, data, phaseId);
+        CollectionVisibilityUpdateResult result = CollectionQuestEngine.revealEntry(def, qdata, phaseId);
         if (result.isChanged()) {
-            syncQuestStateAndPush(player, data);
+            syncQuestStateAndPush(player, qdata);
         }
     }
 
     public static void refreshCollectionVisibility(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        if (CollectionQuestEngine.refreshVisibility(player, cap, def, data) > 0) {
-            syncQuestStateAndPush(player, data);
+        if (CollectionQuestEngine.refreshVisibility(player, data, def, qdata) > 0) {
+            syncQuestStateAndPush(player, qdata);
         }
     }
 
@@ -233,15 +233,15 @@ public final class QuestProgressHandler {
                                                String questId,
                                                String phaseId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        CollectionEntryUpdateResult result = CollectionQuestEngine.discoverEntryWithResult(def, data, phaseId);
+        CollectionEntryUpdateResult result = CollectionQuestEngine.discoverEntryWithResult(def, qdata, phaseId);
         if (result.isChanged()) {
-            syncQuestStateAndPush(player, data);
+            syncQuestStateAndPush(player, qdata);
         }
     }
 
@@ -252,15 +252,15 @@ public final class QuestProgressHandler {
         if (uniqueKey == null || uniqueKey.isEmpty()) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || qdata.getState() != QuestState.ACTIVE || !qdata.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        CollectionEntryUpdateResult result = CollectionQuestEngine.addUniqueProgressWithResult(player, cap, def, data, phaseId, uniqueKey);
+        CollectionEntryUpdateResult result = CollectionQuestEngine.addUniqueProgressWithResult(player, data, def, qdata, phaseId, uniqueKey);
         if (result.isChanged()) {
-            syncQuestStateAndPush(player, data);
+            syncQuestStateAndPush(player, qdata);
         }
     }
 
@@ -273,7 +273,7 @@ public final class QuestProgressHandler {
                                              QuestDefinition def,
                                              String phaseId) {
         PhaseDefinition phase = def.getPhase(phaseId);
-        if (phase == null || !data.isPhaseActive(phaseId)) return;
+        if (phase == null || !qdata.isPhaseActive(phaseId)) return;
 
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int i = 0; i < objectives.size(); i++) {
@@ -281,13 +281,13 @@ public final class QuestProgressHandler {
             if (objective.getType() == ObjectiveType.NULL) {
                 continue;
             }
-            if (data.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, cap)) {
+            if (qdata.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, data)) {
                 return;
             }
         }
 
         MinecraftForge.EVENT_BUS.post(new QuestPhaseCompletedEvent(
-                player, ResourceLocation.parse(data.getQuestId()), phase.getPhaseId()));
+                player, ResourceLocation.parse(qdata.getQuestId()), phase.getPhaseId()));
 
         grantRewards(player, phase.getPhaseRewards(), "phase");
         unregisterPhaseObjectives(player, def, phase);
@@ -299,31 +299,31 @@ public final class QuestProgressHandler {
         }
 
         if (!phase.shouldAutoAdvanceOnComplete()) {
-            data.markPhasePendingManualAdvance(phaseId);
-            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
-            syncQuestStateAndPush(player, data);
+            qdata.markPhasePendingManualAdvance(phaseId);
+            QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
+            syncQuestStateAndPush(player, qdata);
             if (ctx.flagsChanged) {
-                syncFlagsVarsAndPush(player, cap);
+                syncFlagsVarsAndPush(player, data);
             }
             return;
         }
 
-        data.completePhase(phaseId);
+        qdata.completePhase(phaseId);
 
         // choices：该 phase 完成后等待玩家选路，不自动推进 transition
         if (phase.hasChoices()) {
             // 但允许 auto enter phase 扫描（如配置了 autoEnterByCondition=true）
-            tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
+            tryAutoEnterPhases(player, data, qdata, def, phaseId, ctx);
 
-            if (shouldCompleteQuest(def, data)) {
-                completeQuest(player, cap, data, def);
+            if (shouldCompleteQuest(def, qdata)) {
+                completeQuest(player, data, qdata, def);
                 return;
             }
 
-            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
-            syncQuestStateAndPush(player, data);
+            QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
+            syncQuestStateAndPush(player, qdata);
             if (ctx.flagsChanged) {
-                syncFlagsVarsAndPush(player, cap);
+                syncFlagsVarsAndPush(player, data);
             }
             return;
         }
@@ -336,19 +336,19 @@ public final class QuestProgressHandler {
                     || tr.getCondition().test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
             if (!ok) continue;
 
-            activatePhase(player, cap, data, def, phaseId, tr.getTargetPhaseId(), true, ctx);
+            activatePhase(player, data, qdata, def, phaseId, tr.getTargetPhaseId(), true, ctx);
         }
 
         // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
-        tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
-        processImmediatelySatisfiedPhases(player, cap, data, def);
+        tryAutoEnterPhases(player, data, qdata, def, phaseId, ctx);
+        processImmediatelySatisfiedPhases(player, data, qdata, def);
 
-        if (shouldCompleteQuest(def, data)) {
-            completeQuest(player, cap, data, def);
+        if (shouldCompleteQuest(def, qdata)) {
+            completeQuest(player, data, qdata, def);
         } else {
-            syncQuestStateAndPush(player, data);
+            syncQuestStateAndPush(player, qdata);
             if (ctx.flagsChanged) {
-                syncFlagsVarsAndPush(player, cap);
+                syncFlagsVarsAndPush(player, data);
             }
         }
     }
@@ -358,22 +358,22 @@ public final class QuestProgressHandler {
                                       QuestRuntimeData qdata,
                                       QuestDefinition def,
                                       String nextPhaseId) {
-        String fromPhaseId = data.getCurrentPhaseId();
+        String fromPhaseId = qdata.getCurrentPhaseId();
 
         ActivationContext ctx = new ActivationContext();
-        boolean ok = activatePhase(player, cap, data, def, fromPhaseId, nextPhaseId, true, ctx);
+        boolean ok = activatePhase(player, data, qdata, def, fromPhaseId, nextPhaseId, true, ctx);
         if (!ok) {
             LOGGER.warn("[ArcQuest] Target phase cannot be activated: {}/{}", def.getId(), nextPhaseId);
             return;
         }
 
-        tryAutoEnterPhases(player, cap, data, def, fromPhaseId, ctx);
-        processImmediatelySatisfiedPhases(player, cap, data, def);
+        tryAutoEnterPhases(player, data, qdata, def, fromPhaseId, ctx);
+        processImmediatelySatisfiedPhases(player, data, qdata, def);
 
-        QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
-        syncQuestStateAndPush(player, data);
+        QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
+        syncQuestStateAndPush(player, qdata);
         if (ctx.flagsChanged) {
-            syncFlagsVarsAndPush(player, cap);
+            syncFlagsVarsAndPush(player, data);
         }
     }
 
@@ -384,43 +384,43 @@ public final class QuestProgressHandler {
                                                                            String questId,
                                                                            String phaseId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
-        if (phaseId == null || phaseId.isEmpty() || !data.isPhasePendingManualAdvance(phaseId)) {
+        if (phaseId == null || phaseId.isEmpty() || !qdata.isPhasePendingManualAdvance(phaseId)) {
             return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
         }
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase == null) return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
-        data.clearPhasePendingManualAdvance(phaseId);
-        data.completePhase(phaseId);
+        qdata.clearPhasePendingManualAdvance(phaseId);
+        qdata.completePhase(phaseId);
         ActivationContext ctx = new ActivationContext();
         for (String flag : phase.getFlagsToSetOnComplete()) {
             data.setFlag(flag);
             ctx.flagsChanged = true;
         }
         if (phase.hasChoices()) {
-            tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
-            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
-            syncQuestStateAndPush(player, data);
-            if (ctx.flagsChanged) syncFlagsVarsAndPush(player, cap);
+            tryAutoEnterPhases(player, data, qdata, def, phaseId, ctx);
+            QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
+            syncQuestStateAndPush(player, qdata);
+            if (ctx.flagsChanged) syncFlagsVarsAndPush(player, data);
             return QuestRejectCodeDictionary.Code.OK;
         }
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         for (PhaseTransition tr : phase.getTransitions()) {
             boolean ok = tr.getCondition() == null || tr.getCondition().test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
-            if (ok) activatePhase(player, cap, data, def, phaseId, tr.getTargetPhaseId(), true, ctx);
+            if (ok) activatePhase(player, data, qdata, def, phaseId, tr.getTargetPhaseId(), true, ctx);
         }
-        tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
-        processImmediatelySatisfiedPhases(player, cap, data, def);
-        if (shouldCompleteQuest(def, data)) {
-            completeQuest(player, cap, data, def);
+        tryAutoEnterPhases(player, data, qdata, def, phaseId, ctx);
+        processImmediatelySatisfiedPhases(player, data, qdata, def);
+        if (shouldCompleteQuest(def, qdata)) {
+            completeQuest(player, data, qdata, def);
         } else {
-            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
-            syncQuestStateAndPush(player, data);
+            QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
+            syncQuestStateAndPush(player, qdata);
         }
-        if (ctx.flagsChanged) syncFlagsVarsAndPush(player, cap);
+        if (ctx.flagsChanged) syncFlagsVarsAndPush(player, data);
         return QuestRejectCodeDictionary.Code.OK;
     }
 
@@ -448,7 +448,7 @@ public final class QuestProgressHandler {
                                                                             int choiceIndex) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -456,7 +456,7 @@ public final class QuestProgressHandler {
 
         String resolvedPhaseId = phaseId;
         if (resolvedPhaseId == null || resolvedPhaseId.isEmpty()) {
-            for (String pid : data.getActivePhaseIds()) {
+            for (String pid : qdata.getActivePhaseIds()) {
                 PhaseDefinition p = def.getPhase(pid);
                 if (p != null && p.hasChoices()) {
                     resolvedPhaseId = pid;
@@ -468,7 +468,7 @@ public final class QuestProgressHandler {
         if (resolvedPhaseId == null || resolvedPhaseId.isEmpty()) {
             return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
         }
-        if (!data.isPhaseActive(resolvedPhaseId)) {
+        if (!qdata.isPhaseActive(resolvedPhaseId)) {
             return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
         }
 
@@ -508,7 +508,7 @@ public final class QuestProgressHandler {
         }
 
         // 完成当前 choice phase
-        data.completePhase(resolvedPhaseId);
+        qdata.completePhase(resolvedPhaseId);
         unregisterPhaseObjectives(player, def, currentPhase);
         for (String flag : currentPhase.getFlagsToSetOnComplete()) {
             data.setFlag(flag);
@@ -531,7 +531,7 @@ public final class QuestProgressHandler {
         }
 
         for (String pid : toActivate) {
-            activatePhase(player, cap, data, def, resolvedPhaseId, pid, true, ctx);
+            activatePhase(player, data, qdata, def, resolvedPhaseId, pid, true, ctx);
         }
 
         MinecraftForge.EVENT_BUS.post(new QuestChoiceResolvedEvent(
@@ -544,20 +544,20 @@ public final class QuestProgressHandler {
         ));
 
         // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
-        tryAutoEnterPhases(player, cap, data, def, resolvedPhaseId, ctx);
-        processImmediatelySatisfiedPhases(player, cap, data, def);
+        tryAutoEnterPhases(player, data, qdata, def, resolvedPhaseId, ctx);
+        processImmediatelySatisfiedPhases(player, data, qdata, def);
 
-        if (shouldCompleteQuest(def, data)) {
-            completeQuest(player, cap, data, def);
+        if (shouldCompleteQuest(def, qdata)) {
+            completeQuest(player, data, qdata, def);
         } else {
-            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
-            syncQuestStateAndPush(player, data);
+            QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
+            syncQuestStateAndPush(player, qdata);
             if (ctx.flagsChanged) {
-                syncFlagsVarsAndPush(player, cap);
+                syncFlagsVarsAndPush(player, data);
             }
         }
 
-        if (ctx.activatedCount == 0 && !shouldCompleteQuest(def, data)) {
+        if (ctx.activatedCount == 0 && !shouldCompleteQuest(def, qdata)) {
             LOGGER.warn("[ArcQuest] Choice resolved but no next phase activated: quest={}, phase={}, choice={}",
                     questId, resolvedPhaseId, choiceIndex);
             return QuestRejectCodeDictionary.Code.CHOICE_TARGET_PHASE_MISSING;
@@ -570,7 +570,7 @@ public final class QuestProgressHandler {
                                       ArcQuestPlayer data,
                                       QuestRuntimeData qdata,
                                       QuestDefinition def) {
-        doCompleteQuest(player, cap, data, def, "completed");
+        doCompleteQuest(player, data, qdata, def, "completed");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -578,15 +578,15 @@ public final class QuestProgressHandler {
     // ═══════════════════════════════════════════════════════
     public static void failQuest(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) return;
 
-        data.setState(QuestState.FAILED);
+        qdata.setState(QuestState.FAILED);
         data.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
-        QuestMarkerService.clearQuestMarkers(cap, questId);
+        QuestMarkerService.clearQuestMarkers(data, questId);
 
-        syncQuestStateAndPush(player, data);
+        syncQuestStateAndPush(player, qdata);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -603,16 +603,16 @@ public final class QuestProgressHandler {
             return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         }
 
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data != null) {
-            data.setState(QuestState.FAILED);
+            qdata.setState(QuestState.FAILED);
         }
 
         data.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
-        QuestMarkerService.clearQuestMarkers(cap, questId);
+        QuestMarkerService.clearQuestMarkers(data, questId);
 
-        syncFullDataAndPush(player, cap);
+        syncFullDataAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
@@ -623,13 +623,13 @@ public final class QuestProgressHandler {
 
     public static void forceComplete(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null) return;
 
-        doCompleteQuest(player, cap, data, def, "force-completed");
+        doCompleteQuest(player, data, qdata, def, "force-completed");
     }
 
     private static void doCompleteQuest(ServerPlayer player,
@@ -637,22 +637,22 @@ public final class QuestProgressHandler {
                                         QuestRuntimeData qdata,
                                         QuestDefinition def,
                                         String logPrefix) {
-        String questId = data.getQuestId();
+        String questId = qdata.getQuestId();
 
         grantRewards(player, def.getCompletionRewards(), "completion");
-        def.getFlagsToSetOnComplete().forEach(cap::setFlag);
+        def.getFlagsToSetOnComplete().forEach(data::setFlag);
 
-        data.setState(QuestState.COMPLETED);
+        qdata.setState(QuestState.COMPLETED);
         data.markCompleted(questId);
 
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
-        QuestMarkerService.clearQuestMarkers(cap, questId);
+        QuestMarkerService.clearQuestMarkers(data, questId);
 
         LOGGER.info("[ArcQuest] Player {} {} quest: {}",
                 player.getGameProfile().getName(), logPrefix, questId);
 
-        syncQuestStateAndPush(player, data);
-        syncFlagsVarsAndPush(player, cap);
+        syncQuestStateAndPush(player, qdata);
+        syncFlagsVarsAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
         playChapterSound(player, def.getChapterCompleteSound());
@@ -660,9 +660,9 @@ public final class QuestProgressHandler {
 
     public static void syncToClient(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data != null) {
-            syncQuestStateAndPush(player, data);
+            syncQuestStateAndPush(player, qdata);
         }
     }
 
@@ -676,11 +676,11 @@ public final class QuestProgressHandler {
     }
 
     private static void syncFlagsVarsAndPush(ServerPlayer player, ArcQuestPlayer data) {
-        QuestSyncCoordinator.syncFlagsVarsAndPush(player, cap);
+        QuestSyncCoordinator.syncFlagsVarsAndPush(player, data);
     }
 
     private static void syncFullDataAndPush(ServerPlayer player, ArcQuestPlayer data) {
-        QuestSyncCoordinator.syncFullDataAndPush(player, cap);
+        QuestSyncCoordinator.syncFullDataAndPush(player, data);
     }
 
     private static void syncDeltaProgressAndPush(ServerPlayer player,
@@ -696,20 +696,20 @@ public final class QuestProgressHandler {
 
         int activeQuestCount = 0;
         for (Map.Entry<String, QuestRuntimeData> entry : data.getAllActiveQuests().entrySet()) {
-            QuestRuntimeData data = entry.getValue();
-            if (data.getState() != QuestState.ACTIVE) continue;
+            QuestRuntimeData qdata = entry.getValue();
+            if (qdata.getState() != QuestState.ACTIVE) continue;
             activeQuestCount++;
 
-            QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
+            QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(qdata.getQuestId()));
             if (def == null) continue;
 
-            for (String phaseId : data.getActivePhaseIds()) {
+            for (String phaseId : qdata.getActivePhaseIds()) {
                 PhaseDefinition phase = def.getPhase(phaseId);
                 if (phase == null) continue;
                 registerPhaseObjectives(player, def, phase);
             }
 
-            QuestMarkerService.refreshQuestMarkers(player, cap, data, def);
+            QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
         }
 
         MinecraftForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
@@ -818,31 +818,31 @@ public final class QuestProgressHandler {
         boolean changed;
         do {
             changed = false;
-            for (String phaseId : List.copyOf(data.getActivePhaseIds())) {
+            for (String phaseId : List.copyOf(qdata.getActivePhaseIds())) {
                 PhaseDefinition phase = def.getPhase(phaseId);
                 if (phase == null) continue;
 
-                if (data.isPhaseCompletionCached(phaseId)) {
-                    if (!data.isPhaseCompletionSatisfied(phaseId)) continue;
+                if (qdata.isPhaseCompletionCached(phaseId)) {
+                    if (!qdata.isPhaseCompletionSatisfied(phaseId)) continue;
                 }
 
                 boolean allSatisfied = true;
                 for (int i = 0; i < phase.getObjectives().size(); i++) {
                     ObjectiveEntry objective = phase.getObjectives().get(i);
                     if (objective.getType() == ObjectiveType.NULL) continue;
-                    if (data.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, cap)) {
+                    if (qdata.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, data)) {
                         allSatisfied = false;
                         break;
                     }
                 }
                 if (!allSatisfied) {
-                    data.setPhaseCompletionCached(phaseId, false);
+                    qdata.setPhaseCompletionCached(phaseId, false);
                     continue;
                 }
-                int beforeCompleted = data.getCompletedPhaseIds().size();
-                int beforePending = data.getPendingManualAdvancePhaseIds().size();
-                checkPhaseCompletion(player, cap, data, def, phaseId);
-                if (data.getCompletedPhaseIds().size() != beforeCompleted || data.getPendingManualAdvancePhaseIds().size() != beforePending) {
+                int beforeCompleted = qdata.getCompletedPhaseIds().size();
+                int beforePending = qdata.getPendingManualAdvancePhaseIds().size();
+                checkPhaseCompletion(player, data, qdata, def, phaseId);
+                if (qdata.getCompletedPhaseIds().size() != beforeCompleted || qdata.getPendingManualAdvancePhaseIds().size() != beforePending) {
                     changed = true;
                 }
             }
@@ -883,14 +883,14 @@ public final class QuestProgressHandler {
     private static boolean canEnterPhase(ServerPlayer player,
                                          ArcQuestPlayer data,
                                          PhaseDefinition phase,
-                                         @Nullable QuestRuntimeData data) {
-        if (data != null && data.isEnterConditionCached(phase.getPhaseId())) {
-            return data.canEnterPhaseCached(phase.getPhaseId());
+                                         @Nullable QuestRuntimeData qdata) {
+        if (data != null && qdata.isEnterConditionCached(phase.getPhaseId())) {
+            return qdata.canEnterPhaseCached(phase.getPhaseId());
         }
         ICondition cond = phase.getEnterCondition();
         if (cond == null) return true;
         boolean result = cond.test(player, data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables());
-        if (data != null) data.setEnterConditionCached(phase.getPhaseId(), result);
+        if (data != null) qdata.setEnterConditionCached(phase.getPhaseId(), result);
         return result;
     }
 
@@ -907,13 +907,13 @@ public final class QuestProgressHandler {
                                          ActivationContext ctx) {
         PhaseDefinition next = def.getPhase(targetPhaseId);
         if (next == null) return false;
-        if (data.isPhaseActive(targetPhaseId) || data.isPhaseCompleted(targetPhaseId)) return false;
+        if (qdata.isPhaseActive(targetPhaseId) || qdata.isPhaseCompleted(targetPhaseId)) return false;
 
-        if (enforceEnterCondition && !canEnterPhase(player, cap, next, data)) {
+        if (enforceEnterCondition && !canEnterPhase(player, data, next, qdata)) {
             return false;
         }
 
-        data.activatePhase(next.getPhaseId(), next.getObjectives().size());
+        qdata.activatePhase(next.getPhaseId(), next.getObjectives().size());
         registerPhaseObjectives(player, def, next);
 
         for (String flag : next.getFlagsToSetOnEnter()) {
@@ -942,15 +942,15 @@ public final class QuestProgressHandler {
             changed = false;
 
             for (String pid : def.getPhaseIds()) {
-                if (data.isPhaseActive(pid) || data.isPhaseCompleted(pid)) continue;
+                if (qdata.isPhaseActive(pid) || qdata.isPhaseCompleted(pid)) continue;
 
                 PhaseDefinition phase = def.getPhase(pid);
                 if (phase == null) continue;
                 if (!phase.isAutoEnterByCondition()) continue;
                 if (phase.getEnterCondition() == null) continue;
-                if (!canEnterPhase(player, cap, phase, data)) continue;
+                if (!canEnterPhase(player, data, phase, qdata)) continue;
 
-                boolean ok = activatePhase(player, cap, data, def, fromPhaseId, pid, false, ctx);
+                boolean ok = activatePhase(player, data, qdata, def, fromPhaseId, pid, false, ctx);
                 if (ok) changed = true;
             }
         } while (changed);

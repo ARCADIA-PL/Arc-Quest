@@ -41,7 +41,7 @@ public final class GachaScreenOpener {
     // ════════════════════════════════════════
 
     public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop, ArcQuestPlayer data) {
-        openGachaScreen(player, shop, cap, null);
+        openGachaScreen(player, shop, data, null);
     }
 
     public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop,
@@ -55,9 +55,9 @@ public final class GachaScreenOpener {
 
         touchActiveContext(player, shop.getShopId());
 
-        GachaSnapshot snapshot = resolveSnapshot(player, shop, cap, true);
+        GachaSnapshot snapshot = resolveSnapshot(player, shop, data, true);
 
-        MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(player, shop.getShopId(), cap));
+        MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(player, shop.getShopId(), data));
 
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
@@ -90,21 +90,21 @@ public final class GachaScreenOpener {
      */
     public static void syncGachaState(ServerPlayer player, GachaShopDefinition shop, ArcQuestPlayer data) {
         touchActiveContext(player, shop.getShopId());
-        syncShopState(player, shop, cap, "manual_sync", true);
+        syncShopState(player, shop, data, "manual_sync", true);
     }
 
     /**
      * 统一 push 入口（推荐）：基于活跃上下文决定是否推送。
      */
     public static void pushSyncForActiveShop(ServerPlayer player, @Nullable ArcQuestPlayer data, String reason) {
-        pushSync(player, cap, reason);
+        pushSync(player, data, reason);
     }
 
     /**
      * 新统一入口别名（更语义化）。
      */
     public static void pushSync(ServerPlayer player, @Nullable ArcQuestPlayer data, String reason) {
-        if (cap == null) return;
+        if (data == null) return;
 
         ActiveGachaContext context = ACTIVE_GACHA_CONTEXTS.get(player.getUUID());
         if (context == null) return;
@@ -124,7 +124,7 @@ public final class GachaScreenOpener {
                 player.getName().getString(), context.shopId(), reason);
 
         touchActiveContext(player, context.shopId());
-        syncShopState(player, shop, cap, reason, true);
+        syncShopState(player, shop, data, reason, true);
     }
 
     public static void closeActiveShopContext(ServerPlayer player) {
@@ -139,7 +139,7 @@ public final class GachaScreenOpener {
 
     private static void syncShopState(ServerPlayer player, GachaShopDefinition shop,
                                       ArcQuestPlayer data, String reason, boolean dedupe) {
-        GachaSnapshot snapshot = resolveSnapshot(player, shop, cap, true);
+        GachaSnapshot snapshot = resolveSnapshot(player, shop, data, true);
 
         if (dedupe && !shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
             SyncObservability.recordDropped("gacha", shop.getShopId(), player.getName().getString(), false);
@@ -201,7 +201,7 @@ public final class GachaScreenOpener {
 
     private static GachaSnapshot resolveSnapshot(ServerPlayer player, GachaShopDefinition shop,
                                                  ArcQuestPlayer data, boolean applyReset) {
-        GachaSession session = new GachaSession(player, shop, cap);
+        GachaSession session = new GachaSession(player, shop, data);
 
         if (applyReset) {
             int before = session.getDrawCount();

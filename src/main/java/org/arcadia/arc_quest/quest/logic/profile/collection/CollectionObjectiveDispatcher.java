@@ -28,11 +28,11 @@ public final class CollectionObjectiveDispatcher {
     public static int dispatch(ServerPlayer player, ObjectiveKey key, int amount, @Nullable String uniqueKey) {
         if (player == null || key == null || amount <= 0) return 0;
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (cap == null) return 0;
+        if (data == null) return 0;
 
         int changed = 0;
-        for (CollectionObjectiveBinding binding : findBindings(cap, key)) {
-            if (!shouldDispatch(cap, binding)) continue;
+        for (CollectionObjectiveBinding binding : findBindings(data, key)) {
+            if (!shouldDispatch(data, binding)) continue;
             switch (binding.getCountingMode()) {
                 case BINARY ->
                         QuestProgressHandler.incrementCollectionEntry(player, binding.getQuestId(), binding.getPhaseId(), 1);
@@ -52,7 +52,7 @@ public final class CollectionObjectiveDispatcher {
     }
 
     public static List<CollectionObjectiveBinding> findBindings(ArcQuestPlayer data, ObjectiveKey key) {
-        if (cap == null || key == null) return List.of();
+        if (data == null || key == null) return List.of();
         List<CollectionObjectiveBinding> bindings = new ArrayList<>();
         for (Map.Entry<String, QuestRuntimeData> activeEntry : data.getAllActiveQuests().entrySet()) {
             QuestRuntimeData runtime = activeEntry.getValue();
@@ -67,7 +67,7 @@ public final class CollectionObjectiveDispatcher {
     }
 
     private static boolean shouldDispatch(ArcQuestPlayer data, CollectionObjectiveBinding binding) {
-        if (cap == null || binding == null) return false;
+        if (data == null || binding == null) return false;
         QuestRuntimeData runtime = data.getActiveQuest(binding.getQuestId());
         if (runtime == null || runtime.getState() != QuestState.ACTIVE) return false;
         CollectionRuntimeData collectionData = runtime.getCollectionData();

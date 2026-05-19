@@ -29,7 +29,7 @@ public class GachaEvents {
                             int pityCounter) {
             this.player = player;
             this.shopId = shopId;
-            this.capability = capability;
+            this.playerData = playerData;
             this.pityCounter = pityCounter;
             cancelled = false;
         }
@@ -43,7 +43,7 @@ public class GachaEvents {
         }
 
         public ArcQuestPlayer getCapability() {
-            return capability;
+            return playerData;
         }
 
         public int getPityCounter() {
@@ -86,7 +86,7 @@ public class GachaEvents {
             this.drawnItem = drawnItem;
             this.pityTriggered = pityTriggered;
             this.newPityCounter = newPityCounter;
-            this.capability = capability;
+            this.playerData = playerData;
         }
 
         public ServerPlayer getPlayer() {
@@ -110,7 +110,7 @@ public class GachaEvents {
         }
 
         public ArcQuestPlayer getCapability() {
-            return capability;
+            return playerData;
         }
     }
 
@@ -132,7 +132,7 @@ public class GachaEvents {
                                 Map<String, Integer> newWeights) {
             this.player = player;
             this.shopId = shopId;
-            this.capability = capability;
+            this.playerData = playerData;
             this.oldWeights = oldWeights;
             this.newWeights = newWeights;
         }
@@ -146,7 +146,7 @@ public class GachaEvents {
         }
 
         public ArcQuestPlayer getCapability() {
-            return capability;
+            return playerData;
         }
 
         public Map<String, Integer> getOldWeights() {
@@ -169,7 +169,7 @@ public class GachaEvents {
         public OpenedEvent(ServerPlayer player, String shopId, ArcQuestPlayer playerData) {
             this.player = player;
             this.shopId = shopId;
-            this.capability = capability;
+            this.playerData = playerData;
         }
 
         public ServerPlayer getPlayer() {
@@ -181,7 +181,7 @@ public class GachaEvents {
         }
 
         public ArcQuestPlayer getCapability() {
-            return capability;
+            return playerData;
         }
     }
 
@@ -201,7 +201,7 @@ public class GachaEvents {
                             int currentPityCounter) {
             this.player = player;
             this.shopId = shopId;
-            this.capability = capability;
+            this.playerData = playerData;
             this.currentPityCounter = currentPityCounter;
         }
 
@@ -214,7 +214,7 @@ public class GachaEvents {
         }
 
         public ArcQuestPlayer getCapability() {
-            return capability;
+            return playerData;
         }
 
         public int getCurrentPityCounter() {
@@ -237,7 +237,7 @@ public class GachaEvents {
         public DrawFailedEvent(ServerPlayer player, String shopId, ArcQuestPlayer playerData, FailReason reason) {
             this.player = player;
             this.shopId = shopId;
-            this.capability = capability;
+            this.playerData = playerData;
             this.reason = reason;
         }
 
@@ -250,7 +250,7 @@ public class GachaEvents {
         }
 
         public ArcQuestPlayer getCapability() {
-            return capability;
+            return playerData;
         }
 
         public FailReason getReason() {
@@ -388,7 +388,7 @@ public class GachaEvents {
                                    int previousDrawCount) {
             this.player = player;
             this.shopId = shopId;
-            this.capability = capability;
+            this.playerData = playerData;
             this.reason = reason;
             this.previousDrawCount = previousDrawCount;
         }
@@ -402,7 +402,7 @@ public class GachaEvents {
         }
 
         public ArcQuestPlayer getCapability() {
-            return capability;
+            return playerData;
         }
 
         public ResetReason getReason() {

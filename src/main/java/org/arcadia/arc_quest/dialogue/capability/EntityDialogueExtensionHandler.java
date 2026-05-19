@@ -230,7 +230,7 @@ public class EntityDialogueExtensionHandler {
     @SuppressWarnings("unchecked")
     private static void controlNpcBehavior(LivingEntity entity, ServerPlayer player) {
         if (!(entity instanceof Mob mob)) return;
-        {
+
         DialogueNpcStateManager.State state = DialogueNpcStateManager.get(entity);
         if (state == null || state.conversingPlayer() == null) return;
 

@@ -66,9 +66,9 @@ public class C2SConfirmDrawPacket {
             if (shop == null) return;
 
             ArcQuestPlayer data = GachaRequestValidator.requireCapability(player, "confirm_draw", pkt.shopId);
-            if (cap == null) return;
+            if (data == null) return;
 
-            GachaScreenOpener.syncGachaState(player, shop, cap);
+            GachaScreenOpener.syncGachaState(player, shop, data);
         });
         ctx.get().setPacketHandled(true);
     }

@@ -118,41 +118,41 @@ public final class ConditionEvaluator {
 
     private boolean evaluateQuestAccepted(@Nullable ServerPlayer player, String questId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return false;
         return data.getActiveQuest(questId) != null;
     }
 
     private boolean evaluateQuestNotStarted(@Nullable ServerPlayer player, String questId) {
         if (player == null) return true;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return true;
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return true;
         return data.getActiveQuest(questId) == null && !data.isQuestCompleted(questId);
     }
 
     private boolean evaluateQuestPhase(@Nullable ServerPlayer player, String questId, String phaseId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
-        var data = data.getActiveQuest(questId);
-        return data != null && data.isPhaseActive(phaseId);
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return false;
+        var qdata = data.getActiveQuest(questId);
+        return qdata != null && qdata.isPhaseActive(phaseId);
     }
 
     private boolean evaluateQuestPhaseCompleted(@Nullable ServerPlayer player, String questId, String phaseId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
-        var data = data.getActiveQuest(questId);
-        return data != null && data.isPhaseCompleted(phaseId);
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return false;
+        var qdata = data.getActiveQuest(questId);
+        return qdata != null && qdata.isPhaseCompleted(phaseId);
     }
 
     private boolean evaluateQuestPhaseReached(@Nullable ServerPlayer player, String questId, String phaseId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
-        var data = data.getActiveQuest(questId);
+        var data = ArcQuestPlayerManager.get(player);
         if (data == null) return false;
-        return data.isPhaseCompleted(phaseId) || data.isPhaseActive(phaseId);
+        var qdata = data.getActiveQuest(questId);
+        if (qdata == null) return false;
+        return qdata.isPhaseCompleted(phaseId) || qdata.isPhaseActive(phaseId);
     }
 
     private boolean evaluateVariable(Map<String, Integer> variables, String key, String op, int value) {
@@ -195,44 +195,44 @@ public final class ConditionEvaluator {
 
     private boolean evaluateHasQuest(@Nullable ServerPlayer player, String questId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return false;
         return data.isQuestActive(questId) || data.isQuestCompleted(questId) || data.isQuestFailed(questId);
     }
 
     private boolean evaluateQuestFailed(@Nullable ServerPlayer player, String questId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) return false;
         return data.isQuestFailed(questId);
     }
 
     private boolean evaluatePhaseBefore(@Nullable ServerPlayer player, String questId, String targetPhaseId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
-        var data = data.getActiveQuest(questId);
+        var data = ArcQuestPlayerManager.get(player);
         if (data == null) return false;
-        return !data.isPhaseCompleted(targetPhaseId) && !data.isPhaseActive(targetPhaseId);
+        var qdata = data.getActiveQuest(questId);
+        if (data == null) return false;
+        return !qdata.isPhaseCompleted(targetPhaseId) && !qdata.isPhaseActive(targetPhaseId);
     }
 
     private boolean evaluatePhaseAfter(@Nullable ServerPlayer player, String questId, String targetPhaseId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
-        var data = data.getActiveQuest(questId);
+        var data = ArcQuestPlayerManager.get(player);
         if (data == null) return false;
-        return data.isPhaseCompleted(targetPhaseId);
+        var qdata = data.getActiveQuest(questId);
+        if (qdata == null) return false;
+        return qdata.isPhaseCompleted(targetPhaseId);
     }
 
     private boolean evaluatePhaseBetween(@Nullable ServerPlayer player, String questId, String fromPhaseId, String toPhaseId) {
         if (player == null) return false;
-        var cap = ArcQuestPlayerManager.get(player);
-        if (cap == null) return false;
-        var data = data.getActiveQuest(questId);
+        var data = ArcQuestPlayerManager.get(player);
         if (data == null) return false;
-        boolean reachedStart = data.isPhaseCompleted(fromPhaseId) || data.isPhaseActive(fromPhaseId);
-        boolean reachedEnd = data.isPhaseCompleted(toPhaseId) || data.isPhaseActive(toPhaseId);
+        var qdata = data.getActiveQuest(questId);
+        if (qdata == null) return false;
+        boolean reachedStart = qdata.isPhaseCompleted(fromPhaseId) || qdata.isPhaseActive(fromPhaseId);
+        boolean reachedEnd = qdata.isPhaseCompleted(toPhaseId) || qdata.isPhaseActive(toPhaseId);
         return reachedStart && !reachedEnd;
     }
 

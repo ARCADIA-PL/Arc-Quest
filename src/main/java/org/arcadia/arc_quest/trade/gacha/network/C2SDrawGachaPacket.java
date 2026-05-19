@@ -48,7 +48,7 @@ public class C2SDrawGachaPacket {
             if (player == null) return;
 
             ArcQuestPlayer data = GachaRequestValidator.requireCapability(player, "draw", pkt.shopId);
-            if (cap == null) return;
+            if (data == null) return;
 
             GachaShopDefinition gachaShop = GachaRequestValidator.requireShop(pkt.shopId, player, "draw");
             if (gachaShop == null) return;
@@ -57,8 +57,8 @@ public class C2SDrawGachaPacket {
                     SyncObservability.Stage.ACTION, "draw");
 
             // 0) PreDrawEvent（锁外，允许改 pityCounter）
-            int basePityCounter = cap.getGachaPityCounter(pkt.shopId);
-            GachaEvents.PreDrawEvent preEvent = new GachaEvents.PreDrawEvent(player, pkt.shopId, cap, basePityCounter);
+            int basePityCounter = data.getGachaPityCounter(pkt.shopId);
+            GachaEvents.PreDrawEvent preEvent = new GachaEvents.PreDrawEvent(player, pkt.shopId, data, basePityCounter);
             MinecraftForge.EVENT_BUS.post(preEvent);
             if (preEvent.isCancelled()) {
                 GachaRequestValidator.reject(
@@ -69,7 +69,7 @@ public class C2SDrawGachaPacket {
                         "pre draw event cancelled"
                 );
                 var reason = GachaEvents.DrawFailedEvent.FailReason.UNKNOWN;
-                MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
+                MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
 
                 ArcQuestNetwork.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> player),
@@ -87,8 +87,8 @@ public class C2SDrawGachaPacket {
             int pityCounter = preEvent.getPityCounter();
 
             // 1) 先判定状态门禁（统一优先级：cooldown > limit > condition > afford）
-            GachaSession preStateSession = new GachaSession(player, gachaShop, cap);
-            synchronized (cap) {
+            GachaSession preStateSession = new GachaSession(player, gachaShop, data);
+            synchronized (data) {
                 preStateSession.checkAndResetDraws();
                 if (!preStateSession.canDraw()) {
                     GachaEvents.DrawFailedEvent.FailReason reason = mapFailReason(preStateSession.getFailReason());
@@ -99,7 +99,7 @@ public class C2SDrawGachaPacket {
                             pkt.shopId,
                             "pre-state gate failed"
                     );
-                    MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
+                    MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
 
                     ArcQuestNetwork.CHANNEL.send(
                             PacketDistributor.PLAYER.with(() -> player),
@@ -131,7 +131,7 @@ public class C2SDrawGachaPacket {
                                 "draw cost cannot afford"
                         );
                         var reason = GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD;
-                        MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
+                        MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
 
                         ArcQuestNetwork.CHANNEL.send(
                                 PacketDistributor.PLAYER.with(() -> player),
@@ -154,8 +154,8 @@ public class C2SDrawGachaPacket {
 
             // 3) 锁内：只做状态推进 + 产出权威快照（不发包/不日志/不派发事件）
             DrawResolution resolution;
-            synchronized (cap) {
-                resolution = resolveDrawStateUnderLock(player, cap, gachaShop, pkt.shopId, pityCounter);
+            synchronized (data) {
+                resolution = resolveDrawStateUnderLock(player, data, gachaShop, pkt.shopId, pityCounter);
             }
 
             // 4) 锁外：事件派发、发包、日志（彻底移出锁）
@@ -170,7 +170,7 @@ public class C2SDrawGachaPacket {
                         "resolution failed"
                 );
 
-                MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, cap, reason));
+                MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
 
                 ArcQuestNetwork.CHANNEL.send(
                         PacketDistributor.PLAYER.with(() -> player),
@@ -191,7 +191,7 @@ public class C2SDrawGachaPacket {
             MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawingEvent(
                     player,
                     pkt.shopId,
-                    cap,
+                    data,
                     resolution.preEventPityCounter()
             ));
 
@@ -212,7 +212,7 @@ public class C2SDrawGachaPacket {
                     resolution.item(),
                     resolution.pityTriggered(),
                     resolution.newPityCounter(),
-                    cap
+                    data
             ));
 
             ArcQuestNetwork.CHANNEL.send(
@@ -248,7 +248,7 @@ public class C2SDrawGachaPacket {
     private static DrawResolution resolveDrawStateUnderLock(ServerPlayer player, ArcQuestPlayer data,
                                                             GachaShopDefinition gachaShop, String shopId,
                                                             int pityCounter) {
-        GachaSession session = new GachaSession(player, gachaShop, cap);
+        GachaSession session = new GachaSession(player, gachaShop, data);
 
         session.checkAndResetDraws();
 
@@ -283,7 +283,7 @@ public class C2SDrawGachaPacket {
             );
         }
 
-        var drawResult = gachaShop.performDraw(player, cap, pityCounter);
+        var drawResult = gachaShop.performDraw(player, data, pityCounter);
         if (drawResult.item() == null) {
             GachaRequestValidator.reject(
                     RejectCodeDictionary.Code.DRAW_RESULT_EMPTY,
@@ -377,12 +377,12 @@ public class C2SDrawGachaPacket {
             );
         }
 
-        if (GachaEntryStateResolver.shouldRecordCooldown(cap, shopId, gachaShop)) {
-            GachaEntryStateResolver.recordCooldown(player, cap, shopId, gachaShop);
+        if (GachaEntryStateResolver.shouldRecordCooldown(data, shopId, gachaShop)) {
+            GachaEntryStateResolver.recordCooldown(player, data, shopId, gachaShop);
         }
 
         session.incrementDrawCount();
-        cap.setGachaPityCounter(shopId, newPityCounter);
+        data.setGachaPityCounter(shopId, newPityCounter);
 
         boolean canDraw = true;
         int remainingDraws = -1;
@@ -391,7 +391,7 @@ public class C2SDrawGachaPacket {
         long lastDrawDayTime = -1;
 
         if (gachaShop.hasLimit() && gachaShop.getMaxDraws() > 0) {
-            int totalDraws = gachaShop.getTotalDraws(cap);
+            int totalDraws = gachaShop.getTotalDraws(data);
             remainingDraws = Math.max(0, gachaShop.getMaxDraws() - totalDraws);
             if (remainingDraws <= 0) {
                 canDraw = false;
@@ -399,7 +399,7 @@ public class C2SDrawGachaPacket {
         }
 
         if (gachaShop.hasCooldown()) {
-            var cooldownEntry = cap.getGachaDataStore().getDrawCooldown(gachaShop.getShopId());
+            var cooldownEntry = data.getGachaDataStore().getDrawCooldown(gachaShop.getShopId());
             lastDrawRealTime = cooldownEntry.realTime();
             lastDrawGameTime = cooldownEntry.gameTime();
             lastDrawDayTime = cooldownEntry.dayTime();

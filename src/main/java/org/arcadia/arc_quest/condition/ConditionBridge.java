@@ -296,8 +296,8 @@ public final class ConditionBridge {
         @Override
         public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
             if (player == null) return false;
-            var cap = ArcQuestPlayerManager.get(player);
-            if (cap == null) return false;
+            var data = ArcQuestPlayerManager.get(player);
+            if (data == null) return false;
             return data.getActiveQuest(questId) != null;
         }
 
@@ -311,8 +311,8 @@ public final class ConditionBridge {
         @Override
         public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
             if (player == null) return true;
-            var cap = ArcQuestPlayerManager.get(player);
-            if (cap == null) return true;
+            var data = ArcQuestPlayerManager.get(player);
+            if (data == null) return true;
             return data.getActiveQuest(questId) == null && !data.isQuestCompleted(questId);
         }
 
@@ -326,10 +326,10 @@ public final class ConditionBridge {
         @Override
         public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
             if (player == null) return false;
-            var cap = ArcQuestPlayerManager.get(player);
-            if (cap == null) return false;
-            var data = data.getActiveQuest(questId);
-            return data != null && data.isPhaseActive(phaseId);
+            var data = ArcQuestPlayerManager.get(player);
+            if (data == null) return false;
+            var qdata = data.getActiveQuest(questId);
+            return qdata != null && qdata.isPhaseActive(phaseId);
         }
 
         @Override
@@ -342,10 +342,10 @@ public final class ConditionBridge {
         @Override
         public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
             if (player == null) return false;
-            var cap = ArcQuestPlayerManager.get(player);
-            if (cap == null) return false;
-            var data = data.getActiveQuest(questId);
-            return data != null && data.isPhaseCompleted(phaseId);
+            var data = ArcQuestPlayerManager.get(player);
+            if (data == null) return false;
+            var qdata = data.getActiveQuest(questId);
+            return qdata != null && qdata.isPhaseCompleted(phaseId);
         }
 
         @Override
@@ -358,10 +358,10 @@ public final class ConditionBridge {
         @Override
         public boolean test(@Nullable ServerPlayer player, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
             if (player == null) return false;
-            var cap = ArcQuestPlayerManager.get(player);
-            if (cap == null) return false;
-            var data = data.getActiveQuest(questId);
-            return data != null && (data.isPhaseCompleted(phaseId) || data.isPhaseActive(phaseId));
+            var data = ArcQuestPlayerManager.get(player);
+            if (data == null) return false;
+            var qdata = data.getActiveQuest(questId);
+            return qdata != null && (qdata.isPhaseCompleted(phaseId) || qdata.isPhaseActive(phaseId));
         }
 
         @Override

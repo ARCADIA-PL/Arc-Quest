@@ -178,10 +178,10 @@ public class C2SRequestQuestActionPacket {
         if (!def.hasChapterShop()) return Code.CHAPTER_SHOP_NOT_CONFIGURED;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (cap == null) return Code.NOT_ACTIVE;
+        if (data == null) return Code.NOT_ACTIVE;
 
-        boolean canAccess = cap.isQuestActive(questId)
-                || (def.isChapterShopPersistent() && cap.isQuestCompleted(questId));
+        boolean canAccess = data.isQuestActive(questId)
+                || (def.isChapterShopPersistent() && data.isQuestCompleted(questId));
         if (!canAccess) return Code.CHAPTER_SHOP_NOT_ACCESSIBLE;
 
         String shopId = def.getChapterShopId();
@@ -200,7 +200,7 @@ public class C2SRequestQuestActionPacket {
             case GACHA -> {
                 GachaShopDefinition shop = GachaRegistry.get(shopId);
                 if (shop == null) return Code.CHAPTER_SHOP_DEFINITION_NOT_FOUND;
-                GachaScreenOpener.openGachaScreen(player, shop, cap);
+                GachaScreenOpener.openGachaScreen(player, shop, data);
                 return Code.OK;
             }
             default -> {

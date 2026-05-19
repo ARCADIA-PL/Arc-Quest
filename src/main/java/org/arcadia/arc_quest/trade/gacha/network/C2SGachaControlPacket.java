@@ -70,11 +70,11 @@ public class C2SGachaControlPacket {
             if (shop == null) return;
 
             ArcQuestPlayer data = GachaRequestValidator.requireCapability(sender, "gacha_control", pkt.shopId);
-            if (cap == null) return;
+            if (data == null) return;
 
             switch (pkt.action) {
-                case OPEN -> GachaScreenOpener.openGachaScreen(sender, shop, cap);
-                case SYNC -> GachaScreenOpener.syncGachaState(sender, shop, cap);
+                case OPEN -> GachaScreenOpener.openGachaScreen(sender, shop, data);
+                case SYNC -> GachaScreenOpener.syncGachaState(sender, shop, data);
                 case CLOSE -> {
                 }
             }

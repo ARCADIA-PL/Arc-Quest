@@ -123,7 +123,7 @@ public class C2SRequestTradePacket {
             }
 
             ArcQuestPlayer data = TradeRequestValidator.requireCapability(player, "trade_request", pkt.shopId, LOGGER);
-            if (cap == null) {
+            if (data == null) {
                 sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.CAPABILITY_MISSING);
                 return;
             }
@@ -350,7 +350,7 @@ public class C2SRequestTradePacket {
             maxPurchases[i] = entry.getMaxPurchases();
 
             if (entry.hasCooldown()) {
-                var cooldownRecord = cap.getTradeDataStore().getCooldown(shop.getShopId(), entry.getEntryId());
+                var cooldownRecord = data.getTradeDataStore().getCooldown(shop.getShopId(), entry.getEntryId());
                 lastPurchaseTimes[i] = cooldownRecord.realTime();
                 purchaseGameTimes[i] = cooldownRecord.gameTime();
                 purchaseDayTimes[i] = cooldownRecord.dayTime();

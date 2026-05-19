@@ -21,11 +21,11 @@ public final class CollectionVisibilityResolver {
                                           Set<String> flags,
                                           ArcQuestPlayer data,
                                           CollectionEntryConfig entryConfig) {
-        if (player == null || cap == null || entryConfig == null) return false;
+        if (player == null || data == null || entryConfig == null) return false;
         return switch (entryConfig.getVisibilityMode()) {
             case VISIBLE_BY_DEFAULT -> true;
             case HIDDEN_BY_DEFAULT, DISCOVER_ONLY -> false;
-            case CONDITIONAL -> areConditionsSatisfied(player, completedQuests, flags, cap, entryConfig);
+            case CONDITIONAL -> areConditionsSatisfied(player, completedQuests, flags, data, entryConfig);
         };
     }
 

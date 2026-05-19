@@ -199,20 +199,20 @@ public class QuestCommands {
 
         ArcQuestPlayer data = getData(player);
 
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || data.getState() != QuestState.ACTIVE) {
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || qdata.getState() != QuestState.ACTIVE) {
             error(ctx, Component.translatable("arc_quest.command.complete.error.not_active", questId).getString());
             return 0;
         }
 
         // 并行 phase：把所有 active phase 目标补满
-        for (String phaseId : data.getActivePhaseIds()) {
+        for (String phaseId : qdata.getActivePhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
             if (phase == null) continue;
 
             List<ObjectiveEntry> objs = phase.getObjectives();
             for (int i = 0; i < objs.size(); i++) {
-                data.setObjectiveProgress(phaseId, i, objs.get(i).getRequiredCount());
+                qdata.setObjectiveProgress(phaseId, i, objs.get(i).getRequiredCount());
             }
         }
 
@@ -229,7 +229,7 @@ public class QuestCommands {
 
         ArcQuestPlayer data = getData(player);
 
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) {
             error(ctx, Component.translatable("arc_quest.command.fail.error.not_active", questId).getString());
             return 0;
@@ -274,25 +274,25 @@ public class QuestCommands {
 
         ArcQuestPlayer data = getData(player);
 
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data == null) {
             QuestProgressHandler.acceptQuest(player, questId);
-            data = data.getActiveQuest(questId);
+            qdata = data.getActiveQuest(questId);
         }
         if (data == null) {
             error(ctx, Component.translatable("arc_quest.command.phase.error.failed", questId).getString());
             return 0;
         }
 
-        if (data.getState() != QuestState.ACTIVE) {
-            error(ctx, Component.translatable("arc_quest.command.phase.error.wrong_state", questId, data.getState()).getString());
+        if (qdata.getState() != QuestState.ACTIVE) {
+            error(ctx, Component.translatable("arc_quest.command.phase.error.wrong_state", questId, qdata.getState()).getString());
             return 0;
         }
 
         PhaseDefinition phase = def.getPhase(phaseId);
         if (phase != null) {
-            if (!data.isPhaseActive(phaseId)) {
-                data.activatePhase(phaseId, phase.getObjectives().size());
+            if (!qdata.isPhaseActive(phaseId)) {
+                qdata.activatePhase(phaseId, phase.getObjectives().size());
                 QuestProgressHandler.registerPhaseObjectives(player, def, phase);
             }
             QuestProgressHandler.syncToClient(player, questId);
@@ -325,31 +325,31 @@ public class QuestCommands {
         }
 
         ArcQuestPlayer data = getData(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || data.getState() != QuestState.ACTIVE) {
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || qdata.getState() != QuestState.ACTIVE) {
             error(ctx, Component.translatable("arc_quest.command.progress.error.not_active", questId).getString());
             return 0;
         }
 
-        String resolvedPhaseId = (phaseId == null || phaseId.isEmpty()) ? data.getCurrentPhaseId() : phaseId;
-        if (!data.isPhaseActive(resolvedPhaseId)) {
+        String resolvedPhaseId = (phaseId == null || phaseId.isEmpty()) ? qdata.getCurrentPhaseId() : phaseId;
+        if (!qdata.isPhaseActive(resolvedPhaseId)) {
             error(ctx, Component.translatable("arc_quest.command.progress.error.phase_not_active", resolvedPhaseId).getString());
             return 0;
         }
 
-        int[] progress = data.getAllProgress(resolvedPhaseId);
+        int[] progress = qdata.getAllProgress(resolvedPhaseId);
         if (objIndex >= progress.length) {
             error(ctx, Component.translatable("arc_quest.command.progress.error.out_of_range", objIndex, progress.length - 1).getString());
             return 0;
         }
 
-        int oldValue = data.getObjectiveProgress(resolvedPhaseId, objIndex);
+        int oldValue = qdata.getObjectiveProgress(resolvedPhaseId, objIndex);
         int newValue = switch (parsed.mode()) {
             case ADD -> oldValue + parsed.value();
             case SET -> parsed.value();
         };
 
-        data.setObjectiveProgress(resolvedPhaseId, objIndex, newValue);
+        qdata.setObjectiveProgress(resolvedPhaseId, objIndex, newValue);
         QuestProgressHandler.syncToClient(player, questId);
 
         String modeText = parsed.mode() == ProgressMode.ADD ? "ADD" : "SET";
@@ -382,31 +382,31 @@ public class QuestCommands {
             msg.append(Component.literal("\n"));
         } else {
             for (var entry : allQuests.entrySet()) {
-                QuestRuntimeData data = entry.getValue();
-                String stateColor = switch (data.getState()) {
+                QuestRuntimeData qdata = entry.getValue();
+                String stateColor = switch (qdata.getState()) {
                     case LOCKED, AVAILABLE -> "§8";
                     case ACTIVE -> "§a";
                     case COMPLETED -> "§2";
                     case FAILED -> "§c";
                 };
 
-                String activePhases = data.getActivePhaseIds().isEmpty()
+                String activePhases = qdata.getActivePhaseIds().isEmpty()
                         ? "-"
-                        : String.join(",", data.getActivePhaseIds());
-                String completedPhases = data.getCompletedPhaseIds().isEmpty()
+                        : String.join(",", qdata.getActivePhaseIds());
+                String completedPhases = qdata.getCompletedPhaseIds().isEmpty()
                         ? "-"
-                        : String.join(",", data.getCompletedPhaseIds());
+                        : String.join(",", qdata.getCompletedPhaseIds());
 
                 msg.append(Component.literal(
                         stateColor + "  " + entry.getKey()
-                                + " §7[" + data.getState().name() + "]"
+                                + " §7[" + qdata.getState().name() + "]"
                                 + " §8active=[" + activePhases + "]"
                                 + " §8completed=[" + completedPhases + "]\n"
                 ));
             }
         }
 
-        var completed = cap.getCompletedQuestIds();
+        var completed = data.getCompletedQuestIds();
         if (completed != null && !completed.isEmpty()) {
             msg.append(Component.translatable("arc_quest.command.list.completed_history", String.join(", ", completed)));
             msg.append(Component.literal("\n"));
@@ -453,20 +453,20 @@ public class QuestCommands {
 
         // 运行时明细（并行phase）
         ArcQuestPlayer data = getData(player);
-        QuestRuntimeData data = data.getActiveQuest(questId);
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (data != null) {
             msg.append(Component.translatable("arc_quest.command.debug.runtime_header"));
             msg.append(Component.literal("\n"));
-            msg.append(Component.translatable("arc_quest.command.debug.runtime_state", data.getState().name()));
+            msg.append(Component.translatable("arc_quest.command.debug.runtime_state", qdata.getState().name()));
             msg.append(Component.literal("\n"));
             msg.append(Component.literal("RuntimeActivePhases: " +
-                    (data.getActivePhaseIds().isEmpty() ? "-" : String.join(",", data.getActivePhaseIds())) + "\n"));
+                    (qdata.getActivePhaseIds().isEmpty() ? "-" : String.join(",", qdata.getActivePhaseIds())) + "\n"));
             msg.append(Component.literal("RuntimeCompletedPhases: " +
-                    (data.getCompletedPhaseIds().isEmpty() ? "-" : String.join(",", data.getCompletedPhaseIds())) + "\n"));
+                    (qdata.getCompletedPhaseIds().isEmpty() ? "-" : String.join(",", qdata.getCompletedPhaseIds())) + "\n"));
 
-            for (String phaseId : data.getActivePhaseIds()) {
+            for (String phaseId : qdata.getActivePhaseIds()) {
                 msg.append(Component.literal("§b  RuntimePhase: " + phaseId + "\n"));
-                int[] progress = data.getAllProgress(phaseId);
+                int[] progress = qdata.getAllProgress(phaseId);
                 PhaseDefinition phase = def.getPhase(phaseId);
 
                 if (phase == null) {

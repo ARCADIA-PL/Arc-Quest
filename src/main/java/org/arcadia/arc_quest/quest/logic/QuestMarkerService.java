@@ -21,9 +21,9 @@ public final class QuestMarkerService {
 
     public static void refreshQuestMarkers(ServerPlayer player,
                                            ArcQuestPlayer data,
-                                           QuestRuntimeData data,
+                                           QuestRuntimeData qdata,
                                            QuestDefinition def) {
-        List<String> removedIds = clearQuestMarkers(cap, data.getQuestId());
+        List<String> removedIds = clearQuestMarkers(data, qdata.getQuestId());
         for (String markerId : removedIds) {
             ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId);
         }
@@ -33,7 +33,7 @@ public final class QuestMarkerService {
                 ? QuestMarkerType.QUEST_MAIN
                 : QuestMarkerType.QUEST_SIDE;
 
-        for (String phaseId : data.getActivePhaseIds()) {
+        for (String phaseId : qdata.getActivePhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
             if (phase == null) continue;
 
@@ -55,16 +55,16 @@ public final class QuestMarkerService {
                         dimension
                 );
 
-                String markerId = buildMarkerId(data.getQuestId(), phaseId, i);
+                String markerId = buildMarkerId(qdata.getQuestId(), phaseId, i);
                 String label = obj.getDisplayText().getString();
 
                 QuestMarkerData marker = new QuestMarkerData.Builder(markerId, x, y, z, label)
                         .dimension(markerDimension)
-                        .bindQuest(data.getQuestId())
+                        .bindQuest(qdata.getQuestId())
                         .bindPhase(phaseId)
                         .bindObjective(i)
                         .type(questType)
-                        .state(QuestMarkerState.fromQuestState(data.getState()))
+                        .state(QuestMarkerState.fromQuestState(qdata.getState()))
                         .color(0xFF000000 | def.getCategory().getThemeColor())
                         .showDistance(true)
                         .allowOffscreenArrow(true)
@@ -76,13 +76,13 @@ public final class QuestMarkerService {
 
         MinecraftForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
                 player,
-                ResourceLocation.parse(data.getQuestId()),
-                data.getActivePhaseIds().size()
+                ResourceLocation.parse(qdata.getQuestId()),
+                qdata.getActivePhaseIds().size()
         ));
     }
 
     public static List<String> clearQuestMarkers(ArcQuestPlayer data, String questId) {
-        List<String> toRemove = cap.getAllMarkers().values().stream()
+        List<String> toRemove = data.getAllMarkers().values().stream()
                 .filter(m -> m.hasQuestBinding() && questId.equals(m.getQuestId()))
                 .map(QuestMarkerData::getId)
                 .toList();

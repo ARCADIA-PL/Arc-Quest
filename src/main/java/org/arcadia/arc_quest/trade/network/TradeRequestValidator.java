@@ -33,8 +33,8 @@ public final class TradeRequestValidator {
                                                                String shopId,
                                                                Logger logger) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (cap != null) {
-            return cap;
+        if (data != null) {
+            return data;
         }
         reject(RejectCodeDictionary.Code.CAPABILITY_MISSING, action, player, shopId, "quest capability missing", logger);
         return null;

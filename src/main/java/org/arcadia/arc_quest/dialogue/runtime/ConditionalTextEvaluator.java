@@ -74,20 +74,20 @@ public final class ConditionalTextEvaluator {
                 if (separatorIndex > 0) {
                     String questId = afterPrefix.substring(0, separatorIndex);
                     String phaseId = afterPrefix.substring(separatorIndex + 1);
-                    var data = data.getActiveQuest(questId);
+                    var qdata = data.getActiveQuest(questId);
 
                     // 调试日志
                     if (data != null) {
                         LOGGER.debug("[ConditionalText] QUEST_PHASE check: quest={}, phase={}, currentState={}, currentPhase={}",
-                                questId, phaseId, data.getState(), data.getCurrentPhaseId());
+                                questId, phaseId, qdata.getState(), qdata.getCurrentPhaseId());
                     } else {
                         LOGGER.debug("[ConditionalText] QUEST_PHASE check: quest={} has no active data", questId);
                     }
 
                     // 必须同时满足：任务存在 + 处于激活状态 + 阶段ID匹配
                     boolean result = data != null
-                            && QuestState.ACTIVE.equals(data.getState())
-                            && phaseId.equals(data.getCurrentPhaseId());
+                            && QuestState.ACTIVE.equals(qdata.getState())
+                            && phaseId.equals(qdata.getCurrentPhaseId());
 
                     LOGGER.debug("[ConditionalText] QUEST_PHASE result: {}", result);
                     return result;
@@ -97,7 +97,7 @@ public final class ConditionalTextEvaluator {
             // NOT:inner_condition
             if (conditionKey.startsWith("NOT:")) {
                 String innerCondition = conditionKey.substring(4);
-                return !matchesCondition(ctx, cap, innerCondition);
+                return !matchesCondition(ctx, data, innerCondition);
             }
 
             // ALL:cond1;cond2;cond3... （AND 组合条件）
@@ -108,7 +108,7 @@ public final class ConditionalTextEvaluator {
                 }
                 String[] subConditions = conditionsStr.split(";");
                 for (String subCond : subConditions) {
-                    if (!matchesCondition(ctx, cap, subCond)) {
+                    if (!matchesCondition(ctx, data, subCond)) {
                         return false;
                     }
                 }
@@ -123,7 +123,7 @@ public final class ConditionalTextEvaluator {
                 }
                 String[] subConditions = conditionsStr.split(";");
                 for (String subCond : subConditions) {
-                    if (matchesCondition(ctx, cap, subCond)) {
+                    if (matchesCondition(ctx, data, subCond)) {
                         return true;
                     }
                 }
@@ -204,7 +204,7 @@ public final class ConditionalTextEvaluator {
             return ConditionalSay.of("default", DialogueText.literal(defaultText));
         }
 
-        ArcQuestPlayer data = ctx.questCap();
+        ArcQuestPlayer data = ctx.questData();
         List<SayMatch> matches = new ArrayList<>();
 
         for (Map.Entry<String, ConditionalSay> entry : conditionalTexts.entrySet()) {
@@ -223,7 +223,7 @@ public final class ConditionalTextEvaluator {
                 }
             }
 
-            if (matchesCondition(ctx, cap, conditionKey)) {
+            if (matchesCondition(ctx, data, conditionKey)) {
                 matches.add(new SayMatch(say, priority));
             }
         }
@@ -265,7 +265,7 @@ public final class ConditionalTextEvaluator {
             return new SayIfResult(null, -1, defaultText, null);
         }
 
-        ArcQuestPlayer data = ctx.questCap();
+        ArcQuestPlayer data = ctx.questData();
         List<SayMatch> matches = new ArrayList<>();
         int matchIndex = -1;
         String matchedSayId = null;
@@ -287,7 +287,7 @@ public final class ConditionalTextEvaluator {
                 }
             }
 
-            if (matchesCondition(ctx, cap, conditionKey)) {
+            if (matchesCondition(ctx, data, conditionKey)) {
                 matches.add(new SayMatch(say, priority));
                 if (matchIndex == -1) {
                     matchIndex = currentIndex;  // 记录第一个匹配的索引

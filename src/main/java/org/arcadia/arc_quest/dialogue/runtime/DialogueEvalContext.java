@@ -51,9 +51,10 @@ public record DialogueEvalContext(
      * 快捷获取玩家任务能力。
      */
     public ArcQuestPlayer questData() {
-        return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Player has no QuestCapability: " + player.getName().getString()));
+        var data = ArcQuestPlayerManager.get(player);
+        if (data == null) throw new IllegalStateException(
+                "Player has no ArcQuestPlayer data: " + player.getName().getString());
+        return data;
     }
 
     /**

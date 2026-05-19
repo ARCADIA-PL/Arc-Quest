@@ -51,7 +51,7 @@ public class GachaPool {
      * 计算总有效权重（考虑动态修改器）。
      */
     public int calculateTotalWeight(ArcQuestPlayer data) {
-        return calculateTotalWeight(null, cap);
+        return calculateTotalWeight(null, data);
     }
 
     /**
@@ -63,7 +63,7 @@ public class GachaPool {
     public int calculateTotalWeight(ServerPlayer player, ArcQuestPlayer data) {
         int total = 0;
         for (GachaItem item : items) {
-            total += item.getEffectiveWeight(player, cap);
+            total += item.getEffectiveWeight(player, data);
         }
         return total;
     }
@@ -75,7 +75,7 @@ public class GachaPool {
      * @return 抽中的物品，如果奖池为空则返回 null
      */
     public GachaItem draw(ArcQuestPlayer data) {
-        return draw(null, cap);
+        return draw(null, data);
     }
 
     /**
@@ -92,7 +92,7 @@ public class GachaPool {
 
         // 过滤出可见的抽奖项
         List<GachaItem> visibleItems = items.stream()
-                .filter(item -> item.isVisible(player, cap))
+                .filter(item -> item.isVisible(player, data))
                 .collect(Collectors.toList());
 
         if (visibleItems.isEmpty()) {
@@ -101,7 +101,7 @@ public class GachaPool {
 
         int totalWeight = 0;
         for (GachaItem item : visibleItems) {
-            totalWeight += item.getEffectiveWeight(player, cap);
+            totalWeight += item.getEffectiveWeight(player, data);
         }
 
         if (totalWeight <= 0) {
@@ -112,7 +112,7 @@ public class GachaPool {
         int cumulative = 0;
 
         for (GachaItem item : visibleItems) {
-            int effectiveWeight = item.getEffectiveWeight(player, cap);
+            int effectiveWeight = item.getEffectiveWeight(player, data);
             cumulative += effectiveWeight;
             if (random < cumulative) {
                 return item;
@@ -127,7 +127,7 @@ public class GachaPool {
      * 从指定稀有度中随机抽取（根据条件过滤可见项）。
      */
     public GachaItem drawFromRarity(GachaItem.Rarity rarity, ArcQuestPlayer data) {
-        return drawFromRarity(rarity, null, cap);
+        return drawFromRarity(rarity, null, data);
     }
 
     /**
@@ -147,7 +147,7 @@ public class GachaPool {
 
         // 过滤出可见的抽奖项
         List<GachaItem> visibleCandidates = candidates.stream()
-                .filter(item -> item.isVisible(player, cap))
+                .filter(item -> item.isVisible(player, data))
                 .collect(Collectors.toList());
 
         if (visibleCandidates.isEmpty()) {
@@ -157,7 +157,7 @@ public class GachaPool {
         // 计算该稀有度的总权重
         int totalWeight = 0;
         for (GachaItem item : visibleCandidates) {
-            totalWeight += item.getEffectiveWeight(player, cap);
+            totalWeight += item.getEffectiveWeight(player, data);
         }
 
         if (totalWeight <= 0) {
@@ -168,7 +168,7 @@ public class GachaPool {
         int cumulative = 0;
 
         for (GachaItem item : visibleCandidates) {
-            int effectiveWeight = item.getEffectiveWeight(cap);
+            int effectiveWeight = item.getEffectiveWeight(data);
             cumulative += effectiveWeight;
             if (random < cumulative) {
                 return item;
@@ -204,7 +204,7 @@ public class GachaPool {
      */
     public List<GachaItem> getVisibleItems(ArcQuestPlayer data) {
         return items.stream()
-                .filter(item -> item.isVisibleClient(cap))
+                .filter(item -> item.isVisibleClient(data))
                 .collect(Collectors.toList());
     }
 
@@ -217,13 +217,13 @@ public class GachaPool {
      */
     public double getDrawProbability(String itemId, ArcQuestPlayer data) {
         GachaItem targetItem = getItemById(itemId);
-        if (targetItem == null || !targetItem.isVisibleClient(cap)) {
+        if (targetItem == null || !targetItem.isVisibleClient(data)) {
             return 0.0;
         }
 
         // 过滤出所有可见项（客户端）
         List<GachaItem> visibleItems = items.stream()
-                .filter(item -> item.isVisibleClient(cap))
+                .filter(item -> item.isVisibleClient(data))
                 .collect(Collectors.toList());
 
         if (visibleItems.isEmpty()) {
@@ -233,7 +233,7 @@ public class GachaPool {
         // 计算总权重
         int totalWeight = 0;
         for (GachaItem item : visibleItems) {
-            totalWeight += item.getEffectiveWeight(cap);
+            totalWeight += item.getEffectiveWeight(data);
         }
 
         if (totalWeight <= 0) {
@@ -241,7 +241,7 @@ public class GachaPool {
         }
 
         // 计算目标项的概率
-        int itemWeight = targetItem.getEffectiveWeight(cap);
+        int itemWeight = targetItem.getEffectiveWeight(data);
         return (itemWeight * 100.0) / totalWeight;
     }
 }

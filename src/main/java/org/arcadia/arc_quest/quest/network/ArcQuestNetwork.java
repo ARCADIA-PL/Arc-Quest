@@ -415,7 +415,7 @@ public final class ArcQuestNetwork {
         long epoch = currentMarkerEpoch(player);
         long revision = nextMarkerRevision(player);
 
-        List<S2CSyncMarkersPacket.MarkerEntry> entries = cap.getAllMarkers().values().stream()
+        List<S2CSyncMarkersPacket.MarkerEntry> entries = data.getAllMarkers().values().stream()
                 .map(ArcQuestNetwork::toMarkerEntry)
                 .toList();
 

@@ -48,7 +48,7 @@ public final class TradeSession {
             return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.UNKNOWN));
         }
 
-        ArcQuestPlayer data = getCap();
+        ArcQuestPlayer data = getData();
 
         // 第一步：尝试重置过期冷却（必须在 canPurchase 之前）
         if (entry.hasLimit() || entry.hasCooldown()) {
@@ -56,15 +56,15 @@ public final class TradeSession {
         }
 
         // 第二步：综合判断
-        if (!TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry)) {
+        if (!TradeEntryStateResolver.canPurchase(player, data, shop.getShopId(), entry)) {
             // 细分错误原因（统一优先级：cooldown > limit > condition > afford）
-            if (!TradeEntryStateResolver.isVisible(player, cap, entry)) {
+            if (!TradeEntryStateResolver.isVisible(player, data, entry)) {
                 return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_NOT_VISIBLE));
             }
-            if (TradeEntryStateResolver.isOnCooldown(player, cap, shop.getShopId(), entry)) {
+            if (TradeEntryStateResolver.isOnCooldown(player, data, shop.getShopId(), entry)) {
                 return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_ON_COOLDOWN));
             }
-            if (TradeEntryStateResolver.isPurchaseLimitReached(cap, shop.getShopId(), entry)) {
+            if (TradeEntryStateResolver.isPurchaseLimitReached(data, shop.getShopId(), entry)) {
                 return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_MAX_DRAWS_REACHED));
             }
             // 默认：购买资格条件不满足
@@ -89,12 +89,12 @@ public final class TradeSession {
             reward.execute(player);
         }
 
-        boolean shouldRecordCooldown = TradeEntryStateResolver.shouldRecordCooldown(getCap(), shop.getShopId(), entry);
+        boolean shouldRecordCooldown = TradeEntryStateResolver.shouldRecordCooldown(getData(), shop.getShopId(), entry);
 
-        TradeEntryStateResolver.recordPurchase(getCap(), shop.getShopId(), entryId);
+        TradeEntryStateResolver.recordPurchase(getData(), shop.getShopId(), entryId);
 
         if (shouldRecordCooldown) {
-            TradeEntryStateResolver.recordCooldown(player, getCap(), shop.getShopId(), entryId);
+            TradeEntryStateResolver.recordCooldown(player, getData(), shop.getShopId(), entryId);
         }
 
         LOGGER.info("[Trade] Player {} purchased '{}' from shop '{}'",
@@ -107,20 +107,20 @@ public final class TradeSession {
      * 检查交易项是否对当前玩家可见（可见性条件满足）
      */
     public boolean isEntryVisible(TradeEntry entry) {
-        ArcQuestPlayer data = getCap();
-        return TradeEntryStateResolver.isVisible(player, cap, entry);
+        ArcQuestPlayer data = getData();
+        return TradeEntryStateResolver.isVisible(player, data, entry);
     }
 
     /**
      * 检查交易项是否可购买（综合判断）
      */
     public boolean canPurchase(TradeEntry entry) {
-        ArcQuestPlayer data = getCap();
-        return TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry);
+        ArcQuestPlayer data = getData();
+        return TradeEntryStateResolver.canPurchase(player, data, shop.getShopId(), entry);
     }
 
     public int getPurchaseCount(String entryId) {
-        ArcQuestPlayer data = getCap();
+        ArcQuestPlayer data = getData();
         return data.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
     }
 
@@ -137,7 +137,7 @@ public final class TradeSession {
     public int getCooldownRemaining(String entryId, TradeEntry entry) {
         if (!entry.hasCooldown()) return 0;
 
-        ArcQuestPlayer data = getCap();
+        ArcQuestPlayer data = getData();
         ICooldownRecord record = data.getTradeDataStore().getCooldown(shop.getShopId(), entryId);
         if (!record.exists()) return 0;
 
@@ -205,11 +205,11 @@ public final class TradeSession {
         var resetCondition = entry.getPurchaseResetCondition();
         if (resetCondition == null) return;
 
-        ArcQuestPlayer data = getCap();
+        ArcQuestPlayer data = getData();
         int currentCount = data.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
         if (currentCount == 0) return;
 
-        boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, cap, shop.getShopId(), entry);
+        boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, data, shop.getShopId(), entry);
 
         if (!shouldReset) {
             try {
@@ -224,7 +224,7 @@ public final class TradeSession {
         }
 
         if (shouldReset && currentCount > 0) {
-            TradeEntryStateResolver.resetPurchaseAndCooldown(cap, shop.getShopId(), entryId);
+            TradeEntryStateResolver.resetPurchaseAndCooldown(data, shop.getShopId(), entryId);
         }
     }
 

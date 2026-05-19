@@ -415,7 +415,7 @@ public class DialogueSession {
     private Map<String, Object> buildDialogueVars(ArcQuestPlayer data) {
         Map<String, Object> vars = new LinkedHashMap<>();
 
-        if (cap == null) {
+        if (data == null) {
             return Map.copyOf(vars);
         }
 

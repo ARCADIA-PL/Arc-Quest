@@ -35,10 +35,10 @@ public final class GachaEntryStateResolver {
      * 优先级：可见性 > 冷却 > 限购 > 条件
      */
     public static boolean canDraw(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
-        if (!isVisible(player, cap, shop)) return false;
-        if (isOnCooldown(player, cap, shopId, shop)) return false;
-        if (isMaxDrawsReached(cap, shopId, shop)) return false;
-        if (!hasConditionMet(player, cap, shop)) return false;
+        if (!isVisible(player, data, shop)) return false;
+        if (isOnCooldown(player, data, shopId, shop)) return false;
+        if (isMaxDrawsReached(data, shopId, shop)) return false;
+        if (!hasConditionMet(player, data, shop)) return false;
         return true;
     }
 

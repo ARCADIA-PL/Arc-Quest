@@ -62,9 +62,9 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-            QuestRuntimeData data = data.getActiveQuest(questId);
-            if (data != null) {
-                data.setState(QuestState.COMPLETED);
+            QuestRuntimeData qdata = data.getActiveQuest(questId);
+            if (qdata != null) {
+                qdata.setState(QuestState.COMPLETED);
                 data.markCompleted(questId);
             }
         }
@@ -82,10 +82,10 @@ public sealed interface DialogueAction {
 
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
-            QuestRuntimeData data = data.getActiveQuest(questId);
-            if (data == null || data.getState() != QuestState.ACTIVE) return;
+            QuestRuntimeData qdata = data.getActiveQuest(questId);
+            if (data == null || qdata.getState() != QuestState.ACTIVE) return;
 
-            PhaseDefinition currentPhase = def.getPhase(data.getCurrentPhaseId());
+            PhaseDefinition currentPhase = def.getPhase(qdata.getCurrentPhaseId());
             if (currentPhase == null) return;
 
             String nextPhaseId = def.evaluateNextPhase(player, currentPhase,
@@ -95,8 +95,8 @@ public sealed interface DialogueAction {
             if (nextPhaseId != null) {
                 PhaseDefinition nextPhase = def.getPhase(nextPhaseId);
                 if (nextPhase != null) {
-                    data.setCurrentPhaseId(nextPhaseId);
-                    data.resetObjectives(nextPhase.getObjectives().size());
+                    qdata.setCurrentPhaseId(nextPhaseId);
+                    qdata.resetObjectives(nextPhase.getObjectives().size());
                 }
             }
         }
@@ -302,11 +302,11 @@ public sealed interface DialogueAction {
                 return;
             }
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-            if (cap == null) {
+            if (data == null) {
                 LOGGER.warn("[Dialogue] Missing quest capability while opening gacha: {}", shopId);
                 return;
             }
-            GachaScreenOpener.openGachaScreen(player, shop, cap, restoreNodeId);
+            GachaScreenOpener.openGachaScreen(player, shop, data, restoreNodeId);
         }
 
         @Override

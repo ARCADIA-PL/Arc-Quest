@@ -308,7 +308,7 @@ public class GachaShopDefinition {
      */
     public int getRemainingDraws(ArcQuestPlayer data) {
         if (maxDraws < 0) return -1; // 无限
-        int totalDraws = getTotalDraws(cap);
+        int totalDraws = getTotalDraws(data);
         return Math.max(0, maxDraws - totalDraws);
     }
 
@@ -320,7 +320,7 @@ public class GachaShopDefinition {
      * @return 抽奖结果
      */
     public DrawResult performDraw(ArcQuestPlayer data, int pityCount) {
-        return performDraw(null, cap, pityCount);
+        return performDraw(null, data, pityCount);
     }
 
     /**
@@ -345,11 +345,11 @@ public class GachaShopDefinition {
                 drawnItem = gachaPool.getItemById(guaranteedItemId);
             } else {
                 // 否则按稀有度抽取
-                drawnItem = gachaPool.drawFromRarity(pityConfig.getGuaranteedRarity(), player, cap);
+                drawnItem = gachaPool.drawFromRarity(pityConfig.getGuaranteedRarity(), player, data);
             }
             isPityTriggered = true;
         } else {
-            drawnItem = gachaPool.draw(player, cap);
+            drawnItem = gachaPool.draw(player, data);
         }
 
         return new DrawResult(drawnItem, isPityTriggered);

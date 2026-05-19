@@ -272,7 +272,7 @@ public class TradeCommands {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
         String shopId = ResourceLocationArgument.getId(ctx, "shop_id").toString();
         String entryId = StringArgumentType.getString(ctx, "entry_id");
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         TradeShopDefinition shop = TradeRegistry.get(shopId);
         if (shop == null) {
@@ -295,7 +295,7 @@ public class TradeCommands {
             return 0;
         }
 
-        cap.getTradeDataStore().resetEntry(shopId, entryId);
+        data.getTradeDataStore().resetEntry(shopId, entryId);
         success(ctx, Component.translatable("arc_quest.command.trade.reset.entry_success",
                 entryId, shopId, player.getName().getString()).getString());
 
@@ -304,13 +304,13 @@ public class TradeCommands {
 
     private static int cmdTradeResetAll(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        IQuestCapability cap = getCap(player);
+        ArcQuestPlayer data = getData(player);
 
         // 遍历所有商店，重置所有交易项
         int resetCount = 0;
         for (TradeShopDefinition shop : TradeRegistry.getAll()) {
             for (TradeEntry entry : shop.getAllEntries()) {
-                cap.getTradeDataStore().resetEntry(shop.getShopId(), entry.getEntryId());
+                data.getTradeDataStore().resetEntry(shop.getShopId(), entry.getEntryId());
                 resetCount++;
             }
         }

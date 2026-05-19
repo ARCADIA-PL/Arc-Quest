@@ -68,6 +68,7 @@ public final class DialogueSessionManager {
             return null;
         }
         String dialogueId = tree.dialogueId();
+        var data = ArcQuestPlayerManager.get(player);
         var progress = data.getDialogueProgress();
         long nowReal = TimeSanitizer.getCurrentRealTime();
         long nowGame = TimeSanitizer.getCurrentGameTime(player);
@@ -97,7 +98,7 @@ public final class DialogueSessionManager {
         transcriptMap.put(player.getUUID(), new ArrayList<>());
 
         if (npcEntity instanceof IDialogueNpc) {
-            DialogueNpcStateManager.get(npcEntity).setConversing(player);
+            DialogueNpcStateManager.setConversing(npcEntity, player);
         }
 
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
@@ -253,7 +254,7 @@ public final class DialogueSessionManager {
         if (session.getEntityId() != -1) {
             npcEntity = player.level().getEntity(session.getEntityId());
             if (npcEntity instanceof IDialogueNpc) {
-                DialogueNpcStateManager.get(npcEntity).clearConversing();
+                DialogueNpcStateManager.clear(npcEntity);
             }
         }
         if (!session.isEnded()) {
@@ -330,8 +331,9 @@ public final class DialogueSessionManager {
         if (speaker == null) {
             speaker = Component.empty();
         }
-        var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
-        DialogueProgressStore progress = cap != null ? data.getDialogueProgress() : null;
+        var cap = ArcQuestPlayerManager.get(session.getPlayer());
+        var playerData = ArcQuestPlayerManager.get(player);
+        DialogueProgressStore progress = playerData != null ? playerData.getDialogueProgress() : null;
         Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
         DialogueEvalContext ctx = DialogueEvalContext.of(session.getPlayer(), npc, session.getNamespace(), progress);
         ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(ctx, node.conditionalTexts(), session.processDialogueText(node.text()).getString());
@@ -382,7 +384,7 @@ public final class DialogueSessionManager {
     private void syncDialogueMarkers(DialogueSession session,
                                      DialogueNode node,
                                      ConditionalTextEvaluator.SayIfResult sayIfResult) {
-        var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
+        var cap = ArcQuestPlayerManager.get(session.getPlayer());
         if (cap == null) return;
 
         String dialogueId = session.getTree().dialogueId();

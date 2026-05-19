@@ -107,7 +107,7 @@ public class GachaItem {
      * 计算当前有效权重（基础权重 + 所有匹配的修改器）。
      */
     public int getEffectiveWeight(ArcQuestPlayer data) {
-        return getEffectiveWeight(null, cap);
+        return getEffectiveWeight(null, data);
     }
 
     /**
@@ -119,7 +119,7 @@ public class GachaItem {
     public int getEffectiveWeight(ServerPlayer player, ArcQuestPlayer data) {
         int effective = baseWeight;
         for (WeightModifier modifier : weightModifiers) {
-            if (modifier.matches(player, cap)) {
+            if (modifier.matches(player, data)) {
                 effective += modifier.getWeightDelta();
             }
         }
@@ -262,7 +262,7 @@ public class GachaItem {
         }
 
         public boolean matches(ServerPlayer player, ArcQuestPlayer data) {
-            if (player == null || cap == null) return false;
+            if (player == null || data == null) return false;
             var completedQuests = data.getCompletedQuestLocations();
             return condition.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
         }

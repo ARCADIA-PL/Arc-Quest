@@ -58,7 +58,7 @@ public final class TradeShopDefinition {
     }
 
     public Component getDisplayName(ServerPlayer player, @Nullable ArcQuestPlayer data) {
-        return displayName.resolve(TradeTextContext.of(player, shopId, cap));
+        return displayName.resolve(TradeTextContext.of(player, shopId, data));
     }
 
     @Nullable
@@ -68,7 +68,7 @@ public final class TradeShopDefinition {
 
     @Nullable
     public Component getDescription(ServerPlayer player, @Nullable ArcQuestPlayer data) {
-        return description != null ? description.resolve(TradeTextContext.of(player, shopId, cap)) : null;
+        return description != null ? description.resolve(TradeTextContext.of(player, shopId, data)) : null;
     }
 
     public List<TradeCategory> getCategories() {

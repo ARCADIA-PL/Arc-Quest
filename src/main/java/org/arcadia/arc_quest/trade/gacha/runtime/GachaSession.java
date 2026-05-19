@@ -31,7 +31,7 @@ public final class GachaSession {
     public GachaSession(ServerPlayer player, GachaShopDefinition shop, ArcQuestPlayer playerData) {
         this.player = player;
         this.shop = shop;
-        this.capability = capability;
+        this.playerData = playerData;
     }
 
     /**
@@ -42,7 +42,7 @@ public final class GachaSession {
      * @return true 如果可以抽奖
      */
     public boolean canDraw() {
-        return GachaEntryStateResolver.canDraw(player, capability, shop.getShopId(), shop);
+        return GachaEntryStateResolver.canDraw(player, playerData, shop.getShopId(), shop);
     }
 
     /**
@@ -51,16 +51,16 @@ public final class GachaSession {
      * @return 失败原因枚举
      */
     public DrawFailReason getFailReason() {
-        if (!GachaEntryStateResolver.isVisible(player, capability, shop)) {
+        if (!GachaEntryStateResolver.isVisible(player, playerData, shop)) {
             return DrawFailReason.NOT_VISIBLE;
         }
-        if (GachaEntryStateResolver.isOnCooldown(player, capability, shop.getShopId(), shop)) {
+        if (GachaEntryStateResolver.isOnCooldown(player, playerData, shop.getShopId(), shop)) {
             return DrawFailReason.ON_COOLDOWN;
         }
-        if (GachaEntryStateResolver.isMaxDrawsReached(capability, shop.getShopId(), shop)) {
+        if (GachaEntryStateResolver.isMaxDrawsReached(playerData, shop.getShopId(), shop)) {
             return DrawFailReason.MAX_DRAWS_REACHED;
         }
-        if (!GachaEntryStateResolver.hasConditionMet(player, capability, shop)) {
+        if (!GachaEntryStateResolver.hasConditionMet(player, playerData, shop)) {
             return DrawFailReason.CONDITION_NOT_MET;
         }
         return DrawFailReason.NONE;
@@ -86,14 +86,14 @@ public final class GachaSession {
      * 在成功抽奖后调用。
      */
     public void incrementDrawCount() {
-        capability.incrementGachaDrawCount(shop.getShopId());
+        playerData.incrementGachaDrawCount(shop.getShopId());
     }
 
     /**
      * 获取当前抽奖次数。
      */
     public int getDrawCount() {
-        return capability.getGachaDrawCount(shop.getShopId());
+        return playerData.getGachaDrawCount(shop.getShopId());
     }
 
     /**
@@ -115,7 +115,7 @@ public final class GachaSession {
     public int getCooldownRemaining() {
         if (!shop.hasCooldown()) return 0;
 
-        GachaDataStore.CooldownEntry entry = capability.getGachaDataStore().getDrawCooldown(shop.getShopId());
+        GachaDataStore.CooldownEntry entry = playerData.getGachaDataStore().getDrawCooldown(shop.getShopId());
         if (!entry.exists()) return 0;
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
@@ -177,7 +177,7 @@ public final class GachaSession {
 
         // 1. 检查冷却自动恢复
         boolean shouldReset = GachaEntryStateResolver.shouldResetByCooldown(
-                player, capability, shop.getShopId(), shop);
+                player, playerData, shop.getShopId(), shop);
 
         // 2. 检查自定义条件恢复
         if (!shouldReset) {
@@ -185,9 +185,9 @@ public final class GachaSession {
             if (resetCondition != null) {
                 try {
                     shouldReset = resetCondition.test(player,
-                            capability.getCompletedQuestLocations(),
-                            capability.getAllFlags(),
-                            capability.getAllVariables());
+                            playerData.getCompletedQuestLocations(),
+                            playerData.getAllFlags(),
+                            playerData.getAllVariables());
                 } catch (Exception e) {
                     LOGGER.warn("[Gacha] Error evaluating draw reset condition for shop={}: {}",
                             shop.getShopId(), e.getMessage());
@@ -198,7 +198,7 @@ public final class GachaSession {
         // 3. 执行重置
         if (shouldReset && currentCount > 0) {
             boolean isCooldownExpired = GachaEntryStateResolver.shouldResetByCooldown(
-                    player, capability, shop.getShopId(), shop);
+                    player, playerData, shop.getShopId(), shop);
             String resetReason = isCooldownExpired ? "COOLDOWN_EXPIRED" : "CUSTOM_CONDITION";
             LOGGER.info("[Gacha-Reset] Triggering draw reset: shop={}, currentCount={}, reason={}",
                     shop.getShopId(), currentCount, resetReason);
@@ -208,11 +208,11 @@ public final class GachaSession {
                     : GachaEvents.DrawLimitResetEvent.ResetReason.CUSTOM_CONDITION;
 
             var resetEvent = new GachaEvents.DrawLimitResetEvent(
-                    player, shop.getShopId(), capability, reason, currentCount);
+                    player, shop.getShopId(), playerData, reason, currentCount);
             MinecraftForge.EVENT_BUS.post(resetEvent);
 
-            int pityBefore = capability.getGachaPityCounter(shop.getShopId());
-            GachaEntryStateResolver.resetDrawAndCooldown(capability, shop.getShopId());
+            int pityBefore = playerData.getGachaPityCounter(shop.getShopId());
+            GachaEntryStateResolver.resetDrawAndCooldown(playerData, shop.getShopId());
 
             LOGGER.info("[Gacha-Reset] Draw reset completed: shop={}, pityCounter before={}",
                     shop.getShopId(), pityBefore);

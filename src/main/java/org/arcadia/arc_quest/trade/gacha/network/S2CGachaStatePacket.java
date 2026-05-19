@@ -7,7 +7,6 @@ import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 
@@ -204,10 +203,7 @@ public class S2CGachaStatePacket {
 
             // OPEN 才派发 opened 事件
             if (pkt.mode == Mode.OPEN) {
-                var cap = QuestCapabilityProvider.getOrNull(mc.player);
-                if (cap != null) {
-                    MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(null, pkt.shopId, cap));
-                }
+                MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(null, pkt.shopId, null));
             }
 
             if (!pkt.drawHistory.isEmpty()) {

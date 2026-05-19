@@ -101,13 +101,13 @@ public final class QuestEventManager {
         if ((player.tickCount % 20) != 0) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        for (QuestRuntimeData data : data.getAllActiveQuests().values()) {
-            if (data.getState() != QuestState.ACTIVE) continue;
+        for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
+            if (qdata.getState() != QuestState.ACTIVE) continue;
 
-            var def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
+            var def = QuestRegistry.get(ResourceLocation.parse(qdata.getQuestId()));
             if (def == null) continue;
 
-            for (String phaseId : data.getActivePhaseIds()) {
+            for (String phaseId : qdata.getActivePhaseIds()) {
                 var phase = def.getPhase(phaseId);
                 if (phase == null) continue;
 
@@ -121,8 +121,8 @@ public final class QuestEventManager {
 
                 for (int idx : reachIndices) {
                     var obj = phase.getObjectives().get(idx);
-                    int required = QuestProgressHandler.resolveRequiredCount(player, obj, cap);
-                    if (data.getObjectiveProgress(phaseId, idx) >= required) continue;
+                    int required = QuestProgressHandler.resolveRequiredCount(player, obj, data);
+                    if (qdata.getObjectiveProgress(phaseId, idx) >= required) continue;
 
                     Double x = parseDouble(obj.getExtra("x"));
                     Double y = parseDouble(obj.getExtra("y"));
@@ -140,12 +140,12 @@ public final class QuestEventManager {
                         if (def.isCollectionQuest()) {
                             var entryConfig = phase.getCollectionEntryConfig();
                             if (entryConfig != null && entryConfig.getCountingMode() == CountingMode.UNIQUE_SET) {
-                                QuestProgressHandler.addCollectionUniqueKey(player, data.getQuestId(), phaseId, collectionUniqueKey(ObjectiveType.REACH_LOCATION, obj.getTargetId()));
+                                QuestProgressHandler.addCollectionUniqueKey(player, qdata.getQuestId(), phaseId, collectionUniqueKey(ObjectiveType.REACH_LOCATION, obj.getTargetId()));
                             } else {
-                                QuestProgressHandler.incrementCollectionEntry(player, data.getQuestId(), phaseId, 1);
+                                QuestProgressHandler.incrementCollectionEntry(player, qdata.getQuestId(), phaseId, 1);
                             }
                         } else {
-                            QuestProgressHandler.incrementObjective(player, data.getQuestId(), phaseId, idx, 1);
+                            QuestProgressHandler.incrementObjective(player, qdata.getQuestId(), phaseId, idx, 1);
                         }
                     }
                 }
@@ -183,22 +183,22 @@ public final class QuestEventManager {
         CollectionObjectiveDispatcher.dispatch(player, key, amount, collectionUniqueKey(type, targetId));
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (cap == null) return;
+        if (data == null) return;
 
         ObjectiveTypeIndex index = QuestRegistry.getObjectiveIndex();
         List<ObjectiveTypeIndex.ObjectiveRef> refs = index.find(type, targetId);
         if (refs == null) return;
 
         for (ObjectiveTypeIndex.ObjectiveRef ref : refs) {
-            QuestRuntimeData data = data.getActiveQuest(ref.questId().toString());
-            if (data == null || data.getState() != QuestState.ACTIVE) continue;
-            if (!data.isPhaseActive(ref.phaseId())) continue;
+            QuestRuntimeData qdata = data.getActiveQuest(ref.questId().toString());
+            if (data == null || qdata.getState() != QuestState.ACTIVE) continue;
+            if (!qdata.isPhaseActive(ref.phaseId())) continue;
 
             QuestDefinition def = QuestRegistry.get(ref.questId());
             if (def == null || def.isCollectionQuest()) continue;
 
             int required = def.getPhase(ref.phaseId()).getObjectives().get(ref.objIndex()).getRequiredCount();
-            int current = data.getObjectiveProgress(ref.phaseId(), ref.objIndex());
+            int current = qdata.getObjectiveProgress(ref.phaseId(), ref.objIndex());
             if (current >= required) continue;
 
             int add = Math.min(amount, required - current);

@@ -135,8 +135,8 @@ public interface IDialogueNpc {
 
         Entity self = asEntity();
 
-        DialogueNpcPatch patch = DialogueNpcStateManager.get(self);
-        if (patch.isConversing()) return;
+        DialogueNpcStateManager.State state = DialogueNpcStateManager.get(self);
+        if (state == null || state.conversingPlayer() != null && state.conversingPlayer().isAlive()) return;
 
         DialogueContext context = buildDialogueContext(player);
         context.put("npcName", getDialogueDisplayName().getString());

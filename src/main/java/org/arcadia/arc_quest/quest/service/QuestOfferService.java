@@ -26,10 +26,10 @@ public final class QuestOfferService {
         if (submitAmount <= 0) return OfferSubmitResult.REJECTED;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (cap == null) return OfferSubmitResult.REJECTED;
+        if (data == null) return OfferSubmitResult.REJECTED;
 
-        QuestRuntimeData data = data.getActiveQuest(questId);
-        if (data == null || !data.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (data == null || !qdata.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
 
         var qDef = QuestRegistry.get(ResourceLocation.parse(questId));
         if (qDef == null) return OfferSubmitResult.REJECTED;
@@ -42,7 +42,7 @@ public final class QuestOfferService {
         if (!isOfferLikeObjective(obj.getType())) return OfferSubmitResult.REJECTED;
 
         int required = Math.max(1, obj.getRequiredCount());
-        int current = data.getObjectiveProgress(phaseId, objectiveIndex);
+        int current = qdata.getObjectiveProgress(phaseId, objectiveIndex);
         if (current >= required) return OfferSubmitResult.REJECTED;
 
         int remainNeed = required - current;
