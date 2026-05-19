@@ -1,0 +1,28 @@
+---
+description: Arc Quest Modular Editor 渲染层、事件绑定层与状态驱动 UI 规则
+globs: arc_quest_editor_modular/scripts/renderers/**/*.js
+alwaysApply: false
+---
+
+# Arc Quest Modular Editor Renderer 规则
+
+## 分层边界
+- `renderers/**` 负责把 state 渲染成树、面板、状态栏与交互绑定。
+- renderer 是 state 的消费者，不是 schema 解释器、兼容层或导入修复层。
+
+## 状态驱动原则
+- 优先通过 state → render → bind 的链路更新界面。
+- 不要在 renderer 内部偷偷维护一份脱离 state 的长期业务状态。
+- 如果出现“界面显示对了，但导出/切换后丢失”，优先检查是否写回了正式 state。
+
+## 事件绑定规则
+- `event-bindings.js` 与 `bindings/**` 负责把 DOM 事件映射到明确的数据操作。
+- 事件处理应优先调用已有 helper / setter / action handler，不要在点击回调里临时拼接深层数据结构。
+- 删除、插入、折叠、切换选中等动作，完成后要同步维护 dirty 状态与 rerender 一致性。
+
+## 渲染问题排查顺序
+- 所有“按钮显示但行为不对”的问题，优先按以下顺序检查：
+  1. 当前 selection 是否有效
+  2. 事件是否实际绑定
+  3. action handler 是否真正改了 state
+  4. rerender 后是否被 selection 修正逻辑覆盖

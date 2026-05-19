@@ -1,0 +1,21 @@
+---
+description: Arc Quest Ponder / Intel scene id 规范与注册一致性约束
+globs: src/main/java/org/arcadia/arc_quest/client/ponder/**/*.java
+alwaysApply: false
+---
+
+# Arc Quest Ponder / Intel 规则
+
+## intelSceneId 语义
+- `intelSceneId` 当前支持三种语义：
+  1. 原生 Ponder scene id，例如 `mymod:my_scene`
+  2. 任务阶段简写，例如 `arc_quest:epic_prologue/defend_village`
+  3. 标准任务阶段 scene id，例如 `arc_quest:quest_phase/epic_prologue/defend_village`
+- 原生 scene id 与任务阶段 shorthand 是两种不同语义，处理时必须显式区分。
+
+## 修改联动检查
+- 修改 `intelSceneId` 规则时，必须同时检查：spec 字段注释、compiler 规范化逻辑、Ponder 注册约定、journal / intel 按钮显示与点击触发是否一致。
+
+## ID 生成约束
+- 与任务阶段绑定的 Intel 场景，优先使用 `ArcQuestPonderHelper` 统一生成 ID。
+- 不要在多个地方手拼 `quest_phase/...` 字符串。

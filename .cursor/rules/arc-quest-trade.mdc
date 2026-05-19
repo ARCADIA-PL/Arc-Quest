@@ -1,0 +1,21 @@
+---
+description: Arc Quest 交易系统、trade spec 编译链与界面边界约束
+globs: src/main/java/org/arcadia/arc_quest/trade/**/*.java
+alwaysApply: false
+---
+
+# Arc Quest 交易系统规则
+
+## 分层边界
+- `trade/**` 负责交易定义、网络、界面。
+- `trade/spec/**` 负责 spec 数据结构、校验与编译。
+- `trade/runtime/**` 负责运行时消费。
+- 不要把旧格式兼容、字段兜底、文本解释直接补在交易界面层。
+
+## spec 改动原则
+- 新增或修改交易相关 spec 字段时，至少同步检查：spec 结构、validate、compile、runtime / UI 消费方。
+- 数据规范化与兼容优先放在 compiler、helper 或 service，不要放在 Screen / Panel。
+
+## 交易 UI 与流程
+- `client/hud/shop/**` 主要负责表现和交互，不应承担业务规则解释。
+- 修改商店打开、关闭或购买流程时，注意与对话恢复、网络同步、客户端状态刷新是否一致。

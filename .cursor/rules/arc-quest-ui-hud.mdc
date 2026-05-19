@@ -1,0 +1,26 @@
+---
+description: 
+globs: src/main/java/org/arcadia/arc_quest/client/hud/**/*.java
+alwaysApply: false
+---
+
+# Arc Quest UI / HUD 规则
+
+## 分层边界
+- `client/hud/**` 应保持为纯客户端表现与交互层。
+- 不要把 spec 兼容、文本解释、场景 ID 规范化直接写进 Screen 或 Panel。
+
+## 动画与状态机
+- HUD 重视表现力动画，但动画不能掩盖状态机错误。
+- 调整 journal / tracker / ponder 动画时，先确认状态链路正确，再调 alpha、位移、ease、节奏参数。
+
+## 常见排查顺序
+- 所有“按钮有显示但点击无效”的问题，优先按以下顺序排查：
+  1. 数据是否存在
+  2. 编译是否生效
+  3. 注册是否存在
+  4. 点击是否实际触发
+
+## 任务 UI 读取约束
+- 任务 GUI 读取客户端任务状态时，应以 `ClientQuestCache` 为唯一可信镜像来源。
+- 不要在 UI 层绕过缓存直接读取服务端 Capability。

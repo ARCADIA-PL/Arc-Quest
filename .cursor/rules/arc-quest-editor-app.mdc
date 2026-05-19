@@ -1,0 +1,25 @@
+---
+description: 
+globs: arc_quest_editor_modular/scripts/app/**/*.js
+alwaysApply: false
+---
+
+# Arc Quest Modular Editor App 规则
+
+## 分层边界
+- `app/**` 负责应用级工作流编排，例如导入导出、布局、导航、toast、拖拽导入。
+- `app/**` 可以协调 `core/**` 与 `renderers/**`，但不应重新解释底层数据语义。
+
+## 导入导出规则
+- 导入前先识别资源类型，再走对应 normalizer。
+- 导入成功后再进入 registry 或当前编辑态，不要把原始 JSON 直接塞进 state。
+- 导出前必须先跑对应 validator；阻塞错误存在时，应停留在当前工作流并给出明确反馈。
+- Quest / NPC / Dialogue / Trade / Gacha 各模式的导入导出行为应尽量一致，避免某个模式成为特例孤岛。
+
+## 导航与布局
+- selection 修复、导航跳转、pane 尺寸恢复属于应用状态管理，修改时注意不要引入 rerender 抖动或选区错位。
+- 所有“切模式后选中项失效”“删除后仍指向旧节点”的问题，优先检查 selection 修正逻辑，而不是先改渲染动画。
+
+## 反馈与容错
+- toast 用于局部反馈；不要依赖 `alert` 作为主流程交互。
+- 导入失败、解析失败、类型未知等异常应局部降级，不要让整页状态崩掉。

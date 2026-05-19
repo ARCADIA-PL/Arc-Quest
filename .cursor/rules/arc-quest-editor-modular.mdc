@@ -1,0 +1,34 @@
+---
+description: Arc Quest Modular Editor 总体架构、构建目标与模块边界约束
+globs: arc_quest_editor_modular/**/*.js
+alwaysApply: false
+---
+
+# Arc Quest Modular Editor 总规则
+
+## 项目定位
+- 该模块是 Arc Quest 的模块化编辑器，不是通用 Web App。
+- 当前构建目标是 Vite + 原生 ES Modules，并优先支持单文件产物。
+- 修改时优先保持 `vite-plugin-singlefile` 构建链路稳定，不要随意引入会破坏单文件输出的模式。
+
+## 模块分层
+- `scripts/core/**`：数据 shape、normalizer、validator、registry、state 等核心语义层。
+- `scripts/app/**`：导入导出、布局、导航、toast 等应用编排层。
+- `scripts/renderers/**`：树、侧栏、状态栏、事件绑定等渲染与交互分发层。
+- `scripts/editors/**`：各类中心编辑器与局部编辑组件。
+- `styles/**`：纯样式层，不承担数据解释与业务补丁。
+
+## 总体约束
+- 不要把数据兼容、旧格式兜底、导入导出规范化散落到 renderer 或 editor 层。
+- 不要把 DOM 事件细节反向渗透进 `core/**` 的数据语义代码。
+- 不要为了局部交互方便，绕过已有的 `state`、shape setter、validator、normalizer 链路直接改数据结构。
+- 修改数据结构时，要同步检查：skeleton / shape / validator / import normalizer / export normalizer / renderer 消费方。
+
+## 工作流约束
+- 导入链路先 normalize，再进入 state / registry。
+- 导出链路先 validate，再 export，不要输出未经校验的结构。
+- registry / cross-reference / autocomplete 属于共享基础能力，避免在单个编辑器里各自手搓一套副本逻辑。
+
+## 构建与依赖
+- 优先保持零框架、轻依赖、可直接静态打开的形态。
+- 除非有明确必要，不要引入大型状态管理、组件框架或会显著改变打包方式的依赖。

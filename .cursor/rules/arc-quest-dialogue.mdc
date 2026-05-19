@@ -1,0 +1,24 @@
+---
+description: 
+globs: src/main/java/org/arcadia/arc_quest/dialogue/**/*.java
+alwaysApply: false
+---
+
+# Arc Quest 对话系统规则
+
+## 分层边界
+- `dialogue/**` 负责对话模型、运行时与注册。
+- 不要把对话文本解释、spec 兼容逻辑或 reload 兜底散落到 UI 层。
+
+## 文本链路
+- 对话文本链路很敏感，优先避免过早 `getString()`。
+- 不要把 `Component` 过早降级成 `String`，以免破坏延迟解析与可翻译文本行为。
+
+## reload / registry 语义
+- 修改 builder / model / runtime 任一层时，要同步检查 registry rebuild。
+- 同步检查 reload 语义是否仍然正确，避免 builtin 与 datapack 注册层错位。
+- 确认 translatable 文本仍可延迟解析，而不是在构建期被拍平成纯字符串。
+
+## 与商店联动
+- 对话中打开商店时，必须保证 `restoreToNode` 能正确恢复流程。
+- 不要只验证“能打开商店”，还要验证“关闭商店后能回到正确节点”。

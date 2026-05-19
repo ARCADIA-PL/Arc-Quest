@@ -1,0 +1,35 @@
+---
+description: Arc Quest Modular Editor 核心数据层、规范化与校验链规则
+globs: arc_quest_editor_modular/scripts/core/**/*.js
+alwaysApply: false
+---
+
+# Arc Quest Modular Editor Core 规则
+
+## 核心职责
+- `core/**` 负责状态、shape、factory、validator、normalizer、registry、suggestions 等数据与语义基础设施。
+- 这里应承载“结构正确性”和“兼容语义”，而不是具体界面表现。
+
+## 数据链路约束
+- 新增或修改字段时，至少同步检查：
+  1. `factories.js` / skeleton 默认值
+  2. `*-shape*.js` 路径写入与结构维护
+  3. `*-validators.js` 校验
+  4. `import-normalizer.js` / `*-normalizer.js` 导入兼容
+  5. `export-normalizer*.js` 导出语义
+  6. renderers / editors 的最终消费
+- 不要只改其中一层，否则很容易出现“能编辑但不能导入/导出”或“导入后 UI 不认”的断链。
+
+## normalizer 规则
+- 旧格式兼容、字段兜底、类型修正、语义映射，优先放在 normalizer。
+- 不要把兼容逻辑写到 renderer、editor 或临时点击事件里。
+- normalizer 输出应尽量收敛为编辑器内部统一 shape，而不是保留多套并行语义。
+
+## validator 规则
+- validator 负责指出错误与不完整状态，不要偷偷修改原始数据来“顺便修复”。
+- 阻止导出的错误应保持清晰稳定，避免同一问题在多个地方重复报出不同文案。
+
+## state / registry 规则
+- `state` 是编辑器运行时唯一可信状态源。
+- registry 是跨 quest / npc / dialogue / trade / gacha 的共享引用基础设施。
+- 涉及跨资源引用时，优先复用 registry、cross-validator、suggestions 现有能力，不要在局部模块复制一份引用解析逻辑。

@@ -1,0 +1,24 @@
+---
+description: Arc Quest Modular Editor 各类中心编辑器与局部组件规则
+globs: arc_quest_editor_modular/scripts/editors/**/*.js
+alwaysApply: false
+---
+
+# Arc Quest Modular Editor Editors 规则
+
+## 组件职责
+- `editors/**` 负责中心编辑区域与局部表单组件的表现和交互组织。
+- editor 主要关心“如何编辑”，不应承担“旧格式怎么兼容”“最终导出长什么样”的职责。
+
+## 字段编辑约束
+- 字段写回应优先走已有 setter / path 绑定机制，例如 `setByPath`、`setNpcByPath`、`setDialogueByPath` 等。
+- 不要在单个 editor 里直接深改共享对象结构，避免绕过统一写入路径。
+- 修改某类表单字段时，要同步确认对应 validator、normalizer、renderer 摘要视图是否仍然一致。
+
+## 局部组件复用
+- 条目集合、条件编辑、文本规格编辑、奖励编辑等可复用能力，优先提取到共享 editor/helper，而不是在多个资源类型里复制粘贴一套。
+- 只有当不同资源的语义确实不同，才允许分叉实现。
+
+## 交互一致性
+- Quest / NPC / Dialogue / Trade / Gacha 编辑体验应尽量保持一致：新增、删除、折叠、切换、选择恢复的行为不要风格漂移过大。
+- 若某个编辑器必须特化，需优先说明其数据语义差异，而不是单纯因为 UI 临时好做。

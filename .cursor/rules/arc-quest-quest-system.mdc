@@ -1,0 +1,36 @@
+---
+description: Arc Quest 任务系统、客户端缓存与 quest spec 编译链约束
+globs: src/main/java/org/arcadia/arc_quest/quest/**/*.java
+alwaysApply: false
+---
+
+# Arc Quest 任务系统规则
+
+## 分层边界
+- `quest/network/**` 负责客户端镜像与数据同步入口。
+- `quest/spec/**` 负责 datapack 结构、校验、编译。
+- `quest/logic/**` 负责任务推进与服务端规则。
+- 不要把 spec 兼容、文本解释、字段兜底直接写进 Screen、Panel 或随机 UI 逻辑。
+
+## ClientQuestCache
+- `ClientQuestCache` 是客户端任务状态唯一可信镜像来源。
+- GUI 不直接绕过它读取服务端 Capability。
+- 网络包必须通过 `enqueueWork` 回主线程，HUD / Screen 读取也应在主线程。
+- 客户端缓存可用普通集合，但稳定顺序场景必须使用 `LinkedHashMap` / `LinkedHashSet`。
+
+## phase 改动联动检查
+- phase 改动要同时检查：服务端推进逻辑、客户端缓存同步、journal detail 刷新、tracker / toast / history 是否受影响。
+- 要特别排查重复刷新、双闪、抖动、状态回退。
+
+## 自动追踪规则
+- 当前没有追踪任务时，接取新任务后应允许自动追踪。
+- 当前已有追踪任务时，不要擅自覆盖，除非需求明确要求切换。
+- 追踪选择是持久化状态，修改时同步检查本地缓存恢复逻辑。
+
+## quest / phase 字段改动
+- 新增或修改 `quest / phase` 字段时，至少同步检查四层：
+  1. `quest/spec/*` 数据结构
+  2. `quest/spec/validate/*` 校验
+  3. `quest/spec/compile/*` 编译
+  4. 最终消费方（runtime / UI / registry）
+- 旧格式兼容、字段兜底、数据规范化，优先放在 `QuestSpecCompiler`、helper 或 service，不要在 UI 层补 parser。

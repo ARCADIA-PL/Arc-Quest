@@ -1,0 +1,52 @@
+---
+description: 
+alwaysApply: true
+---
+
+# Arc Quest 全局基线规则
+
+## 基本要求
+- 始终使用中文交流。
+- 修改前先读现有代码，不要凭印象改。
+- 不了解 API 或版本行为时，优先查官方 Forge / Ponder / Mixin 文档。
+- 不要新建 README、操作指南或额外 markdown 文档。
+- 修改后要说明为什么这样改、原理是什么。
+
+## 设计原则
+- 遵守单一职责，避免一个类同时承担渲染、状态管理、数据同步、规则解释。
+- 优先通过扩展点、helper、service、builder 增量扩展，不要把业务硬编码到 UI 或事件里。
+- 依赖抽象与明确边界，避免跨层直接耦合。
+
+## 代码风格
+- 注释只解释“为什么”或“不明显的约定”，不要写流水账。
+- 禁止使用变更叙述型注释：`// 新增`、`// 修复`、`// 优化`。
+- 优先使用 `import`，除非命名冲突，不要写全限定类名。
+- 优先使用 `instanceof`，不要通过类名字符串判断类型。
+- 文件过长时主动考虑拆分，尤其是 Screen、Panel、Builder、Registry、Runtime 类。
+
+## 线程与异常
+- 明确线程边界，区分客户端主线程与服务端逻辑线程。
+- 客户端网络包处理必须回主线程执行。
+- 不能让单个异常导致整条功能链崩溃；要记录日志并尽量局部降级。
+- 注意长期运行下的缓存清理、内存泄漏、状态不同步问题。
+
+## 数据结构约束
+- 禁止依赖非确定性 Map 首元素，不要用 `map.values().iterator().next()` 或 `map.keySet().iterator().next()` 表示“当前对象”。
+- 应通过显式 ID 或明确状态字段追踪当前对象。
+- 如果业务确实依赖迭代顺序，必须使用有序容器并说明语义。
+
+## 验证方式
+- 修改后优先做最小范围验证。
+- Java 改动通常至少执行一次：`./gradlew compileJava --console=plain --no-daemon`
+
+## 项目事实
+- 当前项目是 Minecraft Forge 1.20.1 单加载器模组，不是 Architectury/Fabric/NeoForge 多端工程。
+- Java 版本为 17。
+- 关键依赖与技术栈：ForgeGradle 6、Sponge Mixin / MixinExtras、Ponder / Flywheel、Create 风格 Ponder 场景体系。
+- 主包名：`org.arcadia.arc_quest`
+- 核心模块：`quest`、`dialogue`、`trade`、`client/hud`、`datapack spec / compiler / reload`、`Ponder Intel` 场景。
+
+## 现实约束
+- 模组尚未正式发布，当前不以跨大版本兼容为第一优先级。
+- 当前更重视：功能链路真实可用、datapack 能力可落地、reload 后状态一致、UI 体验稳定。
+- 任何“更优雅”的重构，只要会破坏现有任务 / 对话 / 交易内容，就必须谨慎推进。
