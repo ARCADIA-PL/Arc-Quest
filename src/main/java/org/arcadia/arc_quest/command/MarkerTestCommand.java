@@ -14,7 +14,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;

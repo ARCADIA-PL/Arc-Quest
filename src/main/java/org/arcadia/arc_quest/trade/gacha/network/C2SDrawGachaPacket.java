@@ -8,7 +8,7 @@ import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
@@ -20,6 +20,7 @@ import org.arcadia.arc_quest.trade.gacha.runtime.GachaSession;
 import org.arcadia.arc_quest.trade.network.RejectCodeDictionary;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -453,7 +454,7 @@ public class C2SDrawGachaPacket {
     }
 
     private static List<CostShortfallLine> buildShortfallLines(List<ITradeOffer> costs, ServerPlayer player) {
-        List<CostShortfallLine> lines = new java.util.ArrayList<>();
+        List<CostShortfallLine> lines = new ArrayList<>();
         for (ITradeOffer cost : costs) {
             lines.addAll(cost.buildShortfallLines(player));
         }

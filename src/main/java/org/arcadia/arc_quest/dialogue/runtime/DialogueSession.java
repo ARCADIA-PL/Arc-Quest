@@ -7,8 +7,8 @@ import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.npc.NpcBinding;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.slf4j.Logger;
 

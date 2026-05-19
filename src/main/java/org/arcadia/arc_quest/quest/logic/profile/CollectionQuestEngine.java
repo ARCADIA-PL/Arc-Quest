@@ -7,7 +7,7 @@ import org.arcadia.arc_quest.api.event.quest.QuestAcceptedEvent;
 import org.arcadia.arc_quest.api.event.quest.QuestStartedEvent;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;

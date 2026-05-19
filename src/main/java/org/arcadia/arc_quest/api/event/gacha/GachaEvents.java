@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.api.event.gacha;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.Event;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 
 import java.util.Map;

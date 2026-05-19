@@ -6,7 +6,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -301,7 +302,7 @@ public final class GachaScreenOpener {
     }
 
     private static List<CostShortfallLine> buildShortfallLines(List<ITradeOffer> costs, ServerPlayer player) {
-        List<CostShortfallLine> lines = new java.util.ArrayList<>();
+        List<CostShortfallLine> lines = new ArrayList<>();
         for (ITradeOffer cost : costs) {
             lines.addAll(cost.buildShortfallLines(player));
         }

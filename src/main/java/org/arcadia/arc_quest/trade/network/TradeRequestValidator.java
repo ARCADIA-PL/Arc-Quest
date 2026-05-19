@@ -1,8 +1,8 @@
 package org.arcadia.arc_quest.trade.network;
 
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;

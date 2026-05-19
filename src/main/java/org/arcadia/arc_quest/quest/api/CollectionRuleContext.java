@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.quest.api;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 
 import javax.annotation.Nullable;

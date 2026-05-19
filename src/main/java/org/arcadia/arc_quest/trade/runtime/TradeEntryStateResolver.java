@@ -6,7 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.TradeDataStore;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.slf4j.Logger;

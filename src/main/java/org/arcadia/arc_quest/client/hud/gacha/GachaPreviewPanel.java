@@ -510,7 +510,7 @@ public class GachaPreviewPanel {
     private record CostVisual(ItemStack stack, String name, String count, int width, boolean isShortfall) {}
 
     private void renderCostRow(GuiGraphics g, Layout l, float alpha, float easeProgress, boolean isClosing, int drawX, int centerY, float hEase) {
-        java.util.List<ITradeOffer> costs = parent.getShopDef().getDrawCosts();
+        List<ITradeOffer> costs = parent.getShopDef().getDrawCosts();
         if (costs.isEmpty()) return;
 
         float costAlpha = alpha * (1.0f - hEase);

@@ -5,8 +5,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 

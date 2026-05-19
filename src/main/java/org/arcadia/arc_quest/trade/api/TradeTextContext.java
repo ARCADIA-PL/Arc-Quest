@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.trade.api;
 
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 
 import javax.annotation.Nullable;
 import java.util.Map;

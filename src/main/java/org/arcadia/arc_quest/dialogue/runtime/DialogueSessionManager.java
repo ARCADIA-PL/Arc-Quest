@@ -18,7 +18,7 @@ import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacke
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;

@@ -2,8 +2,8 @@ package org.arcadia.arc_quest.quest.reward;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.api.IReward;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
 
 /**
  * 设置或移除全局 Flag 的奖励。

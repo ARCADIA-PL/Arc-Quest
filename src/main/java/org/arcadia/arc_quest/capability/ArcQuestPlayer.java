@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.quest.player;
+package org.arcadia.arc_quest.capability;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;

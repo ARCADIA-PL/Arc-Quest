@@ -3,8 +3,8 @@ package org.arcadia.arc_quest.dialogue.runtime;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
 
 import javax.annotation.Nullable;
 

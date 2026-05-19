@@ -6,7 +6,7 @@ import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.capability.GachaDataStore;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.slf4j.Logger;
 

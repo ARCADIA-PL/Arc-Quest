@@ -9,7 +9,7 @@ import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.quest.api.ICondition;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 

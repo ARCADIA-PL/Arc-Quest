@@ -1,7 +1,8 @@
-package org.arcadia.arc_quest.quest.player;
+package org.arcadia.arc_quest.capability;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.LevelEvent;
@@ -78,7 +79,7 @@ public final class ArcQuestPlayerLifecycleHandler {
 
     @SubscribeEvent
     public static void onWorldSave(LevelEvent.Save event) {
-        if (event.getLevel().isClientSide() || !(event.getLevel() instanceof net.minecraft.server.level.ServerLevel serverLevel))
+        if (event.getLevel().isClientSide() || !(event.getLevel() instanceof ServerLevel serverLevel))
             return;
         for (ServerPlayer player : serverLevel.players()) {
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);

@@ -2,8 +2,8 @@ package org.arcadia.arc_quest.trade.gacha.network;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.network.RejectCodeDictionary;
