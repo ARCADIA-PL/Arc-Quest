@@ -12,8 +12,8 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.quest.*;
 import org.arcadia.arc_quest.quest.api.*;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;
@@ -70,22 +70,22 @@ public final class QuestProgressHandler {
             return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         }
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
         if (def.isCollectionQuest()) {
             return CollectionQuestEngine.acceptQuest(player, cap, def);
         }
 
-        if (cap.isQuestActive(questId)) {
+        if (data.isQuestActive(questId)) {
             return QuestRejectCodeDictionary.Code.ALREADY_ACTIVE;
         }
-        if (cap.isQuestCompleted(questId) && !def.isRepeatable()) {
+        if (data.isQuestCompleted(questId) && !def.isRepeatable()) {
             return QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE;
         }
 
-        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
+        Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         for (ICondition cond : def.getUnlockConditions()) {
-            if (!cond.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables())) {
+            if (!cond.test(player, completedQuests, data.getAllFlags(), data.getAllVariables())) {
                 return QuestRejectCodeDictionary.Code.UNLOCK_CONDITION_NOT_MET;
             }
         }
@@ -107,15 +107,15 @@ public final class QuestProgressHandler {
                 acceptedRealMs,
                 acceptedDayTime
         );
-        cap.addActiveQuest(data);
+        data.addActiveQuest(data);
 
         boolean flagsChanged = false;
         for (String flag : def.getFlagsToSetOnAccept()) {
-            cap.setFlag(flag);
+            data.setFlag(flag);
             flagsChanged = true;
         }
         for (String flag : firstPhase.getFlagsToSetOnEnter()) {
-            cap.setFlag(flag);
+            data.setFlag(flag);
             flagsChanged = true;
         }
 
@@ -148,8 +148,8 @@ public final class QuestProgressHandler {
                                           int amount) {
         if (amount <= 0) return;
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -187,8 +187,8 @@ public final class QuestProgressHandler {
                                                 int amount) {
         if (amount <= 0) return;
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -203,8 +203,8 @@ public final class QuestProgressHandler {
     public static void revealCollectionEntry(ServerPlayer player,
                                              String questId,
                                              String phaseId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -217,8 +217,8 @@ public final class QuestProgressHandler {
     }
 
     public static void refreshCollectionVisibility(ServerPlayer player, String questId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -232,8 +232,8 @@ public final class QuestProgressHandler {
     public static void discoverCollectionEntry(ServerPlayer player,
                                                String questId,
                                                String phaseId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -251,8 +251,8 @@ public final class QuestProgressHandler {
                                               String uniqueKey) {
         if (uniqueKey == null || uniqueKey.isEmpty()) return;
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || data.getState() != QuestState.ACTIVE || !data.hasCollectionData()) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -268,8 +268,8 @@ public final class QuestProgressHandler {
     //  目标推进（并行 phase 维度）
     // ═══════════════════════════════════════════════════════
     private static void checkPhaseCompletion(ServerPlayer player,
-                                             IQuestCapability cap,
-                                             QuestRuntimeData data,
+                                             ArcQuestPlayer data,
+                                             QuestRuntimeData qdata,
                                              QuestDefinition def,
                                              String phaseId) {
         PhaseDefinition phase = def.getPhase(phaseId);
@@ -294,7 +294,7 @@ public final class QuestProgressHandler {
 
         ActivationContext ctx = new ActivationContext();
         for (String flag : phase.getFlagsToSetOnComplete()) {
-            cap.setFlag(flag);
+            data.setFlag(flag);
             ctx.flagsChanged = true;
         }
 
@@ -328,12 +328,12 @@ public final class QuestProgressHandler {
             return;
         }
 
-        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
+        Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
 
         // 自动解锁后继（可多条，支持 thenGoToIf）
         for (PhaseTransition tr : phase.getTransitions()) {
             boolean ok = tr.getCondition() == null
-                    || tr.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+                    || tr.getCondition().test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
             if (!ok) continue;
 
             activatePhase(player, cap, data, def, phaseId, tr.getTargetPhaseId(), true, ctx);
@@ -354,8 +354,8 @@ public final class QuestProgressHandler {
     }
 
     public static void advanceToPhase(ServerPlayer player,
-                                      IQuestCapability cap,
-                                      QuestRuntimeData data,
+                                      ArcQuestPlayer data,
+                                      QuestRuntimeData qdata,
                                       QuestDefinition def,
                                       String nextPhaseId) {
         String fromPhaseId = data.getCurrentPhaseId();
@@ -383,8 +383,8 @@ public final class QuestProgressHandler {
     public static QuestRejectCodeDictionary.Code confirmManualPhaseAdvance(ServerPlayer player,
                                                                            String questId,
                                                                            String phaseId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         if (phaseId == null || phaseId.isEmpty() || !data.isPhasePendingManualAdvance(phaseId)) {
             return QuestRejectCodeDictionary.Code.PHASE_NOT_FOUND;
@@ -397,7 +397,7 @@ public final class QuestProgressHandler {
         data.completePhase(phaseId);
         ActivationContext ctx = new ActivationContext();
         for (String flag : phase.getFlagsToSetOnComplete()) {
-            cap.setFlag(flag);
+            data.setFlag(flag);
             ctx.flagsChanged = true;
         }
         if (phase.hasChoices()) {
@@ -407,9 +407,9 @@ public final class QuestProgressHandler {
             if (ctx.flagsChanged) syncFlagsVarsAndPush(player, cap);
             return QuestRejectCodeDictionary.Code.OK;
         }
-        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
+        Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         for (PhaseTransition tr : phase.getTransitions()) {
-            boolean ok = tr.getCondition() == null || tr.getCondition().test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+            boolean ok = tr.getCondition() == null || tr.getCondition().test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
             if (ok) activatePhase(player, cap, data, def, phaseId, tr.getTargetPhaseId(), true, ctx);
         }
         tryAutoEnterPhases(player, cap, data, def, phaseId, ctx);
@@ -446,9 +446,9 @@ public final class QuestProgressHandler {
                                                                             String questId,
                                                                             String phaseId,
                                                                             int choiceIndex) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null) return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -483,10 +483,10 @@ public final class QuestProgressHandler {
 
         ChoiceOption chosen = choices.get(choiceIndex);
 
-        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
+        Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         ICondition visibleCondition = chosen.getVisibleCondition();
         boolean conditionsMet = visibleCondition == null ||
-                visibleCondition.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+                visibleCondition.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
         if (!conditionsMet) {
             LOGGER.debug("[ArcQuest] Choice conditions not met for index {}", choiceIndex);
             return QuestRejectCodeDictionary.Code.CHOICE_CONDITION_NOT_MET;
@@ -496,7 +496,7 @@ public final class QuestProgressHandler {
 
         String flagToSet = chosen.getFlagToSet();
         if (flagToSet != null && !flagToSet.isEmpty()) {
-            cap.setFlag(flagToSet);
+            data.setFlag(flagToSet);
             ctx.flagsChanged = true;
             LOGGER.debug("[ArcQuest] Set flag '{}' from choice", flagToSet);
         }
@@ -511,7 +511,7 @@ public final class QuestProgressHandler {
         data.completePhase(resolvedPhaseId);
         unregisterPhaseObjectives(player, def, currentPhase);
         for (String flag : currentPhase.getFlagsToSetOnComplete()) {
-            cap.setFlag(flag);
+            data.setFlag(flag);
             ctx.flagsChanged = true;
         }
 
@@ -524,7 +524,7 @@ public final class QuestProgressHandler {
             if (pid == null || pid.isEmpty() || pid.equals(targetPhaseId)) continue;
 
             ICondition cond = tr.getCondition();
-            boolean ok = cond == null || cond.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+            boolean ok = cond == null || cond.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
             if (!ok) continue;
 
             toActivate.add(pid);
@@ -567,8 +567,8 @@ public final class QuestProgressHandler {
     }
 
     private static void completeQuest(ServerPlayer player,
-                                      IQuestCapability cap,
-                                      QuestRuntimeData data,
+                                      ArcQuestPlayer data,
+                                      QuestRuntimeData qdata,
                                       QuestDefinition def) {
         doCompleteQuest(player, cap, data, def, "completed");
     }
@@ -577,12 +577,12 @@ public final class QuestProgressHandler {
     // 任务完成 / 失败 / 放弃
     // ═══════════════════════════════════════════════════════
     public static void failQuest(ServerPlayer player, String questId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null) return;
 
         data.setState(QuestState.FAILED);
-        cap.markFailed(questId);
+        data.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(cap, questId);
 
@@ -598,17 +598,17 @@ public final class QuestProgressHandler {
     }
 
     public static QuestRejectCodeDictionary.Code abandonQuestWithCode(ServerPlayer player, String questId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        if (!cap.isQuestActive(questId)) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (!data.isQuestActive(questId)) {
             return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         }
 
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data != null) {
             data.setState(QuestState.FAILED);
         }
 
-        cap.markFailed(questId);
+        data.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(cap, questId);
 
@@ -622,8 +622,8 @@ public final class QuestProgressHandler {
     }
 
     public static void forceComplete(ServerPlayer player, String questId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null) return;
 
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -633,8 +633,8 @@ public final class QuestProgressHandler {
     }
 
     private static void doCompleteQuest(ServerPlayer player,
-                                        IQuestCapability cap,
-                                        QuestRuntimeData data,
+                                        ArcQuestPlayer data,
+                                        QuestRuntimeData qdata,
                                         QuestDefinition def,
                                         String logPrefix) {
         String questId = data.getQuestId();
@@ -643,7 +643,7 @@ public final class QuestProgressHandler {
         def.getFlagsToSetOnComplete().forEach(cap::setFlag);
 
         data.setState(QuestState.COMPLETED);
-        cap.markCompleted(questId);
+        data.markCompleted(questId);
 
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(cap, questId);
@@ -659,8 +659,8 @@ public final class QuestProgressHandler {
     }
 
     public static void syncToClient(ServerPlayer player, String questId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data != null) {
             syncQuestStateAndPush(player, data);
         }
@@ -675,11 +675,11 @@ public final class QuestProgressHandler {
         QuestSyncCoordinator.syncQuestStateAndPush(player, data);
     }
 
-    private static void syncFlagsVarsAndPush(ServerPlayer player, IQuestCapability cap) {
+    private static void syncFlagsVarsAndPush(ServerPlayer player, ArcQuestPlayer data) {
         QuestSyncCoordinator.syncFlagsVarsAndPush(player, cap);
     }
 
-    private static void syncFullDataAndPush(ServerPlayer player, IQuestCapability cap) {
+    private static void syncFullDataAndPush(ServerPlayer player, ArcQuestPlayer data) {
         QuestSyncCoordinator.syncFullDataAndPush(player, cap);
     }
 
@@ -691,11 +691,11 @@ public final class QuestProgressHandler {
         QuestSyncCoordinator.syncDeltaProgressAndPush(player, questId, phaseId, objIndex, newProgress);
     }
 
-    public static void rebuildTrackingIndex(ServerPlayer player, IQuestCapability cap) {
+    public static void rebuildTrackingIndex(ServerPlayer player, ArcQuestPlayer data) {
         ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
 
         int activeQuestCount = 0;
-        for (Map.Entry<String, QuestRuntimeData> entry : cap.getAllActiveQuests().entrySet()) {
+        for (Map.Entry<String, QuestRuntimeData> entry : data.getAllActiveQuests().entrySet()) {
             QuestRuntimeData data = entry.getValue();
             if (data.getState() != QuestState.ACTIVE) continue;
             activeQuestCount++;
@@ -760,7 +760,7 @@ public final class QuestProgressHandler {
         }
     }
 
-    public static int resolveRequiredCount(ServerPlayer player, ObjectiveEntry obj, IQuestCapability cap) {
+    public static int resolveRequiredCount(ServerPlayer player, ObjectiveEntry obj, ArcQuestPlayer data) {
         int fromModifier = obj.resolveRequiredCount(player);
 
         String modeRaw = obj.getExtra("count_mode");
@@ -774,7 +774,7 @@ public final class QuestProgressHandler {
         int variableValue = 0;
         if ("variable".equals(mode)) {
             String var = obj.getExtra("count_var");
-            variableValue = (var == null || var.isEmpty()) ? 0 : cap.getVariable(var);
+            variableValue = (var == null || var.isEmpty()) ? 0 : data.getVariable(var);
         }
 
         return computeRequiredCount(modeRaw, mode, fromModifier, base, min, max, player.experienceLevel, obj.getExtraInt("count_per_level", 0), variableValue, obj.getExtraInt("count_per_var", 0), obj.getTargetId().toString());
@@ -812,8 +812,8 @@ public final class QuestProgressHandler {
     }
 
     private static void processImmediatelySatisfiedPhases(ServerPlayer player,
-                                                          IQuestCapability cap,
-                                                          QuestRuntimeData data,
+                                                          ArcQuestPlayer data,
+                                                          QuestRuntimeData qdata,
                                                           QuestDefinition def) {
         boolean changed;
         do {
@@ -881,7 +881,7 @@ public final class QuestProgressHandler {
     }
 
     private static boolean canEnterPhase(ServerPlayer player,
-                                         IQuestCapability cap,
+                                         ArcQuestPlayer data,
                                          PhaseDefinition phase,
                                          @Nullable QuestRuntimeData data) {
         if (data != null && data.isEnterConditionCached(phase.getPhaseId())) {
@@ -889,7 +889,7 @@ public final class QuestProgressHandler {
         }
         ICondition cond = phase.getEnterCondition();
         if (cond == null) return true;
-        boolean result = cond.test(player, cap.getCompletedQuestLocations(), cap.getAllFlags(), cap.getAllVariables());
+        boolean result = cond.test(player, data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables());
         if (data != null) data.setEnterConditionCached(phase.getPhaseId(), result);
         return result;
     }
@@ -898,8 +898,8 @@ public final class QuestProgressHandler {
     // enterCondition / 激活辅助
     // ═══════════════════════════════════════════════════════
     private static boolean activatePhase(ServerPlayer player,
-                                         IQuestCapability cap,
-                                         QuestRuntimeData data,
+                                         ArcQuestPlayer data,
+                                         QuestRuntimeData qdata,
                                          QuestDefinition def,
                                          String fromPhaseId,
                                          String targetPhaseId,
@@ -917,7 +917,7 @@ public final class QuestProgressHandler {
         registerPhaseObjectives(player, def, next);
 
         for (String flag : next.getFlagsToSetOnEnter()) {
-            cap.setFlag(flag);
+            data.setFlag(flag);
             ctx.flagsChanged = true;
         }
 
@@ -930,8 +930,8 @@ public final class QuestProgressHandler {
     }
 
     private static int tryAutoEnterPhases(ServerPlayer player,
-                                          IQuestCapability cap,
-                                          QuestRuntimeData data,
+                                          ArcQuestPlayer data,
+                                          QuestRuntimeData qdata,
                                           QuestDefinition def,
                                           String fromPhaseId,
                                           ActivationContext ctx) {

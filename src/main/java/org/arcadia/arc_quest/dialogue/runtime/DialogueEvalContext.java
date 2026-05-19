@@ -3,8 +3,8 @@ package org.arcadia.arc_quest.dialogue.runtime;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 
 import javax.annotation.Nullable;
 
@@ -50,7 +50,7 @@ public record DialogueEvalContext(
     /**
      * 快捷获取玩家任务能力。
      */
-    public IQuestCapability questCap() {
+    public ArcQuestPlayer questData() {
         return player.getCapability(QuestCapabilityProvider.QUEST_CAP)
                 .orElseThrow(() -> new IllegalStateException(
                         "Player has no QuestCapability: " + player.getName().getString()));

@@ -6,7 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.TradeDataStore;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.slf4j.Logger;
@@ -24,7 +24,7 @@ import java.util.Set;
  * </ul>
  * <p>
  * 状态数据统一通过 {@link TradeDataStore} 读写，冷却判断委托
- * {@link UnifiedCooldownManager}，不再经过 {@code IQuestCapability} 的多层委托。
+ * {@link UnifiedCooldownManager}，不再经过 {@code ArcQuestPlayer} 的多层委托。
  */
 public final class TradeEntryStateResolver {
 
@@ -36,16 +36,16 @@ public final class TradeEntryStateResolver {
     /**
      * 检查商品是否在冷却中。
      */
-    public static boolean isOnCooldown(ServerPlayer player, IQuestCapability cap, String shopId, TradeEntry entry) {
+    public static boolean isOnCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
         if (!entry.hasCooldown()) return false;
 
         if (entry.hasLimit()) {
-            int currentCount = cap.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
+            int currentCount = data.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
             if (currentCount < entry.getMaxPurchases()) return false;
         }
 
         long[] times = TimeSanitizer.getAllTimes(player);
-        ICooldownRecord record = cap.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
+        ICooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
         return UnifiedCooldownManager.isOnCooldown(record, entry.getCooldownType(),
                 (int) entry.getCooldownValue(), entry.getResetTimeTicks(),
@@ -55,26 +55,26 @@ public final class TradeEntryStateResolver {
     /**
      * 检查商品是否达到限购上限。
      */
-    public static boolean isPurchaseLimitReached(IQuestCapability cap, String shopId, TradeEntry entry) {
+    public static boolean isPurchaseLimitReached(ArcQuestPlayer data, String shopId, TradeEntry entry) {
         if (!entry.hasLimit()) return false;
-        int currentCount = cap.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
+        int currentCount = data.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
         return currentCount >= entry.getMaxPurchases();
     }
 
     /**
      * 检查商品是否对玩家可见（可见性条件）。
      */
-    public static boolean isVisible(ServerPlayer player, IQuestCapability cap, TradeEntry entry) {
+    public static boolean isVisible(ServerPlayer player, ArcQuestPlayer data, TradeEntry entry) {
         if (entry.getVisibleCondition() == null) return true;
 
-        Set<ResourceLocation> completed = cap.getCompletedQuestLocations();
-        return entry.getVisibleCondition().test(player, completed, cap.getAllFlags(), cap.getAllVariables());
+        Set<ResourceLocation> completed = data.getCompletedQuestLocations();
+        return entry.getVisibleCondition().test(player, completed, data.getAllFlags(), data.getAllVariables());
     }
 
     /**
      * 综合判断商品是否可购买（可见性 → 冷却 → 限购 → 购买资格）。
      */
-    public static boolean canPurchase(ServerPlayer player, IQuestCapability cap, String shopId, TradeEntry entry) {
+    public static boolean canPurchase(ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
         if (!isVisible(player, cap, entry)) return false;
 
         if (isOnCooldown(player, cap, shopId, entry)) {
@@ -88,8 +88,8 @@ public final class TradeEntryStateResolver {
         }
 
         if (entry.getCanBuyCondition() != null) {
-            Set<ResourceLocation> completed = cap.getCompletedQuestLocations();
-            boolean canBuy = entry.getCanBuyCondition().test(player, completed, cap.getAllFlags(), cap.getAllVariables());
+            Set<ResourceLocation> completed = data.getCompletedQuestLocations();
+            boolean canBuy = entry.getCanBuyCondition().test(player, completed, data.getAllFlags(), data.getAllVariables());
             if (!canBuy) {
                 LOGGER.debug("[Trade-State] Purchase blocked: canBuyCondition not met for {}", entry.getEntryId());
                 return false;
@@ -101,16 +101,16 @@ public final class TradeEntryStateResolver {
     /**
      * 检查是否应该重置购买次数（基于冷却过期）。
      */
-    public static boolean shouldResetByCooldown(ServerPlayer player, IQuestCapability cap, String shopId, TradeEntry entry) {
+    public static boolean shouldResetByCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
         if (!entry.hasCooldown()) return false;
 
         if (entry.hasLimit()) {
-            int currentCount = cap.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
+            int currentCount = data.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
             if (currentCount < entry.getMaxPurchases()) return false;
         }
 
         long[] times = TimeSanitizer.getAllTimes(player);
-        ICooldownRecord record = cap.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
+        ICooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
         boolean onCooldown = UnifiedCooldownManager.isOnCooldown(record, entry.getCooldownType(),
                 (int) entry.getCooldownValue(), entry.getResetTimeTicks(),
@@ -125,11 +125,11 @@ public final class TradeEntryStateResolver {
     /**
      * 检查是否需要记录冷却时间。
      */
-    public static boolean shouldRecordCooldown(IQuestCapability cap, String shopId, TradeEntry entry) {
+    public static boolean shouldRecordCooldown(ArcQuestPlayer data, String shopId, TradeEntry entry) {
         if (!entry.hasCooldown()) return false;
         if (!entry.hasLimit()) return true;
 
-        int currentCount = cap.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
+        int currentCount = data.getTradeDataStore().getPurchaseCount(shopId, entry.getEntryId());
         int newCount = currentCount + 1;
         boolean shouldRecord = newCount >= entry.getMaxPurchases();
         if (shouldRecord) {
@@ -142,27 +142,27 @@ public final class TradeEntryStateResolver {
     /**
      * 记录购买（增加购买次数）。
      */
-    public static void recordPurchase(IQuestCapability cap, String shopId, String entryId) {
-        cap.getTradeDataStore().incrementPurchase(shopId, entryId);
-        int newCount = cap.getTradeDataStore().getPurchaseCount(shopId, entryId);
+    public static void recordPurchase(ArcQuestPlayer data, String shopId, String entryId) {
+        data.getTradeDataStore().incrementPurchase(shopId, entryId);
+        int newCount = data.getTradeDataStore().getPurchaseCount(shopId, entryId);
         LOGGER.info("[Trade-State] Purchase recorded: entry={}, newCount={}", entryId, newCount);
     }
 
     /**
      * 记录冷却时间戳。
      */
-    public static void recordCooldown(ServerPlayer player, IQuestCapability cap, String shopId, String entryId) {
+    public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, String entryId) {
         long[] times = TimeSanitizer.getAllTimes(player);
         LOGGER.debug("[Trade-State] Recording cooldown: shop={}, entry={}", shopId, entryId);
-        cap.getTradeDataStore().recordCooldown(shopId, entryId, times[0], times[1], times[2]);
+        data.getTradeDataStore().recordCooldown(shopId, entryId, times[0], times[1], times[2]);
     }
 
     /**
      * 重置购买次数和冷却。
      */
-    public static void resetPurchaseAndCooldown(IQuestCapability cap, String shopId, String entryId) {
-        int oldCount = cap.getTradeDataStore().getPurchaseCount(shopId, entryId);
-        cap.getTradeDataStore().resetEntry(shopId, entryId);
+    public static void resetPurchaseAndCooldown(ArcQuestPlayer data, String shopId, String entryId) {
+        int oldCount = data.getTradeDataStore().getPurchaseCount(shopId, entryId);
+        data.getTradeDataStore().resetEntry(shopId, entryId);
         LOGGER.info("[Trade-State] Reset purchase and cooldown: entry={}, oldCount={}", entryId, oldCount);
     }
 }

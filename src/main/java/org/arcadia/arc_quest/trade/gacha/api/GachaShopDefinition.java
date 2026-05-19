@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.quest.api.ICondition;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.api.*;
 import org.jetbrains.annotations.Nullable;
 
@@ -290,15 +290,15 @@ public class GachaShopDefinition {
     /**
      * 获取当前总抽奖次数。
      */
-    public int getTotalDraws(IQuestCapability cap) {
-        return cap.getGachaDrawCount(shopDefinition.getShopId());
+    public int getTotalDraws(ArcQuestPlayer data) {
+        return data.getGachaDrawCount(shopDefinition.getShopId());
     }
 
     /**
      * 增加抽奖次数计数。
      */
-    public void incrementDrawCount(IQuestCapability cap, long nowRealTime, long nowGameTime, long nowDayTime) {
-        cap.incrementGachaDrawCount(shopDefinition.getShopId());
+    public void incrementDrawCount(ArcQuestPlayer data, long nowRealTime, long nowGameTime, long nowDayTime) {
+        data.incrementGachaDrawCount(shopDefinition.getShopId());
     }
 
     /**
@@ -306,7 +306,7 @@ public class GachaShopDefinition {
      *
      * @return 剩余次数，-1 表示无限
      */
-    public int getRemainingDraws(IQuestCapability cap) {
+    public int getRemainingDraws(ArcQuestPlayer data) {
         if (maxDraws < 0) return -1; // 无限
         int totalDraws = getTotalDraws(cap);
         return Math.max(0, maxDraws - totalDraws);
@@ -319,7 +319,7 @@ public class GachaShopDefinition {
      * @param pityCount 当前保底计数
      * @return 抽奖结果
      */
-    public DrawResult performDraw(IQuestCapability cap, int pityCount) {
+    public DrawResult performDraw(ArcQuestPlayer data, int pityCount) {
         return performDraw(null, cap, pityCount);
     }
 
@@ -332,7 +332,7 @@ public class GachaShopDefinition {
      * @return 抽奖结果
      */
     public DrawResult performDraw(ServerPlayer player,
-                                  IQuestCapability cap,
+                                  ArcQuestPlayer data,
                                   int pityCount) {
         GachaItem drawnItem;
         boolean isPityTriggered = false;

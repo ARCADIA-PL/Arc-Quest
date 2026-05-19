@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.trade.gacha.api;
 
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -50,7 +50,7 @@ public class GachaPool {
     /**
      * 计算总有效权重（考虑动态修改器）。
      */
-    public int calculateTotalWeight(IQuestCapability cap) {
+    public int calculateTotalWeight(ArcQuestPlayer data) {
         return calculateTotalWeight(null, cap);
     }
 
@@ -60,7 +60,7 @@ public class GachaPool {
      * @param player 玩家实体（用于 ICondition）
      * @param cap    玩家能力数据
      */
-    public int calculateTotalWeight(ServerPlayer player, IQuestCapability cap) {
+    public int calculateTotalWeight(ServerPlayer player, ArcQuestPlayer data) {
         int total = 0;
         for (GachaItem item : items) {
             total += item.getEffectiveWeight(player, cap);
@@ -74,7 +74,7 @@ public class GachaPool {
      * @param cap 玩家能力数据（用于计算动态权重）
      * @return 抽中的物品，如果奖池为空则返回 null
      */
-    public GachaItem draw(IQuestCapability cap) {
+    public GachaItem draw(ArcQuestPlayer data) {
         return draw(null, cap);
     }
 
@@ -85,7 +85,7 @@ public class GachaPool {
      * @param cap    玩家能力数据（用于计算动态权重）
      * @return 抽中的物品，如果奖池为空则返回 null
      */
-    public GachaItem draw(ServerPlayer player, IQuestCapability cap) {
+    public GachaItem draw(ServerPlayer player, ArcQuestPlayer data) {
         if (items.isEmpty()) {
             return null;
         }
@@ -126,7 +126,7 @@ public class GachaPool {
     /**
      * 从指定稀有度中随机抽取（根据条件过滤可见项）。
      */
-    public GachaItem drawFromRarity(GachaItem.Rarity rarity, IQuestCapability cap) {
+    public GachaItem drawFromRarity(GachaItem.Rarity rarity, ArcQuestPlayer data) {
         return drawFromRarity(rarity, null, cap);
     }
 
@@ -139,7 +139,7 @@ public class GachaPool {
      */
     public GachaItem drawFromRarity(GachaItem.Rarity rarity,
                                     ServerPlayer player,
-                                    IQuestCapability cap) {
+                                    ArcQuestPlayer data) {
         List<GachaItem> candidates = itemsByRarity.getOrDefault(rarity, Collections.emptyList());
         if (candidates.isEmpty()) {
             return null;
@@ -202,7 +202,7 @@ public class GachaPool {
     /**
      * 获取可见的抽奖项列表（用于 HUD 预览，客户端）。
      */
-    public List<GachaItem> getVisibleItems(IQuestCapability cap) {
+    public List<GachaItem> getVisibleItems(ArcQuestPlayer data) {
         return items.stream()
                 .filter(item -> item.isVisibleClient(cap))
                 .collect(Collectors.toList());
@@ -215,7 +215,7 @@ public class GachaPool {
      * @param cap    玩家能力数据
      * @return 概率百分比（0-100），如果物品不存在或不可见则返回 0
      */
-    public double getDrawProbability(String itemId, IQuestCapability cap) {
+    public double getDrawProbability(String itemId, ArcQuestPlayer data) {
         GachaItem targetItem = getItemById(itemId);
         if (targetItem == null || !targetItem.isVisibleClient(cap)) {
             return 0.0;

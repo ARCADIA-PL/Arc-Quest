@@ -7,8 +7,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -47,18 +45,6 @@ public class EntityDialogueExtensionHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ResourceLocation CAP_ID = ResourceLocation.fromNamespaceAndPath(
             Arc_Quest.MOD_ID, "dialogue_npc_patch");
-
-    /**
-     * 附着 Capability 到实体
-     */
-    @SubscribeEvent
-    public static void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof LivingEntity) {
-            if (!event.getObject().getCapability(DialogueNpcPatch.CAPABILITY).isPresent()) {
-                event.addCapability(CAP_ID, new DialogueNpcPatchProvider(event.getObject()));
-            }
-        }
-    }
 
     /**
      * 处理玩家与实体的交互事件。
@@ -196,31 +182,27 @@ public class EntityDialogueExtensionHandler {
         if (event.getEntity().level().isClientSide()) return;
 
         LivingEntity livingEntity = event.getEntity();
-        livingEntity.getCapability(DialogueNpcPatch.CAPABILITY).ifPresent(patch -> {
-            if (!patch.isConversing()) return;
+        DialogueNpcStateManager.State state = DialogueNpcStateManager.get(livingEntity);
+        if (state == null || state.conversingPlayer() == null) return;
+        if (!state.conversingPlayer().isAlive()) {
+            DialogueNpcStateManager.clear(livingEntity);
+            return;
+        }
 
-            var player = patch.getConversingPlayer();
-            if (!(player instanceof ServerPlayer serverPlayer)) return;
+        ServerPlayer serverPlayer = (ServerPlayer) state.conversingPlayer();
 
-            // 检查距离
-            checkDistance(patch, livingEntity, serverPlayer);
-            if (!patch.isConversing()) return;
+        checkDistance(livingEntity, serverPlayer);
+        state = DialogueNpcStateManager.get(livingEntity);
+        if (state == null || state.conversingPlayer() == null) return;
 
-            // 控制 NPC 行为（注视/停止移动）
-            controlNpcBehavior(patch, livingEntity, serverPlayer);
-
-            // 调用扩展的 onTalkingTick
-            callExtensionOnTick(livingEntity, serverPlayer);
-
-            // 调用 patch.tick()
-            patch.tick();
-        });
+        controlNpcBehavior(livingEntity, serverPlayer);
+        callExtensionOnTick(livingEntity, serverPlayer);
     }
 
     /**
      * 检查距离，超过最大距离则终止对话
      */
-    private static void checkDistance(DialogueNpcPatch patch, LivingEntity entity, ServerPlayer player) {
+    private static void checkDistance(LivingEntity entity, ServerPlayer player) {
         double maxDist = 5.0;
 
         if (EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(entity.getType())) {
@@ -238,7 +220,7 @@ public class EntityDialogueExtensionHandler {
 
         if (entity.distanceTo(player) > maxDist + 2.0) {
             DialogueSessionManager.INSTANCE.endDialogue(player);
-            patch.clearConversing();
+            DialogueNpcStateManager.clear(entity);
         }
     }
 
@@ -246,9 +228,11 @@ public class EntityDialogueExtensionHandler {
      * 控制 NPC 行为（注视玩家、停止移动）
      */
     @SuppressWarnings("unchecked")
-    private static void controlNpcBehavior(DialogueNpcPatch patch, LivingEntity entity, ServerPlayer player) {
+    private static void controlNpcBehavior(LivingEntity entity, ServerPlayer player) {
         if (!(entity instanceof Mob mob)) return;
-        if (!patch.isConversing()) return;
+        {
+        DialogueNpcStateManager.State state = DialogueNpcStateManager.get(entity);
+        if (state == null || state.conversingPlayer() == null) return;
 
         boolean lookAt = true;
         boolean stopMoving = true;
@@ -295,9 +279,7 @@ public class EntityDialogueExtensionHandler {
      * 确保实体有 DialogueNpcPatch 并设置对话状态
      */
     private static void ensureDialogueNpcPatch(Entity entity, ServerPlayer player) {
-        entity.getCapability(DialogueNpcPatch.CAPABILITY).ifPresent(patch -> {
-            patch.setConversing(player);
-        });
+        DialogueNpcStateManager.setConversing(entity, player);
     }
 
     private static void executeCommands(List<String> commands, ServerPlayer player) {
@@ -319,11 +301,6 @@ public class EntityDialogueExtensionHandler {
 
     @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
     public static class ModBusEvents {
-
-        @SubscribeEvent
-        public static void onRegisterCapabilities(RegisterCapabilitiesEvent event) {
-            event.register(DialogueNpcPatch.class);
-        }
 
         /**
          * 模组加载完成时扫描并注册所有扩展

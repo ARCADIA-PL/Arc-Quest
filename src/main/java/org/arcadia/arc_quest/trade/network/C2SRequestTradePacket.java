@@ -10,8 +10,8 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.trade.*;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -122,7 +122,7 @@ public class C2SRequestTradePacket {
                 return;
             }
 
-            IQuestCapability cap = TradeRequestValidator.requireCapability(player, "trade_request", pkt.shopId, LOGGER);
+            ArcQuestPlayer data = TradeRequestValidator.requireCapability(player, "trade_request", pkt.shopId, LOGGER);
             if (cap == null) {
                 sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.CAPABILITY_MISSING);
                 return;
@@ -329,7 +329,7 @@ public class C2SRequestTradePacket {
     private static TradeSnapshot buildTradeSnapshot(ServerPlayer player,
                                                     TradeShopDefinition shop,
                                                     TradeSession session) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         List<TradeEntry> allEntries = new ArrayList<>(shop.getAllEntries());
         int count = allEntries.size();
 
@@ -372,7 +372,7 @@ public class C2SRequestTradePacket {
      */
     private static void checkAndResetPurchases(TradeSession session, String entryId, TradeEntry entry) {
         ServerPlayer player = session.getPlayer();
-        var cap = QuestCapabilityProvider.getOrNull(player);
+        var cap = ArcQuestPlayerManager.get(player);
 
         boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, cap, session.getShop().getShopId(), entry);
 

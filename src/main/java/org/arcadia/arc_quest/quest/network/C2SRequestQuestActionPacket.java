@@ -9,8 +9,8 @@ import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.api.event.ChapterShopOpenEvent;
 import org.arcadia.arc_quest.quest.api.ChapterShopType;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary.Code;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
@@ -177,7 +177,7 @@ public class C2SRequestQuestActionPacket {
         if (def == null) return Code.QUEST_NOT_FOUND;
         if (!def.hasChapterShop()) return Code.CHAPTER_SHOP_NOT_CONFIGURED;
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (cap == null) return Code.NOT_ACTIVE;
 
         boolean canAccess = cap.isQuestActive(questId)

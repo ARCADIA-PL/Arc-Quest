@@ -10,8 +10,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -25,10 +25,10 @@ public final class QuestOfferService {
     public static OfferSubmitResult submitOffer(ServerPlayer player, String questId, String phaseId, int objectiveIndex, int submitAmount) {
         if (submitAmount <= 0) return OfferSubmitResult.REJECTED;
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (cap == null) return OfferSubmitResult.REJECTED;
 
-        QuestRuntimeData data = cap.getActiveQuest(questId);
+        QuestRuntimeData data = data.getActiveQuest(questId);
         if (data == null || !data.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
 
         var qDef = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -63,7 +63,7 @@ public final class QuestOfferService {
 
         QuestProgressHandler.incrementObjective(player, questId, phaseId, objectiveIndex, consumed);
 
-        QuestRuntimeData after = cap.getActiveQuest(questId);
+        QuestRuntimeData after = data.getActiveQuest(questId);
         boolean phaseChanged = (after == null) || !after.isPhaseActive(phaseId);
 
         return new OfferSubmitResult(true, reached, phaseChanged);

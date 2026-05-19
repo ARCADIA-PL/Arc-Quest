@@ -7,8 +7,8 @@ import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.npc.NpcBinding;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.slf4j.Logger;
 
@@ -62,9 +62,9 @@ public class DialogueSession {
         namespace = resolveNamespace();
 
         // 显式校验 Capability，避免创建临时实例导致数据丢失
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
-        progress = cap.getDialogueProgress();
+        progress = data.getDialogueProgress();
 
         evaluateVisibleChoices();
     }
@@ -395,7 +395,7 @@ public class DialogueSession {
         Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
         IDialogueNpc dialogueNpc = (npc instanceof IDialogueNpc d) ? d : null;
 
-        var cap = QuestCapabilityProvider.getOrNull(player);
+        var cap = ArcQuestPlayerManager.get(player);
         Map<String, Object> vars = buildDialogueVars(cap);
 
         DialogueTextContext ctx = new DialogueTextContext(
@@ -412,14 +412,14 @@ public class DialogueSession {
         return resolved;
     }
 
-    private Map<String, Object> buildDialogueVars(IQuestCapability cap) {
+    private Map<String, Object> buildDialogueVars(ArcQuestPlayer data) {
         Map<String, Object> vars = new LinkedHashMap<>();
 
         if (cap == null) {
             return Map.copyOf(vars);
         }
 
-        QuestRuntimeData firstActive = cap.getAllActiveQuests().values().stream().findFirst().orElse(null);
+        QuestRuntimeData firstActive = data.getAllActiveQuests().values().stream().findFirst().orElse(null);
         if (firstActive == null) {
             return Map.copyOf(vars);
         }

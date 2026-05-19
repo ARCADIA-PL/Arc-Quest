@@ -7,8 +7,8 @@ import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -48,7 +48,7 @@ public final class TradeSession {
             return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.UNKNOWN));
         }
 
-        IQuestCapability cap = getCap();
+        ArcQuestPlayer data = getCap();
 
         // 第一步：尝试重置过期冷却（必须在 canPurchase 之前）
         if (entry.hasLimit() || entry.hasCooldown()) {
@@ -107,7 +107,7 @@ public final class TradeSession {
      * 检查交易项是否对当前玩家可见（可见性条件满足）
      */
     public boolean isEntryVisible(TradeEntry entry) {
-        IQuestCapability cap = getCap();
+        ArcQuestPlayer data = getCap();
         return TradeEntryStateResolver.isVisible(player, cap, entry);
     }
 
@@ -115,13 +115,13 @@ public final class TradeSession {
      * 检查交易项是否可购买（综合判断）
      */
     public boolean canPurchase(TradeEntry entry) {
-        IQuestCapability cap = getCap();
+        ArcQuestPlayer data = getCap();
         return TradeEntryStateResolver.canPurchase(player, cap, shop.getShopId(), entry);
     }
 
     public int getPurchaseCount(String entryId) {
-        IQuestCapability cap = getCap();
-        return cap.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
+        ArcQuestPlayer data = getCap();
+        return data.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
     }
 
     public int getRemainingPurchases(TradeEntry entry) {
@@ -137,8 +137,8 @@ public final class TradeSession {
     public int getCooldownRemaining(String entryId, TradeEntry entry) {
         if (!entry.hasCooldown()) return 0;
 
-        IQuestCapability cap = getCap();
-        ICooldownRecord record = cap.getTradeDataStore().getCooldown(shop.getShopId(), entryId);
+        ArcQuestPlayer data = getCap();
+        ICooldownRecord record = data.getTradeDataStore().getCooldown(shop.getShopId(), entryId);
         if (!record.exists()) return 0;
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
@@ -205,8 +205,8 @@ public final class TradeSession {
         var resetCondition = entry.getPurchaseResetCondition();
         if (resetCondition == null) return;
 
-        IQuestCapability cap = getCap();
-        int currentCount = cap.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
+        ArcQuestPlayer data = getCap();
+        int currentCount = data.getTradeDataStore().getPurchaseCount(shop.getShopId(), entryId);
         if (currentCount == 0) return;
 
         boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, cap, shop.getShopId(), entry);
@@ -228,8 +228,8 @@ public final class TradeSession {
         }
     }
 
-    private IQuestCapability getCap() {
-        return QuestCapabilityProvider.getOrNull(player);
+    private ArcQuestPlayer getData() {
+        return ArcQuestPlayerManager.get(player);
     }
 
     public TradeShopDefinition getShop() {

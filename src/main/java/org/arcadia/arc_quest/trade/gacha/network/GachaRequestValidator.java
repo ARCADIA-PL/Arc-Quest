@@ -2,8 +2,8 @@ package org.arcadia.arc_quest.trade.gacha.network;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.network.RejectCodeDictionary;
@@ -26,8 +26,8 @@ public final class GachaRequestValidator {
         return null;
     }
 
-    public static @Nullable IQuestCapability requireCapability(ServerPlayer player, String action, String shopId) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+    public static @Nullable ArcQuestPlayer requireCapability(ServerPlayer player, String action, String shopId) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (cap != null) {
             return cap;
         }

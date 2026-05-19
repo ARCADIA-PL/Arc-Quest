@@ -2,8 +2,8 @@ package org.arcadia.arc_quest.quest.reward;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.api.IReward;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 
 /**
  * 设置或移除全局 Flag 的奖励。
@@ -36,10 +36,10 @@ public final class FlagReward implements IReward {
 
     @Override
     public void grant(ServerPlayer player) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (cap == null) return;
         if (set) {
-            cap.setFlag(flag);
+            data.setFlag(flag);
         } else {
             cap.removeFlag(flag);
         }

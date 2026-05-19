@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.api.event.gacha;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.Event;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 
 import java.util.Map;
@@ -20,12 +20,12 @@ public class GachaEvents {
     public static class PreDrawEvent extends Event {
         private final ServerPlayer player;
         private final String shopId;
-        private final IQuestCapability capability;
+        private final ArcQuestPlayer playerData;
         private int pityCounter;
         private boolean cancelled;
 
         public PreDrawEvent(ServerPlayer player, String shopId,
-                            IQuestCapability capability,
+                            ArcQuestPlayer playerData,
                             int pityCounter) {
             this.player = player;
             this.shopId = shopId;
@@ -42,7 +42,7 @@ public class GachaEvents {
             return shopId;
         }
 
-        public IQuestCapability getCapability() {
+        public ArcQuestPlayer getCapability() {
             return capability;
         }
 
@@ -74,13 +74,13 @@ public class GachaEvents {
         private final GachaItem drawnItem;
         private final boolean pityTriggered;
         private final int newPityCounter;
-        private final IQuestCapability capability;
+        private final ArcQuestPlayer playerData;
 
         public PostDrawEvent(ServerPlayer player, String shopId,
                              GachaItem drawnItem,
                              boolean pityTriggered,
                              int newPityCounter,
-                             IQuestCapability capability) {
+                             ArcQuestPlayer playerData) {
             this.player = player;
             this.shopId = shopId;
             this.drawnItem = drawnItem;
@@ -109,7 +109,7 @@ public class GachaEvents {
             return newPityCounter;
         }
 
-        public IQuestCapability getCapability() {
+        public ArcQuestPlayer getCapability() {
             return capability;
         }
     }
@@ -122,12 +122,12 @@ public class GachaEvents {
     public static class PoolRefreshEvent extends Event {
         private final ServerPlayer player;
         private final String shopId;
-        private final IQuestCapability capability;
+        private final ArcQuestPlayer playerData;
         private final Map<String, Integer> oldWeights;
         private final Map<String, Integer> newWeights;
 
         public PoolRefreshEvent(ServerPlayer player, String shopId,
-                                IQuestCapability capability,
+                                ArcQuestPlayer playerData,
                                 Map<String, Integer> oldWeights,
                                 Map<String, Integer> newWeights) {
             this.player = player;
@@ -145,7 +145,7 @@ public class GachaEvents {
             return shopId;
         }
 
-        public IQuestCapability getCapability() {
+        public ArcQuestPlayer getCapability() {
             return capability;
         }
 
@@ -164,9 +164,9 @@ public class GachaEvents {
     public static class OpenedEvent extends Event {
         private final ServerPlayer player;
         private final String shopId;
-        private final IQuestCapability capability;
+        private final ArcQuestPlayer playerData;
 
-        public OpenedEvent(ServerPlayer player, String shopId, IQuestCapability capability) {
+        public OpenedEvent(ServerPlayer player, String shopId, ArcQuestPlayer playerData) {
             this.player = player;
             this.shopId = shopId;
             this.capability = capability;
@@ -180,7 +180,7 @@ public class GachaEvents {
             return shopId;
         }
 
-        public IQuestCapability getCapability() {
+        public ArcQuestPlayer getCapability() {
             return capability;
         }
     }
@@ -193,11 +193,11 @@ public class GachaEvents {
     public static class DrawingEvent extends Event {
         private final ServerPlayer player;
         private final String shopId;
-        private final IQuestCapability capability;
+        private final ArcQuestPlayer playerData;
         private final int currentPityCounter;
 
         public DrawingEvent(ServerPlayer player, String shopId,
-                            IQuestCapability capability,
+                            ArcQuestPlayer playerData,
                             int currentPityCounter) {
             this.player = player;
             this.shopId = shopId;
@@ -213,7 +213,7 @@ public class GachaEvents {
             return shopId;
         }
 
-        public IQuestCapability getCapability() {
+        public ArcQuestPlayer getCapability() {
             return capability;
         }
 
@@ -231,10 +231,10 @@ public class GachaEvents {
 
         private final ServerPlayer player;
         private final String shopId;
-        private final IQuestCapability capability;
+        private final ArcQuestPlayer playerData;
         private final FailReason reason;
 
-        public DrawFailedEvent(ServerPlayer player, String shopId, IQuestCapability capability, FailReason reason) {
+        public DrawFailedEvent(ServerPlayer player, String shopId, ArcQuestPlayer playerData, FailReason reason) {
             this.player = player;
             this.shopId = shopId;
             this.capability = capability;
@@ -249,7 +249,7 @@ public class GachaEvents {
             return shopId;
         }
 
-        public IQuestCapability getCapability() {
+        public ArcQuestPlayer getCapability() {
             return capability;
         }
 
@@ -378,12 +378,12 @@ public class GachaEvents {
 
         private final ServerPlayer player;
         private final String shopId;
-        private final IQuestCapability capability;
+        private final ArcQuestPlayer playerData;
         private final ResetReason reason;
         private final int previousDrawCount;  // 重置前的抽奖次数
 
         public DrawLimitResetEvent(ServerPlayer player, String shopId,
-                                   IQuestCapability capability,
+                                   ArcQuestPlayer playerData,
                                    ResetReason reason,
                                    int previousDrawCount) {
             this.player = player;
@@ -401,7 +401,7 @@ public class GachaEvents {
             return shopId;
         }
 
-        public IQuestCapability getCapability() {
+        public ArcQuestPlayer getCapability() {
             return capability;
         }
 

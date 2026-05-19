@@ -9,7 +9,7 @@ import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.quest.api.ICondition;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
@@ -169,8 +169,8 @@ public sealed interface DialogueCondition permits
     record HasQuest(String questId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            IQuestCapability cap = ctx.questCap();
-            return cap.isQuestActive(questId) || cap.isQuestCompleted(questId) || cap.isQuestFailed(questId);
+            ArcQuestPlayer data = ctx.questCap();
+            return data.isQuestActive(questId) || data.isQuestCompleted(questId) || data.isQuestFailed(questId);
         }
     }
 
@@ -340,8 +340,8 @@ public sealed interface DialogueCondition permits
     record PhaseEnterable(String questId, String phaseId) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            IQuestCapability cap = ctx.questCap();
-            QuestRuntimeData data = cap.getActiveQuest(questId);
+            ArcQuestPlayer data = ctx.questCap();
+            QuestRuntimeData data = data.getActiveQuest(questId);
             if (data == null) return false;
 
             if (data.isPhaseActive(phaseId) || data.isPhaseCompleted(phaseId)) {
@@ -357,9 +357,9 @@ public sealed interface DialogueCondition permits
             ICondition cond = phase.getEnterCondition();
             return cond == null || cond.test(
                     ctx.player(),
-                    cap.getCompletedQuestLocations(),
-                    cap.getAllFlags(),
-                    cap.getAllVariables()
+                    data.getCompletedQuestLocations(),
+                    data.getAllFlags(),
+                    data.getAllVariables()
             );
         }
     }

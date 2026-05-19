@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.quest.QuestMarkersRefreshedEvent;
 import org.arcadia.arc_quest.quest.api.*;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
@@ -20,7 +20,7 @@ public final class QuestMarkerService {
     }
 
     public static void refreshQuestMarkers(ServerPlayer player,
-                                           IQuestCapability cap,
+                                           ArcQuestPlayer data,
                                            QuestRuntimeData data,
                                            QuestDefinition def) {
         List<String> removedIds = clearQuestMarkers(cap, data.getQuestId());
@@ -69,7 +69,7 @@ public final class QuestMarkerService {
                         .showDistance(true)
                         .allowOffscreenArrow(true)
                         .build();
-                cap.upsertMarker(marker);
+                data.upsertMarker(marker);
                 ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
             }
         }
@@ -81,13 +81,13 @@ public final class QuestMarkerService {
         ));
     }
 
-    public static List<String> clearQuestMarkers(IQuestCapability cap, String questId) {
+    public static List<String> clearQuestMarkers(ArcQuestPlayer data, String questId) {
         List<String> toRemove = cap.getAllMarkers().values().stream()
                 .filter(m -> m.hasQuestBinding() && questId.equals(m.getQuestId()))
                 .map(QuestMarkerData::getId)
                 .toList();
         for (String id : toRemove) {
-            cap.removeMarker(id);
+            data.removeMarker(id);
         }
         return toRemove;
     }

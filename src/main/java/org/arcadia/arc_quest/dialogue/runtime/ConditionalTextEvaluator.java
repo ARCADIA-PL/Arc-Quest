@@ -9,7 +9,7 @@ import org.arcadia.arc_quest.dialogue.api.DialogueText;
 import org.arcadia.arc_quest.dialogue.api.RegisteredConditions;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.api.QuestState;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -43,7 +43,7 @@ public final class ConditionalTextEvaluator {
     /**
      * 检查条件标识是否匹配玩家,NPC状态。
      */
-    private static boolean matchesCondition(DialogueEvalContext ctx, IQuestCapability cap, String conditionKey) {
+    private static boolean matchesCondition(DialogueEvalContext ctx, ArcQuestPlayer data, String conditionKey) {
         ServerPlayer player = ctx.player();
         Entity npc = ctx.npc();
 
@@ -51,19 +51,19 @@ public final class ConditionalTextEvaluator {
             // HAS_QUEST:quest_id
             if (conditionKey.startsWith("HAS_QUEST:")) {
                 String questId = conditionKey.substring(10);
-                return cap.isQuestActive(questId) || cap.isQuestCompleted(questId);
+                return data.isQuestActive(questId) || data.isQuestCompleted(questId);
             }
 
             // QUEST_ACTIVE:quest_id
             if (conditionKey.startsWith("QUEST_ACTIVE:")) {
                 String questId = conditionKey.substring(13);
-                return cap.isQuestActive(questId);
+                return data.isQuestActive(questId);
             }
 
             // QUEST_COMPLETED:quest_id
             if (conditionKey.startsWith("QUEST_COMPLETED:")) {
                 String questId = conditionKey.substring(16);
-                return cap.isQuestCompleted(questId);
+                return data.isQuestCompleted(questId);
             }
 
             // QUEST_PHASE:quest_id|phase_id (使用 | 分隔，避免与 ResourceLocation 的 : 冲突)
@@ -74,7 +74,7 @@ public final class ConditionalTextEvaluator {
                 if (separatorIndex > 0) {
                     String questId = afterPrefix.substring(0, separatorIndex);
                     String phaseId = afterPrefix.substring(separatorIndex + 1);
-                    var data = cap.getActiveQuest(questId);
+                    var data = data.getActiveQuest(questId);
 
                     // 调试日志
                     if (data != null) {
@@ -204,7 +204,7 @@ public final class ConditionalTextEvaluator {
             return ConditionalSay.of("default", DialogueText.literal(defaultText));
         }
 
-        IQuestCapability cap = ctx.questCap();
+        ArcQuestPlayer data = ctx.questCap();
         List<SayMatch> matches = new ArrayList<>();
 
         for (Map.Entry<String, ConditionalSay> entry : conditionalTexts.entrySet()) {
@@ -265,7 +265,7 @@ public final class ConditionalTextEvaluator {
             return new SayIfResult(null, -1, defaultText, null);
         }
 
-        IQuestCapability cap = ctx.questCap();
+        ArcQuestPlayer data = ctx.questCap();
         List<SayMatch> matches = new ArrayList<>();
         int matchIndex = -1;
         String matchedSayId = null;

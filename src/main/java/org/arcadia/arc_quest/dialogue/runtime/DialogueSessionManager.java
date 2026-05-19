@@ -12,13 +12,13 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
-import org.arcadia.arc_quest.dialogue.capability.DialogueNpcPatch;
+import org.arcadia.arc_quest.dialogue.capability.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
@@ -61,14 +61,14 @@ public final class DialogueSessionManager {
 
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                           DialogueTree tree, DialogueContext context) {
-        var cap = QuestCapabilityProvider.getOrNull(player);
+        var cap = ArcQuestPlayerManager.get(player);
         if (cap == null) {
             LOGGER.warn("[Dialogue] Missing quest capability for player {}, cannot start dialogue '{}'",
                     player.getName().getString(), tree.dialogueId());
             return null;
         }
         String dialogueId = tree.dialogueId();
-        var progress = cap.getDialogueProgress();
+        var progress = data.getDialogueProgress();
         long nowReal = TimeSanitizer.getCurrentRealTime();
         long nowGame = TimeSanitizer.getCurrentGameTime(player);
         long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
@@ -97,7 +97,7 @@ public final class DialogueSessionManager {
         transcriptMap.put(player.getUUID(), new ArrayList<>());
 
         if (npcEntity instanceof IDialogueNpc) {
-            DialogueNpcPatch.get(npcEntity).setConversing(player);
+            DialogueNpcStateManager.get(npcEntity).setConversing(player);
         }
 
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
@@ -239,7 +239,7 @@ public final class DialogueSessionManager {
         DialogueSession session = sessions.remove(player.getUUID());
         if (session == null) return;
 
-        var cap = QuestCapabilityProvider.getOrNull(player);
+        var cap = ArcQuestPlayerManager.get(player);
         if (cap != null) {
             String cleanupPrefix = "aq:dlg:" + session.getTree().dialogueId() + ":";
             for (String markerId : cap.getAllMarkers().keySet().stream().toList()) {
@@ -253,7 +253,7 @@ public final class DialogueSessionManager {
         if (session.getEntityId() != -1) {
             npcEntity = player.level().getEntity(session.getEntityId());
             if (npcEntity instanceof IDialogueNpc) {
-                DialogueNpcPatch.get(npcEntity).clearConversing();
+                DialogueNpcStateManager.get(npcEntity).clearConversing();
             }
         }
         if (!session.isEnded()) {
@@ -331,7 +331,7 @@ public final class DialogueSessionManager {
             speaker = Component.empty();
         }
         var cap = QuestCapabilityProvider.getOrNull(session.getPlayer());
-        DialogueProgressStore progress = cap != null ? cap.getDialogueProgress() : null;
+        DialogueProgressStore progress = cap != null ? data.getDialogueProgress() : null;
         Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
         DialogueEvalContext ctx = DialogueEvalContext.of(session.getPlayer(), npc, session.getNamespace(), progress);
         ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(ctx, node.conditionalTexts(), session.processDialogueText(node.text()).getString());

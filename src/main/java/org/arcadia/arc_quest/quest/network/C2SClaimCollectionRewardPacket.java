@@ -6,8 +6,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.profile.CollectionQuestEngine;
 import org.arcadia.arc_quest.quest.logic.profile.CollectionRewardClaimResult;
@@ -43,7 +43,7 @@ public class C2SClaimCollectionRewardPacket {
             ServerPlayer sender = ctx.get().getSender();
             if (sender == null) return;
 
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(sender);
+            ArcQuestPlayer data = QuestCapabilityProvider.getOrNull(sender);
             if (cap == null) return;
 
             QuestRuntimeData runtime = cap.getActiveQuest(pkt.questId);

@@ -6,7 +6,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
@@ -40,12 +40,12 @@ public final class GachaScreenOpener {
     // 对外入口
     // ════════════════════════════════════════
 
-    public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
+    public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop, ArcQuestPlayer data) {
         openGachaScreen(player, shop, cap, null);
     }
 
     public static void openGachaScreen(ServerPlayer player, GachaShopDefinition shop,
-                                       IQuestCapability cap, @Nullable String restoreNodeId) {
+                                       ArcQuestPlayer data, @Nullable String restoreNodeId) {
         if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
             DialogueSessionManager manager = DialogueSessionManager.INSTANCE;
             if (manager.isInDialogue(player)) {
@@ -74,7 +74,7 @@ public final class GachaScreenOpener {
                         snapshot.cooldownValue(),
                         snapshot.resetTimeTicks(),
                         snapshot.shortfallLines(),
-                        cap.getGachaDrawHistory(shop.getShopId())
+                        data.getGachaDrawHistory(shop.getShopId())
                 )
         );
 
@@ -88,7 +88,7 @@ public final class GachaScreenOpener {
     /**
      * 兼容旧调用：手动按 shop 同步一次（允许去重）。
      */
-    public static void syncGachaState(ServerPlayer player, GachaShopDefinition shop, IQuestCapability cap) {
+    public static void syncGachaState(ServerPlayer player, GachaShopDefinition shop, ArcQuestPlayer data) {
         touchActiveContext(player, shop.getShopId());
         syncShopState(player, shop, cap, "manual_sync", true);
     }
@@ -96,14 +96,14 @@ public final class GachaScreenOpener {
     /**
      * 统一 push 入口（推荐）：基于活跃上下文决定是否推送。
      */
-    public static void pushSyncForActiveShop(ServerPlayer player, @Nullable IQuestCapability cap, String reason) {
+    public static void pushSyncForActiveShop(ServerPlayer player, @Nullable ArcQuestPlayer data, String reason) {
         pushSync(player, cap, reason);
     }
 
     /**
      * 新统一入口别名（更语义化）。
      */
-    public static void pushSync(ServerPlayer player, @Nullable IQuestCapability cap, String reason) {
+    public static void pushSync(ServerPlayer player, @Nullable ArcQuestPlayer data, String reason) {
         if (cap == null) return;
 
         ActiveGachaContext context = ACTIVE_GACHA_CONTEXTS.get(player.getUUID());
@@ -138,7 +138,7 @@ public final class GachaScreenOpener {
     // ════════════════════════════════════════
 
     private static void syncShopState(ServerPlayer player, GachaShopDefinition shop,
-                                      IQuestCapability cap, String reason, boolean dedupe) {
+                                      ArcQuestPlayer data, String reason, boolean dedupe) {
         GachaSnapshot snapshot = resolveSnapshot(player, shop, cap, true);
 
         if (dedupe && !shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
@@ -200,7 +200,7 @@ public final class GachaScreenOpener {
     // ════════════════════════════════════════
 
     private static GachaSnapshot resolveSnapshot(ServerPlayer player, GachaShopDefinition shop,
-                                                 IQuestCapability cap, boolean applyReset) {
+                                                 ArcQuestPlayer data, boolean applyReset) {
         GachaSession session = new GachaSession(player, shop, cap);
 
         if (applyReset) {
@@ -235,9 +235,9 @@ public final class GachaScreenOpener {
 
         boolean canDraw = canDrawByRule && canAfford;
 
-        int pityCounter = cap.getGachaPityCounter(shop.getShopId());
-        int totalDraws = cap.getGachaDrawCount(shop.getShopId());
-        var cooldownEntry = cap.getGachaDataStore().getDrawCooldown(shop.getShopId());
+        int pityCounter = data.getGachaPityCounter(shop.getShopId());
+        int totalDraws = data.getGachaDrawCount(shop.getShopId());
+        var cooldownEntry = data.getGachaDataStore().getDrawCooldown(shop.getShopId());
 
         return new GachaSnapshot(
                 pityCounter,

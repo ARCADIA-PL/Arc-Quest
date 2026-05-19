@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.quest.api.ICondition;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.jetbrains.annotations.Nullable;
 
@@ -106,7 +106,7 @@ public class GachaItem {
     /**
      * 计算当前有效权重（基础权重 + 所有匹配的修改器）。
      */
-    public int getEffectiveWeight(IQuestCapability cap) {
+    public int getEffectiveWeight(ArcQuestPlayer data) {
         return getEffectiveWeight(null, cap);
     }
 
@@ -116,7 +116,7 @@ public class GachaItem {
      * @param player 玩家实体（用于 ICondition）
      * @param cap    玩家能力数据
      */
-    public int getEffectiveWeight(ServerPlayer player, IQuestCapability cap) {
+    public int getEffectiveWeight(ServerPlayer player, ArcQuestPlayer data) {
         int effective = baseWeight;
         for (WeightModifier modifier : weightModifiers) {
             if (modifier.matches(player, cap)) {
@@ -203,11 +203,11 @@ public class GachaItem {
      * @param player 玩家对象（不可为 null）
      * @param cap    玩家能力数据
      */
-    public boolean isVisible(ServerPlayer player, IQuestCapability cap) {
+    public boolean isVisible(ServerPlayer player, ArcQuestPlayer data) {
         if (visibleCondition == null) return true;
 
-        var completedQuests = cap.getCompletedQuestLocations();
-        return visibleCondition.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+        var completedQuests = data.getCompletedQuestLocations();
+        return visibleCondition.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
     }
 
     /**
@@ -215,11 +215,11 @@ public class GachaItem {
      *
      * @param cap 玩家能力数据
      */
-    public boolean isVisibleClient(IQuestCapability cap) {
+    public boolean isVisibleClient(ArcQuestPlayer data) {
         if (visibleCondition == null) return true;
 
-        var completedQuests = cap.getCompletedQuestLocations();
-        return visibleCondition.testClient(completedQuests, cap.getAllFlags(), cap.getAllVariables());
+        var completedQuests = data.getCompletedQuestLocations();
+        return visibleCondition.testClient(completedQuests, data.getAllFlags(), data.getAllVariables());
     }
 
     /**
@@ -261,10 +261,10 @@ public class GachaItem {
             this.weightDelta = weightDelta;
         }
 
-        public boolean matches(ServerPlayer player, IQuestCapability cap) {
+        public boolean matches(ServerPlayer player, ArcQuestPlayer data) {
             if (player == null || cap == null) return false;
-            var completedQuests = cap.getCompletedQuestLocations();
-            return condition.test(player, completedQuests, cap.getAllFlags(), cap.getAllVariables());
+            var completedQuests = data.getCompletedQuestLocations();
+            return condition.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
         }
 
         public int getWeightDelta() {

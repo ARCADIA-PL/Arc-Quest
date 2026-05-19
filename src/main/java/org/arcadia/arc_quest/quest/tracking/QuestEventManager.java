@@ -17,8 +17,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveDispatcher;
@@ -100,8 +100,8 @@ public final class QuestEventManager {
         if (!(event.player instanceof ServerPlayer player)) return;
         if ((player.tickCount % 20) != 0) return;
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        for (QuestRuntimeData data : cap.getAllActiveQuests().values()) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        for (QuestRuntimeData data : data.getAllActiveQuests().values()) {
             if (data.getState() != QuestState.ACTIVE) continue;
 
             var def = QuestRegistry.get(ResourceLocation.parse(data.getQuestId()));
@@ -182,7 +182,7 @@ public final class QuestEventManager {
         ObjectiveKey key = new ObjectiveKey(type, targetId);
         CollectionObjectiveDispatcher.dispatch(player, key, amount, collectionUniqueKey(type, targetId));
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (cap == null) return;
 
         ObjectiveTypeIndex index = QuestRegistry.getObjectiveIndex();
@@ -190,7 +190,7 @@ public final class QuestEventManager {
         if (refs == null) return;
 
         for (ObjectiveTypeIndex.ObjectiveRef ref : refs) {
-            QuestRuntimeData data = cap.getActiveQuest(ref.questId().toString());
+            QuestRuntimeData data = data.getActiveQuest(ref.questId().toString());
             if (data == null || data.getState() != QuestState.ACTIVE) continue;
             if (!data.isPhaseActive(ref.phaseId())) continue;
 

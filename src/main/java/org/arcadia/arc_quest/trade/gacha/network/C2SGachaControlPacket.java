@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
@@ -69,7 +69,7 @@ public class C2SGachaControlPacket {
             GachaShopDefinition shop = GachaRequestValidator.requireShop(pkt.shopId, sender, "gacha_control");
             if (shop == null) return;
 
-            IQuestCapability cap = GachaRequestValidator.requireCapability(sender, "gacha_control", pkt.shopId);
+            ArcQuestPlayer data = GachaRequestValidator.requireCapability(sender, "gacha_control", pkt.shopId);
             if (cap == null) return;
 
             switch (pkt.action) {

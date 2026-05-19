@@ -7,7 +7,7 @@ import org.arcadia.arc_quest.api.event.quest.QuestAcceptedEvent;
 import org.arcadia.arc_quest.api.event.quest.QuestStartedEvent;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.event.QuestChangeEvent;
 import org.arcadia.arc_quest.quest.event.QuestEventBus;
@@ -23,13 +23,13 @@ public final class CollectionQuestEngine {
     }
 
     public static QuestRejectCodeDictionary.Code acceptQuest(ServerPlayer player,
-                                                             IQuestCapability cap,
+                                                             ArcQuestPlayer data,
                                                              QuestDefinition def) {
         String questId = def.getId().toString();
-        if (cap.isQuestActive(questId)) {
+        if (data.isQuestActive(questId)) {
             return QuestRejectCodeDictionary.Code.ALREADY_ACTIVE;
         }
-        if (cap.isQuestCompleted(questId) && !def.isRepeatable()) {
+        if (data.isQuestCompleted(questId) && !def.isRepeatable()) {
             return QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE;
         }
 
@@ -54,11 +54,11 @@ public final class CollectionQuestEngine {
         CollectionRuntimeData collectionData = new CollectionRuntimeData();
         initializeQuest(player, cap, def, runtime, collectionData);
         runtime.setCollectionData(collectionData);
-        cap.addActiveQuest(runtime);
+        data.addActiveQuest(runtime);
 
         boolean flagsChanged = false;
         for (String flag : def.getFlagsToSetOnAccept()) {
-            cap.setFlag(flag);
+            data.setFlag(flag);
             flagsChanged = true;
         }
 
@@ -74,14 +74,14 @@ public final class CollectionQuestEngine {
     }
 
     public static void initializeQuest(ServerPlayer player,
-                                       IQuestCapability cap,
+                                       ArcQuestPlayer data,
                                        QuestDefinition def,
                                        QuestRuntimeData runtime,
                                        CollectionRuntimeData collectionData) {
         CollectionQuestConfig config = def.getCollectionConfig();
         boolean revealAll = config != null && config.isRevealAllEntriesByDefault();
-        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
-        Set<String> flags = cap.getAllFlags();
+        Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
+        Set<String> flags = data.getAllFlags();
 
         for (String phaseId : def.getPhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
@@ -132,7 +132,7 @@ public final class CollectionQuestEngine {
     }
 
     public static int refreshVisibility(ServerPlayer player,
-                                        IQuestCapability cap,
+                                        ArcQuestPlayer data,
                                         QuestDefinition def,
                                         QuestRuntimeData runtime) {
         CollectionRuntimeData collectionData = runtime.getCollectionData();
@@ -141,8 +141,8 @@ public final class CollectionQuestEngine {
             return 0;
         }
         boolean revealAll = config.isRevealAllEntriesByDefault();
-        Set<ResourceLocation> completedQuests = cap.getCompletedQuestLocations();
-        Set<String> flags = cap.getAllFlags();
+        Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
+        Set<String> flags = data.getAllFlags();
         int changed = 0;
         for (String phaseId : def.getPhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
@@ -173,7 +173,7 @@ public final class CollectionQuestEngine {
     }
 
     public static int incrementEntry(ServerPlayer player,
-                                     IQuestCapability cap,
+                                     ArcQuestPlayer data,
                                      QuestDefinition def,
                                      QuestRuntimeData runtime,
                                      String phaseId,
@@ -182,7 +182,7 @@ public final class CollectionQuestEngine {
     }
 
     public static CollectionEntryUpdateResult incrementEntryWithResult(ServerPlayer player,
-                                                                       IQuestCapability cap,
+                                                                       ArcQuestPlayer data,
                                                                        QuestDefinition def,
                                                                        QuestRuntimeData runtime,
                                                                        String phaseId,
@@ -245,7 +245,7 @@ public final class CollectionQuestEngine {
     }
 
     public static boolean addUniqueProgress(ServerPlayer player,
-                                            IQuestCapability cap,
+                                            ArcQuestPlayer data,
                                             QuestDefinition def,
                                             QuestRuntimeData runtime,
                                             String phaseId,
@@ -254,7 +254,7 @@ public final class CollectionQuestEngine {
     }
 
     public static CollectionEntryUpdateResult addUniqueProgressWithResult(ServerPlayer player,
-                                                                          IQuestCapability cap,
+                                                                          ArcQuestPlayer data,
                                                                           QuestDefinition def,
                                                                           QuestRuntimeData runtime,
                                                                           String phaseId,
@@ -289,7 +289,7 @@ public final class CollectionQuestEngine {
     }
 
     public static boolean evaluateEntryCompletion(ServerPlayer player,
-                                                  IQuestCapability cap,
+                                                  ArcQuestPlayer data,
                                                   QuestDefinition def,
                                                   QuestRuntimeData runtime,
                                                   String phaseId) {
@@ -316,7 +316,7 @@ public final class CollectionQuestEngine {
     }
 
     public static boolean evaluateQuestState(ServerPlayer player,
-                                             IQuestCapability cap,
+                                             ArcQuestPlayer data,
                                              QuestDefinition def,
                                              QuestRuntimeData runtime) {
         if (runtime.getState() == QuestState.COMPLETED) {
@@ -340,14 +340,14 @@ public final class CollectionQuestEngine {
         }
 
         runtime.setState(QuestState.COMPLETED);
-        cap.markCompleted(def.getId().toString());
+        data.markCompleted(def.getId().toString());
         evaluateQuestRewardUnlocks(player, cap, def, runtime);
         QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
         return true;
     }
 
     public static boolean evaluateCategoryStates(ServerPlayer player,
-                                                 IQuestCapability cap,
+                                                 ArcQuestPlayer data,
                                                  QuestDefinition def,
                                                  QuestRuntimeData runtime,
                                                  String categoryId) {
@@ -371,7 +371,7 @@ public final class CollectionQuestEngine {
     }
 
     private static void evaluateQuestRewardUnlocks(ServerPlayer player,
-                                                   IQuestCapability cap,
+                                                   ArcQuestPlayer data,
                                                    QuestDefinition def,
                                                    QuestRuntimeData runtime) {
         CollectionQuestConfig config = def.getCollectionConfig();
@@ -386,7 +386,7 @@ public final class CollectionQuestEngine {
     }
 
     public static void evaluateRewardUnlocks(ServerPlayer player,
-                                             IQuestCapability cap,
+                                             ArcQuestPlayer data,
                                              QuestDefinition def,
                                              QuestRuntimeData runtime,
                                              String ownerId) {
@@ -413,7 +413,7 @@ public final class CollectionQuestEngine {
     }
 
     public static boolean claimReward(ServerPlayer player,
-                                      IQuestCapability cap,
+                                      ArcQuestPlayer data,
                                       QuestDefinition def,
                                       QuestRuntimeData runtime,
                                       String rewardNodeId) {
@@ -421,7 +421,7 @@ public final class CollectionQuestEngine {
     }
 
     public static CollectionRewardClaimResult claimRewardWithResult(ServerPlayer player,
-                                                                    IQuestCapability cap,
+                                                                    ArcQuestPlayer data,
                                                                     QuestDefinition def,
                                                                     QuestRuntimeData runtime,
                                                                     String rewardNodeId) {

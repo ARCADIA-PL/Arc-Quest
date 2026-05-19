@@ -12,8 +12,8 @@ import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -61,11 +61,11 @@ public sealed interface DialogueAction {
     record CompleteQuest(String questId) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-            QuestRuntimeData data = cap.getActiveQuest(questId);
+            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+            QuestRuntimeData data = data.getActiveQuest(questId);
             if (data != null) {
                 data.setState(QuestState.COMPLETED);
-                cap.markCompleted(questId);
+                data.markCompleted(questId);
             }
         }
     }
@@ -80,17 +80,17 @@ public sealed interface DialogueAction {
             QuestDefinition def = rl != null ? QuestRegistry.get(rl) : null;
             if (def == null) return;
 
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
 
-            QuestRuntimeData data = cap.getActiveQuest(questId);
+            QuestRuntimeData data = data.getActiveQuest(questId);
             if (data == null || data.getState() != QuestState.ACTIVE) return;
 
             PhaseDefinition currentPhase = def.getPhase(data.getCurrentPhaseId());
             if (currentPhase == null) return;
 
             String nextPhaseId = def.evaluateNextPhase(player, currentPhase,
-                    cap.getCompletedQuestLocations(),
-                    cap.getAllFlags(), cap.getAllVariables());
+                    data.getCompletedQuestLocations(),
+                    data.getAllFlags(), data.getAllVariables());
 
             if (nextPhaseId != null) {
                 PhaseDefinition nextPhase = def.getPhase(nextPhaseId);
@@ -206,8 +206,8 @@ public sealed interface DialogueAction {
     record SetFlag(String flagName) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-            cap.setFlag(flagName);
+            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+            data.setFlag(flagName);
             LOGGER.debug("[Dialogue] Set flag '{}' for {}", flagName, player.getName().getString());
         }
     }
@@ -222,8 +222,8 @@ public sealed interface DialogueAction {
     record SetVariable(String key, int value) implements DialogueAction {
         @Override
         public void execute(ServerPlayer player) {
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-            cap.setVariable(key, value);
+            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+            data.setVariable(key, value);
             LOGGER.debug("[Dialogue] Set variable '{}' = {} for {}",
                     key, value, player.getName().getString());
         }
@@ -301,7 +301,7 @@ public sealed interface DialogueAction {
                 LOGGER.warn("[Dialogue] Unknown gacha shop: {}", shopId);
                 return;
             }
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             if (cap == null) {
                 LOGGER.warn("[Dialogue] Missing quest capability while opening gacha: {}", shopId);
                 return;

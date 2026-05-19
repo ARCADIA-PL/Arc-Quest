@@ -6,17 +6,15 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.common.capabilities.RegisterCapabilitiesEvent;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.IDialogueNpc;
-import org.arcadia.arc_quest.dialogue.capability.DialogueNpcPatch;
-import org.arcadia.arc_quest.dialogue.capability.DialogueNpcPatchProvider;
+import org.arcadia.arc_quest.dialogue.capability.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.slf4j.Logger;
 
@@ -88,27 +86,30 @@ public final class NpcDialogueHandler {
     @SubscribeEvent
     public static void onEntityTick(LivingEvent.LivingTickEvent event) {
         if (event.getEntity().level().isClientSide()) return;
-        if (!(event.getEntity() instanceof IDialogueNpc)) return;
+        if (!(event.getEntity() instanceof IDialogueNpc npc)) return;
 
-        DialogueNpcPatch patch = DialogueNpcPatch.get(event.getEntity());
-        if (patch != null) {
-            patch.tick();
+        DialogueNpcStateManager.State state = DialogueNpcStateManager.get(event.getEntity());
+        if (state == null || state.conversingPlayer() == null) return;
+        if (!state.conversingPlayer().isAlive()) {
+            DialogueNpcStateManager.clear(event.getEntity());
+            return;
         }
-    }
 
-    // ═══════════════════════════════════════════════════════
-    //  Capability 注册与附加
-    // ═══════════════════════════════════════════════════════
+        if (event.getEntity() instanceof Mob mob) {
+            if (npc.shouldLookAtPlayer()) {
+                mob.getLookControl().setLookAt(state.conversingPlayer(), 30.0F, 30.0F);
+            }
+            if (npc.shouldStopMoving()) {
+                mob.getNavigation().stop();
+            }
+        }
 
-    @SubscribeEvent
-    public static void onRegisterCapabilities(RegisterCapabilitiesEvent event) {
-        event.register(DialogueNpcPatch.class);
-    }
-
-    @SubscribeEvent
-    public static void onAttachEntityCapabilities(AttachCapabilitiesEvent<Entity> event) {
-        if (event.getObject() instanceof IDialogueNpc) {
-            event.addCapability(CAP_ID, new DialogueNpcPatchProvider(event.getObject()));
+        double maxDist = npc.getMaxDialogueDistance() + 2.0;
+        if (state.conversingPlayer().distanceTo(event.getEntity()) > maxDist) {
+            if (state.conversingPlayer() instanceof ServerPlayer sp) {
+                DialogueSessionManager.INSTANCE.endDialogue(sp);
+            }
+            DialogueNpcStateManager.clear(event.getEntity());
         }
     }
 }

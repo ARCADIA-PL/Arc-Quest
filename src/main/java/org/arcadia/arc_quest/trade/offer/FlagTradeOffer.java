@@ -2,8 +2,8 @@ package org.arcadia.arc_quest.trade.offer;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 
 /**
@@ -33,16 +33,16 @@ public final class FlagTradeOffer implements ITradeOffer {
     @Override
     public boolean canAfford(ServerPlayer player) {
         if (!isCost) return true;
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
-        return cap != null && cap.hasFlag(flag);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        return cap != null && data.hasFlag(flag);
     }
 
     @Override
     public void execute(ServerPlayer player) {
         if (!isCost) {
-            IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             if (cap != null) {
-                cap.setFlag(flag);
+                data.setFlag(flag);
             }
         }
     }

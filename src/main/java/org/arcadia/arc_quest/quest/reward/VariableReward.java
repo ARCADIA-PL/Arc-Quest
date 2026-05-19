@@ -2,8 +2,8 @@ package org.arcadia.arc_quest.quest.reward;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.api.IReward;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 
 /**
  * 修改全局变量的奖励（SET / ADD / SUBTRACT / MULTIPLY）。
@@ -51,10 +51,10 @@ public final class VariableReward implements IReward {
 
     @Override
     public void grant(ServerPlayer player) {
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (cap == null) return;
-        int current = cap.getVariable(variableName);
-        cap.setVariable(variableName, apply(current));
+        int current = data.getVariable(variableName);
+        data.setVariable(variableName, apply(current));
     }
 
     @Override

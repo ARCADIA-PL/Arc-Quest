@@ -5,7 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import org.arcadia.arc_quest.quest.api.ICondition;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -57,7 +57,7 @@ public final class TradeShopDefinition {
         return displayName.resolveFallback();
     }
 
-    public Component getDisplayName(ServerPlayer player, @Nullable IQuestCapability cap) {
+    public Component getDisplayName(ServerPlayer player, @Nullable ArcQuestPlayer data) {
         return displayName.resolve(TradeTextContext.of(player, shopId, cap));
     }
 
@@ -67,7 +67,7 @@ public final class TradeShopDefinition {
     }
 
     @Nullable
-    public Component getDescription(ServerPlayer player, @Nullable IQuestCapability cap) {
+    public Component getDescription(ServerPlayer player, @Nullable ArcQuestPlayer data) {
         return description != null ? description.resolve(TradeTextContext.of(player, shopId, cap)) : null;
     }
 

@@ -5,8 +5,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 
@@ -136,9 +136,9 @@ public class PendingDrawManager {
     private static void grantAndRecord(ServerPlayer player, PendingDrawData data) {
         grantReward(player, data.drawnItem, data.actualCount);
 
-        IQuestCapability cap = QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (cap != null) {
-            cap.addGachaDrawHistory(
+            data.addGachaDrawHistory(
                     data.shopId,
                     data.drawnItem.getItemId(),
                     data.drawnItem.getRarity().getName(),

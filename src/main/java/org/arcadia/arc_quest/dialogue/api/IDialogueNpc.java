@@ -4,7 +4,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import org.arcadia.arc_quest.dialogue.capability.DialogueNpcPatch;
+import org.arcadia.arc_quest.dialogue.capability.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 
 import javax.annotation.Nullable;
@@ -135,7 +135,7 @@ public interface IDialogueNpc {
 
         Entity self = asEntity();
 
-        DialogueNpcPatch patch = DialogueNpcPatch.get(self);
+        DialogueNpcPatch patch = DialogueNpcStateManager.get(self);
         if (patch.isConversing()) return;
 
         DialogueContext context = buildDialogueContext(player);

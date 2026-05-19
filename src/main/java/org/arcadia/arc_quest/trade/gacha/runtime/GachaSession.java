@@ -9,7 +9,7 @@ import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.capability.GachaDataStore;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.slf4j.Logger;
 
@@ -26,9 +26,9 @@ public final class GachaSession {
 
     private final ServerPlayer player;
     private final GachaShopDefinition shop;
-    private final IQuestCapability capability;
+    private final ArcQuestPlayer playerData;
 
-    public GachaSession(ServerPlayer player, GachaShopDefinition shop, IQuestCapability capability) {
+    public GachaSession(ServerPlayer player, GachaShopDefinition shop, ArcQuestPlayer playerData) {
         this.player = player;
         this.shop = shop;
         this.capability = capability;

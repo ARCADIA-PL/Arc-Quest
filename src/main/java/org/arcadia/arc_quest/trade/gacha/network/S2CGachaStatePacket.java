@@ -6,8 +6,8 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 
@@ -34,7 +34,7 @@ public class S2CGachaStatePacket {
     private final long cooldownValue;
     private final int resetTimeTicks;
     private final List<CostShortfallLine> shortfallLines;
-    private final List<IQuestCapability.GachaDrawRecord> drawHistory;
+    private final List<ArcQuestPlayer.GachaDrawRecord> drawHistory;
 
     private S2CGachaStatePacket(Mode mode,
                                 String shopId,
@@ -49,7 +49,7 @@ public class S2CGachaStatePacket {
                                 long cooldownValue,
                                 int resetTimeTicks,
                                 List<CostShortfallLine> shortfallLines,
-                                List<IQuestCapability.GachaDrawRecord> drawHistory) {
+                                List<ArcQuestPlayer.GachaDrawRecord> drawHistory) {
         this.mode = mode;
         this.shopId = shopId;
         this.pityCounter = pityCounter;
@@ -78,7 +78,7 @@ public class S2CGachaStatePacket {
                                            long cooldownValue,
                                            int resetTimeTicks,
                                            List<CostShortfallLine> shortfallLines,
-                                           List<IQuestCapability.GachaDrawRecord> drawHistory) {
+                                           List<ArcQuestPlayer.GachaDrawRecord> drawHistory) {
         return new S2CGachaStatePacket(
                 Mode.OPEN, shopId, pityCounter, totalDraws, canDraw, remainingDraws,
                 lastDrawRealTime, lastDrawGameTime, lastDrawDayTime,
@@ -131,7 +131,7 @@ public class S2CGachaStatePacket {
         }
 
         buf.writeInt(pkt.drawHistory.size());
-        for (IQuestCapability.GachaDrawRecord record : pkt.drawHistory) {
+        for (ArcQuestPlayer.GachaDrawRecord record : pkt.drawHistory) {
             buf.writeUtf(record.itemId());
             buf.writeUtf(record.rarityName());
             buf.writeInt(record.actualCount());
@@ -167,9 +167,9 @@ public class S2CGachaStatePacket {
         }
 
         int historySize = buf.readInt();
-        List<IQuestCapability.GachaDrawRecord> history = new ArrayList<>(historySize);
+        List<ArcQuestPlayer.GachaDrawRecord> history = new ArrayList<>(historySize);
         for (int i = 0; i < historySize; i++) {
-            history.add(new IQuestCapability.GachaDrawRecord(
+            history.add(new ArcQuestPlayer.GachaDrawRecord(
                     buf.readUtf(),
                     buf.readUtf(),
                     buf.readInt(),

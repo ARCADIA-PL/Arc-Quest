@@ -6,7 +6,7 @@ import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.capability.GachaDataStore;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.slf4j.Logger;
 
@@ -34,7 +34,7 @@ public final class GachaEntryStateResolver {
      * <p>
      * 优先级：可见性 > 冷却 > 限购 > 条件
      */
-    public static boolean canDraw(ServerPlayer player, IQuestCapability cap, String shopId, GachaShopDefinition shop) {
+    public static boolean canDraw(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
         if (!isVisible(player, cap, shop)) return false;
         if (isOnCooldown(player, cap, shopId, shop)) return false;
         if (isMaxDrawsReached(cap, shopId, shop)) return false;
@@ -45,15 +45,15 @@ public final class GachaEntryStateResolver {
     /**
      * 检查奖池是否对玩家可见。
      */
-    public static boolean isVisible(ServerPlayer player, IQuestCapability cap, GachaShopDefinition shop) {
+    public static boolean isVisible(ServerPlayer player, ArcQuestPlayer data, GachaShopDefinition shop) {
         var visibleCondition = shop.getVisibleCondition();
         if (visibleCondition == null) return true;
 
         try {
             return visibleCondition.test(player,
-                    cap.getCompletedQuestLocations(),
-                    cap.getAllFlags(),
-                    cap.getAllVariables());
+                    data.getCompletedQuestLocations(),
+                    data.getAllFlags(),
+                    data.getAllVariables());
         } catch (Exception e) {
             LOGGER.warn("[Gacha] Error evaluating visible condition for shop={}: {}", shop.getShopId(), e.getMessage());
             return false;
@@ -63,9 +63,9 @@ public final class GachaEntryStateResolver {
     /**
      * 检查是否达到抽奖次数上限。
      */
-    public static boolean isMaxDrawsReached(IQuestCapability cap, String shopId, GachaShopDefinition shop) {
+    public static boolean isMaxDrawsReached(ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
         if (!shop.hasLimit()) return false;
-        return cap.getGachaDrawCount(shopId) >= shop.getMaxDraws();
+        return data.getGachaDrawCount(shopId) >= shop.getMaxDraws();
     }
 
     /**
@@ -74,14 +74,14 @@ public final class GachaEntryStateResolver {
      * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link UnifiedCooldownManager}
      * 统一计算，不再维护独立的冷却 switch 逻辑。
      */
-    public static boolean isOnCooldown(ServerPlayer player, IQuestCapability cap, String shopId, GachaShopDefinition shop) {
+    public static boolean isOnCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return false;
 
-        if (shop.hasLimit() && cap.getGachaDrawCount(shopId) < shop.getMaxDraws()) {
+        if (shop.hasLimit() && data.getGachaDrawCount(shopId) < shop.getMaxDraws()) {
             return false;
         }
 
-        ICooldownRecord record = cap.getGachaDataStore().getDrawCooldown(shopId);
+        ICooldownRecord record = data.getGachaDataStore().getDrawCooldown(shopId);
         if (!record.exists()) return false;
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
@@ -96,15 +96,15 @@ public final class GachaEntryStateResolver {
     /**
      * 检查前置条件是否满足。
      */
-    public static boolean hasConditionMet(ServerPlayer player, IQuestCapability cap, GachaShopDefinition shop) {
+    public static boolean hasConditionMet(ServerPlayer player, ArcQuestPlayer data, GachaShopDefinition shop) {
         var drawCondition = shop.getDrawCondition();
         if (drawCondition == null) return true;
 
         try {
             return drawCondition.test(player,
-                    cap.getCompletedQuestLocations(),
-                    cap.getAllFlags(),
-                    cap.getAllVariables());
+                    data.getCompletedQuestLocations(),
+                    data.getAllFlags(),
+                    data.getAllVariables());
         } catch (Exception e) {
             LOGGER.warn("[Gacha] Error evaluating draw condition for shop={}: {}", shop.getShopId(), e.getMessage());
             return false;
@@ -114,16 +114,16 @@ public final class GachaEntryStateResolver {
     /**
      * 判断是否应该因为冷却过期而重置抽奖次数。
      */
-    public static boolean shouldResetByCooldown(ServerPlayer player, IQuestCapability cap,
+    public static boolean shouldResetByCooldown(ServerPlayer player, ArcQuestPlayer data,
                                                 String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return false;
 
         if (shop.hasLimit()) {
-            if (cap.getGachaDrawCount(shopId) < shop.getMaxDraws()) return false;
+            if (data.getGachaDrawCount(shopId) < shop.getMaxDraws()) return false;
             if (!shop.shouldResetOnLimitReached()) return false;
         }
 
-        GachaDataStore gachaStore = cap.getGachaDataStore();
+        GachaDataStore gachaStore = data.getGachaDataStore();
         long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
 
         ICooldownRecord record = gachaStore.getDrawCooldown(shopId);
@@ -146,19 +146,19 @@ public final class GachaEntryStateResolver {
     /**
      * 重置抽奖次数和冷却记录。
      */
-    public static void resetDrawAndCooldown(IQuestCapability cap, String shopId) {
-        cap.resetGachaDrawCount(shopId);
-        cap.getGachaDataStore().removeDrawCooldown(shopId);
+    public static void resetDrawAndCooldown(ArcQuestPlayer data, String shopId) {
+        data.resetGachaDrawCount(shopId);
+        data.getGachaDataStore().removeDrawCooldown(shopId);
     }
 
     /**
      * 判断是否应该记录冷却。
      */
-    public static boolean shouldRecordCooldown(IQuestCapability cap, String shopId, GachaShopDefinition shop) {
+    public static boolean shouldRecordCooldown(ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return false;
 
         if (shop.hasLimit()) {
-            int newCount = cap.getGachaDrawCount(shopId) + 1;
+            int newCount = data.getGachaDrawCount(shopId) + 1;
             if (newCount < shop.getMaxDraws()) return false;
             if (!shop.shouldResetOnLimitReached()) return false;
         }
@@ -169,13 +169,13 @@ public final class GachaEntryStateResolver {
     /**
      * 记录冷却时间戳到 {@link GachaDataStore}。
      */
-    public static void recordCooldown(ServerPlayer player, IQuestCapability cap, String shopId, GachaShopDefinition shop) {
+    public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return;
 
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
         long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
 
-        cap.getGachaDataStore().recordDrawCooldown(shopId, nowRealTime, nowGameTime, nowDayTime);
+        data.getGachaDataStore().recordDrawCooldown(shopId, nowRealTime, nowGameTime, nowDayTime);
     }
 }
