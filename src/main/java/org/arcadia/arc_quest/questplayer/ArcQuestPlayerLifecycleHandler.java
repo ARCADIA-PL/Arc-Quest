@@ -17,6 +17,8 @@ import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questplayer.snapshot.ArcQuestSnapshotReason;
+import org.arcadia.arc_quest.questplayer.snapshot.FileArcQuestPlayerSnapshotStore;
 import org.arcadia.arc_quest.trade.gacha.network.PendingDrawManager;
 import org.slf4j.Logger;
 
@@ -73,6 +75,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
         if (data != null) {
             ArcQuestPlayerManager.persistSnapshot(sp, data);
+            writeRecoverySnapshot(sp, data, ArcQuestSnapshotReason.PLAYER_LOGOUT);
         }
         ArcQuestPlayerManager.unload(sp.getUUID());
     }
@@ -98,11 +101,21 @@ public final class ArcQuestPlayerLifecycleHandler {
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             if (data != null && data.isDirty()) {
                 QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
+                writeRecoverySnapshot(player, data, ArcQuestSnapshotReason.WORLD_SAVE);
             }
         }
     }
 
-    private static void validateAndFixQuestData(ServerPlayer player, ArcQuestPlayer data) {
+    private static void writeRecoverySnapshot(ServerPlayer player, ArcQuestPlayer data, ArcQuestSnapshotReason reason) {
+        try {
+            FileArcQuestPlayerSnapshotStore.INSTANCE.writeSnapshot(player, data, reason);
+        } catch (Exception e) {
+            LOGGER.warn("[ArcQuest] Failed to write recovery snapshot for player {} ({})",
+                    player.getGameProfile().getName(), reason, e);
+        }
+    }
+
+    public static void validateAndFixQuestData(ServerPlayer player, ArcQuestPlayer data) {
         var activeQuests = data.getAllActiveQuests();
         if (activeQuests.isEmpty()) return;
 
