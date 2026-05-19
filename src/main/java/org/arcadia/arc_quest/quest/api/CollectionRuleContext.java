@@ -48,8 +48,14 @@ public final class CollectionRuleContext {
         return collectionRuntimeData;
     }
 
-    public ArcQuestPlayer getCapability() {
+    public ArcQuestPlayer getPlayerData() {
         return playerData;
+    }
+
+    /** @deprecated use {@link #getPlayerData()} */
+    @Deprecated
+    public ArcQuestPlayer getCapability() {
+        return getPlayerData();
     }
 
     @Nullable

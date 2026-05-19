@@ -29,15 +29,21 @@ public final class ArcQuestPlayer {
     private static final Logger LOGGER = LoggerFactory.getLogger(ArcQuestPlayer.class);
 
     public enum DirtyKind {
-        NONE,
-        FLAGS_VARS,
-        QUEST_STATE,
-        DIALOGUE,
-        TRADE_GACHA,
-        FULL;
+        NONE(0),
+        FLAGS_VARS(1 << 0),
+        QUEST_STATE(1 << 1),
+        DIALOGUE(1 << 2),
+        TRADE_GACHA(1 << 3),
+        FULL(0xFF);
+
+        private final int mask;
+
+        DirtyKind(int mask) {
+            this.mask = mask;
+        }
 
         public boolean has(DirtyKind other) {
-            return (this.ordinal() & other.ordinal()) != 0 || this == other;
+            return (this.mask & other.mask) != 0;
         }
 
         public DirtyKind or(DirtyKind other) {

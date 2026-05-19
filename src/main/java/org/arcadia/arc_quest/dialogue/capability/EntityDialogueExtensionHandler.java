@@ -9,6 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -18,6 +19,7 @@ import org.arcadia.arc_quest.api.event.dialogue.DialogueEndedEvent;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
+import org.arcadia.arc_quest.dialogue.capability.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
@@ -319,5 +321,11 @@ public class EntityDialogueExtensionHandler {
                 }
             });
         }
+    }
+
+    @SubscribeEvent
+    public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
+        if (event.getLevel().isClientSide()) return;
+        DialogueNpcStateManager.clear(event.getEntity());
     }
 }

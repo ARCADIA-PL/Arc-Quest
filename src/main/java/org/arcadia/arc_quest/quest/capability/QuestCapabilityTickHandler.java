@@ -57,86 +57,82 @@ public final class QuestCapabilityTickHandler {
     }
 
     private static void checkQuestTimeouts(ServerPlayer player) {
-        {
-            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-            if (data != null) {
-            long nowRealMs = System.currentTimeMillis();
-            long nowDayTime = player.level().getDayTime() % 24000L;
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
 
-            for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
-                if (qdata.getState() != QuestState.ACTIVE) continue;
+        long nowRealMs = System.currentTimeMillis();
+        long nowDayTime = player.level().getDayTime() % 24000L;
 
-                QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(qdata.getQuestId()));
-                if (def == null || !def.hasTimeLimit()) continue;
+        for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
+            if (qdata.getState() != QuestState.ACTIVE) continue;
 
-                QuestTimeLimitType type = def.getTimeLimitType();
-                long limit = def.getTimeLimitValue();
-                boolean timeout = false;
+            QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(qdata.getQuestId()));
+            if (def == null || !def.hasTimeLimit()) continue;
 
-                if (type == QuestTimeLimitType.REAL_SECONDS) {
-                    long acceptedRealMs = qdata.getAcceptedAtRealMs();
-                    if (acceptedRealMs > 0L) {
-                        timeout = (nowRealMs - acceptedRealMs) >= (limit * 1000L);
-                    }
-                } else if (type == QuestTimeLimitType.GAME_DAY_TIME) {
-                    long acceptedDay = qdata.getAcceptedAtDayTime() % 24000L;
-                    long elapsed = (nowDayTime - acceptedDay + 24000L) % 24000L;
-                    timeout = elapsed >= limit;
+            QuestTimeLimitType type = def.getTimeLimitType();
+            long limit = def.getTimeLimitValue();
+            boolean timeout = false;
+
+            if (type == QuestTimeLimitType.REAL_SECONDS) {
+                long acceptedRealMs = qdata.getAcceptedAtRealMs();
+                if (acceptedRealMs > 0L) {
+                    timeout = (nowRealMs - acceptedRealMs) >= (limit * 1000L);
                 }
-
-                if (timeout) {
-                    qdata.setState(QuestState.FAILED);
-                    data.markFailed(qdata.getQuestId());
-                    data.removeActiveQuest(qdata.getQuestId());
-                }
+            } else if (type == QuestTimeLimitType.GAME_DAY_TIME) {
+                long acceptedDay = qdata.getAcceptedAtDayTime() % 24000L;
+                long elapsed = (nowDayTime - acceptedDay + 24000L) % 24000L;
+                timeout = elapsed >= limit;
             }
+
+            if (timeout) {
+                qdata.setState(QuestState.FAILED);
+                data.markFailed(qdata.getQuestId());
+                data.removeActiveQuest(qdata.getQuestId());
             }
         }
     }
 
     private static void refreshDynamicMarkers(ServerPlayer player) {
-        {
-            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-            if (data != null) {
-            ServerLevel level = player.serverLevel();
-            UUID pid = player.getUUID();
-            Object2ByteOpenHashMap<String> states = markerStateCache.computeIfAbsent(
-                    pid, k -> new Object2ByteOpenHashMap<>());
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
 
-            for (Map.Entry<String, QuestRuntimeData> e : data.getAllActiveQuests().entrySet()) {
-                String questId = e.getKey();
-                QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-                if (def == null) continue;
+        ServerLevel level = player.serverLevel();
+        UUID pid = player.getUUID();
+        Object2ByteOpenHashMap<String> states = markerStateCache.computeIfAbsent(
+                pid, k -> new Object2ByteOpenHashMap<>());
 
-                for (MarkSpec spec : def.getRelatedMarks()) {
-                    String markerId = "aq:auto:" + questId + ":" + spec.id();
-                    refreshMarker(markerId, questId, spec, player, data, level, states, null, -1);
-                }
+        for (Map.Entry<String, QuestRuntimeData> e : data.getAllActiveQuests().entrySet()) {
+            String questId = e.getKey();
+            QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+            if (def == null) continue;
 
-                for (String phaseId : e.getValue().getActivePhaseIds()) {
-                    var phase = def.getPhase(phaseId);
-                    if (phase == null) continue;
-
-                    for (MarkSpec spec : phase.getRelatedMarks()) {
-                        String markerId = "aq:auto:" + questId + ":" + phaseId + ":phase:" + spec.id();
-                        refreshMarker(markerId, questId, spec, player, data, level, states, phaseId, -1);
-                    }
-
-                    int[] progress = e.getValue().getAllProgress(phaseId);
-                    var objectives = phase.getObjectives();
-                    for (int i = 0; i < objectives.size(); i++) {
-                        var obj = objectives.get(i);
-                        int p = i < progress.length ? progress[i] : 0;
-                        int required = obj.resolveRequiredCount(player);
-                        if (p >= required) continue;
-
-                        for (MarkSpec spec : obj.getRelatedMarks()) {
-                            String markerId = "aq:auto:" + questId + ":" + phaseId + ":obj" + i + ":" + spec.id();
-                            refreshMarker(markerId, questId, spec, player, data, level, states, phaseId, i);
-                        }
-                    }
-                }
+            for (MarkSpec spec : def.getRelatedMarks()) {
+                String markerId = "aq:auto:" + questId + ":" + spec.id();
+                refreshMarker(markerId, questId, spec, player, data, level, states, null, -1);
             }
+
+            for (String phaseId : e.getValue().getActivePhaseIds()) {
+                var phase = def.getPhase(phaseId);
+                if (phase == null) continue;
+
+                for (MarkSpec spec : phase.getRelatedMarks()) {
+                    String markerId = "aq:auto:" + questId + ":" + phaseId + ":phase:" + spec.id();
+                    refreshMarker(markerId, questId, spec, player, data, level, states, phaseId, -1);
+                }
+
+                int[] progress = e.getValue().getAllProgress(phaseId);
+                var objectives = phase.getObjectives();
+                for (int i = 0; i < objectives.size(); i++) {
+                    var obj = objectives.get(i);
+                    int p = i < progress.length ? progress[i] : 0;
+                    int required = obj.resolveRequiredCount(player);
+                    if (p >= required) continue;
+
+                    for (MarkSpec spec : obj.getRelatedMarks()) {
+                        String markerId = "aq:auto:" + questId + ":" + phaseId + ":obj" + i + ":" + spec.id();
+                        refreshMarker(markerId, questId, spec, player, data, level, states, phaseId, i);
+                    }
+                }
             }
         }
     }
@@ -284,13 +280,9 @@ public final class QuestCapabilityTickHandler {
      * tick 中仅做网络同步，不做持久化（持久化交由 worldSave / playerLogout）。
      */
     private static void syncIfChanged(ServerPlayer player) {
-        {
-            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-            if (data != null) {
-            if (data != null) {
-                QuestSyncCoordinator.syncIfChanged(player, data);
-            }
-            }
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data != null) {
+            QuestSyncCoordinator.syncIfChanged(player, data);
         }
     }
 
@@ -298,13 +290,9 @@ public final class QuestCapabilityTickHandler {
      * 有变更时才执行"快照持久化 + 客户端同步 + 清脏"。
      */
     private static void persistAndSyncIfChanged(ServerPlayer player) {
-        {
-            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-            if (data != null) {
-            if (data != null) {
-                QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
-            }
-            }
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data != null) {
+            QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
         }
     }
 

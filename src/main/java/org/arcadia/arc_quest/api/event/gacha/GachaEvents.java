@@ -42,8 +42,14 @@ public class GachaEvents {
             return shopId;
         }
 
-        public ArcQuestPlayer getCapability() {
+        public ArcQuestPlayer getPlayerData() {
             return playerData;
+        }
+
+        /** @deprecated use {@link #getPlayerData()} */
+        @Deprecated
+        public ArcQuestPlayer getCapability() {
+            return getPlayerData();
         }
 
         public int getPityCounter() {
@@ -109,8 +115,14 @@ public class GachaEvents {
             return newPityCounter;
         }
 
-        public ArcQuestPlayer getCapability() {
+        public ArcQuestPlayer getPlayerData() {
             return playerData;
+        }
+
+        /** @deprecated use {@link #getPlayerData()} */
+        @Deprecated
+        public ArcQuestPlayer getCapability() {
+            return getPlayerData();
         }
     }
 
@@ -145,8 +157,14 @@ public class GachaEvents {
             return shopId;
         }
 
-        public ArcQuestPlayer getCapability() {
+        public ArcQuestPlayer getPlayerData() {
             return playerData;
+        }
+
+        /** @deprecated use {@link #getPlayerData()} */
+        @Deprecated
+        public ArcQuestPlayer getCapability() {
+            return getPlayerData();
         }
 
         public Map<String, Integer> getOldWeights() {
@@ -180,8 +198,14 @@ public class GachaEvents {
             return shopId;
         }
 
-        public ArcQuestPlayer getCapability() {
+        public ArcQuestPlayer getPlayerData() {
             return playerData;
+        }
+
+        /** @deprecated use {@link #getPlayerData()} */
+        @Deprecated
+        public ArcQuestPlayer getCapability() {
+            return getPlayerData();
         }
     }
 
@@ -213,8 +237,14 @@ public class GachaEvents {
             return shopId;
         }
 
-        public ArcQuestPlayer getCapability() {
+        public ArcQuestPlayer getPlayerData() {
             return playerData;
+        }
+
+        /** @deprecated use {@link #getPlayerData()} */
+        @Deprecated
+        public ArcQuestPlayer getCapability() {
+            return getPlayerData();
         }
 
         public int getCurrentPityCounter() {
@@ -249,8 +279,14 @@ public class GachaEvents {
             return shopId;
         }
 
-        public ArcQuestPlayer getCapability() {
+        public ArcQuestPlayer getPlayerData() {
             return playerData;
+        }
+
+        /** @deprecated use {@link #getPlayerData()} */
+        @Deprecated
+        public ArcQuestPlayer getCapability() {
+            return getPlayerData();
         }
 
         public FailReason getReason() {
@@ -401,8 +437,14 @@ public class GachaEvents {
             return shopId;
         }
 
-        public ArcQuestPlayer getCapability() {
+        public ArcQuestPlayer getPlayerData() {
             return playerData;
+        }
+
+        /** @deprecated use {@link #getPlayerData()} */
+        @Deprecated
+        public ArcQuestPlayer getCapability() {
+            return getPlayerData();
         }
 
         public ResetReason getReason() {
