@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 
 import java.util.*;
 
@@ -21,7 +22,7 @@ public class GachaDataStore {
 
     private final Map<String, Integer> drawCounts = new HashMap<>();
     private final Map<String, Integer> pityCounters = new HashMap<>();
-    private final Map<String, List<IQuestCapability.GachaDrawRecord>> drawHistories = new HashMap<>();
+    private final Map<String, List<ArcQuestPlayer.GachaDrawRecord>> drawHistories = new HashMap<>();
     /**
      * 抽奖冷却时间戳，key=shopId，value=三时钟快照（realTime / gameTime / dayTime）。
      */
@@ -70,8 +71,8 @@ public class GachaDataStore {
     //  历史记录
     // ════════════════════════════════════════
 
-    public void addDrawHistory(String shopId, IQuestCapability.GachaDrawRecord record) {
-        List<IQuestCapability.GachaDrawRecord> history =
+    public void addDrawHistory(String shopId, ArcQuestPlayer.GachaDrawRecord record) {
+        List<ArcQuestPlayer.GachaDrawRecord> history =
                 drawHistories.computeIfAbsent(shopId, k -> new ArrayList<>());
         history.add(record);
         if (history.size() > MAX_HISTORY_SIZE) {
@@ -80,7 +81,7 @@ public class GachaDataStore {
         dirty = true;
     }
 
-    public List<IQuestCapability.GachaDrawRecord> getDrawHistory(String shopId) {
+    public List<ArcQuestPlayer.GachaDrawRecord> getDrawHistory(String shopId) {
         return Collections.unmodifiableList(
                 drawHistories.getOrDefault(shopId, Collections.emptyList()));
     }
@@ -150,7 +151,7 @@ public class GachaDataStore {
         CompoundTag historiesTag = new CompoundTag();
         for (var shopEntry : drawHistories.entrySet()) {
             ListTag historyList = new ListTag();
-            for (IQuestCapability.GachaDrawRecord record : shopEntry.getValue()) {
+            for (ArcQuestPlayer.GachaDrawRecord record : shopEntry.getValue()) {
                 CompoundTag recordTag = new CompoundTag();
                 recordTag.putString("itemId", record.itemId());
                 recordTag.putString("rarityName", record.rarityName());
@@ -221,10 +222,10 @@ public class GachaDataStore {
     private void loadHistories(CompoundTag historiesTag) {
         for (String shopId : historiesTag.getAllKeys()) {
             ListTag historyList = historiesTag.getList(shopId, Tag.TAG_COMPOUND);
-            List<IQuestCapability.GachaDrawRecord> history = new ArrayList<>();
+            List<ArcQuestPlayer.GachaDrawRecord> history = new ArrayList<>();
             for (int i = 0; i < historyList.size(); i++) {
                 CompoundTag tag = historyList.getCompound(i);
-                history.add(new IQuestCapability.GachaDrawRecord(
+                history.add(new ArcQuestPlayer.GachaDrawRecord(
                         tag.getString("itemId"), tag.getString("rarityName"),
                         tag.getInt("actualCount"), tag.getBoolean("pityTriggered"), tag.getLong("drawTime")));
             }

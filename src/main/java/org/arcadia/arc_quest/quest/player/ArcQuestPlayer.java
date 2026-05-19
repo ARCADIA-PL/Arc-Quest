@@ -1,13 +1,19 @@
-package org.arcadia.arc_quest.quest.capability;
+package org.arcadia.arc_quest.quest.player;
 
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore;
+import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
+import org.arcadia.arc_quest.quest.capability.GachaDataStore;
+import org.arcadia.arc_quest.quest.capability.NbtVersionManager;
+import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.capability.TradeDataStore;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
@@ -16,17 +22,39 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.stream.Collectors;
 
-/**
- * IQuestCapability 的标准实现。
- * <p>
- * v2: 对话历史从 6 个 Map 合并为 {@link DialogueProgressStore}。
- * v3: 引入 {@link NbtVersionManager} 统一管理版本号，支持链式迁移。
- * v4: 抽奖数据抽取到 {@link GachaDataStore}。
- */
-public class QuestCapabilityImpl implements IQuestCapability {
+public final class ArcQuestPlayer {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(QuestCapabilityImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ArcQuestPlayer.class);
+
+    public enum DirtyKind {
+        NONE,
+        FLAGS_VARS,
+        QUEST_STATE,
+        DIALOGUE,
+        TRADE_GACHA,
+        FULL;
+
+        public boolean has(DirtyKind other) {
+            return (this.ordinal() & other.ordinal()) != 0 || this == other;
+        }
+
+        public DirtyKind or(DirtyKind other) {
+            if (this == NONE) return other;
+            if (other == NONE) return this;
+            if (this == other) return this;
+            return FULL;
+        }
+    }
+
+    public record GachaDrawRecord(
+            String itemId,
+            String rarityName,
+            int actualCount,
+            boolean pityTriggered,
+            long drawTime) {
+    }
 
     private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
             "arc_quest:player_data", 4, LOGGER
@@ -56,14 +84,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
             tag.remove("_needs_dialogue_migration");
         });
         VERSION_MANAGER.addMigration(3, 4, root -> {
-            if (!root.contains("ActiveQuests", Tag.TAG_LIST)) {
-                return;
-            }
+            if (!root.contains("ActiveQuests", Tag.TAG_LIST)) return;
 
             ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
             for (int i = 0; i < activeList.size(); i++) {
                 CompoundTag q = activeList.getCompound(i);
-
                 boolean hasNewStruct = q.contains("ActivePhases", Tag.TAG_LIST)
                         || q.contains("CompletedPhases", Tag.TAG_LIST)
                         || q.contains("PhaseProgress", Tag.TAG_COMPOUND);
@@ -71,8 +96,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
                 if (!hasNewStruct) {
                     String legacyPhaseId = q.getString("PhaseId");
                     int[] legacyProgress = q.contains("Progress", Tag.TAG_INT_ARRAY)
-                            ? q.getIntArray("Progress")
-                            : new int[0];
+                            ? q.getIntArray("Progress") : new int[0];
 
                     ListTag activePhases = new ListTag();
                     ListTag completedPhases = new ListTag();
@@ -86,7 +110,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
                     q.put("ActivePhases", activePhases);
                     q.put("CompletedPhases", completedPhases);
                     q.put("PhaseProgress", phaseProgress);
-
                     q.remove("PhaseId");
                     q.remove("Progress");
                     continue;
@@ -94,8 +117,7 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
                 ListTag activePhases = q.getList("ActivePhases", Tag.TAG_STRING);
                 CompoundTag phaseProgress = q.contains("PhaseProgress", Tag.TAG_COMPOUND)
-                        ? q.getCompound("PhaseProgress")
-                        : new CompoundTag();
+                        ? q.getCompound("PhaseProgress") : new CompoundTag();
 
                 for (int j = 0; j < activePhases.size(); j++) {
                     String pid = activePhases.getString(j);
@@ -112,51 +134,28 @@ public class QuestCapabilityImpl implements IQuestCapability {
         });
     }
 
+    private final UUID ownerUuid;
     private final Map<String, QuestRuntimeData> activeQuests = new Object2ObjectOpenHashMap<>();
     private final Set<String> completedQuests = new ObjectOpenHashSet<>();
     private final Set<String> failedQuests = new ObjectOpenHashSet<>();
     private final Set<String> flags = new ObjectOpenHashSet<>();
     private final Map<String, Integer> variables = new Object2IntOpenHashMap<>();
     private final Map<String, QuestMarkerData> markers = new LinkedHashMap<>();
-
-    /**
-     * 统一对话/冷却进度存储
-     */
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
-
-    /**
-     * 交易系统数据（购买次数 + 冷却时间戳）
-     */
     private final TradeDataStore tradeData = new TradeDataStore();
-
-    /**
-     * 抽奖系统数据（次数、保底、历史记录、冷却时间戳）
-     */
     private final GachaDataStore gachaData = new GachaDataStore();
-
-    public enum DirtyKind {
-        NONE,
-        FLAGS_VARS,
-        QUEST_STATE,
-        DIALOGUE,
-        TRADE_GACHA,
-        FULL;
-
-        public boolean has(DirtyKind other) {
-            return (this.ordinal() & other.ordinal()) != 0 || this == other;
-        }
-
-        public DirtyKind or(DirtyKind other) {
-            if (this == NONE) return other;
-            if (other == NONE) return this;
-            if (this == other) return this;
-            return FULL;
-        }
-    }
 
     private boolean flagsVarsDirty;
     private boolean questStateDirty;
     private boolean fullDirty;
+
+    public ArcQuestPlayer(UUID ownerUuid) {
+        this.ownerUuid = Objects.requireNonNull(ownerUuid);
+    }
+
+    public UUID getOwnerUuid() {
+        return ownerUuid;
+    }
 
     private static QuestMarkerData.EntityAttachPoint parseAttachPoint(String value) {
         try {
@@ -166,72 +165,64 @@ public class QuestCapabilityImpl implements IQuestCapability {
         }
     }
 
-    @Override
+    // ════════════════════════════════════════
+    //  Data store accessors
+    // ════════════════════════════════════════
+
     public DialogueProgressStore getDialogueProgress() {
         return dialogueProgress;
     }
 
-    @Override
     public GachaDataStore getGachaDataStore() {
         return gachaData;
     }
 
-    // ════════════════════════════════════════
-    //  抽奖系统 API（委托给 GachaDataStore）
-    // ════════════════════════════════════════
-
-    @Override
     public TradeDataStore getTradeDataStore() {
         return tradeData;
     }
 
-    @Override
+    // ════════════════════════════════════════
+    //  Gacha API
+    // ════════════════════════════════════════
+
     public synchronized int getGachaDrawCount(String shopId) {
         return gachaData.getDrawCount(shopId);
     }
 
-    @Override
     public synchronized void incrementGachaDrawCount(String shopId) {
         gachaData.incrementDrawCount(shopId);
     }
 
-    @Override
     public synchronized void resetGachaDrawCount(String shopId) {
         gachaData.resetDrawCount(shopId);
     }
 
-    @Override
     public synchronized int getGachaPityCounter(String shopId) {
         return gachaData.getPityCounter(shopId);
     }
 
-    @Override
     public synchronized void setGachaPityCounter(String shopId, int count) {
         gachaData.setPityCounter(shopId, count);
     }
 
-    @Override
     public synchronized void addGachaDrawHistory(String shopId, String itemId, String rarityName,
-                                                 int actualCount, boolean pityTriggered, long drawTime) {
+                                                  int actualCount, boolean pityTriggered, long drawTime) {
         gachaData.addDrawHistory(shopId,
-                new IQuestCapability.GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime));
+                new GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime));
     }
 
-    @Override
-    public synchronized List<IQuestCapability.GachaDrawRecord> getGachaDrawHistory(String shopId) {
+    public synchronized List<GachaDrawRecord> getGachaDrawHistory(String shopId) {
         return gachaData.getDrawHistory(shopId);
     }
 
-    // ═══════════════════════════════════════════════
-    //  任务管理
-    // ═══════════════════════════════════════════════
-
-    @Override
     public synchronized void clearGachaDrawHistory(String shopId) {
         gachaData.clearDrawHistory(shopId);
     }
 
-    @Override
+    // ════════════════════════════════════════
+    //  Quest management
+    // ════════════════════════════════════════
+
     public synchronized void addActiveQuest(QuestRuntimeData data) {
         Objects.requireNonNull(data);
         String questId = data.getQuestId();
@@ -240,13 +231,11 @@ public class QuestCapabilityImpl implements IQuestCapability {
         questStateDirty = true;
     }
 
-    @Override
     public synchronized void removeActiveQuest(String questId) {
         activeQuests.remove(questId);
         questStateDirty = true;
     }
 
-    @Override
     public synchronized void markCompleted(String questId) {
         activeQuests.remove(questId);
         completedQuests.add(questId);
@@ -254,7 +243,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
         questStateDirty = true;
     }
 
-    @Override
     public synchronized void markFailed(String questId) {
         activeQuests.remove(questId);
         failedQuests.add(questId);
@@ -262,122 +250,131 @@ public class QuestCapabilityImpl implements IQuestCapability {
     }
 
     @Nullable
-    @Override
     public QuestRuntimeData getActiveQuest(String questId) {
         return activeQuests.get(questId);
     }
 
-    @Override
     public Map<String, QuestRuntimeData> getAllActiveQuests() {
         return Collections.unmodifiableMap(activeQuests);
     }
 
-    @Override
     public Set<String> getCompletedQuests() {
         return Collections.unmodifiableSet(completedQuests);
     }
 
-    @Override
     public Set<String> getFailedQuests() {
         return Collections.unmodifiableSet(failedQuests);
     }
 
-    @Override
     public boolean isQuestActive(String questId) {
         return activeQuests.containsKey(questId);
     }
 
-    @Override
     public boolean isQuestCompleted(String questId) {
         return completedQuests.contains(questId);
     }
 
-    // ═══════════════════════════════════════════════
-    //  Flag / Variable
-    // ═══════════════════════════════════════════════
-
-    @Override
     public boolean isQuestFailed(String questId) {
         return failedQuests.contains(questId);
     }
 
-    @Override
+    // ════════════════════════════════════════
+    //  Collection quest (from IQuestCapability default methods)
+    // ════════════════════════════════════════
+
+    public boolean isCollectionQuestActive(String questId) {
+        QuestRuntimeData data = getActiveQuest(questId);
+        return data != null && data.hasCollectionData();
+    }
+
+    @Nullable
+    public CollectionRuntimeData getCollectionData(String questId) {
+        QuestRuntimeData data = getActiveQuest(questId);
+        return data != null ? data.getCollectionData() : null;
+    }
+
+    public List<String> getCompletedQuestIds() {
+        return new ArrayList<>(getCompletedQuests());
+    }
+
+    public Set<ResourceLocation> getCompletedQuestLocations() {
+        return getCompletedQuests().stream()
+                .map(ResourceLocation::parse)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    // ════════════════════════════════════════
+    //  Flag / Variable
+    // ════════════════════════════════════════
+
     public void setFlag(String flag) {
         flags.add(flag);
         flagsVarsDirty = true;
         invalidateAllEnterConditionCaches();
     }
 
-    @Override
     public boolean hasFlag(String flag) {
         return flags.contains(flag);
     }
 
-    @Override
     public void removeFlag(String flag) {
         flags.remove(flag);
         flagsVarsDirty = true;
         invalidateAllEnterConditionCaches();
     }
 
-    @Override
     public Set<String> getAllFlags() {
         return Collections.unmodifiableSet(flags);
     }
 
-    @Override
     public int getVariable(String key) {
         return variables.getOrDefault(key, 0);
     }
 
-    @Override
     public void setVariable(String key, int value) {
         ((Object2IntOpenHashMap<String>) variables).put(key, value);
         flagsVarsDirty = true;
         invalidateAllEnterConditionCaches();
     }
 
-    @Override
     public void incrementVariable(String key, int amount) {
         ((Object2IntOpenHashMap<String>) variables).addTo(key, amount);
         flagsVarsDirty = true;
         invalidateAllEnterConditionCaches();
     }
 
-    @Override
     public Map<String, Integer> getAllVariables() {
         return Collections.unmodifiableMap(variables);
     }
 
-    @Override
+    // ════════════════════════════════════════
+    //  Markers
+    // ════════════════════════════════════════
+
     public synchronized void upsertMarker(QuestMarkerData marker) {
         Objects.requireNonNull(marker);
         markers.put(marker.getId(), marker);
         questStateDirty = true;
     }
 
-    @Override
     public synchronized void removeMarker(String markerId) {
         markers.remove(markerId);
         questStateDirty = true;
     }
 
-    @Override
     public synchronized void clearMarkers() {
         markers.clear();
         questStateDirty = true;
     }
 
-    // ═══════════════════════════════════════════════
-    //  序列化
-    // ═══════════════════════════════════════════════
-
-    @Override
     public synchronized Map<String, QuestMarkerData> getAllMarkers() {
         return Collections.unmodifiableMap(markers);
     }
 
-    @Override
+    // ════════════════════════════════════════
+    //  Serialization
+    // ════════════════════════════════════════
+
     public CompoundTag serializeNBT() {
         CompoundTag root = new CompoundTag();
 
@@ -427,16 +424,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
         root.put("Markers", markerList);
 
         root.put("DialogueProgress", dialogueProgress.serialize());
-
         root.put("TradeData", tradeData.serialize());
-
         root.put("GachaData", gachaData.serialize());
 
         VERSION_MANAGER.setInitialVersion(root);
         return root;
     }
 
-    @Override
     public void deserializeNBT(CompoundTag root) {
         VERSION_MANAGER.migrate(root);
 
@@ -473,24 +467,13 @@ public class QuestCapabilityImpl implements IQuestCapability {
 
             QuestMarkerType type;
             QuestMarkerState state;
-            try {
-                type = QuestMarkerType.valueOf(t.getString("type"));
-            } catch (Exception e) {
-                type = QuestMarkerType.CUSTOM;
-            }
-            try {
-                state = QuestMarkerState.valueOf(t.getString("state"));
-            } catch (Exception e) {
-                state = QuestMarkerState.ACTIVE;
-            }
+            try { type = QuestMarkerType.valueOf(t.getString("type")); }
+            catch (Exception e) { type = QuestMarkerType.CUSTOM; }
+            try { state = QuestMarkerState.valueOf(t.getString("state")); }
+            catch (Exception e) { state = QuestMarkerState.ACTIVE; }
 
             QuestMarkerData marker = new QuestMarkerData.Builder(
-                    id,
-                    t.getDouble("x"),
-                    t.getDouble("y"),
-                    t.getDouble("z"),
-                    t.getString("label")
-            )
+                    id, t.getDouble("x"), t.getDouble("y"), t.getDouble("z"), t.getString("label"))
                     .dimension(t.contains("dimension", Tag.TAG_STRING) ? t.getString("dimension") : "minecraft:overworld")
                     .bindQuest(t.contains("questId", Tag.TAG_STRING) ? t.getString("questId") : "")
                     .bindPhase(t.contains("phaseId", Tag.TAG_STRING) ? t.getString("phaseId") : "")
@@ -499,11 +482,8 @@ public class QuestCapabilityImpl implements IQuestCapability {
                             t.contains("followEntityId", Tag.TAG_INT) ? t.getInt("followEntityId") : -1,
                             t.contains("followEntityUuid", Tag.TAG_STRING) ? t.getString("followEntityUuid") : "",
                             t.contains("followEntityGuid", Tag.TAG_STRING) ? t.getString("followEntityGuid") : "",
-                            parseAttachPoint(t.contains("attachPoint", Tag.TAG_STRING) ? t.getString("attachPoint") : "HEAD")
-                    )
-                    .type(type)
-                    .state(state)
-                    .color(t.getInt("color"))
+                            parseAttachPoint(t.contains("attachPoint", Tag.TAG_STRING) ? t.getString("attachPoint") : "HEAD"))
+                    .type(type).state(state).color(t.getInt("color"))
                     .showDistance(!t.contains("showDistance", Tag.TAG_BYTE) || t.getBoolean("showDistance"))
                     .allowOffscreenArrow(!t.contains("allowOffscreenArrow", Tag.TAG_BYTE) || t.getBoolean("allowOffscreenArrow"))
                     .build();
@@ -519,7 +499,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
         if (root.contains("TradeData", Tag.TAG_COMPOUND)) {
             tradeData.deserialize(root.getCompound("TradeData"));
         } else {
-            // 旧存档：从 TradePurchases 和 DialogueProgress.Trade 分区迁移
             tradeData.deserializeLegacy(root);
         }
 
@@ -530,28 +509,20 @@ public class QuestCapabilityImpl implements IQuestCapability {
         }
     }
 
-    // ═══════════════════════════════════════════════
-    //  其他
-    // ═══════════════════════════════════════════════
-
-    @Override
-    public void copyFrom(IQuestCapability other) {
-        deserializeNBT(other.serializeNBT());
+    public CompoundTag serializeFlagsVars() {
+        CompoundTag tag = new CompoundTag();
+        ListTag flagList = new ListTag();
+        for (String f : flags) flagList.add(StringTag.valueOf(f));
+        tag.put("Flags", flagList);
+        CompoundTag varsTag = new CompoundTag();
+        for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
+        tag.put("Variables", varsTag);
+        return tag;
     }
 
-    @Override
-    public void clearAllData() {
-        activeQuests.clear();
-        completedQuests.clear();
-        failedQuests.clear();
-        flags.clear();
-        variables.clear();
-        dialogueProgress.clear();
-        tradeData.clear();
-        gachaData.clear();
-        markers.clear();
-        fullDirty = true;
-    }
+    // ════════════════════════════════════════
+    //  Dirty tracking
+    // ════════════════════════════════════════
 
     public DirtyKind getDirtyKind() {
         if (fullDirty) return DirtyKind.FULL;
@@ -566,17 +537,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
             if (data.isDirty()) { kind = kind.or(DirtyKind.QUEST_STATE); break; }
         }
         return kind;
-    }
-
-    public CompoundTag serializeFlagsVars() {
-        CompoundTag tag = new CompoundTag();
-        ListTag flagList = new ListTag();
-        for (String f : flags) flagList.add(StringTag.valueOf(f));
-        tag.put("Flags", flagList);
-        CompoundTag varsTag = new CompoundTag();
-        for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
-        tag.put("Variables", varsTag);
-        return tag;
     }
 
     public boolean isDirty() {
@@ -608,12 +568,6 @@ public class QuestCapabilityImpl implements IQuestCapability {
         }
     }
 
-    public void invalidateAllEnterConditionCaches() {
-        for (QuestRuntimeData data : activeQuests.values()) {
-            data.invalidateEnterConditionCache();
-        }
-    }
-
     public void clearDirty() {
         fullDirty = false;
         flagsVarsDirty = false;
@@ -622,5 +576,32 @@ public class QuestCapabilityImpl implements IQuestCapability {
         tradeData.clearDirty();
         gachaData.clearDirty();
         for (QuestRuntimeData data : activeQuests.values()) data.clearDirty();
+    }
+
+    public void invalidateAllEnterConditionCaches() {
+        for (QuestRuntimeData data : activeQuests.values()) {
+            data.invalidateEnterConditionCache();
+        }
+    }
+
+    // ════════════════════════════════════════
+    //  Copy / Clear
+    // ════════════════════════════════════════
+
+    public void copyFrom(ArcQuestPlayer other) {
+        deserializeNBT(other.serializeNBT());
+    }
+
+    public void clearAllData() {
+        activeQuests.clear();
+        completedQuests.clear();
+        failedQuests.clear();
+        flags.clear();
+        variables.clear();
+        dialogueProgress.clear();
+        tradeData.clear();
+        gachaData.clear();
+        markers.clear();
+        fullDirty = true;
     }
 }

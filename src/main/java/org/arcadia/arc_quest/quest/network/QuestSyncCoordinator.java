@@ -3,8 +3,7 @@ package org.arcadia.arc_quest.quest.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityImpl;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.slf4j.Logger;
 
@@ -25,12 +24,12 @@ public final class QuestSyncCoordinator {
         ArcQuestNetwork.syncQuestState(player, data);
     }
 
-    public static void syncFlagsVarsAndPush(ServerPlayer player, IQuestCapability cap) {
-        ArcQuestNetwork.syncFlagsAndVars(player, cap);
+    public static void syncFlagsVarsAndPush(ServerPlayer player, ArcQuestPlayer data) {
+        ArcQuestNetwork.syncFlagsAndVars(player, data);
     }
 
-    public static void syncFullDataAndPush(ServerPlayer player, IQuestCapability cap) {
-        ArcQuestNetwork.syncFullData(player, cap);
+    public static void syncFullDataAndPush(ServerPlayer player, ArcQuestPlayer data) {
+        ArcQuestNetwork.syncFullData(player, data);
     }
 
     public static void syncDeltaProgressAndPush(ServerPlayer player,
@@ -53,36 +52,32 @@ public final class QuestSyncCoordinator {
      * <p>
      * v2: 按 {@code DirtyKind} 分类调度 —— 不同类别用不同持久化策略和网络包。
      */
-    public static void persistAndSyncIfChanged(ServerPlayer player, QuestCapabilityImpl impl) {
-        QuestCapabilityImpl.DirtyKind kind = impl.getDirtyKind();
-        if (kind == QuestCapabilityImpl.DirtyKind.NONE) return;
+    public static void persistAndSyncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
+        ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
+        if (kind == ArcQuestPlayer.DirtyKind.NONE) return;
 
-        if (kind == QuestCapabilityImpl.DirtyKind.FULL) {
-            persistSnapshot(player, impl);
-            syncFullDataAndPush(player, impl);
-        } else if (kind == QuestCapabilityImpl.DirtyKind.FLAGS_VARS) {
-            persistFlagsVars(player, impl);
-            syncFlagsVarsAndPush(player, impl);
+        if (kind == ArcQuestPlayer.DirtyKind.FULL) {
+            persistSnapshot(player, data);
+            syncFullDataAndPush(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.FLAGS_VARS) {
+            persistFlagsVars(player, data);
+            syncFlagsVarsAndPush(player, data);
         } else {
-            persistSnapshot(player, impl);
-            if (kind == QuestCapabilityImpl.DirtyKind.QUEST_STATE) {
-                syncQuestStateForDirty(player, impl);
-            } else if (kind == QuestCapabilityImpl.DirtyKind.DIALOGUE) {
-            } else if (kind == QuestCapabilityImpl.DirtyKind.TRADE_GACHA) {
-            } else {
-                syncQuestStateForDirty(player, impl);
+            persistSnapshot(player, data);
+            if (kind == ArcQuestPlayer.DirtyKind.QUEST_STATE) {
+                syncQuestStateForDirty(player, data);
             }
         }
 
-        impl.clearDirty(kind);
+        data.clearDirty(kind);
 
         LOGGER.debug("[QuestPersist] Player {} snapshot persisted (kind={})",
                 player.getGameProfile().getName(), kind);
     }
 
-    private static void persistFlagsVars(ServerPlayer player, QuestCapabilityImpl impl) {
+    private static void persistFlagsVars(ServerPlayer player, ArcQuestPlayer data) {
         CompoundTag existing = player.getPersistentData().getCompound("ArcQuestAutosave");
-        CompoundTag flagsVars = impl.serializeFlagsVars();
+        CompoundTag flagsVars = data.serializeFlagsVars();
         if (existing.contains("Flags")) existing.remove("Flags");
         if (existing.contains("Variables")) existing.remove("Variables");
         existing.put("Flags", flagsVars.get("Flags"));
@@ -90,32 +85,32 @@ public final class QuestSyncCoordinator {
         player.getPersistentData().put("ArcQuestAutosave", existing);
     }
 
-    private static void syncQuestStateForDirty(ServerPlayer player, QuestCapabilityImpl impl) {
-        syncFullDataAndPush(player, impl);
+    private static void syncQuestStateForDirty(ServerPlayer player, ArcQuestPlayer data) {
+        syncFullDataAndPush(player, data);
     }
 
     /**
      * 仅网络同步，不持久化（用于高频 tick sync）。
      */
-    public static void syncIfChanged(ServerPlayer player, QuestCapabilityImpl impl) {
-        QuestCapabilityImpl.DirtyKind kind = impl.getDirtyKind();
-        if (kind == QuestCapabilityImpl.DirtyKind.NONE) return;
+    public static void syncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
+        ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
+        if (kind == ArcQuestPlayer.DirtyKind.NONE) return;
 
-        if (kind == QuestCapabilityImpl.DirtyKind.FULL) {
-            syncFullDataAndPush(player, impl);
-        } else if (kind == QuestCapabilityImpl.DirtyKind.FLAGS_VARS) {
-            syncFlagsVarsAndPush(player, impl);
+        if (kind == ArcQuestPlayer.DirtyKind.FULL) {
+            syncFullDataAndPush(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.FLAGS_VARS) {
+            syncFlagsVarsAndPush(player, data);
         } else {
-            syncQuestStateForDirty(player, impl);
+            syncQuestStateForDirty(player, data);
         }
 
-        impl.clearDirty(kind);
+        data.clearDirty(kind);
     }
 
     /**
      * 将能力快照写入玩家 PersistentData（运行时快照，不等同于立即磁盘落盘）。
      */
-    public static void persistSnapshot(ServerPlayer player, QuestCapabilityImpl impl) {
-        player.getPersistentData().put("ArcQuestAutosave", impl.serializeNBT().copy());
+    public static void persistSnapshot(ServerPlayer player, ArcQuestPlayer data) {
+        player.getPersistentData().put("ArcQuestAutosave", data.serializeNBT().copy());
     }
 }

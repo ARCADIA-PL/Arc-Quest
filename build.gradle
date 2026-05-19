@@ -145,6 +145,9 @@ tasks.named('jar', Jar).configure {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    if (project.hasProperty('aqMaxErrs')) {
+        options.compilerArgs += ['-Xmaxerrs', project.property('aqMaxErrs').toString()]
+    }
 }
 
 //单元测试配置

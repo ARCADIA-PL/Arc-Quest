@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,9 +25,9 @@ public class S2CSyncFlagsVarsPacket {
     private final Set<String> flags;
     private final Map<String, Integer> variables;
 
-    public S2CSyncFlagsVarsPacket(IQuestCapability cap) {
-        flags = new HashSet<>(cap.getAllFlags());
-        variables = new HashMap<>(cap.getAllVariables());
+    public S2CSyncFlagsVarsPacket(ArcQuestPlayer data) {
+        flags = new HashSet<>(data.getAllFlags());
+        variables = new HashMap<>(data.getAllVariables());
     }
 
     private S2CSyncFlagsVarsPacket(Set<String> flags, Map<String, Integer> variables) {

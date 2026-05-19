@@ -10,8 +10,8 @@ import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
-import org.arcadia.arc_quest.quest.capability.QuestCapabilityProvider;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.trade.gacha.network.*;
@@ -271,12 +271,12 @@ public final class ArcQuestNetwork {
     /**
      * 全量同步（登录/重生/维度切换）
      */
-    public static void syncFullData(ServerPlayer player, IQuestCapability cap) {
+    public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
         resetMarkerStream(player);
 
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncFullDataPacket(cap));
-        syncMarkers(player, cap);
+                new S2CSyncFullDataPacket(data));
+        syncMarkers(player, data);
     }
 
     /**
@@ -313,23 +313,23 @@ public final class ArcQuestNetwork {
     /**
      * Flags / Variables 同步
      */
-    public static void syncFlagsAndVars(ServerPlayer player, IQuestCapability cap) {
+    public static void syncFlagsAndVars(ServerPlayer player, ArcQuestPlayer data) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncFlagsVarsPacket(cap));
+                new S2CSyncFlagsVarsPacket(data));
 
-        pushSyncForActiveUIs(player, cap, "flags_vars_sync");
+        pushSyncForActiveUIs(player, data, "flags_vars_sync");
     }
 
     /**
      * Quest 同步后统一触发 Trade + Gacha 活跃界面 push-first。
      */
     private static void pushSyncForActiveUIs(ServerPlayer player,
-                                             @Nullable IQuestCapability cap,
+                                             @Nullable ArcQuestPlayer data,
                                              String reason) {
         SyncObservability.trace("quest", "active_ui", player.getName().getString(), SyncObservability.Stage.ACTION, reason);
         C2SRequestTradePacket.pushSyncForActiveShop(player, reason);
 
-        IQuestCapability resolved = (cap != null) ? cap : QuestCapabilityProvider.getOrNull(player);
+        ArcQuestPlayer resolved = (data != null) ? data : ArcQuestPlayerManager.get(player);
         if (resolved != null) {
             GachaScreenOpener.pushSync(player, resolved, reason);
         }
@@ -411,7 +411,7 @@ public final class ArcQuestNetwork {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 
-    public static void syncMarkers(ServerPlayer player, IQuestCapability cap) {
+    public static void syncMarkers(ServerPlayer player, ArcQuestPlayer data) {
         long epoch = currentMarkerEpoch(player);
         long revision = nextMarkerRevision(player);
 

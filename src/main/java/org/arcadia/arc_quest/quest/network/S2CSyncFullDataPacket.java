@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.quest.network;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.arcadia.arc_quest.quest.capability.IQuestCapability;
+import org.arcadia.arc_quest.quest.player.ArcQuestPlayer;
 
 import java.util.function.Supplier;
 
@@ -19,8 +19,8 @@ public class S2CSyncFullDataPacket {
 
     // ── 构造（服务端）──────────────────────────────────
 
-    public S2CSyncFullDataPacket(IQuestCapability cap) {
-        capabilityData = cap.serializeNBT();
+    public S2CSyncFullDataPacket(ArcQuestPlayer data) {
+        capabilityData = data.serializeNBT();
     }
 
     private S2CSyncFullDataPacket(CompoundTag data) {
