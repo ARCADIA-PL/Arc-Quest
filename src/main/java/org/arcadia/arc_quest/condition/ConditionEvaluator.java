@@ -9,7 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.quest.api.CompareOp;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;

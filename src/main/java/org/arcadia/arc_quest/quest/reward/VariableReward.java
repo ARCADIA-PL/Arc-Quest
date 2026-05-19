@@ -2,8 +2,8 @@ package org.arcadia.arc_quest.quest.reward;
 
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.api.IReward;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 
 /**
  * 修改全局变量的奖励（SET / ADD / SUBTRACT / MULTIPLY）。

@@ -3,8 +3,8 @@ package org.arcadia.arc_quest.quest.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.slf4j.Logger;
 
 /**

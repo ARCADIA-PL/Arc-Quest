@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.quest.capability;
+package org.arcadia.arc_quest.quest.data;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;

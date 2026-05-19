@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.questmarker.api;
 
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 @FunctionalInterface
 public interface MarkActivation {

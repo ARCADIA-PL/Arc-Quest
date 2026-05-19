@@ -4,7 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.slf4j.Logger;
 
 import java.util.Set;

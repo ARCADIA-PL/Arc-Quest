@@ -23,8 +23,8 @@ import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.io.DialogueDatapackHotReloadService;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.slf4j.Logger;
 
 import java.util.Collection;

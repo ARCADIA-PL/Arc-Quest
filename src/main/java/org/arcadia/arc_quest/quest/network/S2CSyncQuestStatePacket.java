@@ -10,7 +10,7 @@ import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import java.util.Set;

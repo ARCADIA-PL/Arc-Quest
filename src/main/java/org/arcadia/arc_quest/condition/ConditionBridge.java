@@ -10,7 +10,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
 import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.quest.api.ICondition;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;

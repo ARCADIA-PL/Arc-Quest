@@ -12,13 +12,13 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
-import org.arcadia.arc_quest.dialogue.capability.DialogueNpcStateManager;
+import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
@@ -243,7 +243,7 @@ public final class DialogueSessionManager {
         if (data != null) {
             String cleanupPrefix = "aq:dlg:" + session.getTree().dialogueId() + ":";
             for (String markerId : data.getAllMarkers().keySet().stream().toList()) {
-                if (markerId.startsWith(cleanupPrefix)) cap.removeMarker(markerId);
+                if (markerId.startsWith(cleanupPrefix)) data.removeMarker(markerId);
             }
         }
 
@@ -383,7 +383,7 @@ public final class DialogueSessionManager {
                                      DialogueNode node,
                                      ConditionalTextEvaluator.SayIfResult sayIfResult) {
         var data = ArcQuestPlayerManager.get(session.getPlayer());
-        if (cap == null) return;
+        if (data == null) return;
 
         String dialogueId = session.getTree().dialogueId();
         String nodeId = node.nodeId();
@@ -392,16 +392,16 @@ public final class DialogueSessionManager {
 
         String cleanupPrefix = "aq:dlg:" + dialogueId + ":";
         for (String markerId : data.getAllMarkers().keySet().stream().toList()) {
-            if (markerId.startsWith(cleanupPrefix)) cap.removeMarker(markerId);
+            if (markerId.startsWith(cleanupPrefix)) data.removeMarker(markerId);
         }
 
         for (DialogueChoice c : session.getVisibleChoices()) {
             for (MarkSpec spec : c.relatedMarks()) {
-                boolean active = spec.activateWhen().test(player, cap) && !spec.deactivateWhen().test(player, cap);
+                boolean active = spec.activateWhen().test(player, data) && !spec.deactivateWhen().test(player, data);
                 if (!active) continue;
                 String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":choice:" + c.choiceId() + ":" + spec.id();
                 QuestMarkerData marker = resolveDialogueMarker(markerId, spec, player, level, dialogueId);
-                if (marker != null) cap.upsertMarker(marker);
+                if (marker != null) data.upsertMarker(marker);
             }
         }
 
@@ -409,11 +409,11 @@ public final class DialogueSessionManager {
             for (var entry : node.conditionalTexts().values()) {
                 if (!sayIfResult.sayId.equals(entry.sayId())) continue;
                 for (MarkSpec spec : entry.relatedMarks()) {
-                    boolean active = spec.activateWhen().test(player, cap) && !spec.deactivateWhen().test(player, cap);
+                    boolean active = spec.activateWhen().test(player, data) && !spec.deactivateWhen().test(player, data);
                     if (!active) continue;
                     String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":say:" + entry.sayId() + ":" + spec.id();
                     QuestMarkerData marker = resolveDialogueMarker(markerId, spec, player, level, dialogueId);
-                    if (marker != null) cap.upsertMarker(marker);
+                    if (marker != null) data.upsertMarker(marker);
                 }
             }
         }

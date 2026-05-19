@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.quest.logic.profile.collection;
 import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 
 public final class CollectionCompletionEvaluator {
 

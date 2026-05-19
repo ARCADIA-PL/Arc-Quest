@@ -8,7 +8,7 @@ import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
@@ -48,7 +48,7 @@ public class C2SDrawGachaPacket {
             ServerPlayer player = GachaRequestValidator.requirePlayer(ctx.get().getSender(), "draw", pkt.shopId);
             if (player == null) return;
 
-            ArcQuestPlayer data = GachaRequestValidator.requireCapability(player, "draw", pkt.shopId);
+            ArcQuestPlayer data = GachaRequestValidator.requireData(player, "draw", pkt.shopId);
             if (data == null) return;
 
             GachaShopDefinition gachaShop = GachaRequestValidator.requireShop(pkt.shopId, player, "draw");

@@ -4,7 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
@@ -65,7 +65,7 @@ public class C2SConfirmDrawPacket {
             GachaShopDefinition shop = GachaRequestValidator.requireShop(pkt.shopId, player, "confirm_draw");
             if (shop == null) return;
 
-            ArcQuestPlayer data = GachaRequestValidator.requireCapability(player, "confirm_draw", pkt.shopId);
+            ArcQuestPlayer data = GachaRequestValidator.requireData(player, "confirm_draw", pkt.shopId);
             if (data == null) return;
 
             GachaScreenOpener.syncGachaState(player, shop, data);

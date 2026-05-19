@@ -1,9 +1,9 @@
 package org.arcadia.arc_quest.quest.api;
 
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -50,12 +50,6 @@ public final class CollectionRuleContext {
 
     public ArcQuestPlayer getPlayerData() {
         return playerData;
-    }
-
-    /** @deprecated use {@link #getPlayerData()} */
-    @Deprecated
-    public ArcQuestPlayer getCapability() {
-        return getPlayerData();
     }
 
     @Nullable

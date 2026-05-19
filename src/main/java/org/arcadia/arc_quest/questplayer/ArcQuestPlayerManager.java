@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.capability;
+package org.arcadia.arc_quest.questplayer;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;

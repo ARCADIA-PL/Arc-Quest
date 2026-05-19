@@ -9,7 +9,7 @@ import org.arcadia.arc_quest.dialogue.api.DialogueText;
 import org.arcadia.arc_quest.dialogue.api.RegisteredConditions;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.api.QuestState;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;

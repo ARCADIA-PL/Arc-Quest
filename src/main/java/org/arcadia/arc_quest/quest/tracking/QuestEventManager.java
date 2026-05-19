@@ -17,9 +17,9 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveDispatcher;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -101,6 +101,7 @@ public final class QuestEventManager {
         if ((player.tickCount % 20) != 0) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
         for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
             if (qdata.getState() != QuestState.ACTIVE) continue;
 

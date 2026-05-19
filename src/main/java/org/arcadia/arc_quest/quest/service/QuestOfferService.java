@@ -10,9 +10,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.Nullable;
@@ -28,7 +28,6 @@ public final class QuestOfferService {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return OfferSubmitResult.REJECTED;
 
-        if (data == null) return OfferSubmitResult.REJECTED;
         QuestRuntimeData qdata = data.getActiveQuest(questId);
         if (qdata == null || !qdata.isPhaseActive(phaseId)) return OfferSubmitResult.REJECTED;
 

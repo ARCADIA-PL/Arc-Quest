@@ -10,8 +10,8 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.trade.*;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -122,9 +122,9 @@ public class C2SRequestTradePacket {
                 return;
             }
 
-            ArcQuestPlayer data = TradeRequestValidator.requireCapability(player, "trade_request", pkt.shopId, LOGGER);
+            ArcQuestPlayer data = TradeRequestValidator.requireData(player, "trade_request", pkt.shopId, LOGGER);
             if (data == null) {
-                sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.CAPABILITY_MISSING);
+                sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.DATA_MISSING);
                 return;
             }
 
@@ -374,7 +374,7 @@ public class C2SRequestTradePacket {
         ServerPlayer player = session.getPlayer();
         var data = ArcQuestPlayerManager.get(player);
 
-        boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, cap, session.getShop().getShopId(), entry);
+        boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, data, session.getShop().getShopId(), entry);
 
         if (!shouldReset && entry.hasLimit()) {
             var resetCondition = entry.getPurchaseResetCondition();
@@ -392,7 +392,7 @@ public class C2SRequestTradePacket {
         }
 
         if (shouldReset) {
-            TradeEntryStateResolver.resetPurchaseAndCooldown(cap, session.getShop().getShopId(), entryId);
+            TradeEntryStateResolver.resetPurchaseAndCooldown(data, session.getShop().getShopId(), entryId);
         }
     }
 

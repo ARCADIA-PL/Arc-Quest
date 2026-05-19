@@ -4,8 +4,8 @@ package org.arcadia.arc_quest.dialogue.runtime;
  * 三时钟冷却快照接口。
  * <p>
  * 统一 {@link DialogueProgressStore.Entry}
- * 和 {@link org.arcadia.arc_quest.quest.capability.GachaDataStore.CooldownEntry}
- * 以及 {@link org.arcadia.arc_quest.quest.capability.TradeDataStore.TradeCooldownEntry}
+ * 和 {@link org.arcadia.arc_quest.quest.data.GachaDataStore.CooldownEntry}
+ * 以及 {@link org.arcadia.arc_quest.quest.data.TradeDataStore.TradeCooldownEntry}
  * 的公共访问契约，使 {@link UnifiedCooldownManager} 无需为每种记录类型单独重载。
  */
 public interface ICooldownRecord {

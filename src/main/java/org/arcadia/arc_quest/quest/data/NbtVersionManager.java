@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.quest.capability;
+package org.arcadia.arc_quest.quest.data;
 
 import net.minecraft.nbt.CompoundTag;
 import org.slf4j.Logger;
@@ -61,7 +61,7 @@ public final class NbtVersionManager {
     // 统一使用 _ArcQuestVer
     private static final String VERSION_KEY = "_ArcQuestVer";
 
-    private final String capabilityName;
+    private final String dataName;
     private final int currentVersion;
     private final Logger logger;
 
@@ -69,8 +69,8 @@ public final class NbtVersionManager {
     private final Consumer<CompoundTag>[] migrations;
 
     @SuppressWarnings("unchecked")
-    public NbtVersionManager(String capabilityName, int currentVersion, Logger logger) {
-        this.capabilityName = capabilityName;
+    public NbtVersionManager(String dataName, int currentVersion, Logger logger) {
+        this.dataName = dataName;
         this.currentVersion = currentVersion;
         this.logger = logger;
         migrations = new Consumer[currentVersion];
@@ -116,30 +116,30 @@ public final class NbtVersionManager {
         if (storedVersion > currentVersion) {
             throw new RuntimeException(
                     String.format("[%s] Stored version %d is higher than current version %d. " +
-                            "Downgrade is not supported!", capabilityName, storedVersion, currentVersion)
+                            "Downgrade is not supported!", dataName, storedVersion, currentVersion)
             );
         }
 
         logger.info("[{}] Migrating NBT data from v{} to v{}...",
-                capabilityName, storedVersion, currentVersion);
+                dataName, storedVersion, currentVersion);
 
         // 链式迁移
         for (int v = storedVersion; v < currentVersion; v++) {
             if (migrations[v] == null) {
                 throw new RuntimeException(
                         String.format("[%s] No migration defined for v%d → v%d",
-                                capabilityName, v, v + 1)
+                                dataName, v, v + 1)
                 );
             }
 
             try {
                 logger.debug("[{}] Applying migration v{} → v{}...",
-                        capabilityName, v, v + 1);
+                        dataName, v, v + 1);
                 migrations[v].accept(tag);
             } catch (Exception e) {
                 throw new RuntimeException(
                         String.format("[%s] Migration v%d → v%d failed: %s",
-                                capabilityName, v, v + 1, e.getMessage()),
+                                dataName, v, v + 1, e.getMessage()),
                         e
                 );
             }
@@ -147,7 +147,7 @@ public final class NbtVersionManager {
 
         // 保存版本号
         tag.putInt(VERSION_KEY, currentVersion);
-        logger.info("[{}] Migration complete. Now at v{}.", capabilityName, currentVersion);
+        logger.info("[{}] Migration complete. Now at v{}.", dataName, currentVersion);
     }
 
     /**

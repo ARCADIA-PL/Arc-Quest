@@ -62,7 +62,7 @@ public final class RejectCodeDictionary {
 
     public enum Code {
         PLAYER_MISSING,
-        CAPABILITY_MISSING,
+        DATA_MISSING,
         SHOP_NOT_FOUND,
 
         PRE_DRAW_CANCELLED,

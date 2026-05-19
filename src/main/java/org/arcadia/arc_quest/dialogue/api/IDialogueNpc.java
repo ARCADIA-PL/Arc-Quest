@@ -4,7 +4,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import org.arcadia.arc_quest.dialogue.capability.DialogueNpcStateManager;
+import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 
 import javax.annotation.Nullable;

@@ -7,9 +7,9 @@ import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.npc.NpcBinding;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -395,7 +395,7 @@ public class DialogueSession {
         Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
         IDialogueNpc dialogueNpc = (npc instanceof IDialogueNpc d) ? d : null;
 
-        var data = ArcQuestPlayerManager.get(player);
+        var cap = ArcQuestPlayerManager.get(player);
         Map<String, Object> vars = buildDialogueVars(cap);
 
         DialogueTextContext ctx = new DialogueTextContext(

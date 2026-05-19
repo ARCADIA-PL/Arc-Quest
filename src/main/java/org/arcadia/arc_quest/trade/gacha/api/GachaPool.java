@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.trade.gacha.api;
 
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

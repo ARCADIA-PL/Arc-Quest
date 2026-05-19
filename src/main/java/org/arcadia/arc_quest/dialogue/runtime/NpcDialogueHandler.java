@@ -15,7 +15,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.IDialogueNpc;
-import org.arcadia.arc_quest.dialogue.capability.DialogueNpcStateManager;
+import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.slf4j.Logger;
 

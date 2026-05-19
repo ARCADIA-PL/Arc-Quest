@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.capability;
+package org.arcadia.arc_quest.questplayer;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -9,11 +9,11 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore;
-import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
-import org.arcadia.arc_quest.quest.capability.GachaDataStore;
-import org.arcadia.arc_quest.quest.capability.NbtVersionManager;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
-import org.arcadia.arc_quest.quest.capability.TradeDataStore;
+import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
+import org.arcadia.arc_quest.quest.data.GachaDataStore;
+import org.arcadia.arc_quest.quest.data.NbtVersionManager;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.TradeDataStore;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;

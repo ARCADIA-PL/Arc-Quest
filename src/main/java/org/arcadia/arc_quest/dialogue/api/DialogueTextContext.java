@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.dialogue.api;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import javax.annotation.Nullable;
 import java.util.Map;

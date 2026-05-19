@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.api.event.gacha;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.Event;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 
 import java.util.Map;
@@ -44,12 +44,6 @@ public class GachaEvents {
 
         public ArcQuestPlayer getPlayerData() {
             return playerData;
-        }
-
-        /** @deprecated use {@link #getPlayerData()} */
-        @Deprecated
-        public ArcQuestPlayer getCapability() {
-            return getPlayerData();
         }
 
         public int getPityCounter() {
@@ -118,12 +112,6 @@ public class GachaEvents {
         public ArcQuestPlayer getPlayerData() {
             return playerData;
         }
-
-        /** @deprecated use {@link #getPlayerData()} */
-        @Deprecated
-        public ArcQuestPlayer getCapability() {
-            return getPlayerData();
-        }
     }
 
     /**
@@ -161,12 +149,6 @@ public class GachaEvents {
             return playerData;
         }
 
-        /** @deprecated use {@link #getPlayerData()} */
-        @Deprecated
-        public ArcQuestPlayer getCapability() {
-            return getPlayerData();
-        }
-
         public Map<String, Integer> getOldWeights() {
             return oldWeights;
         }
@@ -202,11 +184,7 @@ public class GachaEvents {
             return playerData;
         }
 
-        /** @deprecated use {@link #getPlayerData()} */
-        @Deprecated
-        public ArcQuestPlayer getCapability() {
-            return getPlayerData();
-        }
+        
     }
 
     /**
@@ -241,11 +219,7 @@ public class GachaEvents {
             return playerData;
         }
 
-        /** @deprecated use {@link #getPlayerData()} */
-        @Deprecated
-        public ArcQuestPlayer getCapability() {
-            return getPlayerData();
-        }
+        
 
         public int getCurrentPityCounter() {
             return currentPityCounter;
@@ -283,11 +257,7 @@ public class GachaEvents {
             return playerData;
         }
 
-        /** @deprecated use {@link #getPlayerData()} */
-        @Deprecated
-        public ArcQuestPlayer getCapability() {
-            return getPlayerData();
-        }
+        
 
         public FailReason getReason() {
             return reason;
@@ -441,11 +411,7 @@ public class GachaEvents {
             return playerData;
         }
 
-        /** @deprecated use {@link #getPlayerData()} */
-        @Deprecated
-        public ArcQuestPlayer getCapability() {
-            return getPlayerData();
-        }
+        
 
         public ResetReason getReason() {
             return reason;

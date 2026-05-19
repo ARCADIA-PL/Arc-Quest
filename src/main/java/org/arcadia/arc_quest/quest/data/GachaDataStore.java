@@ -1,10 +1,10 @@
-package org.arcadia.arc_quest.quest.capability;
+package org.arcadia.arc_quest.quest.data;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import java.util.*;
 

@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.quest.network;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import java.util.function.Supplier;
 
@@ -15,22 +15,22 @@ import java.util.function.Supplier;
  */
 public class S2CSyncFullDataPacket {
 
-    private final CompoundTag capabilityData;
+    private final CompoundTag playerData;
 
     // ── 构造（服务端）──────────────────────────────────
 
     public S2CSyncFullDataPacket(ArcQuestPlayer data) {
-        capabilityData = data.serializeNBT();
+        playerData = data.serializeNBT();
     }
 
     private S2CSyncFullDataPacket(CompoundTag data) {
-        capabilityData = data;
+        playerData = data;
     }
 
     // ── 编码 ──────────────────────────────────────────
 
     public static void encode(S2CSyncFullDataPacket pkt, FriendlyByteBuf buf) {
-        buf.writeNbt(pkt.capabilityData);
+        buf.writeNbt(pkt.playerData);
     }
 
     // ── 解码 ──────────────────────────────────────────
@@ -46,7 +46,7 @@ public class S2CSyncFullDataPacket {
                               Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             // 在客户端主线程上更新缓存
-            ClientQuestCache.INSTANCE.applyFullSync(pkt.capabilityData);
+            ClientQuestCache.INSTANCE.applyFullSync(pkt.playerData);
         });
         ctx.get().setPacketHandled(true);
     }

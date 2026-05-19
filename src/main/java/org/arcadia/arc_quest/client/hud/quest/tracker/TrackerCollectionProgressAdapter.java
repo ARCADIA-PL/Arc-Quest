@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.client.hud.quest.tracker;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.api.*;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 import java.util.ArrayList;

@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.quest.network;
 
 import org.arcadia.arc_quest.quest.api.QuestState;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 
 import javax.annotation.Nullable;
 

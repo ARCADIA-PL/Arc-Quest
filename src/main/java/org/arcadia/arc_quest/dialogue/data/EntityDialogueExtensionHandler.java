@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.dialogue.capability;
+package org.arcadia.arc_quest.dialogue.data;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
@@ -19,7 +19,6 @@ import org.arcadia.arc_quest.api.event.dialogue.DialogueEndedEvent;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
-import org.arcadia.arc_quest.dialogue.capability.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;

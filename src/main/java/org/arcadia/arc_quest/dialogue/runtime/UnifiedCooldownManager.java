@@ -17,7 +17,7 @@ import org.slf4j.Logger;
  * </ul>
  * <p>
  * 所有接受冷却记录的方法均通过 {@link ICooldownRecord} 接口统一入参，
- * {@link Entry} 和 {@link org.arcadia.arc_quest.quest.capability.GachaDataStore.CooldownEntry}
+ * {@link Entry} 和 {@link org.arcadia.arc_quest.quest.data.GachaDataStore.CooldownEntry}
  * 等具体 record 均实现该接口。
  */
 public final class UnifiedCooldownManager {
@@ -45,8 +45,8 @@ public final class UnifiedCooldownManager {
     /**
      * 通用冷却检测底层逻辑（接受任意 {@link ICooldownRecord} 实现）。
      * <p>
-     * {@link Entry}、{@link org.arcadia.arc_quest.quest.capability.GachaDataStore.CooldownEntry}、
-     * {@link org.arcadia.arc_quest.quest.capability.TradeDataStore.TradeCooldownEntry} 均可传入。
+     * {@link Entry}、{@link org.arcadia.arc_quest.quest.data.GachaDataStore.CooldownEntry}、
+     * {@link org.arcadia.arc_quest.quest.data.TradeDataStore.TradeCooldownEntry} 均可传入。
      */
     public static boolean isOnCooldown(ICooldownRecord record, CooldownType cooldownType,
                                        int cooldownValue, int resetTick,

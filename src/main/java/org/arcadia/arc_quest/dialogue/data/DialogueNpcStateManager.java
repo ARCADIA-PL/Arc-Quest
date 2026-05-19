@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.dialogue.capability;
+package org.arcadia.arc_quest.dialogue.data;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;

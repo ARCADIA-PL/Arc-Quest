@@ -1,8 +1,8 @@
 package org.arcadia.arc_quest.trade.network;
 
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
@@ -28,15 +28,15 @@ public final class TradeRequestValidator {
         return null;
     }
 
-    public static @Nullable ArcQuestPlayer requireCapability(ServerPlayer player,
-                                                               String action,
-                                                               String shopId,
-                                                               Logger logger) {
+    public static @Nullable ArcQuestPlayer requireData(ServerPlayer player,
+                                                       String action,
+                                                       String shopId,
+                                                       Logger logger) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data != null) {
             return data;
         }
-        reject(RejectCodeDictionary.Code.CAPABILITY_MISSING, action, player, shopId, "quest capability missing", logger);
+        reject(RejectCodeDictionary.Code.DATA_MISSING, action, player, shopId, "quest capability missing", logger);
         return null;
     }
 

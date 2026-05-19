@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.quest.capability;
+package org.arcadia.arc_quest.quest.data;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
@@ -13,8 +13,8 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.api.QuestTimeLimitType;
-import org.arcadia.arc_quest.capability.ArcQuestPlayer;
-import org.arcadia.arc_quest.capability.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
@@ -32,13 +32,13 @@ import java.util.UUID;
  * 玩家Tick事件处理器：以固定节流频率执行“变更检测 -> 持久化快照 -> 网络同步”。
  */
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public final class QuestCapabilityTickHandler {
+public final class QuestDataTickHandler {
 
     private static final Object2LongOpenHashMap<String> markerRefreshClock = new Object2LongOpenHashMap<>();
     private static final Map<UUID, Object2ByteOpenHashMap<String>> markerStateCache = new HashMap<>();
     private static int tickCounter = 0;
 
-    private QuestCapabilityTickHandler() {
+    private QuestDataTickHandler() {
     }
 
     @SubscribeEvent

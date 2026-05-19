@@ -1,8 +1,8 @@
 package org.arcadia.arc_quest.quest.logic.profile.collection;
 
 import org.arcadia.arc_quest.quest.api.*;
-import org.arcadia.arc_quest.quest.capability.CollectionRuntimeData;
-import org.arcadia.arc_quest.quest.capability.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.CollectionRuntimeData;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
