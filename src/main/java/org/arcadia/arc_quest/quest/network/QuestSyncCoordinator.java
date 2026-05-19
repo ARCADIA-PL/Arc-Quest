@@ -1,10 +1,10 @@
 package org.arcadia.arc_quest.quest.network;
 
 import com.mojang.logging.LogUtils;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.slf4j.Logger;
 
 /**
@@ -50,39 +50,26 @@ public final class QuestSyncCoordinator {
     /**
      * 统一语义入口：有变更才执行"快照持久化 + 客户端同步 + 清脏"。
      * <p>
-     * v2: 按 {@code DirtyKind} 分类调度 —— 不同类别用不同持久化策略和网络包。
+     * 持久化层统一写入 ArcQuestPlayer 独立 SavedData，网络层则按 DirtyKind 选择最小同步包。
      */
     public static void persistAndSyncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
         if (kind == ArcQuestPlayer.DirtyKind.NONE) return;
 
+        persistSnapshot(player, data);
+
         if (kind == ArcQuestPlayer.DirtyKind.FULL) {
-            persistSnapshot(player, data);
             syncFullDataAndPush(player, data);
         } else if (kind == ArcQuestPlayer.DirtyKind.FLAGS_VARS) {
-            persistFlagsVars(player, data);
             syncFlagsVarsAndPush(player, data);
         } else {
-            persistSnapshot(player, data);
-            if (kind == ArcQuestPlayer.DirtyKind.QUEST_STATE) {
-                syncQuestStateForDirty(player, data);
-            }
+            syncQuestStateForDirty(player, data);
         }
 
         data.clearDirty(kind);
 
         LOGGER.debug("[QuestPersist] Player {} snapshot persisted (kind={})",
                 player.getGameProfile().getName(), kind);
-    }
-
-    private static void persistFlagsVars(ServerPlayer player, ArcQuestPlayer data) {
-        CompoundTag existing = player.getPersistentData().getCompound("ArcQuestAutosave");
-        CompoundTag flagsVars = data.serializeFlagsVars();
-        if (existing.contains("Flags")) existing.remove("Flags");
-        if (existing.contains("Variables")) existing.remove("Variables");
-        existing.put("Flags", flagsVars.get("Flags"));
-        existing.put("Variables", flagsVars.get("Variables"));
-        player.getPersistentData().put("ArcQuestAutosave", existing);
     }
 
     private static void syncQuestStateForDirty(ServerPlayer player, ArcQuestPlayer data) {
@@ -108,9 +95,9 @@ public final class QuestSyncCoordinator {
     }
 
     /**
-     * 将能力快照写入玩家 PersistentData（运行时快照，不等同于立即磁盘落盘）。
+     * 将 ArcQuestPlayer 快照写入独立 SavedData 宿主。
      */
     public static void persistSnapshot(ServerPlayer player, ArcQuestPlayer data) {
-        player.getPersistentData().put("ArcQuestAutosave", data.serializeNBT().copy());
+        ArcQuestPlayerManager.persistSnapshot(player, data);
     }
 }

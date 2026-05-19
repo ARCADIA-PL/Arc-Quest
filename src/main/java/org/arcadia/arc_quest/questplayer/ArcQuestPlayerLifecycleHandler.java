@@ -78,6 +78,19 @@ public final class ArcQuestPlayerLifecycleHandler {
     }
 
     @SubscribeEvent
+    public static void onWorldUnload(LevelEvent.Unload event) {
+        if (event.getLevel().isClientSide() || !(event.getLevel() instanceof ServerLevel serverLevel))
+            return;
+        for (ServerPlayer player : serverLevel.players()) {
+            ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+            if (data != null) {
+                ArcQuestPlayerManager.persistSnapshot(player, data);
+                ArcQuestPlayerManager.unload(player.getUUID());
+            }
+        }
+    }
+
+    @SubscribeEvent
     public static void onWorldSave(LevelEvent.Save event) {
         if (event.getLevel().isClientSide() || !(event.getLevel() instanceof ServerLevel serverLevel))
             return;

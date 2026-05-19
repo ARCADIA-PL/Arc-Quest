@@ -17,7 +17,7 @@ import java.util.Set;
  * - 对话选项显示条件 (ChoiceOption.visibleCondition)
  * - 交易商品可见性条件 (TradeEntry.condition)
  * <p>
- * 所有参数都从玩家的运行时存档中读取（Phase 2 的 Capability），
+ * 所有参数都从玩家的运行时存档中读取，
  * 此处的签名抽象为“只读快照”参数 + ServerPlayer 对象。
  * <p>
  * <b>重要：根据使用场景选择合适的方法：</b>

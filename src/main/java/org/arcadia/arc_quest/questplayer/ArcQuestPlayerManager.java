@@ -10,8 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ArcQuestPlayerManager {
 
     private static final ConcurrentHashMap<UUID, ArcQuestPlayer> MAP = new ConcurrentHashMap<>();
+    private static ArcQuestPlayerRepository repository = SavedDataArcQuestPlayerRepository.INSTANCE;
 
     private ArcQuestPlayerManager() {
+    }
+
+    public static void setRepository(ArcQuestPlayerRepository repository) {
+        ArcQuestPlayerManager.repository = repository;
     }
 
     @Nullable
@@ -22,14 +27,18 @@ public final class ArcQuestPlayerManager {
     public static ArcQuestPlayer getOrCreate(ServerPlayer player) {
         return MAP.computeIfAbsent(player.getUUID(), uuid -> {
             ArcQuestPlayer data = new ArcQuestPlayer(uuid);
-            CompoundTag saved = player.getPersistentData().getCompound("ArcQuestAutosave");
+            CompoundTag saved = repository.loadSnapshot(player, uuid);
             if (!saved.isEmpty()) data.deserializeNBT(saved);
             return data;
         });
     }
 
     public static void persistSnapshot(ServerPlayer player, ArcQuestPlayer data) {
-        player.getPersistentData().put("ArcQuestAutosave", data.serializeNBT());
+        repository.saveSnapshot(player, player.getUUID(), data.serializeNBT());
+    }
+
+    public static void deleteSnapshot(ServerPlayer player) {
+        repository.deleteSnapshot(player, player.getUUID());
     }
 
     public static void unload(UUID uuid) {
@@ -42,6 +51,7 @@ public final class ArcQuestPlayerManager {
             ArcQuestPlayer clone = new ArcQuestPlayer(to.getUUID());
             clone.deserializeNBT(old.serializeNBT());
             MAP.put(to.getUUID(), clone);
+            repository.saveSnapshot(to, to.getUUID(), clone.serializeNBT());
         }
     }
 }

@@ -11,7 +11,7 @@ import java.util.*;
 /**
  * 抽奖系统的玩家数据存储。
  * <p>
- * 从 {@link QuestCapabilityImpl} 拆分，统一管理抽奖次数、保底计数、历史记录和冷却时间戳。
+ * 统一管理抽奖次数、保底计数、历史记录和冷却时间戳。
  * <p>
  * 冷却时间戳（{@code drawCooldowns}）从 {@code DialogueProgressStore} 迁移至此，
  * 使抽奖数据完全自治，不再依赖对话进度存储。
@@ -32,10 +32,6 @@ public class GachaDataStore {
     public boolean isDirty() { return dirty; }
     public void clearDirty() { dirty = false; }
 
-    // ════════════════════════════════════════
-    //  抽奖次数
-    // ════════════════════════════════════════
-
     public int getDrawCount(String shopId) {
         return drawCounts.getOrDefault(shopId, 0);
     }
@@ -50,10 +46,6 @@ public class GachaDataStore {
         dirty = true;
     }
 
-    // ════════════════════════════════════════
-    //  保底计数
-    // ════════════════════════════════════════
-
     public int getPityCounter(String shopId) {
         return pityCounters.getOrDefault(shopId, 0);
     }
@@ -66,10 +58,6 @@ public class GachaDataStore {
         }
         dirty = true;
     }
-
-    // ════════════════════════════════════════
-    //  历史记录
-    // ════════════════════════════════════════
 
     public void addDrawHistory(String shopId, ArcQuestPlayer.GachaDrawRecord record) {
         List<ArcQuestPlayer.GachaDrawRecord> history =
@@ -91,39 +79,20 @@ public class GachaDataStore {
         dirty = true;
     }
 
-    // ════════════════════════════════════════
-    //  冷却时间戳（独立于 DialogueProgressStore）
-    // ════════════════════════════════════════
-
-    /**
-     * 记录抽奖冷却时间戳（三时钟快照）。
-     *
-     * @param shopId   商店 ID
-     * @param realTime 现实时间戳（毫秒）
-     * @param gameTime 游戏总刻（单调）
-     * @param dayTime  当天刻 [0, 24000]
-     */
     public void recordDrawCooldown(String shopId, long realTime, long gameTime, long dayTime) {
         drawCooldowns.put(shopId, new CooldownEntry(realTime, gameTime, dayTime));
+        dirty = true;
     }
 
-    /**
-     * 获取抽奖冷却时间戳。未记录时返回 {@link CooldownEntry#EMPTY}。
-     */
     public CooldownEntry getDrawCooldown(String shopId) {
         return drawCooldowns.getOrDefault(shopId, CooldownEntry.EMPTY);
     }
 
-    /**
-     * 移除抽奖冷却时间戳（用于重置或时间回退清理）。
-     */
     public void removeDrawCooldown(String shopId) {
-        drawCooldowns.remove(shopId);
+        if (drawCooldowns.remove(shopId) != null) {
+            dirty = true;
+        }
     }
-
-    // ════════════════════════════════════════
-    //  清空
-    // ════════════════════════════════════════
 
     public void clear() {
         drawCounts.clear();
@@ -132,10 +101,6 @@ public class GachaDataStore {
         drawCooldowns.clear();
         dirty = true;
     }
-
-    // ════════════════════════════════════════
-    //  序列化（新格式）
-    // ════════════════════════════════════════
 
     public CompoundTag serialize() {
         CompoundTag root = new CompoundTag();
@@ -203,9 +168,6 @@ public class GachaDataStore {
         }
     }
 
-    /**
-     * 兼容旧存档格式（旧版本将抽奖数据分三个独立 NBT key 存储）。
-     */
     public void deserializeLegacy(CompoundTag root) {
         drawCounts.clear();
         CompoundTag countsTag = root.getCompound("GachaDrawCounts");
@@ -217,6 +179,20 @@ public class GachaDataStore {
 
         drawHistories.clear();
         loadHistories(root.getCompound("GachaDrawHistories"));
+
+        drawCooldowns.clear();
+        if (root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
+            CompoundTag dlgProgress = root.getCompound("DialogueProgress");
+            if (dlgProgress.contains("Gacha", Tag.TAG_COMPOUND)) {
+                CompoundTag gachaTag = dlgProgress.getCompound("Gacha");
+                for (String shopId : gachaTag.getAllKeys()) {
+                    CompoundTag ct = gachaTag.getCompound(shopId);
+                    drawCooldowns.put(shopId, new CooldownEntry(
+                            ct.getLong("r"), ct.getLong("g"),
+                            ct.contains("d") ? ct.getLong("d") : -1L));
+                }
+            }
+        }
     }
 
     private void loadHistories(CompoundTag historiesTag) {
@@ -224,32 +200,23 @@ public class GachaDataStore {
             ListTag historyList = historiesTag.getList(shopId, Tag.TAG_COMPOUND);
             List<ArcQuestPlayer.GachaDrawRecord> history = new ArrayList<>();
             for (int i = 0; i < historyList.size(); i++) {
-                CompoundTag tag = historyList.getCompound(i);
+                CompoundTag recordTag = historyList.getCompound(i);
                 history.add(new ArcQuestPlayer.GachaDrawRecord(
-                        tag.getString("itemId"), tag.getString("rarityName"),
-                        tag.getInt("actualCount"), tag.getBoolean("pityTriggered"), tag.getLong("drawTime")));
+                        recordTag.getString("itemId"),
+                        recordTag.getString("rarityName"),
+                        recordTag.getInt("actualCount"),
+                        recordTag.getBoolean("pityTriggered"),
+                        recordTag.getLong("drawTime")
+                ));
             }
             drawHistories.put(shopId, history);
         }
     }
 
-    // ════════════════════════════════════════
-    //  CooldownEntry（三时钟快照，对标 DialogueProgressStore.Entry）
-    // ════════════════════════════════════════
-
-    /**
-     * 抽奖冷却时间戳快照，包含现实时间、游戏总刻和当天刻三个维度。
-     * <p>
-     * 对标 {@link org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore.Entry}，
-     * 但独立于对话进度存储，避免跨域耦合。
-     */
     public record CooldownEntry(long realTime, long gameTime, long dayTime) implements ICooldownRecord {
-
         public static final CooldownEntry EMPTY = new CooldownEntry(0L, -1L, -1L);
 
-        /**
-         * 是否有有效记录（realTime > 0 表示存在过记录）。
-         */
+        @Override
         public boolean exists() {
             return realTime > 0;
         }

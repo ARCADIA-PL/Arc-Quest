@@ -10,8 +10,8 @@ import java.util.Map;
 /**
  * 交易系统的玩家数据存储。
  * <p>
- * 类比 {@link GachaDataStore}，将购买次数和冷却时间戳从 {@code QuestCapabilityImpl}
- * 和 {@code DialogueProgressStore} 中统一迁移至此，使交易数据完全自治。
+ * 类比 {@link GachaDataStore}，统一管理购买次数和冷却时间戳，
+ * 使交易数据完全自治。
  * <p>
  * <b>NBT 兼容性：</b>购买次数沿用现有 {@code TradePurchases} key，格式不变，旧存档可正常读取。
  * 冷却时间戳新增 {@code TradeCooldowns} 子标签，同时在 {@link #deserialize} 时尝试从
@@ -98,7 +98,6 @@ public class TradeDataStore {
     public CompoundTag serialize() {
         CompoundTag root = new CompoundTag();
 
-        // 购买次数 —— 沿用旧格式（TradePurchases / shopId / entryId = int）
         CompoundTag purchasesTag = new CompoundTag();
         for (var shopEntry : purchaseCounts.entrySet()) {
             CompoundTag shopTag = new CompoundTag();
@@ -107,7 +106,6 @@ public class TradeDataStore {
         }
         root.put("TradePurchases", purchasesTag);
 
-        // 冷却时间戳 —— 新格式（TradeCooldowns / shopId / entryId / {r,g,d}）
         CompoundTag cooldownsTag = new CompoundTag();
         for (var shopEntry : cooldowns.entrySet()) {
             CompoundTag shopTag = new CompoundTag();
@@ -159,13 +157,13 @@ public class TradeDataStore {
     }
 
     /**
-     * 从旧版本的顶层 NBT 反序列化（兼容 QuestCapabilityImpl v3 及以前格式）。
+     * 从旧版本的顶层 NBT 反序列化（兼容 v3 及以前格式）。
      * <p>
      * 购买次数从 {@code TradePurchases} key 读取（格式不变）；
      * 冷却时间戳原本存储在 {@code DialogueProgressStore} 的 {@code Trade} 分区，
      * 此处通过 {@code DialogueProgress.Trade} 子标签进行一次性迁移读取。
      *
-     * @param root 玩家能力数据的顶层 NBT
+     * @param root 玩家运行时存档的顶层 NBT
      */
     public void deserializeLegacy(CompoundTag root) {
         purchaseCounts.clear();
@@ -179,12 +177,10 @@ public class TradeDataStore {
             purchaseCounts.put(shopId, shopData);
         }
 
-        // 从 DialogueProgressStore 的 Trade 分区迁移冷却时间戳
         if (root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
             CompoundTag dlgProgress = root.getCompound("DialogueProgress");
             if (dlgProgress.contains("Trade", Tag.TAG_COMPOUND)) {
                 CompoundTag tradeTag = dlgProgress.getCompound("Trade");
-                // key 格式为 "trade:shopId|entryId"，解析并写入 cooldowns
                 for (String key : tradeTag.getAllKeys()) {
                     if (!key.startsWith("trade:")) continue;
                     String payload = key.substring("trade:".length());
@@ -202,14 +198,6 @@ public class TradeDataStore {
         }
     }
 
-    // ════════════════════════════════════════
-    //  TradeCooldownEntry
-    // ════════════════════════════════════════
-
-    /**
-     * 交易商品冷却时间戳快照，实现 {@link ICooldownRecord}，
-     * 可直接传入 {@link org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager}。
-     */
     public record TradeCooldownEntry(long realTime, long gameTime, long dayTime) implements ICooldownRecord {
 
         public static final TradeCooldownEntry EMPTY = new TradeCooldownEntry(0L, -1L, -1L);
