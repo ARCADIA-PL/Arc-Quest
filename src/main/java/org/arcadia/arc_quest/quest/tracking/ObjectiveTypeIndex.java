@@ -16,7 +16,7 @@ public class ObjectiveTypeIndex {
     private static final ObjectiveTypeIndex EMPTY = new ObjectiveTypeIndex();
 
     private final Map<ObjectiveType, Map<ResourceLocation, List<ObjectiveRef>>> byType
-            = new EnumMap<>(ObjectiveType.class);
+            = new HashMap<>();
 
     private ObjectiveTypeIndex() {}
 

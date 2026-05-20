@@ -193,7 +193,7 @@ public final class ObjectiveBuilder {
     }
 
     public ObjectiveBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
-        String id = type.name().toLowerCase() + "::obj_mark_" + relatedMarks.size();
+        String id = type.getPathToken() + "::obj_mark_" + relatedMarks.size();
         relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
                 QuestMarkerType.QUEST_OBJECTIVE, 0, 128, 20, true, false, Map.of()));
         return this;

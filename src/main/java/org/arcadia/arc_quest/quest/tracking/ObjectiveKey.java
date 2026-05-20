@@ -34,7 +34,7 @@ public final class ObjectiveKey {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ObjectiveKey other)) return false;
-        return type == other.type && targetId.equals(other.targetId);
+        return type.equals(other.type) && targetId.equals(other.targetId);
     }
 
     @Override

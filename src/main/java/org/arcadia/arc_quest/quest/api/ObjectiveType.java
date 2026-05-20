@@ -1,63 +1,91 @@
 package org.arcadia.arc_quest.quest.api;
 
+import net.minecraft.resources.ResourceLocation;
+
+import java.util.Objects;
+
 /**
- * 目标类型枚举。每种类型决定了在 ObjectiveTracker 中
- * 使用哪个 key-space 做 O(1) 查找。
+ * 运行时 objective 类型句柄。
+ *
+ * 第一阶段先保留与旧 enum 常量同名的内置静态常量，
+ * 以便渐进替换下游 ObjectiveType.X 的调用点。
  */
-public enum ObjectiveType {
+public final class ObjectiveType {
 
-    /**
-     * 空目标/占位目标，用于纯说明或手动确认推进场景。
-     */
-    NULL,
+    private final ResourceLocation id;
+    private final boolean counting;
+    private final boolean builtin;
+    private final String displayKey;
+    private final boolean requireTargetId;
+    private final String defaultTargetKind;
 
-    /**
-     * 击杀指定实体类型
-     */
-    KILL,
+    public static final ObjectiveType NULL = ObjectiveTypes.NULL;
+    public static final ObjectiveType KILL = ObjectiveTypes.KILL;
+    public static final ObjectiveType COLLECT = ObjectiveTypes.COLLECT;
+    public static final ObjectiveType TALK = ObjectiveTypes.TALK;
+    public static final ObjectiveType INTERACT = ObjectiveTypes.INTERACT;
+    public static final ObjectiveType REACH_LOCATION = ObjectiveTypes.REACH_LOCATION;
+    public static final ObjectiveType DELIVER = ObjectiveTypes.DELIVER;
+    public static final ObjectiveType CRAFT = ObjectiveTypes.CRAFT;
+    public static final ObjectiveType OFFER = ObjectiveTypes.OFFER;
+    public static final ObjectiveType CUSTOM = ObjectiveTypes.CUSTOM;
 
-    /**
-     * 收集/持有指定物品
-     */
-    COLLECT,
+    public ObjectiveType(ResourceLocation id,
+                         boolean counting,
+                         boolean builtin,
+                         String displayKey,
+                         boolean requireTargetId,
+                         String defaultTargetKind) {
+        this.id = Objects.requireNonNull(id, "id");
+        this.counting = counting;
+        this.builtin = builtin;
+        this.displayKey = displayKey == null ? "" : displayKey;
+        this.requireTargetId = requireTargetId;
+        this.defaultTargetKind = defaultTargetKind == null ? "" : defaultTargetKind;
+    }
 
-    /**
-     * 与 NPC 对话（自定义 NPC ID）
-     */
-    TALK,
+    public ResourceLocation getId() {
+        return id;
+    }
 
-    /**
-     * 右键交互指定方块/实体
-     */
-    INTERACT,
-
-    /**
-     * 抵达指定区域
-     */
-    REACH_LOCATION,
-
-    /**
-     * 提交（上交）指定物品给 NPC
-     */
-    DELIVER,
-
-    /**
-     * 制作指定物品
-     */
-    CRAFT,
-
-    OFFER,
-
-    /**
-     * 纯代码自定义检测（回调驱动）
-     */
-    CUSTOM;
-
-    /**
-     * 该类型是否需要累计计数
-     * （TALK / REACH_LOCATION / NULL 通常只需触发一次）
-     */
     public boolean isCounting() {
-        return this == KILL || this == COLLECT || this == DELIVER;
+        return counting;
+    }
+
+    public boolean isBuiltin() {
+        return builtin;
+    }
+
+    public String getDisplayKey() {
+        return displayKey;
+    }
+
+    public boolean requiresTargetId() {
+        return requireTargetId;
+    }
+
+    public String getDefaultTargetKind() {
+        return defaultTargetKind;
+    }
+
+    public String getPathToken() {
+        return id.getPath();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ObjectiveType that)) return false;
+        return id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return id.toString();
     }
 }
