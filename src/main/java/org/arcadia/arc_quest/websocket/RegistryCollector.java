@@ -1,4 +1,4 @@
-package org.arcadia.arc_quest.quest.network;
+package org.arcadia.arc_quest.websocket;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -6,6 +6,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.IForgeRegistry;
+import org.arcadia.arc_quest.quest.api.ObjectiveType;
+import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import java.util.Map;
@@ -38,8 +40,23 @@ public final class RegistryCollector {
             questIds.add(id.toString());
         }
         root.add("questIds", questIds);
+        root.add("objectiveTypes", collectObjectiveTypes());
 
         return root;
+    }
+
+    private static JsonArray collectObjectiveTypes() {
+        JsonArray arr = new JsonArray();
+        for (ObjectiveType type : ObjectiveTypeRegistry.all()) {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("id", type.getId().toString());
+            obj.addProperty("counting", type.isCounting());
+            obj.addProperty("builtin", type.isBuiltin());
+            obj.addProperty("displayKey", type.getDisplayKey());
+            obj.addProperty("targetKind", type.getDefaultTargetKind());
+            arr.add(obj);
+        }
+        return arr;
     }
 
     private static <T> JsonArray collectRegistry(IForgeRegistry<T> registry) {
@@ -57,3 +74,4 @@ public final class RegistryCollector {
         return arr;
     }
 }
+

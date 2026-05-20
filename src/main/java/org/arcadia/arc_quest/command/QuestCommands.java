@@ -448,7 +448,7 @@ public class QuestCommands {
             for (int i = 0; i < phase.getObjectives().size(); i++) {
                 ObjectiveEntry obj = phase.getObjectives().get(i);
                 msg.append(Component.literal(
-                        "§7    [" + i + "] " + obj.getType().name()
+                        "§7    [" + i + "] " + obj.getType().getId()
                                 + " target=" + obj.getTargetId()
                                 + " req=" + obj.getRequiredCount() + "\n"
                 ));

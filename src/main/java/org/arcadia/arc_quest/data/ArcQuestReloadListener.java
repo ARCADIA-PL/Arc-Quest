@@ -12,7 +12,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.io.DialogueDatapackHotReloadService;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.npc.io.NpcDatapackHotReloadService;
-import org.arcadia.arc_quest.quest.network.ArcQuestWebSocketServer;
+import org.arcadia.arc_quest.websocket.ArcQuestWebSocketServer;
 import org.arcadia.arc_quest.trade.gacha.io.GachaDatapackHotReloadService;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.arcadia.arc_quest.trade.io.TradeDatapackHotReloadService;
