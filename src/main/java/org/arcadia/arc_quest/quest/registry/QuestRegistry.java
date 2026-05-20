@@ -134,7 +134,10 @@ public final class QuestRegistry {
     }
 
     public static List<QuestDefinition> getByCategory(QuestCategory category) {
-        return MERGED_REGISTRY.values().stream().filter(q -> q.getCategory() == category).sorted(Comparator.comparingInt(QuestDefinition::getSortOrder)).collect(Collectors.toList());
+        return MERGED_REGISTRY.values().stream()
+                .filter(q -> q.getCategory().equals(category))
+                .sorted(Comparator.comparingInt(QuestDefinition::getSortOrder))
+                .collect(Collectors.toList());
     }
 
     public static int size() {

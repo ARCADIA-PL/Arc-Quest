@@ -1,31 +1,42 @@
 package org.arcadia.arc_quest.quest.api;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+
+import java.util.Objects;
 
 /**
- * 任务分类——对应 UI 中的 Tab 页签。
- * 仿星铁：开拓任务 / 同行任务 / 日常委托 / 冒险任务 / 活动任务
+ * 运行时任务分类句柄。
+ *
+ * 第一阶段先保留与旧 enum 常量同名的内置静态常量，
+ * 以便渐进替换下游 QuestCategory.X 的调用点。
  */
-public enum QuestCategory {
+public final class QuestCategory {
 
-    ARCHON("archon", "arc_quest.category.archon", 0xFFD700),
-    COMPANION("companion", "arc_quest.category.companion", 0x00BFFF),
-    DAILY("daily", "arc_quest.category.daily", 0x90EE90),
-    ADVENTURE("adventure", "arc_quest.category.adventure", 0xDDA0DD),
-    EVENT("event", "arc_quest.category.event", 0xFF6347);
-
-    private final String id;
+    private final ResourceLocation id;
     private final String translationKey;
     private final int themeColor;
+    private final boolean builtin;
 
-    QuestCategory(String id, String translationKey, int themeColor) {
-        this.id = id;
-        this.translationKey = translationKey;
+    public static final QuestCategory ARCHON = QuestCategories.ARCHON;
+    public static final QuestCategory COMPANION = QuestCategories.COMPANION;
+    public static final QuestCategory DAILY = QuestCategories.DAILY;
+    public static final QuestCategory ADVENTURE = QuestCategories.ADVENTURE;
+    public static final QuestCategory EVENT = QuestCategories.EVENT;
+
+    public QuestCategory(ResourceLocation id, String translationKey, int themeColor, boolean builtin) {
+        this.id = Objects.requireNonNull(id, "id");
+        this.translationKey = translationKey == null ? "" : translationKey;
         this.themeColor = themeColor;
+        this.builtin = builtin;
     }
 
-    public String getId() {
+    public ResourceLocation getId() {
         return id;
+    }
+
+    public String getTranslationKey() {
+        return translationKey;
     }
 
     public Component getDisplayName() {
@@ -34,5 +45,30 @@ public enum QuestCategory {
 
     public int getThemeColor() {
         return themeColor;
+    }
+
+    public boolean isBuiltin() {
+        return builtin;
+    }
+
+    public String getPathToken() {
+        return id.getPath();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof QuestCategory that)) return false;
+        return id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return id.toString();
     }
 }
