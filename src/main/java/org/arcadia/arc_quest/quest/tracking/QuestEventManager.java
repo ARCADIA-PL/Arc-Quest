@@ -167,7 +167,7 @@ public final class QuestEventManager {
         var objs = phase.getObjectives();
         List<Integer> indices = new ArrayList<>();
         for (int i = 0; i < objs.size(); i++) {
-            if (objs.get(i).getType() == ObjectiveType.REACH_LOCATION) {
+            if (ObjectiveType.REACH_LOCATION.equals(objs.get(i).getType())) {
                 indices.add(i);
             }
         }
@@ -249,7 +249,7 @@ public final class QuestEventManager {
     }
 
     private static String collectionUniqueKey(ObjectiveType type, ResourceLocation targetId) {
-        return type.name().toLowerCase(Locale.ROOT) + ":" + targetId;
+        return type.getId() + ":" + targetId;
     }
 
     private static String firstNonEmpty(String... candidates) {
@@ -268,3 +268,4 @@ public final class QuestEventManager {
         }
     }
 }
+

@@ -70,7 +70,7 @@ public final class QuestOfferService {
     }
 
     public static boolean isOfferLikeObjective(ObjectiveType type) {
-        return type == ObjectiveType.OFFER || type == ObjectiveType.DELIVER;
+        return ObjectiveType.OFFER.equals(type) || ObjectiveType.DELIVER.equals(type);
     }
 
     public static int countOfferable(ServerPlayer player, ObjectiveEntry obj) {

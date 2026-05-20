@@ -232,7 +232,7 @@ public class JournalDetailSinglePhase {
             int textBlockHeight = originalWrappedLines.size() * (font.lineHeight + 1);
             int barW = Math.min(scrollAreaW - 40 - objX, 325);
 
-            boolean isOffer = phase.getObjectives().get(i).getType() == ObjectiveType.OFFER && progress < required;
+            boolean isOffer = ObjectiveType.OFFER.equals(phase.getObjectives().get(i).getType()) && progress < required;
             boolean canSubmit = isOffer && screen.getCurrentTab() == JournalTypes.Tab.ACTIVE;
             float hoverAnim = offerHoverAnims.getOrDefault(i, 0f);
             boolean isHovered = false;

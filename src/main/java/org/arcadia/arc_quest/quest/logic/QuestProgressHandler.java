@@ -283,7 +283,7 @@ public final class QuestProgressHandler {
         List<ObjectiveEntry> objectives = phase.getObjectives();
         for (int i = 0; i < objectives.size(); i++) {
             ObjectiveEntry objective = objectives.get(i);
-            if (objective.getType() == ObjectiveType.NULL) {
+            if (objective.getType().equals(ObjectiveType.NULL)) {
                 continue;
             }
             if (qdata.getObjectiveProgress(phaseId, i) < resolveRequiredCount(player, objective, data)) {

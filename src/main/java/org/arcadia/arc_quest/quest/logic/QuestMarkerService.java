@@ -41,7 +41,7 @@ public final class QuestMarkerService {
             for (int i = 0; i < objectives.size(); i++) {
                 ObjectiveEntry obj = objectives.get(i);
                 if (obj.isHidden()) continue;
-                if (obj.getType() != ObjectiveType.REACH_LOCATION) continue;
+                if (!obj.getType().equals(ObjectiveType.REACH_LOCATION)) continue;
 
                 Double x = parseDouble(obj.getExtra("x"));
                 Double y = parseDouble(obj.getExtra("y"));
