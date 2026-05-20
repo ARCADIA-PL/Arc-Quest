@@ -22,6 +22,7 @@ import org.arcadia.arc_quest.quest.reward.VariableReward;
 import org.arcadia.arc_quest.quest.spec.*;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
 import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
+import org.arcadia.arc_quest.quest.registry.QuestCategoryRegistry;
 import org.arcadia.arc_quest.questmarker.api.MarkActivation;
 import org.arcadia.arc_quest.questmarker.api.MarkActivations;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
@@ -49,7 +50,7 @@ public final class QuestSpecCompiler {
         }
 
         QuestBuilder builder = QuestBuilder.create(parseId(spec.id))
-                .category(spec.category)
+                .category(resolveQuestCategory(spec.category))
                 .displayName(compileText(spec.displayName))
                 .description(compileText(spec.description))
                 .icon(parseNullableId(spec.iconTexture))
@@ -159,6 +160,28 @@ public final class QuestSpecCompiler {
         }
 
         throw new QuestCompileException("Invalid intelSceneId shorthand: '" + rawIntelSceneId + "' for phase '" + phaseId + "'");
+    }
+
+    private QuestCategory resolveQuestCategory(String rawCategory) {
+        ResourceLocation categoryId = parseQuestCategoryId(rawCategory);
+        if (categoryId == null) {
+            throw new QuestCompileException("Invalid quest category id: '" + rawCategory + "'");
+        }
+        QuestCategory category = QuestCategoryRegistry.get(categoryId);
+        if (category == null) {
+            throw new QuestCompileException("Unknown quest category: '" + categoryId + "'");
+        }
+        return category;
+    }
+
+    private ResourceLocation parseQuestCategoryId(String rawCategory) {
+        String value = blankToNull(rawCategory);
+        if (value == null) return null;
+        String normalized = value.trim().toLowerCase();
+        if (!normalized.contains(":")) {
+            normalized = "arc_quest:" + normalized;
+        }
+        return ResourceLocation.tryParse(normalized);
     }
     private CollectionQuestConfig compileCollectionConfig(CollectionQuestSpecData spec) {
         if (spec == null) return null;

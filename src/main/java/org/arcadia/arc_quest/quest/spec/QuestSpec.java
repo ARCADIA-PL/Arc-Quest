@@ -8,7 +8,7 @@ import java.util.List;
 
 public class QuestSpec {
     public String id = "";
-    public QuestCategory category = QuestCategory.ADVENTURE;
+    public String category = "arc_quest:adventure";
     public QuestTextSpec displayName = QuestTextSpec.literal("");
     public QuestTextSpec description = QuestTextSpec.literal("");
     public String iconTexture = "";
