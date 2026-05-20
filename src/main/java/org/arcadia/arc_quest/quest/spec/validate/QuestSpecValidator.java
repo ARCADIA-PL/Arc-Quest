@@ -1,8 +1,10 @@
 package org.arcadia.arc_quest.quest.spec.validate;
 
+import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.condition.ConditionSpec;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestCompletionPolicy;
+import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
 import org.arcadia.arc_quest.quest.spec.*;
 
 import java.util.HashSet;
@@ -77,7 +79,7 @@ public final class QuestSpecValidator {
                         validateMarks(report, objective.relatedMarks, objectivePath + ".relatedMarks");
                         if (objective.type == null)
                             report.add(ValidationIssue.Severity.ERROR, objectivePath + ".type", "Objective type is required");
-                        if (objective.type != ObjectiveType.NULL && (objective.targetId == null || objective.targetId.isBlank())) {
+                        if (resolveObjectiveType(objective.type) != null && resolveObjectiveType(objective.type).requiresTargetId() && (objective.targetId == null || objective.targetId.isBlank())) {
                             report.add(ValidationIssue.Severity.ERROR, objectivePath + ".targetId", "Objective targetId is required");
                         }
                         validateObjective(report, objective, objectivePath);
@@ -273,6 +275,20 @@ public final class QuestSpecValidator {
         }
     }
 
+    private ObjectiveType resolveObjectiveType(String rawType) {
+        ResourceLocation typeId = parseObjectiveTypeId(rawType);
+        return typeId == null ? null : ObjectiveTypeRegistry.get(typeId);
+    }
+
+    private ResourceLocation parseObjectiveTypeId(String rawType) {
+        if (rawType == null || rawType.isBlank()) return null;
+        String normalized = rawType.trim().toLowerCase();
+        if (!normalized.contains(":")) {
+            normalized = "arc_quest:" + normalized;
+        }
+        return ResourceLocation.tryParse(normalized);
+    }
+
     private void validateReward(ValidationReport report, RewardSpec reward, String path) {
         if (reward == null || reward.type == null || reward.type.isBlank()) {
             report.add(ValidationIssue.Severity.ERROR, path + ".type", "Reward type is required");
@@ -357,3 +373,4 @@ public final class QuestSpecValidator {
         }
     }
 }
+

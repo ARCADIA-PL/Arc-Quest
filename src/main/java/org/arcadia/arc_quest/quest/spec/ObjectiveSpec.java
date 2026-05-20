@@ -1,14 +1,12 @@
 package org.arcadia.arc_quest.quest.spec;
 
-import org.arcadia.arc_quest.quest.api.ObjectiveType;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class ObjectiveSpec {
-    public ObjectiveType type = ObjectiveType.CUSTOM;
+    public String type = "arc_quest:custom";
     public String targetId = "";
     public int requiredCount = 1;
     public QuestTextSpec displayText = QuestTextSpec.literal("???");

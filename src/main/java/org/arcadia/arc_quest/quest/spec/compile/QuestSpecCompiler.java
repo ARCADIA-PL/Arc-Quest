@@ -21,6 +21,7 @@ import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.quest.reward.VariableReward;
 import org.arcadia.arc_quest.quest.spec.*;
 import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
+import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
 import org.arcadia.arc_quest.questmarker.api.MarkActivation;
 import org.arcadia.arc_quest.questmarker.api.MarkActivations;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
@@ -250,6 +251,7 @@ public final class QuestSpecCompiler {
     }
 
     private ObjectiveEntry compileObjective(ObjectiveSpec spec) {
+        ObjectiveType objectiveType = resolveObjectiveType(spec);
         LinkedHashMap<String, String> extraData = new LinkedHashMap<>(spec.extraData);
         putIfPresent(extraData, "npc_id", spec.npcId);
         putIfPresent(extraData, "target_tag", spec.itemTag);
@@ -262,11 +264,11 @@ public final class QuestSpecCompiler {
         putIfPresent(extraData, "count_per_level", spec.countPerLevel);
         putIfPresent(extraData, "count_min", spec.countMin);
         putIfPresent(extraData, "count_max", spec.countMax);
-        return new ObjectiveEntry(spec.type, resolveObjectiveTarget(spec), spec.requiredCount, compileText(spec.displayText), spec.hidden, spec.optional, extraData, compileMarks(spec.relatedMarks), null);
+        return new ObjectiveEntry(objectiveType, resolveObjectiveTarget(spec, objectiveType), spec.requiredCount, compileText(spec.displayText), spec.hidden, spec.optional, extraData, compileMarks(spec.relatedMarks), null);
     }
 
-    private ResourceLocation resolveObjectiveTarget(ObjectiveSpec spec) {
-        if (spec.type == ObjectiveType.NULL) return NULL_OBJECTIVE_TARGET;
+    private ResourceLocation resolveObjectiveTarget(ObjectiveSpec spec, ObjectiveType objectiveType) {
+        if (ObjectiveType.NULL.equals(objectiveType)) return NULL_OBJECTIVE_TARGET;
         return parseId(spec.targetId);
     }
 
@@ -370,6 +372,32 @@ public final class QuestSpecCompiler {
             return QuestText.translatable(spec.value, args);
         }
         return QuestText.literal(spec.value);
+    }
+
+    private ObjectiveType resolveObjectiveType(ObjectiveSpec spec) {
+        ResourceLocation typeId = parseObjectiveTypeId(spec.type);
+        if (typeId == null) {
+            throw new QuestCompileException("Objective type is required");
+        }
+        ObjectiveType type = ObjectiveTypeRegistry.get(typeId);
+        if (type == null) {
+            throw new QuestCompileException("Unknown objective type: " + spec.type);
+        }
+        return type;
+    }
+
+    private ResourceLocation parseObjectiveTypeId(String rawType) {
+        String value = blankToNull(rawType);
+        if (value == null) return null;
+        String normalized = value.trim().toLowerCase();
+        if (!normalized.contains(":")) {
+            normalized = "arc_quest:" + normalized;
+        }
+        ResourceLocation rl = ResourceLocation.tryParse(normalized);
+        if (rl == null) {
+            throw new QuestCompileException("Invalid objective type id: " + rawType);
+        }
+        return rl;
     }
 
     private ResourceLocation parseId(String id) {
