@@ -2,7 +2,6 @@ package org.arcadia.arc_quest.guide.api;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -10,8 +9,7 @@ import java.util.Objects;
 public final class GuideCategory {
 
     private final ResourceLocation id;
-    private final GuideText displayName;
-    private final String translationKey;
+    private final Component displayName;
     private final int themeColor;
     private final int sortOrder;
     private final boolean builtin;
@@ -26,15 +24,13 @@ public final class GuideCategory {
     public static final GuideCategory ADVANCED = GuideCategories.ADVANCED;
 
     public GuideCategory(ResourceLocation id,
-                         GuideText displayName,
-                         String translationKey,
+                         Component displayName,
                          int themeColor,
                          int sortOrder,
                          boolean builtin,
                          @Nullable ResourceLocation iconTexture) {
         this.id = Objects.requireNonNull(id, "id");
         this.displayName = Objects.requireNonNull(displayName, "displayName");
-        this.translationKey = translationKey == null ? "" : translationKey;
         this.themeColor = themeColor;
         this.sortOrder = sortOrder;
         this.builtin = builtin;
@@ -45,20 +41,8 @@ public final class GuideCategory {
         return id;
     }
 
-    public GuideText getDisplayNameText() {
-        return displayName;
-    }
-
-    public String getTranslationKey() {
-        return translationKey;
-    }
-
     public Component getDisplayName() {
-        return displayName.resolve(null, GuideTextContext.empty());
-    }
-
-    public Component getDisplayName(@Nullable ServerPlayer player, @Nullable GuideTextContext context) {
-        return displayName.resolve(player, context);
+        return displayName;
     }
 
     public int getThemeColor() {
@@ -92,6 +76,6 @@ public final class GuideCategory {
 
     @Override
     public String toString() {
-        return id.toString();
+        return "GuideCategory[" + id + "]";
     }
 }

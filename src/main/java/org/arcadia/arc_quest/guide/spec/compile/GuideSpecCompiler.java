@@ -8,13 +8,34 @@ import org.arcadia.arc_quest.guide.api.GuideText;
 import org.arcadia.arc_quest.guide.builder.GuideBuilder;
 import org.arcadia.arc_quest.guide.builder.GuideMediaBuilder;
 import org.arcadia.arc_quest.guide.builder.GuidePageBuilder;
-import org.arcadia.arc_quest.guide.spec.*;
+import org.arcadia.arc_quest.guide.spec.GuideMediaSpec;
+import org.arcadia.arc_quest.guide.spec.GuidePageSpec;
+import org.arcadia.arc_quest.guide.spec.GuideSpec;
+import org.arcadia.arc_quest.guide.spec.GuideTextSpec;
 import org.arcadia.arc_quest.guide.spec.validate.GuideCategorySpecValidator;
 import org.arcadia.arc_quest.guide.spec.validate.GuideSpecValidator;
+
+import java.util.Map;
 
 public final class GuideSpecCompiler {
 
     private final GuideSpecValidator validator = new GuideSpecValidator();
+    private final Map<ResourceLocation, GuideCategory> categories;
+
+    public GuideSpecCompiler() {
+        this(Map.ofEntries(
+                Map.entry(GuideCategory.BASICS.getId(), GuideCategory.BASICS),
+                Map.entry(GuideCategory.QUEST.getId(), GuideCategory.QUEST),
+                Map.entry(GuideCategory.DIALOGUE.getId(), GuideCategory.DIALOGUE),
+                Map.entry(GuideCategory.TRADE.getId(), GuideCategory.TRADE),
+                Map.entry(GuideCategory.PONDER.getId(), GuideCategory.PONDER),
+                Map.entry(GuideCategory.ADVANCED.getId(), GuideCategory.ADVANCED)
+        ));
+    }
+
+    public GuideSpecCompiler(Map<ResourceLocation, GuideCategory> categories) {
+        this.categories = categories;
+    }
 
     public GuideDefinition compile(GuideSpec spec) {
         var report = validator.validate(spec);
@@ -73,9 +94,12 @@ public final class GuideSpecCompiler {
     }
 
     private GuideCategory resolveCategory(String rawCategory) {
-        GuideCategory category = GuideCategorySpecValidator.resolveBuiltinCategory(rawCategory);
+        ResourceLocation categoryId = GuideCategorySpecValidator.parseCategoryId(rawCategory);
+        if (categoryId == null) {
+            throw new GuideCompileException("Invalid guide category: '" + rawCategory + "'");
+        }
+        GuideCategory category = categories.get(categoryId);
         if (category == null) {
-            ResourceLocation categoryId = GuideCategorySpecValidator.parseCategoryId(rawCategory);
             throw new GuideCompileException("Unknown guide category: '" + categoryId + "'");
         }
         return category;

@@ -1,8 +1,6 @@
 package org.arcadia.arc_quest.guide.spec.validate;
 
 import net.minecraft.resources.ResourceLocation;
-import org.arcadia.arc_quest.guide.api.GuideCategory;
-import org.arcadia.arc_quest.guide.registry.GuideCategoryRegistry;
 import org.arcadia.arc_quest.guide.spec.GuideCategorySpec;
 import org.arcadia.arc_quest.guide.spec.GuideTextSpec;
 
@@ -27,15 +25,6 @@ public final class GuideCategorySpecValidator {
             report.add(GuideValidationIssue.Severity.ERROR, "iconTexture", "Invalid iconTexture id: " + spec.iconTexture);
         }
         return report;
-    }
-
-    public static GuideCategory resolveRegisteredCategory(String rawCategory) {
-        ResourceLocation id = parseCategoryId(rawCategory);
-        return id == null ? null : GuideCategoryRegistry.get(id);
-    }
-
-    public static GuideCategory resolveBuiltinCategory(String rawCategory) {
-        return resolveRegisteredCategory(rawCategory);
     }
 
     public static ResourceLocation parseCategoryId(String rawCategory) {

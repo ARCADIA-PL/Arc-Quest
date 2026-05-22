@@ -17,20 +17,9 @@ public final class ArcQuestGuideContent {
     }
 
     public static void registerAll() {
-        LOGGER.info("[ArcQuest] Registering guide categories and guides...");
-        registerDefaultCategories();
+        LOGGER.info("[ArcQuest] Registering builtin guides...");
         registerBuiltinGuides();
-        LOGGER.info("[ArcQuest] Total registered guide categories: {}", GuideCategoryRegistry.size());
         LOGGER.info("[ArcQuest] Total registered guides: {}", GuideRegistry.size());
-    }
-
-    private static void registerDefaultCategories() {
-        ArcQuestAPI.registerGuideCategory(GuideCategories.BASICS);
-        ArcQuestAPI.registerGuideCategory(GuideCategories.QUEST);
-        ArcQuestAPI.registerGuideCategory(GuideCategories.DIALOGUE);
-        ArcQuestAPI.registerGuideCategory(GuideCategories.TRADE);
-        ArcQuestAPI.registerGuideCategory(GuideCategories.PONDER);
-        ArcQuestAPI.registerGuideCategory(GuideCategories.ADVANCED);
     }
 
     private static void registerBuiltinGuides() {

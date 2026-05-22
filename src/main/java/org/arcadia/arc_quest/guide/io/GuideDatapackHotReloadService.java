@@ -4,7 +4,6 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
-import org.arcadia.arc_quest.guide.registry.GuideCategoryRegistry;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.guide.spec.GuideCategorySpec;
 import org.arcadia.arc_quest.guide.spec.GuideSpec;
@@ -27,11 +26,9 @@ public final class GuideDatapackHotReloadService {
     private final GuideCategorySpecValidator categoryValidator = new GuideCategorySpecValidator();
     private final GuideSpecValidator guideValidator = new GuideSpecValidator();
     private final GuideCategorySpecCompiler categoryCompiler = new GuideCategorySpecCompiler();
-    private final GuideSpecCompiler guideCompiler = new GuideSpecCompiler();
 
     public GuideReloadResult reload() {
         var report = resourceLoader.loadFromDatapack();
-        GuideCategoryRegistry.clearDatapack();
         GuideRegistry.clearDatapack();
 
         int categoryLoaded = 0;
@@ -39,6 +36,7 @@ public final class GuideDatapackHotReloadService {
         int categoryFailed = report.failedCount();
         int guideFailed = 0;
 
+        Map<ResourceLocation, GuideCategory> categories = new LinkedHashMap<>();
         Map<ResourceLocation, GuideCategorySpec> categorySpecs = new LinkedHashMap<>();
         for (Map.Entry<Path, GuideCategorySpec> entry : report.categories().entrySet()) {
             GuideCategorySpec spec = entry.getValue();
@@ -55,19 +53,20 @@ public final class GuideDatapackHotReloadService {
             var validation = categoryValidator.validate(entry.getValue());
             if (validation.hasErrors()) {
                 categoryFailed++;
-                logIssues("GuideCategoryRegistry", validation.getIssues());
+                logIssues("GuideCategory", validation.getIssues());
                 continue;
             }
             try {
                 GuideCategory category = categoryCompiler.compile(entry.getValue());
-                GuideCategoryRegistry.registerDatapack(category, entry.getKey().toString());
+                categories.put(entry.getKey(), category);
                 categoryLoaded++;
             } catch (Exception ex) {
                 categoryFailed++;
-                LOGGER.error("[GuideCategoryRegistry] Compile/register failed for {}", entry.getKey(), ex);
+                LOGGER.error("[GuideCategory] Compile failed for {}", entry.getKey(), ex);
             }
         }
 
+        GuideSpecCompiler guideCompiler = new GuideSpecCompiler(categories);
         Map<ResourceLocation, GuideSpec> guideSpecs = new LinkedHashMap<>();
         for (Map.Entry<Path, GuideSpec> entry : report.guides().entrySet()) {
             GuideSpec spec = entry.getValue();
@@ -97,15 +96,15 @@ public final class GuideDatapackHotReloadService {
             }
         }
 
-        LOGGER.info("[GuideRegistry] Datapack reload complete. categoryScanned={}, categoryLoaded={}, categoryFailed={}, guideScanned={}, guideLoaded={}, guideFailed={}",
+        LOGGER.info("[GuideRegistry] Datapack reload complete. categorySpecs={}, compiledCategories={}, failedCategories={}, guideSpecs={}, loadedGuides={}, failedGuides={}",
                 report.categoryScannedFiles(), categoryLoaded, categoryFailed,
                 report.guideScannedFiles(), guideLoaded, guideFailed);
 
         return new GuideReloadResult(
                 report.categoryScannedFiles(), categoryLoaded, categoryFailed,
                 report.guideScannedFiles(), guideLoaded, guideFailed,
-                GuideCategoryRegistry.datapackSize(), GuideRegistry.datapackSize(),
-                GuideCategoryRegistry.size(), GuideRegistry.size()
+                categories.size(), GuideRegistry.datapackSize(),
+                GuideRegistry.getAllCategories().size(), GuideRegistry.size()
         );
     }
 

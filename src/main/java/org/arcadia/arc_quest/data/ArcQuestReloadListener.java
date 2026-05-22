@@ -51,13 +51,13 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<R
         var gachaResult = GACHA_HOT_RELOAD_SERVICE.reload();
         var guideResult = GUIDE_HOT_RELOAD_SERVICE.reload();
         var result = HOT_RELOAD_SERVICE.reload(manager);
-        LOGGER.info("[ArcQuest] ArcQuest-only datapack reload complete. dialogueScanned={}, dialogueDiscovered={}, dialogueFailed={}, dialogueActiveDatapack={}, npcScanned={}, npcDiscovered={}, npcFailed={}, npcActiveBindings={}, tradeScanned={}, tradeLoaded={}, tradeFailed={}, gachaScanned={}, gachaLoaded={}, gachaFailed={}, guideCategoryScanned={}, guideCategoryLoaded={}, guideCategoryFailed={}, guideScanned={}, guideLoaded={}, guideFailed={}, scanned={}, loaded={}, failed={}, activeDatapack={}, merged={}, source={}",
+        LOGGER.info("[ArcQuest] ArcQuest-only datapack reload complete. dialogueScanned={}, dialogueDiscovered={}, dialogueFailed={}, dialogueActiveDatapack={}, npcScanned={}, npcDiscovered={}, npcFailed={}, npcActiveBindings={}, tradeScanned={}, tradeLoaded={}, tradeFailed={}, gachaScanned={}, gachaLoaded={}, gachaFailed={}, guideCategorySpecs={}, guideCompiledCategories={}, guideFailedCategories={}, guideSpecs={}, guideLoadedGuides={}, guideFailedGuides={}, scanned={}, loaded={}, failed={}, activeDatapack={}, merged={}, source={}",
                 dialogueResult.scanned(), dialogueResult.discovered(), dialogueResult.failed(), dialogueResult.activeDatapack(),
                 npcResult.scanned(), npcResult.discovered(), npcResult.failed(), npcResult.activeBindings(),
                 tradeResult.scanned(), tradeResult.loaded(), tradeResult.failed(),
                 gachaResult.scanned(), gachaResult.loaded(), gachaResult.failed(),
-                guideResult.categoryScanned(), guideResult.categoryLoaded(), guideResult.categoryFailed(),
-                guideResult.guideScanned(), guideResult.guideLoaded(), guideResult.guideFailed(),
+                guideResult.categorySpecFiles(), guideResult.compiledCategories(), guideResult.failedCategories(),
+                guideResult.guideSpecFiles(), guideResult.loadedGuides(), guideResult.failedGuides(),
                 result.scanned(), result.loaded(), result.failed(), result.activeDatapack(), result.merged(), result.usedFallback() ? "fallback" : "@datapack");
         ArcQuestWebSocketServer.rebuildAndBroadcast();
         return result.loaded();

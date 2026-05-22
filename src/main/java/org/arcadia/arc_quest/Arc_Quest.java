@@ -25,7 +25,6 @@ import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
-import org.arcadia.arc_quest.guide.registry.GuideCategoryRegistry;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.ArcQuestContent;
@@ -64,7 +63,6 @@ public class Arc_Quest {
 
             QuestRegistry.freeze();
             TradeRegistry.freeze();
-            GuideCategoryRegistry.freeze();
             GuideRegistry.freeze();
         });
     }

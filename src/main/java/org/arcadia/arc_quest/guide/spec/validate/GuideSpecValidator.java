@@ -49,10 +49,6 @@ public final class GuideSpecValidator {
         ResourceLocation id = GuideCategorySpecValidator.parseCategoryId(rawCategory);
         if (id == null) {
             report.add(GuideValidationIssue.Severity.ERROR, path, "Invalid guide category id: " + rawCategory);
-            return;
-        }
-        if (GuideCategorySpecValidator.resolveBuiltinCategory(rawCategory) == null) {
-            report.add(GuideValidationIssue.Severity.ERROR, path, "Unknown guide category: " + id);
         }
     }
 

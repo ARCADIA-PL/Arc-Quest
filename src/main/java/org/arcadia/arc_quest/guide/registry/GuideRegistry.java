@@ -124,6 +124,16 @@ public final class GuideRegistry {
                 .collect(Collectors.toList());
     }
 
+    public static synchronized List<GuideCategory> getAllCategories() {
+        Map<ResourceLocation, GuideCategory> categories = new LinkedHashMap<>();
+        for (GuideDefinition guide : MERGED_REGISTRY.values()) {
+            categories.putIfAbsent(guide.getCategory().getId(), guide.getCategory());
+        }
+        return categories.values().stream()
+                .sorted(Comparator.comparingInt(GuideCategory::getSortOrder).thenComparing(category -> category.getId().toString()))
+                .collect(Collectors.toList());
+    }
+
     public static synchronized int size() {
         return MERGED_REGISTRY.size();
     }

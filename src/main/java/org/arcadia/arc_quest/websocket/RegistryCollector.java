@@ -9,7 +9,6 @@ import net.minecraftforge.registries.IForgeRegistry;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
-import org.arcadia.arc_quest.guide.registry.GuideCategoryRegistry;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestCategory;
@@ -81,10 +80,9 @@ public final class RegistryCollector {
 
     private static JsonArray collectGuideCategories() {
         JsonArray arr = new JsonArray();
-        for (GuideCategory category : GuideCategoryRegistry.allSorted()) {
+        for (GuideCategory category : GuideRegistry.getAllCategories()) {
             JsonObject obj = new JsonObject();
             obj.addProperty("id", category.getId().toString());
-            obj.addProperty("displayKey", category.getTranslationKey());
             obj.addProperty("label", category.getDisplayName().getString());
             obj.addProperty("themeColor", category.getThemeColor());
             obj.addProperty("sortOrder", category.getSortOrder());

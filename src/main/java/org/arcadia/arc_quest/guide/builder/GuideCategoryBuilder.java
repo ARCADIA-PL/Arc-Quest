@@ -5,7 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideText;
-import org.arcadia.arc_quest.guide.registry.GuideCategoryRegistry;
+import org.arcadia.arc_quest.guide.api.GuideTextContext;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -13,8 +13,7 @@ import java.util.Objects;
 public final class GuideCategoryBuilder {
 
     private final ResourceLocation id;
-    private GuideText displayName;
-    private String translationKey = "";
+    private Component displayName;
     private int themeColor = 0x4FC3F7;
     private int sortOrder = 0;
     @Nullable
@@ -30,29 +29,28 @@ public final class GuideCategoryBuilder {
     }
 
     public static GuideCategoryBuilder create(String id) {
-        return id.contains(":") ? new GuideCategoryBuilder(ResourceLocation.parse(id)) : new GuideCategoryBuilder(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, id));
+        return id.contains(":")
+                ? new GuideCategoryBuilder(ResourceLocation.parse(id))
+                : new GuideCategoryBuilder(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, id));
     }
 
     public GuideCategoryBuilder displayName(String literal) {
-        this.displayName = GuideText.literal(literal);
-        this.translationKey = "";
+        this.displayName = Component.literal(literal);
         return this;
     }
 
     public GuideCategoryBuilder displayName(Component component) {
-        this.displayName = GuideText.component(component);
-        this.translationKey = "";
+        this.displayName = Objects.requireNonNull(component, "component");
         return this;
     }
 
     public GuideCategoryBuilder displayName(GuideText text) {
-        this.displayName = Objects.requireNonNull(text, "text");
+        this.displayName = Objects.requireNonNull(text, "text").resolve(null, GuideTextContext.empty());
         return this;
     }
 
     public GuideCategoryBuilder translatableDisplayName(String key) {
-        this.displayName = GuideText.translatable(key);
-        this.translationKey = key == null ? "" : key;
+        this.displayName = Component.translatable(key);
         return this;
     }
 
@@ -77,13 +75,7 @@ public final class GuideCategoryBuilder {
     }
 
     public GuideCategory build() {
-        GuideText finalDisplayName = displayName == null ? GuideText.literal(id.getPath()) : displayName;
-        return new GuideCategory(id, finalDisplayName, translationKey, themeColor, sortOrder, builtin, iconTexture);
-    }
-
-    public GuideCategory buildAndRegister() {
-        GuideCategory category = build();
-        GuideCategoryRegistry.register(category);
-        return category;
+        Component finalDisplayName = displayName == null ? Component.literal(id.getPath()) : displayName;
+        return new GuideCategory(id, finalDisplayName, themeColor, sortOrder, builtin, iconTexture);
     }
 }

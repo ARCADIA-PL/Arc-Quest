@@ -17,7 +17,7 @@ public final class GuideCategorySpecCompiler {
         }
 
         GuideCategoryBuilder builder = GuideCategoryBuilder.create(parseId(spec.id))
-                .displayName(GuideSpecCompiler.compileText(spec.displayName))
+                .displayName(GuideSpecCompiler.compileText(spec.displayName).resolve(null, null))
                 .themeColor(spec.themeColor)
                 .sortOrder(spec.sortOrder);
 
