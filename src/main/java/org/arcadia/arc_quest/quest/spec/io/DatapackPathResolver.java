@@ -62,5 +62,7 @@ public final class DatapackPathResolver {
         Files.createDirectories(resolveDialoguesDir());
         Files.createDirectories(resolveNpcDir());
         Files.createDirectories(resolveTradesDir());
+        Files.createDirectories(resolveDatapackRoot().resolve("guide_categories").normalize());
+        Files.createDirectories(resolveDatapackRoot().resolve("guides").normalize());
     }
 }
