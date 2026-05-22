@@ -3,14 +3,17 @@ package org.arcadia.arc_quest.client.hud.guide;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
+import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
+import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
+import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
@@ -18,195 +21,28 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 public final class GuideScreen extends Screen {
-
-    private final GuideDefinition guide;
-    private final ResourceLocation guideId;
-    private final boolean markSeenOnClose;
-    private final EmbeddedPonderScenePanel ponderPanel = new EmbeddedPonderScenePanel();
-    private int currentPage;
-
-    public GuideScreen(GuideDefinition guide, int initialPage, boolean markSeenOnClose) {
-        super(guide.getTitle());
-        this.guide = guide;
-        this.guideId = guide.getId();
-        this.markSeenOnClose = markSeenOnClose;
-        this.currentPage = clampPage(initialPage);
-    }
-
-    public static boolean tryOpen(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
-        GuideDefinition guide = GuideRegistry.get(guideId);
-        Minecraft mc = Minecraft.getInstance();
-        if (guide == null || mc == null) {
-            return false;
-        }
-        mc.setScreen(new GuideScreen(guide, initialPage, markSeenOnClose));
-        return true;
-    }
-
-    @Override
-    protected void init() {
-        super.init();
-        refreshMediaBinding();
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-        ponderPanel.tick();
-    }
-
-    @Override
-    public void removed() {
-        ponderPanel.onScreenClosed();
-        super.removed();
-    }
-
-    @Override
-    public void onClose() {
-        ponderPanel.onScreenClosed();
-        if (markSeenOnClose && minecraft != null && minecraft.player != null && !ClientGuideCache.INSTANCE.isSeen(guideId)) {
-            ClientGuideCache.INSTANCE.applyLocalSeen(guideId);
-            ArcQuestNetwork.sendMarkGuideSeen(new org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket(guideId.toString()));
-        }
-        super.onClose();
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (minecraft != null && minecraft.options.keyInventory.matches(keyCode, scanCode)) {
-            onClose();
-            return true;
-        }
-        if (keyCode == 263) {
-            previousPage();
-            return true;
-        }
-        if (keyCode == 262) {
-            nextPage();
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (delta > 0) {
-            previousPage();
-            return true;
-        }
-        if (delta < 0) {
-            nextPage();
-            return true;
-        }
-        return super.mouseScrolled(mouseX, mouseY, delta);
-    }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int panelWidth = Math.min(420, width - 40);
-        int panelHeight = Math.min(230, height - 40);
-        int left = (width - panelWidth) / 2;
-        int top = (height - panelHeight) / 2;
-        int right = left + panelWidth;
-
-        int textLeft = left + 14;
-        int mediaTop = top + 54;
-        int mediaHeight = 48;
-        int mediaWidth = right - 14 - textLeft;
-        if (currentMedia().getType() == GuideMediaType.PONDER
-                && ponderPanel.mouseClicked(mouseX, mouseY, button, textLeft, mediaTop, mediaWidth, mediaHeight)) {
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    @Override
-    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
-        super.render(graphics, mouseX, mouseY, partialTick);
-
-        int panelWidth = Math.min(420, width - 40);
-        int panelHeight = Math.min(230, height - 40);
-        int left = (width - panelWidth) / 2;
-        int top = (height - panelHeight) / 2;
-        int right = left + panelWidth;
-        int bottom = top + panelHeight;
-
-        graphics.fill(left, top, right, bottom, 0xE0101016);
-        graphics.fill(left, top, right, top + 1, 0xFF4FC3F7);
-        graphics.fill(left, bottom - 1, right, bottom, 0xFF4FC3F7);
-        graphics.fill(left, top, left + 1, bottom, 0xFF4FC3F7);
-        graphics.fill(right - 1, top, right, bottom, 0xFF4FC3F7);
-
-        GuidePageDefinition page = guide.getPage(currentPage);
-        GuideMediaDefinition media = page.getMedia();
-
-        int textLeft = left + 14;
-        int y = top + 12;
-        graphics.drawString(font, guide.getTitle(), textLeft, y, 0xFFFFFF, false);
-        y += 14;
-        graphics.drawString(font, Component.literal(guide.getCategory().getId().toString()), textLeft, y, 0x7FD8F6, false);
-        y += 12;
-        graphics.drawString(font, Component.literal("Page " + (currentPage + 1) + " / " + guide.getPageCount()), textLeft, y, 0xB8C7D9, false);
-        y += 16;
-
-        int mediaTop = y;
-        int mediaHeight = 48;
-        int mediaWidth = right - 14 - textLeft;
-        if (media.getType() == GuideMediaType.PONDER) {
-            ponderPanel.render(graphics, textLeft, mediaTop, mediaWidth, mediaHeight, mouseX, mouseY, partialTick);
-        } else {
-            graphics.fill(textLeft, mediaTop, right - 14, mediaTop + mediaHeight, 0x501A2430);
-            graphics.drawString(font, describeMedia(media), textLeft + 8, mediaTop + 18, 0xA8C9E8, false);
-        }
-        y = mediaTop + mediaHeight + 10;
-
-        List<FormattedCharSequence> wrapped = font.split(page.getDescriptionText().resolve(null, null), panelWidth - 28);
-        int maxLines = Math.max(1, (bottom - y - 24) / 10);
-        for (int i = 0; i < Math.min(maxLines, wrapped.size()); i++) {
-            graphics.drawString(font, wrapped.get(i), textLeft, y + i * 10, 0xE6EDF7);
-        }
-
-        graphics.drawString(font, Component.literal("←/→ or mouse wheel to switch pages"), textLeft, bottom - 20, 0x8CA0B3, false);
-        graphics.drawString(font, Component.literal("ESC to close"), right - 88, bottom - 20, 0x8CA0B3, false);
-    }
-
-    private Component describeMedia(GuideMediaDefinition media) {
-        return switch (media.getType()) {
-            case NONE -> Component.literal("No media");
-            case IMAGE -> Component.literal("Image: " + media.getTexture());
-            case PONDER -> Component.literal("Ponder: " + media.getSceneId());
-        };
-    }
-
-    private void nextPage() {
-        if (currentPage < guide.getPageCount() - 1) {
-            currentPage++;
-            refreshMediaBinding();
-        }
-    }
-
-    private void previousPage() {
-        if (currentPage > 0) {
-            currentPage--;
-            refreshMediaBinding();
-        }
-    }
-
-    private void refreshMediaBinding() {
-        GuideMediaDefinition media = currentMedia();
-        if (media.getType() == GuideMediaType.PONDER && media.getSceneId() != null) {
-            ponderPanel.bind(media.getSceneId(), guide.getCategory().getThemeColor(), media.isAutoplay());
-        } else {
-            ponderPanel.unbind();
-        }
-    }
-
-    private GuideMediaDefinition currentMedia() {
-        return guide.getPage(currentPage).getMedia();
-    }
-
-    private int clampPage(int page) {
-        return Math.max(0, Math.min(page, guide.getPageCount() - 1));
-    }
+    static final int TEXT=0xF2F7FF,SUB=0x9FB4C7,MUTED=0x7E90A0,DIS=0x5E6C79,BG=0xD0101016,SEC=0x50162028;
+    private final ResourceLocation guideId; private final boolean markSeenOnClose; private final EmbeddedPonderScenePanel ponderPanel=new EmbeddedPonderScenePanel();
+    private GuideDefinition guide; private int currentPage,themeColor; private float openAnim=0f; private double descScroll=0d,descTargetScroll=0d;
+    public GuideScreen(GuideDefinition guide,int initialPage,boolean markSeenOnClose){super(guide.getTitle());this.guideId=guide.getId();this.markSeenOnClose=markSeenOnClose;this.guide=guide;this.currentPage=clampPage(initialPage);this.themeColor=guide.getCategory().getThemeColor();}
+    public static boolean tryOpen(ResourceLocation guideId,int initialPage,boolean markSeenOnClose){GuideDefinition guide=GuideRegistry.get(guideId);Minecraft mc=Minecraft.getInstance();if(guide==null||mc==null)return false;mc.setScreen(new GuideScreen(guide,initialPage,markSeenOnClose));return true;}
+    @Override protected void init(){super.init();GuideDefinition resolved=GuideRegistry.get(guideId);if(resolved==null){if(minecraft!=null)minecraft.setScreen(null);return;}guide=resolved;currentPage=clampPage(currentPage);themeColor=guide.getCategory().getThemeColor();openAnim=0f;resetDesc();refreshMediaBinding();}
+    @Override public void tick(){super.tick();openAnim=HudAnimUtil.advanceByDuration(openAnim,.24f,1f/20f);descScroll+=(descTargetScroll-descScroll)*.35d;ponderPanel.tick();}
+    @Override public void removed(){ponderPanel.onScreenClosed();super.removed();}
+    @Override public boolean isPauseScreen(){return true;}
+    @Override public void onClose(){ponderPanel.onScreenClosed();if(markSeenOnClose&&minecraft!=null&&minecraft.player!=null&&!ClientGuideCache.INSTANCE.isSeen(guideId)){ClientGuideCache.INSTANCE.applyLocalSeen(guideId);ArcQuestNetwork.sendMarkGuideSeen(new C2SMarkGuideSeenPacket(guideId.toString()));}super.onClose();}
+    @Override public boolean keyPressed(int keyCode,int scanCode,int modifiers){if(keyCode==256||minecraft!=null&&minecraft.options.keyInventory.matches(keyCode,scanCode)){onClose();return true;}if(keyCode==263||keyCode==65){previousPage();return true;}if(keyCode==262||keyCode==68){nextPage();return true;}return super.keyPressed(keyCode,scanCode,modifiers);}
+    @Override public boolean mouseScrolled(double mouseX,double mouseY,double delta){GuideScreenLayout.Layout l=layout();int contentH=lines(l).size()*GuideScreenLayout.TEXT_LINE_H;if(hit(mouseX,mouseY,l.tx()-2,l.dy()-2,l.dw()+6,l.dh()+4)&&contentH>l.dh()){descTargetScroll=clamp(descTargetScroll-delta*18d,0d,contentH-l.dh()+4d);return true;}if(delta>0){previousPage();return true;}if(delta<0){nextPage();return true;}return super.mouseScrolled(mouseX,mouseY,delta);}
+    @Override public boolean mouseClicked(double mouseX,double mouseY,int button){if(button!=0)return super.mouseClicked(mouseX,mouseY,button);GuideScreenLayout.Layout l=layout();if(hit(mouseX,mouseY,l.px(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H)&&canPrev()){previousPage();return true;}if(hit(mouseX,mouseY,l.nx(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H)&&canNext()){nextPage();return true;}if(hit(mouseX,mouseY,l.cx(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H)){onClose();return true;}if(currentMedia().getType()==GuideMediaType.PONDER&&ponderPanel.mouseClicked(mouseX,mouseY,button,l.mx(),l.my(),l.mw(),l.mh()))return true;return super.mouseClicked(mouseX,mouseY,button);}
+    @Override public void render(@NotNull GuiGraphics g,int mouseX,int mouseY,float partialTick){renderBackground(g);super.render(g,mouseX,mouseY,partialTick);if(guide==null)return;float reveal=HudAnimUtil.easeOutCubic(openAnim);int alpha=(int)(255*reveal);GuideScreenLayout.Layout l=layout().offset((int)((1f-reveal)*34f));shell(g,l,alpha);header(g,l,alpha);GuideMediaRenderer.drawMedia(this,g,l,currentMedia(),ponderPanel,mouseX,mouseY,partialTick,alpha,SEC,MUTED,SUB,themeColor);desc(g,l,alpha);footer(g,l,mouseX,mouseY,alpha);} 
+    private void shell(GuiGraphics g,GuideScreenLayout.Layout l,int a){g.fill(l.x(),l.y(),l.x()+l.tw(),l.b(),withAlpha(BG,a));g.fill(l.x()+l.bw(),l.b()-18,l.x()+l.tw(),l.b(),withAlpha(0x101016,(int)(a*.55f)));g.fill(l.x(),l.y(),l.x()+l.bw(),l.b(),withAlpha(BG,a));g.fill(l.x(),l.y(),l.x()+1,l.b(),withAlpha(0xB8E7FF,a));g.fill(l.x()+l.tw()-1,l.y(),l.x()+l.tw(),l.y()+l.hh()+l.mh()+10,withAlpha(0xB8E7FF,(int)(a*.5f)));g.fill(l.x()+l.bw()-1,l.y()+l.hh()+l.mh()+12,l.x()+l.bw(),l.b(),withAlpha(0xB8E7FF,(int)(a*.5f)));g.fill(l.x(),l.y(),l.x()+l.tw(),l.y()+1,withAlpha(themeColor,a));g.fill(l.x(),l.b()-1,l.x()+l.bw(),l.b(),withAlpha(themeColor,(int)(a*.75f)));HudRenderUtil.drawCyberneticEdge(g,l.x(),l.y(),l.h(),themeColor,a);g.fill(l.x()+10,l.y()+l.hh()-1,l.x()+l.tw()-12,l.y()+l.hh(),withAlpha(themeColor,(int)(a*.5f)));g.fill(l.x()+10,l.dy()-6,l.x()+l.bw()-12,l.dy()-5,withAlpha(themeColor,(int)(a*.38f)));}
+    private void header(GuiGraphics g,GuideScreenLayout.Layout l,int a){GuideNavigationControls.drawScaledText(this,g,l.tx(),l.y()+10,.72f,guideId.toString(),withAlpha(MUTED,a));GuideNavigationControls.drawScaledText(this,g,l.tx(),l.y()+20,1.18f,guide.getTitle().getString(),withAlpha(TEXT,a));g.drawString(font,guide.getCategory().getId().toString(),l.tx(),l.y()+38,withAlpha(themeColor,a),false);g.drawString(font,"PAGE "+(currentPage+1)+" / "+guide.getPageCount(),l.x()+l.tw()-86,l.y()+38,withAlpha(SUB,a),false);int bx=l.tx(),by=l.y()+l.hh()+3,bw=Math.max(40,l.bw()-90);g.fill(bx,by,bx+bw,by+2,withAlpha(0x23303A,a));g.fill(bx,by,bx+(int)(bw*((currentPage+1)/(float)guide.getPageCount())),by+2,withAlpha(themeColor,a));}
+    private void desc(GuiGraphics g,GuideScreenLayout.Layout l,int a){List<FormattedCharSequence> wrapped=lines(l);int contentH=wrapped.size()*GuideScreenLayout.TEXT_LINE_H,max=Math.max(0,contentH-l.dh());descTargetScroll=clamp(descTargetScroll,0d,max);descScroll=clamp(descScroll,0d,max);g.enableScissor(l.tx()-2,l.dy()-2,l.tx()+l.dw()+2,l.dy()+l.dh()+2);int sy=l.dy()-(int)Math.round(descScroll);for(int i=0;i<wrapped.size();i++)g.drawString(font,wrapped.get(i),l.tx(),sy+i*GuideScreenLayout.TEXT_LINE_H,withAlpha(TEXT,a));g.disableScissor();if(max>0){int rx=l.tx()+l.dw()+4;g.fill(rx,l.dy(),rx+2,l.dy()+l.dh(),withAlpha(0x22303A,a));int th=Math.max(12,(int)(l.dh()*(l.dh()/(float)contentH))),travel=Math.max(0,l.dh()-th),ty=l.dy()+(int)(travel*(descScroll/(double)max));g.fill(rx,ty,rx+2,ty+th,withAlpha(themeColor,a));GuideNavigationControls.drawScaledText(this,g,rx-42,l.dy()+l.dh()+4,.62f,"SCROLL",withAlpha(MUTED,(int)(a*.85f)));}}
+    private void footer(GuiGraphics g,GuideScreenLayout.Layout l,int mouseX,int mouseY,int a){GuideNavigationControls.drawScaledText(this,g,l.tx(),l.b()-36,.72f,"A / ← PREV    D / → NEXT    ESC CLOSE",withAlpha(MUTED,a));GuideNavigationControls.drawButton(this,g,l.px(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H,"PREV",canPrev(),hit(mouseX,mouseY,l.px(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H),themeColor,TEXT,DIS,a);GuideNavigationControls.drawButton(this,g,l.nx(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H,"NEXT",canNext(),hit(mouseX,mouseY,l.nx(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H),themeColor,TEXT,DIS,a);GuideNavigationControls.drawButton(this,g,l.cx(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H,"CLOSE",true,hit(mouseX,mouseY,l.cx(),l.cy(),GuideScreenLayout.CONTROL_W,GuideScreenLayout.CONTROL_H),themeColor,TEXT,DIS,a);} 
+    private void nextPage(){if(canNext()){currentPage++;resetDesc();refreshMediaBinding();}} private void previousPage(){if(canPrev()){currentPage--;resetDesc();refreshMediaBinding();}}
+    private boolean canPrev(){return currentPage>0;} private boolean canNext(){return guide!=null&&currentPage<guide.getPageCount()-1;} private void resetDesc(){descScroll=0d;descTargetScroll=0d;}
+    private void refreshMediaBinding(){GuideMediaDefinition m=currentMedia();if(m.getType()==GuideMediaType.PONDER&&m.getSceneId()!=null)ponderPanel.bind(m.getSceneId(),themeColor,m.isAutoplay());else ponderPanel.unbind();}
+    private GuidePageDefinition page(){return guide.getPage(currentPage);} private GuideMediaDefinition currentMedia(){return page().getMedia();} private List<FormattedCharSequence> lines(GuideScreenLayout.Layout l){return font.split(page().getDescriptionText().resolve(null,null),l.dw());}
+    private int clampPage(int p){return Math.max(0,Math.min(p,guide.getPageCount()-1));} private boolean hit(double mx,double my,int x,int y,int w,int h){return mx>=x&&mx<=x+w&&my>=y&&my<=y+h;} private static double clamp(double v,double min,double max){return Math.max(min,Math.min(max,v));} private static int withAlpha(int c,int a){return ((a&0xFF)<<24)|(c&0x00FFFFFF);} 
+    private GuideScreenLayout.Layout layout(){return GuideScreenLayout.compute(width,height);} 
 }
