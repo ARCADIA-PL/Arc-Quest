@@ -15,13 +15,20 @@ import org.arcadia.arc_quest.quest.data.NbtVersionManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
+import org.arcadia.arc_quest.questplayer.state.ArcQuestGuideState;
+import org.arcadia.arc_quest.questplayer.state.ArcQuestProfileState;
+import org.arcadia.arc_quest.questplayer.state.ArcQuestQuestState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public final class ArcQuestPlayer {
@@ -34,6 +41,7 @@ public final class ArcQuestPlayer {
         QUEST_STATE(1 << 1),
         DIALOGUE(1 << 2),
         TRADE_GACHA(1 << 3),
+        GUIDE_STATE(1 << 4),
         FULL(0xFF);
 
         private final int mask;
@@ -102,7 +110,8 @@ public final class ArcQuestPlayer {
                 if (!hasNewStruct) {
                     String legacyPhaseId = q.getString("PhaseId");
                     int[] legacyProgress = q.contains("Progress", Tag.TAG_INT_ARRAY)
-                            ? q.getIntArray("Progress") : new int[0];
+                            ? q.getIntArray("Progress")
+                            : new int[0];
 
                     ListTag activePhases = new ListTag();
                     ListTag completedPhases = new ListTag();
@@ -123,7 +132,8 @@ public final class ArcQuestPlayer {
 
                 ListTag activePhases = q.getList("ActivePhases", Tag.TAG_STRING);
                 CompoundTag phaseProgress = q.contains("PhaseProgress", Tag.TAG_COMPOUND)
-                        ? q.getCompound("PhaseProgress") : new CompoundTag();
+                        ? q.getCompound("PhaseProgress")
+                        : new CompoundTag();
 
                 for (int j = 0; j < activePhases.size(); j++) {
                     String pid = activePhases.getString(j);
@@ -144,19 +154,23 @@ public final class ArcQuestPlayer {
     private final Map<String, QuestRuntimeData> activeQuests = new Object2ObjectOpenHashMap<>();
     private final Set<String> completedQuests = new ObjectOpenHashSet<>();
     private final Set<String> failedQuests = new ObjectOpenHashSet<>();
-    private final Set<String> flags = new ObjectOpenHashSet<>();
     private final Map<String, Integer> variables = new Object2IntOpenHashMap<>();
     private final Map<String, QuestMarkerData> markers = new LinkedHashMap<>();
+
+    private final ArcQuestQuestState questState;
+    private final ArcQuestProfileState profileState;
+    private final ArcQuestGuideState guideState;
     private final DialogueProgressStore dialogueProgress = new DialogueProgressStore();
     private final TradeDataStore tradeData = new TradeDataStore();
     private final GachaDataStore gachaData = new GachaDataStore();
 
-    private boolean flagsVarsDirty;
-    private boolean questStateDirty;
     private boolean fullDirty;
 
     public ArcQuestPlayer(UUID ownerUuid) {
         this.ownerUuid = Objects.requireNonNull(ownerUuid);
+        this.questState = new ArcQuestQuestState(activeQuests, completedQuests, failedQuests, markers);
+        this.profileState = new ArcQuestProfileState(variables);
+        this.guideState = new ArcQuestGuideState();
     }
 
     public UUID getOwnerUuid() {
@@ -171,10 +185,6 @@ public final class ArcQuestPlayer {
         }
     }
 
-    // ════════════════════════════════════════
-    //  Data store accessors
-    // ════════════════════════════════════════
-
     public DialogueProgressStore getDialogueProgress() {
         return dialogueProgress;
     }
@@ -187,9 +197,37 @@ public final class ArcQuestPlayer {
         return tradeData;
     }
 
-    // ════════════════════════════════════════
-    //  Gacha API
-    // ════════════════════════════════════════
+    public synchronized boolean isGuideUnlocked(ResourceLocation guideId) {
+        return guideState.isUnlocked(guideId);
+    }
+
+    public synchronized boolean isGuideSeen(ResourceLocation guideId) {
+        return guideState.isSeen(guideId);
+    }
+
+    public synchronized boolean unlockGuide(ResourceLocation guideId) {
+        return guideState.unlock(guideId);
+    }
+
+    public synchronized boolean revokeGuideUnlock(ResourceLocation guideId) {
+        return guideState.revokeUnlock(guideId);
+    }
+
+    public synchronized boolean markGuideSeen(ResourceLocation guideId) {
+        return guideState.markSeen(guideId);
+    }
+
+    public synchronized boolean clearGuideSeen(ResourceLocation guideId) {
+        return guideState.clearSeen(guideId);
+    }
+
+    public synchronized Set<ResourceLocation> getUnlockedGuides() {
+        return guideState.getUnlockedGuides();
+    }
+
+    public synchronized Set<ResourceLocation> getSeenGuides() {
+        return guideState.getSeenGuides();
+    }
 
     public synchronized int getGachaDrawCount(String shopId) {
         return gachaData.getDrawCount(shopId);
@@ -211,10 +249,17 @@ public final class ArcQuestPlayer {
         gachaData.setPityCounter(shopId, count);
     }
 
-    public synchronized void addGachaDrawHistory(String shopId, String itemId, String rarityName,
-                                                  int actualCount, boolean pityTriggered, long drawTime) {
-        gachaData.addDrawHistory(shopId,
-                new GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime));
+    public synchronized void addGachaDrawHistory(
+            String shopId,
+            String itemId,
+            String rarityName,
+            int actualCount,
+            boolean pityTriggered,
+            long drawTime) {
+        gachaData.addDrawHistory(
+                shopId,
+                new GachaDrawRecord(itemId, rarityName, actualCount, pityTriggered, drawTime)
+        );
     }
 
     public synchronized List<GachaDrawRecord> getGachaDrawHistory(String shopId) {
@@ -225,68 +270,50 @@ public final class ArcQuestPlayer {
         gachaData.clearDrawHistory(shopId);
     }
 
-    // ════════════════════════════════════════
-    //  Quest management
-    // ════════════════════════════════════════
-
     public synchronized void addActiveQuest(QuestRuntimeData data) {
-        Objects.requireNonNull(data);
-        String questId = data.getQuestId();
-        activeQuests.put(questId, data);
-        failedQuests.remove(questId);
-        questStateDirty = true;
+        questState.addActiveQuest(data);
     }
 
     public synchronized void removeActiveQuest(String questId) {
-        activeQuests.remove(questId);
-        questStateDirty = true;
+        questState.removeActiveQuest(questId);
     }
 
     public synchronized void markCompleted(String questId) {
-        activeQuests.remove(questId);
-        completedQuests.add(questId);
-        failedQuests.remove(questId);
-        questStateDirty = true;
+        questState.markCompleted(questId);
     }
 
     public synchronized void markFailed(String questId) {
-        activeQuests.remove(questId);
-        failedQuests.add(questId);
-        questStateDirty = true;
+        questState.markFailed(questId);
     }
 
     @Nullable
     public QuestRuntimeData getActiveQuest(String questId) {
-        return activeQuests.get(questId);
+        return questState.getActiveQuest(questId);
     }
 
     public Map<String, QuestRuntimeData> getAllActiveQuests() {
-        return Collections.unmodifiableMap(activeQuests);
+        return questState.getAllActiveQuests();
     }
 
     public Set<String> getCompletedQuests() {
-        return Collections.unmodifiableSet(completedQuests);
+        return questState.getCompletedQuests();
     }
 
     public Set<String> getFailedQuests() {
-        return Collections.unmodifiableSet(failedQuests);
+        return questState.getFailedQuests();
     }
 
     public boolean isQuestActive(String questId) {
-        return activeQuests.containsKey(questId);
+        return questState.isQuestActive(questId);
     }
 
     public boolean isQuestCompleted(String questId) {
-        return completedQuests.contains(questId);
+        return questState.isQuestCompleted(questId);
     }
 
     public boolean isQuestFailed(String questId) {
-        return failedQuests.contains(questId);
+        return questState.isQuestFailed(questId);
     }
-
-    // ════════════════════════════════════════
-    //  Collection quest (from IQuestCapability default methods)
-    // ════════════════════════════════════════
 
     public boolean isCollectionQuestActive(String questId) {
         QuestRuntimeData data = getActiveQuest(questId);
@@ -309,125 +336,66 @@ public final class ArcQuestPlayer {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    // ════════════════════════════════════════
-    //  Flag / Variable
-    // ════════════════════════════════════════
-
     public void setFlag(String flag) {
-        flags.add(flag);
-        flagsVarsDirty = true;
-        invalidateAllEnterConditionCaches();
+        if (profileState.setFlag(flag)) {
+            invalidateAllEnterConditionCaches();
+        }
     }
 
     public boolean hasFlag(String flag) {
-        return flags.contains(flag);
+        return profileState.hasFlag(flag);
     }
 
     public void removeFlag(String flag) {
-        flags.remove(flag);
-        flagsVarsDirty = true;
-        invalidateAllEnterConditionCaches();
+        if (profileState.removeFlag(flag)) {
+            invalidateAllEnterConditionCaches();
+        }
     }
 
     public Set<String> getAllFlags() {
-        return Collections.unmodifiableSet(flags);
+        return profileState.getAllFlags();
     }
 
     public int getVariable(String key) {
-        return variables.getOrDefault(key, 0);
+        return profileState.getVariable(key);
     }
 
     public void setVariable(String key, int value) {
-        ((Object2IntOpenHashMap<String>) variables).put(key, value);
-        flagsVarsDirty = true;
+        profileState.setVariable(key, value);
         invalidateAllEnterConditionCaches();
     }
 
     public void incrementVariable(String key, int amount) {
-        ((Object2IntOpenHashMap<String>) variables).addTo(key, amount);
-        flagsVarsDirty = true;
+        profileState.incrementVariable(key, amount);
         invalidateAllEnterConditionCaches();
     }
 
     public Map<String, Integer> getAllVariables() {
-        return Collections.unmodifiableMap(variables);
+        return profileState.getAllVariables();
     }
 
-    // ════════════════════════════════════════
-    //  Markers
-    // ════════════════════════════════════════
-
     public synchronized void upsertMarker(QuestMarkerData marker) {
-        Objects.requireNonNull(marker);
-        markers.put(marker.getId(), marker);
-        questStateDirty = true;
+        questState.upsertMarker(marker);
     }
 
     public synchronized void removeMarker(String markerId) {
-        markers.remove(markerId);
-        questStateDirty = true;
+        questState.removeMarker(markerId);
     }
 
     public synchronized void clearMarkers() {
-        markers.clear();
-        questStateDirty = true;
+        questState.clearMarkers();
     }
 
     public synchronized Map<String, QuestMarkerData> getAllMarkers() {
-        return Collections.unmodifiableMap(markers);
+        return questState.getAllMarkers();
     }
-
-    // ════════════════════════════════════════
-    //  Serialization
-    // ════════════════════════════════════════
 
     public CompoundTag serializeNBT() {
         CompoundTag root = new CompoundTag();
 
-        ListTag activeList = new ListTag();
-        for (QuestRuntimeData data : activeQuests.values()) activeList.add(data.serializeNBT());
-        root.put("ActiveQuests", activeList);
-
-        ListTag completedList = new ListTag();
-        for (String id : completedQuests) completedList.add(StringTag.valueOf(id));
-        root.put("CompletedQuests", completedList);
-
-        ListTag failedList = new ListTag();
-        for (String id : failedQuests) failedList.add(StringTag.valueOf(id));
-        root.put("FailedQuests", failedList);
-
-        ListTag flagList = new ListTag();
-        for (String f : flags) flagList.add(StringTag.valueOf(f));
-        root.put("Flags", flagList);
-
-        CompoundTag varsTag = new CompoundTag();
-        for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
-        root.put("Variables", varsTag);
-
-        ListTag markerList = new ListTag();
-        for (QuestMarkerData m : markers.values()) {
-            CompoundTag t = new CompoundTag();
-            t.putString("id", m.getId());
-            t.putDouble("x", m.getWorldX());
-            t.putDouble("y", m.getWorldY());
-            t.putDouble("z", m.getWorldZ());
-            t.putString("label", m.getLabel());
-            t.putString("dimension", m.getDimension());
-            t.putString("questId", m.getQuestId());
-            t.putString("phaseId", m.getPhaseId());
-            t.putInt("objectiveIndex", m.getObjectiveIndex());
-            t.putInt("color", m.getColorARGB());
-            t.putString("type", m.getType().name());
-            t.putString("state", m.getState().name());
-            t.putBoolean("showDistance", m.isShowDistance());
-            t.putBoolean("allowOffscreenArrow", m.isAllowOffscreenArrow());
-            t.putInt("followEntityId", m.getFollowEntityId());
-            t.putString("followEntityUuid", m.getFollowEntityUuid());
-            t.putString("followEntityGuid", m.getFollowEntityGuid());
-            t.putString("attachPoint", m.getAttachPoint().name());
-            markerList.add(t);
-        }
-        root.put("Markers", markerList);
+        questState.writeToRoot(root);
+        profileState.writeToRoot(root);
+        guideState.writeToRoot(root);
 
         root.put("DialogueProgress", dialogueProgress.serialize());
         root.put("TradeData", tradeData.serialize());
@@ -440,61 +408,9 @@ public final class ArcQuestPlayer {
     public void deserializeNBT(CompoundTag root) {
         VERSION_MANAGER.migrate(root);
 
-        activeQuests.clear();
-        completedQuests.clear();
-        failedQuests.clear();
-        flags.clear();
-        variables.clear();
-        markers.clear();
-
-        ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
-        for (int i = 0; i < activeList.size(); i++) {
-            QuestRuntimeData data = QuestRuntimeData.deserializeNBT(activeList.getCompound(i));
-            activeQuests.put(data.getQuestId(), data);
-        }
-
-        ListTag completedList = root.getList("CompletedQuests", Tag.TAG_STRING);
-        for (int i = 0; i < completedList.size(); i++) completedQuests.add(completedList.getString(i));
-
-        ListTag failedList = root.getList("FailedQuests", Tag.TAG_STRING);
-        for (int i = 0; i < failedList.size(); i++) failedQuests.add(failedList.getString(i));
-
-        ListTag flagList = root.getList("Flags", Tag.TAG_STRING);
-        for (int i = 0; i < flagList.size(); i++) flags.add(flagList.getString(i));
-
-        CompoundTag varsTag = root.getCompound("Variables");
-        for (String key : varsTag.getAllKeys()) variables.put(key, varsTag.getInt(key));
-
-        ListTag markerList = root.getList("Markers", Tag.TAG_COMPOUND);
-        for (int i = 0; i < markerList.size(); i++) {
-            CompoundTag t = markerList.getCompound(i);
-            String id = t.getString("id");
-            if (id == null || id.isEmpty()) continue;
-
-            QuestMarkerType type;
-            QuestMarkerState state;
-            try { type = QuestMarkerType.valueOf(t.getString("type")); }
-            catch (Exception e) { type = QuestMarkerType.CUSTOM; }
-            try { state = QuestMarkerState.valueOf(t.getString("state")); }
-            catch (Exception e) { state = QuestMarkerState.ACTIVE; }
-
-            QuestMarkerData marker = new QuestMarkerData.Builder(
-                    id, t.getDouble("x"), t.getDouble("y"), t.getDouble("z"), t.getString("label"))
-                    .dimension(t.contains("dimension", Tag.TAG_STRING) ? t.getString("dimension") : "minecraft:overworld")
-                    .bindQuest(t.contains("questId", Tag.TAG_STRING) ? t.getString("questId") : "")
-                    .bindPhase(t.contains("phaseId", Tag.TAG_STRING) ? t.getString("phaseId") : "")
-                    .bindObjective(t.contains("objectiveIndex", Tag.TAG_INT) ? t.getInt("objectiveIndex") : -1)
-                    .followEntity(
-                            t.contains("followEntityId", Tag.TAG_INT) ? t.getInt("followEntityId") : -1,
-                            t.contains("followEntityUuid", Tag.TAG_STRING) ? t.getString("followEntityUuid") : "",
-                            t.contains("followEntityGuid", Tag.TAG_STRING) ? t.getString("followEntityGuid") : "",
-                            parseAttachPoint(t.contains("attachPoint", Tag.TAG_STRING) ? t.getString("attachPoint") : "HEAD"))
-                    .type(type).state(state).color(t.getInt("color"))
-                    .showDistance(!t.contains("showDistance", Tag.TAG_BYTE) || t.getBoolean("showDistance"))
-                    .allowOffscreenArrow(!t.contains("allowOffscreenArrow", Tag.TAG_BYTE) || t.getBoolean("allowOffscreenArrow"))
-                    .build();
-            markers.put(id, marker);
-        }
+        questState.readFromRoot(root, ArcQuestPlayer::parseAttachPoint);
+        profileState.readFromRoot(root);
+        guideState.readFromRoot(root);
 
         if (root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
             dialogueProgress.deserialize(root.getCompound("DialogueProgress"));
@@ -517,56 +433,47 @@ public final class ArcQuestPlayer {
 
     public CompoundTag serializeFlagsVars() {
         CompoundTag tag = new CompoundTag();
-        ListTag flagList = new ListTag();
-        for (String f : flags) flagList.add(StringTag.valueOf(f));
-        tag.put("Flags", flagList);
-        CompoundTag varsTag = new CompoundTag();
-        for (var e : variables.entrySet()) varsTag.putInt(e.getKey(), e.getValue());
-        tag.put("Variables", varsTag);
+        profileState.writeToRoot(tag);
         return tag;
     }
-
-    // ════════════════════════════════════════
-    //  Dirty tracking
-    // ════════════════════════════════════════
 
     public DirtyKind getDirtyKind() {
         if (fullDirty) return DirtyKind.FULL;
 
         DirtyKind kind = DirtyKind.NONE;
-        if (flagsVarsDirty) kind = kind.or(DirtyKind.FLAGS_VARS);
-        if (questStateDirty) kind = kind.or(DirtyKind.QUEST_STATE);
+        if (profileState.isDirty()) kind = kind.or(DirtyKind.FLAGS_VARS);
+        if (questState.isDirty()) kind = kind.or(DirtyKind.QUEST_STATE);
+        if (guideState.isDirty()) kind = kind.or(DirtyKind.GUIDE_STATE);
         if (dialogueProgress.isDirty()) kind = kind.or(DirtyKind.DIALOGUE);
         if (tradeData.isDirty()) kind = kind.or(DirtyKind.TRADE_GACHA);
         if (gachaData.isDirty()) kind = kind.or(DirtyKind.TRADE_GACHA);
-        for (QuestRuntimeData data : activeQuests.values()) {
-            if (data.isDirty()) { kind = kind.or(DirtyKind.QUEST_STATE); break; }
-        }
         return kind;
     }
 
     public boolean isDirty() {
-        return fullDirty || flagsVarsDirty || questStateDirty
-                || dialogueProgress.isDirty() || tradeData.isDirty() || gachaData.isDirty()
-                || activeQuests.values().stream().anyMatch(QuestRuntimeData::isDirty);
+        return fullDirty
+                || profileState.isDirty()
+                || questState.isDirty()
+                || guideState.isDirty()
+                || dialogueProgress.isDirty()
+                || tradeData.isDirty()
+                || gachaData.isDirty();
     }
 
     public void clearDirty(DirtyKind kind) {
         if (kind == DirtyKind.FULL) {
             fullDirty = false;
-            flagsVarsDirty = false;
-            questStateDirty = false;
+            profileState.clearDirty();
+            questState.clearDirty();
+            guideState.clearDirty();
             dialogueProgress.clearDirty();
             tradeData.clearDirty();
             gachaData.clearDirty();
-            for (QuestRuntimeData data : activeQuests.values()) data.clearDirty();
             return;
         }
-        if (kind == DirtyKind.FLAGS_VARS) flagsVarsDirty = false;
-        if (kind == DirtyKind.QUEST_STATE) {
-            questStateDirty = false;
-            for (QuestRuntimeData data : activeQuests.values()) data.clearDirty();
-        }
+        if (kind == DirtyKind.FLAGS_VARS) profileState.clearDirty();
+        if (kind == DirtyKind.QUEST_STATE) questState.clearDirty();
+        if (kind == DirtyKind.GUIDE_STATE) guideState.clearDirty();
         if (kind == DirtyKind.DIALOGUE) dialogueProgress.clearDirty();
         if (kind == DirtyKind.TRADE_GACHA) {
             tradeData.clearDirty();
@@ -576,12 +483,12 @@ public final class ArcQuestPlayer {
 
     public void clearDirty() {
         fullDirty = false;
-        flagsVarsDirty = false;
-        questStateDirty = false;
+        profileState.clearDirty();
+        questState.clearDirty();
+        guideState.clearDirty();
         dialogueProgress.clearDirty();
         tradeData.clearDirty();
         gachaData.clearDirty();
-        for (QuestRuntimeData data : activeQuests.values()) data.clearDirty();
     }
 
     public void invalidateAllEnterConditionCaches() {
@@ -590,24 +497,17 @@ public final class ArcQuestPlayer {
         }
     }
 
-    // ════════════════════════════════════════
-    //  Copy / Clear
-    // ════════════════════════════════════════
-
     public void copyFrom(ArcQuestPlayer other) {
         deserializeNBT(other.serializeNBT());
     }
 
     public void clearAllData() {
-        activeQuests.clear();
-        completedQuests.clear();
-        failedQuests.clear();
-        flags.clear();
-        variables.clear();
+        questState.clear();
+        profileState.clear();
+        guideState.clear();
         dialogueProgress.clear();
         tradeData.clear();
         gachaData.clear();
-        markers.clear();
         fullDirty = true;
     }
 }

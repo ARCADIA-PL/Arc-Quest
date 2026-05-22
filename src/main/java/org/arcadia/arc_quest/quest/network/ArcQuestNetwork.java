@@ -10,6 +10,8 @@ import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
+import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
+import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -261,6 +263,24 @@ public final class ArcQuestNetwork {
                 S2CSyncMarkersPacket::encode,
                 S2CSyncMarkersPacket::decode,
                 S2CSyncMarkersPacket::handle
+        );
+
+        // --- S2C: Sync guide state ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CSyncGuideStatePacket.class,
+                S2CSyncGuideStatePacket::encode,
+                S2CSyncGuideStatePacket::decode,
+                S2CSyncGuideStatePacket::handle
+        );
+
+        // --- C2S: Mark guide seen ---
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SMarkGuideSeenPacket.class,
+                C2SMarkGuideSeenPacket::encode,
+                C2SMarkGuideSeenPacket::decode,
+                C2SMarkGuideSeenPacket::handle
         );
     }
 
