@@ -24,6 +24,9 @@ import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
+import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
+import org.arcadia.arc_quest.guide.registry.GuideCategoryRegistry;
+import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.ArcQuestContent;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -52,6 +55,7 @@ public class Arc_Quest {
             ArcQuestContent.registerAll();
             EpicDialogueTrees.registerAll();
             TradeContent.registerAll();
+            ArcQuestGuideContent.registerAll();
 
             DemoGachaShops.registerDemoShops();
             LOGGER.info("[ArcQuest] Demo gacha shops registered.");
@@ -60,6 +64,8 @@ public class Arc_Quest {
 
             QuestRegistry.freeze();
             TradeRegistry.freeze();
+            GuideCategoryRegistry.freeze();
+            GuideRegistry.freeze();
         });
     }
 

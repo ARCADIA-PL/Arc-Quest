@@ -11,6 +11,7 @@ import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.io.DialogueDatapackHotReloadService;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
+import org.arcadia.arc_quest.guide.io.GuideDatapackHotReloadService;
 import org.arcadia.arc_quest.npc.io.NpcDatapackHotReloadService;
 import org.arcadia.arc_quest.websocket.ArcQuestWebSocketServer;
 import org.arcadia.arc_quest.trade.gacha.io.GachaDatapackHotReloadService;
@@ -31,6 +32,7 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<R
     private static final NpcDatapackHotReloadService NPC_HOT_RELOAD_SERVICE = new NpcDatapackHotReloadService();
     private static final TradeDatapackHotReloadService TRADE_HOT_RELOAD_SERVICE = new TradeDatapackHotReloadService();
     private static final GachaDatapackHotReloadService GACHA_HOT_RELOAD_SERVICE = new GachaDatapackHotReloadService();
+    private static final GuideDatapackHotReloadService GUIDE_HOT_RELOAD_SERVICE = new GuideDatapackHotReloadService();
     private static final ArcQuestDatapackHotReloadService HOT_RELOAD_SERVICE = new ArcQuestDatapackHotReloadService();
 
     @SubscribeEvent
@@ -47,12 +49,15 @@ public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<R
         var npcResult = NPC_HOT_RELOAD_SERVICE.reload();
         var tradeResult = TRADE_HOT_RELOAD_SERVICE.reload();
         var gachaResult = GACHA_HOT_RELOAD_SERVICE.reload();
+        var guideResult = GUIDE_HOT_RELOAD_SERVICE.reload();
         var result = HOT_RELOAD_SERVICE.reload(manager);
-        LOGGER.info("[ArcQuest] ArcQuest-only datapack reload complete. dialogueScanned={}, dialogueDiscovered={}, dialogueFailed={}, dialogueActiveDatapack={}, npcScanned={}, npcDiscovered={}, npcFailed={}, npcActiveBindings={}, tradeScanned={}, tradeLoaded={}, tradeFailed={}, gachaScanned={}, gachaLoaded={}, gachaFailed={}, scanned={}, loaded={}, failed={}, activeDatapack={}, merged={}, source={}",
+        LOGGER.info("[ArcQuest] ArcQuest-only datapack reload complete. dialogueScanned={}, dialogueDiscovered={}, dialogueFailed={}, dialogueActiveDatapack={}, npcScanned={}, npcDiscovered={}, npcFailed={}, npcActiveBindings={}, tradeScanned={}, tradeLoaded={}, tradeFailed={}, gachaScanned={}, gachaLoaded={}, gachaFailed={}, guideCategoryScanned={}, guideCategoryLoaded={}, guideCategoryFailed={}, guideScanned={}, guideLoaded={}, guideFailed={}, scanned={}, loaded={}, failed={}, activeDatapack={}, merged={}, source={}",
                 dialogueResult.scanned(), dialogueResult.discovered(), dialogueResult.failed(), dialogueResult.activeDatapack(),
                 npcResult.scanned(), npcResult.discovered(), npcResult.failed(), npcResult.activeBindings(),
                 tradeResult.scanned(), tradeResult.loaded(), tradeResult.failed(),
                 gachaResult.scanned(), gachaResult.loaded(), gachaResult.failed(),
+                guideResult.categoryScanned(), guideResult.categoryLoaded(), guideResult.categoryFailed(),
+                guideResult.guideScanned(), guideResult.guideLoaded(), guideResult.guideFailed(),
                 result.scanned(), result.loaded(), result.failed(), result.activeDatapack(), result.merged(), result.usedFallback() ? "fallback" : "@datapack");
         ArcQuestWebSocketServer.rebuildAndBroadcast();
         return result.loaded();

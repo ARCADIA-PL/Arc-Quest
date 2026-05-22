@@ -6,6 +6,11 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.IForgeRegistry;
+import org.arcadia.arc_quest.guide.api.GuideCategory;
+import org.arcadia.arc_quest.guide.api.GuideDefinition;
+import org.arcadia.arc_quest.guide.api.GuideMediaType;
+import org.arcadia.arc_quest.guide.registry.GuideCategoryRegistry;
+import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.api.QuestCategory;
 import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
@@ -40,6 +45,9 @@ public final class RegistryCollector {
         root.add("questIds", questIds);
         root.add("objectiveTypes", collectObjectiveTypes());
         root.add("questCategories", collectQuestCategories());
+        root.add("guideCategories", collectGuideCategories());
+        root.add("guides", collectGuides());
+        root.add("guideMediaTypes", collectGuideMediaTypes());
 
         return root;
     }
@@ -67,6 +75,48 @@ public final class RegistryCollector {
             obj.addProperty("themeColor", category.getThemeColor());
             obj.addProperty("builtin", category.isBuiltin());
             arr.add(obj);
+        }
+        return arr;
+    }
+
+    private static JsonArray collectGuideCategories() {
+        JsonArray arr = new JsonArray();
+        for (GuideCategory category : GuideCategoryRegistry.allSorted()) {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("id", category.getId().toString());
+            obj.addProperty("displayKey", category.getTranslationKey());
+            obj.addProperty("label", category.getDisplayName().getString());
+            obj.addProperty("themeColor", category.getThemeColor());
+            obj.addProperty("sortOrder", category.getSortOrder());
+            obj.addProperty("builtin", category.isBuiltin());
+            if (category.getIconTexture() != null) {
+                obj.addProperty("iconTexture", category.getIconTexture().toString());
+            }
+            arr.add(obj);
+        }
+        return arr;
+    }
+
+    private static JsonArray collectGuides() {
+        JsonArray arr = new JsonArray();
+        for (GuideDefinition guide : GuideRegistry.getAll()) {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("id", guide.getId().toString());
+            obj.addProperty("category", guide.getCategory().getId().toString());
+            obj.addProperty("title", guide.getTitle().getString());
+            obj.addProperty("sortOrder", guide.getSortOrder());
+            obj.addProperty("hidden", guide.isHidden());
+            obj.addProperty("repeatablePopup", guide.isRepeatablePopup());
+            obj.addProperty("pageCount", guide.getPageCount());
+            arr.add(obj);
+        }
+        return arr;
+    }
+
+    private static JsonArray collectGuideMediaTypes() {
+        JsonArray arr = new JsonArray();
+        for (GuideMediaType type : GuideMediaType.values()) {
+            arr.add(type.name().toLowerCase());
         }
         return arr;
     }
