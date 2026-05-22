@@ -3,7 +3,6 @@ package org.arcadia.arc_quest.guide.network;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
-import org.arcadia.arc_quest.client.hud.guide.ClientGuideCache;
 
 import java.util.ArrayList;
 import java.util.List;
