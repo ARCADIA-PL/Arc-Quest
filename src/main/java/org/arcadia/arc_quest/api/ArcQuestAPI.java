@@ -5,6 +5,10 @@ import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
+import org.arcadia.arc_quest.guide.api.GuideCategory;
+import org.arcadia.arc_quest.guide.api.GuideDefinition;
+import org.arcadia.arc_quest.guide.registry.GuideCategoryRegistry;
+import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
@@ -94,6 +98,51 @@ public final class ArcQuestAPI {
      */
     public static boolean hasQuest(ResourceLocation id) {
         return QuestRegistry.get(id) != null;
+    }
+
+    // ════════════════════════════════════════
+    //  Guide 系统 API
+    // ════════════════════════════════════════
+
+    /**
+     * 注册 Guide 定义。
+     *
+     * @param definition Guide 定义
+     * @throws IllegalStateException 如果注册表已冻结或 ID 重复
+     */
+    public static void registerGuide(GuideDefinition definition) {
+        GuideRegistry.register(definition);
+    }
+
+    /**
+     * 注册 Guide 分类。
+     *
+     * @param category Guide 分类
+     * @throws IllegalStateException 如果注册表已冻结或 ID 重复
+     */
+    public static void registerGuideCategory(GuideCategory category) {
+        GuideCategoryRegistry.register(category);
+    }
+
+    /**
+     * 获取 Guide 定义。
+     *
+     * @param id Guide ID
+     * @return Guide 定义，不存在则返回 null
+     */
+    @Nullable
+    public static GuideDefinition getGuide(ResourceLocation id) {
+        return GuideRegistry.get(id);
+    }
+
+    /**
+     * 检查 Guide 是否存在。
+     *
+     * @param id Guide ID
+     * @return true 如果 Guide 存在
+     */
+    public static boolean hasGuide(ResourceLocation id) {
+        return GuideRegistry.get(id) != null;
     }
 
     // ════════════════════════════════════════
