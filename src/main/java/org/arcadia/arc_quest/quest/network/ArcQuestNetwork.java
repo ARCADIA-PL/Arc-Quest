@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
+import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
@@ -265,6 +266,15 @@ public final class ArcQuestNetwork {
                 S2CSyncMarkersPacket::handle
         );
 
+        // --- S2C: Open guide ---
+        CHANNEL.registerMessage(
+                packetId++,
+                S2COpenGuidePacket.class,
+                S2COpenGuidePacket::encode,
+                S2COpenGuidePacket::decode,
+                S2COpenGuidePacket::handle
+        );
+
         // --- S2C: Sync guide state ---
         CHANNEL.registerMessage(
                 packetId++,
@@ -395,6 +405,10 @@ public final class ArcQuestNetwork {
         CHANNEL.sendToServer(packet);
     }
 
+    public static void sendMarkGuideSeen(C2SMarkGuideSeenPacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
+
     // ═══════════════════════════════════════════════════════
     // 服务端定向发送（S2C）
     // ═══════════════════════════════════════════════════════
@@ -412,6 +426,10 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendGachaStatePacket(ServerPlayer player, S2CGachaStatePacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendGuideOpenPacket(ServerPlayer player, S2COpenGuidePacket packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 

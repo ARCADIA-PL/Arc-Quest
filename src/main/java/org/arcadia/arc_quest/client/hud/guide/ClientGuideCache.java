@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -19,6 +20,7 @@ public final class ClientGuideCache {
 
     private final LinkedHashSet<ResourceLocation> unlockedGuides = new LinkedHashSet<>();
     private final LinkedHashSet<ResourceLocation> seenGuides = new LinkedHashSet<>();
+    private PendingOpenRequest pendingOpenRequest;
 
     private ClientGuideCache() {
     }
@@ -34,9 +36,30 @@ public final class ClientGuideCache {
         }
     }
 
+    public void applyLocalSeen(ResourceLocation guideId) {
+        if (guideId != null) {
+            seenGuides.add(guideId);
+        }
+    }
+
+    public void requestOpen(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
+        pendingOpenRequest = new PendingOpenRequest(guideId, Math.max(0, initialPage), markSeenOnClose);
+    }
+
+    public Optional<PendingOpenRequest> consumePendingOpenRequest() {
+        PendingOpenRequest request = pendingOpenRequest;
+        pendingOpenRequest = null;
+        return Optional.ofNullable(request);
+    }
+
+    public Optional<PendingOpenRequest> getPendingOpenRequest() {
+        return Optional.ofNullable(pendingOpenRequest);
+    }
+
     public void clear() {
         unlockedGuides.clear();
         seenGuides.clear();
+        pendingOpenRequest = null;
     }
 
     public boolean isUnlocked(ResourceLocation guideId) {
@@ -53,5 +76,8 @@ public final class ClientGuideCache {
 
     public Set<ResourceLocation> getSeenGuides() {
         return Collections.unmodifiableSet(seenGuides);
+    }
+
+    public record PendingOpenRequest(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
     }
 }

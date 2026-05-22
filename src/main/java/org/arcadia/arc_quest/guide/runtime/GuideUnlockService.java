@@ -21,4 +21,22 @@ public final class GuideUnlockService {
         }
         return changed;
     }
+
+    public boolean ensureUnlockedIfEligible(ServerPlayer player, ResourceLocation guideId) {
+        GuideDefinition guide = GuideRegistry.get(guideId);
+        if (player == null || guide == null) {
+            return false;
+        }
+        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+        if (data.isGuideUnlocked(guideId)) {
+            return true;
+        }
+        boolean eligible = guide.canUnlock(
+                player,
+                data.getCompletedQuestLocations(),
+                data.getAllFlags(),
+                data.getAllVariables()
+        );
+        return eligible && unlock(player, guideId);
+    }
 }

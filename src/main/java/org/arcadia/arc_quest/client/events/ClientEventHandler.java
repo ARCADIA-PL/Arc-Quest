@@ -10,6 +10,8 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.client.hud.guide.ClientGuideCache;
+import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
@@ -38,6 +40,10 @@ public final class ClientEventHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
+        ClientGuideCache.INSTANCE.consumePendingOpenRequest().ifPresent(request ->
+                GuideScreen.tryOpen(request.guideId(), request.initialPage(), request.markSeenOnClose())
+        );
+
         if (KEY_OPEN_JOURNAL.consumeClick()) {
             if (mc.screen == null) {
                 mc.setScreen(new QuestJournalScreen());
@@ -52,6 +58,7 @@ public final class ClientEventHandler {
 
     @SubscribeEvent
     public static void onLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        ClientGuideCache.INSTANCE.clear();
         ClientQuestCache.INSTANCE.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
