@@ -13,11 +13,10 @@ final class GuideCategoryTabs {
         this.screen = screen;
     }
 
-    void render(GuiGraphics g, int mouseX, int mouseY, int alpha) {
+    void render(GuiGraphics g, int mouseX, int mouseY, int alpha, float dt) {
         int[] r = screen.tabsRect();
         int ty = r[1] + 4;
         int th = GuideConstants.TAB_HEIGHT;
-        float effectiveAlpha = alpha / 255f;
 
         g.fill(r[0] + 4, ty, r[0] + r[2] - 4, ty + th, HudAnimUtil.withAlpha(0x000000, (int) (alpha * 0.4F)));
         g.fill(r[0] + 4, ty + th - 1, r[0] + r[2] - 4, ty + th, HudAnimUtil.withAlpha(screen.getThemeColor(), (int) (alpha * 0.3F)));
@@ -54,16 +53,11 @@ final class GuideCategoryTabs {
             x += tw + 4;
         }
 
-        int selectedX = 0;
-        int selectedW = 54;
+        int selectedX = 0, selectedW = 54;
         x = startX;
         for (GuideCategory cat : cats) {
             int tw = Math.max(54, Minecraft.getInstance().font.width(cat.getDisplayName()) + 16);
-            if (cat.getId().equals(screen.getSelectedCategoryId())) {
-                selectedX = x;
-                selectedW = tw;
-                break;
-            }
+            if (cat.getId().equals(screen.getSelectedCategoryId())) { selectedX = x; selectedW = tw; break; }
             x += tw + 4;
         }
 

@@ -15,20 +15,22 @@ final class GuideContentPanel {
         this.screen = screen;
     }
 
-    void render(GuiGraphics g, int mouseX, int mouseY, float partialTick, int alpha) {
+    void render(GuiGraphics g, int mouseX, int mouseY, int alpha, float dt, int slideOffset) {
         int[] r = screen.contentRect();
-        int effectiveAlpha = alpha;
+        int cx = r[0] + slideOffset;
+        int[] rAdj = new int[]{cx, r[1], r[2], r[3]};
 
-        HudAnimUtil.drawFrame(g, r[0], r[1], r[2], r[3],
-                HudAnimUtil.withAlpha(0x000000, (int) (0x55 * alpha / 255f * 255)),
-                HudAnimUtil.withAlpha(screen.getThemeColor(), (int) (0x55 * alpha / 255f * 255)));
-        HudRenderUtil.drawCyberneticEdge(g, r[0], r[1], r[3], screen.getThemeColor(), alpha);
+        HudAnimUtil.drawFrame(g, rAdj[0], rAdj[1], rAdj[2], rAdj[3],
+                HudAnimUtil.withAlpha(0x000000, (int) (0x44 * alpha)),
+                HudAnimUtil.withAlpha(screen.getThemeColor(), (int) (0x55 * alpha)));
+        HudRenderUtil.drawCyberneticEdge(g, rAdj[0], rAdj[1], rAdj[3], screen.getThemeColor(), alpha);
 
         if (!screen.hasAnyVisibleGuide()) {
             int textW = Minecraft.getInstance().font.width("NO GUIDES UNLOCKED");
-            int cx = r[0] + (r[2] - textW) / 2;
-            int cy = r[1] + r[3] / 2 - 4;
-            g.drawString(Minecraft.getInstance().font, "NO GUIDES UNLOCKED", cx, cy, HudAnimUtil.withAlpha(0x888888, alpha), false);
+            int centerX = rAdj[0] + (rAdj[2] - textW) / 2;
+            int centerY = rAdj[1] + rAdj[3] / 2 - 4;
+            g.drawString(Minecraft.getInstance().font, "NO GUIDES UNLOCKED", centerX, centerY,
+                    HudAnimUtil.withAlpha(0x888888, alpha), false);
             return;
         }
 
@@ -36,23 +38,23 @@ final class GuideContentPanel {
         if (view == null) return;
 
         String titleStr = view.guide().getTitle().getString();
-        int titleMaxW = r[2] - 32;
+        int titleMaxW = rAdj[2] - 32;
         String displayTitle = Minecraft.getInstance().font.plainSubstrByWidth(titleStr, titleMaxW);
-        int titleX = r[0] + 16;
-        int titleY = r[1] + 16;
+        int titleX = rAdj[0] + 16;
+        int titleY = rAdj[1] + 16;
         g.drawString(Minecraft.getInstance().font, displayTitle, titleX, titleY, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
 
         String pageStr = "PAGE " + (view.pageIndex() + 1) + " / " + view.guide().getPageCount();
-        g.drawString(Minecraft.getInstance().font, pageStr, r[0] + r[2] - 16 - Minecraft.getInstance().font.width(pageStr), titleY,
+        g.drawString(Minecraft.getInstance().font, pageStr, rAdj[0] + rAdj[2] - 16 - Minecraft.getInstance().font.width(pageStr), titleY,
                 HudAnimUtil.withAlpha(0x888888, alpha), false);
 
         int btnW = 58, btnH = 18;
-        int btnX = r[0] + r[2] - 16 - btnW - 8 - btnW;
+        int btnX = rAdj[0] + rAdj[2] - 16 - btnW - 8 - btnW;
         int btnY = titleY + 18;
         prevBtnHoverAnim = HudAnimUtil.step(prevBtnHoverAnim,
-                hit(mouseX, mouseY, btnX, btnY, btnW, btnH) && view.pageIndex() > 0 ? 1f : 0f, 8f, 1f / 60f);
+                hit(mouseX, mouseY, btnX, btnY, btnW, btnH) && view.pageIndex() > 0 ? 1f : 0f, 8f, dt);
         nextBtnHoverAnim = HudAnimUtil.step(nextBtnHoverAnim,
-                hit(mouseX, mouseY, btnX + btnW + 8, btnY, btnW, btnH) && view.pageIndex() < view.guide().getPageCount() - 1 ? 1f : 0f, 8f, 1f / 60f);
+                hit(mouseX, mouseY, btnX + btnW + 8, btnY, btnW, btnH) && view.pageIndex() < view.guide().getPageCount() - 1 ? 1f : 0f, 8f, dt);
         GuideNavigationControls.drawCyberButton(g, Minecraft.getInstance().font, btnX, btnY, btnW, btnH,
                 view.pageIndex() > 0 ? "< PREV" : "", screen.getThemeColor(), alpha / 255f,
                 HudAnimUtil.easeOutCubic(prevBtnHoverAnim), hit(mouseX, mouseY, btnX, btnY, btnW, btnH) && view.pageIndex() > 0);
@@ -60,14 +62,14 @@ final class GuideContentPanel {
                 view.pageIndex() < view.guide().getPageCount() - 1 ? "NEXT >" : "", screen.getThemeColor(), alpha / 255f,
                 HudAnimUtil.easeOutCubic(nextBtnHoverAnim), hit(mouseX, mouseY, btnX + btnW + 8, btnY, btnW, btnH) && view.pageIndex() < view.guide().getPageCount() - 1);
 
-        int mediaX = r[0] + 16;
-        int mediaY = r[1] + 52;
-        int mediaW = r[2] - 32;
+        int mediaX = rAdj[0] + 16;
+        int mediaY = rAdj[1] + 52;
+        int mediaW = rAdj[2] - 32;
         int mediaH = 110;
         GuideMediaRenderer.drawMedia(screen, g, mediaX, mediaY, mediaW, mediaH, view.page().getMedia(), screen.ponderPanel(),
-                mouseX, mouseY, partialTick, alpha, screen.getThemeColor());
+                mouseX, mouseY, 0, alpha, screen.getThemeColor());
 
-        int[] d = descriptionRect();
+        int[] d = descriptionRect(rAdj);
         int descX = d[0], descY = d[1], descW = d[2], descH = d[3];
         List<FormattedCharSequence> lines = screen.descriptionLines(descW);
         int contentH = lines.size() * GuideScreenLayout.textLineHeight();
@@ -80,7 +82,7 @@ final class GuideContentPanel {
         int sy = descY - (int) Math.round(screen.getDescScroll());
         for (int i = 0; i < lines.size(); i++) {
             g.drawString(Minecraft.getInstance().font, lines.get(i), descX, sy + i * GuideScreenLayout.textLineHeight(),
-                    HudAnimUtil.withAlpha(0xCCCCCC, alpha));
+                    HudAnimUtil.withAlpha(0xAAAAAA, alpha));
         }
         g.disableScissor();
 
@@ -108,21 +110,20 @@ final class GuideContentPanel {
     }
 
     boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        int[] d = descriptionRect();
+        int[] d = descriptionRect(screen.contentRect());
         if (!hit(mouseX, mouseY, d[0], d[1], d[2] + 8, d[3])) return false;
         screen.adjustDescScroll(-delta * 18.0);
         return true;
     }
 
-    int[] descriptionRect() {
-        int[] r = screen.contentRect();
+    int[] descriptionRect(int[] r) {
         int descY = r[1] + 52 + 110 + 16;
         int descW = r[2] - 54;
         int descH = Math.max(42, r[3] - (descY - r[1]) - 32);
         return new int[]{r[0] + 16, descY, descW, descH};
     }
 
-    int descriptionLineCount() { return screen.descriptionLines(descriptionRect()[2]).size(); }
+    int descriptionLineCount() { return screen.descriptionLines(descriptionRect(screen.contentRect())[2]).size(); }
 
     private boolean hit(double mx, double my, int x, int y, int w, int h) {
         return mx >= x && mx <= x + w && my >= y && my <= y + h;

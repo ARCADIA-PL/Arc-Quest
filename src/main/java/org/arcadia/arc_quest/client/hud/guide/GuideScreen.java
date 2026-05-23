@@ -178,6 +178,9 @@ public final class GuideScreen extends Screen {
         int alpha = (int) (255 * effective);
         if (alpha <= 4) return;
 
+        float dt = (System.currentTimeMillis() - lastRenderTime) / 1000f;
+        if (dt <= 0f || dt > 0.3f) dt = 1f / 60f;
+
         int bgTint = HudAnimUtil.lerpColor(0x000000, themeColor, 0.05f);
         g.fill(0, 0, width, height, HudAnimUtil.withAlpha(bgTint, (int) (180 * effective)));
 
@@ -187,16 +190,19 @@ public final class GuideScreen extends Screen {
 
         g.fill(pnlX, 0, width, pnlH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effective)));
         HudRenderUtil.drawCyberneticEdge(g, pnlX, 0, pnlH, themeColor, (int) (0xFF * effective));
-        g.fill(pnlX, 0, pnlX + pnlW, 1, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.5F)));
-        g.fill(pnlX, pnlH - 1, pnlX + pnlW, pnlH, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.4F)));
 
-        int tx = pnlX + 18;
-        g.drawString(font, guideId.toString().toUpperCase(), tx, 20, HudAnimUtil.withAlpha(0x888888, alpha), false);
+        int tx = pnlX + 16;
+        g.drawString(font, guideId.toString().toUpperCase(), tx, 18, HudAnimUtil.withAlpha(0x888888, alpha), false);
 
         String titleText = guide.getTitle().getString();
-        int titleMaxW = pnlW - 36;
+        int titleMaxW = pnlW - 32;
         String displayTitle = font.plainSubstrByWidth(titleText, titleMaxW);
-        g.drawString(font, displayTitle, tx, 32, HudAnimUtil.withAlpha(0xFFFFFF, (int) (alpha * pageTransitionAnim)), true);
+        float titleScale = 0.95f + 0.05f * reveal;
+        g.pose().pushPose();
+        g.pose().translate(tx, 30, 0);
+        g.pose().scale(titleScale, titleScale, 1f);
+        g.drawString(font, displayTitle, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (alpha * pageTransitionAnim)), true);
+        g.pose().popPose();
 
         g.fill(tx, 44, pnlX + pnlW - 18, 45, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.6F * pageTransitionAnim)));
         g.fill(tx, 45, pnlX + pnlW - 18, 46, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.2F * pageTransitionAnim)));
@@ -235,8 +241,8 @@ public final class GuideScreen extends Screen {
         g.fill(pnlX + 18, by - 8, pnlX + pnlW - 18, by - 7, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.3F)));
 
         int btnW = 60, btnH = 18;
-        prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hit(mouseX, mouseY, pnlX + 18, by, btnW, btnH) && canPrev() ? 1f : 0f, 8f, 1f / 60f);
-        nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hit(mouseX, mouseY, pnlX + 18 + btnW + 10, by, btnW, btnH) && canNext() ? 1f : 0f, 8f, 1f / 60f);
+        prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hit(mouseX, mouseY, pnlX + 18, by, btnW, btnH) && canPrev() ? 1f : 0f, 8f, dt);
+        nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hit(mouseX, mouseY, pnlX + 18 + btnW + 10, by, btnW, btnH) && canNext() ? 1f : 0f, 8f, dt);
         GuideNavigationControls.drawCyberButton(g, font, pnlX + 18, by, btnW, btnH, canPrev() ? "< PREV" : "", themeColor, effective,
                 HudAnimUtil.easeOutCubic(prevHoverAnim), hit(mouseX, mouseY, pnlX + 18, by, btnW, btnH) && canPrev());
         GuideNavigationControls.drawCyberButton(g, font, pnlX + 18 + btnW + 10, by, btnW, btnH, canNext() ? "NEXT >" : "", themeColor, effective,
@@ -245,7 +251,7 @@ public final class GuideScreen extends Screen {
         String pageStr = "PAGE " + (currentPage + 1) + " / " + guide.getPageCount();
         g.drawString(font, pageStr, pnlX + pnlW - 18 - font.width(pageStr), by + 4, HudAnimUtil.withAlpha(0x888888, alpha), false);
 
-        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, hit(mouseX, mouseY, pnlX + pnlW - 28, 14, 18, 18) ? 1f : 0f, 10f, 1f / 60f);
+        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, hit(mouseX, mouseY, pnlX + pnlW - 28, 14, 18, 18) ? 1f : 0f, 10f, dt);
         int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (alpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
         g.drawString(font, "\u2715", pnlX + pnlW - 24, 16, closeColor, false);
     }

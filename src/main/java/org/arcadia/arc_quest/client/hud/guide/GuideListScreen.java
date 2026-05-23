@@ -33,6 +33,8 @@ public final class GuideListScreen extends Screen {
     private float listScroll = 0.0F, listTargetScroll = 0.0F;
     private GuideDefinition selectedGuide;
     private float openAnim = 0.0F;
+    private float closeAnim = 0.0F;
+    private boolean closing;
     private double descScroll = 0.0, descTargetScroll = 0.0;
     private float tabAnimX = 0.0F, tabAnimW = 0.0F;
     private float tabScrollOffset = 0.0F, tabTargetScroll = 0.0F;
@@ -52,6 +54,8 @@ public final class GuideListScreen extends Screen {
     protected void init() {
         super.init();
         openAnim = 0.0F;
+        closeAnim = 0.0F;
+        closing = false;
         lastRenderTime = System.currentTimeMillis();
         tabScrollOffset = 0.0F;
         tabTargetScroll = 0.0F;
@@ -67,11 +71,27 @@ public final class GuideListScreen extends Screen {
         if (dt <= 0f || dt > 0.3f) dt = 1f / 60f;
         lastRenderTime = now;
 
+        if (closing) {
+            closeAnim = HudAnimUtil.advanceByDuration(closeAnim, GuideConstants.CLOSE_DURATION, dt);
+            if (closeAnim >= 1.0F && minecraft != null) minecraft.setScreen(null);
+            ponderPanel.tick();
+            return;
+        }
+
         openAnim = HudAnimUtil.advanceByDuration(openAnim, GuideConstants.OPEN_DURATION, dt);
         descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * GuideConstants.SCROLL_SPEED);
         listScroll += (listTargetScroll - listScroll) * Math.min(1.0f, dt * GuideConstants.SCROLL_SPEED);
         tabScrollOffset += (tabTargetScroll - tabScrollOffset) * Math.min(1.0f, dt * GuideConstants.TAB_INDICATOR_SPEED);
         ponderPanel.tick();
+    }
+
+    @Override
+    public void onClose() {
+        if (!closing) {
+            closing = true;
+            closeAnim = 0.0F;
+            lastRenderTime = System.currentTimeMillis();
+        }
     }
 
     void updateTabIndicator(float targetX, float targetW) {
@@ -97,7 +117,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+        if (closing || button != 0) return super.mouseClicked(mouseX, mouseY, button);
         if (tabs.mouseClicked(mouseX, mouseY)) return true;
         if (listPanel.mouseClicked(mouseX, mouseY)) return true;
         if (contentPanel.mouseClicked(mouseX, mouseY)) return true;
@@ -106,6 +126,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (closing) return true;
         if (listPanel.mouseScrolled(mouseX, mouseY, delta)) return true;
         if (contentPanel.mouseScrolled(mouseX, mouseY, delta)) return true;
         return super.mouseScrolled(mouseX, mouseY, delta);
@@ -113,26 +134,36 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g);
         cachedLayout = GuideScreenLayout.computeTerminal(width, height);
         float reveal = HudAnimUtil.easeOutCubic(openAnim);
-        float effective = HudAnimUtil.easeOutCubic(openAnim);
+        float exitReveal = HudAnimUtil.easeInCubic(closeAnim);
+        float effective = Math.max(0f, Math.min(1f, reveal * (1f - exitReveal)));
         int alpha = (int) (255 * effective);
+        if (alpha <= 4) return;
+
+        float dt = (System.currentTimeMillis() - lastRenderTime) / 1000f;
+        if (dt <= 0f || dt > 0.3f) dt = 1f / 60f;
 
         int bgTint = HudAnimUtil.lerpColor(0x000000, getThemeColor(), 0.05f);
-        g.fill(0, 0, width, height, HudAnimUtil.withAlpha(bgTint, (int) (170 * effective)));
+        g.fill(0, 0, width, height, HudAnimUtil.withAlpha(bgTint, (int) (180 * effective)));
+
+        float slideOffset = (1f - reveal) * 120f;
+        int slideI = (int) slideOffset;
 
         int titleY = 14;
+        g.pose().pushPose();
+        g.pose().translate(width / 2f, titleY, 0);
+        float titleScale = 0.95f + 0.05f * reveal;
+        g.pose().scale(titleScale, titleScale, 1f);
+        g.pose().translate(-width / 2f, -titleY, 0);
         g.drawCenteredString(font, title, width / 2, titleY, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+        g.pose().popPose();
+
         g.fill(width / 2 - 60, titleY + 12, width / 2 + 60, titleY + 13, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.5F)));
 
-        tabs.render(g, mouseX, mouseY, alpha);
-        listPanel.render(g, mouseX, mouseY, alpha);
-
-        int sepX = (listRect()[0] + listRect()[2] + contentRect()[0]) / 2;
-        g.fill(sepX, listRect()[1], sepX + 1, listRect()[1] + listRect()[3], HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.15F)));
-
-        contentPanel.render(g, mouseX, mouseY, partialTick, alpha);
+        tabs.render(g, mouseX, mouseY, alpha, dt);
+        listPanel.render(g, mouseX, mouseY, alpha, dt, slideI);
+        contentPanel.render(g, mouseX, mouseY, alpha, dt, slideI);
     }
 
     void rebuildSelection() {
