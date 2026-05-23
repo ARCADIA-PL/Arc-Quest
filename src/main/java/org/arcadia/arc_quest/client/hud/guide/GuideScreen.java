@@ -1,14 +1,13 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.*;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
@@ -19,7 +18,6 @@ import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Matrix4f;
 
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +37,7 @@ public final class GuideScreen extends Screen {
     private boolean closing;
     private double descScroll = 0.0, descTargetScroll = 0.0;
     private long lastRenderTime;
+    private float prevHoverAnim, nextHoverAnim, closeHoverAnim;
 
     public GuideScreen(GuideDefinition guide, int initialPage, boolean markSeenOnClose) {
         super(guide.getTitle());
@@ -70,6 +69,7 @@ public final class GuideScreen extends Screen {
         closing = false;
         pageTransitionAnim = 1.0F;
         lastRenderTime = System.currentTimeMillis();
+        prevHoverAnim = nextHoverAnim = closeHoverAnim = 0f;
         descCache.clear();
         resetDesc();
         refreshMediaBinding();
@@ -92,7 +92,7 @@ public final class GuideScreen extends Screen {
 
         openAnim = HudAnimUtil.advanceByDuration(openAnim, GuideConstants.OPEN_DURATION, dt);
         descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * GuideConstants.SCROLL_SPEED);
-        pageTransitionAnim += (1.0F - pageTransitionAnim) * Math.min(1.0f, dt * GuideConstants.PAGE_TRANSITION_SPEED);
+        pageTransitionAnim += (1.0F - pageTransitionAnim) * Math.min(1.0f, dt * 8f);
         ponderPanel.tick();
     }
 
@@ -125,8 +125,7 @@ public final class GuideScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (closing) return true;
         if (keyCode == 256 || (minecraft != null && minecraft.options.keyInventory.matches(keyCode, scanCode))) {
-            onClose();
-            return true;
+            onClose(); return true;
         }
         if (keyCode == 263 || keyCode == 65) { previousPage(); return true; }
         if (keyCode == 262 || keyCode == 68) { nextPage(); return true; }
@@ -136,11 +135,12 @@ public final class GuideScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (closing) return true;
-        GuideScreenLayout.SidebarLayout l = layout();
-        int descW = l.baseW() - 24;
-        int descH = l.h() - 216;
+        int pnlW = panelW();
+        int pnlX = width - pnlW;
+        int descW = pnlW - 40;
+        int descH = height - 246;
         int contentH = lines(descW).size() * GuideScreenLayout.textLineHeight();
-        if (hit(mouseX, mouseY, 12, 180, descW, descH)) {
+        if (hit(mouseX, mouseY, pnlX + 20, 194, descW, descH)) {
             if (contentH > descH) {
                 descTargetScroll = Math.max(0, Math.min(contentH - descH + 4, descTargetScroll - delta * 14.0));
             }
@@ -154,12 +154,17 @@ public final class GuideScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (closing || button != 0) return super.mouseClicked(mouseX, mouseY, button);
-        GuideScreenLayout.SidebarLayout l = layout();
-        int by = l.h() - 32;
-        if (hit(mouseX, mouseY, 12, by, 16, 16) && canPrev()) { previousPage(); return true; }
-        if (hit(mouseX, mouseY, 32, by, 16, 16) && canNext()) { nextPage(); return true; }
-        if (hit(mouseX, mouseY, l.baseW() - 28, 10, 18, 18)) { onClose(); return true; }
-        if (currentMedia().getType() == GuideMediaType.PONDER && ponderPanel.mouseClicked(mouseX, mouseY, button, 12, 54, l.baseW() - 24, 110))
+        int pnlW = panelW();
+        int pnlX = width - pnlW;
+        int by = height - 32;
+        int btnW = 60;
+        int btnH = 18;
+
+        if (hit(mouseX, mouseY, pnlX + 18, by, btnW, btnH) && canPrev()) { previousPage(); return true; }
+        if (hit(mouseX, mouseY, pnlX + 18 + btnW + 10, by, btnW, btnH) && canNext()) { nextPage(); return true; }
+        if (hit(mouseX, mouseY, pnlX + pnlW - 28, 14, 18, 18)) { onClose(); return true; }
+
+        if (currentMedia().getType() == GuideMediaType.PONDER && ponderPanel.mouseClicked(mouseX, mouseY, button, pnlX + 12, 74, pnlW - 24, 110))
             return true;
         return super.mouseClicked(mouseX, mouseY, button);
     }
@@ -173,124 +178,76 @@ public final class GuideScreen extends Screen {
         int alpha = (int) (255 * effective);
         if (alpha <= 4) return;
 
-        g.fill(0, 0, width, height, withAlpha(0x000000, (int) (153 * effective)));
+        int bgTint = HudAnimUtil.lerpColor(0x000000, themeColor, 0.05f);
+        g.fill(0, 0, width, height, HudAnimUtil.withAlpha(bgTint, (int) (180 * effective)));
 
-        GuideScreenLayout.SidebarLayout l = layout();
-        drawSlantedSidebar(g, l, alpha);
+        int pnlW = panelW();
+        int pnlX = width - pnlW;
+        int pnlH = height - 4;
 
-        int tx = 14;
-        GuideNavigationControls.drawScaledText(this, g, tx, 18, GuideConstants.CAPTION_SCALE,
-                guideId.toString().toUpperCase(), withAlpha(GuideConstants.MUTED, alpha));
+        g.fill(pnlX, 0, width, pnlH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effective)));
+        HudRenderUtil.drawCyberneticEdge(g, pnlX, 0, pnlH, themeColor, (int) (0xFF * effective));
+        g.fill(pnlX, 0, pnlX + pnlW, 1, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.5F)));
+        g.fill(pnlX, pnlH - 1, pnlX + pnlW, pnlH, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.4F)));
+
+        int tx = pnlX + 18;
+        g.drawString(font, guideId.toString().toUpperCase(), tx, 20, HudAnimUtil.withAlpha(0x888888, alpha), false);
 
         String titleText = guide.getTitle().getString();
-        int titleMaxW = l.baseW() - 28;
-        int titleTextW = (int) (font.width(titleText) * GuideConstants.HEADER_SCALE);
-        String displayTitle = titleText;
-        if (titleTextW > titleMaxW) {
-            while (font.width(displayTitle + "...") * GuideConstants.HEADER_SCALE > titleMaxW && displayTitle.length() > 1)
-                displayTitle = displayTitle.substring(0, displayTitle.length() - 1);
-            displayTitle += "...";
-        }
-        GuideNavigationControls.drawScaledText(this, g, tx, 28, GuideConstants.HEADER_SCALE, displayTitle, withAlpha(GuideConstants.TEXT, (int) (alpha * pageTransitionAnim)));
+        int titleMaxW = pnlW - 36;
+        String displayTitle = font.plainSubstrByWidth(titleText, titleMaxW);
+        g.drawString(font, displayTitle, tx, 32, HudAnimUtil.withAlpha(0xFFFFFF, (int) (alpha * pageTransitionAnim)), true);
 
-        g.fill(tx, 42, l.baseW() - 12, 43, withAlpha(themeColor, (int) (alpha * 0.6F * pageTransitionAnim)));
-        g.fill(tx, 43, l.baseW() - 32, 44, withAlpha(themeColor, (int) (alpha * 0.2F * pageTransitionAnim)));
+        g.fill(tx, 44, pnlX + pnlW - 18, 45, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.6F * pageTransitionAnim)));
+        g.fill(tx, 45, pnlX + pnlW - 18, 46, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.2F * pageTransitionAnim)));
 
-        int mediaW = l.baseW() - 24;
+        int mediaW = pnlW - 24;
         int mediaH = 110;
-        GuideMediaRenderer.drawMedia(this, g, 12, 54, mediaW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick,
-                (int) (alpha * pageTransitionAnim), GuideConstants.SEC, GuideConstants.MUTED, GuideConstants.SUB, themeColor);
+        GuideMediaRenderer.drawMedia(this, g, pnlX + 12, 55, mediaW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick,
+                (int) (alpha * pageTransitionAnim), themeColor);
 
-        int descY = 174;
-        int descH = l.h() - 216;
+        int descY = 175;
+        int descH = height - 226;
         List<FormattedCharSequence> wrapped = lines(mediaW);
         int contentH = wrapped.size() * GuideScreenLayout.textLineHeight();
         int max = Math.max(0, contentH - descH);
         descTargetScroll = Math.max(0, Math.min(max, descTargetScroll));
         descScroll = Math.max(0, Math.min(max, descScroll));
 
-        g.enableScissor(10, descY - 2, l.baseW() - 10, descY + descH + 2);
+        g.enableScissor(pnlX + 18, descY, pnlX + pnlW - 18, descY + descH);
         int sy = descY - (int) Math.round(descScroll);
         for (int i = 0; i < wrapped.size(); i++) {
-            g.drawString(font, wrapped.get(i), tx, sy + i * GuideScreenLayout.textLineHeight(), withAlpha(GuideConstants.TEXT, (int) (alpha * pageTransitionAnim)));
+            g.drawString(font, wrapped.get(i), tx, sy + i * GuideScreenLayout.textLineHeight(),
+                    HudAnimUtil.withAlpha(0xCCCCCC, (int) (alpha * pageTransitionAnim)));
         }
         g.disableScissor();
 
         if (max > 0) {
-            int rx = l.baseW() - 8;
-            g.fill(rx, descY, rx + 2, descY + descH, withAlpha(0x111823, alpha));
+            int rx = pnlX + pnlW - 8;
+            g.fill(rx, descY, rx + 2, descY + descH, HudAnimUtil.withAlpha(0x111823, alpha));
             int th = Math.max(12, (int) (descH * (descH / (float) contentH)));
             int travel = Math.max(0, descH - th);
             int ty = descY + (int) (travel * (descScroll / (double) max));
-            g.fill(rx, ty, rx + 2, ty + th, withAlpha(themeColor, alpha));
+            g.fill(rx, ty, rx + 2, ty + th, HudAnimUtil.withAlpha(themeColor, alpha));
         }
 
-        int by = l.h() - 32;
-        g.fill(12, by - 8, l.baseW() - 12, by - 7, withAlpha(themeColor, (int) (alpha * 0.3F)));
+        int by = height - 32;
+        g.fill(pnlX + 18, by - 8, pnlX + pnlW - 18, by - 7, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.3F)));
 
-        boolean prevHover = hit(mouseX, mouseY, 12, by, 16, 16);
-        boolean nextHover = hit(mouseX, mouseY, 32, by, 16, 16);
-        boolean closeHover = hit(mouseX, mouseY, l.baseW() - 28, 10, 18, 18);
-        GuideNavigationControls.drawArrowButton(g, 12, by, 16, true, canPrev(), prevHover, themeColor, alpha);
-        GuideNavigationControls.drawArrowButton(g, 32, by, 16, false, canNext(), nextHover, themeColor, alpha);
+        int btnW = 60, btnH = 18;
+        prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hit(mouseX, mouseY, pnlX + 18, by, btnW, btnH) && canPrev() ? 1f : 0f, 8f, 1f / 60f);
+        nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hit(mouseX, mouseY, pnlX + 18 + btnW + 10, by, btnW, btnH) && canNext() ? 1f : 0f, 8f, 1f / 60f);
+        GuideNavigationControls.drawCyberButton(g, font, pnlX + 18, by, btnW, btnH, canPrev() ? "< PREV" : "", themeColor, effective,
+                HudAnimUtil.easeOutCubic(prevHoverAnim), hit(mouseX, mouseY, pnlX + 18, by, btnW, btnH) && canPrev());
+        GuideNavigationControls.drawCyberButton(g, font, pnlX + 18 + btnW + 10, by, btnW, btnH, canNext() ? "NEXT >" : "", themeColor, effective,
+                HudAnimUtil.easeOutCubic(nextHoverAnim), hit(mouseX, mouseY, pnlX + 18 + btnW + 10, by, btnW, btnH) && canNext());
 
-        String guideAreaText = "SYS.LOC // PAGE " + (currentPage + 1) + " OF " + guide.getPageCount();
-        GuideNavigationControls.drawScaledText(this, g, 56, by + 4, GuideConstants.CAPTION_SCALE, guideAreaText,
-                withAlpha(GuideConstants.TEXT, alpha));
+        String pageStr = "PAGE " + (currentPage + 1) + " / " + guide.getPageCount();
+        g.drawString(font, pageStr, pnlX + pnlW - 18 - font.width(pageStr), by + 4, HudAnimUtil.withAlpha(0x888888, alpha), false);
 
-        int warmR = Math.min(255, (themeColor >> 16 & 255) * 115 / 100);
-        int warmG = Math.max(0, (themeColor >> 8 & 255) * 85 / 100);
-        int warmB = Math.max(0, (themeColor & 255) * 80 / 100);
-        int warmColor = (warmR << 16) | (warmG << 8) | warmB;
-        int closeColor = closeHover ? withAlpha(warmColor, alpha) : withAlpha(GuideConstants.MUTED, alpha);
-        GuideNavigationControls.drawScaledText(this, g, l.baseW() - 26, 12, GuideConstants.SMALL_SCALE, "\u2715", closeColor);
-    }
-
-    private void drawSlantedSidebar(GuiGraphics g, GuideScreenLayout.SidebarLayout l, int alpha) {
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-
-        Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
-        Matrix4f matrix = g.pose().last().pose();
-
-        int bgColor = GuideConstants.BG;
-        float f = (float) (bgColor >> 24 & 255) / 255.0F * (alpha / 255.0F);
-        float r = (float) (bgColor >> 16 & 255) / 255.0F;
-        float gr = (float) (bgColor >> 8 & 255) / 255.0F;
-        float b = (float) (bgColor & 255) / 255.0F;
-
-        float topR = Math.min(1.0F, r + 0.06F);
-        float topG = Math.min(1.0F, gr + 0.06F);
-        float topB = Math.min(1.0F, b + 0.06F);
-
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-        buffer.vertex(matrix, 0, 0, 0).color(topR, topG, topB, f).endVertex();
-        buffer.vertex(matrix, l.baseW() + l.slant(), 0, 0).color(topR, topG, topB, f).endVertex();
-        buffer.vertex(matrix, l.baseW(), l.h(), 0).color(r, gr, b, f).endVertex();
-        buffer.vertex(matrix, 0, l.h(), 0).color(r, gr, b, f).endVertex();
-        tesselator.end();
-
-        RenderSystem.disableBlend();
-
-        float time = System.currentTimeMillis() / 1000.0F;
-        float pulse = (float) (Math.sin(time * 1.2) * 0.15 + 0.85);
-
-        int sx = l.baseW() + l.slant();
-        int ex = l.baseW();
-        float dh = l.h();
-        for (int row = 0; row < l.h(); row++) {
-            float t = row / dh;
-            int x = (int) (sx + (ex - sx) * t);
-            float lineAlpha = 0.3F + 0.5F * (1.0F - t);
-            g.fill(x, row, x + 1, row + 1, withAlpha(themeColor, (int) (alpha * lineAlpha * pulse)));
-        }
-
-        g.fill(0, 0, l.baseW() + l.slant(), 1, withAlpha(themeColor, (int) (alpha * 0.5F)));
-
-        g.fill(0, 0, 1, l.h(), withAlpha(themeColor, (int) (alpha * 0.6F)));
-        g.fill(1, 0, 2, l.h(), withAlpha(themeColor, (int) (alpha * 0.25F)));
+        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, hit(mouseX, mouseY, pnlX + pnlW - 28, 14, 18, 18) ? 1f : 0f, 10f, 1f / 60f);
+        int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (alpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
+        g.drawString(font, "\u2715", pnlX + pnlW - 24, 16, closeColor, false);
     }
 
     private void nextPage() { if (canNext()) { currentPage++; onPageChange(); } }
@@ -321,8 +278,7 @@ public final class GuideScreen extends Screen {
         return descCache.computeIfAbsent(width, w -> font.split(page().getDescriptionText().resolve(null, null), w));
     }
 
+    private int panelW() { return GuideScreenLayout.panelWidth(width); }
     private int clampPage(int p) { return Math.max(0, Math.min(p, guide.getPageCount() - 1)); }
     private boolean hit(double mx, double my, int x, int y, int w, int h) { return mx >= x && mx <= x + w && my >= y && my <= y + h; }
-    private GuideScreenLayout.SidebarLayout layout() { return GuideScreenLayout.computeSidebar(width, height); }
-    private int withAlpha(int c, int a) { return ((a & 0xFF) << 24) | (c & 0x00FFFFFF); }
 }

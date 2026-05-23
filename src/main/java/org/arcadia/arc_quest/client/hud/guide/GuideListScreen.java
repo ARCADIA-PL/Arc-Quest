@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
@@ -85,22 +86,14 @@ public final class GuideListScreen extends Screen {
         }
     }
 
-    void adjustTabScroll(float delta) {
-        tabTargetScroll = Math.max(0, tabTargetScroll + delta);
-    }
-
+    void adjustTabScroll(float delta) { tabTargetScroll = Math.max(0, tabTargetScroll + delta); }
     float getTabScrollOffset() { return tabScrollOffset; }
 
     @Override
-    public void removed() {
-        ponderPanel.onScreenClosed();
-        super.removed();
-    }
+    public void removed() { ponderPanel.onScreenClosed(); super.removed(); }
 
     @Override
-    public boolean isPauseScreen() {
-        return true;
-    }
+    public boolean isPauseScreen() { return true; }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -123,32 +116,23 @@ public final class GuideListScreen extends Screen {
         renderBackground(g);
         cachedLayout = GuideScreenLayout.computeTerminal(width, height);
         float reveal = HudAnimUtil.easeOutCubic(openAnim);
-        int alpha = (int) (255 * reveal);
+        float effective = HudAnimUtil.easeOutCubic(openAnim);
+        int alpha = (int) (255 * effective);
 
-        g.fill(0, 0, width, height, HudAnimUtil.withAlpha(0x02050A, (int) (160 * reveal)));
-        drawHolographicScanlines(g, alpha);
+        int bgTint = HudAnimUtil.lerpColor(0x000000, getThemeColor(), 0.05f);
+        g.fill(0, 0, width, height, HudAnimUtil.withAlpha(bgTint, (int) (170 * effective)));
 
         int titleY = 14;
-        g.drawCenteredString(font, title, width / 2, titleY, HudAnimUtil.withAlpha(GuideConstants.TEXT, alpha));
+        g.drawCenteredString(font, title, width / 2, titleY, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
         g.fill(width / 2 - 60, titleY + 12, width / 2 + 60, titleY + 13, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.5F)));
 
         tabs.render(g, mouseX, mouseY, alpha);
         listPanel.render(g, mouseX, mouseY, alpha);
 
         int sepX = (listRect()[0] + listRect()[2] + contentRect()[0]) / 2;
-        int sepY = listRect()[1];
-        int sepH = listRect()[3];
-        g.fill(sepX, sepY, sepX + 1, sepY + sepH, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.15F)));
+        g.fill(sepX, listRect()[1], sepX + 1, listRect()[1] + listRect()[3], HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.15F)));
 
         contentPanel.render(g, mouseX, mouseY, partialTick, alpha);
-    }
-
-    private void drawHolographicScanlines(GuiGraphics g, int alpha) {
-        long time = System.currentTimeMillis();
-        int scanY = (int) ((time / 14) % height);
-        g.fill(0, scanY - 1, width, scanY, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.03F)));
-        g.fill(0, scanY, width, scanY + 1, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.06F)));
-        g.fill(0, scanY + 1, width, scanY + 2, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.03F)));
     }
 
     void rebuildSelection() {
@@ -261,18 +245,9 @@ public final class GuideListScreen extends Screen {
     }
     EmbeddedPonderScenePanel ponderPanel() { return ponderPanel; }
 
-    int[] tabsRect() {
-        GuideScreenLayout.TerminalLayout l = cachedLayout;
-        return new int[]{l.cx(), l.cy(), l.cw(), 30};
-    }
-    int[] listRect() {
-        GuideScreenLayout.TerminalLayout l = cachedLayout;
-        return new int[]{l.lx(), l.ly(), l.lw(), l.lh()};
-    }
-    int[] contentRect() {
-        GuideScreenLayout.TerminalLayout l = cachedLayout;
-        return new int[]{l.cx(), l.cy() + 30, l.cw(), l.ch() - 30};
-    }
+    int[] tabsRect() { GuideScreenLayout.TerminalLayout l = cachedLayout; return new int[]{l.cx(), l.cy(), l.cw(), 30}; }
+    int[] listRect() { GuideScreenLayout.TerminalLayout l = cachedLayout; return new int[]{l.lx(), l.ly(), l.lw(), l.lh()}; }
+    int[] contentRect() { GuideScreenLayout.TerminalLayout l = cachedLayout; return new int[]{l.cx(), l.cy() + 30, l.cw(), l.ch() - 30}; }
 
     record GuidePageView(GuideDefinition guide, org.arcadia.arc_quest.guide.api.GuidePageDefinition page, int pageIndex) {}
 }

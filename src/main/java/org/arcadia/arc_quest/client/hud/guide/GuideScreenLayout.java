@@ -31,14 +31,9 @@ public final class GuideScreenLayout {
         return new TerminalLayout(lx, ly, listW, lh, cx, cy, cw, ch);
     }
 
-    public static SidebarLayout computeSidebar(int width, int height) {
-        int baseW = Math.min((int) (width * 0.35F), Math.max(190, (int) (width * 0.26F)));
-        int slant = 20;
-        return new SidebarLayout(0, 0, baseW, slant, height);
+    public static int panelWidth(int screenWidth) {
+        return Math.min((int) (screenWidth * 0.30), Math.max(260, (int) (screenWidth * 0.26)));
     }
 
     public record TerminalLayout(int lx, int ly, int lw, int lh, int cx, int cy, int cw, int ch) {}
-    public record SidebarLayout(int x, int y, int baseW, int slant, int h) {
-        public int totalW() { return baseW + slant; }
-    }
 }
