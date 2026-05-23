@@ -17,7 +17,7 @@ public final class GuideScreenLayout {
     public static TerminalLayout computeTerminal(int width, int height) {
         int padding = 20;
         int listW = Math.min(220, Math.max(140, (int) (width * 0.18)));
-        int gap = 14;
+        int gap = 12;
 
         int lx = padding;
         int ly = 36;
@@ -31,9 +31,14 @@ public final class GuideScreenLayout {
         return new TerminalLayout(lx, ly, listW, lh, cx, cy, cw, ch);
     }
 
-    public static int panelWidth(int screenWidth) {
-        return Math.min((int) (screenWidth * 0.30), Math.max(260, (int) (screenWidth * 0.26)));
+    public static SlantedLayout computeSlanted(int width, int height) {
+        int baseW = Math.min((int) (width * 0.33), Math.max(220, (int) (width * 0.26)));
+        int slant = 20;
+        return new SlantedLayout(0, 0, baseW, slant, height);
     }
 
     public record TerminalLayout(int lx, int ly, int lw, int lh, int cx, int cy, int cw, int ch) {}
+    public record SlantedLayout(int x, int y, int baseW, int slant, int h) {
+        public int maxW() { return baseW + slant; }
+    }
 }
