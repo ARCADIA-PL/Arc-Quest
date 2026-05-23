@@ -73,7 +73,7 @@ public class TradeCommands {
                                 .then(Commands.argument("player", EntityArgument.player())
                                         .then(Commands.argument("shop_id", ResourceLocationArgument.id())
                                                 .suggests(TradeCommands::suggestTradeShopIds)
-                                                .then(Commands.argument("entry_id", StringArgumentType.string())
+                                                .then(Commands.argument("entry_id", StringArgumentType.greedyString())
                                                         .suggests(TradeCommands::suggestTradeEntryIds)
                                                         .executes(TradeCommands::cmdTradeResetEntry)))))
                         // /arcquest trade reset all <player>

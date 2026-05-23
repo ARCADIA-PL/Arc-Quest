@@ -267,6 +267,10 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("phase", "error.failed",
                 "Failed to activate quest '%1$s'.");
 
+        // ── completephase ──
+        addCommandFeedback("completephase", "success",
+                "Force-completed phase §d%2$s§f in quest §e%1$s§f for %3$s.");
+
         // ── progress ──
         addCommandFeedback("progress", "success",
                 "Set objective[%1$s] = %2$s for quest §e%3$s§f.");

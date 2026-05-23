@@ -637,6 +637,31 @@ public final class QuestProgressHandler {
         doCompleteQuest(player, data, qdata, def, "force-completed");
     }
 
+    public static void forceCompletePhase(ServerPlayer player, String questId, String phaseId) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        if (qdata == null) return;
+
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null) return;
+
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (phase == null) return;
+
+        if (!qdata.isPhaseActive(phaseId)) {
+            qdata.activatePhase(phaseId, phase.getObjectives().size());
+            registerPhaseObjectives(player, def, phase);
+        }
+
+        for (int i = 0; i < phase.getObjectives().size(); i++) {
+            qdata.setObjectiveProgress(phaseId, i, phase.getObjectives().get(i).getRequiredCount());
+        }
+
+        qdata.invalidatePhaseCache();
+        checkPhaseCompletion(player, data, qdata, def, phaseId);
+    }
+
     private static void doCompleteQuest(ServerPlayer player,
                                         ArcQuestPlayer data,
                                         QuestRuntimeData qdata,

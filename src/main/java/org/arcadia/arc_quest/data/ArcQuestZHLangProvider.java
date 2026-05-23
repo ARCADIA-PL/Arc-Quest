@@ -266,6 +266,10 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addCommandFeedback("phase", "error.failed",
                 "激活任务 '%1$s' 失败。");
 
+        // ── completephase ──
+        addCommandFeedback("completephase", "success",
+                "已强制完成 %3$s 在任务 §e%1$s§f 中的阶段 §d%2$s§f。");
+
         // ── progress ──
         addCommandFeedback("progress", "success",
                 "已设置任务 §e%3$s§f 的目标[%1$s] = %2$s。");

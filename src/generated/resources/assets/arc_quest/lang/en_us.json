@@ -6,6 +6,7 @@
   "arc_quest.collection.collection_codex_demo.category.hostile_mobs": "Hostile Mobs",
   "arc_quest.command.complete.error.not_active": "Quest '%1$s' is not active.",
   "arc_quest.command.complete.success": "Force-completed quest §e%1$s§f for %2$s.",
+  "arc_quest.command.completephase.success": "Force-completed phase §d%2$s§f in quest §e%1$s§f for %3$s.",
   "arc_quest.command.debug.display": "§e  Display: §f%1$s",
   "arc_quest.command.debug.header": "§6═══ Debug: %1$s ═══",
   "arc_quest.command.debug.no_runtime": "§7  Player has no runtime data for this quest.",
