@@ -13,7 +13,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.Arc_Quest;
@@ -103,15 +102,11 @@ public final class EmbeddedPonderScenePanel {
         boolean canPrev = handle.getSceneIndex() > 0;
         boolean canNext = handle.getSceneIndex() < handle.getSceneCount() - 1;
 
-        // 右上角控制按钮
         drawHologramButton(g, font, "replay", x + w - 48, y + 4, 20, 18, "↺", lx, ly, w - 48, 4, alpha, true, dt);
         drawHologramButton(g, font, "pause", x + w - 24, y + 4, 20, 18, handle.isPaused() ? "▶" : "‖", lx, ly, w - 24, 4, alpha, true, dt);
-
-        // 两侧切换按钮
         drawHologramButton(g, font, "prev", x + 4, y + h / 2 - 15, 14, 30, "◄", lx, ly, 4, h / 2 - 15, alpha, canPrev, dt);
         drawHologramButton(g, font, "next", x + w - 18, y + h / 2 - 15, 14, 30, "►", lx, ly, w - 18, h / 2 - 15, alpha, canNext, dt);
 
-        // 底部进度条 (完全对标 QuestIntelPanel)
         renderMinimalProgressBar(g, scene, x, y + h, w, alpha);
     }
 
@@ -190,11 +185,21 @@ public final class EmbeddedPonderScenePanel {
         RenderSystem.enableDepthTest();
         RenderSystem.backupProjectionMatrix();
 
+        // 【核心动画修复】：赛博全息向内坍缩特效
+        // 因为 3D 模型无法原生透明淡出，我们使用 Scissor 将其在 alpha 降低时从两侧向中心切割折叠！
+        float collapseFactor = alpha / 255.0f;
+
+        // 当达到 1 时保持原样，小于 1 时极速从中心收缩
+        // 添加缓动让坍缩看起来更有力量感 (EaseInCubic)
+        float easeWipe = collapseFactor * collapseFactor * collapseFactor;
+        int currentW = (int) (areaW * easeWipe);
+        int offsetX = (areaW - currentW) / 2;
+
         Screen currentScreen = Minecraft.getInstance().screen;
         if (currentScreen instanceof GuideListScreen gls) {
-            gls.enableScissor(g, areaX, areaY, areaX + areaW, areaY + areaH);
+            gls.enableScissor(g, areaX + offsetX, areaY, areaX + offsetX + currentW, areaY + areaH);
         } else {
-            g.enableScissor(areaX, areaY, areaX + areaW, areaY + areaH);
+            g.enableScissor(areaX + offsetX, areaY, areaX + offsetX + currentW, areaY + areaH);
         }
 
         Matrix4f proj = new Matrix4f(RenderSystem.getProjectionMatrix());
@@ -205,8 +210,6 @@ public final class EmbeddedPonderScenePanel {
         ms.pushPose();
         ms.translate(areaX, areaY, -800);
         RenderSystem.setupLevelDiffuseLighting(DIFFUSE_0, DIFFUSE_1, ms.last().pose());
-
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
 
         scene.getTransform().updateScreenParams(areaW, areaH, 0);
         scene.getTransform().apply(ms, pt);
@@ -219,12 +222,23 @@ public final class EmbeddedPonderScenePanel {
         RenderSystem.restoreProjectionMatrix();
         RenderSystem.disableDepthTest();
 
+        // 重新开启一次正常尺寸的剪裁框给 Overlay，不然文字会被切掉
+        if (currentScreen instanceof GuideListScreen gls) {
+            gls.enableScissor(g, areaX, areaY, areaX + areaW, areaY + areaH);
+        } else {
+            g.enableScissor(areaX, areaY, areaX + areaW, areaY + areaH);
+        }
+
         ms.pushPose();
         ms.translate(areaX, areaY, 100);
-        scene.renderOverlay(null, g, pt);
-        ms.popPose();
 
+        // 如果正在淡出，通过改颜色让附着文本变黑（文本是可以响应Shader颜色的）
+        if (alpha < 255) RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
+        scene.renderOverlay(null, g, pt);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+
+        ms.popPose();
+        g.disableScissor();
     }
 
     public void onScreenClosed() { unbind(); }

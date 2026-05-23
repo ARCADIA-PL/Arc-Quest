@@ -85,31 +85,42 @@ public class GuideContentPanel {
         }
 
         localY += 20;
-        // 修复：分割线移除主题色，改为极简灰
         g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(0x333333, safeA));
         localY += 12;
 
         lastMediaRect[0] = 0; lastMediaRect[1] = 0; lastMediaRect[2] = 0; lastMediaRect[3] = 0;
 
         if (page.getMedia() != null && page.getMedia().getType() != null) {
-            // 修复：严格限制媒体高度，不能超过可用高度的45%，且绝对高度不超过130px
-            int mediaH = Math.min(130, (int)(scrollAreaH * 0.45f));
 
-            // 修复：移除媒体边框的主题色侵入，改为硬核深灰色
-            HudAnimUtil.drawFrame(g, -1, localY - 1, scrollAreaW - 24 + 2, mediaH + 2,
+            // 【核心修复】：严格遵守 16:9 比例
+            int mediaW = scrollAreaW - 24;
+            int mediaH = (int) (mediaW * 9.0f / 16.0f);
+
+            // 保护机制：如果媒体高度超过了当前视口的 55%，反向推导宽度，并将其居中（保证阅读空间）
+            int maxMediaH = (int)(scrollAreaH * 0.55f);
+            if (mediaH > maxMediaH) {
+                mediaH = maxMediaH;
+                mediaW = (int) (mediaH * 16.0f / 9.0f);
+            }
+
+            // 计算居中偏移量
+            int offsetX = ((scrollAreaW - 24) - mediaW) / 2;
+            int absMediaX = x + 12 + offsetX;
+            int absMediaY = (int) (scrollAreaY + 12 - descScrollOffset + localY);
+
+            // 绘制硬核深灰色外框 (应用偏移量)
+            HudAnimUtil.drawFrame(g, offsetX - 1, localY - 1, mediaW + 2, mediaH + 2,
                     HudAnimUtil.withAlpha(0x000000, (int)(safeA * 0.4f)),
                     HudAnimUtil.withAlpha(0x333333, safeA));
 
-            int absMediaX = x + 12;
-            int absMediaY = (int) (scrollAreaY + 12 - descScrollOffset + localY);
-            lastMediaRect[0] = absMediaX; lastMediaRect[1] = absMediaY; lastMediaRect[2] = scrollAreaW - 24; lastMediaRect[3] = mediaH;
+            lastMediaRect[0] = absMediaX; lastMediaRect[1] = absMediaY; lastMediaRect[2] = mediaW; lastMediaRect[3] = mediaH;
 
             float pt = Minecraft.getInstance().getFrameTime();
-            g.pose().popPose();
+            g.pose().popPose(); // 暂时弹出，以绝对坐标渲染 Ponder，防止矩阵冲突
 
-            GuideMediaRenderer.drawMedia(screen, g, absMediaX, absMediaY, scrollAreaW - 24, mediaH, page.getMedia(), screen.ponderPanel(), mx, my, pt, safeA, theme);
+            GuideMediaRenderer.drawMedia(screen, g, absMediaX, absMediaY, mediaW, mediaH, page.getMedia(), screen.ponderPanel(), mx, my, pt, safeA, theme);
 
-            g.pose().pushPose();
+            g.pose().pushPose(); // 重新压回
             g.pose().translate(x + 12, scrollAreaY + 12 - descScrollOffset, 0);
 
             localY += mediaH + 16;
