@@ -235,9 +235,9 @@ export function handleDialogueNonDeleteButtonAction(btn, state) {
     }
 
     if (d.actionAdd !== undefined) {
-        const parts = d.actionAdd.split('.ch.');
-        const nodeIdx = +parts[0];
-        const ci = +parts[1];
+        const [nodeIdxStr, ciStr] = d.actionAdd.split(':');
+        const nodeIdx = +nodeIdxStr;
+        const ci = +ciStr;
         const node = state.dialogue.q.nodes[nodeIdx];
         if (!node?.choices?.[ci]) return true;
         node.choices[ci].actions = node.choices[ci].actions || [];

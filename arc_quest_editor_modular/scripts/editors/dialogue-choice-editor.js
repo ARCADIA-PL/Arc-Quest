@@ -108,7 +108,7 @@ export function renderDialogueChoiceEditor(node, choice, ni, ci, dialogue, regis
       <div style="margin-top:12px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
           <b class="small">Actions</b>
-          <button data-action-add="${cp}" class="toolbar-btn small-btn">＋ 添加动作</button>
+          <button data-action-add="${ni}:${ci}" class="toolbar-btn small-btn">＋ 添加动作</button>
         </div>
         ${(choice.actions || []).map((action, ai) => `
           <div class="card" style="border-color:rgba(255,255,255,.06);margin-bottom:8px">

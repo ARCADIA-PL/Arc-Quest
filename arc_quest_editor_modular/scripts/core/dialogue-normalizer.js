@@ -107,9 +107,11 @@ function exportChoice(c) {
 function exportNode(node) {
     const out = {
         nodeId: node.nodeId || '',
-        speaker: {mode: node.speaker?.mode || 'literal', value: node.speaker?.value || ''},
         text: {mode: node.text?.mode || 'literal', value: node.text?.value || ''}
     };
+    const speaker = node.speaker;
+    if (speaker && (speaker.mode !== 'literal' || (speaker.value && speaker.value.trim())))
+        out.speaker = {mode: speaker.mode || 'literal', value: speaker.value || ''};
     if (node.sayId) out.sayId = node.sayId;
     if (node.conditionalTexts) {
         const ct = {};
@@ -137,10 +139,12 @@ function exportNode(node) {
 export function exportDialogueToDatapack(dialogue) {
     const out = {
         id: dialogue.id || '',
-        defaultNpc: {mode: dialogue.defaultNpc?.mode || 'literal', value: dialogue.defaultNpc?.value || ''},
         startNodeId: dialogue.startNodeId || '',
         nodes: (dialogue.nodes || []).map(exportNode)
     };
+    const npc = dialogue.defaultNpc;
+    if (npc && (npc.mode !== 'literal' || (npc.value && npc.value.trim())))
+        out.defaultNpc = {mode: npc.mode || 'literal', value: npc.value || ''};
     if (dialogue.repeatable === false) out.repeatable = false;
     if (dialogue.cooldownSeconds > 0) out.cooldownSeconds = dialogue.cooldownSeconds;
     if (dialogue.cooldownType && dialogue.cooldownType !== 'NONE') out.cooldownType = dialogue.cooldownType;
