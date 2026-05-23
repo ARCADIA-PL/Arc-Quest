@@ -142,16 +142,17 @@ export function exportObjective(o) {
         type,
         targetId,
         requiredCount: Number(o.count ?? 1),
-        displayText: textNode(o.text, o.textMode || 'translatable', ''),
-        hidden: !!o.hidden,
-        optional: !!o.optional,
-        countMode: o.countMode || 'fixed',
-        countBase: Number(o.countBase ?? o.count ?? 1),
-        countPerLevel: Number(o.countPerLevel ?? 0),
-        countMin: Number(o.countMin ?? 1),
-        countMax: Number(o.countMax ?? -1),
-        extraData: {...(o.extraData || {})}
+        displayText: textNode(o.text, o.textMode || 'translatable', '')
     };
+
+    if (o.hidden) out.hidden = true;
+    if (o.optional) out.optional = true;
+    if (o.countMode && o.countMode !== 'fixed') out.countMode = o.countMode;
+    if (o.countBase !== null && o.countBase !== undefined && Number(o.countBase) !== 1) out.countBase = Number(o.countBase);
+    if (o.countPerLevel !== null && o.countPerLevel !== undefined && Number(o.countPerLevel) !== 0) out.countPerLevel = Number(o.countPerLevel);
+    if (o.countMin !== null && o.countMin !== undefined && Number(o.countMin) !== 1) out.countMin = Number(o.countMin);
+    if (o.countMax !== null && o.countMax !== undefined && Number(o.countMax) !== -1) out.countMax = Number(o.countMax);
+    if (o.extraData && Object.keys(o.extraData).length) out.extraData = {...o.extraData};
 
     if (o.relatedMarks?.length) out.relatedMarks = o.relatedMarks;
     if (o.npcId) out.npcId = o.npcId;

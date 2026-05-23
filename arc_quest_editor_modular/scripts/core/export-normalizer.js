@@ -44,7 +44,7 @@ export function exportQuestToDatapack(stateQuest) {
     if (q.flagsToSetOnAccept?.length) out.flagsToSetOnAccept = q.flagsToSetOnAccept;
     if (q.flagsToSetOnComplete?.length) out.flagsToSetOnComplete = q.flagsToSetOnComplete;
     if (q.completionPolicy) out.completionPolicy = q.completionPolicy;
-    if (q.completionRequiredCount !== undefined && q.completionRequiredCount !== null) out.completionRequiredCount = Number(q.completionRequiredCount);
+    if (q.completionPolicy === 'N_OF_M' && q.completionRequiredCount > 0) out.completionRequiredCount = Number(q.completionRequiredCount);
     if (q.completionTargetPhaseId) out.completionTargetPhaseId = q.completionTargetPhaseId;
     if (q.timeLimitType) out.timeLimitType = q.timeLimitType;
     if (q.timeLimitValue !== undefined && q.timeLimitValue !== null && Number(q.timeLimitValue) > 0) out.timeLimitValue = Number(q.timeLimitValue);
@@ -63,7 +63,12 @@ export function exportQuestToDatapack(stateQuest) {
         if (icons) out.visualConfig.icons = icons;
     }
     if (q.rewards?.length) out.completionRewards = q.rewards.map(exportReward);
-    if (q.collectionConfig) out.collectionConfig = q.collectionConfig;
+    if (q.collectionConfig) {
+        const cc = q.collectionConfig;
+        if ((cc.categories?.length) || (cc.rewardNodes?.length) || (cc.completionRules?.length)) {
+            out.collectionConfig = cc;
+        }
+    }
     Object.keys(out).forEach(k => out[k] === undefined && delete out[k]);
     return out;
 }

@@ -86,8 +86,67 @@ function cleanEmptyFields(obj) {
     }
 }
 
+function exportChoice(c) {
+    const out = {
+        choiceId: c.choiceId || '',
+        text: {mode: c.text?.mode || 'literal', value: c.text?.value || ''},
+        nextNodeId: c.nextNodeId || ''
+    };
+    if (c.conditions?.length) out.conditions = c.conditions;
+    if (c.actions?.length) out.actions = c.actions;
+    if (c.repeatable === false) out.repeatable = false;
+    if (c.cooldownSeconds > 0) out.cooldownSeconds = c.cooldownSeconds;
+    if (c.cooldownType && c.cooldownType !== 'NONE') out.cooldownType = c.cooldownType;
+    if (c.resetTimeTicks > 0) out.resetTimeTicks = c.resetTimeTicks;
+    if (c.priority > 0) out.priority = c.priority;
+    if (c.restoreNodeId) out.restoreNodeId = c.restoreNodeId;
+    if (c.selectSound) out.selectSound = c.selectSound;
+    return out;
+}
+
+function exportNode(node) {
+    const out = {
+        nodeId: node.nodeId || '',
+        speaker: {mode: node.speaker?.mode || 'literal', value: node.speaker?.value || ''},
+        text: {mode: node.text?.mode || 'literal', value: node.text?.value || ''}
+    };
+    if (node.sayId) out.sayId = node.sayId;
+    if (node.conditionalTexts) {
+        const ct = {};
+        for (const [key, say] of Object.entries(node.conditionalTexts)) {
+            const sayOut = {text: {mode: say.text?.mode || 'literal', value: say.text?.value || ''}};
+            if (say.sayId) sayOut.sayId = say.sayId;
+            if (say.conditions?.length) sayOut.conditions = say.conditions;
+            if (say.soundEvent) sayOut.soundEvent = say.soundEvent;
+            if (say.priority !== undefined && say.priority !== 0) sayOut.priority = say.priority;
+            ct[key] = sayOut;
+        }
+        if (Object.keys(ct).length) out.conditionalTexts = ct;
+    }
+    if (node.choices?.length) out.choices = node.choices.map(exportChoice);
+    if (node.autoNextId) out.autoNextId = node.autoNextId;
+    if (node.delayMs > 0) out.delayMs = node.delayMs;
+    if (node.repeatable === false) out.repeatable = false;
+    if (node.cooldownSeconds > 0) out.cooldownSeconds = node.cooldownSeconds;
+    if (node.cooldownType && node.cooldownType !== 'NONE') out.cooldownType = node.cooldownType;
+    if (node.resetTimeTicks > 0) out.resetTimeTicks = node.resetTimeTicks;
+    if (node.nodeEnterSound) out.nodeEnterSound = node.nodeEnterSound;
+    return out;
+}
+
 export function exportDialogueToDatapack(dialogue) {
-    const exported = JSON.parse(JSON.stringify(dialogue));
-    cleanEmptyFields(exported);
-    return exported;
+    const out = {
+        id: dialogue.id || '',
+        defaultNpc: {mode: dialogue.defaultNpc?.mode || 'literal', value: dialogue.defaultNpc?.value || ''},
+        startNodeId: dialogue.startNodeId || '',
+        nodes: (dialogue.nodes || []).map(exportNode)
+    };
+    if (dialogue.repeatable === false) out.repeatable = false;
+    if (dialogue.cooldownSeconds > 0) out.cooldownSeconds = dialogue.cooldownSeconds;
+    if (dialogue.cooldownType && dialogue.cooldownType !== 'NONE') out.cooldownType = dialogue.cooldownType;
+    if (dialogue.resetTimeTicks > 0) out.resetTimeTicks = dialogue.resetTimeTicks;
+    if (dialogue.visualConfig) out.visualConfig = dialogue.visualConfig;
+    if (dialogue.npcBindings?.length) out.npcBindings = dialogue.npcBindings;
+    if (dialogue.entityBindings?.length) out.entityBindings = dialogue.entityBindings;
+    return out;
 }

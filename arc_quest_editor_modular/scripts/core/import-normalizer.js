@@ -197,7 +197,7 @@ export function normalizeImportedQuest(input) {
         flagsToSetOnAccept: q.flagsToSetOnAccept || [],
         flagsToSetOnComplete: q.flagsToSetOnComplete || [],
         completionPolicy: q.completionPolicy || 'ALL',
-        completionRequiredCount: q.completionRequiredCount ?? 1,
+        completionRequiredCount: q.completionRequiredCount ?? 0,
         completionTargetPhaseId: q.completionTargetPhaseId || '',
         timeLimitType: q.timeLimitType || '',
         timeLimitValue: q.timeLimitValue ?? 0,

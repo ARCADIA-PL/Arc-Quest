@@ -19,27 +19,26 @@ export function normalizeImportedNpc(input) {
     };
 }
 
-function cleanEmptyFields(obj) {
-    if (obj == null) return;
-    if (Array.isArray(obj)) {
-        for (const item of obj) cleanEmptyFields(item);
-        return;
-    }
-    if (typeof obj !== 'object') return;
-    for (const key of Object.keys(obj)) {
-        const v = obj[key];
-        if (v === null || v === undefined || v === '' ||
-            (Array.isArray(v) && v.length === 0) ||
-            (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0)) {
-            delete obj[key];
-        } else if (typeof v === 'object') {
-            cleanEmptyFields(v);
-        }
-    }
-}
-
 export function exportNpcToDatapack(npc) {
-    const exported = JSON.parse(JSON.stringify(npc));
-    cleanEmptyFields(exported);
-    return exported;
+    const out = {
+        entityType: npc.entityType || '',
+        bindings: (npc.bindings || []).map(b => {
+            const bo = {
+                bindingId: b.bindingId || '',
+                dialogueId: b.dialogueId || ''
+            };
+            if (b.dialogueIdFromNbt) bo.dialogueIdFromNbt = b.dialogueIdFromNbt;
+            if (b.condition) bo.condition = b.condition;
+            if (b.priority > 0) bo.priority = b.priority;
+            return bo;
+        })
+    };
+    if (npc.cancelVanillaInteract === false) out.cancelVanillaInteract = false;
+    if (npc.dialogueDistance !== 8.0) out.dialogueDistance = npc.dialogueDistance;
+    if (npc.shouldLookAtPlayer === false) out.shouldLookAtPlayer = false;
+    if (npc.shouldStopMoving === false) out.shouldStopMoving = false;
+    if (npc.interactCondition) out.interactCondition = npc.interactCondition;
+    if (npc.onDialogueStartCommands?.length) out.onDialogueStartCommands = npc.onDialogueStartCommands;
+    if (npc.onDialogueEndCommands?.length) out.onDialogueEndCommands = npc.onDialogueEndCommands;
+    return out;
 }

@@ -72,20 +72,77 @@ function normalizeGachaText(spec) {
     return {mode: spec.mode === 'translatable' ? 'translatable' : 'literal', value: spec.value || '', args: Array.isArray(spec.args) ? spec.args : []};
 }
 
-function cleanEmpty(obj) {
-    if (obj == null) return;
-    if (Array.isArray(obj)) { for (const v of obj) cleanEmpty(v); return; }
-    if (typeof obj !== 'object') return;
-    for (const k of Object.keys(obj)) {
-        const v = obj[k];
-        if (v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0) || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0)) {
-            delete obj[k];
-        } else if (typeof v === 'object') cleanEmpty(v);
+function exportGachaOffer(o) {
+    const out = {type: o.type || 'item'};
+    if (o.type === 'item' || !o.type || o.type === 'item') {
+        out.itemId = o.itemId || '';
+        out.count = o.count ?? 1;
+        if (o.nbt) out.nbt = o.nbt;
+    } else if (o.type === 'command') {
+        out.command = o.command || '';
+        if (o.executeAs && o.executeAs !== 'console') out.executeAs = o.executeAs;
+    } else if (o.type === 'effect') {
+        out.effectId = o.effectId || '';
+        if (o.duration > 0) out.duration = o.duration;
+        if (o.amplifier > 0) out.amplifier = o.amplifier;
+    } else if (o.type === 'flag') {
+        out.flagName = o.flagName || '';
     }
+    if (o.offers?.length) out.offers = o.offers.map(exportGachaOffer);
+    return out;
+}
+
+function exportGachaItem(it) {
+    const out = {itemId: it.itemId || ''};
+    if (it.weight !== 1) out.weight = it.weight;
+    if (it.rarity && it.rarity !== 'RARE') out.rarity = it.rarity;
+    if (it.minCount !== 1) out.minCount = it.minCount;
+    if (it.maxCount !== 1) out.maxCount = it.maxCount;
+    if (it.sortOrder > 0) out.sortOrder = it.sortOrder;
+    if (it.displayName) out.displayName = {mode: it.displayName.mode || 'translatable', value: it.displayName.value || ''};
+    if (it.item) out.item = it.item;
+    if (it.rewardIcon) out.rewardIcon = it.rewardIcon;
+    if (it.themeColor !== -1) out.themeColor = it.themeColor;
+    if (it.drawSuccessSound) out.drawSuccessSound = it.drawSuccessSound;
+    return out;
 }
 
 export function exportGachaToDatapack(gacha) {
-    const exported = JSON.parse(JSON.stringify(gacha));
-    cleanEmpty(exported);
-    return exported;
+    const out = {
+        shopId: gacha.shopId || '',
+        pools: (gacha.pools || []).map(p => ({
+            poolId: p.poolId || 'default',
+            items: (p.items || []).map(exportGachaItem)
+        }))
+    };
+    if (gacha.displayName) out.displayName = {mode: gacha.displayName.mode || 'translatable', value: gacha.displayName.value || ''};
+    if (gacha.drawCost) out.drawCost = exportGachaOffer(gacha.drawCost);
+    if (gacha.categories?.length) out.categories = gacha.categories.map(c => {
+        const co = {categoryId: c.categoryId || ''};
+        if (c.displayName) co.displayName = {mode: c.displayName.mode || 'translatable', value: c.displayName.value || ''};
+        if (c.sortOrder > 0) co.sortOrder = c.sortOrder;
+        if (c.formatting) co.formatting = c.formatting;
+        return co;
+    });
+    if (gacha.rarities?.length) out.rarities = gacha.rarities.map(r => {
+        const ro = {rarity: r.rarity || 'RARE'};
+        if (r.color && r.color !== 0xFFFFFF) ro.color = r.color;
+        if (r.drawSuccessSound) ro.drawSuccessSound = r.drawSuccessSound;
+        return ro;
+    });
+    if (gacha.pity) out.pity = {
+        threshold: gacha.pity.threshold ?? 10,
+        targetRarity: gacha.pity.targetRarity || 'LEGENDARY'
+    };
+    if (gacha.maxDraws !== -1) out.maxDraws = gacha.maxDraws;
+    if (gacha.cooldownType && gacha.cooldownType !== 'NONE') out.cooldownType = gacha.cooldownType;
+    if (gacha.cooldownValue > 0) out.cooldownValue = gacha.cooldownValue;
+    if (gacha.resetTimeTicks > 0) out.resetTimeTicks = gacha.resetTimeTicks;
+    if (gacha.openCondition) out.openCondition = gacha.openCondition;
+    if (gacha.description) out.description = {mode: gacha.description.mode || 'literal', value: gacha.description.value || ''};
+    if (gacha.simpleMode === true) out.simpleMode = true;
+    if (gacha.themeColor && gacha.themeColor !== 0xFFD700) out.themeColor = gacha.themeColor;
+    if (gacha.openSound) out.openSound = gacha.openSound;
+    if (gacha.closeSound) out.closeSound = gacha.closeSound;
+    return out;
 }
