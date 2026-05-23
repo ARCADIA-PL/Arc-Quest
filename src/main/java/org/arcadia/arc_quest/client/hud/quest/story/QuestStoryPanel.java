@@ -1,3 +1,4 @@
+// file_name: QuestStoryPanel.java
 package org.arcadia.arc_quest.client.hud.quest.story;
 
 import net.minecraft.client.Minecraft;
@@ -9,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -47,7 +49,6 @@ public final class QuestStoryPanel {
     private QuestStoryPanel() {
     }
 
-    // 【终极优化：内联矩形拼接边框】(纯2D面板无需分离3D，但降低方法调用依然是优化重点)
     private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
         g.fill(x, y, x + w, y + thickness, color);
         g.fill(x, y + h - thickness, x + w, y + h, color);
@@ -139,9 +140,17 @@ public final class QuestStoryPanel {
         }
     }
 
-    public static void render(GuiGraphics g, int screenW, int screenH, int mx, int my, float partialTick) {
+    public static void render(GuiGraphics g, int baseScreenW, int baseScreenH, int mx, int my, float partialTick) {
         if (!active) return;
         Minecraft mc = Minecraft.getInstance();
+
+        int screenW = mc.getWindow().getGuiScaledWidth();
+        int screenH = mc.getWindow().getGuiScaledHeight();
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            screenW = qjs.getScaledWidth();
+            screenH = qjs.getScaledHeight();
+        }
+
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
@@ -187,16 +196,25 @@ public final class QuestStoryPanel {
         g.pose().translate(0, 0, 4500);
         g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (120 * alphaF)));
 
-        g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        } else {
+            g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        }
+
         g.pose().pushPose();
         g.pose().translate(currentDrawX, currentDrawY, 0);
         g.pose().scale(scaleAnim, scaleAnim, 1f);
 
-        // 此面板全为纯 2D 渲染操作
         renderPanel(g, mc.font, Math.max(0, Math.min(255, (int) (255 * alphaF))), alphaF, dt, mx, my);
 
         g.pose().popPose();
-        g.disableScissor();
+
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            g.disableScissor();
+        } else {
+            g.disableScissor();
+        }
         g.pose().popPose();
     }
 

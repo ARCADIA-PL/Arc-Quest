@@ -19,6 +19,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -28,51 +29,36 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Quest Intel Ponder 面板。
- * 完美移植 Genesis 的动画参数，呈现高级感全息机能面板。
- */
 public final class QuestIntelPanel {
 
-    // ── 面板尺寸（采用 16:9 基础宽屏比例）──────────────
     private static final int PANEL_W = 400;
     private static final int PANEL_H = 225;
-
-    // 进度条边距
     private static final int PROG_PAD = 16;
-
-    // 动画常量设计对标 Splash
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
 
     private static final Vector3f DIFFUSE_0 = new Vector3f(-0.2F, 1.0F, 0.7F).normalize();
     private static final Vector3f DIFFUSE_1 = new Vector3f(0.2F, 1.0F, -0.7F).normalize();
-    // 交互悬浮状态插值追踪 (丝滑放大换色)
     private static final Map<String, Float> buttonHoverStates = new HashMap<>();
 
-    // ── 状态 ──────────────────────────────────────────────────────────
     @Nullable
     private static List<PonderScene> activeScenes = null;
     private static int sceneIndex = 0;
     private static int themeColor = 0x4FC3F7;
-    // 独立的时间轴动画状态
     private static float enterTimer = 0f;
     private static float exitTimer = 0f;
     private static boolean isClosing = false;
     private static long lastTime = 0;
     private static boolean isPaused = false;
-    // 场景渲染区域尺寸
     private static int lastSceneAreaW = PANEL_W;
     private static int lastSceneAreaH = PANEL_H;
 
-    // ── 渲染期动态坐标与缩放（供点击事件检测使用）────────────────────
     private static float currentScale = 1.0f;
     private static float currentDrawX = 0;
     private static float currentDrawY = 0;
 
     private QuestIntelPanel() {}
 
-    // ── 公开 API ─────────────────────────────────────────────────────
     public static void trigger(ResourceLocation sceneId, int theme, int ax, int ay, int aw, int ah) {
         trigger(sceneId, theme);
     }
@@ -176,13 +162,17 @@ public final class QuestIntelPanel {
         return lastSceneAreaH;
     }
 
-    // ── 渲染核心 ──────────────────────────────────────────────────────────
-
-    public static void render(GuiGraphics g, int screenW, int screenH, int mx, int my, float _ignoredPartialTick) {
+    public static void render(GuiGraphics g, int baseScreenW, int baseScreenH, int mx, int my, float _ignoredPartialTick) {
         if (activeScenes == null) return;
 
-        // 【核心修复】：彻底无视外部（HUD Overlay）传进来的可能损坏的 partialTick！
-        // 强制向内核索取原生精准帧差值，确保 3D Ponder 动画拥有最高级别的丝滑补帧！
+        Minecraft mc = Minecraft.getInstance();
+        int screenW = mc.getWindow().getGuiScaledWidth();
+        int screenH = mc.getWindow().getGuiScaledHeight();
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            screenW = qjs.getScaledWidth();
+            screenH = qjs.getScaledHeight();
+        }
+
         float exactPt = Minecraft.getInstance().getFrameTime();
 
         long now = System.currentTimeMillis();
@@ -193,14 +183,8 @@ public final class QuestIntelPanel {
         float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f);
         float baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
 
-        float scaleAnim = finalScale;
-        float currentX = baseX;
-        float currentY = baseY;
-
-        float alphaF = 1.0f;
-        float revealProgress = 1.0f;
-        float wipeProgress = 0.0f;
-        float actualFlyDist = 4.0f * finalScale;
+        float scaleAnim = finalScale, currentX = baseX, currentY = baseY;
+        float alphaF = 1.0f, revealProgress = 1.0f, wipeProgress = 0.0f, actualFlyDist = 4.0f * finalScale;
 
         if (isClosing) {
             exitTimer += dt;
@@ -209,41 +193,38 @@ public final class QuestIntelPanel {
                 return;
             }
             float t = Math.min(1.0f, exitTimer / EXIT_TIME);
-            float easeIn = (float) Math.pow(t, 4.0);
-            wipeProgress = easeIn;
-            currentX = baseX - (easeIn * actualFlyDist * 1.5f);
+            wipeProgress = (float) Math.pow(t, 4.0);
+            currentX = baseX - (wipeProgress * actualFlyDist * 1.5f);
             alphaF = 1.0f - (float) Math.pow(t, 8.0);
         } else {
             enterTimer = Math.min(ENTER_TIME, enterTimer + dt);
             float t = Math.min(1.0f, enterTimer / ENTER_TIME);
-            float easeOut = (float) (1.0 - Math.pow(1.0 - t, 5));
-            revealProgress = easeOut;
-            alphaF = easeOut;
-            scaleAnim = finalScale * (1.10f - 0.10f * easeOut);
-            currentX = baseX - (1.0f - easeOut) * actualFlyDist * 2f;
+            revealProgress = (float) (1.0 - Math.pow(1.0 - t, 5));
+            alphaF = revealProgress;
+            scaleAnim = finalScale * (1.10f - 0.10f * revealProgress);
+            currentX = baseX - (1.0f - revealProgress) * actualFlyDist * 2f;
         }
 
         if (revealProgress <= 0.001f || wipeProgress >= 0.999f) return;
 
-        float drawWidth = PANEL_W * scaleAnim;
-        float drawHeight = PANEL_H * scaleAnim;
-        float scaleOffsetW = (drawWidth - PANEL_W * finalScale) / 2f;
-        float scaleOffsetH = (drawHeight - PANEL_H * finalScale) / 2f;
-
-        currentDrawX = currentX - scaleOffsetW;
-        currentDrawY = currentY - scaleOffsetH;
+        float drawWidth = PANEL_W * scaleAnim, drawHeight = PANEL_H * scaleAnim;
+        currentDrawX = currentX - (drawWidth - PANEL_W * finalScale) / 2f;
+        currentDrawY = currentY - (drawHeight - PANEL_H * finalScale) / 2f;
         currentScale = scaleAnim;
 
-        int scX1 = (int) (currentDrawX - 10);
-        int scX2 = (int) (currentDrawX + drawWidth + 10);
-
+        int scX1 = (int) (currentDrawX - 10), scX2 = (int) (currentDrawX + drawWidth + 10);
         if (isClosing) scX2 = (int) (currentDrawX + drawWidth * (1.0f - wipeProgress));
         else if (enterTimer < ENTER_TIME) scX2 = (int) (currentDrawX + drawWidth * revealProgress);
 
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
 
-        g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        } else {
+            g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        }
+
         g.pose().pushPose();
         g.pose().translate(currentDrawX, currentDrawY, 0);
         g.pose().scale(scaleAnim, scaleAnim, 1f);
@@ -252,7 +233,12 @@ public final class QuestIntelPanel {
         renderPanel(g, Minecraft.getInstance().font, alphaInt, alphaF, dt, exactPt, mx, my);
 
         g.pose().popPose();
-        g.disableScissor();
+
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            g.disableScissor();
+        } else {
+            g.disableScissor();
+        }
         g.pose().popPose();
     }
 
@@ -307,15 +293,11 @@ public final class QuestIntelPanel {
         drawContentHologramButton(g, font, "prev", 4, PH / 2 - 15, 14, 30, "◄", lx, ly, alpha, themeColor, canPrev, dt);
         drawContentHologramButton(g, font, "next", PW - 18, PH / 2 - 15, 14, 30, "►", lx, ly, alpha, themeColor, canNext, dt);
 
-        int sceneX = 22;
-        int sceneY = topBarH;
-        int sceneW = PW - 44;
-        int sceneH = PH - topBarH - 20;
+        int sceneX = 22, sceneY = topBarH, sceneW = PW - 44, sceneH = PH - topBarH - 20;
         lastSceneAreaW = sceneW;
         lastSceneAreaH = sceneH;
 
         renderPonderScene(g, scene, sceneX, sceneY, sceneW, sceneH, pt);
-
         renderMinimalProgressBar(g, scene, alpha, alphaF);
 
         g.pose().pushPose();
@@ -327,9 +309,7 @@ public final class QuestIntelPanel {
     }
 
     private static void renderMinimalProgressBar(GuiGraphics g, PonderScene scene, int alpha, float alphaF) {
-        int barY = PANEL_H - 12;
-        int barX = PROG_PAD;
-        int barW = PANEL_W - PROG_PAD * 2;
+        int barY = PANEL_H - 12, barX = PROG_PAD, barW = PANEL_W - PROG_PAD * 2;
         float progress = scene.getTotalTime() > 0 ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
 
         g.fill(barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));

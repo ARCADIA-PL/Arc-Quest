@@ -1,3 +1,4 @@
+// file_name: QuestOfferPanel.java
 package org.arcadia.arc_quest.client.hud.quest.offer;
 
 import net.minecraft.Util;
@@ -16,6 +17,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -85,7 +87,6 @@ public final class QuestOfferPanel {
     private QuestOfferPanel() {
     }
 
-    // 【终极优化：内联矩形拼接边框】
     private static void drawFastFrame(GuiGraphics g, int x, int y, int w, int h, int thickness, int color) {
         g.fill(x, y, x + w, y + thickness, color);
         g.fill(x, y + h - thickness, x + w, y + h, color);
@@ -205,6 +206,15 @@ public final class QuestOfferPanel {
     public static void render(GuiGraphics g, int screenW, int screenH, int mx, int my, float partialTick) {
         if (!active) return;
         Minecraft mc = Minecraft.getInstance();
+
+        // 1. 屏幕尺寸环境感知
+        screenW = mc.getWindow().getGuiScaledWidth();
+        screenH = mc.getWindow().getGuiScaledHeight();
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            screenW = qjs.getScaledWidth();
+            screenH = qjs.getScaledHeight();
+        }
+
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
@@ -250,7 +260,14 @@ public final class QuestOfferPanel {
         g.pose().pushPose();
         g.pose().translate(0, 0, 4500);
         g.fill(-1000, -1000, screenW + 1000, screenH + 1000, HudAnimUtil.withAlpha(0x000000, (int) (100 * alphaF)));
-        g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+
+        // 2. 裁切环境感知
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            qjs.enableScissor(g, scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        } else {
+            g.enableScissor(scX1, (int) (currentDrawY - 10), scX2, (int) (currentDrawY + drawHeight + 10));
+        }
+
         g.pose().pushPose();
         g.pose().translate(currentDrawX, currentDrawY, 0);
         g.pose().scale(scaleAnim, scaleAnim, 1f);
@@ -258,7 +275,13 @@ public final class QuestOfferPanel {
         renderPanel(g, mc.font, Math.max(0, Math.min(255, (int) (255 * alphaF))), alphaF, dt, mx, my);
 
         g.pose().popPose();
-        g.disableScissor();
+
+        // 3. 关闭裁切环境感知
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            g.disableScissor();
+        } else {
+            g.disableScissor();
+        }
         g.pose().popPose();
 
         if (!hoveredStack.isEmpty() && !closing && !cleared) {
@@ -306,9 +329,6 @@ public final class QuestOfferPanel {
 
         updateSubmitFeedback(renderVm, dt);
 
-        // =========================================================================
-        // PASS 1: 纯 2D 通道 (背景、遮罩、文本、滑块、按钮)
-        // =========================================================================
         int bgAlpha = (int) (0x99 * alphaF), borderAlpha = (int) (0x66 * alphaF), borderRgb = 0xCCCCCC;
         int feedbackTargetColor = submitFeedbackSuccess ? 0x33FF66 : 0xFF3333;
         int currentEdgeColor = cleared ? 0x33FF66 : HudAnimUtil.lerpColor(themeColor, feedbackTargetColor, submitFeedbackAnim);
@@ -321,7 +341,7 @@ public final class QuestOfferPanel {
         int contentAlpha = (int) (alpha * contentAlphaMult);
         float contentAlphaF = alphaF * contentAlphaMult;
 
-        int iconX = 20, iconY = 34; // 提前声明用于PASS 2
+        int iconX = 20, iconY = 34;
         ItemStack iconToRender = ItemStack.EMPTY;
 
         if (contentAlpha > 5) {
@@ -443,9 +463,6 @@ public final class QuestOfferPanel {
             }
         }
 
-        // =========================================================================
-        // PASS 2: 纯 3D 通道 (只渲染物品)
-        // =========================================================================
         if (contentAlpha > 5 && !iconToRender.isEmpty() && !cleared) {
             g.pose().pushPose();
             g.renderItem(iconToRender, iconX, iconY);
