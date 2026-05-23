@@ -74,7 +74,7 @@ final class GuideContentPanel {
         g.enableScissor(descX - 2, descY - 2, descX + descW + 2, descY + descH + 2);
         int sy = descY - (int) Math.round(screen.getDescScroll());
         for (int i = 0; i < lines.size(); i++) {
-            g.drawString(Minecraft.getInstance().font, lines.get(i), descX, sy + i * GuideScreenLayout.TEXT_LINE_H, withAlpha(GuideConstants.TEXT, alpha));
+            g.drawString(Minecraft.getInstance().font, lines.get(i), descX, sy + i * GuideScreenLayout.textLineHeight(), withAlpha(GuideConstants.TEXT, alpha));
         }
         g.disableScissor();
 

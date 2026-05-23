@@ -212,7 +212,7 @@ public final class GuideScreen extends Screen {
         g.enableScissor(10, descY - 2, l.baseW() - 10, descY + descH + 2);
         int sy = descY - (int) Math.round(descScroll);
         for (int i = 0; i < wrapped.size(); i++) {
-            g.drawString(font, wrapped.get(i), tx, sy + i * GuideScreenLayout.TEXT_LINE_H, withAlpha(GuideConstants.TEXT, (int) (alpha * pageTransitionAnim)));
+            g.drawString(font, wrapped.get(i), tx, sy + i * GuideScreenLayout.textLineHeight(), withAlpha(GuideConstants.TEXT, (int) (alpha * pageTransitionAnim)));
         }
         g.disableScissor();
 
