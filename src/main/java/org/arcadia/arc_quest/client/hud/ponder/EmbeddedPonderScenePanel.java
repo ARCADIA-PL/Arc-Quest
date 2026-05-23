@@ -1,3 +1,4 @@
+// file_name: EmbeddedPonderScenePanel.java
 package org.arcadia.arc_quest.client.hud.ponder;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -8,16 +9,25 @@ import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.createmod.ponder.foundation.PonderIndex;
 import net.createmod.ponder.foundation.PonderScene;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
+import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class EmbeddedPonderScenePanel {
@@ -26,170 +36,166 @@ public final class EmbeddedPonderScenePanel {
     private static final Vector3f DIFFUSE_1 = new Vector3f(0.2F, 1.0F, -0.7F).normalize();
     private static final Set<ResourceLocation> WARNED_MISSING_SCENES = new HashSet<>();
 
-    @Nullable
-    private EmbeddedPonderSceneHandle handle;
-    @Nullable
-    private ResourceLocation boundSceneId;
+    @Nullable private EmbeddedPonderSceneHandle handle;
+    @Nullable private ResourceLocation boundSceneId;
     private int themeColor = 0x4FC3F7;
 
+    private final Map<String, Float> buttonHoverStates = new HashMap<>();
+    private long lastRenderTime = 0;
+
     public boolean bind(ResourceLocation sceneId, int themeColor, boolean autoplay) {
-        if (sceneId == null) {
-            unbind();
-            return false;
-        }
-        if (isBoundTo(sceneId)) {
-            return handle != null && handle.isValid();
-        }
+        if (sceneId == null) { unbind(); return false; }
+        if (isBoundTo(sceneId)) return handle != null && handle.isValid();
         unbind();
         this.themeColor = themeColor;
-        boundSceneId = sceneId;
+        this.boundSceneId = sceneId;
 
         if (!ArcQuestPonderSceneRegistry.hasScene(sceneId) || !PonderIndex.getSceneAccess().doScenesExistForId(sceneId)) {
-            warnMissing(sceneId);
-            return false;
+            warnMissing(sceneId); return false;
         }
-
         List<PonderScene> scenes = PonderIndex.getSceneAccess().compile(sceneId);
-        if (scenes == null || scenes.isEmpty()) {
-            warnMissing(sceneId);
-            return false;
-        }
+        if (scenes == null || scenes.isEmpty()) { warnMissing(sceneId); return false; }
 
         handle = new EmbeddedPonderSceneHandle(sceneId, scenes, !autoplay, themeColor);
+        buttonHoverStates.clear();
         return handle.isValid();
     }
 
     public void unbind() {
-        if (handle != null) {
-            handle.release();
-        }
+        if (handle != null) handle.release();
         handle = null;
         boundSceneId = null;
-    }
-
-    public boolean hasBoundScene() {
-        return handle != null && handle.isValid();
     }
 
     public boolean isBoundTo(ResourceLocation sceneId) {
         return boundSceneId != null && boundSceneId.equals(sceneId) && handle != null && handle.isValid();
     }
 
-    public void tick() {
-        if (handle != null) {
-            handle.tick();
+    public void tick() { if (handle != null) handle.tick(); }
+
+    public void render(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY, float partialTick, int alpha) {
+        if (handle == null || !handle.isValid()) {
+            renderMissing(g, x, y, w, h, alpha); return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (lastRenderTime == 0) lastRenderTime = now;
+        float dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
+        lastRenderTime = now;
+
+        Font font = Minecraft.getInstance().font;
+        PonderScene scene = handle.currentScene();
+
+        // 背景
+        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int)(alpha * 0.4f)));
+
+        int sceneX = x;
+        int sceneY = y;
+        int sceneW = w;
+        int sceneH = h - 16; // 留出底部进度条空间
+
+        render3DScene(g, scene, sceneX, sceneY, sceneW, sceneH, partialTick, alpha);
+
+        // ── 全息 UI 层 ──
+        float lx = mouseX - x;
+        float ly = mouseY - y;
+
+        boolean canPrev = handle.getSceneIndex() > 0;
+        boolean canNext = handle.getSceneIndex() < handle.getSceneCount() - 1;
+
+        // 右上角控制按钮
+        drawHologramButton(g, font, "replay", x + w - 48, y + 4, 20, 18, "↺", lx, ly, w - 48, 4, alpha, true, dt);
+        drawHologramButton(g, font, "pause", x + w - 24, y + 4, 20, 18, handle.isPaused() ? "▶" : "‖", lx, ly, w - 24, 4, alpha, true, dt);
+
+        // 两侧切换按钮
+        drawHologramButton(g, font, "prev", x + 4, y + h / 2 - 15, 14, 30, "◄", lx, ly, 4, h / 2 - 15, alpha, canPrev, dt);
+        drawHologramButton(g, font, "next", x + w - 18, y + h / 2 - 15, 14, 30, "►", lx, ly, w - 18, h / 2 - 15, alpha, canNext, dt);
+
+        // 底部进度条 (完全对标 QuestIntelPanel)
+        renderMinimalProgressBar(g, scene, x, y + h, w, alpha);
+    }
+
+    private void renderMinimalProgressBar(GuiGraphics g, PonderScene scene, int x, int bottomY, int w, int alpha) {
+        int pad = 12;
+        int barY = bottomY - 8;
+        int barX = x + pad;
+        int barW = w - pad * 2;
+
+        float progress = scene.getTotalTime() > 0 ? (float) scene.getCurrentTime() / scene.getTotalTime() : 0f;
+
+        g.fill(barX, barY, barX + barW, barY + 1, HudAnimUtil.withAlpha(0x334455, (int) (alpha * 0.4f)));
+        int curW = (int) (barW * progress);
+        if (curW > 0) g.fill(barX, barY, barX + curW, barY + 1, HudAnimUtil.withAlpha(themeColor, alpha));
+        g.fill(barX + curW - 1, barY - 1, barX + curW + 1, barY + 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+
+        for (int k = 0; k < scene.getKeyframeCount(); k++) {
+            float kf = scene.getTotalTime() > 0 ? (float) scene.getKeyframeTime(k) / scene.getTotalTime() : 0f;
+            int kx = barX + (int) (barW * kf);
+            g.fill(kx, barY - 1, kx + 1, barY + 2, HudAnimUtil.withAlpha(themeColor, alpha));
         }
     }
 
-    public void render(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY, float partialTick) {
-        g.fill(x, y, x + w, y + h, 0x501A2430);
-        g.fill(x, y, x + w, y + 1, 0xFF000000 | (themeColor & 0x00FFFFFF));
-        g.fill(x, y + h - 1, x + w, y + h, 0xFF000000 | (themeColor & 0x00FFFFFF));
-        g.fill(x, y, x + 1, y + h, 0xFF000000 | (themeColor & 0x00FFFFFF));
-        g.fill(x + w - 1, y, x + w, y + h, 0xFF000000 | (themeColor & 0x00FFFFFF));
+    private void drawHologramButton(GuiGraphics g, Font font, String id, int absX, int absY, int bw, int bh, String text, float lx, float ly, float localBtnX, float localBtnY, int alpha, boolean enabled, float dt) {
+        if (!enabled) return;
+        boolean hovered = lx >= localBtnX && lx <= localBtnX + bw && ly >= localBtnY && ly <= localBtnY + bh;
 
-        if (handle == null || !handle.isValid()) {
-            renderMissing(g, x, y, w, h);
-            return;
-        }
+        float currentHover = buttonHoverStates.getOrDefault(id, 0f);
+        currentHover += ((hovered ? 1f : 0f) - currentHover) * Math.min(1f, dt * 18f);
+        buttonHoverStates.put(id, currentHover);
 
-        PonderScene scene = handle.currentScene();
-        int sceneX = x + 6;
-        int sceneY = y + 6;
-        int sceneW = Math.max(8, w - 12);
-        int sceneH = Math.max(8, h - 12);
-        renderScene(g, scene, sceneX, sceneY, sceneW, sceneH, partialTick);
+        int baseColor = 0x888888;
+        int currentColor = interpolateColor(baseColor, themeColor, currentHover);
 
-        var font = Minecraft.getInstance().font;
-        String counter = (handle.getSceneIndex() + 1) + " / " + handle.getSceneCount();
-        g.drawString(font, Component.literal(counter), x + 8, y + 8, 0xB8C7D9, false);
-        g.drawString(font, Component.literal(handle.isPaused() ? "Paused" : "Playing"), x + w - 50, y + 8, 0xB8C7D9, false);
+        g.pose().pushPose();
+        float textScale = (text.length() == 1 ? 1.4f : 1.2f) + (0.35f * currentHover);
+        g.pose().translate(absX + bw / 2f, absY + bh / 2f - (font.lineHeight * textScale) / 2f + 1, 0);
+        g.pose().scale(textScale, textScale, 1f);
+        g.drawCenteredString(font, text, 0, 0, HudAnimUtil.withAlpha(currentColor, alpha));
+        g.pose().popPose();
+    }
 
-        drawButton(g, x + 6, y + h - 18, 14, 12, "◄", canPrev(), mouseX, mouseY);
-        drawButton(g, x + 24, y + h - 18, 14, 12, handle.isPaused() ? "▶" : "‖", true, mouseX, mouseY);
-        drawButton(g, x + 42, y + h - 18, 14, 12, "↺", true, mouseX, mouseY);
-        drawButton(g, x + 60, y + h - 18, 14, 12, "►", canNext(), mouseX, mouseY);
+    private int interpolateColor(int c1, int c2, float t) {
+        int r = (int) (((c1 >> 16) & 0xFF) + (((c2 >> 16) & 0xFF) - ((c1 >> 16) & 0xFF)) * t);
+        int g = (int) (((c1 >> 8) & 0xFF) + (((c2 >> 8) & 0xFF) - ((c1 >> 8) & 0xFF)) * t);
+        int b = (int) ((c1 & 0xFF) + ((c2 & 0xFF) - (c1 & 0xFF)) * t);
+        return (r << 16) | (g << 8) | b;
     }
 
     public boolean mouseClicked(double mx, double my, int button, int x, int y, int w, int h) {
-        if (handle == null || !handle.isValid() || button != 0) {
-            return false;
-        }
-        if (hit(mx, my, x + 6, y + h - 18, 14, 12) && canPrev()) {
-            handle.scrollBack();
-            return true;
-        }
-        if (hit(mx, my, x + 24, y + h - 18, 14, 12)) {
-            handle.togglePause();
-            return true;
-        }
-        if (hit(mx, my, x + 42, y + h - 18, 14, 12)) {
-            handle.replay();
-            return true;
-        }
-        if (hit(mx, my, x + 60, y + h - 18, 14, 12) && canNext()) {
-            handle.scrollForward();
-            return true;
-        }
-        if (hit(mx, my, x, y + h - 24, w, 6)) {
-            if (handle.currentScene().getTotalTime() > 0) {
-                float t = (float) (mx - x) / w;
-                handle.seekToTime((int) (t * handle.currentScene().getTotalTime()));
-            }
+        if (handle == null || !handle.isValid() || button != 0) return false;
+
+        float lx = (float) (mx - x);
+        float ly = (float) (my - y);
+
+        if (lx >= w - 24 && lx <= w - 4 && ly >= 4 && ly <= 22) { handle.togglePause(); playClickSound(); return true; }
+        if (lx >= w - 48 && lx <= w - 28 && ly >= 4 && ly <= 22) { handle.replay(); playClickSound(); return true; }
+        if (handle.getSceneIndex() > 0 && lx >= 4 && lx <= 18 && ly >= h / 2f - 15 && ly <= h / 2f + 15) { handle.scrollBack(); playClickSound(); return true; }
+        if (handle.getSceneIndex() < handle.getSceneCount() - 1 && lx >= w - 18 && lx <= w - 4 && ly >= h / 2f - 15 && ly <= h / 2f + 15) { handle.scrollForward(); playClickSound(); return true; }
+
+        int pad = 12;
+        int barY = h - 8;
+        int barX = pad;
+        int barW = w - pad * 2;
+        if (ly >= barY - 4 && ly <= barY + 4 && lx >= barX && lx <= barX + barW) {
+            float t = (lx - barX) / barW;
+            handle.seekToTime((int) (t * handle.currentScene().getTotalTime()));
             return true;
         }
         return false;
     }
 
-    public void onScreenClosed() {
-        unbind();
-    }
-
-    @Nullable
-    public EmbeddedPonderSceneHandle getHandle() {
-        return handle;
-    }
-
-    private boolean canPrev() {
-        return handle != null && handle.isValid() && handle.getSceneIndex() > 0;
-    }
-
-    private boolean canNext() {
-        return handle != null && handle.isValid() && handle.getSceneIndex() < handle.getSceneCount() - 1;
-    }
-
-    private void renderMissing(GuiGraphics g, int x, int y, int w, int h) {
-        var font = Minecraft.getInstance().font;
-        g.drawCenteredString(font, Component.translatable("guide.arc_quest.ponder_missing"), x + w / 2, y + h / 2 - 10, 0xFF8888);
-        if (boundSceneId != null) {
-            g.drawCenteredString(font, Component.literal(boundSceneId.toString()), x + w / 2, y + h / 2 + 4, 0xC0D0E0);
-        }
-    }
-
-    private void drawButton(GuiGraphics g, int x, int y, int w, int h, String label, boolean enabled, int mouseX, int mouseY) {
-        boolean hovered = hit(mouseX, mouseY, x, y, w, h);
-        int border = enabled ? (hovered ? 0xFFBFE9FF : (0xFF000000 | (themeColor & 0x00FFFFFF))) : 0xFF44515D;
-        int fill = enabled ? (hovered ? 0x60305060 : 0x40182028) : 0x20101010;
-        int text = enabled ? 0xE6EDF7 : 0x6C7885;
-        g.fill(x, y, x + w, y + h, fill);
-        g.fill(x, y, x + w, y + 1, border);
-        g.fill(x, y + h - 1, x + w, y + h, border);
-        g.fill(x, y, x + 1, y + h, border);
-        g.fill(x + w - 1, y, x + w, y + h, border);
-        g.drawCenteredString(Minecraft.getInstance().font, label, x + w / 2, y + 2, text);
-    }
-
-    private boolean hit(double mx, double my, int x, int y, int w, int h) {
-        return mx >= x && mx <= x + w && my >= y && my <= y + h;
-    }
-
-    private void renderScene(GuiGraphics g, PonderScene scene, int areaX, int areaY, int areaW, int areaH, float pt) {
+    private void render3DScene(GuiGraphics g, PonderScene scene, int areaX, int areaY, int areaW, int areaH, float pt, int alpha) {
         SuperRenderTypeBuffer buffer = DefaultSuperRenderTypeBuffer.getInstance();
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();
         RenderSystem.backupProjectionMatrix();
 
-        g.enableScissor(areaX, areaY, areaX + areaW, areaY + areaH);
+        Screen currentScreen = Minecraft.getInstance().screen;
+        if (currentScreen instanceof GuideListScreen gls) {
+            gls.enableScissor(g, areaX, areaY, areaX + areaW, areaY + areaH);
+        } else {
+            g.enableScissor(areaX, areaY, areaX + areaW, areaY + areaH);
+        }
 
         Matrix4f proj = new Matrix4f(RenderSystem.getProjectionMatrix());
         proj.translate(0, 0, 800);
@@ -199,6 +205,8 @@ public final class EmbeddedPonderScenePanel {
         ms.pushPose();
         ms.translate(areaX, areaY, -800);
         RenderSystem.setupLevelDiffuseLighting(DIFFUSE_0, DIFFUSE_1, ms.last().pose());
+
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
 
         scene.getTransform().updateScreenParams(areaW, areaH, 0);
         scene.getTransform().apply(ms, pt);
@@ -210,11 +218,26 @@ public final class EmbeddedPonderScenePanel {
         g.disableScissor();
         RenderSystem.restoreProjectionMatrix();
         RenderSystem.disableDepthTest();
+
+        ms.pushPose();
+        ms.translate(areaX, areaY, 100);
+        scene.renderOverlay(null, g, pt);
+        ms.popPose();
+
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    public void onScreenClosed() { unbind(); }
+
+    private void renderMissing(GuiGraphics g, int x, int y, int w, int h, int alpha) {
+        Font font = Minecraft.getInstance().font;
+        g.drawCenteredString(font, "SCENE MISSING", x + w / 2, y + h / 2 - 10, HudAnimUtil.withAlpha(0xFF8888, alpha));
+        if (boundSceneId != null) g.drawCenteredString(font, boundSceneId.toString(), x + w / 2, y + h / 2 + 4, HudAnimUtil.withAlpha(0xC0D0E0, alpha));
     }
 
     private void warnMissing(ResourceLocation sceneId) {
-        if (WARNED_MISSING_SCENES.add(sceneId)) {
-            org.arcadia.arc_quest.Arc_Quest.LOGGER.warn("[Guide] Missing embedded ponder scene '{}'", sceneId);
-        }
+        if (WARNED_MISSING_SCENES.add(sceneId)) Arc_Quest.LOGGER.warn("[Guide] Missing embedded ponder scene '{}'", sceneId);
     }
+
+    private void playClickSound() { Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)); }
 }

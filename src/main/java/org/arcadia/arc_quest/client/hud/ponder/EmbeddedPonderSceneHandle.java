@@ -1,3 +1,4 @@
+// file_name: EmbeddedPonderSceneHandle.java
 package org.arcadia.arc_quest.client.hud.ponder;
 
 import net.createmod.ponder.foundation.PonderScene;
@@ -18,66 +19,37 @@ public final class EmbeddedPonderSceneHandle {
     private boolean valid;
     private final int themeColor;
 
-    public EmbeddedPonderSceneHandle(@Nullable ResourceLocation sceneId,
-                                     @Nullable List<PonderScene> scenes,
-                                     boolean paused,
-                                     int themeColor) {
+    public EmbeddedPonderSceneHandle(@Nullable ResourceLocation sceneId, @Nullable List<PonderScene> scenes, boolean paused, int themeColor) {
         this.sceneId = sceneId;
         this.scenes = scenes == null ? null : List.copyOf(scenes);
         this.sceneIndex = 0;
         this.paused = paused;
         this.valid = this.scenes != null && !this.scenes.isEmpty();
         this.themeColor = themeColor;
-        if (valid) {
-            currentScene().begin();
-        }
+        if (valid) currentScene().begin();
     }
 
-    public boolean isValid() {
-        return valid;
-    }
-
-    @Nullable
-    public ResourceLocation getSceneId() {
-        return sceneId;
-    }
-
-    public int getSceneIndex() {
-        return sceneIndex;
-    }
-
-    public int getSceneCount() {
-        return scenes == null ? 0 : scenes.size();
-    }
-
-    public boolean isPaused() {
-        return paused;
-    }
-
-    public int getThemeColor() {
-        return themeColor;
-    }
+    public boolean isValid() { return valid; }
+    @Nullable public ResourceLocation getSceneId() { return sceneId; }
+    public int getSceneIndex() { return sceneIndex; }
+    public int getSceneCount() { return scenes == null ? 0 : scenes.size(); }
+    public boolean isPaused() { return paused; }
+    public int getThemeColor() { return themeColor; }
 
     public void tick() {
-        if (!valid || paused) {
-            return;
-        }
+        if (!valid || paused) return;
         PonderUI.ponderTicks++;
         currentScene().tick();
     }
 
     public void replay() {
-        if (!valid) {
-            return;
-        }
+        if (!valid) return;
         currentScene().begin();
         paused = false;
     }
 
     public void scrollForward() {
-        if (!valid || scenes == null || sceneIndex >= scenes.size() - 1) {
-            return;
-        }
+        if (!valid || scenes == null || sceneIndex >= scenes.size() - 1) return;
         currentScene().fadeOut();
         sceneIndex++;
         currentScene().begin();
@@ -85,22 +57,14 @@ public final class EmbeddedPonderSceneHandle {
     }
 
     public void scrollBack() {
-        if (!valid || scenes == null || sceneIndex <= 0) {
-            return;
-        }
+        if (!valid || scenes == null || sceneIndex <= 0) return;
         currentScene().fadeOut();
         sceneIndex--;
         currentScene().begin();
         paused = false;
     }
 
-    public void setPaused(boolean paused) {
-        this.paused = paused;
-    }
-
-    public void togglePause() {
-        this.paused = !this.paused;
-    }
+    public void togglePause() { this.paused = !this.paused; }
 
     public void seekToTime(int time) {
         if (!valid || scenes == null || scenes.isEmpty()) return;
@@ -110,18 +74,14 @@ public final class EmbeddedPonderSceneHandle {
     }
 
     public void release() {
-        if (!valid) {
-            return;
-        }
+        if (!valid) return;
         currentScene().fadeOut();
         valid = false;
         paused = true;
     }
 
     public PonderScene currentScene() {
-        if (!valid || scenes == null || scenes.isEmpty()) {
-            throw new IllegalStateException("Embedded ponder handle has no active scene");
-        }
+        if (!valid || scenes == null || scenes.isEmpty()) throw new IllegalStateException("Embedded ponder handle has no active scene");
         return scenes.get(sceneIndex);
     }
 }

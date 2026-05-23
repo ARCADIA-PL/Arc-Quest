@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
+import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 
 import java.util.List;
 
@@ -91,7 +92,7 @@ public class GuideListPanel {
 
                 g.drawString(screen.getFont(), displayTitle, x + 10, (int) textY, nameColor, false);
 
-                if (!org.arcadia.arc_quest.guide.network.ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
+                if (!ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
                     HudRenderUtil.drawBreathingRhombus(g, x + w - 14, entryY + GuideConstants.ENTRY_HEIGHT / 2, theme | 0xFF000000, (System.currentTimeMillis() / 1000f), effectiveAlpha);
                 }
             }

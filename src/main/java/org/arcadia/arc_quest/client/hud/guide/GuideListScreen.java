@@ -227,13 +227,13 @@ public final class GuideListScreen extends Screen {
         // 渲染列表面板外框 (降低边框 Alpha，消除光污染)
         HudAnimUtil.drawFrame(g, listX, listY, GuideConstants.LIST_WIDTH, listH,
                 HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
-                HudAnimUtil.withAlpha(currentThemeColor, (int) (0x33 * effectiveAlpha))); // 从 0x55 降至 0x33
+                HudAnimUtil.withAlpha(0x333333, safeAlpha));
         listPanel.render(g, listX, listY, GuideConstants.LIST_WIDTH, listH, smx, smy, currentThemeColor, dt);
 
-        // 渲染内容面板外框
+        // 渲染内容面板外框 (移除主题色，替换为极简灰 0x333333)
         HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH,
                 HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
-                HudAnimUtil.withAlpha(currentThemeColor, (int) (0x33 * effectiveAlpha)));
+                HudAnimUtil.withAlpha(0x333333, safeAlpha));
         contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
 
         g.pose().popPose();

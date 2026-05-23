@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.questplayer.state;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
@@ -118,11 +119,11 @@ public final class ArcQuestQuestState {
         root.put("ActiveQuests", activeList);
 
         ListTag completedList = new ListTag();
-        for (String id : completedQuests) completedList.add(net.minecraft.nbt.StringTag.valueOf(id));
+        for (String id : completedQuests) completedList.add(StringTag.valueOf(id));
         root.put("CompletedQuests", completedList);
 
         ListTag failedList = new ListTag();
-        for (String id : failedQuests) failedList.add(net.minecraft.nbt.StringTag.valueOf(id));
+        for (String id : failedQuests) failedList.add(StringTag.valueOf(id));
         root.put("FailedQuests", failedList);
 
         ListTag markerList = new ListTag();

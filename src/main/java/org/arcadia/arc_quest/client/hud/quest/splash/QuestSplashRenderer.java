@@ -11,6 +11,8 @@ import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
 
+import java.util.Locale;
+
 public class QuestSplashRenderer {
     private static final float TIME_ENTER = 700f;
     private static final float TIME_HOLD = 2900f;
@@ -215,7 +217,7 @@ public class QuestSplashRenderer {
         if (baseAlpha > 5) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(0.85f, 0.85f, 1f);
-            guiGraphics.drawString(font, "SYS.ARC_QUEST // " + activeQuest.getCategory().getPathToken().toUpperCase(java.util.Locale.ROOT), 0, -22, subColor, true);
+            guiGraphics.drawString(font, "SYS.ARC_QUEST // " + activeQuest.getCategory().getPathToken().toUpperCase(Locale.ROOT), 0, -22, subColor, true);
             guiGraphics.pose().popPose();
 
             guiGraphics.pose().pushPose();
