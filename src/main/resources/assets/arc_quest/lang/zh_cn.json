@@ -10,5 +10,17 @@
   "guide_category.arc_quest.dialogue": "对话",
   "guide_category.arc_quest.trade": "交易",
   "guide_category.arc_quest.ponder": "沉思",
-  "guide_category.arc_quest.advanced": "高级"
+  "guide_category.arc_quest.advanced": "高级",
+  "arc_quest.command.guide.list.header": "=== 指南 (%1$s) ===",
+  "arc_quest.command.guide.list.empty": "  （无已注册指南）",
+  "arc_quest.command.guide.debug.header": "=== 指南: %1$s ===",
+  "arc_quest.command.guide.debug.title": "标题: %1$s",
+  "arc_quest.command.guide.debug.category": "分类: %1$s",
+  "arc_quest.command.guide.debug.sort": "排序: %1$s",
+  "arc_quest.command.guide.debug.hidden": "隐藏: %1$s",
+  "arc_quest.command.guide.debug.repeatable": "可重复弹出: %1$s",
+  "arc_quest.command.guide.debug.conditions": "解锁条件数: %1$s",
+  "arc_quest.command.guide.debug.pages": "页数: %1$s",
+  "arc_quest.command.guide.status.header": "=== 指南状态: %1$s ===",
+  "arc_quest.command.guide.status.unlocked": "已解锁: %1$s"
 }

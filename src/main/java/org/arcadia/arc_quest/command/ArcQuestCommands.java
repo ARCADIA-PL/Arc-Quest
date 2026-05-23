@@ -29,6 +29,7 @@ public class ArcQuestCommands {
                         .then(DialogueCommands.registerSubtree(dispatcher))
                         .then(TradeCommands.registerSubtree(dispatcher))
                         .then(GachaCommands.registerSubtree(dispatcher))
+                        .then(GuideCommands.registerSubtree(dispatcher))
                         .then(ArcQuestSnapshotCommands.registerSubtree(dispatcher))
                         .then(NpcCommands.registerSubtree(dispatcher))
                         .then(AdminCommands.registerSubtree(dispatcher))
