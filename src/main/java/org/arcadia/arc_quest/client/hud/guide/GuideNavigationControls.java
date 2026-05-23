@@ -2,12 +2,13 @@ package org.arcadia.arc_quest.client.hud.guide;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 
 final class GuideNavigationControls {
     private GuideNavigationControls() {
     }
 
-    static void drawScaledText(GuideScreen screen, GuiGraphics g, int x, int y, float scale, String text, int color) {
+    static void drawScaledText(Screen screen, GuiGraphics g, int x, int y, float scale, String text, int color) {
         g.pose().pushPose();
         g.pose().translate(x, y, 0);
         g.pose().scale(scale, scale, 1f);
@@ -15,7 +16,7 @@ final class GuideNavigationControls {
         g.pose().popPose();
     }
 
-    static void drawButton(GuideScreen screen, GuiGraphics g, int x, int y, int w, int h,
+    static void drawButton(Screen screen, GuiGraphics g, int x, int y, int w, int h,
                            String label, boolean enabled, boolean hovered, int themeColor,
                            int textColor, int disabledColor, int alpha) {
         int border = enabled ? (hovered ? withAlpha(0xFFFFFF, alpha) : withAlpha(themeColor, (int) (alpha * .86f))) : withAlpha(0x43505D, alpha);

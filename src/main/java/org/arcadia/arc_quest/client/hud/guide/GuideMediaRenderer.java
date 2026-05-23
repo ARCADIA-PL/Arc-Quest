@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client.hud.guide;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.GameRenderer;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
@@ -12,25 +13,32 @@ final class GuideMediaRenderer {
     private GuideMediaRenderer() {
     }
 
-    static void drawMedia(GuideScreen screen, GuiGraphics g, GuideScreenLayout.Layout l,
+    static void drawMedia(Screen screen, GuiGraphics g, GuideScreenLayout.Layout l,
                           GuideMediaDefinition media, EmbeddedPonderScenePanel ponderPanel,
                           int mouseX, int mouseY, float partialTick,
                           int alpha, int sectionColor, int mutedColor, int subColor, int themeColor) {
-        g.fill(l.mx(), l.my(), l.mx() + l.mw(), l.my() + l.mh(), withAlpha(sectionColor, alpha));
+        drawMedia(screen, g, l.mx(), l.my(), l.mw(), l.mh(), media, ponderPanel, mouseX, mouseY, partialTick, alpha, sectionColor, mutedColor, subColor, themeColor);
+    }
+
+    static void drawMedia(Screen screen, GuiGraphics g, int x, int y, int w, int h,
+                          GuideMediaDefinition media, EmbeddedPonderScenePanel ponderPanel,
+                          int mouseX, int mouseY, float partialTick,
+                          int alpha, int sectionColor, int mutedColor, int subColor, int themeColor) {
+        g.fill(x, y, x + w, y + h, withAlpha(sectionColor, alpha));
         if (media.getType() == GuideMediaType.PONDER) {
-            ponderPanel.render(g, l.mx(), l.my(), l.mw(), l.mh(), mouseX, mouseY, partialTick);
+            ponderPanel.render(g, x, y, w, h, mouseX, mouseY, partialTick);
             return;
         }
         if (media.getType() == GuideMediaType.IMAGE && media.getTexture() != null) {
-            drawImage(g, l, media, alpha, themeColor);
+            drawImage(g, x, y, w, h, media, alpha, themeColor);
             return;
         }
-        GuideNavigationControls.drawScaledText(screen, g, l.mx() + 10, l.my() + 10, .72f, "NO MEDIA SIGNAL", withAlpha(mutedColor, alpha));
-        g.drawString(Minecraft.getInstance().font, "Description-only page", l.mx() + 10, l.my() + 26, withAlpha(subColor, alpha), false);
+        GuideNavigationControls.drawScaledText(screen, g, x + 10, y + 10, .72f, "NO MEDIA SIGNAL", withAlpha(mutedColor, alpha));
+        g.drawString(Minecraft.getInstance().font, "Description-only page", x + 10, y + 26, withAlpha(subColor, alpha), false);
     }
 
-    private static void drawImage(GuiGraphics g, GuideScreenLayout.Layout l, GuideMediaDefinition media, int alpha, int themeColor) {
-        int fx = l.mx() + 8, fy = l.my() + 8, fw = l.mw() - 16, fh = l.mh() - 16;
+    private static void drawImage(GuiGraphics g, int x, int y, int w, int h, GuideMediaDefinition media, int alpha, int themeColor) {
+        int fx = x + 8, fy = y + 8, fw = w - 16, fh = h - 16;
         g.fill(fx, fy, fx + fw, fy + fh, withAlpha(0x11151B, alpha));
         int tw = Math.max(1, media.getWidth()), th = Math.max(1, media.getHeight());
         float s = Math.min(fw / (float) tw, fh / (float) th);
