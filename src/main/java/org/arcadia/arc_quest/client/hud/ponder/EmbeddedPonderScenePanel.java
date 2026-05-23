@@ -131,6 +131,13 @@ public final class EmbeddedPonderScenePanel {
             handle.scrollForward();
             return true;
         }
+        if (hit(mx, my, x, y + h - 24, w, 6)) {
+            if (handle.currentScene().getTotalTime() > 0) {
+                float t = (float) (mx - x) / w;
+                handle.seekToTime((int) (t * handle.currentScene().getTotalTime()));
+            }
+            return true;
+        }
         return false;
     }
 

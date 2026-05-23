@@ -17,15 +17,16 @@ final class GuideMediaRenderer {
                           GuideMediaDefinition media, EmbeddedPonderScenePanel ponderPanel,
                           int mouseX, int mouseY, float partialTick,
                           int alpha, int themeColor) {
-        g.renderOutline(x, y, w, h, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.35F)));
 
         if (media.getType() == GuideMediaType.PONDER) {
-            ponderPanel.render(g, x + 2, y + 2, w - 4, h - 4, mouseX, mouseY, partialTick);
+            ponderPanel.render(g, x, y, w, h, mouseX, mouseY, partialTick);
             return;
         }
+
+        g.renderOutline(x, y, w, h, HudAnimUtil.withAlpha(themeColor, (int) (alpha * 0.35F)));
+
         if (media.getType() == GuideMediaType.IMAGE && media.getTexture() != null) {
             drawImage(g, x, y, w, h, media, alpha);
-            RenderSystem.disableBlend();
             return;
         }
 
@@ -47,5 +48,6 @@ final class GuideMediaRenderer {
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
         g.blit(media.getTexture(), dx, dy, 0, 0, dw, dh, tw, th);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.disableBlend();
     }
 }

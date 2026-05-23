@@ -102,6 +102,13 @@ public final class EmbeddedPonderSceneHandle {
         this.paused = !this.paused;
     }
 
+    public void seekToTime(int time) {
+        if (!valid || scenes == null || scenes.isEmpty()) return;
+        PonderScene scene = currentScene();
+        if (scene.getTotalTime() > 0 && time < scene.getCurrentTime()) scene.begin();
+        scene.seekToTime(time);
+    }
+
     public void release() {
         if (!valid) {
             return;
