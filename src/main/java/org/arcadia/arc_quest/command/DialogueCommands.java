@@ -12,9 +12,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.dialogue.api.ConditionalSay;
 import org.arcadia.arc_quest.dialogue.api.DialogueChoice;
@@ -43,7 +43,7 @@ public class DialogueCommands {
         return Commands.literal("dialogue")
                 .then(Commands.literal("start")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("dialogue_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("dialogue_id", StringArgumentType.string())
                                         .suggests(DialogueCommands::suggestDialogueIds)
                                         .executes(DialogueCommands::cmdDialogue))))
                 .then(Commands.literal("reset")
@@ -58,7 +58,7 @@ public class DialogueCommands {
                 .then(Commands.literal("list")
                         .executes(DialogueCommands::cmdDialogueList))
                 .then(Commands.literal("debug")
-                        .then(Commands.argument("dialogue_id", ResourceLocationArgument.id())
+                        .then(Commands.argument("dialogue_id", StringArgumentType.string())
                                 .suggests(DialogueCommands::suggestDialogueIds)
                                 .executes(DialogueCommands::cmdDialogueDebug)))
                 .then(Commands.literal("reload")
@@ -98,7 +98,7 @@ public class DialogueCommands {
 
     private static int cmdDialogue(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String dialogueId = ResourceLocationArgument.getId(ctx, "dialogue_id").toString();
+        String dialogueId = StringArgumentType.getString(ctx, "dialogue_id");
 
         DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
         if (tree == null) {
@@ -169,7 +169,7 @@ public class DialogueCommands {
     }
 
     private static int cmdDialogueDebug(CommandContext<CommandSourceStack> ctx) {
-        String dialogueId = ResourceLocationArgument.getId(ctx, "dialogue_id").toString();
+        String dialogueId = StringArgumentType.getString(ctx, "dialogue_id");
         DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
 
         if (tree == null) {

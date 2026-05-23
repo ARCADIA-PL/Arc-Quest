@@ -13,7 +13,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -49,32 +48,32 @@ public class QuestCommands {
                 // /arcquest quest give <player> <id>
                 .then(Commands.literal("give")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("quest_id", StringArgumentType.string())
                                         .suggests(QuestCommands::suggestQuestIds)
                                         .executes(QuestCommands::cmdGive))))
                 // /arcquest quest complete <player> <id>
                 .then(Commands.literal("complete")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("quest_id", StringArgumentType.string())
                                         .suggests(QuestCommands::suggestQuestIds)
                                         .executes(QuestCommands::cmdComplete))))
                 // /arcquest quest fail <player> <id>
                 .then(Commands.literal("fail")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("quest_id", StringArgumentType.string())
                                         .suggests(QuestCommands::suggestQuestIds)
                                         .executes(QuestCommands::cmdFail))))
                 // /arcquest quest reset <player> [id]
                 .then(Commands.literal("reset")
                         .then(Commands.argument("player", EntityArgument.player())
                                 .executes(ctx -> cmdQuestReset(ctx, null))
-                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("quest_id", StringArgumentType.string())
                                         .suggests(QuestCommands::suggestQuestIds)
-                                        .executes(ctx -> cmdQuestReset(ctx, ResourceLocationArgument.getId(ctx, "quest_id").toString())))))
+                                        .executes(ctx -> cmdQuestReset(ctx, StringArgumentType.getString(ctx, "quest_id"))))))
                 // /arcquest quest phase <player> <id> <phase>
                 .then(Commands.literal("phase")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("quest_id", StringArgumentType.string())
                                         .suggests(QuestCommands::suggestQuestIds)
                                         .then(Commands.argument("phase_id", StringArgumentType.string())
                                                 .suggests(QuestCommands::suggestPhaseIds)
@@ -82,7 +81,7 @@ public class QuestCommands {
                 // /arcquest quest progress <player> <id> <index> <amount>
                 .then(Commands.literal("progress")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("quest_id", StringArgumentType.string())
                                         .suggests(QuestCommands::suggestQuestIds)
                                         .then(Commands.argument("obj_index", IntegerArgumentType.integer(0))
                                                 .then(Commands.argument("amount_expr", StringArgumentType.word())
@@ -98,7 +97,7 @@ public class QuestCommands {
                 // /arcquest quest debug <player> <id>
                 .then(Commands.literal("debug")
                         .then(Commands.argument("player", EntityArgument.player())
-                                .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("quest_id", StringArgumentType.string())
                                         .suggests(QuestCommands::suggestQuestIds)
                                         .executes(QuestCommands::cmdDebug))));
     }
@@ -115,14 +114,13 @@ public class QuestCommands {
 
     private static CompletableFuture<Suggestions> suggestPhaseIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        try {
-            ResourceLocation rl = ResourceLocationArgument.getId(ctx, "quest_id");
+        String raw = StringArgumentType.getString(ctx, "quest_id");
+        ResourceLocation rl = ResourceLocation.tryParse(raw);
+        if (rl != null) {
             QuestDefinition def = QuestRegistry.get(rl);
             if (def != null) {
                 return SharedSuggestionProvider.suggest(def.getPhaseIds().stream(), builder);
             }
-        } catch (IllegalArgumentException ignored) {
-            // 参数尚未输入完毕，安全忽略
         }
         return Suggestions.empty();
     }
@@ -162,7 +160,7 @@ public class QuestCommands {
 
     private static int cmdGive(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String questId = ResourceLocationArgument.getId(ctx, "quest_id").toString();
+        String questId = StringArgumentType.getString(ctx, "quest_id");
 
         if (resolveQuest(ctx, questId) == null) return 0;
 
@@ -192,7 +190,7 @@ public class QuestCommands {
 
     private static int cmdComplete(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String questId = ResourceLocationArgument.getId(ctx, "quest_id").toString();
+        String questId = StringArgumentType.getString(ctx, "quest_id");
 
         QuestDefinition def = resolveQuest(ctx, questId);
         if (def == null) return 0;
@@ -224,7 +222,7 @@ public class QuestCommands {
 
     private static int cmdFail(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String questId = ResourceLocationArgument.getId(ctx, "quest_id").toString();
+        String questId = StringArgumentType.getString(ctx, "quest_id");
 
         if (resolveQuest(ctx, questId) == null) return 0;
 
@@ -263,7 +261,7 @@ public class QuestCommands {
 
     private static int cmdPhase(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String questId = ResourceLocationArgument.getId(ctx, "quest_id").toString();
+        String questId = StringArgumentType.getString(ctx, "quest_id");
         String phaseId = StringArgumentType.getString(ctx, "phase_id");
 
         QuestDefinition def = resolveQuest(ctx, questId);
@@ -307,7 +305,7 @@ public class QuestCommands {
 
     private static int cmdProgress(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String questId = ResourceLocationArgument.getId(ctx, "quest_id").toString();
+        String questId = StringArgumentType.getString(ctx, "quest_id");
         int objIndex = IntegerArgumentType.getInteger(ctx, "obj_index");
         String amountExpr = StringArgumentType.getString(ctx, "amount_expr");
 
@@ -422,7 +420,7 @@ public class QuestCommands {
 
     private static int cmdDebug(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
-        String questId = ResourceLocationArgument.getId(ctx, "quest_id").toString();
+        String questId = StringArgumentType.getString(ctx, "quest_id");
 
         QuestDefinition def = resolveQuest(ctx, questId);
         if (def == null) return 0;
