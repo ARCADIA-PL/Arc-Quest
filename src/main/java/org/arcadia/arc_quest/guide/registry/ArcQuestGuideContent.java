@@ -5,7 +5,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.ArcQuestAPI;
-import org.arcadia.arc_quest.client.ponder.ArcQuestPonderHelper;
 import org.arcadia.arc_quest.guide.api.GuideCategories;
 import org.arcadia.arc_quest.guide.builder.GuideBuilder;
 import org.slf4j.Logger;
@@ -33,8 +32,9 @@ public final class ArcQuestGuideContent {
                                 ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/guide/movement.png"),
                                 Component.translatable("guide.arc_quest.movement_basics.page_1")
                         )
-                        .ponderPage(
-                                ArcQuestPonderHelper.tutorialId("movement_basics"),
+                        .ponderQuestPhasePage(
+                                "arc_quest:epic_prologue",
+                                "arc_quest:defend_village",
                                 Component.translatable("guide.arc_quest.movement_basics.page_2")
                         )
                         .build()
