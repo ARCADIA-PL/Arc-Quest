@@ -29,7 +29,7 @@ public final class ArcQuestGuideContent {
                         .title(Component.translatable("guide.arc_quest.movement_basics.title"))
                         .sortOrder(0)
                         .imagePage(
-                                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/guide/movement.png"),
+                                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
                                 Component.translatable("guide.arc_quest.movement_basics.page_1")
                         )
                         .ponderQuestPhasePage(

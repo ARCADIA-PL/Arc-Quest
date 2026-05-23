@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 
 public class JournalTabPanel {
@@ -23,8 +24,8 @@ public class JournalTabPanel {
         }).getString();
     }
 
-    public void render(GuiGraphics g, int mx, int my, int safeAlpha, float slide, int theme, float dt) {
-        int tabY = 38, tabBaseX = JournalConstants.LIST_MARGIN - (int) slide;
+    public void render(GuiGraphics g, int mx, int my, int safeAlpha, int tabBaseX, int rightEdgeX, int theme, float dt) {
+        int tabY = 38;
         float targetTabX = 0, currentTabX = tabBaseX, targetTabW = 0;
 
         for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
@@ -87,12 +88,32 @@ public class JournalTabPanel {
         if (safeAlpha > 8 && tabWidthAnim > 0) {
             g.fill((int) tabSlideAnim, tabY + JournalConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + JournalConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, safeAlpha));
         }
+
+        // --- 右侧悬浮功能级选项卡: GUIDE [G] ---
+        String guideLabel = "GUIDE [G]";
+        int guideTw = screen.getFont().width(guideLabel) + 16;
+        int guideX = rightEdgeX - guideTw;
+
+        boolean guideHovered = mx >= guideX && mx <= guideX + guideTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
+        int guideColor = guideHovered ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha);
+
+        if (safeAlpha > 8) {
+            if (guideHovered) {
+                g.fill(guideX, tabY, guideX + guideTw, tabY + JournalConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, (int)(safeAlpha * 0.25f)));
+                HudRenderUtil.drawCyberneticEdge(g, guideX, tabY, JournalConstants.TAB_HEIGHT, theme, safeAlpha);
+            }
+            g.drawString(screen.getFont(), guideLabel, guideX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, guideColor, true);
+
+            // 底部点缀高亮边缘，对标左侧 Tabs 的样式
+            g.fill(guideX, tabY + JournalConstants.TAB_HEIGHT - 2, guideX + guideTw, tabY + JournalConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, (int)(safeAlpha * 0.5f)));
+        }
     }
 
-    public boolean mouseClicked(double mx, double my, int tabBaseX) {
+    public boolean mouseClicked(double mx, double my, int tabBaseX, int rightEdgeX) {
         int tabY = 38;
         int currentTabX = tabBaseX;
 
+        // 基础 Tabs 点击检测
         for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
             int tw = screen.getFont().width(getTabLabel(tab)) + 16;
             if (mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
@@ -106,6 +127,7 @@ public class JournalTabPanel {
             currentTabX += tw + 4;
         }
 
+        // HISTORY Tab 点击检测
         String logLabel = "HISTORY";
         int logTw = screen.getFont().width(logLabel) + 16;
         if (mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
@@ -115,6 +137,19 @@ public class JournalTabPanel {
             }
             return true;
         }
+
+        // GUIDE [G] 按钮点击检测
+        String guideLabel = "GUIDE [G]";
+        int guideTw = screen.getFont().width(guideLabel) + 16;
+        int guideX = rightEdgeX - guideTw;
+        if (mx >= guideX && mx <= guideX + guideTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
+            screen.playClick();
+            if (screen.getMinecraft() != null) {
+                screen.getMinecraft().setScreen(new GuideListScreen());
+            }
+            return true;
+        }
+
         return false;
     }
 }
