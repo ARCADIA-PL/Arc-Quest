@@ -1,4 +1,3 @@
-// file_name: CollectionHistoryPanel.java
 package org.arcadia.arc_quest.client.hud.quest.history;
 
 import net.minecraft.Util;

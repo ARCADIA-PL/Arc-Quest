@@ -1,4 +1,3 @@
-// file_name: TrackerCollectionWidget.java
 package org.arcadia.arc_quest.client.hud.quest.tracker;
 
 import net.minecraft.client.gui.Font;

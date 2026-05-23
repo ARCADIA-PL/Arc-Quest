@@ -11,7 +11,7 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import java.util.HashMap;
 import java.util.Map;
 
-public class JournalListPanel {
+    public class JournalListPanel {
     private final QuestJournalScreen screen;
     private final Map<String, TextCache> textCache = new HashMap<>();
     private float selectedSlide = -1f;

@@ -1,4 +1,3 @@
-// file_name: JournalDetailCollection.java
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import net.minecraft.Util;

@@ -1,135 +1,253 @@
+// file_name: GuideContentPanel.java
 package org.arcadia.arc_quest.client.hud.guide;
 
-import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.guide.api.GuideDefinition;
+import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
+import org.joml.Matrix4f;
+
 import java.util.List;
 
-final class GuideContentPanel {
+public class GuideContentPanel {
     private final GuideListScreen screen;
-    private float prevBtnHoverAnim, nextBtnHoverAnim;
+    private double descScrollOffset = 0, descTargetScroll = 0, dragDescYOffset = 0;
+    private boolean isDraggingDescScrollbar = false;
+    private int descContentHeight = 0;
+    private float detailReveal = 0f;
+    private float prevHoverAnim = 0f, nextHoverAnim = 0f;
 
-    GuideContentPanel(GuideListScreen screen) {
+    // 分页按钮的点击判定区记录
+    private int[] prevRect = new int[]{0, 0, 0, 0};
+    private int[] nextRect = new int[]{0, 0, 0, 0};
+
+    public GuideContentPanel(GuideListScreen screen) {
         this.screen = screen;
     }
 
-    void render(GuiGraphics g, int mouseX, int mouseY, int alpha, float dt, int slideOffset) {
-        int[] r = screen.contentRect();
-        int cx = r[0] + slideOffset;
-        int[] rAdj = new int[]{cx, r[1], r[2], r[3]};
+    public void resetState() {
+        detailReveal = 0f;
+        descTargetScroll = 0;
+        descScrollOffset = 0;
+    }
 
-        HudAnimUtil.drawFrame(g, rAdj[0], rAdj[1], rAdj[2], rAdj[3],
-                HudAnimUtil.withAlpha(0x000000, (int) (0x44 * alpha)),
-                HudAnimUtil.withAlpha(screen.getThemeColor(), (int) (0x55 * alpha)));
-        HudRenderUtil.drawCyberneticEdge(g, rAdj[0], rAdj[1], rAdj[3], screen.getThemeColor(), alpha);
-
-        if (!screen.hasAnyVisibleGuide()) {
-            int textW = Minecraft.getInstance().font.width("NO GUIDES UNLOCKED");
-            int centerX = rAdj[0] + (rAdj[2] - textW) / 2;
-            int centerY = rAdj[1] + rAdj[3] / 2 - 4;
-            g.drawString(Minecraft.getInstance().font, "NO GUIDES UNLOCKED", centerX, centerY,
-                    HudAnimUtil.withAlpha(0x888888, alpha), false);
+    public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
+        GuideDefinition guide = screen.getSelectedGuide();
+        if (guide == null) {
+            if (screen.getEffectiveAlpha() > 0.05f)
+                g.drawCenteredString(screen.getFont(), "SELECT A GUIDE", x + w / 2, y + h / 2, HudAnimUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
             return;
         }
 
-        GuideListScreen.GuidePageView view = screen.currentPageView();
-        if (view == null) return;
+        detailReveal = HudAnimUtil.lerp(detailReveal, 1f, 0.15f, dt);
+        float dAlpha = screen.getEffectiveAlpha() * HudAnimUtil.easeOutCubic(Math.min(1f, detailReveal));
+        int safeA = (int) (255 * dAlpha);
+        if (safeA <= 8) return;
 
-        String titleStr = view.guide().getTitle().getString();
-        int titleMaxW = rAdj[2] - 32;
-        String displayTitle = Minecraft.getInstance().font.plainSubstrByWidth(titleStr, titleMaxW);
-        int titleX = rAdj[0] + 16;
-        int titleY = rAdj[1] + 16;
-        g.drawString(Minecraft.getInstance().font, displayTitle, titleX, titleY, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
+        int scrollAreaY = y, scrollAreaH = h - 4, scrollAreaW = w - 8;
+        screen.enableScissor(g, x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
 
-        String pageStr = "PAGE " + (view.pageIndex() + 1) + " / " + view.guide().getPageCount();
-        g.drawString(Minecraft.getInstance().font, pageStr, rAdj[0] + rAdj[2] - 16 - Minecraft.getInstance().font.width(pageStr), titleY,
-                HudAnimUtil.withAlpha(0x888888, alpha), false);
+        g.pose().pushPose();
+        g.pose().translate(x + 12, scrollAreaY + 12 - descScrollOffset, 0);
 
-        int btnW = 58, btnH = 18;
-        int btnX = rAdj[0] + rAdj[2] - 16 - btnW - 8 - btnW;
-        int btnY = titleY + 18;
-        prevBtnHoverAnim = HudAnimUtil.step(prevBtnHoverAnim,
-                hit(mouseX, mouseY, btnX, btnY, btnW, btnH) && view.pageIndex() > 0 ? 1f : 0f, 8f, dt);
-        nextBtnHoverAnim = HudAnimUtil.step(nextBtnHoverAnim,
-                hit(mouseX, mouseY, btnX + btnW + 8, btnY, btnW, btnH) && view.pageIndex() < view.guide().getPageCount() - 1 ? 1f : 0f, 8f, dt);
-        GuideNavigationControls.drawCyberButton(g, Minecraft.getInstance().font, btnX, btnY, btnW, btnH,
-                view.pageIndex() > 0 ? "< PREV" : "", screen.getThemeColor(), alpha / 255f,
-                HudAnimUtil.easeOutCubic(prevBtnHoverAnim), hit(mouseX, mouseY, btnX, btnY, btnW, btnH) && view.pageIndex() > 0);
-        GuideNavigationControls.drawCyberButton(g, Minecraft.getInstance().font, btnX + btnW + 8, btnY, btnW, btnH,
-                view.pageIndex() < view.guide().getPageCount() - 1 ? "NEXT >" : "", screen.getThemeColor(), alpha / 255f,
-                HudAnimUtil.easeOutCubic(nextBtnHoverAnim), hit(mouseX, mouseY, btnX + btnW + 8, btnY, btnW, btnH) && view.pageIndex() < view.guide().getPageCount() - 1);
+        int localY = 0;
+        GuidePageDefinition page = guide.getPage(screen.getSelectedPageIndex());
 
-        int mediaX = rAdj[0] + 16;
-        int mediaY = rAdj[1] + 52;
-        int mediaW = rAdj[2] - 32;
-        int mediaH = 110;
-        GuideMediaRenderer.drawMedia(screen, g, mediaX, mediaY, mediaW, mediaH, view.page().getMedia(), screen.ponderPanel(),
-                mouseX, mouseY, 0, alpha, screen.getThemeColor());
-
-        int[] d = descriptionRect(rAdj);
-        int descX = d[0], descY = d[1], descW = d[2], descH = d[3];
-        List<FormattedCharSequence> lines = screen.descriptionLines(descW);
-        int contentH = lines.size() * GuideScreenLayout.textLineHeight();
-        int max = Math.max(0, contentH - descH);
-
-        screen.setDescTargetScroll(Math.max(0, Math.min(screen.getDescTargetScroll(), max)));
-        screen.setDescScroll(Math.max(0, Math.min(screen.getDescScroll(), max)));
-
-        g.enableScissor(descX - 2, descY - 2, descX + descW + 2, descY + descH + 2);
-        int sy = descY - (int) Math.round(screen.getDescScroll());
-        for (int i = 0; i < lines.size(); i++) {
-            g.drawString(Minecraft.getInstance().font, lines.get(i), descX, sy + i * GuideScreenLayout.textLineHeight(),
-                    HudAnimUtil.withAlpha(0xAAAAAA, alpha));
+        // --- 1. 顶部标题与并排的翻页控件 ---
+        String titleStr = guide.getTitle().getString();
+        int maxTitleDrawW = scrollAreaW - 24 - 100; // 给右侧翻页留出空间
+        String displayTitle = titleStr;
+        if (screen.getFont().width(titleStr) * 1.2f > maxTitleDrawW) {
+            displayTitle = screen.getFont().plainSubstrByWidth(titleStr, (int)(maxTitleDrawW / 1.2f) - 10) + "...";
         }
+
+        g.pose().pushPose();
+        g.pose().translate(0, localY, 0);
+        g.pose().scale(1.2f, 1.2f, 1f);
+        g.drawString(screen.getFont(), displayTitle, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
+        g.pose().popPose();
+
+        // 翻页控件 (标题同行右侧)
+        if (guide.getPageCount() > 1) {
+            String pageStr = "PAGE " + (screen.getSelectedPageIndex() + 1) + " / " + guide.getPageCount();
+            int pageStrW = screen.getFont().width(pageStr);
+
+            // 右对齐计算
+            int rightEdge = scrollAreaW - 24;
+            int nextArrowX = rightEdge - 6;
+            int textX = nextArrowX - 12 - pageStrW;
+            int prevArrowX = textX - 12;
+
+            g.drawString(screen.getFont(), pageStr, textX, localY + 2, HudAnimUtil.withAlpha(0x888888, safeA), false);
+
+            int absPrevX = x + 12 + prevArrowX, absNextX = x + 12 + nextArrowX;
+            int absY = (int) (scrollAreaY + 12 - descScrollOffset + localY + 5);
+
+            boolean canPrev = screen.getSelectedPageIndex() > 0;
+            boolean canNext = screen.getSelectedPageIndex() < guide.getPageCount() - 1;
+            boolean hPrev = canPrev && mx >= absPrevX - 8 && mx <= absPrevX + 8 && my >= absY - 8 && my <= absY + 8;
+            boolean hNext = canNext && mx >= absNextX - 8 && mx <= absNextX + 8 && my >= absY - 8 && my <= absY + 8;
+
+            prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hPrev ? 1f : 0f, 15f, dt);
+            nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hNext ? 1f : 0f, 15f, dt);
+
+            drawMinimalTechArrow(g, prevArrowX, localY + 5, false, canPrev, prevHoverAnim, safeA, theme);
+            drawMinimalTechArrow(g, nextArrowX, localY + 5, true, canNext, nextHoverAnim, safeA, theme);
+
+            prevRect[0] = absPrevX - 8; prevRect[1] = absY - 8; prevRect[2] = 16; prevRect[3] = 16;
+            nextRect[0] = absNextX - 8; nextRect[1] = absY - 8; nextRect[2] = 16; nextRect[3] = 16;
+        }
+
+        localY += 20;
+
+        // --- 2. 华丽的赛博风格分隔线 ---
+        g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(theme, (int) (120 * dAlpha)));
+        localY += 12;
+
+        // --- 3. 约束高度的媒体区域 (缩小 PonderScene 的占用) ---
+        if (page.getMedia() != null && page.getMedia().getType() != null) {
+            int maxMediaH = 135; // 强制硬上限
+            int mediaH = Math.min(maxMediaH, (int)((scrollAreaW - 24) * 0.40f)); // 比例从0.55缩小到0.40
+
+            // 绘制一个酷炫的媒体框
+            HudAnimUtil.drawFrame(g, -1, localY - 1, scrollAreaW - 24 + 2, mediaH + 2,
+                    HudAnimUtil.withAlpha(0x000000, (int)(safeA * 0.4f)),
+                    HudAnimUtil.withAlpha(theme, (int)(safeA * 0.3f)));
+
+            GuideMediaRenderer.drawMedia(screen, g, 0, localY, scrollAreaW - 24, mediaH, page.getMedia(), screen.ponderPanel(), mx, my, 0, safeA, theme);
+            localY += mediaH + 16;
+        }
+
+        // --- 4. 描述文本区域 ---
+        String rawDesc = page.getDescriptionText().resolve(null, null).getString();
+        if (!rawDesc.isEmpty()) {
+            List<FormattedCharSequence> lines = screen.getFont().split(page.getDescriptionText().resolve(null, null), scrollAreaW - 24);
+            for (FormattedCharSequence line : lines) {
+                g.drawString(screen.getFont(), line, 0, localY, HudAnimUtil.withAlpha(0xDDDDDD, safeA));
+                localY += screen.getFont().lineHeight + 2;
+            }
+            localY += 8;
+        }
+
+        descContentHeight = localY;
+        g.pose().popPose();
         g.disableScissor();
 
-        if (max > 0) {
-            int rx = descX + descW + 4;
-            g.fill(rx, descY, rx + 2, descY + descH, HudAnimUtil.withAlpha(0x111823, alpha));
-            int th = Math.max(12, (int) (descH * (descH / (float) contentH)));
-            int travel = Math.max(0, descH - th);
-            int ty = descY + (int) (travel * (screen.getDescScroll() / (double) max));
-            g.fill(rx, ty, rx + 2, ty + th, HudAnimUtil.withAlpha(screen.getThemeColor(), alpha));
-        }
+        clampScroll(scrollAreaH);
+        renderScrollbar(g, x + w - 6, scrollAreaY + 2, scrollAreaH - 4, descContentHeight, Math.max(0, descContentHeight - scrollAreaH));
     }
 
-    boolean mouseClicked(double mouseX, double mouseY) {
-        int[] r = screen.contentRect();
-        GuideListScreen.GuidePageView view = screen.currentPageView();
-        if (view == null) return false;
+    private void drawMinimalTechArrow(GuiGraphics g, int cx, int cy, boolean isRight, boolean active, float hoverAnim, int globalAlpha, int themeColor) {
+        float ease = HudAnimUtil.easeOutCubic(hoverAnim);
+        int color = !active ? 0x444444 : (hoverAnim > 0.1f ? themeColor : 0xAAAAAA);
+        int alpha = !active ? (int)(globalAlpha * 0.4f) : (int) (globalAlpha * (0.8f + 0.2f * ease));
+        float scale = !active ? 1.0f : 1.0f + 0.2f * ease;
 
-        int btnW = 58, btnH = 18;
-        int btnX = r[0] + r[2] - 16 - btnW - 8 - btnW;
-        int btnY = r[1] + 34;
-        if (hit(mouseX, mouseY, btnX, btnY, btnW, btnH) && view.pageIndex() > 0) { screen.prevPage(); return true; }
-        if (hit(mouseX, mouseY, btnX + btnW + 8, btnY, btnW, btnH) && view.pageIndex() < view.guide().getPageCount() - 1) { screen.nextPage(); return true; }
+        if (alpha <= 2) return;
+
+        g.pose().pushPose();
+        g.pose().translate(cx, cy, 0);
+        g.pose().scale(scale, scale, 1.0f);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        Tesselator tesselator = Tesselator.getInstance();
+        BufferBuilder b = tesselator.getBuilder();
+        Matrix4f mat = g.pose().last().pose();
+
+        int r = (color >> 16) & 0xFF, gg = (color >> 8) & 0xFF, bb = color & 0xFF;
+        float sz = 4.5f;
+
+        b.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        if (isRight) {
+            b.vertex(mat, -sz/2, -sz, 0).color(r, gg, bb, alpha).endVertex();
+            b.vertex(mat, -sz/2, sz, 0).color(r, gg, bb, alpha).endVertex();
+            b.vertex(mat, sz, 0, 0).color(r, gg, bb, alpha).endVertex();
+        } else {
+            b.vertex(mat, sz/2, -sz, 0).color(r, gg, bb, alpha).endVertex();
+            b.vertex(mat, -sz, 0, 0).color(r, gg, bb, alpha).endVertex();
+            b.vertex(mat, sz/2, sz, 0).color(r, gg, bb, alpha).endVertex();
+        }
+        tesselator.end();
+        RenderSystem.disableBlend();
+        g.pose().popPose();
+    }
+
+    private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, int maxScroll) {
+        if (maxScroll <= 0) return;
+        int thumbH = Math.max(16, (int) (((float) viewH / contentH) * viewH)), thumbY = y + (int) ((descScrollOffset / maxScroll) * (viewH - thumbH));
+        g.fill(x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
+        g.fill(x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isDraggingDescScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
+    }
+
+    public void clampScroll(int scrollAreaH) {
+        descTargetScroll = Math.max(0, Math.min(descTargetScroll, Math.max(0, descContentHeight - scrollAreaH)));
+    }
+
+    public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
+        GuideDefinition guide = screen.getSelectedGuide();
+        if (guide == null) return false;
+
+        int scrollAreaH = h - 4, maxDescScroll = Math.max(0, descContentHeight - scrollAreaH);
+        if (maxDescScroll > 0 && mx >= x + w - 6 && mx <= x + w && my >= y && my <= y + scrollAreaH) {
+            isDraggingDescScrollbar = true;
+            int thumbH = Math.max(16, (int) (((float) scrollAreaH / descContentHeight) * scrollAreaH)), thumbY = y + (int) ((descScrollOffset / maxDescScroll) * (scrollAreaH - thumbH));
+            if (my >= thumbY && my <= thumbY + thumbH) dragDescYOffset = my - thumbY;
+            else { dragDescYOffset = thumbH / 2.0; updateScrollFromMouse(my, y, scrollAreaH, maxDescScroll); }
+            return true;
+        }
+
+        if (guide.getPageCount() > 1) {
+            if (mx >= prevRect[0] && mx <= prevRect[0] + prevRect[2] && my >= prevRect[1] && my <= prevRect[1] + prevRect[3]) {
+                screen.prevPage(); return true;
+            }
+            if (mx >= nextRect[0] && mx <= nextRect[0] + nextRect[2] && my >= nextRect[1] && my <= nextRect[1] + nextRect[3]) {
+                screen.nextPage(); return true;
+            }
+        }
+
+        GuidePageDefinition page = guide.getPage(screen.getSelectedPageIndex());
+        if (page != null && page.getMedia() != null && page.getMedia().getType() == org.arcadia.arc_quest.guide.api.GuideMediaType.PONDER) {
+            int mediaH = Math.min(135, (int)((w - 32) * 0.40f));
+            if (screen.ponderPanel().mouseClicked(mx, my, 0, x + 12, (int)(y + 12 - descScrollOffset + 32), w - 32, mediaH)) return true;
+        }
+
         return false;
     }
 
-    boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        int[] d = descriptionRect(screen.contentRect());
-        if (!hit(mouseX, mouseY, d[0], d[1], d[2] + 8, d[3])) return false;
-        screen.adjustDescScroll(-delta * 18.0);
-        return true;
+    public boolean mouseDragged(double mx, double my, int y, int h) {
+        if (isDraggingDescScrollbar) {
+            updateScrollFromMouse(my, y, h - 4, Math.max(0, descContentHeight - (h - 4)));
+            return true;
+        }
+        return false;
     }
 
-    int[] descriptionRect(int[] r) {
-        int descY = r[1] + 52 + 110 + 16;
-        int descW = r[2] - 54;
-        int descH = Math.max(42, r[3] - (descY - r[1]) - 32);
-        return new int[]{r[0] + 16, descY, descW, descH};
+    public boolean mouseReleased(int button) {
+        if (button == 0) isDraggingDescScrollbar = false;
+        return isDraggingDescScrollbar;
     }
 
-    int[] descriptionRect() {
-        return descriptionRect(screen.contentRect());
+    public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
+        if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
+            descTargetScroll -= delta * 25.0;
+            clampScroll(h - 4);
+            return true;
+        }
+        return false;
     }
 
-    int descriptionLineCount() { return screen.descriptionLines(descriptionRect(screen.contentRect())[2]).size(); }
-
-    private boolean hit(double mx, double my, int x, int y, int w, int h) {
-        return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    private void updateScrollFromMouse(double my, int y0, int viewH, int maxScroll) {
+        if (maxScroll <= 0) return;
+        int thumbH = Math.max(16, (int) (((float) viewH / descContentHeight) * viewH));
+        descTargetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragDescYOffset) / (viewH - thumbH))) * maxScroll;
     }
 }

@@ -1,96 +1,115 @@
+// file_name: GuideCategoryTabs.java
 package org.arcadia.arc_quest.client.hud.guide;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
+
 import java.util.List;
 
-final class GuideCategoryTabs {
+public class GuideCategoryTabs {
     private final GuideListScreen screen;
+    private float tabSlideAnim = 0f;
+    private float tabWidthAnim = 0f;
+    private double scrollOffset = 0;
+    private double targetScroll = 0;
 
-    GuideCategoryTabs(GuideListScreen screen) {
+    public GuideCategoryTabs(GuideListScreen screen) {
         this.screen = screen;
     }
 
-    void render(GuiGraphics g, int mouseX, int mouseY, int alpha, float dt) {
-        int[] r = screen.tabsRect();
-        int ty = r[1] + 4;
-        int th = GuideConstants.TAB_HEIGHT;
+    public void render(GuiGraphics g, int mx, int my, int safeAlpha, int startX, int maxWidth, int theme, float dt) {
+        int tabY = 38;
+        List<GuideCategory> categories = screen.visibleCategories();
+        if (categories.isEmpty()) return;
 
-        g.fill(r[0] + 4, ty, r[0] + r[2] - 4, ty + th, HudAnimUtil.withAlpha(0x000000, (int) (alpha * 0.4F)));
-        g.fill(r[0] + 4, ty + th - 1, r[0] + r[2] - 4, ty + th, HudAnimUtil.withAlpha(screen.getThemeColor(), (int) (alpha * 0.3F)));
+        // 计算总宽度
+        int totalTabsWidth = 0;
+        for (GuideCategory cat : categories) {
+            totalTabsWidth += screen.getFont().width(cat.getDisplayName()) + 16 + 4;
+        }
+        totalTabsWidth -= 4;
 
-        List<GuideCategory> cats = screen.visibleCategories();
-        if (cats.isEmpty()) return;
+        int maxScroll = Math.max(0, totalTabsWidth - maxWidth);
+        targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+        scrollOffset += (targetScroll - scrollOffset) * Math.min(1.0, dt * 15.0);
 
-        int tabAreaW = r[2] - 56;
-        int totalTabsW = 0;
-        for (GuideCategory cat : cats) totalTabsW += Math.max(54, Minecraft.getInstance().font.width(cat.getDisplayName()) + 16) + 4;
-        int maxScroll = Math.max(0, totalTabsW - tabAreaW);
+        float currentTabX = startX - (float) scrollOffset;
+        float targetTabX = 0, targetTabW = 0;
 
-        float scroll = screen.getTabScrollOffset();
-        scroll = Math.max(0, Math.min(maxScroll, scroll));
-
-        int startX = r[0] + 28 - (int) scroll;
-        int x = startX;
-        int clipRight = r[0] + r[2] - 28;
-
-        for (GuideCategory cat : cats) {
-            int tw = Math.max(54, Minecraft.getInstance().font.width(cat.getDisplayName()) + 16);
-            boolean selected = cat.getId().equals(screen.getSelectedCategoryId());
-            boolean hovered = hit(mouseX, mouseY, x, ty + 3, tw, 16);
-            boolean inClip = x + tw > r[0] + 26 && x < clipRight;
-
-            if (hovered && !selected && inClip) {
-                g.fill(x, ty + 3, x + tw, ty + 17, HudAnimUtil.withAlpha(screen.getThemeColor(), (int) (alpha * 0.1F)));
+        for (GuideCategory cat : categories) {
+            int tw = screen.getFont().width(cat.getDisplayName()) + 16;
+            if (cat.getId().equals(screen.getSelectedCategoryId())) {
+                targetTabX = currentTabX;
+                targetTabW = tw;
             }
-
-            if (inClip) {
-                int color = selected ? HudAnimUtil.withAlpha(0xFFFFFF, alpha) : HudAnimUtil.withAlpha(0x888888, alpha);
-                g.drawString(Minecraft.getInstance().font, cat.getDisplayName(), x + 8, ty + 7, color, false);
-            }
-            x += tw + 4;
+            currentTabX += tw + 4;
         }
 
-        int selectedX = 0, selectedW = 54;
-        x = startX;
-        for (GuideCategory cat : cats) {
-            int tw = Math.max(54, Minecraft.getInstance().font.width(cat.getDisplayName()) + 16);
-            if (cat.getId().equals(screen.getSelectedCategoryId())) { selectedX = x; selectedW = tw; break; }
-            x += tw + 4;
+        if (tabWidthAnim <= 0.1f) {
+            tabSlideAnim = targetTabX;
+            tabWidthAnim = targetTabW;
+        }
+        float lerpFactor = Math.min(1.0f, dt * 15f);
+        tabSlideAnim += (targetTabX - tabSlideAnim) * lerpFactor;
+        tabWidthAnim += (targetTabW - tabWidthAnim) * lerpFactor;
+
+        // 使用裁剪区防止超出边界
+        screen.enableScissor(g, startX, tabY, startX + maxWidth, tabY + GuideConstants.TAB_HEIGHT);
+
+        currentTabX = startX - (float) scrollOffset;
+        for (GuideCategory cat : categories) {
+            String label = cat.getDisplayName().getString();
+            int tw = screen.getFont().width(label) + 16;
+            boolean hovered = mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + GuideConstants.TAB_HEIGHT;
+            boolean active = cat.getId().equals(screen.getSelectedCategoryId());
+            int textColor = active ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
+
+            if (safeAlpha > 8) {
+                g.drawString(screen.getFont(), label, (int) currentTabX + 8, tabY + (GuideConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, textColor, true);
+            }
+            currentTabX += tw + 4;
         }
 
-        if (selectedX != 0) {
-            screen.updateTabIndicator(selectedX, selectedW);
-            int animX = (int) screen.getTabAnimX();
-            int animW = (int) screen.getTabAnimW();
-            g.fill(animX, ty + 18, animX + animW, ty + 20, HudAnimUtil.withAlpha(screen.getThemeColor(), alpha));
+        if (safeAlpha > 8 && tabWidthAnim > 0) {
+            g.fill((int) tabSlideAnim, tabY + GuideConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + GuideConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, safeAlpha));
+        }
+
+        g.disableScissor();
+
+        // 渲染滚动提示箭头
+        if (maxScroll > 0) {
+            if (scrollOffset > 1) {
+                g.drawString(screen.getFont(), "<", startX - 10, tabY + 6, HudAnimUtil.withAlpha(0x666666, safeAlpha), false);
+            }
+            if (scrollOffset < maxScroll - 1) {
+                g.drawString(screen.getFont(), ">", startX + maxWidth + 4, tabY + 6, HudAnimUtil.withAlpha(0x666666, safeAlpha), false);
+            }
         }
     }
 
-    boolean mouseClicked(double mouseX, double mouseY) {
-        int[] r = screen.tabsRect();
-        int ty = r[1] + 4;
-        List<GuideCategory> cats = screen.visibleCategories();
-        if (cats.isEmpty()) return false;
-
-        float scroll = screen.getTabScrollOffset();
-        int startX = r[0] + 28 - (int) scroll;
-
-        int x = startX;
-        for (GuideCategory cat : cats) {
-            int tw = Math.max(54, Minecraft.getInstance().font.width(cat.getDisplayName()) + 16);
-            if (hit(mouseX, mouseY, x, ty + 3, tw, 16)) {
-                screen.selectCategory(cat.getId());
-                return true;
+    public boolean mouseClicked(double mx, double my, int startX, int maxWidth) {
+        int tabY = 38;
+        if (my >= tabY && my <= tabY + GuideConstants.TAB_HEIGHT && mx >= startX && mx <= startX + maxWidth) {
+            float currentTabX = startX - (float) scrollOffset;
+            for (GuideCategory cat : screen.visibleCategories()) {
+                int tw = screen.getFont().width(cat.getDisplayName()) + 16;
+                if (mx >= currentTabX && mx <= currentTabX + tw) {
+                    screen.selectCategory(cat.getId());
+                    return true;
+                }
+                currentTabX += tw + 4;
             }
-            x += tw + 4;
         }
         return false;
     }
 
-    private boolean hit(double mx, double my, int x, int y, int w, int h) {
-        return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    public boolean mouseScrolled(double mx, double my, double delta, int startX, int maxWidth) {
+        int tabY = 38;
+        if (my >= tabY && my <= tabY + GuideConstants.TAB_HEIGHT && mx >= startX && mx <= startX + maxWidth) {
+            targetScroll -= delta * 40.0;
+            return true;
+        }
+        return false;
     }
 }

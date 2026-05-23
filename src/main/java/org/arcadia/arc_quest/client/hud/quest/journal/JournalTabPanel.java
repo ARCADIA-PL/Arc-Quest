@@ -1,4 +1,3 @@
-// file_name: JournalTabPanel.java
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;

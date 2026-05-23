@@ -1,4 +1,3 @@
-// file_name: QuestChangeHistoryPanel.java
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
 import net.minecraft.client.gui.Font;

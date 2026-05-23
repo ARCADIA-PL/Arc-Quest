@@ -1,13 +1,17 @@
+// file_name: GuideListScreen.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.sounds.SoundEvents;
+import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
@@ -30,19 +34,37 @@ public final class GuideListScreen extends Screen {
 
     private ResourceLocation selectedCategoryId, selectedGuideId;
     private int selectedPageIndex;
-    private float listScroll = 0.0F, listTargetScroll = 0.0F;
     private GuideDefinition selectedGuide;
-    private float openAnim = 0.0F;
-    private float closeAnim = 0.0F;
-    private boolean closing;
-    private double descScroll = 0.0, descTargetScroll = 0.0;
-    private float tabAnimX = 0.0F, tabAnimW = 0.0F;
-    private float tabScrollOffset = 0.0F, tabTargetScroll = 0.0F;
-    private long lastRenderTime;
-    private transient GuideScreenLayout.TerminalLayout cachedLayout;
+
+    private float transitionAlpha = 0f;
+    private boolean isClosing = false;
+    private float effectiveAlpha = 0f;
+    private float dt = 0f;
+    private long lastRenderTime = 0;
+    private int currentThemeColor = 0xFFFFFF;
 
     public GuideListScreen() {
         super(Component.translatable("gui.arc_quest.guide_list.title"));
+    }
+
+    public float getUiScale() {
+        if (minecraft == null) return 1.0f;
+        double guiScale = minecraft.getWindow().getGuiScale();
+        if (guiScale == 0) guiScale = 1.0;
+        float scale = (float) (3.0 / guiScale);
+        float sw = width / scale, sh = height / scale;
+        float minW = 480f, minH = 260f;
+        if (sw < minW) { scale = width / minW; sh = height / scale; }
+        if (sh < minH) scale = height / minH;
+        return scale;
+    }
+
+    public int getScaledWidth() { return (int) (width / getUiScale()); }
+    public int getScaledHeight() { return (int) (height / getUiScale()); }
+
+    public void enableScissor(GuiGraphics g, int x, int y, int x2, int y2) {
+        float s = getUiScale();
+        g.enableScissor((int) (x * s), (int) (y * s), (int) (x2 * s), (int) (y2 * s));
     }
 
     public static void open() {
@@ -53,12 +75,9 @@ public final class GuideListScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        openAnim = 0.0F;
-        closeAnim = 0.0F;
-        closing = false;
-        lastRenderTime = System.currentTimeMillis();
-        tabScrollOffset = 0.0F;
-        tabTargetScroll = 0.0F;
+        transitionAlpha = 0f;
+        isClosing = false;
+        lastRenderTime = 0;
         rebuildSelection();
         refreshMediaBinding();
     }
@@ -66,124 +85,182 @@ public final class GuideListScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
-        long now = System.currentTimeMillis();
-        float dt = (now - lastRenderTime) / 1000f;
-        if (dt <= 0f || dt > 0.3f) dt = 1f / 60f;
-        lastRenderTime = now;
-
-        if (closing) {
-            closeAnim = HudAnimUtil.advanceByDuration(closeAnim, GuideConstants.CLOSE_DURATION, dt);
-            if (closeAnim >= 1.0F && minecraft != null) minecraft.setScreen(null);
-            ponderPanel.tick();
-            return;
-        }
-
-        openAnim = HudAnimUtil.advanceByDuration(openAnim, GuideConstants.OPEN_DURATION, dt);
-        descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * GuideConstants.SCROLL_SPEED);
-        listScroll += (listTargetScroll - listScroll) * Math.min(1.0f, dt * GuideConstants.SCROLL_SPEED);
-        tabScrollOffset += (tabTargetScroll - tabScrollOffset) * Math.min(1.0f, dt * GuideConstants.TAB_INDICATOR_SPEED);
         ponderPanel.tick();
     }
 
     @Override
     public void onClose() {
-        if (!closing) {
-            closing = true;
-            closeAnim = 0.0F;
-            lastRenderTime = System.currentTimeMillis();
+        if (!isClosing) isClosing = true;
+    }
+
+    @Override
+    public void removed() {
+        ponderPanel.onScreenClosed();
+        super.removed();
+    }
+
+    @Override
+    public boolean isPauseScreen() { return false; }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode) || ClientEventHandler.KEY_OPEN_GUIDE_LIST.matches(keyCode, scanCode)) {
+            onClose();
+            return true;
         }
-    }
-
-    void updateTabIndicator(float targetX, float targetW) {
-        if (tabAnimX == 0.0F) {
-            tabAnimX = targetX;
-            tabAnimW = targetW;
-        } else {
-            float dt = (System.currentTimeMillis() - lastRenderTime) / 1000f;
-            if (dt <= 0f || dt > 0.3f) dt = 1f / 60f;
-            tabAnimX += (targetX - tabAnimX) * Math.min(1.0f, dt * GuideConstants.TAB_INDICATOR_SPEED);
-            tabAnimW += (targetW - tabAnimW) * Math.min(1.0f, dt * GuideConstants.TAB_INDICATOR_SPEED);
-        }
-    }
-
-    void adjustTabScroll(float delta) { tabTargetScroll = Math.max(0, tabTargetScroll + delta); }
-    float getTabScrollOffset() { return tabScrollOffset; }
-
-    @Override
-    public void removed() { ponderPanel.onScreenClosed(); super.removed(); }
-
-    @Override
-    public boolean isPauseScreen() { return true; }
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (closing || button != 0) return super.mouseClicked(mouseX, mouseY, button);
-        if (tabs.mouseClicked(mouseX, mouseY)) return true;
-        if (listPanel.mouseClicked(mouseX, mouseY)) return true;
-        if (contentPanel.mouseClicked(mouseX, mouseY)) return true;
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (closing) return true;
-        if (listPanel.mouseScrolled(mouseX, mouseY, delta)) return true;
-        if (contentPanel.mouseScrolled(mouseX, mouseY, delta)) return true;
-        return super.mouseScrolled(mouseX, mouseY, delta);
+    public boolean mouseClicked(double mx, double my, int button) {
+        if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
+
+        float uiScale = getUiScale();
+        double smx = mx / uiScale, smy = my / uiScale;
+        int sw = getScaledWidth(), sh = getScaledHeight();
+
+        float slideOffset = (1f - getEaseProgress()) * 200f;
+        int listX = GuideConstants.LIST_MARGIN - (int) slideOffset;
+        int listY = 38 + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
+        int detailX = GuideConstants.LIST_MARGIN + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN + (int) slideOffset;
+        int detailW = sw - detailX - GuideConstants.DETAIL_MARGIN;
+
+        if (tabs.mouseClicked(smx, smy, listX, detailW + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN)) return true;
+        if (listPanel.mouseClicked(smx, smy, listX, listY, GuideConstants.LIST_WIDTH, listH)) return true;
+        if (contentPanel.mouseClicked(smx, smy, detailX, listY, detailW, listH)) return true;
+
+        return super.mouseClicked(mx, my, button);
+    }
+
+    @Override
+    public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
+        float uiScale = getUiScale();
+        double smx = mx / uiScale, smy = my / uiScale;
+        int sh = getScaledHeight();
+
+        int listY = 38 + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
+        if (listPanel.mouseDragged(smx, smy, listY, listH)) return true;
+        if (contentPanel.mouseDragged(smx, smy, listY, listH)) return true;
+        return super.mouseDragged(mx, my, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int button) {
+        listPanel.mouseReleased(button);
+        contentPanel.mouseReleased(button);
+        return super.mouseReleased(mx, my, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double delta) {
+        float uiScale = getUiScale();
+        double smx = mx / uiScale, smy = my / uiScale;
+        int sw = getScaledWidth(), sh = getScaledHeight();
+        if (isClosing) return false;
+
+        float slideOffset = (1f - getEaseProgress()) * 200f;
+        int listX = GuideConstants.LIST_MARGIN - (int) slideOffset;
+        int listY = 38 + GuideConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
+        int detailX = GuideConstants.LIST_MARGIN + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN + (int) slideOffset;
+        int detailW = sw - detailX - GuideConstants.DETAIL_MARGIN;
+
+        if (tabs.mouseScrolled(smx, smy, delta, listX, detailW + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN)) return true;
+        if (listPanel.mouseScrolled(smx, smy, delta, listX, listY, GuideConstants.LIST_WIDTH, listH)) return true;
+        if (contentPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
+
+        return super.mouseScrolled(mx, my, delta);
+    }
+
+    private float getEaseProgress() {
+        return isClosing ? HudAnimUtil.easeInCubic(transitionAlpha) : HudAnimUtil.easeOutCubic(transitionAlpha);
     }
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        cachedLayout = GuideScreenLayout.computeTerminal(width, height);
-        float reveal = HudAnimUtil.easeOutCubic(openAnim);
-        float exitReveal = HudAnimUtil.easeInCubic(closeAnim);
-        float effective = Math.max(0f, Math.min(1f, reveal * (1f - exitReveal)));
-        int alpha = (int) (255 * effective);
-        if (alpha <= 4) return;
+        float uiScale = getUiScale();
+        int smx = (int) (mouseX / uiScale), smy = (int) (mouseY / uiScale);
+        int sw = getScaledWidth(), sh = getScaledHeight();
 
-        float dt = (System.currentTimeMillis() - lastRenderTime) / 1000f;
-        if (dt <= 0f || dt > 0.3f) dt = 1f / 60f;
+        long now = Util.getMillis();
+        if (lastRenderTime == 0) lastRenderTime = now;
+        dt = (now - lastRenderTime) / 1000f;
+        lastRenderTime = now;
+        if (dt > 0.1f) dt = 0.1f;
 
-        int bgTint = HudAnimUtil.lerpColor(0x000000, getThemeColor(), 0.05f);
-        g.fill(0, 0, width, height, HudAnimUtil.withAlpha(bgTint, (int) (180 * effective)));
+        transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, dt);
+        if (isClosing && transitionAlpha <= 0.01f) {
+            if (minecraft != null) minecraft.setScreen(null);
+            return;
+        }
 
-        float slideOffset = (1f - reveal) * 120f;
-        int slideI = (int) slideOffset;
+        effectiveAlpha = transitionAlpha;
+        float easeProgress = getEaseProgress();
+        float slideOffset = (1f - easeProgress) * 200f;
+        int safeAlpha = (int) (255 * effectiveAlpha);
 
-        int titleY = 14;
         g.pose().pushPose();
-        g.pose().translate(width / 2f, titleY, 0);
-        float titleScale = 0.95f + 0.05f * reveal;
-        g.pose().scale(titleScale, titleScale, 1f);
-        g.pose().translate(-width / 2f, -titleY, 0);
-        g.drawCenteredString(font, title, width / 2, titleY, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+        g.pose().scale(uiScale, uiScale, 1f);
+
+        // 纯正的深邃黑底，极少量的主题色渗透 (对标 Journal)
+        int bgTint = HudAnimUtil.lerpColor(0x000000, currentThemeColor, 0.03f);
+        g.fill(0, 0, sw, sh, HudAnimUtil.withAlpha(bgTint, (int) (180 * effectiveAlpha)));
+
+        if (safeAlpha > 8) {
+            g.pose().pushPose();
+            g.pose().translate(sw / 2f, 14, 0);
+            float titleScale = 0.95f + 0.05f * easeProgress;
+            g.pose().scale(titleScale, titleScale, 1f);
+            g.pose().translate(-sw / 2f, -14, 0);
+            g.drawCenteredString(font, title, sw / 2, 14, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
+            g.pose().popPose();
+        }
+
+        int listX = GuideConstants.LIST_MARGIN - (int) slideOffset;
+        int listY = 38 + GuideConstants.TAB_HEIGHT + 6;
+        int listH = sh - 20 - listY;
+        int detailX = GuideConstants.LIST_MARGIN + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN + (int) slideOffset;
+        int detailW = sw - detailX - GuideConstants.DETAIL_MARGIN;
+
+        // 渲染顶部可滑动的分类 Tabs
+        tabs.render(g, smx, smy, safeAlpha, listX, detailW + GuideConstants.LIST_WIDTH + GuideConstants.DETAIL_MARGIN, currentThemeColor, dt);
+
+        // 渲染列表面板外框 (降低边框 Alpha，消除光污染)
+        HudAnimUtil.drawFrame(g, listX, listY, GuideConstants.LIST_WIDTH, listH,
+                HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
+                HudAnimUtil.withAlpha(currentThemeColor, (int) (0x33 * effectiveAlpha))); // 从 0x55 降至 0x33
+        listPanel.render(g, listX, listY, GuideConstants.LIST_WIDTH, listH, smx, smy, currentThemeColor, dt);
+
+        // 渲染内容面板外框
+        HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH,
+                HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
+                HudAnimUtil.withAlpha(currentThemeColor, (int) (0x33 * effectiveAlpha)));
+        contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
+
         g.pose().popPose();
-
-        g.fill(width / 2 - 60, titleY + 12, width / 2 + 60, titleY + 13, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.5F)));
-
-        tabs.render(g, mouseX, mouseY, alpha, dt);
-        listPanel.render(g, mouseX, mouseY, alpha, dt, slideI);
-        contentPanel.render(g, mouseX, mouseY, alpha, dt, slideI);
     }
 
     void rebuildSelection() {
         List<GuideCategory> cats = visibleCategories();
         if (cats.isEmpty()) {
             selectedCategoryId = null; selectedGuideId = null; selectedGuide = null;
-            selectedPageIndex = 0; listTargetScroll = 0; listScroll = 0; resetDesc(); return;
+            selectedPageIndex = 0; contentPanel.resetState(); listPanel.resetState(); return;
         }
         if (selectedCategoryId == null || cats.stream().noneMatch(c -> c.getId().equals(selectedCategoryId)))
             selectedCategoryId = cats.get(0).getId();
+
         List<GuideDefinition> guides = guidesForSelectedCategory();
         if (guides.isEmpty()) {
             selectedGuideId = null; selectedGuide = null; selectedPageIndex = 0;
-            listTargetScroll = 0; listScroll = 0; resetDesc(); return;
+            contentPanel.resetState(); listPanel.resetState(); return;
         }
         if (selectedGuideId == null || guides.stream().noneMatch(g -> g.getId().equals(selectedGuideId)))
             selectedGuideId = guides.get(0).getId();
+
         selectedGuide = guides.stream().filter(g -> g.getId().equals(selectedGuideId)).findFirst().orElse(guides.get(0));
         selectedGuideId = selectedGuide.getId();
+        currentThemeColor = selectedGuide.getCategory().getThemeColor();
         selectedPageIndex = Math.max(0, Math.min(selectedPageIndex, selectedGuide.getPageCount() - 1));
+        listPanel.scrollToSelected();
     }
 
     List<GuideCategory> visibleCategories() {
@@ -211,74 +288,43 @@ public final class GuideListScreen extends Screen {
     void selectCategory(ResourceLocation id) {
         if (Objects.equals(selectedCategoryId, id)) return;
         selectedCategoryId = id; selectedGuideId = null; selectedPageIndex = 0;
-        listTargetScroll = 0; listScroll = 0; tabScrollOffset = 0; tabTargetScroll = 0;
-        resetDesc(); rebuildSelection(); refreshMediaBinding();
+        contentPanel.resetState(); listPanel.resetState(); rebuildSelection(); refreshMediaBinding(); playClick();
     }
 
     void selectGuide(ResourceLocation id) {
         if (Objects.equals(selectedGuideId, id)) return;
-        selectedGuideId = id; selectedPageIndex = 0; resetDesc(); rebuildSelection(); refreshMediaBinding();
+        selectedGuideId = id; selectedPageIndex = 0;
+        contentPanel.resetState(); rebuildSelection(); refreshMediaBinding(); playClick();
     }
 
-    void selectPrevCategory() {
-        List<GuideCategory> cats = visibleCategories();
-        for (int i = 0; i < cats.size(); i++)
-            if (cats.get(i).getId().equals(selectedCategoryId) && i > 0) { selectCategory(cats.get(i - 1).getId()); return; }
+    public void prevPage() {
+        if (selectedGuide != null && selectedPageIndex > 0) {
+            selectedPageIndex--; contentPanel.resetState(); refreshMediaBinding(); playClick();
+        }
     }
-
-    void selectNextCategory() {
-        List<GuideCategory> cats = visibleCategories();
-        for (int i = 0; i < cats.size(); i++)
-            if (cats.get(i).getId().equals(selectedCategoryId) && i < cats.size() - 1) { selectCategory(cats.get(i + 1).getId()); return; }
+    public void nextPage() {
+        if (selectedGuide != null && selectedPageIndex < selectedGuide.getPageCount() - 1) {
+            selectedPageIndex++; contentPanel.resetState(); refreshMediaBinding(); playClick();
+        }
     }
-
-    void prevPage() { if (selectedGuide != null && selectedPageIndex > 0) { selectedPageIndex--; resetDesc(); refreshMediaBinding(); } }
-    void nextPage() { if (selectedGuide != null && selectedPageIndex < selectedGuide.getPageCount() - 1) { selectedPageIndex++; resetDesc(); refreshMediaBinding(); } }
-
-    void adjustListScroll(int delta) {
-        List<GuideDefinition> guides = guidesForSelectedCategory();
-        int visible = Math.max(1, (listRect()[3] - 12) / 24);
-        int maxScroll = Math.max(0, guides.size() - visible);
-        listTargetScroll = Math.max(0, Math.min(maxScroll, listTargetScroll + delta));
-    }
-
-    void adjustDescScroll(double delta) {
-        int max = Math.max(0, contentPanel.descriptionLineCount() * GuideScreenLayout.textLineHeight() - contentPanel.descriptionRect()[3]);
-        descTargetScroll = Math.max(0, Math.min(max, descTargetScroll + delta));
-    }
-
-    void resetDesc() { descScroll = 0.0; descTargetScroll = 0.0; }
 
     void refreshMediaBinding() {
         GuideMediaDefinition m = currentMedia();
         if (m != null && m.getType() == GuideMediaType.PONDER && m.getSceneId() != null)
-            ponderPanel.bind(m.getSceneId(), getThemeColor(), m.isAutoplay());
+            ponderPanel.bind(m.getSceneId(), currentThemeColor, m.isAutoplay());
         else ponderPanel.unbind();
     }
 
-    int getThemeColor() { return selectedGuide != null ? selectedGuide.getCategory().getThemeColor() : 0x00D1FF; }
-    ResourceLocation getSelectedCategoryId() { return selectedCategoryId; }
-    ResourceLocation getSelectedGuideId() { return selectedGuideId; }
-    float getSmoothListScroll() { return listScroll; }
-    double getDescScroll() { return descScroll; }
-    void setDescScroll(double v) { descScroll = v; }
-    double getDescTargetScroll() { return descTargetScroll; }
-    void setDescTargetScroll(double v) { descTargetScroll = v; }
-    boolean hasAnyVisibleGuide() { return !visibleCategories().isEmpty(); }
-    float getTabAnimX() { return tabAnimX; }
-    float getTabAnimW() { return tabAnimW; }
-
-    GuidePageView currentPageView() { return selectedGuide == null ? null : new GuidePageView(selectedGuide, selectedGuide.getPage(selectedPageIndex), selectedPageIndex); }
-    GuideMediaDefinition currentMedia() { return selectedGuide == null ? null : selectedGuide.getPage(selectedPageIndex).getMedia(); }
-    List<FormattedCharSequence> descriptionLines(int width) {
-        GuidePageView view = currentPageView();
-        return view == null ? List.of() : font.split(view.page().getDescriptionText().resolve(null, null), width);
+    public void playClick() {
+        if (minecraft != null) minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
     }
-    EmbeddedPonderScenePanel ponderPanel() { return ponderPanel; }
 
-    int[] tabsRect() { GuideScreenLayout.TerminalLayout l = cachedLayout; return new int[]{l.cx(), l.cy(), l.cw(), 30}; }
-    int[] listRect() { GuideScreenLayout.TerminalLayout l = cachedLayout; return new int[]{l.lx(), l.ly(), l.lw(), l.lh()}; }
-    int[] contentRect() { GuideScreenLayout.TerminalLayout l = cachedLayout; return new int[]{l.cx(), l.cy() + 30, l.cw(), l.ch() - 30}; }
-
-    record GuidePageView(GuideDefinition guide, org.arcadia.arc_quest.guide.api.GuidePageDefinition page, int pageIndex) {}
+    public Font getFont() { return font; }
+    public float getEffectiveAlpha() { return effectiveAlpha; }
+    public ResourceLocation getSelectedCategoryId() { return selectedCategoryId; }
+    public ResourceLocation getSelectedGuideId() { return selectedGuideId; }
+    public GuideDefinition getSelectedGuide() { return selectedGuide; }
+    public int getSelectedPageIndex() { return selectedPageIndex; }
+    public EmbeddedPonderScenePanel ponderPanel() { return ponderPanel; }
+    GuideMediaDefinition currentMedia() { return selectedGuide == null ? null : selectedGuide.getPage(selectedPageIndex).getMedia(); }
 }
