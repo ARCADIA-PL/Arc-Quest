@@ -202,10 +202,9 @@ public final class QuestOfferPanel {
         return true;
     }
 
-    public static void render(GuiGraphics g, int mx, int my, float partialTick) {
+    public static void render(GuiGraphics g, int screenW, int screenH, int mx, int my, float partialTick) {
         if (!active) return;
         Minecraft mc = Minecraft.getInstance();
-        int screenW = mc.getWindow().getGuiScaledWidth(), screenH = mc.getWindow().getGuiScaledHeight();
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;

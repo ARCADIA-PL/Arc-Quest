@@ -380,11 +380,11 @@ public class QuestJournalScreen extends Screen {
             detailPanel.render(g, detailX, listY, detailW, listH, smx, smy, theme, dt);
         }
 
-        if (intelActive) QuestIntelPanel.render(g, sw, sh, partialTick);
-        if (offerActive) QuestOfferPanel.render(g, smx, smy, partialTick);
+        if (intelActive) QuestIntelPanel.render(g, sw, sh, smx, smy, partialTick);
+        if (offerActive) QuestOfferPanel.render(g, sw, sh, smx, smy, partialTick);
         if (collectionHistoryActive) CollectionHistoryPanel.render(g, smx, smy, partialTick);
         if (historyActive) QuestHistoryPanel.render(g, smx, smy, partialTick);
-        if (storyActive) QuestStoryPanel.render(g, smx, smy, partialTick);
+        if (storyActive) QuestStoryPanel.render(g, sw, sh, smx, smy, partialTick);
 
         updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();

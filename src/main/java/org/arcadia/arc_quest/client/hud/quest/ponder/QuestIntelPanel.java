@@ -178,7 +178,7 @@ public final class QuestIntelPanel {
 
     // ── 渲染核心 ──────────────────────────────────────────────────────────
 
-    public static void render(GuiGraphics g, int screenW, int screenH, float _ignoredPartialTick) {
+    public static void render(GuiGraphics g, int screenW, int screenH, int mx, int my, float _ignoredPartialTick) {
         if (activeScenes == null) return;
 
         // 【核心修复】：彻底无视外部（HUD Overlay）传进来的可能损坏的 partialTick！
@@ -249,23 +249,19 @@ public final class QuestIntelPanel {
         g.pose().scale(scaleAnim, scaleAnim, 1f);
 
         int alphaInt = Math.max(0, Math.min(255, (int) (255 * alphaF)));
-        // 将精准的 exactPt 传递给下方
-        renderPanel(g, Minecraft.getInstance().font, alphaInt, alphaF, dt, exactPt);
+        renderPanel(g, Minecraft.getInstance().font, alphaInt, alphaF, dt, exactPt, mx, my);
 
         g.pose().popPose();
         g.disableScissor();
         g.pose().popPose();
     }
 
-    private static void renderPanel(GuiGraphics g, Font font, int alpha, float alphaF, float dt, float pt) {
+    private static void renderPanel(GuiGraphics g, Font font, int alpha, float alphaF, float dt, float pt, int mx, int my) {
         int PW = PANEL_W, PH = PANEL_H;
         PonderScene scene = activeScenes.get(sceneIndex);
 
-        Minecraft mc = Minecraft.getInstance();
-        double mouseX = mc.mouseHandler.xpos() * mc.getWindow().getGuiScaledWidth() / (double) mc.getWindow().getScreenWidth();
-        double mouseY = mc.mouseHandler.ypos() * mc.getWindow().getGuiScaledHeight() / (double) mc.getWindow().getScreenHeight();
-        float lx = (float) ((mouseX - currentDrawX) / currentScale);
-        float ly = (float) ((mouseY - currentDrawY) / currentScale);
+        float lx = (float) ((mx - currentDrawX) / currentScale);
+        float ly = (float) ((my - currentDrawY) / currentScale);
 
         int cyberEdgeWidth = 3;
         int bgAlpha = (int) (0xA0 * alphaF);
