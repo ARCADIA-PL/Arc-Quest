@@ -2,7 +2,9 @@ package org.arcadia.arc_quest.guide.spec.validate;
 
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.condition.ConditionSpec;
-import org.arcadia.arc_quest.guide.spec.*;
+import org.arcadia.arc_quest.guide.spec.GuideMediaSpec;
+import org.arcadia.arc_quest.guide.spec.GuidePageSpec;
+import org.arcadia.arc_quest.guide.spec.GuideSpec;
 
 import java.util.List;
 
@@ -134,7 +136,8 @@ public final class GuideSpecValidator {
                     validateCondition(report, condition.inner, path + ".inner");
                 }
             }
-            default -> report.add(GuideValidationIssue.Severity.ERROR, path + ".condition", "Unsupported condition type: " + type);
+            default ->
+                    report.add(GuideValidationIssue.Severity.ERROR, path + ".condition", "Unsupported condition type: " + type);
         }
     }
 

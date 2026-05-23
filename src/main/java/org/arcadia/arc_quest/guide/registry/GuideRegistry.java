@@ -15,12 +15,11 @@ import java.util.stream.Collectors;
 public final class GuideRegistry {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
+    private static final Object2ObjectOpenHashMap<String, ResourceLocation> RL_CACHE = new Object2ObjectOpenHashMap<>();
     private static Map<ResourceLocation, GuideDefinition> CODE_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, GuideDefinition> DATAPACK_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, GuideDefinition> MERGED_REGISTRY = new LinkedHashMap<>();
     private static Map<ResourceLocation, GuideSourceInfo> SOURCE_INFO = new LinkedHashMap<>();
-    private static final Object2ObjectOpenHashMap<String, ResourceLocation> RL_CACHE = new Object2ObjectOpenHashMap<>();
     private static boolean frozen = false;
 
     private GuideRegistry() {

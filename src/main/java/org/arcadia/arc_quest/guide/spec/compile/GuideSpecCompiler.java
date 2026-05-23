@@ -37,6 +37,18 @@ public final class GuideSpecCompiler {
         this.categories = categories;
     }
 
+    static GuideText compileText(GuideTextSpec spec) {
+        if (spec == null) {
+            return GuideText.literal("");
+        }
+        return switch (spec.mode) {
+            case "translatable" ->
+                    GuideText.translatable(spec.value, spec.args == null ? new GuideText.Arg[0] : spec.args.stream().map(value -> GuideText.Arg.of((player, context) -> value)).toArray(GuideText.Arg[]::new));
+            case "literal" -> GuideText.literal(spec.value);
+            default -> throw new GuideCompileException("Unsupported GuideTextSpec mode: '" + spec.mode + "'");
+        };
+    }
+
     public GuideDefinition compile(GuideSpec spec) {
         var report = validator.validate(spec);
         if (report.hasErrors()) {
@@ -63,17 +75,6 @@ public final class GuideSpecCompiler {
         return builder.build();
     }
 
-    static GuideText compileText(GuideTextSpec spec) {
-        if (spec == null) {
-            return GuideText.literal("");
-        }
-        return switch (spec.mode) {
-            case "translatable" -> GuideText.translatable(spec.value, spec.args == null ? new GuideText.Arg[0] : spec.args.stream().map(value -> GuideText.Arg.of((player, context) -> value)).toArray(GuideText.Arg[]::new));
-            case "literal" -> GuideText.literal(spec.value);
-            default -> throw new GuideCompileException("Unsupported GuideTextSpec mode: '" + spec.mode + "'");
-        };
-    }
-
     private GuidePageBuilder compilePage(GuidePageSpec spec) {
         return GuidePageBuilder.create()
                 .media(compileMedia(spec.media))
@@ -88,7 +89,8 @@ public final class GuideSpecCompiler {
         return switch (type) {
             case "none" -> GuideMediaBuilder.none();
             case "image" -> GuideMediaBuilder.image(parseId(spec.texture)).size(spec.width, spec.height);
-            case "ponder" -> GuideMediaBuilder.ponder(parseId(spec.sceneId)).size(spec.width, spec.height).autoplay(spec.autoplay).loop(spec.loop);
+            case "ponder" ->
+                    GuideMediaBuilder.ponder(parseId(spec.sceneId)).size(spec.width, spec.height).autoplay(spec.autoplay).loop(spec.loop);
             default -> throw new GuideCompileException("Invalid guide media type: '" + spec.type + "'");
         };
     }

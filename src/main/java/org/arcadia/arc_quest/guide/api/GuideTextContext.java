@@ -5,7 +5,6 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import javax.annotation.Nullable;
 import java.util.Map;
-import java.util.Objects;
 
 public final class GuideTextContext {
 

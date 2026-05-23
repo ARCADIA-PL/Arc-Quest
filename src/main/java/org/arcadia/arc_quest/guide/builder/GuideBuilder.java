@@ -3,7 +3,10 @@ package org.arcadia.arc_quest.guide.builder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.guide.api.*;
+import org.arcadia.arc_quest.guide.api.GuideCategory;
+import org.arcadia.arc_quest.guide.api.GuideDefinition;
+import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
+import org.arcadia.arc_quest.guide.api.GuideText;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.api.ICondition;
 

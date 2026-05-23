@@ -641,5 +641,17 @@
   "tag.item.minecraft.wooden_stairs": "Wooden Stairs",
   "tag.item.minecraft.wooden_trapdoors": "Wooden Trapdoors",
   "tag.item.minecraft.wool": "Wool",
-  "tag.item.minecraft.wool_carpets": "Wool Carpets"
+  "tag.item.minecraft.wool_carpets": "Wool Carpets",
+  "gui.arc_quest.guide_list.no_guides": "No unlocked guides",
+  "gui.arc_quest.guide_list.no_guides_hint": "Complete tutorials, quests, or story to archive them here",
+  "key.arc_quest.open_guide_list": "Open Guide List",
+  "guide.arc_quest.movement_basics.title": "Movement Basics",
+  "guide.arc_quest.movement_basics.page_1": "Master the basics of movement to explore the world freely.",
+  "guide.arc_quest.movement_basics.page_2": "Watch the demonstration to learn advanced movement techniques.",
+  "guide_category.arc_quest.basics": "Basics",
+  "guide_category.arc_quest.quest": "Quest",
+  "guide_category.arc_quest.dialogue": "Dialogue",
+  "guide_category.arc_quest.trade": "Trade",
+  "guide_category.arc_quest.ponder": "Ponder",
+  "guide_category.arc_quest.advanced": "Advanced"
 }

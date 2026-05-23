@@ -8,6 +8,12 @@ import java.util.Objects;
 
 public final class GuideCategory {
 
+    public static final GuideCategory BASICS = GuideCategories.BASICS;
+    public static final GuideCategory QUEST = GuideCategories.QUEST;
+    public static final GuideCategory DIALOGUE = GuideCategories.DIALOGUE;
+    public static final GuideCategory TRADE = GuideCategories.TRADE;
+    public static final GuideCategory PONDER = GuideCategories.PONDER;
+    public static final GuideCategory ADVANCED = GuideCategories.ADVANCED;
     private final ResourceLocation id;
     private final Component displayName;
     private final int themeColor;
@@ -15,13 +21,6 @@ public final class GuideCategory {
     private final boolean builtin;
     @Nullable
     private final ResourceLocation iconTexture;
-
-    public static final GuideCategory BASICS = GuideCategories.BASICS;
-    public static final GuideCategory QUEST = GuideCategories.QUEST;
-    public static final GuideCategory DIALOGUE = GuideCategories.DIALOGUE;
-    public static final GuideCategory TRADE = GuideCategories.TRADE;
-    public static final GuideCategory PONDER = GuideCategories.PONDER;
-    public static final GuideCategory ADVANCED = GuideCategories.ADVANCED;
 
     public GuideCategory(ResourceLocation id,
                          Component displayName,
