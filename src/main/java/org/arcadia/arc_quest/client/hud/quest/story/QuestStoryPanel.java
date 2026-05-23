@@ -124,6 +124,14 @@ public final class QuestStoryPanel {
         return true;
     }
 
+    public static boolean mouseDragged(double mx, double my) {
+        return active;
+    }
+
+    public static boolean mouseReleased(int button) {
+        return active;
+    }
+
     private static void turnPage(int dir) {
         if (dir == -1 && currentPageIndex > 0) {
             oldPageIndex = currentPageIndex;

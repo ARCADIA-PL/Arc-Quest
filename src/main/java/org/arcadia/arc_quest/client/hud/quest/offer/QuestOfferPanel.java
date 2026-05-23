@@ -25,8 +25,6 @@ import org.arcadia.arc_quest.quest.network.C2SSubmitOfferPacket;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.network.S2COfferSubmitResultPacket;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
-import org.lwjgl.glfw.GLFW;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -201,6 +199,26 @@ public final class QuestOfferPanel {
             return true;
         }
         return true;
+    }
+
+    public static boolean mouseDragged(double mx, double my) {
+        if (!active || closing || cleared || !isDraggingSlider) return false;
+        float lx = (float) ((mx - currentDrawX) / currentScale);
+        OfferVM vm = resolveOfferViewModel();
+        if (vm == null) return true;
+        int remain = Math.max(0, vm.required - vm.current);
+        int canSubmit = Math.max(0, vm.canSubmitNow);
+        int maxSelectable = Math.max(0, Math.min(50, Math.min(remain, canSubmit)));
+        if (maxSelectable <= 1) return true;
+        int sliderW = 160, sliderX = PANEL_W / 2 - sliderW / 2;
+        float pct = Math.max(0f, Math.min(1f, (lx - sliderX) / (float) sliderW));
+        sliderValue = 1 + Math.round(pct * (maxSelectable - 1));
+        return true;
+    }
+
+    public static boolean mouseReleased(int button) {
+        if (button == 0) isDraggingSlider = false;
+        return active;
     }
 
     public static void render(GuiGraphics g, int screenW, int screenH, int mx, int my, float partialTick) {
@@ -399,15 +417,6 @@ public final class QuestOfferPanel {
             if (maxSelectable == 0) sliderValue = 0;
 
             int sliderW = 160, sliderX = PW / 2 - sliderW / 2, sliderY = 95;
-
-            if (isDraggingSlider && !cleared) {
-                if (GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS) {
-                    isDraggingSlider = false;
-                } else if (maxSelectable > 1) {
-                    float pct = Math.max(0f, Math.min(1f, (lx - sliderX) / (float) sliderW));
-                    sliderValue = 1 + Math.round(pct * (maxSelectable - 1));
-                }
-            }
 
             boolean sliderHover = !cleared && !isDraggingSlider && maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8;
             sliderHoverAnim = HudAnimUtil.step(sliderHoverAnim, sliderHover ? 1f : 0f, 18f, dt);
@@ -611,8 +620,12 @@ public final class QuestOfferPanel {
         int drawW = layout.textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
         int drawH = layout.lines.size() * font.lineHeight + padding * 2;
         Minecraft mc = Minecraft.getInstance();
-        int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
         int drawX = mouseX + 12, drawY = mouseY - 12;
+
+        float uiScale = 1f;
+        if (mc.screen instanceof QuestJournalScreen qjs) uiScale = qjs.getUiScale();
+        int sw = (int) (mc.getWindow().getGuiScaledWidth() / uiScale);
+        int sh = (int) (mc.getWindow().getGuiScaledHeight() / uiScale);
         if (drawX + drawW > sw) drawX = mouseX - drawW - 8;
         if (drawY + drawH > sh) drawY = sh - drawH - 2;
         if (drawY < 2) drawY = 2;
@@ -623,7 +636,11 @@ public final class QuestOfferPanel {
         drawFastFrame(g, drawX + cyberEdgeWidth, drawY, drawW - cyberEdgeWidth, drawH, 1, HudAnimUtil.withAlpha(0xCCCCCC, 0x66));
         HudRenderUtil.drawCyberneticEdge(g, drawX, drawY, drawH, theme, 0xFF);
 
-        g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+        if (mc.screen instanceof QuestJournalScreen qjs) {
+            qjs.enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
+        } else {
+            g.enableScissor(drawX, drawY, drawX + drawW, drawY + drawH);
+        }
         int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
         for (Component line : layout.lines) {
             g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, 0xFF), true);

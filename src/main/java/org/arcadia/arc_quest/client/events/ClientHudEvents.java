@@ -9,6 +9,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -51,12 +52,20 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenMouseClickPre(ScreenEvent.MouseButtonPressed.Pre event) {
-        // Intel 面板优先处理：转发鼠标点击，然后 cancel 防止穿透
         if (QuestIntelPanel.isActive()) {
             if (event.getButton() == 0) {
-                QuestIntelPanel.handleMouseClick(
-                        event.getMouseX(), event.getMouseY(),
-                        event.getScreen().width, event.getScreen().height);
+                double mx = event.getMouseX();
+                double my = event.getMouseY();
+                int sw = event.getScreen().width;
+                int sh = event.getScreen().height;
+                if (event.getScreen() instanceof QuestJournalScreen qjs) {
+                    float scale = qjs.getUiScale();
+                    mx /= scale;
+                    my /= scale;
+                    sw = qjs.getScaledWidth();
+                    sh = qjs.getScaledHeight();
+                }
+                QuestIntelPanel.handleMouseClick(mx, my, sw, sh);
             }
             event.setCanceled(true);
             return;

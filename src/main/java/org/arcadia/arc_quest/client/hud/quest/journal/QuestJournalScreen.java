@@ -255,8 +255,10 @@ public class QuestJournalScreen extends Screen {
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sh = getScaledHeight();
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
-        if (CollectionHistoryPanel.isActive()) return true;
+        if (QuestIntelPanel.isActive()) { QuestIntelPanel.mouseDragged(smx, smy); return true; }
+        if (QuestOfferPanel.isActive()) { QuestOfferPanel.mouseDragged(smx, smy); return true; }
+        if (QuestStoryPanel.isActive()) { QuestStoryPanel.mouseDragged(smx, smy); return true; }
+        if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.mouseDragged(smx, smy); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseDragged(smx, smy); return true; }
 
         int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
@@ -269,8 +271,12 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestStoryPanel.isActive()) return true;
-        if (CollectionHistoryPanel.isActive()) return true;
+        float uiScale = getUiScale();
+        double smx = mx / uiScale, smy = my / uiScale;
+        if (QuestIntelPanel.isActive()) { QuestIntelPanel.mouseReleased(button); return true; }
+        if (QuestOfferPanel.isActive()) { QuestOfferPanel.mouseReleased(button); return true; }
+        if (QuestStoryPanel.isActive()) { QuestStoryPanel.mouseReleased(button); return true; }
+        if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.mouseReleased(button); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseReleased(button); return true; }
         listPanel.mouseReleased(button);
         if (!showingChangeLog) detailPanel.mouseReleased(button);

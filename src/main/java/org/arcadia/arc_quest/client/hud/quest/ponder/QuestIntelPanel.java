@@ -421,5 +421,13 @@ public final class QuestIntelPanel {
         return true;
     }
 
+    public static boolean mouseDragged(double mx, double my) {
+        return activeScenes != null;
+    }
+
+    public static boolean mouseReleased(int button) {
+        return activeScenes != null;
+    }
+
     private static void playClickSound() { Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F)); }
 }
