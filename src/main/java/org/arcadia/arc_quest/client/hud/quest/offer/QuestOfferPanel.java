@@ -210,7 +210,7 @@ public final class QuestOfferPanel {
         float dt = Math.min((now - lastRenderMs) / 1000f, 0.1f);
         lastRenderMs = now;
 
-        float finalScale = (screenH * 0.55f) / (float) PANEL_H;
+        float finalScale = Math.min((screenW * 0.90f) / (float) PANEL_W, (screenH * 0.55f) / (float) PANEL_H);
         float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f), baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
         float scaleAnim = finalScale, currentX = baseX, currentY = baseY, alphaF = 1.0f;
         float revealProgress = 1.0f, wipeProgress = 0.0f, actualFlyDist = 4.0f * finalScale;

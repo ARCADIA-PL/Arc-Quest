@@ -189,7 +189,7 @@ public final class QuestIntelPanel {
         float dt = Math.min((now - lastTime) / 1000f, 0.1f);
         lastTime = now;
 
-        float finalScale = (screenH * 0.65f) / (float) PANEL_H;
+        float finalScale = Math.min((screenW * 0.90f) / (float) PANEL_W, (screenH * 0.65f) / (float) PANEL_H);
         float baseX = (screenW / 2f) - ((PANEL_W * finalScale) / 2f);
         float baseY = (screenH / 2f) - ((PANEL_H * finalScale) / 2f);
 
