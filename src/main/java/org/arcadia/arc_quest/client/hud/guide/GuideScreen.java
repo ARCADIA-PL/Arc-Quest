@@ -113,6 +113,11 @@ public final class GuideScreen extends Screen {
             closing = true;
             closeAnim = 0.0F;
             lastRenderTime = System.currentTimeMillis();
+            if (markSeenOnClose && minecraft != null && minecraft.player != null
+                    && !ClientGuideCache.INSTANCE.isSeen(guideId)) {
+                ClientGuideCache.INSTANCE.applyLocalSeen(guideId);
+                ArcQuestNetwork.sendMarkGuideSeen(new C2SMarkGuideSeenPacket(guideId.toString()));
+            }
         }
     }
 
