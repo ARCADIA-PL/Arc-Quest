@@ -74,6 +74,14 @@ public final class GuideBuilder {
         return this;
     }
 
+    public GuideBuilder requiresQuest(ResourceLocation questId) {
+        return unlockCondition(ICondition.questCompleted(questId));
+    }
+
+    public GuideBuilder requiresFlag(String flag) {
+        return unlockCondition(ICondition.flagSet(flag));
+    }
+
     public GuideBuilder page(GuidePageBuilder pageBuilder) {
         return page(Objects.requireNonNull(pageBuilder, "pageBuilder").build());
     }
