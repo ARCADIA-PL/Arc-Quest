@@ -83,10 +83,10 @@ public final class EmbeddedPonderScenePanel {
 
     public void render(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY, float partialTick) {
         g.fill(x, y, x + w, y + h, 0x501A2430);
-        g.fill(x, y, x + w, y + 1, 0xFF4FC3F7);
-        g.fill(x, y + h - 1, x + w, y + h, 0xFF4FC3F7);
-        g.fill(x, y, x + 1, y + h, 0xFF4FC3F7);
-        g.fill(x + w - 1, y, x + w, y + h, 0xFF4FC3F7);
+        g.fill(x, y, x + w, y + 1, 0xFF000000 | (themeColor & 0x00FFFFFF));
+        g.fill(x, y + h - 1, x + w, y + h, 0xFF000000 | (themeColor & 0x00FFFFFF));
+        g.fill(x, y, x + 1, y + h, 0xFF000000 | (themeColor & 0x00FFFFFF));
+        g.fill(x + w - 1, y, x + w, y + h, 0xFF000000 | (themeColor & 0x00FFFFFF));
 
         if (handle == null || !handle.isValid()) {
             renderMissing(g, x, y, w, h);
@@ -161,7 +161,7 @@ public final class EmbeddedPonderScenePanel {
 
     private void drawButton(GuiGraphics g, int x, int y, int w, int h, String label, boolean enabled, int mouseX, int mouseY) {
         boolean hovered = hit(mouseX, mouseY, x, y, w, h);
-        int border = enabled ? (hovered ? 0xFFBFE9FF : 0xFF4FC3F7) : 0xFF44515D;
+        int border = enabled ? (hovered ? 0xFFBFE9FF : (0xFF000000 | (themeColor & 0x00FFFFFF))) : 0xFF44515D;
         int fill = enabled ? (hovered ? 0x60305060 : 0x40182028) : 0x20101010;
         int text = enabled ? 0xE6EDF7 : 0x6C7885;
         g.fill(x, y, x + w, y + h, fill);

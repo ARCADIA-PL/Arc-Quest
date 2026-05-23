@@ -22,16 +22,20 @@ import java.util.List;
 import java.util.Objects;
 
 public final class GuideListScreen extends Screen {
-    static final int TEXT = 0xF2F7FF, SUB = 0x9FB4C7, MUTED = 0x7E90A0, DIS = 0x5E6C79, BG = 0xD0101016, SEC = 0x50162028;
     private final EmbeddedPonderScenePanel ponderPanel = new EmbeddedPonderScenePanel();
     private final GuideCategoryTabs tabs = new GuideCategoryTabs(this);
     private final GuideListPanel listPanel = new GuideListPanel(this);
     private final GuideContentPanel contentPanel = new GuideContentPanel(this);
+
     private ResourceLocation selectedCategoryId, selectedGuideId;
-    private int selectedPageIndex, listScroll;
+    private int selectedPageIndex;
+    private float listScroll = 0.0F, listTargetScroll = 0.0F;
     private GuideDefinition selectedGuide;
-    private float openAnim = 0f;
-    private double descScroll = 0d, descTargetScroll = 0d;
+    private float openAnim = 0.0F;
+    private double descScroll = 0.0, descTargetScroll = 0.0;
+    private float tabAnimX = 0.0F, tabAnimW = 0.0F;
+    private float tabScrollOffset = 0.0F, tabTargetScroll = 0.0F;
+    private long lastRenderTime;
 
     public GuideListScreen() {
         super(Component.translatable("gui.arc_quest.guide_list.title"));
@@ -42,14 +46,13 @@ public final class GuideListScreen extends Screen {
         if (mc != null) mc.setScreen(new GuideListScreen());
     }
 
-    private static double clamp(double v, double min, double max) {
-        return Math.max(min, Math.min(max, v));
-    }
-
     @Override
     protected void init() {
         super.init();
-        openAnim = 0f;
+        openAnim = 0.0F;
+        lastRenderTime = System.currentTimeMillis();
+        tabScrollOffset = 0.0F;
+        tabTargetScroll = 0.0F;
         rebuildSelection();
         refreshMediaBinding();
     }
@@ -57,10 +60,35 @@ public final class GuideListScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
-        openAnim = HudAnimUtil.advanceByDuration(openAnim, .24f, 1f / 20f);
-        descScroll += (descTargetScroll - descScroll) * .35d;
+        long now = System.currentTimeMillis();
+        float dt = (now - lastRenderTime) / 1000f;
+        if (dt <= 0f || dt > 0.3f) dt = 1f / 60f;
+        lastRenderTime = now;
+
+        openAnim = HudAnimUtil.advanceByDuration(openAnim, GuideConstants.OPEN_DURATION, dt);
+        descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * GuideConstants.SCROLL_SPEED);
+        listScroll += (listTargetScroll - listScroll) * Math.min(1.0f, dt * GuideConstants.SCROLL_SPEED);
+        tabScrollOffset += (tabTargetScroll - tabScrollOffset) * Math.min(1.0f, dt * GuideConstants.TAB_INDICATOR_SPEED);
         ponderPanel.tick();
     }
+
+    void updateTabIndicator(float targetX, float targetW) {
+        if (tabAnimX == 0.0F) {
+            tabAnimX = targetX;
+            tabAnimW = targetW;
+        } else {
+            float dt = (System.currentTimeMillis() - lastRenderTime) / 1000f;
+            if (dt <= 0f || dt > 0.3f) dt = 1f / 60f;
+            tabAnimX += (targetX - tabAnimX) * Math.min(1.0f, dt * GuideConstants.TAB_INDICATOR_SPEED);
+            tabAnimW += (targetW - tabAnimW) * Math.min(1.0f, dt * GuideConstants.TAB_INDICATOR_SPEED);
+        }
+    }
+
+    void adjustTabScroll(float delta) {
+        tabTargetScroll = Math.max(0, tabTargetScroll + delta);
+    }
+
+    float getTabScrollOffset() { return tabScrollOffset; }
 
     @Override
     public void removed() {
@@ -71,36 +99,6 @@ public final class GuideListScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return true;
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) return super.keyPressed(keyCode, scanCode, modifiers);
-        if (keyCode == 263) {
-            selectPrevGuide();
-            return true;
-        }
-        if (keyCode == 262) {
-            selectNextGuide();
-            return true;
-        }
-        if (keyCode == 265) {
-            selectPrevCategory();
-            return true;
-        }
-        if (keyCode == 264) {
-            selectNextCategory();
-            return true;
-        }
-        if (keyCode == 81) {
-            prevPage();
-            return true;
-        }
-        if (keyCode == 69) {
-            nextPage();
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
@@ -122,37 +120,39 @@ public final class GuideListScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g);
-        super.render(g, mouseX, mouseY, partialTick);
         float reveal = HudAnimUtil.easeOutCubic(openAnim);
         int alpha = (int) (255 * reveal);
-        g.fill(0, 0, width, height, HudAnimUtil.withAlpha(0x000000, (int) (170 * reveal)));
-        g.drawCenteredString(font, title, width / 2, 14, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+
+        g.fill(0, 0, width, height, HudAnimUtil.withAlpha(0x02050A, (int) (160 * reveal)));
+        drawHolographicScanlines(g, alpha);
+
+        int titleY = 14;
+        g.drawCenteredString(font, title, width / 2, titleY, HudAnimUtil.withAlpha(GuideConstants.TEXT, alpha));
+        g.fill(width / 2 - 60, titleY + 12, width / 2 + 60, titleY + 13, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.5F)));
+
         tabs.render(g, mouseX, mouseY, alpha);
         listPanel.render(g, mouseX, mouseY, alpha);
         contentPanel.render(g, mouseX, mouseY, partialTick, alpha);
     }
 
+    private void drawHolographicScanlines(GuiGraphics g, int alpha) {
+        long time = System.currentTimeMillis();
+        int scanY = (int) ((time / 16) % height);
+        g.fill(0, scanY, width, scanY + 1, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.06F)));
+    }
+
     void rebuildSelection() {
         List<GuideCategory> cats = visibleCategories();
         if (cats.isEmpty()) {
-            selectedCategoryId = null;
-            selectedGuideId = null;
-            selectedGuide = null;
-            selectedPageIndex = 0;
-            listScroll = 0;
-            resetDesc();
-            return;
+            selectedCategoryId = null; selectedGuideId = null; selectedGuide = null;
+            selectedPageIndex = 0; listTargetScroll = 0; listScroll = 0; resetDesc(); return;
         }
         if (selectedCategoryId == null || cats.stream().noneMatch(c -> c.getId().equals(selectedCategoryId)))
             selectedCategoryId = cats.get(0).getId();
         List<GuideDefinition> guides = guidesForSelectedCategory();
         if (guides.isEmpty()) {
-            selectedGuideId = null;
-            selectedGuide = null;
-            selectedPageIndex = 0;
-            listScroll = 0;
-            resetDesc();
-            return;
+            selectedGuideId = null; selectedGuide = null; selectedPageIndex = 0;
+            listTargetScroll = 0; listScroll = 0; resetDesc(); return;
         }
         if (selectedGuideId == null || guides.stream().noneMatch(g -> g.getId().equals(selectedGuideId)))
             selectedGuideId = guides.get(0).getId();
@@ -185,89 +185,44 @@ public final class GuideListScreen extends Screen {
 
     void selectCategory(ResourceLocation id) {
         if (Objects.equals(selectedCategoryId, id)) return;
-        selectedCategoryId = id;
-        selectedGuideId = null;
-        selectedPageIndex = 0;
-        listScroll = 0;
-        resetDesc();
-        rebuildSelection();
-        refreshMediaBinding();
+        selectedCategoryId = id; selectedGuideId = null; selectedPageIndex = 0;
+        listTargetScroll = 0; listScroll = 0; tabScrollOffset = 0; tabTargetScroll = 0;
+        resetDesc(); rebuildSelection(); refreshMediaBinding();
     }
 
     void selectGuide(ResourceLocation id) {
         if (Objects.equals(selectedGuideId, id)) return;
-        selectedGuideId = id;
-        selectedPageIndex = 0;
-        resetDesc();
-        rebuildSelection();
-        refreshMediaBinding();
+        selectedGuideId = id; selectedPageIndex = 0; resetDesc(); rebuildSelection(); refreshMediaBinding();
     }
 
     void selectPrevCategory() {
         List<GuideCategory> cats = visibleCategories();
         for (int i = 0; i < cats.size(); i++)
-            if (cats.get(i).getId().equals(selectedCategoryId) && i > 0) {
-                selectCategory(cats.get(i - 1).getId());
-                return;
-            }
+            if (cats.get(i).getId().equals(selectedCategoryId) && i > 0) { selectCategory(cats.get(i - 1).getId()); return; }
     }
 
     void selectNextCategory() {
         List<GuideCategory> cats = visibleCategories();
         for (int i = 0; i < cats.size(); i++)
-            if (cats.get(i).getId().equals(selectedCategoryId) && i < cats.size() - 1) {
-                selectCategory(cats.get(i + 1).getId());
-                return;
-            }
+            if (cats.get(i).getId().equals(selectedCategoryId) && i < cats.size() - 1) { selectCategory(cats.get(i + 1).getId()); return; }
     }
 
-    void selectPrevGuide() {
-        List<GuideDefinition> guides = guidesForSelectedCategory();
-        for (int i = 0; i < guides.size(); i++)
-            if (guides.get(i).getId().equals(selectedGuideId) && i > 0) {
-                selectGuide(guides.get(i - 1).getId());
-                return;
-            }
-    }
-
-    void selectNextGuide() {
-        List<GuideDefinition> guides = guidesForSelectedCategory();
-        for (int i = 0; i < guides.size(); i++)
-            if (guides.get(i).getId().equals(selectedGuideId) && i < guides.size() - 1) {
-                selectGuide(guides.get(i + 1).getId());
-                return;
-            }
-    }
-
-    void prevPage() {
-        if (selectedGuide != null && selectedPageIndex > 0) {
-            selectedPageIndex--;
-            resetDesc();
-            refreshMediaBinding();
-        }
-    }
-
-    void nextPage() {
-        if (selectedGuide != null && selectedPageIndex < selectedGuide.getPageCount() - 1) {
-            selectedPageIndex++;
-            resetDesc();
-            refreshMediaBinding();
-        }
-    }
+    void prevPage() { if (selectedGuide != null && selectedPageIndex > 0) { selectedPageIndex--; resetDesc(); refreshMediaBinding(); } }
+    void nextPage() { if (selectedGuide != null && selectedPageIndex < selectedGuide.getPageCount() - 1) { selectedPageIndex++; resetDesc(); refreshMediaBinding(); } }
 
     void adjustListScroll(int delta) {
-        listScroll = Math.max(0, listScroll + delta);
+        List<GuideDefinition> guides = guidesForSelectedCategory();
+        int visible = Math.max(1, (listRect()[3] - 12) / 24);
+        int maxScroll = Math.max(0, guides.size() - visible);
+        listTargetScroll = Math.max(0, Math.min(maxScroll, listTargetScroll + delta));
     }
 
     void adjustDescScroll(double delta) {
         int max = Math.max(0, contentPanel.descriptionLineCount() * GuideScreenLayout.TEXT_LINE_H - contentPanel.descriptionRect()[3]);
-        descTargetScroll = clamp(descTargetScroll + delta, 0d, max);
+        descTargetScroll = Math.max(0, Math.min(max, descTargetScroll + delta));
     }
 
-    void resetDesc() {
-        descScroll = 0d;
-        descTargetScroll = 0d;
-    }
+    void resetDesc() { descScroll = 0.0; descTargetScroll = 0.0; }
 
     void refreshMediaBinding() {
         GuideMediaDefinition m = currentMedia();
@@ -276,80 +231,38 @@ public final class GuideListScreen extends Screen {
         else ponderPanel.unbind();
     }
 
-    GuideDefinition getSelectedGuide() {
-        return selectedGuide;
-    }
+    int getThemeColor() { return selectedGuide != null ? selectedGuide.getCategory().getThemeColor() : 0x00D1FF; }
+    ResourceLocation getSelectedCategoryId() { return selectedCategoryId; }
+    ResourceLocation getSelectedGuideId() { return selectedGuideId; }
+    float getSmoothListScroll() { return listScroll; }
+    double getDescScroll() { return descScroll; }
+    void setDescScroll(double v) { descScroll = v; }
+    double getDescTargetScroll() { return descTargetScroll; }
+    void setDescTargetScroll(double v) { descTargetScroll = v; }
+    boolean hasAnyVisibleGuide() { return !visibleCategories().isEmpty(); }
+    float getTabAnimX() { return tabAnimX; }
+    float getTabAnimW() { return tabAnimW; }
 
-    GuideMediaDefinition currentMedia() {
-        return selectedGuide == null ? null : selectedGuide.getPage(selectedPageIndex).getMedia();
-    }
-
-    GuidePageView currentPageView() {
-        return selectedGuide == null ? null : new GuidePageView(selectedGuide, selectedGuide.getPage(selectedPageIndex), selectedPageIndex);
-    }
-
+    GuidePageView currentPageView() { return selectedGuide == null ? null : new GuidePageView(selectedGuide, selectedGuide.getPage(selectedPageIndex), selectedPageIndex); }
+    GuideMediaDefinition currentMedia() { return selectedGuide == null ? null : selectedGuide.getPage(selectedPageIndex).getMedia(); }
     List<FormattedCharSequence> descriptionLines(int width) {
         GuidePageView view = currentPageView();
         return view == null ? List.of() : font.split(view.page().getDescriptionText().resolve(null, null), width);
     }
-
-    EmbeddedPonderScenePanel ponderPanel() {
-        return ponderPanel;
-    }
-
-    int getThemeColor() {
-        return selectedGuide != null ? selectedGuide.getCategory().getThemeColor() : 0x4FC3F7;
-    }
-
-    ResourceLocation getSelectedCategoryId() {
-        return selectedCategoryId;
-    }
-
-    ResourceLocation getSelectedGuideId() {
-        return selectedGuideId;
-    }
-
-    int getListScroll() {
-        return listScroll;
-    }
-
-    double getDescScroll() {
-        return descScroll;
-    }
-
-    void setDescScroll(double v) {
-        descScroll = v;
-    }
-
-    double getDescTargetScroll() {
-        return descTargetScroll;
-    }
-
-    void setDescTargetScroll(double v) {
-        descTargetScroll = v;
-    }
-
-    boolean hasAnyVisibleGuide() {
-        return !visibleCategories().isEmpty();
-    }
+    EmbeddedPonderScenePanel ponderPanel() { return ponderPanel; }
 
     int[] tabsRect() {
-        return new int[]{16, 34, width - 32, 24};
+        GuideScreenLayout.TerminalLayout l = GuideScreenLayout.computeTerminal(width, height);
+        return new int[]{l.cx(), l.cy(), l.cw(), 30};
     }
-
     int[] listRect() {
-        return new int[]{16, 66, 220, height - 84};
+        GuideScreenLayout.TerminalLayout l = GuideScreenLayout.computeTerminal(width, height);
+        return new int[]{l.lx(), l.ly(), l.lw(), l.lh()};
     }
-
     int[] contentRect() {
-        return new int[]{248, 66, width - 264, height - 84};
+        GuideScreenLayout.TerminalLayout l = GuideScreenLayout.computeTerminal(width, height);
+        return new int[]{l.cx(), l.cy() + 30, l.cw(), l.ch() - 30};
     }
 
-    private int clampPage(int p) {
-        return selectedGuide == null ? 0 : Math.max(0, Math.min(p, selectedGuide.getPageCount() - 1));
-    }
-
-    record GuidePageView(GuideDefinition guide, org.arcadia.arc_quest.guide.api.GuidePageDefinition page,
-                         int pageIndex) {
-    }
+    record GuidePageView(GuideDefinition guide, org.arcadia.arc_quest.guide.api.GuidePageDefinition page, int pageIndex) {}
 }

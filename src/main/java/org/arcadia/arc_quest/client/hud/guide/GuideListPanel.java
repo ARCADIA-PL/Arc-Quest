@@ -5,7 +5,6 @@ import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
-
 import java.util.List;
 
 final class GuideListPanel {
@@ -17,43 +16,80 @@ final class GuideListPanel {
 
     void render(GuiGraphics g, int mouseX, int mouseY, int alpha) {
         int[] r = screen.listRect();
-        HudAnimUtil.drawFrame(g, r[0], r[1], r[2], r[3], withAlpha(0x000000, (int) (alpha * .45f)), withAlpha(screen.getThemeColor(), (int) (alpha * .55f)));
+
+        // 绘制高科技外框 (带微弱发光)
+        HudAnimUtil.drawFrame(g, r[0], r[1], r[2], r[3], withAlpha(0x050811, (int) (alpha * 0.7F)), withAlpha(screen.getThemeColor(), (int) (alpha * 0.4F)));
+        GuideNavigationControls.drawCornerBrackets(g, r[0], r[1], r[2], r[3], 6, withAlpha(screen.getThemeColor(), (int) (alpha * 0.6F)));
+
         List<GuideDefinition> guides = screen.guidesForSelectedCategory();
         if (guides.isEmpty()) {
-            GuideNavigationControls.drawScaledText(screen, g, r[0] + 12, r[1] + 14, .8f, Component.translatable("gui.arc_quest.guide_list.no_guides").getString(), withAlpha(GuideScreen.TEXT, alpha));
-            GuideNavigationControls.drawScaledText(screen, g, r[0] + 12, r[1] + 28, .68f, Component.translatable("gui.arc_quest.guide_list.no_guides_hint").getString(), withAlpha(GuideScreen.MUTED, alpha));
+            GuideNavigationControls.drawScaledText(screen, g, r[0] + 12, r[1] + 14, 0.75F, Component.translatable("gui.arc_quest.guide_list.no_guides").getString(), withAlpha(GuideConstants.TEXT, alpha));
             return;
         }
-        int visible = Math.max(1, (r[3] - 12) / 24), maxScroll = Math.max(0, guides.size() - visible), scroll = Math.min(screen.getListScroll(), maxScroll), y = r[1] + 6;
-        for (int i = scroll; i < guides.size() && i < scroll + visible; i++) {
+
+        int visible = Math.max(1, (r[3] - 12) / 24);
+        int maxScroll = Math.max(0, guides.size() - visible);
+
+        // 平滑滚动插值
+        float scroll = screen.getSmoothListScroll();
+        int y = r[1] + 6;
+
+        // 启用裁剪保护
+        g.enableScissor(r[0] + 2, r[1] + 4, r[0] + r[2] - 2, r[1] + r[3] - 4);
+
+        int startIdx = Math.max(0, (int) Math.floor(scroll));
+        int endIdx = Math.min(guides.size(), startIdx + visible + 2);
+
+        for (int i = startIdx; i < endIdx; i++) {
             GuideDefinition guide = guides.get(i);
             boolean selected = guide.getId().equals(screen.getSelectedGuideId());
-            boolean hovered = hit(mouseX, mouseY, r[0] + 4, y, r[2] - 8, 22);
-            if (selected || hovered)
-                g.fill(r[0] + 4, y, r[0] + r[2] - 4, y + 22, withAlpha(selected ? 0x203040 : 0x101820, selected ? 170 : 110));
-            if (selected) HudRenderUtil.drawCyberneticEdge(g, r[0] + 4, y, 22, screen.getThemeColor(), alpha);
-            GuideNavigationControls.drawScaledText(screen, g, r[0] + 12, y + 6, .8f, guide.getTitle().getString(), withAlpha(GuideScreen.TEXT, alpha));
-            if (!org.arcadia.arc_quest.guide.network.ClientGuideCache.INSTANCE.isSeen(guide.getId()))
-                HudRenderUtil.drawBreathingRhombus(g, r[0] + r[2] - 12, y + 11, withAlpha(screen.getThemeColor(), alpha), System.currentTimeMillis() / 1000f, alpha / 255f);
-            y += 24;
+            boolean hovered = hit(mouseX, mouseY, r[0] + 4, y + (int)((i - scroll) * 24), r[2] - 8, 22);
+
+            int itemY = y + (int) ((i - scroll) * 24);
+
+            if (selected || hovered) {
+                g.fill(r[0] + 4, itemY, r[0] + r[2] - 4, itemY + 22, withAlpha(selected ? 0x142235 : 0x0A101A, (int) (alpha * 0.9F)));
+            }
+            if (selected) {
+                HudRenderUtil.drawCyberneticEdge(g, r[0] + 4, itemY, 22, screen.getThemeColor(), alpha);
+                g.renderOutline(r[0] + 4, itemY, r[2] - 8, 22, withAlpha(screen.getThemeColor(), (int) (alpha * 0.5F)));
+            } else if (hovered) {
+                g.renderOutline(r[0] + 4, itemY, r[2] - 8, 22, withAlpha(screen.getThemeColor(), (int) (alpha * 0.2F)));
+            }
+
+            GuideNavigationControls.drawScaledText(screen, g, r[0] + 12, itemY + 7, 0.75F, guide.getTitle().getString(), withAlpha(GuideConstants.TEXT, alpha));
+
+            // 未读提示呼吸灯 (带脉冲外圈)
+            if (!org.arcadia.arc_quest.guide.network.ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
+                float time = System.currentTimeMillis() / 1000.0F;
+                HudRenderUtil.drawBreathingRhombus(g, r[0] + r[2] - 14, itemY + 11, withAlpha(screen.getThemeColor(), alpha), time, alpha / 255.0F);
+            }
         }
+        g.disableScissor();
+
+        // 滚动条
         if (maxScroll > 0) {
-            int totalItems = guides.size(), visibleItems = visible, trackH = r[3] - 10, th = Math.max(16, (int) (trackH * (visibleItems / (float) totalItems))), travel = Math.max(0, trackH - th), ty = r[1] + 5 + (int) (travel * (scroll / (double) maxScroll));
-            g.fill(r[0] + r[2] - 3, r[1] + 5, r[0] + r[2] - 1, r[1] + r[3] - 5, withAlpha(0x22303A, alpha));
-            g.fill(r[0] + r[2] - 3, ty, r[0] + r[2] - 1, ty + th, withAlpha(screen.getThemeColor(), (int) (alpha * .7f)));
+            int trackH = r[3] - 10;
+            int th = Math.max(16, (int) (trackH * (visible / (float) guides.size())));
+            int travel = Math.max(0, trackH - th);
+            int ty = r[1] + 5 + (int) (travel * (scroll / (double) maxScroll));
+            g.fill(r[0] + r[2] - 3, r[1] + 5, r[0] + r[2] - 1, r[1] + r[3] - 5, withAlpha(0x111823, alpha));
+            g.fill(r[0] + r[2] - 3, ty, r[0] + r[2] - 1, ty + th, withAlpha(screen.getThemeColor(), (int) (alpha * 0.8F)));
         }
     }
 
     boolean mouseClicked(double mouseX, double mouseY) {
         int[] r = screen.listRect();
         List<GuideDefinition> guides = screen.guidesForSelectedCategory();
-        int visible = Math.max(1, (r[3] - 12) / 24), scroll = Math.min(screen.getListScroll(), Math.max(0, guides.size() - visible)), y = r[1] + 6;
-        for (int i = scroll; i < guides.size() && i < scroll + visible; i++) {
-            if (hit(mouseX, mouseY, r[0] + 4, y, r[2] - 8, 22)) {
+        float scroll = screen.getSmoothListScroll();
+        int y = r[1] + 6;
+
+        for (int i = 0; i < guides.size(); i++) {
+            int itemY = y + (int) ((i - scroll) * 24);
+            if (hit(mouseX, mouseY, r[0] + 4, itemY, r[2] - 8, 22)) {
                 screen.selectGuide(guides.get(i).getId());
                 return true;
             }
-            y += 24;
         }
         return false;
     }
