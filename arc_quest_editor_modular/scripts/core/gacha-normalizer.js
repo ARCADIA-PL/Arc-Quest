@@ -1,37 +1,36 @@
 export function normalizeImportedGacha(input) {
-    const g = {...input};
     return {
-        shopId: g.shopId || '',
-        displayName: normalizeGachaText(g.displayName),
-        description: g.description ? normalizeGachaText(g.description) : null,
-        categories: (g.categories || []).map(c => ({
+        shopId: input.shopId || '',
+        displayName: normalizeGachaText(input.displayName),
+        description: input.description ? normalizeGachaText(input.description) : null,
+        categories: (input.categories || []).map(c => ({
             categoryId: c.categoryId || '',
             displayName: normalizeGachaText(c.displayName),
             sortOrder: c.sortOrder ?? 0,
             formatting: c.formatting || ''
         })),
-        openCondition: g.openCondition || null,
-        themeColor: typeof g.themeColor === 'number' ? g.themeColor : 0xFFD700,
-        simpleMode: g.simpleMode !== undefined ? g.simpleMode : false,
-        openSound: g.openSound || '',
-        closeSound: g.closeSound || '',
-        drawCost: normalizeGachaOffer(g.drawCost),
-        maxDraws: g.maxDraws ?? -1,
-        cooldownType: g.cooldownType || 'NONE',
-        cooldownValue: g.cooldownValue ?? 0,
-        resetTimeTicks: g.resetTimeTicks ?? 0,
-        rarities: (g.rarities || []).map(r => ({
+        openCondition: input.openCondition || null,
+        themeColor: typeof input.themeColor === 'number' ? input.themeColor : 0xFFD700,
+        simpleMode: input.simpleMode !== undefined ? input.simpleMode : false,
+        openSound: input.openSound || '',
+        closeSound: input.closeSound || '',
+        drawCost: normalizeGachaOffer(input.drawCost),
+        maxDraws: input.maxDraws ?? -1,
+        cooldownType: input.cooldownType || 'NONE',
+        cooldownValue: input.cooldownValue ?? 0,
+        resetTimeTicks: input.resetTimeTicks ?? 0,
+        rarities: (input.rarities || []).map(r => ({
             rarity: r.rarity || 'RARE',
             color: r.color ?? 0xFFFFFF,
             drawSuccessSound: r.drawSuccessSound || ''
         })),
-        pity: g.pity ? {
-            threshold: g.pity.threshold ?? 10,
-            targetRarity: g.pity.targetRarity || 'LEGENDARY',
-            guaranteedItemId: g.pity.guaranteedItemId || '',
-            resetOnEarlyTrigger: g.pity.resetOnEarlyTrigger !== false
+        pity: input.pity ? {
+            threshold: input.pity.threshold ?? 10,
+            targetRarity: input.pity.targetRarity || 'LEGENDARY',
+            guaranteedItemId: input.pity.guaranteedItemId || '',
+            resetOnEarlyTrigger: input.pity.resetOnEarlyTrigger !== false
         } : null,
-        pools: (g.pools || []).map(p => ({
+        pools: (input.pools || []).map(p => ({
             poolId: p.poolId || 'default',
             items: (p.items || []).map(it => ({
                 itemId: it.itemId || '',

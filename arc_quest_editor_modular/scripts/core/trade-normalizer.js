@@ -1,21 +1,20 @@
 export function normalizeImportedTrade(input) {
-    const t = {...input};
     return {
-        shopId: t.shopId || '',
-        displayName: normalizeTextSpec(t.displayName),
-        description: t.description ? normalizeTextSpec(t.description) : null,
-        categories: (t.categories || []).map(c => ({
+        shopId: input.shopId || '',
+        displayName: normalizeTextSpec(input.displayName),
+        description: input.description ? normalizeTextSpec(input.description) : null,
+        categories: (input.categories || []).map(c => ({
             categoryId: c.categoryId || '',
             displayName: normalizeTextSpec(c.displayName),
             sortOrder: c.sortOrder ?? 0,
             formatting: c.formatting || ''
         })),
-        entries: normalizeEntriesMap(t.entries),
-        openCondition: t.openCondition || null,
-        simpleMode: t.simpleMode !== undefined ? t.simpleMode : false,
-        themeColor: typeof t.themeColor === 'number' ? t.themeColor : 0xE0C860,
-        openSound: t.openSound || '',
-        closeSound: t.closeSound || ''
+        entries: normalizeEntriesMap(input.entries),
+        openCondition: input.openCondition || null,
+        simpleMode: input.simpleMode !== undefined ? input.simpleMode : false,
+        themeColor: typeof input.themeColor === 'number' ? input.themeColor : 0xE0C860,
+        openSound: input.openSound || '',
+        closeSound: input.closeSound || ''
     };
 }
 

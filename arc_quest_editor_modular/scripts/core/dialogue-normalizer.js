@@ -1,44 +1,51 @@
 export function normalizeImportedDialogue(input) {
-    const d = {...input};
     return {
-        id: d.id || '',
-        defaultNpc: normalizeTextSpec(d.defaultNpc),
-        startNodeId: d.startNodeId || '',
-        nodes: (d.nodes || []).map(node => ({
-            nodeId: node.nodeId || '',
-            sayId: node.sayId || '',
-            speaker: normalizeTextSpec(node.speaker),
-            text: normalizeTextSpec(node.text),
-            conditionalTexts: normalizeConditionalTexts(node.conditionalTexts),
-            choices: (node.choices || []).map(choice => ({
-                choiceId: choice.choiceId || '',
-                text: normalizeTextSpec(choice.text),
-                nextNodeId: choice.nextNodeId || '',
-                conditions: choice.conditions || [],
-                actions: (choice.actions || []).map(a => ({...a})),
-                repeatable: choice.repeatable !== false,
-                cooldownSeconds: choice.cooldownSeconds ?? 0,
-                cooldownType: choice.cooldownType || 'NONE',
-                resetTimeTicks: choice.resetTimeTicks ?? 0,
-                priority: choice.priority ?? 0,
-                restoreNodeId: choice.restoreNodeId || '',
-                selectSound: choice.selectSound || ''
-            })),
-            autoNextId: node.autoNextId || '',
-            delayMs: node.delayMs ?? 0,
-            repeatable: node.repeatable !== false,
-            cooldownSeconds: node.cooldownSeconds ?? 0,
-            cooldownType: node.cooldownType || 'NONE',
-            resetTimeTicks: node.resetTimeTicks ?? 0,
-            nodeEnterSound: node.nodeEnterSound || ''
-        })),
-        visualConfig: d.visualConfig || null,
-        repeatable: d.repeatable !== false,
-        cooldownSeconds: d.cooldownSeconds ?? 0,
-        cooldownType: d.cooldownType || 'NONE',
-        resetTimeTicks: d.resetTimeTicks ?? 0,
-        npcBindings: (d.npcBindings || []).map(b => ({npcId: b.npcId || '', dialogueId: b.dialogueId || ''})),
-        entityBindings: (d.entityBindings || []).map(b => ({entityType: b.entityType || '', dialogueId: b.dialogueId || ''}))
+        id: input.id || '',
+        defaultNpc: normalizeTextSpec(input.defaultNpc),
+        startNodeId: input.startNodeId || '',
+        nodes: (input.nodes || []).map(node => normalizeNode(node)),
+        visualConfig: normalizeVisualConfig(input.visualConfig),
+        repeatable: input.repeatable !== false,
+        cooldownSeconds: input.cooldownSeconds ?? 0,
+        cooldownType: input.cooldownType || 'NONE',
+        resetTimeTicks: input.resetTimeTicks ?? 0,
+        npcBindings: (input.npcBindings || []).map(b => ({npcId: b.npcId || '', dialogueId: b.dialogueId || ''})),
+        entityBindings: (input.entityBindings || []).map(b => ({entityType: b.entityType || '', dialogueId: b.dialogueId || ''}))
+    };
+}
+
+function normalizeNode(node) {
+    return {
+        nodeId: node.nodeId || '',
+        sayId: node.sayId || node.defaultSayId || '',
+        speaker: normalizeTextSpec(node.speaker),
+        text: normalizeTextSpec(node.text),
+        conditionalTexts: normalizeConditionalTexts(node.conditionalTexts),
+        choices: (node.choices || []).map(choice => normalizeChoice(choice)),
+        autoNextId: node.autoNextId || '',
+        delayMs: node.delayMs ?? 0,
+        repeatable: node.repeatable !== false,
+        cooldownSeconds: node.cooldownSeconds ?? 0,
+        cooldownType: node.cooldownType || 'NONE',
+        resetTimeTicks: node.resetTimeTicks ?? 0,
+        nodeEnterSound: node.nodeEnterSound || ''
+    };
+}
+
+function normalizeChoice(choice) {
+    return {
+        choiceId: choice.choiceId || '',
+        text: normalizeTextSpec(choice.text),
+        nextNodeId: choice.nextNodeId || '',
+        conditions: normalizeConditions(choice.conditions),
+        actions: normalizeActions(choice.actions),
+        repeatable: choice.repeatable !== false,
+        cooldownSeconds: choice.cooldownSeconds ?? 0,
+        cooldownType: choice.cooldownType || 'NONE',
+        resetTimeTicks: choice.resetTimeTicks ?? 0,
+        priority: choice.priority ?? 0,
+        restoreNodeId: choice.restoreNodeId || '',
+        selectSound: choice.selectSound || ''
     };
 }
 
@@ -47,7 +54,7 @@ function normalizeTextSpec(spec) {
     return {
         mode: spec.mode === 'translatable' ? 'translatable' : 'literal',
         value: spec.value || '',
-        args: Array.isArray(spec.args) ? spec.args : []
+        args: Array.isArray(spec.args) ? [...spec.args] : []
     };
 }
 
@@ -60,11 +67,95 @@ function normalizeConditionalTexts(map) {
             sayId: say.sayId || '',
             text: normalizeTextSpec(say.text),
             soundEvent: say.soundEvent || '',
-            conditions: say.conditions || [],
+            conditions: normalizeConditions(say.conditions),
             priority: say.priority ?? 0
         };
     }
     return result;
+}
+
+function normalizeConditions(conditions) {
+    if (!Array.isArray(conditions)) return [];
+    return conditions.map(c => normalizeCondition(c));
+}
+
+function normalizeCondition(c) {
+    if (!c || typeof c !== 'object') return {condition: 'arc_quest:always'};
+    const out = {condition: c.condition || 'arc_quest:always'};
+    if (c.questId) out.questId = c.questId;
+    if (c.phaseId) out.phaseId = c.phaseId;
+    if (c.targetPhaseId) out.targetPhaseId = c.targetPhaseId;
+    if (c.fromPhaseId) out.fromPhaseId = c.fromPhaseId;
+    if (c.toPhaseId) out.toPhaseId = c.toPhaseId;
+    if (c.flag) out.flag = c.flag;
+    if (c.key) out.key = c.key;
+    if (c.op) out.op = c.op;
+    if (c.value) out.value = c.value;
+    if (c.count) out.count = c.count;
+    if (c.effectId) out.effectId = c.effectId;
+    if (c.inner) out.inner = normalizeCondition(c.inner);
+    if (Array.isArray(c.conditions) && c.conditions.length) out.conditions = normalizeConditions(c.conditions);
+    if (c.predicate && typeof c.predicate === 'object') out.predicate = {...c.predicate};
+    if (c.nodeId) out.nodeId = c.nodeId;
+    if (c.choiceId) out.choiceId = c.choiceId;
+    if (c.dialogueId) out.dialogueId = c.dialogueId;
+    if (c.cooldownSeconds > 0) out.cooldownSeconds = c.cooldownSeconds;
+    if (c.startTick) out.startTick = c.startTick;
+    if (c.endTick) out.endTick = c.endTick;
+    if (c.name) out.name = c.name;
+    if (c.nbtScope) out.nbtScope = c.nbtScope;
+    if (c.nbtKey) out.nbtKey = c.nbtKey;
+    if (c.nbtValue) out.nbtValue = c.nbtValue;
+    if (c.namePattern) out.namePattern = c.namePattern;
+    return out;
+}
+
+function normalizeActions(actions) {
+    if (!Array.isArray(actions)) return [];
+    return actions.map(a => normalizeAction(a));
+}
+
+function normalizeAction(a) {
+    if (!a || typeof a !== 'object') return {type: 'no_op'};
+    const out = {type: a.type || 'no_op'};
+    if (a.questId) out.questId = a.questId;
+    if (a.amount) out.amount = a.amount;
+    if (a.itemId) out.itemId = a.itemId;
+    if (a.count !== undefined && a.count !== 1) out.count = a.count;
+    if (a.npcId) out.npcId = a.npcId;
+    if (a.targetId) out.targetId = a.targetId;
+    if (a.command) out.command = a.command;
+    if (a.flagName) out.flagName = a.flagName;
+    if (a.key) out.key = a.key;
+    if (a.value) out.value = a.value;
+    if (a.shopId) out.shopId = a.shopId;
+    if (a.restoreNodeId) out.restoreNodeId = a.restoreNodeId;
+    if (a.customTypeId) out.customTypeId = a.customTypeId;
+    if (a.customData && typeof a.customData === 'object' && Object.keys(a.customData).length) {
+        out.customData = {...a.customData};
+    }
+    return out;
+}
+
+function normalizeVisualConfig(vc) {
+    if (!vc || typeof vc !== 'object') return null;
+    const out = {};
+    if (vc.themeColor !== undefined && vc.themeColor !== null) out.themeColor = vc.themeColor;
+    if (vc.splashes && typeof vc.splashes === 'object' && Object.keys(vc.splashes).length) {
+        out.splashes = {};
+        for (const [key, asset] of Object.entries(vc.splashes)) {
+            if (!asset) continue;
+            out.splashes[key] = {texture: asset.texture || '', scale: asset.scale ?? 1.0};
+        }
+    }
+    if (vc.icons && typeof vc.icons === 'object' && Object.keys(vc.icons).length) {
+        out.icons = {};
+        for (const [key, asset] of Object.entries(vc.icons)) {
+            if (!asset) continue;
+            out.icons[key] = {texture: asset.texture || '', scale: asset.scale ?? 1.0};
+        }
+    }
+    return Object.keys(out).length ? out : null;
 }
 
 function cleanEmptyFields(obj) {
@@ -86,14 +177,74 @@ function cleanEmptyFields(obj) {
     }
 }
 
+function exportTextSpec(spec) {
+    if (!spec || typeof spec !== 'object') return {mode: 'literal', value: ''};
+    const out = {mode: spec.mode === 'translatable' ? 'translatable' : 'literal', value: spec.value || ''};
+    if (Array.isArray(spec.args) && spec.args.length) out.args = [...spec.args];
+    return out;
+}
+
+function exportCondition(c) {
+    if (!c || typeof c !== 'object') return {condition: 'arc_quest:always'};
+    const out = {condition: c.condition || 'arc_quest:always'};
+    if (c.questId) out.questId = c.questId;
+    if (c.phaseId) out.phaseId = c.phaseId;
+    if (c.targetPhaseId) out.targetPhaseId = c.targetPhaseId;
+    if (c.fromPhaseId) out.fromPhaseId = c.fromPhaseId;
+    if (c.toPhaseId) out.toPhaseId = c.toPhaseId;
+    if (c.flag) out.flag = c.flag;
+    if (c.key) out.key = c.key;
+    if (c.op) out.op = c.op;
+    if (c.value) out.value = c.value;
+    if (c.count) out.count = c.count;
+    if (c.effectId) out.effectId = c.effectId;
+    if (c.inner) out.inner = exportCondition(c.inner);
+    if (Array.isArray(c.conditions) && c.conditions.length) out.conditions = c.conditions.map(exportCondition);
+    if (c.predicate && typeof c.predicate === 'object') out.predicate = {...c.predicate};
+    if (c.nodeId) out.nodeId = c.nodeId;
+    if (c.choiceId) out.choiceId = c.choiceId;
+    if (c.dialogueId) out.dialogueId = c.dialogueId;
+    if (c.cooldownSeconds > 0) out.cooldownSeconds = c.cooldownSeconds;
+    if (c.startTick) out.startTick = c.startTick;
+    if (c.endTick) out.endTick = c.endTick;
+    if (c.name) out.name = c.name;
+    if (c.nbtScope) out.nbtScope = c.nbtScope;
+    if (c.nbtKey) out.nbtKey = c.nbtKey;
+    if (c.nbtValue) out.nbtValue = c.nbtValue;
+    if (c.namePattern) out.namePattern = c.namePattern;
+    return out;
+}
+
+function exportAction(a) {
+    if (!a || typeof a !== 'object') return {type: 'no_op'};
+    const out = {type: a.type || 'no_op'};
+    if (a.questId) out.questId = a.questId;
+    if (a.amount) out.amount = a.amount;
+    if (a.itemId) out.itemId = a.itemId;
+    if (a.count !== undefined && a.count !== 1) out.count = a.count;
+    if (a.npcId) out.npcId = a.npcId;
+    if (a.targetId) out.targetId = a.targetId;
+    if (a.command) out.command = a.command;
+    if (a.flagName) out.flagName = a.flagName;
+    if (a.key) out.key = a.key;
+    if (a.value) out.value = a.value;
+    if (a.shopId) out.shopId = a.shopId;
+    if (a.restoreNodeId) out.restoreNodeId = a.restoreNodeId;
+    if (a.customTypeId) out.customTypeId = a.customTypeId;
+    if (a.customData && typeof a.customData === 'object' && Object.keys(a.customData).length) {
+        out.customData = {...a.customData};
+    }
+    return out;
+}
+
 function exportChoice(c) {
     const out = {
         choiceId: c.choiceId || '',
-        text: {mode: c.text?.mode || 'literal', value: c.text?.value || ''},
+        text: exportTextSpec(c.text),
         nextNodeId: c.nextNodeId || ''
     };
-    if (c.conditions?.length) out.conditions = c.conditions;
-    if (c.actions?.length) out.actions = c.actions;
+    if (c.conditions?.length) out.conditions = c.conditions.map(exportCondition);
+    if (c.actions?.length) out.actions = c.actions.map(exportAction);
     if (c.repeatable === false) out.repeatable = false;
     if (c.cooldownSeconds > 0) out.cooldownSeconds = c.cooldownSeconds;
     if (c.cooldownType && c.cooldownType !== 'NONE') out.cooldownType = c.cooldownType;
@@ -107,18 +258,18 @@ function exportChoice(c) {
 function exportNode(node) {
     const out = {
         nodeId: node.nodeId || '',
-        text: {mode: node.text?.mode || 'literal', value: node.text?.value || ''}
+        text: exportTextSpec(node.text)
     };
     const speaker = node.speaker;
     if (speaker && (speaker.mode !== 'literal' || (speaker.value && speaker.value.trim())))
-        out.speaker = {mode: speaker.mode || 'literal', value: speaker.value || ''};
+        out.speaker = exportTextSpec(speaker);
     if (node.sayId) out.sayId = node.sayId;
     if (node.conditionalTexts) {
         const ct = {};
         for (const [key, say] of Object.entries(node.conditionalTexts)) {
-            const sayOut = {text: {mode: say.text?.mode || 'literal', value: say.text?.value || ''}};
+            const sayOut = {text: exportTextSpec(say.text)};
             if (say.sayId) sayOut.sayId = say.sayId;
-            if (say.conditions?.length) sayOut.conditions = say.conditions;
+            if (say.conditions?.length) sayOut.conditions = say.conditions.map(exportCondition);
             if (say.soundEvent) sayOut.soundEvent = say.soundEvent;
             if (say.priority !== undefined && say.priority !== 0) sayOut.priority = say.priority;
             ct[key] = sayOut;
@@ -144,13 +295,32 @@ export function exportDialogueToDatapack(dialogue) {
     };
     const npc = dialogue.defaultNpc;
     if (npc && (npc.mode !== 'literal' || (npc.value && npc.value.trim())))
-        out.defaultNpc = {mode: npc.mode || 'literal', value: npc.value || ''};
+        out.defaultNpc = exportTextSpec(npc);
     if (dialogue.repeatable === false) out.repeatable = false;
     if (dialogue.cooldownSeconds > 0) out.cooldownSeconds = dialogue.cooldownSeconds;
     if (dialogue.cooldownType && dialogue.cooldownType !== 'NONE') out.cooldownType = dialogue.cooldownType;
     if (dialogue.resetTimeTicks > 0) out.resetTimeTicks = dialogue.resetTimeTicks;
-    if (dialogue.visualConfig) out.visualConfig = dialogue.visualConfig;
-    if (dialogue.npcBindings?.length) out.npcBindings = dialogue.npcBindings;
-    if (dialogue.entityBindings?.length) out.entityBindings = dialogue.entityBindings;
+    if (dialogue.visualConfig) {
+        const vc = {};
+        if (dialogue.visualConfig.themeColor !== undefined && dialogue.visualConfig.themeColor !== null) vc.themeColor = dialogue.visualConfig.themeColor;
+        if (dialogue.visualConfig.splashes && typeof dialogue.visualConfig.splashes === 'object' && Object.keys(dialogue.visualConfig.splashes).length) {
+            vc.splashes = {};
+            for (const [key, asset] of Object.entries(dialogue.visualConfig.splashes)) {
+                if (!asset) continue;
+                vc.splashes[key] = {texture: asset.texture || '', scale: asset.scale ?? 1.0};
+            }
+        }
+        if (dialogue.visualConfig.icons && typeof dialogue.visualConfig.icons === 'object' && Object.keys(dialogue.visualConfig.icons).length) {
+            vc.icons = {};
+            for (const [key, asset] of Object.entries(dialogue.visualConfig.icons)) {
+                if (!asset) continue;
+                vc.icons[key] = {texture: asset.texture || '', scale: asset.scale ?? 1.0};
+            }
+        }
+        if (Object.keys(vc).length) out.visualConfig = vc;
+    }
+    if (dialogue.npcBindings?.length) out.npcBindings = dialogue.npcBindings.map(b => ({npcId: b.npcId || '', dialogueId: b.dialogueId || ''}));
+    if (dialogue.entityBindings?.length) out.entityBindings = dialogue.entityBindings.map(b => ({entityType: b.entityType || '', dialogueId: b.dialogueId || ''}));
+    cleanEmptyFields(out);
     return out;
 }

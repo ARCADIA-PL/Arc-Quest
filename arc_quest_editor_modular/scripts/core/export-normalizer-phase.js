@@ -84,7 +84,7 @@ function cleanCollectionEntryConfig(config) {
         categoryId: config.categoryId || undefined,
         visibilityMode: config.visibilityMode || undefined,
         hiddenPresentationMode: config.hiddenPresentationMode || undefined,
-        visibilityConditions: config.visibilityConditions || undefined,
+        visibilityConditions: config.visibilityConditions ? config.visibilityConditions.map(cleanCondition) : undefined,
         countingMode: config.countingMode || undefined,
         completionTarget: config.completionTarget === undefined ? undefined : Number(config.completionTarget),
         repeatableProgress: config.repeatableProgress === undefined ? undefined : !!config.repeatableProgress,
@@ -92,7 +92,13 @@ function cleanCollectionEntryConfig(config) {
         sortOrder: config.sortOrder === undefined ? undefined : Number(config.sortOrder),
         maxCount: config.maxCount === undefined ? undefined : Number(config.maxCount),
         rewardGrantMode: config.rewardGrantMode || undefined,
-        rewardNodes: config.rewardNodes || undefined,
+        rewardNodes: config.rewardNodes ? config.rewardNodes.map(r => ({
+            rewardId: r?.rewardId || '',
+            categoryId: r?.categoryId || '',
+            completionMode: r?.completionMode || 'PER_CATEGORY',
+            completionCount: r?.completionCount,
+            rewards: (r?.rewards || []).map(exportReward)
+        })) : undefined,
         showInTrackerByDefault: config.showInTrackerByDefault === undefined ? undefined : !!config.showInTrackerByDefault
     };
     Object.keys(out).forEach(key => out[key] === undefined && delete out[key]);
@@ -131,7 +137,9 @@ export function exportReward(reward) {
     return {
         type: 'item',
         itemId: reward?.itemId || '',
-        count: Number(reward?.count ?? 1)
+        count: Number(reward?.count ?? 1),
+        ...(reward?.nbt ? {nbt: reward.nbt} : {}),
+        ...(reward?.command ? {command: reward.command} : {})
     };
 }
 
@@ -187,8 +195,31 @@ export function exportPhase(phase) {
     if (phase.phaseStartSound) out.phaseStartSound = phase.phaseStartSound;
     if (phase.phaseCompleteSound) out.phaseCompleteSound = phase.phaseCompleteSound;
     if (phase.relatedMarks?.length) out.relatedMarks = phase.relatedMarks;
-    if (phase.visualConfig) out.visualConfig = phase.visualConfig;
-    if (phase.choices?.length) out.choices = phase.choices;
+    if (phase.visualConfig) {
+        const vc = {};
+        if (phase.visualConfig.themeColor) vc.themeColor = String(phase.visualConfig.themeColor);
+        const splashArr = Array.isArray(phase.visualConfig.splashes) ? phase.visualConfig.splashes : [];
+        const cleanSplashes = {};
+        splashArr.forEach(s => {
+            if (s?.eventType) cleanSplashes[s.eventType] = {texture: s.texture || '', scale: Number(s.scale ?? 1)};
+        });
+        if (Object.keys(cleanSplashes).length) vc.splashes = cleanSplashes;
+        if (phase.visualConfig.icons && Object.keys(phase.visualConfig.icons).length) vc.icons = phase.visualConfig.icons;
+        if (Object.keys(vc).length) out.visualConfig = vc;
+    }
+    if (phase.choices?.length) {
+        out.choices = phase.choices.map(c => {
+            const choice = {};
+            if (c.text) {
+                if (typeof c.text === 'string') choice.text = {mode: 'literal', value: c.text};
+                else choice.text = {mode: c.text.mode || 'literal', value: c.text.value || c.text.text || ''};
+            }
+            if (c.flagToSet) choice.flagToSet = c.flagToSet;
+            if (c.targetPhaseId) choice.targetPhaseId = c.targetPhaseId;
+            if (c.visibleCondition) choice.visibleCondition = cleanCondition(c.visibleCondition);
+            return choice;
+        });
+    }
     if (phase.flagsToSetOnEnter?.length) out.flagsToSetOnEnter = phase.flagsToSetOnEnter;
     if (phase.flagsToSetOnComplete?.length) out.flagsToSetOnComplete = phase.flagsToSetOnComplete;
     if (enterCondition.condition !== 'arc_quest:always') out.enterCondition = enterCondition;

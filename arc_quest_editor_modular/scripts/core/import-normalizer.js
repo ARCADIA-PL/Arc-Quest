@@ -24,12 +24,12 @@ function normalizeSplashMap(splashes) {
 
 function normalizeReward(reward) {
     const type = reward?.type || 'item';
-    if (type === 'command') return {type, command: reward?.command || '', ...reward};
-    if (type === 'flag_set' || type === 'flag_clear') return {type, flag: reward?.flag || '', ...reward};
+    if (type === 'command') return {type, command: reward?.command || ''};
+    if (type === 'flag_set' || type === 'flag_clear') return {type, flag: reward?.flag || ''};
     if (type === 'var_set' || type === 'var_add' || type === 'var_subtract' || type === 'var_multiply') {
-        return {type, variable: reward?.variable || '', value: reward?.value ?? 0, ...reward};
+        return {type, variable: reward?.variable || '', value: reward?.value ?? 0};
     }
-    return {type: 'item', itemId: reward?.itemId || '', count: reward?.count ?? 1, ...reward};
+    return {type: 'item', itemId: reward?.itemId || '', count: reward?.count ?? 1, nbt: reward?.nbt || '', command: reward?.command || ''};
 }
 
 function mapObjectiveType(type) {
@@ -103,7 +103,22 @@ function normalizeCondition(node) {
                 inner: normalizeCondition(node.inner)
             };
         }
-        return {...node};
+        return {
+            condition: node.condition,
+            flag: node.flag,
+            questId: node.questId,
+            key: node.key,
+            op: node.op,
+            value: node.value,
+            item: node.item,
+            dimension: node.dimension,
+            pos: node.pos,
+            entityType: node.entityType,
+            target: node.target,
+            count: node.count,
+            inner: node.inner ? normalizeCondition(node.inner) : undefined,
+            conditions: node.conditions ? node.conditions.map(normalizeCondition) : undefined
+        };
     }
     if (node.type) {
         return convertOldCondition(node);
@@ -161,59 +176,63 @@ function normalizePhase(phase, idx) {
         autoStart: !!phase?.autoEnterByCondition,
         parallelPhaseIds: mode === 'parallel' ? targetIds : [],
         choicePhaseIds: mode === 'choice' ? targetIds : [],
-        transitions: transitions.map(t => ({...t, condition: normalizeCondition(t?.condition)})),
-        choices: mode === 'choice' ? (phase?.choices || []).map(c => ({...c, visibleCondition: normalizeCondition(c?.visibleCondition)})) : [],
+        transitions: transitions.map(t => ({
+            targetPhaseId: t?.targetPhaseId || '',
+            condition: normalizeCondition(t?.condition)
+        })),
+        choices: mode === 'choice' ? (phase?.choices || []).map(c => ({
+            text: c?.text,
+            flagToSet: c?.flagToSet || '',
+            targetPhaseId: c?.targetPhaseId || '',
+            visibleCondition: normalizeCondition(c?.visibleCondition)
+        })) : [],
         rawEnterCondition: normalizeCondition(phase?.enterCondition),
         flagsToSetOnEnter: phase?.flagsToSetOnEnter || [],
         flagsToSetOnComplete: phase?.flagsToSetOnComplete || [],
         objectives: (phase?.objectives || []).map(normalizeObjective),
         rewards: (phase?.phaseRewards || []).map(normalizeReward),
-        collectionEntryConfig: phase?.collectionEntryConfig || null,
-        raw: phase
+        collectionEntryConfig: phase?.collectionEntryConfig || null
     };
 }
 
 export function normalizeImportedQuest(input) {
-    const q = {...input};
-    const titleNode = asTextNode(q.displayName, q.title || '');
-    const descNode = asTextNode(q.description, q.descriptionText || '');
+    const titleNode = asTextNode(input.displayName, input.title || '');
+    const descNode = asTextNode(input.description, input.descriptionText || '');
     return {
-        ...q,
-        id: q.id || 'imported_quest',
+        id: input.id || 'imported_quest',
         title: titleNode.text,
         titleMode: titleNode.mode,
         description: descNode.text,
         descriptionMode: descNode.mode,
-        sortOrder: q.sortOrder ?? 0,
-        repeatable: !!q.repeatable,
-        tags: q.tags || [],
-        mode: q.mode || 'PROGRESSION',
-        category: q.category || '',
-        chapterShopId: q.chapterShopId || '',
-        chapterShopType: q.chapterShopType || '',
-        chapterShopPersistent: !!q.chapterShopPersistent,
-        initialPhaseId: q.initialPhaseId || '',
-        iconTexture: q.iconTexture || '',
-        flagsToSetOnAccept: q.flagsToSetOnAccept || [],
-        flagsToSetOnComplete: q.flagsToSetOnComplete || [],
-        completionPolicy: q.completionPolicy || 'ALL',
-        completionRequiredCount: q.completionRequiredCount ?? 0,
-        completionTargetPhaseId: q.completionTargetPhaseId || '',
-        timeLimitType: q.timeLimitType || '',
-        timeLimitValue: q.timeLimitValue ?? 0,
-        chapterStartSound: q.chapterStartSound || '',
-        chapterFailSound: q.chapterFailSound || '',
-        chapterCompleteSound: q.chapterCompleteSound || '',
-        unlockConditions: q.unlockConditions || null,
-        relatedMarks: q.relatedMarks || [],
+        sortOrder: input.sortOrder ?? 0,
+        repeatable: !!input.repeatable,
+        tags: input.tags || [],
+        mode: input.mode || 'PROGRESSION',
+        category: input.category || '',
+        chapterShopId: input.chapterShopId || '',
+        chapterShopType: input.chapterShopType || '',
+        chapterShopPersistent: !!input.chapterShopPersistent,
+        initialPhaseId: input.initialPhaseId || '',
+        iconTexture: input.iconTexture || '',
+        flagsToSetOnAccept: input.flagsToSetOnAccept || [],
+        flagsToSetOnComplete: input.flagsToSetOnComplete || [],
+        completionPolicy: input.completionPolicy || 'ALL',
+        completionRequiredCount: input.completionRequiredCount ?? 0,
+        completionTargetPhaseId: input.completionTargetPhaseId || '',
+        timeLimitType: input.timeLimitType || '',
+        timeLimitValue: input.timeLimitValue ?? 0,
+        chapterStartSound: input.chapterStartSound || '',
+        chapterFailSound: input.chapterFailSound || '',
+        chapterCompleteSound: input.chapterCompleteSound || '',
+        unlockConditions: input.unlockConditions || null,
+        relatedMarks: input.relatedMarks || [],
         visualConfig: {
-            themeColor: toHexColor(q.visualConfig?.themeColor),
-            splashes: normalizeSplashMap(q.visualConfig?.splashes),
-            icons: q.visualConfig?.icons || {}
+            themeColor: toHexColor(input.visualConfig?.themeColor),
+            splashes: normalizeSplashMap(input.visualConfig?.splashes),
+            icons: input.visualConfig?.icons || {}
         },
-        rewards: (q.completionRewards || q.rewards || []).map(normalizeReward),
-        phases: (q.phases || []).map(normalizePhase),
-        collectionConfig: q.collectionConfig || null,
-        rawImported: input
+        rewards: (input.completionRewards || input.rewards || []).map(normalizeReward),
+        phases: (input.phases || []).map(normalizePhase),
+        collectionConfig: input.collectionConfig || input.collection || null
     };
 }

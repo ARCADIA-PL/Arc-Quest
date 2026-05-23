@@ -65,8 +65,39 @@ export function exportQuestToDatapack(stateQuest) {
     if (q.rewards?.length) out.completionRewards = q.rewards.map(exportReward);
     if (q.collectionConfig) {
         const cc = q.collectionConfig;
-        if ((cc.categories?.length) || (cc.rewardNodes?.length) || (cc.completionRules?.length)) {
-            out.collectionConfig = cc;
+        const hasCategories = Array.isArray(cc.categories) && cc.categories.length > 0;
+        const hasRewardNodes = Array.isArray(cc.rewardNodes) && cc.rewardNodes.length > 0;
+        const hasCompletionRules = cc.completionRules && Object.keys(cc.completionRules).length > 0;
+        if (hasCategories || hasRewardNodes || hasCompletionRules) {
+            const clean = {};
+            if (hasCategories) {
+                clean.categories = cc.categories.map(c => {
+                    const cat = {};
+                    if (c.categoryId) cat.categoryId = c.categoryId;
+                    if (c.displayName) cat.displayName = c.displayName;
+                    if (c.sortOrder !== undefined && c.sortOrder !== null) cat.sortOrder = Number(c.sortOrder);
+                    if (c.description) cat.description = c.description;
+                    if (c.trackingVisible !== undefined) cat.trackingVisible = c.trackingVisible;
+                    if (c.toastsEnabled !== undefined) cat.toastsEnabled = c.toastsEnabled;
+                    return cat;
+                });
+            }
+            if (hasRewardNodes) {
+                clean.rewardNodes = cc.rewardNodes.map(r => {
+                    const rn = {};
+                    if (r.rewardId) rn.rewardId = r.rewardId;
+                    if (r.categoryId) rn.categoryId = r.categoryId;
+                    if (r.completionMode) rn.completionMode = r.completionMode;
+                    if (r.completionCount !== undefined && r.completionCount !== null) rn.completionCount = Number(r.completionCount);
+                    if (r.rewards?.length) rn.rewards = r.rewards.map(exportReward);
+                    return rn;
+                });
+            }
+            if (hasCompletionRules) clean.completionRules = cc.completionRules;
+            if (cc.closeManual !== undefined) clean.closeManual = !!cc.closeManual;
+            if (cc.autoTrackOnProgress !== undefined) clean.autoTrackOnProgress = !!cc.autoTrackOnProgress;
+            if (cc.showInNonCollectionTracker !== undefined) clean.showInNonCollectionTracker = !!cc.showInNonCollectionTracker;
+            out.collectionConfig = clean;
         }
     }
     Object.keys(out).forEach(k => out[k] === undefined && delete out[k]);

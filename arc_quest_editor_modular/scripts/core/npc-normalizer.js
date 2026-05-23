@@ -1,21 +1,20 @@
 export function normalizeImportedNpc(input) {
-    const npc = {...input};
     return {
-        entityType: npc.entityType || '',
-        bindings: (npc.bindings || []).map((b, i) => ({
+        entityType: input.entityType || '',
+        bindings: (input.bindings || []).map((b, i) => ({
             bindingId: b.bindingId || `binding_${i + 1}`,
             dialogueId: b.dialogueId || '',
             dialogueIdFromNbt: b.dialogueIdFromNbt || '',
             condition: b.condition || null,
             priority: b.priority ?? 0
         })),
-        cancelVanillaInteract: npc.cancelVanillaInteract !== false,
-        dialogueDistance: typeof npc.dialogueDistance === 'number' ? npc.dialogueDistance : 8.0,
-        shouldLookAtPlayer: npc.shouldLookAtPlayer !== false,
-        shouldStopMoving: npc.shouldStopMoving !== false,
-        interactCondition: npc.interactCondition || null,
-        onDialogueStartCommands: npc.onDialogueStartCommands || [],
-        onDialogueEndCommands: npc.onDialogueEndCommands || []
+        cancelVanillaInteract: input.cancelVanillaInteract !== false,
+        dialogueDistance: typeof input.dialogueDistance === 'number' ? input.dialogueDistance : 8.0,
+        shouldLookAtPlayer: input.shouldLookAtPlayer !== false,
+        shouldStopMoving: input.shouldStopMoving !== false,
+        interactCondition: input.interactCondition || null,
+        onDialogueStartCommands: input.onDialogueStartCommands || [],
+        onDialogueEndCommands: input.onDialogueEndCommands || []
     };
 }
 
