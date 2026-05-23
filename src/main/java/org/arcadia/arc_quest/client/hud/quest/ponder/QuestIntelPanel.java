@@ -403,7 +403,11 @@ public final class QuestIntelPanel {
 
         ms.pushPose();
         ms.translate(areaX, areaY, 100);
+
+        IntelPonderUIStub.setContext(scene.getLocation());
         scene.renderOverlay(null, g, pt);
+        IntelPonderUIStub.setContext(null);
+
         ms.popPose();
     }
 

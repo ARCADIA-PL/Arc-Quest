@@ -18,6 +18,7 @@ import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
+import org.arcadia.arc_quest.client.hud.quest.ponder.IntelPonderUIStub; // <--- 新增导入
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -85,17 +86,15 @@ public final class EmbeddedPonderScenePanel {
         Font font = Minecraft.getInstance().font;
         PonderScene scene = handle.currentScene();
 
-        // 背景
         g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, (int)(alpha * 0.4f)));
 
         int sceneX = x;
         int sceneY = y;
         int sceneW = w;
-        int sceneH = h - 16; // 留出底部进度条空间
+        int sceneH = h - 16;
 
         render3DScene(g, scene, sceneX, sceneY, sceneW, sceneH, partialTick, alpha);
 
-        // ── 全息 UI 层 ──
         float lx = mouseX - x;
         float ly = mouseY - y;
 
@@ -185,12 +184,7 @@ public final class EmbeddedPonderScenePanel {
         RenderSystem.enableDepthTest();
         RenderSystem.backupProjectionMatrix();
 
-        // 【核心动画修复】：赛博全息向内坍缩特效
-        // 因为 3D 模型无法原生透明淡出，我们使用 Scissor 将其在 alpha 降低时从两侧向中心切割折叠！
         float collapseFactor = alpha / 255.0f;
-
-        // 当达到 1 时保持原样，小于 1 时极速从中心收缩
-        // 添加缓动让坍缩看起来更有力量感 (EaseInCubic)
         float easeWipe = collapseFactor * collapseFactor * collapseFactor;
         int currentW = (int) (areaW * easeWipe);
         int offsetX = (areaW - currentW) / 2;
@@ -222,7 +216,6 @@ public final class EmbeddedPonderScenePanel {
         RenderSystem.restoreProjectionMatrix();
         RenderSystem.disableDepthTest();
 
-        // 重新开启一次正常尺寸的剪裁框给 Overlay，不然文字会被切掉
         if (currentScreen instanceof GuideListScreen gls) {
             gls.enableScissor(g, areaX, areaY, areaX + areaW, areaY + areaH);
         } else {
@@ -232,9 +225,13 @@ public final class EmbeddedPonderScenePanel {
         ms.pushPose();
         ms.translate(areaX, areaY, 100);
 
-        // 如果正在淡出，通过改颜色让附着文本变黑（文本是可以响应Shader颜色的）
         if (alpha < 255) RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, alpha / 255.0F);
+
+        // 【终极解法】：动态绑定当前 SceneId 给 Stub！
+        IntelPonderUIStub.setContext(boundSceneId);
         scene.renderOverlay(null, g, pt);
+        IntelPonderUIStub.setContext(null);
+
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
         ms.popPose();

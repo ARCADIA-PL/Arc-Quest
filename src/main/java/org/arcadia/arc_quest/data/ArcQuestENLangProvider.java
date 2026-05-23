@@ -80,6 +80,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiTab("journal", "active", "ACTIVE");
         addGuiTab("journal", "completed", "COMPLETED");
         addGuiTab("journal", "failed", "FAILED");
+        addGuiTab("journal", "history", "HISTORY");
+        addGuiTab("journal", "guide", "GUIDE");
 
         // ── Journal Sections ──
         addGuiSection("journal", "current_phase", "▸ PHASE: %s");

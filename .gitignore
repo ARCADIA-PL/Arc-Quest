@@ -236,3 +236,7 @@ typings/
 /.trae/skills/agent-meeting/
 /BLUEPRINT_PERFORMANCE.md
 /BLUEPRINT_WEBSOCKET_BRIDGE.md
+/.trae/
+/.cursor/
+/.trae/skills/
+/.trae/skills/agent-meeting/

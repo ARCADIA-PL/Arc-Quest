@@ -104,7 +104,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode) || ClientEventHandler.KEY_OPEN_GUIDE_LIST.matches(keyCode, scanCode)) {
+        if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) {
             onClose();
             return true;
         }

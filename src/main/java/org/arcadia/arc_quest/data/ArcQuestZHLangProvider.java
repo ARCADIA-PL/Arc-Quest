@@ -80,7 +80,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiTab("journal", "active", "进行中");
         addGuiTab("journal", "completed", "已完成");
         addGuiTab("journal", "failed", "已失败");
-
+        addGuiTab("journal", "history", "历史记录");
+        addGuiTab("journal", "guide", "指南");
         // ── Journal Sections ──
         addGuiSection("journal", "current_phase", "▸ 当前阶段: %s");
         addGuiSection("journal", "parallel_lanes", "并行阶段");

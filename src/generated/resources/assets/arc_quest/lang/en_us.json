@@ -131,6 +131,8 @@
   "arc_quest.gui.journal.tab.active": "ACTIVE",
   "arc_quest.gui.journal.tab.completed": "COMPLETED",
   "arc_quest.gui.journal.tab.failed": "FAILED",
+  "arc_quest.gui.journal.tab.guide": "GUIDE",
+  "arc_quest.gui.journal.tab.history": "HISTORY",
   "arc_quest.gui.quest_intel.header": "SYS.ARC_QUEST // PHASE INTEL",
   "arc_quest.gui.quest_intel.hint_close": "ESC / Click outside to close",
   "arc_quest.gui.quest_offer.header": "SYS.ARC_QUEST // UPLOAD PROTOCOL",

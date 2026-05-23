@@ -198,7 +198,7 @@ public class QuestJournalScreen extends Screen {
         if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.keyPressed(keyCode); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.keyPressed(keyCode); return true; }
         if (QuestStoryPanel.isActive()) { QuestStoryPanel.keyPressed(keyCode); return true; }
-        if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode) || ClientEventHandler.KEY_OPEN_GUIDE_LIST.matches(keyCode, scanCode)) {
+        if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
             onClose(); return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);

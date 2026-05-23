@@ -1,3 +1,4 @@
+// file_name: IntelPonderUIStub.java
 package org.arcadia.arc_quest.client.hud.quest.ponder;
 
 import net.createmod.ponder.foundation.PonderScene;
@@ -10,49 +11,61 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * 最小可用的 PonderUI 实例，用于向 TextWindowElement 提供 width/height/font。
- *
- * <p>PonderUI 构造器需要 List&lt;PonderScene&gt;，无法直接 new；
- * 这里借助第一个场景注册的真实 sceneId 来构造，然后通过
- * {@link MixinPonderUIStubAccessor} 强制覆写宽高和字体。
+ * 通用 PonderUI 实例，用于向底层 TextWindowElement 提供 width/height/font。
+ * 现已支持动态上下文绑定，完美适配 Intel 面板与 Guide Embedded 面板。
  */
 public final class IntelPonderUIStub {
 
-    @Nullable
-    private static PonderUI cached = null;
+    @Nullable private static PonderUI cached = null;
     private static int cachedW = -1;
     private static int cachedH = -1;
+    @Nullable private static ResourceLocation cachedSceneId = null;
 
-    private IntelPonderUIStub() {
-    }
+    @Nullable private static ResourceLocation currentContext = null;
+
+    private IntelPonderUIStub() {}
 
     /**
-     * 获取或创建一个尺寸匹配的 stub PonderUI。
-     * 如果 QuestIntelPanel 已有活跃场景，利用其 sceneId 构造；否则返回 null。
+     * 在渲染 Overlay 前绑定当前 Scene，让底层 Mixin 能正确获取 UI 上下文
      */
+    public static void setContext(@Nullable ResourceLocation sceneId) {
+        currentContext = sceneId;
+    }
+
     @Nullable
     public static PonderUI getOrCreate(int w, int h, Font font) {
-        if (cachedW == w && cachedH == h && cached != null) {
+        ResourceLocation targetId = currentContext;
+
+        if (targetId == null) {
+            List<PonderScene> scenes = QuestIntelPanel.getActiveScenes();
+            if (scenes != null && !scenes.isEmpty()) {
+                targetId = scenes.get(0).getLocation();
+            }
+        }
+
+        if (targetId == null) return null;
+
+        if (cachedW == w && cachedH == h && targetId.equals(cachedSceneId) && cached != null) {
             return cached;
         }
 
-        // 尝试用当前激活的场景 ID 构造（不触发 PonderIndex 的完整注册流程）
         try {
-            PonderUI ui = buildStub(w, h, font);
-            if (ui != null) {
-                cached = ui;
-                cachedW = w;
-                cachedH = h;
+            PonderUI ui = PonderUI.of(targetId);
+            if (ui instanceof MixinPonderUIStubAccessor acc) {
+                acc.arcQuest$setWidth(w);
+                acc.arcQuest$setHeight(h);
+                acc.arcQuest$setFont(font);
             }
+            cached = ui;
+            cachedW = w;
+            cachedH = h;
+            cachedSceneId = targetId;
             return cached;
         } catch (Exception e) {
             return null;
         }
     }
 
-    /**
-     * 已过时的旧签名，保留兼容
-     */
     @Nullable
     public static PonderUI get(int w, int h, Font font) {
         return getOrCreate(w, h, font);
@@ -62,30 +75,6 @@ public final class IntelPonderUIStub {
         cached = null;
         cachedW = -1;
         cachedH = -1;
-    }
-
-    @Nullable
-    private static PonderUI buildStub(int w, int h, Font font) {
-        // QuestIntelPanel 提供当前活跃的 sceneId
-        List<PonderScene> scenes =
-                QuestIntelPanel.getActiveScenes();
-        if (scenes == null || scenes.isEmpty()) return null;
-
-        // 用 PonderUI.of(ResourceLocation) 构造
-        ResourceLocation loc = scenes.get(0).getLocation();
-        PonderUI ui;
-        try {
-            ui = PonderUI.of(loc);
-        } catch (Exception e) {
-            return null;
-        }
-
-        // 通过 Mixin Accessor 覆写宽高和字体
-        if (ui instanceof MixinPonderUIStubAccessor acc) {
-            acc.arcQuest$setWidth(w);
-            acc.arcQuest$setHeight(h);
-            acc.arcQuest$setFont(font);
-        }
-        return ui;
+        cachedSceneId = null;
     }
 }

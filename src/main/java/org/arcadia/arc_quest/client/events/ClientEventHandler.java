@@ -23,7 +23,6 @@ import org.lwjgl.glfw.GLFW;
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class ClientEventHandler {
     public static final KeyMapping KEY_OPEN_JOURNAL = new KeyMapping("key.arc_quest.open_journal", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, "key.categories.arc_quest");
-    public static final KeyMapping KEY_OPEN_GUIDE_LIST = new KeyMapping("key.arc_quest.open_guide_list", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.arc_quest");
 
     private ClientEventHandler() {
     }
@@ -37,14 +36,6 @@ public final class ClientEventHandler {
         ClientGuideCache.INSTANCE.consumePendingOpenRequest().ifPresent(request ->
                 GuideScreen.tryOpen(request.guideId(), request.initialPage(), request.markSeenOnClose())
         );
-
-        if (KEY_OPEN_GUIDE_LIST.consumeClick()) {
-            if (mc.screen == null) {
-                GuideListScreen.open();
-            } else if (mc.screen instanceof GuideListScreen) {
-                mc.screen.onClose();
-            }
-        }
 
         if (KEY_OPEN_JOURNAL.consumeClick()) {
             if (mc.screen == null) {
