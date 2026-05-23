@@ -63,6 +63,12 @@ final class GuideMediaRenderer {
         for (int gy = y + size; gy < y + h; gy += size) {
             g.fill(x, gy, x + w, gy + 1, color);
         }
+        int dotColor = ((color >> 24 & 0xFF) * 2) << 24 | (color & 0x00FFFFFF);
+        for (int gx = x + size; gx < x + w; gx += size) {
+            for (int gy = y + size; gy < y + h; gy += size) {
+                g.fill(gx - 1, gy - 1, gx + 1, gy + 1, dotColor);
+            }
+        }
     }
 
     // 绘制动态扫描线效果

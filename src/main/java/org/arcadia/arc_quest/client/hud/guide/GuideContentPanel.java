@@ -24,10 +24,15 @@ final class GuideContentPanel {
         GuideNavigationControls.drawCornerBrackets(g, r[0], r[1], r[2], r[3], 6, withAlpha(screen.getThemeColor(), (int) (alpha * 0.5F)));
 
         if (!screen.hasAnyVisibleGuide()) {
+            int offlineW = Math.max(180, Minecraft.getInstance().font.width("TERMINAL OFFLINE") + 40);
+            int offlineH = 40;
+            int offlineX = r[0] + (r[2] - offlineW) / 2;
+            int offlineY = r[1] + (r[3] - offlineH) / 2;
+            GuideNavigationControls.drawCornerBrackets(g, offlineX, offlineY, offlineW, offlineH, 12,
+                    withAlpha(screen.getThemeColor(), (int) (alpha * 0.4F)));
             int textW = Minecraft.getInstance().font.width("TERMINAL OFFLINE");
-            int offlineX = (int) (r[0] + (r[2] - textW * 0.9F) / 2);
-            int offlineY = r[1] + r[3] / 2 - 4;
-            GuideNavigationControls.drawScaledText(screen, g, offlineX, offlineY, 0.9F, "TERMINAL OFFLINE", withAlpha(GuideConstants.TEXT, alpha));
+            GuideNavigationControls.drawScaledText(screen, g, offlineX + (offlineW - (int) (textW * 0.9F)) / 2, offlineY + offlineH / 2 - 4,
+                    0.9F, "TERMINAL OFFLINE", withAlpha(GuideConstants.TEXT, alpha));
             return;
         }
 

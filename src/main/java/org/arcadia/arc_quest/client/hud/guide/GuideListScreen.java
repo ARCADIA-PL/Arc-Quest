@@ -134,6 +134,12 @@ public final class GuideListScreen extends Screen {
 
         tabs.render(g, mouseX, mouseY, alpha);
         listPanel.render(g, mouseX, mouseY, alpha);
+
+        int sepX = (listRect()[0] + listRect()[2] + contentRect()[0]) / 2;
+        int sepY = listRect()[1];
+        int sepH = listRect()[3];
+        g.fill(sepX, sepY, sepX + 1, sepY + sepH, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.15F)));
+
         contentPanel.render(g, mouseX, mouseY, partialTick, alpha);
     }
 
