@@ -1,4 +1,5 @@
 import {esc} from '../core/utils.js';
+import {handleDialogueNonDeleteButtonAction} from './bindings/dialogue-click-actions.js';
 
 export function renderDialogueTree(state, target) {
     const dialogue = state.dialogue.q;
@@ -37,4 +38,28 @@ export function renderDialogueTree(state, target) {
     h += `</div>`;
 
     target.innerHTML = h;
+}
+
+export function bindDialogueTreeSelection(leftEl, state, rerender) {
+    leftEl.onclick = e => {
+        const nav = e.target.closest('[data-t]');
+        if (nav) {
+            const t = nav.dataset.t;
+            if (t === 'node' && nav.dataset.ni !== undefined) {
+                state.dialogue.ui.sel = {t: 'node', ni: +nav.dataset.ni};
+            } else if (t === 'config') {
+                state.dialogue.ui.sel = {t: 'config'};
+            }
+            rerender();
+            return;
+        }
+
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        if (handleDialogueNonDeleteButtonAction(btn, state)) {
+            state.dialogue.meta.dirty = true;
+            rerender();
+        }
+    };
 }

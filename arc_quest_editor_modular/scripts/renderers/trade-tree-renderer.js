@@ -1,4 +1,5 @@
 import {esc} from '../core/utils.js';
+import {handleTradeNonDeleteButtonAction} from './bindings/trade-click-actions.js';
 
 export function renderTradeTree(state, leftEl) {
     const trade = state.trade.q;
@@ -35,12 +36,22 @@ export function renderTradeTree(state, leftEl) {
 export function bindTradeTreeSelection(leftEl, state, rerender) {
     leftEl.onclick = e => {
         const nav = e.target.closest('[data-trade-nav]');
-        if (!nav) return;
-        const t = nav.dataset.tradeNav;
-        if (t === 'overview') state.trade.ui.sel = {t: 'overview'};
-        else if (t === 'entry' && nav.dataset.tradeEi !== undefined) {
-            state.trade.ui.sel = {t: 'entry', ei: nav.dataset.tradeEi};
+        if (nav) {
+            const t = nav.dataset.tradeNav;
+            if (t === 'overview') state.trade.ui.sel = {t: 'overview'};
+            else if (t === 'entry' && nav.dataset.tradeEi !== undefined) {
+                state.trade.ui.sel = {t: 'entry', ei: nav.dataset.tradeEi};
+            }
+            rerender();
+            return;
         }
-        rerender();
+
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        if (handleTradeNonDeleteButtonAction(btn, state)) {
+            state.trade.meta.dirty = true;
+            rerender();
+        }
     };
 }

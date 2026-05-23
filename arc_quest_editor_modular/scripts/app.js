@@ -17,7 +17,7 @@ import {validateCrossReferences} from './core/cross-validator.js';
 import {applyPaneLayout, bindPaneResizers} from './app/layout.js';
 import {ensureValidSelection, navigateToPath} from './app/navigation.js';
 import {renderTree} from './renderers/tree-renderer.js';
-import {renderDialogueTree} from './renderers/dialogue-tree-renderer.js';
+import {renderDialogueTree, bindDialogueTreeSelection} from './renderers/dialogue-tree-renderer.js';
 import {renderCenterEditor, renderNpcCenter, renderDiagCenter, renderTradeCenter, renderGachaCenter} from './renderers/center-renderer.js';
 import {renderSidePanel} from './renderers/side-panel-renderer.js';
 import {renderStatus} from './renderers/status-renderer.js';
@@ -141,6 +141,7 @@ function renderDialogue() {
     renderStatus(state, dom.status);
     bindDialogueEditorActions(dom.mid, state, rerender, setDialogueByPath);
     bindDialogueDirectoryClicks(dom.right, state, rerender);
+    bindDialogueTreeSelection(dom.left, state, rerender);
 }
 
 function renderTrade() {

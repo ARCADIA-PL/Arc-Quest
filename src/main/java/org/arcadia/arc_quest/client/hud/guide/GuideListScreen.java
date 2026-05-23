@@ -108,6 +108,9 @@ public final class GuideListScreen extends Screen {
             onClose();
             return true;
         }
+        if (contentPanel != null && contentPanel.keyPressed(keyCode, scanCode, modifiers)) {
+            return true;
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 

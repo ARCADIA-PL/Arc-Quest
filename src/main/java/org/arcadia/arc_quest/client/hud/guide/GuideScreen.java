@@ -1,11 +1,12 @@
+// file_name: GuideScreen.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
@@ -19,15 +20,13 @@ import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public final class GuideScreen extends Screen {
     private final ResourceLocation guideId;
     private final boolean markSeenOnClose;
     private final EmbeddedPonderScenePanel ponderPanel = new EmbeddedPonderScenePanel();
-    private final Map<Integer, List<FormattedCharSequence>> descCache = new HashMap<>();
 
     private GuideDefinition guide;
     private int currentPage, themeColor;
@@ -37,8 +36,22 @@ public final class GuideScreen extends Screen {
     private float dt = 0f;
     private long lastRenderTime = 0;
 
+    // 高级滚动控制
     private double descScroll = 0.0, descTargetScroll = 0.0;
-    private float prevHoverAnim, nextHoverAnim, closeHoverAnim;
+    private boolean isDraggingScrollbar = false;
+    private double dragThumbYOffset = 0.0;
+    private int cachedMaxScroll = 0;
+    private int cachedDescH = 0;
+
+    // 悬停动画状态
+    private float closeHoverAnim = 0f;
+    private float prevHoverAnim = 0f;
+    private float nextHoverAnim = 0f;
+
+    // 高级文本排版缓存
+    private final List<RenderLine> cachedLines = new ArrayList<>();
+    private int cachedContentHeight = 0;
+    private int lastCachedWidth = -1;
 
     public GuideScreen(GuideDefinition guide, int initialPage, boolean markSeenOnClose) {
         super(guide.getTitle());
@@ -69,8 +82,11 @@ public final class GuideScreen extends Screen {
         transitionAlpha = 0f;
         isClosing = false;
         lastRenderTime = 0;
-        prevHoverAnim = nextHoverAnim = closeHoverAnim = 0f;
-        descCache.clear();
+
+        closeHoverAnim = 0f;
+        prevHoverAnim = 0f;
+        nextHoverAnim = 0f;
+
         resetDesc();
         refreshMediaBinding();
     }
@@ -115,63 +131,156 @@ public final class GuideScreen extends Screen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    private int getPanelTopW() { return Math.max(260, Math.min(420, (int) (this.width * 0.28f))); }
-    private int getSlantW() { return 36; }
-    private int getPanelBottomW() { return getPanelTopW() - getSlantW(); }
-    private int getPadX() { return 24; }
-    private int getContentW() { return getPanelBottomW() - getPadX() * 2; }
+    // --------------------------------------------------------
+    // 尺寸控制: 放宽限制，恢复最佳阅读比例
+    // --------------------------------------------------------
+    private int getPanelW() { return Math.max(210, Math.min(270, (int) (this.width * 0.28f))); }
+    private int getPanelH() { return Math.min(this.height - 40, 580); }
+    private int getPanelY() { return Math.max(20, (this.height - getPanelH()) / 2); }
+
+    private int getPadLeft() { return 22; }
+    private int getPadRight() { return 20; }
+    private int getContentW() { return getPanelW() - getPadLeft() - getPadRight(); }
+
+    private int getPanelX(float alpha, boolean closing) {
+        float ease = closing ? HudAnimUtil.easeInCubic(alpha) : HudAnimUtil.easeOutCubic(alpha);
+        int startX = -getPanelW() - 20;
+        return (int) (startX + (0 - startX) * ease);
+    }
+
+    // --------------------------------------------------------
+    // 高级排版引擎 (仿 QuestStoryPanel)
+    // --------------------------------------------------------
+    private void buildTextCache(int width) {
+        if (lastCachedWidth == width && !cachedLines.isEmpty()) return;
+        cachedLines.clear();
+        cachedContentHeight = 0;
+        lastCachedWidth = width;
+
+        if (guide == null || guide.getPage(currentPage) == null) return;
+        String rawDesc = guide.getPage(currentPage).getDescriptionText().resolve(null, null).getString();
+
+        int currentY = 0;
+        int lineHeight = font.lineHeight + 5; // 增加行距，更舒适
+
+        for (String para : rawDesc.split("\n")) {
+            if (para.trim().isEmpty()) {
+                currentY += lineHeight;
+                continue;
+            }
+            for (String line : HudRenderUtil.wrapText(para, width, font)) {
+                cachedLines.add(new RenderLine(line, currentY));
+                currentY += lineHeight;
+            }
+            currentY += 8; // 段落间距
+        }
+        cachedContentHeight = currentY;
+    }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         if (isClosing) return true;
 
-        float easeProgress = HudAnimUtil.easeOutCubic(transitionAlpha);
-        int panelX = (int) -((1f - easeProgress) * (getPanelTopW() + 10f));
-
+        int panelX = getPanelX(transitionAlpha, false);
         int contentW = getContentW();
-        int mediaH = (int) (contentW * 0.55f);
-        int descY = 70 + mediaH + 16;
-        int navY = this.height - 28;
-        int descH = navY - 10 - descY;
+        int descY = getDescY();
 
-        int contentH = lines(contentW).size() * font.lineHeight;
-
-        if (hit(mouseX, mouseY, panelX + getPadX(), descY, contentW, descH)) {
-            if (contentH > descH) {
-                descTargetScroll = Math.max(0, Math.min(contentH - descH + 4, descTargetScroll - delta * 18.0));
+        if (hit(mouseX, mouseY, panelX + getPadLeft(), descY, contentW, cachedDescH)) {
+            if (cachedContentHeight > cachedDescH) {
+                descTargetScroll = Math.max(0, Math.min(cachedMaxScroll, descTargetScroll - delta * 20.0));
             }
             return true;
         }
+
         if (delta < 0) { nextPage(); return true; }
         if (delta > 0) { previousPage(); return true; }
         return true;
     }
 
     @Override
+    public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
+        if (isDraggingScrollbar && cachedMaxScroll > 0) {
+            int descY = getDescY();
+            int thumbH = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) cachedContentHeight)));
+            int trackH = cachedDescH - thumbH;
+
+            double rawPercentage = (my - dragThumbYOffset - descY) / (double) trackH;
+            descTargetScroll = Math.max(0.0, Math.min(1.0, rawPercentage)) * cachedMaxScroll;
+            return true;
+        }
+        return super.mouseDragged(mx, my, button, dragX, dragY);
+    }
+
+    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (isClosing || button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
-        float easeProgress = HudAnimUtil.easeOutCubic(transitionAlpha);
-        int panelX = (int) -((1f - easeProgress) * (getPanelTopW() + 10f));
+        int panelX = getPanelX(transitionAlpha, false);
+        int panelY = getPanelY();
+        int panelW = getPanelW();
+        int navY = panelY + getPanelH() - 24;
 
-        int padX = getPadX();
+        // 图形导航按钮 Hitbox
+        int btnArea = 16;
+        int curX = panelX + panelW - getPadRight();
+
+        if (canNext()) {
+            curX -= btnArea;
+            if (hit(mouseX, mouseY, curX - 4, navY - 4, btnArea + 8, btnArea + 8)) { nextPage(); return true; }
+            curX -= 8; // btn gap
+        }
+        if (canPrev()) {
+            curX -= btnArea;
+            if (hit(mouseX, mouseY, curX - 4, navY - 4, btnArea + 8, btnArea + 8)) { previousPage(); return true; }
+        }
+
+        // 滑条拖拽 Hitbox
+        if (cachedMaxScroll > 0) {
+            int descY = getDescY();
+            int rx = panelX + panelW - 10;
+            if (hit(mouseX, mouseY, rx - 4, descY, 12, cachedDescH)) {
+                isDraggingScrollbar = true;
+                int thumbH = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) cachedContentHeight)));
+                int trackH = cachedDescH - thumbH;
+                int ty = descY + (int) (trackH * (descScroll / (double) cachedMaxScroll));
+
+                if (mouseY >= ty && mouseY <= ty + thumbH) dragThumbYOffset = mouseY - ty;
+                else {
+                    dragThumbYOffset = thumbH / 2.0;
+                    double rawPercentage = (mouseY - dragThumbYOffset - descY) / (double) trackH;
+                    descTargetScroll = Math.max(0.0, Math.min(1.0, rawPercentage)) * cachedMaxScroll;
+                }
+                return true;
+            }
+        }
+
+        int closeX = panelX + panelW - 24;
+        int closeY = panelY + 16;
+        if (hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16)) { onClose(); return true; }
+
+        int mediaY = panelY + 20 + 36;
         int contentW = getContentW();
-        int navY = this.height - 28;
-
-        int nextBtnX = panelX + padX + contentW - 12;
-        int prevBtnX = nextBtnX - 30;
-        if (hit(mouseX, mouseY, prevBtnX - 10, navY - 6, 20, 20) && canPrev()) { previousPage(); return true; }
-        if (hit(mouseX, mouseY, nextBtnX - 10, navY - 6, 20, 20) && canNext()) { nextPage(); return true; }
-
-        int closeX = panelX + getPanelTopW() - 20;
-        if (hit(mouseX, mouseY, closeX - 10, 6, 24, 24)) { onClose(); return true; }
-
-        int mediaY = 70;
-        int mediaH = (int) (contentW * 0.55f);
+        int mediaH = (int) (contentW * 9.0f / 16.0f);
         if (currentMedia().getType() == GuideMediaType.PONDER) {
-            if (ponderPanel.mouseClicked(mouseX, mouseY, button, panelX + padX, mediaY, contentW, mediaH)) return true;
+            if (ponderPanel.mouseClicked(mouseX, mouseY, button, panelX + getPadLeft(), mediaY, contentW, mediaH)) return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (isDraggingScrollbar) {
+            isDraggingScrollbar = false;
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    private int getDescY() {
+        int panelY = getPanelY();
+        int contentW = getContentW();
+        int mediaH = (int) (contentW * 9.0f / 16.0f);
+        return panelY + 20 + 36 + mediaH + 20;
     }
 
     @Override
@@ -190,112 +299,170 @@ public final class GuideScreen extends Screen {
             return;
         }
 
-        int panelTopW = getPanelTopW();
-        int panelBottomW = getPanelBottomW();
-        int padX = getPadX();
+        int panelW = getPanelW();
+        int panelH = getPanelH();
+        int padL = getPadLeft();
+        int padR = getPadRight();
         int contentW = getContentW();
 
-        float easeProgress = isClosing ? HudAnimUtil.easeInCubic(transitionAlpha) : HudAnimUtil.easeOutCubic(transitionAlpha);
-        int panelX = (int) -((1f - easeProgress) * (panelTopW + 10f));
+        int panelX = getPanelX(transitionAlpha, isClosing);
+        int panelY = getPanelY();
+
         int safeAlpha = (int) (255 * transitionAlpha);
         if (safeAlpha <= 4) return;
 
-        descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * 14f);
+        descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * 16f);
 
-        int sh = this.height;
+        // ==========================================
+        // 1. 底板与边框 (通透全息、完全贴边)
+        // ==========================================
+        int bgA = (int) (transitionAlpha * 0x90);
+        int accentA = (int) (transitionAlpha * 255);
 
-        int bgTint = HudAnimUtil.lerpColor(0x000000, themeColor, 0.04f);
-        int slantAlpha = (int) (245 * transitionAlpha);
-        int bgColor = HudAnimUtil.withAlpha(bgTint, slantAlpha);
-        g.fill(panelX, 0, panelX + panelTopW, sh, bgColor);
+        g.fill(panelX, panelY, panelX + panelW, panelY + panelH, HudAnimUtil.withAlpha(0x111214, bgA));
+        g.fill(panelX, panelY, panelX + panelW, panelY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * transitionAlpha)));
+        g.fill(panelX, panelY + panelH - 1, panelX + panelW, panelY + panelH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * transitionAlpha)));
+        HudRenderUtil.drawCyberneticEdge(g, panelX, panelY, panelH, themeColor, accentA);
 
-        HudRenderUtil.drawCyberneticEdge(g, panelX, 0, sh, themeColor, safeAlpha);
+        // 机能点缀纹理
+        int decorX = panelX + panelW - 6;
+        g.fill(decorX, panelY + 16, decorX + 2, panelY + 24, HudAnimUtil.withAlpha(themeColor, (int) (0xAA * transitionAlpha)));
+        g.fill(decorX, panelY + 28, decorX + 2, panelY + 44, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * transitionAlpha)));
+        g.fill(decorX, panelY + panelH - 40, decorX + 2, panelY + panelH - 16, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x1A * transitionAlpha)));
 
-        int slantEdgeAlpha = (int)(255 * transitionAlpha);
-        for (int row = 0; row < sh; row++) {
-            float t = row / (float) sh;
-            int x = panelX + panelBottomW + (int)((panelTopW - panelBottomW) * (1f - t));
-            g.fill(x, row, x + 1, row + 1, HudAnimUtil.withAlpha(themeColor, (int)(slantEdgeAlpha * (0.4f + 0.3f * t))));
-        }
+        // ==========================================
+        // 2. 布局推演
+        // ==========================================
+        int textBaseX = panelX + padL;
+        int titleY = panelY + 20;
+        int mediaY = titleY + 36;
+        int mediaH = (int) (contentW * 9.0f / 16.0f);
+        int descY = mediaY + mediaH + 20;
+        int navY = panelY + panelH - 24;
 
-        int idY = 20, titleY = 34;
-        int mediaY = 70;
-        int mediaH = (int) (contentW * 0.55f);
-        int descY = mediaY + mediaH + 16;
-        int navY = sh - 28;
-        int descH = navY - 10 - descY;
+        cachedDescH = navY - 16 - descY;
+        buildTextCache(contentW - 14); // 减去滑条空间
 
-        g.drawString(font, guideId.toString().toUpperCase(), panelX + padX, idY, HudAnimUtil.withAlpha(0x666666, safeAlpha), false);
+        // ==========================================
+        // 3. Header 渲染
+        // ==========================================
+        String guideTitle = font.plainSubstrByWidth(guide.getTitle().getString(), contentW - 20);
+        g.drawString(font, "GUIDE DATABLOCK", textBaseX, titleY, HudAnimUtil.withAlpha(0x778899, accentA), false);
+        g.drawString(font, guideTitle, textBaseX, titleY + 10, HudAnimUtil.withAlpha(0xFFFFFF, accentA), true);
 
-        String titleText = guide.getTitle().getString();
-        String displayTitle = font.plainSubstrByWidth(titleText, panelTopW - padX * 2 - 30);
-        g.drawString(font, displayTitle, panelX + padX, titleY, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha), true);
+        g.fill(textBaseX, titleY + 24, textBaseX + contentW, titleY + 25, HudAnimUtil.withAlpha(themeColor, (int)(accentA * 0.8f)));
+        g.fill(textBaseX, titleY + 24, textBaseX + 2, titleY + 30, HudAnimUtil.withAlpha(themeColor, accentA));
 
-        g.fill(panelX + padX, mediaY - 10, panelX + padX + contentW / 2, mediaY - 9,
-                HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * 0.7F)));
+        // ==========================================
+        // 4. Media 区域
+        // ==========================================
+        HudAnimUtil.drawFrame(g, textBaseX - 1, mediaY - 1, contentW + 2, mediaH + 2,
+                HudAnimUtil.withAlpha(0x000000, safeAlpha),
+                HudAnimUtil.withAlpha(0x333333, safeAlpha));
+        GuideMediaRenderer.drawMedia(this, g, textBaseX, mediaY, contentW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick, safeAlpha, themeColor);
 
-        HudAnimUtil.drawFrame(g, panelX + padX - 1, mediaY - 1, contentW + 2, mediaH + 2,
-                HudAnimUtil.withAlpha(0x000000, (int) (safeAlpha * 0.6f)),
-                HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * 0.4f)));
-        GuideMediaRenderer.drawMedia(this, g, panelX + padX, mediaY, contentW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick, safeAlpha, themeColor);
+        // ==========================================
+        // 5. Description 渲染 (带渐变掩膜的高级排版)
+        // ==========================================
+        cachedMaxScroll = Math.max(0, cachedContentHeight - cachedDescH);
+        descTargetScroll = Math.max(0, Math.min(cachedMaxScroll, descTargetScroll));
 
-        List<FormattedCharSequence> wrapped = lines(contentW);
-        int contentH = wrapped.size() * font.lineHeight;
-        int maxScroll = Math.max(0, contentH - descH);
-        descTargetScroll = Math.max(0, Math.min(maxScroll, descTargetScroll));
-
-        g.enableScissor(panelX + padX, descY, panelX + padX + contentW, descY + descH);
+        g.enableScissor(textBaseX, descY, textBaseX + contentW, descY + cachedDescH);
         int sy = descY - (int) Math.round(descScroll);
-        for (int i = 0; i < wrapped.size(); i++) {
-            g.drawString(font, wrapped.get(i), panelX + padX, sy + i * font.lineHeight, HudAnimUtil.withAlpha(0xAAAAAA, safeAlpha));
+
+        for (RenderLine line : cachedLines) {
+            int lineY = sy + line.yOffset;
+            // 简单视锥剔除优化
+            if (lineY + font.lineHeight >= descY && lineY <= descY + cachedDescH) {
+                g.drawString(font, line.text, textBaseX, lineY, HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha), true);
+            }
         }
         g.disableScissor();
 
-        if (maxScroll > 0) {
-            int rx = panelX + padX + contentW + 4;
-            g.fill(rx, descY, rx + 2, descY + descH, HudAnimUtil.withAlpha(0x1A1A1A, safeAlpha));
-            int th = Math.max(12, (int) (descH * (descH / (float) contentH)));
-            int travel = Math.max(0, descH - th);
-            int ty = descY + (int) (travel * (descScroll / (double) maxScroll));
-            g.fill(rx, ty, rx + 2, ty + th, HudAnimUtil.withAlpha(themeColor, safeAlpha));
+        // 渐变掩膜 (同 Phase 卡片风格)
+        if (cachedMaxScroll > 0) {
+            int gradientW = contentW - 12;
+            if (descScroll > 1.0)
+                g.fillGradient(textBaseX, descY, textBaseX + gradientW, descY + 8, HudAnimUtil.withAlpha(0x111214, safeAlpha), HudAnimUtil.withAlpha(0x111214, 0));
+            if (descScroll < cachedMaxScroll - 1.0)
+                g.fillGradient(textBaseX, descY + cachedDescH - 8, textBaseX + gradientW, descY + cachedDescH, HudAnimUtil.withAlpha(0x111214, 0), HudAnimUtil.withAlpha(0x111214, safeAlpha));
+
+            // 滑条轨迹与滑块
+            int rx = panelX + panelW - 10;
+            g.fill(rx, descY, rx + 2, descY + cachedDescH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * transitionAlpha)));
+            int th = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) cachedContentHeight)));
+            int travel = Math.max(0, cachedDescH - th);
+            int ty = descY + (int) (travel * (descScroll / (double) cachedMaxScroll));
+
+            int thumbColor = isDraggingScrollbar ? 0xFFFFFF : themeColor;
+            g.fill(rx, ty, rx + 2, ty + th, HudAnimUtil.withAlpha(thumbColor, safeAlpha));
         }
 
-        String pageStr = "PAGE " + (currentPage + 1) + " / " + guide.getPageCount();
-        g.drawString(font, pageStr, panelX + padX, navY, HudAnimUtil.withAlpha(0x888888, safeAlpha), false);
+        // ==========================================
+        // 6. 极简底部导航 (图形化按钮)
+        // ==========================================
+        String pageStr = String.format("PAGE %d / %d", currentPage + 1, guide.getPageCount());
+        g.drawString(font, pageStr, textBaseX, navY, HudAnimUtil.withAlpha(0x555555, safeAlpha), false);
 
-        if (guide.getPageCount() > 1) {
-            int btnW = 50, btnH = 16;
-            int btnNextX = panelX + padX + contentW - btnW;
-            int btnPrevX = btnNextX - btnW - 6;
-            prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hit(mouseX, mouseY, btnPrevX, navY - 2, btnW, btnH) && canPrev() ? 1f : 0f, 15f, dt);
-            nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hit(mouseX, mouseY, btnNextX, navY - 2, btnW, btnH) && canNext() ? 1f : 0f, 15f, dt);
-            GuideNavigationControls.drawCyberButton(g, font, btnPrevX, navY - 2, btnW, btnH,
-                    "< PREV", themeColor, transitionAlpha,
-                    HudAnimUtil.easeOutCubic(prevHoverAnim), hit(mouseX, mouseY, btnPrevX, navY - 2, btnW, btnH) && canPrev());
-            GuideNavigationControls.drawCyberButton(g, font, btnNextX, navY - 2, btnW, btnH,
-                    "NEXT >", themeColor, transitionAlpha,
-                    HudAnimUtil.easeOutCubic(nextHoverAnim), hit(mouseX, mouseY, btnNextX, navY - 2, btnW, btnH) && canNext());
+        int curBtnX = panelX + panelW - padR;
+        int btnSize = 16;
+
+        if (canNext()) {
+            curBtnX -= btnSize;
+            boolean hoverN = hit(mouseX, mouseY, curBtnX - 4, navY - 4, btnSize + 8, btnSize + 8);
+            nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverN ? 1f : 0f, 15f, dt);
+
+            g.pose().pushPose();
+            float s = 1.0f + 0.1f * nextHoverAnim;
+            g.pose().translate(curBtnX + btnSize / 2f, navY + btnSize / 2f - 4, 0);
+            g.pose().scale(s, s, 1f);
+            g.drawString(font, ">", -font.width(">") / 2f, -font.lineHeight / 2f + 1, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x666666, themeColor, nextHoverAnim), safeAlpha), false);
+            g.pose().popPose();
+
+            curBtnX -= 8; // 间距
         }
 
-        int closeX = panelX + panelTopW - 20;
-        int closeY = 16;
-        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, hit(mouseX, mouseY, closeX - 10, closeY - 10, 24, 24) ? 1f : 0f, 15f, dt);
+        if (canPrev()) {
+            curBtnX -= btnSize;
+            boolean hoverP = hit(mouseX, mouseY, curBtnX - 4, navY - 4, btnSize + 8, btnSize + 8);
+            prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverP ? 1f : 0f, 15f, dt);
+
+            g.pose().pushPose();
+            float s = 1.0f + 0.1f * prevHoverAnim;
+            g.pose().translate(curBtnX + btnSize / 2f, navY + btnSize / 2f - 4, 0);
+            g.pose().scale(s, s, 1f);
+            g.drawString(font, "<", -font.width("<") / 2f, -font.lineHeight / 2f + 1, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x666666, themeColor, prevHoverAnim), safeAlpha), false);
+            g.pose().popPose();
+        }
+
+        // ==========================================
+        // 7. 关闭按钮 [X]
+        // ==========================================
+        int closeX = panelX + panelW - 24;
+        int closeY = panelY + 16;
+        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16) ? 1f : 0f, 15f, dt);
         int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
-        g.drawString(font, "\u2715", closeX - 4, closeY - 4, closeColor, false);
+        g.drawString(font, "\u2715", closeX, closeY, closeColor, false);
     }
 
     private void nextPage() { if (canNext()) { currentPage++; onPageChange(); } }
     private void previousPage() { if (canPrev()) { currentPage--; onPageChange(); } }
+
+    // 严格的逻辑判断，确保首页无 PREV，尾页无 NEXT
     private boolean canPrev() { return currentPage > 0; }
     private boolean canNext() { return guide != null && currentPage < guide.getPageCount() - 1; }
 
     private void onPageChange() {
         resetDesc();
-        descCache.clear();
+        lastCachedWidth = -1; // 强制刷新排版
         refreshMediaBinding();
     }
 
-    private void resetDesc() { descScroll = 0.0; descTargetScroll = 0.0; }
+    private void resetDesc() {
+        descScroll = 0.0;
+        descTargetScroll = 0.0;
+        isDraggingScrollbar = false;
+    }
 
     private void refreshMediaBinding() {
         GuideMediaDefinition m = currentMedia();
@@ -307,9 +474,12 @@ public final class GuideScreen extends Screen {
 
     private GuidePageDefinition page() { return guide.getPage(currentPage); }
     private GuideMediaDefinition currentMedia() { return page().getMedia(); }
-    private List<FormattedCharSequence> lines(int width) {
-        return descCache.computeIfAbsent(width, w -> font.split(page().getDescriptionText().resolve(null, null), w));
-    }
     private int clampPage(int p) { return Math.max(0, Math.min(p, guide.getPageCount() - 1)); }
     private boolean hit(double mx, double my, int x, int y, int w, int h) { return mx >= x && mx <= x + w && my >= y && my <= y + h; }
+
+    private static class RenderLine {
+        String text;
+        int yOffset;
+        RenderLine(String t, int y) { text = t; yOffset = y; }
+    }
 }
