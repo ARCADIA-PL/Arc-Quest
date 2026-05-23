@@ -139,8 +139,10 @@ public final class GuideListScreen extends Screen {
 
     private void drawHolographicScanlines(GuiGraphics g, int alpha) {
         long time = System.currentTimeMillis();
-        int scanY = (int) ((time / 16) % height);
+        int scanY = (int) ((time / 14) % height);
+        g.fill(0, scanY - 1, width, scanY, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.03F)));
         g.fill(0, scanY, width, scanY + 1, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.06F)));
+        g.fill(0, scanY + 1, width, scanY + 2, HudAnimUtil.withAlpha(getThemeColor(), (int) (alpha * 0.03F)));
     }
 
     void rebuildSelection() {

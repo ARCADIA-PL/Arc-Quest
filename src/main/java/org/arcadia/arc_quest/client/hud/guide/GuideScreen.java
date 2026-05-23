@@ -173,6 +173,8 @@ public final class GuideScreen extends Screen {
         int alpha = (int) (255 * effective);
         if (alpha <= 4) return;
 
+        g.fill(0, 0, width, height, withAlpha(0x000000, (int) (153 * effective)));
+
         GuideScreenLayout.SidebarLayout l = layout();
         drawSlantedSidebar(g, l, alpha);
 
@@ -189,17 +191,16 @@ public final class GuideScreen extends Screen {
                 displayTitle = displayTitle.substring(0, displayTitle.length() - 1);
             displayTitle += "...";
         }
-        GuideNavigationControls.drawScaledText(this, g, tx, 28, GuideConstants.HEADER_SCALE, displayTitle, withAlpha(GuideConstants.TEXT, alpha));
+        GuideNavigationControls.drawScaledText(this, g, tx, 28, GuideConstants.HEADER_SCALE, displayTitle, withAlpha(GuideConstants.TEXT, (int) (alpha * pageTransitionAnim)));
 
-        g.fill(tx, 42, l.baseW() - 12, 43, withAlpha(themeColor, (int) (alpha * 0.6F)));
-        g.fill(tx, 43, l.baseW() - 32, 44, withAlpha(themeColor, (int) (alpha * 0.2F)));
+        g.fill(tx, 42, l.baseW() - 12, 43, withAlpha(themeColor, (int) (alpha * 0.6F * pageTransitionAnim)));
+        g.fill(tx, 43, l.baseW() - 32, 44, withAlpha(themeColor, (int) (alpha * 0.2F * pageTransitionAnim)));
 
         int mediaW = l.baseW() - 24;
         int mediaH = 110;
         GuideMediaRenderer.drawMedia(this, g, 12, 54, mediaW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick,
-                alpha, GuideConstants.SEC, GuideConstants.MUTED, GuideConstants.SUB, themeColor);
+                (int) (alpha * pageTransitionAnim), GuideConstants.SEC, GuideConstants.MUTED, GuideConstants.SUB, themeColor);
 
-        float pageAlpha = (int) (255 * effective * pageTransitionAnim);
         int descY = 174;
         int descH = l.h() - 216;
         List<FormattedCharSequence> wrapped = lines(mediaW);
@@ -237,7 +238,11 @@ public final class GuideScreen extends Screen {
         GuideNavigationControls.drawScaledText(this, g, 56, by + 4, GuideConstants.CAPTION_SCALE, guideAreaText,
                 withAlpha(GuideConstants.TEXT, alpha));
 
-        int closeColor = closeHover ? withAlpha(0xFF5555, alpha) : withAlpha(GuideConstants.MUTED, alpha);
+        int warmR = Math.min(255, (themeColor >> 16 & 255) * 115 / 100);
+        int warmG = Math.max(0, (themeColor >> 8 & 255) * 85 / 100);
+        int warmB = Math.max(0, (themeColor & 255) * 80 / 100);
+        int warmColor = (warmR << 16) | (warmG << 8) | warmB;
+        int closeColor = closeHover ? withAlpha(warmColor, alpha) : withAlpha(GuideConstants.MUTED, alpha);
         GuideNavigationControls.drawScaledText(this, g, l.baseW() - 26, 12, GuideConstants.SMALL_SCALE, "\u2715", closeColor);
     }
 
@@ -256,30 +261,36 @@ public final class GuideScreen extends Screen {
         float gr = (float) (bgColor >> 8 & 255) / 255.0F;
         float b = (float) (bgColor & 255) / 255.0F;
 
+        float topR = Math.min(1.0F, r + 0.06F);
+        float topG = Math.min(1.0F, gr + 0.06F);
+        float topB = Math.min(1.0F, b + 0.06F);
+
         buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-        buffer.vertex(matrix, 0, 0, 0).color(r, gr, b, f).endVertex();
-        buffer.vertex(matrix, l.baseW() + l.slant(), 0, 0).color(r, gr, b, f).endVertex();
+        buffer.vertex(matrix, 0, 0, 0).color(topR, topG, topB, f).endVertex();
+        buffer.vertex(matrix, l.baseW() + l.slant(), 0, 0).color(topR, topG, topB, f).endVertex();
         buffer.vertex(matrix, l.baseW(), l.h(), 0).color(r, gr, b, f).endVertex();
         buffer.vertex(matrix, 0, l.h(), 0).color(r, gr, b, f).endVertex();
         tesselator.end();
 
-        float br = (float) (themeColor >> 16 & 255) / 255.0F;
-        float bg = (float) (themeColor >> 8 & 255) / 255.0F;
-        float bb = (float) (themeColor & 255) / 255.0F;
-        float ba = alpha / 255.0F;
-
-        buffer.begin(VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
-        buffer.vertex(matrix, l.baseW() + l.slant(), 0, 0).color(br, bg, bb, ba).endVertex();
-        buffer.vertex(matrix, l.baseW(), l.h(), 0).color(br, bg, bb, ba).endVertex();
-        buffer.vertex(matrix, l.baseW() + l.slant() + 2, 0, 0).color(br, bg, bb, ba * 0.3F).endVertex();
-        buffer.vertex(matrix, l.baseW() + 2, l.h(), 0).color(br, bg, bb, ba * 0.3F).endVertex();
-        buffer.vertex(matrix, 0, 0, 0).color(br, bg, bb, ba * 0.5F).endVertex();
-        buffer.vertex(matrix, l.baseW() + l.slant(), 0, 0).color(br, bg, bb, ba * 0.5F).endVertex();
-        buffer.vertex(matrix, 0, 0, 0).color(br, bg, bb, ba * 0.4F).endVertex();
-        buffer.vertex(matrix, 0, l.h(), 0).color(br, bg, bb, ba * 0.4F).endVertex();
-        tesselator.end();
-
         RenderSystem.disableBlend();
+
+        float time = System.currentTimeMillis() / 1000.0F;
+        float pulse = (float) (Math.sin(time * 1.2) * 0.15 + 0.85);
+
+        int sx = l.baseW() + l.slant();
+        int ex = l.baseW();
+        float dh = l.h();
+        for (int row = 0; row < l.h(); row++) {
+            float t = row / dh;
+            int x = (int) (sx + (ex - sx) * t);
+            float lineAlpha = 0.3F + 0.5F * (1.0F - t);
+            g.fill(x, row, x + 1, row + 1, withAlpha(themeColor, (int) (alpha * lineAlpha * pulse)));
+        }
+
+        g.fill(0, 0, l.baseW() + l.slant(), 1, withAlpha(themeColor, (int) (alpha * 0.5F)));
+
+        g.fill(0, 0, 1, l.h(), withAlpha(themeColor, (int) (alpha * 0.6F)));
+        g.fill(1, 0, 2, l.h(), withAlpha(themeColor, (int) (alpha * 0.25F)));
     }
 
     private void nextPage() { if (canNext()) { currentPage++; onPageChange(); } }
