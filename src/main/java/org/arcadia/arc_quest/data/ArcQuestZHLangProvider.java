@@ -24,6 +24,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addEpicDialogueTranslations();
         addTradeTranslations();
         addGachaTranslations();
+        addGuideTranslations();
         addItemTagTranslations();
 
         // ── 任务链 ──
@@ -1306,6 +1307,37 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     //  Item Tag 翻译
     // ═══════════════════════════════════════════════════════
+
+    private void addGuideTranslations() {
+        addGuiGuideListText("no_guides", "暂无已解锁指南");
+        addGuiGuideListText("no_guides_hint", "完成教学、任务或剧情后将在这里收录");
+
+        add("key.arc_quest.open_guide_list", "打开指南列表");
+
+        addGuideTitle("movement_basics", "移动基础");
+        addGuidePageDesc("movement_basics", 1, "掌握基础移动技巧，自由探索世界。");
+        addGuidePageDesc("movement_basics", 2, "观看演示学习高级移动技巧。");
+
+        addGuideCategory("basics", "基础");
+        addGuideCategory("quest", "任务");
+        addGuideCategory("dialogue", "对话");
+        addGuideCategory("trade", "交易");
+        addGuideCategory("ponder", "沉思");
+        addGuideCategory("advanced", "高级");
+
+        addGuideCommandFeedback("list", "header", "§e=== 指南注册表 (%1$s) ===");
+        addGuideCommandFeedback("list", "empty", "§7  （无已注册指南）");
+        addGuideCommandFeedback("debug", "header", "§e=== 指南: %1$s ===");
+        addGuideCommandFeedback("debug", "title", "§f  标题: %1$s");
+        addGuideCommandFeedback("debug", "category", "§f  分类: %1$s");
+        addGuideCommandFeedback("debug", "sort", "§7  排序: %1$s");
+        addGuideCommandFeedback("debug", "hidden", "§7  隐藏: %1$s");
+        addGuideCommandFeedback("debug", "repeatable", "§7  可重复弹出: %1$s");
+        addGuideCommandFeedback("debug", "conditions", "§7  解锁条件数: %1$s");
+        addGuideCommandFeedback("debug", "pages", "§7  页数: %1$s");
+        addGuideCommandFeedback("status", "header", "§e=== 指南状态: %1$s ===");
+        addGuideCommandFeedback("status", "unlocked", "§f  已解锁: %1$s");
+    }
 
     private void addItemTagTranslations() {
         // 基础材料

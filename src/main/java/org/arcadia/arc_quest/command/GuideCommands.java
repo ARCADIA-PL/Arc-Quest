@@ -90,7 +90,7 @@ public final class GuideCommands {
 
     private static CompletableFuture<Suggestions> suggestGuideIds(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggestResource(
+        return SharedSuggestionProvider.suggest(
                 GuideRegistry.getAllIds().stream().map(ResourceLocation::toString), builder);
     }
 

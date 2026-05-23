@@ -24,6 +24,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addEpicDialogueTranslations();
         addTradeTranslations();
         addGachaTranslations();
+        addGuideTranslations();
         addItemTagTranslations();
 
         // ── Quest Chains ──
@@ -1304,6 +1305,37 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     //  Item Tag Translations
     // ═══════════════════════════════════════════════════════
+
+    private void addGuideTranslations() {
+        addGuiGuideListText("no_guides", "No unlocked guides");
+        addGuiGuideListText("no_guides_hint", "Complete tutorials, quests, or story to archive them here");
+
+        add("key.arc_quest.open_guide_list", "Open Guide List");
+
+        addGuideTitle("movement_basics", "Movement Basics");
+        addGuidePageDesc("movement_basics", 1, "Master the basics of movement to explore the world freely.");
+        addGuidePageDesc("movement_basics", 2, "Watch the demonstration to learn advanced movement techniques.");
+
+        addGuideCategory("basics", "Basics");
+        addGuideCategory("quest", "Quest");
+        addGuideCategory("dialogue", "Dialogue");
+        addGuideCategory("trade", "Trade");
+        addGuideCategory("ponder", "Ponder");
+        addGuideCategory("advanced", "Advanced");
+
+        addGuideCommandFeedback("list", "header", "§e=== Guide Registry (%1$s) ===");
+        addGuideCommandFeedback("list", "empty", "§7  (no guides registered)");
+        addGuideCommandFeedback("debug", "header", "§e=== Guide: %1$s ===");
+        addGuideCommandFeedback("debug", "title", "§f  Title: %1$s");
+        addGuideCommandFeedback("debug", "category", "§f  Category: %1$s");
+        addGuideCommandFeedback("debug", "sort", "§7  SortOrder: %1$s");
+        addGuideCommandFeedback("debug", "hidden", "§7  Hidden: %1$s");
+        addGuideCommandFeedback("debug", "repeatable", "§7  Repeatable: %1$s");
+        addGuideCommandFeedback("debug", "conditions", "§7  UnlockConditions: %1$s");
+        addGuideCommandFeedback("debug", "pages", "§7  Pages: %1$s");
+        addGuideCommandFeedback("status", "header", "§e=== Guide Status: %1$s ===");
+        addGuideCommandFeedback("status", "unlocked", "§f  Unlocked: %1$s");
+    }
 
     private void addItemTagTranslations() {
         // Basic Materials

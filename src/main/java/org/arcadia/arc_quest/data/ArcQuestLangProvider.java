@@ -314,6 +314,30 @@ public abstract class ArcQuestLangProvider extends LanguageProvider {
     }
 
     // ════════════════════════════════════════════════════════
+    //  Guide 系统（对应 GuideBuilder API）
+    // ════════════════════════════════════════════════════════
+
+    protected void addGuideTitle(String guidePath, String title) {
+        add("guide.arc_quest." + guidePath + ".title", title);
+    }
+
+    protected void addGuidePageDesc(String guidePath, int pageIndex, String description) {
+        add("guide.arc_quest." + guidePath + ".page_" + pageIndex, description);
+    }
+
+    protected void addGuideCategory(String categoryPath, String name) {
+        add("guide_category.arc_quest." + categoryPath, name);
+    }
+
+    protected void addGuiGuideListText(String key, String text) {
+        add("gui.arc_quest.guide_list." + key, text);
+    }
+
+    protected void addGuideCommandFeedback(String commandName, String messageType, String message) {
+        add("arc_quest.command.guide." + commandName + "." + messageType, message);
+    }
+
+    // ════════════════════════════════════════════════════════
     //  通用工具
     // ════════════════════════════════════════════════════════
 
