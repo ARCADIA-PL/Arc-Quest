@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.guide.builder;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.client.ponder.ArcQuestPonderHelper;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
 import org.arcadia.arc_quest.guide.api.GuideText;
@@ -50,6 +51,10 @@ public final class GuidePageBuilder {
 
     public GuidePageBuilder ponder(ResourceLocation sceneId) {
         return media(GuideMediaBuilder.ponder(sceneId));
+    }
+
+    public GuidePageBuilder ponderScene(String questId, String phaseId) {
+        return ponder(ArcQuestPonderHelper.questPhaseId(questId, phaseId));
     }
 
     public GuidePageBuilder none() {

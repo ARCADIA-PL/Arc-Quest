@@ -102,6 +102,10 @@ public final class GuideBuilder {
         return page(GuidePageBuilder.create().ponder(sceneId).description(description));
     }
 
+    public GuideBuilder ponderQuestPhasePage(String questId, String phaseId, Component description) {
+        return page(GuidePageBuilder.create().ponderScene(questId, phaseId).description(description));
+    }
+
     public GuideDefinition build() {
         if (title == null) {
             title = GuideText.literal(id.getPath());
