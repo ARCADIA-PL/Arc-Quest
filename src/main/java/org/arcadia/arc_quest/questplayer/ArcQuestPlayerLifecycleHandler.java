@@ -20,6 +20,7 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questplayer.snapshot.ArcQuestSnapshotReason;
 import org.arcadia.arc_quest.questplayer.snapshot.FileArcQuestPlayerSnapshotStore;
 import org.arcadia.arc_quest.trade.gacha.network.PendingDrawManager;
+import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         validateAndFixQuestData(sp, data);
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         ArcQuestNetwork.syncFullData(sp, data);
+        GuidePlayerStateSyncService.sync(sp, data);
         PendingDrawManager.compensateAndGrant(sp);
         LOGGER.debug("[ArcQuest] Login sync complete for: {}", sp.getGameProfile().getName());
     }
@@ -58,6 +60,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         if (data == null) return;
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         ArcQuestNetwork.syncFullData(sp, data);
+        GuidePlayerStateSyncService.sync(sp, data);
     }
 
     @SubscribeEvent
@@ -67,6 +70,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         if (data == null) return;
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         ArcQuestNetwork.syncFullData(sp, data);
+        GuidePlayerStateSyncService.sync(sp, data);
     }
 
     @SubscribeEvent
