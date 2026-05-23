@@ -14,6 +14,7 @@ import net.minecraft.world.item.TooltipFlag;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
@@ -224,7 +225,7 @@ public class QuestJournalScreen extends Screen {
             QuestStoryPanel.keyPressed(keyCode);
             return true;
         }
-        if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode)) {
+        if (ClientEventHandler.KEY_OPEN_JOURNAL.matches(keyCode, scanCode) || ClientEventHandler.KEY_OPEN_GUIDE_LIST.matches(keyCode, scanCode)) {
             onClose();
             return true;
         }
@@ -284,6 +285,10 @@ public class QuestJournalScreen extends Screen {
         int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
 
         if (tabPanel.mouseClicked(smx, smy, listX)) return true;
+        if (hitGuideButton(smx, smy, sw)) {
+            minecraft.setScreen(new GuideListScreen());
+            return true;
+        }
         if (listPanel.mouseClicked(smx, smy, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
 
         if (showingChangeLog) {
@@ -415,6 +420,7 @@ public class QuestJournalScreen extends Screen {
 
         int theme = getThemeColor();
         tabPanel.render(g, smx, smy, safeAlpha, slideOffset, theme, dt);
+        renderGuideButton(g, smx, smy, sw, safeAlpha);
 
         int listX = JournalConstants.LIST_MARGIN - (int) slideOffset, listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         HudAnimUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
@@ -651,6 +657,25 @@ public class QuestJournalScreen extends Screen {
 
     public void setCurrentThemeColor(int color) {
         currentThemeColor = color;
+    }
+
+    private void renderGuideButton(GuiGraphics g, int mouseX, int mouseY, int sw, int alpha) {
+        int x = sw - 86;
+        int y = 10;
+        boolean hovered = hitGuideButton(mouseX, mouseY, sw);
+        int border = HudAnimUtil.withAlpha(hovered ? 0xFFFFFF : getThemeColor(), alpha);
+        int fill = HudAnimUtil.withAlpha(hovered ? 0x203040 : 0x101820, hovered ? (int) (alpha * 0.7f) : (int) (alpha * 0.45f));
+        g.fill(x, y, x + 68, y + 18, fill);
+        g.fill(x, y, x + 68, y + 1, border);
+        g.fill(x, y + 17, x + 68, y + 18, border);
+        g.fill(x, y, x + 1, y + 18, border);
+        g.fill(x + 67, y, x + 68, y + 18, border);
+        g.drawString(font, "GUIDE [G]", x + 8, y + 5, HudAnimUtil.withAlpha(0xFFFFFF, alpha), false);
+    }
+
+    private boolean hitGuideButton(double mx, double my, int sw) {
+        int x = sw - 86;
+        return mx >= x && mx <= x + 68 && my >= 10 && my <= 28;
     }
 
     public JournalDetailPanel getDetailPanel() {

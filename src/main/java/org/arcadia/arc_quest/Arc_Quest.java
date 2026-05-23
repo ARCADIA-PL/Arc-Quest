@@ -40,9 +40,6 @@ public class Arc_Quest {
     public static final String MOD_ID = "arc_quest";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // TODO:
-    // TODO: 传送罗盘模块 可用于传送任务相关地点
-
     public Arc_Quest() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
@@ -55,12 +52,9 @@ public class Arc_Quest {
             EpicDialogueTrees.registerAll();
             TradeContent.registerAll();
             ArcQuestGuideContent.registerAll();
-
             DemoGachaShops.registerDemoShops();
             LOGGER.info("[ArcQuest] Demo gacha shops registered.");
-
             ArcQuestNetwork.register();
-
             QuestRegistry.freeze();
             TradeRegistry.freeze();
             GuideRegistry.freeze();
@@ -73,7 +67,6 @@ public class Arc_Quest {
 
     @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
-
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
             GuiSoundManager.initDefaults();
@@ -87,13 +80,13 @@ public class Arc_Quest {
             event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
             event.registerAboveAll("gacha_result", GachaResultOverlay.INSTANCE);
             event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), "quest_markers", MarkerHudRenderer.INSTANCE);
-
             LOGGER.info("[ArcQuest] Overlays registered.");
         }
 
         @SubscribeEvent
         public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
             event.register(ClientEventHandler.KEY_OPEN_JOURNAL);
+            event.register(ClientEventHandler.KEY_OPEN_GUIDE_LIST);
         }
     }
 
