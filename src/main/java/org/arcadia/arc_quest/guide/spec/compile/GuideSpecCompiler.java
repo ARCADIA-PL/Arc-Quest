@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.guide.spec.GuideSpec;
 import org.arcadia.arc_quest.guide.spec.GuideTextSpec;
 import org.arcadia.arc_quest.guide.spec.validate.GuideCategorySpecValidator;
 import org.arcadia.arc_quest.guide.spec.validate.GuideSpecValidator;
+import org.arcadia.arc_quest.quest.util.IntelSceneIdHelper;
 
 import java.util.Map;
 
@@ -90,9 +91,40 @@ public final class GuideSpecCompiler {
             case "none" -> GuideMediaBuilder.none();
             case "image" -> GuideMediaBuilder.image(parseId(spec.texture)).size(spec.width, spec.height);
             case "ponder" ->
-                    GuideMediaBuilder.ponder(parseId(spec.sceneId)).size(spec.width, spec.height).autoplay(spec.autoplay).loop(spec.loop);
+                    GuideMediaBuilder.ponder(normalizeGuideSceneId(spec.sceneId)).size(spec.width, spec.height).autoplay(spec.autoplay).loop(spec.loop);
             default -> throw new GuideCompileException("Invalid guide media type: '" + spec.type + "'");
         };
+    }
+
+    private ResourceLocation normalizeGuideSceneId(String rawSceneId) {
+        String value = blankToNull(rawSceneId);
+        if (value == null) {
+            throw new GuideCompileException("Ponder media requires sceneId");
+        }
+        ResourceLocation parsed = parseNullableId(value);
+        if (parsed == null) {
+            throw new GuideCompileException("Invalid ponder sceneId: '" + rawSceneId + "'");
+        }
+
+        String path = parsed.getPath();
+
+        if (path.startsWith("quest_phase/") || path.startsWith("dialogue/")
+                || path.startsWith("trade/") || path.startsWith("tutorial/")) {
+            return parsed;
+        }
+
+        if (!path.contains("/")) {
+            return parsed;
+        }
+
+        String[] segments = path.split("/", 2);
+        if (segments.length == 2 && !segments[0].isBlank() && !segments[1].isBlank()) {
+            String questId = parsed.getNamespace() + ":" + segments[0];
+            String phaseId = parsed.getNamespace() + ":" + segments[1];
+            return IntelSceneIdHelper.questPhaseId(questId, phaseId);
+        }
+
+        throw new GuideCompileException("Invalid ponder sceneId shorthand: '" + rawSceneId + "'");
     }
 
     private GuideCategory resolveCategory(String rawCategory) {
@@ -117,5 +149,13 @@ public final class GuideSpecCompiler {
             throw new GuideCompileException("Invalid resource id: '" + value + "'");
         }
         return id;
+    }
+
+    private ResourceLocation parseNullableId(String value) {
+        return blankToNull(value) == null ? null : ResourceLocation.tryParse(value);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 }
