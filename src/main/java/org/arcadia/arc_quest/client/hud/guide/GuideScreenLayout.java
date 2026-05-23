@@ -1,47 +1,44 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
-final class GuideScreenLayout {
-    static final int PANEL_X = 26;
-    static final int PANEL_Y = 28;
-    static final int PANEL_W = 470;
-    static final int PANEL_MIN_H = 280;
-    static final int PANEL_MAX_H = 360;
-    static final int CONTROL_W = 54;
-    static final int CONTROL_H = 18;
-    static final int TEXT_LINE_H = 10;
+import net.minecraft.client.Minecraft;
 
-    private GuideScreenLayout() {
-    }
+public final class GuideScreenLayout {
+    private static int cachedLineHeight = -1;
 
-    static Layout compute(int screenWidth, int screenHeight) {
-        int topWidth = Math.min(PANEL_W, screenWidth - PANEL_X - 24);
-        int bottomWidth = Math.max(360, topWidth - 78);
-        int height = Math.min(PANEL_MAX_H, Math.max(PANEL_MIN_H, screenHeight - 60));
-        int left = PANEL_X;
-        int top = PANEL_Y;
-        int headerH = 58;
-        int mediaW = topWidth - 24;
-        int mediaH = 116;
-        int mediaX = left + 12;
-        int mediaY = top + headerH + 8;
-        int textX = left + 14;
-        int descY = mediaY + mediaH + 14;
-        int descW = bottomWidth - 34;
-        int bottom = top + height;
-        int controlY = bottom - 24;
-        int prevX = left + 14;
-        int nextX = prevX + CONTROL_W + 8;
-        int closeX = left + bottomWidth - CONTROL_W - 12;
-        int descH = Math.max(40, controlY - descY - 18);
-        return new Layout(left, top, topWidth, bottomWidth, height, headerH, mediaX, mediaY, mediaW, mediaH, textX, descY, descW, descH, bottom, controlY, prevX, nextX, closeX);
-    }
-
-    record Layout(int x, int y, int tw, int bw, int h, int hh,
-                  int mx, int my, int mw, int mh,
-                  int tx, int dy, int dw, int dh,
-                  int b, int cy, int px, int nx, int cx) {
-        Layout offset(int dx) {
-            return new Layout(x - dx, y, tw, bw, h, hh, mx - dx, my, mw, mh, tx - dx, dy, dw, dh, b, cy, px - dx, nx - dx, cx - dx);
+    public static int textLineHeight() {
+        if (cachedLineHeight < 0) {
+            cachedLineHeight = Minecraft.getInstance().font.lineHeight + 1;
         }
+        return cachedLineHeight;
+    }
+
+    private GuideScreenLayout() {}
+
+    public static TerminalLayout computeTerminal(int width, int height) {
+        int padding = 20;
+        int listW = Math.min(220, Math.max(140, (int) (width * 0.18)));
+        int gap = 14;
+
+        int lx = padding;
+        int ly = 36;
+        int lh = height - 56;
+
+        int cx = lx + listW + gap;
+        int cy = ly;
+        int cw = width - padding - cx;
+        int ch = lh;
+
+        return new TerminalLayout(lx, ly, listW, lh, cx, cy, cw, ch);
+    }
+
+    public static SidebarLayout computeSidebar(int width, int height) {
+        int baseW = Math.min((int) (width * 0.35F), Math.max(190, (int) (width * 0.26F)));
+        int slant = 20;
+        return new SidebarLayout(0, 0, baseW, slant, height);
+    }
+
+    public record TerminalLayout(int lx, int ly, int lw, int lh, int cx, int cy, int cw, int ch) {}
+    public record SidebarLayout(int x, int y, int baseW, int slant, int h) {
+        public int totalW() { return baseW + slant; }
     }
 }

@@ -60,7 +60,7 @@ final class GuideContentPanel {
         int[] d = descriptionRect();
         int descX = d[0], descY = d[1], descW = d[2], descH = d[3];
         List<FormattedCharSequence> lines = screen.descriptionLines(descW);
-        int contentH = lines.size() * GuideScreenLayout.TEXT_LINE_H;
+        int contentH = lines.size() * GuideScreenLayout.textLineHeight();
         int max = Math.max(0, contentH - descH);
 
         screen.setDescTargetScroll(clamp(screen.getDescTargetScroll(), 0.0, max));

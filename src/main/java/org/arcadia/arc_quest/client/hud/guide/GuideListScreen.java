@@ -36,6 +36,7 @@ public final class GuideListScreen extends Screen {
     private float tabAnimX = 0.0F, tabAnimW = 0.0F;
     private float tabScrollOffset = 0.0F, tabTargetScroll = 0.0F;
     private long lastRenderTime;
+    private transient GuideScreenLayout.TerminalLayout cachedLayout;
 
     public GuideListScreen() {
         super(Component.translatable("gui.arc_quest.guide_list.title"));
@@ -120,6 +121,7 @@ public final class GuideListScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g);
+        cachedLayout = GuideScreenLayout.computeTerminal(width, height);
         float reveal = HudAnimUtil.easeOutCubic(openAnim);
         int alpha = (int) (255 * reveal);
 
@@ -218,7 +220,7 @@ public final class GuideListScreen extends Screen {
     }
 
     void adjustDescScroll(double delta) {
-        int max = Math.max(0, contentPanel.descriptionLineCount() * GuideScreenLayout.TEXT_LINE_H - contentPanel.descriptionRect()[3]);
+        int max = Math.max(0, contentPanel.descriptionLineCount() * GuideScreenLayout.textLineHeight() - contentPanel.descriptionRect()[3]);
         descTargetScroll = Math.max(0, Math.min(max, descTargetScroll + delta));
     }
 
@@ -252,15 +254,15 @@ public final class GuideListScreen extends Screen {
     EmbeddedPonderScenePanel ponderPanel() { return ponderPanel; }
 
     int[] tabsRect() {
-        GuideScreenLayout.TerminalLayout l = GuideScreenLayout.computeTerminal(width, height);
+        GuideScreenLayout.TerminalLayout l = cachedLayout;
         return new int[]{l.cx(), l.cy(), l.cw(), 30};
     }
     int[] listRect() {
-        GuideScreenLayout.TerminalLayout l = GuideScreenLayout.computeTerminal(width, height);
+        GuideScreenLayout.TerminalLayout l = cachedLayout;
         return new int[]{l.lx(), l.ly(), l.lw(), l.lh()};
     }
     int[] contentRect() {
-        GuideScreenLayout.TerminalLayout l = GuideScreenLayout.computeTerminal(width, height);
+        GuideScreenLayout.TerminalLayout l = cachedLayout;
         return new int[]{l.cx(), l.cy() + 30, l.cw(), l.ch() - 30};
     }
 

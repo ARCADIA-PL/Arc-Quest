@@ -138,8 +138,8 @@ public final class GuideScreen extends Screen {
         if (closing) return true;
         GuideScreenLayout.SidebarLayout l = layout();
         int descW = l.baseW() - 24;
-        int descH = l.h() - 240;
-        int contentH = lines(descW).size() * GuideScreenLayout.TEXT_LINE_H;
+        int descH = l.h() - 216;
+        int contentH = lines(descW).size() * GuideScreenLayout.textLineHeight();
         if (hit(mouseX, mouseY, 12, 180, descW, descH)) {
             if (contentH > descH) {
                 descTargetScroll = Math.max(0, Math.min(contentH - descH + 4, descTargetScroll - delta * 14.0));
@@ -203,7 +203,7 @@ public final class GuideScreen extends Screen {
         int descY = 174;
         int descH = l.h() - 216;
         List<FormattedCharSequence> wrapped = lines(mediaW);
-        int contentH = wrapped.size() * GuideScreenLayout.TEXT_LINE_H;
+        int contentH = wrapped.size() * GuideScreenLayout.textLineHeight();
         int max = Math.max(0, contentH - descH);
         descTargetScroll = Math.max(0, Math.min(max, descTargetScroll));
         descScroll = Math.max(0, Math.min(max, descScroll));
@@ -275,6 +275,8 @@ public final class GuideScreen extends Screen {
         buffer.vertex(matrix, l.baseW() + 2, l.h(), 0).color(br, bg, bb, ba * 0.3F).endVertex();
         buffer.vertex(matrix, 0, 0, 0).color(br, bg, bb, ba * 0.5F).endVertex();
         buffer.vertex(matrix, l.baseW() + l.slant(), 0, 0).color(br, bg, bb, ba * 0.5F).endVertex();
+        buffer.vertex(matrix, 0, 0, 0).color(br, bg, bb, ba * 0.4F).endVertex();
+        buffer.vertex(matrix, 0, l.h(), 0).color(br, bg, bb, ba * 0.4F).endVertex();
         tesselator.end();
 
         RenderSystem.disableBlend();

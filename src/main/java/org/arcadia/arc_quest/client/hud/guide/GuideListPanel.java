@@ -67,7 +67,6 @@ final class GuideListPanel {
         }
         g.disableScissor();
 
-        // 滚动条
         if (maxScroll > 0) {
             int trackH = r[3] - 10;
             int th = Math.max(16, (int) (trackH * (visible / (float) guides.size())));
@@ -76,6 +75,9 @@ final class GuideListPanel {
             g.fill(r[0] + r[2] - 3, r[1] + 5, r[0] + r[2] - 1, r[1] + r[3] - 5, withAlpha(0x111823, alpha));
             g.fill(r[0] + r[2] - 3, ty, r[0] + r[2] - 1, ty + th, withAlpha(screen.getThemeColor(), (int) (alpha * 0.8F)));
         }
+
+        GuideNavigationControls.drawScaledText(screen, g, r[0] + 8, r[1] + r[3] - 12, GuideConstants.SMALL_SCALE,
+                "W/S NAVIGATE  Q/E CATEGORY", withAlpha(GuideConstants.MUTED, (int) (alpha * 0.7F)));
     }
 
     boolean mouseClicked(double mouseX, double mouseY) {
