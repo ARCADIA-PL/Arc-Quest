@@ -123,6 +123,10 @@ final class GuideContentPanel {
         return new int[]{r[0] + 16, descY, descW, descH};
     }
 
+    int[] descriptionRect() {
+        return descriptionRect(screen.contentRect());
+    }
+
     int descriptionLineCount() { return screen.descriptionLines(descriptionRect(screen.contentRect())[2]).size(); }
 
     private boolean hit(double mx, double my, int x, int y, int w, int h) {
