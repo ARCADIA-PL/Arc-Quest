@@ -6,6 +6,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
@@ -37,6 +38,11 @@ public final class QuestEventManager {
 
     private static final Object2ObjectOpenHashMap<String, int[]> reachLocationIndexCache = new Object2ObjectOpenHashMap<>();
 
+    /**
+     * Player inventory snapshot used to detect newly acquired items by diff.
+     */
+    private static final Map<UUID, Map<ResourceLocation, Integer>> inventorySnapshots = new HashMap<>();
+
     private QuestEventManager() {
     }
 
@@ -64,6 +70,42 @@ public final class QuestEventManager {
 
         int count = event.getItemEntity().getItem().getCount();
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
+
+        Map<ResourceLocation, Integer> snapshot = inventorySnapshots.get(player.getUUID());
+        if (snapshot != null) {
+            snapshot.merge(itemId, count, Integer::sum);
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.NORMAL)
+    public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            inventorySnapshots.put(player.getUUID(), takeInventorySnapshot(player));
+        }
+    }
+
+    private static Map<ResourceLocation, Integer> takeInventorySnapshot(ServerPlayer player) {
+        Map<ResourceLocation, Integer> snapshot = new HashMap<>();
+        for (ItemStack stack : player.getInventory().items) {
+            if (stack.isEmpty()) continue;
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (id != null) {
+                snapshot.merge(id, stack.getCount(), Integer::sum);
+            }
+        }
+        return snapshot;
+    }
+
+    private static void diffAndTriggerCollect(ServerPlayer player,
+                                              Map<ResourceLocation, Integer> before,
+                                              Map<ResourceLocation, Integer> after) {
+        for (Map.Entry<ResourceLocation, Integer> entry : after.entrySet()) {
+            ResourceLocation itemId = entry.getKey();
+            int delta = entry.getValue() - before.getOrDefault(itemId, 0);
+            if (delta > 0) {
+                processMatch(player, ObjectiveType.COLLECT, itemId, delta);
+            }
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -75,6 +117,7 @@ public final class QuestEventManager {
 
         int count = event.getCrafting().getCount();
         processMatch(player, ObjectiveType.CRAFT, itemId, count);
+        processMatch(player, ObjectiveType.COLLECT, itemId, count);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -99,6 +142,13 @@ public final class QuestEventManager {
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if ((player.tickCount % 20) != 0) return;
+
+        Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
+        Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
+        if (before != null) {
+            diffAndTriggerCollect(player, before, after);
+        }
+        inventorySnapshots.put(player.getUUID(), after);
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
@@ -159,6 +209,7 @@ public final class QuestEventManager {
         if (event.getEntity() instanceof ServerPlayer player) {
             ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
             ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
+            inventorySnapshots.remove(player.getUUID());
             LOGGER.debug("[QuestEvent] Cleared tracking and marker state for: {}", player.getGameProfile().getName());
         }
     }

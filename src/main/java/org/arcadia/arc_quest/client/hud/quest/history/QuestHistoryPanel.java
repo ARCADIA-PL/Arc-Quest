@@ -617,10 +617,20 @@ public final class QuestHistoryPanel {
         renderNodes.clear();
         nodeMap.clear();
         QuestDefinition def = QuestRegistry.get(ResourceLocation.tryParse(questId));
-        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
-        if (def == null || runtime == null) return;
+        if (def == null) return;
 
-        Set<String> phaseOrder = def.getPhaseIds(), completed = runtime.getCompletedPhaseIds(), active = runtime.getActivePhaseIds();
+        QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
+        final Set<String> completed, active;
+        if (runtime != null) {
+            completed = runtime.getCompletedPhaseIds();
+            active = runtime.getActivePhaseIds();
+        } else {
+            // 已完成任务：所有阶段都标记为已完成，无活跃阶段
+            completed = def.getPhaseIds();
+            active = Collections.emptySet();
+        }
+
+        Set<String> phaseOrder = def.getPhaseIds();
         Map<String, Integer> depth = new HashMap<>();
         for (String id : phaseOrder) depth.put(id, 0);
         for (String id : phaseOrder) {
