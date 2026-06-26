@@ -6,6 +6,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
@@ -36,6 +37,12 @@ public final class QuestEventManager {
 
     private static final Object2ObjectOpenHashMap<String, int[]> reachLocationIndexCache = new Object2ObjectOpenHashMap<>();
 
+    /**
+     * 玩家背包物品快照，用于 diff 检测新获得的物品。
+     * 每 tick 对比当前背包与快照，增量即为"新获得"的物品。
+     */
+    private static final Map<UUID, Map<ResourceLocation, Integer>> inventorySnapshots = new HashMap<>();
+
     private QuestEventManager() {
     }
 
@@ -63,6 +70,55 @@ public final class QuestEventManager {
 
         int count = event.getItem().getItem().getCount();
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
+
+        // 同步快照，避免 tick diff 重复计数
+        Map<ResourceLocation, Integer> snap = inventorySnapshots.get(player.getUUID());
+        if (snap != null) {
+            snap.merge(itemId, count, Integer::sum);
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.NORMAL)
+    public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            inventorySnapshots.put(player.getUUID(), takeInventorySnapshot(player));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  快照工具方法
+    // ═══════════════════════════════════════════════════════
+
+    /**
+     * 对玩家背包（不含装备栏）生成物品计数快照。
+     */
+    private static Map<ResourceLocation, Integer> takeInventorySnapshot(ServerPlayer player) {
+        Map<ResourceLocation, Integer> snapshot = new HashMap<>();
+        for (ItemStack stack : player.getInventory().items) {
+            if (stack.isEmpty()) continue;
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            if (id != null) {
+                snapshot.merge(id, stack.getCount(), Integer::sum);
+            }
+        }
+        return snapshot;
+    }
+
+    /**
+     * 对比前后快照，对数量增加的所有物品触发 COLLECT。
+     */
+    private static void diffAndTriggerCollect(ServerPlayer player,
+                                               Map<ResourceLocation, Integer> before,
+                                               Map<ResourceLocation, Integer> after) {
+        for (Map.Entry<ResourceLocation, Integer> entry : after.entrySet()) {
+            ResourceLocation itemId = entry.getKey();
+            int afterCount = entry.getValue();
+            int beforeCount = before.getOrDefault(itemId, 0);
+            int delta = afterCount - beforeCount;
+            if (delta > 0) {
+                processMatch(player, ObjectiveType.COLLECT, itemId, delta);
+            }
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -74,6 +130,7 @@ public final class QuestEventManager {
 
         int count = event.getCrafting().getCount();
         processMatch(player, ObjectiveType.CRAFT, itemId, count);
+        processMatch(player, ObjectiveType.COLLECT, itemId, count);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
@@ -99,6 +156,17 @@ public final class QuestEventManager {
         if (event.phase != TickEvent.Phase.END) return;
         if (!(event.player instanceof ServerPlayer player)) return;
         if ((player.tickCount % 20) != 0) return;
+
+        // ── COLLECT 背包 diff 检测 ──
+        // 每 20 tick 对比背包快照，增量即视为"获得"，包括从容器、合成、钓鱼等所有来源
+        {
+            Map<ResourceLocation, Integer> before = inventorySnapshots.get(player.getUUID());
+            Map<ResourceLocation, Integer> after = takeInventorySnapshot(player);
+            if (before != null) {
+                diffAndTriggerCollect(player, before, after);
+            }
+            inventorySnapshots.put(player.getUUID(), after);
+        }
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
@@ -159,6 +227,7 @@ public final class QuestEventManager {
         if (event.getEntity() instanceof ServerPlayer player) {
             ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
             ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
+            inventorySnapshots.remove(player.getUUID());
             LOGGER.debug("[QuestEvent] Cleared tracking and marker state for: {}", player.getGameProfile().getName());
         }
     }
