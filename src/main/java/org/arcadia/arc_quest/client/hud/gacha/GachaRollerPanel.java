@@ -90,7 +90,7 @@ public class GachaRollerPanel {
                 if (rollElapsed >= rollDuration) {
                     rollElapsed = rollDuration;
                     currentState = State.HOLD;
-                    Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
+                    Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.5f, 1.0f));
                     if (rollSpeedMult > 1.0f)
                         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ANVIL_LAND, 1.2f, 1.0f));
                 }
@@ -135,7 +135,7 @@ public class GachaRollerPanel {
             if (currentCard != lastTickCard && t < 1.0f) {
                 lastTickCard = currentCard;
                 float volume = (0.6f + (t * 0.4f)) * (rollSpeedMult > 1.0f ? 0.35f : 1.0f);
-                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.2f - (t * 0.4f), volume));
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.2f - (t * 0.4f), volume));
             }
         } else {
             scrollX = targetStopX;
@@ -263,12 +263,12 @@ public class GachaRollerPanel {
             if (rollSpeedMult == 1.0f) {
                 rollSpeedMult = 8.0f;
                 if (currentState == State.ENTER) masterAnim = 1.0f;
-                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.5f, 1.0f));
             } else {
                 currentState = State.HOLD;
                 rollElapsed = rollDuration;
                 scrollX = targetStopX;
-                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 1.0f));
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.5f, 1.0f));
                 Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ANVIL_LAND, 1.2f, 2.0f));
             }
             return true;

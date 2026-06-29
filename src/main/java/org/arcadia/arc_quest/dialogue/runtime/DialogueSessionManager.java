@@ -8,8 +8,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
@@ -104,7 +104,7 @@ public final class DialogueSessionManager {
         progress.recordDialogueVisit(namespace, dialogueId, nowReal, nowGame, nowDayTime);
         sendNodeToClient(session, true);
         SyncObservability.trace("dialogue", dialogueId, player.getName().getString(), SyncObservability.Stage.OPEN, Reason.DIALOGUE_OPEN);
-        MinecraftForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
+        NeoForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
         return session;
     }
 
@@ -127,7 +127,7 @@ public final class DialogueSessionManager {
                 var choice = visibleChoices.get(choiceIndex);
                 Component choiceText = session.processDialogueText(choice.text());
 
-                MinecraftForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(
+                NeoForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(
                         player, npc, session.getTree().dialogueId(),
                         currentNode.nodeId(), choiceIndex, choice.choiceId(), choiceText.getString()
                 ));
@@ -176,7 +176,7 @@ public final class DialogueSessionManager {
             return;
         }
         String toNodeId = next.nodeId();
-        MinecraftForge.EVENT_BUS.post(new DialogueNodeAutoAdvancedEvent(
+        NeoForge.EVENT_BUS.post(new DialogueNodeAutoAdvancedEvent(
                 player,
                 session.getTree().dialogueId(),
                 fromNodeId,
@@ -193,7 +193,7 @@ public final class DialogueSessionManager {
             SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                     SyncObservability.Stage.ACTION, Reason.DIALOGUE_RESTORE);
             String restoreNodeId = pollRestoreNodeId(player);
-            MinecraftForge.EVENT_BUS.post(new DialogueRestoreAttemptEvent(
+            NeoForge.EVENT_BUS.post(new DialogueRestoreAttemptEvent(
                     player,
                     session.getTree().dialogueId(),
                     restoreNodeId == null ? "" : restoreNodeId
@@ -210,7 +210,7 @@ public final class DialogueSessionManager {
                     session.setCurrentNode(targetNode);
                 } else {
                     LOGGER.warn("[Dialogue] Restore node '{}' not found for player {}", restoreNodeId, player.getName().getString());
-                    MinecraftForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
+                    NeoForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
                             player,
                             session.getTree().dialogueId(),
                             restoreNodeId,
@@ -224,7 +224,7 @@ public final class DialogueSessionManager {
         } else {
             clearRestoreNodeState(player);
             LOGGER.warn("[Dialogue] No active session for player {}", player.getName().getString());
-            MinecraftForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
+            NeoForge.EVENT_BUS.post(new DialogueRestoreFailedEvent(
                     player,
                     "",
                     "",
@@ -260,7 +260,7 @@ public final class DialogueSessionManager {
             session.end();
         }
         if (npcEntity != null) {
-            MinecraftForge.EVENT_BUS.post(new DialogueEndedEvent(player, npcEntity, dialogueId));
+            NeoForge.EVENT_BUS.post(new DialogueEndedEvent(player, npcEntity, dialogueId));
         }
     }
 
@@ -351,8 +351,8 @@ public final class DialogueSessionManager {
                 -1
         ));
 
-        ResourceLocation saySoundId = matchedSaySound != null ? ForgeRegistries.SOUND_EVENTS.getKey(matchedSaySound) : null;
-        MinecraftForge.EVENT_BUS.post(new DialogueNodeStartedEvent(player, npc, session.getTree().dialogueId(), node.nodeId(), selectedSayId, text.getString(), matchedSaySound, saySoundId));
+        ResourceLocation saySoundId = matchedSaySound != null ? BuiltInRegistries.SOUND_EVENT.getKey(matchedSaySound) : null;
+        NeoForge.EVENT_BUS.post(new DialogueNodeStartedEvent(player, npc, session.getTree().dialogueId(), node.nodeId(), selectedSayId, text.getString(), matchedSaySound, saySoundId));
 
         var visibleChoices = session.getVisibleChoices();
         Component[] choiceTexts = new Component[visibleChoices.size()];
@@ -361,7 +361,7 @@ public final class DialogueSessionManager {
         for (int i = 0; i < visibleChoices.size(); i++) {
             choiceTexts[i] = session.processDialogueText(visibleChoices.get(i).text());
             var sound = visibleChoices.get(i).selectSound();
-            if (sound != null) choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getKey(sound);
+            if (sound != null) choiceSounds[i] = BuiltInRegistries.SOUND_EVENT.getKey(sound);
             choiceIds[i] = visibleChoices.get(i).choiceId();
         }
 

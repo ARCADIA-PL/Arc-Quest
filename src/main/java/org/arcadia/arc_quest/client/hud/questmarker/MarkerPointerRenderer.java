@@ -17,10 +17,9 @@ public final class MarkerPointerRenderer {
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
         Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder builder = tesselator.getBuilder();
         Matrix4f matrix = gui.pose().last().pose();
 
-        builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         int baseAlpha = (accentColor >> 24) & 0xFF;
 
@@ -138,7 +137,7 @@ public final class MarkerPointerRenderer {
             addVertex(builder, matrix, 0, coreTipY, calcColor(0, coreTipY, mixLx, mixLy, dotColor, coreAlphaFinal, activeProgress, 1.0f));
         }
 
-        BufferUploader.drawWithShader(builder.end());
+        BufferUploader.drawWithShader(builder.buildOrThrow());
     }
 
     private static float lerp(float a, float b, float t) {
@@ -179,6 +178,6 @@ public final class MarkerPointerRenderer {
     }
 
     private static void addVertex(BufferBuilder b, Matrix4f m, float x, float y, int argb) {
-        b.vertex(m, x, y, 0).color(argb).endVertex();
+        b.addVertex(m, x, y, 0).setColor(argb);
     }
 }

@@ -1,10 +1,11 @@
 package org.arcadia.arc_quest.websocket;
 
 import com.mojang.logging.LogUtils;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStoppedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.slf4j.Logger;
 
@@ -20,7 +21,7 @@ import java.util.Base64;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-@Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class ArcQuestWebSocketServer {
 
     private static final Logger LOGGER = LogUtils.getLogger();

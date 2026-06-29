@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.trade.gacha.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
+import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
@@ -209,7 +209,7 @@ public final class GachaSession {
 
             var resetEvent = new GachaEvents.DrawLimitResetEvent(
                     player, shop.getShopId(), playerData, reason, currentCount);
-            MinecraftForge.EVENT_BUS.post(resetEvent);
+            NeoForge.EVENT_BUS.post(resetEvent);
 
             int pityBefore = playerData.getGachaPityCounter(shop.getShopId());
             GachaEntryStateResolver.resetDrawAndCooldown(playerData, shop.getShopId());

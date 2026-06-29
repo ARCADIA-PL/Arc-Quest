@@ -114,16 +114,15 @@ public class HudMarkerUtil {
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
         Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         // 顶点顺序：上 -> 右 -> 下 -> 左 (菱形)
-        buffer.vertex(matrix, x, y - height / 2f, 0.0F).color(r, g, b, a).endVertex();
-        buffer.vertex(matrix, x + width / 2f, y, 0.0F).color(r, g, b, a).endVertex();
-        buffer.vertex(matrix, x, y + height / 2f, 0.0F).color(r, g, b, a).endVertex();
-        buffer.vertex(matrix, x - width / 2f, y, 0.0F).color(r, g, b, a).endVertex();
+        buffer.addVertex(matrix, x, y - height / 2f, 0.0F).setColor(r, g, b, a);
+        buffer.addVertex(matrix, x + width / 2f, y, 0.0F).setColor(r, g, b, a);
+        buffer.addVertex(matrix, x, y + height / 2f, 0.0F).setColor(r, g, b, a);
+        buffer.addVertex(matrix, x - width / 2f, y, 0.0F).setColor(r, g, b, a);
 
-        tesselator.end();
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
         RenderSystem.disableBlend();
     }
 
@@ -139,15 +138,14 @@ public class HudMarkerUtil {
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
         Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
-        buffer.vertex(matrix, minX, maxY, 0.0F).color(r, g, b, a).endVertex();
-        buffer.vertex(matrix, maxX, maxY, 0.0F).color(r, g, b, a).endVertex();
-        buffer.vertex(matrix, maxX, minY, 0.0F).color(r, g, b, a).endVertex();
-        buffer.vertex(matrix, minX, minY, 0.0F).color(r, g, b, a).endVertex();
+        buffer.addVertex(matrix, minX, maxY, 0.0F).setColor(r, g, b, a);
+        buffer.addVertex(matrix, maxX, maxY, 0.0F).setColor(r, g, b, a);
+        buffer.addVertex(matrix, maxX, minY, 0.0F).setColor(r, g, b, a);
+        buffer.addVertex(matrix, minX, minY, 0.0F).setColor(r, g, b, a);
 
-        tesselator.end();
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
         RenderSystem.disableBlend();
     }
 

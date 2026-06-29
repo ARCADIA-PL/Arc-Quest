@@ -154,7 +154,7 @@ public abstract class AbstractTradeScreen extends Screen {
         if (isClosing || shop == null || minecraft == null || minecraft.player == null) return;
         if (++authorityRefreshTicker >= AUTHORITY_REFRESH_INTERVAL_TICKS) {
             authorityRefreshTicker = 0;
-            ArcQuestNetwork.CHANNEL.sendToServer(new C2SRequestTradeSyncPacket(shopId, getCurrentScreenType()));
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SRequestTradeSyncPacket(shopId, getCurrentScreenType()));
         }
     }
 

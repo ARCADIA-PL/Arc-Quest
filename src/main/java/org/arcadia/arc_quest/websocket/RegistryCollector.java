@@ -4,8 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.IForgeRegistry;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Registry;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
@@ -31,12 +31,12 @@ public final class RegistryCollector {
         root.addProperty("timestamp", System.currentTimeMillis());
 
         JsonObject registries = new JsonObject();
-        registries.add("items", collectRegistry(ForgeRegistries.ITEMS));
-        registries.add("entityTypes", collectRegistry(ForgeRegistries.ENTITY_TYPES));
-        registries.add("blocks", collectRegistry(ForgeRegistries.BLOCKS));
-        registries.add("soundEvents", collectRegistry(ForgeRegistries.SOUND_EVENTS));
-        registries.add("mobEffects", collectRegistry(ForgeRegistries.MOB_EFFECTS));
-        registries.add("biomes", collectRegistry(ForgeRegistries.BIOMES));
+        registries.add("items", collectRegistry(BuiltInRegistries.ITEM));
+        registries.add("entityTypes", collectRegistry(BuiltInRegistries.ENTITY_TYPE));
+        registries.add("blocks", collectRegistry(BuiltInRegistries.BLOCK));
+        registries.add("soundEvents", collectRegistry(BuiltInRegistries.SOUND_EVENT));
+        registries.add("mobEffects", collectRegistry(BuiltInRegistries.MOB_EFFECT));
+        // biomes 为 datapack 注册表,枚举需 RegistryAccess,此处暂不收集。
         root.add("registries", registries);
 
         JsonArray questIds = new JsonArray();
@@ -119,10 +119,10 @@ public final class RegistryCollector {
         return arr;
     }
 
-    private static <T> JsonArray collectRegistry(IForgeRegistry<T> registry) {
+    private static <T> JsonArray collectRegistry(Registry<T> registry) {
         JsonArray arr = new JsonArray();
         int count = 0;
-        for (Map.Entry<ResourceKey<T>, T> entry : registry.getEntries()) {
+        for (Map.Entry<ResourceKey<T>, T> entry : registry.entrySet()) {
             if (count >= MAX_PER_REGISTRY) break;
             ResourceLocation id = entry.getKey().location();
             JsonObject obj = new JsonObject();

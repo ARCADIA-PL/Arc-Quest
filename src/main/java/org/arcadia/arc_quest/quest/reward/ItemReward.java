@@ -5,7 +5,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.quest.api.IReward;
 
 import java.util.Objects;
@@ -36,7 +36,7 @@ public final class ItemReward implements IReward {
 
     @Override
     public String describe() {
-        return "Item(" + ForgeRegistries.ITEMS.getKey(item) + " x" + count + ")";
+        return "Item(" + BuiltInRegistries.ITEM.getKey(item) + " x" + count + ")";
     }
 
     /**

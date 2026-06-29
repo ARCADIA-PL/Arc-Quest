@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.quest.logic.profile;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
+import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.api.event.quest.QuestAcceptedEvent;
 import org.arcadia.arc_quest.api.event.quest.QuestStartedEvent;
 import org.arcadia.arc_quest.quest.api.*;
@@ -68,8 +68,8 @@ public final class CollectionQuestEngine {
         }
 
         QuestEventBus.fire(QuestChangeEvent.questAccepted(def.getId()));
-        MinecraftForge.EVENT_BUS.post(new QuestAcceptedEvent(player, def.getId()));
-        MinecraftForge.EVENT_BUS.post(new QuestStartedEvent(player, def.getId()));
+        NeoForge.EVENT_BUS.post(new QuestAcceptedEvent(player, def.getId()));
+        NeoForge.EVENT_BUS.post(new QuestStartedEvent(player, def.getId()));
         return QuestRejectCodeDictionary.Code.OK;
     }
 

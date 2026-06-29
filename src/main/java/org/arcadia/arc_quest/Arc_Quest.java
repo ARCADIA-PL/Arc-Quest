@@ -2,19 +2,20 @@ package org.arcadia.arc_quest;
 
 import com.mojang.logging.LogUtils;
 import net.createmod.ponder.foundation.PonderIndex;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.event.RenderGuiOverlayEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.api.distmarker.Dist;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
@@ -34,16 +35,15 @@ import org.arcadia.arc_quest.trade.registry.TradeContent;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
-@SuppressWarnings("removal")
 @Mod(Arc_Quest.MOD_ID)
 public class Arc_Quest {
     public static final String MOD_ID = "arc_quest";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public Arc_Quest() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+    public Arc_Quest(IEventBus modEventBus) {
         modEventBus.addListener(this::commonSetup);
-        MinecraftForge.EVENT_BUS.register(this);
+        modEventBus.addListener(ArcQuestNetwork::register);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -54,7 +54,6 @@ public class Arc_Quest {
             ArcQuestGuideContent.registerAll();
             DemoGachaShops.registerDemoShops();
             LOGGER.info("[ArcQuest] Demo gacha shops registered.");
-            ArcQuestNetwork.register();
             QuestRegistry.freeze();
             TradeRegistry.freeze();
             GuideRegistry.freeze();
@@ -65,7 +64,7 @@ public class Arc_Quest {
     public void onServerStarting(ServerStartingEvent event) {
     }
 
-    @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
@@ -75,11 +74,11 @@ public class Arc_Quest {
         }
 
         @SubscribeEvent
-        public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
-            event.registerAboveAll("quest_hud", QuestHudOverlay.INSTANCE);
-            event.registerAboveAll("quest_splash", QuestSplashOverlay.INSTANCE);
-            event.registerAboveAll("gacha_result", GachaResultOverlay.INSTANCE);
-            event.registerAbove(VanillaGuiOverlay.CROSSHAIR.id(), "quest_markers", MarkerHudRenderer.INSTANCE);
+        public static void onRegisterLayers(RegisterGuiLayersEvent event) {
+            event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_hud"), QuestHudOverlay.INSTANCE);
+            event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_splash"), QuestSplashOverlay.INSTANCE);
+            event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "gacha_result"), GachaResultOverlay.INSTANCE);
+            event.registerAbove(VanillaGuiLayers.CROSSHAIR, ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_markers"), MarkerHudRenderer.INSTANCE);
             LOGGER.info("[ArcQuest] Overlays registered.");
         }
 
@@ -89,12 +88,12 @@ public class Arc_Quest {
         }
     }
 
-    @Mod.EventBusSubscriber(modid = MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
     public static class ClientForgeEvents {
         @SubscribeEvent
-        public static void onRenderGuiOverlayPre(RenderGuiOverlayEvent.Pre event) {
+        public static void onRenderGuiLayerPre(RenderGuiLayerEvent.Pre event) {
             if (QuestSplashRenderer.isActive()) {
-                if (!(event.getOverlay().overlay() instanceof QuestSplashOverlay)) {
+                if (!event.getName().equals(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_splash"))) {
                     event.setCanceled(true);
                 }
             }

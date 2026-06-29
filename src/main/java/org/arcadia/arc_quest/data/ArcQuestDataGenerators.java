@@ -2,9 +2,10 @@ package org.arcadia.arc_quest.data;
 
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
-import net.minecraftforge.data.event.GatherDataEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.data.event.GatherDataEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 
 /**
@@ -16,7 +17,7 @@ import org.arcadia.arc_quest.Arc_Quest;
  *   <li>{@code src/generated/resources/assets/arc_quest/lang/zh_cn.json}</li>
  * </ul>
  */
-@Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public final class ArcQuestDataGenerators {
 
     private ArcQuestDataGenerators() {

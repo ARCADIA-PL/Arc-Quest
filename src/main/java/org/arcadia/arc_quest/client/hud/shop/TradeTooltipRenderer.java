@@ -136,7 +136,7 @@ public class TradeTooltipRenderer {
         d.vanillaLines = new ArrayList<>();
 
         if (d.hasItem && mc.player != null) {
-            d.vanillaLines.addAll(stack.getTooltipLines(mc.player, mc.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL));
+            d.vanillaLines.addAll(stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.EMPTY, mc.player, mc.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL));
         }
 
         int padding = 10;

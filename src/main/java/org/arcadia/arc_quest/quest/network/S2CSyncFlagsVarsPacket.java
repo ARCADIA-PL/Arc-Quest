@@ -1,14 +1,18 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 
 /**
  * S2C：全局 Flags 和 Variables 同步。
@@ -20,7 +24,13 @@ import java.util.function.Supplier;
  *   <li>FlagReward / VariableReward 执行后</li>
  * </ul>
  */
-public class S2CSyncFlagsVarsPacket {
+public final class S2CSyncFlagsVarsPacket implements CustomPacketPayload {
+
+    public static final Type<S2CSyncFlagsVarsPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "sync_flags_vars"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CSyncFlagsVarsPacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CSyncFlagsVarsPacket::encode, S2CSyncFlagsVarsPacket::decode);
 
     private final Set<String> flags;
     private final Map<String, Integer> variables;
@@ -74,11 +84,14 @@ public class S2CSyncFlagsVarsPacket {
 
     // ── 处理（客户端）─────────────────────────────────
 
-    public static void handle(S2CSyncFlagsVarsPacket pkt,
-                              Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CSyncFlagsVarsPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             ClientQuestCache.INSTANCE.updateFlagsAndVars(pkt.flags, pkt.variables);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

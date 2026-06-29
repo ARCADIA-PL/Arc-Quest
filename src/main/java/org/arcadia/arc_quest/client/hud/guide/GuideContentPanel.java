@@ -126,7 +126,7 @@ public class GuideContentPanel {
 
             lastMediaRect[0] = absMediaX; lastMediaRect[1] = absMediaY; lastMediaRect[2] = mediaW; lastMediaRect[3] = mediaH;
 
-            float pt = Minecraft.getInstance().getFrameTime();
+            float pt = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
             g.pose().popPose();
 
             GuideMediaRenderer.drawMedia(screen, g, absMediaX, absMediaY, mediaW, mediaH, page.getMedia(), screen.ponderPanel(), mx, my, pt, safeA, theme);

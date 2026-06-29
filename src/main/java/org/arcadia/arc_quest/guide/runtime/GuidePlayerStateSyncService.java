@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.guide.runtime;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -24,6 +24,6 @@ public final class GuidePlayerStateSyncService {
     public static void sync(ServerPlayer player, ArcQuestPlayer data) {
         List<ResourceLocation> unlocked = new ArrayList<>(data.getUnlockedGuides());
         List<ResourceLocation> seen = new ArrayList<>(data.getSeenGuides());
-        ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncGuideStatePacket(unlocked, seen));
+        PacketDistributor.sendToPlayer(player, new S2CSyncGuideStatePacket(unlocked, seen));
     }
 }

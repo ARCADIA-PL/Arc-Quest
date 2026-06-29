@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.questplayer;
 
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
@@ -27,7 +28,7 @@ public final class ArcQuestPlayerSavedData extends SavedData {
     public ArcQuestPlayerSavedData() {
     }
 
-    public static ArcQuestPlayerSavedData load(CompoundTag root) {
+    public static ArcQuestPlayerSavedData load(CompoundTag root, HolderLookup.Provider registries) {
         ArcQuestPlayerSavedData data = new ArcQuestPlayerSavedData();
         CompoundTag playersTag = root.getCompound("Players");
         for (String key : playersTag.getAllKeys()) {
@@ -50,7 +51,9 @@ public final class ArcQuestPlayerSavedData extends SavedData {
         // ArcQuestPlayer 是全服级玩家数据，不能跟当前维度绑定，
         // 因此统一锚定在 overworld 的 DataStorage 上，避免多维度副本分裂。
         DimensionDataStorage storage = level.getServer().overworld().getDataStorage();
-        return storage.computeIfAbsent(ArcQuestPlayerSavedData::load, ArcQuestPlayerSavedData::new, DATA_NAME);
+        return storage.computeIfAbsent(
+                new SavedData.Factory<>(ArcQuestPlayerSavedData::new, ArcQuestPlayerSavedData::load),
+                DATA_NAME);
     }
 
     public CompoundTag getSnapshot(UUID uuid) {
@@ -70,7 +73,7 @@ public final class ArcQuestPlayerSavedData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag root) {
+    public CompoundTag save(CompoundTag root, HolderLookup.Provider registries) {
         CompoundTag playersTag = new CompoundTag();
         for (var entry : playerSnapshots.entrySet()) {
             playersTag.put(entry.getKey().toString(), entry.getValue().copy());

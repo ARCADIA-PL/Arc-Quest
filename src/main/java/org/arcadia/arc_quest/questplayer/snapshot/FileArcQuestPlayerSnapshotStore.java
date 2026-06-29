@@ -5,7 +5,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.neoforged.fml.loading.FMLPaths;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.migration.ArcQuestPlayerMigrationBundle;
@@ -68,7 +68,7 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
 
         try {
             Files.createDirectories(directory);
-            NbtIo.writeCompressed(root, path.toFile());
+            NbtIo.writeCompressed(root, path);
             return new ArcQuestPlayerSnapshotRef(
                     player.getUUID(),
                     player.getGameProfile().getName(),
@@ -122,7 +122,7 @@ public final class FileArcQuestPlayerSnapshotStore implements ArcQuestPlayerSnap
     @Override
     public CompoundTag loadSnapshot(Path path) {
         try {
-            return NbtIo.readCompressed(path.toFile());
+            return NbtIo.readCompressed(path, net.minecraft.nbt.NbtAccounter.unlimitedHeap());
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read ArcQuest snapshot: " + path, e);
         }

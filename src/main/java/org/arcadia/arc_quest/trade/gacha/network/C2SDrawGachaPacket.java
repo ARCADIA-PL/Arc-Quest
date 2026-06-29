@@ -1,10 +1,14 @@
 package org.arcadia.arc_quest.trade.gacha.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
@@ -22,12 +26,17 @@ import org.arcadia.arc_quest.trade.network.RejectCodeDictionary;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * 客户端请求执行抽奖。
  */
-public class C2SDrawGachaPacket {
+public class C2SDrawGachaPacket implements CustomPacketPayload {
+
+    public static final Type<C2SDrawGachaPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "draw_gacha"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SDrawGachaPacket> STREAM_CODEC =
+            StreamCodec.ofMember(C2SDrawGachaPacket::encode, C2SDrawGachaPacket::decode);
 
     private final String shopId;
 
@@ -43,9 +52,17 @@ public class C2SDrawGachaPacket {
         return new C2SDrawGachaPacket(buf.readUtf());
     }
 
-    public static void handle(C2SDrawGachaPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = GachaRequestValidator.requirePlayer(ctx.get().getSender(), "draw", pkt.shopId);
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(C2SDrawGachaPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer sender)) {
+                return;
+            }
+            ServerPlayer player = GachaRequestValidator.requirePlayer(sender, "draw", pkt.shopId);
             if (player == null) return;
 
             ArcQuestPlayer data = GachaRequestValidator.requireData(player, "draw", pkt.shopId);
@@ -60,7 +77,7 @@ public class C2SDrawGachaPacket {
             // 0) PreDrawEvent（锁外，允许改 pityCounter）
             int basePityCounter = data.getGachaPityCounter(pkt.shopId);
             GachaEvents.PreDrawEvent preEvent = new GachaEvents.PreDrawEvent(player, pkt.shopId, data, basePityCounter);
-            MinecraftForge.EVENT_BUS.post(preEvent);
+            NeoForge.EVENT_BUS.post(preEvent);
             if (preEvent.isCancelled()) {
                 GachaRequestValidator.reject(
                         RejectCodeDictionary.Code.PRE_DRAW_CANCELLED,
@@ -70,10 +87,10 @@ public class C2SDrawGachaPacket {
                         "pre draw event cancelled"
                 );
                 var reason = GachaEvents.DrawFailedEvent.FailReason.UNKNOWN;
-                MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
+                NeoForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
 
-                ArcQuestNetwork.CHANNEL.send(
-                        PacketDistributor.PLAYER.with(() -> player),
+                PacketDistributor.sendToPlayer(
+                        player,
                         new S2CDrawFailedPacket(
                                 pkt.shopId,
                                 reason.name(),
@@ -100,10 +117,10 @@ public class C2SDrawGachaPacket {
                             pkt.shopId,
                             "pre-state gate failed"
                     );
-                    MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
+                    NeoForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
 
-                    ArcQuestNetwork.CHANNEL.send(
-                            PacketDistributor.PLAYER.with(() -> player),
+                    PacketDistributor.sendToPlayer(
+                            player,
                             new S2CDrawFailedPacket(
                                     pkt.shopId,
                                     reason.name(),
@@ -132,10 +149,10 @@ public class C2SDrawGachaPacket {
                                 "draw cost cannot afford"
                         );
                         var reason = GachaEvents.DrawFailedEvent.FailReason.CANNOT_AFFORD;
-                        MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
+                        NeoForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
 
-                        ArcQuestNetwork.CHANNEL.send(
-                                PacketDistributor.PLAYER.with(() -> player),
+                        PacketDistributor.sendToPlayer(
+                                player,
                                 new S2CDrawFailedPacket(
                                         pkt.shopId,
                                         reason.name(),
@@ -171,10 +188,10 @@ public class C2SDrawGachaPacket {
                         "resolution failed"
                 );
 
-                MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
+                NeoForge.EVENT_BUS.post(new GachaEvents.DrawFailedEvent(player, pkt.shopId, data, reason));
 
-                ArcQuestNetwork.CHANNEL.send(
-                        PacketDistributor.PLAYER.with(() -> player),
+                PacketDistributor.sendToPlayer(
+                        player,
                         new S2CDrawFailedPacket(
                                 pkt.shopId,
                                 reason.name(),
@@ -189,7 +206,7 @@ public class C2SDrawGachaPacket {
                 return;
             }
 
-            MinecraftForge.EVENT_BUS.post(new GachaEvents.DrawingEvent(
+            NeoForge.EVENT_BUS.post(new GachaEvents.DrawingEvent(
                     player,
                     pkt.shopId,
                     data,
@@ -197,7 +214,7 @@ public class C2SDrawGachaPacket {
             ));
 
             if (resolution.earlyTrigger()) {
-                MinecraftForge.EVENT_BUS.post(new GachaEvents.PityEarlyTriggerEvent(
+                NeoForge.EVENT_BUS.post(new GachaEvents.PityEarlyTriggerEvent(
                         player,
                         pkt.shopId,
                         resolution.item(),
@@ -207,7 +224,7 @@ public class C2SDrawGachaPacket {
                 ));
             }
 
-            MinecraftForge.EVENT_BUS.post(new GachaEvents.PostDrawEvent(
+            NeoForge.EVENT_BUS.post(new GachaEvents.PostDrawEvent(
                     player,
                     pkt.shopId,
                     resolution.item(),
@@ -216,8 +233,8 @@ public class C2SDrawGachaPacket {
                     data
             ));
 
-            ArcQuestNetwork.CHANNEL.send(
-                    PacketDistributor.PLAYER.with(() -> player),
+            PacketDistributor.sendToPlayer(
+                    player,
                     new S2CDrawResultPacket(
                             pkt.shopId,
                             resolution.item().getItemId(),
@@ -243,7 +260,6 @@ public class C2SDrawGachaPacket {
                     pkt.shopId
             );
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static DrawResolution resolveDrawStateUnderLock(ServerPlayer player, ArcQuestPlayer data,

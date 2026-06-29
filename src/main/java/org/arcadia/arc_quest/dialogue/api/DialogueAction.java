@@ -6,7 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.dialogue.registry.DialogueActionTypes;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -122,7 +122,7 @@ public sealed interface DialogueAction {
         public void execute(ServerPlayer player) {
             ResourceLocation rl = ResourceLocation.tryParse(itemId);
             if (rl != null) {
-                var item = ForgeRegistries.ITEMS.getValue(rl);
+                var item = BuiltInRegistries.ITEM.get(rl);
                 if (item != null) {
                     ItemStack stack = new ItemStack(item, count);
                     if (!player.getInventory().add(stack)) {

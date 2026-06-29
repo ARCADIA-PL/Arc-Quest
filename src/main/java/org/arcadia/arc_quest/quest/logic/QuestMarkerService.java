@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.quest.logic;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
+import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.api.event.quest.QuestMarkersRefreshedEvent;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -74,7 +74,7 @@ public final class QuestMarkerService {
             }
         }
 
-        MinecraftForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
+        NeoForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
                 player,
                 ResourceLocation.parse(qdata.getQuestId()),
                 qdata.getActivePhaseIds().size()

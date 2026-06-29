@@ -321,7 +321,7 @@ public class DialogueTreeBuilder {
     @SuppressWarnings("unchecked")
     public <T extends DialogueCondition> DialogueTreeBuilder sayIf(T condition, String text, Holder.Reference<SoundEvent> sound, String sayId) {
         ensureOpenNode();
-        curConditionalTexts.add(new ConditionalText(condition, DialogueText.literal(text), 0, sound.get(), resolveId(sayId)));
+        curConditionalTexts.add(new ConditionalText(condition, DialogueText.literal(text), 0, sound.value(), resolveId(sayId)));
         return this;
     }
 
@@ -346,7 +346,7 @@ public class DialogueTreeBuilder {
 
     public DialogueTreeBuilder enterSound(Holder.Reference<SoundEvent> sound) {
         ensureOpenNode();
-        curNodeEnterSound = sound.get();
+        curNodeEnterSound = sound.value();
         return this;
     }
 
@@ -1120,7 +1120,7 @@ public class DialogueTreeBuilder {
          * 使用示例：
          * <pre>{@code
          * .choice("购买装备", c -> c
-         *     .sound(SoundEvents.UI_BUTTON_CLICK.get())
+         *     .sound(SoundEvents.UI_BUTTON_CLICK.value())
          *     .openTrade("blacksmith_shop")
          * )
          * }</pre>
@@ -1134,7 +1134,7 @@ public class DialogueTreeBuilder {
         }
 
         public ChoiceBuilder selectSound(Holder.Reference<SoundEvent> sound) {
-            selectSound = sound.get();
+            selectSound = sound.value();
             return this;
         }
 

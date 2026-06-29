@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.dialogue.action;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
@@ -34,7 +35,7 @@ public final class PresetActions {
 
     /*** 玩家获得效果*/
     public static void addEffects(ServerPlayer player, MobEffect mobEffect, int duration, int amplifier) {
-        player.addEffect(new MobEffectInstance(mobEffect, duration, amplifier));
+        player.addEffect(new MobEffectInstance(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(mobEffect), duration, amplifier));
     }
 
     /*** 触发玩家与目标实体的任务交互标识*/

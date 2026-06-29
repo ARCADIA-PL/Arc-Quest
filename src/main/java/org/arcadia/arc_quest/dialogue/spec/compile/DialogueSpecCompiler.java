@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.dialogue.spec.compile;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.spec.*;
@@ -237,7 +237,7 @@ public final class DialogueSpecCompiler {
         if (id == null || id.isBlank()) return null;
         ResourceLocation rl = ResourceLocation.tryParse(id);
         if (rl == null) return null;
-        return ForgeRegistries.SOUND_EVENTS.getValue(rl);
+        return BuiltInRegistries.SOUND_EVENT.get(rl);
     }
 
     private String blankToNull(String value) {

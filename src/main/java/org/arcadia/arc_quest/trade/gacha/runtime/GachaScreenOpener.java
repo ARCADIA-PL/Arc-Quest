@@ -2,8 +2,8 @@ package org.arcadia.arc_quest.trade.gacha.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -58,10 +58,10 @@ public final class GachaScreenOpener {
 
         GachaSnapshot snapshot = resolveSnapshot(player, shop, data, true);
 
-        MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(player, shop.getShopId(), data));
+        NeoForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(player, shop.getShopId(), data));
 
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(
+                player,
                 S2CGachaStatePacket.open(
                         shop.getShopId(),
                         snapshot.pityCounter(),
@@ -145,7 +145,7 @@ public final class GachaScreenOpener {
         if (dedupe && !shouldSendGachaSync(player, shop.getShopId(), snapshot)) {
             SyncObservability.recordDropped("gacha", shop.getShopId(), player.getName().getString(), false);
             SyncObservability.trace("gacha", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_DROPPED, reason);
-            MinecraftForge.EVENT_BUS.post(new GachaEvents.StateSyncedEvent(
+            NeoForge.EVENT_BUS.post(new GachaEvents.StateSyncedEvent(
                     player,
                     shop.getShopId(),
                     reason,
@@ -156,8 +156,8 @@ public final class GachaScreenOpener {
             return;
         }
 
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(
+                player,
                 S2CGachaStatePacket.sync(
                         shop.getShopId(),
                         snapshot.pityCounter(),
@@ -179,7 +179,7 @@ public final class GachaScreenOpener {
         LOGGER.debug("[Gacha] SYNC push: player={}, shop={}, reason={}",
                 player.getName().getString(), shop.getShopId(), reason);
         SyncObservability.recordSent("gacha", shop.getShopId(), player.getName().getString(), true);
-        MinecraftForge.EVENT_BUS.post(new GachaEvents.StateSyncedEvent(
+        NeoForge.EVENT_BUS.post(new GachaEvents.StateSyncedEvent(
                 player,
                 shop.getShopId(),
                 reason,

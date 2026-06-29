@@ -2,22 +2,32 @@ package org.arcadia.arc_quest.dialogue.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.slf4j.Logger;
-
-import java.util.function.Supplier;
 
 /**
  * 客户端→服务端：玩家选择对话选项 / 自动跳转请求。
  */
-public class C2SDialogueChoicePacket {
+public final class C2SDialogueChoicePacket implements CustomPacketPayload {
 
     public static final int AUTO_ADVANCE = -1;
     public static final int CLOSE = -2;
     public static final int RESTORE_DIALOGUE = -3;
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<C2SDialogueChoicePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "dialogue_choice"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SDialogueChoicePacket> STREAM_CODEC =
+            StreamCodec.ofMember(C2SDialogueChoicePacket::encode, C2SDialogueChoicePacket::decode);
+
     /**
      * -1 = 自动跳转请求, -2 = 关闭对话, >=0 = 选择索引。
      */
@@ -45,11 +55,16 @@ public class C2SDialogueChoicePacket {
         return new C2SDialogueChoicePacket(buf.readVarInt());
     }
 
-    public static void handle(C2SDialogueChoicePacket pkt,
-                              Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(C2SDialogueChoicePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer player)) {
+                return;
+            }
 
             switch (pkt.choiceIndex) {
                 case CLOSE -> DialogueSessionManager.INSTANCE.endDialogue(player);
@@ -58,7 +73,6 @@ public class C2SDialogueChoicePacket {
                 default -> DialogueSessionManager.INSTANCE.handleChoice(player, pkt.choiceIndex);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public void encode(FriendlyByteBuf buf) {

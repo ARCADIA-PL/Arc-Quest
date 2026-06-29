@@ -1,8 +1,12 @@
 package org.arcadia.arc_quest.trade.gacha.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
@@ -10,15 +14,19 @@ import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.arcadia.arc_quest.trade.network.RejectCodeDictionary;
 
-import java.util.function.Supplier;
-
 /**
  * 客户端确认抽奖结果并请求发放奖励。
  * <p>
  * 在抽奖动画第二阶段结束时由客户端发送，
  * 服务端收到后从 PendingDrawManager 中取出暂存的结果并发放奖励。
  */
-public class C2SConfirmDrawPacket {
+public class C2SConfirmDrawPacket implements CustomPacketPayload {
+
+    public static final Type<C2SConfirmDrawPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "confirm_draw"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SConfirmDrawPacket> STREAM_CODEC =
+            StreamCodec.ofMember(C2SConfirmDrawPacket::encode, C2SConfirmDrawPacket::decode);
 
     final String shopId;
 
@@ -34,9 +42,17 @@ public class C2SConfirmDrawPacket {
         return new C2SConfirmDrawPacket(buf.readUtf());
     }
 
-    public static void handle(C2SConfirmDrawPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = GachaRequestValidator.requirePlayer(ctx.get().getSender(), "confirm_draw", pkt.shopId);
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(C2SConfirmDrawPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer sender)) {
+                return;
+            }
+            ServerPlayer player = GachaRequestValidator.requirePlayer(sender, "confirm_draw", pkt.shopId);
             if (player == null) return;
 
             SyncObservability.trace("gacha", pkt.shopId, player.getName().getString(),
@@ -70,6 +86,5 @@ public class C2SConfirmDrawPacket {
 
             GachaScreenOpener.syncGachaState(player, shop, data);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

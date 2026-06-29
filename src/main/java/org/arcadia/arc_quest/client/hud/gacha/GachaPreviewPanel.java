@@ -375,7 +375,7 @@ public class GachaPreviewPanel {
             if (hasHover && currentHover != lastHoveredIndex) {
                 lastHoveredIndex = currentHover;
                 previewSwitchAnim = 0f;
-                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 0.5f));
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.5f, 0.5f));
             }
 
             if (currentHover != tooltipHoverIndex) {
@@ -777,11 +777,11 @@ public class GachaPreviewPanel {
                 feedbackSuccess = false;
                 feedbackAnim = 1f;
                 if (insufficientFunds) shortfallTooltipAnim = 1f;
-                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.get(), 0.8f));
+                Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BASS.value(), 0.8f));
                 return true;
             }
 
-            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0f));
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0f));
             parent.startDrawRequest();
             return true;
         }

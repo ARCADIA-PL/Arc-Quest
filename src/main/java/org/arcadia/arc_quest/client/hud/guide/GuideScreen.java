@@ -107,7 +107,7 @@ public final class GuideScreen extends Screen {
     public boolean isPauseScreen() { return false; }
 
     @Override
-    public void renderBackground(@NotNull GuiGraphics g) { }
+    public void renderBackground(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) { }
 
     @Override
     public void onClose() {
@@ -178,7 +178,8 @@ public final class GuideScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        double delta = scrollY;
         if (isClosing) return true;
 
         int panelX = getPanelX(transitionAlpha, false);

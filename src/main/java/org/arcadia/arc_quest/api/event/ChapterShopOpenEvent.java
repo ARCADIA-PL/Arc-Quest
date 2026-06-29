@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.api.event;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.Event;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 
 public class ChapterShopOpenEvent extends Event {

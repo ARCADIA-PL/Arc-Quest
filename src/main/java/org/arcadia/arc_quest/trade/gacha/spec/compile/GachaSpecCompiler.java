@@ -6,7 +6,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.spec.DialogueTextSpec;
 import org.arcadia.arc_quest.trade.api.*;
@@ -128,7 +128,7 @@ public final class GachaSpecCompiler {
     }
 
     private GachaItem compileGachaItem(GachaItemSpec spec) {
-        Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(spec.item));
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(spec.item));
         if (item == null) throw new GachaCompileException("Unknown item: " + spec.item);
 
         GachaItem.Rarity rarity = parseRarity(spec.rarity);
@@ -182,13 +182,13 @@ public final class GachaSpecCompiler {
 
         return switch (spec.type) {
             case "item" -> {
-                Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(spec.itemId));
+                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(spec.itemId));
                 if (item == null) throw new GachaCompileException("Unknown item: " + spec.itemId);
                 yield new ItemTradeOffer(item, spec.count, isCost);
             }
             case "command" -> new CommandTradeOffer(spec.command);
             case "effect" -> {
-                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(ResourceLocation.tryParse(spec.effectId));
+                MobEffect effect = BuiltInRegistries.MOB_EFFECT.get(ResourceLocation.tryParse(spec.effectId));
                 if (effect == null) throw new GachaCompileException("Unknown effect: " + spec.effectId);
                 yield new EffectTradeOffer(effect, spec.duration, spec.amplifier, isCost);
             }
@@ -229,7 +229,7 @@ public final class GachaSpecCompiler {
         if (id == null || id.isBlank()) return null;
         ResourceLocation rl = ResourceLocation.tryParse(id);
         if (rl == null) return null;
-        return ForgeRegistries.SOUND_EVENTS.getValue(rl);
+        return BuiltInRegistries.SOUND_EVENT.get(rl);
     }
 
     private String blankToNull(String value) {

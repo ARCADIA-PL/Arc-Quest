@@ -8,10 +8,10 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
+import net.neoforged.bus.api.SubscribeEvent;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.IDialogueNpc;
@@ -31,7 +31,7 @@ import org.slf4j.Logger;
  * <p>
  * 注册方式：在 {@code Arc_quest} 主类构造器中：
  * <pre>{@code
- * MinecraftForge.EVENT_BUS.register(NpcDialogueHandler.class);
+ * NeoForge.EVENT_BUS.register(NpcDialogueHandler.class);
  * }</pre>
  */
 public final class NpcDialogueHandler {
@@ -85,7 +85,7 @@ public final class NpcDialogueHandler {
     // ═══════════════════════════════════════════════════════
 
     @SubscribeEvent
-    public static void onEntityTick(LivingEvent.LivingTickEvent event) {
+    public static void onEntityTick(EntityTickEvent.Post event) {
         if (event.getEntity().level().isClientSide()) return;
         if (!(event.getEntity() instanceof IDialogueNpc npc)) return;
 

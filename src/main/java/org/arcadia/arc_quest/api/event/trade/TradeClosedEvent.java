@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.api.event.trade;
 
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.Event;
 import org.jetbrains.annotations.Nullable;
 
 public class TradeClosedEvent extends Event {

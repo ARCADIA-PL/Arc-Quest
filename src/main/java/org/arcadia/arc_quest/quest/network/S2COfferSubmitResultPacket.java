@@ -2,12 +2,21 @@ package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 
-import java.util.function.Supplier;
+public final class S2COfferSubmitResultPacket implements CustomPacketPayload {
 
-public class S2COfferSubmitResultPacket {
+    public static final Type<S2COfferSubmitResultPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "offer_submit_result"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2COfferSubmitResultPacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2COfferSubmitResultPacket::encode, S2COfferSubmitResultPacket::decode);
 
     private final String questId;
     private final String phaseId;
@@ -37,13 +46,17 @@ public class S2COfferSubmitResultPacket {
         );
     }
 
-    public static void handle(S2COfferSubmitResultPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2COfferSubmitResultPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
             QuestOfferPanel.onServerSubmitResult(pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.closeMode);
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public enum CloseMode {

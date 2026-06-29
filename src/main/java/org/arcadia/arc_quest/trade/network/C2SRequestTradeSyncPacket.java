@@ -2,20 +2,29 @@ package org.arcadia.arc_quest.trade.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.slf4j.Logger;
 
-import java.util.function.Supplier;
-
 /**
  * 客户端 -> 服务端：请求交易权威状态同步（不打开界面）。
  */
-public class C2SRequestTradeSyncPacket {
+public class C2SRequestTradeSyncPacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<C2SRequestTradeSyncPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "request_trade_sync"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SRequestTradeSyncPacket> STREAM_CODEC =
+            StreamCodec.ofMember(C2SRequestTradeSyncPacket::encode, C2SRequestTradeSyncPacket::decode);
 
     private final String shopId;
     private final C2SRequestTradePacket.ScreenType screenType;
@@ -36,9 +45,15 @@ public class C2SRequestTradeSyncPacket {
         return new C2SRequestTradeSyncPacket(shopId, screenType);
     }
 
-    public static void handle(C2SRequestTradeSyncPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = TradeRequestValidator.requirePlayer(ctx.get().getSender(), "trade_sync", pkt.shopId, LOGGER);
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(C2SRequestTradeSyncPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer sender = ctx.player() instanceof ServerPlayer sp ? sp : null;
+            ServerPlayer player = TradeRequestValidator.requirePlayer(sender, "trade_sync", pkt.shopId, LOGGER);
             if (player == null) return;
 
             SyncObservability.recordRequest("trade", pkt.shopId, player.getName().getString());
@@ -51,6 +66,5 @@ public class C2SRequestTradeSyncPacket {
 
             C2SRequestTradePacket.syncState(player, shop, pkt.screenType);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

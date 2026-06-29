@@ -2,16 +2,16 @@ package org.arcadia.arc_quest.client.hud.questmarker;
 
 import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 
@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-public class MarkerHudRenderer implements IGuiOverlay {
+public class MarkerHudRenderer implements LayeredDraw.Layer {
 
     public static final MarkerHudRenderer INSTANCE = new MarkerHudRenderer();
 
@@ -147,7 +147,10 @@ public class MarkerHudRenderer implements IGuiOverlay {
     }
 
     @Override
-    public void render(ForgeGui forgeGui, GuiGraphics gui, float partialTick, int sw, int sh) {
+    public void render(GuiGraphics gui, DeltaTracker deltaTracker) {
+        int sw = gui.guiWidth();
+        int sh = gui.guiHeight();
+        float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         if (mc.options.hideGui) return;

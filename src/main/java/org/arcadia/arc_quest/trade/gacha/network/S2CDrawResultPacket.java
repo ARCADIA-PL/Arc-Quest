@@ -3,13 +3,16 @@ package org.arcadia.arc_quest.trade.gacha.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import org.slf4j.Logger;
-
-import java.util.function.Supplier;
 
 /**
  * 服务端发送抽奖结果给客户端。
@@ -18,9 +21,15 @@ import java.util.function.Supplier;
  * 1. 同步底层缓存数据。
  * 2. 显式校验当前界面，直接向 GachaScreen 下达状态转移指令，保证动画与网络回包的 100% 强绑定。
  */
-public class S2CDrawResultPacket {
+public class S2CDrawResultPacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<S2CDrawResultPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "draw_result"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CDrawResultPacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CDrawResultPacket::encode, S2CDrawResultPacket::decode);
 
     private final String shopId;
     private final String drawnItemId;
@@ -83,8 +92,13 @@ public class S2CDrawResultPacket {
         );
     }
 
-    public static void handle(S2CDrawResultPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CDrawResultPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
 
@@ -130,6 +144,5 @@ public class S2CDrawResultPacket {
                 LOGGER.debug("[Gacha] Screen changed before draw result arrived");
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

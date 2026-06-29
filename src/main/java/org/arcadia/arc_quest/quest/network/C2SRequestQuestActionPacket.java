@@ -2,11 +2,15 @@ package org.arcadia.arc_quest.quest.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.ChapterShopOpenEvent;
 import org.arcadia.arc_quest.quest.api.ChapterShopType;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -23,14 +27,18 @@ import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
-import java.util.function.Supplier;
-
 /**
  * C2S：客户端请求任务操作。
  */
-public class C2SRequestQuestActionPacket {
+public final class C2SRequestQuestActionPacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<C2SRequestQuestActionPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "request_quest_action"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SRequestQuestActionPacket> STREAM_CODEC =
+            StreamCodec.ofMember(C2SRequestQuestActionPacket::encode, C2SRequestQuestActionPacket::decode);
 
     private final Action action;
     private final String questId;
@@ -85,10 +93,16 @@ public class C2SRequestQuestActionPacket {
         return new C2SRequestQuestActionPacket(action, questId, idx, phaseId);
     }
 
-    public static void handle(C2SRequestQuestActionPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer sender = ctx.get().getSender();
-            if (sender == null) return;
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(C2SRequestQuestActionPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer sender)) {
+                return;
+            }
 
             switch (pkt.action) {
                 case ACCEPT -> {
@@ -99,8 +113,8 @@ public class C2SRequestQuestActionPacket {
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
                     LOGGER.debug("[ArcQuest] C2S ACCEPT quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
-                    ArcQuestNetwork.CHANNEL.send(
-                            PacketDistributor.PLAYER.with(() -> sender),
+                    PacketDistributor.sendToPlayer(
+                            sender,
                             new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
                     );
                 }
@@ -112,8 +126,8 @@ public class C2SRequestQuestActionPacket {
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
                     LOGGER.debug("[ArcQuest] C2S ABANDON quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
-                    ArcQuestNetwork.CHANNEL.send(
-                            PacketDistributor.PLAYER.with(() -> sender),
+                    PacketDistributor.sendToPlayer(
+                            sender,
                             new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
                     );
                 }
@@ -127,15 +141,15 @@ public class C2SRequestQuestActionPacket {
                             SyncObservability.Stage.RESULT, toResultReason(pkt.action, code));
                     LOGGER.debug("[ArcQuest] C2S CHOOSE quest={}, phase={}, idx={}, code={}, player={}",
                             pkt.questId, pkt.phaseId, pkt.transitionIndex, code, sender.getGameProfile().getName());
-                    ArcQuestNetwork.CHANNEL.send(
-                            PacketDistributor.PLAYER.with(() -> sender),
+                    PacketDistributor.sendToPlayer(
+                            sender,
                             new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
                     );
                 }
                 case CONFIRM_PHASE_ADVANCE -> {
                     Code code = QuestProgressHandler.confirmManualPhaseAdvance(sender, pkt.questId, pkt.phaseId);
-                    ArcQuestNetwork.CHANNEL.send(
-                            PacketDistributor.PLAYER.with(() -> sender),
+                    PacketDistributor.sendToPlayer(
+                            sender,
                             new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
                     );
                 }
@@ -146,15 +160,14 @@ public class C2SRequestQuestActionPacket {
                     LOGGER.debug("[ArcQuest] C2S OPEN_CHAPTER_SHOP quest={}, code={}, player={}",
                             pkt.questId, code, sender.getGameProfile().getName());
                     String resolvedShopId = resolveChapterShopId(pkt.questId);
-                    MinecraftForge.EVENT_BUS.post(new ChapterShopOpenEvent(sender, pkt.questId, resolvedShopId, code));
-                    ArcQuestNetwork.CHANNEL.send(
-                            PacketDistributor.PLAYER.with(() -> sender),
+                    NeoForge.EVENT_BUS.post(new ChapterShopOpenEvent(sender, pkt.questId, resolvedShopId, code));
+                    PacketDistributor.sendToPlayer(
+                            sender,
                             new S2CQuestActionResultPacket(pkt.action, pkt.questId, code)
                     );
                 }
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static Reason toResultReason(Action action, Code code) {

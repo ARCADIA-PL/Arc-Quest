@@ -1,14 +1,24 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.service.QuestOfferService;
 
-import java.util.function.Supplier;
+public final class C2SSubmitOfferPacket implements CustomPacketPayload {
 
-public class C2SSubmitOfferPacket {
+    public static final Type<C2SSubmitOfferPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "submit_offer"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SSubmitOfferPacket> STREAM_CODEC =
+            StreamCodec.ofMember(C2SSubmitOfferPacket::encode, C2SSubmitOfferPacket::decode);
+
     private final String questId;
     private final String phaseId;
     private final int objectiveIndex;
@@ -41,10 +51,16 @@ public class C2SSubmitOfferPacket {
         );
     }
 
-    public static void handle(C2SSubmitOfferPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(C2SSubmitOfferPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer player)) {
+                return;
+            }
             QuestOfferService.OfferSubmitResult result =
                     QuestOfferService.submitOffer(player, pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.submitAmount);
 
@@ -57,11 +73,10 @@ public class C2SSubmitOfferPacket {
                 }
             }
 
-            ArcQuestNetwork.CHANNEL.send(
-                    PacketDistributor.PLAYER.with(() -> player),
+            PacketDistributor.sendToPlayer(
+                    player,
                     new S2COfferSubmitResultPacket(pkt.questId, pkt.phaseId, pkt.objectiveIndex, mode)
             );
         });
-        ctx.get().setPacketHandled(true);
     }
 }

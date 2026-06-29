@@ -2,8 +2,12 @@ package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.events.ClientHudEvents;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
@@ -14,9 +18,14 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import java.util.Set;
-import java.util.function.Supplier;
 
-public class S2CSyncQuestStatePacket {
+public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
+
+    public static final Type<S2CSyncQuestStatePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "sync_quest_state"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CSyncQuestStatePacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CSyncQuestStatePacket::encode, S2CSyncQuestStatePacket::decode);
 
     private final QuestRuntimeData data;
 
@@ -32,8 +41,13 @@ public class S2CSyncQuestStatePacket {
         return new S2CSyncQuestStatePacket(QuestRuntimeData.readFromNetwork(buf));
     }
 
-    public static void handle(S2CSyncQuestStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CSyncQuestStatePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             ResourceLocation questRl = ResourceLocation.tryParse(pkt.data.getQuestId());
             QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
             String name = def != null ? def.getDisplayName().getString() : pkt.data.getQuestId();
@@ -79,6 +93,5 @@ public class S2CSyncQuestStatePacket {
                 }
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

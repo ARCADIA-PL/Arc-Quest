@@ -54,7 +54,7 @@ public class GachaScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics g) {
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
     }
 
     @Override
@@ -79,7 +79,7 @@ public class GachaScreen extends Screen {
         }
         authorityRefreshTicker = 0;
 
-        ArcQuestNetwork.CHANNEL.sendToServer(C2SGachaControlPacket.sync(shopId));
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(C2SGachaControlPacket.sync(shopId));
     }
 
     public String getShopId() {
@@ -107,7 +107,7 @@ public class GachaScreen extends Screen {
         authorityRefreshTicker = 0;
         previewPanel.updateDataSnapshot();
 
-        ArcQuestNetwork.CHANNEL.sendToServer(new C2SDrawGachaPacket(shopId));
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SDrawGachaPacket(shopId));
         LOGGER.debug("[Gacha-Client] C2SDrawGachaPacket sent to server");
     }
 
@@ -136,8 +136,8 @@ public class GachaScreen extends Screen {
         if (hasPendingDraw) {
             LOGGER.info("[Gacha-Client] Confirming draw and syncing for shop: {}", shopId);
             hasPendingDraw = false;
-            ArcQuestNetwork.CHANNEL.sendToServer(new C2SConfirmDrawPacket(shopId));
-            ArcQuestNetwork.CHANNEL.sendToServer(C2SGachaControlPacket.sync(shopId));
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new C2SConfirmDrawPacket(shopId));
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(C2SGachaControlPacket.sync(shopId));
             LOGGER.debug("[Gacha-Client] C2SConfirmDrawPacket + immediate SYNC sent, hasPendingDraw=false");
         } else {
             LOGGER.debug("[Gacha-Client] confirmDrawAndSync called but no pending draw");
@@ -226,8 +226,8 @@ public class GachaScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double delta) {
-        if (currentPhase == Phase.PREVIEW) return previewPanel.mouseScrolled(delta);
+    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+        if (currentPhase == Phase.PREVIEW) return previewPanel.mouseScrolled(scrollY);
         return false;
     }
 

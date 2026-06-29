@@ -7,7 +7,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -83,7 +83,7 @@ public final class QuestOfferService {
 
     private static int consumeOfferItem(ServerPlayer player, ResourceLocation itemId, int need) {
         if (need <= 0) return 0;
-        Item target = ForgeRegistries.ITEMS.getValue(itemId);
+        Item target = BuiltInRegistries.ITEM.get(itemId);
         if (target == null) return 0;
 
         Inventory inv = player.getInventory();
@@ -126,7 +126,7 @@ public final class QuestOfferService {
     }
 
     private static int countByItemId(ServerPlayer player, ResourceLocation itemId) {
-        Item target = ForgeRegistries.ITEMS.getValue(itemId);
+        Item target = BuiltInRegistries.ITEM.get(itemId);
         if (target == null) return 0;
 
         int total = 0;

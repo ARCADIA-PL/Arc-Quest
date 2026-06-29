@@ -173,7 +173,7 @@ public final class QuestIntelPanel {
             screenH = qjs.getScaledHeight();
         }
 
-        float exactPt = Minecraft.getInstance().getFrameTime();
+        float exactPt = Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
 
         long now = System.currentTimeMillis();
         float dt = Math.min((now - lastTime) / 1000f, 0.1f);
@@ -365,7 +365,7 @@ public final class QuestIntelPanel {
         PoseStack ms = g.pose();
         ms.pushPose();
         ms.translate(areaX, areaY, -800);
-        RenderSystem.setupLevelDiffuseLighting(DIFFUSE_0, DIFFUSE_1, ms.last().pose());
+        RenderSystem.setupLevelDiffuseLighting(DIFFUSE_0, DIFFUSE_1);
 
         scene.getTransform().updateScreenParams(areaW, areaH, 0);
         scene.getTransform().apply(ms, pt);

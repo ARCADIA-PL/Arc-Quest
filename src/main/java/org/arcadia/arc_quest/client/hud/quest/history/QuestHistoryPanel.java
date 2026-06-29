@@ -345,6 +345,7 @@ public final class QuestHistoryPanel {
             Minecraft mcForTip = Minecraft.getInstance();
             if (mcForTip.player != null) {
                 List<Component> lines = hoveredRewardStack.getTooltipLines(
+                        net.minecraft.world.item.Item.TooltipContext.EMPTY,
                         mcForTip.player,
                         mcForTip.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL
                 );
@@ -566,7 +567,7 @@ public final class QuestHistoryPanel {
     private static TooltipLayout getRewardTooltipLayout(ItemStack stack, Minecraft mc, boolean advanced) {
         TooltipLayout layout = new TooltipLayout();
         if (mc.player != null) {
-            layout.lines = stack.getTooltipLines(mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+            layout.lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.EMPTY, mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
             for (Component line : layout.lines) {
                 int lw = mc.font.width(line);
                 if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;

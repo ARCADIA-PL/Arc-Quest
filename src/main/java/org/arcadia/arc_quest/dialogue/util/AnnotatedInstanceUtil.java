@@ -1,8 +1,8 @@
 package org.arcadia.arc_quest.dialogue.util;
 
 import com.mojang.logging.LogUtils;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.forgespi.language.ModFileScanData;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforgespi.language.ModFileScanData;
 import org.arcadia.arc_quest.dialogue.api.EntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.objectweb.asm.Type;

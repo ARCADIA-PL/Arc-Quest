@@ -1,14 +1,23 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 
 /**
  * 增量同步包，仅同步任务进度变化。
  */
-public class S2CDeltaProgressPacket {
+public final class S2CDeltaProgressPacket implements CustomPacketPayload {
+
+    public static final Type<S2CDeltaProgressPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "delta_progress"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CDeltaProgressPacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CDeltaProgressPacket::encode, S2CDeltaProgressPacket::decode);
 
     private final String questId;
     private final String phaseId;
@@ -38,11 +47,15 @@ public class S2CDeltaProgressPacket {
         );
     }
 
-    public static void handle(S2CDeltaProgressPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CDeltaProgressPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             // 第二批会把 ClientQuestCache 升级到 phase 维度；先走新签名
             ClientQuestCache.INSTANCE.updateObjectiveProgress(pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.newProgress);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

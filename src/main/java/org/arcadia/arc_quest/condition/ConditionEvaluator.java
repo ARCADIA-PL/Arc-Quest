@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.condition;
 
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.advancements.critereon.EntityPredicate;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -106,7 +107,7 @@ public final class ConditionEvaluator {
         if (predicateJson == null) return false;
 
         try {
-            EntityPredicate entityPredicate = EntityPredicate.fromJson(predicateJson);
+            EntityPredicate entityPredicate = EntityPredicate.CODEC.parse(JsonOps.INSTANCE, predicateJson).result().orElse(null);
             if (entityPredicate == null) return false;
             return entityPredicate.matches(level, player.position(), player);
         } catch (Exception e) {

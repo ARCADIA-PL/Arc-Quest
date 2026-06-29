@@ -57,7 +57,7 @@ public final class MarkerProjection {
         float halfW = screenW * 0.5f;
         float halfH = screenH * 0.5f;
 
-        float partialTick = mc.getFrameTime();
+        float partialTick = mc.getTimer().getGameTimeDeltaPartialTick(false);
         double fovDynamic = ((MixinGameRendererAccessor) mc.gameRenderer)
                 .arcQuest$invokeGetFov(camera, partialTick, true);
 

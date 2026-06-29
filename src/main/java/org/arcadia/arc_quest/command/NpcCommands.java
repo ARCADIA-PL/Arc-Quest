@@ -14,7 +14,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.npc.io.NpcDatapackHotReloadService;
 import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.arcadia.arc_quest.npc.spec.NpcBindingSpec;
@@ -49,7 +49,7 @@ public class NpcCommands {
         Set<EntityType<?>> types = NpcBindingRegistry.INSTANCE.getAllEntityTypes();
         return SharedSuggestionProvider.suggest(
                 types.stream()
-                        .map(t -> ForgeRegistries.ENTITY_TYPES.getKey(t))
+                        .map(t -> BuiltInRegistries.ENTITY_TYPE.getKey(t))
                         .filter(k -> k != null)
                         .map(ResourceLocation::toString),
                 builder);
@@ -73,7 +73,7 @@ public class NpcCommands {
             msg.append(Component.literal("§7  (no NPC bindings registered)\n"));
         } else {
             for (EntityType<?> type : types) {
-                ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(type);
+                ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(type);
                 String typeName = key != null ? key.toString() : type.toString();
                 List<NpcSpec> specs = NpcBindingRegistry.INSTANCE.getSpecsFor(type);
                 int bindingCount = specs.stream().mapToInt(s -> s.bindings != null ? s.bindings.size() : 0).sum();
@@ -87,7 +87,7 @@ public class NpcCommands {
 
     private static int cmdDebug(CommandContext<CommandSourceStack> ctx) {
         ResourceLocation typeKey = ResourceLocationArgument.getId(ctx, "entity_type");
-        EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(typeKey);
+        EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(typeKey);
 
         if (entityType == null) {
             error(ctx, "Unknown entity type: " + typeKey);

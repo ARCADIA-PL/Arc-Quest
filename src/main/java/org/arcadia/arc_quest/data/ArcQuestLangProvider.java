@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.data;
 
 import net.minecraft.data.PackOutput;
-import net.minecraftforge.common.data.LanguageProvider;
+import net.neoforged.neoforge.common.data.LanguageProvider;
 import org.arcadia.arc_quest.Arc_Quest;
 
 /**

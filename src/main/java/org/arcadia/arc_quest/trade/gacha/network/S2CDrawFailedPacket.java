@@ -1,23 +1,34 @@
 package org.arcadia.arc_quest.trade.gacha.network;
 
+import net.minecraft.network.chat.ComponentSerialization;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * 服务端发送抽奖失败通知给客户端（冷却/限购/条件不满足）。
  */
-public class S2CDrawFailedPacket {
+public class S2CDrawFailedPacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<S2CDrawFailedPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "draw_failed"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CDrawFailedPacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CDrawFailedPacket::encode, S2CDrawFailedPacket::decode);
 
     private final String shopId;
     private final String failReason;
@@ -48,7 +59,7 @@ public class S2CDrawFailedPacket {
         buf.writeUtf(pkt.errorKey);
         buf.writeVarInt(pkt.shortfallLines.size());
         for (CostShortfallLine line : pkt.shortfallLines) {
-            buf.writeComponent(line.label());
+            ComponentSerialization.STREAM_CODEC.encode((RegistryFriendlyByteBuf) buf, line.label());
             buf.writeVarInt(line.required());
             buf.writeVarInt(line.owned());
             buf.writeVarInt(line.missing());
@@ -63,7 +74,7 @@ public class S2CDrawFailedPacket {
         List<CostShortfallLine> shortfalls = new ArrayList<>(shortfallCount);
         for (int i = 0; i < shortfallCount; i++) {
             shortfalls.add(new CostShortfallLine(
-                    buf.readComponent(),
+                    ComponentSerialization.STREAM_CODEC.decode((RegistryFriendlyByteBuf) buf),
                     buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt()
@@ -72,8 +83,13 @@ public class S2CDrawFailedPacket {
         return new S2CDrawFailedPacket(shopId, failReason, errorKey, shortfalls);
     }
 
-    public static void handle(S2CDrawFailedPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CDrawFailedPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
 
@@ -91,6 +107,5 @@ public class S2CDrawFailedPacket {
                 }
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

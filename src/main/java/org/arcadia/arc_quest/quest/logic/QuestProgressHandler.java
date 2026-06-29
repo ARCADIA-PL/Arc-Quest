@@ -8,8 +8,9 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Holder;
 import org.arcadia.arc_quest.api.event.quest.*;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -133,8 +134,8 @@ public final class QuestProgressHandler {
         }
 
         QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
-        MinecraftForge.EVENT_BUS.post(new QuestAcceptedEvent(player, ResourceLocation.parse(questId)));
-        MinecraftForge.EVENT_BUS.post(new QuestStartedEvent(player, ResourceLocation.parse(questId)));
+        NeoForge.EVENT_BUS.post(new QuestAcceptedEvent(player, ResourceLocation.parse(questId)));
+        NeoForge.EVENT_BUS.post(new QuestStartedEvent(player, ResourceLocation.parse(questId)));
         playChapterSound(player, def.getChapterStartSound());
 
         return QuestRejectCodeDictionary.Code.OK;
@@ -174,7 +175,7 @@ public final class QuestProgressHandler {
         QuestEventBus.fire(QuestChangeEvent.objectiveProgressed(
                 ResourceLocation.parse(questId), objIndex, newProgress, required));
 
-        MinecraftForge.EVENT_BUS.post(new QuestProgressChangedEvent(
+        NeoForge.EVENT_BUS.post(new QuestProgressChangedEvent(
                 player, ResourceLocation.parse(questId), phaseId,
                 objIndex, currentProgress, newProgress, required));
 
@@ -291,7 +292,7 @@ public final class QuestProgressHandler {
             }
         }
 
-        MinecraftForge.EVENT_BUS.post(new QuestPhaseCompletedEvent(
+        NeoForge.EVENT_BUS.post(new QuestPhaseCompletedEvent(
                 player, ResourceLocation.parse(qdata.getQuestId()), phase.getPhaseId()));
 
         grantRewards(player, phase.getPhaseRewards(), "phase");
@@ -539,7 +540,7 @@ public final class QuestProgressHandler {
             activatePhase(player, data, qdata, def, resolvedPhaseId, pid, true, ctx);
         }
 
-        MinecraftForge.EVENT_BUS.post(new QuestChoiceResolvedEvent(
+        NeoForge.EVENT_BUS.post(new QuestChoiceResolvedEvent(
                 player,
                 ResourceLocation.parse(questId),
                 resolvedPhaseId,
@@ -593,7 +594,7 @@ public final class QuestProgressHandler {
 
         syncQuestStateAndPush(player, qdata);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
-        MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
+        NeoForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def != null) playChapterSound(player, def.getChapterFailSound());
     }
@@ -619,8 +620,8 @@ public final class QuestProgressHandler {
 
         syncFullDataAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
-        MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
-        MinecraftForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
+        NeoForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
+        NeoForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def != null) playChapterSound(player, def.getChapterFailSound());
         return QuestRejectCodeDictionary.Code.OK;
@@ -684,7 +685,7 @@ public final class QuestProgressHandler {
         syncQuestStateAndPush(player, qdata);
         syncFlagsVarsAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
-        MinecraftForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
+        NeoForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
         playChapterSound(player, def.getChapterCompleteSound());
     }
 
@@ -742,7 +743,7 @@ public final class QuestProgressHandler {
             QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
         }
 
-        MinecraftForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
+        NeoForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
     }
 
     // ═══════════════════════════════════════════════════════
@@ -887,14 +888,14 @@ public final class QuestProgressHandler {
 
         ResourceLocation tagId = ResourceLocation.parse(tag);
         TagKey<Item> key = TagKey.create(Registries.ITEM, tagId);
-        var named = ForgeRegistries.ITEMS.tags();
-        if (named == null) return List.of(obj.getTargetId());
-
+        // 收集该 tag 下所有物品 id
         List<ResourceLocation> ids = new ArrayList<>();
-        for (Item taggedItem : named.getTag(key)) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(taggedItem);
-            if (id != null) ids.add(id);
-        }
+        BuiltInRegistries.ITEM.getTag(key).ifPresent(holders -> {
+            for (Holder<Item> h : holders) {
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(h.value());
+                if (id != null) ids.add(id);
+            }
+        });
         if (ids.isEmpty()) ids.add(obj.getTargetId());
         return ids;
     }
@@ -954,8 +955,8 @@ public final class QuestProgressHandler {
         ctx.activatedCount++;
 
         QuestEventBus.fire(QuestChangeEvent.phaseChanged(def.getId(), fromPhaseId, next.getPhaseId()));
-        MinecraftForge.EVENT_BUS.post(new QuestPhaseChangedEvent(player, def.getId(), fromPhaseId, next.getPhaseId()));
-        MinecraftForge.EVENT_BUS.post(new QuestPhaseActivatedEvent(player, def.getId(), fromPhaseId, next.getPhaseId(), !enforceEnterCondition));
+        NeoForge.EVENT_BUS.post(new QuestPhaseChangedEvent(player, def.getId(), fromPhaseId, next.getPhaseId()));
+        NeoForge.EVENT_BUS.post(new QuestPhaseActivatedEvent(player, def.getId(), fromPhaseId, next.getPhaseId(), !enforceEnterCondition));
         return true;
     }
 

@@ -1,9 +1,15 @@
 package org.arcadia.arc_quest.trade.gacha.network;
 
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -13,12 +19,17 @@ import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * 服务端 -> 客户端：抽奖状态包（合并 OPEN + SYNC）
  */
-public class S2CGachaStatePacket {
+public class S2CGachaStatePacket implements CustomPacketPayload {
+
+    public static final Type<S2CGachaStatePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "gacha_state"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CGachaStatePacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CGachaStatePacket::encode, S2CGachaStatePacket::decode);
 
     private final Mode mode;
     private final String shopId;
@@ -123,7 +134,7 @@ public class S2CGachaStatePacket {
 
         buf.writeVarInt(pkt.shortfallLines.size());
         for (CostShortfallLine line : pkt.shortfallLines) {
-            buf.writeComponent(line.label());
+            ComponentSerialization.STREAM_CODEC.encode((RegistryFriendlyByteBuf) buf, line.label());
             buf.writeVarInt(line.required());
             buf.writeVarInt(line.owned());
             buf.writeVarInt(line.missing());
@@ -158,7 +169,7 @@ public class S2CGachaStatePacket {
         List<CostShortfallLine> shortfalls = new ArrayList<>(shortfallCount);
         for (int i = 0; i < shortfallCount; i++) {
             shortfalls.add(new CostShortfallLine(
-                    buf.readComponent(),
+                    ComponentSerialization.STREAM_CODEC.decode((RegistryFriendlyByteBuf) buf),
                     buf.readVarInt(),
                     buf.readVarInt(),
                     buf.readVarInt()
@@ -195,15 +206,20 @@ public class S2CGachaStatePacket {
         );
     }
 
-    public static void handle(S2CGachaStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CGachaStatePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
             if (GachaRegistry.get(pkt.shopId) == null) return;
 
             // OPEN 才派发 opened 事件
             if (pkt.mode == Mode.OPEN) {
-                MinecraftForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(null, pkt.shopId, null));
+                NeoForge.EVENT_BUS.post(new GachaEvents.OpenedEvent(null, pkt.shopId, null));
             }
 
             if (!pkt.drawHistory.isEmpty()) {
@@ -267,7 +283,6 @@ public class S2CGachaStatePacket {
                 mc.setScreen(new GachaScreen(pkt.shopId));
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public enum Mode {

@@ -10,7 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
@@ -266,7 +266,7 @@ public class JournalDetailSinglePhase {
                 if (currentObj.hasTargetTag() && currentObj.getTargetTagTranslationKey() != null) {
                     targetName = Component.translatable(currentObj.getTargetTagTranslationKey()).getString();
                 } else {
-                    Item targetItem = ForgeRegistries.ITEMS.getValue(currentObj.getTargetId());
+                    Item targetItem = BuiltInRegistries.ITEM.get(currentObj.getTargetId());
                     if (targetItem != null && targetItem != Items.AIR) {
                         targetName = getItemName(currentObj.getTargetId());
                     }
@@ -501,7 +501,7 @@ public class JournalDetailSinglePhase {
     private String getItemName(ResourceLocation itemId) {
         String key = itemId.toString();
         return itemNameCache.computeIfAbsent(key, k -> {
-            Item item = ForgeRegistries.ITEMS.getValue(itemId);
+            Item item = BuiltInRegistries.ITEM.get(itemId);
             if (item == null || item == Items.AIR) return "";
             return new ItemStack(item).getHoverName().getString();
         });

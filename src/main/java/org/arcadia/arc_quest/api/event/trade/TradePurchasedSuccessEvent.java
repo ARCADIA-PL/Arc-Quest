@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.api.event.trade;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.Event;
 
 /**
  * 商品购买事件。

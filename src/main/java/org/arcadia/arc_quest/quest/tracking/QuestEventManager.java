@@ -6,15 +6,16 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -29,7 +30,7 @@ import org.slf4j.Logger;
 
 import java.util.*;
 
-@Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 public final class QuestEventManager {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -48,20 +49,20 @@ public final class QuestEventManager {
         Entity killed = event.getEntity();
         if (killed instanceof Player) return;
 
-        ResourceLocation entityTypeId = ForgeRegistries.ENTITY_TYPES.getKey(killed.getType());
+        ResourceLocation entityTypeId = BuiltInRegistries.ENTITY_TYPE.getKey(killed.getType());
         if (entityTypeId == null) return;
 
         processMatch(player, ObjectiveType.KILL, entityTypeId, 1);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
-    public static void onItemPickup(EntityItemPickupEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+    public static void onItemPickup(ItemEntityPickupEvent.Pre event) {
+        if (!(event.getPlayer() instanceof ServerPlayer player)) return;
 
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(event.getItem().getItem().getItem());
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(event.getItemEntity().getItem().getItem());
         if (itemId == null) return;
 
-        int count = event.getItem().getItem().getCount();
+        int count = event.getItemEntity().getItem().getCount();
         processMatch(player, ObjectiveType.COLLECT, itemId, count);
     }
 
@@ -69,7 +70,7 @@ public final class QuestEventManager {
     public static void onItemCrafted(PlayerEvent.ItemCraftedEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
 
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(event.getCrafting().getItem());
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(event.getCrafting().getItem());
         if (itemId == null) return;
 
         int count = event.getCrafting().getCount();
@@ -82,7 +83,7 @@ public final class QuestEventManager {
         Entity target = event.getTarget();
         if (target == null) return;
 
-        ResourceLocation typeId = ForgeRegistries.ENTITY_TYPES.getKey(target.getType());
+        ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(target.getType());
         if (typeId != null) processMatch(player, ObjectiveType.INTERACT, typeId, 1);
     }
 
@@ -90,14 +91,13 @@ public final class QuestEventManager {
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         var block = player.level().getBlockState(event.getPos()).getBlock();
-        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(block);
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
         if (blockId != null) processMatch(player, ObjectiveType.INTERACT, blockId, 1);
     }
 
     @SubscribeEvent(priority = EventPriority.NORMAL)
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (!(event.player instanceof ServerPlayer player)) return;
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
         if ((player.tickCount % 20) != 0) return;
 
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);

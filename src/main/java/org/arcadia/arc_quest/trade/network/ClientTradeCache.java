@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.trade.network;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
@@ -35,7 +35,7 @@ public final class ClientTradeCache {
         try {
             ResourceLocation rl = ResourceLocation.tryParse(openSoundId);
             if (rl != null) {
-                SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(rl);
+                SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(rl);
                 if (sound != null) GuiSoundManager.play(sound);
                 else LOGGER.warn("[TradeCache] Open sound not found: {}", openSoundId);
             }
@@ -49,7 +49,7 @@ public final class ClientTradeCache {
         try {
             ResourceLocation rl = ResourceLocation.tryParse(closeSoundId);
             if (rl != null) {
-                SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(rl);
+                SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(rl);
                 if (sound != null) GuiSoundManager.play(sound);
                 else LOGGER.warn("[TradeCache] Close sound not found: {}", closeSoundId);
             }

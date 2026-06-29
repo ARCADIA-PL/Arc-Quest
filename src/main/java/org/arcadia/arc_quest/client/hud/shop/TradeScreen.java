@@ -165,9 +165,9 @@ public class TradeScreen extends AbstractTradeScreen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double d) {
+    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
         if (isClosing || dt == 0) return false;
-        listPanel.mouseScrolled(d, panelH() - 36 - BOTTOM_PADDING);
+        listPanel.mouseScrolled(scrollY, panelH() - 36 - BOTTOM_PADDING);
         return true;
     }
 

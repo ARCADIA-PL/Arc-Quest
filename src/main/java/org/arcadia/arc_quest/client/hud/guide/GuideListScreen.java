@@ -155,7 +155,8 @@ public final class GuideListScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double delta) {
+    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+        double delta = scrollY;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -171,7 +172,7 @@ public final class GuideListScreen extends Screen {
         if (listPanel.mouseScrolled(smx, smy, delta, listX, listY, GuideConstants.LIST_WIDTH, listH)) return true;
         if (contentPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
 
-        return super.mouseScrolled(mx, my, delta);
+        return super.mouseScrolled(mx, my, scrollX, scrollY);
     }
 
     private float getEaseProgress() {

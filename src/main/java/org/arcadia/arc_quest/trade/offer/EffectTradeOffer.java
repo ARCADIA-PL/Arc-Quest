@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.trade.offer;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
@@ -50,15 +51,15 @@ public final class EffectTradeOffer implements ITradeOffer {
     @Override
     public boolean canAfford(ServerPlayer player) {
         if (!isCost) return true;
-        return player.hasEffect(effect);
+        return player.hasEffect(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect));
     }
 
     @Override
     public void execute(ServerPlayer player) {
         if (isCost) {
-            player.removeEffect(effect);
+            player.removeEffect(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect));
         } else {
-            player.addEffect(new MobEffectInstance(effect, durationTicks, amplifier));
+            player.addEffect(new MobEffectInstance(BuiltInRegistries.MOB_EFFECT.wrapAsHolder(effect), durationTicks, amplifier));
         }
     }
 

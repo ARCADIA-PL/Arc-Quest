@@ -2,16 +2,24 @@ package org.arcadia.arc_quest.guide.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.slf4j.Logger;
 
-import java.util.function.Supplier;
-
-public final class S2COpenGuidePacket {
+public final class S2COpenGuidePacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<S2COpenGuidePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "open_guide"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2COpenGuidePacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2COpenGuidePacket::encode, S2COpenGuidePacket::decode);
 
     private final ResourceLocation guideId;
     private final int initialPage;
@@ -37,14 +45,18 @@ public final class S2COpenGuidePacket {
         );
     }
 
-    public static void handle(S2COpenGuidePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2COpenGuidePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             if (GuideRegistry.get(pkt.guideId) == null) {
                 LOGGER.warn("[Guide] Ignored open packet for unknown guide '{}'", pkt.guideId);
                 return;
             }
             ClientGuideCache.INSTANCE.requestOpen(pkt.guideId, pkt.initialPage, pkt.markSeenOnClose);
         });
-        ctx.get().setPacketHandled(true);
     }
 }

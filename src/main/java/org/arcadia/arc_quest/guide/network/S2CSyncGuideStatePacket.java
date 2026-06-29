@@ -1,14 +1,23 @@
 package org.arcadia.arc_quest.guide.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-public final class S2CSyncGuideStatePacket {
+public final class S2CSyncGuideStatePacket implements CustomPacketPayload {
+
+    public static final Type<S2CSyncGuideStatePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "sync_guide_state"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CSyncGuideStatePacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CSyncGuideStatePacket::encode, S2CSyncGuideStatePacket::decode);
 
     private final List<ResourceLocation> unlockedGuides;
     private final List<ResourceLocation> seenGuides;
@@ -44,8 +53,12 @@ public final class S2CSyncGuideStatePacket {
         return new S2CSyncGuideStatePacket(unlocked, seen);
     }
 
-    public static void handle(S2CSyncGuideStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> ClientGuideCache.INSTANCE.applySync(pkt.unlockedGuides, pkt.seenGuides));
-        ctx.get().setPacketHandled(true);
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CSyncGuideStatePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> ClientGuideCache.INSTANCE.applySync(pkt.unlockedGuides, pkt.seenGuides));
     }
 }

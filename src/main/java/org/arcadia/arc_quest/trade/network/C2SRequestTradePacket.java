@@ -2,12 +2,16 @@ package org.arcadia.arc_quest.trade.network;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraft.core.registries.BuiltInRegistries;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.trade.*;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -23,14 +27,19 @@ import org.slf4j.Logger;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 
 /**
  * 客户端→服务端：请求执行交易 / 打开交易窗口。
  */
-public class C2SRequestTradePacket {
+public class C2SRequestTradePacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<C2SRequestTradePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "request_trade"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, C2SRequestTradePacket> STREAM_CODEC =
+            StreamCodec.ofMember(C2SRequestTradePacket::encode, C2SRequestTradePacket::decode);
 
     private static final Map<UUID, Map<String, Integer>> LAST_TRADE_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
     private static final Map<UUID, ActiveTradeContext> ACTIVE_TRADE_CONTEXTS = new ConcurrentHashMap<>();
@@ -111,9 +120,15 @@ public class C2SRequestTradePacket {
         return new C2SRequestTradePacket(action, shopId, entryId, screenType);
     }
 
-    public static void handle(C2SRequestTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = TradeRequestValidator.requirePlayer(ctx.get().getSender(), "trade_request", pkt.shopId, LOGGER);
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(C2SRequestTradePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer sender = ctx.player() instanceof ServerPlayer sp ? sp : null;
+            ServerPlayer player = TradeRequestValidator.requirePlayer(sender, "trade_request", pkt.shopId, LOGGER);
             if (player == null) return;
 
             TradeShopDefinition shop = TradeRequestValidator.requireShop(pkt.shopId, player, "trade_request", LOGGER);
@@ -134,7 +149,6 @@ public class C2SRequestTradePacket {
                 case PURCHASE -> handlePurchase(player, shop, pkt.entryId, pkt.currentScreenType);
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     // ── 序列化 ──
@@ -143,8 +157,8 @@ public class C2SRequestTradePacket {
                                            C2SRequestTradePacket pkt,
                                            RejectCodeDictionary.Code code) {
         String errorKey = TradeRequestValidator.toErrorKey(code);
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(
+                player,
                 S2COpenTradePacket.tradeFail(
                         pkt.shopId,
                         pkt.entryId,
@@ -153,9 +167,9 @@ public class C2SRequestTradePacket {
                 )
         );
         if (pkt.entryId == null || pkt.entryId.isEmpty()) {
-            MinecraftForge.EVENT_BUS.post(new TradeOpenRejectedEvent(player, pkt.shopId, errorKey));
+            NeoForge.EVENT_BUS.post(new TradeOpenRejectedEvent(player, pkt.shopId, errorKey));
         } else {
-            MinecraftForge.EVENT_BUS.post(new TradePurchaseRejectedEvent(player, pkt.shopId, pkt.entryId, errorKey));
+            NeoForge.EVENT_BUS.post(new TradePurchaseRejectedEvent(player, pkt.shopId, pkt.entryId, errorKey));
         }
     }
 
@@ -192,13 +206,13 @@ public class C2SRequestTradePacket {
         // 获取商店音效 ID
         String openSoundId = shop.getOpenSound() != null ?
                 ResourceLocation.fromNamespaceAndPath(
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getNamespace(),
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getOpenSound())).getPath()
+                        Objects.requireNonNull(BuiltInRegistries.SOUND_EVENT.getKey(shop.getOpenSound())).getNamespace(),
+                        Objects.requireNonNull(BuiltInRegistries.SOUND_EVENT.getKey(shop.getOpenSound())).getPath()
                 ).toString() : "";
         String closeSoundId = shop.getCloseSound() != null ?
                 ResourceLocation.fromNamespaceAndPath(
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getNamespace(),
-                        Objects.requireNonNull(ForgeRegistries.SOUND_EVENTS.getKey(shop.getCloseSound())).getPath()
+                        Objects.requireNonNull(BuiltInRegistries.SOUND_EVENT.getKey(shop.getCloseSound())).getNamespace(),
+                        Objects.requireNonNull(BuiltInRegistries.SOUND_EVENT.getKey(shop.getCloseSound())).getPath()
                 ).toString() : "";
 
         S2COpenTradePacket response = simple
@@ -213,8 +227,8 @@ public class C2SRequestTradePacket {
                 snap.visibility(), snap.canBuyConditions(),
                 openSoundId, closeSoundId);
 
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(
+                player,
                 response);
 
         markTradeSynced(player, shop.getShopId(), snap);
@@ -225,7 +239,7 @@ public class C2SRequestTradePacket {
 
         // 发布 Forge 事件（供附属模组监听）
         // 注意：商店打开时没有 NPC 上下文，npc 参数为 null
-        MinecraftForge.EVENT_BUS.post(new TradeOpenedEvent(player, shop.getShopId(), null));
+        NeoForge.EVENT_BUS.post(new TradeOpenedEvent(player, shop.getShopId(), null));
     }
 
     private static void handlePurchase(ServerPlayer player, TradeShopDefinition shop,
@@ -252,8 +266,8 @@ public class C2SRequestTradePacket {
                 ? S2COpenTradePacket.tradeSuccess(shop.getShopId(), entryId)
                 : S2COpenTradePacket.tradeFail(shop.getShopId(), entryId, reason, errorKey, result.shortfallLines());
 
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(
+                player,
                 response);
 
         SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(),
@@ -262,7 +276,7 @@ public class C2SRequestTradePacket {
 
         // 发布 Forge 事件（供附属模组监听）
         if (result.succeeded()) {
-            MinecraftForge.EVENT_BUS.post(new TradePurchasedSuccessEvent(player, shop.getShopId(), entryId));
+            NeoForge.EVENT_BUS.post(new TradePurchasedSuccessEvent(player, shop.getShopId(), entryId));
         } else {
             // 转换失败原因
             TradePurchaseFailedEvent.FailureReason failureReason = switch (reason) {
@@ -272,9 +286,9 @@ public class C2SRequestTradePacket {
                 case CANNOT_AFFORD -> TradePurchaseFailedEvent.FailureReason.INSUFFICIENT_FUNDS;
                 default -> TradePurchaseFailedEvent.FailureReason.UNKNOWN;
             };
-            MinecraftForge.EVENT_BUS.post(new TradePurchaseFailedEvent(
+            NeoForge.EVENT_BUS.post(new TradePurchaseFailedEvent(
                     player, shop.getShopId(), entryId, failureReason));
-            MinecraftForge.EVENT_BUS.post(new TradePurchaseRejectedEvent(
+            NeoForge.EVENT_BUS.post(new TradePurchaseRejectedEvent(
                     player, shop.getShopId(), entryId, errorKey));
         }
 
@@ -296,7 +310,7 @@ public class C2SRequestTradePacket {
         if (!shouldSendTradeSync(player, shop.getShopId(), snap)) {
             SyncObservability.recordDropped("trade", shop.getShopId(), player.getName().getString(), false);
             SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_DROPPED, reason);
-            MinecraftForge.EVENT_BUS.post(new TradeStateSyncedEvent(player, shop.getShopId(), reason, TradeStateSyncedEvent.SyncResult.DROPPED));
+            NeoForge.EVENT_BUS.post(new TradeStateSyncedEvent(player, shop.getShopId(), reason, TradeStateSyncedEvent.SyncResult.DROPPED));
             return;
         }
 
@@ -314,13 +328,13 @@ public class C2SRequestTradePacket {
                 snap.canBuyConditions()
         );
 
-        ArcQuestNetwork.CHANNEL.send(
-                PacketDistributor.PLAYER.with(() -> player),
+        PacketDistributor.sendToPlayer(
+                player,
                 refreshPkt
         );
         SyncObservability.recordSent("trade", shop.getShopId(), player.getName().getString(), true);
         SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(), SyncObservability.Stage.SYNC_SENT, reason);
-        MinecraftForge.EVENT_BUS.post(new TradeStateSyncedEvent(player, shop.getShopId(), reason, TradeStateSyncedEvent.SyncResult.SENT));
+        NeoForge.EVENT_BUS.post(new TradeStateSyncedEvent(player, shop.getShopId(), reason, TradeStateSyncedEvent.SyncResult.SENT));
     }
 
     /**

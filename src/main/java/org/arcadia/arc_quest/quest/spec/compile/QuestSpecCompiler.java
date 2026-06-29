@@ -8,7 +8,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.api.rule.collection.*;
@@ -435,19 +435,19 @@ public final class QuestSpecCompiler {
 
     private SoundEvent parseNullableSound(String id) {
         if (id == null || id.isBlank()) return null;
-        SoundEvent sound = ForgeRegistries.SOUND_EVENTS.getValue(parseId(id));
+        SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(parseId(id));
         if (sound == null) throw new QuestCompileException("Unknown sound id: " + id);
         return sound;
     }
 
     private EntityType<?> requireEntityType(String id) {
-        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(parseId(id));
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(parseId(id));
         if (type == null) throw new QuestCompileException("Unknown entity type id: " + id);
         return type;
     }
 
     private Item requireItem(String itemId) {
-        var item = ForgeRegistries.ITEMS.getValue(parseId(itemId));
+        var item = BuiltInRegistries.ITEM.get(parseId(itemId));
         if (item == null) throw new QuestCompileException("Unknown item id: " + itemId);
         return item;
     }

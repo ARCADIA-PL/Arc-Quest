@@ -2,16 +2,25 @@ package org.arcadia.arc_quest.trade.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.shop.SimpleTradePanel;
 import org.arcadia.arc_quest.client.hud.shop.TradeScreen;
-
-import java.util.function.Supplier;
 
 /**
  * 服务端 -> 客户端：仅同步交易权威状态，不负责打开界面。
  */
-public class S2CSyncTradeStatePacket {
+public class S2CSyncTradeStatePacket implements CustomPacketPayload {
+
+    public static final Type<S2CSyncTradeStatePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "sync_trade_state"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CSyncTradeStatePacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CSyncTradeStatePacket::encode, S2CSyncTradeStatePacket::decode);
 
     private final String shopId;
     private final int[] purchaseCounts;
@@ -102,8 +111,13 @@ public class S2CSyncTradeStatePacket {
         );
     }
 
-    public static void handle(S2CSyncTradeStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CSyncTradeStatePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
 
             ClientTradeCache.INSTANCE.updateSession(
@@ -126,6 +140,5 @@ public class S2CSyncTradeStatePacket {
                 sp.refreshData();
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 }

@@ -1,7 +1,12 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
@@ -9,12 +14,11 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * S2C：服务端向客户端同步 Marker（版本化快照 + 增量）。
  */
-public class S2CSyncMarkersPacket {
+public final class S2CSyncMarkersPacket implements CustomPacketPayload {
 
     public static final byte MODE_SNAPSHOT = 0;
     public static final byte MODE_DELTA = 1;
@@ -22,6 +26,12 @@ public class S2CSyncMarkersPacket {
     public static final byte OP_CLEAR = 0;
     public static final byte OP_ADD = 1;
     public static final byte OP_REMOVE = 2;
+
+    public static final Type<S2CSyncMarkersPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "sync_markers"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CSyncMarkersPacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CSyncMarkersPacket::encode, S2CSyncMarkersPacket::decode);
 
     private final byte mode;
     private final long epoch;
@@ -114,8 +124,13 @@ public class S2CSyncMarkersPacket {
         return deltaClear(epoch, revision);
     }
 
-    public static void handle(S2CSyncMarkersPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CSyncMarkersPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             if (pkt.mode == MODE_SNAPSHOT) {
                 List<QuestMarkerData> snapshot = pkt.entries.stream()
                         .map(S2CSyncMarkersPacket::toMarkerData)
@@ -137,7 +152,6 @@ public class S2CSyncMarkersPacket {
                 }
             });
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static void writeEntry(FriendlyByteBuf buf, MarkerEntry e) {

@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.api.event.dialogue;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.Event;
 
 /**
  * 对话结束事件。

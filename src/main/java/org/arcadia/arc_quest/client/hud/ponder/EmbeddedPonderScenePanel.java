@@ -203,7 +203,7 @@ public final class EmbeddedPonderScenePanel {
         PoseStack ms = g.pose();
         ms.pushPose();
         ms.translate(areaX, areaY, -800);
-        RenderSystem.setupLevelDiffuseLighting(DIFFUSE_0, DIFFUSE_1, ms.last().pose());
+        RenderSystem.setupLevelDiffuseLighting(DIFFUSE_0, DIFFUSE_1);
 
         scene.getTransform().updateScreenParams(areaW, areaH, 0);
         scene.getTransform().apply(ms, pt);

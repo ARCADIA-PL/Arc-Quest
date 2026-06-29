@@ -189,7 +189,7 @@ public final class TradeShopBuilder {
      * <p>
      * 使用示例：
      * <pre>{@code
-     * .openSound(SoundEvents.UI_BUTTON_CLICK.get())
+     * .openSound(SoundEvents.UI_BUTTON_CLICK.value())
      * }</pre>
      *
      * @param sound 音效事件
@@ -212,7 +212,7 @@ public final class TradeShopBuilder {
      * @return 当前构建器
      */
     public TradeShopBuilder openSound(Holder.Reference<SoundEvent> sound) {
-        openSound = sound.get();
+        openSound = sound.value();
         return this;
     }
 
@@ -221,7 +221,7 @@ public final class TradeShopBuilder {
      * <p>
      * 使用示例：
      * <pre>{@code
-     * .closeSound(SoundEvents.UI_BUTTON_CLICK.get())
+     * .closeSound(SoundEvents.UI_BUTTON_CLICK.value())
      * }</pre>
      *
      * @param sound 音效事件
@@ -244,7 +244,7 @@ public final class TradeShopBuilder {
      * @return 当前构建器
      */
     public TradeShopBuilder closeSound(Holder.Reference<SoundEvent> sound) {
-        closeSound = sound.get();
+        closeSound = sound.value();
         return this;
     }
 

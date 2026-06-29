@@ -2,15 +2,24 @@ package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 
 /**
  * S2C：Quest action 的标准结果回包（含 reject code）。
  */
-public class S2CQuestActionResultPacket {
+public final class S2CQuestActionResultPacket implements CustomPacketPayload {
+
+    public static final Type<S2CQuestActionResultPacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "quest_action_result"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2CQuestActionResultPacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2CQuestActionResultPacket::encode, S2CQuestActionResultPacket::decode);
 
     private final C2SRequestQuestActionPacket.Action action;
     private final String questId;
@@ -46,8 +55,13 @@ public class S2CQuestActionResultPacket {
         );
     }
 
-    public static void handle(S2CQuestActionResultPacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2CQuestActionResultPacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
 
@@ -65,7 +79,6 @@ public class S2CQuestActionResultPacket {
             Component msg = toClientMessage(pkt.action, pkt.questId, code);
             mc.player.displayClientMessage(msg, true);
         });
-        ctx.get().setPacketHandled(true);
     }
 
     private static Component toClientMessage(C2SRequestQuestActionPacket.Action action,

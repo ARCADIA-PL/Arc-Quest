@@ -1,9 +1,15 @@
 package org.arcadia.arc_quest.trade.network;
 
+import net.minecraft.network.chat.ComponentSerialization;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.shop.SimpleTradePanel;
 import org.arcadia.arc_quest.client.hud.shop.TradeScreen;
@@ -12,14 +18,19 @@ import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * 服务端→客户端：打开交易窗口 / 交易结果反馈。
  */
-public class S2COpenTradePacket {
+public class S2COpenTradePacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<S2COpenTradePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "open_trade"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2COpenTradePacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2COpenTradePacket::encode, S2COpenTradePacket::decode);
     private final Mode mode;
     private final String shopId;
     private final String entryId;
@@ -180,7 +191,7 @@ public class S2COpenTradePacket {
             List<CostShortfallLine> shortfalls = new ArrayList<>(shortfallCount);
             for (int i = 0; i < shortfallCount; i++) {
                 shortfalls.add(new CostShortfallLine(
-                        buf.readComponent(),
+                        ComponentSerialization.STREAM_CODEC.decode((RegistryFriendlyByteBuf) buf),
                         buf.readVarInt(),
                         buf.readVarInt(),
                         buf.readVarInt()
@@ -194,8 +205,13 @@ public class S2COpenTradePacket {
         }
     }
 
-    public static void handle(S2COpenTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public static void handle(S2COpenTradePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             switch (pkt.mode) {
                 case OPEN_FULL -> {
@@ -261,7 +277,6 @@ public class S2COpenTradePacket {
                 }
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -311,7 +326,7 @@ public class S2COpenTradePacket {
             if (mode == Mode.TRADE_FAIL) {
                 buf.writeVarInt(shortfallLines.size());
                 for (CostShortfallLine line : shortfallLines) {
-                    buf.writeComponent(line.label());
+                    ComponentSerialization.STREAM_CODEC.encode((RegistryFriendlyByteBuf) buf, line.label());
                     buf.writeVarInt(line.required());
                     buf.writeVarInt(line.owned());
                     buf.writeVarInt(line.missing());

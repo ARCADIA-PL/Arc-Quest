@@ -167,7 +167,7 @@ public class GachaResultRenderer {
             return false;
         currentState = State.EXIT;
         exitStartTime = Util.getMillis();
-        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f));
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.5f));
         return true;
     }
 

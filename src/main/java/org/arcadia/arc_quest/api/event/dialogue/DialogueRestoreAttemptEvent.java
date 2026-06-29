@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.api.event.dialogue;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.Event;
 
 public class DialogueRestoreAttemptEvent extends Event {
     private final ServerPlayer player;

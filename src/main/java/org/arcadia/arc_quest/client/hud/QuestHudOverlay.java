@@ -4,10 +4,10 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraft.client.gui.LayeredDraw;
+import net.neoforged.fml.loading.FMLPaths;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-public class QuestHudOverlay implements IGuiOverlay {
+public class QuestHudOverlay implements LayeredDraw.Layer {
 
     public static final QuestHudOverlay INSTANCE = new QuestHudOverlay();
 
@@ -85,7 +85,10 @@ public class QuestHudOverlay implements IGuiOverlay {
     }
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
+    public void render(GuiGraphics g, DeltaTracker deltaTracker) {
+        int screenWidth = g.guiWidth();
+        int screenHeight = g.guiHeight();
+        float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
         Minecraft mc = Minecraft.getInstance();
         if (!trackedSelectionLoaded) loadTrackedSelectionFromDisk();
         if (mc.player == null || mc.options.hideGui) return;

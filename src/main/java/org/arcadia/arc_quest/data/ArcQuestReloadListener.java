@@ -5,9 +5,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.io.DialogueDatapackHotReloadService;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
@@ -24,7 +25,7 @@ import org.slf4j.Logger;
 import java.util.Collections;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<ResourceLocation, Object>> {
 
     private static final Logger LOGGER = LogUtils.getLogger();

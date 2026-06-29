@@ -3,10 +3,11 @@ package org.arcadia.arc_quest.trade.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.shop.SimpleTradePanel;
@@ -38,7 +39,7 @@ import org.slf4j.Logger;
  *   <li>避免频繁的网络通信</li>
  * </ul>
  */
-@Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
 public class TradeAutoRefreshListener {
 
     private static final Logger LOGGER = LogUtils.getLogger();

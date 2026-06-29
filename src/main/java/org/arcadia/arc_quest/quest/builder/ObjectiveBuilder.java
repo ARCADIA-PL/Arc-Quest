@@ -5,7 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
@@ -32,7 +32,7 @@ public final class ObjectiveBuilder {
     }
 
     public static ObjectiveBuilder kill(EntityType<?> entityType, int count) {
-        ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(entityType);
+        ResourceLocation key = BuiltInRegistries.ENTITY_TYPE.getKey(entityType);
         Objects.requireNonNull(key, "EntityType not registered: " + entityType);
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.KILL);
         b.targetId = key;
@@ -44,7 +44,7 @@ public final class ObjectiveBuilder {
     }
 
     public static ObjectiveBuilder collect(Item item, int count) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         Objects.requireNonNull(key, "Item not registered: " + item);
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.COLLECT);
         b.targetId = key;
@@ -75,7 +75,7 @@ public final class ObjectiveBuilder {
     }
 
     public static ObjectiveBuilder deliver(Item item, int count, ResourceLocation npcId) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         Objects.requireNonNull(key, "Item not registered: " + item);
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.DELIVER);
         b.targetId = key;
@@ -122,7 +122,7 @@ public final class ObjectiveBuilder {
     }
 
     public static ObjectiveBuilder offer(Item item, int count) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         Objects.requireNonNull(key, "Item not registered: " + item);
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.OFFER);
         b.targetId = key;

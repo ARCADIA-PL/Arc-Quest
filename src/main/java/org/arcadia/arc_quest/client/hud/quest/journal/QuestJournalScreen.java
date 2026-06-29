@@ -284,7 +284,8 @@ public class QuestJournalScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double delta) {
+    public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+        double delta = scrollY;
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -307,7 +308,7 @@ public class QuestJournalScreen extends Screen {
         } else {
             if (detailPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
         }
-        return super.mouseScrolled(mx, my, delta);
+        return super.mouseScrolled(mx, my, scrollX, scrollY);
     }
 
     private float getEaseProgress() {
@@ -437,7 +438,7 @@ public class QuestJournalScreen extends Screen {
 
     public void renderTooltip(GuiGraphics g, ItemStack stack, int mouseX, int mouseY) {
         if (minecraft == null || minecraft.player == null) return;
-        List<Component> lines = stack.getTooltipLines(minecraft.player, minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+        List<Component> lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.EMPTY, minecraft.player, minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
         if (lines.isEmpty()) return;
         renderTooltipLayout(g, buildTooltipLayoutNoCache(lines), mouseX, mouseY);
     }

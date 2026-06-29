@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.questmarker;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -60,9 +61,7 @@ public final class MarkerRenderUtil {
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
         Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
-
-        buffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         // 1. 外部装甲翼轮廓 (深空灰)
         // 参数：尖端Y，翼宽，翼尖Y，内凹底X，内凹底Y
@@ -74,7 +73,7 @@ public final class MarkerRenderUtil {
         // 3. 核心机能亮色点缀 (极小、锋利的彩色指示尖端)
         buildChevron(buffer, mat, 0, -8, 3, -1, 0, -3, accentColor);
 
-        tesselator.end();
+        BufferUploader.drawWithShader(buffer.buildOrThrow());
         RenderSystem.disableBlend();
     }
 
@@ -88,13 +87,13 @@ public final class MarkerRenderUtil {
         float b = (color & 255) / 255.0F;
 
         // 左半翼
-        buffer.vertex(mat, tipX, tipY, 0).color(r, g, b, a).endVertex();
-        buffer.vertex(mat, -wingX, wingY, 0).color(r, g, b, a).endVertex();
-        buffer.vertex(mat, innerX, innerY, 0).color(r, g, b, a).endVertex();
+        buffer.addVertex(mat, tipX, tipY, 0).setColor(r, g, b, a);
+        buffer.addVertex(mat, -wingX, wingY, 0).setColor(r, g, b, a);
+        buffer.addVertex(mat, innerX, innerY, 0).setColor(r, g, b, a);
 
         // 右半翼
-        buffer.vertex(mat, tipX, tipY, 0).color(r, g, b, a).endVertex();
-        buffer.vertex(mat, innerX, innerY, 0).color(r, g, b, a).endVertex();
-        buffer.vertex(mat, wingX, wingY, 0).color(r, g, b, a).endVertex();
+        buffer.addVertex(mat, tipX, tipY, 0).setColor(r, g, b, a);
+        buffer.addVertex(mat, innerX, innerY, 0).setColor(r, g, b, a);
+        buffer.addVertex(mat, wingX, wingY, 0).setColor(r, g, b, a);
     }
 }

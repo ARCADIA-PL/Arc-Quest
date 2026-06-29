@@ -216,9 +216,9 @@ public class DialogueScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, delta)) return true;
-        return super.mouseScrolled(mouseX, mouseY, delta);
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (DialogueHistoryPanel.isActive() && DialogueHistoryPanel.mouseScrolled(mouseX, mouseY, scrollY)) return true;
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
@@ -353,7 +353,7 @@ public class DialogueScreen extends Screen {
 
     private void playClick() {
         if (minecraft != null)
-            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.0F, 0.8F));
+            minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.0F, 0.8F));
     }
 
     @Override

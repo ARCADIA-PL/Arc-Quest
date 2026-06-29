@@ -225,7 +225,7 @@ public final class TradeContent {
                         .entry(TradeEntryBuilder.create("qs_potion")
                                 .displayName(Component.translatable("arc_quest.trade.entry.qs_potion.name"))
                                 .costItem(Items.EMERALD, 3)
-                                .rewardEffect(MobEffects.HEAL, 1))
+                                .rewardEffect(MobEffects.HEAL.value(), 1))
                         .build()
         );
     }

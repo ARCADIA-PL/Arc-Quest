@@ -15,8 +15,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.fml.loading.FMLPaths;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
@@ -631,7 +631,7 @@ public class JournalDetailParallelPhase {
                         if (obj.hasTargetTag() && obj.getTargetTagTranslationKey() != null)
                             targetName = Component.translatable(obj.getTargetTagTranslationKey()).getString();
                         else {
-                            Item targetItem = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
+                            Item targetItem = BuiltInRegistries.ITEM.get(obj.getTargetId());
                             if (targetItem != null && targetItem != Items.AIR)
                                 targetName = getItemName(obj.getTargetId());
                         }
@@ -913,7 +913,7 @@ public class JournalDetailParallelPhase {
         if (newIndex != currentIndex) {
             customPhaseOrder.remove(currentIndex);
             customPhaseOrder.add(newIndex, draggingPhaseId);
-            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.get(), 1.5f, 0.2f));
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK.value(), 1.5f, 0.2f));
         }
     }
 
@@ -1008,7 +1008,7 @@ public class JournalDetailParallelPhase {
         String key = "item-name:" + itemId;
         return textLayoutCache.computeIfAbsent(key, k -> {
             TextLayoutCache cache = new TextLayoutCache();
-            Item item = ForgeRegistries.ITEMS.getValue(itemId);
+            Item item = BuiltInRegistries.ITEM.get(itemId);
             cache.text = item == null || item == Items.AIR ? "" : new ItemStack(item).getHoverName().getString();
             return cache;
         }).text;

@@ -269,7 +269,7 @@ public final class TradeEntryBuilder {
     }
 
     public TradeEntryBuilder purchaseSuccessSound(Holder.Reference<SoundEvent> sound) {
-        purchaseSuccessSound = sound.get();
+        purchaseSuccessSound = sound.value();
         return this;
     }
 
@@ -279,7 +279,7 @@ public final class TradeEntryBuilder {
     }
 
     public TradeEntryBuilder purchaseFailSound(Holder.Reference<SoundEvent> sound) {
-        purchaseFailSound = sound.get();
+        purchaseFailSound = sound.value();
         return this;
     }
 
@@ -289,7 +289,7 @@ public final class TradeEntryBuilder {
     }
 
     public TradeEntryBuilder cooldownSound(Holder.Reference<SoundEvent> sound) {
-        cooldownSound = sound.get();
+        cooldownSound = sound.value();
         return this;
     }
 
@@ -299,7 +299,7 @@ public final class TradeEntryBuilder {
     }
 
     public TradeEntryBuilder limitReachedSound(Holder.Reference<SoundEvent> sound) {
-        limitReachedSound = sound.get();
+        limitReachedSound = sound.value();
         return this;
     }
 
@@ -309,7 +309,7 @@ public final class TradeEntryBuilder {
     }
 
     public TradeEntryBuilder conditionFailSound(Holder.Reference<SoundEvent> sound) {
-        conditionFailSound = sound.get();
+        conditionFailSound = sound.value();
         return this;
     }
 

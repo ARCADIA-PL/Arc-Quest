@@ -5,7 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.spec.DialogueTextSpec;
@@ -138,13 +138,13 @@ public final class TradeSpecCompiler {
 
         return switch (spec.type) {
             case "item" -> {
-                Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(spec.itemId));
+                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(spec.itemId));
                 if (item == null) throw new TradeCompileException("Unknown item: " + spec.itemId);
                 yield new ItemTradeOffer(item, spec.count, isCost);
             }
             case "command" -> new CommandTradeOffer(spec.command);
             case "effect" -> {
-                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(ResourceLocation.tryParse(spec.effectId));
+                MobEffect effect = BuiltInRegistries.MOB_EFFECT.get(ResourceLocation.tryParse(spec.effectId));
                 if (effect == null) throw new TradeCompileException("Unknown effect: " + spec.effectId);
                 yield new EffectTradeOffer(effect, spec.duration, spec.amplifier, isCost);
             }
@@ -176,7 +176,7 @@ public final class TradeSpecCompiler {
         if (id == null || id.isBlank()) return null;
         ResourceLocation rl = ResourceLocation.tryParse(id);
         if (rl == null) return null;
-        return ForgeRegistries.SOUND_EVENTS.getValue(rl);
+        return BuiltInRegistries.SOUND_EVENT.get(rl);
     }
 
     private String blankToNull(String value) {

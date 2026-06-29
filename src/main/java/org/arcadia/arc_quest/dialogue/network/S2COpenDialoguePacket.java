@@ -1,27 +1,38 @@
 package org.arcadia.arc_quest.dialogue.network;
 
+import net.minecraft.network.chat.ComponentSerialization;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.shop.SimpleTradePanel;
 import org.arcadia.arc_quest.client.hud.shop.TradeScreen;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.function.Supplier;
 
 /**
  * 服务端→客户端：打开/更新/关闭对话界面。
  */
-public class S2COpenDialoguePacket {
+public final class S2COpenDialoguePacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    public static final Type<S2COpenDialoguePacket> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "open_dialogue"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, S2COpenDialoguePacket> STREAM_CODEC =
+            StreamCodec.ofMember(S2COpenDialoguePacket::encode, S2COpenDialoguePacket::decode);
+
     /**
      * 空 dialogueId = 关闭对话。
      */
@@ -264,12 +275,12 @@ public class S2COpenDialoguePacket {
 
         String dId = buf.readUtf();
         String nId = buf.readUtf();
-        Component spk = buf.readComponent();
-        Component txt = buf.readComponent();
+        Component spk = ComponentSerialization.STREAM_CODEC.decode((RegistryFriendlyByteBuf) buf);
+        Component txt = ComponentSerialization.STREAM_CODEC.decode((RegistryFriendlyByteBuf) buf);
         int count = buf.readVarInt();
         Component[] choices = new Component[count];
         for (int i = 0; i < count; i++) {
-            choices[i] = buf.readComponent();
+            choices[i] = ComponentSerialization.STREAM_CODEC.decode((RegistryFriendlyByteBuf) buf);
         }
         boolean terminal = buf.readBoolean();
         boolean autoNext = buf.readBoolean();
@@ -334,11 +345,15 @@ public class S2COpenDialoguePacket {
                 choiceSounds, saySoundId, matchedSayId, choiceIds, mode);
     }
 
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     // ── 序列化 ──
 
-    public static void handle(S2COpenDialoguePacket pkt,
-                              Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
+    public static void handle(S2COpenDialoguePacket pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.mode == Mode.CLOSE || pkt.isClose) {
                 ClientDialogueCache.INSTANCE.closeSession();
@@ -350,12 +365,12 @@ public class S2COpenDialoguePacket {
 
             // 更新缓存
             SoundEvent saySound = pkt.matchedSaySoundId != null ?
-                    ForgeRegistries.SOUND_EVENTS.getValue(pkt.matchedSaySoundId) : null;
+                    BuiltInRegistries.SOUND_EVENT.get(pkt.matchedSaySoundId) : null;
 
             SoundEvent[] choiceSounds = new SoundEvent[pkt.choiceSelectSoundIds != null ? pkt.choiceSelectSoundIds.length : 0];
             for (int i = 0; i < choiceSounds.length; i++) {
                 if (pkt.choiceSelectSoundIds[i] != null) {
-                    choiceSounds[i] = ForgeRegistries.SOUND_EVENTS.getValue(pkt.choiceSelectSoundIds[i]);
+                    choiceSounds[i] = BuiltInRegistries.SOUND_EVENT.get(pkt.choiceSelectSoundIds[i]);
                 }
             }
 
@@ -390,7 +405,6 @@ public class S2COpenDialoguePacket {
                         pkt.choiceCooldownValues, pkt.choiceResetTimeTicks));
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -398,11 +412,11 @@ public class S2COpenDialoguePacket {
         if (mode != Mode.CLOSE && !isClose) {
             buf.writeUtf(dialogueId);
             buf.writeUtf(nodeId);
-            buf.writeComponent(speaker != null ? speaker : Component.empty());
-            buf.writeComponent(text != null ? text : Component.empty());
+            ComponentSerialization.STREAM_CODEC.encode((RegistryFriendlyByteBuf) buf, speaker != null ? speaker : Component.empty());
+            ComponentSerialization.STREAM_CODEC.encode((RegistryFriendlyByteBuf) buf, text != null ? text : Component.empty());
             buf.writeVarInt(choices.length);
             for (Component c : choices) {
-                buf.writeComponent(c != null ? c : Component.empty());
+                ComponentSerialization.STREAM_CODEC.encode((RegistryFriendlyByteBuf) buf, c != null ? c : Component.empty());
             }
             buf.writeBoolean(isTerminal);
             buf.writeBoolean(hasAutoNext);

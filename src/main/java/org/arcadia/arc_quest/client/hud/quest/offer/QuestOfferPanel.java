@@ -14,7 +14,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -555,7 +555,7 @@ public final class QuestOfferPanel {
                 }
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
                 List<ItemStack> list = new ArrayList<>();
-                for (Item i : ForgeRegistries.ITEMS.getValues()) {
+                for (Item i : BuiltInRegistries.ITEM) {
                     ItemStack st = new ItemStack(i);
                     if (!st.isEmpty() && st.is(tag)) list.add(st);
                 }
@@ -567,7 +567,7 @@ public final class QuestOfferPanel {
                 return cachedTagIcons = Collections.singletonList(ItemStack.EMPTY);
             }
         }
-        Item item = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
+        Item item = BuiltInRegistries.ITEM.get(obj.getTargetId());
         if (item == null) return Collections.singletonList(ItemStack.EMPTY);
         return Collections.singletonList(new ItemStack(item));
     }
@@ -590,7 +590,7 @@ public final class QuestOfferPanel {
                 return 0;
             }
         }
-        Item target = ForgeRegistries.ITEMS.getValue(obj.getTargetId());
+        Item target = BuiltInRegistries.ITEM.get(obj.getTargetId());
         if (target == null) return 0;
         for (ItemStack st : mc.player.getInventory().items) {
             if (!st.isEmpty() && st.getItem() == target) total += st.getCount();
@@ -603,7 +603,7 @@ public final class QuestOfferPanel {
         if (key.equals(cachedTooltipKey) && cachedTooltipLayout != null) return cachedTooltipLayout;
         TooltipLayout layout = new TooltipLayout();
         if (mc.player != null) {
-            layout.lines = stack.getTooltipLines(mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+            layout.lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.EMPTY, mc.player, advanced ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
             for (Component line : layout.lines) {
                 int lw = mc.font.width(line);
                 if (lw > layout.textMaxWidth) layout.textMaxWidth = lw;

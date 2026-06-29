@@ -1,25 +1,27 @@
 package org.arcadia.arc_quest.client.hud.gacha;
 
 import net.minecraft.Util;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraft.client.gui.LayeredDraw;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.SubscribeEvent;
 
-public class GachaResultOverlay implements IGuiOverlay {
+public class GachaResultOverlay implements LayeredDraw.Layer {
 
     public static final GachaResultOverlay INSTANCE = new GachaResultOverlay();
 
     private long lastRenderTime = 0;
 
     private GachaResultOverlay() {
-        MinecraftForge.EVENT_BUS.register(this);
+        NeoForge.EVENT_BUS.register(this);
     }
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
+    public void render(GuiGraphics g, DeltaTracker deltaTracker) {
+        int screenWidth = g.guiWidth();
+        int screenHeight = g.guiHeight();
         if (!GachaResultRenderer.INSTANCE.isActive()) {
             lastRenderTime = 0;
             return;

@@ -17,10 +17,9 @@ public final class MarkerRhombusRenderer {
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
         Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder builder = tesselator.getBuilder();
         Matrix4f matrix = gui.pose().last().pose();
 
-        builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         int baseAlpha = (accentColor >> 24) & 0xFF;
 
@@ -130,7 +129,7 @@ public final class MarkerRhombusRenderer {
         addSolid(builder, matrix, 0, coreSize, 0, 0, finalScaleX, finalScaleY, coreColor);
         addSolid(builder, matrix, coreSize, 0, 0, 0, finalScaleX, finalScaleY, coreColor);
 
-        BufferUploader.drawWithShader(builder.end());
+        BufferUploader.drawWithShader(builder.buildOrThrow());
     }
 
     private static float lerp(float a, float b, float t) {
@@ -151,13 +150,13 @@ public final class MarkerRhombusRenderer {
         float finalX = (baseX + gapX) * scaleX;
         float finalY = (baseY + gapY) * scaleY;
         int argb = calcColor(baseX, baseY, lx, ly, flowPhase, color, alphaMod, lightBlend, activeProgress);
-        b.vertex(m, finalX, finalY, 0).color(argb).endVertex();
+        b.addVertex(m, finalX, finalY, 0).setColor(argb);
     }
 
     private static void addSolid(BufferBuilder b, Matrix4f m, float baseX, float baseY, float gapX, float gapY, float scaleX, float scaleY, int argb) {
         float finalX = (baseX + gapX) * scaleX;
         float finalY = (baseY + gapY) * scaleY;
-        b.vertex(m, finalX, finalY, 0).color(argb).endVertex();
+        b.addVertex(m, finalX, finalY, 0).setColor(argb);
     }
 
     private static int calcColor(

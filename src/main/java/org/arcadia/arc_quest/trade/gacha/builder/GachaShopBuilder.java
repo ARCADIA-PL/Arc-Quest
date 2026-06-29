@@ -303,7 +303,7 @@ public class GachaShopBuilder {
      * 设置抽奖冷却中的音效（支持 Holder.Reference）。
      */
     public GachaShopBuilder drawCooldownSound(Holder.Reference<SoundEvent> sound) {
-        drawCooldownSound = sound.get();
+        drawCooldownSound = sound.value();
         return this;
     }
 
@@ -319,7 +319,7 @@ public class GachaShopBuilder {
      * 设置达到抽奖上限的音效（支持 Holder.Reference）。
      */
     public GachaShopBuilder drawLimitReachedSound(Holder.Reference<SoundEvent> sound) {
-        drawLimitReachedSound = sound.get();
+        drawLimitReachedSound = sound.value();
         return this;
     }
 
@@ -335,7 +335,7 @@ public class GachaShopBuilder {
      * 设置抽奖条件不满足的音效（支持 Holder.Reference）。
      */
     public GachaShopBuilder drawConditionFailSound(Holder.Reference<SoundEvent> sound) {
-        drawConditionFailSound = sound.get();
+        drawConditionFailSound = sound.value();
         return this;
     }
 
@@ -351,7 +351,7 @@ public class GachaShopBuilder {
      * 设置抽奖通用失败音效（支持 Holder.Reference）。
      */
     public GachaShopBuilder drawFailSound(Holder.Reference<SoundEvent> sound) {
-        drawFailSound = sound.get();
+        drawFailSound = sound.value();
         return this;
     }
 
