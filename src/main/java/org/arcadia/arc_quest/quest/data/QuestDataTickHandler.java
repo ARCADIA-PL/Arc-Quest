@@ -32,7 +32,7 @@ import java.util.UUID;
 /**
  * 玩家Tick事件处理器：以固定节流频率执行“变更检测 -> 持久化快照 -> 网络同步”。
  */
-@EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class QuestDataTickHandler {
 
     private static final Object2LongOpenHashMap<String> markerRefreshClock = new Object2LongOpenHashMap<>();

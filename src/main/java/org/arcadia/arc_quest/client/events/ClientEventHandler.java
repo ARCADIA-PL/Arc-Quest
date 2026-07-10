@@ -21,7 +21,7 @@ import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.lwjgl.glfw.GLFW;
 
-@EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
 public final class ClientEventHandler {
     public static final KeyMapping KEY_OPEN_JOURNAL = new KeyMapping("key.arc_quest.open_journal", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, "key.categories.arc_quest");
 

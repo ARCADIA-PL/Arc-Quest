@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 /**
  * 管理员命令集（主注册入口）。
  */
-@EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public class ArcQuestCommands {
 
     private static final Logger LOGGER = LogUtils.getLogger();

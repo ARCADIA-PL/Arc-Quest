@@ -25,7 +25,7 @@ import org.slf4j.Logger;
 import java.util.Collections;
 import java.util.Map;
 
-@EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public class ArcQuestReloadListener extends SimplePreparableReloadListener<Map<ResourceLocation, Object>> {
 
     private static final Logger LOGGER = LogUtils.getLogger();

@@ -16,6 +16,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.loading.FMLLoader;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
@@ -24,6 +25,8 @@ import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
+import org.arcadia.arc_quest.data.ArcQuestDataGenerators;
+import org.arcadia.arc_quest.dialogue.data.EntityDialogueExtensionHandler;
 import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
@@ -44,6 +47,15 @@ public class Arc_Quest {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(ArcQuestNetwork::register);
         NeoForge.EVENT_BUS.register(this);
+
+        // Register mod bus event listeners (replaces deprecated @EventBusSubscriber(bus=MOD))
+        modEventBus.addListener(ArcQuestDataGenerators::gatherData);
+        modEventBus.addListener(EntityDialogueExtensionHandler.ModBusEvents::onCommonSetup);
+        if (FMLLoader.getDist().isClient()) {
+            modEventBus.addListener(ClientModEvents::onClientSetup);
+            modEventBus.addListener(ClientModEvents::onRegisterLayers);
+            modEventBus.addListener(ClientModEvents::onRegisterKeyMappings);
+        }
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -64,7 +76,6 @@ public class Arc_Quest {
     public void onServerStarting(ServerStartingEvent event) {
     }
 
-    @EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
@@ -88,7 +99,7 @@ public class Arc_Quest {
         }
     }
 
-    @EventBusSubscriber(modid = MOD_ID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
+    @EventBusSubscriber(modid = MOD_ID, value = Dist.CLIENT)
     public static class ClientForgeEvents {
         @SubscribeEvent
         public static void onRenderGuiLayerPre(RenderGuiLayerEvent.Pre event) {

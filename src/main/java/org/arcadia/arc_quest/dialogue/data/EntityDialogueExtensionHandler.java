@@ -41,7 +41,7 @@ import javax.annotation.Nullable;
  * @author Arc Quest Team
  * @since 2.0
  */
-@EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public class EntityDialogueExtensionHandler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -301,7 +301,6 @@ public class EntityDialogueExtensionHandler {
         return NpcBindingRegistry.INSTANCE.resolveSpec(entity, player);
     }
 
-    @EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
     public static class ModBusEvents {
 
         /**
