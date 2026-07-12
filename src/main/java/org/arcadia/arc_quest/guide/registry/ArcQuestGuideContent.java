@@ -1,12 +1,6 @@
 package org.arcadia.arc_quest.guide.registry;
 
 import com.mojang.logging.LogUtils;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.api.ArcQuestAPI;
-import org.arcadia.arc_quest.guide.api.GuideCategories;
-import org.arcadia.arc_quest.guide.builder.GuideBuilder;
 import org.slf4j.Logger;
 
 public final class ArcQuestGuideContent {
@@ -23,21 +17,21 @@ public final class ArcQuestGuideContent {
     }
 
     private static void registerBuiltinGuides() {
-        ArcQuestAPI.registerGuide(
-                GuideBuilder.create("arc_quest:movement_basics")
-                        .category(GuideCategories.BASICS)
-                        .title(Component.translatable("guide.arc_quest.movement_basics.title"))
-                        .sortOrder(0)
-                        .imagePage(
-                                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
-                                Component.translatable("guide.arc_quest.movement_basics.page_1")
-                        )
-                        .ponderQuestPhasePage(
-                                "arc_quest:epic_prologue",
-                                "arc_quest:defend_village",
-                                Component.translatable("guide.arc_quest.movement_basics.page_2")
-                        )
-                        .build()
-        );
+//        ArcQuestAPI.registerGuide(
+//                GuideBuilder.create("arc_quest:movement_basics")
+//                        .category(GuideCategories.BASICS)
+//                        .title(Component.translatable("guide.arc_quest.movement_basics.title"))
+//                        .sortOrder(0)
+//                        .imagePage(
+//                                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
+//                                Component.translatable("guide.arc_quest.movement_basics.page_1")
+//                        )
+//                        .ponderQuestPhasePage(
+//                                "arc_quest:epic_prologue",
+//                                "arc_quest:defend_village",
+//                                Component.translatable("guide.arc_quest.movement_basics.page_2")
+//                        )
+//                        .build()
+//        );
     }
 }

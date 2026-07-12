@@ -180,7 +180,7 @@ public class EntityDialogueExtensionHandler {
      * Tick 事件 - 按实体更新对话中的 NPC（更稳定的时序）
      */
     @SubscribeEvent
-    public static void onLivingTick(EntityTickEvent.Post event) {
+    public static void onLivingTick(EntityTickEvent.Pre event) {
         if (event.getEntity().level().isClientSide()) return;
         if (!(event.getEntity() instanceof LivingEntity livingEntity)) return;
 
