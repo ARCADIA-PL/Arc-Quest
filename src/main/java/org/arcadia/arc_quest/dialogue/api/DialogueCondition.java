@@ -3,6 +3,8 @@ package org.arcadia.arc_quest.dialogue.api;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueEvalContext;
 import org.arcadia.arc_quest.quest.api.CompareOp;
@@ -58,6 +60,8 @@ public sealed interface DialogueCondition permits
         DialogueCondition.NodeOnCooldown,
         DialogueCondition.ChoiceOnCooldown,
         DialogueCondition.DialogueOnCooldown,
+        // ── 玩家状态 ──
+        DialogueCondition.HoldItem,
         // ── 跨系统适配器 ──
         DialogueCondition.IConditionWrapper {
 
@@ -501,6 +505,55 @@ public sealed interface DialogueCondition permits
                     ctx.namespace(), dialogueId,
                     CooldownType.SECONDS, cooldownSeconds, 0,
                     ctx.nowRealTime(), ctx.gameTime(), ctx.dayTime());
+        }
+    }
+
+    // ═══════════════════════════════════════════════
+    //  玩家状态
+    // ═══════════════════════════════════════════════
+
+    /**
+     * 判断玩家是否手持指定物品（同时检查主手和副手）。
+     *
+     * @param itemId   物品注册名，如 {@code "minecraft:diamond"}
+     * @param minCount 最少需要持有的数量
+     */
+    record HoldItem(String itemId, int minCount) implements DialogueCondition {
+        /**
+         * 通过 {@link ItemStack} 直接创建条件（默认数量 = 1）。
+         */
+        public static HoldItem of(ItemStack stack) {
+            return of(stack, 1);
+        }
+
+        /**
+         * 通过 {@link ItemStack} 直接创建条件。
+         *
+         * @param stack    物品堆
+         * @param minCount 最少需要持有的数量
+         */
+        public static HoldItem of(ItemStack stack, int minCount) {
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            if (id == null) throw new IllegalArgumentException("Unregistered item: " + stack.getItem());
+            return new HoldItem(id.toString(), minCount);
+        }
+
+        @Override
+        public boolean test(DialogueEvalContext ctx) {
+            ResourceLocation target = ResourceLocation.tryParse(itemId);
+            if (target == null) return false;
+            int total = 0;
+            var mainHand = ctx.player().getMainHandItem();
+            if (!mainHand.isEmpty()) {
+                var mainId = ForgeRegistries.ITEMS.getKey(mainHand.getItem());
+                if (target.equals(mainId)) total += mainHand.getCount();
+            }
+            var offHand = ctx.player().getOffhandItem();
+            if (!offHand.isEmpty()) {
+                var offId = ForgeRegistries.ITEMS.getKey(offHand.getItem());
+                if (target.equals(offId)) total += offHand.getCount();
+            }
+            return total >= minCount;
         }
     }
 

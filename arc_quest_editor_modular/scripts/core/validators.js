@@ -12,6 +12,7 @@ const CONDITION_TYPES = new Set([
     'arc_quest:quest_phase_reached',
     'arc_quest:has_flag',
     'arc_quest:not_has_flag',
+    'arc_quest:hold_item',
     'arc_quest:variable_check',
     'arc_quest:and',
     'arc_quest:or',
