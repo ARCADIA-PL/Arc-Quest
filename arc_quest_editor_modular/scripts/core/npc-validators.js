@@ -2,7 +2,7 @@ const CONDITION_TYPES = new Set([
     'arc_quest:always',
     'arc_quest:quest_completed', 'arc_quest:quest_accepted', 'arc_quest:quest_not_started',
     'arc_quest:quest_phase', 'arc_quest:quest_phase_completed', 'arc_quest:quest_phase_reached',
-    'arc_quest:has_flag', 'arc_quest:not_has_flag', 'arc_quest:variable_check',
+    'arc_quest:has_flag', 'arc_quest:not_has_flag', 'arc_quest:hold_item', 'arc_quest:variable_check',
     'arc_quest:has_quest', 'arc_quest:quest_failed',
     'arc_quest:phase_enterable', 'arc_quest:phase_before', 'arc_quest:phase_after',
     'arc_quest:phase_between', 'arc_quest:any_active_in_range', 'arc_quest:all_completed_in_range',

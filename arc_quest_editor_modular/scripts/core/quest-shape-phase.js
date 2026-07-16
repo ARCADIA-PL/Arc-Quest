@@ -51,6 +51,20 @@ function setConditionNodeField(rootNode, pathParts, value) {
             delete cursor.predicate;
             return;
         }
+        if (value === 'arc_quest:hold_item') {
+            cursor.itemId ||= '';
+            if (cursor.count === undefined) cursor.count = 1;
+            delete cursor.flag;
+            delete cursor.quest_id;
+            delete cursor.phase_id;
+            delete cursor.key;
+            delete cursor.op;
+            delete cursor.value;
+            delete cursor.inner;
+            delete cursor.conditions;
+            delete cursor.predicate;
+            return;
+        }
         if (value === 'arc_quest:quest_completed' || value === 'arc_quest:quest_accepted' || value === 'arc_quest:quest_not_started') {
             cursor.quest_id ||= '';
             delete cursor.flag;

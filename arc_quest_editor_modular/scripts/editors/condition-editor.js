@@ -34,6 +34,7 @@ const CONDITION_TYPE_OPTIONS = [
     'arc_quest:all_completed_in_range',
     'arc_quest:has_flag',
     'arc_quest:not_has_flag',
+    'arc_quest:hold_item',
     'arc_quest:variable_check',
     'arc_quest:entity_nbt',
     'arc_quest:entity_name',
@@ -88,6 +89,7 @@ function summarizeCondition(node) {
         case 'arc_quest:all_completed_in_range': return `all_completed(${c.questId || '?'}, ${c.fromPhaseId || '?'}-${c.toPhaseId || '?'})`;
         case 'arc_quest:has_flag': return `has_flag(${c.flag || '?'})`;
         case 'arc_quest:not_has_flag': return `not_has_flag(${c.flag || '?'})`;
+        case 'arc_quest:hold_item': return `hold_item(${c.itemId || '?'}, ${c.count || 1})`;
         case 'arc_quest:variable_check': return `variable_check(${c.key || '?'}, ${c.op || 'EQUAL'}, ${c.value ?? 0})`;
         case 'arc_quest:entity_nbt': return `entity_nbt(${c.nbtKey || '?'}, ${c.nbtValue || '?'})`;
         case 'arc_quest:entity_name': return `entity_name(${c.namePattern || '?'})`;
@@ -109,6 +111,7 @@ function summarizeCondition(node) {
 function summaryBadge(cond) {
     if (cond === 'arc_quest:and' || cond === 'arc_quest:or' || cond === 'arc_quest:not') return {className: 'logic', label: cond.split(':')[1].toUpperCase(), nodeClass: 'logic'};
     if (cond === 'arc_quest:has_flag' || cond === 'arc_quest:not_has_flag') return {className: 'flag', label: 'FLAG', nodeClass: 'flag'};
+    if (cond === 'arc_quest:hold_item') return {className: 'item', label: 'ITEM', nodeClass: 'item'};
     if (cond.startsWith('arc_quest:quest_') || cond === 'arc_quest:has_quest') return {className: 'quest', label: 'QUEST', nodeClass: 'quest'};
     if (cond.startsWith('arc_quest:phase_')) return {className: 'phase', label: 'PHASE', nodeClass: 'phase'};
     if (cond === 'arc_quest:variable_check') return {className: 'variable', label: 'VAR', nodeClass: 'variable'};
@@ -143,6 +146,14 @@ export function renderConditionTree(bindBase, condition, registry = null, deleta
         case 'arc_quest:has_flag':
         case 'arc_quest:not_has_flag':
             body = `<div class="row">${suggestInput('Flag', `${bindBase}.flag`, c.flag || '', flagSuggestions, `${bindBase}-flag-list`, 'namespace:flag_name')}</div>`;
+            break;
+
+        case 'arc_quest:hold_item':
+            body = `
+      <div class="row">
+        ${plainInput('Item ID', `${bindBase}.itemId`, c.itemId || '', 'minecraft:diamond')}
+        ${numberInput('Min Count', `${bindBase}.count`, c.count ?? 1)}
+      </div>`;
             break;
 
         case 'arc_quest:quest_completed':
