@@ -151,7 +151,7 @@ export function renderConditionTree(bindBase, condition, registry = null, deleta
         case 'arc_quest:hold_item':
             body = `
       <div class="row">
-        ${plainInput('Item ID', `${bindBase}.itemId`, c.itemId || '', 'minecraft:diamond')}
+        <div class="f"><label>Item ID</label><input data-b="${bindBase}.itemId" data-ac-registry="items" value="${c.itemId || ''}" placeholder="minecraft:diamond"></div>
         ${numberInput('Min Count', `${bindBase}.count`, c.count ?? 1)}
       </div>`;
             break;
