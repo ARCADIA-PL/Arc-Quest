@@ -26,6 +26,7 @@ import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.dialogue.util.AnnotatedInstanceUtil;
 import org.arcadia.arc_quest.npc.NpcBinding;
 import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
+import org.arcadia.arc_quest.npc.runtime.NpcResolution;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.slf4j.Logger;
 
@@ -64,6 +65,7 @@ public class EntityDialogueExtensionHandler {
         if (DialogueSessionManager.INSTANCE.isInDialogue(player)) return;
 
         boolean hasExtensions = EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(target.getType());
+        NpcResolution datapackResolution = null;
 
         boolean canInteract = true;
         if (hasExtensions) {
@@ -76,10 +78,8 @@ public class EntityDialogueExtensionHandler {
                 }
             }
         } else {
-            NpcSpec npcSpec = resolveNpcSpec(target, player);
-            if (npcSpec != null && npcSpec.interactCondition != null && !npcSpec.interactCondition.isAlways()) {
-                canInteract = false;
-            }
+            datapackResolution = NpcBindingRegistry.INSTANCE.resolve(target, player);
+            canInteract = datapackResolution.matched();
         }
         if (!canInteract) return;
 
@@ -104,7 +104,10 @@ public class EntityDialogueExtensionHandler {
         }
 
         if (dialogueId == null) {
-            dialogueId = NpcBindingRegistry.INSTANCE.resolveDialogueId(target, player);
+            if (datapackResolution == null) {
+                datapackResolution = NpcBindingRegistry.INSTANCE.resolve(target, player);
+            }
+            dialogueId = datapackResolution.dialogueId();
         }
 
         if (dialogueId == null) return;
@@ -124,6 +127,12 @@ public class EntityDialogueExtensionHandler {
 
         DialogueSession session = DialogueSessionManager.INSTANCE.startDialogue(
                 player, target, tree.dialogueId(), ctx);
+        if (session == null) {
+            LOGGER.warn("[EntityDialogueExtension] Failed to start resolved dialogue: player={}, entityRef={}, dialogueId={}",
+                    player.getUUID(), datapackResolution != null ? datapackResolution.entityRef() : target.getUUID(),
+                    dialogueId);
+            return;
+        }
 
         if (matchedExt != null) {
             matchedExt.onDialogueStart(player, target, session);
@@ -134,7 +143,7 @@ public class EntityDialogueExtensionHandler {
                 event.setCanceled(true);
             }
         } else {
-            NpcSpec npcSpec = resolveNpcSpec(target, player);
+            NpcSpec npcSpec = datapackResolution != null ? datapackResolution.npcSpec() : null;
             if (npcSpec != null && npcSpec.cancelVanillaInteract) {
                 event.setCancellationResult(InteractionResult.SUCCESS);
                 event.setCanceled(true);
