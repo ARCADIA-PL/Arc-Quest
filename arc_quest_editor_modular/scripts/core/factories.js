@@ -87,6 +87,7 @@ export const createNpcSkeleton = () => ({
     dialogueDistance: 8.0,
     shouldLookAtPlayer: true,
     shouldStopMoving: true,
+    interactionPolicy: 'PARALLEL_PRIVATE',
     interactCondition: null,
     onDialogueStartCommands: [],
     onDialogueEndCommands: []

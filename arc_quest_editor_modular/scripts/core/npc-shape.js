@@ -21,6 +21,10 @@ export function setNpcByPath(target, bind, value, inputType) {
         target.shouldStopMoving = value === 'true';
         return;
     }
+    if (bind === 'npc.interactionPolicy') {
+        target.interactionPolicy = value || 'PARALLEL_PRIVATE';
+        return;
+    }
 
     if (bind.startsWith('npc.bind.')) {
         const parts = bind.split('.');

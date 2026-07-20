@@ -48,6 +48,11 @@ export function renderNpcOverview(npc, registry, state) {
       </div>
       <h3 style="margin-top:4px">实体属性</h3>
       <div class="row">
+        <div class="f"><label>&#22810;&#20154;&#20132;&#20114;&#31574;&#30053;</label><select data-b="npc.interactionPolicy">
+          ${['PARALLEL_PRIVATE', 'EXCLUSIVE'].map(policy => `<option value="${policy}" ${(npc.interactionPolicy || 'PARALLEL_PRIVATE') === policy ? 'selected' : ''}>${policy}</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="row">
         ${suggestInput('实体类型 (entityType)', 'npc.entityType', npc.entityType, entityTypeSuggestions, 'npc-entityType-list')}
         <div class="f"><label>对话距离</label><input type="number" data-b="npc.dialogueDistance" value="${npc.dialogueDistance ?? 8.0}" min="1" max="64" step="0.5"></div>
       </div>
