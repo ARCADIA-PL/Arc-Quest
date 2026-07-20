@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "3";
+    private static final String PROTOCOL_VERSION = "4";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -98,6 +98,14 @@ public final class ArcQuestNetwork {
                 C2SRequestQuestActionPacket::encode,
                 C2SRequestQuestActionPacket::decode,
                 C2SRequestQuestActionPacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SRequestQuestResyncPacket.class,
+                C2SRequestQuestResyncPacket::encode,
+                C2SRequestQuestResyncPacket::decode,
+                C2SRequestQuestResyncPacket::handle
         );
 
         CHANNEL.registerMessage(
@@ -303,9 +311,10 @@ public final class ArcQuestNetwork {
      */
     public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
         resetMarkerStream(player);
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
 
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncFullDataPacket(data));
+                new S2CSyncFullDataPacket(data, envelope.playerSessionEpoch(), envelope.newRevision()));
         syncMarkers(player, data);
     }
 
@@ -313,8 +322,10 @@ public final class ArcQuestNetwork {
      * 单任务状态同步
      */
     public static void syncQuestState(ServerPlayer player, QuestRuntimeData data) {
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncQuestStatePacket(data));
+                new S2CSyncQuestStatePacket(data, envelope.playerSessionEpoch(),
+                        envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, null, "quest_state_sync");
     }
@@ -327,8 +338,10 @@ public final class ArcQuestNetwork {
                                          String phaseId,
                                          int objectiveIndex,
                                          int newProgress) {
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CDeltaProgressPacket(questId, phaseId, objectiveIndex, newProgress));
+                new S2CDeltaProgressPacket(questId, phaseId, objectiveIndex, newProgress,
+                        envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, null, "delta_progress_sync");
     }
@@ -344,8 +357,10 @@ public final class ArcQuestNetwork {
      * Flags / Variables 同步
      */
     public static void syncFlagsAndVars(ServerPlayer player, ArcQuestPlayer data) {
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncFlagsVarsPacket(data));
+                new S2CSyncFlagsVarsPacket(data, envelope.playerSessionEpoch(),
+                        envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, data, "flags_vars_sync");
     }

@@ -16,28 +16,42 @@ import java.util.function.Supplier;
 public class S2CSyncFullDataPacket {
 
     private final CompoundTag playerData;
+    private final long playerSessionEpoch;
+    private final long revision;
 
     // ── 构造（服务端）──────────────────────────────────
 
     public S2CSyncFullDataPacket(ArcQuestPlayer data) {
-        playerData = data.serializeNBT();
+        this(data, 0L, 0L);
     }
 
-    private S2CSyncFullDataPacket(CompoundTag data) {
+    public S2CSyncFullDataPacket(ArcQuestPlayer data, long playerSessionEpoch, long revision) {
+        playerData = data.serializeNBT();
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
+        this.revision = Math.max(0L, revision);
+    }
+
+    private S2CSyncFullDataPacket(CompoundTag data, long playerSessionEpoch, long revision) {
         playerData = data;
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
+        this.revision = Math.max(0L, revision);
     }
 
     // ── 编码 ──────────────────────────────────────────
 
     public static void encode(S2CSyncFullDataPacket pkt, FriendlyByteBuf buf) {
+        buf.writeLong(pkt.playerSessionEpoch);
+        buf.writeLong(pkt.revision);
         buf.writeNbt(pkt.playerData);
     }
 
     // ── 解码 ──────────────────────────────────────────
 
     public static S2CSyncFullDataPacket decode(FriendlyByteBuf buf) {
+        long playerSessionEpoch = buf.readLong();
+        long revision = buf.readLong();
         CompoundTag tag = buf.readNbt();
-        return new S2CSyncFullDataPacket(tag != null ? tag : new CompoundTag());
+        return new S2CSyncFullDataPacket(tag != null ? tag : new CompoundTag(), playerSessionEpoch, revision);
     }
 
     // ── 处理（客户端）─────────────────────────────────
@@ -46,8 +60,18 @@ public class S2CSyncFullDataPacket {
                               Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             // 在客户端主线程上更新缓存
-            ClientQuestCache.INSTANCE.applyFullSync(pkt.playerData);
+            if (ClientQuestCache.INSTANCE.acceptSnapshot(pkt.playerSessionEpoch, pkt.revision)) {
+                ClientQuestCache.INSTANCE.applyFullSync(pkt.playerData);
+            }
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    public long getPlayerSessionEpoch() {
+        return playerSessionEpoch;
+    }
+
+    public long getRevision() {
+        return revision;
     }
 }

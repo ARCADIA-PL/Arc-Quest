@@ -67,6 +67,7 @@ public final class ClientQuestCache {
      */
     private final Object2IntOpenHashMap<String> variables = new Object2IntOpenHashMap<>();
     private boolean hasAppliedFullSync = false;
+    private final QuestClientRevisionGate revisionGate = new QuestClientRevisionGate();
 
     private final List<QuestCacheListener> listeners = new ArrayList<>();
 
@@ -76,6 +77,31 @@ public final class ClientQuestCache {
 
     public void addListener(QuestCacheListener listener) {
         listeners.add(Objects.requireNonNull(listener));
+    }
+
+    public boolean acceptSnapshot(long playerSessionEpoch, long revision) {
+        return revisionGate.acceptSnapshot(playerSessionEpoch, revision)
+                == QuestClientRevisionGate.Decision.ACCEPT;
+    }
+
+    public boolean acceptDelta(long playerSessionEpoch, long baseRevision, long newRevision) {
+        QuestClientRevisionGate.Decision decision = revisionGate.acceptDelta(
+                playerSessionEpoch, baseRevision, newRevision);
+        if (decision == QuestClientRevisionGate.Decision.GAP) {
+            LOGGER.warn("[QuestSync] Revision gap detected: epoch={}, base={}, incoming={}, current={}",
+                    playerSessionEpoch, baseRevision, newRevision, revisionGate.revision());
+            ArcQuestNetwork.CHANNEL.sendToServer(new C2SRequestQuestResyncPacket(
+                    playerSessionEpoch, revisionGate.revision()));
+        }
+        return decision == QuestClientRevisionGate.Decision.ACCEPT;
+    }
+
+    public long getPlayerSessionEpoch() {
+        return revisionGate.playerSessionEpoch();
+    }
+
+    public long getRevision() {
+        return revisionGate.revision();
     }
 
     // ═══════════════════════════════════════════════════════
@@ -522,6 +548,7 @@ public final class ClientQuestCache {
         flags.clear();
         variables.clear();
         hasAppliedFullSync = false;
+        revisionGate.clear();
         LOGGER.info("[ClientCache] Cache cleared.");
     }
 
