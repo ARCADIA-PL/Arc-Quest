@@ -26,6 +26,7 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questplayer.snapshot.ArcQuestSnapshotReason;
 import org.arcadia.arc_quest.questplayer.snapshot.FileArcQuestPlayerSnapshotStore;
 import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
+import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.gacha.network.PendingDrawManager;
 import org.arcadia.arc_quest.guide.runtime.GuideAutoTriggerService;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
@@ -96,6 +97,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         }
         ArcQuestPlayerManager.unload(sp.getUUID());
         RequestIdempotencyStore.INSTANCE.clearPlayer(sp.getUUID());
+        C2SRequestTradePacket.clearPlayer(sp.getUUID());
         PlayerSessionEpochManager.endSession(sp.getUUID());
     }
 
@@ -110,6 +112,7 @@ public final class ArcQuestPlayerLifecycleHandler {
                 ArcQuestPlayerManager.persistSnapshot(player, data);
                 ArcQuestPlayerManager.unload(player.getUUID());
                 RequestIdempotencyStore.INSTANCE.clearPlayer(player.getUUID());
+                C2SRequestTradePacket.clearPlayer(player.getUUID());
                 PlayerSessionEpochManager.endSession(player.getUUID());
             }
         }
@@ -142,6 +145,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         DialogueSessionManager.INSTANCE.shutdown();
         DialogueNpcStateManager.clearAll();
         RequestIdempotencyStore.INSTANCE.clear();
+        C2SRequestTradePacket.clearAll();
         PlayerSessionEpochManager.clear();
     }
 

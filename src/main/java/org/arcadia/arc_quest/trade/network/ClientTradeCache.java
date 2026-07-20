@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public final class ClientTradeCache {
 
@@ -28,6 +29,36 @@ public final class ClientTradeCache {
     private final Map<String, Map<String, Integer>> globalIndexCache = new HashMap<>();
 
     private ClientTradeCache() {
+    }
+
+    public void setPlayerSessionEpoch(String shopId, long playerSessionEpoch) {
+        acceptPlayerSessionEpoch(shopId, playerSessionEpoch);
+    }
+
+    public boolean acceptPlayerSessionEpoch(String shopId, long playerSessionEpoch) {
+        TradeSessionData data = activeSessions.computeIfAbsent(shopId, TradeSessionData::new);
+        long normalizedEpoch = Math.max(0L, playerSessionEpoch);
+        if (normalizedEpoch > 0L && data.playerSessionEpoch > normalizedEpoch) {
+            return false;
+        }
+        data.playerSessionEpoch = normalizedEpoch;
+        return true;
+    }
+
+    public long getPlayerSessionEpoch(String shopId) {
+        TradeSessionData data = activeSessions.get(shopId);
+        return data != null ? data.playerSessionEpoch : 0L;
+    }
+
+    public C2SRequestTradePacket createPurchasePacket(String shopId, String entryId,
+                                                       C2SRequestTradePacket.ScreenType screenType) {
+        return C2SRequestTradePacket.purchaseWithScreenType(
+                shopId, entryId, screenType, UUID.randomUUID(), getPlayerSessionEpoch(shopId));
+    }
+
+    public void clear() {
+        activeSessions.clear();
+        globalIndexCache.clear();
     }
 
     public void playOpenSound(String shopId, String openSoundId) {
@@ -281,6 +312,7 @@ public final class ClientTradeCache {
         final String shopId;
         final AuthorityState authority = new AuthorityState();
         final FeedbackState feedback = new FeedbackState();
+        long playerSessionEpoch;
 
         TradeSessionData(String shopId) {
             this.shopId = shopId;

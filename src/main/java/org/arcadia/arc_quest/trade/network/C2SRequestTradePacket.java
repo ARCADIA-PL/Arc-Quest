@@ -9,11 +9,15 @@ import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.trade.*;
+import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
+import org.arcadia.arc_quest.sync.BoundedProcessedRequestStore;
+import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
@@ -34,21 +38,32 @@ public class C2SRequestTradePacket {
 
     private static final Map<UUID, Map<String, Integer>> LAST_TRADE_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
     private static final Map<UUID, ActiveTradeContext> ACTIVE_TRADE_CONTEXTS = new ConcurrentHashMap<>();
+    private static final BoundedProcessedRequestStore<TradeCommandResult> PROCESSED_PURCHASES =
+            new BoundedProcessedRequestStore<>(256);
     private static final long ACTIVE_TRADE_CONTEXT_TTL_MS = 20000L;
     private final Action action;
     private final String shopId;
     private final String entryId;
     private final ScreenType currentScreenType;
+    private final UUID requestId;
+    private final long playerSessionEpoch;
 
     public C2SRequestTradePacket(Action action, String shopId, String entryId) {
         this(action, shopId, entryId, ScreenType.NONE);
     }
 
     public C2SRequestTradePacket(Action action, String shopId, String entryId, ScreenType currentScreenType) {
+        this(action, shopId, entryId, currentScreenType, UUID.randomUUID(), 0L);
+    }
+
+    public C2SRequestTradePacket(Action action, String shopId, String entryId, ScreenType currentScreenType,
+                                 UUID requestId, long playerSessionEpoch) {
         this.action = action;
         this.shopId = shopId;
         this.entryId = entryId != null ? entryId : "";
         this.currentScreenType = currentScreenType != null ? currentScreenType : ScreenType.NONE;
+        this.requestId = requestId != null ? requestId : RequestIdempotencyStore.LEGACY_REQUEST_ID;
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
     }
 
     public static void syncState(ServerPlayer player, TradeShopDefinition shop, ScreenType clientScreenType) {
@@ -97,6 +112,11 @@ public class C2SRequestTradePacket {
         return new C2SRequestTradePacket(Action.PURCHASE, shopId, entryId, screenType);
     }
 
+    public static C2SRequestTradePacket purchaseWithScreenType(String shopId, String entryId, ScreenType screenType,
+                                                                UUID requestId, long playerSessionEpoch) {
+        return new C2SRequestTradePacket(Action.PURCHASE, shopId, entryId, screenType, requestId, playerSessionEpoch);
+    }
+
     public static C2SRequestTradePacket refresh(String shopId, ScreenType screenType) {
         return new C2SRequestTradePacket(
                 screenType == ScreenType.SIMPLE ? Action.OPEN_SIMPLE : Action.OPEN_FULL,
@@ -108,7 +128,9 @@ public class C2SRequestTradePacket {
         String shopId = buf.readUtf();
         String entryId = buf.readUtf();
         ScreenType screenType = buf.readEnum(ScreenType.class);
-        return new C2SRequestTradePacket(action, shopId, entryId, screenType);
+        UUID requestId = buf.readUUID();
+        long playerSessionEpoch = buf.readLong();
+        return new C2SRequestTradePacket(action, shopId, entryId, screenType, requestId, playerSessionEpoch);
     }
 
     public static void handle(C2SRequestTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
@@ -128,10 +150,16 @@ public class C2SRequestTradePacket {
                 return;
             }
 
+            if (!PlayerSessionEpochManager.matches(player, pkt.playerSessionEpoch)) {
+                sendGuardTradeFail(player, pkt, RejectCodeDictionary.Code.SESSION_EPOCH_MISMATCH);
+                return;
+            }
+
             switch (pkt.action) {
                 case OPEN_FULL -> handleOpen(player, shop, false);
                 case OPEN_SIMPLE -> handleOpen(player, shop, true);
-                case PURCHASE -> handlePurchase(player, shop, pkt.entryId, pkt.currentScreenType);
+                case PURCHASE -> handlePurchase(player, shop, pkt.entryId, pkt.currentScreenType,
+                        pkt.requestId, pkt.playerSessionEpoch);
             }
         });
         ctx.get().setPacketHandled(true);
@@ -206,12 +234,12 @@ public class C2SRequestTradePacket {
                 snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
                 snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
                 snap.visibility(), snap.canBuyConditions(),
-                openSoundId, closeSoundId)
+                openSoundId, closeSoundId, PlayerSessionEpochManager.getOrCreate(player))
                 : S2COpenTradePacket.openFull(shop.getShopId(), snap.purchases(), snap.maxPurchases(),
                 snap.lastPurchaseTimes(), snap.purchaseGameTimes(), snap.purchaseDayTimes(),
                 snap.cooldownTypes(), snap.cooldownValues(), snap.resetTimeTicks(),
                 snap.visibility(), snap.canBuyConditions(),
-                openSoundId, closeSoundId);
+                openSoundId, closeSoundId, PlayerSessionEpochManager.getOrCreate(player));
 
         ArcQuestNetwork.CHANNEL.send(
                 PacketDistributor.PLAYER.with(() -> player),
@@ -229,24 +257,23 @@ public class C2SRequestTradePacket {
     }
 
     private static void handlePurchase(ServerPlayer player, TradeShopDefinition shop,
-                                       String entryId, ScreenType clientScreenType) {
+                                       String entryId, ScreenType clientScreenType,
+                                       UUID requestId, long playerSessionEpoch) {
         SyncObservability.trace("trade", shop.getShopId(), player.getName().getString(),
                 SyncObservability.Stage.ACTION, "purchase:" + entryId);
 
-        TradeSession session = new TradeSession(player, shop);
-        TradeSession.TradeResult result = session.executeTrade(entryId);
+        long effectiveEpoch = playerSessionEpoch > 0L
+                ? playerSessionEpoch
+                : PlayerSessionEpochManager.getOrCreate(player);
+        BoundedProcessedRequestStore.ProcessedResult<TradeCommandResult> processed = PROCESSED_PURCHASES.process(
+                new PlayerSessionRef(player.getUUID(), effectiveEpoch),
+                playerSessionEpoch > 0L ? requestId : RequestIdempotencyStore.LEGACY_REQUEST_ID,
+                () -> executePurchase(player, shop, entryId));
+        TradeCommandResult commandResult = processed.result();
+        TradeSession.TradeResult result = commandResult.tradeResult();
 
-        S2COpenTradePacket.FailReason reason = S2COpenTradePacket.FailReason.GENERIC;
+        S2COpenTradePacket.FailReason reason = commandResult.failReason();
         String errorKey = result.errorKey();
-        RejectCodeDictionary.Code mappedCode = RejectCodeDictionary.fromTradeErrorKey(errorKey);
-        switch (mappedCode) {
-            case SESSION_ON_COOLDOWN -> reason = S2COpenTradePacket.FailReason.COOLDOWN;
-            case SESSION_MAX_DRAWS_REACHED -> reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
-            case SESSION_NOT_VISIBLE, SESSION_CONDITION_NOT_MET ->
-                    reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
-            case CANNOT_AFFORD -> reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
-            default -> reason = S2COpenTradePacket.FailReason.GENERIC;
-        }
 
         S2COpenTradePacket response = result.succeeded()
                 ? S2COpenTradePacket.tradeSuccess(shop.getShopId(), entryId)
@@ -261,9 +288,9 @@ public class C2SRequestTradePacket {
                 result.succeeded() ? "purchase_success" : "purchase_failed:" + reason.name());
 
         // 发布 Forge 事件（供附属模组监听）
-        if (result.succeeded()) {
+        if (!processed.replayed() && result.succeeded()) {
             MinecraftForge.EVENT_BUS.post(new TradePurchasedSuccessEvent(player, shop.getShopId(), entryId));
-        } else {
+        } else if (!processed.replayed()) {
             // 转换失败原因
             TradePurchaseFailedEvent.FailureReason failureReason = switch (reason) {
                 case COOLDOWN -> TradePurchaseFailedEvent.FailureReason.ON_COOLDOWN;
@@ -283,6 +310,33 @@ public class C2SRequestTradePacket {
         }
 
         refreshTradeData(player, shop, clientScreenType, "purchase_result");
+    }
+
+    private static TradeCommandResult executePurchase(ServerPlayer player, TradeShopDefinition shop, String entryId) {
+        TradeSession.TradeResult result = new TradeSession(player, shop).executeTrade(entryId);
+        S2COpenTradePacket.FailReason reason = S2COpenTradePacket.FailReason.GENERIC;
+        RejectCodeDictionary.Code mappedCode = RejectCodeDictionary.fromTradeErrorKey(result.errorKey());
+        switch (mappedCode) {
+            case SESSION_ON_COOLDOWN -> reason = S2COpenTradePacket.FailReason.COOLDOWN;
+            case SESSION_MAX_DRAWS_REACHED -> reason = S2COpenTradePacket.FailReason.LIMIT_REACHED;
+            case SESSION_NOT_VISIBLE, SESSION_CONDITION_NOT_MET ->
+                    reason = S2COpenTradePacket.FailReason.CONDITION_FAIL;
+            case CANNOT_AFFORD -> reason = S2COpenTradePacket.FailReason.CANNOT_AFFORD;
+            default -> reason = S2COpenTradePacket.FailReason.GENERIC;
+        }
+        return new TradeCommandResult(result, reason);
+    }
+
+    public static void clearPlayer(UUID playerId) {
+        LAST_TRADE_SYNC_FINGERPRINTS.remove(playerId);
+        ACTIVE_TRADE_CONTEXTS.remove(playerId);
+        PROCESSED_PURCHASES.clearPlayer(playerId);
+    }
+
+    public static void clearAll() {
+        LAST_TRADE_SYNC_FINGERPRINTS.clear();
+        ACTIVE_TRADE_CONTEXTS.clear();
+        PROCESSED_PURCHASES.clear();
     }
 
     /**
@@ -311,7 +365,8 @@ public class C2SRequestTradePacket {
                 snap.cooldownValues(),
                 snap.resetTimeTicks(),
                 snap.visibility(),
-                snap.canBuyConditions()
+                snap.canBuyConditions(),
+                PlayerSessionEpochManager.getOrCreate(player)
         );
 
         ArcQuestNetwork.CHANNEL.send(
@@ -451,6 +506,32 @@ public class C2SRequestTradePacket {
         buf.writeUtf(shopId);
         buf.writeUtf(entryId);
         buf.writeEnum(currentScreenType);
+        buf.writeUUID(requestId);
+        buf.writeLong(playerSessionEpoch);
+    }
+
+    public Action getAction() {
+        return action;
+    }
+
+    public String getShopId() {
+        return shopId;
+    }
+
+    public String getEntryId() {
+        return entryId;
+    }
+
+    public ScreenType getCurrentScreenType() {
+        return currentScreenType;
+    }
+
+    public UUID getRequestId() {
+        return requestId;
+    }
+
+    public long getPlayerSessionEpoch() {
+        return playerSessionEpoch;
     }
 
     public enum Action {
@@ -486,5 +567,9 @@ public class C2SRequestTradePacket {
     }
 
     private static record ActiveTradeContext(String shopId, ScreenType screenType, long lastSeenMs) {
+    }
+
+    private record TradeCommandResult(TradeSession.TradeResult tradeResult,
+                                      S2COpenTradePacket.FailReason failReason) {
     }
 }

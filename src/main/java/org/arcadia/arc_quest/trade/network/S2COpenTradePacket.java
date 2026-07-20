@@ -39,6 +39,7 @@ public class S2COpenTradePacket {
     private final int[] resetTimeTicks;
     private final boolean[] visibility;
     private final boolean[] canBuyConditions;
+    private final long playerSessionEpoch;
     private final String openSoundId;  // 商店打开音效 ID
     private final String closeSoundId;  // 商店关闭音效 ID
 
@@ -50,6 +51,20 @@ public class S2COpenTradePacket {
                               int[] resetTimeTicks, boolean[] visibility,
                               boolean[] canBuyConditions,
                               String openSoundId, String closeSoundId) {
+        this(mode, shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes,
+                purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility,
+                canBuyConditions, openSoundId, closeSoundId, 0L);
+    }
+
+    public S2COpenTradePacket(Mode mode, String shopId,
+                              int[] purchaseCounts, int[] maxPurchases,
+                              long[] lastPurchaseTimes,
+                              long[] purchaseGameTimes, long[] purchaseDayTimes,
+                              int[] cooldownTypes, long[] cooldownValues,
+                              int[] resetTimeTicks, boolean[] visibility,
+                              boolean[] canBuyConditions,
+                              String openSoundId, String closeSoundId,
+                              long playerSessionEpoch) {
         this.mode = mode;
         this.shopId = shopId;
         entryId = null;
@@ -66,6 +81,7 @@ public class S2COpenTradePacket {
         this.resetTimeTicks = resetTimeTicks;
         this.visibility = visibility;
         this.canBuyConditions = canBuyConditions;
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
         this.openSoundId = openSoundId;
         this.closeSoundId = closeSoundId;
     }
@@ -92,6 +108,7 @@ public class S2COpenTradePacket {
         resetTimeTicks = null;
         visibility = null;
         canBuyConditions = null;
+        playerSessionEpoch = 0L;
         openSoundId = null;
         closeSoundId = null;
     }
@@ -112,6 +129,18 @@ public class S2COpenTradePacket {
                 openSoundId, closeSoundId);
     }
 
+    public static S2COpenTradePacket openFull(String shopId,
+                                              int[] purchaseCounts, int[] maxPurchases,
+                                              long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
+                                              int[] cooldownTypes, long[] cooldownValues,
+                                              int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions,
+                                              String openSoundId, String closeSoundId, long playerSessionEpoch) {
+        return new S2COpenTradePacket(Mode.OPEN_FULL, shopId,
+                purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
+                cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions,
+                openSoundId, closeSoundId, playerSessionEpoch);
+    }
+
     public static S2COpenTradePacket openSimple(String shopId,
                                                 int[] purchaseCounts, int[] maxPurchases,
                                                 long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
@@ -122,6 +151,18 @@ public class S2COpenTradePacket {
                 purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
                 cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions,
                 openSoundId, closeSoundId);
+    }
+
+    public static S2COpenTradePacket openSimple(String shopId,
+                                                int[] purchaseCounts, int[] maxPurchases,
+                                                long[] lastPurchaseTimes, long[] purchaseGameTimes, long[] purchaseDayTimes,
+                                                int[] cooldownTypes, long[] cooldownValues,
+                                                int[] resetTimeTicks, boolean[] visibility, boolean[] canBuyConditions,
+                                                String openSoundId, String closeSoundId, long playerSessionEpoch) {
+        return new S2COpenTradePacket(Mode.OPEN_SIMPLE, shopId,
+                purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes, purchaseDayTimes,
+                cooldownTypes, cooldownValues, resetTimeTicks, visibility, canBuyConditions,
+                openSoundId, closeSoundId, playerSessionEpoch);
     }
 
     public static S2COpenTradePacket tradeSuccess(String shopId, String entryId) {
@@ -140,6 +181,7 @@ public class S2COpenTradePacket {
     public static S2COpenTradePacket decode(FriendlyByteBuf buf) {
         Mode mode = buf.readEnum(Mode.class);
         String shopId = buf.readUtf();
+        long playerSessionEpoch = buf.readLong();
 
         if (mode == Mode.OPEN_FULL || mode == Mode.OPEN_SIMPLE) {
             int count = buf.readVarInt();
@@ -171,7 +213,7 @@ public class S2COpenTradePacket {
             String closeSoundId = buf.readUtf();
             return new S2COpenTradePacket(mode, shopId, purchases, maxPurch, lastTimes,
                     purchaseGTs, purchaseDTs, cdTypes, cdValues, resetTicks, vis, canBuy,
-                    openSoundId, closeSoundId);
+                    openSoundId, closeSoundId, playerSessionEpoch);
         } else if (mode == Mode.TRADE_FAIL) {
             String entryId = buf.readUtf();
             FailReason failReason = buf.readEnum(FailReason.class);
@@ -197,6 +239,10 @@ public class S2COpenTradePacket {
     public static void handle(S2COpenTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
+            if (pkt.playerSessionEpoch > 0L && !pkt.shopId.isEmpty()
+                    && !ClientTradeCache.INSTANCE.acceptPlayerSessionEpoch(pkt.shopId, pkt.playerSessionEpoch)) {
+                return;
+            }
             switch (pkt.mode) {
                 case OPEN_FULL -> {
                     ClientTradeCache.INSTANCE.closeAllExcept(pkt.shopId);
@@ -267,6 +313,7 @@ public class S2COpenTradePacket {
     public void encode(FriendlyByteBuf buf) {
         buf.writeEnum(mode);
         buf.writeUtf(shopId);
+        buf.writeLong(playerSessionEpoch);
 
         if (mode == Mode.OPEN_FULL || mode == Mode.OPEN_SIMPLE) {
             int count = purchaseCounts != null ? purchaseCounts.length : 0;
@@ -326,6 +373,10 @@ public class S2COpenTradePacket {
 
     public String getShopId() {
         return shopId;
+    }
+
+    public long getPlayerSessionEpoch() {
+        return playerSessionEpoch;
     }
 
     public enum Mode {

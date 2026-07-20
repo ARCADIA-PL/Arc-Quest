@@ -71,7 +71,7 @@ public class SimpleTradePanel extends AbstractTradeScreen {
             lastClickedGi = gi;
             if (ClientTradeCache.INSTANCE.canPurchase(shopId, gi)) {
                 ArcQuestNetwork.sendTradeRequest(
-                        C2SRequestTradePacket.purchaseWithScreenType(
+                        ClientTradeCache.INSTANCE.createPurchasePacket(
                                 shopId,
                                 entry.getEntryId(),
                                 C2SRequestTradePacket.ScreenType.SIMPLE

@@ -18,6 +18,7 @@ import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
+import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
@@ -53,6 +54,7 @@ public final class ClientEventHandler {
     public static void onLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientGuideCache.INSTANCE.clear();
         ClientQuestCache.INSTANCE.clear();
+        ClientTradeCache.INSTANCE.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
     }
