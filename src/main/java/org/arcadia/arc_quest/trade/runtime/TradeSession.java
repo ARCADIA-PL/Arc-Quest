@@ -81,12 +81,14 @@ public final class TradeSession {
             }
         }
 
-        for (ITradeOffer cost : entry.getCosts()) {
-            cost.execute(player);
-        }
-
-        for (ITradeOffer reward : entry.getRewards()) {
-            reward.execute(player);
+        TradeTransactionCoordinator.TransactionResult transaction = new TradeTransactionCoordinator().execute(
+                player, entry.getCosts(), entry.getRewards());
+        if (!transaction.succeeded()) {
+            LOGGER.error("[Trade] Transaction failed: player={}, shop={}, entry={}, fullyReversible={}, rollbackSucceeded={}",
+                    player.getName().getString(), shop.getShopId(), entryId,
+                    transaction.fullyReversible(), transaction.rollbackSucceeded(), transaction.failure());
+            return TradeResult.fail(RejectCodeDictionary.errorKey(
+                    RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.TRANSACTION_FAILED));
         }
 
         boolean shouldRecordCooldown = TradeEntryStateResolver.shouldRecordCooldown(getData(), shop.getShopId(), entry);
