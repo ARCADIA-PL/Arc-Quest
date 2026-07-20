@@ -5,10 +5,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
+import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
+import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
@@ -60,6 +66,7 @@ public final class ArcQuestPlayerLifecycleHandler {
     @SubscribeEvent
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
+        DialogueSessionManager.INSTANCE.onPlayerLogout(sp);
         ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
         if (data == null) return;
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
@@ -70,6 +77,7 @@ public final class ArcQuestPlayerLifecycleHandler {
     @SubscribeEvent
     public static void onDimensionChange(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
+        DialogueSessionManager.INSTANCE.onPlayerLogout(sp);
         ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
         if (data == null) return;
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
@@ -80,6 +88,7 @@ public final class ArcQuestPlayerLifecycleHandler {
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer sp)) return;
+        DialogueSessionManager.INSTANCE.onPlayerLogout(sp);
         ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
         if (data != null) {
             ArcQuestPlayerManager.persistSnapshot(sp, data);
@@ -95,6 +104,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         if (event.getLevel().isClientSide() || !(event.getLevel() instanceof ServerLevel serverLevel))
             return;
         for (ServerPlayer player : serverLevel.players()) {
+            DialogueSessionManager.INSTANCE.onPlayerLogout(player);
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             if (data != null) {
                 ArcQuestPlayerManager.persistSnapshot(player, data);
@@ -103,6 +113,36 @@ public final class ArcQuestPlayerLifecycleHandler {
                 PlayerSessionEpochManager.endSession(player.getUUID());
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerDeath(LivingDeathEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            DialogueSessionManager.INSTANCE.onPlayerLogout(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && event.getServer().getTickCount() % 20 == 0) {
+            for (var expiredLease : NpcInteractionLeaseManager.INSTANCE.tick(event.getServer().getTickCount())) {
+                ServerPlayer player = event.getServer().getPlayerList()
+                        .getPlayer(expiredLease.owner().playerUuid());
+                if (player == null) continue;
+                var session = DialogueSessionManager.INSTANCE.getSession(player);
+                if (session != null && expiredLease.leaseId().equals(session.getNpcLeaseId())) {
+                    DialogueSessionManager.INSTANCE.endDialogue(player);
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        DialogueSessionManager.INSTANCE.shutdown();
+        DialogueNpcStateManager.clearAll();
+        RequestIdempotencyStore.INSTANCE.clear();
+        PlayerSessionEpochManager.clear();
     }
 
     @SubscribeEvent

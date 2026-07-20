@@ -45,6 +45,8 @@ public class DialogueSession {
 
     private DialogueNode currentNode;
     private long revision;
+    @Nullable
+    private UUID npcLeaseId;
     private boolean ended = false;
     private List<DialogueChoice> visibleChoices = List.of();
     private int[] visibleChoiceOriginalIndices = new int[0];
@@ -158,6 +160,15 @@ public class DialogueSession {
             return entityRef.resolve(player.getServer());
         }
         return entityId >= 0 ? player.level().getEntity(entityId) : null;
+    }
+
+    @Nullable
+    public UUID getNpcLeaseId() {
+        return npcLeaseId;
+    }
+
+    void bindNpcLease(UUID npcLeaseId) {
+        this.npcLeaseId = npcLeaseId;
     }
 
     public String getNamespace() {

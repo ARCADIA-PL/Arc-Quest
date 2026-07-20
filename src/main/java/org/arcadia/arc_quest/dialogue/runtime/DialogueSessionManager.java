@@ -10,6 +10,8 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.arcadia.arc_quest.core.identity.EntityRef;
+import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
@@ -18,6 +20,8 @@ import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacke
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
+import org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -46,22 +50,30 @@ public final class DialogueSessionManager {
     }
 
     public DialogueSession startDialogue(ServerPlayer player, DialogueTree tree) {
-        return startDialogue(player, null, tree, new DialogueContext());
+        return startDialogue(player, null, tree, new DialogueContext(), NpcInteractionPolicy.PARALLEL_PRIVATE);
     }
 
     @Nullable
     public DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                          String dialogueId, DialogueContext context) {
+        return startDialogue(player, npcEntity, dialogueId, context, NpcInteractionPolicy.PARALLEL_PRIVATE);
+    }
+
+    @Nullable
+    public DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
+                                         String dialogueId, DialogueContext context,
+                                         NpcInteractionPolicy interactionPolicy) {
         DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
         if (tree == null) {
             LOGGER.error("[Dialogue] Dialogue tree '{}' not found.", dialogueId);
             return null;
         }
-        return startDialogue(player, npcEntity, tree, context);
+        return startDialogue(player, npcEntity, tree, context, interactionPolicy);
     }
 
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
-                                          DialogueTree tree, DialogueContext context) {
+                                          DialogueTree tree, DialogueContext context,
+                                          NpcInteractionPolicy interactionPolicy) {
         var data = ArcQuestPlayerManager.get(player);
         if (data == null) {
             LOGGER.warn("[Dialogue] Missing quest data for player {}, cannot start dialogue '{}'",
@@ -94,6 +106,20 @@ public final class DialogueSessionManager {
         }
 
         endDialogue(player);
+        if (npcEntity != null) {
+            var leaseResult = NpcInteractionLeaseManager.INSTANCE.acquire(
+                    EntityRef.of(npcEntity),
+                    new PlayerSessionRef(player.getUUID(), PlayerSessionEpochManager.getOrCreate(player)),
+                    interactionPolicy != null ? interactionPolicy : NpcInteractionPolicy.PARALLEL_PRIVATE,
+                    player.server.getTickCount()
+            );
+            if (!leaseResult.acquired() || leaseResult.lease() == null) {
+                LOGGER.info("[DialogueLease] Dialogue start rejected. player={}, entityRef={}, policy={}, status={}",
+                        player.getUUID(), EntityRef.of(npcEntity), interactionPolicy, leaseResult.status());
+                return null;
+            }
+            session.bindNpcLease(leaseResult.lease().leaseId());
+        }
         sessions.put(player.getUUID(), session);
         transcriptMap.put(player.getUUID(), new ArrayList<>());
 
@@ -307,6 +333,7 @@ public final class DialogueSessionManager {
                     currentNode != null ? currentNode.nodeId() : "<none>");
             return null;
         }
+        touchLease(session);
         return session;
     }
 
@@ -325,10 +352,13 @@ public final class DialogueSessionManager {
         transcriptMap.remove(player.getUUID());
         String dialogueId = session.getTree().dialogueId();
         Entity npcEntity = null;
+        if (session.getNpcLeaseId() != null) {
+            NpcInteractionLeaseManager.INSTANCE.release(session.getNpcLeaseId());
+        }
         if (session.getEntityId() != -1) {
             npcEntity = session.getEntity();
             if (npcEntity instanceof IDialogueNpc) {
-                DialogueNpcStateManager.clear(npcEntity);
+                DialogueNpcStateManager.clear(npcEntity, player);
             }
         }
         if (!session.isEnded()) {
@@ -353,9 +383,25 @@ public final class DialogueSessionManager {
     public void onPlayerLogout(ServerPlayer player) {
         clearRestoreNodeState(player);
         endDialogue(player);
+        NpcInteractionLeaseManager.INSTANCE.releasePlayer(player.getUUID());
+    }
+
+    public void heartbeat(ServerPlayer player) {
+        DialogueSession session = getSession(player);
+        if (session != null) touchLease(session);
+    }
+
+    public void shutdown() {
+        for (DialogueSession session : List.copyOf(sessions.values())) {
+            endDialogue(session.getPlayer());
+        }
+        restoreNodeMap.clear();
+        transcriptMap.clear();
+        NpcInteractionLeaseManager.INSTANCE.clear();
     }
 
     private void sendNodeToClient(DialogueSession session, boolean openMode) {
+        touchLease(session);
         ServerPlayer player = session.getPlayer();
         DialogueNode node = session.getCurrentNode();
         if (node == null) return;
@@ -454,6 +500,13 @@ public final class DialogueSessionManager {
             packet = S2COpenDialoguePacket.updateFrom(packet);
         }
         ArcQuestNetwork.sendToPlayer(player, packet);
+    }
+
+    private void touchLease(DialogueSession session) {
+        if (session.getNpcLeaseId() != null) {
+            NpcInteractionLeaseManager.INSTANCE.heartbeat(
+                    session.getNpcLeaseId(), session.getPlayer().server.getTickCount());
+        }
     }
 
     private void syncDialogueMarkers(DialogueSession session,

@@ -37,4 +37,16 @@ public record EntityRef(ResourceKey<Level> dimensionKey, UUID entityUuid, int la
     public String toString() {
         return dimensionKey.location() + "/" + entityUuid + "#" + lastKnownRuntimeId;
     }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof EntityRef entityRef)) return false;
+        return dimensionKey.equals(entityRef.dimensionKey) && entityUuid.equals(entityRef.entityUuid);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(dimensionKey, entityUuid);
+    }
 }

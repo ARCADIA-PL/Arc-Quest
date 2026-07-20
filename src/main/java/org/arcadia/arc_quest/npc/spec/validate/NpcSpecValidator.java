@@ -25,6 +25,11 @@ public final class NpcSpecValidator {
                     "dialogue_distance should be at least 1.0");
         }
 
+        if (spec.interactionPolicy != null && !spec.interactionPolicy.isImplemented()) {
+            report.add(NpcValidationIssue.Severity.ERROR, "interaction_policy",
+                    "interaction policy is reserved but not implemented yet: " + spec.interactionPolicy);
+        }
+
         if (spec.bindings != null) {
             for (int i = 0; i < spec.bindings.size(); i++) {
                 validateBinding(report, spec.bindings.get(i), i);

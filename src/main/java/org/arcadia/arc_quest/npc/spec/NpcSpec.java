@@ -12,6 +12,7 @@ public class NpcSpec {
     public double dialogueDistance = 8.0;
     public boolean shouldLookAtPlayer = true;
     public boolean shouldStopMoving = true;
+    public NpcInteractionPolicy interactionPolicy = NpcInteractionPolicy.PARALLEL_PRIVATE;
     public ConditionSpec interactCondition = null;
     public List<String> onDialogueStartCommands = new ArrayList<>();
     public List<String> onDialogueEndCommands = new ArrayList<>();

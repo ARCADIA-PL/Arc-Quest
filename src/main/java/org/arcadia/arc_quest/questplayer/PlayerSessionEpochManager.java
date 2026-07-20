@@ -31,4 +31,8 @@ public final class PlayerSessionEpochManager {
     public static void endSession(UUID playerId) {
         EPOCHS.remove(playerId);
     }
+
+    public static void clear() {
+        EPOCHS.clear();
+    }
 }

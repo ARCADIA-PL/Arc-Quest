@@ -92,7 +92,7 @@ public final class NpcDialogueHandler {
         DialogueNpcStateManager.State state = DialogueNpcStateManager.get(event.getEntity());
         if (state == null || state.conversingPlayer() == null) return;
         if (!state.conversingPlayer().isAlive()) {
-            DialogueNpcStateManager.clear(event.getEntity());
+            DialogueNpcStateManager.clear(event.getEntity(), state.conversingPlayer());
             return;
         }
 
@@ -110,7 +110,7 @@ public final class NpcDialogueHandler {
             if (state.conversingPlayer() instanceof ServerPlayer sp) {
                 DialogueSessionManager.INSTANCE.endDialogue(sp);
             }
-            DialogueNpcStateManager.clear(event.getEntity());
+            DialogueNpcStateManager.clear(event.getEntity(), state.conversingPlayer());
         }
     }
 

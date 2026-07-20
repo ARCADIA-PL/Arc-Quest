@@ -222,6 +222,8 @@ public final class NpcBindingRegistry {
         copy.dialogueDistance = source.dialogueDistance;
         copy.shouldLookAtPlayer = source.shouldLookAtPlayer;
         copy.shouldStopMoving = source.shouldStopMoving;
+        copy.interactionPolicy = source.interactionPolicy != null
+                ? source.interactionPolicy : org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy.PARALLEL_PRIVATE;
         copy.interactCondition = source.interactCondition;
         copy.onDialogueStartCommands = source.onDialogueStartCommands != null
                 ? new ArrayList<>(source.onDialogueStartCommands) : new ArrayList<>();
