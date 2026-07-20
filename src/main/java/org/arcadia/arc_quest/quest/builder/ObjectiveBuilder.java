@@ -20,6 +20,7 @@ public final class ObjectiveBuilder {
     private final ObjectiveType type;
     private final Map<String, String> extraData = new LinkedHashMap<>();
     private final List<MarkSpec> relatedMarks = new ArrayList<>();
+    private String objectiveId = "";
     private ResourceLocation targetId;
     private int requiredCount = 1;
     private QuestText displayText = QuestText.literal("???");
@@ -149,6 +150,11 @@ public final class ObjectiveBuilder {
         return this;
     }
 
+    public ObjectiveBuilder id(String objectiveId) {
+        this.objectiveId = objectiveId != null ? objectiveId.trim() : "";
+        return this;
+    }
+
     public ObjectiveBuilder display(Component component) {
         displayText = QuestText.component(component);
         return this;
@@ -206,7 +212,7 @@ public final class ObjectiveBuilder {
 
     public ObjectiveEntry build() {
         Objects.requireNonNull(targetId, "targetId not set for ObjectiveBuilder");
-        return new ObjectiveEntry(type, targetId, requiredCount, displayText,
+        return new ObjectiveEntry(objectiveId, type, targetId, requiredCount, displayText,
                 hidden, optional, new LinkedHashMap<>(extraData), new ArrayList<>(relatedMarks), countModifier);
     }
 }

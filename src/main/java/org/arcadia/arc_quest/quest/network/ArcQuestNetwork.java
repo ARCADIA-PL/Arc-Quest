@@ -15,7 +15,10 @@ import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.api.PhaseDefinition;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.trade.gacha.network.*;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
@@ -36,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "4";
+    private static final String PROTOCOL_VERSION = "5";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -339,8 +342,9 @@ public final class ArcQuestNetwork {
                                          int objectiveIndex,
                                          int newProgress) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
+        String objectiveId = resolveObjectiveId(player, questId, phaseId, objectiveIndex);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CDeltaProgressPacket(questId, phaseId, objectiveIndex, newProgress,
+                new S2CDeltaProgressPacket(questId, phaseId, objectiveId, objectiveIndex, newProgress,
                         envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, null, "delta_progress_sync");
@@ -363,6 +367,22 @@ public final class ArcQuestNetwork {
                         envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, data, "flags_vars_sync");
+    }
+
+    private static String resolveObjectiveId(ServerPlayer player, String questId,
+                                             String phaseId, int objectiveIndex) {
+        ResourceLocation questKey = ResourceLocation.tryParse(questId);
+        QuestDefinition definition = questKey != null ? QuestRegistry.get(questKey) : null;
+        if (definition == null) return "";
+        String resolvedPhaseId = phaseId;
+        if (resolvedPhaseId == null || resolvedPhaseId.isBlank()) {
+            ArcQuestPlayer playerData = ArcQuestPlayerManager.get(player);
+            QuestRuntimeData runtimeData = playerData != null ? playerData.getActiveQuest(questId) : null;
+            resolvedPhaseId = runtimeData != null ? runtimeData.getCurrentPhaseId() : "";
+        }
+        PhaseDefinition phase = definition.getPhase(resolvedPhaseId);
+        if (phase == null || objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return "";
+        return phase.getObjectives().get(objectiveIndex).getObjectiveId();
     }
 
     /**

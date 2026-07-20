@@ -12,6 +12,7 @@ public class S2CDeltaProgressPacket {
 
     private final String questId;
     private final String phaseId;
+    private final String objectiveId;
     private final int objectiveIndex;
     private final int newProgress;
     private final long playerSessionEpoch;
@@ -19,13 +20,21 @@ public class S2CDeltaProgressPacket {
     private final long newRevision;
 
     public S2CDeltaProgressPacket(String questId, String phaseId, int objectiveIndex, int newProgress) {
-        this(questId, phaseId, objectiveIndex, newProgress, 0L, 0L, 0L);
+        this(questId, phaseId, "", objectiveIndex, newProgress, 0L, 0L, 0L);
     }
 
     public S2CDeltaProgressPacket(String questId, String phaseId, int objectiveIndex, int newProgress,
                                   long playerSessionEpoch, long baseRevision, long newRevision) {
+        this(questId, phaseId, "", objectiveIndex, newProgress,
+                playerSessionEpoch, baseRevision, newRevision);
+    }
+
+    public S2CDeltaProgressPacket(String questId, String phaseId, String objectiveId,
+                                  int objectiveIndex, int newProgress,
+                                  long playerSessionEpoch, long baseRevision, long newRevision) {
         this.questId = questId;
         this.phaseId = phaseId;
+        this.objectiveId = objectiveId != null ? objectiveId : "";
         this.objectiveIndex = objectiveIndex;
         this.newProgress = newProgress;
         this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
@@ -36,6 +45,7 @@ public class S2CDeltaProgressPacket {
     public static void encode(S2CDeltaProgressPacket pkt, FriendlyByteBuf buf) {
         buf.writeUtf(pkt.questId);
         buf.writeUtf(pkt.phaseId);
+        buf.writeUtf(pkt.objectiveId);
         buf.writeVarInt(pkt.objectiveIndex);
         buf.writeVarInt(pkt.newProgress);
         buf.writeLong(pkt.playerSessionEpoch);
@@ -45,6 +55,7 @@ public class S2CDeltaProgressPacket {
 
     public static S2CDeltaProgressPacket decode(FriendlyByteBuf buf) {
         return new S2CDeltaProgressPacket(
+                buf.readUtf(),
                 buf.readUtf(),
                 buf.readUtf(),
                 buf.readVarInt(),
@@ -61,7 +72,7 @@ public class S2CDeltaProgressPacket {
             if (ClientQuestCache.INSTANCE.acceptDelta(
                     pkt.playerSessionEpoch, pkt.baseRevision, pkt.newRevision)) {
                 ClientQuestCache.INSTANCE.updateObjectiveProgress(
-                        pkt.questId, pkt.phaseId, pkt.objectiveIndex, pkt.newProgress);
+                        pkt.questId, pkt.phaseId, pkt.objectiveId, pkt.objectiveIndex, pkt.newProgress);
             }
         });
         ctx.get().setPacketHandled(true);
@@ -77,6 +88,10 @@ public class S2CDeltaProgressPacket {
 
     public String getPhaseId() {
         return phaseId;
+    }
+
+    public String getObjectiveId() {
+        return objectiveId;
     }
 
     public int getObjectiveIndex() {

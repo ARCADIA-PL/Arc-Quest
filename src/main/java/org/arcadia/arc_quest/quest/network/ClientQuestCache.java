@@ -336,6 +336,24 @@ public final class ClientQuestCache {
         LOGGER.debug("[ClientCache] Objective updated: {}/{}#{}={}", questId, phaseId, objIndex, newProgress);
     }
 
+    public void updateObjectiveProgress(String questId, String phaseId, String objectiveId,
+                                        int fallbackIndex, int newProgress) {
+        int objectiveIndex = fallbackIndex;
+        if (objectiveId != null && !objectiveId.isBlank()) {
+            ResourceLocation questKey = ResourceLocation.tryParse(questId);
+            QuestDefinition definition = questKey != null ? QuestRegistry.get(questKey) : null;
+            PhaseDefinition phase = definition != null ? definition.getPhase(phaseId) : null;
+            int resolvedIndex = phase != null ? phase.getObjectiveIndex(objectiveId) : -1;
+            if (resolvedIndex >= 0) {
+                objectiveIndex = resolvedIndex;
+            } else {
+                LOGGER.warn("[QuestSync] Objective id not found, using legacy index: quest={}, phase={}, objectiveId={}, index={}",
+                        questId, phaseId, objectiveId, fallbackIndex);
+            }
+        }
+        updateObjectiveProgress(questId, phaseId, objectiveIndex, newProgress);
+    }
+
     private void recordObjectiveHistory(String questId, String phaseId, int objIndex, int oldProgress, int newProgress) {
         int required = resolveObjectiveRequired(questId, phaseId, objIndex);
         for (QuestCacheListener l : listeners) {
