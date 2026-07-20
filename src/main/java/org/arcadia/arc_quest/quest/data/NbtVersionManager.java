@@ -8,11 +8,11 @@ import java.util.function.Consumer;
 /**
  * NBT 版本管理器。
  *
- * <p>统一管理 Capability/Attachment 的 NBT 版本号,支持链式自动迁移。</p>
+ * <p>统一管理 Attachment 的 NBT 版本号,支持链式自动迁移。</p>
  *
  * <h2>使用示例</h2>
  * <pre>{@code
- * // 在 QuestCapabilityImpl 中
+ * // 在玩家数据管理类中
  * private static final NbtVersionManager VERSION_MANAGER = new NbtVersionManager(
  *     "arc_quest:player_data",
  *     3,  // 当前最新版本

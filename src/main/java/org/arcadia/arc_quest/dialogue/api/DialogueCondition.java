@@ -4,7 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueEvalContext;
 import org.arcadia.arc_quest.quest.api.CompareOp;
@@ -533,7 +533,7 @@ public sealed interface DialogueCondition permits
          * @param minCount 最少需要持有的数量
          */
         public static HoldItem of(ItemStack stack, int minCount) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (id == null) throw new IllegalArgumentException("Unregistered item: " + stack.getItem());
             return new HoldItem(id.toString(), minCount);
         }
@@ -545,12 +545,12 @@ public sealed interface DialogueCondition permits
             int total = 0;
             var mainHand = ctx.player().getMainHandItem();
             if (!mainHand.isEmpty()) {
-                var mainId = ForgeRegistries.ITEMS.getKey(mainHand.getItem());
+                var mainId = BuiltInRegistries.ITEM.getKey(mainHand.getItem());
                 if (target.equals(mainId)) total += mainHand.getCount();
             }
             var offHand = ctx.player().getOffhandItem();
             if (!offHand.isEmpty()) {
-                var offId = ForgeRegistries.ITEMS.getKey(offHand.getItem());
+                var offId = BuiltInRegistries.ITEM.getKey(offHand.getItem());
                 if (target.equals(offId)) total += offHand.getCount();
             }
             return total >= minCount;

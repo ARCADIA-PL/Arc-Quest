@@ -20,13 +20,13 @@ import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.slf4j.Logger;
 
 /**
- * NPC 对话事件处理器 —— 将 Forge 事件连接到对话系统。
+ * NPC 对话事件处理器 —— 将 NeoForge 事件连接到对话系统。
  * <p>
  * 处理：
  * <ul>
  *   <li>玩家右键实体 → 检查 {@link IDialogueNpc} → 触发对话</li>
- *   <li>实体 Tick → {@link DialogueNpcPatch} 状态更新（注视/停步/距离断开）</li>
- *   <li>Capability 注册和附加</li>
+ *   <li>实体 Tick → {@link DialogueNpcStateManager} 状态更新（注视/停步/距离断开）</li>
+ *   <li>Attachment 数据持久化和同步</li>
  * </ul>
  * <p>
  * 注册方式：在 {@code Arc_quest} 主类构造器中：
@@ -81,7 +81,7 @@ public final class NpcDialogueHandler {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  实体 Tick → Capability 更新
+    //  实体 Tick → Attachment 状态更新
     // ═══════════════════════════════════════════════════════
 
     @SubscribeEvent
