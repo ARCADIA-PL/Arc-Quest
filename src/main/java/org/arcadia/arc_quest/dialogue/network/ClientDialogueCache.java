@@ -27,7 +27,8 @@ public final class ClientDialogueCache {
      * 当前活跃的对话会话映射 (treeId -> SessionData)
      * 支持嵌套场景：对话中打开商店再返回对话时保持状态
      */
-    private final Map<String, DialogueSessionData> activeSessions = new HashMap<>();
+    private final Map<UUID, DialogueSessionData> activeSessions = new HashMap<>();
+    private final Map<String, UUID> latestSessionByTree = new HashMap<>();
     @Nullable
     private UUID currentSessionId = null;
     /**
@@ -48,24 +49,72 @@ public final class ClientDialogueCache {
                                  int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
                                  @Nullable SoundEvent matchedSaySound, @Nullable SoundEvent[] choiceSounds,
                                  @Nullable String matchedSayId, @Nullable String[] choiceIds) {
+        UUID legacySessionId = currentSessionId != null && Objects.equals(currentTreeId, treeId)
+                ? currentSessionId
+                : UUID.randomUUID();
+        long legacyRevision = Optional.ofNullable(activeSessions.get(legacySessionId))
+                .map(session -> session.revision + 1L)
+                .orElse(1L);
+        updateFromPacket(legacySessionId, legacyRevision, 0L, true,
+                treeId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
+                lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks,
+                matchedSaySound, choiceSounds, matchedSayId, choiceIds);
+    }
 
-        // 更新当前活跃的对话树 ID
+    public boolean updateFromPacket(UUID sessionId, long revision, long playerSessionEpoch, boolean openMode,
+                                    String treeId, String nodeId, Component speaker, Component text, Component[] choices,
+                                    boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId,
+                                    long[] lastSelectTimes, long[] purchaseGTs, long[] purchaseDTs,
+                                    int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
+                                    @Nullable SoundEvent matchedSaySound, @Nullable SoundEvent[] choiceSounds,
+                                    @Nullable String matchedSayId, @Nullable String[] choiceIds) {
+        UUID effectiveSessionId = sessionId != null && !S2COpenDialoguePacket.LEGACY_SESSION_ID.equals(sessionId)
+                ? sessionId
+                : (currentSessionId != null && Objects.equals(currentTreeId, treeId)
+                ? currentSessionId : UUID.randomUUID());
+
+        DialogueSessionData current = getCurrentSession();
+        if (!openMode && current != null && !current.sessionId.equals(effectiveSessionId)) {
+            LOGGER.warn("[DialogueCache] Ignored update for stale session. incoming={}, current={}",
+                    effectiveSessionId, current.sessionId);
+            return false;
+        }
+        if (!openMode && current == null) {
+            LOGGER.debug("[DialogueCache] Ignored update without active session. incoming={}", effectiveSessionId);
+            return false;
+        }
+        if (openMode && current != null && !current.sessionId.equals(effectiveSessionId)) {
+            activeSessions.remove(current.sessionId);
+            latestSessionByTree.remove(current.treeId, current.sessionId);
+        }
+
+        DialogueSessionData session = activeSessions.computeIfAbsent(effectiveSessionId,
+                id -> new DialogueSessionData(id, treeId));
+        if (session.playerSessionEpoch != 0L && playerSessionEpoch != 0L
+                && session.playerSessionEpoch != playerSessionEpoch) {
+            LOGGER.warn("[DialogueCache] Ignored packet from stale player epoch. session={}, incomingEpoch={}, currentEpoch={}",
+                    effectiveSessionId, playerSessionEpoch, session.playerSessionEpoch);
+            return false;
+        }
+        if (revision < session.revision) {
+            LOGGER.debug("[DialogueCache] Ignored stale revision. session={}, incoming={}, current={}",
+                    effectiveSessionId, revision, session.revision);
+            return false;
+        }
+
+        currentSessionId = effectiveSessionId;
         currentTreeId = treeId;
-
-        DialogueSessionData session = activeSessions.computeIfAbsent(treeId, DialogueSessionData::new);
-        session.updateNode(nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
+        latestSessionByTree.put(treeId, effectiveSessionId);
+        session.updateNode(revision, playerSessionEpoch, nodeId, speaker, text, choices,
+                isTerminal, hasAutoNext, delayMs, entityId,
                 lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks,
                 choiceSounds, matchedSayId, choiceIds);
 
-        if (currentSessionId == null) {
-            currentSessionId = UUID.randomUUID();
-        }
-
-        // 播放 SayIf 匹配的个体化音效
         if (matchedSaySound != null) {
             GuiSoundManager.play(matchedSaySound);
             LOGGER.debug("[DialogueCache] Played SayIf selectSound for node: {}, sayId: {}", nodeId, matchedSayId);
         }
+        return true;
     }
 
     /**
@@ -75,7 +124,7 @@ public final class ClientDialogueCache {
      * @param index  选项在列表中的索引
      */
     public void playChoiceSound(String treeId, int index) {
-        DialogueSessionData session = activeSessions.get(treeId);
+        DialogueSessionData session = getSession(treeId);
         if (session == null) {
             LOGGER.warn("[DialogueCache] Cannot play choice selectSound: no session for treeId={}", treeId);
             return;
@@ -101,12 +150,14 @@ public final class ClientDialogueCache {
      * @param treeId 对话树 ID
      */
     public void closeSession(String treeId) {
-        DialogueSessionData removed = activeSessions.remove(treeId);
+        UUID sessionId = latestSessionByTree.remove(treeId);
+        DialogueSessionData removed = sessionId != null ? activeSessions.remove(sessionId) : null;
         if (removed != null) {
             LOGGER.debug("[DialogueCache] Session closed for treeId: {}", treeId);
             // 如果关闭的是当前会话，清除 currentTreeId
             if (treeId.equals(currentTreeId)) {
                 currentTreeId = null;
+                currentSessionId = null;
             }
         }
     }
@@ -115,13 +166,36 @@ public final class ClientDialogueCache {
      * 关闭当前最后一个活跃的会话（向后兼容）。
      */
     public void closeSession() {
-        if (currentTreeId != null) {
-            closeSession(currentTreeId);
+        if (currentSessionId != null) {
+            closeSession(currentSessionId, 0L);
         } else if (!activeSessions.isEmpty()) {
             // 兜底：如果没有 currentTreeId，记录警告并清除所有会话
             LOGGER.warn("[DialogueCache] closeSession() called without currentTreeId, clearing all sessions");
             activeSessions.clear();
+            latestSessionByTree.clear();
+            currentSessionId = null;
+            currentTreeId = null;
         }
+    }
+
+    public boolean closeSession(UUID sessionId, long playerSessionEpoch) {
+        if (sessionId == null || S2COpenDialoguePacket.LEGACY_SESSION_ID.equals(sessionId)) {
+            closeSession();
+            return true;
+        }
+        DialogueSessionData session = activeSessions.get(sessionId);
+        if (session == null) return false;
+        if (playerSessionEpoch != 0L && session.playerSessionEpoch != 0L
+                && playerSessionEpoch != session.playerSessionEpoch) {
+            return false;
+        }
+        activeSessions.remove(sessionId);
+        latestSessionByTree.remove(session.treeId, sessionId);
+        if (sessionId.equals(currentSessionId)) {
+            currentSessionId = null;
+            currentTreeId = null;
+        }
+        return true;
     }
 
     /**
@@ -132,7 +206,8 @@ public final class ClientDialogueCache {
      */
     @Nullable
     public DialogueSessionData getSession(String treeId) {
-        return activeSessions.get(treeId);
+        UUID sessionId = latestSessionByTree.get(treeId);
+        return sessionId != null ? activeSessions.get(sessionId) : null;
     }
 
     /**
@@ -142,10 +217,10 @@ public final class ClientDialogueCache {
      */
     @Nullable
     public DialogueSessionData getCurrentSession() {
-        if (currentTreeId == null) {
+        if (currentSessionId == null) {
             return null;
         }
-        return activeSessions.get(currentTreeId);
+        return activeSessions.get(currentSessionId);
     }
 
     @Nullable
@@ -156,6 +231,33 @@ public final class ClientDialogueCache {
     public List<TranscriptEntry> getCurrentTranscript() {
         if (currentSessionId == null) return List.of();
         return transcripts.getOrDefault(currentSessionId, List.of());
+    }
+
+    public C2SDialogueChoicePacket createChoicePacket(int choiceIndex) {
+        DialogueSessionData session = getCurrentSession();
+        if (session == null) return new C2SDialogueChoicePacket(choiceIndex);
+        return C2SDialogueChoicePacket.choice(choiceIndex, session.sessionId, session.revision,
+                session.nodeId, session.getChoiceId(choiceIndex), session.playerSessionEpoch);
+    }
+
+    public C2SDialogueChoicePacket createAutoAdvancePacket() {
+        DialogueSessionData session = getCurrentSession();
+        if (session == null) return C2SDialogueChoicePacket.autoAdvance();
+        return C2SDialogueChoicePacket.autoAdvance(session.sessionId, session.revision,
+                session.nodeId, session.playerSessionEpoch);
+    }
+
+    public C2SDialogueChoicePacket createClosePacket() {
+        DialogueSessionData session = getCurrentSession();
+        if (session == null) return C2SDialogueChoicePacket.close();
+        return C2SDialogueChoicePacket.close(session.sessionId, session.revision, session.playerSessionEpoch);
+    }
+
+    public C2SDialogueChoicePacket createRestorePacket() {
+        DialogueSessionData session = getCurrentSession();
+        if (session == null) return C2SDialogueChoicePacket.restore();
+        return C2SDialogueChoicePacket.restore(session.sessionId, session.revision,
+                session.nodeId, session.playerSessionEpoch);
     }
 
     public void replaceTranscriptSnapshot(UUID sessionId, List<S2CDialogueTranscriptDeltaPacket.Entry> entries) {
@@ -184,8 +286,10 @@ public final class ClientDialogueCache {
     public void clear() {
         int count = activeSessions.size();
         activeSessions.clear();
+        latestSessionByTree.clear();
         transcripts.clear();
         currentSessionId = null;
+        currentTreeId = null;
         LOGGER.debug("[DialogueCache] Cleared {} session(s)", count);
     }
 
@@ -198,7 +302,10 @@ public final class ClientDialogueCache {
      * 内部数据容器。
      */
     public static class DialogueSessionData {
+        public final UUID sessionId;
         public final String treeId;
+        public long revision;
+        public long playerSessionEpoch;
         public String nodeId;
         public Component speaker;
         public Component text;
@@ -222,6 +329,11 @@ public final class ClientDialogueCache {
         public String[] choiceIds;
 
         public DialogueSessionData(String treeId) {
+            this(UUID.randomUUID(), treeId);
+        }
+
+        public DialogueSessionData(UUID sessionId, String treeId) {
+            this.sessionId = sessionId;
             this.treeId = treeId;
         }
 
@@ -230,6 +342,19 @@ public final class ClientDialogueCache {
                                long[] lastSelectTimes, long[] purchaseGTs, long[] purchaseDTs,
                                int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
                                SoundEvent[] choiceSounds, String matchedSayId, String[] choiceIds) {
+            updateNode(revision + 1L, playerSessionEpoch, nodeId, speaker, text, choices,
+                    isTerminal, hasAutoNext, delayMs, entityId, lastSelectTimes, purchaseGTs, purchaseDTs,
+                    cooldownTypes, cooldownValues, resetTimeTicks, choiceSounds, matchedSayId, choiceIds);
+        }
+
+        public void updateNode(long revision, long playerSessionEpoch,
+                               String nodeId, Component speaker, Component text, Component[] choices,
+                               boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId,
+                               long[] lastSelectTimes, long[] purchaseGTs, long[] purchaseDTs,
+                               int[] cooldownTypes, long[] cooldownValues, int[] resetTimeTicks,
+                               SoundEvent[] choiceSounds, String matchedSayId, String[] choiceIds) {
+            this.revision = revision;
+            this.playerSessionEpoch = playerSessionEpoch;
             this.nodeId = nodeId;
             this.speaker = speaker;
             this.text = text;

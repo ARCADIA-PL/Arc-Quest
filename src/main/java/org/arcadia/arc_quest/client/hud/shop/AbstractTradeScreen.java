@@ -14,7 +14,7 @@ import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
-import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
+import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -218,7 +218,7 @@ public abstract class AbstractTradeScreen extends Screen {
             if (transitionAnim <= 0.001f && minecraft != null) {
                 if (pendingParentScreen != null) {
                     if (pendingParentScreen instanceof DialogueScreen ds) {
-                        ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.restore());
+                        ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createRestorePacket());
                         ds.resetSelectionState();
                         ds.init(minecraft, minecraft.getWindow().getGuiScaledWidth(), minecraft.getWindow().getGuiScaledHeight());
                     }

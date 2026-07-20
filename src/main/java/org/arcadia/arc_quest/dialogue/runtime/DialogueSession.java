@@ -4,14 +4,17 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.arcadia.arc_quest.core.identity.EntityRef;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.npc.NpcBinding;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -29,15 +32,19 @@ public class DialogueSession {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private final UUID sessionId;
+    private final long playerSessionEpoch;
     private final ServerPlayer player;
     private final DialogueTree tree;
     private final DialogueContext context;
     private final int entityId;
+    @Nullable
+    private final EntityRef entityRef;
 
     private final String namespace;
     private final DialogueProgressStore progress;
 
     private DialogueNode currentNode;
+    private long revision;
     private boolean ended = false;
     private List<DialogueChoice> visibleChoices = List.of();
     private int[] visibleChoiceOriginalIndices = new int[0];
@@ -52,11 +59,26 @@ public class DialogueSession {
 
     public DialogueSession(ServerPlayer player, DialogueTree tree,
                            DialogueContext context, int entityId) {
+        this(player, tree, context, entityId,
+                entityId >= 0 && player.level().getEntity(entityId) != null
+                        ? EntityRef.of(player.level().getEntity(entityId)) : null);
+    }
+
+    public DialogueSession(ServerPlayer player, DialogueTree tree,
+                           DialogueContext context, @Nullable Entity entity) {
+        this(player, tree, context, entity != null ? entity.getId() : -1,
+                entity != null ? EntityRef.of(entity) : null);
+    }
+
+    private DialogueSession(ServerPlayer player, DialogueTree tree, DialogueContext context,
+                            int entityId, @Nullable EntityRef entityRef) {
         sessionId = UUID.randomUUID();
+        playerSessionEpoch = PlayerSessionEpochManager.getOrCreate(player);
         this.player = player;
         this.tree = tree;
         this.context = context != null ? context : new DialogueContext();
         this.entityId = entityId;
+        this.entityRef = entityRef;
         currentNode = tree.getStartNode();
 
         namespace = resolveNamespace();
@@ -75,6 +97,18 @@ public class DialogueSession {
 
     public UUID getSessionId() {
         return sessionId;
+    }
+
+    public long getPlayerSessionEpoch() {
+        return playerSessionEpoch;
+    }
+
+    public long getRevision() {
+        return revision;
+    }
+
+    long advanceRevision() {
+        return ++revision;
     }
 
     public ServerPlayer getPlayer() {
@@ -111,6 +145,19 @@ public class DialogueSession {
 
     public int getEntityId() {
         return entityId;
+    }
+
+    @Nullable
+    public EntityRef getEntityRef() {
+        return entityRef;
+    }
+
+    @Nullable
+    public Entity getEntity() {
+        if (entityRef != null && player.getServer() != null) {
+            return entityRef.resolve(player.getServer());
+        }
+        return entityId >= 0 ? player.level().getEntity(entityId) : null;
     }
 
     public String getNamespace() {
@@ -392,7 +439,7 @@ public class DialogueSession {
     // ═══════════════════════════════════════════════
 
     public Component processDialogueText(DialogueText text) {
-        Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
+        Entity npc = getEntity();
         IDialogueNpc dialogueNpc = (npc instanceof IDialogueNpc d) ? d : null;
 
         var cap = ArcQuestPlayerManager.get(player);
@@ -447,11 +494,7 @@ public class DialogueSession {
     }
 
     private String resolveNamespace() {
-        if (entityId == -1) {
-            return tree.dialogueId();
-        }
-
-        Entity npc = player.level().getEntity(entityId);
+        Entity npc = getEntity();
         if (npc == null) {
             return tree.dialogueId();
         }
@@ -486,7 +529,7 @@ public class DialogueSession {
     // ═══════════════════════════════════════════════
 
     private DialogueEvalContext buildEvalContext() {
-        Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
+        Entity npc = getEntity();
         return DialogueEvalContext.of(player, npc, namespace, progress);
     }
 
