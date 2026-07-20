@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.dialogue.io;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
@@ -12,7 +13,9 @@ import org.arcadia.arc_quest.dialogue.spec.validate.DialogueValidationIssue;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class DialogueDatapackHotReloadService {
@@ -37,10 +40,11 @@ public final class DialogueDatapackHotReloadService {
             specs.put(id, spec);
         }
 
-        DialogueRegistry.INSTANCE.clearDatapack();
-
         int loaded = 0;
         int failed = report.failedCount();
+        List<DialogueTree> stagedTrees = new ArrayList<>();
+        Map<String, String> stagedNpcBindings = new LinkedHashMap<>();
+        Map<EntityType<?>, String> stagedEntityBindings = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, DialogueSpec> entry : specs.entrySet()) {
             var validation = validator.validate(entry.getValue());
             if (validation.hasErrors()) {
@@ -56,18 +60,18 @@ public final class DialogueDatapackHotReloadService {
             }
             try {
                 DialogueTree tree = compiler.compile(entry.getValue());
-                DialogueRegistry.INSTANCE.registerDatapack(tree);
+                stagedTrees.add(tree);
 
                 if (entry.getValue().npcBindings != null) {
                     for (var binding : entry.getValue().npcBindings) {
-                        DialogueRegistry.INSTANCE.bindNpcDatapack(binding.npcId, binding.dialogueId);
+                        stagedNpcBindings.put(binding.npcId, binding.dialogueId);
                     }
                 }
                 if (entry.getValue().entityBindings != null) {
                     for (var binding : entry.getValue().entityBindings) {
                         var entityType = ForgeRegistries.ENTITY_TYPES.getValue(ResourceLocation.tryParse(binding.entityType));
                         if (entityType != null) {
-                            DialogueRegistry.INSTANCE.bindEntityDatapack(entityType, binding.dialogueId);
+                            stagedEntityBindings.put(entityType, binding.dialogueId);
                         } else {
                             LOGGER.warn("[DialogueRegistry] Unknown entity type '{}' in dialogue '{}' binding",
                                     binding.entityType, entry.getValue().id);
@@ -82,8 +86,17 @@ public final class DialogueDatapackHotReloadService {
             }
         }
 
-        LOGGER.info("[DialogueRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}, activeDatapack={}",
-                report.scannedFiles(), loaded, failed, DialogueRegistry.INSTANCE.datapackSize());
+        long epoch = DialogueRegistry.INSTANCE.getDatapackEpoch();
+        if (failed == 0) {
+            epoch = DialogueRegistry.INSTANCE.replaceDatapack(
+                    stagedTrees, stagedNpcBindings, stagedEntityBindings);
+        } else {
+            LOGGER.error("[DialogueRegistry] Datapack reload rejected; retaining previous snapshot epoch={} because failed={}",
+                    epoch, failed);
+        }
+
+        LOGGER.info("[DialogueRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}, activeDatapack={}, epoch={}",
+                report.scannedFiles(), loaded, failed, DialogueRegistry.INSTANCE.datapackSize(), epoch);
 
         return new ReloadResult(report.scannedFiles(), loaded, failed, DialogueRegistry.INSTANCE.datapackSize());
     }
