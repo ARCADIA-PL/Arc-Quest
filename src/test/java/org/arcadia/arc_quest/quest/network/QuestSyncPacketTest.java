@@ -14,7 +14,7 @@ class QuestSyncPacketTest {
     @Test
     void deltaRoundTripsRevisionEnvelope() {
         S2CDeltaProgressPacket packet = new S2CDeltaProgressPacket(
-                "arc_quest:test", "phase_one", 3, 7, 42L, 8L, 9L);
+                "arc_quest:test", "phase_one", "talk_to_guard", 3, 7, 42L, 8L, 9L);
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
 
         S2CDeltaProgressPacket.encode(packet, buffer);
@@ -22,6 +22,7 @@ class QuestSyncPacketTest {
 
         assertEquals("arc_quest:test", decoded.getQuestId());
         assertEquals("phase_one", decoded.getPhaseId());
+        assertEquals("talk_to_guard", decoded.getObjectiveId());
         assertEquals(3, decoded.getObjectiveIndex());
         assertEquals(7, decoded.getNewProgress());
         assertEquals(42L, decoded.getPlayerSessionEpoch());
