@@ -2,9 +2,10 @@ package org.arcadia.arc_quest.client.util;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
-import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 
 /**
@@ -55,9 +56,10 @@ public final class ClientCooldownHelper {
                 if (mc.level == null) yield "";
                 long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
                 long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
-                boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
-                        record, type, (int) cooldownValue, resetTimeTicks,
-                        TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime);
+                boolean onCooldown = CoreProcessors.get().cooldowns().isOnCooldown(
+                        record, type.toCorePolicy(cooldownValue, resetTimeTicks),
+                        new TimeSnapshot(
+                                TimeSanitizer.getCurrentRealTime(), nowGameTime, nowDayTime));
                 yield onCooldown ? Component.translatable("arc_quest.trade.cooldown.game_day").getString() : "";
             }
 
@@ -66,8 +68,8 @@ public final class ClientCooldownHelper {
                 if (mc.level == null) yield "";
                 long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
                 long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
-                int remainingTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
-                        record, resetTimeTicks, nowGameTime, nowDayTime);
+                int remainingTicks = CoreProcessors.get().cooldowns().remainingGameTicks(
+                        record, resetTimeTicks, new TimeSnapshot(0L, nowGameTime, nowDayTime));
                 if (remainingTicks <= 0) yield "";
                 if (remainingTicks < 60) yield remainingTicks + "t";
                 if (remainingTicks < 1200) yield (remainingTicks / 20) + "s";
@@ -105,8 +107,9 @@ public final class ClientCooldownHelper {
         long nowGameTime = TimeSanitizer.getCurrentGameTime(mc.level);
         long nowDayTime = TimeSanitizer.getCurrentDayTime(mc.level);
 
-        return UnifiedCooldownManager.isOnCooldown(record, type, (int) cooldownValue, resetTimeTicks,
-                nowRealTime, nowGameTime, nowDayTime);
+        return CoreProcessors.get().cooldowns().isOnCooldown(
+                record, type.toCorePolicy(cooldownValue, resetTimeTicks),
+                new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
     }
 
     // ── 私有工具 ──────────────────────────────────────────

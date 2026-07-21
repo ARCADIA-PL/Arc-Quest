@@ -3,10 +3,12 @@ package org.arcadia.arc_quest.trade.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
-import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.core.condition.ConditionGuard;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -48,9 +50,10 @@ public final class TradeEntryStateResolver {
         long[] times = TimeSanitizer.getAllTimes(player);
         ICooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
-        return UnifiedCooldownManager.isOnCooldown(record, entry.getCooldownType(),
-                (int) entry.getCooldownValue(), entry.getResetTimeTicks(),
-                times[0], times[1], times[2]);
+        return CoreProcessors.get().cooldowns().isOnCooldown(
+                record, entry.getCooldownType().toCorePolicy(
+                        entry.getCooldownValue(), entry.getResetTimeTicks()),
+                new TimeSnapshot(times[0], times[1], times[2]));
     }
 
     /**
@@ -69,8 +72,8 @@ public final class TradeEntryStateResolver {
         if (entry.getVisibleCondition() == null) return true;
 
         Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-        return ConditionGuard.evaluate(
-                () -> entry.getVisibleCondition().test(
+        return ConditionGuard.evaluate(entry.getVisibleCondition(),
+                new QuestConditionContext(
                         player, completed, data.getAllFlags(), data.getAllVariables()),
                 false, LOGGER, "trade visibility entry=" + entry.getEntryId());
     }
@@ -93,8 +96,8 @@ public final class TradeEntryStateResolver {
 
         if (entry.getCanBuyCondition() != null) {
             Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-            boolean canBuy = ConditionGuard.evaluate(
-                    () -> entry.getCanBuyCondition().test(
+            boolean canBuy = ConditionGuard.evaluate(entry.getCanBuyCondition(),
+                    new QuestConditionContext(
                             player, completed, data.getAllFlags(), data.getAllVariables()),
                     false, LOGGER, "trade purchase entry=" + entry.getEntryId());
             if (!canBuy) {
@@ -119,9 +122,10 @@ public final class TradeEntryStateResolver {
         long[] times = TimeSanitizer.getAllTimes(player);
         ICooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
-        boolean onCooldown = UnifiedCooldownManager.isOnCooldown(record, entry.getCooldownType(),
-                (int) entry.getCooldownValue(), entry.getResetTimeTicks(),
-                times[0], times[1], times[2]);
+        boolean onCooldown = CoreProcessors.get().cooldowns().isOnCooldown(
+                record, entry.getCooldownType().toCorePolicy(
+                        entry.getCooldownValue(), entry.getResetTimeTicks()),
+                new TimeSnapshot(times[0], times[1], times[2]));
 
         if (!onCooldown) {
             LOGGER.info("[Trade-State] Cooldown expired, should reset: entry={}, hasLimit={}", entry.getEntryId(), entry.hasLimit());

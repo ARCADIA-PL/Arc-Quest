@@ -2,10 +2,12 @@ package org.arcadia.arc_quest.trade.gacha.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
-import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.core.condition.ConditionGuard;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -50,11 +52,9 @@ public final class GachaEntryStateResolver {
         var visibleCondition = shop.getVisibleCondition();
         if (visibleCondition == null) return true;
 
-        return ConditionGuard.evaluate(
-                () -> visibleCondition.test(player,
-                        data.getCompletedQuestLocations(),
-                        data.getAllFlags(),
-                        data.getAllVariables()),
+        return ConditionGuard.evaluate(visibleCondition,
+                new QuestConditionContext(player,
+                        data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables()),
                 false, LOGGER, "gacha visibility shop=" + shop.getShopId());
     }
 
@@ -86,9 +86,10 @@ public final class GachaEntryStateResolver {
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
         long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
 
-        return UnifiedCooldownManager.isOnCooldown(record, shop.getCooldownType(),
-                (int) shop.getCooldownValue(), shop.getResetTimeTicks(),
-                nowRealTime, nowGameTime, nowDayTime);
+        return CoreProcessors.get().cooldowns().isOnCooldown(
+                record, shop.getCooldownType().toCorePolicy(
+                        shop.getCooldownValue(), shop.getResetTimeTicks()),
+                new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
     }
 
     /**
@@ -98,11 +99,9 @@ public final class GachaEntryStateResolver {
         var drawCondition = shop.getDrawCondition();
         if (drawCondition == null) return true;
 
-        return ConditionGuard.evaluate(
-                () -> drawCondition.test(player,
-                        data.getCompletedQuestLocations(),
-                        data.getAllFlags(),
-                        data.getAllVariables()),
+        return ConditionGuard.evaluate(drawCondition,
+                new QuestConditionContext(player,
+                        data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables()),
                 false, LOGGER, "gacha draw shop=" + shop.getShopId());
     }
 
@@ -133,9 +132,10 @@ public final class GachaEntryStateResolver {
         long nowRealTime = TimeSanitizer.getCurrentRealTime();
         long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
 
-        return !UnifiedCooldownManager.isOnCooldown(record, shop.getCooldownType(),
-                (int) shop.getCooldownValue(), shop.getResetTimeTicks(),
-                nowRealTime, nowGameTime, nowDayTime);
+        return !CoreProcessors.get().cooldowns().isOnCooldown(
+                record, shop.getCooldownType().toCorePolicy(
+                        shop.getCooldownValue(), shop.getResetTimeTicks()),
+                new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
     }
 
     /**

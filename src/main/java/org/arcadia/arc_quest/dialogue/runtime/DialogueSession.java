@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.core.identity.EntityRef;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
@@ -569,7 +570,8 @@ public class DialogueSession {
                 DialogueChoice choice = allChoices.get(i);
                 boolean pass = choice.conditions().isEmpty()
                         || choice.conditions().stream().allMatch(c ->
-                        cache.computeIfAbsent(c, () -> c.test(ctx)));
+                        cache.computeIfAbsent(c,
+                                () -> CoreProcessors.get().conditions().evaluate(c, ctx)));
 
                 LOGGER.debug("[Dialogue] Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
 

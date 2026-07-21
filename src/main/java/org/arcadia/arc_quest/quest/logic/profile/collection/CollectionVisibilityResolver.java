@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.slf4j.Logger;
 
@@ -37,8 +38,8 @@ public final class CollectionVisibilityResolver {
                                                   CollectionEntryConfig entryConfig) {
         for (var condition : entryConfig.getVisibilityConditions()) {
             if (condition == null) return false;
-            if (!ConditionGuard.evaluate(
-                    () -> condition.test(player, completedQuests, flags, data.getAllVariables()),
+            if (!ConditionGuard.evaluate(condition,
+                    new QuestConditionContext(player, completedQuests, flags, data.getAllVariables()),
                     false, LOGGER, "collection visibility category=" + entryConfig.getCategoryId())) return false;
         }
         return true;

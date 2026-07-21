@@ -5,14 +5,14 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.state.ExpiringStateStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
 
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 管理待确认的抽奖结果。
@@ -27,7 +27,9 @@ public class PendingDrawManager {
      * Key: player UUID
      * Value: 待确认的抽奖数据
      */
-    private static final Map<UUID, PendingDrawData> PENDING_DRAWS = new ConcurrentHashMap<>();
+    private static final long PENDING_TTL_MILLIS = 30000L;
+    private static final ExpiringStateStore<UUID, PendingDrawData> PENDING_DRAWS =
+            CoreProcessors.get().createExpiringStateStore();
 
     /**
      * 暂存抽奖结果（不发放奖励）。
@@ -60,7 +62,7 @@ public class PendingDrawManager {
                 newPityCounter,
                 System.currentTimeMillis()
         );
-        if (PENDING_DRAWS.putIfAbsent(playerId, data) != null) {
+        if (!PENDING_DRAWS.putIfAbsent(playerId, data, data.timestamp + PENDING_TTL_MILLIS)) {
             Arc_Quest.LOGGER.warn(
                     "[PendingDraw] Player {} already has pending draw, rejecting new request",
                     player.getName().getString()
@@ -80,9 +82,11 @@ public class PendingDrawManager {
      */
     public static boolean confirmAndGrant(ServerPlayer player, String expectedShopId) {
         UUID playerId = player.getUUID();
-        PendingDrawData data = PENDING_DRAWS.remove(playerId);
+        long now = System.currentTimeMillis();
+        ExpiringStateStore.TakeResult<PendingDrawData> result = PENDING_DRAWS.take(playerId, now);
+        PendingDrawData data = result.value();
 
-        if (data == null) {
+        if (result.status() == ExpiringStateStore.TakeStatus.MISSING) {
             return false;
         }
 
@@ -94,8 +98,8 @@ public class PendingDrawManager {
             return false;
         }
 
-        long elapsed = System.currentTimeMillis() - data.timestamp;
-        if (elapsed > 30000) {
+        long elapsed = now - data.timestamp;
+        if (result.status() == ExpiringStateStore.TakeStatus.EXPIRED) {
             Arc_Quest.LOGGER.warn(
                     "[PendingDraw] Player {}'s pending draw expired ({}ms ago)",
                     player.getName().getString(), elapsed
@@ -110,13 +114,15 @@ public class PendingDrawManager {
 
     public static boolean compensateAndGrant(ServerPlayer player) {
         UUID playerId = player.getUUID();
-        PendingDrawData data = PENDING_DRAWS.remove(playerId);
-        if (data == null) {
+        long now = System.currentTimeMillis();
+        ExpiringStateStore.TakeResult<PendingDrawData> result = PENDING_DRAWS.take(playerId, now);
+        PendingDrawData data = result.value();
+        if (result.status() == ExpiringStateStore.TakeStatus.MISSING) {
             return false;
         }
 
-        long elapsed = System.currentTimeMillis() - data.timestamp;
-        if (elapsed > 30000) {
+        long elapsed = now - data.timestamp;
+        if (result.status() == ExpiringStateStore.TakeStatus.EXPIRED) {
             Arc_Quest.LOGGER.warn(
                     "[PendingDraw] Dropping expired pending draw during compensation for player {} ({}ms ago)",
                     player.getName().getString(), elapsed
@@ -172,10 +178,7 @@ public class PendingDrawManager {
      * 而是在 confirmAndGrant() 时概率触发清理。
      */
     public static void cleanupExpired() {
-        long now = System.currentTimeMillis();
-        PENDING_DRAWS.entrySet().removeIf(entry ->
-                now - entry.getValue().timestamp > 30000
-        );
+        PENDING_DRAWS.cleanupExpired(System.currentTimeMillis());
     }
 
     /**

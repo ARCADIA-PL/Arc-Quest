@@ -4,7 +4,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.ICondition;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.jetbrains.annotations.Nullable;
 
@@ -122,7 +124,8 @@ public final class TradeShopDefinition {
                            Set<ResourceLocation> completedQuests,
                            Set<String> flags,
                            Map<String, Integer> variables) {
-        return openCondition == null || openCondition.test(player, completedQuests, flags, variables);
+        return openCondition == null || CoreProcessors.get().conditions().evaluate(
+                openCondition, new QuestConditionContext(player, completedQuests, flags, variables));
     }
 
     @Override

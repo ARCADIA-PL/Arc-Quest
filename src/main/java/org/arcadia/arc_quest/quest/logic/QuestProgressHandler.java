@@ -11,6 +11,7 @@ import net.minecraft.world.item.Item;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.quest.*;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
@@ -84,7 +85,7 @@ public final class QuestProgressHandler {
 
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         for (ICondition cond : def.getUnlockConditions()) {
-            if (!cond.test(player, completedQuests, data.getAllFlags(), data.getAllVariables())) {
+            if (!evaluateCondition(cond, player, completedQuests, data)) {
                 return QuestRejectCodeDictionary.Code.UNLOCK_CONDITION_NOT_MET;
             }
         }
@@ -338,7 +339,7 @@ public final class QuestProgressHandler {
         // 自动解锁后继（可多条，支持 thenGoToIf）
         for (PhaseTransition tr : phase.getTransitions()) {
             boolean ok = tr.getCondition() == null
-                    || tr.getCondition().test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+                    || evaluateCondition(tr.getCondition(), player, completedQuests, data);
             if (!ok) continue;
 
             activatePhase(player, data, qdata, def, phaseId, tr.getTargetPhaseId(), true, ctx);
@@ -414,7 +415,8 @@ public final class QuestProgressHandler {
         }
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         for (PhaseTransition tr : phase.getTransitions()) {
-            boolean ok = tr.getCondition() == null || tr.getCondition().test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+            boolean ok = tr.getCondition() == null
+                    || evaluateCondition(tr.getCondition(), player, completedQuests, data);
             if (ok) activatePhase(player, data, qdata, def, phaseId, tr.getTargetPhaseId(), true, ctx);
         }
         tryAutoEnterPhases(player, data, qdata, def, phaseId, ctx);
@@ -490,8 +492,8 @@ public final class QuestProgressHandler {
 
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         ICondition visibleCondition = chosen.getVisibleCondition();
-        boolean conditionsMet = visibleCondition == null ||
-                visibleCondition.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+        boolean conditionsMet = visibleCondition == null
+                || evaluateCondition(visibleCondition, player, completedQuests, data);
         if (!conditionsMet) {
             LOGGER.debug("[ArcQuest] Choice conditions not met for index {}", choiceIndex);
             return QuestRejectCodeDictionary.Code.CHOICE_CONDITION_NOT_MET;
@@ -529,7 +531,7 @@ public final class QuestProgressHandler {
             if (pid == null || pid.isEmpty() || pid.equals(targetPhaseId)) continue;
 
             ICondition cond = tr.getCondition();
-            boolean ok = cond == null || cond.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+            boolean ok = cond == null || evaluateCondition(cond, player, completedQuests, data);
             if (!ok) continue;
 
             toActivate.add(pid);
@@ -919,9 +921,17 @@ public final class QuestProgressHandler {
         }
         ICondition cond = phase.getEnterCondition();
         if (cond == null) return true;
-        boolean result = cond.test(player, data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables());
+        boolean result = evaluateCondition(cond, player, data.getCompletedQuestLocations(), data);
         if (data != null) qdata.setEnterConditionCached(phase.getPhaseId(), result);
         return result;
+    }
+
+    private static boolean evaluateCondition(ICondition condition,
+                                             ServerPlayer player,
+                                             Set<ResourceLocation> completedQuests,
+                                             ArcQuestPlayer data) {
+        return CoreProcessors.get().conditions().evaluate(condition, new QuestConditionContext(
+                player, completedQuests, data.getAllFlags(), data.getAllVariables()));
     }
 
     // ═══════════════════════════════════════════════════════

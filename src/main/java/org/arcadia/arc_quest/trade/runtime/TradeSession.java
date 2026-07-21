@@ -3,9 +3,10 @@ package org.arcadia.arc_quest.trade.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
-import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -156,16 +157,18 @@ public final class TradeSession {
             }
             case GAME_DAY -> {
                 if (record.dayTime() < 0) yield 0;
-                boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
-                        record, entry.getCooldownType(), (int) entry.getCooldownValue(),
-                        entry.getResetTimeTicks(), nowRealTime, nowGameTime, nowDayTime);
+                boolean onCooldown = CoreProcessors.get().cooldowns().isOnCooldown(
+                        record, entry.getCooldownType().toCorePolicy(
+                                entry.getCooldownValue(), entry.getResetTimeTicks()),
+                        new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
                 if (!onCooldown) yield 0;
                 long currentDayTick = nowDayTime % 24000;
                 yield Math.max(1, (int) (24000 - currentDayTick) / 20);
             }
             case GAME_TICK -> {
-                int remainingTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
-                        record, entry.getResetTimeTicks(), nowGameTime, nowDayTime);
+                int remainingTicks = CoreProcessors.get().cooldowns().remainingGameTicks(
+                        record, entry.getResetTimeTicks(),
+                        new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
                 yield Math.max(0, remainingTicks / 20);
             }
         };
