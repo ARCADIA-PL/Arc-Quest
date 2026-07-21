@@ -7,6 +7,11 @@ public final class ExpiringStateStore<K, V> {
 
     private final Map<K, TimedValue<V>> values = new ConcurrentHashMap<>();
 
+    public V put(K key, V value, long expiresAt) {
+        TimedValue<V> previous = values.put(key, new TimedValue<>(value, expiresAt));
+        return previous != null ? previous.value() : null;
+    }
+
     public boolean putIfAbsent(K key, V value, long expiresAt) {
         return values.putIfAbsent(key, new TimedValue<>(value, expiresAt)) == null;
     }
@@ -15,6 +20,16 @@ public final class ExpiringStateStore<K, V> {
         TimedValue<V> value = values.remove(key);
         if (value == null) return new TakeResult<>(TakeStatus.MISSING, null);
         if (value.expiresAt() < now) return new TakeResult<>(TakeStatus.EXPIRED, value.value());
+        return new TakeResult<>(TakeStatus.ACTIVE, value.value());
+    }
+
+    public TakeResult<V> get(K key, long now) {
+        TimedValue<V> value = values.get(key);
+        if (value == null) return new TakeResult<>(TakeStatus.MISSING, null);
+        if (value.expiresAt() < now) {
+            values.remove(key, value);
+            return new TakeResult<>(TakeStatus.EXPIRED, value.value());
+        }
         return new TakeResult<>(TakeStatus.ACTIVE, value.value());
     }
 
