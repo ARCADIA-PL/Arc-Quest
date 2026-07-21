@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.dialogue.util;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
 
 /**
  * 游戏时间校准工具 —— 确保时间判断的一致性。
@@ -76,27 +77,26 @@ public final class TimeSanitizer {
      * @return 时间数据数组 [realTime, gameTime, dayTime]
      */
     public static long[] getAllTimes(Level level) {
-        return new long[]{
-                getCurrentRealTime(),
-                getCurrentGameTime(level),
-                getCurrentDayTime(level)
-        };
+        TimeSnapshot snapshot = capture(level);
+        return new long[]{snapshot.realTime(), snapshot.gameTime(), snapshot.dayTime()};
     }
 
     /**
      * 一次性获取所有时间数据 - ServerPlayer重载
      */
     public static long[] getAllTimes(ServerPlayer player) {
-        if (player == null) {
-            return new long[]{getCurrentRealTime(), 0, 0};
-        } else {
-            player.level();
-        }
-        return new long[]{
-                getCurrentRealTime(),
-                getCurrentGameTime(player),
-                getCurrentDayTime(player)
-        };
+        TimeSnapshot snapshot = capture(player);
+        return new long[]{snapshot.realTime(), snapshot.gameTime(), snapshot.dayTime()};
+    }
+
+    public static TimeSnapshot capture(Level level) {
+        return new TimeSnapshot(
+                getCurrentRealTime(), getCurrentGameTime(level), getCurrentDayTime(level));
+    }
+
+    public static TimeSnapshot capture(ServerPlayer player) {
+        if (player == null) return new TimeSnapshot(getCurrentRealTime(), 0L, 0L);
+        return capture(player.level());
     }
 
     /**

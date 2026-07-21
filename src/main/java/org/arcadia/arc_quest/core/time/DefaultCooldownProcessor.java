@@ -7,31 +7,28 @@ final class DefaultCooldownProcessor implements CooldownProcessor {
     private static final long TICKS_PER_DAY = 24000L;
 
     @Override
-    public boolean isOnCooldown(CooldownRecord record, CooldownPolicy policy, TimeSnapshot now) {
+    public CooldownStatus evaluate(CooldownRecord record, CooldownPolicy policy, TimeSnapshot now) {
         Objects.requireNonNull(record, "record");
         Objects.requireNonNull(policy, "policy");
         Objects.requireNonNull(now, "now");
-        if (!record.exists() || policy.mode() == CooldownMode.NONE) return false;
+        if (!record.exists() || policy.mode() == CooldownMode.NONE) return CooldownStatus.inactive();
 
         return switch (policy.mode()) {
-            case NONE -> false;
-            case REAL_TIME -> now.realTime() - record.realTime() < policy.value();
-            case GAME_DAY -> isWithinSameGameDay(record, now);
-            case GAME_TICK -> isWithinSameResetPeriod(record, policy.resetTick(), now);
+            case NONE -> CooldownStatus.inactive();
+            case REAL_TIME -> evaluateRealTime(record, policy, now);
+            case GAME_DAY -> evaluateGameDay(record, now);
+            case GAME_TICK -> evaluateGameTick(record, policy.resetTick(), now);
         };
     }
 
     @Override
-    public int remainingGameTicks(CooldownRecord record, int resetTick, TimeSnapshot now) {
-        Objects.requireNonNull(record, "record");
-        Objects.requireNonNull(now, "now");
-        if (!isWithinSameResetPeriod(record, resetTick, now)) return 0;
+    public boolean isOnCooldown(CooldownRecord record, CooldownPolicy policy, TimeSnapshot now) {
+        return evaluate(record, policy, now).active();
+    }
 
-        long currentDayTick = Math.floorMod(now.dayTime(), TICKS_PER_DAY);
-        long normalizedResetTick = Math.floorMod(resetTick, TICKS_PER_DAY);
-        return (int) (currentDayTick >= normalizedResetTick
-                ? TICKS_PER_DAY - currentDayTick + normalizedResetTick
-                : normalizedResetTick - currentDayTick);
+    @Override
+    public int remainingGameTicks(CooldownRecord record, int resetTick, TimeSnapshot now) {
+        return evaluateGameTick(record, resetTick, now).remainingGameTicks();
     }
 
     @Override
@@ -45,6 +42,31 @@ final class DefaultCooldownProcessor implements CooldownProcessor {
         if (elapsed >= TICKS_PER_DAY) return false;
         if (record.dayTime() / TICKS_PER_DAY != now.dayTime() / TICKS_PER_DAY) return false;
         return now.dayTime() >= record.dayTime() || elapsed <= 0L;
+    }
+
+    private CooldownStatus evaluateRealTime(CooldownRecord record, CooldownPolicy policy, TimeSnapshot now) {
+        long remaining = policy.value() - (now.realTime() - record.realTime());
+        return remaining > 0L
+                ? new CooldownStatus(true, remaining, 0)
+                : CooldownStatus.inactive();
+    }
+
+    private CooldownStatus evaluateGameDay(CooldownRecord record, TimeSnapshot now) {
+        if (!isWithinSameGameDay(record, now)) return CooldownStatus.inactive();
+        int remainingTicks = (int) (TICKS_PER_DAY - Math.floorMod(now.dayTime(), TICKS_PER_DAY));
+        return new CooldownStatus(true, 0L, remainingTicks);
+    }
+
+    private CooldownStatus evaluateGameTick(CooldownRecord record, int resetTick, TimeSnapshot now) {
+        Objects.requireNonNull(record, "record");
+        Objects.requireNonNull(now, "now");
+        if (!isWithinSameResetPeriod(record, resetTick, now)) return CooldownStatus.inactive();
+        long currentDayTick = Math.floorMod(now.dayTime(), TICKS_PER_DAY);
+        long normalizedResetTick = Math.floorMod(resetTick, TICKS_PER_DAY);
+        int remainingTicks = (int) (currentDayTick >= normalizedResetTick
+                ? TICKS_PER_DAY - currentDayTick + normalizedResetTick
+                : normalizedResetTick - currentDayTick);
+        return new CooldownStatus(true, 0L, remainingTicks);
     }
 
     private boolean isWithinSameResetPeriod(CooldownRecord record, int resetTick, TimeSnapshot now) {
