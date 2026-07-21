@@ -1,10 +1,9 @@
 package org.arcadia.arc_quest.dialogue.runtime;
 
-import com.mojang.logging.LogUtils;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore.Entry;
-import org.arcadia.arc_quest.dialogue.runtime.DialogueProgressStore.TimeSnapshot;
-import org.slf4j.Logger;
 
 /**
  * 统一冷却管理器（Unified Cooldown Manager）。
@@ -22,8 +21,6 @@ import org.slf4j.Logger;
  */
 public final class UnifiedCooldownManager {
 
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private UnifiedCooldownManager() {
     }
 
@@ -34,7 +31,7 @@ public final class UnifiedCooldownManager {
      * 单 Map 合并后简化：无论是节点、对话、选项，直接按 key 从 store 中查找。
      */
     public static boolean isOnCooldown(DialogueProgressStore store, ProgressKey key, CooldownType cooldownType,
-                                       int cooldownValue, int resetTick, TimeSnapshot ts) {
+                                       int cooldownValue, int resetTick, DialogueProgressStore.TimeSnapshot ts) {
         ICooldownRecord record = store.getEntry(key);
         return isOnCooldown(record, cooldownType, cooldownValue, resetTick,
                 ts.realTime(), ts.gameTime(), ts.dayTime());
@@ -51,47 +48,9 @@ public final class UnifiedCooldownManager {
     public static boolean isOnCooldown(ICooldownRecord record, CooldownType cooldownType,
                                        int cooldownValue, int resetTick,
                                        long nowRealTime, long nowGameTime, long nowDayTime) {
-        if (!record.exists() || cooldownType == CooldownType.NONE) {
-            return false;
-        }
-
-        return switch (cooldownType) {
-            case NONE -> false;
-
-            case SECONDS -> {
-                long cooldownMs = cooldownValue * 1000L;
-                yield (nowRealTime - record.realTime()) < cooldownMs;
-            }
-
-            case GAME_DAY -> {
-                long lastGameTime = record.gameTime();
-                long lastDayTime = record.dayTime();
-                if (lastDayTime < 0 || lastGameTime < 0) yield false;
-
-                long gameTimeElapsed = nowGameTime - lastGameTime;
-                if (gameTimeElapsed >= 24000) yield false;
-
-                long lastDay = lastDayTime / 24000L;
-                long nowDay = nowDayTime / 24000L;
-                if (lastDay != nowDay) yield false;
-
-                yield nowDayTime >= lastDayTime || gameTimeElapsed <= 0;
-            }
-
-            case GAME_TICK -> {
-                long lastRawDayTime = record.dayTime();
-                long lastGameTime = record.gameTime();
-                if (lastRawDayTime < 0 || lastGameTime < 0) yield false;
-
-                long gameTimeElapsed = nowGameTime - lastGameTime;
-                if (gameTimeElapsed >= 24000) yield false;
-                if (nowDayTime < lastRawDayTime && gameTimeElapsed > 0) yield false;
-
-                long recordedPeriod = Math.floorDiv(lastRawDayTime - resetTick, 24000);
-                long currentPeriod = Math.floorDiv(nowDayTime - resetTick, 24000);
-                yield recordedPeriod == currentPeriod;
-            }
-        };
+        return CoreProcessors.get().cooldowns().isOnCooldown(
+                record, cooldownType.toCorePolicy(cooldownValue, resetTick),
+                new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
     }
 
     // ── 剩余时间计算 ──────────────────────────────────────
@@ -102,22 +61,8 @@ public final class UnifiedCooldownManager {
      */
     public static int getGameTickCooldownRemainingTicks(ICooldownRecord record, int resetTick,
                                                         long nowGameTime, long nowDayTime) {
-        if (!record.exists() || record.dayTime() < 0 || record.gameTime() < 0) return 0;
-
-        long gameTimeElapsed = nowGameTime - record.gameTime();
-        if (gameTimeElapsed >= 24000) return 0;
-        if (nowDayTime < record.dayTime() && gameTimeElapsed > 0) return 0;
-
-        long recordedPeriod = Math.floorDiv(record.dayTime() - resetTick, 24000);
-        long currentPeriod = Math.floorDiv(nowDayTime - resetTick, 24000);
-        if (recordedPeriod != currentPeriod) return 0;
-
-        long currentDayTick = ((nowDayTime % 24000) + 24000) % 24000;
-        long resetTickNorm = ((long) resetTick % 24000 + 24000) % 24000;
-
-        return (int) (currentDayTick >= resetTickNorm
-                ? 24000 - currentDayTick + resetTickNorm
-                : resetTickNorm - currentDayTick);
+        return CoreProcessors.get().cooldowns().remainingGameTicks(
+                record, resetTick, new TimeSnapshot(0L, nowGameTime, nowDayTime));
     }
 
     // ── 时间回退检测 ──────────────────────────────────────
@@ -132,7 +77,7 @@ public final class UnifiedCooldownManager {
      */
     public static boolean clearIfTimeRegressed(DialogueProgressStore store, ProgressKey key, long nowDayTime) {
         Entry entry = store.getChoiceSelection(key);
-        if (entry.exists() && entry.dayTime() > nowDayTime) {
+        if (CoreProcessors.get().cooldowns().isDayTimeRegressed(entry, nowDayTime)) {
             store.clearCooldownRecord(key);
             return true;
         }

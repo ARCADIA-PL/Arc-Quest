@@ -1,5 +1,8 @@
 package org.arcadia.arc_quest.dialogue.api;
 
+import org.arcadia.arc_quest.core.time.CooldownMode;
+import org.arcadia.arc_quest.core.time.CooldownPolicy;
+
 /**
  * 对话冷却类型。
  */
@@ -28,5 +31,16 @@ public enum CooldownType {
      * 例如：设置 resetTimeTicks=1000（早上6点），则每天早上7点重置冷却。
      * 适用于需要精确控制刷新时间的场景。
      */
-    GAME_TICK
+    GAME_TICK;
+
+    public CooldownPolicy toCorePolicy(long cooldownValue, int resetTick) {
+        CooldownMode mode = switch (this) {
+            case NONE -> CooldownMode.NONE;
+            case SECONDS -> CooldownMode.REAL_TIME;
+            case GAME_DAY -> CooldownMode.GAME_DAY;
+            case GAME_TICK -> CooldownMode.GAME_TICK;
+        };
+        long normalizedValue = this == SECONDS ? cooldownValue * 1000L : cooldownValue;
+        return new CooldownPolicy(mode, normalizedValue, resetTick);
+    }
 }

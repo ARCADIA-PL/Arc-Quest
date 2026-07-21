@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.core.condition;
 
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.slf4j.Logger;
 
 import java.util.Objects;
@@ -22,6 +23,17 @@ public final class ConditionGuard {
             logger.warn("[ConditionGuard] Evaluation failed: {}", context, exception);
             return failureResult;
         }
+    }
+
+    public static <C> boolean evaluate(CoreCondition<? super C> condition,
+                                       C conditionContext,
+                                       boolean failureResult,
+                                       Logger logger,
+                                       String context) {
+        Objects.requireNonNull(condition, "condition");
+        return evaluate(
+                () -> CoreProcessors.get().conditions().evaluate(condition, conditionContext),
+                failureResult, logger, context);
     }
 
     public static boolean evaluateNullable(BooleanSupplier evaluation,

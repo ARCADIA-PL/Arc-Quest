@@ -304,6 +304,10 @@ public class DialogueProgressStore {
     // ── TimeSnapshot ─────────────────────────────────────
 
     public record TimeSnapshot(long realTime, long gameTime, long dayTime) {
+        public org.arcadia.arc_quest.core.time.TimeSnapshot toCoreSnapshot() {
+            return new org.arcadia.arc_quest.core.time.TimeSnapshot(realTime, gameTime, dayTime);
+        }
+
         public static TimeSnapshot capture(ServerPlayer player) {
             return new TimeSnapshot(
                     TimeSanitizer.getCurrentRealTime(),
