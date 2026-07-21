@@ -13,6 +13,8 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.core.identity.EntityRef;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.execution.CoreRule;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
@@ -90,19 +92,25 @@ public final class DialogueSessionManager {
 
         LOGGER.debug("[Dialogue] Resolved namespace='{}' for dialogue='{}'", namespace, dialogueId);
 
-        if (!tree.repeatable() && progress.hasCompletedDialogue(namespace, dialogueId)) {
-            LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.", dialogueId, player.getName().getString());
-            return null;
-        }
-
-        if (tree.cooldownSeconds() != 0 || tree.cooldownType() != CooldownType.NONE) {
-            boolean onCooldown = progress.isDialogueOnCooldown(
-                    namespace, dialogueId, tree.cooldownType(), (int) tree.cooldownSeconds(),
-                    tree.resetTimeTicks(), now.realTime(), now.gameTime(), now.dayTime());
-            if (onCooldown) {
-                LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}.", dialogueId, player.getName().getString());
-                return null;
+        DialogueStartContext startContext = new DialogueStartContext(
+                tree, progress, namespace, dialogueId, now);
+        var startDecision = CoreProcessors.get().executions().decide(startContext, List.of(
+                CoreRule.require(contextValue -> contextValue.tree().repeatable()
+                                || !contextValue.progress().hasCompletedDialogue(
+                                contextValue.namespace(), contextValue.dialogueId()),
+                        DialogueStartFailure.ALREADY_COMPLETED),
+                CoreRule.require(DialogueSessionManager::isDialogueCooldownReady,
+                        DialogueStartFailure.ON_COOLDOWN)
+        ));
+        if (!startDecision.allowed()) {
+            if (startDecision.failure() == DialogueStartFailure.ALREADY_COMPLETED) {
+                LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.",
+                        dialogueId, player.getName().getString());
+            } else {
+                LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}.",
+                        dialogueId, player.getName().getString());
             }
+            return null;
         }
 
         endDialogue(player);
@@ -336,6 +344,16 @@ public final class DialogueSessionManager {
         }
         touchLease(session);
         return session;
+    }
+
+    private static boolean isDialogueCooldownReady(DialogueStartContext context) {
+        DialogueTree tree = context.tree();
+        if (tree.cooldownSeconds() == 0 && tree.cooldownType() == CooldownType.NONE) return true;
+        TimeSnapshot now = context.now();
+        return !context.progress().isDialogueOnCooldown(
+                context.namespace(), context.dialogueId(), tree.cooldownType(),
+                (int) tree.cooldownSeconds(), tree.resetTimeTicks(),
+                now.realTime(), now.gameTime(), now.dayTime());
     }
 
     public void endDialogue(ServerPlayer player) {
@@ -671,5 +689,13 @@ public final class DialogueSessionManager {
 
     private void clearRestoreNodeState(ServerPlayer player) {
         restoreNodeMap.remove(player.getUUID());
+    }
+    private enum DialogueStartFailure {
+        ALREADY_COMPLETED,
+        ON_COOLDOWN
+    }
+
+    private record DialogueStartContext(DialogueTree tree, DialogueProgressStore progress, String namespace,
+                                        String dialogueId, TimeSnapshot now) {
     }
 }

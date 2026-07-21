@@ -3,12 +3,16 @@ package org.arcadia.arc_quest.trade.gacha.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.execution.CoreDecision;
+import org.arcadia.arc_quest.core.execution.CoreRule;
 import org.arcadia.arc_quest.core.time.CooldownRecord;
 import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.slf4j.Logger;
+
+import java.util.List;
 
 /**
  * 抽奖状态解析器 —— 统一管理限购、冷却、条件检查逻辑。
@@ -35,24 +39,45 @@ public final class GachaEntryStateResolver {
      * 优先级：可见性 > 冷却 > 限购 > 条件
      */
     public static boolean canDraw(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
-        if (!isVisible(player, data, shop)) return false;
-        if (isOnCooldown(player, data, shopId, shop)) return false;
-        if (isMaxDrawsReached(data, shopId, shop)) return false;
-        if (!hasConditionMet(player, data, shop)) return false;
-        return true;
+        return evaluateDraw(player, data, shopId, shop).allowed();
+    }
+
+    public static CoreDecision<DrawFailure> evaluateDraw(
+            ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
+        DecisionContext context = DecisionContext.create(player, data, shopId, shop);
+        return CoreProcessors.get().executions().decide(context, List.of(
+                CoreRule.require(GachaEntryStateResolver::isVisible,
+                        DrawFailure.NOT_VISIBLE),
+                CoreRule.require(candidate -> !isOnCooldown(candidate.player(), candidate.data(),
+                        candidate.shopId(), candidate.shop()), DrawFailure.ON_COOLDOWN),
+                CoreRule.require(candidate -> !isMaxDrawsReached(candidate.data(), candidate.shopId(),
+                        candidate.shop()), DrawFailure.MAX_DRAWS_REACHED),
+                CoreRule.require(GachaEntryStateResolver::hasConditionMet,
+                        DrawFailure.CONDITION_NOT_MET)
+        ));
+    }
+
+    public enum DrawFailure {
+        NOT_VISIBLE,
+        ON_COOLDOWN,
+        MAX_DRAWS_REACHED,
+        CONDITION_NOT_MET
     }
 
     /**
      * 检查奖池是否对玩家可见。
      */
     public static boolean isVisible(ServerPlayer player, ArcQuestPlayer data, GachaShopDefinition shop) {
-        var visibleCondition = shop.getVisibleCondition();
+        return isVisible(DecisionContext.create(player, data, shop.getShopId(), shop));
+    }
+
+    private static boolean isVisible(DecisionContext context) {
+        var visibleCondition = context.shop().getVisibleCondition();
         if (visibleCondition == null) return true;
 
         return CoreProcessors.get().conditions().evaluateSafely(visibleCondition,
-                new QuestConditionContext(player,
-                        data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables()),
-                false, LOGGER, "gacha visibility shop=" + shop.getShopId());
+                context.conditionContext(), false, LOGGER,
+                "gacha visibility shop=" + context.shop().getShopId());
     }
 
     /**
@@ -91,13 +116,26 @@ public final class GachaEntryStateResolver {
      * 检查前置条件是否满足。
      */
     public static boolean hasConditionMet(ServerPlayer player, ArcQuestPlayer data, GachaShopDefinition shop) {
-        var drawCondition = shop.getDrawCondition();
+        return hasConditionMet(DecisionContext.create(player, data, shop.getShopId(), shop));
+    }
+
+    private static boolean hasConditionMet(DecisionContext context) {
+        var drawCondition = context.shop().getDrawCondition();
         if (drawCondition == null) return true;
 
         return CoreProcessors.get().conditions().evaluateSafely(drawCondition,
-                new QuestConditionContext(player,
-                        data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables()),
-                false, LOGGER, "gacha draw shop=" + shop.getShopId());
+                context.conditionContext(), false, LOGGER,
+                "gacha draw shop=" + context.shop().getShopId());
+    }
+
+    private record DecisionContext(ServerPlayer player, ArcQuestPlayer data, String shopId,
+                                   GachaShopDefinition shop, QuestConditionContext conditionContext) {
+        private static DecisionContext create(ServerPlayer player, ArcQuestPlayer data,
+                                              String shopId, GachaShopDefinition shop) {
+            return new DecisionContext(player, data, shopId, shop,
+                    new QuestConditionContext(player, data.getCompletedQuestLocations(),
+                            data.getAllFlags(), data.getAllVariables()));
+        }
     }
 
     /**

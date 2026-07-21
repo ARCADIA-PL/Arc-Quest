@@ -12,6 +12,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.quest.*;
 import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.execution.CoreRule;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
@@ -76,24 +77,25 @@ public final class QuestProgressHandler {
             return CollectionQuestEngine.acceptQuest(player, data, def);
         }
 
-        if (data.isQuestActive(questId)) {
-            return QuestRejectCodeDictionary.Code.ALREADY_ACTIVE;
-        }
-        if (data.isQuestCompleted(questId) && !def.isRepeatable()) {
-            return QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE;
-        }
-
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
-        for (ICondition cond : def.getUnlockConditions()) {
-            if (!evaluateCondition(cond, player, completedQuests, data)) {
-                return QuestRejectCodeDictionary.Code.UNLOCK_CONDITION_NOT_MET;
-            }
-        }
-
         PhaseDefinition firstPhase = def.getInitialPhase();
-        if (firstPhase == null) {
-            return QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE;
-        }
+        QuestAcceptanceContext acceptance = new QuestAcceptanceContext(
+                data, def, questId, firstPhase,
+                new QuestConditionContext(player, completedQuests,
+                        data.getAllFlags(), data.getAllVariables()));
+        var decision = CoreProcessors.get().executions().decide(acceptance, List.of(
+                CoreRule.require(context -> !context.data().isQuestActive(context.questId()),
+                        QuestRejectCodeDictionary.Code.ALREADY_ACTIVE),
+                CoreRule.require(context -> !context.data().isQuestCompleted(context.questId())
+                                || context.definition().isRepeatable(),
+                        QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE),
+                CoreRule.require(context -> CoreProcessors.get().conditions().all(
+                                context.definition().getUnlockConditions(), context.conditionContext()),
+                        QuestRejectCodeDictionary.Code.UNLOCK_CONDITION_NOT_MET),
+                CoreRule.require(context -> context.initialPhase() != null,
+                        QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE)
+        ));
+        if (!decision.allowed()) return decision.failure();
 
         long acceptedTick = player.getServer() != null ? player.getServer().getTickCount() : 0L;
         var acceptedTime = CoreProcessors.get().time().capture(player);
@@ -1004,6 +1006,11 @@ public final class QuestProgressHandler {
         boolean flagsChanged = false;
         boolean needsQuestStateSync = false;
         boolean needsFlagsVarsSync = false;
+    }
+
+    private record QuestAcceptanceContext(ArcQuestPlayer data, QuestDefinition definition, String questId,
+                                          PhaseDefinition initialPhase,
+                                          QuestConditionContext conditionContext) {
     }
 }
 

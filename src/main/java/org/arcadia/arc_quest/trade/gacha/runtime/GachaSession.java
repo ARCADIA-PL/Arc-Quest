@@ -51,19 +51,15 @@ public final class GachaSession {
      * @return 失败原因枚举
      */
     public DrawFailReason getFailReason() {
-        if (!GachaEntryStateResolver.isVisible(player, playerData, shop)) {
-            return DrawFailReason.NOT_VISIBLE;
-        }
-        if (GachaEntryStateResolver.isOnCooldown(player, playerData, shop.getShopId(), shop)) {
-            return DrawFailReason.ON_COOLDOWN;
-        }
-        if (GachaEntryStateResolver.isMaxDrawsReached(playerData, shop.getShopId(), shop)) {
-            return DrawFailReason.MAX_DRAWS_REACHED;
-        }
-        if (!GachaEntryStateResolver.hasConditionMet(player, playerData, shop)) {
-            return DrawFailReason.CONDITION_NOT_MET;
-        }
-        return DrawFailReason.NONE;
+        var decision = GachaEntryStateResolver.evaluateDraw(
+                player, playerData, shop.getShopId(), shop);
+        if (decision.allowed()) return DrawFailReason.NONE;
+        return switch (decision.failure()) {
+            case NOT_VISIBLE -> DrawFailReason.NOT_VISIBLE;
+            case ON_COOLDOWN -> DrawFailReason.ON_COOLDOWN;
+            case MAX_DRAWS_REACHED -> DrawFailReason.MAX_DRAWS_REACHED;
+            case CONDITION_NOT_MET -> DrawFailReason.CONDITION_NOT_MET;
+        };
     }
 
     /**

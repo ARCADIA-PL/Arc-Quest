@@ -4,6 +4,8 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.execution.CoreDecision;
+import org.arcadia.arc_quest.core.execution.CoreRule;
 import org.arcadia.arc_quest.core.time.CooldownRecord;
 import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -12,6 +14,7 @@ import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.slf4j.Logger;
 
 import java.util.Set;
+import java.util.List;
 
 /**
  * 交易商品状态解析器 - 统一判断和设置商品的各种状态。
@@ -66,43 +69,65 @@ public final class TradeEntryStateResolver {
      * 检查商品是否对玩家可见（可见性条件）。
      */
     public static boolean isVisible(ServerPlayer player, ArcQuestPlayer data, TradeEntry entry) {
-        if (entry.getVisibleCondition() == null) return true;
-
-        Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-        return CoreProcessors.get().conditions().evaluateSafely(entry.getVisibleCondition(),
-                new QuestConditionContext(
-                        player, completed, data.getAllFlags(), data.getAllVariables()),
-                false, LOGGER, "trade visibility entry=" + entry.getEntryId());
+        return isVisible(DecisionContext.create(player, data, "", entry));
     }
 
     /**
      * 综合判断商品是否可购买（可见性 → 冷却 → 限购 → 购买资格）。
      */
     public static boolean canPurchase(ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
-        if (!isVisible(player, data, entry)) return false;
+        return evaluatePurchase(player, data, shopId, entry).allowed();
+    }
 
-        if (isOnCooldown(player, data, shopId, entry)) {
-            LOGGER.debug("[Trade-State] Purchase blocked: on cooldown for {}", entry.getEntryId());
-            return false;
+    public static CoreDecision<PurchaseFailure> evaluatePurchase(
+            ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
+        DecisionContext context = DecisionContext.create(player, data, shopId, entry);
+        CoreDecision<PurchaseFailure> decision = CoreProcessors.get().executions().decide(context, List.of(
+                CoreRule.require(TradeEntryStateResolver::isVisible, PurchaseFailure.NOT_VISIBLE),
+                CoreRule.require(candidate -> !isOnCooldown(candidate.player(), candidate.data(),
+                        candidate.shopId(), candidate.entry()), PurchaseFailure.ON_COOLDOWN),
+                CoreRule.require(candidate -> !isPurchaseLimitReached(candidate.data(), candidate.shopId(),
+                        candidate.entry()), PurchaseFailure.LIMIT_REACHED),
+                CoreRule.require(TradeEntryStateResolver::hasPurchaseConditionMet,
+                        PurchaseFailure.CONDITION_NOT_MET)
+        ));
+        if (!decision.allowed()) {
+            LOGGER.debug("[Trade-State] Purchase blocked: entry={}, reason={}",
+                    entry.getEntryId(), decision.failure());
         }
+        return decision;
+    }
 
-        if (isPurchaseLimitReached(data, shopId, entry)) {
-            LOGGER.debug("[Trade-State] Purchase blocked: limit reached for {}", entry.getEntryId());
-            return false;
-        }
+    private static boolean isVisible(DecisionContext context) {
+        if (context.entry().getVisibleCondition() == null) return true;
+        return CoreProcessors.get().conditions().evaluateSafely(
+                context.entry().getVisibleCondition(), context.conditionContext(), false, LOGGER,
+                "trade visibility entry=" + context.entry().getEntryId());
+    }
 
-        if (entry.getCanBuyCondition() != null) {
+    private static boolean hasPurchaseConditionMet(DecisionContext context) {
+        if (context.entry().getCanBuyCondition() == null) return true;
+        return CoreProcessors.get().conditions().evaluateSafely(
+                context.entry().getCanBuyCondition(), context.conditionContext(), false, LOGGER,
+                "trade purchase entry=" + context.entry().getEntryId());
+    }
+
+    public enum PurchaseFailure {
+        NOT_VISIBLE,
+        ON_COOLDOWN,
+        LIMIT_REACHED,
+        CONDITION_NOT_MET
+    }
+
+    private record DecisionContext(ServerPlayer player, ArcQuestPlayer data, String shopId,
+                                   TradeEntry entry, QuestConditionContext conditionContext) {
+        private static DecisionContext create(ServerPlayer player, ArcQuestPlayer data,
+                                              String shopId, TradeEntry entry) {
             Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-            boolean canBuy = CoreProcessors.get().conditions().evaluateSafely(entry.getCanBuyCondition(),
-                    new QuestConditionContext(
-                            player, completed, data.getAllFlags(), data.getAllVariables()),
-                    false, LOGGER, "trade purchase entry=" + entry.getEntryId());
-            if (!canBuy) {
-                LOGGER.debug("[Trade-State] Purchase blocked: canBuyCondition not met for {}", entry.getEntryId());
-                return false;
-            }
+            QuestConditionContext conditionContext = new QuestConditionContext(
+                    player, completed, data.getAllFlags(), data.getAllVariables());
+            return new DecisionContext(player, data, shopId, entry, conditionContext);
         }
-        return true;
     }
 
     /**

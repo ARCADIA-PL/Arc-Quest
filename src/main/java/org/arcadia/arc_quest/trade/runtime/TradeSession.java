@@ -56,21 +56,18 @@ public final class TradeSession {
         }
 
         // 第二步：综合判断
-        if (!TradeEntryStateResolver.canPurchase(player, data, shop.getShopId(), entry)) {
-            // 细分错误原因（统一优先级：cooldown > limit > condition > afford）
-            if (!TradeEntryStateResolver.isVisible(player, data, entry)) {
-                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_NOT_VISIBLE));
-            }
-            if (TradeEntryStateResolver.isOnCooldown(player, data, shop.getShopId(), entry)) {
-                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_ON_COOLDOWN));
-            }
-            if (TradeEntryStateResolver.isPurchaseLimitReached(data, shop.getShopId(), entry)) {
-                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_MAX_DRAWS_REACHED));
-            }
-            // 默认：购买资格条件不满足
-            return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_CONDITION_NOT_MET));
+        var purchaseDecision = TradeEntryStateResolver.evaluatePurchase(
+                player, data, shop.getShopId(), entry);
+        if (!purchaseDecision.allowed()) {
+            RejectCodeDictionary.Code code = switch (purchaseDecision.failure()) {
+                case NOT_VISIBLE -> RejectCodeDictionary.Code.SESSION_NOT_VISIBLE;
+                case ON_COOLDOWN -> RejectCodeDictionary.Code.SESSION_ON_COOLDOWN;
+                case LIMIT_REACHED -> RejectCodeDictionary.Code.SESSION_MAX_DRAWS_REACHED;
+                case CONDITION_NOT_MET -> RejectCodeDictionary.Code.SESSION_CONDITION_NOT_MET;
+            };
+            return TradeResult.fail(RejectCodeDictionary.errorKey(
+                    RejectCodeDictionary.Domain.TRADE, code));
         }
-
         for (ITradeOffer cost : entry.getCosts()) {
             if (!cost.canAfford(player)) {
                 LOGGER.warn("[Trade]  Cannot afford cost: entry={}, cost={}", entryId, cost);
