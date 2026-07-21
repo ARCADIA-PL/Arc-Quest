@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -49,15 +50,12 @@ public final class GachaEntryStateResolver {
         var visibleCondition = shop.getVisibleCondition();
         if (visibleCondition == null) return true;
 
-        try {
-            return visibleCondition.test(player,
-                    data.getCompletedQuestLocations(),
-                    data.getAllFlags(),
-                    data.getAllVariables());
-        } catch (Exception e) {
-            LOGGER.warn("[Gacha] Error evaluating visible condition for shop={}: {}", shop.getShopId(), e.getMessage());
-            return false;
-        }
+        return ConditionGuard.evaluate(
+                () -> visibleCondition.test(player,
+                        data.getCompletedQuestLocations(),
+                        data.getAllFlags(),
+                        data.getAllVariables()),
+                false, LOGGER, "gacha visibility shop=" + shop.getShopId());
     }
 
     /**
@@ -100,15 +98,12 @@ public final class GachaEntryStateResolver {
         var drawCondition = shop.getDrawCondition();
         if (drawCondition == null) return true;
 
-        try {
-            return drawCondition.test(player,
-                    data.getCompletedQuestLocations(),
-                    data.getAllFlags(),
-                    data.getAllVariables());
-        } catch (Exception e) {
-            LOGGER.warn("[Gacha] Error evaluating draw condition for shop={}: {}", shop.getShopId(), e.getMessage());
-            return false;
-        }
+        return ConditionGuard.evaluate(
+                () -> drawCondition.test(player,
+                        data.getCompletedQuestLocations(),
+                        data.getAllFlags(),
+                        data.getAllVariables()),
+                false, LOGGER, "gacha draw shop=" + shop.getShopId());
     }
 
     /**

@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
+import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
@@ -183,15 +184,12 @@ public final class GachaSession {
         if (!shouldReset) {
             var resetCondition = shop.getResetCondition();
             if (resetCondition != null) {
-                try {
-                    shouldReset = resetCondition.test(player,
-                            playerData.getCompletedQuestLocations(),
-                            playerData.getAllFlags(),
-                            playerData.getAllVariables());
-                } catch (Exception e) {
-                    LOGGER.warn("[Gacha] Error evaluating draw reset condition for shop={}: {}",
-                            shop.getShopId(), e.getMessage());
-                }
+                shouldReset = ConditionGuard.evaluate(
+                        () -> resetCondition.test(player,
+                                playerData.getCompletedQuestLocations(),
+                                playerData.getAllFlags(),
+                                playerData.getAllVariables()),
+                        false, LOGGER, "gacha reset shop=" + shop.getShopId());
             }
         }
 

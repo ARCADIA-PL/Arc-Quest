@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.logic.profile.collection;
 
 import com.mojang.logging.LogUtils;
+import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.quest.api.CollectionCompletionRule;
 import org.arcadia.arc_quest.quest.api.CollectionRuleContext;
 import org.slf4j.Logger;
@@ -32,15 +33,12 @@ public final class CollectionRuleEvaluator {
 
     public static boolean safeTest(CollectionRuleContext context, CollectionCompletionRule rule) {
         if (context == null || rule == null) return false;
-        try {
-            return rule.test(context);
-        } catch (RuntimeException e) {
-            LOGGER.warn("[ArcQuest] Collection rule '{}' failed for quest {} category {}",
-                    rule.getDebugLabel(),
-                    context.getQuestDefinition().getId(),
-                    context.getCategoryId(),
-                    e);
-            return false;
-        }
+        return ConditionGuard.evaluate(
+                () -> rule.test(context),
+                false,
+                LOGGER,
+                "collection rule=" + rule.getDebugLabel()
+                        + " quest=" + context.getQuestDefinition().getId()
+                        + " category=" + context.getCategoryId());
     }
 }

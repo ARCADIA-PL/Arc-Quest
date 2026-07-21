@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
@@ -68,7 +69,10 @@ public final class TradeEntryStateResolver {
         if (entry.getVisibleCondition() == null) return true;
 
         Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-        return entry.getVisibleCondition().test(player, completed, data.getAllFlags(), data.getAllVariables());
+        return ConditionGuard.evaluate(
+                () -> entry.getVisibleCondition().test(
+                        player, completed, data.getAllFlags(), data.getAllVariables()),
+                false, LOGGER, "trade visibility entry=" + entry.getEntryId());
     }
 
     /**
@@ -89,7 +93,10 @@ public final class TradeEntryStateResolver {
 
         if (entry.getCanBuyCondition() != null) {
             Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-            boolean canBuy = entry.getCanBuyCondition().test(player, completed, data.getAllFlags(), data.getAllVariables());
+            boolean canBuy = ConditionGuard.evaluate(
+                    () -> entry.getCanBuyCondition().test(
+                            player, completed, data.getAllFlags(), data.getAllVariables()),
+                    false, LOGGER, "trade purchase entry=" + entry.getEntryId());
             if (!canBuy) {
                 LOGGER.debug("[Trade-State] Purchase blocked: canBuyCondition not met for {}", entry.getEntryId());
                 return false;

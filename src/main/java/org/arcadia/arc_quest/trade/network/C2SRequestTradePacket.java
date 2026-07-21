@@ -9,6 +9,7 @@ import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.trade.*;
+import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -434,14 +435,11 @@ public class C2SRequestTradePacket {
         if (!shouldReset && entry.hasLimit()) {
             var resetCondition = entry.getPurchaseResetCondition();
             if (resetCondition != null) {
-                try {
-                    shouldReset = resetCondition.test(player);
-                    if (shouldReset) {
-                        LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
-                    }
-                } catch (Exception e) {
-                    LOGGER.warn("[Trade] Error evaluating purchase reset condition for entry={}: {}",
-                            entryId, e.getMessage());
+                shouldReset = ConditionGuard.evaluate(
+                        () -> resetCondition.test(player),
+                        false, LOGGER, "trade reset entry=" + entryId);
+                if (shouldReset) {
+                    LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
                 }
             }
         }

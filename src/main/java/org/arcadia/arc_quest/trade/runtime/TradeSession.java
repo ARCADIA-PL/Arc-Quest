@@ -7,6 +7,7 @@ import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
@@ -214,14 +215,11 @@ public final class TradeSession {
         boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, data, shop.getShopId(), entry);
 
         if (!shouldReset) {
-            try {
-                shouldReset = resetCondition.test(player);
-                if (shouldReset) {
-                    LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
-                }
-            } catch (Exception e) {
-                LOGGER.warn("[Trade] Error evaluating purchase reset condition for entry={}: {}",
-                        entryId, e.getMessage());
+            shouldReset = ConditionGuard.evaluate(
+                    () -> resetCondition.test(player),
+                    false, LOGGER, "trade reset entry=" + entryId);
+            if (shouldReset) {
+                LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
             }
         }
 
