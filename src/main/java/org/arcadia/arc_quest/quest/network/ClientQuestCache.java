@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.core.event.ListenerRegistry;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
@@ -23,6 +24,7 @@ import javax.annotation.Nullable;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * 客户端任务数据镜像缓存。
@@ -69,14 +71,18 @@ public final class ClientQuestCache {
     private boolean hasAppliedFullSync = false;
     private final QuestClientRevisionGate revisionGate = new QuestClientRevisionGate();
 
-    private final List<QuestCacheListener> listeners = new ArrayList<>();
+    private final ListenerRegistry<QuestCacheListener> listeners = new ListenerRegistry<>();
 
     private ClientQuestCache() {
         addListener(new QuestHistoryAndToastListener());
     }
 
     public void addListener(QuestCacheListener listener) {
-        listeners.add(Objects.requireNonNull(listener));
+        listeners.subscribe(listener);
+    }
+
+    public void removeListener(QuestCacheListener listener) {
+        listeners.unsubscribe(listener);
     }
 
     public boolean acceptSnapshot(long playerSessionEpoch, long revision) {
@@ -160,7 +166,7 @@ public final class ClientQuestCache {
         if (hasAppliedFullSync) {
             for (String questId : failedQuests) {
                 if (!oldFailed.contains(questId)) {
-                    for (QuestCacheListener l : listeners) l.onQuestFailed(questId);
+                    notifyListeners("full_sync_failed", listener -> listener.onQuestFailed(questId));
                 }
             }
         }
@@ -201,13 +207,11 @@ public final class ClientQuestCache {
             LOGGER.error("[ClientCache] Error firing side effects for quest {}", questId, e);
         }
 
-        try {
-            for (QuestCacheListener l : listeners) {
-                l.onQuestUpdated(questId, data, oldState, oldPhaseId, previousData);
-            }
-        } catch (Exception e) {
-            LOGGER.error("[ClientCache] Error notifying listeners for quest {}", questId, e);
-        }
+        QuestState previousState = oldState;
+        String previousPhaseId = oldPhaseId;
+        notifyListeners("quest_updated:" + questId,
+                listener -> listener.onQuestUpdated(
+                        questId, data, previousState, previousPhaseId, previousData));
 
         refreshJournalIfOpen();
     }
@@ -240,23 +244,24 @@ public final class ClientQuestCache {
             case ACTIVE -> {
                 if (oldState == null) {
                     onQuestAccepted(questId);
-                    for (QuestCacheListener l : listeners) l.onQuestAccepted(questId);
+                    notifyListeners("quest_accepted:" + questId, listener -> listener.onQuestAccepted(questId));
                 }
                 if (oldPhaseId != null && !oldPhaseId.equals(data.getCurrentPhaseId())) {
                     onPhaseStarted(questId, data.getCurrentPhaseId());
-                    for (QuestCacheListener l : listeners) l.onPhaseStarted(questId, data.getCurrentPhaseId());
+                    notifyListeners("phase_started:" + questId,
+                            listener -> listener.onPhaseStarted(questId, data.getCurrentPhaseId()));
                 }
             }
             case COMPLETED -> {
                 if (oldState != QuestState.COMPLETED) {
                     onQuestCompleted(questId);
-                    for (QuestCacheListener l : listeners) l.onQuestCompleted(questId);
+                    notifyListeners("quest_completed:" + questId, listener -> listener.onQuestCompleted(questId));
                 }
             }
             case FAILED -> {
                 if (oldState != QuestState.FAILED) {
                     onQuestFailed(questId);
-                    for (QuestCacheListener l : listeners) l.onQuestFailed(questId);
+                    notifyListeners("quest_failed:" + questId, listener -> listener.onQuestFailed(questId));
                 }
             }
             default -> {
@@ -264,7 +269,8 @@ public final class ClientQuestCache {
                     String curPhase = previousData.getCurrentPhaseId();
                     if (!curPhase.equals(data.getCurrentPhaseId())) {
                         onPhaseStarted(questId, data.getCurrentPhaseId());
-                        for (QuestCacheListener l : listeners) l.onPhaseStarted(questId, data.getCurrentPhaseId());
+                        notifyListeners("phase_started:" + questId,
+                                listener -> listener.onPhaseStarted(questId, data.getCurrentPhaseId()));
                     }
                 }
             }
@@ -356,9 +362,17 @@ public final class ClientQuestCache {
 
     private void recordObjectiveHistory(String questId, String phaseId, int objIndex, int oldProgress, int newProgress) {
         int required = resolveObjectiveRequired(questId, phaseId, objIndex);
-        for (QuestCacheListener l : listeners) {
-            l.onObjectiveProgress(questId, phaseId, objIndex, oldProgress, newProgress, required);
-        }
+        notifyListeners("objective_progress:" + questId,
+                listener -> listener.onObjectiveProgress(
+                        questId, phaseId, objIndex, oldProgress, newProgress, required));
+    }
+
+    private void notifyListeners(String operation, Consumer<QuestCacheListener> invocation) {
+        listeners.dispatch(
+                invocation,
+                (listener, exception) -> LOGGER.error(
+                        "[ClientCache] Listener dispatch failed: operation={}, listener={}",
+                        operation, listener.getClass().getName(), exception));
     }
 
     private int resolveObjectiveRequired(String questId, String phaseId, int objIndex) {

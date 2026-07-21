@@ -1,11 +1,10 @@
 package org.arcadia.arc_quest.quest.event;
 
 import com.mojang.logging.LogUtils;
+import org.arcadia.arc_quest.core.event.ListenerRegistry;
 import org.slf4j.Logger;
 
 import java.util.EnumMap;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 轻量级任务事件总线。
@@ -33,18 +32,18 @@ public final class QuestEventBus {
     /**
      * 全量监听器
      */
-    private static final CopyOnWriteArrayList<IQuestChangeListener> GLOBAL_LISTENERS =
-            new CopyOnWriteArrayList<>();
+    private static final ListenerRegistry<IQuestChangeListener> GLOBAL_LISTENERS =
+            new ListenerRegistry<>();
 
     /**
      * 按类型分桶的监听器
      */
-    private static final EnumMap<QuestChangeEvent.Type, List<IQuestChangeListener>> TYPED_LISTENERS =
+    private static final EnumMap<QuestChangeEvent.Type, ListenerRegistry<IQuestChangeListener>> TYPED_LISTENERS =
             new EnumMap<>(QuestChangeEvent.Type.class);
 
     static {
         for (QuestChangeEvent.Type type : QuestChangeEvent.Type.values()) {
-            TYPED_LISTENERS.put(type, new CopyOnWriteArrayList<>());
+            TYPED_LISTENERS.put(type, new ListenerRegistry<>());
         }
     }
 
@@ -59,41 +58,39 @@ public final class QuestEventBus {
      * 订阅所有事件类型
      */
     public static void subscribe(IQuestChangeListener listener) {
-        GLOBAL_LISTENERS.addIfAbsent(listener);
+        GLOBAL_LISTENERS.subscribe(listener);
     }
 
     /**
      * 仅订阅特定事件类型
      */
     public static void subscribe(QuestChangeEvent.Type type, IQuestChangeListener listener) {
-        List<IQuestChangeListener> list = TYPED_LISTENERS.get(type);
-        if (list instanceof CopyOnWriteArrayList<IQuestChangeListener> cow) {
-            cow.addIfAbsent(listener);
-        }
+        ListenerRegistry<IQuestChangeListener> listeners = TYPED_LISTENERS.get(type);
+        if (listeners != null) listeners.subscribe(listener);
     }
 
     /**
      * 取消全量订阅
      */
     public static void unsubscribe(IQuestChangeListener listener) {
-        GLOBAL_LISTENERS.remove(listener);
+        GLOBAL_LISTENERS.unsubscribe(listener);
     }
 
     /**
      * 取消特定类型的订阅
      */
     public static void unsubscribe(QuestChangeEvent.Type type, IQuestChangeListener listener) {
-        List<IQuestChangeListener> list = TYPED_LISTENERS.get(type);
-        list.remove(listener);
+        ListenerRegistry<IQuestChangeListener> listeners = TYPED_LISTENERS.get(type);
+        if (listeners != null) listeners.unsubscribe(listener);
     }
 
     /**
      * 取消某个监听器在所有位置的订阅
      */
     public static void unsubscribeAll(IQuestChangeListener listener) {
-        GLOBAL_LISTENERS.remove(listener);
-        for (List<IQuestChangeListener> list : TYPED_LISTENERS.values()) {
-            list.remove(listener);
+        GLOBAL_LISTENERS.unsubscribe(listener);
+        for (ListenerRegistry<IQuestChangeListener> listeners : TYPED_LISTENERS.values()) {
+            listeners.unsubscribe(listener);
         }
     }
 
@@ -106,24 +103,17 @@ public final class QuestEventBus {
      */
     public static void fire(QuestChangeEvent event) {
         // 全量监听器
-        for (IQuestChangeListener listener : GLOBAL_LISTENERS) {
-            try {
-                listener.onQuestChanged(event);
-            } catch (Exception e) {
-                LOGGER.error("[ArcQuest] Exception in global quest listener", e);
-            }
-        }
+        GLOBAL_LISTENERS.dispatch(
+                listener -> listener.onQuestChanged(event),
+                (listener, exception) -> LOGGER.error("[ArcQuest] Exception in global quest listener", exception));
 
         // 按类型分桶的监听器
-        List<IQuestChangeListener> typed = TYPED_LISTENERS.get(event.getType());
+        ListenerRegistry<IQuestChangeListener> typed = TYPED_LISTENERS.get(event.getType());
         if (typed != null) {
-            for (IQuestChangeListener listener : typed) {
-                try {
-                    listener.onQuestChanged(event);
-                } catch (Exception e) {
-                    LOGGER.error("[ArcQuest] Exception in typed quest listener for {}", event.getType(), e);
-                }
-            }
+            typed.dispatch(
+                    listener -> listener.onQuestChanged(event),
+                    (listener, exception) -> LOGGER.error(
+                            "[ArcQuest] Exception in typed quest listener for {}", event.getType(), exception));
         }
     }
 
@@ -132,8 +122,8 @@ public final class QuestEventBus {
      */
     public static void clearAll() {
         GLOBAL_LISTENERS.clear();
-        for (List<IQuestChangeListener> list : TYPED_LISTENERS.values()) {
-            list.clear();
+        for (ListenerRegistry<IQuestChangeListener> listeners : TYPED_LISTENERS.values()) {
+            listeners.clear();
         }
     }
 }
