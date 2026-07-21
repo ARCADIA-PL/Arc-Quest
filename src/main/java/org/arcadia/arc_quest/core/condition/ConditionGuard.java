@@ -3,7 +3,6 @@ package org.arcadia.arc_quest.core.condition;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.slf4j.Logger;
 
-import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
 public final class ConditionGuard {
@@ -15,14 +14,8 @@ public final class ConditionGuard {
                                    boolean failureResult,
                                    Logger logger,
                                    String context) {
-        Objects.requireNonNull(evaluation, "evaluation");
-        Objects.requireNonNull(logger, "logger");
-        try {
-            return evaluation.getAsBoolean();
-        } catch (RuntimeException exception) {
-            logger.warn("[ConditionGuard] Evaluation failed: {}", context, exception);
-            return failureResult;
-        }
+        return CoreProcessors.get().conditions().evaluateSafely(
+                evaluation, failureResult, logger, context);
     }
 
     public static <C> boolean evaluate(CoreCondition<? super C> condition,
@@ -30,10 +23,8 @@ public final class ConditionGuard {
                                        boolean failureResult,
                                        Logger logger,
                                        String context) {
-        Objects.requireNonNull(condition, "condition");
-        return evaluate(
-                () -> CoreProcessors.get().conditions().evaluate(condition, conditionContext),
-                failureResult, logger, context);
+        return CoreProcessors.get().conditions().evaluateSafely(
+                condition, conditionContext, failureResult, logger, context);
     }
 
     public static boolean evaluateNullable(BooleanSupplier evaluation,
@@ -41,8 +32,7 @@ public final class ConditionGuard {
                                            boolean failureResult,
                                            Logger logger,
                                            String context) {
-        return evaluation == null
-                ? missingResult
-                : evaluate(evaluation, failureResult, logger, context);
+        return CoreProcessors.get().conditions().evaluateNullable(
+                evaluation, missingResult, failureResult, logger, context);
     }
 }
