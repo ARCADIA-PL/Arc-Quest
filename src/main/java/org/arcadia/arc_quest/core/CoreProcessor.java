@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.core;
 
 import org.arcadia.arc_quest.core.condition.ConditionProcessor;
+import org.arcadia.arc_quest.core.execution.ExecutionProcessor;
 import org.arcadia.arc_quest.core.state.ExpiringStateStore;
 import org.arcadia.arc_quest.core.time.CooldownProcessor;
 import org.arcadia.arc_quest.core.time.TimeProcessor;
@@ -13,6 +14,10 @@ public interface CoreProcessor {
 
     default TimeProcessor time() {
         return TimeProcessor.system();
+    }
+
+    default ExecutionProcessor executions() {
+        return ExecutionProcessor.createDefault();
     }
 
     <K, V> ExpiringStateStore<K, V> createExpiringStateStore();
