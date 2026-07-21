@@ -4,10 +4,9 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
-import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
+import org.arcadia.arc_quest.core.time.CooldownRecord;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.core.condition.ConditionGuard;
-import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
@@ -27,7 +26,7 @@ import java.util.Set;
  * </ul>
  * <p>
  * 状态数据统一通过 {@link TradeDataStore} 读写，冷却判断委托
- * {@link UnifiedCooldownManager}，不再经过 {@code ArcQuestPlayer} 的多层委托。
+ * {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，不再经过 {@code ArcQuestPlayer} 的多层委托。
  */
 public final class TradeEntryStateResolver {
 
@@ -47,13 +46,13 @@ public final class TradeEntryStateResolver {
             if (currentCount < entry.getMaxPurchases()) return false;
         }
 
-        long[] times = TimeSanitizer.getAllTimes(player);
-        ICooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
+        var now = TimeSanitizer.capture(player);
+        CooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
         return CoreProcessors.get().cooldowns().isOnCooldown(
                 record, entry.getCooldownType().toCorePolicy(
                         entry.getCooldownValue(), entry.getResetTimeTicks()),
-                new TimeSnapshot(times[0], times[1], times[2]));
+                now);
     }
 
     /**
@@ -119,13 +118,13 @@ public final class TradeEntryStateResolver {
             if (currentCount < entry.getMaxPurchases()) return false;
         }
 
-        long[] times = TimeSanitizer.getAllTimes(player);
-        ICooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
+        var now = TimeSanitizer.capture(player);
+        CooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
         boolean onCooldown = CoreProcessors.get().cooldowns().isOnCooldown(
                 record, entry.getCooldownType().toCorePolicy(
                         entry.getCooldownValue(), entry.getResetTimeTicks()),
-                new TimeSnapshot(times[0], times[1], times[2]));
+                now);
 
         if (!onCooldown) {
             LOGGER.info("[Trade-State] Cooldown expired, should reset: entry={}, hasLimit={}", entry.getEntryId(), entry.hasLimit());
@@ -163,9 +162,10 @@ public final class TradeEntryStateResolver {
      * 记录冷却时间戳。
      */
     public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, String entryId) {
-        long[] times = TimeSanitizer.getAllTimes(player);
+        var now = TimeSanitizer.capture(player);
         LOGGER.debug("[Trade-State] Recording cooldown: shop={}, entry={}", shopId, entryId);
-        data.getTradeDataStore().recordCooldown(shopId, entryId, times[0], times[1], times[2]);
+        data.getTradeDataStore().recordCooldown(
+                shopId, entryId, now.realTime(), now.gameTime(), now.dayTime());
     }
 
     /**

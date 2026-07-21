@@ -3,10 +3,9 @@ package org.arcadia.arc_quest.trade.gacha.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
-import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
+import org.arcadia.arc_quest.core.time.CooldownRecord;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.core.condition.ConditionGuard;
-import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -22,7 +21,7 @@ import org.slf4j.Logger;
  * <b>冷却语义规则：</b>有限购时，冷却是限购的附属机制——限购未满时不检查冷却；
  * 无限购时，每次抽奖后均触发冷却计时。
  * <p>
- * 冷却判断统一委托 {@link UnifiedCooldownManager}，通过 {@link ICooldownRecord}
+ * 冷却判断统一委托 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，通过 {@link org.arcadia.arc_quest.core.time.CooldownRecord}
  * 接口接收 {@link GachaDataStore.CooldownEntry}，不再维护独立的冷却判断逻辑。
  */
 public final class GachaEntryStateResolver {
@@ -69,7 +68,7 @@ public final class GachaEntryStateResolver {
     /**
      * 检查是否在冷却中。
      * <p>
-     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link UnifiedCooldownManager}
+     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}
      * 统一计算，不再维护独立的冷却 switch 逻辑。
      */
     public static boolean isOnCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
@@ -79,17 +78,15 @@ public final class GachaEntryStateResolver {
             return false;
         }
 
-        ICooldownRecord record = data.getGachaDataStore().getDrawCooldown(shopId);
+        CooldownRecord record = data.getGachaDataStore().getDrawCooldown(shopId);
         if (!record.exists()) return false;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = TimeSanitizer.capture(player);
 
         return CoreProcessors.get().cooldowns().isOnCooldown(
                 record, shop.getCooldownType().toCorePolicy(
                         shop.getCooldownValue(), shop.getResetTimeTicks()),
-                new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
+                now);
     }
 
     /**
@@ -118,10 +115,10 @@ public final class GachaEntryStateResolver {
         }
 
         GachaDataStore gachaStore = data.getGachaDataStore();
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = TimeSanitizer.capture(player);
 
-        ICooldownRecord record = gachaStore.getDrawCooldown(shopId);
-        if (record.exists() && record.dayTime() > nowDayTime) {
+        CooldownRecord record = gachaStore.getDrawCooldown(shopId);
+        if (record.exists() && record.dayTime() > now.dayTime()) {
             gachaStore.removeDrawCooldown(shopId);
             LOGGER.info("[Gacha-State] Cleared cooldown record due to time regression: shop={}", shopId);
             return true;
@@ -129,13 +126,10 @@ public final class GachaEntryStateResolver {
 
         if (!record.exists()) return false;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-
         return !CoreProcessors.get().cooldowns().isOnCooldown(
                 record, shop.getCooldownType().toCorePolicy(
                         shop.getCooldownValue(), shop.getResetTimeTicks()),
-                new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
+                now);
     }
 
     /**
@@ -167,10 +161,8 @@ public final class GachaEntryStateResolver {
     public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
-
-        data.getGachaDataStore().recordDrawCooldown(shopId, nowRealTime, nowGameTime, nowDayTime);
+        var now = TimeSanitizer.capture(player);
+        data.getGachaDataStore().recordDrawCooldown(
+                shopId, now.realTime(), now.gameTime(), now.dayTime());
     }
 }

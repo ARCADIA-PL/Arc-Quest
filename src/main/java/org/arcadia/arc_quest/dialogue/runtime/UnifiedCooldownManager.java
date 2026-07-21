@@ -76,11 +76,6 @@ public final class UnifiedCooldownManager {
      * 供对话系统（{@link DialogueActionExecutor}）和交易系统共用。
      */
     public static boolean clearIfTimeRegressed(DialogueProgressStore store, ProgressKey key, long nowDayTime) {
-        Entry entry = store.getChoiceSelection(key);
-        if (CoreProcessors.get().cooldowns().isDayTimeRegressed(entry, nowDayTime)) {
-            store.clearCooldownRecord(key);
-            return true;
-        }
-        return false;
+        return store.clearIfTimeRegressed(key, nowDayTime);
     }
 }

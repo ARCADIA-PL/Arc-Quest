@@ -4,6 +4,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 
@@ -149,11 +151,27 @@ public class DialogueProgressStore {
     }
 
     public boolean isOnCooldown(ProgressKey key, CooldownType cooldownType, int cooldownValue, int resetTick, TimeSnapshot ts) {
-        return UnifiedCooldownManager.isOnCooldown(this, key, cooldownType, cooldownValue, resetTick, ts);
+        return evaluateCooldown(key, cooldownType, cooldownValue, resetTick, ts).active();
+    }
+
+    public CooldownStatus evaluateCooldown(ProgressKey key, CooldownType cooldownType,
+                                           int cooldownValue, int resetTick, TimeSnapshot ts) {
+        return CoreProcessors.get().cooldowns().evaluate(
+                getEntry(key), cooldownType.toCorePolicy(cooldownValue, resetTick), ts.toCoreSnapshot());
     }
 
     public boolean isOnCooldown(Entry entry, CooldownType cooldownType, int cooldownValue, int resetTick, long nowRealTime, long nowGameTime, long nowDayTime) {
-        return UnifiedCooldownManager.isOnCooldown(entry, cooldownType, cooldownValue, resetTick, nowRealTime, nowGameTime, nowDayTime);
+        return evaluateCooldown(entry, cooldownType, cooldownValue, resetTick,
+                nowRealTime, nowGameTime, nowDayTime).active();
+    }
+
+    public CooldownStatus evaluateCooldown(Entry entry, CooldownType cooldownType,
+                                           int cooldownValue, int resetTick,
+                                           long nowRealTime, long nowGameTime, long nowDayTime) {
+        return CoreProcessors.get().cooldowns().evaluate(
+                entry, cooldownType.toCorePolicy(cooldownValue, resetTick),
+                new org.arcadia.arc_quest.core.time.TimeSnapshot(
+                        nowRealTime, nowGameTime, nowDayTime));
     }
 
     public boolean isNodeOnCooldown(String namespace, String nodeId, CooldownType type, int cooldownValue, int resetTick, long nowRealTime, long nowGameTime, long nowDayTime) {
@@ -169,7 +187,16 @@ public class DialogueProgressStore {
     }
 
     public int getGameTickCooldownRemainingTicks(Entry entry, int resetTick, long nowGameTime, long nowDayTime) {
-        return UnifiedCooldownManager.getGameTickCooldownRemainingTicks(entry, resetTick, nowGameTime, nowDayTime);
+        return CoreProcessors.get().cooldowns().remainingGameTicks(
+                entry, resetTick,
+                new org.arcadia.arc_quest.core.time.TimeSnapshot(0L, nowGameTime, nowDayTime));
+    }
+
+    public boolean clearIfTimeRegressed(ProgressKey key, long nowDayTime) {
+        Entry entry = getChoiceSelection(key);
+        if (!CoreProcessors.get().cooldowns().isDayTimeRegressed(entry, nowDayTime)) return false;
+        clearCooldownRecord(key);
+        return true;
     }
 
     /**
@@ -308,12 +335,12 @@ public class DialogueProgressStore {
             return new org.arcadia.arc_quest.core.time.TimeSnapshot(realTime, gameTime, dayTime);
         }
 
+        public static TimeSnapshot fromCoreSnapshot(org.arcadia.arc_quest.core.time.TimeSnapshot snapshot) {
+            return new TimeSnapshot(snapshot.realTime(), snapshot.gameTime(), snapshot.dayTime());
+        }
+
         public static TimeSnapshot capture(ServerPlayer player) {
-            return new TimeSnapshot(
-                    TimeSanitizer.getCurrentRealTime(),
-                    TimeSanitizer.getCurrentGameTime(player),
-                    TimeSanitizer.getCurrentDayTime(player)
-            );
+            return fromCoreSnapshot(TimeSanitizer.capture(player));
         }
     }
 

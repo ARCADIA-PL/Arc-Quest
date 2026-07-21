@@ -4,9 +4,9 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
-import org.arcadia.arc_quest.core.time.TimeSnapshot;
+import org.arcadia.arc_quest.core.time.CooldownRecord;
+import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
-import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -136,41 +136,26 @@ public final class TradeSession {
     /**
      * 获取冷却剩余秒数（用于客户端显示）。
      * <p>
-     * 冷却时间戳从 TradeDataStore 读取，通过 UnifiedCooldownManager 统一计算。
+     * 冷却时间戳从 TradeDataStore 读取，通过 CoreProcessors.cooldowns() 统一计算。
      */
     public int getCooldownRemaining(String entryId, TradeEntry entry) {
         if (!entry.hasCooldown()) return 0;
 
         ArcQuestPlayer data = getData();
-        ICooldownRecord record = data.getTradeDataStore().getCooldown(shop.getShopId(), entryId);
+        CooldownRecord record = data.getTradeDataStore().getCooldown(shop.getShopId(), entryId);
         if (!record.exists()) return 0;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = TimeSanitizer.capture(player);
+        CooldownStatus status = CoreProcessors.get().cooldowns().evaluate(
+                record, entry.getCooldownType().toCorePolicy(
+                        entry.getCooldownValue(), entry.getResetTimeTicks()), now);
 
         return switch (entry.getCooldownType()) {
             case NONE -> 0;
-            case SECONDS -> {
-                long elapsed = (nowRealTime - record.realTime()) / 1000;
-                yield Math.max(0, (int) (entry.getCooldownValue() - elapsed));
-            }
-            case GAME_DAY -> {
-                if (record.dayTime() < 0) yield 0;
-                boolean onCooldown = CoreProcessors.get().cooldowns().isOnCooldown(
-                        record, entry.getCooldownType().toCorePolicy(
-                                entry.getCooldownValue(), entry.getResetTimeTicks()),
-                        new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
-                if (!onCooldown) yield 0;
-                long currentDayTick = nowDayTime % 24000;
-                yield Math.max(1, (int) (24000 - currentDayTick) / 20);
-            }
-            case GAME_TICK -> {
-                int remainingTicks = CoreProcessors.get().cooldowns().remainingGameTicks(
-                        record, entry.getResetTimeTicks(),
-                        new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
-                yield Math.max(0, remainingTicks / 20);
-            }
+            case SECONDS -> status.remainingRealSecondsCeiling();
+            case GAME_DAY -> status.active()
+                    ? Math.max(1, status.remainingGameSecondsFloor()) : 0;
+            case GAME_TICK -> status.remainingGameSecondsFloor();
         };
     }
 

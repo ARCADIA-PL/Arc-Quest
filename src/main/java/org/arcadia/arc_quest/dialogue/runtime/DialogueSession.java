@@ -209,23 +209,25 @@ public class DialogueSession {
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
 
             // 先检测时间回退，如果检测到则清除记录
-            if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
+            if (progress.clearIfTimeRegressed(choiceKey, ts.dayTime())) {
                 cooldowns[i] = 0;
                 continue;
             }
 
-            boolean onCooldown = progress.isOnCooldown(
+            var status = progress.evaluateCooldown(
                     choiceKey, choice.cooldownType(), (int) choice.cooldownSeconds(),
                     choice.resetTimeTicks(), ts);
 
-            if (!onCooldown) {
+            if (!status.active()) {
                 cooldowns[i] = 0;
                 continue;
             }
 
-            // 计算剩余时间
-            var entry = progress.getChoiceSelection(choiceKey);
-            cooldowns[i] = computeRemainingSeconds(entry, choice, ts);
+            cooldowns[i] = switch (choice.cooldownType()) {
+                case NONE -> 0;
+                case SECONDS -> Math.max(1, status.remainingRealSecondsFloor());
+                case GAME_DAY, GAME_TICK -> Math.max(1, status.remainingGameSecondsFloor());
+            };
         }
 
         return cooldowns;
@@ -262,7 +264,7 @@ public class DialogueSession {
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
 
             // 检测时间回退
-            if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
+            if (progress.clearIfTimeRegressed(choiceKey, ts.dayTime())) {
                 lastSelectTimes[i] = 0;
                 purchaseGTs[i] = 0;
                 purchaseDTs[i] = 0;
@@ -294,34 +296,6 @@ public class DialogueSession {
     /**
      * 根据冷却类型计算剩余秒数。
      */
-    private int computeRemainingSeconds(DialogueProgressStore.Entry entry,
-                                        DialogueChoice choice, DialogueProgressStore.TimeSnapshot ts) {
-        if (!entry.exists()) return (int) choice.cooldownSeconds();
-
-        return switch (choice.cooldownType()) {
-            case NONE -> 0;
-
-            case SECONDS -> {
-                long cooldownMs = choice.cooldownSeconds() * 1000L;
-                long elapsed = ts.realTime() - entry.realTime();
-                long remainingMs = cooldownMs - elapsed;
-                yield (int) Math.max(1, remainingMs / 1000);
-            }
-
-            case GAME_DAY -> {
-                long currentDayTick = ts.dayTime() % 24000;
-                int remainingTicks = (int) (24000 - currentDayTick);
-                yield Math.max(1, remainingTicks / 20);
-            }
-
-            case GAME_TICK -> {
-                // 用 tick 数除以 20 转秒
-                int remainTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
-                        entry, choice.resetTimeTicks(), ts.gameTime(), ts.dayTime());
-                yield Math.max(1, remainTicks / 20);
-            }
-        };
-    }
 
     /**
      * 玩家做出选择。

@@ -7,7 +7,7 @@ import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.core.condition.ConditionGuard;
-import org.arcadia.arc_quest.core.time.TimeSnapshot;
+import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
@@ -111,7 +111,7 @@ public final class GachaSession {
     /**
      * 获取冷却剩余秒数（用于客户端显示）。
      * <p>
-     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link UnifiedCooldownManager}
+     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}
      * 统一计算，不再维护独立的冷却判断逻辑。
      */
     public int getCooldownRemaining() {
@@ -120,32 +120,17 @@ public final class GachaSession {
         GachaDataStore.CooldownEntry entry = playerData.getGachaDataStore().getDrawCooldown(shop.getShopId());
         if (!entry.exists()) return 0;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = TimeSanitizer.capture(player);
+        CooldownStatus status = CoreProcessors.get().cooldowns().evaluate(
+                entry, shop.getCooldownType().toCorePolicy(
+                        shop.getCooldownValue(), shop.getResetTimeTicks()), now);
 
         return switch (shop.getCooldownType()) {
             case NONE -> 0;
-            case SECONDS -> {
-                long elapsed = (nowRealTime - entry.realTime()) / 1000;
-                yield Math.max(0, (int) (shop.getCooldownValue() - elapsed));
-            }
-            case GAME_DAY -> {
-                if (entry.dayTime() < 0) yield 0;
-                boolean onCooldown = CoreProcessors.get().cooldowns().isOnCooldown(
-                        entry, shop.getCooldownType().toCorePolicy(
-                                shop.getCooldownValue(), shop.getResetTimeTicks()),
-                        new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
-                if (!onCooldown) yield 0;
-                long currentDayTick = nowDayTime % 24000;
-                yield Math.max(1, (int) (24000 - currentDayTick) / 20);
-            }
-            case GAME_TICK -> {
-                int remainingTicks = CoreProcessors.get().cooldowns().remainingGameTicks(
-                        entry, shop.getResetTimeTicks(),
-                        new TimeSnapshot(nowRealTime, nowGameTime, nowDayTime));
-                yield Math.max(0, remainingTicks / 20);
-            }
+            case SECONDS -> status.remainingRealSecondsCeiling();
+            case GAME_DAY -> status.active()
+                    ? Math.max(1, status.remainingGameSecondsFloor()) : 0;
+            case GAME_TICK -> status.remainingGameSecondsFloor();
         };
     }
 

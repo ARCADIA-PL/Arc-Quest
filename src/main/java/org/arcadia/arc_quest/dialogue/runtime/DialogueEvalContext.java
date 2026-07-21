@@ -39,12 +39,15 @@ public record DialogueEvalContext(
      */
     public static DialogueEvalContext of(ServerPlayer player, @Nullable Entity npc,
                                          String namespace, DialogueProgressStore progress) {
+        var time = TimeSanitizer.capture(player);
         return new DialogueEvalContext(
                 player, npc, namespace, progress,
-                TimeSanitizer.getCurrentDayTime(player),   // 日夜周期（给时间条件用）
-                TimeSanitizer.getCurrentGameTime(player),  // 单调时钟（给冷却计时用）
-                TimeSanitizer.getCurrentRealTime()         // 真实时间戳
+                time.dayTime(), time.gameTime(), time.realTime()
         );
+    }
+
+    public org.arcadia.arc_quest.core.time.TimeSnapshot timeSnapshot() {
+        return new org.arcadia.arc_quest.core.time.TimeSnapshot(nowRealTime, gameTime, dayTime);
     }
 
     /**

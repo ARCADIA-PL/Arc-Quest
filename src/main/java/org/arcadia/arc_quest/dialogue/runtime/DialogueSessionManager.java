@@ -82,9 +82,7 @@ public final class DialogueSessionManager {
         }
         String dialogueId = tree.dialogueId();
         var progress = data.getDialogueProgress();
-        long nowReal = TimeSanitizer.getCurrentRealTime();
-        long nowGame = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = TimeSanitizer.capture(player);
 
         int entityId = npcEntity != null ? npcEntity.getId() : -1;
         DialogueSession session = new DialogueSession(player, tree, context, npcEntity);
@@ -98,7 +96,9 @@ public final class DialogueSessionManager {
         }
 
         if (tree.cooldownSeconds() != 0 || tree.cooldownType() != CooldownType.NONE) {
-            boolean onCooldown = progress.isDialogueOnCooldown(namespace, dialogueId, tree.cooldownType(), (int) tree.cooldownSeconds(), tree.resetTimeTicks(), nowReal, nowGame, nowDayTime);
+            boolean onCooldown = progress.isDialogueOnCooldown(
+                    namespace, dialogueId, tree.cooldownType(), (int) tree.cooldownSeconds(),
+                    tree.resetTimeTicks(), now.realTime(), now.gameTime(), now.dayTime());
             if (onCooldown) {
                 LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}.", dialogueId, player.getName().getString());
                 return null;
@@ -128,7 +128,8 @@ public final class DialogueSessionManager {
         }
 
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
-        progress.recordDialogueVisit(namespace, dialogueId, nowReal, nowGame, nowDayTime);
+        progress.recordDialogueVisit(
+                namespace, dialogueId, now.realTime(), now.gameTime(), now.dayTime());
         sendNodeToClient(session, true);
         SyncObservability.trace("dialogue", dialogueId, player.getName().getString(), SyncObservability.Stage.OPEN, Reason.DIALOGUE_OPEN);
         MinecraftForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
