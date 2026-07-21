@@ -4,8 +4,6 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.core.time.CooldownRecord;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -51,7 +49,7 @@ public final class GachaEntryStateResolver {
         var visibleCondition = shop.getVisibleCondition();
         if (visibleCondition == null) return true;
 
-        return ConditionGuard.evaluate(visibleCondition,
+        return CoreProcessors.get().conditions().evaluateSafely(visibleCondition,
                 new QuestConditionContext(player,
                         data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables()),
                 false, LOGGER, "gacha visibility shop=" + shop.getShopId());
@@ -81,7 +79,7 @@ public final class GachaEntryStateResolver {
         CooldownRecord record = data.getGachaDataStore().getDrawCooldown(shopId);
         if (!record.exists()) return false;
 
-        var now = TimeSanitizer.capture(player);
+        var now = CoreProcessors.get().time().capture(player);
 
         return CoreProcessors.get().cooldowns().isOnCooldown(
                 record, shop.getCooldownType().toCorePolicy(
@@ -96,7 +94,7 @@ public final class GachaEntryStateResolver {
         var drawCondition = shop.getDrawCondition();
         if (drawCondition == null) return true;
 
-        return ConditionGuard.evaluate(drawCondition,
+        return CoreProcessors.get().conditions().evaluateSafely(drawCondition,
                 new QuestConditionContext(player,
                         data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables()),
                 false, LOGGER, "gacha draw shop=" + shop.getShopId());
@@ -115,7 +113,7 @@ public final class GachaEntryStateResolver {
         }
 
         GachaDataStore gachaStore = data.getGachaDataStore();
-        var now = TimeSanitizer.capture(player);
+        var now = CoreProcessors.get().time().capture(player);
 
         CooldownRecord record = gachaStore.getDrawCooldown(shopId);
         if (record.exists() && record.dayTime() > now.dayTime()) {
@@ -161,7 +159,7 @@ public final class GachaEntryStateResolver {
     public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return;
 
-        var now = TimeSanitizer.capture(player);
+        var now = CoreProcessors.get().time().capture(player);
         data.getGachaDataStore().recordDrawCooldown(
                 shopId, now.realTime(), now.gameTime(), now.dayTime());
     }

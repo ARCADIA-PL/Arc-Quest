@@ -6,10 +6,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.core.CoreProcessors;
-import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -120,7 +118,7 @@ public final class GachaSession {
         GachaDataStore.CooldownEntry entry = playerData.getGachaDataStore().getDrawCooldown(shop.getShopId());
         if (!entry.exists()) return 0;
 
-        var now = TimeSanitizer.capture(player);
+        var now = CoreProcessors.get().time().capture(player);
         CooldownStatus status = CoreProcessors.get().cooldowns().evaluate(
                 entry, shop.getCooldownType().toCorePolicy(
                         shop.getCooldownValue(), shop.getResetTimeTicks()), now);
@@ -172,7 +170,7 @@ public final class GachaSession {
         if (!shouldReset) {
             var resetCondition = shop.getResetCondition();
             if (resetCondition != null) {
-                shouldReset = ConditionGuard.evaluate(
+                shouldReset = CoreProcessors.get().conditions().evaluateSafely(
                         () -> resetCondition.test(player,
                                 playerData.getCompletedQuestLocations(),
                                 playerData.getAllFlags(),

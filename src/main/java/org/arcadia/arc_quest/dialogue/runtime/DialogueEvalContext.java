@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.dialogue.runtime;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 
@@ -39,7 +39,7 @@ public record DialogueEvalContext(
      */
     public static DialogueEvalContext of(ServerPlayer player, @Nullable Entity npc,
                                          String namespace, DialogueProgressStore progress) {
-        var time = TimeSanitizer.capture(player);
+        var time = CoreProcessors.get().time().capture(player);
         return new DialogueEvalContext(
                 player, npc, namespace, progress,
                 time.dayTime(), time.gameTime(), time.realTime()
@@ -64,6 +64,6 @@ public record DialogueEvalContext(
      * 日内时间刻 [0, 24000]，供 IsMorning/IsAfternoon/IsNight 等时间条件使用。
      */
     public long dayTimeTick() {
-        return TimeSanitizer.sanitizeDayTime(player.level());
+        return CoreProcessors.get().time().dayTime(player.level());
     }
 }

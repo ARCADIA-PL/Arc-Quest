@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.slf4j.Logger;
@@ -237,25 +238,22 @@ public final class ConditionEvaluator {
 
     private boolean evaluateIsMorning(@Nullable ServerPlayer player) {
         if (player == null) return false;
-        long t = player.level().getDayTime() % 24000;
-        return t >= 0 && t < 6000;
+        return CoreProcessors.get().time().isMorning(player.level());
     }
 
     private boolean evaluateIsAfternoon(@Nullable ServerPlayer player) {
         if (player == null) return false;
-        long t = player.level().getDayTime() % 24000;
-        return t >= 6000 && t < 12000;
+        return CoreProcessors.get().time().isAfternoon(player.level());
     }
 
     private boolean evaluateIsNight(@Nullable ServerPlayer player) {
         if (player == null) return false;
-        long t = player.level().getDayTime() % 24000;
-        return t >= 12000 && t < 24000;
+        return CoreProcessors.get().time().isNight(player.level());
     }
 
     private boolean evaluateGameTimeInRange(@Nullable ServerPlayer player, int startTick, int endTick) {
         if (player == null) return false;
-        long t = player.level().getDayTime() % 24000;
+        long t = CoreProcessors.get().time().dayTime(player.level());
         if (startTick <= endTick) {
             return t >= startTick && t <= endTick;
         } else {

@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -189,11 +190,13 @@ public final class GachaScreenOpener {
 
     private static void touchActiveContext(ServerPlayer player, String shopId) {
         if (player == null || shopId == null || shopId.isEmpty()) return;
-        ACTIVE_GACHA_CONTEXTS.put(player.getUUID(), new ActiveGachaContext(shopId, System.currentTimeMillis()));
+        ACTIVE_GACHA_CONTEXTS.put(player.getUUID(), new ActiveGachaContext(
+                shopId, CoreProcessors.get().time().realTimeMillis()));
     }
 
     private static boolean isContextExpired(ActiveGachaContext context) {
-        return System.currentTimeMillis() - context.lastSeenMs() > ACTIVE_GACHA_CONTEXT_TTL_MS;
+        return CoreProcessors.get().time().realTimeMillis() - context.lastSeenMs()
+                > ACTIVE_GACHA_CONTEXT_TTL_MS;
     }
 
     // ════════════════════════════════════════

@@ -7,7 +7,7 @@ import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.dialogue.api.ConditionalSay;
 import org.arcadia.arc_quest.dialogue.api.DialogueText;
 import org.arcadia.arc_quest.dialogue.api.RegisteredConditions;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.slf4j.Logger;
@@ -133,18 +133,18 @@ public final class ConditionalTextEvaluator {
             // IS_MORNING - 检查是否是早晨（06:00-12:00，tick 0-6000）
             switch (conditionKey) {
                 case "IS_MORNING" -> {
-                    return TimeSanitizer.isMorning(player.level());
+                    return CoreProcessors.get().time().isMorning(player.level());
                 }
 
                 // IS_AFTERNOON - 检查是否是下午（12:00-18:00，tick 6000-12000）
                 case "IS_AFTERNOON" -> {
-                    return TimeSanitizer.isAfternoon(player.level());
+                    return CoreProcessors.get().time().isAfternoon(player.level());
                 }
 
 
                 // IS_NIGHT - 检查是否是夜晚（18:00-24:00，tick 12000-24000）
                 case "IS_NIGHT" -> {
-                    return TimeSanitizer.isNight(player.level());
+                    return CoreProcessors.get().time().isNight(player.level());
                 }
             }
 
@@ -156,7 +156,7 @@ public final class ConditionalTextEvaluator {
                     try {
                         int startTick = Integer.parseInt(parts[0]);
                         int endTick = Integer.parseInt(parts[1]);
-                        long dayTime = TimeSanitizer.sanitizeDayTime(player.level());
+                        long dayTime = CoreProcessors.get().time().dayTime(player.level());
 
                         if (startTick < endTick) {
                             // 正常区间

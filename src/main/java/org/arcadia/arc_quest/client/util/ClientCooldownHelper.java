@@ -8,7 +8,6 @@ import org.arcadia.arc_quest.core.time.CooldownRecordSnapshot;
 import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 
 /**
  * 客户端冷却文本计算工具类。
@@ -49,7 +48,7 @@ public final class ClientCooldownHelper {
 
             case SECONDS -> {
                 CooldownStatus status = evaluate(record, type, cooldownValue, resetTimeTicks,
-                        new TimeSnapshot(TimeSanitizer.getCurrentRealTime(), 0L, 0L));
+                        new TimeSnapshot(CoreProcessors.get().time().realTimeMillis(), 0L, 0L));
                 int remaining = status.remainingRealSecondsCeiling();
                 yield remaining > 0 ? remaining + "s" : "";
             }
@@ -58,7 +57,7 @@ public final class ClientCooldownHelper {
                 Minecraft mc = Minecraft.getInstance();
                 if (mc.level == null) yield "";
                 CooldownStatus status = evaluate(
-                        record, type, cooldownValue, resetTimeTicks, TimeSanitizer.capture(mc.level));
+                        record, type, cooldownValue, resetTimeTicks, CoreProcessors.get().time().capture(mc.level));
                 yield status.active()
                         ? Component.translatable("arc_quest.trade.cooldown.game_day").getString() : "";
             }
@@ -67,7 +66,7 @@ public final class ClientCooldownHelper {
                 Minecraft mc = Minecraft.getInstance();
                 if (mc.level == null) yield "";
                 CooldownStatus status = evaluate(
-                        record, type, cooldownValue, resetTimeTicks, TimeSanitizer.capture(mc.level));
+                        record, type, cooldownValue, resetTimeTicks, CoreProcessors.get().time().capture(mc.level));
                 int remainingTicks = status.remainingGameTicks();
                 if (remainingTicks <= 0) yield "";
                 if (remainingTicks < 60) yield remainingTicks + "t";
@@ -104,7 +103,7 @@ public final class ClientCooldownHelper {
         if (mc.level == null) return false;
 
         return evaluate(record, type, cooldownValue, resetTimeTicks,
-                TimeSanitizer.capture(mc.level)).active();
+                CoreProcessors.get().time().capture(mc.level)).active();
     }
 
     // ── 私有工具 ──────────────────────────────────────────

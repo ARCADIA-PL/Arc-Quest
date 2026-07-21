@@ -7,6 +7,7 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.shop.SimpleTradePanel;
@@ -67,7 +68,7 @@ public class TradeAutoRefreshListener {
             return;
         }
 
-        long currentTime = System.currentTimeMillis();
+        long currentTime = CoreProcessors.get().time().realTimeMillis();
         if (currentTime - lastRefreshTime < REFRESH_DEBOUNCE_MS) {
             LOGGER.debug("[Trade-AutoRefresh] Skipped refresh due to debounce ({}ms since last)",
                     currentTime - lastRefreshTime);

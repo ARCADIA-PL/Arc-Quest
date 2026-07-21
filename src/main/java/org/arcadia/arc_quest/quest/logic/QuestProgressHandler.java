@@ -96,8 +96,9 @@ public final class QuestProgressHandler {
         }
 
         long acceptedTick = player.getServer() != null ? player.getServer().getTickCount() : 0L;
-        long acceptedRealMs = System.currentTimeMillis();
-        long acceptedDayTime = player.level().getDayTime() % 24000L;
+        var acceptedTime = CoreProcessors.get().time().capture(player);
+        long acceptedRealMs = acceptedTime.realTime();
+        long acceptedDayTime = acceptedTime.dayTime();
 
         QuestRuntimeData qdata = new QuestRuntimeData(
                 questId,

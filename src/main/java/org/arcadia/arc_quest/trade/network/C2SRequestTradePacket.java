@@ -9,7 +9,7 @@ import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.trade.*;
-import org.arcadia.arc_quest.core.condition.ConditionGuard;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -78,7 +78,7 @@ public class C2SRequestTradePacket {
             return;
         }
 
-        long now = System.currentTimeMillis();
+        long now = CoreProcessors.get().time().realTimeMillis();
         if (now - context.lastSeenMs() > ACTIVE_TRADE_CONTEXT_TTL_MS) {
             ACTIVE_TRADE_CONTEXTS.remove(player.getUUID());
             return;
@@ -435,7 +435,7 @@ public class C2SRequestTradePacket {
         if (!shouldReset && entry.hasLimit()) {
             var resetCondition = entry.getPurchaseResetCondition();
             if (resetCondition != null) {
-                shouldReset = ConditionGuard.evaluate(
+                shouldReset = CoreProcessors.get().conditions().evaluateSafely(
                         () -> resetCondition.test(player),
                         false, LOGGER, "trade reset entry=" + entryId);
                 if (shouldReset) {
@@ -462,7 +462,8 @@ public class C2SRequestTradePacket {
             effectiveType = ScreenType.FULL;
         }
         ACTIVE_TRADE_CONTEXTS.put(player.getUUID(),
-                new ActiveTradeContext(shopId, effectiveType, System.currentTimeMillis()));
+                new ActiveTradeContext(shopId, effectiveType,
+                        CoreProcessors.get().time().realTimeMillis()));
     }
 
     private static boolean shouldSendTradeSync(ServerPlayer player, String shopId, TradeSnapshot snap) {

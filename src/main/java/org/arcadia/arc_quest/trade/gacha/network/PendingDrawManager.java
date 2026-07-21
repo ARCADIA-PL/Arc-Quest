@@ -60,7 +60,7 @@ public class PendingDrawManager {
                 actualCount,
                 pityTriggered,
                 newPityCounter,
-                System.currentTimeMillis()
+                CoreProcessors.get().time().realTimeMillis()
         );
         if (!PENDING_DRAWS.putIfAbsent(playerId, data, data.timestamp + PENDING_TTL_MILLIS)) {
             Arc_Quest.LOGGER.warn(
@@ -82,7 +82,7 @@ public class PendingDrawManager {
      */
     public static boolean confirmAndGrant(ServerPlayer player, String expectedShopId) {
         UUID playerId = player.getUUID();
-        long now = System.currentTimeMillis();
+        long now = CoreProcessors.get().time().realTimeMillis();
         ExpiringStateStore.TakeResult<PendingDrawData> result = PENDING_DRAWS.take(playerId, now);
         PendingDrawData data = result.value();
 
@@ -114,7 +114,7 @@ public class PendingDrawManager {
 
     public static boolean compensateAndGrant(ServerPlayer player) {
         UUID playerId = player.getUUID();
-        long now = System.currentTimeMillis();
+        long now = CoreProcessors.get().time().realTimeMillis();
         ExpiringStateStore.TakeResult<PendingDrawData> result = PENDING_DRAWS.take(playerId, now);
         PendingDrawData data = result.value();
         if (result.status() == ExpiringStateStore.TakeStatus.MISSING) {
@@ -150,7 +150,7 @@ public class PendingDrawManager {
                     data.drawnItem.getRarity().getName(),
                     data.actualCount,
                     data.pityTriggered,
-                    System.currentTimeMillis()
+                    CoreProcessors.get().time().realTimeMillis()
             );
         }
 
@@ -178,7 +178,7 @@ public class PendingDrawManager {
      * 而是在 confirmAndGrant() 时概率触发清理。
      */
     public static void cleanupExpired() {
-        PENDING_DRAWS.cleanupExpired(System.currentTimeMillis());
+        PENDING_DRAWS.cleanupExpired(CoreProcessors.get().time().realTimeMillis());
     }
 
     /**

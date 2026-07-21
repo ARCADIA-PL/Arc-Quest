@@ -7,7 +7,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 
 import java.util.Map;
 
@@ -340,7 +339,7 @@ public class DialogueProgressStore {
         }
 
         public static TimeSnapshot capture(ServerPlayer player) {
-            return fromCoreSnapshot(TimeSanitizer.capture(player));
+            return fromCoreSnapshot(CoreProcessors.get().time().capture(player));
         }
     }
 

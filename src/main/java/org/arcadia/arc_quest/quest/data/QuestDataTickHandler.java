@@ -10,6 +10,7 @@ import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.api.QuestTimeLimitType;
@@ -60,8 +61,9 @@ public final class QuestDataTickHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
 
-        long nowRealMs = System.currentTimeMillis();
-        long nowDayTime = player.level().getDayTime() % 24000L;
+        var now = CoreProcessors.get().time().capture(player);
+        long nowRealMs = now.realTime();
+        long nowDayTime = now.dayTime();
 
         for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
             if (qdata.getState() != QuestState.ACTIVE) continue;

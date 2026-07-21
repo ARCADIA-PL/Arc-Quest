@@ -5,8 +5,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.core.time.CooldownRecord;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
-import org.arcadia.arc_quest.core.condition.ConditionGuard;
 import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
@@ -46,7 +44,7 @@ public final class TradeEntryStateResolver {
             if (currentCount < entry.getMaxPurchases()) return false;
         }
 
-        var now = TimeSanitizer.capture(player);
+        var now = CoreProcessors.get().time().capture(player);
         CooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
         return CoreProcessors.get().cooldowns().isOnCooldown(
@@ -71,7 +69,7 @@ public final class TradeEntryStateResolver {
         if (entry.getVisibleCondition() == null) return true;
 
         Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-        return ConditionGuard.evaluate(entry.getVisibleCondition(),
+        return CoreProcessors.get().conditions().evaluateSafely(entry.getVisibleCondition(),
                 new QuestConditionContext(
                         player, completed, data.getAllFlags(), data.getAllVariables()),
                 false, LOGGER, "trade visibility entry=" + entry.getEntryId());
@@ -95,7 +93,7 @@ public final class TradeEntryStateResolver {
 
         if (entry.getCanBuyCondition() != null) {
             Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-            boolean canBuy = ConditionGuard.evaluate(entry.getCanBuyCondition(),
+            boolean canBuy = CoreProcessors.get().conditions().evaluateSafely(entry.getCanBuyCondition(),
                     new QuestConditionContext(
                             player, completed, data.getAllFlags(), data.getAllVariables()),
                     false, LOGGER, "trade purchase entry=" + entry.getEntryId());
@@ -118,7 +116,7 @@ public final class TradeEntryStateResolver {
             if (currentCount < entry.getMaxPurchases()) return false;
         }
 
-        var now = TimeSanitizer.capture(player);
+        var now = CoreProcessors.get().time().capture(player);
         CooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
         boolean onCooldown = CoreProcessors.get().cooldowns().isOnCooldown(
@@ -162,7 +160,7 @@ public final class TradeEntryStateResolver {
      * 记录冷却时间戳。
      */
     public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, String entryId) {
-        var now = TimeSanitizer.capture(player);
+        var now = CoreProcessors.get().time().capture(player);
         LOGGER.debug("[Trade-State] Recording cooldown: shop={}, entry={}", shopId, entryId);
         data.getTradeDataStore().recordCooldown(
                 shopId, entryId, now.realTime(), now.gameTime(), now.dayTime());

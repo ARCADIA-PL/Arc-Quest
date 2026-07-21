@@ -12,6 +12,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.core.identity.EntityRef;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
@@ -19,7 +20,6 @@ import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
 import org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
@@ -82,7 +82,7 @@ public final class DialogueSessionManager {
         }
         String dialogueId = tree.dialogueId();
         var progress = data.getDialogueProgress();
-        var now = TimeSanitizer.capture(player);
+        var now = CoreProcessors.get().time().capture(player);
 
         int entityId = npcEntity != null ? npcEntity.getId() : -1;
         DialogueSession session = new DialogueSession(player, tree, context, npcEntity);
@@ -161,7 +161,7 @@ public final class DialogueSessionManager {
                 ));
 
                 appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
-                        System.currentTimeMillis(),
+                        CoreProcessors.get().time().realTimeMillis(),
                         "player",
                         Component.literal(player.getName().getString()),
                         choiceText,
@@ -463,7 +463,7 @@ public final class DialogueSessionManager {
         if (data != null) syncDialogueMarkers(session, node, sayIfResult);
 
         appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
-                System.currentTimeMillis(),
+                CoreProcessors.get().time().realTimeMillis(),
                 "npc",
                 speaker,
                 text,
