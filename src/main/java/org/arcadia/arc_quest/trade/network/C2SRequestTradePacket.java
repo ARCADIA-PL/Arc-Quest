@@ -10,6 +10,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.api.event.trade.*;
 import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.state.ExpiringStateStore;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -38,7 +39,8 @@ public class C2SRequestTradePacket {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final Map<UUID, Map<String, Integer>> LAST_TRADE_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
-    private static final Map<UUID, ActiveTradeContext> ACTIVE_TRADE_CONTEXTS = new ConcurrentHashMap<>();
+    private static final ExpiringStateStore<UUID, ActiveTradeContext> ACTIVE_TRADE_CONTEXTS =
+            CoreProcessors.get().createExpiringStateStore();
     private static final BoundedProcessedRequestStore<TradeCommandResult> PROCESSED_PURCHASES =
             new BoundedProcessedRequestStore<>(256);
     private static final long ACTIVE_TRADE_CONTEXT_TTL_MS = 20000L;
@@ -73,16 +75,11 @@ public class C2SRequestTradePacket {
     }
 
     public static void pushSyncForActiveShop(ServerPlayer player, String reason) {
-        ActiveTradeContext context = ACTIVE_TRADE_CONTEXTS.get(player.getUUID());
-        if (context == null) {
-            return;
-        }
-
         long now = CoreProcessors.get().time().realTimeMillis();
-        if (now - context.lastSeenMs() > ACTIVE_TRADE_CONTEXT_TTL_MS) {
-            ACTIVE_TRADE_CONTEXTS.remove(player.getUUID());
-            return;
-        }
+        ExpiringStateStore.TakeResult<ActiveTradeContext> activeContext =
+                ACTIVE_TRADE_CONTEXTS.get(player.getUUID(), now);
+        if (!activeContext.active()) return;
+        ActiveTradeContext context = activeContext.value();
 
         TradeShopDefinition shop = TradeRegistry.get(context.shopId());
         if (shop == null) {
@@ -461,9 +458,9 @@ public class C2SRequestTradePacket {
         if (effectiveType == ScreenType.NONE) {
             effectiveType = ScreenType.FULL;
         }
+        long now = CoreProcessors.get().time().realTimeMillis();
         ACTIVE_TRADE_CONTEXTS.put(player.getUUID(),
-                new ActiveTradeContext(shopId, effectiveType,
-                        CoreProcessors.get().time().realTimeMillis()));
+                new ActiveTradeContext(shopId, effectiveType), now + ACTIVE_TRADE_CONTEXT_TTL_MS);
     }
 
     private static boolean shouldSendTradeSync(ServerPlayer player, String shopId, TradeSnapshot snap) {
@@ -565,7 +562,7 @@ public class C2SRequestTradePacket {
     ) {
     }
 
-    private static record ActiveTradeContext(String shopId, ScreenType screenType, long lastSeenMs) {
+    private static record ActiveTradeContext(String shopId, ScreenType screenType) {
     }
 
     private record TradeCommandResult(TradeSession.TradeResult tradeResult,

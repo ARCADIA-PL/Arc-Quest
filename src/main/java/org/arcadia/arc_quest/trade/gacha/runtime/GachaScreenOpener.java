@@ -6,6 +6,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
 import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.state.ExpiringStateStore;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -32,7 +33,8 @@ public final class GachaScreenOpener {
     private static final Map<UUID, Map<String, Integer>> LAST_GACHA_SYNC_FINGERPRINTS = new ConcurrentHashMap<>();
 
     // 活跃上下文：用于 quest 事件触发时只推“当前打开的 gacha shop”
-    private static final Map<UUID, ActiveGachaContext> ACTIVE_GACHA_CONTEXTS = new ConcurrentHashMap<>();
+    private static final ExpiringStateStore<UUID, ActiveGachaContext> ACTIVE_GACHA_CONTEXTS =
+            CoreProcessors.get().createExpiringStateStore();
     private static final long ACTIVE_GACHA_CONTEXT_TTL_MS = 20_000L;
 
     private GachaScreenOpener() {
@@ -108,13 +110,11 @@ public final class GachaScreenOpener {
     public static void pushSync(ServerPlayer player, @Nullable ArcQuestPlayer data, String reason) {
         if (data == null) return;
 
-        ActiveGachaContext context = ACTIVE_GACHA_CONTEXTS.get(player.getUUID());
-        if (context == null) return;
-
-        if (isContextExpired(context)) {
-            ACTIVE_GACHA_CONTEXTS.remove(player.getUUID());
-            return;
-        }
+        long now = CoreProcessors.get().time().realTimeMillis();
+        ExpiringStateStore.TakeResult<ActiveGachaContext> activeContext =
+                ACTIVE_GACHA_CONTEXTS.get(player.getUUID(), now);
+        if (!activeContext.active()) return;
+        ActiveGachaContext context = activeContext.value();
 
         GachaShopDefinition shop = GachaRegistry.get(context.shopId());
         if (shop == null) {
@@ -190,13 +190,9 @@ public final class GachaScreenOpener {
 
     private static void touchActiveContext(ServerPlayer player, String shopId) {
         if (player == null || shopId == null || shopId.isEmpty()) return;
-        ACTIVE_GACHA_CONTEXTS.put(player.getUUID(), new ActiveGachaContext(
-                shopId, CoreProcessors.get().time().realTimeMillis()));
-    }
-
-    private static boolean isContextExpired(ActiveGachaContext context) {
-        return CoreProcessors.get().time().realTimeMillis() - context.lastSeenMs()
-                > ACTIVE_GACHA_CONTEXT_TTL_MS;
+        long now = CoreProcessors.get().time().realTimeMillis();
+        ACTIVE_GACHA_CONTEXTS.put(player.getUUID(),
+                new ActiveGachaContext(shopId), now + ACTIVE_GACHA_CONTEXT_TTL_MS);
     }
 
     // ════════════════════════════════════════
@@ -312,7 +308,7 @@ public final class GachaScreenOpener {
         return lines;
     }
 
-    private record ActiveGachaContext(String shopId, long lastSeenMs) {
+    private record ActiveGachaContext(String shopId) {
     }
 
     private record GachaSnapshot(
