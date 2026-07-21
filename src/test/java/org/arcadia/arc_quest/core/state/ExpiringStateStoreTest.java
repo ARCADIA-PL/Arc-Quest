@@ -37,4 +37,17 @@ class ExpiringStateStoreTest {
         assertEquals(1, store.cleanupExpired(100L));
         assertEquals(1, store.size());
     }
+
+    @Test
+    void getDoesNotConsumeActiveValueAndRemovesExpiredValue() {
+        ExpiringStateStore<String, String> store = new ExpiringStateStore<>();
+        store.put("key", "first", 100L);
+
+        assertEquals("first", store.get("key", 100L).value());
+        assertEquals("first", store.get("key", 100L).value());
+        assertEquals("first", store.put("key", "refreshed", 200L));
+        assertEquals("refreshed", store.get("key", 150L).value());
+        assertEquals(ExpiringStateStore.TakeStatus.EXPIRED, store.get("key", 201L).status());
+        assertEquals(ExpiringStateStore.TakeStatus.MISSING, store.get("key", 201L).status());
+    }
 }

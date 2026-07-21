@@ -65,8 +65,47 @@ class ExecutionProcessorTest {
         assertEquals(1, executions.get());
     }
 
+    @Test
+    void lifecycleObserverReceivesRejectedSucceededAndMappedFailureSignals() {
+        AtomicInteger rejectedSignals = new AtomicInteger();
+        AtomicInteger successSignals = new AtomicInteger();
+        AtomicInteger failureSignals = new AtomicInteger();
+        ExecutionObserver<String, Failure, Integer> observer = new ExecutionObserver<>() {
+            @Override
+            public void onRejected(String context, Failure failure) {
+                rejectedSignals.incrementAndGet();
+            }
+
+            @Override
+            public void onSucceeded(String context, Integer value) {
+                successSignals.incrementAndGet();
+            }
+
+            @Override
+            public void onFailed(String context, Failure failure, RuntimeException exception) {
+                failureSignals.incrementAndGet();
+            }
+        };
+
+        processor.execute("", List.of(
+                CoreRule.require(context -> !context.isBlank(), Failure.INVALID_CONTEXT)),
+                String::length, observer);
+        processor.execute("arc", List.of(), String::length, observer);
+        ExecutionResult<Failure, Integer> failed = processor.executeSafely(
+                "arc", List.of(), context -> {
+                    throw new IllegalStateException("expected");
+                }, exception -> Failure.ACTION_FAILED, observer);
+
+        assertEquals(1, rejectedSignals.get());
+        assertEquals(1, successSignals.get());
+        assertEquals(1, failureSignals.get());
+        assertFalse(failed.succeeded());
+        assertEquals(Failure.ACTION_FAILED, failed.failure());
+    }
+
     private enum Failure {
         INVALID_CONTEXT,
-        NOT_ALLOWED
+        NOT_ALLOWED,
+        ACTION_FAILED
     }
 }
