@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 
@@ -85,10 +86,11 @@ public class JournalTabPanel {
             g.drawString(screen.getFont(), labelHistory, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, logColor, true);
         }
 
-        if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread() && safeAlpha > 8) {
-            int rhombusX = (int) currentTabX + logTw - 4;
-            int rhombusY = tabY + 4;
-            HudRenderUtil.drawBreathingRhombus(g, rhombusX, rhombusY, 0xFFFFD166, (System.currentTimeMillis() / 1000f), safeAlpha / 255f);
+        if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(QuestHudOverlay.INSTANCE.getTrackedQuestId())
+                && safeAlpha > 8) {
+            int dotX = (int) currentTabX + logTw - 4;
+            int dotY = tabY + 4;
+            HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, safeAlpha / 255f);
         }
 
         // 5. 渲染底部主滑动指示条

@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.quest.api.IconPosition;
@@ -141,11 +142,12 @@ import java.util.Map;
                     g.pose().popPose();
                 }
 
-                if (QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())) {
-                    int questTheme = ClientQuestCache.INSTANCE.getQuestThemeColor(entry.questId(), 0xFFD166);
-                    int rhombusX = x + w - 14;
-                    int rhombusY = entryY + JournalConstants.ENTRY_HEIGHT / 2;
-                    HudRenderUtil.drawBreathingRhombus(g, rhombusX, rhombusY, questTheme | 0xFF000000, (System.currentTimeMillis() / 1000f), effectiveAlpha);
+                String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+                if (QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
+                        && !entry.questId().equals(trackedQuestId)) {
+                    int dotX = x + w - 18;
+                    int dotY = entryY + (JournalConstants.ENTRY_HEIGHT - 2) / 2;
+                    HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, effectiveAlpha);
                 }
             }
         }
@@ -154,7 +156,8 @@ import java.util.Map;
         int maxScroll = Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - h);
         renderScrollbar(g, x + w - 6, y + 2, h - 4, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT, maxScroll);
 
-        if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()) {
+        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(trackedQuestId)) {
             int btnX = x + 4;
             int btnY = y + h - 18;
             int btnW = 80;
@@ -210,7 +213,7 @@ import java.util.Map;
         }
 
         if (mx >= x && mx <= x + w - 6 && my >= y && my <= y + h) {
-            if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+            if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(QuestHudOverlay.INSTANCE.getTrackedQuestId())
                     && mx >= x + 4 && mx <= x + 84 && my >= y + h - 18 && my <= y + h - 4) {
                 QuestChangeNotificationManager.INSTANCE.markAllRead();
                 screen.playClick();

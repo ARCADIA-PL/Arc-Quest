@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 
@@ -148,7 +149,9 @@ public final class QuestChangeHistoryPanel {
                 || entry.type == QuestChangeHistoryType.PHASE_SWITCHED
                 || entry.type == QuestChangeHistoryType.PHASE_ADVANCED
                 || entry.type == QuestChangeHistoryType.PHASE_COMPLETED;
-        boolean isUnread = isPhaseEntry && QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId);
+        boolean isUnread = isPhaseEntry
+                && QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId)
+                && !entry.questId.equals(QuestHudOverlay.INSTANCE.getTrackedQuestId());
 
         if (hovered && isUnread) {
             QuestChangeNotificationManager.INSTANCE.markRead(entry.questId);
@@ -182,9 +185,9 @@ public final class QuestChangeHistoryPanel {
         drawScaled(g, font, title, contentX, y + 18, 0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
 
         if (isUnread) {
-            int rhombusX = x + w - 12;
-            int rhombusY = y + rowH / 2;
-            HudRenderUtil.drawBreathingRhombus(g, rhombusX, rhombusY, color | 0xFF000000, (System.currentTimeMillis() / 1000f), alpha / 255f);
+            int dotX = x + w - 12;
+            int dotY = y + rowH / 2;
+            HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, alpha / 255f);
         }
 
         if (hovered) {
