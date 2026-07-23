@@ -6,7 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
+import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.network.C2SConfirmDrawPacket;
@@ -252,7 +252,7 @@ public class GachaScreen extends Screen {
                 confirmDrawAndSync();
             }
 
-            ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(C2SDialogueChoicePacket.RESTORE_DIALOGUE));
+            ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createRestorePacket());
             LOGGER.debug("[Gacha-Client] RESTORE_DIALOGUE packet sent");
         }
     }

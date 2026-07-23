@@ -2,13 +2,17 @@ package org.arcadia.arc_quest.trade.gacha.runtime;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
-import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.execution.CoreDecision;
+import org.arcadia.arc_quest.core.execution.CoreRule;
+import org.arcadia.arc_quest.core.time.CooldownRecord;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.slf4j.Logger;
+
+import java.util.List;
 
 /**
  * 抽奖状态解析器 —— 统一管理限购、冷却、条件检查逻辑。
@@ -19,7 +23,7 @@ import org.slf4j.Logger;
  * <b>冷却语义规则：</b>有限购时，冷却是限购的附属机制——限购未满时不检查冷却；
  * 无限购时，每次抽奖后均触发冷却计时。
  * <p>
- * 冷却判断统一委托 {@link UnifiedCooldownManager}，通过 {@link ICooldownRecord}
+ * 冷却判断统一委托 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，通过 {@link org.arcadia.arc_quest.core.time.CooldownRecord}
  * 接口接收 {@link GachaDataStore.CooldownEntry}，不再维护独立的冷却判断逻辑。
  */
 public final class GachaEntryStateResolver {
@@ -35,29 +39,45 @@ public final class GachaEntryStateResolver {
      * 优先级：可见性 > 冷却 > 限购 > 条件
      */
     public static boolean canDraw(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
-        if (!isVisible(player, data, shop)) return false;
-        if (isOnCooldown(player, data, shopId, shop)) return false;
-        if (isMaxDrawsReached(data, shopId, shop)) return false;
-        if (!hasConditionMet(player, data, shop)) return false;
-        return true;
+        return evaluateDraw(player, data, shopId, shop).allowed();
+    }
+
+    public static CoreDecision<DrawFailure> evaluateDraw(
+            ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
+        DecisionContext context = DecisionContext.create(player, data, shopId, shop);
+        return CoreProcessors.get().executions().decide(context, List.of(
+                CoreRule.require(GachaEntryStateResolver::isVisible,
+                        DrawFailure.NOT_VISIBLE),
+                CoreRule.require(candidate -> !isOnCooldown(candidate.player(), candidate.data(),
+                        candidate.shopId(), candidate.shop()), DrawFailure.ON_COOLDOWN),
+                CoreRule.require(candidate -> !isMaxDrawsReached(candidate.data(), candidate.shopId(),
+                        candidate.shop()), DrawFailure.MAX_DRAWS_REACHED),
+                CoreRule.require(GachaEntryStateResolver::hasConditionMet,
+                        DrawFailure.CONDITION_NOT_MET)
+        ));
+    }
+
+    public enum DrawFailure {
+        NOT_VISIBLE,
+        ON_COOLDOWN,
+        MAX_DRAWS_REACHED,
+        CONDITION_NOT_MET
     }
 
     /**
      * 检查奖池是否对玩家可见。
      */
     public static boolean isVisible(ServerPlayer player, ArcQuestPlayer data, GachaShopDefinition shop) {
-        var visibleCondition = shop.getVisibleCondition();
+        return isVisible(DecisionContext.create(player, data, shop.getShopId(), shop));
+    }
+
+    private static boolean isVisible(DecisionContext context) {
+        var visibleCondition = context.shop().getVisibleCondition();
         if (visibleCondition == null) return true;
 
-        try {
-            return visibleCondition.test(player,
-                    data.getCompletedQuestLocations(),
-                    data.getAllFlags(),
-                    data.getAllVariables());
-        } catch (Exception e) {
-            LOGGER.warn("[Gacha] Error evaluating visible condition for shop={}: {}", shop.getShopId(), e.getMessage());
-            return false;
-        }
+        return CoreProcessors.get().conditions().evaluateSafely(visibleCondition,
+                context.conditionContext(), false, LOGGER,
+                "gacha visibility shop=" + context.shop().getShopId());
     }
 
     /**
@@ -71,7 +91,7 @@ public final class GachaEntryStateResolver {
     /**
      * 检查是否在冷却中。
      * <p>
-     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link UnifiedCooldownManager}
+     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}
      * 统一计算，不再维护独立的冷却 switch 逻辑。
      */
     public static boolean isOnCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
@@ -81,33 +101,40 @@ public final class GachaEntryStateResolver {
             return false;
         }
 
-        ICooldownRecord record = data.getGachaDataStore().getDrawCooldown(shopId);
+        CooldownRecord record = data.getGachaDataStore().getDrawCooldown(shopId);
         if (!record.exists()) return false;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = CoreProcessors.get().time().capture(player);
 
-        return UnifiedCooldownManager.isOnCooldown(record, shop.getCooldownType(),
-                (int) shop.getCooldownValue(), shop.getResetTimeTicks(),
-                nowRealTime, nowGameTime, nowDayTime);
+        return CoreProcessors.get().cooldowns().isOnCooldown(
+                record, shop.getCooldownType().toCorePolicy(
+                        shop.getCooldownValue(), shop.getResetTimeTicks()),
+                now);
     }
 
     /**
      * 检查前置条件是否满足。
      */
     public static boolean hasConditionMet(ServerPlayer player, ArcQuestPlayer data, GachaShopDefinition shop) {
-        var drawCondition = shop.getDrawCondition();
+        return hasConditionMet(DecisionContext.create(player, data, shop.getShopId(), shop));
+    }
+
+    private static boolean hasConditionMet(DecisionContext context) {
+        var drawCondition = context.shop().getDrawCondition();
         if (drawCondition == null) return true;
 
-        try {
-            return drawCondition.test(player,
-                    data.getCompletedQuestLocations(),
-                    data.getAllFlags(),
-                    data.getAllVariables());
-        } catch (Exception e) {
-            LOGGER.warn("[Gacha] Error evaluating draw condition for shop={}: {}", shop.getShopId(), e.getMessage());
-            return false;
+        return CoreProcessors.get().conditions().evaluateSafely(drawCondition,
+                context.conditionContext(), false, LOGGER,
+                "gacha draw shop=" + context.shop().getShopId());
+    }
+
+    private record DecisionContext(ServerPlayer player, ArcQuestPlayer data, String shopId,
+                                   GachaShopDefinition shop, QuestConditionContext conditionContext) {
+        private static DecisionContext create(ServerPlayer player, ArcQuestPlayer data,
+                                              String shopId, GachaShopDefinition shop) {
+            return new DecisionContext(player, data, shopId, shop,
+                    new QuestConditionContext(player, data.getCompletedQuestLocations(),
+                            data.getAllFlags(), data.getAllVariables()));
         }
     }
 
@@ -124,10 +151,10 @@ public final class GachaEntryStateResolver {
         }
 
         GachaDataStore gachaStore = data.getGachaDataStore();
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = CoreProcessors.get().time().capture(player);
 
-        ICooldownRecord record = gachaStore.getDrawCooldown(shopId);
-        if (record.exists() && record.dayTime() > nowDayTime) {
+        CooldownRecord record = gachaStore.getDrawCooldown(shopId);
+        if (record.exists() && record.dayTime() > now.dayTime()) {
             gachaStore.removeDrawCooldown(shopId);
             LOGGER.info("[Gacha-State] Cleared cooldown record due to time regression: shop={}", shopId);
             return true;
@@ -135,12 +162,10 @@ public final class GachaEntryStateResolver {
 
         if (!record.exists()) return false;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-
-        return !UnifiedCooldownManager.isOnCooldown(record, shop.getCooldownType(),
-                (int) shop.getCooldownValue(), shop.getResetTimeTicks(),
-                nowRealTime, nowGameTime, nowDayTime);
+        return !CoreProcessors.get().cooldowns().isOnCooldown(
+                record, shop.getCooldownType().toCorePolicy(
+                        shop.getCooldownValue(), shop.getResetTimeTicks()),
+                now);
     }
 
     /**
@@ -172,10 +197,8 @@ public final class GachaEntryStateResolver {
     public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, GachaShopDefinition shop) {
         if (!shop.hasCooldown()) return;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
-
-        data.getGachaDataStore().recordDrawCooldown(shopId, nowRealTime, nowGameTime, nowDayTime);
+        var now = CoreProcessors.get().time().capture(player);
+        data.getGachaDataStore().recordDrawCooldown(
+                shopId, now.realTime(), now.gameTime(), now.dayTime());
     }
 }

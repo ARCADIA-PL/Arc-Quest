@@ -41,6 +41,10 @@ public interface ITradeOffer {
      */
     void execute(ServerPlayer player);
 
+    default TradeMutation prepareMutation(ServerPlayer player, TradeOfferRole role) {
+        return TradeMutation.nonReversible(() -> execute(player));
+    }
+
     /**
      * 人类可读的描述（用于 UI 显示）。
      * 例如 "橡木原木 x5" 或 "力量 II 60秒"。

@@ -3,10 +3,10 @@ package org.arcadia.arc_quest.trade.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.CooldownRecord;
+import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
-import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
-import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
@@ -56,21 +56,18 @@ public final class TradeSession {
         }
 
         // 第二步：综合判断
-        if (!TradeEntryStateResolver.canPurchase(player, data, shop.getShopId(), entry)) {
-            // 细分错误原因（统一优先级：cooldown > limit > condition > afford）
-            if (!TradeEntryStateResolver.isVisible(player, data, entry)) {
-                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_NOT_VISIBLE));
-            }
-            if (TradeEntryStateResolver.isOnCooldown(player, data, shop.getShopId(), entry)) {
-                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_ON_COOLDOWN));
-            }
-            if (TradeEntryStateResolver.isPurchaseLimitReached(data, shop.getShopId(), entry)) {
-                return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_MAX_DRAWS_REACHED));
-            }
-            // 默认：购买资格条件不满足
-            return TradeResult.fail(RejectCodeDictionary.errorKey(RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.SESSION_CONDITION_NOT_MET));
+        var purchaseDecision = TradeEntryStateResolver.evaluatePurchase(
+                player, data, shop.getShopId(), entry);
+        if (!purchaseDecision.allowed()) {
+            RejectCodeDictionary.Code code = switch (purchaseDecision.failure()) {
+                case NOT_VISIBLE -> RejectCodeDictionary.Code.SESSION_NOT_VISIBLE;
+                case ON_COOLDOWN -> RejectCodeDictionary.Code.SESSION_ON_COOLDOWN;
+                case LIMIT_REACHED -> RejectCodeDictionary.Code.SESSION_MAX_DRAWS_REACHED;
+                case CONDITION_NOT_MET -> RejectCodeDictionary.Code.SESSION_CONDITION_NOT_MET;
+            };
+            return TradeResult.fail(RejectCodeDictionary.errorKey(
+                    RejectCodeDictionary.Domain.TRADE, code));
         }
-
         for (ITradeOffer cost : entry.getCosts()) {
             if (!cost.canAfford(player)) {
                 LOGGER.warn("[Trade]  Cannot afford cost: entry={}, cost={}", entryId, cost);
@@ -81,12 +78,14 @@ public final class TradeSession {
             }
         }
 
-        for (ITradeOffer cost : entry.getCosts()) {
-            cost.execute(player);
-        }
-
-        for (ITradeOffer reward : entry.getRewards()) {
-            reward.execute(player);
+        TradeTransactionCoordinator.TransactionResult transaction = new TradeTransactionCoordinator().execute(
+                player, entry.getCosts(), entry.getRewards());
+        if (!transaction.succeeded()) {
+            LOGGER.error("[Trade] Transaction failed: player={}, shop={}, entry={}, fullyReversible={}, rollbackSucceeded={}",
+                    player.getName().getString(), shop.getShopId(), entryId,
+                    transaction.fullyReversible(), transaction.rollbackSucceeded(), transaction.failure());
+            return TradeResult.fail(RejectCodeDictionary.errorKey(
+                    RejectCodeDictionary.Domain.TRADE, RejectCodeDictionary.Code.TRANSACTION_FAILED));
         }
 
         boolean shouldRecordCooldown = TradeEntryStateResolver.shouldRecordCooldown(getData(), shop.getShopId(), entry);
@@ -132,39 +131,26 @@ public final class TradeSession {
     /**
      * 获取冷却剩余秒数（用于客户端显示）。
      * <p>
-     * 冷却时间戳从 TradeDataStore 读取，通过 UnifiedCooldownManager 统一计算。
+     * 冷却时间戳从 TradeDataStore 读取，通过 CoreProcessors.cooldowns() 统一计算。
      */
     public int getCooldownRemaining(String entryId, TradeEntry entry) {
         if (!entry.hasCooldown()) return 0;
 
         ArcQuestPlayer data = getData();
-        ICooldownRecord record = data.getTradeDataStore().getCooldown(shop.getShopId(), entryId);
+        CooldownRecord record = data.getTradeDataStore().getCooldown(shop.getShopId(), entryId);
         if (!record.exists()) return 0;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = CoreProcessors.get().time().capture(player);
+        CooldownStatus status = CoreProcessors.get().cooldowns().evaluate(
+                record, entry.getCooldownType().toCorePolicy(
+                        entry.getCooldownValue(), entry.getResetTimeTicks()), now);
 
         return switch (entry.getCooldownType()) {
             case NONE -> 0;
-            case SECONDS -> {
-                long elapsed = (nowRealTime - record.realTime()) / 1000;
-                yield Math.max(0, (int) (entry.getCooldownValue() - elapsed));
-            }
-            case GAME_DAY -> {
-                if (record.dayTime() < 0) yield 0;
-                boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
-                        record, entry.getCooldownType(), (int) entry.getCooldownValue(),
-                        entry.getResetTimeTicks(), nowRealTime, nowGameTime, nowDayTime);
-                if (!onCooldown) yield 0;
-                long currentDayTick = nowDayTime % 24000;
-                yield Math.max(1, (int) (24000 - currentDayTick) / 20);
-            }
-            case GAME_TICK -> {
-                int remainingTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
-                        record, entry.getResetTimeTicks(), nowGameTime, nowDayTime);
-                yield Math.max(0, remainingTicks / 20);
-            }
+            case SECONDS -> status.remainingRealSecondsCeiling();
+            case GAME_DAY -> status.active()
+                    ? Math.max(1, status.remainingGameSecondsFloor()) : 0;
+            case GAME_TICK -> status.remainingGameSecondsFloor();
         };
     }
 
@@ -212,14 +198,11 @@ public final class TradeSession {
         boolean shouldReset = TradeEntryStateResolver.shouldResetByCooldown(player, data, shop.getShopId(), entry);
 
         if (!shouldReset) {
-            try {
-                shouldReset = resetCondition.test(player);
-                if (shouldReset) {
-                    LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
-                }
-            } catch (Exception e) {
-                LOGGER.warn("[Trade] Error evaluating purchase reset condition for entry={}: {}",
-                        entryId, e.getMessage());
+            shouldReset = CoreProcessors.get().conditions().evaluateSafely(
+                    () -> resetCondition.test(player),
+                    false, LOGGER, "trade reset entry=" + entryId);
+            if (shouldReset) {
+                LOGGER.info("[Trade] Purchase limit reset by custom condition for entry={}", entryId);
             }
         }
 

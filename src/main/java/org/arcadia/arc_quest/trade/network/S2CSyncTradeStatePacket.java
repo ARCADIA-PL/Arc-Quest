@@ -33,6 +33,7 @@ public class S2CSyncTradeStatePacket implements CustomPacketPayload {
     private final int[] resetTimeTicks;
     private final boolean[] visibility;
     private final boolean[] canBuyConditions;
+    private final long playerSessionEpoch;
 
     public S2CSyncTradeStatePacket(String shopId,
                                    int[] purchaseCounts,
@@ -45,6 +46,23 @@ public class S2CSyncTradeStatePacket implements CustomPacketPayload {
                                    int[] resetTimeTicks,
                                    boolean[] visibility,
                                    boolean[] canBuyConditions) {
+        this(shopId, purchaseCounts, maxPurchases, lastPurchaseTimes, purchaseGameTimes,
+                purchaseDayTimes, cooldownTypes, cooldownValues, resetTimeTicks, visibility,
+                canBuyConditions, 0L);
+    }
+
+    public S2CSyncTradeStatePacket(String shopId,
+                                   int[] purchaseCounts,
+                                   int[] maxPurchases,
+                                   long[] lastPurchaseTimes,
+                                   long[] purchaseGameTimes,
+                                   long[] purchaseDayTimes,
+                                   int[] cooldownTypes,
+                                   long[] cooldownValues,
+                                   int[] resetTimeTicks,
+                                   boolean[] visibility,
+                                   boolean[] canBuyConditions,
+                                   long playerSessionEpoch) {
         this.shopId = shopId;
         this.purchaseCounts = purchaseCounts;
         this.maxPurchases = maxPurchases;
@@ -56,10 +74,12 @@ public class S2CSyncTradeStatePacket implements CustomPacketPayload {
         this.resetTimeTicks = resetTimeTicks;
         this.visibility = visibility;
         this.canBuyConditions = canBuyConditions;
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
     }
 
     public static void encode(S2CSyncTradeStatePacket pkt, FriendlyByteBuf buf) {
         buf.writeUtf(pkt.shopId);
+        buf.writeLong(pkt.playerSessionEpoch);
         int count = pkt.purchaseCounts != null ? pkt.purchaseCounts.length : 0;
         buf.writeVarInt(count);
 
@@ -79,6 +99,7 @@ public class S2CSyncTradeStatePacket implements CustomPacketPayload {
 
     public static S2CSyncTradeStatePacket decode(FriendlyByteBuf buf) {
         String shopId = buf.readUtf();
+        long playerSessionEpoch = buf.readLong();
         int count = buf.readVarInt();
 
         int[] purchases = new int[count];
@@ -107,7 +128,7 @@ public class S2CSyncTradeStatePacket implements CustomPacketPayload {
 
         return new S2CSyncTradeStatePacket(
                 shopId, purchases, maxPurch, lastTimes, purchaseGTs, purchaseDTs,
-                cdTypes, cdValues, resetTicks, vis, canBuy
+                cdTypes, cdValues, resetTicks, vis, canBuy, playerSessionEpoch
         );
     }
 
@@ -117,8 +138,16 @@ public class S2CSyncTradeStatePacket implements CustomPacketPayload {
     }
 
     public static void handle(S2CSyncTradeStatePacket pkt, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
+        ctx.enqueueWork(() -> ClientHandler.handle(pkt));
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2CSyncTradeStatePacket pkt) {
             Minecraft mc = Minecraft.getInstance();
+            if (pkt.playerSessionEpoch > 0L
+                    && !ClientTradeCache.INSTANCE.acceptPlayerSessionEpoch(pkt.shopId, pkt.playerSessionEpoch)) {
+                return;
+            }
 
             ClientTradeCache.INSTANCE.updateSession(
                     pkt.shopId,
@@ -139,6 +168,6 @@ public class S2CSyncTradeStatePacket implements CustomPacketPayload {
             } else if (mc.screen instanceof SimpleTradePanel sp && sp.getShopId().equals(pkt.shopId)) {
                 sp.refreshData();
             }
-        });
+        }
     }
 }

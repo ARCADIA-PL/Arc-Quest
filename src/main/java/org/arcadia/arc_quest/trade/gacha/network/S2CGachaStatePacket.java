@@ -212,7 +212,11 @@ public class S2CGachaStatePacket implements CustomPacketPayload {
     }
 
     public static void handle(S2CGachaStatePacket pkt, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
+        ctx.enqueueWork(() -> ClientHandler.handle(pkt));
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2CGachaStatePacket pkt) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
             if (GachaRegistry.get(pkt.shopId) == null) return;
@@ -282,7 +286,7 @@ public class S2CGachaStatePacket implements CustomPacketPayload {
             if (pkt.mode == Mode.OPEN) {
                 mc.setScreen(new GachaScreen(pkt.shopId));
             }
-        });
+        }
     }
 
     public enum Mode {

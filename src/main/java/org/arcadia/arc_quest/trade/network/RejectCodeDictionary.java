@@ -64,6 +64,8 @@ public final class RejectCodeDictionary {
         PLAYER_MISSING,
         DATA_MISSING,
         SHOP_NOT_FOUND,
+        SESSION_EPOCH_MISMATCH,
+        TRANSACTION_FAILED,
 
         PRE_DRAW_CANCELLED,
         CANNOT_AFFORD,

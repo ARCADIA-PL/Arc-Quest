@@ -3,15 +3,18 @@ package org.arcadia.arc_quest.trade.runtime;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.arcadia.arc_quest.dialogue.runtime.ICooldownRecord;
-import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.execution.CoreDecision;
+import org.arcadia.arc_quest.core.execution.CoreRule;
+import org.arcadia.arc_quest.core.time.CooldownRecord;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.slf4j.Logger;
 
 import java.util.Set;
+import java.util.List;
 
 /**
  * 交易商品状态解析器 - 统一判断和设置商品的各种状态。
@@ -24,7 +27,7 @@ import java.util.Set;
  * </ul>
  * <p>
  * 状态数据统一通过 {@link TradeDataStore} 读写，冷却判断委托
- * {@link UnifiedCooldownManager}，不再经过 {@code ArcQuestPlayer} 的多层委托。
+ * {@link org.arcadia.arc_quest.core.time.CooldownProcessor}，不再经过 {@code ArcQuestPlayer} 的多层委托。
  */
 public final class TradeEntryStateResolver {
 
@@ -44,12 +47,13 @@ public final class TradeEntryStateResolver {
             if (currentCount < entry.getMaxPurchases()) return false;
         }
 
-        long[] times = TimeSanitizer.getAllTimes(player);
-        ICooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
+        var now = CoreProcessors.get().time().capture(player);
+        CooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
-        return UnifiedCooldownManager.isOnCooldown(record, entry.getCooldownType(),
-                (int) entry.getCooldownValue(), entry.getResetTimeTicks(),
-                times[0], times[1], times[2]);
+        return CoreProcessors.get().cooldowns().isOnCooldown(
+                record, entry.getCooldownType().toCorePolicy(
+                        entry.getCooldownValue(), entry.getResetTimeTicks()),
+                now);
     }
 
     /**
@@ -65,37 +69,65 @@ public final class TradeEntryStateResolver {
      * 检查商品是否对玩家可见（可见性条件）。
      */
     public static boolean isVisible(ServerPlayer player, ArcQuestPlayer data, TradeEntry entry) {
-        if (entry.getVisibleCondition() == null) return true;
-
-        Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-        return entry.getVisibleCondition().test(player, completed, data.getAllFlags(), data.getAllVariables());
+        return isVisible(DecisionContext.create(player, data, "", entry));
     }
 
     /**
      * 综合判断商品是否可购买（可见性 → 冷却 → 限购 → 购买资格）。
      */
     public static boolean canPurchase(ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
-        if (!isVisible(player, data, entry)) return false;
+        return evaluatePurchase(player, data, shopId, entry).allowed();
+    }
 
-        if (isOnCooldown(player, data, shopId, entry)) {
-            LOGGER.debug("[Trade-State] Purchase blocked: on cooldown for {}", entry.getEntryId());
-            return false;
+    public static CoreDecision<PurchaseFailure> evaluatePurchase(
+            ServerPlayer player, ArcQuestPlayer data, String shopId, TradeEntry entry) {
+        DecisionContext context = DecisionContext.create(player, data, shopId, entry);
+        CoreDecision<PurchaseFailure> decision = CoreProcessors.get().executions().decide(context, List.of(
+                CoreRule.require(TradeEntryStateResolver::isVisible, PurchaseFailure.NOT_VISIBLE),
+                CoreRule.require(candidate -> !isOnCooldown(candidate.player(), candidate.data(),
+                        candidate.shopId(), candidate.entry()), PurchaseFailure.ON_COOLDOWN),
+                CoreRule.require(candidate -> !isPurchaseLimitReached(candidate.data(), candidate.shopId(),
+                        candidate.entry()), PurchaseFailure.LIMIT_REACHED),
+                CoreRule.require(TradeEntryStateResolver::hasPurchaseConditionMet,
+                        PurchaseFailure.CONDITION_NOT_MET)
+        ));
+        if (!decision.allowed()) {
+            LOGGER.debug("[Trade-State] Purchase blocked: entry={}, reason={}",
+                    entry.getEntryId(), decision.failure());
         }
+        return decision;
+    }
 
-        if (isPurchaseLimitReached(data, shopId, entry)) {
-            LOGGER.debug("[Trade-State] Purchase blocked: limit reached for {}", entry.getEntryId());
-            return false;
-        }
+    private static boolean isVisible(DecisionContext context) {
+        if (context.entry().getVisibleCondition() == null) return true;
+        return CoreProcessors.get().conditions().evaluateSafely(
+                context.entry().getVisibleCondition(), context.conditionContext(), false, LOGGER,
+                "trade visibility entry=" + context.entry().getEntryId());
+    }
 
-        if (entry.getCanBuyCondition() != null) {
+    private static boolean hasPurchaseConditionMet(DecisionContext context) {
+        if (context.entry().getCanBuyCondition() == null) return true;
+        return CoreProcessors.get().conditions().evaluateSafely(
+                context.entry().getCanBuyCondition(), context.conditionContext(), false, LOGGER,
+                "trade purchase entry=" + context.entry().getEntryId());
+    }
+
+    public enum PurchaseFailure {
+        NOT_VISIBLE,
+        ON_COOLDOWN,
+        LIMIT_REACHED,
+        CONDITION_NOT_MET
+    }
+
+    private record DecisionContext(ServerPlayer player, ArcQuestPlayer data, String shopId,
+                                   TradeEntry entry, QuestConditionContext conditionContext) {
+        private static DecisionContext create(ServerPlayer player, ArcQuestPlayer data,
+                                              String shopId, TradeEntry entry) {
             Set<ResourceLocation> completed = data.getCompletedQuestLocations();
-            boolean canBuy = entry.getCanBuyCondition().test(player, completed, data.getAllFlags(), data.getAllVariables());
-            if (!canBuy) {
-                LOGGER.debug("[Trade-State] Purchase blocked: canBuyCondition not met for {}", entry.getEntryId());
-                return false;
-            }
+            QuestConditionContext conditionContext = new QuestConditionContext(
+                    player, completed, data.getAllFlags(), data.getAllVariables());
+            return new DecisionContext(player, data, shopId, entry, conditionContext);
         }
-        return true;
     }
 
     /**
@@ -109,12 +141,13 @@ public final class TradeEntryStateResolver {
             if (currentCount < entry.getMaxPurchases()) return false;
         }
 
-        long[] times = TimeSanitizer.getAllTimes(player);
-        ICooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
+        var now = CoreProcessors.get().time().capture(player);
+        CooldownRecord record = data.getTradeDataStore().getCooldown(shopId, entry.getEntryId());
 
-        boolean onCooldown = UnifiedCooldownManager.isOnCooldown(record, entry.getCooldownType(),
-                (int) entry.getCooldownValue(), entry.getResetTimeTicks(),
-                times[0], times[1], times[2]);
+        boolean onCooldown = CoreProcessors.get().cooldowns().isOnCooldown(
+                record, entry.getCooldownType().toCorePolicy(
+                        entry.getCooldownValue(), entry.getResetTimeTicks()),
+                now);
 
         if (!onCooldown) {
             LOGGER.info("[Trade-State] Cooldown expired, should reset: entry={}, hasLimit={}", entry.getEntryId(), entry.hasLimit());
@@ -152,9 +185,10 @@ public final class TradeEntryStateResolver {
      * 记录冷却时间戳。
      */
     public static void recordCooldown(ServerPlayer player, ArcQuestPlayer data, String shopId, String entryId) {
-        long[] times = TimeSanitizer.getAllTimes(player);
+        var now = CoreProcessors.get().time().capture(player);
         LOGGER.debug("[Trade-State] Recording cooldown: shop={}, entry={}", shopId, entryId);
-        data.getTradeDataStore().recordCooldown(shopId, entryId, times[0], times[1], times[2]);
+        data.getTradeDataStore().recordCooldown(
+                shopId, entryId, now.realTime(), now.gameTime(), now.dayTime());
     }
 
     /**

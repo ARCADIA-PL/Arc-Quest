@@ -5,9 +5,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
-import org.arcadia.arc_quest.dialogue.runtime.UnifiedCooldownManager;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -51,19 +51,15 @@ public final class GachaSession {
      * @return 失败原因枚举
      */
     public DrawFailReason getFailReason() {
-        if (!GachaEntryStateResolver.isVisible(player, playerData, shop)) {
-            return DrawFailReason.NOT_VISIBLE;
-        }
-        if (GachaEntryStateResolver.isOnCooldown(player, playerData, shop.getShopId(), shop)) {
-            return DrawFailReason.ON_COOLDOWN;
-        }
-        if (GachaEntryStateResolver.isMaxDrawsReached(playerData, shop.getShopId(), shop)) {
-            return DrawFailReason.MAX_DRAWS_REACHED;
-        }
-        if (!GachaEntryStateResolver.hasConditionMet(player, playerData, shop)) {
-            return DrawFailReason.CONDITION_NOT_MET;
-        }
-        return DrawFailReason.NONE;
+        var decision = GachaEntryStateResolver.evaluateDraw(
+                player, playerData, shop.getShopId(), shop);
+        if (decision.allowed()) return DrawFailReason.NONE;
+        return switch (decision.failure()) {
+            case NOT_VISIBLE -> DrawFailReason.NOT_VISIBLE;
+            case ON_COOLDOWN -> DrawFailReason.ON_COOLDOWN;
+            case MAX_DRAWS_REACHED -> DrawFailReason.MAX_DRAWS_REACHED;
+            case CONDITION_NOT_MET -> DrawFailReason.CONDITION_NOT_MET;
+        };
     }
 
     /**
@@ -109,7 +105,7 @@ public final class GachaSession {
     /**
      * 获取冷却剩余秒数（用于客户端显示）。
      * <p>
-     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link UnifiedCooldownManager}
+     * 冷却时间戳从 {@link GachaDataStore} 读取，通过 {@link org.arcadia.arc_quest.core.time.CooldownProcessor}
      * 统一计算，不再维护独立的冷却判断逻辑。
      */
     public int getCooldownRemaining() {
@@ -118,30 +114,17 @@ public final class GachaSession {
         GachaDataStore.CooldownEntry entry = playerData.getGachaDataStore().getDrawCooldown(shop.getShopId());
         if (!entry.exists()) return 0;
 
-        long nowRealTime = TimeSanitizer.getCurrentRealTime();
-        long nowGameTime = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = CoreProcessors.get().time().capture(player);
+        CooldownStatus status = CoreProcessors.get().cooldowns().evaluate(
+                entry, shop.getCooldownType().toCorePolicy(
+                        shop.getCooldownValue(), shop.getResetTimeTicks()), now);
 
         return switch (shop.getCooldownType()) {
             case NONE -> 0;
-            case SECONDS -> {
-                long elapsed = (nowRealTime - entry.realTime()) / 1000;
-                yield Math.max(0, (int) (shop.getCooldownValue() - elapsed));
-            }
-            case GAME_DAY -> {
-                if (entry.dayTime() < 0) yield 0;
-                boolean onCooldown = UnifiedCooldownManager.isOnCooldown(
-                        entry, shop.getCooldownType(), (int) shop.getCooldownValue(),
-                        shop.getResetTimeTicks(), nowRealTime, nowGameTime, nowDayTime);
-                if (!onCooldown) yield 0;
-                long currentDayTick = nowDayTime % 24000;
-                yield Math.max(1, (int) (24000 - currentDayTick) / 20);
-            }
-            case GAME_TICK -> {
-                int remainingTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
-                        entry, shop.getResetTimeTicks(), nowGameTime, nowDayTime);
-                yield Math.max(0, remainingTicks / 20);
-            }
+            case SECONDS -> status.remainingRealSecondsCeiling();
+            case GAME_DAY -> status.active()
+                    ? Math.max(1, status.remainingGameSecondsFloor()) : 0;
+            case GAME_TICK -> status.remainingGameSecondsFloor();
         };
     }
 
@@ -183,15 +166,12 @@ public final class GachaSession {
         if (!shouldReset) {
             var resetCondition = shop.getResetCondition();
             if (resetCondition != null) {
-                try {
-                    shouldReset = resetCondition.test(player,
-                            playerData.getCompletedQuestLocations(),
-                            playerData.getAllFlags(),
-                            playerData.getAllVariables());
-                } catch (Exception e) {
-                    LOGGER.warn("[Gacha] Error evaluating draw reset condition for shop={}: {}",
-                            shop.getShopId(), e.getMessage());
-                }
+                shouldReset = CoreProcessors.get().conditions().evaluateSafely(
+                        () -> resetCondition.test(player,
+                                playerData.getCompletedQuestLocations(),
+                                playerData.getAllFlags(),
+                                playerData.getAllVariables()),
+                        false, LOGGER, "gacha reset shop=" + shop.getShopId());
             }
         }
 
