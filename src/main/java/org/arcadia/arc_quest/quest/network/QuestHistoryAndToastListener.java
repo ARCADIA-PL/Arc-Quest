@@ -23,6 +23,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
     @Override
     public void onQuestAccepted(String questId) {
         QuestChangeHistoryStore.INSTANCE.recordQuestAccepted(questId);
+        QuestChangeNotificationManager.INSTANCE.markNewQuestUnread(questId);
     }
 
     @Override

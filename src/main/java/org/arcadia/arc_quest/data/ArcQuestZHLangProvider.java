@@ -50,6 +50,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuiTranslations() {
+        add("arc_quest.gui.tracker.new_quest", "新任务");
+
         // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "交易矩阵");
         add("arc_quest.gui.trade.quick_title", "快速交易");

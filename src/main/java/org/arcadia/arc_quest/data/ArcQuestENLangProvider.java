@@ -50,6 +50,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuiTranslations() {
+        add("arc_quest.gui.tracker.new_quest", "New Quest");
+
         // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "Trade Matrix");
         add("arc_quest.gui.trade.quick_title", "Quick Trade");

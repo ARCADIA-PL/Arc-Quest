@@ -8,6 +8,7 @@ public final class QuestChangeNotificationManager {
     public static final QuestChangeNotificationManager INSTANCE = new QuestChangeNotificationManager();
 
     private final Set<String> unreadQuestIds = new LinkedHashSet<>();
+    private final Set<String> unreadNewQuestIds = new LinkedHashSet<>();
 
     private QuestChangeNotificationManager() {
     }
@@ -18,12 +19,21 @@ public final class QuestChangeNotificationManager {
         }
     }
 
+    public void markNewQuestUnread(String questId) {
+        if (questId != null && !questId.isEmpty()) {
+            unreadQuestIds.add(questId);
+            unreadNewQuestIds.add(questId);
+        }
+    }
+
     public void markRead(String questId) {
         unreadQuestIds.remove(questId);
+        unreadNewQuestIds.remove(questId);
     }
 
     public void markAllRead() {
         unreadQuestIds.clear();
+        unreadNewQuestIds.clear();
     }
 
     public boolean hasUnread(String questId) {
@@ -32,6 +42,26 @@ public final class QuestChangeNotificationManager {
 
     public boolean hasAnyUnread() {
         return !unreadQuestIds.isEmpty();
+    }
+
+    public boolean hasUnreadOtherThan(String questId) {
+        if (questId == null || questId.isEmpty()) return hasAnyUnread();
+        for (String unreadQuestId : unreadQuestIds) {
+            if (!questId.equals(unreadQuestId)) return true;
+        }
+        return false;
+    }
+
+    public boolean hasAnyUnreadNewQuest() {
+        return !unreadNewQuestIds.isEmpty();
+    }
+
+    public boolean hasUnreadNewQuestOtherThan(String questId) {
+        if (questId == null || questId.isEmpty()) return hasAnyUnreadNewQuest();
+        for (String unreadQuestId : unreadNewQuestIds) {
+            if (!questId.equals(unreadQuestId)) return true;
+        }
+        return false;
     }
 
     public int unreadCount() {
