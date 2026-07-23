@@ -68,7 +68,9 @@ repositories {
 
 dependencies {
     implementation "net.createmod.ponder:Ponder-NeoForge-${minecraft_version}:${ponder_version}"
-    implementation "net.createmod.catnip:Catnip-NeoForge-${minecraft_version}:${catnip_version}"
+    implementation("net.createmod.catnip:Catnip-NeoForge-${minecraft_version}:${catnip_version}") {
+        exclude group: 'dev.engine_room.flywheel'
+    }
     compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}"
     runtimeOnly "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
 }
