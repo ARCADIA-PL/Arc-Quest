@@ -4,8 +4,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerPlayer;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.CooldownStatus;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
 
 import java.util.Map;
 
@@ -69,19 +70,25 @@ public class DialogueProgressStore {
     }
 
     public void recordNodeVisit(String namespace, String nodeId, long realTime, long gameTime, long dayTime) {
-        store.put(nodeKey(namespace, nodeId), new Entry(realTime, gameTime, dayTime));
+        String key = nodeKey(namespace, nodeId);
+        store.put(key, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(key, ProgressKey.KeyType.NODE);
         dirty = true;
     }
 
     public void recordChoiceSelection(String namespace, String nodeId, int choiceIndex, long realTime, long gameTime, long dayTime) {
-        store.put(choiceKey(namespace, nodeId, choiceIndex), new Entry(realTime, gameTime, dayTime));
+        String key = choiceKey(namespace, nodeId, choiceIndex);
+        store.put(key, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(key, ProgressKey.KeyType.CHOICE);
         dirty = true;
     }
 
     // ── 查询（String 版本） ───────────────────────────────
 
     public void recordDialogueVisit(String namespace, String dialogueId, long realTime, long gameTime, long dayTime) {
-        store.put(dialogueKey(namespace, dialogueId), new Entry(realTime, gameTime, dayTime));
+        String key = dialogueKey(namespace, dialogueId);
+        store.put(key, new Entry(realTime, gameTime, dayTime));
+        keyTypes.put(key, ProgressKey.KeyType.DIALOGUE);
         dirty = true;
     }
 
@@ -149,11 +156,27 @@ public class DialogueProgressStore {
     }
 
     public boolean isOnCooldown(ProgressKey key, CooldownType cooldownType, int cooldownValue, int resetTick, TimeSnapshot ts) {
-        return UnifiedCooldownManager.isOnCooldown(this, key, cooldownType, cooldownValue, resetTick, ts);
+        return evaluateCooldown(key, cooldownType, cooldownValue, resetTick, ts).active();
+    }
+
+    public CooldownStatus evaluateCooldown(ProgressKey key, CooldownType cooldownType,
+                                           int cooldownValue, int resetTick, TimeSnapshot ts) {
+        return CoreProcessors.get().cooldowns().evaluate(
+                getEntry(key), cooldownType.toCorePolicy(cooldownValue, resetTick), ts.toCoreSnapshot());
     }
 
     public boolean isOnCooldown(Entry entry, CooldownType cooldownType, int cooldownValue, int resetTick, long nowRealTime, long nowGameTime, long nowDayTime) {
-        return UnifiedCooldownManager.isOnCooldown(entry, cooldownType, cooldownValue, resetTick, nowRealTime, nowGameTime, nowDayTime);
+        return evaluateCooldown(entry, cooldownType, cooldownValue, resetTick,
+                nowRealTime, nowGameTime, nowDayTime).active();
+    }
+
+    public CooldownStatus evaluateCooldown(Entry entry, CooldownType cooldownType,
+                                           int cooldownValue, int resetTick,
+                                           long nowRealTime, long nowGameTime, long nowDayTime) {
+        return CoreProcessors.get().cooldowns().evaluate(
+                entry, cooldownType.toCorePolicy(cooldownValue, resetTick),
+                new org.arcadia.arc_quest.core.time.TimeSnapshot(
+                        nowRealTime, nowGameTime, nowDayTime));
     }
 
     public boolean isNodeOnCooldown(String namespace, String nodeId, CooldownType type, int cooldownValue, int resetTick, long nowRealTime, long nowGameTime, long nowDayTime) {
@@ -169,7 +192,16 @@ public class DialogueProgressStore {
     }
 
     public int getGameTickCooldownRemainingTicks(Entry entry, int resetTick, long nowGameTime, long nowDayTime) {
-        return UnifiedCooldownManager.getGameTickCooldownRemainingTicks(entry, resetTick, nowGameTime, nowDayTime);
+        return CoreProcessors.get().cooldowns().remainingGameTicks(
+                entry, resetTick,
+                new org.arcadia.arc_quest.core.time.TimeSnapshot(0L, nowGameTime, nowDayTime));
+    }
+
+    public boolean clearIfTimeRegressed(ProgressKey key, long nowDayTime) {
+        Entry entry = getChoiceSelection(key);
+        if (!CoreProcessors.get().cooldowns().isDayTimeRegressed(entry, nowDayTime)) return false;
+        clearCooldownRecord(key);
+        return true;
     }
 
     /**
@@ -246,6 +278,7 @@ public class DialogueProgressStore {
         if (root.contains("Dialogues", Tag.TAG_COMPOUND))
             loadMap(root.getCompound("Dialogues"), ProgressKey.KeyType.DIALOGUE);
         if (root.contains("Trade", Tag.TAG_COMPOUND)) loadMap(root.getCompound("Trade"), ProgressKey.KeyType.TRADE);
+        dirty = false;
     }
 
     private void loadMap(CompoundTag tag, ProgressKey.KeyType type) {
@@ -258,13 +291,16 @@ public class DialogueProgressStore {
     }
 
     public void migrateFromLegacy(CompoundTag root) {
-        migrateLegacyPair(root, "NodeVisitHistory", "NodeVisitGameTime");
-        migrateLegacyPair(root, "ChoiceSelectionHistory", "ChoiceSelectionGameTime");
-        migrateLegacyPair(root, "DialogueHistory", "DialogueGameTime");
+        store.clear();
+        keyTypes.clear();
+        migrateLegacyPair(root, "NodeVisitHistory", "NodeVisitGameTime", ProgressKey.KeyType.NODE);
+        migrateLegacyPair(root, "ChoiceSelectionHistory", "ChoiceSelectionGameTime", ProgressKey.KeyType.CHOICE);
+        migrateLegacyPair(root, "DialogueHistory", "DialogueGameTime", ProgressKey.KeyType.DIALOGUE);
         dirty = true;
     }
 
-    private void migrateLegacyPair(CompoundTag root, String realTimeKey, String gameTimeKey) {
+    private void migrateLegacyPair(CompoundTag root, String realTimeKey, String gameTimeKey,
+                                   ProgressKey.KeyType type) {
         if (!root.contains(realTimeKey, Tag.TAG_COMPOUND)) return;
         CompoundTag rt = root.getCompound(realTimeKey);
         CompoundTag gt = root.contains(gameTimeKey, Tag.TAG_COMPOUND) ? root.getCompound(gameTimeKey) : new CompoundTag();
@@ -272,6 +308,7 @@ public class DialogueProgressStore {
             long realTime = rt.getLong(key);
             long gameTime = gt.contains(key) ? gt.getLong(key) : -1L;
             store.put(key, new Entry(realTime, gameTime, -1L));
+            keyTypes.put(key, type);
         }
     }
 
@@ -304,12 +341,16 @@ public class DialogueProgressStore {
     // ── TimeSnapshot ─────────────────────────────────────
 
     public record TimeSnapshot(long realTime, long gameTime, long dayTime) {
+        public org.arcadia.arc_quest.core.time.TimeSnapshot toCoreSnapshot() {
+            return new org.arcadia.arc_quest.core.time.TimeSnapshot(realTime, gameTime, dayTime);
+        }
+
+        public static TimeSnapshot fromCoreSnapshot(org.arcadia.arc_quest.core.time.TimeSnapshot snapshot) {
+            return new TimeSnapshot(snapshot.realTime(), snapshot.gameTime(), snapshot.dayTime());
+        }
+
         public static TimeSnapshot capture(ServerPlayer player) {
-            return new TimeSnapshot(
-                    TimeSanitizer.getCurrentRealTime(),
-                    TimeSanitizer.getCurrentGameTime(player),
-                    TimeSanitizer.getCurrentDayTime(player)
-            );
+            return fromCoreSnapshot(CoreProcessors.get().time().capture(player));
         }
     }
 

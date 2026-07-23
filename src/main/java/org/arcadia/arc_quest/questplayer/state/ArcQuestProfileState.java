@@ -80,6 +80,7 @@ public final class ArcQuestProfileState {
 
         CompoundTag varsTag = root.getCompound("Variables");
         for (String key : varsTag.getAllKeys()) variables.put(key, varsTag.getInt(key));
+        dirty = false;
     }
 
     public void clear() {

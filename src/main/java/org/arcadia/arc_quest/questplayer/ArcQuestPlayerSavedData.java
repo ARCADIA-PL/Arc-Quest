@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.questplayer;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -11,6 +12,7 @@ import net.minecraft.world.level.storage.DimensionDataStorage;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
 
 /**
  * Arc Quest 玩家数据的独立存储宿主。
@@ -21,6 +23,7 @@ import java.util.UUID;
  */
 public final class ArcQuestPlayerSavedData extends SavedData {
 
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final String DATA_NAME = "arc_quest_player_data";
 
     private final Map<UUID, CompoundTag> playerSnapshots = new HashMap<>();
@@ -37,7 +40,8 @@ public final class ArcQuestPlayerSavedData extends SavedData {
                 if (playersTag.contains(key, Tag.TAG_COMPOUND)) {
                     data.playerSnapshots.put(uuid, playersTag.getCompound(key).copy());
                 }
-            } catch (IllegalArgumentException ignored) {
+            } catch (IllegalArgumentException exception) {
+                LOGGER.warn("[ArcQuest] Ignoring invalid player UUID '{}' in saved data", key, exception);
             }
         }
         return data;

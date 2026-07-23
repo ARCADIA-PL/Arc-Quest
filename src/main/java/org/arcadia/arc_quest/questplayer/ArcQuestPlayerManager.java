@@ -37,6 +37,13 @@ public final class ArcQuestPlayerManager {
         repository.saveSnapshot(player, player.getUUID(), data.serializeNBT());
     }
 
+    public static void persistAndUnload(ServerPlayer player) {
+        ArcQuestPlayer data = MAP.remove(player.getUUID());
+        if (data != null) {
+            repository.saveSnapshot(player, player.getUUID(), data.serializeNBT());
+        }
+    }
+
     public static void deleteSnapshot(ServerPlayer player) {
         repository.deleteSnapshot(player, player.getUUID());
     }
@@ -46,12 +53,17 @@ public final class ArcQuestPlayerManager {
     }
 
     public static void clone(ServerPlayer from, ServerPlayer to) {
-        ArcQuestPlayer old = MAP.remove(from.getUUID());
-        if (old != null) {
-            ArcQuestPlayer clone = new ArcQuestPlayer(to.getUUID());
-            clone.deserializeNBT(old.serializeNBT());
-            MAP.put(to.getUUID(), clone);
-            repository.saveSnapshot(to, to.getUUID(), clone.serializeNBT());
+        ArcQuestPlayer old = MAP.get(from.getUUID());
+        if (old == null) {
+            old = new ArcQuestPlayer(from.getUUID());
+            CompoundTag saved = repository.loadSnapshot(from, from.getUUID());
+            if (!saved.isEmpty()) old.deserializeNBT(saved);
         }
+
+        ArcQuestPlayer clone = new ArcQuestPlayer(to.getUUID());
+        clone.deserializeNBT(old.serializeNBT());
+        MAP.remove(from.getUUID());
+        MAP.put(to.getUUID(), clone);
+        repository.saveSnapshot(to, to.getUUID(), clone.serializeNBT());
     }
 }

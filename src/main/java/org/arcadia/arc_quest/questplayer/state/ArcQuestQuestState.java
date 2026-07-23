@@ -200,6 +200,7 @@ public final class ArcQuestQuestState {
                     .build();
             markers.put(id, marker);
         }
+        dirty = false;
     }
 
     public boolean isDirty() {

@@ -81,6 +81,7 @@ public final class ArcQuestGuideState {
             ResourceLocation id = ResourceLocation.tryParse(seenGuideList.getString(i));
             if (id != null) seenGuides.add(id);
         }
+        dirty = false;
     }
 
     public void clear() {
