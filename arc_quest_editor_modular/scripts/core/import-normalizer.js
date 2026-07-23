@@ -172,7 +172,12 @@ function normalizePhase(phase, idx) {
         phaseStartSound: phase?.phaseStartSound || '',
         phaseCompleteSound: phase?.phaseCompleteSound || '',
         relatedMarks: phase?.relatedMarks || [],
-        visualConfig: phase?.visualConfig || null,
+        visualConfig: phase?.visualConfig ? {
+            themeColor: phase.visualConfig.themeColor == null ? '' : toHexColor(phase.visualConfig.themeColor),
+            useQuestSplashPresentation: phase.visualConfig.useQuestSplashPresentation === true,
+            splashes: normalizeSplashMap(phase.visualConfig.splashes),
+            icons: phase.visualConfig.icons || {}
+        } : null,
         autoStart: !!phase?.autoEnterByCondition,
         parallelPhaseIds: mode === 'parallel' ? targetIds : [],
         choicePhaseIds: mode === 'choice' ? targetIds : [],

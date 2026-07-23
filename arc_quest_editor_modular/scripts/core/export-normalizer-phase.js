@@ -199,6 +199,7 @@ export function exportPhase(phase) {
     if (phase.visualConfig) {
         const vc = {};
         if (phase.visualConfig.themeColor) vc.themeColor = String(phase.visualConfig.themeColor);
+        if (phase.visualConfig.useQuestSplashPresentation === true) vc.useQuestSplashPresentation = true;
         const splashArr = Array.isArray(phase.visualConfig.splashes) ? phase.visualConfig.splashes : [];
         const cleanSplashes = {};
         splashArr.forEach(s => {

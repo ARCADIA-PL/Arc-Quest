@@ -202,6 +202,10 @@ export function setPhaseField(target, bind, value, inputType) {
             target.phases[+i].choices[ci][parts[4]] = value;
         }
     } else if (k === 'autoStart' || k === 'autoAdvanceOnComplete') target.phases[+i][k] = value === 'true';
+    else if (k === 'useQuestSplashPresentation') {
+        target.phases[+i].visualConfig ||= {};
+        target.phases[+i].visualConfig.useQuestSplashPresentation = value === 'true';
+    }
     else if (k === 'titleMode' || k === 'descriptionMode' || k === 'storyMode') target.phases[+i][k] = value;
     else if (k === 'parallelPhaseIds' || k === 'choicePhaseIds' || k === 'flagsToSetOnEnter' || k === 'flagsToSetOnComplete') target.phases[+i][k] = splitList(value);
     else if (k === 'relatedMarks') setLooseJson(target.phases[+i], 'relatedMarks', value);
