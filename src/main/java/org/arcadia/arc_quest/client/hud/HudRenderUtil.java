@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -251,5 +252,34 @@ public final class HudRenderUtil {
         g.pose().mulPose(Axis.ZP.rotationDegrees(45));
         g.fill(-3, -3, 3, 3, color);
         g.pose().popPose();
+    }
+
+    public static void drawBreathingRedDot(GuiGraphics graphics, int centerX, int centerY, float alpha) {
+        if (alpha < 0.05f) return;
+
+        float cycle = (Util.getMillis() % 1_800L) / 1_800f;
+        float pulse = 0.5f - 0.5f * (float) Math.cos(cycle * Math.PI * 2.0);
+        float easedPulse = pulse * pulse * (3f - 2f * pulse);
+        float scale = 0.78f + 0.22f * easedPulse;
+        int glowAlpha = (int) ((35 + 85 * easedPulse) * alpha);
+        int coreAlpha = (int) ((215 + 40 * easedPulse) * alpha);
+        int highlightAlpha = (int) ((90 + 55 * easedPulse) * alpha);
+
+        graphics.pose().pushPose();
+        graphics.pose().translate(centerX + 0.5f, centerY + 0.5f, 0f);
+        graphics.pose().scale(scale, scale, 1f);
+        drawPixelCircle(graphics, 0, 0, 6, (glowAlpha << 24) | 0xFF1F2A);
+        drawPixelCircle(graphics, 0, 0, 4, (coreAlpha << 24) | 0xFF3B30);
+        drawPixelCircle(graphics, -1, -1, 2, (highlightAlpha << 24) | 0xFF8A80);
+        graphics.pose().popPose();
+    }
+
+    private static void drawPixelCircle(GuiGraphics graphics, int centerX, int centerY, int radius, int color) {
+        int radiusSquared = radius * radius;
+        for (int offsetY = -radius; offsetY <= radius; offsetY++) {
+            int halfWidth = (int) Math.sqrt(radiusSquared - offsetY * offsetY);
+            graphics.fill(centerX - halfWidth, centerY + offsetY,
+                    centerX + halfWidth + 1, centerY + offsetY + 1, color);
+        }
     }
 }
