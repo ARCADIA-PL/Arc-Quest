@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.spec.compile;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -331,6 +332,8 @@ public final class QuestSpecCompiler {
                     new MarkableObject.Pos(requireInt(spec.x, "mark x"), requireInt(spec.y, "mark y"), requireInt(spec.z, "mark z"));
             case "dimension_pos" ->
                     new MarkableObject.DimensionPos(ResourceKey.create(Registries.DIMENSION, parseId(spec.dimension)), requireInt(spec.x, "mark x"), requireInt(spec.y, "mark y"), requireInt(spec.z, "mark z"));
+            case "block" ->
+                    new MarkableObject.BlockPosition(new BlockPos(requireInt(spec.x, "mark x"), requireInt(spec.y, "mark y"), requireInt(spec.z, "mark z")));
             case "entity_type_nearest" ->
                     new MarkableObject.EntityByTypeNearest(requireEntityType(spec.entityType), requirePositiveInt(spec.searchRadius, "mark searchRadius"));
             case "entity_npc_id" ->

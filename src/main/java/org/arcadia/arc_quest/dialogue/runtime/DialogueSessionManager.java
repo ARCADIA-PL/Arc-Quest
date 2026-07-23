@@ -589,6 +589,13 @@ public final class DialogueSessionManager {
                     .type(spec.markerType())
                     .build();
         }
+        if (target instanceof MarkableObject.BlockPosition bp) {
+            return new QuestMarkerData.Builder(markerId, bp.pos().getX() + 0.5, bp.pos().getY(), bp.pos().getZ() + 0.5, spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .type(spec.markerType())
+                    .build();
+        }
         if (target instanceof MarkableObject.EntityByUuid byUuid) {
             Entity ent = level.getEntity(byUuid.uuid());
             if (ent == null) return null;
