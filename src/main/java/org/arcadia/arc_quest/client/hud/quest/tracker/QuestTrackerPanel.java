@@ -29,6 +29,7 @@ public class QuestTrackerPanel {
 
     private final TrackerObjectiveWidget objectiveWidget = new TrackerObjectiveWidget();
     private final TrackerCollectionProgressAdapter collectionProgressAdapter = new TrackerCollectionProgressAdapter();
+    private final TrackerNewQuestIndicator newQuestIndicator = new TrackerNewQuestIndicator();
     private float panelReveal = 0f;
     private float panelSlide = 1f;
     private float currentPanelH = -1f;
@@ -227,7 +228,9 @@ public class QuestTrackerPanel {
         int textX = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
         int textY = panelY + TrackerConstants.PADDING;
 
-        TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font);
+        int indicatorWidth = newQuestIndicator.reservedWidth(font, questId);
+        TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font, indicatorWidth);
+        newQuestIndicator.render(g, font, panelX, panelY, questId, panelReveal, now);
         textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
 
         if (showPhaseLanes) {

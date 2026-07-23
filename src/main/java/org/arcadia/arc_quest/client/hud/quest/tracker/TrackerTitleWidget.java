@@ -19,7 +19,18 @@ import java.util.List;
 
 public class TrackerTitleWidget {
 
+    private static final int DESCRIPTION_VISIBLE_LINES = 3;
+    private static final long DESCRIPTION_PAGE_HOLD_MS = 3_200L;
+    private static final long DESCRIPTION_PAGE_TRANSITION_MS = 450L;
+    private static String activeDescriptionKey = "";
+    private static long activeDescriptionStartedAtMs;
+
     public static void renderTitle(GuiGraphics g, QuestRuntimeData tracked, int textX, int textY, float alpha, float wipeAlpha, Font font) {
+        renderTitle(g, tracked, textX, textY, alpha, wipeAlpha, font, 0);
+    }
+
+    public static void renderTitle(GuiGraphics g, QuestRuntimeData tracked, int textX, int textY,
+                                   float alpha, float wipeAlpha, Font font, int reservedRightWidth) {
         int titleA = (int) (255 * alpha * wipeAlpha);
         if (titleA > 8) {
             int iconOffset = 0;
@@ -44,7 +55,8 @@ public class TrackerTitleWidget {
             float timeScale = 0.85f; // 统一、干脆的字体缩放
 
             // 计算面板可用总宽度（也是最右侧边缘的X坐标相对值）
-            int availableW = TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 4 - iconOffset;
+            int availableW = Math.max(0, TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
+                    - TrackerConstants.PADDING * 2 - 4 - iconOffset - reservedRightWidth);
             int maxRightX = textX + iconOffset + availableW;
 
             if (remainSec >= 0) {
@@ -117,7 +129,7 @@ public class TrackerTitleWidget {
         List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
 
         int unscaledLineH = font.lineHeight + 3;
-        return (int) (descLines.size() * unscaledLineH * scale) + 4;
+        return (int) (Math.min(descLines.size(), DESCRIPTION_VISIBLE_LINES) * unscaledLineH * scale) + 4;
     }
 
     public static int renderDescription(GuiGraphics g, PhaseDefinition phase, int textX, int textY, float alpha, float wipeAlpha, Font font) {
@@ -130,19 +142,60 @@ public class TrackerTitleWidget {
             List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
 
             int unscaledLineH = font.lineHeight + 3;
+            int visibleLines = Math.min(descLines.size(), DESCRIPTION_VISIBLE_LINES);
 
             g.pose().pushPose();
             g.pose().translate(textX + 2, textY, 0);
             g.pose().scale(scale, scale, 1f);
 
-            for (int i = 0; i < descLines.size(); i++) {
-                g.drawString(font, descLines.get(i), 0, i * unscaledLineH, HudAnimUtil.withAlpha(0xFFFFFF, descA), false);
+            if (descLines.size() <= DESCRIPTION_VISIBLE_LINES) {
+                renderDescriptionPage(g, font, descLines, 0, visibleLines, unscaledLineH, descA, 0f);
+            } else {
+                String descriptionKey = phase.getDescription().getString();
+                long now = Util.getMillis();
+                if (!descriptionKey.equals(activeDescriptionKey)) {
+                    activeDescriptionKey = descriptionKey;
+                    activeDescriptionStartedAtMs = now;
+                }
+
+                int pageCount = (descLines.size() + DESCRIPTION_VISIBLE_LINES - 1) / DESCRIPTION_VISIBLE_LINES;
+                long pageDuration = DESCRIPTION_PAGE_HOLD_MS + DESCRIPTION_PAGE_TRANSITION_MS;
+                long elapsed = Math.max(0L, now - activeDescriptionStartedAtMs);
+                int currentPage = (int) ((elapsed / pageDuration) % pageCount);
+                long pageElapsed = elapsed % pageDuration;
+                float transition = pageElapsed <= DESCRIPTION_PAGE_HOLD_MS
+                        ? 0f
+                        : smoothStep((pageElapsed - DESCRIPTION_PAGE_HOLD_MS) / (float) DESCRIPTION_PAGE_TRANSITION_MS);
+
+                int currentStart = currentPage * DESCRIPTION_VISIBLE_LINES;
+                int nextStart = ((currentPage + 1) % pageCount) * DESCRIPTION_VISIBLE_LINES;
+                renderDescriptionPage(g, font, descLines, currentStart, visibleLines, unscaledLineH,
+                        (int) (descA * (1f - transition)), -2f * transition);
+                if (transition > 0f) {
+                    renderDescriptionPage(g, font, descLines, nextStart, visibleLines, unscaledLineH,
+                            (int) (descA * transition), 2f * (1f - transition));
+                }
             }
             g.pose().popPose();
 
-            textY += (int) (descLines.size() * unscaledLineH * scale) + 4;
+            textY += (int) (visibleLines * unscaledLineH * scale) + 4;
         }
         return textY;
+    }
+
+    private static void renderDescriptionPage(GuiGraphics graphics, Font font, List<String> lines,
+                                              int start, int maxLines, int lineHeight, int alpha, float offsetY) {
+        if (alpha <= 4) return;
+        int end = Math.min(lines.size(), start + maxLines);
+        for (int index = start; index < end; index++) {
+            graphics.drawString(font, lines.get(index), 0,
+                    (int) (offsetY + (index - start) * lineHeight), HudAnimUtil.withAlpha(0xFFFFFF, alpha), false);
+        }
+    }
+
+    private static float smoothStep(float value) {
+        float clamped = Math.max(0f, Math.min(1f, value));
+        return clamped * clamped * (3f - 2f * clamped);
     }
 
     private static long getQuestRemainSeconds(QuestDefinition def, QuestRuntimeData runtime) {
