@@ -128,7 +128,11 @@ export function validateQuest(state) {
             }
             validateConditionNode(ch?.visibleCondition, `phase:${pi}:choice:${ci}:visibleCondition`, d);
         });
+        const objectiveIds = new Set();
         p.objectives.forEach((o, oi) => {
+            if (!o.id?.trim()) d.push({lvl: 'err', path: `objective:${pi}:${oi}`, msg: 'Objective missing stable id'});
+            if (objectiveIds.has(o.id)) d.push({lvl: 'err', path: `objective:${pi}:${oi}`, msg: `Duplicate objective id: ${o.id}`});
+            objectiveIds.add(o.id);
             if (!o.type) d.push({lvl: 'err', path: `objective:${pi}:${oi}`, msg: 'Objective 缺少 type'});
             if (!OBJECTIVE_TYPES.has(o.type)) d.push({
                 lvl: 'err',

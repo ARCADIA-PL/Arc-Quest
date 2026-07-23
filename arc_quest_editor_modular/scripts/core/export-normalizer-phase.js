@@ -147,6 +147,7 @@ export function exportObjective(o) {
     const type = objectiveType(o.type);
     const targetId = o.targetId || '';
     const out = {
+        id: o.id || '',
         type,
         targetId,
         requiredCount: Number(o.count ?? 1),

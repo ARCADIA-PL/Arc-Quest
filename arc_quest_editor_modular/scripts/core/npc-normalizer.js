@@ -12,6 +12,7 @@ export function normalizeImportedNpc(input) {
         dialogueDistance: typeof input.dialogueDistance === 'number' ? input.dialogueDistance : 8.0,
         shouldLookAtPlayer: input.shouldLookAtPlayer !== false,
         shouldStopMoving: input.shouldStopMoving !== false,
+        interactionPolicy: input.interactionPolicy || 'PARALLEL_PRIVATE',
         interactCondition: input.interactCondition || null,
         onDialogueStartCommands: input.onDialogueStartCommands || [],
         onDialogueEndCommands: input.onDialogueEndCommands || []
@@ -36,6 +37,9 @@ export function exportNpcToDatapack(npc) {
     if (npc.dialogueDistance !== 8.0) out.dialogueDistance = npc.dialogueDistance;
     if (npc.shouldLookAtPlayer === false) out.shouldLookAtPlayer = false;
     if (npc.shouldStopMoving === false) out.shouldStopMoving = false;
+    if (npc.interactionPolicy && npc.interactionPolicy !== 'PARALLEL_PRIVATE') {
+        out.interactionPolicy = npc.interactionPolicy;
+    }
     if (npc.interactCondition) out.interactCondition = npc.interactCondition;
     if (npc.onDialogueStartCommands?.length) out.onDialogueStartCommands = npc.onDialogueStartCommands;
     if (npc.onDialogueEndCommands?.length) out.onDialogueEndCommands = npc.onDialogueEndCommands;
