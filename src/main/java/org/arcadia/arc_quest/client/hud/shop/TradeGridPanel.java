@@ -143,7 +143,7 @@ public class TradeGridPanel {
 
         // =========================================================================
         // PASS 1: 纯 2D 渲染通道 (背景、边框、遮罩、文字、2D图标)
-        // 彻底剔除 g.renderItem()！
+        // 彻底剔除 g.renderFakeItem()！
         // =========================================================================
         for (int i = 0; i < entries.size(); i++) {
             FrameAnimData fd = animData[i];
@@ -273,7 +273,7 @@ public class TradeGridPanel {
 
             int itemDrawY = (int) fd.drawY + (l.cardH() - 16) / 2;
             if (entry.getRewardIcon() == null && !visual.mainStack.isEmpty()) {
-                g.renderItem(visual.mainStack, (int) fd.drawX + 6, itemDrawY);
+                g.renderFakeItem(visual.mainStack, (int) fd.drawX + 6, itemDrawY);
             }
 
             int costX = (int) fd.drawX + 26;
@@ -287,7 +287,7 @@ public class TradeGridPanel {
                     g.pose().pushPose();
                     g.pose().translate(costX, costY - 1, 0);
                     g.pose().scale(0.6f, 0.6f, 1f);
-                    g.renderItem(cost.stack(), 0, 0);
+                    g.renderFakeItem(cost.stack(), 0, 0);
                     g.pose().popPose();
                 }
                 costX += 12;

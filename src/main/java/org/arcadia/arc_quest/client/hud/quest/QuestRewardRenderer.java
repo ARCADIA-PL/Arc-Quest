@@ -87,7 +87,7 @@ public final class QuestRewardRenderer {
         g.pose().pushPose();
         float scale = iconSize / 16f;
         g.pose().scale(scale, scale, 1f);
-        g.renderItem(cache.stack, 0, 0);
+        g.renderFakeItem(cache.stack, 0, 0);
         g.pose().popPose();
 
         String safe = safeText(cache, cache.label, maxWidth - iconSize - ICON_TEXT_GAP - 2, font);

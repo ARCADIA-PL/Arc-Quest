@@ -332,7 +332,10 @@ public class DialogueScreen extends Screen {
         }
         if (choicesVisible && choices.length > 0 && clickedIndex < 0) {
             int choiceW = getChoiceWidth(), choiceH = 34, gap = 8;
-            int choiceX = getChoiceX(), choiceStartY = getChoiceStartY(choiceH, gap);
+            int choiceX = getChoiceX();
+            float baseMasterEase = HudAnimUtil.easeOutCubic(masterAnim);
+            int yOffsetAnim = Math.round((1f - baseMasterEase) * 15f);
+            int choiceStartY = getChoiceStartY(choiceH, gap) + yOffsetAnim;
             for (int i = 0; i < choices.length; i++) {
                 if (isChoiceOnCooldown(i)) continue;
                 int cy = choiceStartY + i * (choiceH + gap);

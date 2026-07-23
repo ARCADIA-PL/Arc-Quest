@@ -146,7 +146,7 @@ public class GachaResultRenderer {
             g.pose().translate(45, frameH / 2f, 0);
             g.pose().scale(3.0f, 3.0f, 1f);
             g.pose().translate(-8, -8, 0);
-            g.renderItem(resolvedItemStack, 0, 0);
+            g.renderFakeItem(resolvedItemStack, 0, 0);
             g.pose().popPose();
         }
 

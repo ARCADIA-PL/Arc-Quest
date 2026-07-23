@@ -222,7 +222,7 @@ public class GachaRollerPanel {
             g.pose().translate(drawX + cardW / 2f, centerY, 0);
             g.pose().scale(iconScale, iconScale, 1f);
             g.pose().translate(-8, -8, 0);
-            g.renderItem(rollStrip.get(i).getItemStack(), 0, 0);
+            g.renderFakeItem(rollStrip.get(i).getItemStack(), 0, 0);
             g.pose().popPose();
 
             g.pose().popPose();

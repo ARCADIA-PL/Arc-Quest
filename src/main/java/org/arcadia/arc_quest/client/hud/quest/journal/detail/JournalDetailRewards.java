@@ -169,7 +169,7 @@ public class JournalDetailRewards {
                         g.pose().translate(itemCx, itemCy, 0);
                         g.pose().scale(itemDAlpha, itemDAlpha, 1f);
                         g.pose().translate(-itemCx, -itemCy, 0);
-                        g.renderItem(stack, finalItemX + 4, 2);
+                        g.renderFakeItem(stack, finalItemX + 4, 2);
                         g.pose().translate(0, 0, 200);
                         g.renderItemDecorations(font, stack, finalItemX + 4, 2);
                         g.pose().popPose();

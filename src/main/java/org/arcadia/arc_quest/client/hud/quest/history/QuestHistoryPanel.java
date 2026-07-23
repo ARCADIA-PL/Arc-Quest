@@ -551,7 +551,7 @@ public final class QuestHistoryPanel {
             RenderSystem.enableDepthTest();
             for (RewardRenderData reward : tooltipData.rewards) {
                 if (reward.item) {
-                    g.renderItem(reward.stack, contentX + 2, contentY + 2);
+                    g.renderFakeItem(reward.stack, contentX + 2, contentY + 2);
                     g.renderItemDecorations(font, reward.stack, contentX + 2, contentY + 2);
                 }
                 contentY += 22;

@@ -474,7 +474,7 @@ public final class QuestOfferPanel {
 
         if (contentAlpha > 5 && !iconToRender.isEmpty() && !cleared) {
             g.pose().pushPose();
-            g.renderItem(iconToRender, iconX, iconY);
+            g.renderFakeItem(iconToRender, iconX, iconY);
             g.renderItemDecorations(font, iconToRender, iconX, iconY);
             g.pose().popPose();
         }

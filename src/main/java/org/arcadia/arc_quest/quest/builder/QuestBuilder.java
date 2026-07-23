@@ -4,6 +4,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -99,6 +101,23 @@ public final class QuestBuilder {
 
     public QuestBuilder icon(ResourceLocation texture) {
         iconTexture = texture;
+        return this;
+    }
+
+    /**
+     * 直接传入物品，通过原版物品模型渲染图标（无纹理路径猜测问题）。
+     */
+    public QuestBuilder icon(Item item) {
+        return icon(new ItemStack(item));
+    }
+
+    /**
+     * 直接传入 ItemStack，通过原版物品模型渲染图标。
+     */
+    public QuestBuilder icon(ItemStack stack) {
+        VisualAsset asset = VisualAsset.of(stack);
+        visualConfigBuilder.icon(IconPosition.QUEST_LIST, asset);
+        visualConfigBuilder.icon(IconPosition.QUEST_TITLE, asset);
         return this;
     }
 

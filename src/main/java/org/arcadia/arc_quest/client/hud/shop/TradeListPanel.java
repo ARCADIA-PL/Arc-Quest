@@ -256,7 +256,7 @@ public class TradeListPanel {
                     g.pose().pushPose();
                     g.pose().translate(cx + 12, cy + 16, 0);
                     g.pose().scale(1.2f, 1.2f, 1f);
-                    g.renderItem(visual.mainStack, 0, 0);
+                    g.renderFakeItem(visual.mainStack, 0, 0);
                     g.pose().popPose();
                 }
 
@@ -270,7 +270,7 @@ public class TradeListPanel {
                         g.pose().pushPose();
                         g.pose().translate(cX, costY - 1, 0);
                         g.pose().scale(0.6f, 0.6f, 1f);
-                        g.renderItem(cost.stack(), 0, 0);
+                        g.renderFakeItem(cost.stack(), 0, 0);
                         g.pose().popPose();
                     }
 
