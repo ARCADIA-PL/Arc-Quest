@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
@@ -8,270 +9,407 @@ import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.quest.api.IconPosition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
+import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-    public class JournalListPanel {
+public class JournalListPanel {
     private final QuestJournalScreen screen;
+    private final JournalGroupEntryRenderer groupRenderer;
     private final Map<String, TextCache> textCache = new HashMap<>();
+    private final Map<ResourceLocation, Boolean> groupExpanded = new HashMap<>();
+    private final Map<ResourceLocation, Float> groupExpansion = new HashMap<>();
+    private List<JournalListLayout.Row> rows = List.of();
     private float selectedSlide = -1f;
     private float[] entryHoverAnim = new float[0];
-    private double scrollOffset = 0;
-    private double targetScroll = 0;
-    private boolean isDraggingListScrollbar = false;
-    private double dragListYOffset = 0;
+    private double scrollOffset;
+    private double targetScroll;
+    private boolean draggingScrollbar;
+    private double dragScrollbarOffset;
 
     public JournalListPanel(QuestJournalScreen screen) {
         this.screen = screen;
+        this.groupRenderer = new JournalGroupEntryRenderer(screen);
     }
 
     public void resetState() {
-        entryHoverAnim = new float[screen.getCurrentEntries().size()];
-        selectedSlide = screen.getSelectedIndex();
+        rebuildRows();
+        selectedSlide = getSelectedRowTop();
         scrollToSelected();
+    }
+
+    private void rebuildRows() {
+        rows = JournalListLayout.build(screen.getCurrentEntries(), QuestGroupRegistry::getGroupForQuest);
+        for (JournalListLayout.Row row : rows) {
+            if (row instanceof JournalListLayout.GroupRow groupRow) {
+                ResourceLocation groupId = groupRow.group().getId();
+                groupExpansion.putIfAbsent(groupId, isGroupExpanded(groupId) ? 1f : 0f);
+            }
+        }
+        entryHoverAnim = new float[rows.size()];
         textCache.clear();
     }
 
+    private boolean isGroupExpanded(ResourceLocation groupId) {
+        return groupExpanded.getOrDefault(groupId, true);
+    }
+
+    private void updateGroupAnimations(float deltaTime) {
+        for (JournalListLayout.Row row : rows) {
+            if (!(row instanceof JournalListLayout.GroupRow groupRow)) continue;
+            ResourceLocation groupId = groupRow.group().getId();
+            float current = groupExpansion.getOrDefault(groupId, 1f);
+            float target = isGroupExpanded(groupId) ? 1f : 0f;
+            groupExpansion.put(groupId, HudAnimUtil.step(current, target, 4.5f, deltaTime));
+        }
+    }
+
+    private float getExpansion(JournalListLayout.QuestRow row) {
+        if (!row.grouped()) return 1f;
+        return HudAnimUtil.smoothStep(groupExpansion.getOrDefault(row.groupId(), 1f));
+    }
+
+    private float getRowHeight(JournalListLayout.Row row) {
+        if (row instanceof JournalListLayout.GroupRow) return JournalConstants.GROUP_ENTRY_HEIGHT;
+        JournalListLayout.QuestRow questRow = (JournalListLayout.QuestRow) row;
+        return JournalConstants.ENTRY_HEIGHT * getExpansion(questRow);
+    }
+
+    private float getRowTop(int targetIndex) {
+        float top = 0f;
+        for (int index = 0; index < targetIndex && index < rows.size(); index++) {
+            top += getRowHeight(rows.get(index));
+        }
+        return top;
+    }
+
+    private int getSelectedRowIndex() {
+        int selectedQuestIndex = screen.getSelectedIndex();
+        for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+            if (rows.get(rowIndex) instanceof JournalListLayout.QuestRow questRow
+                    && questRow.questIndex() == selectedQuestIndex
+                    && getRowHeight(questRow) > 1f) {
+                return rowIndex;
+            }
+        }
+        return -1;
+    }
+
+    private float getSelectedRowTop() {
+        int selectedRowIndex = getSelectedRowIndex();
+        return selectedRowIndex >= 0 ? getRowTop(selectedRowIndex) : -1f;
+    }
+
+    private int getContentHeight() {
+        float height = 0f;
+        for (JournalListLayout.Row row : rows) height += getRowHeight(row);
+        return (int) Math.ceil(height);
+    }
+
     private void scrollToSelected() {
-        int idx = screen.getSelectedIndex();
-        if (idx < 0) {
+        float selectedTop = getSelectedRowTop();
+        if (selectedTop < 0f) {
             targetScroll = 0;
             scrollOffset = 0;
             return;
         }
-        int selectedTop = idx * JournalConstants.ENTRY_HEIGHT;
         targetScroll = Math.max(0, selectedTop - JournalConstants.ENTRY_HEIGHT);
         scrollOffset = targetScroll;
     }
 
-    public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
-        clampScroll(h);
-        scrollOffset += Math.abs(targetScroll - scrollOffset) > 0.5 ? (targetScroll - scrollOffset) * Math.min(1.0, dt * 14.0) : (targetScroll - scrollOffset);
+    public void render(GuiGraphics graphics, int x, int y, int width, int height,
+                       int mouseX, int mouseY, int theme, float deltaTime) {
+        updateGroupAnimations(deltaTime);
+        clampScroll(height);
+        scrollOffset += Math.abs(targetScroll - scrollOffset) > 0.5
+                ? (targetScroll - scrollOffset) * Math.min(1.0, deltaTime * 14.0)
+                : targetScroll - scrollOffset;
 
-        screen.enableScissor(g, x, y, x + w - 6, y + h);
-
-        int selectedIndex = screen.getSelectedIndex();
+        screen.enableScissor(graphics, x, y, x + width - 6, y + height);
         float effectiveAlpha = screen.getEffectiveAlpha();
+        int selectedRowIndex = getSelectedRowIndex();
+        float selectedTop = getSelectedRowTop();
 
-        if (selectedIndex >= 0) {
-            if (selectedSlide < 0) selectedSlide = selectedIndex;
-            selectedSlide = HudAnimUtil.lerp(selectedSlide, selectedIndex, 0.25f, dt);
-            int hlY = (int) (y + 2 - scrollOffset + selectedSlide * JournalConstants.ENTRY_HEIGHT);
-
+        if (selectedRowIndex >= 0 && selectedTop >= 0f) {
+            if (selectedSlide < 0f) selectedSlide = selectedTop;
+            selectedSlide = HudAnimUtil.lerp(selectedSlide, selectedTop, 0.25f, deltaTime);
+            JournalListLayout.QuestRow selectedRow = (JournalListLayout.QuestRow) rows.get(selectedRowIndex);
+            float selectedHeight = getRowHeight(selectedRow);
+            int highlightY = (int) (y + 2 - scrollOffset + selectedSlide);
             int entryTheme = theme;
-            if (selectedIndex < screen.getCurrentEntries().size() && screen.getCurrentEntries().get(selectedIndex).def() != null) {
-                int defTheme = screen.getCurrentEntries().get(selectedIndex).def().getThemeColor();
-                if (defTheme != 0xFFFFFFFF) entryTheme = defTheme;
+            if (selectedRow.entry().def() != null) {
+                int definitionTheme = selectedRow.entry().def().getThemeColor();
+                if (definitionTheme != 0xFFFFFFFF) entryTheme = definitionTheme;
             }
-
-            g.fill(x + 2, hlY, x + w - 8, hlY + JournalConstants.ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
-            drawCyberneticEdge(g, x + 2, hlY, JournalConstants.ENTRY_HEIGHT - 2, entryTheme, (int) (0xFF * effectiveAlpha));
+            graphics.fill(x + 2, highlightY, x + width - 8,
+                    highlightY + Math.max(1, (int) selectedHeight - 2),
+                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
+            drawCyberneticEdge(graphics, x + 2, highlightY,
+                    Math.max(1, (int) selectedHeight - 2), entryTheme,
+                    (int) (0xFF * effectiveAlpha));
         }
 
-        int firstVisible = Math.max(0, (int) ((scrollOffset - 2 - JournalConstants.ENTRY_HEIGHT) / JournalConstants.ENTRY_HEIGHT));
-        int lastVisible = Math.min(screen.getCurrentEntries().size() - 1, (int) ((scrollOffset + h) / JournalConstants.ENTRY_HEIGHT) + 1);
-
-        for (int i = firstVisible; i <= lastVisible; i++) {
-            JournalTypes.QuestListEntry entry = screen.getCurrentEntries().get(i);
-            int entryY = (int) (y + 2 - scrollOffset + i * JournalConstants.ENTRY_HEIGHT);
-            if (entryY + JournalConstants.ENTRY_HEIGHT < y || entryY > y + h) {
-                if (i < entryHoverAnim.length) entryHoverAnim[i] = 0f;
+        float rowTop = 0f;
+        for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+            JournalListLayout.Row row = rows.get(rowIndex);
+            float rowHeight = getRowHeight(row);
+            int entryY = (int) (y + 2 - scrollOffset + rowTop);
+            rowTop += rowHeight;
+            if (rowHeight < 0.5f || entryY + rowHeight < y || entryY > y + height) {
+                if (rowIndex < entryHoverAnim.length) entryHoverAnim[rowIndex] = 0f;
                 continue;
             }
 
-            boolean hovered = mx >= x && mx <= x + w - 8 && my >= entryY && my <= entryY + JournalConstants.ENTRY_HEIGHT && my >= y && my <= y + h;
-            if (i < entryHoverAnim.length)
-                entryHoverAnim[i] = HudAnimUtil.step(entryHoverAnim[i], hovered ? 1f : 0f, 8f, dt);
-            float eHover = HudAnimUtil.easeOutCubic(i < entryHoverAnim.length ? entryHoverAnim[i] : 0f);
+            boolean hovered = mouseX >= x && mouseX <= x + width - 8
+                    && mouseY >= entryY && mouseY <= entryY + rowHeight
+                    && mouseY >= y && mouseY <= y + height;
+            entryHoverAnim[rowIndex] = HudAnimUtil.step(
+                    entryHoverAnim[rowIndex], hovered ? 1f : 0f, 8f, deltaTime);
+            float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[rowIndex]);
 
-            if (i != selectedIndex && eHover > 0.01f) {
-                g.fill(x + 2, entryY, x + w - 8, entryY + JournalConstants.ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (eHover * 0x22 * effectiveAlpha)));
-            }
-
-            if (effectiveAlpha > 0.05f) {
-                int baseGray = (int) (0xAA + 0x55 * eHover);
-                int nameColor = (i == selectedIndex) ? HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)) : HudAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray, (int) (255 * effectiveAlpha));
-
-                int textOffsetX = 10;
-                if (entry.def() != null) {
-                    entry.def().getVisualConfig().getIcon(IconPosition.QUEST_LIST).ifPresent(icon -> {
-                        QuestIconRenderer.renderIcon(g, icon, x + 10, entryY + (JournalConstants.ENTRY_HEIGHT - 12) / 2, 12, 12);
-                    });
-                    if (entry.def().getVisualConfig().getIcon(IconPosition.QUEST_LIST).isPresent()) {
-                        textOffsetX = 26;
-                    }
+            if (row instanceof JournalListLayout.GroupRow groupRow) {
+                ResourceLocation groupId = groupRow.group().getId();
+                groupRenderer.render(graphics, groupRow, x, entryY, width, theme,
+                        groupExpansion.getOrDefault(groupId, 1f), hover, effectiveAlpha,
+                        hasUnread(groupRow));
+            } else if (row instanceof JournalListLayout.QuestRow questRow) {
+                if (rowIndex != selectedRowIndex && hover > 0.01f) {
+                    graphics.fill(x + 2, entryY, x + width - 8,
+                            entryY + Math.max(1, (int) rowHeight - 2),
+                            HudAnimUtil.withAlpha(0xFFFFFF,
+                                    (int) (hover * 0x22 * effectiveAlpha * getExpansion(questRow))));
                 }
-
-                int maxDrawWidth = w - textOffsetX - 16;
-                TextCache cachedText = getTextCache(entry);
-                String displayName = cachedText.displayName;
-                int textW = cachedText.width;
-                float baseScale = 1f;
-
-                if (textW > maxDrawWidth) {
-                    baseScale = Math.max(0.75f, (float) maxDrawWidth / textW);
-                    if (textW * baseScale > maxDrawWidth) {
-                        if (cachedText.lastMaxWidth != maxDrawWidth) {
-                            int allowedW = (int) (maxDrawWidth / 0.75f) - screen.getFont().width("...");
-                            cachedText.lastDrawName = screen.getFont().plainSubstrByWidth(displayName, allowedW) + "...";
-                            cachedText.lastMaxWidth = maxDrawWidth;
-                        }
-                        displayName = cachedText.lastDrawName;
-                    }
-                }
-
-                float finalScale = baseScale * (1f + 0.03f * eHover);
-
-                g.pose().pushPose();
-                float textY = entryY + (JournalConstants.ENTRY_HEIGHT - screen.getFont().lineHeight * finalScale) / 2f - 0.5f;
-
-                g.pose().translate(x + textOffsetX, textY, 0);
-                g.pose().scale(finalScale, finalScale, 1f);
-                g.drawString(screen.getFont(), displayName, 0, 0, nameColor, false);
-                g.pose().popPose();
-
-                if (entry.def() != null && entry.def().isCollectionQuest()) {
-                    int done = ClientQuestCache.INSTANCE.getCollectionCompletedEntryCount(entry.questId());
-                    int total = ClientQuestCache.INSTANCE.getCollectionTotalEntryCount(entry.questId());
-                    String summary = done + "/" + total + " collected";
-                    g.pose().pushPose();
-                    g.pose().translate(x + textOffsetX, entryY + JournalConstants.ENTRY_HEIGHT - 9, 0);
-                    g.pose().scale(0.75f, 0.75f, 1f);
-                    g.drawString(screen.getFont(), summary, 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * effectiveAlpha)), false);
-                    g.pose().popPose();
-                }
-
-                String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
-                if (QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
-                        && !entry.questId().equals(trackedQuestId)) {
-                    int dotX = x + w - 18;
-                    int dotY = entryY + (JournalConstants.ENTRY_HEIGHT - 2) / 2;
-                    HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, effectiveAlpha);
-                }
+                renderQuestRow(graphics, questRow, rowIndex == selectedRowIndex,
+                        x, entryY, width, rowHeight, hover, effectiveAlpha);
             }
         }
-        g.disableScissor();
+        graphics.disableScissor();
 
-        int maxScroll = Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - h);
-        renderScrollbar(g, x + w - 6, y + 2, h - 4, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT, maxScroll);
+        int contentHeight = getContentHeight();
+        int maxScroll = Math.max(0, contentHeight - height);
+        renderScrollbar(graphics, x + width - 6, y + 2, height - 4, contentHeight, maxScroll);
+        renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
+    }
+
+    private boolean hasUnread(JournalListLayout.GroupRow row) {
+        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        return row.quests().stream().anyMatch(entry ->
+                QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
+                        && !entry.questId().equals(trackedQuestId));
+    }
+
+    private void renderQuestRow(GuiGraphics graphics, JournalListLayout.QuestRow row,
+                                boolean selected, int x, int y, int width, float rowHeight,
+                                float hover, float effectiveAlpha) {
+        float expansion = getExpansion(row);
+        float rowAlpha = effectiveAlpha * expansion;
+        if (rowAlpha <= 0.03f) return;
+
+        JournalTypes.QuestListEntry entry = row.entry();
+        int baseGray = (int) (0xAA + 0x55 * hover);
+        int nameColor = selected
+                ? HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * rowAlpha))
+                : HudAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray,
+                (int) (255 * rowAlpha));
+
+        int indent = row.grouped() ? 16 : 0;
+        int textOffsetX = 10 + indent;
+        int iconX = x + 10 + indent;
+
+        if (entry.def() != null) {
+            entry.def().getVisualConfig().getIcon(IconPosition.QUEST_LIST).ifPresent(icon ->
+                    QuestIconRenderer.renderIcon(graphics, icon, iconX,
+                            y + Math.max(0, ((int) rowHeight - 12) / 2), 12, 12, rowAlpha));
+            if (entry.def().getVisualConfig().getIcon(IconPosition.QUEST_LIST).isPresent()) {
+                textOffsetX += 16;
+            }
+        }
+
+        int maxDrawWidth = width - textOffsetX - 16;
+        TextCache cachedText = getTextCache("quest:" + entry.questId(), entry.displayName());
+        float baseScale = cachedText.width > maxDrawWidth
+                ? Math.max(0.75f, (float) maxDrawWidth / cachedText.width)
+                : 1f;
+        String displayName = cachedText.width * baseScale > maxDrawWidth
+                ? fitText(cachedText, maxDrawWidth, 0.75f)
+                : cachedText.displayName;
+        float finalScale = baseScale * (1f + 0.03f * hover);
+        float slideX = row.grouped() ? (1f - expansion) * -8f : 0f;
+
+        graphics.pose().pushPose();
+        float textY = y + (rowHeight - screen.getFont().lineHeight * finalScale) / 2f - 0.5f;
+        graphics.pose().translate(x + textOffsetX + slideX, textY, 0);
+        graphics.pose().scale(finalScale, finalScale, 1f);
+        graphics.drawString(screen.getFont(), displayName, 0, 0, nameColor, false);
+        graphics.pose().popPose();
+
+        if (entry.def() != null && entry.def().isCollectionQuest() && rowHeight > 17f) {
+            int done = ClientQuestCache.INSTANCE.getCollectionCompletedEntryCount(entry.questId());
+            int total = ClientQuestCache.INSTANCE.getCollectionTotalEntryCount(entry.questId());
+            graphics.pose().pushPose();
+            graphics.pose().translate(x + textOffsetX + slideX, y + rowHeight - 9, 0);
+            graphics.pose().scale(0.75f, 0.75f, 1f);
+            graphics.drawString(screen.getFont(), done + "/" + total + " collected", 0, 0,
+                    HudAnimUtil.withAlpha(0xAAAAAA, (int) (255 * rowAlpha)), false);
+            graphics.pose().popPose();
+        }
 
         String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
-        if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(trackedQuestId)) {
-            int btnX = x + 4;
-            int btnY = y + h - 18;
-            int btnW = 80;
-            int btnH = 14;
-            boolean hoverBtn = mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH;
-            int btnBg = hoverBtn ? HudAnimUtil.withAlpha(theme, (int) (0.25f * effectiveAlpha)) : HudAnimUtil.withAlpha(theme, (int) (0.10f * effectiveAlpha));
-            g.fill(btnX, btnY, btnX + btnW, btnY + btnH, btnBg);
-            g.fill(btnX, btnY, btnX + 1, btnY + btnH, HudAnimUtil.withAlpha(theme, (int) (0.5f * effectiveAlpha)));
-            g.pose().pushPose();
-            g.pose().translate(btnX + 4, btnY + 3, 0);
-            g.pose().scale(0.65f, 0.65f, 1f);
-            g.drawString(screen.getFont(), "MARK ALL READ", 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)), false);
-            g.pose().popPose();
+        if (QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
+                && !entry.questId().equals(trackedQuestId)) {
+            HudRenderUtil.drawBreathingRedDot(graphics, x + width - 18,
+                    y + Math.max(1, (int) rowHeight / 2), rowAlpha);
         }
     }
 
-    private TextCache getTextCache(JournalTypes.QuestListEntry entry) {
-        String key = entry.displayName();
-        return textCache.computeIfAbsent(key, k -> {
+    private void renderMarkAllRead(GuiGraphics graphics, int x, int y, int width, int height,
+                                   int mouseX, int mouseY, int theme, float effectiveAlpha) {
+        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
+        if (!QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(trackedQuestId)) return;
+        int buttonX = x + 4;
+        int buttonY = y + height - 18;
+        int buttonWidth = 80;
+        int buttonHeight = 14;
+        boolean hovered = mouseX >= buttonX && mouseX <= buttonX + buttonWidth
+                && mouseY >= buttonY && mouseY <= buttonY + buttonHeight;
+        int background = hovered
+                ? HudAnimUtil.withAlpha(theme, (int) (0.25f * effectiveAlpha))
+                : HudAnimUtil.withAlpha(theme, (int) (0.10f * effectiveAlpha));
+        graphics.fill(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, background);
+        graphics.fill(buttonX, buttonY, buttonX + 1, buttonY + buttonHeight,
+                HudAnimUtil.withAlpha(theme, (int) (0.5f * effectiveAlpha)));
+        graphics.pose().pushPose();
+        graphics.pose().translate(buttonX + 4, buttonY + 3, 0);
+        graphics.pose().scale(0.65f, 0.65f, 1f);
+        graphics.drawString(screen.getFont(), "MARK ALL READ", 0, 0,
+                HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)), false);
+        graphics.pose().popPose();
+    }
+
+    private TextCache getTextCache(String key, String displayName) {
+        return textCache.computeIfAbsent(key, ignored -> {
             TextCache cache = new TextCache();
-            cache.displayName = k;
-            cache.width = screen.getFont().width(k);
+            cache.displayName = displayName;
+            cache.width = screen.getFont().width(displayName);
             return cache;
         });
     }
 
-    private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, int maxScroll) {
-        if (maxScroll <= 0) return;
-        int thumbH = Math.max(16, (int) (((float) viewH / contentH) * viewH));
-        int thumbY = y + (int) ((scrollOffset / maxScroll) * (viewH - thumbH));
-        g.fill(x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
-        g.fill(x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isDraggingListScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
+    private String fitText(TextCache cachedText, int maxDrawWidth, float scale) {
+        if (cachedText.lastMaxWidth != maxDrawWidth || cachedText.lastScale != scale) {
+            int allowedWidth = (int) (maxDrawWidth / scale) - screen.getFont().width("...");
+            cachedText.lastDrawName = screen.getFont().plainSubstrByWidth(
+                    cachedText.displayName, Math.max(0, allowedWidth)) + "...";
+            cachedText.lastMaxWidth = maxDrawWidth;
+            cachedText.lastScale = scale;
+        }
+        return cachedText.lastDrawName;
     }
 
-    public void clampScroll(int listH) {
-        targetScroll = Math.max(0, Math.min(targetScroll, Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - listH)));
+    private void renderScrollbar(GuiGraphics graphics, int x, int y,
+                                 int viewHeight, int contentHeight, int maxScroll) {
+        if (maxScroll <= 0 || contentHeight <= 0) return;
+        int thumbHeight = Math.max(16, (int) (((float) viewHeight / contentHeight) * viewHeight));
+        int thumbY = y + (int) ((scrollOffset / maxScroll) * (viewHeight - thumbHeight));
+        graphics.fill(x, y, x + 4, y + viewHeight,
+                HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
+        graphics.fill(x, thumbY, x + 4, thumbY + thumbHeight,
+                HudAnimUtil.withAlpha(0xFFFFFF,
+                        (int) ((draggingScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
     }
 
-    public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
-        int maxListScroll = Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - h);
-        int listScrollbarX = x + w - 6;
+    public void clampScroll(int listHeight) {
+        targetScroll = Math.max(0, Math.min(targetScroll, Math.max(0, getContentHeight() - listHeight)));
+    }
 
-        if (maxListScroll > 0 && mx >= listScrollbarX && mx <= listScrollbarX + 6 && my >= y && my <= y + h) {
-            isDraggingListScrollbar = true;
-            int thumbH = Math.max(16, (int) (((float) h / (screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT)) * h));
-            int thumbY = y + (int) ((scrollOffset / maxListScroll) * (h - thumbH));
-            if (my >= thumbY && my <= thumbY + thumbH) dragListYOffset = my - thumbY;
-            else {
-                dragListYOffset = thumbH / 2.0;
-                updateScrollFromMouse(my, y, h, maxListScroll);
+    public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
+        int contentHeight = getContentHeight();
+        int maxListScroll = Math.max(0, contentHeight - height);
+        int scrollbarX = x + width - 6;
+        if (maxListScroll > 0 && mouseX >= scrollbarX && mouseX <= scrollbarX + 6
+                && mouseY >= y && mouseY <= y + height) {
+            draggingScrollbar = true;
+            int thumbHeight = Math.max(16, (int) (((float) height / contentHeight) * height));
+            int thumbY = y + (int) ((scrollOffset / maxListScroll) * (height - thumbHeight));
+            if (mouseY >= thumbY && mouseY <= thumbY + thumbHeight) {
+                dragScrollbarOffset = mouseY - thumbY;
+            } else {
+                dragScrollbarOffset = thumbHeight / 2.0;
+                updateScrollFromMouse(mouseY, y, height, maxListScroll);
             }
             return true;
         }
 
-        if (mx >= x && mx <= x + w - 6 && my >= y && my <= y + h) {
-            if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(QuestHudOverlay.INSTANCE.getTrackedQuestId())
-                    && mx >= x + 4 && mx <= x + 84 && my >= y + h - 18 && my <= y + h - 4) {
-                QuestChangeNotificationManager.INSTANCE.markAllRead();
-                screen.playClick();
+        if (mouseX < x || mouseX > x + width - 6 || mouseY < y || mouseY > y + height) return false;
+        if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(
+                QuestHudOverlay.INSTANCE.getTrackedQuestId())
+                && mouseX >= x + 4 && mouseX <= x + 84
+                && mouseY >= y + height - 18 && mouseY <= y + height - 4) {
+            QuestChangeNotificationManager.INSTANCE.markAllRead();
+            screen.playClick();
+            return true;
+        }
+
+        double relativeY = mouseY - y + scrollOffset;
+        float rowTop = 0f;
+        for (JournalListLayout.Row row : rows) {
+            float rowHeight = getRowHeight(row);
+            if (rowHeight >= 1f && relativeY >= rowTop && relativeY < rowTop + rowHeight) {
+                if (row instanceof JournalListLayout.GroupRow groupRow) {
+                    ResourceLocation groupId = groupRow.group().getId();
+                    groupExpanded.put(groupId, !isGroupExpanded(groupId));
+                    screen.playClick();
+                } else if (row instanceof JournalListLayout.QuestRow questRow && rowHeight > 4f) {
+                    screen.onEntrySelected(questRow.questIndex());
+                }
                 return true;
             }
-            double relY = my - y + scrollOffset;
-            int idx = (int) (relY / JournalConstants.ENTRY_HEIGHT);
-            if (idx >= 0 && idx < screen.getCurrentEntries().size()) {
-                screen.onEntrySelected(idx);
-                return true;
-            }
+            rowTop += rowHeight;
         }
         return false;
     }
 
-    public boolean mouseDragged(double mx, double my, int y, int h) {
-        if (isDraggingListScrollbar) {
-            updateScrollFromMouse(my, y, h, Math.max(0, screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT - h));
-            return true;
-        }
-        return false;
+    public boolean mouseDragged(double mouseX, double mouseY, int y, int height) {
+        if (!draggingScrollbar) return false;
+        updateScrollFromMouse(mouseY, y, height, Math.max(0, getContentHeight() - height));
+        return true;
     }
 
     public boolean mouseReleased(int button) {
-        if (button == 0) isDraggingListScrollbar = false;
-        return isDraggingListScrollbar;
+        boolean wasDragging = draggingScrollbar;
+        if (button == 0) draggingScrollbar = false;
+        return wasDragging;
     }
 
-    public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
-        if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta,
+                                 int x, int y, int width, int height) {
+        if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
             targetScroll -= delta * JournalConstants.ENTRY_HEIGHT;
-            clampScroll(h);
+            clampScroll(height);
             return true;
         }
         return false;
     }
 
-    private void updateScrollFromMouse(double my, int y0, int viewH, int maxScroll) {
+    private void updateScrollFromMouse(double mouseY, int y, int viewHeight, int maxScroll) {
         if (maxScroll <= 0) return;
-        int thumbH = Math.max(16, (int) (((float) viewH / (screen.getCurrentEntries().size() * JournalConstants.ENTRY_HEIGHT)) * viewH));
-        targetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragListYOffset) / (viewH - thumbH))) * maxScroll;
+        int contentHeight = getContentHeight();
+        int thumbHeight = Math.max(16, (int) (((float) viewHeight / contentHeight) * viewHeight));
+        targetScroll = Math.max(0.0, Math.min(1.0,
+                (mouseY - y - dragScrollbarOffset) / (viewHeight - thumbHeight))) * maxScroll;
     }
 
-    private void drawCyberneticEdge(GuiGraphics g, int x, int y, int height, int themeColor, int alpha) {
+    private void drawCyberneticEdge(GuiGraphics graphics, int x, int y,
+                                    int height, int themeColor, int alpha) {
         if (alpha < 5) return;
-
         int coreColor = themeColor & 0xFFFFFF;
-        int topAlpha = alpha;
-        int botAlpha = (int) (alpha * 0.15f);
-
-        int colorTop = coreColor | (topAlpha << 24);
-        int colorBot = coreColor | (botAlpha << 24);
-
-        g.fillGradient(x, y, x + 3, y + height, colorTop, colorBot);
-
-        int glowAlpha = (int) (topAlpha * 0.8f);
-        int colorGlow = 0xFFFFFF | (glowAlpha << 24);
-        g.fillGradient(x, y, x + 1, y + (height / 2), colorGlow, colorTop);
+        int topColor = coreColor | (alpha << 24);
+        int bottomColor = coreColor | ((int) (alpha * 0.15f) << 24);
+        graphics.fillGradient(x, y, x + 3, y + height, topColor, bottomColor);
+        int glowColor = 0xFFFFFF | ((int) (alpha * 0.8f) << 24);
+        graphics.fillGradient(x, y, x + 1, y + (height / 2), glowColor, topColor);
     }
 
     private static class TextCache {
@@ -279,6 +417,6 @@ import java.util.Map;
         int width;
         String lastDrawName;
         int lastMaxWidth = Integer.MIN_VALUE;
-        float lastScale = 1f;
+        float lastScale = -1f;
     }
 }
