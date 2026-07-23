@@ -75,7 +75,7 @@ public final class DialogueActionExecutor {
 
             // GAME_TICK 类型：先检测时间回退，若回退则清除记录并跳过冷却
             if (choice.cooldownType() == CooldownType.GAME_TICK) {
-                if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
+                if (progress.clearIfTimeRegressed(choiceKey, ts.dayTime())) {
                     return true;
                 }
             }

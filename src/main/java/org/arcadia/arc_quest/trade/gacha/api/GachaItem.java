@@ -2,9 +2,11 @@ package org.arcadia.arc_quest.trade.gacha.api;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.quest.api.ICondition;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.jetbrains.annotations.Nullable;
@@ -207,7 +209,9 @@ public class GachaItem {
         if (visibleCondition == null) return true;
 
         var completedQuests = data.getCompletedQuestLocations();
-        return visibleCondition.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+        return CoreProcessors.get().conditions().evaluate(visibleCondition,
+                new QuestConditionContext(
+                        player, completedQuests, data.getAllFlags(), data.getAllVariables()));
     }
 
     /**
@@ -219,7 +223,9 @@ public class GachaItem {
         if (visibleCondition == null) return true;
 
         var completedQuests = data.getCompletedQuestLocations();
-        return visibleCondition.testClient(completedQuests, data.getAllFlags(), data.getAllVariables());
+        return CoreProcessors.get().conditions().evaluate(visibleCondition,
+                new QuestConditionContext(
+                        null, completedQuests, data.getAllFlags(), data.getAllVariables()));
     }
 
     /**
@@ -264,7 +270,9 @@ public class GachaItem {
         public boolean matches(ServerPlayer player, ArcQuestPlayer data) {
             if (player == null || data == null) return false;
             var completedQuests = data.getCompletedQuestLocations();
-            return condition.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+            return CoreProcessors.get().conditions().evaluate(condition,
+                    new QuestConditionContext(
+                            player, completedQuests, data.getAllFlags(), data.getAllVariables()));
         }
 
         public int getWeightDelta() {

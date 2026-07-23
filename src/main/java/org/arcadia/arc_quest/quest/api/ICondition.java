@@ -2,10 +2,13 @@ package org.arcadia.arc_quest.quest.api;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.condition.CoreCondition;
 import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -27,7 +30,7 @@ import java.util.Set;
  * </ul>
  */
 @FunctionalInterface
-public interface ICondition {
+public interface ICondition extends CoreCondition<QuestConditionContext> {
 
     /**
      * 永远为 true 的条件（无前置）
@@ -116,6 +119,11 @@ public interface ICondition {
                  Set<String> flags,
                  Map<String, Integer> variables);
 
+    @Override
+    default boolean evaluate(QuestConditionContext context) {
+        return test(context.player(), context.completedQuests(), context.flags(), context.variables());
+    }
+
     /**
      * 测试条件是否满足（客户端简化版本）
      * <p>
@@ -151,7 +159,8 @@ public interface ICondition {
         return new ICondition() {
             @Override
             public boolean test(@Nullable ServerPlayer serverPlayer, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
-                return self.test(serverPlayer, cq, f, v) && other.test(serverPlayer, cq, f, v);
+                return CoreProcessors.get().conditions().all(
+                        List.of(self, other), new QuestConditionContext(serverPlayer, cq, f, v));
             }
 
             @Override
@@ -166,7 +175,8 @@ public interface ICondition {
         return new ICondition() {
             @Override
             public boolean test(@Nullable ServerPlayer serverPlayer, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
-                return self.test(serverPlayer, cq, f, v) || other.test(serverPlayer, cq, f, v);
+                return CoreProcessors.get().conditions().any(
+                        List.of(self, other), new QuestConditionContext(serverPlayer, cq, f, v));
             }
 
             @Override
@@ -181,7 +191,8 @@ public interface ICondition {
         return new ICondition() {
             @Override
             public boolean test(@Nullable ServerPlayer serverPlayer, Set<ResourceLocation> cq, Set<String> f, Map<String, Integer> v) {
-                return !self.test(serverPlayer, cq, f, v);
+                return CoreProcessors.get().conditions().none(
+                        self, new QuestConditionContext(serverPlayer, cq, f, v));
             }
 
             @Override

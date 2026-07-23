@@ -5,11 +5,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.registries.BuiltInRegistries;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.condition.CoreCondition;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueEvalContext;
 import org.arcadia.arc_quest.quest.api.CompareOp;
 import org.arcadia.arc_quest.quest.api.ICondition;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -22,7 +25,7 @@ import java.util.function.BiPredicate;
 /**
  * 对话条件 —— 控制选项/文本的可见性。
  */
-public sealed interface DialogueCondition permits
+public sealed interface DialogueCondition extends CoreCondition<DialogueEvalContext> permits
         // ── 逻辑组合 ──
         DialogueCondition.Not,
         DialogueCondition.All,
@@ -105,6 +108,11 @@ public sealed interface DialogueCondition permits
      */
     boolean test(DialogueEvalContext ctx);
 
+    @Override
+    default boolean evaluate(DialogueEvalContext context) {
+        return test(context);
+    }
+
     // ═══════════════════════════════════════════════
     //  逻辑组合
     // ═══════════════════════════════════════════════
@@ -112,21 +120,21 @@ public sealed interface DialogueCondition permits
     record Not(DialogueCondition inner) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            return !inner.test(ctx);
+            return CoreProcessors.get().conditions().none(inner, ctx);
         }
     }
 
     record All(List<DialogueCondition> conditions) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            return conditions.stream().allMatch(c -> c.test(ctx));
+            return CoreProcessors.get().conditions().all(conditions, ctx);
         }
     }
 
     record Any(List<DialogueCondition> conditions) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            return conditions.stream().anyMatch(c -> c.test(ctx));
+            return CoreProcessors.get().conditions().any(conditions, ctx);
         }
     }
 
@@ -563,12 +571,10 @@ public sealed interface DialogueCondition permits
     record IConditionWrapper(ICondition condition) implements DialogueCondition {
         @Override
         public boolean test(DialogueEvalContext ctx) {
-            return condition.test(
-                    ctx.player(),
-                    ctx.questData().getCompletedQuestLocations(),
-                    ctx.questData().getAllFlags(),
-                    ctx.questData().getAllVariables()
-            );
+            var questData = ctx.questData();
+            return CoreProcessors.get().conditions().evaluate(condition, new QuestConditionContext(
+                    ctx.player(), questData.getCompletedQuestLocations(),
+                    questData.getAllFlags(), questData.getAllVariables()));
         }
     }
 }

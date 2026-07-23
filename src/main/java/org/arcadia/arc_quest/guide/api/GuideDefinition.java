@@ -3,7 +3,9 @@ package org.arcadia.arc_quest.guide.api;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.ICondition;
+import org.arcadia.arc_quest.quest.api.QuestConditionContext;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -96,7 +98,8 @@ public final class GuideDefinition {
                              Set<String> flags,
                              Map<String, Integer> variables) {
         for (ICondition cond : unlockConditions) {
-            if (!cond.test(player, completedQuests, flags, variables)) {
+            if (!CoreProcessors.get().conditions().evaluate(
+                    cond, new QuestConditionContext(player, completedQuests, flags, variables))) {
                 return false;
             }
         }

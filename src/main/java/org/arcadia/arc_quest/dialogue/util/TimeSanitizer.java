@@ -3,6 +3,8 @@ package org.arcadia.arc_quest.dialogue.util;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
 
 /**
  * 游戏时间校准工具 —— 确保时间判断的一致性。
@@ -16,7 +18,7 @@ public final class TimeSanitizer {
      * 获取当前真实时间戳（毫秒）
      */
     public static long getCurrentRealTime() {
-        return System.currentTimeMillis();
+        return CoreProcessors.get().time().realTimeMillis();
     }
 
     /**
@@ -26,24 +28,14 @@ public final class TimeSanitizer {
      * @return 游戏总刻数
      */
     public static long getCurrentGameTime(Level level) {
-        if (level == null) {
-            Arc_Quest.LOGGER.warn("[TimeSanitizer] Level is null, returning 0 for gameTime");
-            return 0;
-        }
-        return level.getGameTime();
+        return CoreProcessors.get().time().gameTime(level);
     }
 
     /**
      * 获取当前游戏总刻（gameTime）- ServerPlayer重载
      */
     public static long getCurrentGameTime(ServerPlayer player) {
-        if (player == null) {
-            Arc_Quest.LOGGER.warn("[TimeSanitizer] Player or level is null, returning 0 for gameTime");
-            return 0;
-        } else {
-            player.level();
-        }
-        return player.level().getGameTime();
+        return player == null ? 0L : CoreProcessors.get().time().gameTime(player.level());
     }
 
     /**
@@ -60,13 +52,7 @@ public final class TimeSanitizer {
      * 获取当前当天刻（dayTime）- ServerPlayer重载
      */
     public static long getCurrentDayTime(ServerPlayer player) {
-        if (player == null) {
-            Arc_Quest.LOGGER.warn("[TimeSanitizer] Player or level is null, returning 0 for dayTime");
-            return 0;
-        } else {
-            player.level();
-        }
-        return sanitizeDayTime(player.level());
+        return player == null ? 0L : CoreProcessors.get().time().dayTime(player.level());
     }
 
     /**
@@ -76,68 +62,52 @@ public final class TimeSanitizer {
      * @return 时间数据数组 [realTime, gameTime, dayTime]
      */
     public static long[] getAllTimes(Level level) {
-        return new long[]{
-                getCurrentRealTime(),
-                getCurrentGameTime(level),
-                getCurrentDayTime(level)
-        };
+        TimeSnapshot snapshot = capture(level);
+        return new long[]{snapshot.realTime(), snapshot.gameTime(), snapshot.dayTime()};
     }
 
     /**
      * 一次性获取所有时间数据 - ServerPlayer重载
      */
     public static long[] getAllTimes(ServerPlayer player) {
-        if (player == null) {
-            return new long[]{getCurrentRealTime(), 0, 0};
-        } else {
-            player.level();
-        }
-        return new long[]{
-                getCurrentRealTime(),
-                getCurrentGameTime(player),
-                getCurrentDayTime(player)
-        };
+        TimeSnapshot snapshot = capture(player);
+        return new long[]{snapshot.realTime(), snapshot.gameTime(), snapshot.dayTime()};
+    }
+
+    public static TimeSnapshot capture(Level level) {
+        return CoreProcessors.get().time().capture(level);
+    }
+
+    public static TimeSnapshot capture(ServerPlayer player) {
+        return CoreProcessors.get().time().capture(player);
     }
 
     /**
      * 校准游戏时间刻，确保在 [0, 24000] 范围内。
      */
     public static long sanitizeDayTime(Level level) {
-        if (level == null) {
-            Arc_Quest.LOGGER.warn("[TimeSanitizer] Level is null, returning 0");
-            return 0;
-        }
-
-        long dayTime = level.getDayTime() % 24000;
-        if (dayTime < 0) {
-            dayTime += 24000;
-        }
-
-        return dayTime;
+        return CoreProcessors.get().time().dayTime(level);
     }
 
     /**
      * 校准后的早晨判断：tick [0, 6000)
      */
     public static boolean isMorning(Level level) {
-        long t = sanitizeDayTime(level);
-        return t >= 0 && t < 6000;
+        return CoreProcessors.get().time().isMorning(level);
     }
 
     /**
      * 校准后的下午判断：tick [6000, 12000)
      */
     public static boolean isAfternoon(Level level) {
-        long t = sanitizeDayTime(level);
-        return t >= 6000 && t < 12000;
+        return CoreProcessors.get().time().isAfternoon(level);
     }
 
     /**
      * 校准后的夜晚判断：tick [12000, 24000)
      */
     public static boolean isNight(Level level) {
-        long t = sanitizeDayTime(level);
-        return t >= 12000 && t < 24000;
+        return CoreProcessors.get().time().isNight(level);
     }
 
     /**

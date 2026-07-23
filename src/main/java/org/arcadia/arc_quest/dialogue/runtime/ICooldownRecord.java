@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.dialogue.runtime;
 
+import org.arcadia.arc_quest.core.time.CooldownRecord;
+
 /**
  * 三时钟冷却快照接口。
  * <p>
@@ -8,7 +10,7 @@ package org.arcadia.arc_quest.dialogue.runtime;
  * 以及 {@link org.arcadia.arc_quest.quest.data.TradeDataStore.TradeCooldownEntry}
  * 的公共访问契约，使 {@link UnifiedCooldownManager} 无需为每种记录类型单独重载。
  */
-public interface ICooldownRecord {
+public interface ICooldownRecord extends CooldownRecord {
     /**
      * 真实时间戳（毫秒），来自 {@code System.currentTimeMillis()}。
      */
