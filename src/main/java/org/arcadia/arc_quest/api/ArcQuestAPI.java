@@ -8,6 +8,8 @@ import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
+import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
+import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -35,6 +37,24 @@ public final class ArcQuestAPI {
 
     public static boolean hasQuest(ResourceLocation id) {
         return QuestRegistry.get(id) != null;
+    }
+
+    public static void registerQuestGroup(QuestGroupDefinition definition) {
+        QuestGroupRegistry.register(definition);
+    }
+
+    public static void assignQuestToGroup(ResourceLocation questId, ResourceLocation groupId) {
+        QuestGroupRegistry.assign(questId, groupId);
+    }
+
+    @Nullable
+    public static QuestGroupDefinition getQuestGroup(ResourceLocation groupId) {
+        return QuestGroupRegistry.get(groupId);
+    }
+
+    @Nullable
+    public static QuestGroupDefinition getQuestGroupForQuest(ResourceLocation questId) {
+        return QuestGroupRegistry.getGroupForQuest(questId);
     }
 
     public static void registerGuide(GuideDefinition definition) {

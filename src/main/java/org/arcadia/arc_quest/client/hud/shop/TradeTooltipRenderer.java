@@ -413,7 +413,7 @@ public class TradeTooltipRenderer {
             screen.drawAdaptiveIcon(g, entry.getRewardIcon(), drawX + padding, headerY, 16, 16, scale);
         } else if (target.hasItem) {
             ItemStack stack = screen.getIconStackForEntry(entry);
-            g.renderItem(stack, drawX + padding, headerY);
+            g.renderFakeItem(stack, drawX + padding, headerY);
         }
 
         if (useScissor) g.disableScissor();

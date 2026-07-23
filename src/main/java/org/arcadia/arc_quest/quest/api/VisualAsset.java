@@ -2,12 +2,13 @@ package org.arcadia.arc_quest.quest.api;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * 单个视觉资源的最小配置单元。
  * <p>
- * 包含资源路径、缩放、偏移等基础属性。
+ * 包含纹理或物品渲染所需的基础属性。
  * 这是构建复杂视觉系统的"原子"。
  */
 public record VisualAsset(
@@ -16,8 +17,20 @@ public record VisualAsset(
         float offsetX,                         // X轴偏移（像素）
         float offsetY,                         // Y轴偏移（像素）
         int tintColor,                         // 染色颜色（ARGB，0xFFFFFFFF=无染色）
-        boolean enabled                        // 是否启用
+        boolean enabled,                       // 是否启用
+        @Nullable ItemStack item               // 物品渲染（非空时优先于纹理，走 renderFakeItem）
 ) {
+
+    /** 向后兼容的构造函数，item 默认为 null。 */
+    public VisualAsset(
+            @Nullable ResourceLocation texture,
+            float scale,
+            float offsetX,
+            float offsetY,
+            int tintColor,
+            boolean enabled) {
+        this(texture, scale, offsetX, offsetY, tintColor, enabled, null);
+    }
 
     /**
      * 默认禁用状态。
@@ -47,6 +60,20 @@ public record VisualAsset(
         return new VisualAsset(texture, scale, 0f, 0f, 0xFFFFFFFF, true);
     }
 
+    /**
+     * 快速创建物品图标。
+     */
+    public static VisualAsset of(ItemStack item) {
+        return new VisualAsset(null, 1.0f, 0f, 0f, 0xFFFFFFFF, true, item);
+    }
+
+    /**
+     * 快速创建带缩放的物品图标。
+     */
+    public static VisualAsset of(ItemStack item, float scale) {
+        return new VisualAsset(null, scale, 0f, 0f, 0xFFFFFFFF, true, item);
+    }
+
     public static class Builder {
         private ResourceLocation texture = null;
         private float scale = 1.0f;
@@ -54,6 +81,7 @@ public record VisualAsset(
         private float offsetY = 0f;
         private int tintColor = 0xFFFFFFFF;
         private boolean enabled = true;
+        private ItemStack item = null;
 
         public Builder texture(ResourceLocation texture) {
             this.texture = texture;
@@ -89,8 +117,13 @@ public record VisualAsset(
             return this;
         }
 
+        public Builder item(ItemStack item) {
+            this.item = item;
+            return this;
+        }
+
         public VisualAsset build() {
-            return new VisualAsset(texture, scale, offsetX, offsetY, tintColor, enabled);
+            return new VisualAsset(texture, scale, offsetX, offsetY, tintColor, enabled, item);
         }
     }
 }

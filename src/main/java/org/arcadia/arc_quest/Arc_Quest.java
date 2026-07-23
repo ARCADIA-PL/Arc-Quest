@@ -31,6 +31,7 @@ import org.arcadia.arc_quest.data.ArcQuestDataGenerators;
 import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
@@ -64,6 +65,7 @@ public class Arc_Quest {
 
             ArcQuestGuideContent.registerAll();
             QuestRegistry.freeze();
+            QuestGroupRegistry.freeze();
             TradeRegistry.freeze();
             GuideRegistry.freeze();
         });

@@ -1,7 +1,10 @@
 package org.arcadia.arc_quest.api.event.registry;
 
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.Event;
 import net.neoforged.fml.event.IModBusEvent;
+import org.arcadia.arc_quest.api.ArcQuestAPI;
+import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 
 /**
  * Base type for Arc Quest business-content registration events.
@@ -17,6 +20,18 @@ public abstract class ArcQuestRegistrationEvent extends Event implements IModBus
 
     /** Registers quest definitions. */
     public static final class Quest extends ArcQuestRegistrationEvent {
+
+        public void registerGroup(QuestGroupDefinition definition) {
+            ArcQuestAPI.registerQuestGroup(definition);
+        }
+
+        public void assignQuestToGroup(ResourceLocation questId, ResourceLocation groupId) {
+            ArcQuestAPI.assignQuestToGroup(questId, groupId);
+        }
+
+        public void assignQuestToGroup(String questId, String groupId) {
+            assignQuestToGroup(ResourceLocation.parse(questId), ResourceLocation.parse(groupId));
+        }
     }
 
     /** Registers trade shop definitions. */

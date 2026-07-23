@@ -43,6 +43,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     private void addScreenTitles() {
         add("gui.arc_quest.journal.title", "Quest Journal");
+        add("arc_quest.quest_group.epic_mainline", "Epic Mainline");
     }
 
     // ═══════════════════════════════════════════════════════

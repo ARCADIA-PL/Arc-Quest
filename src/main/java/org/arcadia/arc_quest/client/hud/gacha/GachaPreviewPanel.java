@@ -229,7 +229,7 @@ public class GachaPreviewPanel {
             g.pose().translate(0, -2, 0);
             g.pose().scale(finalIconScale, finalIconScale, 1f);
             g.pose().translate(-8, -8, 0);
-            g.renderItem(item.getItemStack(), 0, 0);
+            g.renderFakeItem(item.getItemStack(), 0, 0);
             g.pose().popPose();
         }
         g.pose().popPose();
@@ -361,7 +361,7 @@ public class GachaPreviewPanel {
             float iconScale = 1.8f * responsiveScale;
             g.pose().scale(iconScale, iconScale, 1f);
             g.pose().translate(-8, -8, 0);
-            g.renderItem(item.getItemStack(), 0, 0);
+            g.renderFakeItem(item.getItemStack(), 0, 0);
             g.pose().popPose();
 
             g.pose().popPose();
@@ -583,7 +583,7 @@ public class GachaPreviewPanel {
                     g.pose().translate(currentX + 8, centerY + slideOutY, 150);
                     g.pose().scale(itemScaleAnim, itemScaleAnim, 1f);
                     g.pose().translate(-8, -8, 0);
-                    g.renderItem(v.stack, 0, 0);
+                    g.renderFakeItem(v.stack, 0, 0);
                     g.pose().popPose();
                 }
                 currentX += v.width + gap;

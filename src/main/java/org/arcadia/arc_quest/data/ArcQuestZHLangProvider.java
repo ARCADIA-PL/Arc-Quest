@@ -43,6 +43,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     private void addScreenTitles() {
         add("gui.arc_quest.journal.title", "任务日志");
+        add("arc_quest.quest_group.epic_mainline", "史诗主线");
     }
 
     // ═══════════════════════════════════════════════════════
