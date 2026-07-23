@@ -276,7 +276,9 @@ public final class QuestBuilder {
 
     public QuestBuilder visualConfig(QuestVisualConfig config) {
         if (config != null) {
-            visualConfigBuilder = QuestVisualConfig.builder().themeColor(config.getThemeColor());
+            visualConfigBuilder = QuestVisualConfig.builder()
+                    .themeColor(config.getThemeColor())
+                    .useQuestSplashPresentation(config.usesQuestSplashPresentation());
             for (SplashType type : SplashType.values())
                 config.getSplash(type).ifPresent(asset -> visualConfigBuilder.splash(type, asset));
             for (IconPosition pos : IconPosition.values())

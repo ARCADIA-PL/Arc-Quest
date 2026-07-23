@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.quest.api.SplashType;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
@@ -72,9 +73,17 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
             QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
             String name = def != null ? def.getDisplayName().getString() : pkt.data.getQuestId();
 
+            QuestRuntimeData previousData = ClientQuestCache.INSTANCE.getActiveQuest(pkt.data.getQuestId());
+            Set<String> previousActivePhases = previousData != null
+                    ? new LinkedHashSet<>(previousData.getActivePhaseIds()) : Set.of();
+            Set<String> previousCompletedPhases = previousData != null
+                    ? new LinkedHashSet<>(previousData.getCompletedPhaseIds()) : Set.of();
             boolean isNewQuest = !ClientQuestCache.INSTANCE.isQuestActive(pkt.data.getQuestId());
 
             ClientQuestCache.INSTANCE.updateQuest(pkt.data);
+
+            Set<String> completedPhases = addedIds(pkt.data.getCompletedPhaseIds(), previousCompletedPhases);
+            Set<String> startedPhases = addedIds(pkt.data.getActivePhaseIds(), previousActivePhases);
 
             switch (pkt.data.getState()) {
                 case ACTIVE -> {
@@ -82,6 +91,9 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
                         QuestToastManager.show(QuestToastManager.ToastType.QUEST_ACCEPTED, name);
                         if (def != null) ClientHudEvents.handleVisualTrigger(def, SplashType.QUEST_ACQUIRED, null);
                     }
+
+                    triggerPhaseVisuals(def, completedPhases, SplashType.PHASE_COMPLETE);
+                    triggerPhaseVisuals(def, startedPhases, SplashType.PHASE_START);
 
                     if (def != null && Minecraft.getInstance().player != null) {
                         Set<String> activePhases = pkt.data.getActivePhaseIds();
@@ -106,6 +118,7 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
                     }
                 }
                 case COMPLETED -> {
+                    triggerPhaseVisuals(def, completedPhases, SplashType.PHASE_COMPLETE);
                     QuestToastManager.show(QuestToastManager.ToastType.QUEST_COMPLETED, name);
                     if (def != null) ClientHudEvents.handleVisualTrigger(def, SplashType.QUEST_COMPLETED, null);
                 }
@@ -113,6 +126,19 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
                 }
             }
         });
+    }
+
+    private static Set<String> addedIds(Set<String> current, Set<String> previous) {
+        Set<String> added = new LinkedHashSet<>(current);
+        added.removeAll(previous);
+        return added;
+    }
+
+    private static void triggerPhaseVisuals(QuestDefinition quest, Set<String> phaseIds, SplashType type) {
+        if (quest == null || phaseIds.isEmpty()) return;
+        for (String phaseId : phaseIds) {
+            ClientHudEvents.handleVisualTrigger(quest, type, phaseId);
+        }
     }
 
     public long getPlayerSessionEpoch() {

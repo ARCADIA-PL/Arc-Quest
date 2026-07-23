@@ -234,7 +234,8 @@ public final class PhaseBuilder {
     public PhaseBuilder visualConfig(QuestVisualConfig config) {
         if (config != null) {
             visualConfigBuilder = QuestVisualConfig.builder()
-                    .themeColor(config.getThemeColor());
+                    .themeColor(config.getThemeColor())
+                    .useQuestSplashPresentation(config.usesQuestSplashPresentation());
             for (SplashType type : SplashType.values()) {
                 config.getSplash(type).ifPresent(asset ->
                         visualConfigBuilder.splash(type, asset));
@@ -263,6 +264,11 @@ public final class PhaseBuilder {
 
     public PhaseBuilder completeSplash(ResourceLocation texture) {
         return completeSplash(texture, 1.0f);
+    }
+
+    public PhaseBuilder useQuestSplashPresentation(boolean useQuestSplashPresentation) {
+        visualConfigBuilder.useQuestSplashPresentation(useQuestSplashPresentation);
+        return this;
     }
 
     public PhaseBuilder labelIcon(ResourceLocation texture, float scale) {
