@@ -49,6 +49,11 @@ neoForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
 }
 
 sourceSets.main.resources {
@@ -68,11 +73,12 @@ repositories {
 
 dependencies {
     implementation "net.createmod.ponder:Ponder-NeoForge-${minecraft_version}:${ponder_version}"
-    implementation("net.createmod.catnip:Catnip-NeoForge-${minecraft_version}:${catnip_version}") {
-        exclude group: 'dev.engine_room.flywheel'
-    }
     compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}"
     runtimeOnly "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testImplementation 'org.slf4j:slf4j-api:2.0.9'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -103,4 +109,12 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.withType(Copy).configureEach {
     duplicatesStrategy = 'inherit'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat 'full'
+    }
 }
