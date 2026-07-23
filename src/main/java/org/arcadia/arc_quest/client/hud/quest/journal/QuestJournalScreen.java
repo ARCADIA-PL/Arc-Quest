@@ -523,9 +523,16 @@ public class QuestJournalScreen extends Screen {
 
     public void onEntrySelected(int idx) {
         if (showingChangeLog && selectedIndex == idx) { selectedIndex = -1; playClick(); return; }
+        boolean markedRead = false;
+        if (idx >= 0 && idx < currentEntries.size()) {
+            String questId = currentEntries.get(idx).questId();
+            markedRead = QuestChangeNotificationManager.INSTANCE.hasUnread(questId);
+            QuestChangeNotificationManager.INSTANCE.markRead(questId);
+        }
         if (selectedIndex != idx) {
             selectedIndex = idx; detailPanel.resetState();
-            if (idx >= 0 && idx < currentEntries.size()) QuestChangeNotificationManager.INSTANCE.markRead(currentEntries.get(idx).questId());
+            playClick();
+        } else if (markedRead) {
             playClick();
         }
     }
