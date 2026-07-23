@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.api.QuestTimeLimitType;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
@@ -27,6 +28,7 @@ import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ByteOpenHashMap;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -102,6 +104,26 @@ public final class QuestDataTickHandler {
         UUID pid = player.getUUID();
         Object2ByteOpenHashMap<String> states = markerStateCache.computeIfAbsent(
                 pid, k -> new Object2ByteOpenHashMap<>());
+
+        // 清理缓存中已被移除的标记状态
+        states.keySet().removeIf(markerId -> states.getByte(markerId) != 0
+                && !data.getAllMarkers().containsKey(markerId));
+
+        // 清理已失效的阶段标记（任务或阶段已不可用）
+        for (QuestMarkerData marker : List.copyOf(data.getAllMarkers().values())) {
+            if (!marker.getId().startsWith("aq:auto:") || !marker.hasQuestBinding()) continue;
+
+            QuestRuntimeData quest = data.getActiveQuest(marker.getQuestId());
+            boolean stale = quest == null || quest.getState() != QuestState.ACTIVE;
+            if (!stale && marker.hasPhaseBinding()) {
+                stale = !quest.isPhaseActive(marker.getPhaseId());
+            }
+            if (!stale) continue;
+
+            data.removeMarker(marker.getId());
+            states.removeByte(marker.getId());
+            ArcQuestNetwork.syncMarkerDeltaRemove(player, marker.getId());
+        }
 
         for (Map.Entry<String, QuestRuntimeData> e : data.getAllActiveQuests().entrySet()) {
             String questId = e.getKey();
@@ -199,14 +221,14 @@ public final class QuestDataTickHandler {
         QuestMarkerData marker = null;
 
         if (target instanceof MarkableObject.Pos p) {
-            marker = new QuestMarkerData.Builder(markerId, p.x(), p.y(), p.z(), spec.id())
+            marker = new QuestMarkerData.Builder(markerId, p.x() + 0.5, p.y(), p.z() + 0.5, spec.id())
                     .dimension(level.dimension().location().toString())
                     .bindQuest(questId)
                     .type(spec.markerType())
                     .build();
         } else if (target instanceof MarkableObject.DimensionPos dp) {
             if (!level.dimension().equals(dp.dimension())) return null;
-            marker = new QuestMarkerData.Builder(markerId, dp.x(), dp.y(), dp.z(), spec.id())
+            marker = new QuestMarkerData.Builder(markerId, dp.x() + 0.5, dp.y(), dp.z() + 0.5, spec.id())
                     .dimension(dp.dimension().location().toString())
                     .bindQuest(questId)
                     .type(spec.markerType())
