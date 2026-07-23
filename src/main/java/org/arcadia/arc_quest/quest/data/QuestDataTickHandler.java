@@ -233,6 +233,12 @@ public final class QuestDataTickHandler {
                     .bindQuest(questId)
                     .type(spec.markerType())
                     .build();
+        } else if (target instanceof MarkableObject.BlockPos bp) {
+            marker = new QuestMarkerData.Builder(markerId, bp.pos().getX() + 0.5, bp.pos().getY(), bp.pos().getZ() + 0.5, spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(questId)
+                    .type(spec.markerType())
+                    .build();
         } else if (target instanceof MarkableObject.EntityByUuid byUuid) {
             Entity ent = level.getEntity(byUuid.uuid());
             if (ent == null) return null;

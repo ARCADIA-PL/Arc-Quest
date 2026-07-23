@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObject.DimensionPos, MarkableObject.EntityByUuid, MarkableObject.EntityByTypeNearest, MarkableObject.EntityByNpcId, MarkableObject.StructureNearest, MarkableObject.CustomResolver {
+public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObject.DimensionPos, MarkableObject.BlockPos, MarkableObject.EntityByUuid, MarkableObject.EntityByTypeNearest, MarkableObject.EntityByNpcId, MarkableObject.StructureNearest, MarkableObject.CustomResolver {
 
     record Pos(int x, int y, int z) implements MarkableObject {
     }
@@ -20,6 +20,12 @@ public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObjec
     record DimensionPos(ResourceKey<Level> dimension, int x, int y, int z) implements MarkableObject {
         public DimensionPos {
             Objects.requireNonNull(dimension, "dimension");
+        }
+    }
+
+    record BlockPos(net.minecraft.core.BlockPos pos) implements MarkableObject {
+        public BlockPos {
+            Objects.requireNonNull(pos, "pos");
         }
     }
 

@@ -8,21 +8,22 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
 
 import java.util.Locale;
 
 public class QuestSplashRenderer {
+    private static final int MAX_PENDING_SPLASHES = 32;
     private static final float TIME_ENTER = 700f;
     private static final float TIME_HOLD = 2900f;
     private static final float TIME_EXIT = 500f;
     private static final float MAX_DRIFT = 3.0f;
     private static final float FLY_DISTANCE = 4.0f;
 
-    private static QuestDefinition activeQuest = null;
-    private static SplashType activeType = null;
-    private static ResourceLocation activeTexture = null;
+    private static final SplashSequenceQueue<SplashRequest> SEQUENCE =
+            new SplashSequenceQueue<>(MAX_PENDING_SPLASHES);
     private static State currentState = State.ENTER;
     private static long startTime = 0;
     private static long exitStartTime = 0;
@@ -31,21 +32,58 @@ public class QuestSplashRenderer {
 
     public static void trigger(QuestDefinition quest, SplashType type, ResourceLocation texture) {
         if (quest != null && texture != null) {
-            activeQuest = quest;
-            activeType = type;
-            activeTexture = texture;
-            startTime = Util.getMillis();
-
-            // 重置状态
-            currentState = State.ENTER;
-            exitStartTime = 0;
-            skipStartX = 0f;
-            lastRenderX = 0f;
+            enqueue(new SplashRequest(quest, type, texture,
+                    quest.getDisplayName().getString(), quest.getVisualConfig().getThemeColor()));
         }
     }
 
+    public static void trigger(QuestDefinition quest, PhaseDefinition phase,
+                               SplashType type, ResourceLocation texture) {
+        if (quest != null && phase != null && texture != null) {
+            if (phase.getVisualConfig().usesQuestSplashPresentation()) {
+                trigger(quest, toQuestSplashType(type), texture);
+                return;
+            }
+            enqueue(new SplashRequest(quest, type, texture,
+                    phase.getDisplayName().getString(),
+                    phase.getThemeColor(quest.getVisualConfig().getThemeColor())));
+        }
+    }
+
+    static SplashType toQuestSplashType(SplashType type) {
+        return switch (type) {
+            case PHASE_START -> SplashType.QUEST_ACQUIRED;
+            case PHASE_COMPLETE -> SplashType.QUEST_COMPLETED;
+            default -> type;
+        };
+    }
+
+    private static void enqueue(SplashRequest request) {
+        boolean startImmediately = !SEQUENCE.isActive();
+        if (SEQUENCE.enqueue(request) && startImmediately) {
+            resetAnimation(Util.getMillis());
+        }
+    }
+
+    private static void resetAnimation(long now) {
+        startTime = now;
+        currentState = State.ENTER;
+        exitStartTime = 0;
+        skipStartX = 0f;
+        lastRenderX = 0f;
+    }
+
     public static boolean isActive() {
-        return activeQuest != null;
+        return SEQUENCE.isActive();
+    }
+
+    public static int getPendingCount() {
+        return SEQUENCE.pendingCount();
+    }
+
+    public static void clear() {
+        SEQUENCE.clear();
+        resetAnimation(0L);
     }
 
     public static boolean mouseClicked() {
@@ -62,7 +100,8 @@ public class QuestSplashRenderer {
     }
 
     public static void render(GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
-        if (activeQuest == null || activeTexture == null) return;
+        SplashRequest request = SEQUENCE.current();
+        if (request == null) return;
 
         long now = Util.getMillis();
         long elapsed = now - startTime;
@@ -80,8 +119,10 @@ public class QuestSplashRenderer {
         if (currentState == State.EXIT) {
             long exitElapsed = now - exitStartTime;
             if (exitElapsed >= TIME_EXIT) {
-                activeQuest = null;
-                return;
+                request = SEQUENCE.completeActive();
+                if (request == null) return;
+                resetAnimation(now);
+                elapsed = 0L;
             }
         }
 
@@ -91,7 +132,7 @@ public class QuestSplashRenderer {
         float finalScale = (screenHeight * 0.70f) / (float) frameH;
 
         Font font = Minecraft.getInstance().font;
-        String titleStr = activeQuest.getDisplayName().getString();
+        String titleStr = request.title();
         float textWidth = font.width(titleStr) * 1.45f;
         float targetLineWidth = Math.max(textWidth + 30, (frameW - 40) * finalScale);
 
@@ -150,7 +191,7 @@ public class QuestSplashRenderer {
 
         if (revealProgress <= 0.001f || wipeProgress >= 0.999f) return;
 
-        int themeColor = activeType == SplashType.QUEST_FAILED ? 0xFF1111 : activeQuest.getVisualConfig().getThemeColor();
+        int themeColor = request.type() == SplashType.QUEST_FAILED ? 0xFF1111 : request.themeColor();
 
         float absoluteRightEdge = currentX + (frameW * scaleAnim);
         float lineRightEdge = currentX + (20 * scaleAnim) + targetLineWidth + 50f;
@@ -186,7 +227,7 @@ public class QuestSplashRenderer {
         guiGraphics.pose().scale(scaleAnim, scaleAnim, 1f);
 
         guiGraphics.setColor(1f, 1f, 1f, alpha);
-        guiGraphics.blit(activeTexture, 0, 0, 0, 0, frameW, frameH, frameW, frameH);
+        guiGraphics.blit(request.texture(), 0, 0, 0, 0, frameW, frameH, frameW, frameH);
         guiGraphics.setColor(1f, 1f, 1f, 1f);
 
         int borderAlpha = Math.max(0, Math.min(255, (int) (alpha * 255)));
@@ -217,12 +258,12 @@ public class QuestSplashRenderer {
         if (baseAlpha > 5) {
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(0.85f, 0.85f, 1f);
-            guiGraphics.drawString(font, "SYS.ARC_QUEST // " + activeQuest.getCategory().getPathToken().toUpperCase(Locale.ROOT), 0, -22, subColor, true);
+            guiGraphics.drawString(font, "SYS.ARC_QUEST // " + request.quest().getCategory().getPathToken().toUpperCase(Locale.ROOT), 0, -22, subColor, true);
             guiGraphics.pose().popPose();
 
             guiGraphics.pose().pushPose();
             guiGraphics.pose().scale(1.1f, 1.1f, 1f);
-            guiGraphics.drawString(font, activeType.name().replace("_", " "), 0, -8, statusColor, true);
+            guiGraphics.drawString(font, request.type().name().replace("_", " "), 0, -8, statusColor, true);
             guiGraphics.pose().popPose();
 
             guiGraphics.pose().pushPose();
@@ -262,4 +303,8 @@ public class QuestSplashRenderer {
     }
 
     private enum State {ENTER, HOLD, EXIT}
+
+    private record SplashRequest(QuestDefinition quest, SplashType type, ResourceLocation texture,
+                                 String title, int themeColor) {
+    }
 }

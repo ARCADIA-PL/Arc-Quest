@@ -14,6 +14,7 @@ import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
+import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
@@ -57,5 +58,6 @@ public final class ClientEventHandler {
         ClientTradeCache.INSTANCE.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
+        QuestSplashRenderer.clear();
     }
 }

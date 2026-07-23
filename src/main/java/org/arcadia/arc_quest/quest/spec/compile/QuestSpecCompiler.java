@@ -372,7 +372,9 @@ public final class QuestSpecCompiler {
     }
 
     private QuestVisualConfig compileVisual(QuestVisualSpec spec) {
-        QuestVisualConfig.Builder builder = QuestVisualConfig.builder().themeColor(spec == null ? 0xFFFFFF : spec.themeColor);
+        QuestVisualConfig.Builder builder = QuestVisualConfig.builder()
+                .themeColor(spec == null ? 0xFFFFFF : spec.themeColor)
+                .useQuestSplashPresentation(spec != null && Boolean.TRUE.equals(spec.useQuestSplashPresentation));
         if (spec != null) {
             for (Map.Entry<String, QuestVisualSpec.AssetSpec> entry : spec.splashes.entrySet()) {
                 SplashType type = SplashType.valueOf(entry.getKey());

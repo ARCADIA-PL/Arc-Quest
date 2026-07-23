@@ -5,6 +5,7 @@ import java.util.Map;
 
 public class QuestVisualSpec {
     public int themeColor = 0xFFFFFF;
+    public Boolean useQuestSplashPresentation;
     public Map<String, AssetSpec> splashes = new LinkedHashMap<>();
     public Map<String, AssetSpec> icons = new LinkedHashMap<>();
 

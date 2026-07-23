@@ -33,6 +33,7 @@ public class QuestVisualConfig {
     //  主题色（单一值，可被具体场景覆盖）
     // ═══════════════════════════════════════════
     private final int themeColor;
+    private final boolean useQuestSplashPresentation;
 
     private QuestVisualConfig(Builder builder) {
         splashAssets = new EnumMap<>(SplashType.class);
@@ -43,6 +44,7 @@ public class QuestVisualConfig {
         iconAssets.putAll(builder.iconAssets);
 
         themeColor = builder.themeColor;
+        useQuestSplashPresentation = builder.useQuestSplashPresentation;
     }
 
     /**
@@ -77,6 +79,10 @@ public class QuestVisualConfig {
      */
     public int getThemeColor() {
         return themeColor;
+    }
+
+    public boolean usesQuestSplashPresentation() {
+        return useQuestSplashPresentation;
     }
 
     /**
@@ -121,6 +127,7 @@ public class QuestVisualConfig {
         private final EnumMap<SplashType, VisualAsset> splashAssets = new EnumMap<>(SplashType.class);
         private final EnumMap<IconPosition, VisualAsset> iconAssets = new EnumMap<>(IconPosition.class);
         private int themeColor = 0xFFFFFFFF;
+        private boolean useQuestSplashPresentation;
 
         /**
          * 添加立绘配置。
@@ -175,6 +182,11 @@ public class QuestVisualConfig {
          */
         public Builder themeColor(int color) {
             themeColor = color;
+            return this;
+        }
+
+        public Builder useQuestSplashPresentation(boolean useQuestSplashPresentation) {
+            this.useQuestSplashPresentation = useQuestSplashPresentation;
             return this;
         }
 

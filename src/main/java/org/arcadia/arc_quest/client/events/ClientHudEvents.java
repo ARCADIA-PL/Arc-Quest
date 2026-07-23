@@ -12,6 +12,7 @@ import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
 
@@ -146,8 +147,17 @@ public class ClientHudEvents {
         }
     }
 
-    public static void handleVisualTrigger(QuestDefinition quest, SplashType type, String phaseName) {
+    public static void handleVisualTrigger(QuestDefinition quest, SplashType type, String phaseId) {
         if (quest == null) return;
+        if ((type == SplashType.PHASE_START || type == SplashType.PHASE_COMPLETE)
+                && phaseId != null && !phaseId.isEmpty()) {
+            PhaseDefinition phase = quest.getPhase(phaseId);
+            if (phase != null) {
+                phase.getSplashConfig(type).ifPresent(asset ->
+                        QuestSplashRenderer.trigger(quest, phase, type, asset.texture()));
+            }
+            return;
+        }
         quest.getSplashConfig(type).ifPresent(asset -> {
             QuestSplashRenderer.trigger(quest, type, asset.texture());
         });
