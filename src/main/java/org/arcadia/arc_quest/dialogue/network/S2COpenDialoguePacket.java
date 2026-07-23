@@ -19,6 +19,7 @@ import org.arcadia.arc_quest.client.hud.shop.TradeScreen;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
+import java.util.UUID;
 
 /**
  * 服务端→客户端：打开/更新/关闭对话界面。
@@ -26,13 +27,13 @@ import javax.annotation.Nullable;
 public final class S2COpenDialoguePacket implements CustomPacketPayload {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final Type<S2COpenDialoguePacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "open_dialogue"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, S2COpenDialoguePacket> STREAM_CODEC =
             StreamCodec.ofMember(S2COpenDialoguePacket::encode, S2COpenDialoguePacket::decode);
 
+    public static final UUID LEGACY_SESSION_ID = new UUID(0L, 0L);
     /**
      * 空 dialogueId = 关闭对话。
      */
@@ -94,6 +95,9 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
      */
     @Nullable
     private final String[] choiceIds;
+    private final UUID sessionId;
+    private final long revision;
+    private final long playerSessionEpoch;
 
     /**
      * 原有构造器（向后兼容，entityId = -1）。
@@ -179,7 +183,26 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
         this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs,
                 entityId, choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
                 choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks,
-                choiceSelectSoundIds, matchedSaySoundId, matchedSayId, choiceIds, Mode.OPEN);
+                choiceSelectSoundIds, matchedSaySoundId, matchedSayId, choiceIds,
+                LEGACY_SESSION_ID, 0L, 0L, Mode.OPEN);
+    }
+
+    public S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
+                                 Component text, Component[] choices,
+                                 boolean isTerminal, boolean hasAutoNext, int delayMs,
+                                 int entityId, long[] choiceLastSelectTimes,
+                                 long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
+                                 int[] choiceCooldownTypes, long[] choiceCooldownValues,
+                                 int[] choiceResetTimeTicks, @Nullable ResourceLocation[] choiceSelectSoundIds,
+                                 @Nullable ResourceLocation matchedSaySoundId,
+                                 @Nullable String matchedSayId,
+                                 @Nullable String[] choiceIds,
+                                 UUID sessionId, long revision, long playerSessionEpoch) {
+        this(dialogueId, nodeId, speaker, text, choices, isTerminal, hasAutoNext, delayMs,
+                entityId, choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
+                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks,
+                choiceSelectSoundIds, matchedSaySoundId, matchedSayId, choiceIds,
+                sessionId, revision, playerSessionEpoch, Mode.OPEN);
     }
 
     private S2COpenDialoguePacket(String dialogueId, String nodeId, Component speaker,
@@ -189,10 +212,13 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
                                   long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes,
                                   int[] choiceCooldownTypes, long[] choiceCooldownValues,
                                   int[] choiceResetTimeTicks, @Nullable ResourceLocation[] choiceSelectSoundIds,
-                                  @Nullable ResourceLocation matchedSaySoundId,
-                                  @Nullable String matchedSayId,
-                                  @Nullable String[] choiceIds,
-                                  Mode mode) {
+                                   @Nullable ResourceLocation matchedSaySoundId,
+                                   @Nullable String matchedSayId,
+                                   @Nullable String[] choiceIds,
+                                   UUID sessionId,
+                                   long revision,
+                                   long playerSessionEpoch,
+                                   Mode mode) {
         this.dialogueId = dialogueId;
         this.nodeId = nodeId;
         this.speaker = speaker;
@@ -214,6 +240,9 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
         this.matchedSaySoundId = matchedSaySoundId;
         this.matchedSayId = matchedSayId;
         this.choiceIds = choiceIds;
+        this.sessionId = sessionId != null ? sessionId : LEGACY_SESSION_ID;
+        this.revision = revision;
+        this.playerSessionEpoch = playerSessionEpoch;
     }
 
     private S2COpenDialoguePacket() {
@@ -238,10 +267,19 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
         matchedSaySoundId = null;
         matchedSayId = null;
         choiceIds = null;
+        sessionId = LEGACY_SESSION_ID;
+        revision = 0L;
+        playerSessionEpoch = 0L;
     }
 
     public static S2COpenDialoguePacket close() {
         return new S2COpenDialoguePacket();
+    }
+
+    public static S2COpenDialoguePacket close(UUID sessionId, long revision, long playerSessionEpoch) {
+        return new S2COpenDialoguePacket("", "", Component.empty(), Component.empty(), new Component[0],
+                true, false, 0, -1, null, null, null, null, null, null,
+                null, null, null, null, sessionId, revision, playerSessionEpoch, Mode.CLOSE);
     }
 
     public static S2COpenDialoguePacket updateFrom(S2COpenDialoguePacket source) {
@@ -265,13 +303,19 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
                 source.matchedSaySoundId,
                 source.matchedSayId,
                 source.choiceIds,
+                source.sessionId,
+                source.revision,
+                source.playerSessionEpoch,
                 Mode.UPDATE
         );
     }
 
     public static S2COpenDialoguePacket decode(FriendlyByteBuf buf) {
         Mode mode = buf.readEnum(Mode.class);
-        if (mode == Mode.CLOSE) return close();
+        UUID sessionId = buf.readUUID();
+        long revision = buf.readLong();
+        long playerSessionEpoch = buf.readLong();
+        if (mode == Mode.CLOSE) return close(sessionId, revision, playerSessionEpoch);
 
         String dId = buf.readUtf();
         String nId = buf.readUtf();
@@ -342,7 +386,8 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
 
         return new S2COpenDialoguePacket(dId, nId, spk, txt, choices, terminal, autoNext, delay, entityId,
                 lastSelectTimes, purchaseGTs, purchaseDTs, cooldownTypes, cooldownValues, resetTimeTicks,
-                choiceSounds, saySoundId, matchedSayId, choiceIds, mode);
+                choiceSounds, saySoundId, matchedSayId, choiceIds,
+                sessionId, revision, playerSessionEpoch, mode);
     }
 
     @Override
@@ -353,11 +398,17 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
     // ── 序列化 ──
 
     public static void handle(S2COpenDialoguePacket pkt, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
+        ctx.enqueueWork(() -> ClientHandler.handle(pkt));
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2COpenDialoguePacket pkt) {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.mode == Mode.CLOSE || pkt.isClose) {
-                ClientDialogueCache.INSTANCE.closeSession();
-                if (mc.screen instanceof DialogueScreen ds) {
+                boolean legacyClose = LEGACY_SESSION_ID.equals(pkt.sessionId);
+                boolean closed = ClientDialogueCache.INSTANCE.closeSession(pkt.sessionId, pkt.playerSessionEpoch);
+                if (closed && mc.screen instanceof DialogueScreen ds
+                        && (legacyClose || ds.matchesSession(pkt.sessionId, pkt.dialogueId))) {
                     ds.startCloseAnimation();
                 }
                 return;
@@ -374,7 +425,8 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
                 }
             }
 
-            ClientDialogueCache.INSTANCE.updateFromPacket(
+            boolean accepted = ClientDialogueCache.INSTANCE.updateFromPacket(
+                    pkt.sessionId, pkt.revision, pkt.playerSessionEpoch, pkt.mode == Mode.OPEN,
                     pkt.dialogueId, pkt.nodeId, pkt.speaker, pkt.text, pkt.choices,
                     pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs, pkt.entityId,
                     pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes, pkt.choicePurchaseDayTimes,
@@ -382,14 +434,22 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
                     saySound, choiceSounds,
                     pkt.matchedSayId, pkt.choiceIds
             );
+            if (!accepted) return;
 
             if (mc.screen instanceof DialogueScreen ds) {
-                ds.updateNode(pkt.speaker, pkt.text, pkt.choices,
-                        pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs,
-                        pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
-                        pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
-                        pkt.choiceCooldownValues, pkt.choiceResetTimeTicks);
-                ds.updateEntityId(pkt.entityId);
+                if (ds.matchesSession(pkt.sessionId, pkt.dialogueId)) {
+                    ds.updateNode(pkt.speaker, pkt.text, pkt.choices,
+                            pkt.isTerminal, pkt.hasAutoNext, pkt.delayMs,
+                            pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
+                            pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
+                            pkt.choiceCooldownValues, pkt.choiceResetTimeTicks);
+                    ds.updateEntityId(pkt.entityId);
+                    ds.updateSessionMetadata(pkt.sessionId, pkt.revision, pkt.playerSessionEpoch);
+                } else if (pkt.mode == Mode.UPDATE) {
+                    LOGGER.warn("[Dialogue] Ignored UPDATE for non-current screen session: {}", pkt.sessionId);
+                } else {
+                    mc.setScreen(createScreen(pkt));
+                }
             } else if (pkt.mode == Mode.UPDATE) {
                 LOGGER.debug("[Dialogue] Ignore UPDATE packet when no DialogueScreen is active: {}", pkt.dialogueId);
             } else if (mc.screen != null &&
@@ -397,18 +457,26 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
                             mc.screen instanceof SimpleTradePanel)) {
                 // 如果当前是商店界面，忽略此包
             } else {
-                mc.setScreen(new DialogueScreen(pkt.dialogueId, pkt.speaker,
-                        pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext,
-                        pkt.delayMs, pkt.entityId,
-                        pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
-                        pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
-                        pkt.choiceCooldownValues, pkt.choiceResetTimeTicks));
+                mc.setScreen(createScreen(pkt));
             }
-        });
+        }
+
+        private static DialogueScreen createScreen(S2COpenDialoguePacket pkt) {
+            return new DialogueScreen(pkt.dialogueId, pkt.speaker,
+                    pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext,
+                    pkt.delayMs, pkt.entityId,
+                    pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
+                    pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
+                    pkt.choiceCooldownValues, pkt.choiceResetTimeTicks,
+                    pkt.sessionId, pkt.revision, pkt.playerSessionEpoch);
+        }
     }
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeEnum(mode);
+        buf.writeUUID(sessionId);
+        buf.writeLong(revision);
+        buf.writeLong(playerSessionEpoch);
         if (mode != Mode.CLOSE && !isClose) {
             buf.writeUtf(dialogueId);
             buf.writeUtf(nodeId);
@@ -490,6 +558,18 @@ public final class S2COpenDialoguePacket implements CustomPacketPayload {
 
     public int getEntityId() {
         return entityId;
+    }
+
+    public UUID getSessionId() {
+        return sessionId;
+    }
+
+    public long getRevision() {
+        return revision;
+    }
+
+    public long getPlayerSessionEpoch() {
+        return playerSessionEpoch;
     }
 
     public enum Mode {

@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
 /**
@@ -22,17 +23,14 @@ public final class DialogueRegistry {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private final Map<String, DialogueTree> codeTrees = new ConcurrentHashMap<>();
-    private final Map<String, DialogueTree> datapackTrees = new ConcurrentHashMap<>();
+    private volatile DatapackSnapshot datapackSnapshot = DatapackSnapshot.empty(0L);
+    private final AtomicLong nextDatapackEpoch = new AtomicLong();
 
     private final Map<String, String> codeNpcBindings = new ConcurrentHashMap<>();
-    private final Map<String, String> datapackNpcBindings = new ConcurrentHashMap<>();
 
     private final Map<EntityType<?>, String> codeEntityBindings = new ConcurrentHashMap<>();
-    private final Map<EntityType<?>, String> datapackEntityBindings = new ConcurrentHashMap<>();
 
     private final Map<EntityType<?>, BiFunction<Entity, ServerPlayer, String>> codeEntityDynamicBindings =
-            new ConcurrentHashMap<>();
-    private final Map<EntityType<?>, BiFunction<Entity, ServerPlayer, String>> datapackEntityDynamicBindings =
             new ConcurrentHashMap<>();
 
     private DialogueRegistry() {
@@ -48,9 +46,12 @@ public final class DialogueRegistry {
         LOGGER.debug("[DialogueRegistry] Registered code dialogue: {}", tree.dialogueId());
     }
 
-    public void registerDatapack(DialogueTree tree) {
+    public synchronized void registerDatapack(DialogueTree tree) {
         validate(tree);
-        datapackTrees.put(tree.dialogueId(), tree);
+        DatapackSnapshot current = datapackSnapshot;
+        Map<String, DialogueTree> trees = new LinkedHashMap<>(current.trees());
+        trees.put(tree.dialogueId(), tree);
+        publishDatapack(trees, current.npcBindings(), current.entityBindings(), current.dynamicEntityBindings());
         LOGGER.debug("[DialogueRegistry] Registered datapack dialogue: {}", tree.dialogueId());
     }
 
@@ -77,7 +78,7 @@ public final class DialogueRegistry {
     @Nullable
     private DialogueTree getMergedTree(String dialogueId) {
         DialogueTree tree = codeTrees.get(dialogueId);
-        return tree != null ? tree : datapackTrees.get(dialogueId);
+        return tree != null ? tree : datapackSnapshot.trees().get(dialogueId);
     }
 
     public Collection<DialogueTree> getAll() {
@@ -89,7 +90,7 @@ public final class DialogueRegistry {
     }
 
     public int datapackSize() {
-        return datapackTrees.size();
+        return datapackSnapshot.trees().size();
     }
 
     public int codeSize() {
@@ -101,7 +102,7 @@ public final class DialogueRegistry {
     }
 
     private Map<String, DialogueTree> getMergedTrees() {
-        Map<String, DialogueTree> merged = new LinkedHashMap<>(datapackTrees);
+        Map<String, DialogueTree> merged = new LinkedHashMap<>(datapackSnapshot.trees());
         merged.putAll(codeTrees);
         return merged;
     }
@@ -114,14 +115,17 @@ public final class DialogueRegistry {
         codeNpcBindings.put(npcId, dialogueId);
     }
 
-    public void bindNpcDatapack(String npcId, String dialogueId) {
-        datapackNpcBindings.put(npcId, dialogueId);
+    public synchronized void bindNpcDatapack(String npcId, String dialogueId) {
+        DatapackSnapshot current = datapackSnapshot;
+        Map<String, String> bindings = new LinkedHashMap<>(current.npcBindings());
+        bindings.put(npcId, dialogueId);
+        publishDatapack(current.trees(), bindings, current.entityBindings(), current.dynamicEntityBindings());
     }
 
     @Nullable
     public String getDialogueForNpc(String npcId) {
         String dialogueId = codeNpcBindings.get(npcId);
-        return dialogueId != null ? dialogueId : datapackNpcBindings.get(npcId);
+        return dialogueId != null ? dialogueId : datapackSnapshot.npcBindings().get(npcId);
     }
 
     public void bindEntity(EntityType<?> entityType, String dialogueId) {
@@ -133,8 +137,11 @@ public final class DialogueRegistry {
         LOGGER.debug("[DialogueRegistry] Bound code entity type {} → dialogue '{}'", entityType, dialogueId);
     }
 
-    public void bindEntityDatapack(EntityType<?> entityType, String dialogueId) {
-        datapackEntityBindings.put(entityType, dialogueId);
+    public synchronized void bindEntityDatapack(EntityType<?> entityType, String dialogueId) {
+        DatapackSnapshot current = datapackSnapshot;
+        Map<EntityType<?>, String> bindings = new LinkedHashMap<>(current.entityBindings());
+        bindings.put(entityType, dialogueId);
+        publishDatapack(current.trees(), current.npcBindings(), bindings, current.dynamicEntityBindings());
         LOGGER.debug("[DialogueRegistry] Bound datapack entity type {} → dialogue '{}'", entityType, dialogueId);
     }
 
@@ -149,9 +156,13 @@ public final class DialogueRegistry {
         LOGGER.debug("[DialogueRegistry] Bound code dynamic entity type {} → selector", entityType);
     }
 
-    public void bindEntityDynamicDatapack(EntityType<?> entityType,
-                                          BiFunction<Entity, ServerPlayer, String> selector) {
-        datapackEntityDynamicBindings.put(entityType, selector);
+    public synchronized void bindEntityDynamicDatapack(EntityType<?> entityType,
+                                                        BiFunction<Entity, ServerPlayer, String> selector) {
+        DatapackSnapshot current = datapackSnapshot;
+        Map<EntityType<?>, BiFunction<Entity, ServerPlayer, String>> bindings =
+                new LinkedHashMap<>(current.dynamicEntityBindings());
+        bindings.put(entityType, selector);
+        publishDatapack(current.trees(), current.npcBindings(), current.entityBindings(), bindings);
         LOGGER.debug("[DialogueRegistry] Bound datapack dynamic entity type {} → selector", entityType);
     }
 
@@ -164,13 +175,14 @@ public final class DialogueRegistry {
             return dynamicResult;
         }
 
-        dynamicResult = applyDynamicSelector(datapackEntityDynamicBindings.get(type), entity, player, type);
+        DatapackSnapshot snapshot = datapackSnapshot;
+        dynamicResult = applyDynamicSelector(snapshot.dynamicEntityBindings().get(type), entity, player, type);
         if (dynamicResult != null) {
             return dynamicResult;
         }
 
         String dialogueId = codeEntityBindings.get(type);
-        return dialogueId != null ? dialogueId : datapackEntityBindings.get(type);
+        return dialogueId != null ? dialogueId : snapshot.entityBindings().get(type);
     }
 
     @Nullable
@@ -187,23 +199,59 @@ public final class DialogueRegistry {
         }
     }
 
-    public void clearDatapack() {
-        datapackTrees.clear();
-        datapackNpcBindings.clear();
-        datapackEntityBindings.clear();
-        datapackEntityDynamicBindings.clear();
+    public synchronized void clearDatapack() {
+        publishDatapack(Map.of(), Map.of(), Map.of(), Map.of());
         LOGGER.info("[DialogueRegistry] Cleared datapack dialogue trees and bindings.");
     }
 
-    public void clearAll() {
+    public synchronized void clearAll() {
         codeTrees.clear();
-        datapackTrees.clear();
         codeNpcBindings.clear();
-        datapackNpcBindings.clear();
         codeEntityBindings.clear();
-        datapackEntityBindings.clear();
         codeEntityDynamicBindings.clear();
-        datapackEntityDynamicBindings.clear();
+        publishDatapack(Map.of(), Map.of(), Map.of(), Map.of());
         LOGGER.info("[DialogueRegistry] Cleared all dialogue trees and bindings.");
+    }
+
+    public synchronized long replaceDatapack(Collection<DialogueTree> trees,
+                                             Map<String, String> npcBindings,
+                                             Map<EntityType<?>, String> entityBindings) {
+        Map<String, DialogueTree> treesById = new LinkedHashMap<>();
+        for (DialogueTree tree : trees) {
+            validate(tree);
+            treesById.put(tree.dialogueId(), tree);
+        }
+        return publishDatapack(treesById, npcBindings, entityBindings, Map.of());
+    }
+
+    public long getDatapackEpoch() {
+        return datapackSnapshot.epoch();
+    }
+
+    private long publishDatapack(Map<String, DialogueTree> trees,
+                                 Map<String, String> npcBindings,
+                                 Map<EntityType<?>, String> entityBindings,
+                                 Map<EntityType<?>, BiFunction<Entity, ServerPlayer, String>> dynamicEntityBindings) {
+        long epoch = nextDatapackEpoch.incrementAndGet();
+        datapackSnapshot = new DatapackSnapshot(
+                Map.copyOf(trees),
+                Map.copyOf(npcBindings),
+                Map.copyOf(entityBindings),
+                Map.copyOf(dynamicEntityBindings),
+                epoch
+        );
+        return epoch;
+    }
+
+    private record DatapackSnapshot(
+            Map<String, DialogueTree> trees,
+            Map<String, String> npcBindings,
+            Map<EntityType<?>, String> entityBindings,
+            Map<EntityType<?>, BiFunction<Entity, ServerPlayer, String>> dynamicEntityBindings,
+            long epoch
+    ) {
+        private static DatapackSnapshot empty(long epoch) {
+            return new DatapackSnapshot(Map.of(), Map.of(), Map.of(), Map.of(), epoch);
+        }
     }
 }

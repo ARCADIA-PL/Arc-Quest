@@ -4,14 +4,18 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.identity.EntityRef;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.npc.NpcBinding;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.slf4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -29,15 +33,21 @@ public class DialogueSession {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private final UUID sessionId;
+    private final long playerSessionEpoch;
     private final ServerPlayer player;
     private final DialogueTree tree;
     private final DialogueContext context;
     private final int entityId;
+    @Nullable
+    private final EntityRef entityRef;
 
     private final String namespace;
     private final DialogueProgressStore progress;
 
     private DialogueNode currentNode;
+    private long revision;
+    @Nullable
+    private UUID npcLeaseId;
     private boolean ended = false;
     private List<DialogueChoice> visibleChoices = List.of();
     private int[] visibleChoiceOriginalIndices = new int[0];
@@ -52,11 +62,26 @@ public class DialogueSession {
 
     public DialogueSession(ServerPlayer player, DialogueTree tree,
                            DialogueContext context, int entityId) {
+        this(player, tree, context, entityId,
+                entityId >= 0 && player.level().getEntity(entityId) != null
+                        ? EntityRef.of(player.level().getEntity(entityId)) : null);
+    }
+
+    public DialogueSession(ServerPlayer player, DialogueTree tree,
+                           DialogueContext context, @Nullable Entity entity) {
+        this(player, tree, context, entity != null ? entity.getId() : -1,
+                entity != null ? EntityRef.of(entity) : null);
+    }
+
+    private DialogueSession(ServerPlayer player, DialogueTree tree, DialogueContext context,
+                            int entityId, @Nullable EntityRef entityRef) {
         sessionId = UUID.randomUUID();
+        playerSessionEpoch = PlayerSessionEpochManager.getOrCreate(player);
         this.player = player;
         this.tree = tree;
         this.context = context != null ? context : new DialogueContext();
         this.entityId = entityId;
+        this.entityRef = entityRef;
         currentNode = tree.getStartNode();
 
         namespace = resolveNamespace();
@@ -75,6 +100,18 @@ public class DialogueSession {
 
     public UUID getSessionId() {
         return sessionId;
+    }
+
+    public long getPlayerSessionEpoch() {
+        return playerSessionEpoch;
+    }
+
+    public long getRevision() {
+        return revision;
+    }
+
+    long advanceRevision() {
+        return ++revision;
     }
 
     public ServerPlayer getPlayer() {
@@ -111,6 +148,28 @@ public class DialogueSession {
 
     public int getEntityId() {
         return entityId;
+    }
+
+    @Nullable
+    public EntityRef getEntityRef() {
+        return entityRef;
+    }
+
+    @Nullable
+    public Entity getEntity() {
+        if (entityRef != null && player.getServer() != null) {
+            return entityRef.resolve(player.getServer());
+        }
+        return entityId >= 0 ? player.level().getEntity(entityId) : null;
+    }
+
+    @Nullable
+    public UUID getNpcLeaseId() {
+        return npcLeaseId;
+    }
+
+    void bindNpcLease(UUID npcLeaseId) {
+        this.npcLeaseId = npcLeaseId;
     }
 
     public String getNamespace() {
@@ -150,23 +209,25 @@ public class DialogueSession {
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
 
             // 先检测时间回退，如果检测到则清除记录
-            if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
+            if (progress.clearIfTimeRegressed(choiceKey, ts.dayTime())) {
                 cooldowns[i] = 0;
                 continue;
             }
 
-            boolean onCooldown = progress.isOnCooldown(
+            var status = progress.evaluateCooldown(
                     choiceKey, choice.cooldownType(), (int) choice.cooldownSeconds(),
                     choice.resetTimeTicks(), ts);
 
-            if (!onCooldown) {
+            if (!status.active()) {
                 cooldowns[i] = 0;
                 continue;
             }
 
-            // 计算剩余时间
-            var entry = progress.getChoiceSelection(choiceKey);
-            cooldowns[i] = computeRemainingSeconds(entry, choice, ts);
+            cooldowns[i] = switch (choice.cooldownType()) {
+                case NONE -> 0;
+                case SECONDS -> Math.max(1, status.remainingRealSecondsFloor());
+                case GAME_DAY, GAME_TICK -> Math.max(1, status.remainingGameSecondsFloor());
+            };
         }
 
         return cooldowns;
@@ -203,7 +264,7 @@ public class DialogueSession {
             ProgressKey choiceKey = ProgressKey.ofChoice(namespace, currentNode.nodeId(), originalIndex);
 
             // 检测时间回退
-            if (UnifiedCooldownManager.clearIfTimeRegressed(progress, choiceKey, ts.dayTime())) {
+            if (progress.clearIfTimeRegressed(choiceKey, ts.dayTime())) {
                 lastSelectTimes[i] = 0;
                 purchaseGTs[i] = 0;
                 purchaseDTs[i] = 0;
@@ -235,34 +296,6 @@ public class DialogueSession {
     /**
      * 根据冷却类型计算剩余秒数。
      */
-    private int computeRemainingSeconds(DialogueProgressStore.Entry entry,
-                                        DialogueChoice choice, DialogueProgressStore.TimeSnapshot ts) {
-        if (!entry.exists()) return (int) choice.cooldownSeconds();
-
-        return switch (choice.cooldownType()) {
-            case NONE -> 0;
-
-            case SECONDS -> {
-                long cooldownMs = choice.cooldownSeconds() * 1000L;
-                long elapsed = ts.realTime() - entry.realTime();
-                long remainingMs = cooldownMs - elapsed;
-                yield (int) Math.max(1, remainingMs / 1000);
-            }
-
-            case GAME_DAY -> {
-                long currentDayTick = ts.dayTime() % 24000;
-                int remainingTicks = (int) (24000 - currentDayTick);
-                yield Math.max(1, remainingTicks / 20);
-            }
-
-            case GAME_TICK -> {
-                // 用 tick 数除以 20 转秒
-                int remainTicks = UnifiedCooldownManager.getGameTickCooldownRemainingTicks(
-                        entry, choice.resetTimeTicks(), ts.gameTime(), ts.dayTime());
-                yield Math.max(1, remainTicks / 20);
-            }
-        };
-    }
 
     /**
      * 玩家做出选择。
@@ -392,7 +425,7 @@ public class DialogueSession {
     // ═══════════════════════════════════════════════
 
     public Component processDialogueText(DialogueText text) {
-        Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
+        Entity npc = getEntity();
         IDialogueNpc dialogueNpc = (npc instanceof IDialogueNpc d) ? d : null;
 
         var cap = ArcQuestPlayerManager.get(player);
@@ -447,11 +480,7 @@ public class DialogueSession {
     }
 
     private String resolveNamespace() {
-        if (entityId == -1) {
-            return tree.dialogueId();
-        }
-
-        Entity npc = player.level().getEntity(entityId);
+        Entity npc = getEntity();
         if (npc == null) {
             return tree.dialogueId();
         }
@@ -486,7 +515,7 @@ public class DialogueSession {
     // ═══════════════════════════════════════════════
 
     private DialogueEvalContext buildEvalContext() {
-        Entity npc = (entityId != -1) ? player.level().getEntity(entityId) : null;
+        Entity npc = getEntity();
         return DialogueEvalContext.of(player, npc, namespace, progress);
     }
 
@@ -515,7 +544,8 @@ public class DialogueSession {
                 DialogueChoice choice = allChoices.get(i);
                 boolean pass = choice.conditions().isEmpty()
                         || choice.conditions().stream().allMatch(c ->
-                        cache.computeIfAbsent(c, () -> c.test(ctx)));
+                        cache.computeIfAbsent(c,
+                                () -> CoreProcessors.get().conditions().evaluate(c, ctx)));
 
                 LOGGER.debug("[Dialogue] Choice '{}' pass={}, ns={}", choice.text(), pass, namespace);
 

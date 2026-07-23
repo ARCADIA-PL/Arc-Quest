@@ -8,6 +8,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
 import org.arcadia.arc_quest.npc.NpcBinding;
+import org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -62,6 +63,10 @@ import org.jetbrains.annotations.Nullable;
  * @since 2.0
  */
 public interface IEntityDialogueExtension<T extends Entity> {
+
+    default NpcInteractionPolicy interactionPolicy(ServerPlayer player, T entity) {
+        return NpcInteractionPolicy.PARALLEL_PRIVATE;
+    }
 
     /**
      * 返回此扩展适用的实体类型。

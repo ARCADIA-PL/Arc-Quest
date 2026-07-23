@@ -11,14 +11,15 @@ import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
-import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
+import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class DialogueScreen extends Screen {
 
@@ -39,6 +40,9 @@ public class DialogueScreen extends Screen {
     private boolean clickSent = false;
 
     private int entityId = -1;
+    private UUID sessionId = S2COpenDialoguePacket.LEGACY_SESSION_ID;
+    private long revision;
+    private long playerSessionEpoch;
     @Nullable
     private Entity cachedNpcEntity;
 
@@ -71,8 +75,21 @@ public class DialogueScreen extends Screen {
     }
 
     public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId, long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes, long[] choicePurchaseDayTimes, int[] choiceCooldownTypes, long[] choiceCooldownValues, int[] choiceResetTimeTicks) {
+        this(dialogueId, speaker, text, choices, isTerminal, hasAutoNext, delayMs, entityId,
+                choiceLastSelectTimes, choicePurchaseGameTimes, choicePurchaseDayTimes,
+                choiceCooldownTypes, choiceCooldownValues, choiceResetTimeTicks,
+                S2COpenDialoguePacket.LEGACY_SESSION_ID, 0L, 0L);
+    }
+
+    public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices,
+                          boolean isTerminal, boolean hasAutoNext, int delayMs, int entityId,
+                          long[] choiceLastSelectTimes, long[] choicePurchaseGameTimes,
+                          long[] choicePurchaseDayTimes, int[] choiceCooldownTypes,
+                          long[] choiceCooldownValues, int[] choiceResetTimeTicks,
+                          UUID sessionId, long revision, long playerSessionEpoch) {
         super(Component.translatable("screen.dialogue.title"));
         this.entityId = entityId;
+        updateSessionMetadata(sessionId, revision, playerSessionEpoch);
         applyNodeData(speaker, text, choices, isTerminal, hasAutoNext, delayMs);
     }
 
@@ -112,6 +129,20 @@ public class DialogueScreen extends Screen {
             this.entityId = entityId;
             cachedNpcEntity = null;
         }
+    }
+
+    public void updateSessionMetadata(UUID sessionId, long revision, long playerSessionEpoch) {
+        this.sessionId = sessionId != null ? sessionId : S2COpenDialoguePacket.LEGACY_SESSION_ID;
+        this.revision = revision;
+        this.playerSessionEpoch = playerSessionEpoch;
+    }
+
+    public boolean matchesSession(UUID incomingSessionId, String incomingDialogueId) {
+        if (incomingSessionId == null || S2COpenDialoguePacket.LEGACY_SESSION_ID.equals(incomingSessionId)) {
+            ClientDialogueCache.DialogueSessionData session = getCurrentSession();
+            return session != null && session.treeId.equals(incomingDialogueId);
+        }
+        return sessionId.equals(incomingSessionId);
     }
 
     private void applyNodeData(Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
@@ -162,7 +193,7 @@ public class DialogueScreen extends Screen {
     private void commitChoice() {
         if (!clickSent && clickedIndex >= 0) {
             clickSent = true;
-            ArcQuestNetwork.sendDialogueChoice(new C2SDialogueChoicePacket(clickedIndex));
+            ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createChoicePacket(clickedIndex));
         }
     }
 
@@ -334,7 +365,7 @@ public class DialogueScreen extends Screen {
     private void sendAutoAdvance() {
         if (!autoAdvanceSent) {
             autoAdvanceSent = true;
-            ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.autoAdvance());
+            ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createAutoAdvancePacket());
         }
     }
 
@@ -382,7 +413,7 @@ public class DialogueScreen extends Screen {
         masterAnim = Math.max(0f, Math.min(1f, masterAnim + (isClosing ? -4.0f * dt : 3.0f * dt)));
         if (isClosing && masterAnim <= 0.0f) {
             if (minecraft != null && minecraft.screen == this) {
-                ArcQuestNetwork.sendDialogueChoice(C2SDialogueChoicePacket.close());
+                ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createClosePacket());
                 minecraft.setScreen(null);
             }
             return;

@@ -10,6 +10,11 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.common.NeoForge;
 import net.minecraft.core.registries.BuiltInRegistries;
+import org.arcadia.arc_quest.core.identity.EntityRef;
+import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.execution.CoreRule;
+import org.arcadia.arc_quest.core.time.TimeSnapshot;
 import org.arcadia.arc_quest.api.event.dialogue.*;
 import org.arcadia.arc_quest.dialogue.api.*;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
@@ -17,8 +22,10 @@ import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
-import org.arcadia.arc_quest.dialogue.util.TimeSanitizer;
+import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
+import org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
@@ -45,22 +52,30 @@ public final class DialogueSessionManager {
     }
 
     public DialogueSession startDialogue(ServerPlayer player, DialogueTree tree) {
-        return startDialogue(player, null, tree, new DialogueContext());
+        return startDialogue(player, null, tree, new DialogueContext(), NpcInteractionPolicy.PARALLEL_PRIVATE);
     }
 
     @Nullable
     public DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
                                          String dialogueId, DialogueContext context) {
+        return startDialogue(player, npcEntity, dialogueId, context, NpcInteractionPolicy.PARALLEL_PRIVATE);
+    }
+
+    @Nullable
+    public DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
+                                         String dialogueId, DialogueContext context,
+                                         NpcInteractionPolicy interactionPolicy) {
         DialogueTree tree = DialogueRegistry.INSTANCE.get(dialogueId);
         if (tree == null) {
             LOGGER.error("[Dialogue] Dialogue tree '{}' not found.", dialogueId);
             return null;
         }
-        return startDialogue(player, npcEntity, tree, context);
+        return startDialogue(player, npcEntity, tree, context, interactionPolicy);
     }
 
     private DialogueSession startDialogue(ServerPlayer player, @Nullable Entity npcEntity,
-                                          DialogueTree tree, DialogueContext context) {
+                                          DialogueTree tree, DialogueContext context,
+                                          NpcInteractionPolicy interactionPolicy) {
         var data = ArcQuestPlayerManager.get(player);
         if (data == null) {
             LOGGER.warn("[Dialogue] Missing quest data for player {}, cannot start dialogue '{}'",
@@ -69,30 +84,50 @@ public final class DialogueSessionManager {
         }
         String dialogueId = tree.dialogueId();
         var progress = data.getDialogueProgress();
-        long nowReal = TimeSanitizer.getCurrentRealTime();
-        long nowGame = TimeSanitizer.getCurrentGameTime(player);
-        long nowDayTime = TimeSanitizer.getCurrentDayTime(player);
+        var now = CoreProcessors.get().time().capture(player);
 
         int entityId = npcEntity != null ? npcEntity.getId() : -1;
-        DialogueSession session = new DialogueSession(player, tree, context, entityId);
+        DialogueSession session = new DialogueSession(player, tree, context, npcEntity);
         String namespace = session.getNamespace();
 
         LOGGER.debug("[Dialogue] Resolved namespace='{}' for dialogue='{}'", namespace, dialogueId);
 
-        if (!tree.repeatable() && progress.hasCompletedDialogue(namespace, dialogueId)) {
-            LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.", dialogueId, player.getName().getString());
+        DialogueStartContext startContext = new DialogueStartContext(
+                tree, progress, namespace, dialogueId, now);
+        var startDecision = CoreProcessors.get().executions().decide(startContext, List.of(
+                CoreRule.require(contextValue -> contextValue.tree().repeatable()
+                                || !contextValue.progress().hasCompletedDialogue(
+                                contextValue.namespace(), contextValue.dialogueId()),
+                        DialogueStartFailure.ALREADY_COMPLETED),
+                CoreRule.require(DialogueSessionManager::isDialogueCooldownReady,
+                        DialogueStartFailure.ON_COOLDOWN)
+        ));
+        if (!startDecision.allowed()) {
+            if (startDecision.failure() == DialogueStartFailure.ALREADY_COMPLETED) {
+                LOGGER.debug("[Dialogue] One-time dialogue '{}' already completed for player {}.",
+                        dialogueId, player.getName().getString());
+            } else {
+                LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}.",
+                        dialogueId, player.getName().getString());
+            }
             return null;
         }
 
-        if (tree.cooldownSeconds() != 0 || tree.cooldownType() != CooldownType.NONE) {
-            boolean onCooldown = progress.isDialogueOnCooldown(namespace, dialogueId, tree.cooldownType(), (int) tree.cooldownSeconds(), tree.resetTimeTicks(), nowReal, nowGame, nowDayTime);
-            if (onCooldown) {
-                LOGGER.debug("[Dialogue] Dialogue '{}' on cooldown for player {}.", dialogueId, player.getName().getString());
+        endDialogue(player);
+        if (npcEntity != null) {
+            var leaseResult = NpcInteractionLeaseManager.INSTANCE.acquire(
+                    EntityRef.of(npcEntity),
+                    new PlayerSessionRef(player.getUUID(), PlayerSessionEpochManager.getOrCreate(player)),
+                    interactionPolicy != null ? interactionPolicy : NpcInteractionPolicy.PARALLEL_PRIVATE,
+                    player.server.getTickCount()
+            );
+            if (!leaseResult.acquired() || leaseResult.lease() == null) {
+                LOGGER.info("[DialogueLease] Dialogue start rejected. player={}, entityRef={}, policy={}, status={}",
+                        player.getUUID(), EntityRef.of(npcEntity), interactionPolicy, leaseResult.status());
                 return null;
             }
+            session.bindNpcLease(leaseResult.lease().leaseId());
         }
-
-        endDialogue(player);
         sessions.put(player.getUUID(), session);
         transcriptMap.put(player.getUUID(), new ArrayList<>());
 
@@ -101,7 +136,8 @@ public final class DialogueSessionManager {
         }
 
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
-        progress.recordDialogueVisit(namespace, dialogueId, nowReal, nowGame, nowDayTime);
+        progress.recordDialogueVisit(
+                namespace, dialogueId, now.realTime(), now.gameTime(), now.dayTime());
         sendNodeToClient(session, true);
         SyncObservability.trace("dialogue", dialogueId, player.getName().getString(), SyncObservability.Stage.OPEN, Reason.DIALOGUE_OPEN);
         NeoForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
@@ -123,7 +159,7 @@ public final class DialogueSessionManager {
         if (currentNode != null) {
             var visibleChoices = session.getVisibleChoices();
             if (choiceIndex >= 0 && choiceIndex < visibleChoices.size()) {
-                Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
+                Entity npc = session.getEntity();
                 var choice = visibleChoices.get(choiceIndex);
                 Component choiceText = session.processDialogueText(choice.text());
 
@@ -133,7 +169,7 @@ public final class DialogueSessionManager {
                 ));
 
                 appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
-                        System.currentTimeMillis(),
+                        CoreProcessors.get().time().realTimeMillis(),
                         "player",
                         Component.literal(player.getName().getString()),
                         choiceText,
@@ -156,6 +192,25 @@ public final class DialogueSessionManager {
         sendNodeToClient(session, false);
         SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                 SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_NEXT_NODE);
+    }
+
+    public void handleChoice(ServerPlayer player, int choiceIndex, UUID sessionId, long expectedRevision,
+                             String expectedNodeId, String expectedChoiceId, long playerSessionEpoch) {
+        DialogueSession session = validateCommand(player, sessionId, expectedRevision, expectedNodeId, playerSessionEpoch);
+        if (session == null) return;
+        List<DialogueChoice> visibleChoices = session.getVisibleChoices();
+        if (choiceIndex < 0 || choiceIndex >= visibleChoices.size()) {
+            LOGGER.warn("[DialogueProtocol] Invalid choice index. player={}, sessionId={}, revision={}, index={}",
+                    player.getName().getString(), sessionId, expectedRevision, choiceIndex);
+            return;
+        }
+        String actualChoiceId = visibleChoices.get(choiceIndex).choiceId();
+        if (expectedChoiceId != null && !expectedChoiceId.isEmpty() && !Objects.equals(expectedChoiceId, actualChoiceId)) {
+            LOGGER.warn("[DialogueProtocol] Choice id mismatch. player={}, sessionId={}, revision={}, expected={}, actual={}",
+                    player.getName().getString(), sessionId, expectedRevision, expectedChoiceId, actualChoiceId);
+            return;
+        }
+        handleChoice(player, choiceIndex);
     }
 
     public void handleAutoAdvance(ServerPlayer player) {
@@ -185,6 +240,12 @@ public final class DialogueSessionManager {
         sendNodeToClient(session, false);
         SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                 SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_NEXT_NODE);
+    }
+
+    public void handleAutoAdvance(ServerPlayer player, UUID sessionId, long expectedRevision,
+                                  String expectedNodeId, long playerSessionEpoch) {
+        if (validateCommand(player, sessionId, expectedRevision, expectedNodeId, playerSessionEpoch) == null) return;
+        handleAutoAdvance(player);
     }
 
     public void handleRestoreDialogue(ServerPlayer player) {
@@ -235,6 +296,66 @@ public final class DialogueSessionManager {
         }
     }
 
+    public void handleRestoreDialogue(ServerPlayer player, UUID sessionId, long expectedRevision,
+                                      String expectedNodeId, long playerSessionEpoch) {
+        if (validateCommand(player, sessionId, expectedRevision, expectedNodeId, playerSessionEpoch) == null) return;
+        handleRestoreDialogue(player);
+    }
+
+    public void handleClose(ServerPlayer player, UUID sessionId, long expectedRevision, long playerSessionEpoch) {
+        DialogueSession session = validateCommand(player, sessionId, expectedRevision, null, playerSessionEpoch);
+        if (session != null) endDialogue(player);
+    }
+
+    @Nullable
+    private DialogueSession validateCommand(ServerPlayer player, UUID sessionId, long expectedRevision,
+                                            @Nullable String expectedNodeId, long playerSessionEpoch) {
+        if (!PlayerSessionEpochManager.matches(player, playerSessionEpoch)) {
+            LOGGER.warn("[DialogueProtocol] Player session epoch mismatch. player={}, packetEpoch={}, serverEpoch={}",
+                    player.getName().getString(), playerSessionEpoch, PlayerSessionEpochManager.getOrCreate(player));
+            return null;
+        }
+
+        DialogueSession session = sessions.get(player.getUUID());
+        if (session == null || session.isEnded()) {
+            LOGGER.debug("[DialogueProtocol] No active session. player={}, packetSessionId={}",
+                    player.getName().getString(), sessionId);
+            sendClose(player, sessionId, expectedRevision, playerSessionEpoch);
+            return null;
+        }
+        if (!session.getSessionId().equals(sessionId)) {
+            LOGGER.warn("[DialogueProtocol] Session mismatch. player={}, packetSessionId={}, activeSessionId={}",
+                    player.getName().getString(), sessionId, session.getSessionId());
+            sendClose(player, sessionId, expectedRevision, playerSessionEpoch);
+            return null;
+        }
+        if (session.getRevision() != expectedRevision) {
+            LOGGER.debug("[DialogueProtocol] Revision mismatch. player={}, sessionId={}, packetRevision={}, serverRevision={}",
+                    player.getName().getString(), sessionId, expectedRevision, session.getRevision());
+            return null;
+        }
+        DialogueNode currentNode = session.getCurrentNode();
+        if (expectedNodeId != null && !expectedNodeId.isEmpty()
+                && (currentNode == null || !expectedNodeId.equals(currentNode.nodeId()))) {
+            LOGGER.warn("[DialogueProtocol] Node mismatch. player={}, sessionId={}, expectedNode={}, actualNode={}",
+                    player.getName().getString(), sessionId, expectedNodeId,
+                    currentNode != null ? currentNode.nodeId() : "<none>");
+            return null;
+        }
+        touchLease(session);
+        return session;
+    }
+
+    private static boolean isDialogueCooldownReady(DialogueStartContext context) {
+        DialogueTree tree = context.tree();
+        if (tree.cooldownSeconds() == 0 && tree.cooldownType() == CooldownType.NONE) return true;
+        TimeSnapshot now = context.now();
+        return !context.progress().isDialogueOnCooldown(
+                context.namespace(), context.dialogueId(), tree.cooldownType(),
+                (int) tree.cooldownSeconds(), tree.resetTimeTicks(),
+                now.realTime(), now.gameTime(), now.dayTime());
+    }
+
     public void endDialogue(ServerPlayer player) {
         DialogueSession session = sessions.remove(player.getUUID());
         if (session == null) return;
@@ -250,10 +371,13 @@ public final class DialogueSessionManager {
         transcriptMap.remove(player.getUUID());
         String dialogueId = session.getTree().dialogueId();
         Entity npcEntity = null;
+        if (session.getNpcLeaseId() != null) {
+            NpcInteractionLeaseManager.INSTANCE.release(session.getNpcLeaseId());
+        }
         if (session.getEntityId() != -1) {
-            npcEntity = player.level().getEntity(session.getEntityId());
+            npcEntity = session.getEntity();
             if (npcEntity instanceof IDialogueNpc) {
-                DialogueNpcStateManager.clear(npcEntity);
+                DialogueNpcStateManager.clear(npcEntity, player);
             }
         }
         if (!session.isEnded()) {
@@ -278,9 +402,25 @@ public final class DialogueSessionManager {
     public void onPlayerLogout(ServerPlayer player) {
         clearRestoreNodeState(player);
         endDialogue(player);
+        NpcInteractionLeaseManager.INSTANCE.releasePlayer(player.getUUID());
+    }
+
+    public void heartbeat(ServerPlayer player) {
+        DialogueSession session = getSession(player);
+        if (session != null) touchLease(session);
+    }
+
+    public void shutdown() {
+        for (DialogueSession session : List.copyOf(sessions.values())) {
+            endDialogue(session.getPlayer());
+        }
+        restoreNodeMap.clear();
+        transcriptMap.clear();
+        NpcInteractionLeaseManager.INSTANCE.clear();
     }
 
     private void sendNodeToClient(DialogueSession session, boolean openMode) {
+        touchLease(session);
         ServerPlayer player = session.getPlayer();
         DialogueNode node = session.getCurrentNode();
         if (node == null) return;
@@ -301,7 +441,7 @@ public final class DialogueSessionManager {
         }
 
         if (speaker == null || speaker.getString().isBlank()) {
-            Entity npcEntity = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
+            Entity npcEntity = session.getEntity();
             if (npcEntity instanceof IDialogueNpc dialogueNpc) {
                 Component display = dialogueNpc.getDialogueDisplayName();
                 if (display != null) {
@@ -332,7 +472,7 @@ public final class DialogueSessionManager {
         }
         var data = ArcQuestPlayerManager.get(player);
         DialogueProgressStore progress = data != null ? data.getDialogueProgress() : null;
-        Entity npc = session.getEntityId() != -1 ? player.level().getEntity(session.getEntityId()) : null;
+        Entity npc = session.getEntity();
         DialogueEvalContext ctx = DialogueEvalContext.of(session.getPlayer(), npc, session.getNamespace(), progress);
         ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(ctx, node.conditionalTexts(), session.processDialogueText(node.text()).getString());
         Component text = Component.literal(session.processText(sayIfResult.text));
@@ -341,7 +481,7 @@ public final class DialogueSessionManager {
         if (data != null) syncDialogueMarkers(session, node, sayIfResult);
 
         appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
-                System.currentTimeMillis(),
+                CoreProcessors.get().time().realTimeMillis(),
                 "npc",
                 speaker,
                 text,
@@ -366,17 +506,26 @@ public final class DialogueSessionManager {
         }
 
         var cooldownData = session.getChoiceCooldownRawData();
+        long revision = session.advanceRevision();
         S2COpenDialoguePacket packet = new S2COpenDialoguePacket(
                 session.getTree().dialogueId(), node.nodeId(), speaker, text, choiceTexts,
                 node.isTerminal(), !node.hasChoices() && node.autoNextId() != null, node.delayMs(),
                 session.getEntityId(), cooldownData.lastSelectTimes(), cooldownData.purchaseGameTimes(),
                 cooldownData.purchaseDayTimes(), cooldownData.cooldownTypes(), cooldownData.cooldownValues(),
-                cooldownData.resetTimeTicks(), choiceSounds, saySoundId, selectedSayId, choiceIds
+                cooldownData.resetTimeTicks(), choiceSounds, saySoundId, selectedSayId, choiceIds,
+                session.getSessionId(), revision, session.getPlayerSessionEpoch()
         );
         if (!openMode) {
             packet = S2COpenDialoguePacket.updateFrom(packet);
         }
         ArcQuestNetwork.sendToPlayer(player, packet);
+    }
+
+    private void touchLease(DialogueSession session) {
+        if (session.getNpcLeaseId() != null) {
+            NpcInteractionLeaseManager.INSTANCE.heartbeat(
+                    session.getNpcLeaseId(), session.getPlayer().server.getTickCount());
+        }
     }
 
     private void syncDialogueMarkers(DialogueSession session,
@@ -493,6 +642,11 @@ public final class DialogueSessionManager {
         ArcQuestNetwork.sendToPlayer(player, S2COpenDialoguePacket.close());
     }
 
+    private void sendClose(ServerPlayer player, UUID sessionId, long revision, long playerSessionEpoch) {
+        ArcQuestNetwork.sendToPlayer(player,
+                S2COpenDialoguePacket.close(sessionId, revision, playerSessionEpoch));
+    }
+
     public void setRestoreNodeId(ServerPlayer player, String restoreNodeId) {
         UUID playerId = player.getUUID();
         if (restoreNodeId != null && !restoreNodeId.isEmpty()) {
@@ -535,5 +689,13 @@ public final class DialogueSessionManager {
 
     private void clearRestoreNodeState(ServerPlayer player) {
         restoreNodeMap.remove(player.getUUID());
+    }
+    private enum DialogueStartFailure {
+        ALREADY_COMPLETED,
+        ON_COOLDOWN
+    }
+
+    private record DialogueStartContext(DialogueTree tree, DialogueProgressStore progress, String namespace,
+                                        String dialogueId, TimeSnapshot now) {
     }
 }

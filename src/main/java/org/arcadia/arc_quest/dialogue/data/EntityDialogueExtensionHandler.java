@@ -27,6 +27,8 @@ import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.dialogue.util.AnnotatedInstanceUtil;
 import org.arcadia.arc_quest.npc.NpcBinding;
 import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
+import org.arcadia.arc_quest.npc.runtime.NpcResolution;
+import org.arcadia.arc_quest.npc.spec.NpcInteractionPolicy;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.slf4j.Logger;
 
@@ -65,6 +67,7 @@ public class EntityDialogueExtensionHandler {
         if (DialogueSessionManager.INSTANCE.isInDialogue(player)) return;
 
         boolean hasExtensions = EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(target.getType());
+        NpcResolution datapackResolution = null;
 
         boolean canInteract = true;
         if (hasExtensions) {
@@ -77,16 +80,15 @@ public class EntityDialogueExtensionHandler {
                 }
             }
         } else {
-            NpcSpec npcSpec = resolveNpcSpec(target, player);
-            if (npcSpec != null && npcSpec.interactCondition != null && !npcSpec.interactCondition.isAlways()) {
-                canInteract = false;
-            }
+            datapackResolution = NpcBindingRegistry.INSTANCE.resolve(target, player);
+            canInteract = datapackResolution.matched();
         }
         if (!canInteract) return;
 
         NpcBinding npcBinding = new NpcBinding();
         String dialogueId = null;
         IEntityDialogueExtension<Entity> matchedExt = null;
+        NpcInteractionPolicy interactionPolicy = NpcInteractionPolicy.PARALLEL_PRIVATE;
 
         if (hasExtensions) {
             for (var extension : EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(target.getType())) {
@@ -95,6 +97,7 @@ public class EntityDialogueExtensionHandler {
                 dialogueId = ext.getDialogueTreeId(player, target, event.getHand(), npcBinding);
                 if (dialogueId != null) {
                     matchedExt = ext;
+                    interactionPolicy = ext.interactionPolicy(player, target);
                     break;
                 }
             }
@@ -105,7 +108,13 @@ public class EntityDialogueExtensionHandler {
         }
 
         if (dialogueId == null) {
-            dialogueId = NpcBindingRegistry.INSTANCE.resolveDialogueId(target, player);
+            if (datapackResolution == null) {
+                datapackResolution = NpcBindingRegistry.INSTANCE.resolve(target, player);
+            }
+            dialogueId = datapackResolution.dialogueId();
+            if (datapackResolution.npcSpec() != null && datapackResolution.npcSpec().interactionPolicy != null) {
+                interactionPolicy = datapackResolution.npcSpec().interactionPolicy;
+            }
         }
 
         if (dialogueId == null) return;
@@ -117,14 +126,18 @@ public class EntityDialogueExtensionHandler {
             return;
         }
 
-        ensureDialogueNpcPatch(target, player);
-
         DialogueContext ctx = new DialogueContext();
         ctx.put("npcName", target.getDisplayName().getString());
         ctx.put("defaultNpc", target.getDisplayName().getString());
 
         DialogueSession session = DialogueSessionManager.INSTANCE.startDialogue(
-                player, target, tree.dialogueId(), ctx);
+                player, target, tree.dialogueId(), ctx, interactionPolicy);
+        if (session == null) {
+            LOGGER.warn("[EntityDialogueExtension] Failed to start resolved dialogue: player={}, entityRef={}, dialogueId={}",
+                    player.getUUID(), datapackResolution != null ? datapackResolution.entityRef() : target.getUUID(),
+                    dialogueId);
+            return;
+        }
 
         if (matchedExt != null) {
             matchedExt.onDialogueStart(player, target, session);
@@ -135,7 +148,7 @@ public class EntityDialogueExtensionHandler {
                 event.setCanceled(true);
             }
         } else {
-            NpcSpec npcSpec = resolveNpcSpec(target, player);
+            NpcSpec npcSpec = datapackResolution != null ? datapackResolution.npcSpec() : null;
             if (npcSpec != null && npcSpec.cancelVanillaInteract) {
                 event.setCancellationResult(InteractionResult.SUCCESS);
                 event.setCanceled(true);
@@ -184,18 +197,22 @@ public class EntityDialogueExtensionHandler {
         if (event.getEntity().level().isClientSide()) return;
         if (!(event.getEntity() instanceof LivingEntity livingEntity)) return;
 
-        DialogueNpcStateManager.State state = DialogueNpcStateManager.get(livingEntity);
-        if (state == null || state.conversingPlayer() == null) return;
-        if (!state.conversingPlayer().isAlive()) {
-            DialogueNpcStateManager.clear(livingEntity);
-            return;
+        List<ServerPlayer> participants = DialogueNpcStateManager.getParticipants(livingEntity);
+        if (participants.isEmpty()) return;
+
+        for (ServerPlayer participant : List.copyOf(participants)) {
+            if (!participant.isAlive()
+                    || !participant.level().dimension().equals(livingEntity.level().dimension())) {
+                DialogueSessionManager.INSTANCE.endDialogue(participant);
+                continue;
+            }
+            DialogueSessionManager.INSTANCE.heartbeat(participant);
+            checkDistance(livingEntity, participant);
         }
 
-        ServerPlayer serverPlayer = (ServerPlayer) state.conversingPlayer();
-
-        checkDistance(livingEntity, serverPlayer);
-        state = DialogueNpcStateManager.get(livingEntity);
+        DialogueNpcStateManager.State state = DialogueNpcStateManager.get(livingEntity);
         if (state == null || state.conversingPlayer() == null) return;
+        ServerPlayer serverPlayer = (ServerPlayer) state.conversingPlayer();
 
         controlNpcBehavior(livingEntity, serverPlayer);
         callExtensionOnTick(livingEntity, serverPlayer);
@@ -222,7 +239,7 @@ public class EntityDialogueExtensionHandler {
 
         if (entity.distanceTo(player) > maxDist + 2.0) {
             DialogueSessionManager.INSTANCE.endDialogue(player);
-            DialogueNpcStateManager.clear(entity);
+            DialogueNpcStateManager.clear(entity, player);
         }
     }
 
@@ -280,10 +297,6 @@ public class EntityDialogueExtensionHandler {
     /**
      * 确保实体有 DialogueNpcPatch 并设置对话状态
      */
-    private static void ensureDialogueNpcPatch(Entity entity, ServerPlayer player) {
-        DialogueNpcStateManager.setConversing(entity, player);
-    }
-
     private static void executeCommands(List<String> commands, ServerPlayer player) {
         if (commands == null || commands.isEmpty()) return;
         var server = ServerLifecycleHooks.getCurrentServer();
@@ -325,6 +338,9 @@ public class EntityDialogueExtensionHandler {
     @SubscribeEvent
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
         if (event.getLevel().isClientSide()) return;
+        for (ServerPlayer participant : DialogueNpcStateManager.getParticipants(event.getEntity())) {
+            DialogueSessionManager.INSTANCE.endDialogue(participant);
+        }
         DialogueNpcStateManager.clear(event.getEntity());
     }
 }
