@@ -58,7 +58,16 @@ public final class QuestSpecValidator {
             if (blank(c.flagToSet)) warn(r, cp + ".flagToSet", "Choice flagToSet is empty");
             condition(r, c.visibleCondition, cp + ".visibleCondition");
         });
-        list(p.objectives, (o,idx) -> objective(r, o, b + ".objectives[" + idx + "]"));
+        Set<String> objectiveIds = new HashSet<>();
+        list(p.objectives, (o,idx) -> {
+            String path = b + ".objectives[" + idx + "]";
+            if (blank(o.id)) {
+                warn(r, path + ".id", "Objective id missing; legacy fallback objective_" + (idx + 1) + " will be used");
+            } else if (!objectiveIds.add(o.id)) {
+                err(r, path + ".id", "Duplicate objective id: " + o.id);
+            }
+            objective(r, o, path);
+        });
         list(p.phaseRewards, (x,idx) -> reward(r, x, b + ".phaseRewards[" + idx + "]"));
     }
 

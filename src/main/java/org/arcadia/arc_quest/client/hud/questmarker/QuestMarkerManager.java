@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.questmarker;
 
+import org.arcadia.arc_quest.core.state.VersionedStreamGate;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 
 import java.util.Collection;
@@ -16,8 +17,7 @@ public final class QuestMarkerManager {
 
     private final Map<String, QuestMarkerData> markers = new HashMap<>();
 
-    private long currentEpoch = -1L;
-    private long currentRevision = -1L;
+    private final VersionedStreamGate revisionGate = new VersionedStreamGate();
 
     private QuestMarkerManager() {
     }
@@ -32,6 +32,7 @@ public final class QuestMarkerManager {
 
     public synchronized void clear() {
         markers.clear();
+        revisionGate.clear();
     }
 
     public synchronized QuestMarkerData get(String id) {
@@ -47,46 +48,29 @@ public final class QuestMarkerManager {
     }
 
     public synchronized long getCurrentEpoch() {
-        return currentEpoch;
+        return revisionGate.epoch();
     }
 
     public synchronized long getCurrentRevision() {
-        return currentRevision;
+        return revisionGate.revision();
     }
 
     public synchronized boolean applySnapshot(long epoch, long revision, Collection<QuestMarkerData> snapshot) {
-        if (epoch < currentEpoch) {
-            return false;
-        }
-        if (epoch == currentEpoch && revision < currentRevision) {
-            return false;
-        }
-
-        markers.clear();
-        for (QuestMarkerData data : snapshot) {
-            markers.put(data.getId(), data);
-        }
-        currentEpoch = epoch;
-        currentRevision = revision;
+        VersionedStreamGate.Decision decision = revisionGate.applySnapshot(epoch, revision, () -> {
+            markers.clear();
+            for (QuestMarkerData data : snapshot) {
+                markers.put(data.getId(), data);
+            }
+        });
+        if (decision != VersionedStreamGate.Decision.ACCEPT) return false;
         return true;
     }
 
     public synchronized boolean applyDelta(long epoch, long revision, Consumer<Map<String, QuestMarkerData>> mutator) {
-        if (currentEpoch < 0 || currentRevision < 0) {
-            return false;
-        }
-        if (epoch != currentEpoch) {
-            return false;
-        }
-        if (revision <= currentRevision) {
-            return false;
-        }
-        if (revision != currentRevision + 1) {
-            return false;
-        }
-
-        mutator.accept(markers);
-        currentRevision = revision;
+        long baseRevision = revisionGate.revision();
+        VersionedStreamGate.Decision decision = revisionGate.applyDelta(
+                epoch, baseRevision, revision, () -> mutator.accept(markers));
+        if (decision != VersionedStreamGate.Decision.ACCEPT) return false;
         return true;
     }
 }

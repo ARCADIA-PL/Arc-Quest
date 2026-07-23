@@ -92,8 +92,8 @@ public final class QuestSpecCompiler {
 
     private PhaseDefinition compilePhase(PhaseSpec spec) {
         List<ObjectiveEntry> objectives = new ArrayList<>();
-        for (ObjectiveSpec objectiveSpec : spec.objectives) {
-            objectives.add(compileObjective(objectiveSpec));
+        for (int objectiveIndex = 0; objectiveIndex < spec.objectives.size(); objectiveIndex++) {
+            objectives.add(compileObjective(spec.objectives.get(objectiveIndex), objectiveIndex));
         }
         List<PhaseTransition> transitions = new ArrayList<>();
         int priority = 0;
@@ -273,7 +273,7 @@ public final class QuestSpecCompiler {
         return Enum.valueOf(enumType, value);
     }
 
-    private ObjectiveEntry compileObjective(ObjectiveSpec spec) {
+    private ObjectiveEntry compileObjective(ObjectiveSpec spec, int objectiveIndex) {
         ObjectiveType objectiveType = resolveObjectiveType(spec);
         LinkedHashMap<String, String> extraData = new LinkedHashMap<>(spec.extraData);
         putIfPresent(extraData, "npc_id", spec.npcId);
@@ -287,7 +287,10 @@ public final class QuestSpecCompiler {
         putIfPresent(extraData, "count_per_level", spec.countPerLevel);
         putIfPresent(extraData, "count_min", spec.countMin);
         putIfPresent(extraData, "count_max", spec.countMax);
-        return new ObjectiveEntry(objectiveType, resolveObjectiveTarget(spec, objectiveType), spec.requiredCount, compileText(spec.displayText), spec.hidden, spec.optional, extraData, compileMarks(spec.relatedMarks), null);
+        String objectiveId = blankToNull(spec.id) != null ? spec.id.trim() : "objective_" + (objectiveIndex + 1);
+        return new ObjectiveEntry(objectiveId, objectiveType, resolveObjectiveTarget(spec, objectiveType),
+                spec.requiredCount, compileText(spec.displayText), spec.hidden, spec.optional,
+                extraData, compileMarks(spec.relatedMarks), null);
     }
 
     private ResourceLocation resolveObjectiveTarget(ObjectiveSpec spec, ObjectiveType objectiveType) {

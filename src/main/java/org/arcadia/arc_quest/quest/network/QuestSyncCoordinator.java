@@ -80,18 +80,7 @@ public final class QuestSyncCoordinator {
      * 仅网络同步，不持久化（用于高频 tick sync）。
      */
     public static void syncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
-        ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
-        if (kind == ArcQuestPlayer.DirtyKind.NONE) return;
-
-        if (kind == ArcQuestPlayer.DirtyKind.FULL) {
-            syncFullDataAndPush(player, data);
-        } else if (kind == ArcQuestPlayer.DirtyKind.FLAGS_VARS) {
-            syncFlagsVarsAndPush(player, data);
-        } else {
-            syncQuestStateForDirty(player, data);
-        }
-
-        data.clearDirty(kind);
+        persistAndSyncIfChanged(player, data);
     }
 
     /**

@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.quest.logic.profile;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.api.event.quest.QuestAcceptedEvent;
 import org.arcadia.arc_quest.api.event.quest.QuestStartedEvent;
 import org.arcadia.arc_quest.quest.api.*;
@@ -39,8 +40,9 @@ public final class CollectionQuestEngine {
         }
 
         long acceptedTick = player.getServer() != null ? player.getServer().getTickCount() : 0L;
-        long acceptedRealMs = System.currentTimeMillis();
-        long acceptedDayTime = player.level().getDayTime() % 24000L;
+        var acceptedTime = CoreProcessors.get().time().capture(player);
+        long acceptedRealMs = acceptedTime.realTime();
+        long acceptedDayTime = acceptedTime.dayTime();
 
         QuestRuntimeData runtime = new QuestRuntimeData(
                 questId,
@@ -168,7 +170,8 @@ public final class CollectionQuestEngine {
         if (discovered) {
             collectionData.markDiscovered(phaseId);
         }
-        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
+        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(),
+                CoreProcessors.get().time().realTimeMillis());
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
     }
 
@@ -208,7 +211,8 @@ public final class CollectionQuestEngine {
         collectionData.markDiscovered(phaseId);
         collectionData.markVisible(phaseId);
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
-        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
+        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(),
+                CoreProcessors.get().time().realTimeMillis());
         boolean entryCompleted = evaluateEntryCompletion(player, data, def, runtime, phaseId);
         boolean questCompleted = runtime.getState() == QuestState.COMPLETED;
         return CollectionEntryUpdateResult.ok(phaseId, next, entryCompleted, questCompleted);
@@ -282,7 +286,8 @@ public final class CollectionQuestEngine {
         collectionData.markVisible(phaseId);
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
         int next = collectionData.incrementEntryCount(phaseId, 1, entryConfig.getMaxCount() > 0 ? entryConfig.getMaxCount() : entryConfig.getCompletionTarget());
-        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(), System.currentTimeMillis());
+        collectionData.markUpdated(phaseId, entryConfig.getCategoryId(),
+                CoreProcessors.get().time().realTimeMillis());
         boolean entryCompleted = evaluateEntryCompletion(player, data, def, runtime, phaseId);
         boolean questCompleted = runtime.getState() == QuestState.COMPLETED;
         return CollectionEntryUpdateResult.ok(phaseId, next, entryCompleted, questCompleted);

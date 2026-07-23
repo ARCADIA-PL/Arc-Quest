@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ObjectiveSpec {
+    public String id = "";
     public String type = "arc_quest:custom";
     public String targetId = "";
     public int requiredCount = 1;

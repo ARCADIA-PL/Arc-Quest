@@ -14,6 +14,7 @@ import java.util.function.ToIntFunction;
 
 public final class ObjectiveEntry {
 
+    private final String objectiveId;
     private final ObjectiveType type;
     private final ResourceLocation targetId;
     private final int requiredCount;
@@ -32,10 +33,25 @@ public final class ObjectiveEntry {
                           boolean hidden,
                           boolean optional,
                           Map<String, String> extraData) {
-        this(type, targetId, requiredCount, QuestText.component(displayText), hidden, optional, extraData, List.of(), null);
+        this("", type, targetId, requiredCount, QuestText.component(displayText), hidden, optional,
+                extraData, List.of(), null);
     }
 
     public ObjectiveEntry(ObjectiveType type,
+                          ResourceLocation targetId,
+                          int requiredCount,
+                          QuestText displayText,
+                          boolean hidden,
+                          boolean optional,
+                          Map<String, String> extraData,
+                          List<MarkSpec> relatedMarks,
+                          @Nullable ToIntFunction<ServerPlayer> countModifier) {
+        this("", type, targetId, requiredCount, displayText, hidden, optional,
+                extraData, relatedMarks, countModifier);
+    }
+
+    public ObjectiveEntry(String objectiveId,
+                          ObjectiveType type,
                           ResourceLocation targetId,
                           int requiredCount,
                           QuestText displayText,
@@ -50,6 +66,7 @@ public final class ObjectiveEntry {
         if (requiredCount < 1) {
             throw new IllegalArgumentException("requiredCount must be >= 1, got " + requiredCount);
         }
+        this.objectiveId = objectiveId != null ? objectiveId.trim() : "";
         this.type = type;
         this.targetId = targetId;
         this.requiredCount = requiredCount;
@@ -59,6 +76,19 @@ public final class ObjectiveEntry {
         this.extraData = Collections.unmodifiableMap(extraData);
         this.relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
         this.countModifier = countModifier;
+    }
+
+    public String getObjectiveId() {
+        return objectiveId;
+    }
+
+    public boolean hasObjectiveId() {
+        return !objectiveId.isEmpty();
+    }
+
+    public ObjectiveEntry withObjectiveId(String objectiveId) {
+        return new ObjectiveEntry(objectiveId, type, targetId, requiredCount, displayText,
+                hidden, optional, extraData, relatedMarks, countModifier);
     }
 
     public ObjectiveType getType() {

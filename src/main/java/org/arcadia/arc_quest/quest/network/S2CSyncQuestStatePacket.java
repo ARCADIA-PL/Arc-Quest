@@ -28,17 +28,35 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
             StreamCodec.ofMember(S2CSyncQuestStatePacket::encode, S2CSyncQuestStatePacket::decode);
 
     private final QuestRuntimeData data;
+    private final long playerSessionEpoch;
+    private final long baseRevision;
+    private final long newRevision;
 
     public S2CSyncQuestStatePacket(QuestRuntimeData data) {
+        this(data, 0L, 0L, 0L);
+    }
+
+    public S2CSyncQuestStatePacket(QuestRuntimeData data, long playerSessionEpoch,
+                                   long baseRevision, long newRevision) {
         this.data = data;
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
+        this.baseRevision = Math.max(0L, baseRevision);
+        this.newRevision = Math.max(0L, newRevision);
     }
 
     public static void encode(S2CSyncQuestStatePacket pkt, FriendlyByteBuf buf) {
+        buf.writeLong(pkt.playerSessionEpoch);
+        buf.writeLong(pkt.baseRevision);
+        buf.writeLong(pkt.newRevision);
         pkt.data.writeToNetwork(buf);
     }
 
     public static S2CSyncQuestStatePacket decode(FriendlyByteBuf buf) {
-        return new S2CSyncQuestStatePacket(QuestRuntimeData.readFromNetwork(buf));
+        long playerSessionEpoch = buf.readLong();
+        long baseRevision = buf.readLong();
+        long newRevision = buf.readLong();
+        return new S2CSyncQuestStatePacket(
+                QuestRuntimeData.readFromNetwork(buf), playerSessionEpoch, baseRevision, newRevision);
     }
 
     @Override
@@ -48,6 +66,8 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
 
     public static void handle(S2CSyncQuestStatePacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
+            if (!ClientQuestCache.INSTANCE.acceptDelta(
+                    pkt.playerSessionEpoch, pkt.baseRevision, pkt.newRevision)) return;
             ResourceLocation questRl = ResourceLocation.tryParse(pkt.data.getQuestId());
             QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
             String name = def != null ? def.getDisplayName().getString() : pkt.data.getQuestId();
@@ -93,5 +113,17 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
                 }
             }
         });
+    }
+
+    public long getPlayerSessionEpoch() {
+        return playerSessionEpoch;
+    }
+
+    public long getBaseRevision() {
+        return baseRevision;
+    }
+
+    public long getNewRevision() {
+        return newRevision;
     }
 }

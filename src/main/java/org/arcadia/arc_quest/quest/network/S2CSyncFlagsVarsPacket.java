@@ -34,20 +34,38 @@ public final class S2CSyncFlagsVarsPacket implements CustomPacketPayload {
 
     private final Set<String> flags;
     private final Map<String, Integer> variables;
+    private final long playerSessionEpoch;
+    private final long baseRevision;
+    private final long newRevision;
 
     public S2CSyncFlagsVarsPacket(ArcQuestPlayer data) {
-        flags = new HashSet<>(data.getAllFlags());
-        variables = new HashMap<>(data.getAllVariables());
+        this(data, 0L, 0L, 0L);
     }
 
-    private S2CSyncFlagsVarsPacket(Set<String> flags, Map<String, Integer> variables) {
+    public S2CSyncFlagsVarsPacket(ArcQuestPlayer data, long playerSessionEpoch,
+                                  long baseRevision, long newRevision) {
+        flags = new HashSet<>(data.getAllFlags());
+        variables = new HashMap<>(data.getAllVariables());
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
+        this.baseRevision = Math.max(0L, baseRevision);
+        this.newRevision = Math.max(0L, newRevision);
+    }
+
+    private S2CSyncFlagsVarsPacket(Set<String> flags, Map<String, Integer> variables,
+                                   long playerSessionEpoch, long baseRevision, long newRevision) {
         this.flags = flags;
         this.variables = variables;
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
+        this.baseRevision = Math.max(0L, baseRevision);
+        this.newRevision = Math.max(0L, newRevision);
     }
 
     // ── 编码 ──────────────────────────────────────────
 
     public static void encode(S2CSyncFlagsVarsPacket pkt, FriendlyByteBuf buf) {
+        buf.writeLong(pkt.playerSessionEpoch);
+        buf.writeLong(pkt.baseRevision);
+        buf.writeLong(pkt.newRevision);
         // Flags
         buf.writeVarInt(pkt.flags.size());
         for (String f : pkt.flags) {
@@ -65,6 +83,9 @@ public final class S2CSyncFlagsVarsPacket implements CustomPacketPayload {
     // ── 解码 ──────────────────────────────────────────
 
     public static S2CSyncFlagsVarsPacket decode(FriendlyByteBuf buf) {
+        long playerSessionEpoch = buf.readLong();
+        long baseRevision = buf.readLong();
+        long newRevision = buf.readLong();
         int flagCount = buf.readVarInt();
         Set<String> flags = new HashSet<>(flagCount);
         for (int i = 0; i < flagCount; i++) {
@@ -79,7 +100,7 @@ public final class S2CSyncFlagsVarsPacket implements CustomPacketPayload {
             vars.put(key, val);
         }
 
-        return new S2CSyncFlagsVarsPacket(flags, vars);
+        return new S2CSyncFlagsVarsPacket(flags, vars, playerSessionEpoch, baseRevision, newRevision);
     }
 
     // ── 处理（客户端）─────────────────────────────────
@@ -91,7 +112,22 @@ public final class S2CSyncFlagsVarsPacket implements CustomPacketPayload {
 
     public static void handle(S2CSyncFlagsVarsPacket pkt, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
-            ClientQuestCache.INSTANCE.updateFlagsAndVars(pkt.flags, pkt.variables);
+            if (ClientQuestCache.INSTANCE.acceptDelta(
+                    pkt.playerSessionEpoch, pkt.baseRevision, pkt.newRevision)) {
+                ClientQuestCache.INSTANCE.updateFlagsAndVars(pkt.flags, pkt.variables);
+            }
         });
+    }
+
+    public long getPlayerSessionEpoch() {
+        return playerSessionEpoch;
+    }
+
+    public long getBaseRevision() {
+        return baseRevision;
+    }
+
+    public long getNewRevision() {
+        return newRevision;
     }
 }

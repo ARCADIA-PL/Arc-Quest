@@ -2,6 +2,8 @@ package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -15,7 +17,10 @@ import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.api.PhaseDefinition;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.trade.gacha.network.*;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
@@ -46,9 +51,30 @@ public final class ArcQuestNetwork {
      * 在 Mod 构造器里挂到 {@code modEventBus.addListener(ArcQuestNetwork::register)}。
      */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("1");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("5");
 
         // ─── S2C（play to client）───
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            registerClientPayloadHandlers(registrar);
+        } else {
+            registerClientPayloadCodecs(registrar);
+        }
+
+        // ─── C2S（play to server）───
+        registrar.playToServer(C2SRequestQuestActionPacket.TYPE, C2SRequestQuestActionPacket.STREAM_CODEC, C2SRequestQuestActionPacket::handle);
+        registrar.playToServer(C2SRequestQuestResyncPacket.TYPE, C2SRequestQuestResyncPacket.STREAM_CODEC, C2SRequestQuestResyncPacket::handle);
+        registrar.playToServer(C2SSubmitOfferPacket.TYPE, C2SSubmitOfferPacket.STREAM_CODEC, C2SSubmitOfferPacket::handle);
+        registrar.playToServer(C2SClaimCollectionRewardPacket.TYPE, C2SClaimCollectionRewardPacket.STREAM_CODEC, C2SClaimCollectionRewardPacket::handle);
+        registrar.playToServer(C2SGachaControlPacket.TYPE, C2SGachaControlPacket.STREAM_CODEC, C2SGachaControlPacket::handle);
+        registrar.playToServer(C2SDrawGachaPacket.TYPE, C2SDrawGachaPacket.STREAM_CODEC, C2SDrawGachaPacket::handle);
+        registrar.playToServer(C2SConfirmDrawPacket.TYPE, C2SConfirmDrawPacket.STREAM_CODEC, C2SConfirmDrawPacket::handle);
+        registrar.playToServer(C2SRequestTradePacket.TYPE, C2SRequestTradePacket.STREAM_CODEC, C2SRequestTradePacket::handle);
+        registrar.playToServer(C2SRequestTradeSyncPacket.TYPE, C2SRequestTradeSyncPacket.STREAM_CODEC, C2SRequestTradeSyncPacket::handle);
+        registrar.playToServer(C2SDialogueChoicePacket.TYPE, C2SDialogueChoicePacket.STREAM_CODEC, C2SDialogueChoicePacket::handle);
+        registrar.playToServer(C2SMarkGuideSeenPacket.TYPE, C2SMarkGuideSeenPacket.STREAM_CODEC, C2SMarkGuideSeenPacket::handle);
+    }
+
+    private static void registerClientPayloadHandlers(PayloadRegistrar registrar) {
         registrar.playToClient(S2CSyncFullDataPacket.TYPE, S2CSyncFullDataPacket.STREAM_CODEC, S2CSyncFullDataPacket::handle);
         registrar.playToClient(S2CSyncQuestStatePacket.TYPE, S2CSyncQuestStatePacket.STREAM_CODEC, S2CSyncQuestStatePacket::handle);
         registrar.playToClient(S2CDeltaProgressPacket.TYPE, S2CDeltaProgressPacket.STREAM_CODEC, S2CDeltaProgressPacket::handle);
@@ -66,18 +92,26 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2CDialogueTranscriptDeltaPacket.TYPE, S2CDialogueTranscriptDeltaPacket.STREAM_CODEC, S2CDialogueTranscriptDeltaPacket::handle);
         registrar.playToClient(S2COpenGuidePacket.TYPE, S2COpenGuidePacket.STREAM_CODEC, S2COpenGuidePacket::handle);
         registrar.playToClient(S2CSyncGuideStatePacket.TYPE, S2CSyncGuideStatePacket.STREAM_CODEC, S2CSyncGuideStatePacket::handle);
+    }
 
-        // ─── C2S（play to server）───
-        registrar.playToServer(C2SRequestQuestActionPacket.TYPE, C2SRequestQuestActionPacket.STREAM_CODEC, C2SRequestQuestActionPacket::handle);
-        registrar.playToServer(C2SSubmitOfferPacket.TYPE, C2SSubmitOfferPacket.STREAM_CODEC, C2SSubmitOfferPacket::handle);
-        registrar.playToServer(C2SClaimCollectionRewardPacket.TYPE, C2SClaimCollectionRewardPacket.STREAM_CODEC, C2SClaimCollectionRewardPacket::handle);
-        registrar.playToServer(C2SGachaControlPacket.TYPE, C2SGachaControlPacket.STREAM_CODEC, C2SGachaControlPacket::handle);
-        registrar.playToServer(C2SDrawGachaPacket.TYPE, C2SDrawGachaPacket.STREAM_CODEC, C2SDrawGachaPacket::handle);
-        registrar.playToServer(C2SConfirmDrawPacket.TYPE, C2SConfirmDrawPacket.STREAM_CODEC, C2SConfirmDrawPacket::handle);
-        registrar.playToServer(C2SRequestTradePacket.TYPE, C2SRequestTradePacket.STREAM_CODEC, C2SRequestTradePacket::handle);
-        registrar.playToServer(C2SRequestTradeSyncPacket.TYPE, C2SRequestTradeSyncPacket.STREAM_CODEC, C2SRequestTradeSyncPacket::handle);
-        registrar.playToServer(C2SDialogueChoicePacket.TYPE, C2SDialogueChoicePacket.STREAM_CODEC, C2SDialogueChoicePacket::handle);
-        registrar.playToServer(C2SMarkGuideSeenPacket.TYPE, C2SMarkGuideSeenPacket.STREAM_CODEC, C2SMarkGuideSeenPacket::handle);
+    private static void registerClientPayloadCodecs(PayloadRegistrar registrar) {
+        registrar.playToClient(S2CSyncFullDataPacket.TYPE, S2CSyncFullDataPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CSyncQuestStatePacket.TYPE, S2CSyncQuestStatePacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CDeltaProgressPacket.TYPE, S2CDeltaProgressPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CSyncFlagsVarsPacket.TYPE, S2CSyncFlagsVarsPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CSyncMarkersPacket.TYPE, S2CSyncMarkersPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CQuestActionResultPacket.TYPE, S2CQuestActionResultPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2COfferSubmitResultPacket.TYPE, S2COfferSubmitResultPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CGachaStatePacket.TYPE, S2CGachaStatePacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CDrawResultPacket.TYPE, S2CDrawResultPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CDrawFailedPacket.TYPE, S2CDrawFailedPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2COpenTradePacket.TYPE, S2COpenTradePacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CSyncTradeStatePacket.TYPE, S2CSyncTradeStatePacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2COpenDialoguePacket.TYPE, S2COpenDialoguePacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CDialogueTranscriptSnapshotPacket.TYPE, S2CDialogueTranscriptSnapshotPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CDialogueTranscriptDeltaPacket.TYPE, S2CDialogueTranscriptDeltaPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2COpenGuidePacket.TYPE, S2COpenGuidePacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CSyncGuideStatePacket.TYPE, S2CSyncGuideStatePacket.STREAM_CODEC, (packet, context) -> {});
     }
 
     // ═══════════════════════════════════════════════════════
@@ -89,8 +123,10 @@ public final class ArcQuestNetwork {
      */
     public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
         resetMarkerStream(player);
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
 
-        PacketDistributor.sendToPlayer(player, new S2CSyncFullDataPacket(data));
+        PacketDistributor.sendToPlayer(player,
+                new S2CSyncFullDataPacket(data, envelope.playerSessionEpoch(), envelope.newRevision()));
         syncMarkers(player, data);
     }
 
@@ -98,7 +134,10 @@ public final class ArcQuestNetwork {
      * 单任务状态同步
      */
     public static void syncQuestState(ServerPlayer player, QuestRuntimeData data) {
-        PacketDistributor.sendToPlayer(player, new S2CSyncQuestStatePacket(data));
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
+        PacketDistributor.sendToPlayer(player,
+                new S2CSyncQuestStatePacket(data, envelope.playerSessionEpoch(),
+                        envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, null, "quest_state_sync");
     }
@@ -111,8 +150,11 @@ public final class ArcQuestNetwork {
                                          String phaseId,
                                          int objectiveIndex,
                                          int newProgress) {
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
+        String objectiveId = resolveObjectiveId(player, questId, phaseId, objectiveIndex);
         PacketDistributor.sendToPlayer(player,
-                new S2CDeltaProgressPacket(questId, phaseId, objectiveIndex, newProgress));
+                new S2CDeltaProgressPacket(questId, phaseId, objectiveId, objectiveIndex, newProgress,
+                        envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, null, "delta_progress_sync");
     }
@@ -128,9 +170,28 @@ public final class ArcQuestNetwork {
      * Flags / Variables 同步
      */
     public static void syncFlagsAndVars(ServerPlayer player, ArcQuestPlayer data) {
-        PacketDistributor.sendToPlayer(player, new S2CSyncFlagsVarsPacket(data));
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
+        PacketDistributor.sendToPlayer(player,
+                new S2CSyncFlagsVarsPacket(data, envelope.playerSessionEpoch(),
+                        envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, data, "flags_vars_sync");
+    }
+
+    private static String resolveObjectiveId(ServerPlayer player, String questId,
+                                             String phaseId, int objectiveIndex) {
+        ResourceLocation questKey = ResourceLocation.tryParse(questId);
+        QuestDefinition definition = questKey != null ? QuestRegistry.get(questKey) : null;
+        if (definition == null) return "";
+        String resolvedPhaseId = phaseId;
+        if (resolvedPhaseId == null || resolvedPhaseId.isBlank()) {
+            ArcQuestPlayer playerData = ArcQuestPlayerManager.get(player);
+            QuestRuntimeData runtimeData = playerData != null ? playerData.getActiveQuest(questId) : null;
+            resolvedPhaseId = runtimeData != null ? runtimeData.getCurrentPhaseId() : "";
+        }
+        PhaseDefinition phase = definition.getPhase(resolvedPhaseId);
+        if (phase == null || objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) return "";
+        return phase.getObjectives().get(objectiveIndex).getObjectiveId();
     }
 
     /**

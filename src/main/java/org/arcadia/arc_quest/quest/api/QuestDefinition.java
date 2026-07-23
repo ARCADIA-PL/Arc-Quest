@@ -4,6 +4,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.jetbrains.annotations.Nullable;
 
@@ -499,7 +500,8 @@ public final class QuestDefinition {
                              Set<String> flags,
                              Map<String, Integer> variables) {
         for (ICondition cond : unlockConditions) {
-            if (!cond.test(player, completedQuests, flags, variables)) {
+            if (!CoreProcessors.get().conditions().evaluate(
+                    cond, new QuestConditionContext(player, completedQuests, flags, variables))) {
                 return false;
             }
         }
@@ -527,7 +529,8 @@ public final class QuestDefinition {
 
         for (PhaseTransition transition : sorted) {
             ICondition cond = transition.getCondition();
-            if (cond == null || cond.test(player, completedQuests, flags, variables)) {
+            if (cond == null || CoreProcessors.get().conditions().evaluate(
+                    cond, new QuestConditionContext(player, completedQuests, flags, variables))) {
                 return transition.getTargetPhaseId();
             }
         }

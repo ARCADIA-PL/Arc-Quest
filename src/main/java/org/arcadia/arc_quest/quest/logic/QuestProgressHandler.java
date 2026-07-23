@@ -2,6 +2,8 @@ package org.arcadia.arc_quest.quest.logic;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -9,9 +11,10 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.common.NeoForge;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.Holder;
 import org.arcadia.arc_quest.api.event.quest.*;
+import org.arcadia.arc_quest.core.CoreProcessors;
+import org.arcadia.arc_quest.core.execution.CoreRule;
+import org.arcadia.arc_quest.core.execution.ExecutionObserver;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
@@ -76,69 +79,35 @@ public final class QuestProgressHandler {
             return CollectionQuestEngine.acceptQuest(player, data, def);
         }
 
-        if (data.isQuestActive(questId)) {
-            return QuestRejectCodeDictionary.Code.ALREADY_ACTIVE;
-        }
-        if (data.isQuestCompleted(questId) && !def.isRepeatable()) {
-            return QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE;
-        }
-
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
-        for (ICondition cond : def.getUnlockConditions()) {
-            if (!cond.test(player, completedQuests, data.getAllFlags(), data.getAllVariables())) {
-                return QuestRejectCodeDictionary.Code.UNLOCK_CONDITION_NOT_MET;
-            }
-        }
-
         PhaseDefinition firstPhase = def.getInitialPhase();
-        if (firstPhase == null) {
-            return QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE;
-        }
-
-        long acceptedTick = player.getServer() != null ? player.getServer().getTickCount() : 0L;
-        long acceptedRealMs = System.currentTimeMillis();
-        long acceptedDayTime = player.level().getDayTime() % 24000L;
-
-        QuestRuntimeData qdata = new QuestRuntimeData(
-                questId,
-                firstPhase.getPhaseId(),
-                firstPhase.getObjectives().size(),
-                acceptedTick,
-                acceptedRealMs,
-                acceptedDayTime
+        QuestAcceptanceContext acceptance = new QuestAcceptanceContext(
+                player, data, def, questId, firstPhase,
+                new QuestConditionContext(player, completedQuests,
+                        data.getAllFlags(), data.getAllVariables()));
+        List<CoreRule<QuestAcceptanceContext, QuestRejectCodeDictionary.Code>> rules = List.of(
+                CoreRule.require(context -> !context.data().isQuestActive(context.questId()),
+                        QuestRejectCodeDictionary.Code.ALREADY_ACTIVE),
+                CoreRule.require(context -> !context.data().isQuestCompleted(context.questId())
+                                || context.definition().isRepeatable(),
+                        QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE),
+                CoreRule.require(context -> CoreProcessors.get().conditions().all(
+                                context.definition().getUnlockConditions(), context.conditionContext()),
+                        QuestRejectCodeDictionary.Code.UNLOCK_CONDITION_NOT_MET),
+                CoreRule.require(context -> context.initialPhase() != null,
+                        QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE)
         );
-        data.addActiveQuest(qdata);
-
-        boolean flagsChanged = false;
-        for (String flag : def.getFlagsToSetOnAccept()) {
-            data.setFlag(flag);
-            flagsChanged = true;
-        }
-        for (String flag : firstPhase.getFlagsToSetOnEnter()) {
-            data.setFlag(flag);
-            flagsChanged = true;
-        }
-
-        registerPhaseObjectives(player, def, firstPhase);
-        QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
-
-        // 仅对 autoEnterByCondition=true 的 phase 扫描自动入场
-        ActivationContext ctx = new ActivationContext();
-        tryAutoEnterPhases(player, data, qdata, def, firstPhase.getPhaseId(), ctx);
-        processImmediatelySatisfiedPhases(player, data, qdata, def);
-        flagsChanged = flagsChanged || ctx.flagsChanged;
-
-        syncQuestStateAndPush(player, qdata);
-        if (flagsChanged) {
-            syncFlagsVarsAndPush(player, data);
-        }
-
-        QuestEventBus.fire(QuestChangeEvent.questAccepted(ResourceLocation.parse(questId)));
-        NeoForge.EVENT_BUS.post(new QuestAcceptedEvent(player, ResourceLocation.parse(questId)));
-        NeoForge.EVENT_BUS.post(new QuestStartedEvent(player, ResourceLocation.parse(questId)));
-        playChapterSound(player, def.getChapterStartSound());
-
-        return QuestRejectCodeDictionary.Code.OK;
+        var execution = CoreProcessors.get().executions().execute(
+                acceptance, rules, QuestProgressHandler::applyQuestAcceptance,
+                new ExecutionObserver<QuestAcceptanceContext, QuestRejectCodeDictionary.Code,
+                        QuestRejectCodeDictionary.Code>() {
+                    @Override
+                    public void onSucceeded(QuestAcceptanceContext context,
+                                            QuestRejectCodeDictionary.Code value) {
+                        publishQuestAccepted(context);
+                    }
+                });
+        return execution.succeeded() ? execution.value() : execution.failure();
     }
 
     public static void incrementObjective(ServerPlayer player,
@@ -339,7 +308,7 @@ public final class QuestProgressHandler {
         // 自动解锁后继（可多条，支持 thenGoToIf）
         for (PhaseTransition tr : phase.getTransitions()) {
             boolean ok = tr.getCondition() == null
-                    || tr.getCondition().test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+                    || evaluateCondition(tr.getCondition(), player, completedQuests, data);
             if (!ok) continue;
 
             activatePhase(player, data, qdata, def, phaseId, tr.getTargetPhaseId(), true, ctx);
@@ -415,7 +384,8 @@ public final class QuestProgressHandler {
         }
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         for (PhaseTransition tr : phase.getTransitions()) {
-            boolean ok = tr.getCondition() == null || tr.getCondition().test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+            boolean ok = tr.getCondition() == null
+                    || evaluateCondition(tr.getCondition(), player, completedQuests, data);
             if (ok) activatePhase(player, data, qdata, def, phaseId, tr.getTargetPhaseId(), true, ctx);
         }
         tryAutoEnterPhases(player, data, qdata, def, phaseId, ctx);
@@ -491,8 +461,8 @@ public final class QuestProgressHandler {
 
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
         ICondition visibleCondition = chosen.getVisibleCondition();
-        boolean conditionsMet = visibleCondition == null ||
-                visibleCondition.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+        boolean conditionsMet = visibleCondition == null
+                || evaluateCondition(visibleCondition, player, completedQuests, data);
         if (!conditionsMet) {
             LOGGER.debug("[ArcQuest] Choice conditions not met for index {}", choiceIndex);
             return QuestRejectCodeDictionary.Code.CHOICE_CONDITION_NOT_MET;
@@ -530,7 +500,7 @@ public final class QuestProgressHandler {
             if (pid == null || pid.isEmpty() || pid.equals(targetPhaseId)) continue;
 
             ICondition cond = tr.getCondition();
-            boolean ok = cond == null || cond.test(player, completedQuests, data.getAllFlags(), data.getAllVariables());
+            boolean ok = cond == null || evaluateCondition(cond, player, completedQuests, data);
             if (!ok) continue;
 
             toActivate.add(pid);
@@ -888,11 +858,10 @@ public final class QuestProgressHandler {
 
         ResourceLocation tagId = ResourceLocation.parse(tag);
         TagKey<Item> key = TagKey.create(Registries.ITEM, tagId);
-        // 收集该 tag 下所有物品 id
         List<ResourceLocation> ids = new ArrayList<>();
         BuiltInRegistries.ITEM.getTag(key).ifPresent(holders -> {
-            for (Holder<Item> h : holders) {
-                ResourceLocation id = BuiltInRegistries.ITEM.getKey(h.value());
+            for (Holder<Item> holder : holders) {
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(holder.value());
                 if (id != null) ids.add(id);
             }
         });
@@ -920,9 +889,67 @@ public final class QuestProgressHandler {
         }
         ICondition cond = phase.getEnterCondition();
         if (cond == null) return true;
-        boolean result = cond.test(player, data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables());
+        boolean result = evaluateCondition(cond, player, data.getCompletedQuestLocations(), data);
         if (data != null) qdata.setEnterConditionCached(phase.getPhaseId(), result);
         return result;
+    }
+
+    private static QuestRejectCodeDictionary.Code applyQuestAcceptance(QuestAcceptanceContext context) {
+        ServerPlayer player = context.player();
+        ArcQuestPlayer data = context.data();
+        QuestDefinition definition = context.definition();
+        PhaseDefinition firstPhase = context.initialPhase();
+        String questId = context.questId();
+        long acceptedTick = player.getServer() != null ? player.getServer().getTickCount() : 0L;
+        var acceptedTime = CoreProcessors.get().time().capture(player);
+
+        QuestRuntimeData runtime = new QuestRuntimeData(
+                questId,
+                firstPhase.getPhaseId(),
+                firstPhase.getObjectives().size(),
+                acceptedTick,
+                acceptedTime.realTime(),
+                acceptedTime.dayTime()
+        );
+        data.addActiveQuest(runtime);
+
+        boolean flagsChanged = false;
+        for (String flag : definition.getFlagsToSetOnAccept()) {
+            data.setFlag(flag);
+            flagsChanged = true;
+        }
+        for (String flag : firstPhase.getFlagsToSetOnEnter()) {
+            data.setFlag(flag);
+            flagsChanged = true;
+        }
+
+        registerPhaseObjectives(player, definition, firstPhase);
+        QuestMarkerService.refreshQuestMarkers(player, data, runtime, definition);
+
+        ActivationContext activation = new ActivationContext();
+        tryAutoEnterPhases(player, data, runtime, definition, firstPhase.getPhaseId(), activation);
+        processImmediatelySatisfiedPhases(player, data, runtime, definition);
+        flagsChanged = flagsChanged || activation.flagsChanged;
+
+        syncQuestStateAndPush(player, runtime);
+        if (flagsChanged) syncFlagsVarsAndPush(player, data);
+        return QuestRejectCodeDictionary.Code.OK;
+    }
+
+    private static void publishQuestAccepted(QuestAcceptanceContext context) {
+        ResourceLocation questId = ResourceLocation.parse(context.questId());
+        QuestEventBus.fire(QuestChangeEvent.questAccepted(questId));
+        NeoForge.EVENT_BUS.post(new QuestAcceptedEvent(context.player(), questId));
+        NeoForge.EVENT_BUS.post(new QuestStartedEvent(context.player(), questId));
+        playChapterSound(context.player(), context.definition().getChapterStartSound());
+    }
+
+    private static boolean evaluateCondition(ICondition condition,
+                                             ServerPlayer player,
+                                             Set<ResourceLocation> completedQuests,
+                                             ArcQuestPlayer data) {
+        return CoreProcessors.get().conditions().evaluate(condition, new QuestConditionContext(
+                player, completedQuests, data.getAllFlags(), data.getAllVariables()));
     }
 
     // ═══════════════════════════════════════════════════════
@@ -994,6 +1021,12 @@ public final class QuestProgressHandler {
         boolean flagsChanged = false;
         boolean needsQuestStateSync = false;
         boolean needsFlagsVarsSync = false;
+    }
+
+    private record QuestAcceptanceContext(ServerPlayer player, ArcQuestPlayer data,
+                                          QuestDefinition definition, String questId,
+                                          PhaseDefinition initialPhase,
+                                          QuestConditionContext conditionContext) {
     }
 }
 

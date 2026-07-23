@@ -8,6 +8,8 @@ import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -167,7 +169,7 @@ public final class PhaseDefinition {
         this.displayName = displayName;
         this.description = description != null ? description : QuestText.component(Component.empty());
         this.story = story != null ? story : QuestText.component(Component.empty());
-        this.objectives = Collections.unmodifiableList(objectives);
+        this.objectives = Collections.unmodifiableList(normalizeObjectiveIds(objectives));
         this.transitions = Collections.unmodifiableList(transitions);
         this.choices = Collections.unmodifiableList(choices);
         this.phaseRewards = Collections.unmodifiableList(phaseRewards);
@@ -223,6 +225,37 @@ public final class PhaseDefinition {
 
     public List<ObjectiveEntry> getObjectives() {
         return objectives;
+    }
+
+    @Nullable
+    public ObjectiveEntry getObjective(String objectiveId) {
+        int index = getObjectiveIndex(objectiveId);
+        return index >= 0 ? objectives.get(index) : null;
+    }
+
+    public int getObjectiveIndex(String objectiveId) {
+        if (objectiveId == null || objectiveId.isBlank()) return -1;
+        for (int i = 0; i < objectives.size(); i++) {
+            if (objectiveId.equals(objectives.get(i).getObjectiveId())) return i;
+        }
+        return -1;
+    }
+
+    private static List<ObjectiveEntry> normalizeObjectiveIds(List<ObjectiveEntry> source) {
+        List<ObjectiveEntry> normalized = new ArrayList<>(source.size());
+        HashSet<String> ids = new HashSet<>();
+        for (int i = 0; i < source.size(); i++) {
+            ObjectiveEntry objective = Objects.requireNonNull(source.get(i), "objective");
+            String objectiveId = objective.getObjectiveId();
+            if (objectiveId.isBlank()) objectiveId = "objective_" + (i + 1);
+            if (!ids.add(objectiveId)) {
+                throw new IllegalArgumentException("Duplicate objective id: " + objectiveId);
+            }
+            normalized.add(objectiveId.equals(objective.getObjectiveId())
+                    ? objective
+                    : objective.withObjectiveId(objectiveId));
+        }
+        return normalized;
     }
 
     public int getRequiredObjectiveCount() {
