@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.questmarker.api;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -12,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObject.DimensionPos, MarkableObject.EntityByUuid, MarkableObject.EntityByTypeNearest, MarkableObject.EntityByNpcId, MarkableObject.StructureNearest, MarkableObject.CustomResolver {
+public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObject.DimensionPos, MarkableObject.BlockPosition, MarkableObject.EntityByUuid, MarkableObject.EntityByTypeNearest, MarkableObject.EntityByNpcId, MarkableObject.StructureNearest, MarkableObject.CustomResolver {
 
     record Pos(int x, int y, int z) implements MarkableObject {
     }
@@ -20,6 +21,12 @@ public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObjec
     record DimensionPos(ResourceKey<Level> dimension, int x, int y, int z) implements MarkableObject {
         public DimensionPos {
             Objects.requireNonNull(dimension, "dimension");
+        }
+    }
+
+    record BlockPosition(BlockPos pos) implements MarkableObject {
+        public BlockPosition {
+            Objects.requireNonNull(pos, "pos");
         }
     }
 
