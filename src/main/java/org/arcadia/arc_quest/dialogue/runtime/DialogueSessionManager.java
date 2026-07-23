@@ -599,6 +599,13 @@ public final class DialogueSessionManager {
                     .type(spec.markerType())
                     .build();
         }
+        if (target instanceof MarkableObject.BlockPosition bp) {
+            return new QuestMarkerData.Builder(markerId, bp.pos().getX() + 0.5, bp.pos().getY(), bp.pos().getZ() + 0.5, spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .type(spec.markerType())
+                    .build();
+        }
         if (target instanceof MarkableObject.EntityByNpcId byNpc) {
             Entity nearestNpc = level.getEntities(player,
                             player.getBoundingBox().inflate(byNpc.searchRadius()),
