@@ -16,7 +16,9 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.ModLoader;
 import net.neoforged.fml.loading.FMLLoader;
+import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
@@ -26,15 +28,10 @@ import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.data.ArcQuestDataGenerators;
-import org.arcadia.arc_quest.dialogue.data.EntityDialogueExtensionHandler;
-import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
-import org.arcadia.arc_quest.quest.registry.ArcQuestContent;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
-import org.arcadia.arc_quest.trade.gacha.registry.DemoGachaShops;
-import org.arcadia.arc_quest.trade.registry.TradeContent;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
@@ -50,7 +47,6 @@ public class Arc_Quest {
 
         // Register mod bus event listeners (replaces deprecated @EventBusSubscriber(bus=MOD))
         modEventBus.addListener(ArcQuestDataGenerators::gatherData);
-        modEventBus.addListener(EntityDialogueExtensionHandler.ModBusEvents::onCommonSetup);
         if (FMLLoader.getDist().isClient()) {
             modEventBus.addListener(ClientModEvents::onClientSetup);
             modEventBus.addListener(ClientModEvents::onRegisterLayers);
@@ -60,12 +56,13 @@ public class Arc_Quest {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            ArcQuestContent.registerAll();
-            EpicDialogueTrees.registerAll();
-            TradeContent.registerAll();
+            ModLoader.postEvent(new ArcQuestRegistrationEvent.Quest());
+            ModLoader.postEvent(new ArcQuestRegistrationEvent.Npc());
+            ModLoader.postEvent(new ArcQuestRegistrationEvent.Dialogue());
+            ModLoader.postEvent(new ArcQuestRegistrationEvent.Trade());
+            ModLoader.postEvent(new ArcQuestRegistrationEvent.Gacha());
+
             ArcQuestGuideContent.registerAll();
-            DemoGachaShops.registerDemoShops();
-            LOGGER.info("[ArcQuest] Demo gacha shops registered.");
             QuestRegistry.freeze();
             TradeRegistry.freeze();
             GuideRegistry.freeze();

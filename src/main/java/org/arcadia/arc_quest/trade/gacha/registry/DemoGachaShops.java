@@ -3,6 +3,10 @@ package org.arcadia.arc_quest.trade.gacha.registry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.gacha.builder.GachaShopBuilder;
 import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
@@ -17,6 +21,7 @@ import org.arcadia.arc_quest.trade.offer.ItemTradeOffer;
  * - 冷却/限购系统
  * - 自定义主题色和音效
  */
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class DemoGachaShops {
 
     private DemoGachaShops() {
@@ -36,6 +41,12 @@ public final class DemoGachaShops {
      */
     public static void registerDemoShops() {
         registerAll();
+    }
+
+    @SubscribeEvent
+    public static void onGachaRegistration(ArcQuestRegistrationEvent.Gacha event) {
+        registerAll();
+        Arc_Quest.LOGGER.info("[ArcQuest] Demo gacha shops registered.");
     }
 
     /**

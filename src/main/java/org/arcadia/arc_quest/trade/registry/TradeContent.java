@@ -6,6 +6,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.Items;
 import org.arcadia.arc_quest.api.ArcQuestAPI;
+import org.arcadia.arc_quest.Arc_Quest;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.trade.api.TradeCategory;
 import org.arcadia.arc_quest.trade.builder.TradeEntryBuilder;
 import org.arcadia.arc_quest.trade.builder.TradeShopBuilder;
@@ -16,6 +20,7 @@ import org.slf4j.Logger;
  * <p>
  * 展示如何使用 ArcQuestAPI 进行商店注册（Lib 模组标准实践）。
  */
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class TradeContent {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -33,6 +38,11 @@ public final class TradeContent {
         registerQuickSupplies();
 
         LOGGER.info("[ArcQuest] Total registered trade shops: {}", TradeRegistry.size());
+    }
+
+    @SubscribeEvent
+    public static void onTradeRegistration(ArcQuestRegistrationEvent.Trade event) {
+        registerAll();
     }
 
     /**

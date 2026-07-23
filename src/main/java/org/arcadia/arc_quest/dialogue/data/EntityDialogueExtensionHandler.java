@@ -13,10 +13,10 @@ import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.dialogue.DialogueEndedEvent;
+import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
@@ -314,24 +314,23 @@ public class EntityDialogueExtensionHandler {
         return NpcBindingRegistry.INSTANCE.resolveSpec(entity, player);
     }
 
+    @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
     public static class ModBusEvents {
 
         /**
          * 模组加载完成时扫描并注册所有扩展
          */
         @SubscribeEvent
-        public static void onCommonSetup(FMLCommonSetupEvent event) {
-            event.enqueueWork(() -> {
-                List<IEntityDialogueExtension<?>> extensions = AnnotatedInstanceUtil.getModEntityExtensions();
+        public static void onNpcRegistration(ArcQuestRegistrationEvent.Npc event) {
+            List<IEntityDialogueExtension<?>> extensions = AnnotatedInstanceUtil.getModEntityExtensions();
 
-                if (!extensions.isEmpty()) {
-                    EntityDialogueExtensionManager.INSTANCE.registerAll(extensions);
-                    LOGGER.info("[EntityDialogueExtension] Auto-registered {} extensions via annotation scanning",
-                            extensions.size());
-                } else {
-                    LOGGER.debug("[EntityDialogueExtension] No annotated extensions found. Use manual registration.");
-                }
-            });
+            if (!extensions.isEmpty()) {
+                EntityDialogueExtensionManager.INSTANCE.registerAll(extensions);
+                LOGGER.info("[EntityDialogueExtension] Auto-registered {} extensions via annotation scanning",
+                        extensions.size());
+            } else {
+                LOGGER.debug("[EntityDialogueExtension] No annotated extensions found. Use manual registration.");
+            }
         }
     }
 
