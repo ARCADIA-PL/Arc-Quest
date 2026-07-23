@@ -36,7 +36,7 @@ class QuestVisualConfigTest {
                 }
                 """);
 
-        assertNotNull(spec.phases.getFirst().visualConfig);
-        assertTrue(spec.phases.getFirst().visualConfig.useQuestSplashPresentation);
+        assertNotNull(spec.phases.get(0).visualConfig);
+        assertTrue(spec.phases.get(0).visualConfig.useQuestSplashPresentation);
     }
 }
