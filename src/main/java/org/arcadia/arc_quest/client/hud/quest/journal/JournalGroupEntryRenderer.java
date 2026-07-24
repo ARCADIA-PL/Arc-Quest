@@ -3,8 +3,6 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
-import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 
 final class JournalGroupEntryRenderer {
 
@@ -16,10 +14,9 @@ final class JournalGroupEntryRenderer {
 
     void render(GuiGraphics graphics, JournalListLayout.GroupRow row,
                 int x, int y, int width, int fallbackTheme,
-                float expansion, float hover, float effectiveAlpha,
-                boolean hasUnread) {
-        QuestGroupDefinition group = row.group();
-        int groupTheme = group.getThemeColor() == 0xFFFFFFFF ? fallbackTheme : group.getThemeColor();
+                float expansion, float hover, float effectiveAlpha) {
+        JournalListLayout.GroupDefinition group = row.group();
+        int groupTheme = group.themeColor() == 0xFFFFFFFF ? fallbackTheme : group.themeColor();
         int height = JournalConstants.GROUP_ENTRY_HEIGHT;
         int alpha = (int) (255 * effectiveAlpha);
         int baseGray = (int) (0xD0 + 0x2F * hover);
@@ -52,7 +49,7 @@ final class JournalGroupEntryRenderer {
         String subtitle = "QUEST GROUP";
         int subtitlePixels = (int) (font.width(subtitle) * subtitleScale);
         int nameMaxPixels = counterX - textStartX - subtitlePixels - 16;
-        String name = group.getDisplayName().getString();
+        String name = group.displayName().getString();
         int nameFullPixels = (int) (font.width(name) * nameScale);
         if (nameFullPixels > nameMaxPixels) {
             int allowedWidth = (int) (nameMaxPixels / nameScale) - font.width("...");
@@ -87,10 +84,6 @@ final class JournalGroupEntryRenderer {
         graphics.drawString(font, count, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
-        if (hasUnread) {
-            HudRenderUtil.drawBreathingRedDot(graphics, counterX - 10,
-                    y + height / 2, effectiveAlpha);
-        }
     }
 
     private void drawCyberneticEdge(GuiGraphics graphics, int x, int y,

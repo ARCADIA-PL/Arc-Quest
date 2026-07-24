@@ -8,6 +8,8 @@ import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.quest.api.IconPosition;
+import org.arcadia.arc_quest.quest.api.QuestCategory;
+import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 
@@ -21,6 +23,8 @@ public class JournalListPanel {
     private final Map<String, TextCache> textCache = new HashMap<>();
     private final Map<ResourceLocation, Boolean> groupExpanded = new HashMap<>();
     private final Map<ResourceLocation, Float> groupExpansion = new HashMap<>();
+    private final Map<ResourceLocation, JournalListLayout.GroupDefinition> explicitGroupDefinitions = new HashMap<>();
+    private final Map<ResourceLocation, JournalListLayout.GroupDefinition> categoryGroupDefinitions = new HashMap<>();
     private List<JournalListLayout.Row> rows = List.of();
     private float selectedSlide = -1f;
     private float[] entryHoverAnim = new float[0];
@@ -41,15 +45,32 @@ public class JournalListPanel {
     }
 
     private void rebuildRows() {
-        rows = JournalListLayout.build(screen.getCurrentEntries(), QuestGroupRegistry::getGroupForQuest);
+        rows = JournalListLayout.build(screen.getCurrentEntries(), this::resolveJournalGroup);
         for (JournalListLayout.Row row : rows) {
             if (row instanceof JournalListLayout.GroupRow groupRow) {
-                ResourceLocation groupId = groupRow.group().getId();
+                ResourceLocation groupId = groupRow.group().id();
                 groupExpansion.putIfAbsent(groupId, isGroupExpanded(groupId) ? 1f : 0f);
             }
         }
         entryHoverAnim = new float[rows.size()];
         textCache.clear();
+    }
+
+    private JournalListLayout.GroupDefinition resolveJournalGroup(JournalTypes.QuestListEntry entry) {
+        QuestGroupDefinition explicitGroup = QuestGroupRegistry.getGroupForQuest(entry.questId());
+        if (explicitGroup != null) {
+            return explicitGroupDefinitions.computeIfAbsent(
+                    explicitGroup.getId(),
+                    ignored -> JournalListLayout.GroupDefinition.explicit(explicitGroup)
+            );
+        }
+
+        if (entry.def() == null || entry.def().getCategory() == null) return null;
+        QuestCategory category = entry.def().getCategory();
+        return categoryGroupDefinitions.computeIfAbsent(
+                category.getId(),
+                ignored -> JournalListLayout.GroupDefinition.category(category)
+        );
     }
 
     private boolean isGroupExpanded(ResourceLocation groupId) {
@@ -59,7 +80,7 @@ public class JournalListPanel {
     private void updateGroupAnimations(float deltaTime) {
         for (JournalListLayout.Row row : rows) {
             if (!(row instanceof JournalListLayout.GroupRow groupRow)) continue;
-            ResourceLocation groupId = groupRow.group().getId();
+            ResourceLocation groupId = groupRow.group().id();
             float current = groupExpansion.getOrDefault(groupId, 1f);
             float target = isGroupExpanded(groupId) ? 1f : 0f;
             groupExpansion.put(groupId, HudAnimUtil.step(current, target, 4.5f, deltaTime));
@@ -170,10 +191,9 @@ public class JournalListPanel {
             float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[rowIndex]);
 
             if (row instanceof JournalListLayout.GroupRow groupRow) {
-                ResourceLocation groupId = groupRow.group().getId();
+                ResourceLocation groupId = groupRow.group().id();
                 groupRenderer.render(graphics, groupRow, x, entryY, width, theme,
-                        groupExpansion.getOrDefault(groupId, 1f), hover, effectiveAlpha,
-                        hasUnread(groupRow));
+                        groupExpansion.getOrDefault(groupId, 1f), hover, effectiveAlpha);
             } else if (row instanceof JournalListLayout.QuestRow questRow) {
                 if (rowIndex != selectedRowIndex && hover > 0.01f) {
                     graphics.fill(x + 2, entryY, x + width - 8,
@@ -191,13 +211,6 @@ public class JournalListPanel {
         int maxScroll = Math.max(0, contentHeight - height);
         renderScrollbar(graphics, x + width - 6, y + 2, height - 4, contentHeight, maxScroll);
         renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
-    }
-
-    private boolean hasUnread(JournalListLayout.GroupRow row) {
-        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
-        return row.quests().stream().anyMatch(entry ->
-                QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
-                        && !entry.questId().equals(trackedQuestId));
     }
 
     private void renderQuestRow(GuiGraphics graphics, JournalListLayout.QuestRow row,
@@ -358,7 +371,7 @@ public class JournalListPanel {
             float rowHeight = getRowHeight(row);
             if (rowHeight >= 1f && relativeY >= rowTop && relativeY < rowTop + rowHeight) {
                 if (row instanceof JournalListLayout.GroupRow groupRow) {
-                    ResourceLocation groupId = groupRow.group().getId();
+                    ResourceLocation groupId = groupRow.group().id();
                     groupExpanded.put(groupId, !isGroupExpanded(groupId));
                     screen.playClick();
                 } else if (row instanceof JournalListLayout.QuestRow questRow && rowHeight > 4f) {
