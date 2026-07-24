@@ -29,6 +29,6 @@ config="arc_quest.mixins.json"
 [[dependencies.${mod_id}]]
     modId="ponder"
     type="required"
-    versionRange="[1.0.64,)"
+    versionRange="[1.0.87,)"
     ordering="AFTER"
     side="BOTH"
