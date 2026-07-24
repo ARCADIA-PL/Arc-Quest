@@ -165,7 +165,7 @@ public class ClientHudEvents {
         }
         ResourceLocation n = event.getName();
         if (n.equals(VanillaGuiLayers.PLAYER_HEALTH) || n.equals(VanillaGuiLayers.FOOD_LEVEL)
-                || n.equals(VanillaGuiLayers.ARMOR_LEVEL) || n.equals(VanillaGuiLayers.AIR_LEVEL)) {
+                || n.equals(VanillaGuiLayers.ARMOR_LEVEL) || n.equals(VanillaGuiLayers.AIR_LEVEL) || n.equals(VanillaGuiLayers.CHAT)) {
             event.setCanceled(true);
         }
     }
