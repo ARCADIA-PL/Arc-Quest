@@ -17,6 +17,7 @@ public final class QuestCategory {
     private final String translationKey;
     private final int themeColor;
     private final boolean builtin;
+    private final int sortOrder;
 
     public static final QuestCategory ARCHON = QuestCategories.ARCHON;
     public static final QuestCategory COMPANION = QuestCategories.COMPANION;
@@ -25,10 +26,16 @@ public final class QuestCategory {
     public static final QuestCategory EVENT = QuestCategories.EVENT;
 
     public QuestCategory(ResourceLocation id, String translationKey, int themeColor, boolean builtin) {
+        this(id, translationKey, themeColor, builtin, Integer.MAX_VALUE);
+    }
+
+    public QuestCategory(ResourceLocation id, String translationKey, int themeColor,
+                         boolean builtin, int sortOrder) {
         this.id = Objects.requireNonNull(id, "id");
         this.translationKey = translationKey == null ? "" : translationKey;
         this.themeColor = themeColor;
         this.builtin = builtin;
+        this.sortOrder = sortOrder;
     }
 
     public ResourceLocation getId() {
@@ -49,6 +56,10 @@ public final class QuestCategory {
 
     public boolean isBuiltin() {
         return builtin;
+    }
+
+    public int getSortOrder() {
+        return sortOrder;
     }
 
     public String getPathToken() {

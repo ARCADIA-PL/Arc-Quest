@@ -73,6 +73,7 @@ public final class RegistryCollector {
             obj.addProperty("displayKey", category.getTranslationKey());
             obj.addProperty("themeColor", category.getThemeColor());
             obj.addProperty("builtin", category.isBuiltin());
+            obj.addProperty("sortOrder", category.getSortOrder());
             arr.add(obj);
         }
         return arr;

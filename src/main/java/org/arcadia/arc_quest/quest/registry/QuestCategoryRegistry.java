@@ -25,7 +25,8 @@ public final class QuestCategoryRegistry {
                 id,
                 definition.translationKey(),
                 definition.themeColor(),
-                definition.builtin()
+                definition.builtin(),
+                definition.sortOrder()
         );
         CATEGORIES.put(id, category);
         return category;
