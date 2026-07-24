@@ -51,6 +51,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuiTranslations() {
+        add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] Quest Panel");
         add("arc_quest.gui.tracker.new_quest", "New Quest");
 
         // ── Trade Screen Titles ──

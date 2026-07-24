@@ -143,6 +143,7 @@
   "arc_quest.gui.quest_story.page": "PAGE %1$s / %2$s",
   "arc_quest.gui.quest_story.prev": "<< PREV",
   "arc_quest.gui.tracker.new_quest": "New Quest",
+  "arc_quest.gui.tracker.open_journal_shortcut": "[%s] Quest Panel",
   "arc_quest.gui.trade.btn.empty": "Empty",
   "arc_quest.gui.trade.btn.locked": "Locked",
   "arc_quest.gui.trade.btn.purchase": "Purchase",

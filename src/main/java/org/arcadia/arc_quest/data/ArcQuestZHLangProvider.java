@@ -51,6 +51,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuiTranslations() {
+        add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] 任务面板");
         add("arc_quest.gui.tracker.new_quest", "新任务");
 
         // ── Trade Screen Titles ──
@@ -199,7 +200,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addHudText("phase_completed", "ARC QUEST // 阶段完成");
         addHudText("parallel_lanes", "并行线路");
         addHudText("parallel_more", "+%s 条并行阶段…");
-        addHudText("toast.phase_added", "[// 并行阶段已接入 ]");
+        addHudText("toast.phase_added", "[// 阶段推进 ]");
         addHudText("toast.phase_switched", "[// 当前焦点已切换 ]");
         addHudText("toast.phase_completed", "[// 阶段已完成 ]");
         addHudText("toast.phase_pending_confirm", "[// 等待手动确认 ]");

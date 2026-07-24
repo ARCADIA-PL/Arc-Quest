@@ -182,11 +182,13 @@ public class QuestTrackerPanel {
 
         List<ObjectiveEntry> objectives = def.isCollectionQuest() ? collectionProgressAdapter.buildObjectives(def, tracked, trackedPhaseId) : phase.getObjectives();
         Font font = mc.font;
+        int indicatorExtraHeight = newQuestIndicator.additionalHeight(questId);
 
         float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
         float virtualScreenWidth = screenWidth / uiScale;
 
         int targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
+        targetH += indicatorExtraHeight;
         boolean showPhaseLanes = !def.isCollectionQuest() && activePhaseOrder.size() > 1;
         if (showPhaseLanes) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
         else if (!def.isCollectionQuest()) targetH += 16;
@@ -231,7 +233,7 @@ public class QuestTrackerPanel {
         int indicatorWidth = newQuestIndicator.reservedWidth(font, questId);
         TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font, indicatorWidth);
         newQuestIndicator.render(g, font, panelX, panelY, questId, panelReveal, now);
-        textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
+        textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE + indicatorExtraHeight;
 
         if (showPhaseLanes) {
             textY = TrackerParallelWidget.render(g, font, tracked, def, activePhaseOrder, displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha);
