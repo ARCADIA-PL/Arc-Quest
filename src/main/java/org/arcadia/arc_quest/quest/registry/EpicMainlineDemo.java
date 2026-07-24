@@ -45,7 +45,9 @@ public final class EpicMainlineDemo {
                         .chapterShop("arc_quest:blacksmith_shop")
                         .displayName(Component.translatable("arc_quest.quest.epic_prologue.title"))
                         .description(Component.translatable("arc_quest.quest.epic_prologue.desc"))
+/*
                         .icon(Items.DIAMOND)
+*/
                         .sortOrder(0)
                         .acquisitionSplash(
                                 ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/splash/prologue_acquire.png"),
