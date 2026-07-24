@@ -1,17 +1,22 @@
 package org.arcadia.arc_quest.client.events;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
+import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
@@ -143,6 +148,26 @@ public class ClientHudEvents {
         }
 
         if (GachaResultRenderer.INSTANCE.isActive()) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRenderGuiOverlayPre(RenderGuiOverlayEvent.Pre event) {
+        // 打开任务/对话/交易/抽卡界面时隐藏生存状态与聊天 HUD
+        Minecraft mc = Minecraft.getInstance();
+        if (!(mc.screen instanceof QuestJournalScreen
+                || mc.screen instanceof DialogueScreen
+                || mc.screen instanceof AbstractTradeScreen
+                || mc.screen instanceof GachaScreen)) {
+            return;
+        }
+        ResourceLocation overlayId = event.getOverlay().id();
+        if (overlayId.equals(VanillaGuiOverlay.PLAYER_HEALTH.id())
+                || overlayId.equals(VanillaGuiOverlay.FOOD_LEVEL.id())
+                || overlayId.equals(VanillaGuiOverlay.ARMOR_LEVEL.id())
+                || overlayId.equals(VanillaGuiOverlay.AIR_LEVEL.id())
+                || overlayId.equals(VanillaGuiOverlay.CHAT_PANEL.id())) {
             event.setCanceled(true);
         }
     }
