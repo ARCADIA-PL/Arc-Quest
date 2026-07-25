@@ -5,8 +5,11 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 
 public class QuestNotificationToast {
     public static final int TOAST_WIDTH = 220;
@@ -17,16 +20,20 @@ public class QuestNotificationToast {
     private static final float EXIT = 350f;
 
     private final QuestToastManager.ToastType type;
-    private final String text;
+    private final Component text;
     private final String subtitle;
-    private String cachedNameStr = "";
+    private FormattedCharSequence cachedName = Component.empty().getVisualOrderText();
     private int cachedNameWidth = -1;
     private long startTime;
     private long lastUpdateTime;
 
     public QuestNotificationToast(QuestToastManager.ToastType type, String text) {
+        this(type, Component.literal(text));
+    }
+
+    public QuestNotificationToast(QuestToastManager.ToastType type, Component text) {
         this.type = type;
-        this.text = text;
+        this.text = text == null ? Component.empty() : text;
         subtitle = type.getLocalizedPrefix();
         long now = Util.getMillis();
         startTime = now;
@@ -101,13 +108,13 @@ public class QuestNotificationToast {
         if (textAlpha > 8) {
             if (cachedNameWidth != TOAST_WIDTH - 16) {
                 cachedNameWidth = TOAST_WIDTH - 16;
-                cachedNameStr = font.plainSubstrByWidth(text, cachedNameWidth);
+                cachedName = StyledTextUtil.fitSingleLine(font, text, cachedNameWidth);
             }
 
             int subColor = HudAnimUtil.withAlpha(type.accentColor, textAlpha);
             int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, textAlpha);
             HudRenderUtil.drawDualText(g, font, toastX + 8, vSlotY + 4,
-                    subtitle, cachedNameStr, subColor, titleColor, 1.0f);
+                    subtitle, cachedName, subColor, titleColor, 1.0f);
         }
 
         RenderSystem.enableDepthTest();

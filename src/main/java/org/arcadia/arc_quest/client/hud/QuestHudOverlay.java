@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -191,13 +192,13 @@ public class QuestHudOverlay implements IGuiOverlay {
         }
 
         if (addedPhase != null && !addedPhase.isEmpty()) {
-            String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, addedPhase);
+            Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, addedPhase);
             phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.ADDED);
         } else if (removedPhase != null && !removedPhase.isEmpty()) {
-            String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, removedPhase);
+            Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, removedPhase);
             phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.COMPLETED);
         } else if (lastKnownPhaseId != null && !lastKnownPhaseId.equals(currentPhaseId) && currentPhaseId != null && !currentPhaseId.isEmpty()) {
-            String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, currentPhaseId);
+            Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, currentPhaseId);
             phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.SWITCHED);
         }
 
@@ -272,6 +273,11 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     public void showPhaseUpdateToast(String phaseName, int themeColor, PhaseUpdateToast.Kind kind) {
         if (phaseName == null || phaseName.isEmpty()) return;
+        showPhaseUpdateToast(Component.literal(phaseName), themeColor, kind);
+    }
+
+    public void showPhaseUpdateToast(Component phaseName, int themeColor, PhaseUpdateToast.Kind kind) {
+        if (phaseName == null || phaseName.getString().isEmpty()) return;
         phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, kind);
     }
 

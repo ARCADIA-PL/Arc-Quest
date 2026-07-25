@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
+import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 
@@ -7,7 +8,7 @@ public class JournalTypes {
 
     public enum Tab {ACTIVE, COMPLETED, FAILED}
 
-    public record QuestListEntry(String questId, String displayName, QuestState state, QuestDefinition def) {
+    public record QuestListEntry(String questId, Component displayName, QuestState state, QuestDefinition def) {
     }
 
     public static class ChoiceButtonRect {

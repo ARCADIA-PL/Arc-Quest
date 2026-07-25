@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -34,7 +35,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
     @Override
     public void onQuestFailed(String questId) {
         QuestChangeHistoryStore.INSTANCE.recordQuestFailed(questId);
-        String name = ClientQuestCache.INSTANCE.getQuestDisplayName(questId);
+        Component name = ClientQuestCache.INSTANCE.getQuestDisplayComponent(questId);
         QuestToastManager.show(QuestToastManager.ToastType.QUEST_FAILED, name);
     }
 
@@ -83,7 +84,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         }
         for (String phaseId : afterPending) {
             if (!beforePending.contains(phaseId)) {
-                String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, phaseId);
+                Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId);
                 int themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, 0xFFD166);
                 QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.PENDING_CONFIRM);
                 hasPhaseChange = true;
@@ -121,7 +122,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         CollectionRuntimeData before = previousData != null ? previousData.getCollectionData() : null;
         CollectionRuntimeData after = newData.getCollectionData();
         if (after == null) return;
-        String questName = ClientQuestCache.INSTANCE.getQuestDisplayName(questId);
+        Component questName = ClientQuestCache.INSTANCE.getQuestDisplayComponent(questId);
 
         Set<String> beforeDiscovered = before != null ? before.getDiscoveredPhaseIds() : Set.of();
         for (String phaseId : after.getDiscoveredPhaseIds())
@@ -147,7 +148,7 @@ public class QuestHistoryAndToastListener implements QuestCacheListener {
         Set<String> beforeCompleted = previousData != null ? previousData.getCompletedPhaseIds() : Set.of();
         for (String phaseId : newData.getCompletedPhaseIds())
             if (!beforeCompleted.contains(phaseId)) {
-                String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, phaseId);
+                Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId);
                 int themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(questId, 0x66FF66);
                 QuestHudOverlay.INSTANCE.showPhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.COMPLETED);
                 QuestChangeHistoryStore.INSTANCE.recordCollectionEntryCompleted(questId, phaseId);

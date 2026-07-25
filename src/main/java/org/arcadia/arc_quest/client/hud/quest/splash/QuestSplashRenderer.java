@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -33,7 +34,7 @@ public class QuestSplashRenderer {
     public static void trigger(QuestDefinition quest, SplashType type, ResourceLocation texture) {
         if (quest != null && texture != null) {
             enqueue(new SplashRequest(quest, type, texture,
-                    quest.getDisplayName().getString(), quest.getVisualConfig().getThemeColor()));
+                    quest.getDisplayName(), quest.getVisualConfig().getThemeColor()));
         }
     }
 
@@ -45,7 +46,7 @@ public class QuestSplashRenderer {
                 return;
             }
             enqueue(new SplashRequest(quest, type, texture,
-                    phase.getDisplayName().getString(),
+                    phase.getDisplayName(),
                     phase.getThemeColor(quest.getVisualConfig().getThemeColor())));
         }
     }
@@ -132,7 +133,7 @@ public class QuestSplashRenderer {
         float finalScale = (screenHeight * 0.70f) / (float) frameH;
 
         Font font = Minecraft.getInstance().font;
-        String titleStr = request.title();
+        Component titleStr = request.title();
         float textWidth = font.width(titleStr) * 1.45f;
         float targetLineWidth = Math.max(textWidth + 30, (frameW - 40) * finalScale);
 
@@ -305,6 +306,6 @@ public class QuestSplashRenderer {
     private enum State {ENTER, HOLD, EXIT}
 
     private record SplashRequest(QuestDefinition quest, SplashType type, ResourceLocation texture,
-                                 String title, int themeColor) {
+                                 Component title, int themeColor) {
     }
 }

@@ -8,6 +8,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -299,7 +300,7 @@ public final class QuestStoryPanel {
         int safeMaxWidth = PANEL_W - 40, maxPageHeight = PANEL_H - 22 - 38, currentYSpace = 0, leftPad = 20;
         PageData currentPage = new PageData();
 
-        for (String tLine : HudRenderUtil.wrapText(phase.getDisplayName().getString(), (int) (safeMaxWidth / 1.35f), mc.font)) {
+        for (FormattedCharSequence tLine : mc.font.split(phase.getDisplayName(), (int) (safeMaxWidth / 1.35f))) {
             int lh = (int) Math.ceil(mc.font.lineHeight * 1.35f) + 6;
             if (currentYSpace + lh > maxPageHeight && currentYSpace > 0) {
                 pages.add(currentPage);
@@ -370,11 +371,15 @@ public final class QuestStoryPanel {
     }
 
     private static class RenderLine {
-        String text;
+        FormattedCharSequence text;
         int x, color, lineHeight;
         float scale;
 
         RenderLine(String t, int x, int c, float s, int lh) {
+            this(Component.literal(t).getVisualOrderText(), x, c, s, lh);
+        }
+
+        RenderLine(FormattedCharSequence t, int x, int c, float s, int lh) {
             text = t;
             this.x = x;
             color = c;

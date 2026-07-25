@@ -5,6 +5,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.core.event.ListenerRegistry;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -723,11 +724,15 @@ public final class ClientQuestCache {
      * @return 显示名称，如果任务不存在则返回 questId
      */
     public String getQuestDisplayName(String questId) {
+        return getQuestDisplayComponent(questId).getString();
+    }
+
+    public Component getQuestDisplayComponent(String questId) {
         ResourceLocation rl = ResourceLocation.tryParse(questId);
-        if (rl == null) return questId;
+        if (rl == null) return Component.literal(questId);
 
         QuestDefinition def = QuestRegistry.get(rl);
-        return def != null ? def.getDisplayName().getString() : questId;
+        return def != null ? def.getDisplayName() : Component.literal(questId);
     }
 
     /**
@@ -738,17 +743,23 @@ public final class ClientQuestCache {
      * @return 阶段名称，如果无效则返回 phaseId
      */
     public String getPhaseDisplayName(String questId, String phaseId) {
+        return getPhaseDisplayComponent(questId, phaseId).getString();
+    }
+
+    public Component getPhaseDisplayComponent(String questId, String phaseId) {
         ResourceLocation rl = ResourceLocation.tryParse(questId);
-        if (rl == null) return phaseId;
+        if (rl == null) return Component.literal(phaseId);
 
         QuestDefinition def = QuestRegistry.get(rl);
-        if (def == null) return phaseId;
+        if (def == null) return Component.literal(phaseId);
 
         PhaseDefinition phase = def.getPhase(phaseId);
-        if (phase == null) return phaseId;
+        if (phase == null) return Component.literal(phaseId);
 
-        String displayName = phase.getDisplayName() != null ? phase.getDisplayName().getString() : "";
-        return !displayName.isEmpty() ? displayName : phaseId;
+        Component displayName = phase.getDisplayName();
+        return displayName != null && !displayName.getString().isEmpty()
+                ? displayName
+                : Component.literal(phaseId);
     }
 
     /**

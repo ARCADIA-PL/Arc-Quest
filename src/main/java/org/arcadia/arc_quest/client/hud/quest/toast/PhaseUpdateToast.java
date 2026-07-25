@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 
 /**
  * 阶段推进弹窗（支持并行语义类型）。
@@ -22,7 +23,7 @@ public class PhaseUpdateToast {
     private static final float PHASE_EXIT = 400f;
     private static final float PHASE_FLY = 10f;
     private static final float PHASE_DRIFT = 1f;
-    private final String phaseName;
+    private final Component phaseName;
     private final int themeColor;
     private final Kind kind;
     private long startTime;
@@ -32,11 +33,15 @@ public class PhaseUpdateToast {
      * 兼容旧调用：默认 ADDED
      */
     public PhaseUpdateToast(String phaseName, int themeColor) {
-        this(phaseName, themeColor, Kind.ADDED);
+        this(Component.literal(phaseName), themeColor, Kind.ADDED);
     }
 
     public PhaseUpdateToast(String phaseName, int themeColor, Kind kind) {
-        this.phaseName = phaseName;
+        this(Component.literal(phaseName), themeColor, kind);
+    }
+
+    public PhaseUpdateToast(Component phaseName, int themeColor, Kind kind) {
+        this.phaseName = phaseName == null ? Component.empty() : phaseName;
         this.themeColor = themeColor;
         this.kind = kind == null ? Kind.ADDED : kind;
         startTime = Util.getMillis();
@@ -126,7 +131,7 @@ public class PhaseUpdateToast {
 
         if (accentA > 5) {
             String subtitle = subtitleByKind();
-            String title = font.plainSubstrByWidth(phaseName, POPUP_W - 40);
+            var title = StyledTextUtil.fitSingleLine(font, phaseName, POPUP_W - 40);
 
             int subColor = HudAnimUtil.withAlpha(0x888888, accentA);
             int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, accentA);

@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -66,6 +67,20 @@ public final class HudRenderUtil {
 
     public static void drawDualText(GuiGraphics g, Font font, float x, float y,
                                     String subtitle, String title,
+                                    int subtitleColor, int titleColor, float alpha) {
+        drawDualText(g, font, x, y, subtitle, Component.literal(title),
+                subtitleColor, titleColor, alpha);
+    }
+
+    public static void drawDualText(GuiGraphics g, Font font, float x, float y,
+                                    String subtitle, Component title,
+                                    int subtitleColor, int titleColor, float alpha) {
+        drawDualText(g, font, x, y, subtitle, title.getVisualOrderText(),
+                subtitleColor, titleColor, alpha);
+    }
+
+    public static void drawDualText(GuiGraphics g, Font font, float x, float y,
+                                    String subtitle, FormattedCharSequence title,
                                     int subtitleColor, int titleColor, float alpha) {
         int subA = (int) (((subtitleColor >> 24) & 0xFF) * alpha);
         int titleA = (int) (((titleColor >> 24) & 0xFF) * alpha);

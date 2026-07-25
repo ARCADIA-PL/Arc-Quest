@@ -40,12 +40,26 @@ public final class QuestToastManager {
         String text = questName.trim();
         if (text.isEmpty()) return;
 
+        enqueue(type, Component.literal(text), text);
+    }
+
+    public static void show(ToastType type, Component questName) {
+        if (type == null || questName == null) return;
+
+        String plainText = questName.getString().trim();
+        if (plainText.isEmpty()) return;
+
+        enqueue(type, questName.copy(), plainText);
+    }
+
+    private static void enqueue(ToastType type, Component text, String plainText) {
+
         if (type == ToastType.QUEST_FAILED) {
-            cancelAcceptedToastForQuest(text);
+            cancelAcceptedToastForQuest(plainText);
         }
 
         long now = System.currentTimeMillis();
-        String key = buildKey(type, text);
+        String key = buildKey(type, plainText);
 
         if (key.equals(lastQueuedKey) && now - lastQueuedAt < DUPLICATE_WINDOW_MS) {
             return;
@@ -70,11 +84,6 @@ public final class QuestToastManager {
         lastQueuedAt = now;
 
         pruneRecentShown(now);
-    }
-
-    public static void show(ToastType type, Component questName) {
-        if (questName == null) return;
-        show(type, questName.getString());
     }
 
     public static void clear() {
@@ -156,7 +165,7 @@ public final class QuestToastManager {
     private static void cancelAcceptedToastForQuest(String questName) {
         String acceptedKey = buildKey(ToastType.QUEST_ACCEPTED, questName);
 
-        pendingQueue.removeIf(p -> p.type() == ToastType.QUEST_ACCEPTED && questName.equals(p.text()));
+        pendingQueue.removeIf(p -> p.type() == ToastType.QUEST_ACCEPTED && questName.equals(p.text().getString()));
 
         for (int i = 0; i < activeSlots.length; i++) {
             if (acceptedKey.equals(activeKeys[i])) {
@@ -205,6 +214,6 @@ public final class QuestToastManager {
         }
     }
 
-    private record PendingToast(ToastType type, String text, String key, long queuedAt) {
+    private record PendingToast(ToastType type, Component text, String key, long queuedAt) {
     }
 }

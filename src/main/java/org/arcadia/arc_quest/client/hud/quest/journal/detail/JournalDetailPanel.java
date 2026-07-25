@@ -6,6 +6,7 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
@@ -185,7 +186,7 @@ public class JournalDetailPanel {
         }
 
         DetailHeaderCache header = getHeaderCache(entry, def, scrollAreaW);
-        String titleText = header.titleText;
+        FormattedCharSequence titleText = header.titleText;
         g.pose().pushPose();
         g.pose().translate(titleIconOffset, localY, 0);
         g.pose().scale(1.2f, 1.2f, 1f);
@@ -268,9 +269,9 @@ public class JournalDetailPanel {
         if (entry.state() == QuestState.ACTIVE && runtime != null) {
             String pendingPhaseId = runtime.getCurrentPendingManualAdvancePhaseId();
             if (!pendingPhaseId.isEmpty()) {
-                String pendingPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(entry.questId(), pendingPhaseId);
-                String pendingPrefix = Component.translatable("arc_quest.gui.journal.label.pending_phase_prefix").getString();
-                g.drawString(screen.getFont(), pendingPrefix + pendingPhaseName, 0, localY, HudAnimUtil.withAlpha(0xFFD166, phaseContentSafeA), false);
+                Component pendingPhaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(entry.questId(), pendingPhaseId);
+                Component pendingLabel = Component.translatable("arc_quest.gui.journal.label.pending_phase_prefix").append(pendingPhaseName);
+                g.drawString(screen.getFont(), pendingLabel, 0, localY, HudAnimUtil.withAlpha(0xFFD166, phaseContentSafeA), false);
                 localY += 14;
             }
         }
@@ -319,8 +320,8 @@ public class JournalDetailPanel {
         if (!entry.questId().equals(headerCache.questId) || headerCache.descWidth != descWidth || !description.equals(headerCache.descriptionText)) {
             headerCache.questId = entry.questId();
             headerCache.descWidth = descWidth;
-            headerCache.titleText = def.getDisplayName().getString();
-            headerCache.titleWidth = screen.getFont().width(headerCache.titleText);
+            headerCache.titleText = def.getDisplayName().getVisualOrderText();
+            headerCache.titleWidth = screen.getFont().width(def.getDisplayName());
             headerCache.descriptionText = description;
             headerCache.descriptionLines = description.isEmpty() ? List.of() : HudRenderUtil.wrapText(description, descWidth, screen.getFont());
         }
@@ -456,7 +457,7 @@ public class JournalDetailPanel {
     private static class DetailHeaderCache {
         String questId = "";
         int descWidth = -1;
-        String titleText = "";
+        FormattedCharSequence titleText = Component.empty().getVisualOrderText();
         int titleWidth = 0;
         String descriptionText = "";
         List<String> descriptionLines = List.of();
@@ -464,7 +465,7 @@ public class JournalDetailPanel {
         void clear() {
             questId = "";
             descWidth = -1;
-            titleText = "";
+            titleText = Component.empty().getVisualOrderText();
             titleWidth = 0;
             descriptionText = "";
             descriptionLines = List.of();

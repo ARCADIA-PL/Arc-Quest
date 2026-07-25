@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.client.events.ClientHudEvents;
@@ -57,7 +58,7 @@ public class S2CSyncQuestStatePacket {
                     pkt.playerSessionEpoch, pkt.baseRevision, pkt.newRevision)) return;
             ResourceLocation questRl = ResourceLocation.tryParse(pkt.data.getQuestId());
             QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-            String name = def != null ? def.getDisplayName().getString() : pkt.data.getQuestId();
+            Component name = def != null ? def.getDisplayName() : Component.literal(pkt.data.getQuestId());
 
             QuestRuntimeData previousData = ClientQuestCache.INSTANCE.getActiveQuest(pkt.data.getQuestId());
             Set<String> previousActivePhases = previousData != null

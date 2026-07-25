@@ -2,7 +2,10 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 
 final class JournalGroupEntryRenderer {
 
@@ -49,21 +52,18 @@ final class JournalGroupEntryRenderer {
         String subtitle = "QUEST GROUP";
         int subtitlePixels = (int) (font.width(subtitle) * subtitleScale);
         int nameMaxPixels = counterX - textStartX - subtitlePixels - 16;
-        String name = group.displayName().getString();
-        int nameFullPixels = (int) (font.width(name) * nameScale);
-        if (nameFullPixels > nameMaxPixels) {
-            int allowedWidth = (int) (nameMaxPixels / nameScale) - font.width("...");
-            name = font.plainSubstrByWidth(name, Math.max(0, allowedWidth)) + "...";
-        }
+        Component name = group.displayName();
+        int unscaledNameMaxPixels = Math.max(0, (int) (nameMaxPixels / nameScale));
+        FormattedCharSequence fittedName = StyledTextUtil.fitSingleLine(font, name, unscaledNameMaxPixels);
 
         float nameY = y + (height - font.lineHeight * nameScale) / 2f;
         graphics.pose().pushPose();
         graphics.pose().translate(textStartX, nameY, 0);
         graphics.pose().scale(nameScale, nameScale, 1f);
-        graphics.drawString(font, name, 0, 0, primaryColor, false);
+        graphics.drawString(font, fittedName, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
-        int nameEndX = textStartX + (int) (font.width(name) * nameScale);
+        int nameEndX = textStartX + (int) (font.width(fittedName) * nameScale);
         int separatorX = nameEndX + 5;
         graphics.fill(separatorX, y + height / 2 - 1, separatorX + 2, y + height / 2 + 1,
                 HudAnimUtil.withAlpha(groupTheme, (int) (160 * effectiveAlpha)));

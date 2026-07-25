@@ -653,7 +653,7 @@ public final class QuestHistoryPanel {
                 PhaseDefinition phase = def.getPhase(pid);
                 if (phase == null) continue;
                 Font font = Minecraft.getInstance().font;
-                String displayName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, pid);
+                Component displayName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, pid);
                 NodeData nd = new NodeData(pid, d * dx, (int) ((i - (totalInLayer - 1) / 2.0f) * dy), completed.contains(pid), !completed.contains(pid) && active.contains(pid), displayName, font.width(displayName), buildPhaseTooltipData(phase, font));
                 renderNodes.add(nd);
                 nodeMap.put(pid, nd);
@@ -663,9 +663,8 @@ public final class QuestHistoryPanel {
 
     private static PhaseTooltipData buildPhaseTooltipData(PhaseDefinition phase, Font font) {
         PhaseTooltipData data = new PhaseTooltipData();
-        data.title = phase.getDisplayName().getString();
-        data.titleComponent = Component.literal(data.title).withStyle(Style.EMPTY.withBold(true));
-        data.titleWidth = font.width(data.title);
+        data.titleComponent = phase.getDisplayName().copy().withStyle(Style.EMPTY.withBold(true));
+        data.titleWidth = font.width(data.titleComponent);
         data.descLines = font.split(phase.getDescription(), 200 - 20);
         data.textMaxWidth = data.titleWidth;
         for (FormattedCharSequence line : data.descLines)
@@ -730,7 +729,6 @@ public final class QuestHistoryPanel {
     }
 
     private static class PhaseTooltipData {
-        String title = "";
         Component titleComponent = Component.empty();
         int titleWidth = 0;
         List<FormattedCharSequence> descLines = List.of();
@@ -741,7 +739,7 @@ public final class QuestHistoryPanel {
         int targetH = 0;
     }
 
-    private record NodeData(String id, int x, int y, boolean completed, boolean active, String displayName,
+    private record NodeData(String id, int x, int y, boolean completed, boolean active, Component displayName,
                             int displayNameWidth, PhaseTooltipData tooltipData) {
     }
 }
