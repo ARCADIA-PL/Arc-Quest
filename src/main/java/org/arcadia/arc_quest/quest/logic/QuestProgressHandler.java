@@ -88,7 +88,8 @@ public final class QuestProgressHandler {
         List<CoreRule<QuestAcceptanceContext, QuestRejectCodeDictionary.Code>> rules = List.of(
                 CoreRule.require(context -> !context.data().isQuestActive(context.questId()),
                         QuestRejectCodeDictionary.Code.ALREADY_ACTIVE),
-                CoreRule.require(context -> !context.data().isQuestCompleted(context.questId())
+                CoreRule.require(context -> (!context.data().isQuestCompleted(context.questId())
+                                && !context.data().isQuestFailed(context.questId()))
                                 || context.definition().isRepeatable(),
                         QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE),
                 CoreRule.require(context -> CoreProcessors.get().conditions().all(
