@@ -112,6 +112,10 @@ public final class ClientQuestCache {
         return revisionGate.revision();
     }
 
+    public boolean isFullSyncApplied() {
+        return hasAppliedFullSync;
+    }
+
     // ═══════════════════════════════════════════════════════
     //  网络包调用的更新方法
     // ═══════════════════════════════════════════════════════

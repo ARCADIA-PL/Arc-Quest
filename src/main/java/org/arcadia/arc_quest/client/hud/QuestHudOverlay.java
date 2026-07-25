@@ -23,8 +23,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 public class QuestHudOverlay implements LayeredDraw.Layer {
 
@@ -69,12 +69,12 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
 
     public void setTrackedQuest(String questId) {
         trackerPanel.setTrackedQuest(questId);
-        saveTrackedSelectionAsync();
+        saveTrackedSelection();
     }
 
     public void setTrackedFocus(String questId, String phaseId) {
         trackerPanel.setTrackedFocus(questId, phaseId);
-        saveTrackedSelectionAsync();
+        saveTrackedSelection();
     }
 
     public String getTrackedPhaseId() {
@@ -211,23 +211,17 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
 
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
         String trackedQuestId = trackerPanel.getTrackedQuestId();
-        QuestRuntimeData data = trackedQuestId != null ? ClientQuestCache.INSTANCE.getActiveQuest(trackedQuestId) : null;
+        boolean syncReady = ClientQuestCache.INSTANCE.isFullSyncApplied();
+        String resolvedQuestId = TrackedQuestSelectionResolver.resolve(
+                trackedQuestId, active.keySet(), syncReady);
 
-        if (data == null && trackedQuestId != null) {
-            trackerPanel.setTrackedQuest(null);
-            saveTrackedSelectionAsync();
-            trackedQuestId = null;
+        if (!Objects.equals(trackedQuestId, resolvedQuestId)) {
+            trackerPanel.setTrackedQuest(resolvedQuestId);
+            saveTrackedSelection();
         }
 
-        if (data == null && !active.isEmpty()) {
-            data = ClientQuestCache.INSTANCE.resolveTrackedQuest(null);
-            if (data != null) {
-                trackerPanel.setTrackedQuest(data.getQuestId());
-                saveTrackedSelectionAsync();
-            }
-        }
-
-        return data;
+        if (!syncReady || resolvedQuestId == null) return null;
+        return active.get(resolvedQuestId);
     }
 
     private void resetPhaseTrackingState() {
@@ -249,16 +243,15 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
         }
     }
 
-    private void saveTrackedSelectionAsync() {
+    private void saveTrackedSelection() {
         Path cacheFile = getTrackedCacheFile();
         if (cacheFile == null) return;
         TrackedSelection snapshot = new TrackedSelection(trackerPanel.getTrackedQuestId(), trackerPanel.getTrackedPhaseId());
-        CompletableFuture.runAsync(() -> {
-            try {
-                Files.writeString(cacheFile, GSON.toJson(snapshot));
-            } catch (Exception ignored) {
-            }
-        });
+        try {
+            Files.createDirectories(cacheFile.getParent());
+            Files.writeString(cacheFile, GSON.toJson(snapshot));
+        } catch (Exception ignored) {
+        }
     }
 
     public void showBranchChoiceToast(String questId) {
