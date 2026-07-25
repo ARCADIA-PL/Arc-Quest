@@ -72,6 +72,7 @@ public final class ArcQuestNetwork {
         registrar.playToServer(C2SRequestTradeSyncPacket.TYPE, C2SRequestTradeSyncPacket.STREAM_CODEC, C2SRequestTradeSyncPacket::handle);
         registrar.playToServer(C2SDialogueChoicePacket.TYPE, C2SDialogueChoicePacket.STREAM_CODEC, C2SDialogueChoicePacket::handle);
         registrar.playToServer(C2SMarkGuideSeenPacket.TYPE, C2SMarkGuideSeenPacket.STREAM_CODEC, C2SMarkGuideSeenPacket::handle);
+        registrar.playToServer(C2SSetTrackedQuestPacket.TYPE, C2SSetTrackedQuestPacket.STREAM_CODEC, C2SSetTrackedQuestPacket::handle);
     }
 
     private static void registerClientPayloadHandlers(PayloadRegistrar registrar) {
@@ -92,6 +93,7 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2CDialogueTranscriptDeltaPacket.TYPE, S2CDialogueTranscriptDeltaPacket.STREAM_CODEC, S2CDialogueTranscriptDeltaPacket::handle);
         registrar.playToClient(S2COpenGuidePacket.TYPE, S2COpenGuidePacket.STREAM_CODEC, S2COpenGuidePacket::handle);
         registrar.playToClient(S2CSyncGuideStatePacket.TYPE, S2CSyncGuideStatePacket.STREAM_CODEC, S2CSyncGuideStatePacket::handle);
+        registrar.playToClient(S2CSyncTrackedQuestPacket.TYPE, S2CSyncTrackedQuestPacket.STREAM_CODEC, S2CSyncTrackedQuestPacket::handle);
     }
 
     private static void registerClientPayloadCodecs(PayloadRegistrar registrar) {
@@ -112,6 +114,7 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2CDialogueTranscriptDeltaPacket.TYPE, S2CDialogueTranscriptDeltaPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2COpenGuidePacket.TYPE, S2COpenGuidePacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncGuideStatePacket.TYPE, S2CSyncGuideStatePacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CSyncTrackedQuestPacket.TYPE, S2CSyncTrackedQuestPacket.STREAM_CODEC, (packet, context) -> {});
     }
 
     // ═══════════════════════════════════════════════════════
@@ -176,6 +179,10 @@ public final class ArcQuestNetwork {
                         envelope.baseRevision(), envelope.newRevision()));
 
         pushSyncForActiveUIs(player, data, "flags_vars_sync");
+    }
+
+    public static void syncTrackedQuest(ServerPlayer player, ArcQuestPlayer data) {
+        PacketDistributor.sendToPlayer(player, new S2CSyncTrackedQuestPacket(data.getTrackedQuestId()));
     }
 
     private static String resolveObjectiveId(ServerPlayer player, String questId,
@@ -251,6 +258,10 @@ public final class ArcQuestNetwork {
 
     public static void sendMarkGuideSeen(C2SMarkGuideSeenPacket packet) {
         PacketDistributor.sendToServer(packet);
+    }
+
+    public static void sendTrackedQuestUpdate(@Nullable String questId) {
+        PacketDistributor.sendToServer(new C2SSetTrackedQuestPacket(questId));
     }
 
     // ═══════════════════════════════════════════════════════
