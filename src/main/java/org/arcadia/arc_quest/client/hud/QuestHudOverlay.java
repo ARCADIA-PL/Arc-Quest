@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -36,6 +37,8 @@ public class QuestHudOverlay implements IGuiOverlay {
     private static Path trackedCacheFile = null;
 
     private final QuestTrackerPanel trackerPanel = new QuestTrackerPanel();
+    private final Object trackedSelectionWriteLock = new Object();
+    private CompletableFuture<Void> trackedSelectionWrite = CompletableFuture.completedFuture(null);
 
     private long lastRenderTime = 0;
     private float dt = 0f;
@@ -69,12 +72,12 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     public void setTrackedQuest(String questId) {
         trackerPanel.setTrackedQuest(questId);
-        saveTrackedSelectionAsync();
+        saveTrackedSelection();
     }
 
     public void setTrackedFocus(String questId, String phaseId) {
         trackerPanel.setTrackedFocus(questId, phaseId);
-        saveTrackedSelectionAsync();
+        saveTrackedSelection();
     }
 
     public String getTrackedPhaseId() {
@@ -208,23 +211,17 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
         String trackedQuestId = trackerPanel.getTrackedQuestId();
-        QuestRuntimeData data = trackedQuestId != null ? ClientQuestCache.INSTANCE.getActiveQuest(trackedQuestId) : null;
+        boolean syncReady = ClientQuestCache.INSTANCE.isFullSyncApplied();
+        String resolvedQuestId = TrackedQuestSelectionResolver.resolve(
+                trackedQuestId, active.keySet(), syncReady);
 
-        if (data == null && trackedQuestId != null) {
-            trackerPanel.setTrackedQuest(null);
+        if (!Objects.equals(trackedQuestId, resolvedQuestId)) {
+            trackerPanel.setTrackedQuest(resolvedQuestId);
             saveTrackedSelectionAsync();
-            trackedQuestId = null;
         }
 
-        if (data == null && !active.isEmpty()) {
-            data = ClientQuestCache.INSTANCE.resolveTrackedQuest(null);
-            if (data != null) {
-                trackerPanel.setTrackedQuest(data.getQuestId());
-                saveTrackedSelectionAsync();
-            }
-        }
-
-        return data;
+        if (!syncReady || resolvedQuestId == null) return null;
+        return active.get(resolvedQuestId);
     }
 
     private void resetPhaseTrackingState() {
@@ -246,16 +243,34 @@ public class QuestHudOverlay implements IGuiOverlay {
         }
     }
 
+    private void saveTrackedSelection() {
+        queueTrackedSelectionWrite(true);
+    }
+
     private void saveTrackedSelectionAsync() {
+        queueTrackedSelectionWrite(false);
+    }
+
+    private void queueTrackedSelectionWrite(boolean waitForCompletion) {
         Path cacheFile = getTrackedCacheFile();
         if (cacheFile == null) return;
         TrackedSelection snapshot = new TrackedSelection(trackerPanel.getTrackedQuestId(), trackerPanel.getTrackedPhaseId());
-        CompletableFuture.runAsync(() -> {
-            try {
-                Files.writeString(cacheFile, GSON.toJson(snapshot));
-            } catch (Exception ignored) {
-            }
-        });
+        CompletableFuture<Void> write;
+        synchronized (trackedSelectionWriteLock) {
+            trackedSelectionWrite = trackedSelectionWrite
+                    .handle((ignored, error) -> null)
+                    .thenRunAsync(() -> writeTrackedSelection(cacheFile, snapshot));
+            write = trackedSelectionWrite;
+        }
+        if (waitForCompletion) write.join();
+    }
+
+    private void writeTrackedSelection(Path cacheFile, TrackedSelection snapshot) {
+        try {
+            Files.createDirectories(cacheFile.getParent());
+            Files.writeString(cacheFile, GSON.toJson(snapshot));
+        } catch (Exception ignored) {
+        }
     }
 
     public void showBranchChoiceToast(String questId) {
