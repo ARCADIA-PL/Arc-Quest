@@ -30,7 +30,7 @@ public final class CollectionQuestEngine {
         if (data.isQuestActive(questId)) {
             return QuestRejectCodeDictionary.Code.ALREADY_ACTIVE;
         }
-        if (data.isQuestCompleted(questId) && !def.isRepeatable()) {
+        if ((data.isQuestCompleted(questId) || data.isQuestFailed(questId)) && !def.isRepeatable()) {
             return QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE;
         }
 
