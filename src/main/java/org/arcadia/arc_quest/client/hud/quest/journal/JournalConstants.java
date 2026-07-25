@@ -9,7 +9,7 @@ public class JournalConstants {
     public static final int LIST_MARGIN = 16;
     public static final int DETAIL_MARGIN = 12;
     public static final int ENTRY_HEIGHT = 24;
-    public static final int GROUP_ENTRY_HEIGHT = 21;
+    public static final int GROUP_ENTRY_HEIGHT = ENTRY_HEIGHT;
     public static final int TAB_HEIGHT = 22;
 
     public static final long CHOICE_CLICK_COOLDOWN_MS = 220L;

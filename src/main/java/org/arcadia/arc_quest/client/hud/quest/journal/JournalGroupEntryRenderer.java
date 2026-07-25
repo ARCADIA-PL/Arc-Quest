@@ -36,7 +36,7 @@ final class JournalGroupEntryRenderer {
         drawCyberneticEdge(graphics, x + 2, y, height - 2,
                 groupTheme, (int) (0xC0 * effectiveAlpha));
 
-        drawChevron(graphics, x + 14, y + 9, expansion, primaryColor);
+        drawChevron(graphics, x + 14, y + height / 2, expansion, primaryColor);
 
         Font font = screen.getFont();
 

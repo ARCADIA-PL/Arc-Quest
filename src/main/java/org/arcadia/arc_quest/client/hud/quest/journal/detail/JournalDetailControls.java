@@ -40,6 +40,10 @@ public class JournalDetailControls {
         return screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && runtime != null;
     }
 
+    private boolean shouldShowAbandon(QuestDefinition def, QuestRuntimeData runtime) {
+        return shouldShowActiveBtns(runtime) && (def == null || def.isAbandonAllowed());
+    }
+
     private boolean shouldShowConfirmBtn(QuestRuntimeData runtime) {
         return runtime != null && !runtime.getCurrentPendingManualAdvancePhaseId().isEmpty();
     }
@@ -54,10 +58,13 @@ public class JournalDetailControls {
 
         boolean bShop = shouldShowShop(def);
         boolean bActive = shouldShowActiveBtns(runtime);
+        boolean bAbandon = shouldShowAbandon(def, runtime);
         boolean bConfirm = shouldShowConfirmBtn(runtime);
         boolean bFailed = shouldShowFailedBtns(entry);
 
-        int btnCount = (bShop ? 1 : 0) + (bActive ? (bConfirm ? 3 : 2) : 0) + (bFailed ? 1 : 0);
+        int btnCount = (bShop ? 1 : 0)
+                + (bActive ? 1 + (bConfirm ? 1 : 0) + (bAbandon ? 1 : 0) : 0)
+                + (bFailed ? 1 : 0);
         if (btnCount == 0) return;
 
         int btnW = Math.min(110, (w - 8 * (btnCount + 1)) / btnCount);
@@ -85,9 +92,13 @@ public class JournalDetailControls {
                 JournalDetailPanel.drawCyberButton(g, screen, confirmX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.confirm_phase_complete").getString(), activeTheme, HudAnimUtil.easeOutCubic(confirmBtnHover), cHover);
             }
 
-            boolean aHover = !active && mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH;
-            abandonBtnHover = HudAnimUtil.step(abandonBtnHover, aHover ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, abanX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.abandon").getString(), 0xFF4444, HudAnimUtil.easeOutCubic(abandonBtnHover), aHover);
+            if (bAbandon) {
+                boolean aHover = !active && mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH;
+                abandonBtnHover = HudAnimUtil.step(abandonBtnHover, aHover ? 1f : 0f, 8f, dt);
+                JournalDetailPanel.drawCyberButton(g, screen, abanX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.abandon").getString(), 0xFF4444, HudAnimUtil.easeOutCubic(abandonBtnHover), aHover);
+            } else {
+                abandonBtnHover = 0f;
+            }
         } else if (bFailed) {
             boolean rHover = !active && mx >= restartX && mx <= restartX + btnW && my >= btnY && my <= btnY + btnH;
             failedRestartBtnHover = HudAnimUtil.step(failedRestartBtnHover, rHover ? 1f : 0f, 8f, dt);
@@ -109,10 +120,13 @@ public class JournalDetailControls {
 
         boolean bShop = shouldShowShop(def);
         boolean bActive = shouldShowActiveBtns(runtime);
+        boolean bAbandon = shouldShowAbandon(def, runtime);
         boolean bConfirm = shouldShowConfirmBtn(runtime);
         boolean bFailed = shouldShowFailedBtns(entry);
 
-        int btnCount = (bShop ? 1 : 0) + (bActive ? (bConfirm ? 3 : 2) : 0) + (bFailed ? 1 : 0);
+        int btnCount = (bShop ? 1 : 0)
+                + (bActive ? 1 + (bConfirm ? 1 : 0) + (bAbandon ? 1 : 0) : 0)
+                + (bFailed ? 1 : 0);
         if (btnCount == 0) return false;
 
         int btnW = Math.min(110, (w - 8 * (btnCount + 1)) / btnCount);
@@ -144,7 +158,7 @@ public class JournalDetailControls {
                 screen.playClick();
                 return true;
             }
-            if (mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH) {
+            if (bAbandon && mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH) {
                 ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.abandon(entry.questId()));
                 screen.playClick();
                 return true;

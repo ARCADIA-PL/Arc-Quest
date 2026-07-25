@@ -52,7 +52,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     private void addGuiTranslations() {
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] Quest Panel");
-        add("arc_quest.gui.tracker.new_quest", "New Quest");
+        add("arc_quest.gui.tracker.new_quest", "New quest available. Press [%s] to view");
 
         // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "Trade Matrix");
@@ -121,6 +121,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.unlock_condition_not_met", "Unlock condition not met");
         add("arc_quest.quest_reject.no_initial_phase", "Quest has no initial phase");
         add("arc_quest.quest_reject.not_active", "Quest is not active");
+        add("arc_quest.quest_reject.abandon_not_allowed", "This quest cannot be abandoned");
         add("arc_quest.quest_reject.phase_not_found", "Current phase not found");
         add("arc_quest.quest_reject.invalid_choice_index", "Invalid branch index");
         add("arc_quest.quest_reject.choice_condition_not_met", "Branch condition not met");

@@ -18,6 +18,9 @@ export function renderQuestInfoSection(q, field, area) {
         ${boolSelect('允许重复执行 (Repeatable)', 'q.repeatable', q.repeatable)}
       </div>
       <div class="row">
+        ${boolSelect('允许放弃任务 (Allow Abandon)', 'q.allowAbandon', q.allowAbandon !== false)}
+      </div>
+      <div class="row">
         ${chipEditor('标签池 (Tags)', q.tags || [], 'q.tags', 'q.tags', '输入 tag 后点击添加')}
         ${chipEditor('接取时触发标记 (setFlagOnAccept)', q.flagsToSetOnAccept || [], 'q.flagsToSetOnAccept', 'q.flagsToSetOnAccept', '输入 flag 后点击添加')}
       </div>

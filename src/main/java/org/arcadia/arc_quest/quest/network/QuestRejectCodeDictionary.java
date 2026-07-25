@@ -23,6 +23,7 @@ public final class QuestRejectCodeDictionary {
         NO_INITIAL_PHASE,
 
         NOT_ACTIVE,
+        ABANDON_NOT_ALLOWED,
         PHASE_NOT_FOUND,
         INVALID_CHOICE_INDEX,
         CHOICE_CONDITION_NOT_MET,

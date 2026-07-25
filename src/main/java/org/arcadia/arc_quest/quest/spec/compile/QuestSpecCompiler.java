@@ -56,6 +56,7 @@ public final class QuestSpecCompiler {
                 .description(compileText(spec.description))
                 .icon(parseNullableId(spec.iconTexture))
                 .sortOrder(spec.sortOrder)
+                .allowAbandon(spec.allowAbandon)
                 .mode(spec.mode)
                 .collectionConfig(compileCollectionConfig(spec.collectionConfig))
                 .completionPolicy(spec.completionPolicy)

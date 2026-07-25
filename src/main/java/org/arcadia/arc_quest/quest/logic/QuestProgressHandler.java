@@ -575,14 +575,20 @@ public final class QuestProgressHandler {
 
     public static QuestRejectCodeDictionary.Code abandonQuestWithCode(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (!data.isQuestActive(questId)) {
+        if (data == null || !data.isQuestActive(questId)) {
             return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
         }
 
-        QuestRuntimeData qdata = data.getActiveQuest(questId);
-        if (data != null) {
-            qdata.setState(QuestState.FAILED);
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null) {
+            return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
         }
+        if (!def.isAbandonAllowed()) {
+            return QuestRejectCodeDictionary.Code.ABANDON_NOT_ALLOWED;
+        }
+
+        QuestRuntimeData qdata = data.getActiveQuest(questId);
+        qdata.setState(QuestState.FAILED);
 
         data.markFailed(questId);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
@@ -592,8 +598,7 @@ public final class QuestProgressHandler {
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         NeoForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         NeoForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
-        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def != null) playChapterSound(player, def.getChapterFailSound());
+        playChapterSound(player, def.getChapterFailSound());
         return QuestRejectCodeDictionary.Code.OK;
     }
 
@@ -1029,4 +1034,3 @@ public final class QuestProgressHandler {
                                           QuestConditionContext conditionContext) {
     }
 }
-

@@ -52,7 +52,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     private void addGuiTranslations() {
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] 任务面板");
-        add("arc_quest.gui.tracker.new_quest", "新任务");
+        add("arc_quest.gui.tracker.new_quest", "有新任务，请按[%s]查看");
 
         // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "交易矩阵");
@@ -120,6 +120,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.unlock_condition_not_met", "未满足前置条件");
         add("arc_quest.quest_reject.no_initial_phase", "任务缺少初始阶段");
         add("arc_quest.quest_reject.not_active", "任务未激活");
+        add("arc_quest.quest_reject.abandon_not_allowed", "该任务不允许放弃");
         add("arc_quest.quest_reject.phase_not_found", "当前阶段不存在");
         add("arc_quest.quest_reject.invalid_choice_index", "分支索引无效");
         add("arc_quest.quest_reject.choice_condition_not_met", "分支条件不满足");

@@ -230,8 +230,7 @@ public class QuestTrackerPanel {
         int textX = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
         int textY = panelY + TrackerConstants.PADDING;
 
-        int indicatorWidth = newQuestIndicator.reservedWidth(font, questId);
-        TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font, indicatorWidth);
+        TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font);
         newQuestIndicator.render(g, font, panelX, panelY, questId, panelReveal, now);
         textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE + indicatorExtraHeight;
 

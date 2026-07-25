@@ -23,6 +23,7 @@ public final class QuestParityComparator {
         compareValue(diffs, "initialPhaseId", expected.initialPhaseId, actual.initialPhaseId);
         compareValue(diffs, "sortOrder", expected.sortOrder, actual.sortOrder);
         compareValue(diffs, "repeatable", expected.repeatable, actual.repeatable);
+        compareValue(diffs, "allowAbandon", expected.allowAbandon, actual.allowAbandon);
         compareValue(diffs, "phases.size", expected.phases.size(), actual.phases.size());
 
         int size = Math.min(expected.phases.size(), actual.phases.size());
