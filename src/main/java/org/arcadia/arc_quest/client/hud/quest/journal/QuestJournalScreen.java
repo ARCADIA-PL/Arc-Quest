@@ -24,6 +24,7 @@ import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
+import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -75,10 +76,10 @@ public class QuestJournalScreen extends Screen {
         changeHistoryPanel = new QuestChangeHistoryPanel(this);
     }
 
-    public boolean isShowingChangeLog() { return showingChangeLog; }
+    public boolean isShowingChangeLog() { return showingChangeLog && ArcQuestConfig.isQuestHistoryTabEnabled(); }
 
     public void setShowingChangeLog(boolean showing) {
-        showingChangeLog = showing;
+        showingChangeLog = showing && ArcQuestConfig.isQuestHistoryTabEnabled();
         if (showing) {
             selectedIndex = -1;
             changeHistoryPanel.reset();
@@ -242,7 +243,7 @@ public class QuestJournalScreen extends Screen {
         if (tabPanel.mouseClicked(smx, smy, listX, detailX + detailW)) return true;
         if (listPanel.mouseClicked(smx, smy, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
 
-        if (showingChangeLog) {
+        if (isShowingChangeLog()) {
             if (changeHistoryPanel.mouseClicked(smx, smy, button, detailX, listY, detailW, listH)) return true;
         } else {
             if (detailPanel.mouseClicked(smx, smy, detailX, listY, detailW, listH)) return true;
@@ -263,7 +264,7 @@ public class QuestJournalScreen extends Screen {
 
         int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
         if (listPanel.mouseDragged(smx, smy, listY, listH)) return true;
-        if (!showingChangeLog) {
+        if (!isShowingChangeLog()) {
             if (detailPanel.mouseDragged(smx, smy, listY, listH)) return true;
         }
         return super.mouseDragged(mx, my, button, dragX, dragY);
@@ -279,7 +280,7 @@ public class QuestJournalScreen extends Screen {
         if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.mouseReleased(button); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseReleased(button); return true; }
         listPanel.mouseReleased(button);
-        if (!showingChangeLog) detailPanel.mouseReleased(button);
+        if (!isShowingChangeLog()) detailPanel.mouseReleased(button);
         return super.mouseReleased(mx, my, button);
     }
 
@@ -302,7 +303,7 @@ public class QuestJournalScreen extends Screen {
 
         if (listPanel.mouseScrolled(smx, smy, delta, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
 
-        if (showingChangeLog) {
+        if (isShowingChangeLog()) {
             if (changeHistoryPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
         } else {
             if (detailPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
@@ -380,7 +381,7 @@ public class QuestJournalScreen extends Screen {
 
         HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)), HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
 
-        if (showingChangeLog) {
+        if (isShowingChangeLog()) {
             changeHistoryPanel.render(g, detailX, listY, detailW, listH, smx, smy, dt);
         } else {
             detailPanel.render(g, detailX, listY, detailW, listH, smx, smy, theme, dt);
@@ -522,7 +523,7 @@ public class QuestJournalScreen extends Screen {
     @Nullable public String getSelectedQuestId() { return (selectedIndex >= 0 && selectedIndex < currentEntries.size()) ? currentEntries.get(selectedIndex).questId() : null; }
 
     public void onEntrySelected(int idx) {
-        if (showingChangeLog && selectedIndex == idx) { selectedIndex = -1; playClick(); return; }
+        if (isShowingChangeLog() && selectedIndex == idx) { selectedIndex = -1; playClick(); return; }
         boolean markedRead = false;
         if (idx >= 0 && idx < currentEntries.size()) {
             String questId = currentEntries.get(idx).questId();

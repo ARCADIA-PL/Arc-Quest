@@ -12,6 +12,8 @@ import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -23,6 +25,7 @@ import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
+import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
@@ -41,6 +44,7 @@ public class Arc_Quest {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public Arc_Quest() {
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ArcQuestConfig.SPEC);
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
         MinecraftForge.EVENT_BUS.register(this);

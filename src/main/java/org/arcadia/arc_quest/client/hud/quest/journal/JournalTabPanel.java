@@ -8,6 +8,7 @@ import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
+import org.arcadia.arc_quest.config.ArcQuestConfig;
 
 public class JournalTabPanel {
 
@@ -78,19 +79,21 @@ public class JournalTabPanel {
         }
 
         // 4. 渲染 HISTORY Tab
-        boolean hoveredLog = mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
-        boolean activeLog = screen.isShowingChangeLog();
-        int logColor = activeLog ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hoveredLog ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
+        if (ArcQuestConfig.isQuestHistoryTabEnabled()) {
+            boolean hoveredLog = mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
+            boolean activeLog = screen.isShowingChangeLog();
+            int logColor = activeLog ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hoveredLog ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
 
-        if (safeAlpha > 8) {
-            g.drawString(screen.getFont(), labelHistory, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, logColor, true);
-        }
+            if (safeAlpha > 8) {
+                g.drawString(screen.getFont(), labelHistory, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, logColor, true);
+            }
 
-        if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(QuestHudOverlay.INSTANCE.getTrackedQuestId())
-                && safeAlpha > 8) {
-            int dotX = (int) currentTabX + logTw - 4;
-            int dotY = tabY + 4;
-            HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, safeAlpha / 255f);
+            if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(QuestHudOverlay.INSTANCE.getTrackedQuestId())
+                    && safeAlpha > 8) {
+                int dotX = (int) currentTabX + logTw - 4;
+                int dotY = tabY + 4;
+                HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, safeAlpha / 255f);
+            }
         }
 
         // 5. 渲染底部主滑动指示条
@@ -133,14 +136,16 @@ public class JournalTabPanel {
             currentTabX += tw + 4;
         }
 
-        String labelHistory = getTabLabel("HISTORY");
-        int logTw = screen.getFont().width(labelHistory) + 16;
-        if (mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
-            if (!screen.isShowingChangeLog()) {
-                screen.setShowingChangeLog(true);
-                screen.playClick();
+        if (ArcQuestConfig.isQuestHistoryTabEnabled()) {
+            String labelHistory = getTabLabel("HISTORY");
+            int logTw = screen.getFont().width(labelHistory) + 16;
+            if (mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
+                if (!screen.isShowingChangeLog()) {
+                    screen.setShowingChangeLog(true);
+                    screen.playClick();
+                }
+                return true;
             }
-            return true;
         }
 
         String labelGuide = getTabLabel("GUIDE");
