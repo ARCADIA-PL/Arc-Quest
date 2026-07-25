@@ -6,6 +6,7 @@ export const createQuestSkeleton = () => ({
     descriptionMode: 'translatable',
     sortOrder: 0,
     repeatable: false,
+    abandonable: true,
     mode: 'PROGRESSION',
     category: '',
     tags: [],
