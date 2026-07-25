@@ -2,10 +2,8 @@ import {chipEditor} from '../chip-editor.js';
 import {boolSelect, modeSelect} from '../quest-editor-sections.js';
 
 export function renderQuestInfoSection(q, field, area) {
-    const abandonableField = boolSelect('Allow Manual Abandon (Abandonable)', 'q.abandonable', q.abandonable !== false);
     return `
     <div class="card">
-      ${abandonableField}
       ${field('任务唯一标识 (Quest ID)', 'q.id', q.id)}
       <div class="row">
         ${field('标题键值 (Title Key)', 'q.title', q.title)}

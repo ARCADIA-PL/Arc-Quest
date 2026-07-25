@@ -32,7 +32,6 @@ export function exportQuestToDatapack(stateQuest) {
         displayName: textNode(q.title, q.titleMode || 'translatable', q.id),
         sortOrder: Number(q.sortOrder ?? 0),
         repeatable: !!q.repeatable,
-        abandonable: q.abandonable !== false,
         mode: q.mode || 'PROGRESSION',
         initialPhaseId: q.initialPhaseId || q.phases?.[0]?.id || '',
         phases: (q.phases || []).map(exportPhase)
