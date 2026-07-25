@@ -120,6 +120,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.unlock_condition_not_met", "Unlock condition not met");
         add("arc_quest.quest_reject.no_initial_phase", "Quest has no initial phase");
         add("arc_quest.quest_reject.not_active", "Quest is not active");
+        add("arc_quest.quest_reject.abandon_not_allowed", "This quest cannot be abandoned");
         add("arc_quest.quest_reject.phase_not_found", "Current phase not found");
         add("arc_quest.quest_reject.invalid_choice_index", "Invalid branch index");
         add("arc_quest.quest_reject.choice_condition_not_met", "Branch condition not met");

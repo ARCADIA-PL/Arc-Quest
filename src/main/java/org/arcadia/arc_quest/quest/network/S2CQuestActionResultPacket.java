@@ -87,6 +87,7 @@ public class S2CQuestActionResultPacket {
             case UNLOCK_CONDITION_NOT_MET -> "arc_quest.quest_reject.unlock_condition_not_met";
             case NO_INITIAL_PHASE -> "arc_quest.quest_reject.no_initial_phase";
             case NOT_ACTIVE -> "arc_quest.quest_reject.not_active";
+            case ABANDON_NOT_ALLOWED -> "arc_quest.quest_reject.abandon_not_allowed";
             case PHASE_NOT_FOUND -> "arc_quest.quest_reject.phase_not_found";
             case INVALID_CHOICE_INDEX -> "arc_quest.quest_reject.invalid_choice_index";
             case CHOICE_CONDITION_NOT_MET -> "arc_quest.quest_reject.choice_condition_not_met";

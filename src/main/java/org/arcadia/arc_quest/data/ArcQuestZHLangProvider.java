@@ -1464,5 +1464,6 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addItemTag("non_flammable_wood", "不可燃木材");
         addItemTag("soul_fire_base_blocks", "灵魂火基座方块");
         addItemTag("completes_find_tree_tutorial", "完成找树教程");
+        add("arc_quest.quest_reject.abandon_not_allowed", "\u8be5\u4efb\u52a1\u4e0d\u53ef\u653e\u5f03");
     }
 }

@@ -574,6 +574,14 @@ public final class QuestProgressHandler {
     }
 
     public static QuestRejectCodeDictionary.Code abandonQuestWithCode(ServerPlayer player, String questId) {
+        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
+        if (def == null) {
+            return QuestRejectCodeDictionary.Code.QUEST_NOT_FOUND;
+        }
+        if (!def.isAbandonable()) {
+            return QuestRejectCodeDictionary.Code.ABANDON_NOT_ALLOWED;
+        }
+
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (!data.isQuestActive(questId)) {
             return QuestRejectCodeDictionary.Code.NOT_ACTIVE;
@@ -592,8 +600,7 @@ public final class QuestProgressHandler {
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
-        QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-        if (def != null) playChapterSound(player, def.getChapterFailSound());
+        playChapterSound(player, def.getChapterFailSound());
         return QuestRejectCodeDictionary.Code.OK;
     }
 

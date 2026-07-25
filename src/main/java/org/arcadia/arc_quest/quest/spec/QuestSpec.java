@@ -14,6 +14,7 @@ public class QuestSpec {
     public String iconTexture = "";
     public int sortOrder = 0;
     public boolean repeatable = false;
+    public boolean abandonable = true;
     public QuestMode mode = QuestMode.PROGRESSION;
     public CollectionQuestSpecData collectionConfig = null;
     public String initialPhaseId = "";
