@@ -152,21 +152,21 @@ public class QuestJournalScreen extends Screen {
                 for (Map.Entry<String, QuestRuntimeData> e : ClientQuestCache.INSTANCE.getAllActiveQuests().entrySet()) {
                     ResourceLocation questRl = ResourceLocation.tryParse(e.getKey());
                     QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-                    currentEntries.add(new JournalTypes.QuestListEntry(e.getKey(), ClientQuestCache.INSTANCE.getQuestDisplayName(e.getKey()), QuestState.ACTIVE, def));
+                    currentEntries.add(new JournalTypes.QuestListEntry(e.getKey(), ClientQuestCache.INSTANCE.getQuestDisplayComponent(e.getKey()), QuestState.ACTIVE, def));
                 }
             }
             case COMPLETED -> {
                 for (String id : ClientQuestCache.INSTANCE.getCompletedQuests()) {
                     ResourceLocation questRl = ResourceLocation.tryParse(id);
                     QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-                    currentEntries.add(new JournalTypes.QuestListEntry(id, ClientQuestCache.INSTANCE.getQuestDisplayName(id), QuestState.COMPLETED, def));
+                    currentEntries.add(new JournalTypes.QuestListEntry(id, ClientQuestCache.INSTANCE.getQuestDisplayComponent(id), QuestState.COMPLETED, def));
                 }
             }
             case FAILED -> {
                 for (String id : ClientQuestCache.INSTANCE.getFailedQuests()) {
                     ResourceLocation questRl = ResourceLocation.tryParse(id);
                     QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-                    currentEntries.add(new JournalTypes.QuestListEntry(id, ClientQuestCache.INSTANCE.getQuestDisplayName(id), QuestState.FAILED, def));
+                    currentEntries.add(new JournalTypes.QuestListEntry(id, ClientQuestCache.INSTANCE.getQuestDisplayComponent(id), QuestState.FAILED, def));
                 }
             }
         }

@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.quest.network;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -71,7 +72,7 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
                     pkt.playerSessionEpoch, pkt.baseRevision, pkt.newRevision)) return;
             ResourceLocation questRl = ResourceLocation.tryParse(pkt.data.getQuestId());
             QuestDefinition def = questRl != null ? QuestRegistry.get(questRl) : null;
-            String name = def != null ? def.getDisplayName().getString() : pkt.data.getQuestId();
+            Component name = def != null ? def.getDisplayName() : Component.literal(pkt.data.getQuestId());
 
             QuestRuntimeData previousData = ClientQuestCache.INSTANCE.getActiveQuest(pkt.data.getQuestId());
             Set<String> previousActivePhases = previousData != null

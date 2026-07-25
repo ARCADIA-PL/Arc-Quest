@@ -4,9 +4,11 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -307,7 +309,7 @@ public final class CollectionHistoryPanel {
                     g.pose().pushPose();
                     g.pose().translate(cx + 6, cy + 6, 0);
                     g.pose().scale(0.85f, 0.85f, 1f);
-                    g.drawString(font, font.plainSubstrByWidth(entry.name, (int) ((cardW - 40) / 0.85f)), 0, 0, HudAnimUtil.withAlpha(textColor, alpha), false);
+                    g.drawString(font, StyledTextUtil.fitSingleLine(font, entry.name, (int) ((cardW - 40) / 0.85f)), 0, 0, HudAnimUtil.withAlpha(textColor, alpha), false);
                     g.pose().popPose();
 
                     // 数字比例
@@ -385,8 +387,8 @@ public final class CollectionHistoryPanel {
         int count = ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, phaseId);
         int target = Math.max(1, config.getCompletionTarget());
         boolean completed = runtime != null && runtime.isPhaseCompleted(phaseId);
-        String name = phase.getDisplayName().getString();
-        if (name == null || name.isEmpty()) name = phaseId;
+        Component name = phase.getDisplayName();
+        if (name == null || name.getString().isEmpty()) name = Component.literal(phaseId);
         return new EntryData(phaseId, name, count, target, completed);
     }
 
@@ -399,6 +401,6 @@ public final class CollectionHistoryPanel {
         }
     }
 
-    private record EntryData(String phaseId, String name, int count, int target, boolean completed) {
+    private record EntryData(String phaseId, Component name, int count, int target, boolean completed) {
     }
 }

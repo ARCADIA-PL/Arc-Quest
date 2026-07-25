@@ -4,6 +4,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -59,8 +60,8 @@ public class TrackerParallelWidget {
             }
             boolean isComplete = total > 0 && done >= total;
 
-            String laneName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), pid);
-            if (isComplete) laneName += " ✔";
+            Component laneName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(tracked.getQuestId(), pid).copy();
+            if (isComplete) laneName = laneName.copy().append(" ✔");
 
             int nodeY = textY + 4;
             if (isFocused) {
@@ -72,7 +73,8 @@ public class TrackerParallelWidget {
             }
 
             int textColor = isFocused ? 0xFFFFFF : (isComplete ? 0x99FF99 : 0xAAB4C0);
-            String displayTxt = font.plainSubstrByWidth(laneName, TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 14);
+            var displayTxt = StyledTextUtil.fitSingleLine(font, laneName,
+                    TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 14);
 
             g.drawString(font, displayTxt, textX + 12, textY, HudAnimUtil.withAlpha(textColor, a), false);
 

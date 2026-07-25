@@ -2,7 +2,10 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 
 final class JournalGroupEntryRenderer {
 
@@ -47,18 +50,14 @@ final class JournalGroupEntryRenderer {
         String count = Integer.toString(row.quests().size());
         int counterX = x + width - 16 - font.width(count);
         int nameMaxPixels = counterX - textStartX - 8;
-        String name = group.displayName().getString();
-        int nameFullPixels = font.width(name);
-        if (nameFullPixels > nameMaxPixels) {
-            int allowedWidth = nameMaxPixels - font.width("...");
-            name = font.plainSubstrByWidth(name, Math.max(0, allowedWidth)) + "...";
-        }
+        Component name = group.displayName();
+        FormattedCharSequence fittedName = StyledTextUtil.fitSingleLine(font, name, nameMaxPixels);
 
         float textY = y + (height - font.lineHeight * textScale) / 2f - 0.5f;
         graphics.pose().pushPose();
         graphics.pose().translate(textStartX, textY, 0);
         graphics.pose().scale(textScale, textScale, 1f);
-        graphics.drawString(font, name, 0, 0, primaryColor, false);
+        graphics.drawString(font, fittedName, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
         graphics.pose().pushPose();

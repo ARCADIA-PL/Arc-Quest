@@ -1,10 +1,13 @@
 package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.quest.api.IconPosition;
@@ -245,7 +248,7 @@ public class JournalListPanel {
         float baseScale = cachedText.width > maxDrawWidth
                 ? Math.max(0.75f, (float) maxDrawWidth / cachedText.width)
                 : 1f;
-        String displayName = cachedText.width * baseScale > maxDrawWidth
+        FormattedCharSequence displayName = cachedText.width * baseScale > maxDrawWidth
                 ? fitText(cachedText, maxDrawWidth, 0.75f)
                 : cachedText.displayName;
         float finalScale = baseScale * (1f + 0.03f * hover);
@@ -301,20 +304,21 @@ public class JournalListPanel {
         graphics.pose().popPose();
     }
 
-    private TextCache getTextCache(String key, String displayName) {
+    private TextCache getTextCache(String key, Component displayName) {
         return textCache.computeIfAbsent(key, ignored -> {
             TextCache cache = new TextCache();
-            cache.displayName = displayName;
+            cache.component = displayName;
+            cache.displayName = displayName.getVisualOrderText();
             cache.width = screen.getFont().width(displayName);
             return cache;
         });
     }
 
-    private String fitText(TextCache cachedText, int maxDrawWidth, float scale) {
+    private FormattedCharSequence fitText(TextCache cachedText, int maxDrawWidth, float scale) {
         if (cachedText.lastMaxWidth != maxDrawWidth || cachedText.lastScale != scale) {
-            int allowedWidth = (int) (maxDrawWidth / scale) - screen.getFont().width("...");
-            cachedText.lastDrawName = screen.getFont().plainSubstrByWidth(
-                    cachedText.displayName, Math.max(0, allowedWidth)) + "...";
+            int allowedWidth = (int) (maxDrawWidth / scale);
+            cachedText.lastDrawName = StyledTextUtil.fitSingleLine(
+                    screen.getFont(), cachedText.component, allowedWidth);
             cachedText.lastMaxWidth = maxDrawWidth;
             cachedText.lastScale = scale;
         }
@@ -426,9 +430,10 @@ public class JournalListPanel {
     }
 
     private static class TextCache {
-        String displayName;
+        Component component;
+        FormattedCharSequence displayName;
         int width;
-        String lastDrawName;
+        FormattedCharSequence lastDrawName;
         int lastMaxWidth = Integer.MIN_VALUE;
         float lastScale = -1f;
     }

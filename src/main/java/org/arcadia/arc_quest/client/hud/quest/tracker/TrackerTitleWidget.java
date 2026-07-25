@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -68,10 +69,8 @@ public class TrackerTitleWidget {
             }
 
             // 渲染左侧标题
-            String title = font.plainSubstrByWidth(
-                    ClientQuestCache.INSTANCE.getQuestDisplayName(tracked.getQuestId()),
-                    availableW
-            );
+            var title = StyledTextUtil.fitSingleLine(font,
+                    ClientQuestCache.INSTANCE.getQuestDisplayComponent(tracked.getQuestId()), availableW);
             g.drawString(font, title, textX + iconOffset, textY, HudAnimUtil.withAlpha(0xFFFFFF, titleA), true);
 
             // =========================================================
@@ -114,8 +113,8 @@ public class TrackerTitleWidget {
             g.pose().translate(textX + 7, textY + 1, 0);
             g.pose().scale(0.95f, 0.95f, 1f);
 
-            String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(tracked.getQuestId(), displayedPhaseId);
-            String phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName).getString();
+            Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(tracked.getQuestId(), displayedPhaseId);
+            Component phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName);
             g.drawString(font, phasePrefix, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, subA), true);
 
             g.pose().popPose();

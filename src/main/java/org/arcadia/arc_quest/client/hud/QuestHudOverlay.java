@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
+import net.minecraft.network.chat.Component;
 import net.neoforged.fml.loading.FMLPaths;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -194,13 +195,13 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
         }
 
         if (addedPhase != null && !addedPhase.isEmpty()) {
-            String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, addedPhase);
+            Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, addedPhase);
             phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.ADDED);
         } else if (removedPhase != null && !removedPhase.isEmpty()) {
-            String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, removedPhase);
+            Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, removedPhase);
             phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.COMPLETED);
         } else if (lastKnownPhaseId != null && !lastKnownPhaseId.equals(currentPhaseId) && currentPhaseId != null && !currentPhaseId.isEmpty()) {
-            String phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, currentPhaseId);
+            Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, currentPhaseId);
             phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, PhaseUpdateToast.Kind.SWITCHED);
         }
 
@@ -275,6 +276,11 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
 
     public void showPhaseUpdateToast(String phaseName, int themeColor, PhaseUpdateToast.Kind kind) {
         if (phaseName == null || phaseName.isEmpty()) return;
+        showPhaseUpdateToast(Component.literal(phaseName), themeColor, kind);
+    }
+
+    public void showPhaseUpdateToast(Component phaseName, int themeColor, PhaseUpdateToast.Kind kind) {
+        if (phaseName == null || phaseName.getString().isEmpty()) return;
         phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, kind);
     }
 

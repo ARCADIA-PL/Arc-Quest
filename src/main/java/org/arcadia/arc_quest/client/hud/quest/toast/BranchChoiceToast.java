@@ -6,8 +6,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
 public class BranchChoiceToast {
@@ -129,8 +131,8 @@ public class BranchChoiceToast {
         // 直接用 baseX, baseY 渲染
         HudRenderUtil.drawGlassPanel(g, baseX, baseY, POPUP_W, POPUP_H, 0x121212, bgA, themeColor, accentA, 4);
 
-        String questName = ClientQuestCache.INSTANCE.getQuestDisplayName(questId);
-        String phaseName = resolvePhaseDisplayName();
+        Component questName = ClientQuestCache.INSTANCE.getQuestDisplayComponent(questId);
+        Component phaseName = resolvePhaseDisplayName();
 
         Font font = Minecraft.getInstance().font;
         float contentX = baseX + 12 + textDriftX;
@@ -138,13 +140,13 @@ public class BranchChoiceToast {
 
         if (accentA > 5) {
             String subtitle = Component.translatable("arc_quest.toast.branch.subtitle").getString();
-            String prefix = Component.translatable("arc_quest.toast.branch.prefix").getString();
-            String line1 = prefix + font.plainSubstrByWidth(questName, POPUP_W - 30 - font.width(prefix));
+            Component line1Text = Component.translatable("arc_quest.toast.branch.prefix").append(questName);
+            FormattedCharSequence line1 = StyledTextUtil.fitSingleLine(font, line1Text, POPUP_W - 30);
 
-            String line2 = null;
-            if (phaseName != null && !phaseName.isEmpty()) {
-                String phasePrefix = "• ";
-                line2 = phasePrefix + font.plainSubstrByWidth(phaseName, POPUP_W - 30 - font.width(phasePrefix));
+            FormattedCharSequence line2 = null;
+            if (phaseName != null && !phaseName.getString().isEmpty()) {
+                Component line2Text = Component.literal("• ").append(phaseName);
+                line2 = StyledTextUtil.fitSingleLine(font, line2Text, POPUP_W - 30);
             }
 
             int subColor = HudAnimUtil.withAlpha(0xAAAAAA, accentA);
@@ -174,8 +176,8 @@ public class BranchChoiceToast {
         return true;
     }
 
-    private String resolvePhaseDisplayName() {
+    private Component resolvePhaseDisplayName() {
         if (phaseId == null || phaseId.isEmpty()) return null;
-        return ClientQuestCache.INSTANCE.getPhaseDisplayName(questId, phaseId);
+        return ClientQuestCache.INSTANCE.getPhaseDisplayComponent(questId, phaseId);
     }
 }

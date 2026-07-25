@@ -4,9 +4,11 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.*;
@@ -242,8 +244,8 @@ public final class JournalDetailCollection {
         g.fill(x + CW - 12, y + 4, x + CW - 4, y + 5, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (aa / 255f))));
         g.fill(x + CW - 6, y + 7, x + CW - 4, y + 8, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * (aa / 255f))));
 
-        String displayName = name(p, c, id, seen);
-        txt(g, screen.getFont().plainSubstrByWidth(displayName, CW - 10), x + 5, y + 7, 0.7f, seen || done ? 0xFFFFFF : 0x777777, aa);
+        Component displayName = nameComponent(p, c, id, seen);
+        txt(g, StyledTextUtil.fitSingleLine(screen.getFont(), displayName, CW - 10), x + 5, y + 7, 0.7f, seen || done ? 0xFFFFFF : 0x777777, aa);
 
         if (done) txt(g, "DONE", x + 5, y + CH - 16, 0.62f, 0x88FF88, aa);
         else if (tracked) txt(g, "TRACK", x + 5, y + CH - 16, 0.62f, theme, aa);
@@ -268,6 +270,10 @@ public final class JournalDetailCollection {
     }
 
     private void txt(GuiGraphics g, String s, int x, int y, float sc, int col, int a) {
+        txt(g, Component.literal(s).getVisualOrderText(), x, y, sc, col, a);
+    }
+
+    private void txt(GuiGraphics g, FormattedCharSequence s, int x, int y, float sc, int col, int a) {
         g.pose().pushPose();
         g.pose().translate(x, y, 0);
         g.pose().scale(sc, sc, 1);
@@ -359,7 +365,7 @@ public final class JournalDetailCollection {
         int tar = Math.max(1, c.getCompletionTarget());
 
         List<Component> lines = new ArrayList<>();
-        lines.add(Component.literal(name(p, c, id, seen)).withStyle(Style.EMPTY.withColor(done ? 0x88FF88 : 0xFFFFFF).withBold(true)));
+        lines.add(nameComponent(p, c, id, seen).copy().withStyle(Style.EMPTY.withBold(true)));
         lines.add(Component.literal("Progress: " + cnt + "/" + tar).withStyle(Style.EMPTY.withColor(0xAAAAAA)));
         lines.add(Component.literal("Mode: " + c.getCountingMode().name()).withStyle(Style.EMPTY.withColor(0x8FA3B6)));
         if (rewardReady)
@@ -389,10 +395,14 @@ public final class JournalDetailCollection {
     }
 
     private String name(PhaseDefinition p, CollectionEntryConfig c, String id, boolean seen) {
-        if (!seen && c.getHiddenPresentationMode() == HiddenPresentationMode.PLACEHOLDER) return "Unknown Entry";
-        if (!seen && c.getHiddenPresentationMode() == HiddenPresentationMode.NAME_MASKED) return "???";
-        String n = p.getDisplayName().getString();
-        return n == null || n.isEmpty() ? id : n;
+        return nameComponent(p, c, id, seen).getString();
+    }
+
+    private Component nameComponent(PhaseDefinition p, CollectionEntryConfig c, String id, boolean seen) {
+        if (!seen && c.getHiddenPresentationMode() == HiddenPresentationMode.PLACEHOLDER) return Component.literal("Unknown Entry");
+        if (!seen && c.getHiddenPresentationMode() == HiddenPresentationMode.NAME_MASKED) return Component.literal("???");
+        Component name = p.getDisplayName();
+        return name == null || name.getString().isEmpty() ? Component.literal(id) : name;
     }
 
     private List<Row> rewardRows(String q, QuestDefinition d) {

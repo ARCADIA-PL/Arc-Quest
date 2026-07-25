@@ -120,6 +120,45 @@ public class JournalDetailSinglePhase {
         }
     }
 
+    private void drawScrollingComponent(GuiGraphics g, Font font, Component text, int localX, int localY,
+                                        int maxWidth, int color, boolean dropShadow, int absX, int absY,
+                                        int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
+        int textWidth = font.width(text);
+        if (textWidth <= maxWidth) {
+            g.drawString(font, text, localX, localY, color, dropShadow);
+            return;
+        }
+
+        long time = Util.getMillis();
+        double speed = 30.0;
+        int pauseTime = 1500;
+        double maxShift = textWidth - maxWidth;
+        double totalScrollTime = (maxShift / speed) * 1000.0;
+        double halfPeriod = pauseTime + totalScrollTime;
+        double t = time % (halfPeriod * 2.0);
+        double shift;
+        if (t < halfPeriod) {
+            shift = t <= pauseTime ? 0 : ((t - pauseTime) / 1000.0) * speed;
+        } else {
+            double tBack = t - halfPeriod;
+            shift = tBack <= pauseTime
+                    ? maxShift
+                    : maxShift - (((tBack - pauseTime) / 1000.0) * speed);
+        }
+
+        int cx1 = Math.max(parentClipX1, absX);
+        int cy1 = Math.max(parentClipY1, absY);
+        int cx2 = Math.min(parentClipX2, absX + maxWidth);
+        int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
+        if (cx1 < cx2 && cy1 < cy2) {
+            g.disableScissor();
+            screen.enableScissor(g, cx1, cy1, cx2, cy2);
+            g.drawString(font, text, localX - (int) shift, localY, color, dropShadow);
+            g.disableScissor();
+            screen.enableScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
+        }
+    }
+
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, String phaseId, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
         PhaseDefinition phase = def.getPhase(phaseId);
         Font font = screen.getFont();
@@ -129,13 +168,13 @@ public class JournalDetailSinglePhase {
         g.pose().pushPose();
         g.pose().translate(0, localY, 0);
         g.pose().scale(0.8f, 0.8f, 1f);
-        String phaseName = getPhaseDisplayName(phase);
-        String titleText = Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName).getString();
+        Component phaseName = getPhaseDisplayName(phase);
+        Component titleText = Component.translatable("arc_quest.gui.journal.section.current_phase", phaseName);
 
         int maxTitleW = (int) ((scrollAreaW - 10) / 0.8f);
         int nameAbsX = x;
         int nameAbsY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
-        drawScrollingString(g, font, titleText, 0, 0, maxTitleW, HudAnimUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+        drawScrollingComponent(g, font, titleText, 0, 0, maxTitleW, HudAnimUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
         g.pose().popPose();
         localY += 14;
@@ -460,14 +499,9 @@ public class JournalDetailSinglePhase {
         return false;
     }
 
-    private String getPhaseDisplayName(PhaseDefinition phase) {
-        String key = "phase-name:" + phase.getPhaseId();
-        return textLayoutCache.computeIfAbsent(key, k -> {
-            TextLayoutCache cache = new TextLayoutCache();
-            String name = phase.getDisplayName() != null ? phase.getDisplayName().getString() : "";
-            cache.text = name.isEmpty() ? phase.getPhaseId() : name;
-            return cache;
-        }).text;
+    private Component getPhaseDisplayName(PhaseDefinition phase) {
+        Component name = phase.getDisplayName();
+        return name != null && !name.getString().isEmpty() ? name : Component.literal(phase.getPhaseId());
     }
 
     private String getObjectiveText(ObjectiveEntry objective, boolean complete) {

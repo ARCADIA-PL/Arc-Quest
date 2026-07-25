@@ -237,7 +237,7 @@ public final class QuestChangeHistoryPanel {
         int idx = screen.getSelectedIndex();
         List<JournalTypes.QuestListEntry> entries = screen.getCurrentEntries();
         if (idx < 0 || idx >= entries.size()) return "";
-        return entries.get(idx).displayName();
+        return entries.get(idx).displayName().getString();
     }
 
     private void drawScaled(GuiGraphics g, Font font, String text, int x, int y, float scale, int color, boolean shadow) {

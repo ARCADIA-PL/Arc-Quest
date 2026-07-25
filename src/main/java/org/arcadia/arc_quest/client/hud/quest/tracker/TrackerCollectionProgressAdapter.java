@@ -47,7 +47,7 @@ final class TrackerCollectionProgressAdapter {
         if (trackedPhase != null) {
             CollectionEntryConfig entry = trackedPhase.getCollectionEntryConfig();
             int target = Math.max(1, entry.getCompletionTarget());
-            rows.add(objective("tracked_entry", "Entry: " + trackedPhase.getDisplayName().getString(), ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, tracked), target));
+            rows.add(objective("tracked_entry", Component.literal("Entry: ").append(trackedPhase.getDisplayName()), ClientQuestCache.INSTANCE.getCollectionEntryCount(questId, tracked), target));
         }
         rows.add(objective("collection_progress", "Collection Progress", completed, total));
         rows.add(objective("discovered_entries", "Discovered Entries", discovered, total));
@@ -78,11 +78,15 @@ final class TrackerCollectionProgressAdapter {
     }
 
     private ObjectiveEntry objective(String rowId, String label, int current, int required) {
+        return objective(rowId, Component.literal(label), current, required);
+    }
+
+    private ObjectiveEntry objective(String rowId, Component label, int current, int required) {
         return new ObjectiveEntry(
                 ObjectiveType.CUSTOM,
                 ResourceLocation.fromNamespaceAndPath("arc_quest", "collection_tracker/" + rowId),
                 Math.max(1, required),
-                Component.literal(label),
+                label,
                 false,
                 false,
                 Map.of("tracker_progress", String.valueOf(Math.max(0, current)))

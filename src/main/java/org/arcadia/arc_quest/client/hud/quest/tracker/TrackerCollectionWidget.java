@@ -2,7 +2,10 @@ package org.arcadia.arc_quest.client.hud.quest.tracker;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.quest.api.CollectionEntryConfig;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -92,20 +95,20 @@ public final class TrackerCollectionWidget {
             g.drawString(font, "Seen: " + discovered + " / " + total, 0, 0, HudAnimUtil.withAlpha(0x777777, a), false);
         }
 
-        String lastUpdated = resolveLastUpdatedName(def, collectionData);
-        if (!lastUpdated.isEmpty()) {
-            String txt = "Last: " + font.plainSubstrByWidth(lastUpdated, 100);
-            g.drawString(font, txt, (int) ((barW - font.width(txt) * 0.8f) / 0.8f), 0, HudAnimUtil.withAlpha(0x555555, a), false);
+        Component lastUpdated = resolveLastUpdatedName(def, collectionData);
+        if (!lastUpdated.getString().isEmpty()) {
+            FormattedCharSequence text = StyledTextUtil.fitSingleLine(font, Component.literal("Last: ").append(lastUpdated), 130);
+            g.drawString(font, text, (int) ((barW - font.width(text) * 0.8f) / 0.8f), 0, HudAnimUtil.withAlpha(0x555555, a), false);
         }
         g.pose().popPose();
     }
 
-    private String resolveLastUpdatedName(QuestDefinition def, CollectionRuntimeData collectionData) {
+    private Component resolveLastUpdatedName(QuestDefinition def, CollectionRuntimeData collectionData) {
         String lastUpdated = collectionData.getLastUpdatedPhaseId();
-        if (lastUpdated == null || lastUpdated.isEmpty()) return "";
+        if (lastUpdated == null || lastUpdated.isEmpty()) return Component.empty();
         PhaseDefinition phase = def.getPhase(lastUpdated);
-        if (phase == null) return lastUpdated;
-        String name = phase.getDisplayName().getString();
-        return name == null || name.isEmpty() ? lastUpdated : name;
+        if (phase == null) return Component.literal(lastUpdated);
+        Component name = phase.getDisplayName();
+        return name == null || name.getString().isEmpty() ? Component.literal(lastUpdated) : name;
     }
 }

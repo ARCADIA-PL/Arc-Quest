@@ -199,6 +199,42 @@ public class JournalDetailParallelPhase {
         }
     }
 
+    private void drawScrollingComponent(GuiGraphics g, Font font, Component text, int localX, int localY,
+                                        int maxWidth, int color, boolean dropShadow, int absX, int absY,
+                                        int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
+        int textWidth = font.width(text);
+        if (textWidth <= maxWidth) {
+            g.drawString(font, text, localX, localY, color, dropShadow);
+            return;
+        }
+        long time = Util.getMillis();
+        double speed = 30.0;
+        int pauseTime = 1500;
+        double maxShift = textWidth - maxWidth;
+        double totalScrollTime = (maxShift / speed) * 1000.0;
+        double halfPeriod = pauseTime + totalScrollTime;
+        double t = time % (halfPeriod * 2.0);
+        double shift;
+        if (t < halfPeriod) {
+            shift = t <= pauseTime ? 0 : ((t - pauseTime) / 1000.0) * speed;
+        } else {
+            double tBack = t - halfPeriod;
+            shift = tBack <= pauseTime
+                    ? maxShift
+                    : maxShift - (((tBack - pauseTime) / 1000.0) * speed);
+        }
+
+        int cx1 = Math.max(parentClipX1, absX);
+        int cy1 = Math.max(parentClipY1, absY);
+        int cx2 = Math.min(parentClipX2, absX + maxWidth);
+        int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
+        if (cx1 < cx2 && cy1 < cy2) {
+            safeScissor(g, cx1, cy1, cx2, cy2);
+            g.drawString(font, text, localX - (int) shift, localY, color, dropShadow);
+            safeScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
+        }
+    }
+
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, List<String> activePhaseIds, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
         Font font = screen.getFont();
         objScrollAreas.clear();
@@ -278,7 +314,7 @@ public class JournalDetailParallelPhase {
         currentX1 += (int) (font.width("//") * 0.8f) + 8;
 
         if (focusPhase != null) {
-            String pName = getPhaseDisplayName(focusPhase);
+            Component pName = getPhaseDisplayName(focusPhase);
             String prefix = Component.translatable("arc_quest.gui.journal.section.focus_phase").getString();
 
             g.pose().pushPose();
@@ -297,7 +333,7 @@ public class JournalDetailParallelPhase {
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
             g.pose().scale(0.75f, 0.75f, 1f);
-            drawScrollingString(g, font, pName, 0, 0, (int) (remainingW / 0.75f), HudAnimUtil.withAlpha(0xFFFFFF, safeA), true, absTitleX, absTitleY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+            drawScrollingComponent(g, font, pName, 0, 0, (int) (remainingW / 0.75f), HudAnimUtil.withAlpha(0xFFFFFF, safeA), true, absTitleX, absTitleY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
             g.pose().popPose();
 
             localY += titleH + 6;
@@ -471,9 +507,9 @@ public class JournalDetailParallelPhase {
             if (draggingPhaseId == null && potentialDragPhaseId == null)
                 currentPhaseTags.add(new JournalTypes.PhaseTagRect(absCardX, absCardY, colW, maxCardH, phaseId));
 
-            String phaseName = getPhaseDisplayName(phase);
+            Component phaseName = getPhaseDisplayName(phase);
             int nameAbsX = absCardX + 8 + contentShiftX, nameAbsY = absCardY + 6;
-            drawScrollingString(g, font, phaseName, cardX + 8 + contentShiftX, cardY + 6, colW - 60, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true, nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
+            drawScrollingComponent(g, font, phaseName, cardX + 8 + contentShiftX, cardY + 6, colW - 60, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true, nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
 
             ResourceLocation pIntel = phase.getIntelSceneId();
             boolean hasIntel = pIntel != null;
@@ -958,14 +994,9 @@ public class JournalDetailParallelPhase {
         currentOfferProgressRects.add(new OfferProgressRect(x, y, w, h, phaseId, objectiveIndex));
     }
 
-    private String getPhaseDisplayName(PhaseDefinition phase) {
-        String key = "phase-name:" + phase.getPhaseId();
-        return textLayoutCache.computeIfAbsent(key, k -> {
-            TextLayoutCache cache = new TextLayoutCache();
-            String name = phase.getDisplayName() != null ? phase.getDisplayName().getString() : "";
-            cache.text = name.isEmpty() ? phase.getPhaseId() : name;
-            return cache;
-        }).text;
+    private Component getPhaseDisplayName(PhaseDefinition phase) {
+        Component name = phase.getDisplayName();
+        return name != null && !name.getString().isEmpty() ? name : Component.literal(phase.getPhaseId());
     }
 
     private List<String> getWrappedLines(String key, String text, int width, Font font) {
