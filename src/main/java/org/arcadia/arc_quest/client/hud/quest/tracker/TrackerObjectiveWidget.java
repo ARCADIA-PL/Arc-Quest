@@ -112,7 +112,7 @@ public class TrackerObjectiveWidget {
 
             ObjectiveTextCache cachedText = getTextCache(obj, progress, required, font);
             String objText = complete ? cachedText.completeText : cachedText.activeText;
-            String progressText = cachedText.progressText;
+            boolean showProgressText = obj.getType().isCounting();
 
             int textColor = complete ? HudAnimUtil.withAlpha(0x88FF88, aInt) : HudAnimUtil.withAlpha(0xCCCCCC, aInt);
             if (objPulse[i] > 0.05f) {
@@ -130,10 +130,12 @@ public class TrackerObjectiveWidget {
                 );
             }
 
-            int numW = (int) (cachedText.progressWidth * 0.8f);
-            int numX = panelX + TrackerConstants.PANEL_WIDTH - TrackerConstants.PADDING - numW + (int) wipeDrift;
+            int textRightX = panelX + TrackerConstants.PANEL_WIDTH - TrackerConstants.PADDING + (int) wipeDrift;
+            int numW = showProgressText ? (int) (cachedText.progressWidth * 0.8f) : 0;
+            int numX = textRightX - numW;
 
-            int maxObjTextWidth = (int) ((numX - rowX - 8) / 0.85f);
+            int textGap = showProgressText ? 8 : 0;
+            int maxObjTextWidth = (int) ((numX - rowX - textGap) / 0.85f);
             String safeObjText = getSafeObjectiveText(cachedText, objText, complete, Math.max(10, maxObjTextWidth), font);
 
             g.pose().pushPose();
@@ -142,11 +144,13 @@ public class TrackerObjectiveWidget {
             g.drawString(font, safeObjText, 0, 0, textColor, true);
             g.pose().popPose();
 
-            g.pose().pushPose();
-            g.pose().translate(numX, textY + 1, 0);
-            g.pose().scale(0.8f, 0.8f, 1f);
-            g.drawString(font, progressText, 0, 0, textColor, true);
-            g.pose().popPose();
+            if (showProgressText) {
+                g.pose().pushPose();
+                g.pose().translate(numX, textY + 1, 0);
+                g.pose().scale(0.8f, 0.8f, 1f);
+                g.drawString(font, cachedText.progressText, 0, 0, textColor, true);
+                g.pose().popPose();
+            }
 
             textY += TrackerConstants.OBJ_ROW_HEIGHT;
 
