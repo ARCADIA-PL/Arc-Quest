@@ -188,12 +188,12 @@ public class QuestTrackerPanel {
         float virtualScreenWidth = screenWidth / uiScale;
 
         int targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
-        targetH += indicatorExtraHeight;
         boolean showPhaseLanes = !def.isCollectionQuest() && activePhaseOrder.size() > 1;
         if (showPhaseLanes) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
         else if (!def.isCollectionQuest()) targetH += 16;
         targetH += def.isCollectionQuest() ? 0 : TrackerTitleWidget.computeDescriptionHeight(phase, font);
         targetH += objectives.size() * (TrackerConstants.OBJ_ROW_HEIGHT + TrackerConstants.PROGRESS_BAR_H + 6);
+        targetH += indicatorExtraHeight;
         targetH += TrackerConstants.PADDING;
 
         if (currentPanelH < 0) currentPanelH = targetH;
@@ -231,8 +231,7 @@ public class QuestTrackerPanel {
         int textY = panelY + TrackerConstants.PADDING;
 
         TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font);
-        newQuestIndicator.render(g, font, panelX, panelY, questId, panelReveal, now);
-        textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE + indicatorExtraHeight;
+        textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
 
         if (showPhaseLanes) {
             textY = TrackerParallelWidget.render(g, font, tracked, def, activePhaseOrder, displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha);
@@ -245,6 +244,7 @@ public class QuestTrackerPanel {
             textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
         String phaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : displayedPhaseId;
         objectiveWidget.render(g, font, tracked, phaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
+        newQuestIndicator.render(g, font, panelX, panelY, panelH, questId, panelReveal, now);
 
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();

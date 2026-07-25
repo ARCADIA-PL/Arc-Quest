@@ -28,7 +28,7 @@ final class TrackerNewQuestIndicator {
         return isVisible(trackedQuestId) ? EXTRA_HEIGHT : 0;
     }
 
-    void render(GuiGraphics graphics, Font font, int panelX, int panelY,
+    void render(GuiGraphics graphics, Font font, int panelX, int panelY, int panelHeight,
                 String trackedQuestId, float panelAlpha, long now) {
         if (!isVisible(trackedQuestId)) {
             wasVisible = false;
@@ -43,16 +43,17 @@ final class TrackerNewQuestIndicator {
         float fadeIn = clamp((now - visibleSinceMs) / (float) FADE_IN_DURATION_MS);
         float alpha = panelAlpha * fadeIn;
         int right = panelX + TrackerConstants.PANEL_WIDTH - TrackerConstants.PADDING - RIGHT_INSET;
-        int messageY = panelY + TrackerConstants.PADDING
-                + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
-        int left = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
-        int maxTextWidth = Math.max(1, right - left - 12);
+        int indicatorLeft = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
+        int dotCenterX = indicatorLeft + 6;
+        float messageX = indicatorLeft + 14;
+        int maxTextWidth = Math.max(1, right - (int) messageX);
         int textAlpha = (int) (255 * alpha);
 
         Component message = resolveMessage();
         float messageScale = Math.min(MESSAGE_SCALE,
                 maxTextWidth / (float) Math.max(1, font.width(message)));
-        float messageX = right - font.width(message) * messageScale;
+        float messageY = panelY + panelHeight - TrackerConstants.PADDING
+                - font.lineHeight * messageScale;
         graphics.pose().pushPose();
         graphics.pose().translate(messageX, messageY, 0);
         graphics.pose().scale(messageScale, messageScale, 1f);
@@ -60,8 +61,7 @@ final class TrackerNewQuestIndicator {
                 (textAlpha << 24) | 0xFFF4F4F4, true);
         graphics.pose().popPose();
 
-        int dotCenterX = (int) messageX - 7;
-        int dotCenterY = messageY + Math.max(3, (int) (font.lineHeight * messageScale / 2f));
+        int dotCenterY = Math.round(messageY + Math.max(3f, font.lineHeight * messageScale / 2f));
         HudRenderUtil.drawBreathingRedDot(graphics, dotCenterX, dotCenterY, alpha);
     }
 

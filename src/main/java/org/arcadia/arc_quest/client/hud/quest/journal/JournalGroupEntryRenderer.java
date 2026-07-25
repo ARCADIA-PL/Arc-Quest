@@ -36,51 +36,34 @@ final class JournalGroupEntryRenderer {
         drawCyberneticEdge(graphics, x + 2, y, height - 2,
                 groupTheme, (int) (0xC0 * effectiveAlpha));
 
-        drawChevron(graphics, x + 14, y + height / 2, expansion, primaryColor);
+        int chevronCenterX = x + 13;
+        int chevronCenterY = y + (height - 2) / 2 - 1;
+        drawChevron(graphics, chevronCenterX, chevronCenterY, expansion, primaryColor);
 
         Font font = screen.getFont();
 
-        float nameScale = 0.72f;
-        float subtitleScale = 0.55f;
+        float textScale = 1f;
         int textStartX = x + 26;
-        int counterX = x + width - 31;
-        int subtitleColor = HudAnimUtil.withAlpha(0x8FA7B5, (int) (190 * effectiveAlpha));
-
-        String subtitle = "QUEST GROUP";
-        int subtitlePixels = (int) (font.width(subtitle) * subtitleScale);
-        int nameMaxPixels = counterX - textStartX - subtitlePixels - 16;
+        String count = Integer.toString(row.quests().size());
+        int counterX = x + width - 16 - font.width(count);
+        int nameMaxPixels = counterX - textStartX - 8;
         String name = group.displayName().getString();
-        int nameFullPixels = (int) (font.width(name) * nameScale);
+        int nameFullPixels = font.width(name);
         if (nameFullPixels > nameMaxPixels) {
-            int allowedWidth = (int) (nameMaxPixels / nameScale) - font.width("...");
+            int allowedWidth = nameMaxPixels - font.width("...");
             name = font.plainSubstrByWidth(name, Math.max(0, allowedWidth)) + "...";
         }
 
-        float nameY = y + (height - font.lineHeight * nameScale) / 2f;
+        float textY = y + (height - font.lineHeight * textScale) / 2f - 0.5f;
         graphics.pose().pushPose();
-        graphics.pose().translate(textStartX, nameY, 0);
-        graphics.pose().scale(nameScale, nameScale, 1f);
+        graphics.pose().translate(textStartX, textY, 0);
+        graphics.pose().scale(textScale, textScale, 1f);
         graphics.drawString(font, name, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
-        int nameEndX = textStartX + (int) (font.width(name) * nameScale);
-        int separatorX = nameEndX + 5;
-        graphics.fill(separatorX, y + height / 2 - 1, separatorX + 2, y + height / 2 + 1,
-                HudAnimUtil.withAlpha(groupTheme, (int) (160 * effectiveAlpha)));
-
-        int subtitleX = separatorX + 5;
-        float subtitleY = y + (height - font.lineHeight * subtitleScale) / 2f;
         graphics.pose().pushPose();
-        graphics.pose().translate(subtitleX, subtitleY, 0);
-        graphics.pose().scale(subtitleScale, subtitleScale, 1f);
-        graphics.drawString(font, subtitle, 0, 0, subtitleColor, false);
-        graphics.pose().popPose();
-
-        String count = Integer.toString(row.quests().size());
-        float countScale = 0.72f;
-        graphics.pose().pushPose();
-        graphics.pose().translate(counterX, y + (height - font.lineHeight * countScale) / 2f, 0);
-        graphics.pose().scale(countScale, countScale, 1f);
+        graphics.pose().translate(counterX, textY, 0);
+        graphics.pose().scale(textScale, textScale, 1f);
         graphics.drawString(font, count, 0, 0, primaryColor, false);
         graphics.pose().popPose();
 
