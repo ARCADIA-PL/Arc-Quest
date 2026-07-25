@@ -69,6 +69,8 @@ public final class ClientQuestCache {
      * 全局 Variables
      */
     private final Object2IntOpenHashMap<String> variables = new Object2IntOpenHashMap<>();
+    @Nullable
+    private String trackedQuestId;
     private boolean hasAppliedFullSync = false;
     private final QuestClientRevisionGate revisionGate = new QuestClientRevisionGate();
 
@@ -115,6 +117,15 @@ public final class ClientQuestCache {
         return hasAppliedFullSync;
     }
 
+    @Nullable
+    public String getTrackedQuestId() {
+        return trackedQuestId;
+    }
+
+    public void applyTrackedQuestSync(@Nullable String questId) {
+        trackedQuestId = questId == null || questId.isBlank() ? null : questId;
+    }
+
     // ═══════════════════════════════════════════════════════
     //  网络包调用的更新方法
     // ═══════════════════════════════════════════════════════
@@ -132,6 +143,9 @@ public final class ClientQuestCache {
         failedQuests.clear();
         flags.clear();
         variables.clear();
+        applyTrackedQuestSync(capData.contains("TrackedQuestId", Tag.TAG_STRING)
+                ? capData.getString("TrackedQuestId")
+                : null);
 
         // 活跃任务
         ListTag activeList = capData.getList("ActiveQuests", Tag.TAG_COMPOUND);
@@ -584,6 +598,7 @@ public final class ClientQuestCache {
         failedQuests.clear();
         flags.clear();
         variables.clear();
+        trackedQuestId = null;
         hasAppliedFullSync = false;
         revisionGate.clear();
         LOGGER.info("[ClientCache] Cache cleared.");

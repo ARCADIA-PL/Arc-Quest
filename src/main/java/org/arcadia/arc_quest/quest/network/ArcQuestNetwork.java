@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "5";
+    private static final String PROTOCOL_VERSION = "6";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -303,6 +303,22 @@ public final class ArcQuestNetwork {
                 C2SMarkGuideSeenPacket::decode,
                 C2SMarkGuideSeenPacket::handle
         );
+
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SSetTrackedQuestPacket.class,
+                C2SSetTrackedQuestPacket::encode,
+                C2SSetTrackedQuestPacket::decode,
+                C2SSetTrackedQuestPacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CSyncTrackedQuestPacket.class,
+                S2CSyncTrackedQuestPacket::encode,
+                S2CSyncTrackedQuestPacket::decode,
+                S2CSyncTrackedQuestPacket::handle
+        );
     }
 
     // ═══════════════════════════════════════════════════════
@@ -369,6 +385,11 @@ public final class ArcQuestNetwork {
         pushSyncForActiveUIs(player, data, "flags_vars_sync");
     }
 
+    public static void syncTrackedQuest(ServerPlayer player, ArcQuestPlayer data) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new S2CSyncTrackedQuestPacket(data.getTrackedQuestId()));
+    }
+
     private static String resolveObjectiveId(ServerPlayer player, String questId,
                                              String phaseId, int objectiveIndex) {
         ResourceLocation questKey = ResourceLocation.tryParse(questId);
@@ -406,6 +427,10 @@ public final class ArcQuestNetwork {
 
     public static void sendQuestAction(C2SRequestQuestActionPacket packet) {
         CHANNEL.sendToServer(packet);
+    }
+
+    public static void sendTrackedQuestUpdate(@Nullable String questId) {
+        CHANNEL.sendToServer(new C2SSetTrackedQuestPacket(questId));
     }
 
     public static void sendSubmitOffer(C2SSubmitOfferPacket packet) {
