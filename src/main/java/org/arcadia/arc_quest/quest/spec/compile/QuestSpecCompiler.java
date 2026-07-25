@@ -62,6 +62,7 @@ public final class QuestSpecCompiler {
                 .completionPolicy(spec.completionPolicy)
                 .completionRequiredCount(spec.completionRequiredCount)
                 .completionTargetPhase(blankToNull(spec.completionTargetPhaseId))
+                .abandonable(spec.abandonable)
                 .visualConfig(compileVisual(spec.visualConfig));
 
         if (spec.repeatable) builder.repeatable();
