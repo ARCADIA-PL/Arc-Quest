@@ -14,6 +14,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.ModLoader;
@@ -41,7 +42,8 @@ public class Arc_Quest {
     public static final String MOD_ID = "arc_quest";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public Arc_Quest(IEventBus modEventBus) {
+    public Arc_Quest(IEventBus modEventBus, ModContainer modContainer) {
+        modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT, org.arcadia.arc_quest.config.ArcQuestConfig.SPEC);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(ArcQuestNetwork::register);
         NeoForge.EVENT_BUS.register(this);
