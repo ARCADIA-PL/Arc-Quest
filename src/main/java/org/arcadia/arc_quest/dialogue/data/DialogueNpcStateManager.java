@@ -5,6 +5,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import org.arcadia.arc_quest.core.identity.EntityRef;
 import org.arcadia.arc_quest.core.identity.PlayerSessionRef;
+import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
+import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.npc.runtime.NpcBehaviorFocusResolver;
 import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
 import org.arcadia.arc_quest.npc.runtime.NpcLease;
@@ -24,8 +26,7 @@ public final class DialogueNpcStateManager {
 
     @Nullable
     public static State get(Entity npc) {
-        List<NpcLease> leases = NpcInteractionLeaseManager.INSTANCE.getActiveLeases(
-                EntityRef.of(npc), currentServerTick(npc));
+        List<NpcLease> leases = getDialogueLeases(npc);
         ServerPlayer focusedPlayer = NpcBehaviorFocusResolver.resolve(npc, leases);
         return focusedPlayer != null ? new State(focusedPlayer, focusedPlayer.getUUID()) : null;
     }
@@ -45,8 +46,7 @@ public final class DialogueNpcStateManager {
 
     public static List<ServerPlayer> getParticipants(Entity npc) {
         if (npc.getServer() == null) return List.of();
-        List<NpcLease> leases = NpcInteractionLeaseManager.INSTANCE.getActiveLeases(
-                EntityRef.of(npc), currentServerTick(npc));
+        List<NpcLease> leases = getDialogueLeases(npc);
         return leases.stream()
                 .map(lease -> new Participant(
                         lease, npc.getServer().getPlayerList().getPlayer(lease.owner().playerUuid())))
@@ -55,6 +55,24 @@ public final class DialogueNpcStateManager {
                         participant.player(), participant.lease().owner().loginEpoch()))
                 .map(Participant::player)
                 .toList();
+    }
+
+    private static List<NpcLease> getDialogueLeases(Entity npc) {
+        if (npc.getServer() == null) return List.of();
+        EntityRef entityRef = EntityRef.of(npc);
+        return NpcInteractionLeaseManager.INSTANCE.getActiveLeases(entityRef, currentServerTick(npc)).stream()
+                .filter(lease -> isActiveDialogueLease(npc, entityRef, lease))
+                .toList();
+    }
+
+    private static boolean isActiveDialogueLease(Entity npc, EntityRef entityRef, NpcLease lease) {
+        ServerPlayer player = npc.getServer().getPlayerList().getPlayer(lease.owner().playerUuid());
+        if (player == null || !PlayerSessionEpochManager.matches(player, lease.owner().loginEpoch())) return false;
+
+        DialogueSession session = DialogueSessionManager.INSTANCE.getSession(player);
+        return session != null
+                && lease.leaseId().equals(session.getNpcLeaseId())
+                && entityRef.equals(session.getEntityRef());
     }
 
     public static void clear(Entity npc, Player player) {

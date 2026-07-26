@@ -131,10 +131,6 @@ public final class DialogueSessionManager {
         sessions.put(player.getUUID(), session);
         transcriptMap.put(player.getUUID(), new ArrayList<>());
 
-        if (npcEntity instanceof IDialogueNpc) {
-            DialogueNpcStateManager.setConversing(npcEntity, player);
-        }
-
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
         progress.recordDialogueVisit(
                 namespace, dialogueId, now.realTime(), now.gameTime(), now.dayTime());
