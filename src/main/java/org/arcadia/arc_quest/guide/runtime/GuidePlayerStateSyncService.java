@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public final class GuidePlayerStateSyncService {
@@ -24,6 +25,8 @@ public final class GuidePlayerStateSyncService {
     public static void sync(ServerPlayer player, ArcQuestPlayer data) {
         List<ResourceLocation> unlocked = new ArrayList<>(data.getUnlockedGuides());
         List<ResourceLocation> seen = new ArrayList<>(data.getSeenGuides());
-        ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncGuideStatePacket(unlocked, seen));
+        ArcQuestNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new S2CSyncGuideStatePacket(unlocked, seen,
+                        new LinkedHashMap<>(data.getAllGuideProgress())));
     }
 }

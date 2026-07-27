@@ -52,6 +52,10 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     private void addGuiTranslations() {
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] Quest Panel");
         add("arc_quest.gui.tracker.new_quest", "New Quest");
+        add("arc_quest.gui.tracker.new_guide", "New tutorial available. Press [%s] to view");
+        add("arc_quest.guide.splash.status", "NEW TUTORIAL UNLOCKED");
+        add("arc_quest.guide_group.minerals", "Minerals");
+        add("gui.arc_quest.guide_list.title", "Guides");
 
         // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "Trade Matrix");

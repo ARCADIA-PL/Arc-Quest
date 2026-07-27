@@ -130,6 +130,14 @@ public final class QuestSpecCompiler {
         for (IReward reward : compileRewards(spec.phaseRewards)) builder.reward(reward);
         for (String flag : listOrEmpty(spec.flagsToSetOnEnter)) builder.setFlagOnEnter(flag);
         for (String flag : listOrEmpty(spec.flagsToSetOnComplete)) builder.setFlagOnComplete(flag);
+        for (String guideId : listOrEmpty(spec.guidesToGrantOnEnter)) {
+            ResourceLocation parsed = parseNullableId(guideId);
+            if (parsed != null) builder.grantGuideOnEnter(parsed);
+        }
+        for (String guideId : listOrEmpty(spec.guidesToGrantOnComplete)) {
+            ResourceLocation parsed = parseNullableId(guideId);
+            if (parsed != null) builder.grantGuideOnComplete(parsed);
+        }
         for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
         if (blankToNull(spec.tradeShopId) != null) builder.phaseTrade(blankToNull(spec.tradeShopId));
         if (parseNullableSound(spec.phaseStartSound) != null) builder.phaseStartSound(parseNullableSound(spec.phaseStartSound));

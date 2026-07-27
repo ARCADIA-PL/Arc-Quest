@@ -834,6 +834,23 @@ public class DialogueTreeBuilder {
             return this;
         }
 
+        /** Grants a guide through the server-authoritative guide unlock service. */
+        public ChoiceBuilder unlockGuide(String guideId) {
+            actions.add(new DialogueAction.UnlockGuide(guideId));
+            return this;
+        }
+
+        /** Opens a guide without replacing an already active client screen. */
+        public ChoiceBuilder openGuide(String guideId) {
+            actions.add(new DialogueAction.OpenGuide(guideId));
+            return this;
+        }
+
+        public ChoiceBuilder openGuide(String guideId, int initialPage, boolean markSeenOnClose) {
+            actions.add(new DialogueAction.OpenGuide(guideId, initialPage, markSeenOnClose));
+            return this;
+        }
+
         /**
          * 打开完整交易窗口。
          * <p>

@@ -15,10 +15,13 @@ import org.arcadia.arc_quest.quest.event.QuestEventBus;
 import org.arcadia.arc_quest.quest.logic.profile.collection.*;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
+import org.arcadia.arc_quest.guide.runtime.GuideUnlockService;
 
 import java.util.Set;
 
 public final class CollectionQuestEngine {
+
+    private static final GuideUnlockService GUIDE_UNLOCK_SERVICE = new GuideUnlockService();
 
     private CollectionQuestEngine() {
     }
@@ -57,6 +60,12 @@ public final class CollectionQuestEngine {
         initializeQuest(player, data, def, runtime, collectionData);
         runtime.setCollectionData(collectionData);
         data.addActiveQuest(runtime);
+        for (String activePhaseId : runtime.getActivePhaseIds()) {
+            PhaseDefinition activePhase = def.getPhase(activePhaseId);
+            if (activePhase != null) {
+                GUIDE_UNLOCK_SERVICE.grantAll(player, activePhase.getGuidesToGrantOnEnter());
+            }
+        }
 
         boolean flagsChanged = false;
         for (String flag : def.getFlagsToSetOnAccept()) {
@@ -133,6 +142,20 @@ public final class CollectionQuestEngine {
         return CollectionVisibilityUpdateResult.ok(phaseId, true, true);
     }
 
+    public static CollectionVisibilityUpdateResult revealEntry(ServerPlayer player,
+                                                               ArcQuestPlayer data,
+                                                               QuestDefinition def,
+                                                               QuestRuntimeData runtime,
+                                                               String phaseId) {
+        boolean wasActive = runtime.isPhaseActive(phaseId);
+        CollectionVisibilityUpdateResult result = revealEntry(def, runtime, phaseId);
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (result.isChanged() && !wasActive && phase != null) {
+            GUIDE_UNLOCK_SERVICE.grantAll(player, phase.getGuidesToGrantOnEnter());
+        }
+        return result;
+    }
+
     public static int refreshVisibility(ServerPlayer player,
                                         ArcQuestPlayer data,
                                         QuestDefinition def,
@@ -154,6 +177,7 @@ public final class CollectionQuestEngine {
             boolean visible = revealAll || CollectionVisibilityResolver.shouldBeVisible(player, completedQuests, flags, data, entryConfig);
             if (visible) {
                 markEntryVisible(runtime, collectionData, phase, entryConfig, phaseId, true);
+                GUIDE_UNLOCK_SERVICE.grantAll(player, phase.getGuidesToGrantOnEnter());
                 changed++;
             }
         }
@@ -206,11 +230,13 @@ public final class CollectionQuestEngine {
             return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.ENTRY_CONFIG_MISSING, phaseId);
         }
 
+        boolean wasActive = runtime.isPhaseActive(phaseId);
         int max = entryConfig.getMaxCount() > 0 ? entryConfig.getMaxCount() : entryConfig.getCompletionTarget();
         int next = collectionData.incrementEntryCount(phaseId, amount, max);
         collectionData.markDiscovered(phaseId);
         collectionData.markVisible(phaseId);
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
+        if (!wasActive) GUIDE_UNLOCK_SERVICE.grantAll(player, phase.getGuidesToGrantOnEnter());
         collectionData.markUpdated(phaseId, entryConfig.getCategoryId(),
                 CoreProcessors.get().time().realTimeMillis());
         boolean entryCompleted = evaluateEntryCompletion(player, data, def, runtime, phaseId);
@@ -248,6 +274,20 @@ public final class CollectionQuestEngine {
         return CollectionEntryUpdateResult.ok(phaseId, collectionData.getEntryCount(phaseId), false, runtime.getState() == QuestState.COMPLETED);
     }
 
+    public static CollectionEntryUpdateResult discoverEntryWithResult(ServerPlayer player,
+                                                                      ArcQuestPlayer data,
+                                                                      QuestDefinition def,
+                                                                      QuestRuntimeData runtime,
+                                                                      String phaseId) {
+        boolean wasActive = runtime.isPhaseActive(phaseId);
+        CollectionEntryUpdateResult result = discoverEntryWithResult(def, runtime, phaseId);
+        PhaseDefinition phase = def.getPhase(phaseId);
+        if (result.isChanged() && !wasActive && phase != null) {
+            GUIDE_UNLOCK_SERVICE.grantAll(player, phase.getGuidesToGrantOnEnter());
+        }
+        return result;
+    }
+
     public static boolean addUniqueProgress(ServerPlayer player,
                                             ArcQuestPlayer data,
                                             QuestDefinition def,
@@ -282,9 +322,11 @@ public final class CollectionQuestEngine {
         if (!added) {
             return CollectionEntryUpdateResult.unchanged(CollectionEntryUpdateResult.Status.DUPLICATE_UNIQUE_KEY, phaseId);
         }
+        boolean wasActive = runtime.isPhaseActive(phaseId);
         collectionData.markDiscovered(phaseId);
         collectionData.markVisible(phaseId);
         runtime.activatePhase(phaseId, Math.max(0, phase.getObjectives().size()));
+        if (!wasActive) GUIDE_UNLOCK_SERVICE.grantAll(player, phase.getGuidesToGrantOnEnter());
         int next = collectionData.incrementEntryCount(phaseId, 1, entryConfig.getMaxCount() > 0 ? entryConfig.getMaxCount() : entryConfig.getCompletionTarget());
         collectionData.markUpdated(phaseId, entryConfig.getCategoryId(),
                 CoreProcessors.get().time().realTimeMillis());
@@ -314,6 +356,7 @@ public final class CollectionQuestEngine {
         }
 
         runtime.completePhase(phaseId);
+        GUIDE_UNLOCK_SERVICE.grantAll(player, phase.getGuidesToGrantOnComplete());
         evaluateRewardUnlocks(player, data, def, runtime, phaseId);
         evaluateCategoryStates(player, data, def, runtime, entryConfig.getCategoryId());
         evaluateQuestState(player, data, def, runtime);

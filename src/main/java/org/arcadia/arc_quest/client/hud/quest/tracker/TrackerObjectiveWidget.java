@@ -4,11 +4,13 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,21 @@ public class TrackerObjectiveWidget {
     private boolean[] objCompletedFlag = new boolean[0];
     private float[] objCompleteAnim = new float[0];
     private float[] animProgressRatio = new float[0];
+
+    public int computeHeight(Font font, QuestRuntimeData tracked, String phaseId, List<ObjectiveEntry> objectives) {
+        int height = 0;
+        String resolvedPhaseId = phaseId != null ? phaseId : tracked.getCurrentPhaseId();
+        for (int i = 0; i < objectives.size(); i++) {
+            ObjectiveEntry objective = objectives.get(i);
+            int progress = resolveProgress(tracked, resolvedPhaseId, i, objective);
+            int required = objective.getRequiredCount();
+            boolean complete = progress >= required;
+            ObjectiveTextCache text = getTextCache(objective, progress, required, font);
+            height += rowTextHeight(getObjectiveLines(text, complete, objectiveTextWidth(text, objective, font), font), font)
+                    + TrackerConstants.PROGRESS_BAR_H + 6;
+        }
+        return height;
+    }
 
     public void reset() {
         objReveal = new float[0];
@@ -93,8 +110,14 @@ public class TrackerObjectiveWidget {
             }
             float displayRatio = animProgressRatio[i];
 
+            ObjectiveTextCache cachedText = getTextCache(obj, progress, required, font);
+            boolean showProgressText = obj.getType().isCounting();
+            int maxObjTextWidth = objectiveTextWidth(cachedText, obj, font);
+            List<FormattedCharSequence> objectiveLines = getObjectiveLines(cachedText, complete, maxObjTextWidth, font);
+            int textBlockHeight = rowTextHeight(objectiveLines, font);
+
             if (objAlpha < 0.02f) {
-                textY += TrackerConstants.OBJ_ROW_HEIGHT + TrackerConstants.PROGRESS_BAR_H + 6;
+                textY += textBlockHeight + TrackerConstants.PROGRESS_BAR_H + 6;
                 continue;
             }
 
@@ -109,10 +132,6 @@ public class TrackerObjectiveWidget {
                 cScale = 1f + 0.15f * TrackerConstants.easeOutCubic(t) * (float) Math.sin(t * Math.PI);
                 cGlow = (int) (255 * t * objAlpha);
             }
-
-            ObjectiveTextCache cachedText = getTextCache(obj, progress, required, font);
-            String objText = complete ? cachedText.completeText : cachedText.activeText;
-            boolean showProgressText = obj.getType().isCounting();
 
             int textColor = complete ? HudAnimUtil.withAlpha(0x88FF88, aInt) : HudAnimUtil.withAlpha(0xCCCCCC, aInt);
             if (objPulse[i] > 0.05f) {
@@ -134,14 +153,13 @@ public class TrackerObjectiveWidget {
             int numW = showProgressText ? (int) (cachedText.progressWidth * 0.8f) : 0;
             int numX = textRightX - numW;
 
-            int textGap = showProgressText ? 8 : 0;
-            int maxObjTextWidth = (int) ((numX - rowX - textGap) / 0.85f);
-            String safeObjText = getSafeObjectiveText(cachedText, objText, complete, Math.max(10, maxObjTextWidth), font);
-
             g.pose().pushPose();
             g.pose().translate(rowX, textY, 0);
             g.pose().scale(0.85f * cScale, 0.85f * cScale, 1f);
-            g.drawString(font, safeObjText, 0, 0, textColor, true);
+            for (int lineIndex = 0; lineIndex < objectiveLines.size(); lineIndex++) {
+                g.drawString(font, objectiveLines.get(lineIndex), 0,
+                        lineIndex * (font.lineHeight + 1), textColor, true);
+            }
             g.pose().popPose();
 
             if (showProgressText) {
@@ -152,7 +170,7 @@ public class TrackerObjectiveWidget {
                 g.pose().popPose();
             }
 
-            textY += TrackerConstants.OBJ_ROW_HEIGHT;
+            textY += textBlockHeight;
 
             int barW = TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - (int) rowSlide;
             int fillW = (int) (barW * displayRatio);
@@ -200,12 +218,12 @@ public class TrackerObjectiveWidget {
         String resolvedBody = obj.getDisplayText().getString();
         if (!resolvedBody.equals(cache.resolvedBody)) {
             cache.resolvedBody = resolvedBody;
-            cache.activeText = activePrefix.getString() + resolvedBody;
-            cache.completeText = completePrefix.getString() + resolvedBody;
+            cache.activeText = Component.empty().append(activePrefix).append(obj.getDisplayText());
+            cache.completeText = Component.empty().append(completePrefix).append(obj.getDisplayText());
             cache.lastActiveWidth = Integer.MIN_VALUE;
             cache.lastCompleteWidth = Integer.MIN_VALUE;
-            cache.lastActiveSafe = null;
-            cache.lastCompleteSafe = null;
+            cache.lastActiveLines = List.of();
+            cache.lastCompleteLines = List.of();
         }
         if (cache.lastProgress != progress || cache.lastRequired != required) {
             cache.lastProgress = progress;
@@ -216,27 +234,44 @@ public class TrackerObjectiveWidget {
         return cache;
     }
 
-    private String getSafeObjectiveText(ObjectiveTextCache cache, String text, boolean complete, int maxWidth, Font font) {
+    private List<FormattedCharSequence> getObjectiveLines(ObjectiveTextCache cache, boolean complete, int maxWidth, Font font) {
         if (complete) {
             if (cache.lastCompleteWidth != maxWidth) {
-                cache.lastCompleteSafe = font.plainSubstrByWidth(text, maxWidth);
+                cache.lastCompleteLines = limitedLines(font.split(cache.completeText, maxWidth));
                 cache.lastCompleteWidth = maxWidth;
             }
-            return cache.lastCompleteSafe;
+            return cache.lastCompleteLines;
         }
         if (cache.lastActiveWidth != maxWidth) {
-            cache.lastActiveSafe = font.plainSubstrByWidth(text, maxWidth);
+            cache.lastActiveLines = limitedLines(font.split(cache.activeText, maxWidth));
             cache.lastActiveWidth = maxWidth;
         }
-        return cache.lastActiveSafe;
+        return cache.lastActiveLines;
+    }
+
+    private List<FormattedCharSequence> limitedLines(List<FormattedCharSequence> lines) {
+        if (lines.isEmpty()) return List.of(Component.empty().getVisualOrderText());
+        return lines.size() <= 2 ? lines : new ArrayList<>(lines.subList(0, 2));
+    }
+
+    private int objectiveTextWidth(ObjectiveTextCache cache, ObjectiveEntry objective, Font font) {
+        int contentWidth = TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
+                - TrackerConstants.PADDING * 2;
+        int progressWidth = objective.getType().isCounting() ? (int) (cache.progressWidth * 0.8f) + 8 : 0;
+        return Math.max(10, (int) ((contentWidth - progressWidth) / 0.85f));
+    }
+
+    private int rowTextHeight(List<FormattedCharSequence> lines, Font font) {
+        return Math.max(TrackerConstants.OBJ_ROW_HEIGHT,
+                (int) Math.ceil(lines.size() * (font.lineHeight + 1) * 0.85f) + 1);
     }
 
     private static class ObjectiveTextCache {
         String resolvedBody = "";
-        String activeText = "";
-        String completeText = "";
-        String lastActiveSafe;
-        String lastCompleteSafe;
+        Component activeText = Component.empty();
+        Component completeText = Component.empty();
+        List<FormattedCharSequence> lastActiveLines = List.of();
+        List<FormattedCharSequence> lastCompleteLines = List.of();
         int lastActiveWidth = Integer.MIN_VALUE;
         int lastCompleteWidth = Integer.MIN_VALUE;
         int lastProgress = Integer.MIN_VALUE;

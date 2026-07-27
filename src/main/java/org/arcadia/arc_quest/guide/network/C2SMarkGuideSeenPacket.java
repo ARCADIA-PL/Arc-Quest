@@ -8,6 +8,7 @@ import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 
 import java.util.function.Supplier;
 
@@ -42,7 +43,9 @@ public final class C2SMarkGuideSeenPacket {
                 return;
             }
             if (data.markGuideSeen(guideId)) {
+                QuestSyncCoordinator.persistSnapshot(player, data);
                 GuidePlayerStateSyncService.sync(player, data);
+                data.clearDirty(ArcQuestPlayer.DirtyKind.GUIDE_STATE);
             }
         });
         ctx.get().setPacketHandled(true);

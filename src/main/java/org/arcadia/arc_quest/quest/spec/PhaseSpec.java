@@ -16,6 +16,8 @@ public class PhaseSpec {
     public List<RewardSpec> phaseRewards = new ArrayList<>();
     public List<String> flagsToSetOnEnter = new ArrayList<>();
     public List<String> flagsToSetOnComplete = new ArrayList<>();
+    public List<String> guidesToGrantOnEnter = new ArrayList<>();
+    public List<String> guidesToGrantOnComplete = new ArrayList<>();
     public List<MarkSpecData> relatedMarks = new ArrayList<>();
     public String tradeShopId = "";
     /**

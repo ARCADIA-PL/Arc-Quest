@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
+import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -306,6 +307,14 @@ public final class ArcQuestNetwork {
 
         CHANNEL.registerMessage(
                 packetId++,
+                C2SUpdateGuideProgressPacket.class,
+                C2SUpdateGuideProgressPacket::encode,
+                C2SUpdateGuideProgressPacket::decode,
+                C2SUpdateGuideProgressPacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
                 C2SSetTrackedQuestPacket.class,
                 C2SSetTrackedQuestPacket::encode,
                 C2SSetTrackedQuestPacket::decode,
@@ -466,6 +475,10 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendMarkGuideSeen(C2SMarkGuideSeenPacket packet) {
+        CHANNEL.sendToServer(packet);
+    }
+
+    public static void sendGuideProgress(C2SUpdateGuideProgressPacket packet) {
         CHANNEL.sendToServer(packet);
     }
 

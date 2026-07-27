@@ -9,8 +9,12 @@ import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
+import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 
 public class JournalTabPanel {
+
+    private static final int GUIDE_HORIZONTAL_PADDING = 14;
+    private static final int GUIDE_VERTICAL_EXPAND = 3;
 
     private final QuestJournalScreen screen;
     private float tabSlideAnim = 0f;
@@ -103,14 +107,25 @@ public class JournalTabPanel {
 
         // 6. 渲染右侧 GUIDE 按钮
         String labelGuide = getTabLabel("GUIDE");
-        int guideTw = screen.getFont().width(labelGuide) + 16;
+        int guideTw = screen.getFont().width(labelGuide) + GUIDE_HORIZONTAL_PADDING * 2;
         int guideX = rightEdgeX - guideTw;
+        int guideY = tabY - GUIDE_VERTICAL_EXPAND;
+        int guideH = JournalConstants.TAB_HEIGHT + GUIDE_VERTICAL_EXPAND * 2;
 
-        boolean guideHovered = mx >= guideX && mx <= guideX + guideTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
-        int guideColor = guideHovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
+        boolean guideHovered = mx >= guideX && mx <= guideX + guideTw && my >= guideY && my <= guideY + guideH;
+        int guideColor = HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha);
 
         if (safeAlpha > 8) {
-            g.drawString(screen.getFont(), labelGuide, guideX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, guideColor, true);
+            int border = guideHovered ? theme : 0x66717D;
+            HudAnimUtil.drawFrame(g, guideX, guideY, guideTw, guideH,
+                    HudAnimUtil.withAlpha(guideHovered ? 0x111820 : 0x080C10, (int) (90 * safeAlpha / 255f)),
+                    HudAnimUtil.withAlpha(border, (int) ((guideHovered ? 210 : 110) * safeAlpha / 255f)));
+            g.drawString(screen.getFont(), labelGuide, guideX + GUIDE_HORIZONTAL_PADDING,
+                    tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, guideColor, true);
+
+            if (ClientGuideCache.INSTANCE.hasUnreadGuides()) {
+                HudRenderUtil.drawBreathingRedDot(g, guideX + guideTw - 7, guideY + 6, safeAlpha / 255f);
+            }
 
             if (guideHovered) {
                 // GUIDE 按钮在悬停时展示主题色底部高亮，保持机能风的一致性
@@ -149,9 +164,11 @@ public class JournalTabPanel {
         }
 
         String labelGuide = getTabLabel("GUIDE");
-        int guideTw = screen.getFont().width(labelGuide) + 16;
+        int guideTw = screen.getFont().width(labelGuide) + GUIDE_HORIZONTAL_PADDING * 2;
         int guideX = rightEdgeX - guideTw;
-        if (mx >= guideX && mx <= guideX + guideTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
+        int guideY = tabY - GUIDE_VERTICAL_EXPAND;
+        int guideH = JournalConstants.TAB_HEIGHT + GUIDE_VERTICAL_EXPAND * 2;
+        if (mx >= guideX && mx <= guideX + guideTw && my >= guideY && my <= guideY + guideH) {
             screen.playClick();
             if (screen.getMinecraft() != null) {
                 screen.getMinecraft().setScreen(new GuideListScreen());

@@ -2,11 +2,14 @@ package org.arcadia.arc_quest.guide.builder;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
 import org.arcadia.arc_quest.guide.api.GuideText;
+import org.arcadia.arc_quest.guide.api.GuideVisualConfig;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.api.ICondition;
 
@@ -21,9 +24,15 @@ public final class GuideBuilder {
     private final List<GuidePageDefinition> pages = new ArrayList<>();
     private GuideCategory category = GuideCategory.BASICS;
     private GuideText title;
+    private GuideText summary = GuideText.literal("");
     private int sortOrder;
     private boolean hidden;
     private boolean repeatablePopup;
+    private ItemStack icon = ItemStack.EMPTY;
+    private boolean renderLargeIconOnIntro;
+    private boolean showUnlockPopup;
+    private boolean renderPopupBackground;
+    private ResourceLocation popupBackground;
 
     private GuideBuilder(ResourceLocation id) {
         this.id = id;
@@ -54,6 +63,59 @@ public final class GuideBuilder {
 
     public GuideBuilder title(GuideText text) {
         this.title = text;
+        return this;
+    }
+
+    public GuideBuilder summary(String literal) {
+        this.summary = GuideText.literal(literal);
+        return this;
+    }
+
+    public GuideBuilder summary(Component component) {
+        this.summary = GuideText.component(component);
+        return this;
+    }
+
+    public GuideBuilder summary(GuideText text) {
+        this.summary = Objects.requireNonNull(text, "text");
+        return this;
+    }
+
+    public GuideBuilder icon(Item item) {
+        return icon(new ItemStack(Objects.requireNonNull(item, "item")));
+    }
+
+    public GuideBuilder icon(ItemStack stack) {
+        this.icon = Objects.requireNonNull(stack, "stack").copy();
+        return this;
+    }
+
+    public GuideBuilder renderLargeIconOnIntro() {
+        return renderLargeIconOnIntro(true);
+    }
+
+    public GuideBuilder renderLargeIconOnIntro(boolean enabled) {
+        this.renderLargeIconOnIntro = enabled;
+        return this;
+    }
+
+    public GuideBuilder unlockPopup() {
+        return unlockPopup(true);
+    }
+
+    public GuideBuilder unlockPopup(boolean enabled) {
+        this.showUnlockPopup = enabled;
+        return this;
+    }
+
+    public GuideBuilder popupBackground(ResourceLocation texture) {
+        this.popupBackground = Objects.requireNonNull(texture, "texture");
+        this.renderPopupBackground = true;
+        return this;
+    }
+
+    public GuideBuilder renderPopupBackground(boolean enabled) {
+        this.renderPopupBackground = enabled;
         return this;
     }
 
@@ -113,7 +175,10 @@ public final class GuideBuilder {
         if (pages.isEmpty()) {
             throw new IllegalStateException("Guide '" + id + "' has no pages");
         }
-        return new GuideDefinition(id, category, title, sortOrder, hidden, repeatablePopup, new ArrayList<>(unlockConditions), new ArrayList<>(pages));
+        GuideVisualConfig visualConfig = new GuideVisualConfig(icon, renderLargeIconOnIntro,
+                showUnlockPopup, renderPopupBackground, popupBackground);
+        return new GuideDefinition(id, category, title, summary, sortOrder, hidden, repeatablePopup,
+                new ArrayList<>(unlockConditions), new ArrayList<>(pages), visualConfig);
     }
 
     public GuideDefinition buildAndRegister() {

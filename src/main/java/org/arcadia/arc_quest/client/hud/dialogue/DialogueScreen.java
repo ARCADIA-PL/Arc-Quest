@@ -10,6 +10,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
+import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
@@ -393,10 +395,10 @@ public class DialogueScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         long now = Util.getMillis();
+        long frameElapsedMs = lastRenderTime == 0 ? 0 : Math.min(100L, now - lastRenderTime);
         if (lastRenderTime == 0) lastRenderTime = now;
-        float realDt = (now - lastRenderTime) / 1000f;
+        float realDt = frameElapsedMs / 1000f;
         lastRenderTime = now;
-        if (realDt > 0.1f) realDt = 0.1f;
 
         float uiScale = getUiScale();
         int smx = (int) (mouseX / uiScale), smy = (int) (mouseY / uiScale);
@@ -404,6 +406,9 @@ public class DialogueScreen extends Screen {
 
         boolean splashActive = QuestSplashRenderer.isActive(), historyActive = DialogueHistoryPanel.isActive();
         boolean suspendContent = splashActive || historyActive;
+        boolean guidePresentationActive = GuideSplashRenderer.isActive()
+                || GuidePopupOverlay.INSTANCE.isActive();
+        boolean playbackPaused = splashActive || guidePresentationActive;
 
         if (suspendContent) {
             suspendAlpha = Math.max(0f, suspendAlpha - realDt * 8f);
@@ -411,6 +416,11 @@ public class DialogueScreen extends Screen {
         } else {
             suspendAlpha = Math.min(1f, suspendAlpha + realDt * 6f);
             dt = realDt;
+        }
+        if (playbackPaused) {
+            dt = 0f;
+            if (autoAdvanceTime != 0L) autoAdvanceTime += frameElapsedMs;
+            if (typewriterDoneTime != 0L) typewriterDoneTime += frameElapsedMs;
         }
 
         masterAnim = Math.max(0f, Math.min(1f, masterAnim + (isClosing ? -4.0f * dt : 3.0f * dt)));

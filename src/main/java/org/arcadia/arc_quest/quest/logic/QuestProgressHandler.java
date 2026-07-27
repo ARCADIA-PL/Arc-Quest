@@ -182,7 +182,7 @@ public final class QuestProgressHandler {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        CollectionVisibilityUpdateResult result = CollectionQuestEngine.revealEntry(def, qdata, phaseId);
+        CollectionVisibilityUpdateResult result = CollectionQuestEngine.revealEntry(player, data, def, qdata, phaseId);
         if (result.isChanged()) {
             syncQuestStateAndPush(player, qdata);
         }
@@ -213,7 +213,7 @@ public final class QuestProgressHandler {
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
         if (def == null || !def.isCollectionQuest()) return;
 
-        CollectionEntryUpdateResult result = CollectionQuestEngine.discoverEntryWithResult(def, qdata, phaseId);
+        CollectionEntryUpdateResult result = CollectionQuestEngine.discoverEntryWithResult(player, data, def, qdata, phaseId);
         if (result.isChanged()) {
             syncQuestStateAndPush(player, qdata);
         }

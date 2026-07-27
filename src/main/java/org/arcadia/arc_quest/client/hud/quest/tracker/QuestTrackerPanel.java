@@ -184,16 +184,16 @@ public class QuestTrackerPanel {
         Font font = mc.font;
         int indicatorExtraHeight = newQuestIndicator.additionalHeight(questId);
 
-        float uiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
-        float virtualScreenWidth = screenWidth / uiScale;
+        float preferredUiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
 
         int targetH = TrackerConstants.PADDING + TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
-        targetH += indicatorExtraHeight;
         boolean showPhaseLanes = !def.isCollectionQuest() && activePhaseOrder.size() > 1;
         if (showPhaseLanes) targetH += TrackerParallelWidget.computeHeight(activePhaseOrder);
-        else if (!def.isCollectionQuest()) targetH += 16;
+        else if (!def.isCollectionQuest()) targetH += TrackerTitleWidget.computePhaseNameHeight(tracked, displayedPhaseId, font);
         targetH += def.isCollectionQuest() ? 0 : TrackerTitleWidget.computeDescriptionHeight(phase, font);
-        targetH += objectives.size() * (TrackerConstants.OBJ_ROW_HEIGHT + TrackerConstants.PROGRESS_BAR_H + 6);
+        String layoutPhaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : displayedPhaseId;
+        targetH += objectiveWidget.computeHeight(font, tracked, layoutPhaseId, objectives);
+        targetH += indicatorExtraHeight;
         targetH += TrackerConstants.PADDING;
 
         if (currentPanelH < 0) currentPanelH = targetH;
@@ -201,16 +201,22 @@ public class QuestTrackerPanel {
         currentPanelY = TrackerConstants.lerp(currentPanelY, TrackerConstants.MARGIN_TOP + QuestToastManager.getPushDownOffset(), 0.12f, dt);
 
         int panelH = (int) currentPanelH;
+        float uiScale = fitUiScale(preferredUiScale, screenWidth, screenHeight,
+                TrackerConstants.PANEL_WIDTH + TrackerConstants.MARGIN_RIGHT,
+                currentPanelY + panelH + 2f);
+        float virtualScreenWidth = screenWidth / uiScale;
         float slideOffset = panelSlide * (TrackerConstants.PANEL_WIDTH + TrackerConstants.MARGIN_RIGHT + 20f);
         int panelX = (int) (virtualScreenWidth - TrackerConstants.PANEL_WIDTH - TrackerConstants.MARGIN_RIGHT + slideOffset);
         int panelY = (int) currentPanelY;
 
         // 完美 Scissor 计算（完全对齐 Journal 逻辑）
         float currentW = Math.max((float) TrackerConstants.ACCENT_WIDTH + 1f, TrackerConstants.PANEL_WIDTH * wipeReveal);
-        int scX1 = (int) ((panelX - 5) * uiScale);
-        int scY1 = (int) ((panelY - 5) * uiScale);
-        int scX2 = (int) ((panelX + currentW + 5) * uiScale);
-        int scY2 = (int) ((panelY + panelH + 5) * uiScale);
+        int scX1 = Math.min(screenWidth, Math.max(0, (int) ((panelX - 2) * uiScale)));
+        int scY1 = Math.min(screenHeight, Math.max(0, (int) ((panelY - 2) * uiScale)));
+        int scX2 = Math.max(scX1,
+                Math.min(screenWidth, (int) ((panelX + currentW) * uiScale)));
+        int scY2 = Math.max(scY1,
+                Math.min(screenHeight, (int) ((panelY + panelH) * uiScale)));
 
         // 1. 在正确空间进行裁剪
         g.enableScissor(scX1, scY1, scX2, scY2);
@@ -230,22 +236,20 @@ public class QuestTrackerPanel {
         int textX = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
         int textY = panelY + TrackerConstants.PADDING;
 
-        int indicatorWidth = newQuestIndicator.reservedWidth(font, questId);
-        TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font, indicatorWidth);
-        newQuestIndicator.render(g, font, panelX, panelY, questId, panelReveal, now);
-        textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE + indicatorExtraHeight;
+        TrackerTitleWidget.renderTitle(g, tracked, textX, textY, panelReveal, wipeAlpha, font);
+        textY += TrackerConstants.TITLE_HEIGHT + TrackerConstants.GAP_AFTER_TITLE;
 
         if (showPhaseLanes) {
             textY = TrackerParallelWidget.render(g, font, tracked, def, activePhaseOrder, displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha);
         } else if (!def.isCollectionQuest()) {
-            TrackerTitleWidget.renderPhaseName(g, tracked, displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
-            textY += 16;
+            textY = TrackerTitleWidget.renderPhaseName(g, tracked, displayedPhaseId, currentThemeColor, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
         }
 
         if (!def.isCollectionQuest())
             textY = TrackerTitleWidget.renderDescription(g, phase, textX + (int) wipeDrift, textY, panelReveal, wipeAlpha, font);
         String phaseId = def.isCollectionQuest() ? collectionProgressAdapter.phaseId() : displayedPhaseId;
         objectiveWidget.render(g, font, tracked, phaseId, objectives, currentThemeColor, dt, panelReveal, wipeAlpha, wipeDrift, panelX, textX, textY);
+        newQuestIndicator.render(g, font, panelX, panelY, panelH, questId, panelReveal, now);
 
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
@@ -335,5 +339,13 @@ public class QuestTrackerPanel {
         collectionProgressAdapter.reset();
         panelSlide = 1f;
         completionDismissStart = 0;
+    }
+
+    static float fitUiScale(float preferredScale, int screenWidth, int screenHeight,
+                            float panelWidthWithMargin, float panelBottom) {
+        float maxScaleForWidth = (screenWidth - 2f) / Math.max(1f, panelWidthWithMargin);
+        float maxScaleForHeight = (screenHeight - 2f) / Math.max(1f, panelBottom);
+        return Math.max(0.1f,
+                Math.min(preferredScale, Math.min(maxScaleForWidth, maxScaleForHeight)));
     }
 }

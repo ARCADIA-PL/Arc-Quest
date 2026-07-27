@@ -7,8 +7,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.quest.api.*;
@@ -16,6 +16,7 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class TrackerTitleWidget {
@@ -105,27 +106,42 @@ public class TrackerTitleWidget {
         }
     }
 
-    public static void renderPhaseName(GuiGraphics g, QuestRuntimeData tracked, String displayedPhaseId, int themeColor, int textX, int textY, float alpha, float wipeAlpha, Font font) {
+    public static int computePhaseNameHeight(QuestRuntimeData tracked, String displayedPhaseId, Font font) {
+        return phaseNameLines(tracked, displayedPhaseId, font).size() * (font.lineHeight + 1) + 5;
+    }
+
+    public static int renderPhaseName(GuiGraphics g, QuestRuntimeData tracked, String displayedPhaseId, int themeColor, int textX, int textY, float alpha, float wipeAlpha, Font font) {
+        List<net.minecraft.util.FormattedCharSequence> lines = phaseNameLines(tracked, displayedPhaseId, font);
+        int height = lines.size() * (font.lineHeight + 1) + 5;
         int subA = (int) (255 * alpha * wipeAlpha);
         if (subA > 5) {
-            g.fill(textX, textY + 1, textX + 2, textY + 10, HudAnimUtil.withAlpha(themeColor, subA));
+            g.fill(textX, textY + 1, textX + 2, textY + height - 5, HudAnimUtil.withAlpha(themeColor, subA));
             g.pose().pushPose();
             g.pose().translate(textX + 7, textY + 1, 0);
             g.pose().scale(0.95f, 0.95f, 1f);
-
-            Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(tracked.getQuestId(), displayedPhaseId);
-            Component phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName);
-            g.drawString(font, phasePrefix, 0, 0, HudAnimUtil.withAlpha(0xEEEEEE, subA), true);
-
+            for (int i = 0; i < lines.size(); i++) {
+                g.drawString(font, lines.get(i), 0, i * (font.lineHeight + 1), HudAnimUtil.withAlpha(0xEEEEEE, subA), true);
+            }
             g.pose().popPose();
         }
+        return textY + height;
+    }
+
+    private static List<net.minecraft.util.FormattedCharSequence> phaseNameLines(
+            QuestRuntimeData tracked, String displayedPhaseId, Font font) {
+        Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(tracked.getQuestId(), displayedPhaseId);
+        Component phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName);
+        int availableWidth = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
+                - TrackerConstants.PADDING * 2 - 11) / 0.95f);
+        List<net.minecraft.util.FormattedCharSequence> wrapped = font.split(phasePrefix, Math.max(1, availableWidth));
+        if (wrapped.size() <= 2) return wrapped;
+        return new ArrayList<>(wrapped.subList(0, 2));
     }
 
     public static int computeDescriptionHeight(PhaseDefinition phase, Font font) {
         if (!phase.hasDescription()) return 0;
         float scale = 0.85f;
-        int maxW = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 4) / scale);
-        List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
+        List<FormattedCharSequence> descLines = descriptionLines(phase, font, scale);
 
         int unscaledLineH = font.lineHeight + 3;
         return (int) (Math.min(descLines.size(), DESCRIPTION_VISIBLE_LINES) * unscaledLineH * scale) + 4;
@@ -137,8 +153,7 @@ public class TrackerTitleWidget {
         int descA = (int) (255 * alpha * wipeAlpha);
         if (descA > 4) {
             float scale = 0.85f;
-            int maxW = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 4) / scale);
-            List<String> descLines = HudRenderUtil.wrapText(phase.getDescription().getString(), maxW, font);
+            List<FormattedCharSequence> descLines = descriptionLines(phase, font, scale);
 
             int unscaledLineH = font.lineHeight + 3;
             int visibleLines = Math.min(descLines.size(), DESCRIPTION_VISIBLE_LINES);
@@ -182,7 +197,15 @@ public class TrackerTitleWidget {
         return textY;
     }
 
-    private static void renderDescriptionPage(GuiGraphics graphics, Font font, List<String> lines,
+    private static List<FormattedCharSequence> descriptionLines(
+            PhaseDefinition phase, Font font, float scale) {
+        int maxWidth = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
+                - TrackerConstants.PADDING * 2 - 6) / scale);
+        return font.split(phase.getDescription(), Math.max(1, maxWidth));
+    }
+
+    private static void renderDescriptionPage(GuiGraphics graphics, Font font,
+                                              List<FormattedCharSequence> lines,
                                               int start, int maxLines, int lineHeight, int alpha, float offsetY) {
         if (alpha <= 4) return;
         int end = Math.min(lines.size(), start + maxLines);

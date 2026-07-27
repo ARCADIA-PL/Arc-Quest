@@ -3,8 +3,8 @@ package org.arcadia.arc_quest.client.hud.guide;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
@@ -100,13 +100,41 @@ public class GuideContentPanel {
             g.fill(centerX + 1, ctrlY + 2, centerX + 3, ctrlY + 3, HudAnimUtil.withAlpha(theme, safeA));
         }
 
-        localY += 20;
+        localY += 18;
+        String summary = guide.getSummary().getString();
+        if (!summary.isBlank()) {
+            float summaryScale = 0.85f;
+            int summaryWidth = (int) ((scrollAreaW - 24) / summaryScale);
+            List<FormattedCharSequence> summaryLines = screen.getFont().split(
+                    guide.getSummary(), Math.max(1, summaryWidth));
+            g.pose().pushPose();
+            g.pose().translate(0, localY, 0);
+            g.pose().scale(summaryScale, summaryScale, 1f);
+            for (FormattedCharSequence line : summaryLines) {
+                g.drawString(screen.getFont(), line, 0, 0,
+                        HudAnimUtil.withAlpha(0xAAB3BD, safeA), false);
+                g.pose().translate(0, screen.getFont().lineHeight + 1, 0);
+            }
+            g.pose().popPose();
+            localY += summaryLines.size() * (int) (screen.getFont().lineHeight * summaryScale + 1) + 7;
+        }
         g.fill(0, localY, scrollAreaW - 24, localY + 1, HudAnimUtil.withAlpha(0x333333, safeA));
         localY += 12;
 
         lastMediaRect[0] = 0; lastMediaRect[1] = 0; lastMediaRect[2] = 0; lastMediaRect[3] = 0;
 
-        if (page.getMedia() != null && page.getMedia().getType() != null) {
+        if (screen.getSelectedPageIndex() == 0 && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
+            int iconSize = GuideConstants.INTRO_ICON_SIZE;
+            int iconX = ((scrollAreaW - 24) - iconSize) / 2;
+            g.pose().pushPose();
+            g.pose().translate(iconX, localY + 2, 0);
+            g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
+            g.renderItem(guide.getVisualConfig().getIcon(), 0, 0);
+            g.pose().popPose();
+            localY += iconSize + 14;
+        }
+
+        if (page.getMedia() != null && page.getMedia().getType() != GuideMediaType.NONE) {
             int mediaW = scrollAreaW - 24;
             int mediaH = (int) (mediaW * 9.0f / 16.0f);
 
@@ -137,31 +165,27 @@ public class GuideContentPanel {
             localY += mediaH + 16;
         }
 
-        String rawDesc = page.getDescriptionText().resolve(null, null).getString();
-        if (!rawDesc.isEmpty()) {
+        var description = page.getDescriptionText().resolve(null, null);
+        if (!description.getString().isEmpty()) {
             float textScale = 0.95f;
             int safeMaxWidth = (int) ((scrollAreaW - 24) / textScale);
 
-            for (String para : rawDesc.split("\n")) {
-                if (para.trim().isEmpty()) {
-                    localY += (int) (screen.getFont().lineHeight * textScale);
-                    continue;
-                }
-                List<String> wrappedLines = HudRenderUtil.wrapText(para, safeMaxWidth, screen.getFont());
-                for (String dLine : wrappedLines) {
-                    g.pose().pushPose();
-                    g.pose().translate(0, localY, 0);
-                    g.pose().scale(textScale, textScale, 1f);
-                    g.drawString(screen.getFont(), dLine, 0, 0, HudAnimUtil.withAlpha(0xCCCCCC, safeA), false);
-                    g.pose().popPose();
+            List<FormattedCharSequence> wrappedLines = screen.getFont().split(
+                    description, Math.max(1, safeMaxWidth));
+            for (FormattedCharSequence line : wrappedLines) {
+                g.pose().pushPose();
+                g.pose().translate(0, localY, 0);
+                g.pose().scale(textScale, textScale, 1f);
+                g.drawString(screen.getFont(), line, 0, 0,
+                        HudAnimUtil.withAlpha(0xCCCCCC, safeA), false);
+                g.pose().popPose();
 
-                    localY += (int) (screen.getFont().lineHeight * textScale) + 5;
-                }
+                localY += (int) (screen.getFont().lineHeight * textScale) + 5;
             }
             localY += 12;
         }
 
-        descContentHeight = localY;
+        descContentHeight = localY + 24;
         g.pose().popPose();
         g.disableScissor();
 

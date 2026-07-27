@@ -15,11 +15,13 @@ public final class GuideDefinition {
     private final ResourceLocation id;
     private final GuideCategory category;
     private final GuideText title;
+    private final GuideText summary;
     private final int sortOrder;
     private final boolean hidden;
     private final boolean repeatablePopup;
     private final List<ICondition> unlockConditions;
     private final List<GuidePageDefinition> pages;
+    private final GuideVisualConfig visualConfig;
 
     public GuideDefinition(ResourceLocation id,
                            GuideCategory category,
@@ -29,14 +31,30 @@ public final class GuideDefinition {
                            boolean repeatablePopup,
                            List<ICondition> unlockConditions,
                            List<GuidePageDefinition> pages) {
+        this(id, category, title, GuideText.literal(""), sortOrder, hidden, repeatablePopup,
+                unlockConditions, pages, GuideVisualConfig.EMPTY);
+    }
+
+    public GuideDefinition(ResourceLocation id,
+                           GuideCategory category,
+                           GuideText title,
+                           GuideText summary,
+                           int sortOrder,
+                           boolean hidden,
+                           boolean repeatablePopup,
+                           List<ICondition> unlockConditions,
+                           List<GuidePageDefinition> pages,
+                           GuideVisualConfig visualConfig) {
         this.id = Objects.requireNonNull(id, "id");
         this.category = Objects.requireNonNull(category, "category");
         this.title = Objects.requireNonNull(title, "title");
+        this.summary = summary == null ? GuideText.literal("") : summary;
         this.sortOrder = sortOrder;
         this.hidden = hidden;
         this.repeatablePopup = repeatablePopup;
         this.unlockConditions = Collections.unmodifiableList(List.copyOf(unlockConditions == null ? List.of() : unlockConditions));
         this.pages = Collections.unmodifiableList(List.copyOf(Objects.requireNonNull(pages, "pages")));
+        this.visualConfig = visualConfig == null ? GuideVisualConfig.EMPTY : visualConfig;
         if (this.pages.isEmpty()) {
             throw new IllegalArgumentException("Guide '" + id + "' must contain at least one page");
         }
@@ -60,6 +78,18 @@ public final class GuideDefinition {
 
     public GuideText getTitleText() {
         return title;
+    }
+
+    public Component getSummary() {
+        return summary.resolve(null, GuideTextContext.empty());
+    }
+
+    public Component getSummary(@Nullable ServerPlayer player, @Nullable GuideTextContext context) {
+        return summary.resolve(player, context);
+    }
+
+    public GuideText getSummaryText() {
+        return summary;
     }
 
     public int getSortOrder() {
@@ -91,6 +121,10 @@ public final class GuideDefinition {
 
     public int getPageCount() {
         return pages.size();
+    }
+
+    public GuideVisualConfig getVisualConfig() {
+        return visualConfig;
     }
 
     public boolean canUnlock(@Nullable ServerPlayer player,

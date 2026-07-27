@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.guide.spec.compile;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
@@ -59,7 +60,17 @@ public final class GuideSpecCompiler {
         GuideBuilder builder = GuideBuilder.create(parseId(spec.id))
                 .category(resolveCategory(spec.category))
                 .title(compileText(spec.title))
+                .summary(compileText(spec.summary))
                 .sortOrder(spec.sortOrder);
+
+        ResourceLocation iconId = parseNullableId(spec.icon);
+        if (iconId != null) builder.icon(BuiltInRegistries.ITEM.get(iconId));
+        builder.renderLargeIconOnIntro(spec.renderLargeIconOnIntro)
+                .unlockPopup(spec.showUnlockPopup)
+                .renderPopupBackground(spec.renderPopupBackground);
+        ResourceLocation popupBackground = parseNullableId(spec.popupBackground);
+        if (popupBackground != null) builder.popupBackground(popupBackground)
+                .renderPopupBackground(spec.renderPopupBackground);
 
         if (spec.hidden) {
             builder.hidden();

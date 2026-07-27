@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.guide.network;
 
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
 
 import java.util.*;
 
@@ -16,12 +17,20 @@ public final class ClientGuideCache {
 
     private final LinkedHashSet<ResourceLocation> unlockedGuides = new LinkedHashSet<>();
     private final LinkedHashSet<ResourceLocation> seenGuides = new LinkedHashSet<>();
+    private final LinkedHashMap<ResourceLocation, Integer> guideProgress = new LinkedHashMap<>();
     private PendingOpenRequest pendingOpenRequest;
+    private boolean initialized;
 
     private ClientGuideCache() {
     }
 
     public void applySync(Collection<ResourceLocation> unlocked, Collection<ResourceLocation> seen) {
+        applySync(unlocked, seen, Map.of());
+    }
+
+    public void applySync(Collection<ResourceLocation> unlocked, Collection<ResourceLocation> seen,
+                          Map<ResourceLocation, Integer> progress) {
+        LinkedHashSet<ResourceLocation> previousUnlocked = new LinkedHashSet<>(unlockedGuides);
         unlockedGuides.clear();
         seenGuides.clear();
         if (unlocked != null) {
@@ -30,12 +39,24 @@ public final class ClientGuideCache {
         if (seen != null) {
             seenGuides.addAll(seen);
         }
+        guideProgress.clear();
+        if (progress != null) guideProgress.putAll(progress);
+        if (initialized) {
+            for (ResourceLocation guideId : unlockedGuides) {
+                if (!previousUnlocked.contains(guideId)) GuideSplashRenderer.trigger(guideId);
+            }
+        }
+        initialized = true;
     }
 
     public void applyLocalSeen(ResourceLocation guideId) {
         if (guideId != null) {
             seenGuides.add(guideId);
         }
+    }
+
+    public void applyLocalProgress(ResourceLocation guideId, int pageIndex) {
+        if (guideId != null) guideProgress.put(guideId, Math.max(0, pageIndex));
     }
 
     public void requestOpen(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
@@ -45,6 +66,8 @@ public final class ClientGuideCache {
     public Optional<PendingOpenRequest> consumePendingOpenRequest() {
         PendingOpenRequest request = pendingOpenRequest;
         pendingOpenRequest = null;
+        guideProgress.clear();
+        initialized = false;
         return Optional.ofNullable(request);
     }
 
@@ -72,6 +95,19 @@ public final class ClientGuideCache {
 
     public Set<ResourceLocation> getSeenGuides() {
         return Collections.unmodifiableSet(seenGuides);
+    }
+
+    public int getProgress(ResourceLocation guideId) {
+        return Math.max(0, guideProgress.getOrDefault(guideId, 0));
+    }
+
+    public Map<ResourceLocation, Integer> getAllProgress() {
+        return Collections.unmodifiableMap(guideProgress);
+    }
+
+    public boolean hasUnreadGuides() {
+        for (ResourceLocation id : unlockedGuides) if (!seenGuides.contains(id)) return true;
+        return false;
     }
 
     public record PendingOpenRequest(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
