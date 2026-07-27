@@ -43,7 +43,7 @@ public final class EpicMainlineDemo {
                 QuestBuilder.create("arc_quest:epic_prologue")
                         .category(QuestCategory.ARCHON)
                         .chapterShop("arc_quest:blacksmith_shop")
-                        .displayName(Component.translatable("arc_quest.quest.epic_prologue.title"))
+                        .displayName(Component.literal("test").withStyle(ChatFormatting.RED).append(Component.translatable("arc_quest.quest.epic_prologue.title")))//改色测试
                         .description(Component.translatable("arc_quest.quest.epic_prologue.desc"))
 /*
                         .icon(Items.DIAMOND)
@@ -60,8 +60,8 @@ public final class EpicMainlineDemo {
                         .themeColor(ChatFormatting.GOLD)
 
                         .phase(PhaseBuilder.create("arc_quest:start")
-                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood"))
-                                .description("描述1描述1描述1描述1描述1\n描述1描述1描述1描述1")
+                                .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood").append(Component.literal("test").withStyle(ChatFormatting.GOLD)))//测试改颜色
+                                .description("描述1描述1描述1描述1描述1\n描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1描述1自动切分测试")
                                 .objective(ObjectiveBuilder.nullObjective()
                                         .display("开局")
                                 )
