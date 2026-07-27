@@ -14,7 +14,6 @@ import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
-import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
 import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
@@ -100,10 +99,7 @@ public final class GuidePopupOverlay {
     public void close() {
         if (!isActive() || closing) return;
         closing = true;
-        if (markSeenOnClose && guideId != null && !ClientGuideCache.INSTANCE.isSeen(guideId)) {
-            ClientGuideCache.INSTANCE.applyLocalSeen(guideId);
-            ArcQuestNetwork.sendMarkGuideSeen(new C2SMarkGuideSeenPacket(guideId.toString()));
-        }
+        if (markSeenOnClose) GuideCompletionClient.completeIfFinalPage(guide, guideId, pageIndex);
     }
 
     public void render(Screen owner, GuiGraphics graphics, int screenWidth, int screenHeight, float partialTick) {
@@ -224,8 +220,14 @@ public final class GuidePopupOverlay {
                 contentX, navigationY, HudAnimUtil.withAlpha(0x777F88, alpha), false);
         if (pageIndex > 0) graphics.drawString(font, "<", panelX + panelWidth - 52, navigationY,
                 HudAnimUtil.withAlpha(0xFFFFFF, alpha), false);
-        if (pageIndex + 1 < guide.getPageCount()) graphics.drawString(font, ">", panelX + panelWidth - 28,
-                navigationY, HudAnimUtil.withAlpha(0xFFFFFF, alpha), false);
+        if (pageIndex + 1 < guide.getPageCount()) {
+            graphics.drawString(font, ">", panelX + panelWidth - 28,
+                    navigationY, HudAnimUtil.withAlpha(0xFFFFFF, alpha), false);
+            if (!ClientGuideCache.INSTANCE.isSeen(guideId)) {
+                HudRenderUtil.drawBreathingRedDot(graphics, panelX + panelWidth - 20,
+                        navigationY - 1, alpha / 255f);
+            }
+        }
         graphics.pose().popPose();
     }
 
@@ -312,6 +314,7 @@ public final class GuidePopupOverlay {
             ClientGuideCache.INSTANCE.applyLocalProgress(guideId, pageIndex);
             ArcQuestNetwork.sendGuideProgress(new C2SUpdateGuideProgressPacket(guideId, pageIndex));
         }
+        if (direction > 0) GuideCompletionClient.completeIfFinalPage(guide, guideId, pageIndex);
     }
 
     private void rebuildTextCache(int width) {

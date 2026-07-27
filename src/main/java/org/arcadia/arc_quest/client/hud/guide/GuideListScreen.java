@@ -18,7 +18,6 @@ import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
-import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
 import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -248,6 +247,10 @@ public final class GuideListScreen extends Screen {
     }
 
     void rebuildSelection() {
+        rebuildSelection(true);
+    }
+
+    private void rebuildSelection(boolean scrollListToSelection) {
         List<GuideCategory> cats = visibleCategories();
         if (cats.isEmpty()) {
             selectedCategoryId = null; selectedGuideId = null; selectedGuide = null;
@@ -268,7 +271,7 @@ public final class GuideListScreen extends Screen {
         selectedGuideId = selectedGuide.getId();
         currentThemeColor = selectedGuide.getCategory().getThemeColor();
         selectedPageIndex = Math.max(0, Math.min(selectedPageIndex, selectedGuide.getPageCount() - 1));
-        listPanel.scrollToSelected();
+        if (scrollListToSelection) listPanel.scrollToSelected();
     }
 
     List<GuideCategory> visibleCategories() {
@@ -300,11 +303,14 @@ public final class GuideListScreen extends Screen {
     }
 
     void selectGuide(ResourceLocation id) {
-        markGuideSeen(id);
-        if (Objects.equals(selectedGuideId, id)) return;
+        if (Objects.equals(selectedGuideId, id)) {
+            completeSelectedGuideIfFinished();
+            return;
+        }
         selectedGuideId = id;
         selectedPageIndex = ClientGuideCache.INSTANCE.getProgress(id);
-        contentPanel.resetState(); rebuildSelection(); refreshMediaBinding(); playClick();
+        contentPanel.resetState(); rebuildSelection(false); refreshMediaBinding(); playClick();
+        completeSelectedGuideIfFinished();
     }
 
     public void prevPage() {
@@ -315,13 +321,12 @@ public final class GuideListScreen extends Screen {
     public void nextPage() {
         if (selectedGuide != null && selectedPageIndex < selectedGuide.getPageCount() - 1) {
             selectedPageIndex++; saveProgress(); contentPanel.resetState(); refreshMediaBinding(); playClick();
+            completeSelectedGuideIfFinished();
         }
     }
 
-    private void markGuideSeen(ResourceLocation id) {
-        if (id == null || ClientGuideCache.INSTANCE.isSeen(id)) return;
-        ClientGuideCache.INSTANCE.applyLocalSeen(id);
-        ArcQuestNetwork.sendMarkGuideSeen(new C2SMarkGuideSeenPacket(id.toString()));
+    private void completeSelectedGuideIfFinished() {
+        GuideCompletionClient.completeIfFinalPage(selectedGuide, selectedGuideId, selectedPageIndex);
     }
 
     private void saveProgress() {

@@ -6,8 +6,11 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.api.event.guide.GuideCompletedEvent;
+import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -48,17 +51,26 @@ public final class C2SMarkGuideSeenPacket implements CustomPacketPayload {
             }
             ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
             ResourceLocation guideId = ResourceLocation.tryParse(pkt.guideId);
-            if (guideId == null || GuideRegistry.get(guideId) == null) {
+            GuideDefinition guide = guideId == null ? null : GuideRegistry.get(guideId);
+            if (guide == null) {
                 return;
             }
             if (!data.isGuideUnlocked(guideId)) {
                 return;
             }
+            if (!hasReachedFinalPage(guide.getPageCount(), data.getGuideProgress(guideId))) {
+                return;
+            }
             if (data.markGuideSeen(guideId)) {
+                NeoForge.EVENT_BUS.post(new GuideCompletedEvent(player, guideId));
                 QuestSyncCoordinator.persistSnapshot(player, data);
                 GuidePlayerStateSyncService.sync(player, data);
                 data.clearDirty(ArcQuestPlayer.DirtyKind.GUIDE_STATE);
             }
         });
+    }
+
+    static boolean hasReachedFinalPage(int pageCount, int progressPage) {
+        return Math.max(0, progressPage) >= Math.max(0, pageCount - 1);
     }
 }

@@ -15,7 +15,6 @@ import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
-import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
 import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
@@ -119,9 +118,8 @@ public final class GuideScreen extends Screen {
     public void onClose() {
         if (!isClosing) {
             isClosing = true;
-            if (markSeenOnClose && minecraft != null && minecraft.player != null && !ClientGuideCache.INSTANCE.isSeen(guideId)) {
-                ClientGuideCache.INSTANCE.applyLocalSeen(guideId);
-                ArcQuestNetwork.sendMarkGuideSeen(new C2SMarkGuideSeenPacket(guideId.toString()));
+            if (markSeenOnClose && minecraft != null && minecraft.player != null) {
+                GuideCompletionClient.completeIfFinalPage(guide, guideId, currentPage);
             }
         }
     }
@@ -482,6 +480,10 @@ public final class GuideScreen extends Screen {
             g.pose().scale(s, s, 1f);
             g.drawString(font, ">", -font.width(">") / 2f, -font.lineHeight / 2f + 1, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x666666, themeColor, nextHoverAnim), safeAlpha), false);
             g.pose().popPose();
+            if (!ClientGuideCache.INSTANCE.isSeen(guideId)) {
+                HudRenderUtil.drawBreathingRedDot(g, curBtnX + btnSize - 1, navY - 1,
+                        safeAlpha / 255f);
+            }
 
             curBtnX -= 8; // 间距
         }
@@ -509,7 +511,13 @@ public final class GuideScreen extends Screen {
         g.drawString(font, "\u2715", closeX, closeY, closeColor, false);
     }
 
-    private void nextPage() { if (canNext()) { currentPage++; onPageChange(); } }
+    private void nextPage() {
+        if (canNext()) {
+            currentPage++;
+            onPageChange();
+            GuideCompletionClient.completeIfFinalPage(guide, guideId, currentPage);
+        }
+    }
     private void previousPage() { if (canPrev()) { currentPage--; onPageChange(); } }
 
     // 严格的逻辑判断，确保首页无 PREV，尾页无 NEXT

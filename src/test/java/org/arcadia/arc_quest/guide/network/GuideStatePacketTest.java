@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GuideStatePacketTest {
 
@@ -38,5 +40,12 @@ class GuideStatePacketTest {
 
         assertEquals(guideId, decoded.guideId());
         assertEquals(3, decoded.pageIndex());
+    }
+
+    @Test
+    void guideCannotCompleteBeforeTheFinalPage() {
+        assertFalse(C2SMarkGuideSeenPacket.hasReachedFinalPage(3, 1));
+        assertTrue(C2SMarkGuideSeenPacket.hasReachedFinalPage(3, 2));
+        assertTrue(C2SMarkGuideSeenPacket.hasReachedFinalPage(1, 0));
     }
 }
