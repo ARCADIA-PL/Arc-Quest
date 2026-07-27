@@ -7,6 +7,8 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -14,6 +16,7 @@ public final class ArcQuestGuideState {
 
     private final LinkedHashSet<ResourceLocation> unlockedGuides = new LinkedHashSet<>();
     private final LinkedHashSet<ResourceLocation> seenGuides = new LinkedHashSet<>();
+    private final LinkedHashMap<ResourceLocation, Integer> guideProgress = new LinkedHashMap<>();
     private boolean dirty;
 
     public boolean isUnlocked(ResourceLocation guideId) {
@@ -32,6 +35,8 @@ public final class ArcQuestGuideState {
 
     public boolean revokeUnlock(ResourceLocation guideId) {
         boolean changed = unlockedGuides.remove(guideId);
+        changed |= seenGuides.remove(guideId);
+        changed |= guideProgress.remove(guideId) != null;
         if (changed) dirty = true;
         return changed;
     }
@@ -56,6 +61,23 @@ public final class ArcQuestGuideState {
         return Collections.unmodifiableSet(new LinkedHashSet<>(seenGuides));
     }
 
+    public int getProgress(ResourceLocation guideId) {
+        return Math.max(0, guideProgress.getOrDefault(guideId, 0));
+    }
+
+    public boolean setProgress(ResourceLocation guideId, int pageIndex) {
+        Objects.requireNonNull(guideId, "guideId");
+        int normalized = Math.max(0, pageIndex);
+        if (guideProgress.getOrDefault(guideId, 0) == normalized) return false;
+        guideProgress.put(guideId, normalized);
+        dirty = true;
+        return true;
+    }
+
+    public Map<ResourceLocation, Integer> getAllProgress() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(guideProgress));
+    }
+
     public void writeToRoot(CompoundTag root) {
         ListTag unlockedGuideList = new ListTag();
         for (ResourceLocation id : unlockedGuides) unlockedGuideList.add(StringTag.valueOf(id.toString()));
@@ -64,11 +86,16 @@ public final class ArcQuestGuideState {
         ListTag seenGuideList = new ListTag();
         for (ResourceLocation id : seenGuides) seenGuideList.add(StringTag.valueOf(id.toString()));
         root.put("SeenGuides", seenGuideList);
+
+        CompoundTag progressTag = new CompoundTag();
+        guideProgress.forEach((id, page) -> progressTag.putInt(id.toString(), Math.max(0, page)));
+        root.put("GuideProgress", progressTag);
     }
 
     public void readFromRoot(CompoundTag root) {
         unlockedGuides.clear();
         seenGuides.clear();
+        guideProgress.clear();
 
         ListTag unlockedGuideList = root.getList("UnlockedGuides", 8);
         for (int i = 0; i < unlockedGuideList.size(); i++) {
@@ -81,12 +108,18 @@ public final class ArcQuestGuideState {
             ResourceLocation id = ResourceLocation.tryParse(seenGuideList.getString(i));
             if (id != null) seenGuides.add(id);
         }
+        CompoundTag progressTag = root.getCompound("GuideProgress");
+        for (String key : progressTag.getAllKeys()) {
+            ResourceLocation id = ResourceLocation.tryParse(key);
+            if (id != null) guideProgress.put(id, Math.max(0, progressTag.getInt(key)));
+        }
         dirty = false;
     }
 
     public void clear() {
         unlockedGuides.clear();
         seenGuides.clear();
+        guideProgress.clear();
         dirty = true;
     }
 

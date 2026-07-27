@@ -4,9 +4,12 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.StringSplitter;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 
 import javax.annotation.Nullable;
@@ -176,27 +179,14 @@ public final class HudRenderUtil {
     }
 
     public static List<String> wrapText(String text, int maxWidth, Font font) {
-        // 【修复】保留原版的可靠切分逻辑，避免优化版的自循环切分吞掉前置空格和特殊符号！
-        List<String> lines = new ArrayList<>();
-        if (text == null || text.isEmpty()) return lines;
+        return wrapText(text, maxWidth, font.getSplitter());
+    }
 
-        String[] paragraphs = text.split("\\n");
-        for (String paragraph : paragraphs) {
-            String[] words = paragraph.split(" ");
-            StringBuilder current = new StringBuilder();
-            for (String word : words) {
-                String test = current.isEmpty() ? word : current + " " + word;
-                if (font.width(test) > maxWidth && !current.isEmpty()) {
-                    lines.add(current.toString());
-                    current = new StringBuilder(word);
-                } else {
-                    if (!current.isEmpty()) current.append(" ");
-                    current.append(word);
-                }
-            }
-            if (!current.isEmpty()) lines.add(current.toString());
-        }
-        return lines;
+    static List<String> wrapText(String text, int maxWidth, StringSplitter splitter) {
+        if (text == null || text.isEmpty()) return List.of();
+        return splitter.splitLines(text, Math.max(1, maxWidth), Style.EMPTY).stream()
+                .map(FormattedText::getString)
+                .toList();
     }
 
     public static Component resolveTradeFailMessage(@Nullable String errorKey, @Nullable String rawReason) {

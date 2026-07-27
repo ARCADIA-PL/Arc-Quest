@@ -9,6 +9,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.dialogue.registry.DialogueActionTypes;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
+import org.arcadia.arc_quest.guide.registry.GuideRegistry;
+import org.arcadia.arc_quest.guide.runtime.GuideTriggerService;
+import org.arcadia.arc_quest.guide.runtime.GuideUnlockService;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
@@ -240,6 +243,34 @@ public sealed interface DialogueAction {
         @Override
         public void execute(ServerPlayer player, DialogueSession session) {
             DialogueActionTypes.execute(typeId, player, session, data != null ? data : new CompoundTag());
+        }
+    }
+
+    /** Opens a guide while keeping an active client screen in place. */
+    record OpenGuide(String guideId, int initialPage, boolean markSeenOnClose) implements DialogueAction {
+        public OpenGuide(String guideId) {
+            this(guideId, 0, true);
+        }
+
+        @Override
+        public void execute(ServerPlayer player) {
+            ResourceLocation id = ResourceLocation.tryParse(guideId);
+            if (id == null || !new GuideTriggerService().open(player, id, initialPage, markSeenOnClose)) {
+                LOGGER.warn("[Dialogue] Unknown guide: {}", guideId);
+            }
+        }
+    }
+
+    /** Grants a registered guide and persists the updated player guide state. */
+    record UnlockGuide(String guideId) implements DialogueAction {
+        @Override
+        public void execute(ServerPlayer player) {
+            ResourceLocation id = ResourceLocation.tryParse(guideId);
+            if (id == null || !new GuideUnlockService().grant(player, id)) {
+                if (id == null || GuideRegistry.get(id) == null) {
+                    LOGGER.warn("[Dialogue] Unknown guide: {}", guideId);
+                }
+            }
         }
     }
 

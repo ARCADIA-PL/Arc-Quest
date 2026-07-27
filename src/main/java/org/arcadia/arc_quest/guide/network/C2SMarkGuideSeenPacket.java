@@ -12,6 +12,7 @@ import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 
 public final class C2SMarkGuideSeenPacket implements CustomPacketPayload {
 
@@ -54,7 +55,9 @@ public final class C2SMarkGuideSeenPacket implements CustomPacketPayload {
                 return;
             }
             if (data.markGuideSeen(guideId)) {
+                QuestSyncCoordinator.persistSnapshot(player, data);
                 GuidePlayerStateSyncService.sync(player, data);
+                data.clearDirty(ArcQuestPlayer.DirtyKind.GUIDE_STATE);
             }
         });
     }

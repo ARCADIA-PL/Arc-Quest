@@ -6,6 +6,8 @@ import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
+import org.arcadia.arc_quest.guide.api.GuideGroupDefinition;
+import org.arcadia.arc_quest.guide.registry.GuideGroupRegistry;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
@@ -68,6 +70,24 @@ public final class ArcQuestAPI {
 
     public static boolean hasGuide(ResourceLocation id) {
         return GuideRegistry.get(id) != null;
+    }
+
+    public static void registerGuideGroup(GuideGroupDefinition definition) {
+        GuideGroupRegistry.register(definition);
+    }
+
+    public static void assignGuideToGroup(ResourceLocation guideId, ResourceLocation groupId) {
+        GuideGroupRegistry.assign(guideId, groupId);
+    }
+
+    @Nullable
+    public static GuideGroupDefinition getGuideGroup(ResourceLocation groupId) {
+        return GuideGroupRegistry.get(groupId);
+    }
+
+    @Nullable
+    public static GuideGroupDefinition getGuideGroupForGuide(ResourceLocation guideId) {
+        return GuideGroupRegistry.getGroupForGuide(guideId);
     }
 
     public static void registerDialogueTree(DialogueTree tree) {

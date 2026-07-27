@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.Event;
 import net.neoforged.fml.event.IModBusEvent;
 import org.arcadia.arc_quest.api.ArcQuestAPI;
+import org.arcadia.arc_quest.guide.api.GuideGroupDefinition;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 
 /**
@@ -31,6 +32,22 @@ public abstract class ArcQuestRegistrationEvent extends Event implements IModBus
 
         public void assignQuestToGroup(String questId, String groupId) {
             assignQuestToGroup(ResourceLocation.parse(questId), ResourceLocation.parse(groupId));
+        }
+    }
+
+    /** Registers guide definitions. */
+    public static final class Guide extends ArcQuestRegistrationEvent {
+
+        public void registerGroup(GuideGroupDefinition definition) {
+            ArcQuestAPI.registerGuideGroup(definition);
+        }
+
+        public void assignGuideToGroup(ResourceLocation guideId, ResourceLocation groupId) {
+            ArcQuestAPI.assignGuideToGroup(guideId, groupId);
+        }
+
+        public void assignGuideToGroup(String guideId, String groupId) {
+            assignGuideToGroup(ResourceLocation.parse(guideId), ResourceLocation.parse(groupId));
         }
     }
 

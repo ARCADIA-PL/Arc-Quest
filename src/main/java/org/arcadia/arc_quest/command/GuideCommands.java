@@ -26,6 +26,7 @@ import org.arcadia.arc_quest.guide.runtime.GuideTriggerService;
 import org.arcadia.arc_quest.guide.runtime.GuideUnlockService;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.slf4j.Logger;
 
 import java.util.Set;
@@ -48,6 +49,11 @@ public final class GuideCommands {
                                         .suggests(GuideCommands::suggestGuideIds)
                                         .executes(GuideCommands::cmdOpen))))
                 .then(Commands.literal("unlock")
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .then(Commands.argument("guide_id", ResourceLocationArgument.id())
+                                        .suggests(GuideCommands::suggestGuideIds)
+                                        .executes(GuideCommands::cmdUnlock))))
+                .then(Commands.literal("grant")
                         .then(Commands.argument("player", EntityArgument.player())
                                 .then(Commands.argument("guide_id", ResourceLocationArgument.id())
                                         .suggests(GuideCommands::suggestGuideIds)
@@ -108,6 +114,12 @@ public final class GuideCommands {
 
     private static void error(CommandContext<CommandSourceStack> ctx, String msg) {
         ctx.getSource().sendFailure(Component.literal("§c[ArcQuest] §f" + msg));
+    }
+
+    private static void persistAndSyncGuideState(ServerPlayer player, ArcQuestPlayer data) {
+        QuestSyncCoordinator.persistSnapshot(player, data);
+        GuidePlayerStateSyncService.sync(player, data);
+        data.clearDirty(ArcQuestPlayer.DirtyKind.GUIDE_STATE);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -287,7 +299,7 @@ public final class GuideCommands {
                 data.clearGuideSeen(id);
                 count++;
             }
-            GuidePlayerStateSyncService.sync(player, data);
+            persistAndSyncGuideState(player, data);
             success(ctx, "Reset seen status for " + count + " guide(s) for " + player.getName().getString());
             return 1;
         }
@@ -299,7 +311,7 @@ public final class GuideCommands {
         }
 
         data.clearGuideSeen(guideId);
-        GuidePlayerStateSyncService.sync(player, data);
+        persistAndSyncGuideState(player, data);
         success(ctx, "Reset seen status for " + guideId + " (" + player.getName().getString() + ")");
         return 1;
     }
@@ -315,13 +327,13 @@ public final class GuideCommands {
                 data.revokeGuideUnlock(id);
                 count++;
             }
-            GuidePlayerStateSyncService.sync(player, data);
+            persistAndSyncGuideState(player, data);
             success(ctx, "Revoked unlock for " + count + " guide(s) from " + player.getName().getString());
             return 1;
         }
 
         data.revokeGuideUnlock(guideId);
-        GuidePlayerStateSyncService.sync(player, data);
+        persistAndSyncGuideState(player, data);
         success(ctx, "Revoked unlock for " + guideId + " (" + player.getName().getString() + ")");
         return 1;
     }
@@ -340,7 +352,7 @@ public final class GuideCommands {
             data.revokeGuideUnlock(id);
             unlockCount++;
         }
-        GuidePlayerStateSyncService.sync(player, data);
+        persistAndSyncGuideState(player, data);
         success(ctx, "Reset " + seenCount + " seen + " + unlockCount + " unlock guide(s) for " + player.getName().getString());
         return 1;
     }

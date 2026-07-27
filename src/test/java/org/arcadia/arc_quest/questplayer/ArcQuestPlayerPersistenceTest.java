@@ -34,6 +34,7 @@ class ArcQuestPlayerPersistenceTest {
         ResourceLocation guideId = ResourceLocation.fromNamespaceAndPath("arc_quest", "getting_started");
         source.unlockGuide(guideId);
         source.markGuideSeen(guideId);
+        source.setGuideProgress(guideId, 3);
 
         QuestMarkerData marker = new QuestMarkerData.Builder(
                 "marker:test", 12.5D, 64.0D, -8.25D, "??")
@@ -77,6 +78,7 @@ class ArcQuestPlayerPersistenceTest {
         assertEquals(17, restored.getVariable("reputation"));
         assertTrue(restored.isGuideUnlocked(guideId));
         assertTrue(restored.isGuideSeen(guideId));
+        assertEquals(3, restored.getGuideProgress(guideId));
 
         QuestMarkerData restoredMarker = restored.getAllMarkers().get("marker:test");
         assertNotNull(restoredMarker);

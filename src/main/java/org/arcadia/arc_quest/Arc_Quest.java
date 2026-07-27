@@ -22,6 +22,7 @@ import net.neoforged.fml.loading.FMLLoader;
 import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -30,6 +31,7 @@ import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.data.ArcQuestDataGenerators;
 import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
+import org.arcadia.arc_quest.guide.registry.GuideGroupRegistry;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
@@ -64,12 +66,14 @@ public class Arc_Quest {
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Dialogue());
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Trade());
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Gacha());
+            ModLoader.postEvent(new ArcQuestRegistrationEvent.Guide());
 
             ArcQuestGuideContent.registerAll();
             QuestRegistry.freeze();
             QuestGroupRegistry.freeze();
             TradeRegistry.freeze();
             GuideRegistry.freeze();
+            GuideGroupRegistry.freeze();
         });
     }
 
@@ -89,6 +93,7 @@ public class Arc_Quest {
         public static void onRegisterLayers(RegisterGuiLayersEvent event) {
             event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_hud"), QuestHudOverlay.INSTANCE);
             event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_splash"), QuestSplashOverlay.INSTANCE);
+            event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "guide_splash"), GuideSplashOverlay.INSTANCE);
             event.registerAboveAll(ResourceLocation.fromNamespaceAndPath(MOD_ID, "gacha_result"), GachaResultOverlay.INSTANCE);
             event.registerAbove(VanillaGuiLayers.CROSSHAIR, ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_markers"), MarkerHudRenderer.INSTANCE);
             LOGGER.info("[ArcQuest] Overlays registered.");
@@ -97,6 +102,7 @@ public class Arc_Quest {
         @SubscribeEvent
         public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
             event.register(ClientEventHandler.KEY_OPEN_JOURNAL);
+            event.register(ClientEventHandler.KEY_OPEN_GUIDE_LIST);
         }
     }
 

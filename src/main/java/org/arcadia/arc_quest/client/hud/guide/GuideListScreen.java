@@ -18,7 +18,10 @@ import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
+import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
+import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
+import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -104,7 +107,8 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)) {
+        if (keyCode == 256 || minecraft.options.keyInventory.matches(keyCode, scanCode)
+                || ClientEventHandler.KEY_OPEN_GUIDE_LIST.matches(keyCode, scanCode)) {
             onClose();
             return true;
         }
@@ -296,20 +300,34 @@ public final class GuideListScreen extends Screen {
     }
 
     void selectGuide(ResourceLocation id) {
+        markGuideSeen(id);
         if (Objects.equals(selectedGuideId, id)) return;
-        selectedGuideId = id; selectedPageIndex = 0;
+        selectedGuideId = id;
+        selectedPageIndex = ClientGuideCache.INSTANCE.getProgress(id);
         contentPanel.resetState(); rebuildSelection(); refreshMediaBinding(); playClick();
     }
 
     public void prevPage() {
         if (selectedGuide != null && selectedPageIndex > 0) {
-            selectedPageIndex--; contentPanel.resetState(); refreshMediaBinding(); playClick();
+            selectedPageIndex--; saveProgress(); contentPanel.resetState(); refreshMediaBinding(); playClick();
         }
     }
     public void nextPage() {
         if (selectedGuide != null && selectedPageIndex < selectedGuide.getPageCount() - 1) {
-            selectedPageIndex++; contentPanel.resetState(); refreshMediaBinding(); playClick();
+            selectedPageIndex++; saveProgress(); contentPanel.resetState(); refreshMediaBinding(); playClick();
         }
+    }
+
+    private void markGuideSeen(ResourceLocation id) {
+        if (id == null || ClientGuideCache.INSTANCE.isSeen(id)) return;
+        ClientGuideCache.INSTANCE.applyLocalSeen(id);
+        ArcQuestNetwork.sendMarkGuideSeen(new C2SMarkGuideSeenPacket(id.toString()));
+    }
+
+    private void saveProgress() {
+        if (selectedGuideId == null) return;
+        ClientGuideCache.INSTANCE.applyLocalProgress(selectedGuideId, selectedPageIndex);
+        ArcQuestNetwork.sendGuideProgress(new C2SUpdateGuideProgressPacket(selectedGuideId, selectedPageIndex));
     }
 
     void refreshMediaBinding() {

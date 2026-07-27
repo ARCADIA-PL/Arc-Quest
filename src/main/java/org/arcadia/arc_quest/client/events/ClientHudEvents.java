@@ -15,6 +15,8 @@ import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
+import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
+import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
@@ -39,6 +41,7 @@ public class ClientHudEvents {
         if (GachaResultRenderer.INSTANCE.isActive()) {
             GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(), w, h, partialTick);
         }
+
     }
 
     @SubscribeEvent
@@ -55,10 +58,23 @@ public class ClientHudEvents {
                     event.getScreen().height,
                     event.getPartialTick());
         }
+
+        if (GuideSplashRenderer.isActive()) {
+            GuideSplashRenderer.render(event.getGuiGraphics(), event.getScreen().width);
+        }
+
+        GuidePopupOverlay.INSTANCE.render(event.getScreen(), event.getGuiGraphics(),
+                event.getScreen().width, event.getScreen().height, event.getPartialTick());
     }
 
     @SubscribeEvent
     public static void onScreenMouseClickPre(ScreenEvent.MouseButtonPressed.Pre event) {
+        if (GuidePopupOverlay.INSTANCE.isActive()) {
+            GuidePopupOverlay.INSTANCE.mouseClicked(event.getMouseX(), event.getMouseY(), event.getButton());
+            event.setCanceled(true);
+            return;
+        }
+
         if (QuestIntelPanel.isActive()) {
             if (event.getButton() == 0) {
                 double mx = event.getMouseX();
@@ -105,6 +121,12 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenKeyPressPre(ScreenEvent.KeyPressed.Pre event) {
+        if (GuidePopupOverlay.INSTANCE.isActive()) {
+            GuidePopupOverlay.INSTANCE.keyPressed(event.getKeyCode());
+            event.setCanceled(true);
+            return;
+        }
+
         // Intel 面板优先处理键盘
         if (QuestIntelPanel.isActive()) {
             int key = event.getKeyCode();
@@ -136,6 +158,12 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenScrollPre(ScreenEvent.MouseScrolled.Pre event) {
+        if (GuidePopupOverlay.INSTANCE.isActive()) {
+            GuidePopupOverlay.INSTANCE.mouseScrolled(event.getScrollDeltaY());
+            event.setCanceled(true);
+            return;
+        }
+
         if (QuestIntelPanel.isActive()) {
             if (event.getScrollDeltaY() > 0) QuestIntelPanel.scrollBack();
             else if (event.getScrollDeltaY() < 0) QuestIntelPanel.scrollForward();
@@ -151,6 +179,21 @@ public class ClientHudEvents {
         if (GachaResultRenderer.INSTANCE.isActive()) {
             event.setCanceled(true);
         }
+    }
+
+    @SubscribeEvent
+    public static void onScreenMouseDraggedPre(ScreenEvent.MouseDragged.Pre event) {
+        if (!GuidePopupOverlay.INSTANCE.isActive()) return;
+        GuidePopupOverlay.INSTANCE.mouseDragged(
+                event.getMouseX(), event.getMouseY(), event.getMouseButton());
+        event.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public static void onScreenMouseReleasedPre(ScreenEvent.MouseButtonReleased.Pre event) {
+        if (!GuidePopupOverlay.INSTANCE.isActive()) return;
+        GuidePopupOverlay.INSTANCE.mouseReleased(event.getButton());
+        event.setCanceled(true);
     }
 
     @SubscribeEvent

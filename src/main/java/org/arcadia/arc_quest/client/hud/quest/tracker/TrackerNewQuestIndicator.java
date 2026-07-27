@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
+import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 
 final class TrackerNewQuestIndicator {
 
@@ -19,9 +20,11 @@ final class TrackerNewQuestIndicator {
     private boolean wasVisible;
     private String cachedKeyName = "";
     private Component cachedMessage = Component.empty();
+    private boolean cachedGuideMessage;
 
     boolean isVisible(String trackedQuestId) {
-        return QuestChangeNotificationManager.INSTANCE.hasUnreadNewQuestOtherThan(trackedQuestId);
+        return ClientGuideCache.INSTANCE.hasUnreadGuides()
+                || QuestChangeNotificationManager.INSTANCE.hasUnreadNewQuestOtherThan(trackedQuestId);
     }
 
     int additionalHeight(String trackedQuestId) {
@@ -66,12 +69,14 @@ final class TrackerNewQuestIndicator {
     }
 
     private Component resolveMessage() {
+        boolean guideMessage = ClientGuideCache.INSTANCE.hasUnreadGuides();
         Component keyMessage = ClientEventHandler.KEY_OPEN_JOURNAL.getTranslatedKeyMessage();
         String keyName = keyMessage.getString();
-        if (!keyName.equals(cachedKeyName)) {
+        if (!keyName.equals(cachedKeyName) || guideMessage != cachedGuideMessage) {
             cachedKeyName = keyName;
+            cachedGuideMessage = guideMessage;
             cachedMessage = Component.translatable(
-                    "arc_quest.gui.tracker.new_quest",
+                    guideMessage ? "arc_quest.gui.tracker.new_guide" : "arc_quest.gui.tracker.new_quest",
                     keyMessage
             ).withStyle(ChatFormatting.BOLD);
         }

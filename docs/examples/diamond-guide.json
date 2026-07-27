@@ -1,0 +1,27 @@
+{
+  "id": "example:diamond_guide",
+  "category": "arc_quest:basics",
+  "title": {
+    "mode": "literal",
+    "value": "这就是钻石？"
+  },
+  "summary": {
+    "mode": "literal",
+    "value": "第一次获得了钻石"
+  },
+  "icon": "minecraft:diamond",
+  "renderLargeIconOnIntro": true,
+  "showUnlockPopup": true,
+  "renderPopupBackground": false,
+  "pages": [
+    {
+      "media": {
+        "type": "none"
+      },
+      "description": {
+        "mode": "literal",
+        "value": "钻石是个好东西，可以用来巴拉巴拉"
+      }
+    }
+  ]
+}

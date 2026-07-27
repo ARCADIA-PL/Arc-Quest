@@ -32,7 +32,6 @@ import org.arcadia.arc_quest.questplayer.snapshot.FileArcQuestPlayerSnapshotStor
 import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.gacha.network.PendingDrawManager;
-import org.arcadia.arc_quest.guide.runtime.GuideAutoTriggerService;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
 import org.slf4j.Logger;
 
@@ -56,7 +55,6 @@ public final class ArcQuestPlayerLifecycleHandler {
         ArcQuestNetwork.syncFullData(sp, data);
         GuidePlayerStateSyncService.sync(sp, data);
         PendingDrawManager.compensateAndGrant(sp);
-        GuideAutoTriggerService.onPlayerLogin(sp);
         LOGGER.debug("[ArcQuest] Login sync complete for: {}", sp.getGameProfile().getName());
     }
 

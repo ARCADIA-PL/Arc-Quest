@@ -36,6 +36,7 @@ public final class EpicDialogueTrees {
         registerWanderingTrader();
         registerVillageGuard();
         registerMysteriousMerchant();
+        registerDiamondGuidePopupTest();
     }
 
     @SubscribeEvent
@@ -358,6 +359,30 @@ public final class EpicDialogueTrees {
         );
 
         Arc_Quest.LOGGER.info("[ArcQuest] Registered epic dialogue: epic_village_elder");
+    }
+
+    private static void registerDiamondGuidePopupTest() {
+        ArcQuestAPI.registerDialogueTree(
+                DialogueTreeBuilder.create("arc_quest:diamond_guide_popup_test")
+                        .npc(DialogueText.literal("测试员"))
+                        .node("start")
+                        .say(DialogueText.literal("请点击确认以测试对话中的弹窗"),
+                                "arc_quest:diamond_guide_popup_test_start")
+                        .choice("arc_quest:diamond_guide_popup_test_confirm",
+                                DialogueText.literal("确认"),
+                                choice -> choice
+                                        .unlockGuide("arc_quest:diamond_demo")
+                                        .openGuide("arc_quest:diamond_demo", 0, false)
+                                        .goTo("finished"))
+                        .node("finished")
+                        .say(DialogueText.literal("测试完毕"),
+                                "arc_quest:diamond_guide_popup_test_finished")
+                        .choice("arc_quest:diamond_guide_popup_test_end",
+                                DialogueText.literal("结束对话"),
+                                DialogueTreeBuilder.ChoiceBuilder::close)
+                        .build()
+        );
+        Arc_Quest.LOGGER.info("[ArcQuest] Registered dialogue: diamond_guide_popup_test");
     }
 
     /**

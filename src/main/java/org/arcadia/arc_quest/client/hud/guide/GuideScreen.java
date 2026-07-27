@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
@@ -15,6 +16,7 @@ import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
 import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
+import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -78,6 +80,10 @@ public final class GuideScreen extends Screen {
         guide = resolved;
         currentPage = clampPage(currentPage);
         themeColor = guide.getCategory().getThemeColor();
+        if (ClientGuideCache.INSTANCE.isUnlocked(guideId)) {
+            ClientGuideCache.INSTANCE.applyLocalProgress(guideId, currentPage);
+            ArcQuestNetwork.sendGuideProgress(new C2SUpdateGuideProgressPacket(guideId, currentPage));
+        }
 
         transitionAlpha = 0f;
         isClosing = false;
@@ -134,13 +140,50 @@ public final class GuideScreen extends Screen {
     // --------------------------------------------------------
     // 尺寸控制: 放宽限制，恢复最佳阅读比例
     // --------------------------------------------------------
-    private int getPanelW() { return Math.max(210, Math.min(270, (int) (this.width * 0.28f))); }
+    private int getPanelW() { return GuideConstants.guidePanelWidth(this.width); }
     private int getPanelH() { return Math.min(this.height - 40, 580); }
     private int getPanelY() { return Math.max(20, (this.height - getPanelH()) / 2); }
 
     private int getPadLeft() { return 22; }
     private int getPadRight() { return 20; }
     private int getContentW() { return getPanelW() - getPadLeft() - getPadRight(); }
+
+    private List<FormattedCharSequence> getSummaryLines() {
+        if (guide == null || guide.getSummary().getString().isBlank()) return List.of();
+        int width = Math.max(20, (int) ((getContentW() - 12) / 0.82f));
+        List<FormattedCharSequence> lines = font.split(guide.getSummary(), width);
+        return lines.size() <= 3 ? lines : lines.subList(0, 3);
+    }
+
+    private int getHeaderDividerY() {
+        return getPanelY() + 20 + 24 + getSummaryLines().size() * 9;
+    }
+
+    private int getMediaY() {
+        return getHeaderDividerY() + 12;
+    }
+
+    private int getMediaH() {
+        if (isIconOnlyIntro()) return GuideConstants.INTRO_ICON_SECTION_HEIGHT;
+        if (currentMedia().getType() == GuideMediaType.NONE
+                && !(currentPage == 0 && guide.getVisualConfig().shouldRenderLargeIconOnIntro())) {
+            return 0;
+        }
+        int aspectHeight = (int) (getContentW() * 9.0f / 16.0f);
+        int reservedForDescriptionAndNavigation = 92;
+        int available = getPanelY() + getPanelH() - getMediaY() - reservedForDescriptionAndNavigation;
+        return Math.max(48, Math.min(aspectHeight, available));
+    }
+
+    private boolean isIconOnlyIntro() {
+        return currentPage == 0
+                && guide.getVisualConfig().shouldRenderLargeIconOnIntro()
+                && currentMedia().getType() == GuideMediaType.NONE;
+    }
+
+    private int getDescriptionContentHeight() {
+        return cachedContentHeight + 6;
+    }
 
     private int getPanelX(float alpha, boolean closing) {
         float ease = closing ? HudAnimUtil.easeInCubic(alpha) : HudAnimUtil.easeOutCubic(alpha);
@@ -158,22 +201,16 @@ public final class GuideScreen extends Screen {
         lastCachedWidth = width;
 
         if (guide == null || guide.getPage(currentPage) == null) return;
-        String rawDesc = guide.getPage(currentPage).getDescriptionText().resolve(null, null).getString();
-
         int currentY = 0;
         int lineHeight = font.lineHeight + 5; // 增加行距，更舒适
 
-        for (String para : rawDesc.split("\n")) {
-            if (para.trim().isEmpty()) {
-                currentY += lineHeight;
-                continue;
-            }
-            for (String line : HudRenderUtil.wrapText(para, width, font)) {
-                cachedLines.add(new RenderLine(line, currentY));
-                currentY += lineHeight;
-            }
-            currentY += 8; // 段落间距
+        for (FormattedCharSequence line : font.split(
+                guide.getPage(currentPage).getDescriptionText().resolve(null, null),
+                Math.max(1, width))) {
+            cachedLines.add(new RenderLine(line, currentY));
+            currentY += lineHeight;
         }
+        if (!cachedLines.isEmpty()) currentY += 8;
         cachedContentHeight = currentY;
     }
 
@@ -187,7 +224,7 @@ public final class GuideScreen extends Screen {
         int descY = getDescY();
 
         if (hit(mouseX, mouseY, panelX + getPadLeft(), descY, contentW, cachedDescH)) {
-            if (cachedContentHeight > cachedDescH) {
+            if (cachedMaxScroll > 0) {
                 descTargetScroll = Math.max(0, Math.min(cachedMaxScroll, descTargetScroll - delta * 20.0));
             }
             return true;
@@ -202,7 +239,7 @@ public final class GuideScreen extends Screen {
     public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
         if (isDraggingScrollbar && cachedMaxScroll > 0) {
             int descY = getDescY();
-            int thumbH = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) cachedContentHeight)));
+            int thumbH = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) getDescriptionContentHeight())));
             int trackH = cachedDescH - thumbH;
 
             double rawPercentage = (my - dragThumbYOffset - descY) / (double) trackH;
@@ -238,10 +275,10 @@ public final class GuideScreen extends Screen {
         // 滑条拖拽 Hitbox
         if (cachedMaxScroll > 0) {
             int descY = getDescY();
-            int rx = panelX + panelW - 10;
+            int rx = panelX + panelW - 11;
             if (hit(mouseX, mouseY, rx - 4, descY, 12, cachedDescH)) {
                 isDraggingScrollbar = true;
-                int thumbH = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) cachedContentHeight)));
+                int thumbH = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) getDescriptionContentHeight())));
                 int trackH = cachedDescH - thumbH;
                 int ty = descY + (int) (trackH * (descScroll / (double) cachedMaxScroll));
 
@@ -259,11 +296,15 @@ public final class GuideScreen extends Screen {
         int closeY = panelY + 16;
         if (hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16)) { onClose(); return true; }
 
-        int mediaY = panelY + 20 + 36;
+        int mediaY = getMediaY();
         int contentW = getContentW();
-        int mediaH = (int) (contentW * 9.0f / 16.0f);
+        int mediaH = getMediaH();
         if (currentMedia().getType() == GuideMediaType.PONDER) {
             if (ponderPanel.mouseClicked(mouseX, mouseY, button, panelX + getPadLeft(), mediaY, contentW, mediaH)) return true;
+        }
+        if (!hit(mouseX, mouseY, panelX, panelY, panelW, getPanelH())) {
+            onClose();
+            return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);
     }
@@ -278,10 +319,7 @@ public final class GuideScreen extends Screen {
     }
 
     private int getDescY() {
-        int panelY = getPanelY();
-        int contentW = getContentW();
-        int mediaH = (int) (contentW * 9.0f / 16.0f);
-        return panelY + 20 + 36 + mediaH + 20;
+        return getMediaY() + getMediaH() + 14;
     }
 
     @Override
@@ -336,12 +374,13 @@ public final class GuideScreen extends Screen {
         // ==========================================
         int textBaseX = panelX + padL;
         int titleY = panelY + 20;
-        int mediaY = titleY + 36;
-        int mediaH = (int) (contentW * 9.0f / 16.0f);
-        int descY = mediaY + mediaH + 20;
+        int dividerY = getHeaderDividerY();
+        int mediaY = getMediaY();
+        int mediaH = getMediaH();
+        int descY = getDescY();
         int navY = panelY + panelH - 24;
 
-        cachedDescH = navY - 16 - descY;
+        cachedDescH = Math.max(24, navY - 16 - descY);
         buildTextCache(contentW - 14); // 减去滑条空间
 
         // ==========================================
@@ -351,21 +390,45 @@ public final class GuideScreen extends Screen {
         g.drawString(font, "GUIDE DATABLOCK", textBaseX, titleY, HudAnimUtil.withAlpha(0x778899, accentA), false);
         g.drawString(font, guideTitle, textBaseX, titleY + 10, HudAnimUtil.withAlpha(0xFFFFFF, accentA), true);
 
-        g.fill(textBaseX, titleY + 24, textBaseX + contentW, titleY + 25, HudAnimUtil.withAlpha(themeColor, (int)(accentA * 0.8f)));
-        g.fill(textBaseX, titleY + 24, textBaseX + 2, titleY + 30, HudAnimUtil.withAlpha(themeColor, accentA));
+        List<FormattedCharSequence> summaryLines = getSummaryLines();
+        if (!summaryLines.isEmpty()) {
+            g.pose().pushPose();
+            g.pose().translate(textBaseX, titleY + 24, 0);
+            g.pose().scale(0.82f, 0.82f, 1f);
+            for (FormattedCharSequence line : summaryLines) {
+                g.drawString(font, line, 0, 0, HudAnimUtil.withAlpha(0xAAB3BD, accentA), false);
+                g.pose().translate(0, font.lineHeight + 2, 0);
+            }
+            g.pose().popPose();
+        }
+
+        g.fill(textBaseX, dividerY, textBaseX + contentW, dividerY + 1, HudAnimUtil.withAlpha(themeColor, (int)(accentA * 0.8f)));
+        g.fill(textBaseX, dividerY, textBaseX + 2, dividerY + 6, HudAnimUtil.withAlpha(themeColor, accentA));
 
         // ==========================================
         // 4. Media 区域
         // ==========================================
-        HudAnimUtil.drawFrame(g, textBaseX - 1, mediaY - 1, contentW + 2, mediaH + 2,
-                HudAnimUtil.withAlpha(0x000000, safeAlpha),
-                HudAnimUtil.withAlpha(0x333333, safeAlpha));
-        GuideMediaRenderer.drawMedia(this, g, textBaseX, mediaY, contentW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick, safeAlpha, themeColor);
+        boolean iconOnlyIntro = isIconOnlyIntro();
+        if (mediaH > 0 && !iconOnlyIntro) {
+            HudAnimUtil.drawFrame(g, textBaseX - 1, mediaY - 1, contentW + 2, mediaH + 2,
+                    HudAnimUtil.withAlpha(0x000000, safeAlpha),
+                    HudAnimUtil.withAlpha(0x333333, safeAlpha));
+        }
+        if (currentPage == 0 && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
+            g.pose().pushPose();
+            g.pose().translate(textBaseX + contentW / 2f - GuideConstants.INTRO_ICON_SIZE / 2f,
+                    mediaY + (mediaH - GuideConstants.INTRO_ICON_SIZE) / 2f, 0);
+            g.pose().scale(GuideConstants.INTRO_ICON_SCALE, GuideConstants.INTRO_ICON_SCALE, 1f);
+            g.renderItem(guide.getVisualConfig().getIcon(), 0, 0);
+            g.pose().popPose();
+        } else if (mediaH > 0) {
+            GuideMediaRenderer.drawMedia(this, g, textBaseX, mediaY, contentW, mediaH, currentMedia(), ponderPanel, mouseX, mouseY, partialTick, safeAlpha, themeColor);
+        }
 
         // ==========================================
         // 5. Description 渲染 (带渐变掩膜的高级排版)
         // ==========================================
-        cachedMaxScroll = Math.max(0, cachedContentHeight - cachedDescH);
+        cachedMaxScroll = Math.max(0, getDescriptionContentHeight() - cachedDescH);
         descTargetScroll = Math.max(0, Math.min(cachedMaxScroll, descTargetScroll));
 
         g.enableScissor(textBaseX, descY, textBaseX + contentW, descY + cachedDescH);
@@ -389,14 +452,14 @@ public final class GuideScreen extends Screen {
                 g.fillGradient(textBaseX, descY + cachedDescH - 8, textBaseX + gradientW, descY + cachedDescH, HudAnimUtil.withAlpha(0x111214, 0), HudAnimUtil.withAlpha(0x111214, safeAlpha));
 
             // 滑条轨迹与滑块
-            int rx = panelX + panelW - 10;
-            g.fill(rx, descY, rx + 2, descY + cachedDescH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x11 * transitionAlpha)));
-            int th = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) cachedContentHeight)));
+            int rx = panelX + panelW - 11;
+            g.fill(rx, descY, rx + 4, descY + cachedDescH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x18 * transitionAlpha)));
+            int th = Math.max(16, (int) (cachedDescH * (cachedDescH / (float) getDescriptionContentHeight())));
             int travel = Math.max(0, cachedDescH - th);
             int ty = descY + (int) (travel * (descScroll / (double) cachedMaxScroll));
 
             int thumbColor = isDraggingScrollbar ? 0xFFFFFF : themeColor;
-            g.fill(rx, ty, rx + 2, ty + th, HudAnimUtil.withAlpha(thumbColor, safeAlpha));
+            g.fill(rx, ty, rx + 4, ty + th, HudAnimUtil.withAlpha(thumbColor, safeAlpha));
         }
 
         // ==========================================
@@ -454,6 +517,8 @@ public final class GuideScreen extends Screen {
     private boolean canNext() { return guide != null && currentPage < guide.getPageCount() - 1; }
 
     private void onPageChange() {
+        ClientGuideCache.INSTANCE.applyLocalProgress(guideId, currentPage);
+        ArcQuestNetwork.sendGuideProgress(new C2SUpdateGuideProgressPacket(guideId, currentPage));
         resetDesc();
         lastCachedWidth = -1; // 强制刷新排版
         refreshMediaBinding();
@@ -479,8 +544,8 @@ public final class GuideScreen extends Screen {
     private boolean hit(double mx, double my, int x, int y, int w, int h) { return mx >= x && mx <= x + w && my >= y && my <= y + h; }
 
     private static class RenderLine {
-        String text;
+        FormattedCharSequence text;
         int yOffset;
-        RenderLine(String t, int y) { text = t; yOffset = y; }
+        RenderLine(FormattedCharSequence t, int y) { text = t; yOffset = y; }
     }
 }

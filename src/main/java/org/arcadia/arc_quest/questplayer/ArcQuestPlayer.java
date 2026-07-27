@@ -246,6 +246,18 @@ public final class ArcQuestPlayer {
         return guideState.getSeenGuides();
     }
 
+    public synchronized int getGuideProgress(ResourceLocation guideId) {
+        return guideState.getProgress(guideId);
+    }
+
+    public synchronized boolean setGuideProgress(ResourceLocation guideId, int pageIndex) {
+        return guideState.setProgress(guideId, pageIndex);
+    }
+
+    public synchronized Map<ResourceLocation, Integer> getAllGuideProgress() {
+        return guideState.getAllProgress();
+    }
+
     public synchronized int getGachaDrawCount(String shopId) {
         return gachaData.getDrawCount(shopId);
     }

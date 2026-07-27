@@ -44,6 +44,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     private void addScreenTitles() {
         add("gui.arc_quest.journal.title", "任务日志");
         add("arc_quest.quest_group.epic_mainline", "史诗主线");
+        add("arc_quest.guide_group.minerals", "矿物");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -53,6 +54,8 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     private void addGuiTranslations() {
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] 任务面板");
         add("arc_quest.gui.tracker.new_quest", "有新任务，请按[%s]查看");
+        add("arc_quest.gui.tracker.new_guide", "有新教程，按[%s]查看");
+        add("arc_quest.guide.splash.status", "新教程已解锁");
 
         // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "交易矩阵");
@@ -1319,6 +1322,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuideTranslations() {
+        addGuiGuideListText("title", "指南");
         addGuiGuideListText("no_guides", "暂无已解锁指南");
         addGuiGuideListText("no_guides_hint", "完成教学、任务或剧情后将在这里收录");
 

@@ -1,173 +1,328 @@
-// file_name: GuideListPanel.java
 package org.arcadia.arc_quest.client.hud.guide;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
+import org.arcadia.arc_quest.guide.registry.GuideGroupRegistry;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GuideListPanel {
     private final GuideListScreen screen;
+    private final GuideGroupEntryRenderer groupRenderer;
+    private final Map<ResourceLocation, Boolean> groupExpanded = new HashMap<>();
+    private final Map<ResourceLocation, Float> groupExpansion = new HashMap<>();
+    private List<GuideListLayout.Row> rows = List.of();
     private float selectedSlide = -1f;
     private float[] entryHoverAnim = new float[0];
-    private double scrollOffset = 0;
-    private double targetScroll = 0;
-    private boolean isDraggingListScrollbar = false;
-    private double dragListYOffset = 0;
+    private double scrollOffset;
+    private double targetScroll;
+    private boolean draggingListScrollbar;
+    private double dragListYOffset;
 
     public GuideListPanel(GuideListScreen screen) {
         this.screen = screen;
+        this.groupRenderer = new GuideGroupEntryRenderer(screen);
     }
 
     public void resetState() {
-        entryHoverAnim = new float[screen.guidesForSelectedCategory().size()];
+        rebuildRows();
         selectedSlide = -1f;
         targetScroll = 0;
         scrollOffset = 0;
         scrollToSelected();
     }
 
-    public void scrollToSelected() {
-        List<GuideDefinition> guides = screen.guidesForSelectedCategory();
-        int idx = -1;
-        for (int i = 0; i < guides.size(); i++) {
-            if (guides.get(i).getId().equals(screen.getSelectedGuideId())) { idx = i; break; }
+    private void rebuildRows() {
+        rows = GuideListLayout.build(
+                screen.guidesForSelectedCategory(),
+                guide -> GuideGroupRegistry.getGroupForGuide(guide.getId()));
+        initializeGroupExpansions(rows);
+        entryHoverAnim = new float[rows.size()];
+    }
+
+    private void refreshRows() {
+        List<GuideListLayout.Row> next = GuideListLayout.build(
+                screen.guidesForSelectedCategory(),
+                guide -> GuideGroupRegistry.getGroupForGuide(guide.getId()));
+        if (!next.equals(rows)) {
+            rows = next;
+            initializeGroupExpansions(rows);
+            entryHoverAnim = new float[rows.size()];
         }
-        if (idx < 0) return;
-        selectedSlide = idx;
-        int selectedTop = idx * GuideConstants.ENTRY_HEIGHT;
+    }
+
+    private void initializeGroupExpansions(List<GuideListLayout.Row> currentRows) {
+        for (GuideListLayout.Row row : currentRows) {
+            if (row instanceof GuideListLayout.GroupRow groupRow) {
+                ResourceLocation groupId = groupRow.group().getId();
+                groupExpansion.putIfAbsent(groupId, isGroupExpanded(groupId) ? 1f : 0f);
+            }
+        }
+    }
+
+    private boolean isGroupExpanded(ResourceLocation groupId) {
+        return groupExpanded.getOrDefault(groupId, true);
+    }
+
+    private void updateGroupAnimations(float deltaTime) {
+        for (GuideListLayout.Row row : rows) {
+            if (!(row instanceof GuideListLayout.GroupRow groupRow)) continue;
+            ResourceLocation groupId = groupRow.group().getId();
+            float current = groupExpansion.getOrDefault(groupId, 1f);
+            float target = isGroupExpanded(groupId) ? 1f : 0f;
+            groupExpansion.put(groupId, HudAnimUtil.step(current, target, 4.5f, deltaTime));
+        }
+    }
+
+    private float getExpansion(GuideListLayout.GuideRow row) {
+        if (!row.grouped()) return 1f;
+        return HudAnimUtil.smoothStep(groupExpansion.getOrDefault(row.groupId(), 1f));
+    }
+
+    private float getRowHeight(GuideListLayout.Row row) {
+        if (row instanceof GuideListLayout.GroupRow) return GuideConstants.ENTRY_HEIGHT;
+        return GuideConstants.ENTRY_HEIGHT * getExpansion((GuideListLayout.GuideRow) row);
+    }
+
+    private float getRowTop(int targetIndex) {
+        float top = 0f;
+        for (int index = 0; index < targetIndex && index < rows.size(); index++) {
+            top += getRowHeight(rows.get(index));
+        }
+        return top;
+    }
+
+    public void scrollToSelected() {
+        ResourceLocation selectedGuideId = screen.getSelectedGuideId();
+        if (selectedGuideId == null) return;
+        var group = GuideGroupRegistry.getGroupForGuide(selectedGuideId);
+        if (group != null) {
+            groupExpanded.put(group.getId(), true);
+            groupExpansion.put(group.getId(), 1f);
+        }
+        refreshRows();
+
+        int index = getSelectedRowIndex();
+        if (index < 0) return;
+        float selectedTop = getRowTop(index);
+        selectedSlide = selectedTop;
         targetScroll = Math.max(0, selectedTop - GuideConstants.ENTRY_HEIGHT);
         scrollOffset = targetScroll;
     }
 
-    public void render(GuiGraphics g, int x, int y, int w, int h, int mx, int my, int theme, float dt) {
-        List<GuideDefinition> guides = screen.guidesForSelectedCategory();
-        clampScroll(h, guides.size());
-        scrollOffset += Math.abs(targetScroll - scrollOffset) > 0.5 ? (targetScroll - scrollOffset) * Math.min(1.0, dt * 14.0) : (targetScroll - scrollOffset);
+    public void render(GuiGraphics graphics, int x, int y, int width, int height,
+                       int mouseX, int mouseY, int theme, float deltaTime) {
+        refreshRows();
+        updateGroupAnimations(deltaTime);
+        clampScroll(height);
+        scrollOffset += Math.abs(targetScroll - scrollOffset) > 0.5
+                ? (targetScroll - scrollOffset) * Math.min(1.0, deltaTime * 14.0)
+                : targetScroll - scrollOffset;
 
-        screen.enableScissor(g, x, y, x + w - 6, y + h);
-
-        int selectedIndex = -1;
-        for (int i = 0; i < guides.size(); i++) {
-            if (guides.get(i).getId().equals(screen.getSelectedGuideId())) { selectedIndex = i; break; }
-        }
-
+        screen.enableScissor(graphics, x, y, x + width - 6, y + height);
+        int selectedIndex = getSelectedRowIndex();
         float effectiveAlpha = screen.getEffectiveAlpha();
 
         if (selectedIndex >= 0) {
-            if (selectedSlide < 0) selectedSlide = selectedIndex;
-            selectedSlide = HudAnimUtil.lerp(selectedSlide, selectedIndex, 0.25f, dt);
-            int hlY = (int) (y + 2 - scrollOffset + selectedSlide * GuideConstants.ENTRY_HEIGHT);
-
-            g.fill(x + 2, hlY, x + w - 8, hlY + GuideConstants.ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * effectiveAlpha)));
-            HudRenderUtil.drawCyberneticEdge(g, x + 2, hlY, GuideConstants.ENTRY_HEIGHT - 2, theme, (int) (0xFF * effectiveAlpha));
+            float selectedTop = getRowTop(selectedIndex);
+            if (selectedSlide < 0) selectedSlide = selectedTop;
+            selectedSlide = HudAnimUtil.lerp(selectedSlide, selectedTop, 0.25f, deltaTime);
+            float selectedHeight = getRowHeight(rows.get(selectedIndex));
+            int highlightY = (int) (y + 2 - scrollOffset + selectedSlide);
+            graphics.fill(x + 2, highlightY, x + width - 8,
+                    highlightY + Math.max(1, (int) selectedHeight - 2),
+                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x22 * effectiveAlpha)));
+            HudRenderUtil.drawCyberneticEdge(graphics, x + 2, highlightY,
+                    Math.max(1, (int) selectedHeight - 2), theme, (int) (0xFF * effectiveAlpha));
         }
 
-        if (entryHoverAnim.length != guides.size()) entryHoverAnim = new float[guides.size()];
-
-        int firstVisible = Math.max(0, (int) ((scrollOffset - 2 - GuideConstants.ENTRY_HEIGHT) / GuideConstants.ENTRY_HEIGHT));
-        int lastVisible = Math.min(guides.size() - 1, (int) ((scrollOffset + h) / GuideConstants.ENTRY_HEIGHT) + 1);
-
-        for (int i = firstVisible; i <= lastVisible; i++) {
-            GuideDefinition guide = guides.get(i);
-            int entryY = (int) (y + 2 - scrollOffset + i * GuideConstants.ENTRY_HEIGHT);
-
-            boolean hovered = mx >= x && mx <= x + w - 8 && my >= entryY && my <= entryY + GuideConstants.ENTRY_HEIGHT && my >= y && my <= y + h;
-            entryHoverAnim[i] = HudAnimUtil.step(entryHoverAnim[i], hovered ? 1f : 0f, 8f, dt);
-            float eHover = HudAnimUtil.easeOutCubic(entryHoverAnim[i]);
-
-            if (i != selectedIndex && eHover > 0.01f) {
-                g.fill(x + 2, entryY, x + w - 8, entryY + GuideConstants.ENTRY_HEIGHT - 2, HudAnimUtil.withAlpha(0xFFFFFF, (int) (eHover * 0x15 * effectiveAlpha)));
+        float rowTop = 0f;
+        for (int index = 0; index < rows.size(); index++) {
+            GuideListLayout.Row row = rows.get(index);
+            float rowHeight = getRowHeight(row);
+            int entryY = (int) (y + 2 - scrollOffset + rowTop);
+            rowTop += rowHeight;
+            if (rowHeight < 0.5f || entryY + rowHeight < y || entryY > y + height) {
+                entryHoverAnim[index] = 0f;
+                continue;
             }
+            boolean hovered = mouseX >= x && mouseX <= x + width - 8
+                    && mouseY >= entryY && mouseY <= entryY + rowHeight
+                    && mouseY >= y && mouseY <= y + height;
+            entryHoverAnim[index] = HudAnimUtil.step(
+                    entryHoverAnim[index], hovered ? 1f : 0f, 8f, deltaTime);
+            float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[index]);
 
-            if (effectiveAlpha > 0.05f) {
-                int baseGray = (int) (0x99 + 0x66 * eHover);
-                int nameColor = (i == selectedIndex) ? HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)) : HudAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray, (int) (255 * effectiveAlpha));
-
-                String displayTitle = screen.getFont().plainSubstrByWidth(guide.getTitle().getString(), w - 24);
-                float textY = entryY + (GuideConstants.ENTRY_HEIGHT - screen.getFont().lineHeight) / 2f - 0.5f;
-
-                g.drawString(screen.getFont(), displayTitle, x + 10, (int) textY, nameColor, false);
-
-                if (!ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
-                    HudRenderUtil.drawBreathingRhombus(g, x + w - 14, entryY + GuideConstants.ENTRY_HEIGHT / 2, theme | 0xFF000000, (System.currentTimeMillis() / 1000f), effectiveAlpha);
-                }
+            if (row instanceof GuideListLayout.GroupRow groupRow) {
+                ResourceLocation groupId = groupRow.group().getId();
+                groupRenderer.render(graphics, groupRow, x, entryY, width, theme,
+                        groupExpansion.getOrDefault(groupId, 1f), hover, effectiveAlpha);
+            } else {
+                renderGuideRow(graphics, (GuideListLayout.GuideRow) row, index == selectedIndex,
+                        x, entryY, width, rowHeight, hover, effectiveAlpha);
             }
         }
-        g.disableScissor();
+        graphics.disableScissor();
 
-        int maxScroll = Math.max(0, guides.size() * GuideConstants.ENTRY_HEIGHT - h);
-        renderScrollbar(g, x + w - 6, y + 2, h - 4, guides.size() * GuideConstants.ENTRY_HEIGHT, maxScroll);
+        int contentHeight = contentHeight();
+        int maxScroll = Math.max(0, contentHeight - height);
+        renderScrollbar(graphics, x + width - 6, y + 2, height - 4, contentHeight, maxScroll);
     }
 
-    private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, int maxScroll) {
+    private void renderGuideRow(GuiGraphics graphics, GuideListLayout.GuideRow row,
+                                boolean selected, int x, int y, int width, float rowHeight,
+                                float hover, float effectiveAlpha) {
+        float expansion = getExpansion(row);
+        float rowAlpha = effectiveAlpha * expansion;
+        if (!selected && hover > 0.01f) {
+            graphics.fill(x + 2, y, x + width - 8, y + Math.max(1, (int) rowHeight - 2),
+                    HudAnimUtil.withAlpha(0xFFFFFF, (int) (hover * 0x15 * rowAlpha)));
+        }
+        if (rowAlpha <= 0.03f) return;
+
+        GuideDefinition guide = row.guide();
+        int baseGray = (int) (0x99 + 0x66 * hover);
+        int nameColor = selected
+                ? HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * rowAlpha))
+                : HudAnimUtil.withAlpha((baseGray << 16) | (baseGray << 8) | baseGray,
+                (int) (255 * rowAlpha));
+        int indent = row.grouped() ? 14 : 0;
+        float slideX = row.grouped() ? (1f - expansion) * -8f : 0f;
+        boolean hasIcon = guide.getVisualConfig().hasIcon();
+        int iconX = (int) (x + 9 + indent + slideX);
+        int titleX = (int) (x + 10 + indent + (hasIcon ? 23 : 0) + slideX);
+        int maxTitleWidth = x + width - 22 - titleX;
+        var displayTitle = StyledTextUtil.fitSingleLine(screen.getFont(), guide.getTitle(), maxTitleWidth);
+        boolean hasSummary = !guide.getSummary().getString().isBlank();
+        var displaySummary = StyledTextUtil.fitSingleLine(
+                screen.getFont(), guide.getSummary(), (int) (maxTitleWidth / 0.72f));
+        float titleY = hasSummary ? y + 2f : y + (rowHeight - screen.getFont().lineHeight) / 2f - 0.5f;
+
+        if (hasIcon) {
+            RenderSystem.setShaderColor(1f, 1f, 1f, rowAlpha);
+            graphics.renderItem(guide.getVisualConfig().getIcon(), iconX,
+                    y + Math.max(0, ((int) rowHeight - 16) / 2));
+            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        }
+        graphics.drawString(screen.getFont(), displayTitle, titleX, (int) titleY, nameColor, false);
+        if (hasSummary) {
+            graphics.pose().pushPose();
+            graphics.pose().translate(titleX, y + 13f, 0);
+            graphics.pose().scale(0.72f, 0.72f, 1f);
+            graphics.drawString(screen.getFont(), displaySummary, 0, 0,
+                    HudAnimUtil.withAlpha(0x89939E, (int) (235 * rowAlpha)), false);
+            graphics.pose().popPose();
+        }
+
+        if (!ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
+            HudRenderUtil.drawBreathingRedDot(graphics, x + width - 14,
+                    y + Math.max(1, (int) rowHeight / 2), rowAlpha);
+        }
+    }
+
+    private int getSelectedRowIndex() {
+        ResourceLocation selectedGuideId = screen.getSelectedGuideId();
+        for (int index = 0; index < rows.size(); index++) {
+            if (rows.get(index) instanceof GuideListLayout.GuideRow guideRow
+                    && guideRow.guide().getId().equals(selectedGuideId)
+                    && getRowHeight(guideRow) > 1f) return index;
+        }
+        return -1;
+    }
+
+    private int contentHeight() {
+        float height = 0f;
+        for (GuideListLayout.Row row : rows) height += getRowHeight(row);
+        return (int) Math.ceil(height);
+    }
+
+    private void renderScrollbar(GuiGraphics graphics, int x, int y, int viewHeight,
+                                 int contentHeight, int maxScroll) {
         if (maxScroll <= 0) return;
-        int thumbH = Math.max(16, (int) (((float) viewH / contentH) * viewH));
-        int thumbY = y + (int) ((scrollOffset / maxScroll) * (viewH - thumbH));
-        g.fill(x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
-        g.fill(x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isDraggingListScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
+        int thumbHeight = Math.max(16, (int) (((float) viewHeight / contentHeight) * viewHeight));
+        int thumbY = y + (int) ((scrollOffset / maxScroll) * (viewHeight - thumbHeight));
+        graphics.fill(x, y, x + 4, y + viewHeight,
+                HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
+        graphics.fill(x, thumbY, x + 4, thumbY + thumbHeight,
+                HudAnimUtil.withAlpha(0xFFFFFF,
+                        (int) ((draggingListScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
     }
 
-    public void clampScroll(int listH, int size) {
-        targetScroll = Math.max(0, Math.min(targetScroll, Math.max(0, size * GuideConstants.ENTRY_HEIGHT - listH)));
+    public void clampScroll(int listHeight) {
+        targetScroll = Math.max(0, Math.min(targetScroll, Math.max(0, contentHeight() - listHeight)));
     }
 
-    public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
-        List<GuideDefinition> guides = screen.guidesForSelectedCategory();
-        int maxListScroll = Math.max(0, guides.size() * GuideConstants.ENTRY_HEIGHT - h);
-        int listScrollbarX = x + w - 6;
-
-        if (maxListScroll > 0 && mx >= listScrollbarX && mx <= listScrollbarX + 6 && my >= y && my <= y + h) {
-            isDraggingListScrollbar = true;
-            int thumbH = Math.max(16, (int) (((float) h / (guides.size() * GuideConstants.ENTRY_HEIGHT)) * h));
-            int thumbY = y + (int) ((scrollOffset / maxListScroll) * (h - thumbH));
-            if (my >= thumbY && my <= thumbY + thumbH) dragListYOffset = my - thumbY;
+    public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
+        refreshRows();
+        int maxScroll = Math.max(0, contentHeight() - height);
+        int scrollbarX = x + width - 6;
+        if (maxScroll > 0 && mouseX >= scrollbarX && mouseX <= scrollbarX + 6
+                && mouseY >= y && mouseY <= y + height) {
+            draggingListScrollbar = true;
+            int thumbHeight = Math.max(16, (int) (((float) height / contentHeight()) * height));
+            int thumbY = y + (int) ((scrollOffset / maxScroll) * (height - thumbHeight));
+            if (mouseY >= thumbY && mouseY <= thumbY + thumbHeight) dragListYOffset = mouseY - thumbY;
             else {
-                dragListYOffset = thumbH / 2.0;
-                updateScrollFromMouse(my, y, h, maxListScroll, guides.size());
+                dragListYOffset = thumbHeight / 2.0;
+                updateScrollFromMouse(mouseY, y, height, maxScroll);
             }
             return true;
         }
 
-        if (mx >= x && mx <= x + w - 6 && my >= y && my <= y + h) {
-            double relY = my - y + scrollOffset;
-            int idx = (int) (relY / GuideConstants.ENTRY_HEIGHT);
-            if (idx >= 0 && idx < guides.size()) {
-                screen.selectGuide(guides.get(idx).getId());
-                return true;
+        if (mouseX >= x && mouseX <= x + width - 6 && mouseY >= y && mouseY <= y + height) {
+            double relativeY = mouseY - y + scrollOffset;
+            float rowTop = 0f;
+            for (GuideListLayout.Row row : rows) {
+                float rowHeight = getRowHeight(row);
+                if (rowHeight >= 1f && relativeY >= rowTop && relativeY < rowTop + rowHeight) {
+                    if (row instanceof GuideListLayout.GroupRow groupRow) {
+                        ResourceLocation groupId = groupRow.group().getId();
+                        groupExpanded.put(groupId, !isGroupExpanded(groupId));
+                        clampScroll(height);
+                        screen.playClick();
+                    } else if (rowHeight > 4f) {
+                        screen.selectGuide(((GuideListLayout.GuideRow) row).guide().getId());
+                    }
+                    return true;
+                }
+                rowTop += rowHeight;
             }
         }
         return false;
     }
 
-    public boolean mouseDragged(double mx, double my, int y, int h) {
-        if (isDraggingListScrollbar) {
-            updateScrollFromMouse(my, y, h, Math.max(0, screen.guidesForSelectedCategory().size() * GuideConstants.ENTRY_HEIGHT - h), screen.guidesForSelectedCategory().size());
-            return true;
-        }
-        return false;
+    public boolean mouseDragged(double mouseX, double mouseY, int y, int height) {
+        if (!draggingListScrollbar) return false;
+        updateScrollFromMouse(mouseY, y, height, Math.max(0, contentHeight() - height));
+        return true;
     }
 
     public boolean mouseReleased(int button) {
-        if (button == 0) isDraggingListScrollbar = false;
-        return isDraggingListScrollbar;
+        if (button != 0 || !draggingListScrollbar) return false;
+        draggingListScrollbar = false;
+        return true;
     }
 
-    public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
-        if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
-            targetScroll -= delta * GuideConstants.ENTRY_HEIGHT;
-            clampScroll(h, screen.guidesForSelectedCategory().size());
-            return true;
-        }
-        return false;
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta,
+                                 int x, int y, int width, int height) {
+        if (mouseX < x || mouseX > x + width || mouseY < y || mouseY > y + height) return false;
+        targetScroll -= delta * GuideConstants.ENTRY_HEIGHT;
+        clampScroll(height);
+        return true;
     }
 
-    private void updateScrollFromMouse(double my, int y0, int viewH, int maxScroll, int size) {
+    private void updateScrollFromMouse(double mouseY, int y, int viewHeight, int maxScroll) {
         if (maxScroll <= 0) return;
-        int thumbH = Math.max(16, (int) (((float) viewH / (size * GuideConstants.ENTRY_HEIGHT)) * viewH));
-        targetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragListYOffset) / (viewH - thumbH))) * maxScroll;
+        int thumbHeight = Math.max(16, (int) (((float) viewHeight / contentHeight()) * viewHeight));
+        targetScroll = Math.max(0.0, Math.min(1.0,
+                (mouseY - y - dragListYOffset) / (viewHeight - thumbHeight))) * maxScroll;
     }
 }

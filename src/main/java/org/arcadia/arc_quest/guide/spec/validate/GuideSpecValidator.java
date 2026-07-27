@@ -26,6 +26,15 @@ public final class GuideSpecValidator {
 
         validateCategory(report, spec.category, "category");
         GuideCategorySpecValidator.validateText(report, spec.title, "title");
+        if (spec.summary != null && !blank(spec.summary.value)) {
+            GuideCategorySpecValidator.validateText(report, spec.summary, "summary");
+        }
+        validateOptionalId(report, spec.icon, "icon");
+        validateOptionalId(report, spec.popupBackground, "popupBackground");
+        if (spec.renderPopupBackground && blank(spec.popupBackground)) {
+            report.add(GuideValidationIssue.Severity.ERROR, "popupBackground",
+                    "renderPopupBackground requires popupBackground");
+        }
 
         if (empty(spec.pages)) {
             report.add(GuideValidationIssue.Severity.ERROR, "pages", "Guide must contain at least one page");
@@ -138,6 +147,12 @@ public final class GuideSpecValidator {
             }
             default ->
                     report.add(GuideValidationIssue.Severity.ERROR, path + ".condition", "Unsupported condition type: " + type);
+        }
+    }
+
+    private void validateOptionalId(GuideValidationReport report, String value, String path) {
+        if (!blank(value) && ResourceLocation.tryParse(value) == null) {
+            report.add(GuideValidationIssue.Severity.ERROR, path, "Invalid resource id: " + value);
         }
     }
 

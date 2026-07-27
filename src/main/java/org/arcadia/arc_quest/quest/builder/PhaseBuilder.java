@@ -34,6 +34,8 @@ public final class PhaseBuilder {
     private final List<IReward> phaseRewards = new ArrayList<>();
     private final List<String> flagsOnEnter = new ArrayList<>();
     private final List<String> flagsOnComplete = new ArrayList<>();
+    private final List<ResourceLocation> guidesOnEnter = new ArrayList<>();
+    private final List<ResourceLocation> guidesOnComplete = new ArrayList<>();
     private final List<MarkSpec> relatedMarks = new ArrayList<>();
     private QuestText displayName;
     private QuestText description = QuestText.component(Component.empty());
@@ -171,6 +173,24 @@ public final class PhaseBuilder {
     public PhaseBuilder setFlagOnComplete(String flag) {
         flagsOnComplete.add(flag);
         return this;
+    }
+
+    public PhaseBuilder grantGuideOnEnter(ResourceLocation guideId) {
+        guidesOnEnter.add(Objects.requireNonNull(guideId, "guideId"));
+        return this;
+    }
+
+    public PhaseBuilder grantGuideOnEnter(String guideId) {
+        return grantGuideOnEnter(ResourceLocation.parse(guideId));
+    }
+
+    public PhaseBuilder grantGuideOnComplete(ResourceLocation guideId) {
+        guidesOnComplete.add(Objects.requireNonNull(guideId, "guideId"));
+        return this;
+    }
+
+    public PhaseBuilder grantGuideOnComplete(String guideId) {
+        return grantGuideOnComplete(ResourceLocation.parse(guideId));
     }
 
     public PhaseBuilder enterWhen(ICondition condition) {
@@ -318,7 +338,9 @@ public final class PhaseBuilder {
                 intelSceneId,
                 enterCondition,
                 autoEnterByCondition,
-                autoAdvanceOnComplete
+                autoAdvanceOnComplete,
+                new ArrayList<>(guidesOnEnter),
+                new ArrayList<>(guidesOnComplete)
         );
     }
 }

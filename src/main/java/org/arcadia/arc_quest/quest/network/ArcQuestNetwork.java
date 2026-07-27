@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
+import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -51,7 +52,7 @@ public final class ArcQuestNetwork {
      * 在 Mod 构造器里挂到 {@code modEventBus.addListener(ArcQuestNetwork::register)}。
      */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("5");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("6");
 
         // ─── S2C（play to client）───
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -72,6 +73,7 @@ public final class ArcQuestNetwork {
         registrar.playToServer(C2SRequestTradeSyncPacket.TYPE, C2SRequestTradeSyncPacket.STREAM_CODEC, C2SRequestTradeSyncPacket::handle);
         registrar.playToServer(C2SDialogueChoicePacket.TYPE, C2SDialogueChoicePacket.STREAM_CODEC, C2SDialogueChoicePacket::handle);
         registrar.playToServer(C2SMarkGuideSeenPacket.TYPE, C2SMarkGuideSeenPacket.STREAM_CODEC, C2SMarkGuideSeenPacket::handle);
+        registrar.playToServer(C2SUpdateGuideProgressPacket.TYPE, C2SUpdateGuideProgressPacket.STREAM_CODEC, C2SUpdateGuideProgressPacket::handle);
         registrar.playToServer(C2SSetTrackedQuestPacket.TYPE, C2SSetTrackedQuestPacket.STREAM_CODEC, C2SSetTrackedQuestPacket::handle);
     }
 
@@ -257,6 +259,10 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendMarkGuideSeen(C2SMarkGuideSeenPacket packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+
+    public static void sendGuideProgress(C2SUpdateGuideProgressPacket packet) {
         PacketDistributor.sendToServer(packet);
     }
 

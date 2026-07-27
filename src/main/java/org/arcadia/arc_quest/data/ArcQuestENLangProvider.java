@@ -44,6 +44,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     private void addScreenTitles() {
         add("gui.arc_quest.journal.title", "Quest Journal");
         add("arc_quest.quest_group.epic_mainline", "Epic Mainline");
+        add("arc_quest.guide_group.minerals", "Minerals");
     }
 
     // ═══════════════════════════════════════════════════════
@@ -53,6 +54,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     private void addGuiTranslations() {
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] Quest Panel");
         add("arc_quest.gui.tracker.new_quest", "New quest available. Press [%s] to view");
+        add("arc_quest.gui.tracker.new_guide", "New tutorial available. Press [%s] to view");
+        add("arc_quest.guide.splash.status", "NEW TUTORIAL UNLOCKED");
 
         // ── Trade Screen Titles ──
         add("arc_quest.gui.trade.full_title", "Trade Matrix");
@@ -1318,6 +1321,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuideTranslations() {
+        addGuiGuideListText("title", "Guides");
         addGuiGuideListText("no_guides", "No unlocked guides");
         addGuiGuideListText("no_guides_hint", "Complete tutorials, quests, or story to archive them here");
 
