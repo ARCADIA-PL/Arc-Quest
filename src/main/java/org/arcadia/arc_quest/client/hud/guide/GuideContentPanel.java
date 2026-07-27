@@ -5,7 +5,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
+import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
 import org.arcadia.arc_quest.guide.api.GuidePageDefinition;
 import org.lwjgl.glfw.GLFW;
@@ -13,11 +15,14 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 
 public class GuideContentPanel {
+    private static final int NAVIGATION_HEIGHT = 34;
+    private static final int NAVIGATION_BUTTON_WIDTH = 34;
+    private static final int NAVIGATION_BUTTON_HEIGHT = 22;
+
     private final GuideListScreen screen;
     private double descScrollOffset = 0, descTargetScroll = 0, dragDescYOffset = 0;
     private boolean isDraggingDescScrollbar = false;
     private int descContentHeight = 0;
-    private float detailReveal = 0f;
 
     // 高级导航控件动画状态
     private float leftBtnHover = 0f, rightBtnHover = 0f;
@@ -28,7 +33,6 @@ public class GuideContentPanel {
     public GuideContentPanel(GuideListScreen screen) { this.screen = screen; }
 
     public void resetState() {
-        detailReveal = 0f;
         descTargetScroll = 0;
         descScrollOffset = 0;
     }
@@ -37,14 +41,15 @@ public class GuideContentPanel {
         GuideDefinition guide = screen.getSelectedGuide();
         if (guide == null) return;
 
-        detailReveal = HudAnimUtil.lerp(detailReveal, 1f, 0.15f, dt);
         descScrollOffset = HudAnimUtil.lerp((float) descScrollOffset, (float) descTargetScroll, 0.25f, dt);
 
-        float dAlpha = screen.getEffectiveAlpha() * HudAnimUtil.easeOutCubic(Math.min(1f, detailReveal));
+        float dAlpha = screen.getEffectiveAlpha();
         int safeA = (int) (255 * dAlpha);
         if (safeA <= 8) return;
 
-        int scrollAreaY = y, scrollAreaH = h - 4, scrollAreaW = w - 8;
+        int scrollAreaY = y;
+        int scrollAreaH = scrollAreaHeight(guide, h);
+        int scrollAreaW = w - 8;
         screen.enableScissor(g, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
 
         g.pose().pushPose();
@@ -60,45 +65,6 @@ public class GuideContentPanel {
         g.pose().scale(1.2f, 1.2f, 1f);
         g.drawString(screen.getFont(), titleStr, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, safeA), true);
         g.pose().popPose();
-
-        // 参照 ParallelPhase 的游标滑轨分页设计
-        if (guide.getPageCount() > 1) {
-            int btnW = 12, trackGap = 6, absTrackW = 60;
-            int totalCtrlW = btnW * 2 + trackGap * 2 + absTrackW;
-            int ctrlX = scrollAreaW - 12 - totalCtrlW;
-            int ctrlY = localY + 2;
-
-            int absLeftX = x + 12 + ctrlX;
-            int absCtrlY = (int) (scrollAreaY + 12 - descScrollOffset + ctrlY);
-
-            boolean lHover = mx >= absLeftX && mx < absLeftX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
-            leftBtnHover = HudAnimUtil.step(leftBtnHover, lHover ? 1f : 0f, 10f, dt);
-            int leftColor = HudAnimUtil.lerpColor(0x777777, theme, leftBtnHover);
-            g.drawString(screen.getFont(), "<", ctrlX, ctrlY - 2, HudAnimUtil.withAlpha(leftColor, safeA), false);
-            leftBtnRect[0] = absLeftX; leftBtnRect[1] = absCtrlY - 2; leftBtnRect[2] = btnW; leftBtnRect[3] = 10;
-
-            int absRightX = x + 12 + ctrlX + btnW + trackGap * 2 + absTrackW;
-            boolean rHover = mx >= absRightX && mx < absRightX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
-            rightBtnHover = HudAnimUtil.step(rightBtnHover, rHover ? 1f : 0f, 10f, dt);
-            int rightColor = HudAnimUtil.lerpColor(0x777777, theme, rightBtnHover);
-            g.drawString(screen.getFont(), ">", ctrlX + btnW + trackGap * 2 + absTrackW, ctrlY - 2, HudAnimUtil.withAlpha(rightColor, safeA), false);
-            rightBtnRect[0] = absRightX; rightBtnRect[1] = absCtrlY - 2; rightBtnRect[2] = btnW; rightBtnRect[3] = 10;
-
-            int trackX = ctrlX + btnW + trackGap;
-            g.fill(trackX, ctrlY + 2, trackX + absTrackW, ctrlY + 3, HudAnimUtil.withAlpha(0xFFFFFF, (int) (25 * dAlpha)));
-            g.fill(trackX, ctrlY + 1, trackX + 1, ctrlY + 4, HudAnimUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
-            g.fill(trackX + absTrackW - 1, ctrlY + 1, trackX + absTrackW, ctrlY + 4, HudAnimUtil.withAlpha(0xFFFFFF, (int) (50 * dAlpha)));
-
-            int maxPageIdx = guide.getPageCount() - 1;
-            int thumbW = Math.max(8, (int) (((float) 1 / guide.getPageCount()) * absTrackW));
-            int thumbX = trackX + (int) (((float) screen.getSelectedPageIndex() / maxPageIdx) * (absTrackW - thumbW));
-
-            g.fill(thumbX, ctrlY + 2, thumbX + thumbW, ctrlY + 3, HudAnimUtil.withAlpha(theme, safeA));
-            int centerX = thumbX + thumbW / 2;
-            g.fill(centerX, ctrlY + 1, centerX + 1, ctrlY + 4, HudAnimUtil.withAlpha(0xFFFFFF, safeA));
-            g.fill(centerX - 2, ctrlY + 2, centerX, ctrlY + 3, HudAnimUtil.withAlpha(theme, safeA));
-            g.fill(centerX + 1, ctrlY + 2, centerX + 3, ctrlY + 3, HudAnimUtil.withAlpha(theme, safeA));
-        }
 
         localY += 18;
         String summary = guide.getSummary().getString();
@@ -205,6 +171,120 @@ public class GuideContentPanel {
         int barY = scrollAreaY + 16;
         int barH = scrollAreaH - 32;
         renderScrollbar(g, barX, barY, barH, descContentHeight, maxScroll, safeA);
+        renderPageNavigation(g, guide, x, y, w, h, mx, my, theme, dt, safeA);
+    }
+
+    private void renderPageNavigation(GuiGraphics g, GuideDefinition guide,
+                                      int x, int y, int w, int h, int mx, int my,
+                                      int theme, float dt, int alpha) {
+        if (guide.getPageCount() <= 1) {
+            clearRect(leftBtnRect);
+            clearRect(rightBtnRect);
+            leftBtnHover = HudAnimUtil.step(leftBtnHover, 0f, 10f, dt);
+            rightBtnHover = HudAnimUtil.step(rightBtnHover, 0f, 10f, dt);
+            return;
+        }
+
+        int navigationHeight = navigationHeight(guide);
+        int navigationY = y + h - navigationHeight;
+        int buttonY = navigationY + 6;
+        int buttonWidth = NAVIGATION_BUTTON_WIDTH;
+        int buttonHeight = NAVIGATION_BUTTON_HEIGHT;
+        String pageLabel = "PAGE " + (screen.getSelectedPageIndex() + 1) + " / " + guide.getPageCount();
+        int pageWidth = screen.getFont().width(pageLabel);
+        int centerX = x + w / 2;
+        int leftX = centerX - pageWidth / 2 - 14 - buttonWidth;
+        int rightX = centerX + pageWidth / 2 + 14;
+        boolean canPrevious = screen.getSelectedPageIndex() > 0;
+        boolean canNext = screen.getSelectedPageIndex() + 1 < guide.getPageCount();
+        boolean leftHovered = canPrevious && hit(mx, my, leftX, buttonY, buttonWidth, buttonHeight);
+        boolean rightHovered = canNext && hit(mx, my, rightX, buttonY, buttonWidth, buttonHeight);
+        leftBtnHover = HudAnimUtil.step(leftBtnHover, leftHovered ? 1f : 0f, 10f, dt);
+        rightBtnHover = HudAnimUtil.step(rightBtnHover, rightHovered ? 1f : 0f, 10f, dt);
+
+        g.fill(x + 12, navigationY, x + w - 12, navigationY + 1,
+                HudAnimUtil.withAlpha(theme, (int) (80 * alpha / 255f)));
+        g.fill(leftX, navigationY + 1, rightX + buttonWidth, navigationY + 3,
+                HudAnimUtil.withAlpha(theme, (int) (55 * alpha / 255f)));
+        g.drawCenteredString(screen.getFont(), pageLabel, centerX,
+                buttonY + (buttonHeight - screen.getFont().lineHeight) / 2,
+                HudAnimUtil.withAlpha(0xD4DAE1, alpha));
+
+        if (canPrevious) {
+            renderNavigationButton(g, "<", leftX, buttonY, buttonWidth, buttonHeight,
+                    theme, leftBtnHover, alpha, false);
+            setRect(leftBtnRect, leftX, buttonY, buttonWidth, buttonHeight);
+        } else {
+            clearRect(leftBtnRect);
+        }
+        if (canNext) {
+            renderNavigationButton(g, ">", rightX, buttonY, buttonWidth, buttonHeight,
+                    theme, rightBtnHover, alpha, true);
+            if (!ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
+                HudRenderUtil.drawBreathingRedDot(g, rightX + buttonWidth - 4, buttonY + 4,
+                        alpha / 255f);
+            }
+            setRect(rightBtnRect, rightX, buttonY, buttonWidth, buttonHeight);
+        } else {
+            clearRect(rightBtnRect);
+        }
+    }
+
+    private void renderNavigationButton(GuiGraphics g, String arrow,
+                                        int x, int y, int width, int height,
+                                        int theme, float hover, int alpha,
+                                        boolean bandOnRight) {
+        float easedHover = HudAnimUtil.easeOutCubic(hover);
+        int border = HudAnimUtil.lerpColor(0x7D8792, theme, easedHover);
+        int background = HudAnimUtil.lerpColor(0x080C10, theme, easedHover * 0.18f);
+        int borderAlpha = (int) ((125 + 105 * easedHover) * alpha / 255f);
+        int bandAlpha = (int) ((135 + 100 * easedHover) * alpha / 255f);
+
+        g.fill(x, y, x + width, y + height,
+                HudAnimUtil.withAlpha(background, (int) ((150 + 40 * easedHover) * alpha / 255f)));
+        g.fill(x, y, x + width, y + 1, HudAnimUtil.withAlpha(border, borderAlpha));
+        g.fill(x, y + height - 1, x + width, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
+        g.fill(x, y, x + 1, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
+        g.fill(x + width - 1, y, x + width, y + height, HudAnimUtil.withAlpha(border, borderAlpha));
+        int verticalBandX = bandOnRight ? x + width - 5 : x + 2;
+        g.fill(verticalBandX, y + 2, verticalBandX + 3, y + height - 2,
+                HudAnimUtil.withAlpha(theme, bandAlpha));
+        int bottomBandX1 = bandOnRight ? x + 2 : x + 5;
+        int bottomBandX2 = bandOnRight ? x + width - 5 : x + width - 2;
+        g.fill(bottomBandX1, y + height - 3, bottomBandX2, y + height - 1,
+                HudAnimUtil.withAlpha(theme, (int) (bandAlpha * 0.65f)));
+
+        int arrowColor = HudAnimUtil.lerpColor(0xFFFFFF, theme, easedHover);
+        float scale = 1.2f + 0.08f * easedHover;
+        g.pose().pushPose();
+        g.pose().translate(x + width / 2f + 1f,
+                y + (height - screen.getFont().lineHeight * scale) / 2f, 0);
+        g.pose().scale(scale, scale, 1f);
+        g.drawCenteredString(screen.getFont(), arrow, 0, 0, HudAnimUtil.withAlpha(arrowColor, alpha));
+        g.pose().popPose();
+    }
+
+    private int navigationHeight(GuideDefinition guide) {
+        return guide.getPageCount() > 1 ? NAVIGATION_HEIGHT : 0;
+    }
+
+    private int scrollAreaHeight(GuideDefinition guide, int panelHeight) {
+        return Math.max(32, panelHeight - 4 - navigationHeight(guide));
+    }
+
+    private boolean hit(double mouseX, double mouseY, int x, int y, int width, int height) {
+        return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
+    }
+
+    private void setRect(int[] rect, int x, int y, int width, int height) {
+        rect[0] = x;
+        rect[1] = y;
+        rect[2] = width;
+        rect[3] = height;
+    }
+
+    private void clearRect(int[] rect) {
+        setRect(rect, 0, 0, 0, 0);
     }
 
     private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, int maxScroll, int safeA) {
@@ -226,7 +306,8 @@ public class GuideContentPanel {
         GuideDefinition guide = screen.getSelectedGuide();
         if (guide == null) return false;
 
-        int scrollAreaH = h - 4, maxDescScroll = Math.max(0, descContentHeight - scrollAreaH);
+        int scrollAreaH = scrollAreaHeight(guide, h);
+        int maxDescScroll = Math.max(0, descContentHeight - scrollAreaH);
 
         // 匹配新滑条的坐标：右侧触发区更精准，高度带有 16px 上下边距
         int barY = y + 16;
@@ -261,7 +342,9 @@ public class GuideContentPanel {
 
     public boolean mouseDragged(double mx, double my, int y, int h) {
         if (isDraggingDescScrollbar) {
-            int scrollAreaH = h - 4;
+            GuideDefinition guide = screen.getSelectedGuide();
+            if (guide == null) return false;
+            int scrollAreaH = scrollAreaHeight(guide, h);
             int maxDescScroll = Math.max(0, descContentHeight - scrollAreaH);
             int barY = y + 16;
             int barH = scrollAreaH - 32;
@@ -274,7 +357,13 @@ public class GuideContentPanel {
     public boolean mouseReleased(int button) { if (button == 0) isDraggingDescScrollbar = false; return isDraggingDescScrollbar; }
 
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
-        if (mx >= x && mx <= x + w && my >= y && my <= y + h) { descTargetScroll -= delta * 25.0; clampScroll(h - 4); return true; }
+        GuideDefinition guide = screen.getSelectedGuide();
+        if (guide != null && mx >= x && mx <= x + w && my >= y
+                && my <= y + scrollAreaHeight(guide, h)) {
+            descTargetScroll -= delta * 25.0;
+            clampScroll(scrollAreaHeight(guide, h));
+            return true;
+        }
         return false;
     }
 

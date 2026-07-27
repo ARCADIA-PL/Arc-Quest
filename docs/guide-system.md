@@ -80,6 +80,23 @@ choice -> choice
 `unlockGuide` 在服务端通过 `GuideUnlockService` 完成校验、持久化和同步；单独调用
 `openGuide` 只显示指南，不修改玩家的解锁状态。
 
+## 翻阅完成事件
+
+新指南在玩家到达最后一页前始终保持未读红点，下一页按钮也会显示相同红点。服务端只在
+已保存的页码到达最后一页后接受完成请求，并在首次完成时发布 `GuideCompletedEvent`：
+
+```java
+@SubscribeEvent
+public static void onGuideCompleted(GuideCompletedEvent event) {
+    ServerPlayer player = event.getPlayer();
+    ResourceLocation guideId = event.getGuideId();
+    // 发放物品、设置任务变量或执行其他服务端逻辑
+}
+```
+
+事件发布在 `NeoForge.EVENT_BUS`，每位玩家的每个指南只会在首次完成时触发一次；通过调试命令
+重置该指南的已读状态后可以再次触发。
+
 ## 数据包指南
 
 指南文件放在 `${arcquest.datapack.dir}/guides/*.json`；未设置系统属性时目录为 `arc_quest/datapack/guides`。完整示例见 [diamond-guide.json](examples/diamond-guide.json)。
