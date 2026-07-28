@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.dialogue;
 
 import net.minecraft.Util;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -10,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -585,13 +587,17 @@ public class DialogueScreen extends Screen {
                 }
 
                 int textGray = Math.round(170 + (255 - 170) * hEase), textOffsetX = 12 + Math.round(10 * hEase);
-                String displayText = textOf(choices[i]);
+                Component displayText = choices[i] == null ? Component.empty() : choices[i];
                 if (onCooldown) {
                     String cooldownText = getChoiceCooldownText(i);
-                    if (!cooldownText.isEmpty()) displayText = textOf(choices[i]) + " §7" + cooldownText;
+                    if (!cooldownText.isEmpty()) {
+                        displayText = displayText.copy().append(
+                                Component.literal(" " + cooldownText).withStyle(ChatFormatting.GRAY));
+                    }
                 }
 
-                String safeChoice = font.plainSubstrByWidth(displayText, currentW - textOffsetX - 10);
+                var safeChoice = StyledTextUtil.fitSingleLine(
+                        font, displayText, currentW - textOffsetX - 10);
                 int finalTextColor;
                 if (onCooldown)
                     finalTextColor = HudAnimUtil.withAlpha((textGray << 16) | (textGray << 8) | textGray, Math.round(baseAlpha * 0.5f));

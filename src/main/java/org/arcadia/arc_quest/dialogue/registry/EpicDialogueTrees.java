@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.dialogue.registry;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.Arc_Quest;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -369,7 +370,7 @@ public final class EpicDialogueTrees {
                         .say(DialogueText.literal("请点击确认以测试对话中的弹窗"),
                                 "arc_quest:diamond_guide_popup_test_start")
                         .choice("arc_quest:diamond_guide_popup_test_confirm",
-                                DialogueText.literal("确认"),
+                                DialogueText.of(((serverPlayer, entity, iDialogueNpc) -> Component.literal("确认").withStyle(ChatFormatting.AQUA))),
                                 choice -> choice
                                         .unlockGuide("arc_quest:diamond_demo")
                                         .openGuide("arc_quest:diamond_demo", 0, false)
