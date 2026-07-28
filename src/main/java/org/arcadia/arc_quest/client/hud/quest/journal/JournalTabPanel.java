@@ -92,7 +92,8 @@ public class JournalTabPanel {
                 g.drawString(screen.getFont(), labelHistory, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, logColor, true);
             }
 
-            if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(QuestHudOverlay.INSTANCE.getTrackedQuestId())
+            if (ArcQuestConfig.shouldShowQuestHistoryUnreadDots()
+                    && QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(QuestHudOverlay.INSTANCE.getTrackedQuestId())
                     && safeAlpha > 8) {
                 int dotX = (int) currentTabX + logTw - 4;
                 int dotY = tabY + 4;

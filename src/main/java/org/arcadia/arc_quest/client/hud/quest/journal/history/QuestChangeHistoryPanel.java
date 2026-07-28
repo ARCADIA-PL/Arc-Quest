@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.config.ArcQuestConfig;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -184,7 +185,7 @@ public final class QuestChangeHistoryPanel {
         title = font.plainSubstrByWidth(title, (int) ((w - contentX + x) / 0.85f));
         drawScaled(g, font, title, contentX, y + 18, 0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
 
-        if (isUnread) {
+        if (isUnread && ArcQuestConfig.shouldShowQuestHistoryUnreadDots()) {
             int dotX = x + w - 12;
             int dotY = y + rowH / 2;
             HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, alpha / 255f);
