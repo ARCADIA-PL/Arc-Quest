@@ -12,6 +12,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 
@@ -154,6 +155,7 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         if (mc.options.hideGui) return;
+        if (mc.screen instanceof DialogueScreen) return;
 
         Player player = mc.player;
         Font font = mc.font;

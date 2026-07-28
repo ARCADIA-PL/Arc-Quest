@@ -171,6 +171,7 @@ public class QuestJournalScreen extends Screen {
                 }
             }
         }
+        JournalQuestOrder.sortByDefinition(currentEntries);
 
         if (targetQuestId != null) {
             for (int i = 0; i < currentEntries.size(); i++) {
