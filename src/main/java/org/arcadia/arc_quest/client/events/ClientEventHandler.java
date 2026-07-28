@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.settings.KeyConflictContext;
+import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -14,6 +15,7 @@ import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
+import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -78,5 +80,21 @@ public final class ClientEventHandler {
         QuestSplashRenderer.clear();
         GuideSplashRenderer.clear();
         GuidePopupOverlay.INSTANCE.clear();
+        QuestHudOverlay.INSTANCE.clearClientSession();
+    }
+
+    /** LoggingOut is not guaranteed for every integrated-server world switch. */
+    @SubscribeEvent
+    public static void onClientWorldUnload(LevelEvent.Unload event) {
+        if (!event.getLevel().isClientSide()) return;
+        ClientGuideCache.INSTANCE.clear();
+        ClientQuestCache.INSTANCE.clear();
+        ClientTradeCache.INSTANCE.clear();
+        QuestMarkerManager.INSTANCE.clear();
+        QuestToastManager.clear();
+        QuestSplashRenderer.clear();
+        GuideSplashRenderer.clear();
+        GuidePopupOverlay.INSTANCE.clear();
+        QuestHudOverlay.INSTANCE.clearClientSession();
     }
 }

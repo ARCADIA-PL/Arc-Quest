@@ -93,6 +93,20 @@ public class QuestHudOverlay implements IGuiOverlay {
         return trackerPanel.getTrackedQuestId();
     }
 
+    /** Clears selection and transient HUD state when the client world is unloaded. */
+    public void clearClientSession() {
+        trackerPanel.setTrackedQuest(null);
+        trackedSelectionLoaded = true;
+        lastTrackedQuestId = null;
+        lastKnownPhaseId = null;
+        lastKnownActivePhaseIds.clear();
+        phaseUpdateToast = null;
+        branchChoiceToast = null;
+        currentPhasePopupY = -1;
+        currentBranchToastY = -1;
+        saveTrackedSelection();
+    }
+
     @Override
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
