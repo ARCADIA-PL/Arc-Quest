@@ -90,6 +90,20 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
         return trackerPanel.getTrackedQuestId();
     }
 
+    /** Clears selection and transient HUD state when the client world is unloaded. */
+    public void clearClientSession() {
+        trackerPanel.setTrackedQuest(null);
+        trackedSelectionLoaded = true;
+        lastTrackedQuestId = null;
+        lastKnownPhaseId = null;
+        lastKnownActivePhaseIds.clear();
+        phaseUpdateToast = null;
+        branchChoiceToast = null;
+        currentPhasePopupY = -1;
+        currentBranchToastY = -1;
+        saveTrackedSelection();
+    }
+
     @Override
     public void render(GuiGraphics g, DeltaTracker deltaTracker) {
         int screenWidth = g.guiWidth();
