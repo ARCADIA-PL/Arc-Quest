@@ -18,7 +18,7 @@ public final class ClientGuideCache {
     private final LinkedHashSet<ResourceLocation> unlockedGuides = new LinkedHashSet<>();
     private final LinkedHashSet<ResourceLocation> seenGuides = new LinkedHashSet<>();
     private final LinkedHashMap<ResourceLocation, Integer> guideProgress = new LinkedHashMap<>();
-    private PendingOpenRequest pendingOpenRequest;
+    private final Deque<PendingOpenRequest> pendingOpenRequests = new ArrayDeque<>();
     private boolean initialized;
 
     private ClientGuideCache() {
@@ -60,25 +60,26 @@ public final class ClientGuideCache {
     }
 
     public void requestOpen(ResourceLocation guideId, int initialPage, boolean markSeenOnClose) {
-        pendingOpenRequest = new PendingOpenRequest(guideId, Math.max(0, initialPage), markSeenOnClose);
+        if (guideId == null) return;
+        PendingOpenRequest request = new PendingOpenRequest(
+                guideId, Math.max(0, initialPage), markSeenOnClose);
+        if (!pendingOpenRequests.contains(request)) pendingOpenRequests.addLast(request);
     }
 
     public Optional<PendingOpenRequest> consumePendingOpenRequest() {
-        PendingOpenRequest request = pendingOpenRequest;
-        pendingOpenRequest = null;
-        guideProgress.clear();
-        initialized = false;
-        return Optional.ofNullable(request);
+        return Optional.ofNullable(pendingOpenRequests.pollFirst());
     }
 
     public Optional<PendingOpenRequest> getPendingOpenRequest() {
-        return Optional.ofNullable(pendingOpenRequest);
+        return Optional.ofNullable(pendingOpenRequests.peekFirst());
     }
 
     public void clear() {
         unlockedGuides.clear();
         seenGuides.clear();
-        pendingOpenRequest = null;
+        guideProgress.clear();
+        pendingOpenRequests.clear();
+        initialized = false;
     }
 
     public boolean isUnlocked(ResourceLocation guideId) {

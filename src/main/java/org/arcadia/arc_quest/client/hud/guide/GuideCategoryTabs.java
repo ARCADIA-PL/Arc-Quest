@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client.hud.guide;
 
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 
 import java.util.List;
@@ -67,6 +68,10 @@ public class GuideCategoryTabs {
 
             if (safeAlpha > 8) {
                 g.drawString(screen.getFont(), label, (int) currentTabX + 8, tabY + (GuideConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, textColor, true);
+                if (screen.hasUnreadGuide(cat)) {
+                    HudRenderUtil.drawBreathingRedDot(g, (int) currentTabX + tw - 4,
+                            tabY + 4, safeAlpha / 255f);
+                }
             }
             currentTabX += tw + 4;
         }

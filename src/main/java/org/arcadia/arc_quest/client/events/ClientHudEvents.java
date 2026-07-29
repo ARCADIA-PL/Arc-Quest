@@ -40,6 +40,10 @@ public class ClientHudEvents {
                     event.getWindow().getGuiScaledHeight(),
                     event.getPartialTick());
         }
+
+        GuidePopupOverlay.INSTANCE.render(null, event.getGuiGraphics(),
+                event.getWindow().getGuiScaledWidth(),
+                event.getWindow().getGuiScaledHeight(), event.getPartialTick());
     }
 
     @SubscribeEvent

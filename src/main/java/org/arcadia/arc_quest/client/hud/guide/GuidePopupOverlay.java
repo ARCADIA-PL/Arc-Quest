@@ -18,11 +18,12 @@ import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** Renders a guide above an existing screen without replacing that screen. */
+/** Renders a guide above the current screen or HUD without replacing either one. */
 public final class GuidePopupOverlay {
 
     public static final GuidePopupOverlay INSTANCE = new GuidePopupOverlay();
@@ -102,7 +103,8 @@ public final class GuidePopupOverlay {
         if (markSeenOnClose) GuideCompletionClient.completeIfFinalPage(guide, guideId, pageIndex);
     }
 
-    public void render(Screen owner, GuiGraphics graphics, int screenWidth, int screenHeight, float partialTick) {
+    public void render(@Nullable Screen owner, GuiGraphics graphics,
+                       int screenWidth, int screenHeight, float partialTick) {
         if (!isActive()) return;
         long now = Util.getMillis();
         if (lastRenderTime == 0L) lastRenderTime = now;
