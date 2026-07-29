@@ -10,11 +10,12 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
+import org.jetbrains.annotations.Nullable;
 
 final class GuideMediaRenderer {
     private GuideMediaRenderer() {}
 
-    static void drawMedia(Screen screen, GuiGraphics g, int x, int y, int w, int h,
+    static void drawMedia(@Nullable Screen screen, GuiGraphics g, int x, int y, int w, int h,
                           GuideMediaDefinition media, EmbeddedPonderScenePanel ponderPanel,
                           int mouseX, int mouseY, float partialTick,
                           int alpha, int themeColor) {
@@ -35,7 +36,8 @@ final class GuideMediaRenderer {
         g.drawString(Minecraft.getInstance().font, "NO MEDIA", x + (w - textW) / 2, y + h / 2 - 4, HudAnimUtil.withAlpha(0x888888, alpha), false);
     }
 
-    private static void drawImageCover(Screen screen, GuiGraphics g, int x, int y, int w, int h, GuideMediaDefinition media, int alpha) {
+    private static void drawImageCover(@Nullable Screen screen, GuiGraphics g, int x, int y, int w, int h,
+                                       GuideMediaDefinition media, int alpha) {
         int texW = Math.max(1, media.getWidth());
         int texH = Math.max(1, media.getHeight());
 

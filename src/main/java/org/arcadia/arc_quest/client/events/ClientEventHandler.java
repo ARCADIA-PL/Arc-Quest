@@ -40,14 +40,17 @@ public final class ClientEventHandler {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
-        ClientGuideCache.INSTANCE.consumePendingOpenRequest().ifPresent(request -> {
-            if (mc.screen == null) {
-                GuideScreen.tryOpen(request.guideId(), request.initialPage(), request.markSeenOnClose());
-            } else {
-                GuidePopupOverlay.INSTANCE.open(
-                        request.guideId(), request.initialPage(), request.markSeenOnClose());
-            }
-        });
+        boolean guideScreenActive = mc.screen instanceof GuideScreen;
+        if (!guideScreenActive && !GuidePopupOverlay.INSTANCE.isActive()) {
+            ClientGuideCache.INSTANCE.consumePendingOpenRequest().ifPresent(request -> {
+                if (mc.screen == null) {
+                    GuideScreen.tryOpen(request.guideId(), request.initialPage(), request.markSeenOnClose());
+                } else {
+                    GuidePopupOverlay.INSTANCE.open(
+                            request.guideId(), request.initialPage(), request.markSeenOnClose());
+                }
+            });
+        }
         GuidePopupOverlay.INSTANCE.tick();
 
         if (KEY_OPEN_JOURNAL.consumeClick()) {

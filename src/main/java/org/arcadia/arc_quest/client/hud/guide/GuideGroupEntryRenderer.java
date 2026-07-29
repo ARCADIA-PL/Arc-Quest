@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
+import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 
 final class GuideGroupEntryRenderer {
 
@@ -36,13 +37,19 @@ final class GuideGroupEntryRenderer {
         drawChevron(graphics, x + 13, y + (height - 2) / 2, expansion, textColor);
         Font font = screen.getFont();
         String count = Integer.toString(row.guides().size());
+        boolean hasUnread = row.guides().stream()
+                .anyMatch(guide -> !ClientGuideCache.INSTANCE.isSeen(guide.getId()));
         int textX = x + 26;
-        int countX = x + width - 16 - font.width(count);
+        int countX = x + width - (hasUnread ? 28 : 16) - font.width(count);
         var title = StyledTextUtil.fitSingleLine(
                 font, row.group().getDisplayName(), Math.max(1, countX - textX - 8));
         int textY = (int) (y + (height - font.lineHeight) / 2f - 0.5f);
         graphics.drawString(font, title, textX, textY, textColor, false);
         graphics.drawString(font, count, countX, textY, textColor, false);
+        if (hasUnread) {
+            HudRenderUtil.drawBreathingRedDot(graphics, x + width - 14,
+                    y + height / 2, effectiveAlpha);
+        }
     }
 
     private void drawChevron(GuiGraphics graphics, int centerX, int centerY,

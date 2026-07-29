@@ -42,6 +42,8 @@ public class ClientHudEvents {
             GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(), w, h, partialTick);
         }
 
+        GuidePopupOverlay.INSTANCE.render(null, event.getGuiGraphics(), w, h, partialTick);
+
     }
 
     @SubscribeEvent

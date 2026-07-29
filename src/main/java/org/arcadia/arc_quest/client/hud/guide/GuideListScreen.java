@@ -296,6 +296,18 @@ public final class GuideListScreen extends Screen {
         return guide != null && !guide.isHidden() && ClientGuideCache.INSTANCE.isUnlocked(guide.getId()) && guide.getCategory() != null;
     }
 
+    boolean hasUnreadGuide(GuideCategory category) {
+        if (category == null) return false;
+        for (GuideDefinition guide : GuideRegistry.getAll()) {
+            if (isVisibleGuide(guide)
+                    && guide.getCategory().getId().equals(category.getId())
+                    && !ClientGuideCache.INSTANCE.isSeen(guide.getId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void selectCategory(ResourceLocation id) {
         if (Objects.equals(selectedCategoryId, id)) return;
         selectedCategoryId = id; selectedGuideId = null; selectedPageIndex = 0;
