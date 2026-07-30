@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.tracker;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -84,7 +85,7 @@ final class TrackerCollectionProgressAdapter {
     private ObjectiveEntry objective(String rowId, Component label, int current, int required) {
         return new ObjectiveEntry(
                 ObjectiveType.CUSTOM,
-                ResourceLocation.fromNamespaceAndPath("arc_quest", "collection_tracker/" + rowId),
+                ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "collection_tracker/" + rowId),
                 Math.max(1, required),
                 label,
                 false,
