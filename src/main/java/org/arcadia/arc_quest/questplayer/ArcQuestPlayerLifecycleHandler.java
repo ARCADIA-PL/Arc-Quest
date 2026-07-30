@@ -22,6 +22,7 @@ import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.quest.network.C2SMarkPhaseStoryReadPacket;
 import org.arcadia.arc_quest.quest.network.C2SSetTrackedQuestPacket;
 import org.arcadia.arc_quest.quest.network.C2SRequestQuestResyncPacket;
 import org.arcadia.arc_quest.quest.network.QuestSyncRevisionManager;
@@ -100,6 +101,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         RequestIdempotencyStore.INSTANCE.clearPlayer(sp.getUUID());
         C2SRequestTradePacket.clearPlayer(sp.getUUID());
         C2SRequestQuestResyncPacket.clearPlayer(sp.getUUID());
+        C2SMarkPhaseStoryReadPacket.clearPlayer(sp.getUUID());
         C2SSetTrackedQuestPacket.clearPlayer(sp.getUUID());
         QuestSyncRevisionManager.clearPlayer(sp.getUUID());
         PlayerSessionEpochManager.endSession(sp.getUUID());
@@ -117,6 +119,7 @@ public final class ArcQuestPlayerLifecycleHandler {
                 RequestIdempotencyStore.INSTANCE.clearPlayer(player.getUUID());
                 C2SRequestTradePacket.clearPlayer(player.getUUID());
                 C2SRequestQuestResyncPacket.clearPlayer(player.getUUID());
+                C2SMarkPhaseStoryReadPacket.clearPlayer(player.getUUID());
                 C2SSetTrackedQuestPacket.clearPlayer(player.getUUID());
                 QuestSyncRevisionManager.clearPlayer(player.getUUID());
                 PlayerSessionEpochManager.endSession(player.getUUID());
@@ -156,6 +159,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         RequestIdempotencyStore.INSTANCE.clear();
         C2SRequestTradePacket.clearAll();
         C2SRequestQuestResyncPacket.clear();
+        C2SMarkPhaseStoryReadPacket.clear();
         C2SSetTrackedQuestPacket.clear();
         QuestSyncRevisionManager.clear();
         PlayerSessionEpochManager.clear();

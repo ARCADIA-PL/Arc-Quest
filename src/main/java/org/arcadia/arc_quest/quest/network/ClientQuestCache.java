@@ -11,6 +11,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.arcadia.arc_quest.core.event.ListenerRegistry;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
+import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -60,6 +61,7 @@ public final class ClientQuestCache {
      * 已失败任务 ID
      */
     private final Set<String> failedQuests = new LinkedHashSet<>();
+    private final Map<String, Set<String>> readPhaseStories = new LinkedHashMap<>();
 
     /**
      * 全局 Flags
@@ -136,12 +138,18 @@ public final class ClientQuestCache {
      */
     public void applyFullSync(CompoundTag capData) {
         Set<String> oldFailed = new LinkedHashSet<>(failedQuests);
+        Set<String> oldKnownQuests = new LinkedHashSet<>(activeQuests.keySet());
+        oldKnownQuests.addAll(completedQuests);
+        oldKnownQuests.addAll(failedQuests);
+        Set<String> oldTerminalQuests = new LinkedHashSet<>(completedQuests);
+        oldTerminalQuests.addAll(failedQuests);
 
         boolean hadData = !activeQuests.isEmpty() || !completedQuests.isEmpty() || !failedQuests.isEmpty();
 
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();
+        readPhaseStories.clear();
         flags.clear();
         variables.clear();
         applyTrackedQuestSync(capData.contains("TrackedQuestId", Tag.TAG_STRING)
@@ -166,6 +174,26 @@ public final class ClientQuestCache {
         for (int i = 0; i < failedList.size(); i++) {
             failedQuests.add(failedList.getString(i));
         }
+
+        ListTag readStoryList = capData.getList("ReadPhaseStories", Tag.TAG_COMPOUND);
+        int readStoryCount = Math.min(readStoryList.size(), 8192);
+        for (int i = 0; i < readStoryCount; i++) {
+            CompoundTag storyTag = readStoryList.getCompound(i);
+            String questId = storyTag.getString("questId");
+            String phaseId = storyTag.getString("phaseId");
+            if (questId.isBlank() || phaseId.isBlank() || questId.length() > 256 || phaseId.length() > 256) continue;
+            readPhaseStories.computeIfAbsent(questId, ignored -> new LinkedHashSet<>()).add(phaseId);
+        }
+
+        Set<String> currentKnownQuests = new LinkedHashSet<>(activeQuests.keySet());
+        currentKnownQuests.addAll(completedQuests);
+        currentKnownQuests.addAll(failedQuests);
+        oldKnownQuests.stream()
+                .filter(questId -> !currentKnownQuests.contains(questId))
+                .forEach(QuestStoryPanel::clearQuest);
+        oldTerminalQuests.stream()
+                .filter(activeQuests::containsKey)
+                .forEach(QuestStoryPanel::clearQuest);
 
         // Flags
         ListTag flagList = capData.getList("Flags", Tag.TAG_STRING);
@@ -218,6 +246,10 @@ public final class ClientQuestCache {
         }
 
         applyQuestStateUpdate(data, questId, oldState, oldPhaseId);
+        if (data.getState() == QuestState.ACTIVE
+                && (oldState == QuestState.COMPLETED || oldState == QuestState.FAILED)) {
+            QuestStoryPanel.clearQuest(questId);
+        }
 
         LOGGER.debug("[ClientCache] Quest updated: {} → {}", questId, data.getState());
 
@@ -456,6 +488,20 @@ public final class ClientQuestCache {
         return failedQuests.contains(questId);
     }
 
+    public boolean isPhaseStoryRead(String questId, String phaseId) {
+        Set<String> phaseIds = readPhaseStories.get(questId);
+        return phaseIds != null && phaseIds.contains(phaseId);
+    }
+
+    public boolean markPhaseStoryRead(String questId, String phaseId) {
+        if (questId == null || questId.isBlank() || phaseId == null || phaseId.isBlank()) return false;
+        return readPhaseStories.computeIfAbsent(questId, ignored -> new LinkedHashSet<>()).add(phaseId);
+    }
+
+    public void clearReadPhaseStories(String questId) {
+        if (questId != null) readPhaseStories.remove(questId);
+    }
+
     public boolean isCollectionQuest(String questId) {
         QuestRuntimeData data = activeQuests.get(questId);
         return data != null && data.hasCollectionData();
@@ -597,6 +643,7 @@ public final class ClientQuestCache {
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();
+        readPhaseStories.clear();
         flags.clear();
         variables.clear();
         trackedQuestId = null;

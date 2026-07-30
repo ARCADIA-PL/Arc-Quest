@@ -52,7 +52,7 @@ public final class ArcQuestNetwork {
      * 在 Mod 构造器里挂到 {@code modEventBus.addListener(ArcQuestNetwork::register)}。
      */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("6");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("7");
 
         // ─── S2C（play to client）───
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -75,6 +75,7 @@ public final class ArcQuestNetwork {
         registrar.playToServer(C2SMarkGuideSeenPacket.TYPE, C2SMarkGuideSeenPacket.STREAM_CODEC, C2SMarkGuideSeenPacket::handle);
         registrar.playToServer(C2SUpdateGuideProgressPacket.TYPE, C2SUpdateGuideProgressPacket.STREAM_CODEC, C2SUpdateGuideProgressPacket::handle);
         registrar.playToServer(C2SSetTrackedQuestPacket.TYPE, C2SSetTrackedQuestPacket.STREAM_CODEC, C2SSetTrackedQuestPacket::handle);
+        registrar.playToServer(C2SMarkPhaseStoryReadPacket.TYPE, C2SMarkPhaseStoryReadPacket.STREAM_CODEC, C2SMarkPhaseStoryReadPacket::handle);
     }
 
     private static void registerClientPayloadHandlers(PayloadRegistrar registrar) {
@@ -268,6 +269,10 @@ public final class ArcQuestNetwork {
 
     public static void sendTrackedQuestUpdate(@Nullable String questId) {
         PacketDistributor.sendToServer(new C2SSetTrackedQuestPacket(questId));
+    }
+
+    public static void sendMarkPhaseStoryRead(String questId, String phaseId) {
+        PacketDistributor.sendToServer(new C2SMarkPhaseStoryReadPacket(questId, phaseId));
     }
 
     // ═══════════════════════════════════════════════════════

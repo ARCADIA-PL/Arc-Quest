@@ -155,6 +155,7 @@ public final class ArcQuestPlayer {
     private final Map<String, QuestRuntimeData> activeQuests = new Object2ObjectOpenHashMap<>();
     private final Set<String> completedQuests = new ObjectOpenHashSet<>();
     private final Set<String> failedQuests = new ObjectOpenHashSet<>();
+    private final Map<String, Set<String>> readPhaseStories = new Object2ObjectOpenHashMap<>();
     private final Map<String, Integer> variables = new Object2IntOpenHashMap<>();
     private final Map<String, QuestMarkerData> markers = new LinkedHashMap<>();
 
@@ -172,7 +173,7 @@ public final class ArcQuestPlayer {
 
     public ArcQuestPlayer(UUID ownerUuid) {
         this.ownerUuid = Objects.requireNonNull(ownerUuid);
-        this.questState = new ArcQuestQuestState(activeQuests, completedQuests, failedQuests, markers);
+        this.questState = new ArcQuestQuestState(activeQuests, completedQuests, failedQuests, readPhaseStories, markers);
         this.profileState = new ArcQuestProfileState(variables);
         this.guideState = new ArcQuestGuideState();
     }
@@ -305,6 +306,18 @@ public final class ArcQuestPlayer {
 
     public synchronized void removeActiveQuest(String questId) {
         questState.removeActiveQuest(questId);
+    }
+
+    public synchronized void resetQuest(String questId) {
+        questState.resetQuest(questId);
+    }
+
+    public synchronized boolean markPhaseStoryRead(String questId, String phaseId) {
+        return questState.markPhaseStoryRead(questId, phaseId);
+    }
+
+    public synchronized boolean isPhaseStoryRead(String questId, String phaseId) {
+        return questState.isPhaseStoryRead(questId, phaseId);
     }
 
     public synchronized void markCompleted(String questId) {
