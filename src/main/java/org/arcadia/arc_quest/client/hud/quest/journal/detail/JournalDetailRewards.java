@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -161,7 +162,7 @@ public class JournalDetailRewards {
                     g.fill(itemX + 4, lineY, itemX + rW - 4, lineY + 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * itemDAlpha)));
 
                 // 收集可见物品，生成独立闭包供 Pass 2 批量调用
-                if (inBounds && itemDAlpha > 0.01f) {
+                if (inBounds && itemDAlpha > 0.04f) {
                     final int finalItemX = itemX;
                     pass2ItemRenders.add(() -> {
                         g.pose().pushPose();
@@ -169,9 +170,16 @@ public class JournalDetailRewards {
                         g.pose().translate(itemCx, itemCy, 0);
                         g.pose().scale(itemDAlpha, itemDAlpha, 1f);
                         g.pose().translate(-itemCx, -itemCy, 0);
+                        RenderSystem.enableBlend();
+                        RenderSystem.defaultBlendFunc();
+                        RenderSystem.setShaderColor(1f, 1f, 1f, itemDAlpha);
                         g.renderFakeItem(stack, finalItemX + 4, 2);
-                        g.pose().translate(0, 0, 200);
-                        g.renderItemDecorations(font, stack, finalItemX + 4, 2);
+                        if (itemDAlpha >= 0.55f) {
+                            g.pose().translate(0, 0, 200);
+                            g.renderItemDecorations(font, stack, finalItemX + 4, 2);
+                        }
+                        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+                        RenderSystem.disableBlend();
                         g.pose().popPose();
                     });
                 }
