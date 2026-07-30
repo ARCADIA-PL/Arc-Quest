@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
@@ -162,13 +161,10 @@ public class JournalDetailPanel {
         screen.enableScissor(g, x, scrollAreaY, x + w - 8, scrollAreaY + scrollAreaH);
 
         def.getSplashConfig(SplashType.QUEST_DETAIL).ifPresent(asset -> {
-            RenderSystem.enableBlend();
             float watermarkAlpha = 0.15f * dAlpha;
             int rw = (int) (w * 0.7f), rh = rw;
             int rx = x + w / 2 - rw / 2 + (int) ((1f - detailReveal) * 50f), ry = scrollAreaY + scrollAreaH / 2 - rh / 2;
-            RenderSystem.setShaderColor(1f, 1f, 1f, watermarkAlpha);
-            QuestIconRenderer.renderIcon(g, asset, rx, ry, rw, rh);
-            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+            QuestIconRenderer.renderIcon(g, asset, rx, ry, rw, rh, watermarkAlpha);
         });
 
         g.pose().pushPose();
@@ -178,9 +174,7 @@ public class JournalDetailPanel {
         if (def.getVisualConfig().getIcon(IconPosition.QUEST_TITLE).isPresent()) {
             int finalLocalY = localY;
             def.getVisualConfig().getIcon(IconPosition.QUEST_TITLE).ifPresent(icon -> {
-                RenderSystem.setShaderColor(1f, 1f, 1f, dAlpha);
-                QuestIconRenderer.renderIcon(g, icon, 0, finalLocalY - 2, 16, 16);
-                RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+                QuestIconRenderer.renderIcon(g, icon, 0, finalLocalY - 2, 16, 16, dAlpha);
             });
             titleIconOffset = 22;
         }
