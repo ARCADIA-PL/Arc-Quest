@@ -53,7 +53,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     private void addGuiTranslations() {
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] 任务面板");
-        add("arc_quest.gui.tracker.new_quest", "有新任务，请按[%s]查看");
+        add("arc_quest.gui.tracker.new_quest", "新任务");
         add("arc_quest.gui.tracker.new_guide", "有新教程，按[%s]查看");
         add("arc_quest.guide.splash.status", "新教程已解锁");
 
@@ -1471,6 +1471,5 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addItemTag("non_flammable_wood", "不可燃木材");
         addItemTag("soul_fire_base_blocks", "灵魂火基座方块");
         addItemTag("completes_find_tree_tutorial", "完成找树教程");
-        add("arc_quest.quest_reject.abandon_not_allowed", "\u8be5\u4efb\u52a1\u4e0d\u53ef\u653e\u5f03");
     }
 }
