@@ -528,8 +528,7 @@ public class QuestJournalScreen extends Screen {
         boolean markedRead = false;
         if (idx >= 0 && idx < currentEntries.size()) {
             String questId = currentEntries.get(idx).questId();
-            markedRead = QuestChangeNotificationManager.INSTANCE.hasUnread(questId);
-            QuestChangeNotificationManager.INSTANCE.markRead(questId);
+            markedRead = acknowledgeQuestChanges(questId);
         }
         if (selectedIndex != idx) {
             selectedIndex = idx; detailPanel.resetState();
@@ -537,6 +536,13 @@ public class QuestJournalScreen extends Screen {
         } else if (markedRead) {
             playClick();
         }
+    }
+
+    public boolean acknowledgeQuestChanges(@Nullable String questId) {
+        if (questId == null || questId.isEmpty()) return false;
+        boolean wasUnread = QuestChangeNotificationManager.INSTANCE.hasUnread(questId);
+        QuestChangeNotificationManager.INSTANCE.markRead(questId);
+        return wasUnread;
     }
 
     private String resolveTargetQuestForOpen() {
