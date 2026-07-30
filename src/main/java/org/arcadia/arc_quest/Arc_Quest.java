@@ -2,6 +2,7 @@ package org.arcadia.arc_quest;
 
 import com.mojang.logging.LogUtils;
 import net.createmod.ponder.foundation.PonderIndex;
+import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
@@ -22,6 +23,7 @@ import net.neoforged.fml.loading.FMLLoader;
 import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashOverlay;
@@ -110,6 +112,11 @@ public class Arc_Quest {
     public static class ClientForgeEvents {
         @SubscribeEvent
         public static void onRenderGuiLayerPre(RenderGuiLayerEvent.Pre event) {
+            if (event.getName().equals(VanillaGuiLayers.CHAT)
+                    && Minecraft.getInstance().screen instanceof DialogueScreen) {
+                event.setCanceled(true);
+                return;
+            }
             if (QuestSplashRenderer.isActive()) {
                 if (!event.getName().equals(ResourceLocation.fromNamespaceAndPath(MOD_ID, "quest_splash"))) {
                     event.setCanceled(true);
