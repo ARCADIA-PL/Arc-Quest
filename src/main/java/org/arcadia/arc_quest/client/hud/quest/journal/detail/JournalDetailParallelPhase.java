@@ -345,7 +345,7 @@ public class JournalDetailParallelPhase {
                 String descriptionText = unreadStory
                         ? Component.translatable("arc_quest.gui.journal.label.unread_phase_story").getString()
                         : focusPhase.getDescription().getString();
-                float baseTextScale = unreadStory ? 1.10f : 0.85f;
+                float baseTextScale = unreadStory ? 0.98f : 0.85f;
                 int descMaxW = scrollAreaW - 4;
                 List<String> wrappedDesc = getWrappedLines("focus-desc:" + focusPhaseId + ":" + unreadStory,
                         descriptionText, (int) (descMaxW / baseTextScale), font);
@@ -379,8 +379,8 @@ public class JournalDetailParallelPhase {
                 currentDescPhaseId = hasStory ? focusPhaseId : null;
 
                 float pulse = 0.5f - 0.5f * (float) Math.cos((Util.getMillis() % 2000L) / 2000f * Math.PI * 2.0);
-                float breathScale = unreadStory ? baseTextScale * 0.05f * pulse : 0f;
-                float currentScale = baseTextScale + breathScale + (0.20f * HudAnimUtil.easeOutCubic(descHoverAnim));
+                float breathScale = unreadStory ? baseTextScale * 0.018f * pulse : 0f;
+                float currentScale = baseTextScale + breathScale + (0.045f * HudAnimUtil.easeOutCubic(descHoverAnim));
 
                 g.pose().pushPose();
 
@@ -406,7 +406,7 @@ public class JournalDetailParallelPhase {
                 g.pose().popPose();
 
                 if (unreadStory && !wrappedDesc.isEmpty()) {
-                    float diamondScale = 0.90f + 0.18f * pulse + 0.14f * descHoverAnim;
+                    float diamondScale = 0.90f + 0.07f * pulse + 0.06f * descHoverAnim;
                     int diamondAlpha = (int) ((145 + 110 * pulse) * dAlpha);
                     int diamondColor = isHovered ? 0xFF3030 : 0xD93A4A;
                     float diamondX = Math.min(scrollAreaW - 8f,
