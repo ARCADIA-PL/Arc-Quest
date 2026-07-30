@@ -22,6 +22,7 @@ final class QuestHistoryDetailPanel {
     private double scrollOffset;
     private double targetScroll;
     private int maxScroll;
+    private float closeHover;
 
     void reset() {
         selectedNode = null;
@@ -30,10 +31,11 @@ final class QuestHistoryDetailPanel {
         scrollOffset = 0;
         targetScroll = 0;
         maxScroll = 0;
+        closeHover = 0f;
     }
 
     void select(QuestHistoryNodeData node) {
-        if (node == null) return;
+        if (node == null || !node.reached()) return;
         if (selectedNode == null || !selectedNode.id().equals(node.id())) {
             scrollOffset = 0;
             targetScroll = 0;
@@ -82,19 +84,28 @@ final class QuestHistoryDetailPanel {
     }
 
     void render(GuiGraphics graphics, Font font, QuestRuntimeData runtime, int panelRight, int panelTop,
-                int panelHeight, int themeColor, float parentAlpha, float screenX, float screenY, float screenScale) {
+                int panelHeight, int themeColor, float parentAlpha, float screenX, float screenY, float screenScale,
+                float mouseX, float mouseY, float deltaTime) {
         if (selectedNode == null || animation <= 0.002f) return;
-        float alphaFactor = parentAlpha * easedAnimation();
+        float alphaFactor = parentAlpha;
         int alpha = Math.round(255 * alphaFactor);
         int x = currentX(panelRight);
         int contentTop = panelTop + 10;
         int contentBottom = panelTop + panelHeight - 9;
+        boolean closeHovered = mouseX >= x + WIDTH - 29 && mouseX <= x + WIDTH - 13
+                && mouseY >= panelTop + 8 && mouseY <= panelTop + 24;
+        closeHover = HudAnimUtil.smoothExp(closeHover, closeHovered ? 1f : 0f, 16f, deltaTime);
+        if (closeHovered && Minecraft.getInstance().screen instanceof QuestJournalScreen journalScreen) {
+            journalScreen.requestPointerCursor();
+        }
+        enableScissor(graphics, panelRight - WIDTH, panelTop, panelRight, panelTop + panelHeight,
+                screenX, screenY, screenScale);
         graphics.fill(x, panelTop, x + WIDTH, panelTop + panelHeight,
                 HudAnimUtil.withAlpha(0x090C11, Math.round(244 * alphaFactor)));
         graphics.fill(x, panelTop, x + 2, panelTop + panelHeight, HudAnimUtil.withAlpha(themeColor, alpha));
         drawFrame(graphics, x, panelTop, WIDTH, panelHeight, 1,
                 HudAnimUtil.withAlpha(0xAAB4C0, Math.round(78 * alphaFactor)));
-        renderCloseButton(graphics, font, x + WIDTH - 29, panelTop + 8, alpha, themeColor);
+        renderCloseButton(graphics, font, x + WIDTH - 29, panelTop + 8, alpha, themeColor, closeHover);
         enableScissor(graphics, x + 2, contentTop, x + WIDTH - 2, contentBottom, screenX, screenY, screenScale);
         graphics.pose().pushPose();
         graphics.pose().translate(x + PADDING, contentTop - scrollOffset, 2f);
@@ -104,6 +115,7 @@ final class QuestHistoryDetailPanel {
         maxScroll = Math.max(0, contentHeight - (contentBottom - contentTop));
         targetScroll = Math.max(0, Math.min(maxScroll, targetScroll));
         if (maxScroll > 0) renderScrollbar(graphics, x, contentTop, contentBottom, alphaFactor, themeColor);
+        graphics.disableScissor();
     }
 
     private int renderContent(GuiGraphics graphics, Font font, QuestRuntimeData runtime, int width,
@@ -115,12 +127,12 @@ final class QuestHistoryDetailPanel {
         graphics.drawString(font, stateText, 9, 3, HudAnimUtil.withAlpha(stateColor, alpha), false);
         y += 20;
         Component title = selectedNode.displayName().copy().withStyle(Style.EMPTY.withBold(true));
-        y = drawWrapped(graphics, font, title, 0, y, width - 28, 0xFFFFFF, alpha, 1.18f, 3);
+        y = drawWrapped(graphics, font, title, 0, y, width - 28, 0xFFFFFF, alpha, 1.22f, 3);
         graphics.fill(0, y + 2, width, y + 3, HudAnimUtil.withAlpha(themeColor, Math.round(70 * alphaFactor)));
         y += 11;
         Component description = selectedNode.phase().getDescription();
         if (!description.getString().isBlank()) {
-            y = drawWrapped(graphics, font, description, 0, y, width, 0xC5CBD3, alpha, 0.86f, 2) + 9;
+            y = drawWrapped(graphics, font, description, 0, y, width, 0xC5CBD3, alpha, 0.96f, 2) + 9;
         }
         y = renderImage(graphics, font, y, width, themeColor, alphaFactor, alpha);
         y = renderObjectives(graphics, font, runtime, y, width, themeColor, alphaFactor, alpha);
@@ -130,18 +142,20 @@ final class QuestHistoryDetailPanel {
     private int renderImage(GuiGraphics graphics, Font font, int y, int width, int themeColor,
                             float alphaFactor, int alpha) {
         if (selectedNode.image() == null) return y;
-        int imageHeight = Math.round(width * 9f / 16f);
+        int imageWidth = Math.round(width * 0.92f);
+        int imageHeight = Math.round(imageWidth * 9f / 16f);
+        int imageX = (width - imageWidth) / 2;
         QuestHistoryImageRenderer.RenderResult result = QuestHistoryImageRenderer.renderCover(
-                graphics, selectedNode.image(), 0, y, width, imageHeight, alphaFactor,
+                graphics, selectedNode.image(), imageX, y, imageWidth, imageHeight, alphaFactor,
                 !selectedNode.reached(), themeColor);
         if (!selectedNode.reached() && result != QuestHistoryImageRenderer.RenderResult.UNAVAILABLE) {
             graphics.pose().pushPose();
-            graphics.pose().translate(width / 2f, y + imageHeight / 2f, 3f);
+            graphics.pose().translate(imageX + imageWidth / 2f, y + imageHeight / 2f, 3f);
             graphics.pose().scale(2f, 2f, 1f);
                 graphics.drawCenteredString(font, "?", 0, -font.lineHeight / 2, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
             graphics.pose().popPose();
         }
-        drawFrame(graphics, 0, y, width, imageHeight, 1,
+        drawFrame(graphics, imageX, y, imageWidth, imageHeight, 1,
                 HudAnimUtil.withAlpha(0xAAB4C0, Math.round(95 * alphaFactor)));
         return y + imageHeight + 13;
     }
@@ -165,7 +179,7 @@ final class QuestHistoryDetailPanel {
         Component story = selectedNode.phase().getStory();
         if (story.getString().isBlank()) return y;
         y = renderSectionTitle(graphics, font, "STORY", y, width, themeColor, alpha);
-        return drawWrapped(graphics, font, story, 1, y, width - 2, 0xD6D0C5, alpha, 0.82f, 3) + 8;
+        return drawWrapped(graphics, font, story, 1, y, width - 2, 0xD6D0C5, alpha, 0.94f, 3) + 8;
     }
 
     private int renderObjective(GuiGraphics graphics, Font font, ObjectiveEntry objective, int progress, int y,
@@ -245,10 +259,20 @@ final class QuestHistoryDetailPanel {
                 HudAnimUtil.withAlpha(themeColor, Math.round(170 * alphaFactor)));
     }
 
-    private void renderCloseButton(GuiGraphics graphics, Font font, int x, int y, int alpha, int themeColor) {
-        graphics.fill(x, y, x + 16, y + 16, HudAnimUtil.withAlpha(0x11161D, Math.min(alpha, 220)));
-        drawFrame(graphics, x, y, 16, 16, 1, HudAnimUtil.withAlpha(themeColor, Math.min(alpha, 150)));
-        graphics.drawCenteredString(font, "X", x + 8, y + 4, HudAnimUtil.withAlpha(0xFFFFFF, alpha));
+    private void renderCloseButton(GuiGraphics graphics, Font font, int x, int y, int alpha, int themeColor,
+                                   float hover) {
+        float scale = 1f + hover * 0.10f;
+        graphics.pose().pushPose();
+        graphics.pose().translate(x + 8, y + 8, 4f);
+        graphics.pose().scale(scale, scale, 1f);
+        graphics.pose().translate(-8, -8, 0);
+        graphics.fill(0, 0, 16, 16,
+                HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x11161D, 0x2A1115, hover), Math.min(alpha, 230)));
+        drawFrame(graphics, 0, 0, 16, 16, 1,
+                HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(themeColor, 0xFF5B66, hover), Math.min(alpha, 185)));
+        graphics.drawCenteredString(font, "X", 8, 4,
+                HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0xFFFFFF, 0xFFCDD2, hover), alpha));
+        graphics.pose().popPose();
     }
 
     private float easedAnimation() {
