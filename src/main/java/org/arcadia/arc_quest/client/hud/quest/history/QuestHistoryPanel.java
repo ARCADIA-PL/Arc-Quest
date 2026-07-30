@@ -93,7 +93,8 @@ public final class QuestHistoryPanel {
         QuestHistoryNodeRenderer.reset();
         titleVisibility = 1f;
         buildGraphData();
-        fitCameraToGraph(PANEL_W - TREE_MARGIN * 2, PANEL_H - TOP_BAR_H - TREE_MARGIN * 2);
+        TreeBounds initialTree = treeBounds();
+        fitCameraToGraph(initialTree.width(), initialTree.height());
         pendingFocusActive = true;
         focusDelayTimer = 0f;
     }
@@ -387,10 +388,10 @@ public final class QuestHistoryPanel {
         QuestHistoryNodeData node = nodeMap.get(phaseId);
         if (node == null) return;
         if (emphasize) targetZoom = Math.max(targetZoom, 1.05f);
-        int viewWidth = PANEL_W - TREE_MARGIN * 2 - QuestHistoryDetailPanel.WIDTH - 5;
-        int viewHeight = PANEL_H - TOP_BAR_H - TREE_MARGIN * 2;
-        targetPanX = viewWidth / 2f - node.x() * targetZoom;
-        targetPanY = viewHeight / 2f - node.y() * targetZoom;
+        int reservedWidth = DETAIL_PANEL.isOpen() ? QuestHistoryDetailPanel.WIDTH + 5 : 0;
+        TreeBounds focusTree = treeBounds(reservedWidth);
+        targetPanX = focusTree.width() / 2f - node.x() * targetZoom;
+        targetPanY = focusTree.height() / 2f - node.y() * targetZoom;
     }
 
     private static void ensureNodeVisible(QuestHistoryNodeData node) {
@@ -456,7 +457,11 @@ public final class QuestHistoryPanel {
     }
 
     private static TreeBounds treeBounds() {
-        int width = Math.max(120, PANEL_W - TREE_MARGIN * 2 - DETAIL_PANEL.getReservedWidth());
+        return treeBounds(DETAIL_PANEL.getReservedWidth());
+    }
+
+    private static TreeBounds treeBounds(int reservedWidth) {
+        int width = Math.max(120, PANEL_W - TREE_MARGIN * 2 - Math.max(0, reservedWidth));
         return new TreeBounds(TREE_MARGIN, TOP_BAR_H + 3, width, PANEL_H - TOP_BAR_H - TREE_MARGIN - 3);
     }
 

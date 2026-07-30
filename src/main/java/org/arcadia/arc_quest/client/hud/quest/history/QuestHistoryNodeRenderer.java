@@ -88,7 +88,8 @@ final class QuestHistoryNodeRenderer {
             int textX = labelX + LABEL_ACCENT_WIDTH + 8;
             int textRight = labelX + LABEL_WIDTH - 7;
             int maxLabelWidth = Math.round((textRight - textX) / LABEL_SCALE);
-            String label = marqueeText(font, node.displayName().getString(), maxLabelWidth);
+            String title = node.reached() ? node.displayName().getString() : "？？？";
+            String label = marqueeText(font, title, maxLabelWidth);
             graphics.pose().pushPose();
             graphics.pose().translate(textX,
                     labelY + (LABEL_HEIGHT - font.lineHeight * LABEL_SCALE) / 2f, 3f);
@@ -109,7 +110,7 @@ final class QuestHistoryNodeRenderer {
             return;
         }
         graphics.pose().pushPose();
-        graphics.pose().translate(0, -6, 1f);
+        graphics.pose().translate(0, 0, 1f);
         graphics.pose().mulPose(Axis.ZP.rotationDegrees(45f));
         graphics.fill(-9, -9, 9, 9, HudAnimUtil.withAlpha(0x06090D, alpha));
         drawFrame(graphics, -8, -8, 16, 16, 2, HudAnimUtil.withAlpha(stateColor, alpha));
