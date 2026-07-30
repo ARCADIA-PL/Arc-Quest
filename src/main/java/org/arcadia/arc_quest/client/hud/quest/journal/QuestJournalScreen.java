@@ -31,6 +31,7 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.glfw.GLFW;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -67,6 +68,9 @@ public class QuestJournalScreen extends Screen {
     private float tooltipHoverTimer = 0f;
     private float tooltipTipAlpha = 0f;
     private float animTipX = 0, animTipY = 0, animTipW = 0, animTipH = 0;
+    private boolean pointerCursorRequested = false;
+    private boolean pointerCursorApplied = false;
+    private long pointerCursorHandle = 0L;
 
     public QuestJournalScreen() {
         super(Component.translatable("gui.arc_quest.journal.title"));
@@ -215,6 +219,7 @@ public class QuestJournalScreen extends Screen {
     @Override
     public void removed() {
         QuestChangeHistoryStore.INSTANCE.flush();
+        releasePointerCursor();
         super.removed();
     }
 
@@ -319,6 +324,7 @@ public class QuestJournalScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        pointerCursorRequested = false;
         hoveredRewardTooltip = null;
         hoveredCustomTooltip = null;
         float uiScale = getUiScale();
@@ -343,6 +349,7 @@ public class QuestJournalScreen extends Screen {
 
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, realDt);
         if (isClosing && transitionAlpha <= 0.01f) {
+            applyRequestedCursor();
             if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
             return;
         }
@@ -397,6 +404,36 @@ public class QuestJournalScreen extends Screen {
 
         updateAndRenderTooltip(g, smx, smy);
         g.pose().popPose();
+        applyRequestedCursor();
+    }
+
+    public void requestPointerCursor() {
+        pointerCursorRequested = true;
+    }
+
+    private void applyRequestedCursor() {
+        if (minecraft == null || pointerCursorRequested == pointerCursorApplied) return;
+        if (pointerCursorRequested) {
+            if (pointerCursorHandle == 0L) {
+                pointerCursorHandle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_HAND_CURSOR);
+            }
+            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), pointerCursorHandle);
+        } else {
+            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), 0L);
+        }
+        pointerCursorApplied = pointerCursorRequested;
+    }
+
+    private void releasePointerCursor() {
+        if (minecraft != null && pointerCursorApplied) {
+            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), 0L);
+        }
+        if (pointerCursorHandle != 0L) {
+            GLFW.glfwDestroyCursor(pointerCursorHandle);
+            pointerCursorHandle = 0L;
+        }
+        pointerCursorRequested = false;
+        pointerCursorApplied = false;
     }
 
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {

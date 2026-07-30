@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
+import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -12,6 +13,7 @@ import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
+import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SRequestQuestActionPacket;
@@ -46,6 +48,12 @@ public class JournalDetailControls {
 
     private boolean shouldShowConfirmBtn(QuestRuntimeData runtime) {
         return runtime != null && !runtime.getCurrentPendingManualAdvancePhaseId().isEmpty();
+    }
+
+    private boolean shouldPulseConfirmBtn(QuestDefinition def, QuestRuntimeData runtime) {
+        if (!shouldShowConfirmBtn(runtime) || def == null) return false;
+        PhaseDefinition phase = def.getPhase(runtime.getCurrentPendingManualAdvancePhaseId());
+        return phase != null && !phase.shouldAutoAdvanceOnComplete();
     }
 
     private boolean shouldShowFailedBtns(JournalTypes.QuestListEntry entry) {
@@ -90,6 +98,9 @@ public class JournalDetailControls {
                 boolean cHover = !active && mx >= confirmX && mx <= confirmX + btnW && my >= btnY && my <= btnY + btnH;
                 confirmBtnHover = HudAnimUtil.step(confirmBtnHover, cHover ? 1f : 0f, 8f, dt);
                 JournalDetailPanel.drawCyberButton(g, screen, confirmX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.confirm_phase_complete").getString(), activeTheme, HudAnimUtil.easeOutCubic(confirmBtnHover), cHover);
+                if (shouldPulseConfirmBtn(def, runtime)) {
+                    drawConfirmBreathingBorder(g, confirmX, btnY, btnW, btnH, activeTheme);
+                }
             }
 
             if (bAbandon) {
@@ -104,6 +115,19 @@ public class JournalDetailControls {
             failedRestartBtnHover = HudAnimUtil.step(failedRestartBtnHover, rHover ? 1f : 0f, 8f, dt);
             JournalDetailPanel.drawCyberButton(g, screen, restartX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.restart").getString(), activeTheme, HudAnimUtil.easeOutCubic(failedRestartBtnHover), rHover);
         }
+    }
+
+    private void drawConfirmBreathingBorder(GuiGraphics g, int x, int y, int w, int h, int activeTheme) {
+        float cycle = (Util.getMillis() % 2600L) / 2600f;
+        float easeInOut = 0.5f - 0.5f * (float) Math.cos(cycle * Math.PI * 2.0);
+        int highlightColor = HudAnimUtil.lerpColor(activeTheme, 0xFFF0A8, 0.72f);
+        int borderColor = HudAnimUtil.lerpColor(0x8A939E, highlightColor, easeInOut);
+        int borderAlpha = (int) ((135 + 120 * easeInOut) * screen.getEffectiveAlpha());
+        int color = HudAnimUtil.withAlpha(borderColor, borderAlpha);
+        g.fill(x, y, x + w, y + 1, color);
+        g.fill(x, y + h - 1, x + w, y + h, color);
+        g.fill(x, y + 1, x + 1, y + h - 1, color);
+        g.fill(x + w - 1, y + 1, x + w, y + h - 1, color);
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
