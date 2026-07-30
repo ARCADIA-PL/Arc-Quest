@@ -323,7 +323,7 @@
   "arc_quest.quest_action.confirm_phase_advance": "确认阶段完成",
   "arc_quest.quest_action.open_chapter_shop": "打开章节商店",
   "arc_quest.quest_action_result.template": "[任务] %1$s失败：%2$s（%3$s）",
-  "arc_quest.quest_reject.abandon_not_allowed": "该任务不可放弃",
+  "arc_quest.quest_reject.abandon_not_allowed": "该任务不允许放弃",
   "arc_quest.quest_reject.already_active": "任务已在进行中",
   "arc_quest.quest_reject.already_completed_not_repeatable": "任务已完成且不可重复",
   "arc_quest.quest_reject.chapter_shop_definition_not_found": "章节商店定义不存在",

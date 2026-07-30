@@ -123,6 +123,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_reject.unlock_condition_not_met", "未满足前置条件");
         add("arc_quest.quest_reject.no_initial_phase", "任务缺少初始阶段");
         add("arc_quest.quest_reject.not_active", "任务未激活");
+        add("arc_quest.quest_reject.abandon_not_allowed", "该任务不允许放弃");
         add("arc_quest.quest_reject.phase_not_found", "当前阶段不存在");
         add("arc_quest.quest_reject.invalid_choice_index", "分支索引无效");
         add("arc_quest.quest_reject.choice_condition_not_met", "分支条件不满足");
@@ -1469,6 +1470,5 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addItemTag("non_flammable_wood", "不可燃木材");
         addItemTag("soul_fire_base_blocks", "灵魂火基座方块");
         addItemTag("completes_find_tree_tutorial", "完成找树教程");
-        add("arc_quest.quest_reject.abandon_not_allowed", "\u8be5\u4efb\u52a1\u4e0d\u53ef\u653e\u5f03");
     }
 }
