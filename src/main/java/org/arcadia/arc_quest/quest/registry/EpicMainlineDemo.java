@@ -65,7 +65,6 @@ public final class EpicMainlineDemo {
                                 .objective(ObjectiveBuilder.nullObjective()
                                         .display("开局")
                                 )
-                                .historyImage(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/splash/phase.png"), 1f)
                                 .story("”绝对的强者...“\n“由此而生的孤独...”\n“教会你爱的是...”")
                                 .setFlagOnEnter("arc_quest:prologue_started")
                                 .autoAdvanceOnComplete(false)
@@ -89,7 +88,7 @@ public final class EpicMainlineDemo {
                                 .objective(ObjectiveBuilder.interact(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "village_elder"))
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.talk_villager.0")))
                                 .setFlagOnComplete("arc_quest:elder_consulted")
-                                .historyImage(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/splash/phase.png"), 1f)
+                                .historyImage(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "textures/gui/splash/chapter1_acquire.png"), 1f)
                                 .reward(new ItemReward(Items.LEATHER_BOOTS, 1))
                                 .thenGoTo("arc_quest:scout_forest")
                                 .thenGoTo("arc_quest:reinforce_gate")
@@ -139,6 +138,7 @@ public final class EpicMainlineDemo {
 
                         // 汇合阶段（D）：制作铁剑
                         .phase(PhaseBuilder.create("arc_quest:craft_sword")
+                                .historyImage(Items.BEACON)
                                 // 仅作为 condition 门禁，不自动跳转
                                 .enterWhen(
                                         ICondition.flagSet("arc_quest:forest_scouted").and(ICondition.flagSet("arc_quest:gate_reinforced")),

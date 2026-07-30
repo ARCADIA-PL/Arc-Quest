@@ -4,6 +4,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.quest.util.IntelSceneIdHelper;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.questmarker.api.*;
@@ -293,6 +295,44 @@ public final class PhaseBuilder {
 
     public PhaseBuilder historyImage(ResourceLocation texture) {
         return historyImage(texture, 1.0f);
+    }
+
+    public PhaseBuilder historyImage(Item item, float scale) {
+        return historyImage(item, scale, 0f, -2f);
+    }
+
+    public PhaseBuilder historyImage(Item item) {
+        return historyImage(item, 1.0f);
+    }
+
+    public PhaseBuilder historyImage(Item item, float offsetX, float offsetY) {
+        return historyImage(item, 1.0f, offsetX, offsetY);
+    }
+
+    public PhaseBuilder historyImage(Item item, float scale, float offsetX, float offsetY) {
+        return historyImage(new ItemStack(Objects.requireNonNull(item)), scale, offsetX, offsetY);
+    }
+
+    public PhaseBuilder historyImage(ItemStack stack, float scale) {
+        return historyImage(stack, scale, 0f, -2f);
+    }
+
+    public PhaseBuilder historyImage(ItemStack stack, float offsetX, float offsetY) {
+        return historyImage(stack, 1.0f, offsetX, offsetY);
+    }
+
+    public PhaseBuilder historyImage(ItemStack stack, float scale, float offsetX, float offsetY) {
+        VisualAsset asset = VisualAsset.builder()
+                .item(Objects.requireNonNull(stack))
+                .scale(scale)
+                .offset(offsetX, offsetY)
+                .build();
+        visualConfigBuilder.splash(SplashType.QUEST_DETAIL, asset);
+        return this;
+    }
+
+    public PhaseBuilder historyImage(ItemStack stack) {
+        return historyImage(stack, 1.0f);
     }
 
     public PhaseBuilder useQuestSplashPresentation(boolean useQuestSplashPresentation) {
