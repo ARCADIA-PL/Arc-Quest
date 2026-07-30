@@ -43,8 +43,10 @@ final class QuestHistoryImageRenderer {
         if (asset.item() != null && !asset.item().isEmpty()) {
             renderLoadingBackground(graphics, x, y, width, height, alpha, themeColor, false);
             int size = Math.min(width, height) - 14;
-            QuestIconRenderer.renderIcon(graphics, asset, x + (width - size) / 2, y + (height - size) / 2,
-                    size, size, alpha * (blurred ? 0.45f : 1f));
+            int iconX = x + (width - size) / 2;
+            int iconY = y + (height - size) / 2;
+            if (blurred) renderBlurredItem(graphics, asset, iconX, iconY, size, alpha);
+            else QuestIconRenderer.renderIcon(graphics, asset, iconX, iconY, size, size, alpha);
             return RenderResult.DRAWN;
         }
 
@@ -62,8 +64,8 @@ final class QuestHistoryImageRenderer {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         if (blurred) {
-            renderBlurred(graphics, texture, x, y, width, height, uv, info, asset, alpha);
-            graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x05070A, Math.round(112 * alpha)));
+            renderLowResolution(graphics, texture, x, y, width, height, uv, info, asset, alpha);
+            graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x05070A, Math.round(128 * alpha)));
         } else {
             applyTint(asset, alpha);
             blit(graphics, texture, x, y, width, height, uv, info);
@@ -73,16 +75,38 @@ final class QuestHistoryImageRenderer {
         return RenderResult.DRAWN;
     }
 
-    private static void renderBlurred(GuiGraphics graphics, ResourceLocation texture, int x, int y, int width, int height,
-                                      UvRect uv, ImageInfo info, VisualAsset asset, float alpha) {
-        float du = 1.35f / info.width();
-        float dv = 1.35f / info.height();
-        float sampleAlpha = alpha * 0.16f;
-        applyTint(asset, sampleAlpha);
-        for (int sampleY = -1; sampleY <= 1; sampleY++) {
-            for (int sampleX = -1; sampleX <= 1; sampleX++) {
-                UvRect shifted = uv.shifted(sampleX * du, sampleY * dv);
-                blit(graphics, texture, x, y, width, height, shifted, info);
+    private static void renderLowResolution(GuiGraphics graphics, ResourceLocation texture, int x, int y,
+                                            int width, int height, UvRect uv, ImageInfo info,
+                                            VisualAsset asset, float alpha) {
+        int columns = 16;
+        int rows = 10;
+        applyTint(asset, alpha);
+        for (int row = 0; row < rows; row++) {
+            int top = y + row * height / rows;
+            int bottom = y + (row + 1) * height / rows;
+            float sampleV = uv.v() + uv.height() * (row + 0.5f) / rows;
+            int sourceY = Math.max(0, Math.min(info.height() - 1, Math.round(sampleV * (info.height() - 1))));
+            for (int column = 0; column < columns; column++) {
+                int left = x + column * width / columns;
+                int right = x + (column + 1) * width / columns;
+                float sampleU = uv.u() + uv.width() * (column + 0.5f) / columns;
+                int sourceX = Math.max(0, Math.min(info.width() - 1, Math.round(sampleU * (info.width() - 1))));
+                graphics.blit(texture, left, top, right - left, bottom - top,
+                        sourceX, sourceY, 1, 1, info.width(), info.height());
+            }
+        }
+    }
+
+    private static void renderBlurredItem(GuiGraphics graphics, VisualAsset asset, int x, int y, int size,
+                                          float alpha) {
+        int radius = 3;
+        for (int sampleY = -radius; sampleY <= radius; sampleY++) {
+            for (int sampleX = -radius; sampleX <= radius; sampleX++) {
+                graphics.pose().pushPose();
+                graphics.pose().translate(sampleX * 5.5f, sampleY * 5.5f, 0f);
+                QuestIconRenderer.renderIcon(graphics, asset, x, y, size, size,
+                        alpha * 0.075f);
+                graphics.pose().popPose();
             }
         }
     }

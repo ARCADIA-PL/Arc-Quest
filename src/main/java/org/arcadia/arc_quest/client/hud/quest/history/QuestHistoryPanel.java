@@ -24,12 +24,17 @@ import java.util.Map;
 
 public final class QuestHistoryPanel {
 
+    private static final int SCREEN_DIM_ALPHA = 24;
+    private static final int PANEL_BACKGROUND_ALPHA = 176;
+
     private static final int PANEL_W = 780;
-    private static final int PANEL_H = 350;
+    private static final int PANEL_H = 380;
     private static final int TOP_BAR_H = 24;
     private static final int TREE_MARGIN = 5;
-    private static final float MIN_ZOOM = 0.45f;
+    private static final int DETAIL_VERTICAL_MARGIN = 16;
+    private static final float MIN_ZOOM = 0.52f;
     private static final float MAX_ZOOM = 1.55f;
+    private static final float DEFAULT_ZOOM = 1.15f;
     private static final float ENTER_TIME = 0.7f;
     private static final float EXIT_TIME = 0.5f;
     private static final float FOCUS_DELAY_TIME = 0.6f;
@@ -56,6 +61,7 @@ public final class QuestHistoryPanel {
     private static float targetZoom = 1f;
     private static float targetPanX;
     private static float targetPanY;
+    private static float titleVisibility = 1f;
     private static double lastDragX;
     private static double lastDragY;
 
@@ -77,14 +83,15 @@ public final class QuestHistoryPanel {
         enterTimer = 0f;
         exitTimer = 0f;
         lastRenderMs = System.currentTimeMillis();
-        zoom = 1f;
+        zoom = DEFAULT_ZOOM;
         panX = 0f;
         panY = 0f;
-        targetZoom = 1f;
+        targetZoom = DEFAULT_ZOOM;
         targetPanX = 0f;
         targetPanY = 0f;
         DETAIL_PANEL.reset();
         QuestHistoryNodeRenderer.reset();
+        titleVisibility = 1f;
         buildGraphData();
         fitCameraToGraph(PANEL_W - TREE_MARGIN * 2, PANEL_H - TOP_BAR_H - TREE_MARGIN * 2);
         pendingFocusActive = true;
@@ -125,7 +132,7 @@ public final class QuestHistoryPanel {
 
         float localX = (float) ((mouseX - currentDrawX) / currentScale);
         float localY = (float) ((mouseY - currentDrawY) / currentScale);
-        if (DETAIL_PANEL.mouseClicked(localX, localY, PANEL_W - 3, TOP_BAR_H, PANEL_H - TOP_BAR_H, button)) {
+        if (DETAIL_PANEL.mouseClicked(localX, localY, PANEL_W - 3, detailTop(), detailHeight(), button)) {
             return true;
         }
 
@@ -139,6 +146,7 @@ public final class QuestHistoryPanel {
 
         QuestHistoryNodeData clicked = findNodeAt(localX, localY, tree);
         if (clicked != null) {
+            if (!clicked.reached()) return true;
             DETAIL_PANEL.select(clicked);
             if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) focusOnNode(clicked.id(), true);
             else ensureNodeVisible(clicked);
@@ -180,7 +188,7 @@ public final class QuestHistoryPanel {
         if (!active || closing) return false;
         float localX = (float) ((mouseX - currentDrawX) / currentScale);
         float localY = (float) ((mouseY - currentDrawY) / currentScale);
-        if (DETAIL_PANEL.mouseScrolled(localX, localY, delta, PANEL_W - 3, TOP_BAR_H, PANEL_H - TOP_BAR_H)) {
+        if (DETAIL_PANEL.mouseScrolled(localX, localY, delta, PANEL_W - 3, detailTop(), detailHeight())) {
             return true;
         }
         TreeBounds tree = treeBounds();
@@ -208,7 +216,7 @@ public final class QuestHistoryPanel {
         DETAIL_PANEL.update(deltaTime);
         updateDelayedFocus(deltaTime);
 
-        float finalScale = Math.min((screenWidth * 0.94f) / PANEL_W, (screenHeight * 0.76f) / PANEL_H);
+        float finalScale = Math.min((screenWidth * 0.95f) / PANEL_W, (screenHeight * 0.82f) / PANEL_H);
         float baseX = screenWidth / 2f - PANEL_W * finalScale / 2f;
         float baseY = screenHeight / 2f - PANEL_H * finalScale / 2f;
         AnimationFrame frame = updatePanelAnimation(deltaTime, finalScale, baseX, baseY);
@@ -225,7 +233,7 @@ public final class QuestHistoryPanel {
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 4500);
         graphics.fill(-1000, -1000, screenWidth + 1000, screenHeight + 1000,
-                HudAnimUtil.withAlpha(0x000000, Math.round(38 * frame.alpha())));
+                HudAnimUtil.withAlpha(0x000000, Math.round(SCREEN_DIM_ALPHA * frame.alpha())));
         enableScissor(graphics, scissorX1, (int) (currentDrawY - 10), scissorX2,
                 (int) (currentDrawY + PANEL_H * currentScale + 10));
         graphics.pose().pushPose();
@@ -242,7 +250,8 @@ public final class QuestHistoryPanel {
         int alpha = Math.round(255 * alphaFactor);
         float localX = (mouseX - currentDrawX) / currentScale;
         float localY = (mouseY - currentDrawY) / currentScale;
-        graphics.fill(3, 0, PANEL_W, PANEL_H, HudAnimUtil.withAlpha(0x05060A, Math.round(225 * alphaFactor)));
+        graphics.fill(3, 0, PANEL_W, PANEL_H,
+                HudAnimUtil.withAlpha(0x05060A, Math.round(PANEL_BACKGROUND_ALPHA * alphaFactor)));
         drawFrame(graphics, 3, 0, PANEL_W - 3, PANEL_H, 1,
                 HudAnimUtil.withAlpha(0xCCCCCC, Math.round(102 * alphaFactor)));
         HudRenderUtil.drawCyberneticEdge(graphics, 0, 0, PANEL_H, themeColor, alpha);
@@ -257,13 +266,14 @@ public final class QuestHistoryPanel {
         zoom = HudAnimUtil.smoothExp(zoom, targetZoom, 15f, deltaTime);
         panX = HudAnimUtil.smoothExp(panX, targetPanX, 15f, deltaTime);
         panY = HudAnimUtil.smoothExp(panY, targetPanY, 15f, deltaTime);
+        titleVisibility = HudAnimUtil.smoothExp(titleVisibility, zoom >= 0.68f ? 1f : 0f, 12f, deltaTime);
         TreeBounds tree = treeBounds();
         renderGrid(graphics, tree, alphaFactor);
         renderTree(graphics, font, tree, localX, localY, alpha, alphaFactor, deltaTime);
 
         QuestRuntimeData runtime = ClientQuestCache.INSTANCE.getActiveQuest(questId);
-        DETAIL_PANEL.render(graphics, font, runtime, PANEL_W - 3, TOP_BAR_H, PANEL_H - TOP_BAR_H,
-                themeColor, alphaFactor, currentDrawX, currentDrawY, currentScale);
+        DETAIL_PANEL.render(graphics, font, runtime, PANEL_W - 3, detailTop(), detailHeight(),
+                themeColor, alphaFactor, currentDrawX, currentDrawY, currentScale, localX, localY, deltaTime);
     }
 
     private static void renderTree(GuiGraphics graphics, Font font, TreeBounds tree, float mouseX, float mouseY,
@@ -286,11 +296,14 @@ public final class QuestHistoryPanel {
             }
             boolean inTree = tree.contains(mouseX, mouseY);
             for (QuestHistoryNodeData node : renderNodes) {
-                boolean hovered = inTree && isInsideNode(mouseX, mouseY, tree, node);
+                boolean hovered = node.reached() && inTree && isInsideNode(mouseX, mouseY, tree, node);
+                if (hovered && Minecraft.getInstance().screen instanceof QuestJournalScreen journalScreen) {
+                    journalScreen.requestPointerCursor();
+                }
                 graphics.pose().pushPose();
                 graphics.pose().translate(node.x(), node.y(), 2f);
                 QuestHistoryNodeRenderer.render(graphics, font, node, hovered, DETAIL_PANEL.isSelected(node.id()),
-                        themeColor, alpha, alphaFactor, deltaTime);
+                        themeColor, alphaFactor, titleVisibility, deltaTime);
                 graphics.pose().popPose();
             }
         }
@@ -341,15 +354,14 @@ public final class QuestHistoryPanel {
         int minY = Integer.MAX_VALUE;
         int maxY = Integer.MIN_VALUE;
         for (QuestHistoryNodeData node : renderNodes) {
-            minX = Math.min(minX, node.x() - halfWidth);
-            maxX = Math.max(maxX, node.x() + halfWidth);
+            minX = Math.min(minX, node.x() - halfWidth - QuestHistoryNodeRenderer.VISUAL_LEFT_OVERHANG);
+            maxX = Math.max(maxX, node.x() + halfWidth + QuestHistoryNodeRenderer.VISUAL_RIGHT_OVERHANG);
             minY = Math.min(minY, node.y() - halfHeight);
-            maxY = Math.max(maxY, node.y() + halfHeight);
+            maxY = Math.max(maxY, node.y() + halfHeight + QuestHistoryNodeRenderer.VISUAL_BOTTOM_OVERHANG);
         }
         int graphWidth = Math.max(1, maxX - minX);
         int graphHeight = Math.max(1, maxY - minY);
-        targetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM,
-                Math.min(viewWidth / (float) (graphWidth + 48), viewHeight / (float) (graphHeight + 48))));
+        targetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, DEFAULT_ZOOM));
         targetPanX = (viewWidth - graphWidth * targetZoom) / 2f - minX * targetZoom;
         targetPanY = (viewHeight - graphHeight * targetZoom) / 2f - minY * targetZoom;
         zoom = targetZoom;
@@ -446,6 +458,14 @@ public final class QuestHistoryPanel {
     private static TreeBounds treeBounds() {
         int width = Math.max(120, PANEL_W - TREE_MARGIN * 2 - DETAIL_PANEL.getReservedWidth());
         return new TreeBounds(TREE_MARGIN, TOP_BAR_H + 3, width, PANEL_H - TOP_BAR_H - TREE_MARGIN - 3);
+    }
+
+    private static int detailTop() {
+        return TOP_BAR_H + DETAIL_VERTICAL_MARGIN;
+    }
+
+    private static int detailHeight() {
+        return PANEL_H - detailTop() - DETAIL_VERTICAL_MARGIN;
     }
 
     private static QuestDefinition getDefinition() {

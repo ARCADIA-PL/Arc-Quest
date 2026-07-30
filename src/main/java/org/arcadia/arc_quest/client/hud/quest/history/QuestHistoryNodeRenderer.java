@@ -13,7 +13,13 @@ final class QuestHistoryNodeRenderer {
 
     static final int CARD_WIDTH = 112;
     static final int CARD_HEIGHT = 63;
-    private static final int LABEL_HEIGHT = 16;
+    static final int VISUAL_LEFT_OVERHANG = 6;
+    static final int VISUAL_RIGHT_OVERHANG = 4;
+    static final int VISUAL_BOTTOM_OVERHANG = 8;
+    private static final int LABEL_HEIGHT = 12;
+    private static final int LABEL_WIDTH = 80;
+    private static final int LABEL_ACCENT_WIDTH = 3;
+    private static final float LABEL_SCALE = 0.82f;
     private static final Map<String, Float> HOVER_PROGRESS = new HashMap<>();
 
     private QuestHistoryNodeRenderer() {
@@ -24,11 +30,14 @@ final class QuestHistoryNodeRenderer {
     }
 
     static void render(GuiGraphics graphics, Font font, QuestHistoryNodeData node, boolean hovered, boolean selected,
-                       int themeColor, int alpha, float alphaFactor, float deltaTime) {
+                       int themeColor, float alphaFactor, float titleVisibility, float deltaTime) {
         float hover = HOVER_PROGRESS.getOrDefault(node.id(), 0f);
         hover = HudAnimUtil.smoothExp(hover, hovered || selected ? 1f : 0f, 14f, deltaTime);
         HOVER_PROGRESS.put(node.id(), hover);
 
+        float lockedOpacity = node.reached() ? 1f : Math.max(0.22f, 0.58f - node.depth() * 0.055f);
+        float cardAlphaFactor = alphaFactor * lockedOpacity;
+        int cardAlpha = Math.round(255 * cardAlphaFactor);
         int stateColor = node.completed() ? 0x69E79A : node.active() ? themeColor : 0x68717D;
         float pulse = node.active() ? 0.5f + 0.5f * (float) Math.sin(Util.getMillis() / 420.0) : 0f;
         float scale = 1f + hover * 0.035f + pulse * 0.008f;
@@ -39,40 +48,54 @@ final class QuestHistoryNodeRenderer {
         graphics.pose().scale(scale, scale, 1f);
 
         graphics.fill(x + 4, y + 4, x + CARD_WIDTH + 5, y + CARD_HEIGHT + 5,
-                HudAnimUtil.withAlpha(0x000000, Math.round(95 * alphaFactor)));
+                HudAnimUtil.withAlpha(0x000000, Math.round(95 * cardAlphaFactor)));
         drawFrame(graphics, x - 3, y - 3, CARD_WIDTH, CARD_HEIGHT, 1,
-                HudAnimUtil.withAlpha(0x3D4652, Math.round((80 + hover * 55) * alphaFactor)));
+                HudAnimUtil.withAlpha(0x3D4652, Math.round((80 + hover * 55) * cardAlphaFactor)));
         graphics.fill(x, y, x + CARD_WIDTH, y + CARD_HEIGHT,
-                HudAnimUtil.withAlpha(0x0A0D12, Math.round(245 * alphaFactor)));
+                HudAnimUtil.withAlpha(0x0A0D12, Math.round(245 * cardAlphaFactor)));
 
         QuestHistoryImageRenderer.RenderResult imageResult = QuestHistoryImageRenderer.renderCover(
                 graphics, node.image(), x + 2, y + 2, CARD_WIDTH - 4, CARD_HEIGHT - 4,
-                alphaFactor, !node.reached(), themeColor);
+                cardAlphaFactor, !node.reached(), themeColor);
         if (imageResult == QuestHistoryImageRenderer.RenderResult.UNAVAILABLE) {
-            renderFallback(graphics, font, node.reached(), x, y, stateColor, alpha);
+            renderFallback(graphics, font, node.reached(), x, y, stateColor, cardAlpha);
         } else if (!node.reached()) {
-            renderQuestionMark(graphics, font, 0, -5, alpha);
+            renderQuestionMark(graphics, font, 0, -5, cardAlpha);
         }
 
-        graphics.fill(x + 2, y + CARD_HEIGHT - LABEL_HEIGHT - 2, x + CARD_WIDTH - 2, y + CARD_HEIGHT - 2,
-                HudAnimUtil.withAlpha(0x07090D, Math.round((218 + hover * 20) * alphaFactor)));
-        graphics.fill(x + 2, y + CARD_HEIGHT - LABEL_HEIGHT - 2, x + 5, y + CARD_HEIGHT - 2,
-                HudAnimUtil.withAlpha(stateColor, alpha));
-
-        String label = font.plainSubstrByWidth(node.displayName().getString(), CARD_WIDTH - 18);
-        float textScale = 0.72f;
-        graphics.pose().pushPose();
-        graphics.pose().translate(x + 9, y + CARD_HEIGHT - LABEL_HEIGHT + 1, 2f);
-        graphics.pose().scale(textScale, textScale, 1f);
-        graphics.drawString(font, label, 0, 0, HudAnimUtil.withAlpha(0xF0F3F7, alpha), false);
-        graphics.pose().popPose();
-
         int frameColor = selected ? 0xFFFFFF : hovered ? stateColor : 0x89939F;
-        int frameAlpha = Math.round((selected ? 255 : 115 + hover * 110) * alphaFactor);
+        int frameAlpha = Math.round((selected ? 255 : 115 + hover * 110) * cardAlphaFactor);
         drawFrame(graphics, x, y, CARD_WIDTH, CARD_HEIGHT, selected ? 2 : 1,
                 HudAnimUtil.withAlpha(frameColor, frameAlpha));
         if (selected) drawSelectionCorners(graphics, x - 3, y - 3, CARD_WIDTH + 6, CARD_HEIGHT + 6,
-                HudAnimUtil.withAlpha(stateColor, alpha));
+                HudAnimUtil.withAlpha(stateColor, cardAlpha));
+
+        float titleAlphaFactor = cardAlphaFactor * titleVisibility;
+        int labelAlpha = Math.round(cardAlpha * titleVisibility);
+        if (labelAlpha > 4) {
+            int labelX = x - 6;
+            int labelY = y + CARD_HEIGHT - 7;
+            int backgroundAlpha = Math.round((100 + hover * 16) * titleAlphaFactor);
+            graphics.fill(labelX, labelY, labelX + LABEL_WIDTH, labelY + LABEL_HEIGHT,
+                    HudAnimUtil.withAlpha(0x07090D, backgroundAlpha));
+            int labelBorderColor = HudAnimUtil.withAlpha(stateColor, Math.round(labelAlpha * 0.82f));
+            graphics.fill(labelX, labelY, labelX + 1, labelY + LABEL_HEIGHT, labelBorderColor);
+            graphics.fill(labelX, labelY + LABEL_HEIGHT - 1,
+                    labelX + LABEL_WIDTH, labelY + LABEL_HEIGHT, labelBorderColor);
+            graphics.fill(labelX + 2, labelY + 2, labelX + 2 + LABEL_ACCENT_WIDTH, labelY + LABEL_HEIGHT - 2,
+                    HudAnimUtil.withAlpha(stateColor, labelAlpha));
+
+            int textX = labelX + LABEL_ACCENT_WIDTH + 8;
+            int textRight = labelX + LABEL_WIDTH - 7;
+            int maxLabelWidth = Math.round((textRight - textX) / LABEL_SCALE);
+            String label = marqueeText(font, node.displayName().getString(), maxLabelWidth);
+            graphics.pose().pushPose();
+            graphics.pose().translate(textX,
+                    labelY + (LABEL_HEIGHT - font.lineHeight * LABEL_SCALE) / 2f, 3f);
+            graphics.pose().scale(LABEL_SCALE, LABEL_SCALE, 1f);
+            graphics.drawString(font, label, 0, 0, HudAnimUtil.withAlpha(0xF0F3F7, labelAlpha), false);
+            graphics.pose().popPose();
+        }
 
         graphics.pose().popPose();
     }
@@ -100,6 +123,14 @@ final class QuestHistoryNodeRenderer {
         graphics.drawCenteredString(font, "?", 0, -font.lineHeight / 2,
                 HudAnimUtil.withAlpha(0xFFFFFF, Math.min(alpha, 235)));
         graphics.pose().popPose();
+    }
+
+    private static String marqueeText(Font font, String text, int maxWidth) {
+        if (font.width(text) <= maxWidth || text.isEmpty()) return text;
+        String loop = text + "   ";
+        int offset = (int) ((Util.getMillis() / 170L) % loop.length());
+        String shifted = loop.substring(offset) + loop.substring(0, offset);
+        return font.plainSubstrByWidth(shifted, maxWidth);
     }
 
     private static void drawSelectionCorners(GuiGraphics graphics, int x, int y, int width, int height, int color) {
