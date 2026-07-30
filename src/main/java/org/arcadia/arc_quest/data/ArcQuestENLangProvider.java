@@ -88,7 +88,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiTab("journal", "completed", "COMPLETED");
         addGuiTab("journal", "failed", "FAILED");
         addGuiTab("journal", "history", "HISTORY");
-        addGuiTab("journal", "guide", "GUIDE");
+        addGuiTab("journal", "guide", "PLAY GUIDE");
 
         // ── Journal Sections ──
         addGuiSection("journal", "current_phase", "▸ PHASE: %s");
@@ -178,6 +178,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiLabel("journal", "click_to_submit", "Click to submit items");
         addGuiLabel("journal", "story_archive", "Phase Story");
         addGuiLabel("journal", "read_story", "Read");
+        addGuiLabel("journal", "unread_phase_story", "[ Click to view phase story ]");
         addGuiLabel("journal", "objective_complete_prefix", "§a✔ ");
         addGuiLabel("journal", "objective_active_prefix", "§f○ ");
         addGuiLabel("journal", "pending_phase_prefix", "Awaiting confirmation: ");

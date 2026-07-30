@@ -88,7 +88,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiTab("journal", "completed", "已完成");
         addGuiTab("journal", "failed", "已失败");
         addGuiTab("journal", "history", "历史记录");
-        addGuiTab("journal", "guide", "指南");
+        addGuiTab("journal", "guide", "游玩指南");
         // ── Journal Sections ──
         addGuiSection("journal", "current_phase", "▸ 当前阶段: %s");
         addGuiSection("journal", "parallel_lanes", "并行阶段");
@@ -175,6 +175,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.message.quest_reason.unknown", "未知原因");
         addGuiLabel("journal", "story_archive", "阶段叙事");
         addGuiLabel("journal", "read_story", "阅读");
+        addGuiLabel("journal", "unread_phase_story", "【点击查看阶段叙事】");
         addGuiLabel("journal", "click_to_submit", "点击提交物品");
         addGuiLabel("journal", "objective_complete_prefix", "§a✔ ");
         addGuiLabel("journal", "objective_active_prefix", "§f○ ");
