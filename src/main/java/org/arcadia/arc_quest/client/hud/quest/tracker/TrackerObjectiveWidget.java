@@ -111,7 +111,7 @@ public class TrackerObjectiveWidget {
             float displayRatio = animProgressRatio[i];
 
             ObjectiveTextCache cachedText = getTextCache(obj, progress, required, font);
-            boolean showProgressText = obj.getType().isCounting();
+            boolean showProgressText = !obj.isBooleanProgress();
             int maxObjTextWidth = objectiveTextWidth(cachedText, obj, font);
             List<FormattedCharSequence> objectiveLines = getObjectiveLines(cachedText, complete, maxObjTextWidth, font);
             int textBlockHeight = rowTextHeight(objectiveLines, font);
@@ -257,7 +257,8 @@ public class TrackerObjectiveWidget {
     private int objectiveTextWidth(ObjectiveTextCache cache, ObjectiveEntry objective, Font font) {
         int contentWidth = TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
                 - TrackerConstants.PADDING * 2;
-        int progressWidth = objective.getType().isCounting() ? (int) (cache.progressWidth * 0.8f) + 8 : 0;
+        int progressWidth = !objective.isBooleanProgress()
+                ? (int) (cache.progressWidth * 0.8f) + 8 : 0;
         return Math.max(10, (int) ((contentWidth - progressWidth) / 0.85f));
     }
 
