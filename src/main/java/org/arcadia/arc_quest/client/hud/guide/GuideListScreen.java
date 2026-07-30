@@ -13,6 +13,7 @@ import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
+import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
@@ -22,6 +23,7 @@ import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,9 +46,19 @@ public final class GuideListScreen extends Screen {
     private float dt = 0f;
     private long lastRenderTime = 0;
     private int currentThemeColor = 0xFFFFFF;
+    @Nullable
+    private Screen parentScreen;
+    private boolean triggeredParentClose;
+    private boolean triggeredParentReopen;
 
     public GuideListScreen() {
+        this(null, null);
+    }
+
+    private GuideListScreen(@Nullable Screen parentScreen, @Nullable ResourceLocation initialCategoryId) {
         super(Component.translatable("gui.arc_quest.guide_list.title"));
+        this.parentScreen = parentScreen;
+        selectedCategoryId = initialCategoryId;
     }
 
     public float getUiScale() {
@@ -74,11 +86,18 @@ public final class GuideListScreen extends Screen {
         if (mc != null) mc.setScreen(new GuideListScreen());
     }
 
+    public static void openFromJournal(QuestJournalScreen journalScreen, @Nullable ResourceLocation categoryId) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null) mc.setScreen(new GuideListScreen(journalScreen, categoryId));
+    }
+
     @Override
     protected void init() {
         super.init();
         transitionAlpha = 0f;
         isClosing = false;
+        triggeredParentClose = false;
+        triggeredParentReopen = false;
         lastRenderTime = 0;
         rebuildSelection();
         refreshMediaBinding();
@@ -194,8 +213,13 @@ public final class GuideListScreen extends Screen {
         if (dt > 0.1f) dt = 0.1f;
 
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, dt);
+        renderParentScreen(g, partialTick);
         if (isClosing && transitionAlpha <= 0.01f) {
-            if (minecraft != null) minecraft.setScreen(null);
+            if (minecraft != null) {
+                Screen restoreScreen = parentScreen;
+                parentScreen = null;
+                minecraft.setScreen(restoreScreen);
+            }
             return;
         }
 
@@ -274,9 +298,14 @@ public final class GuideListScreen extends Screen {
     }
 
     List<GuideCategory> visibleCategories() {
+        return visibleCategoriesSnapshot();
+    }
+
+    public static List<GuideCategory> visibleCategoriesSnapshot() {
         List<GuideCategory> out = new ArrayList<>();
         for (GuideCategory cat : GuideRegistry.getAllCategories())
-            if (GuideRegistry.getAll().stream().anyMatch(g -> isVisibleGuide(g) && g.getCategory().getId().equals(cat.getId())))
+            if (GuideRegistry.getAll().stream().anyMatch(g -> isVisibleGuideSnapshot(g)
+                    && g.getCategory().getId().equals(cat.getId())))
                 out.add(cat);
         out.sort(Comparator.comparingInt(GuideCategory::getSortOrder).thenComparing(c -> c.getId().toString()));
         return out;
@@ -292,7 +321,32 @@ public final class GuideListScreen extends Screen {
     }
 
     boolean isVisibleGuide(GuideDefinition guide) {
-        return guide != null && !guide.isHidden() && ClientGuideCache.INSTANCE.isUnlocked(guide.getId()) && guide.getCategory() != null;
+        return isVisibleGuideSnapshot(guide);
+    }
+
+    boolean shouldRenderOpaqueItems() {
+        return effectiveAlpha >= 0.38f;
+    }
+
+    private static boolean isVisibleGuideSnapshot(GuideDefinition guide) {
+        return guide != null && !guide.isHidden()
+                && ClientGuideCache.INSTANCE.isUnlocked(guide.getId())
+                && guide.getCategory() != null;
+    }
+
+    private void renderParentScreen(GuiGraphics graphics, float partialTick) {
+        if (parentScreen == null) return;
+        if (parentScreen instanceof QuestJournalScreen journalScreen) {
+            if (!triggeredParentClose && !isClosing) {
+                journalScreen.onClose();
+                triggeredParentClose = true;
+            }
+            if (isClosing && !triggeredParentReopen) {
+                journalScreen.triggerEntranceAnimation();
+                triggeredParentReopen = true;
+            }
+        }
+        parentScreen.render(graphics, -999, -999, partialTick);
     }
 
     boolean hasUnreadGuide(GuideCategory category) {
