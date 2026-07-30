@@ -2,6 +2,7 @@ package org.arcadia.arc_quest;
 
 import com.mojang.logging.LogUtils;
 import net.createmod.ponder.foundation.PonderIndex;
+import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -19,6 +20,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashOverlay;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashOverlay;
@@ -101,6 +103,11 @@ public class Arc_Quest {
     public static class ClientForgeEvents {
         @SubscribeEvent
         public static void onRenderGuiOverlayPre(RenderGuiOverlayEvent.Pre event) {
+            if (event.getOverlay().id().equals(VanillaGuiOverlay.CHAT_PANEL.id())
+                    && Minecraft.getInstance().screen instanceof DialogueScreen) {
+                event.setCanceled(true);
+                return;
+            }
             if (QuestSplashRenderer.isActive()) {
                 if (!(event.getOverlay().overlay() instanceof QuestSplashOverlay)) {
                     event.setCanceled(true);
