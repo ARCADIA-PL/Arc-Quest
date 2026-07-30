@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 
@@ -107,6 +108,7 @@ public class JournalTabPanel {
     }
 
     public boolean mouseClicked(double mx, double my, int tabBaseX, int rightEdgeX) {
+        if (QuestHistoryPanel.isActive()) return true;
         int tabY = 38;
         int currentTabX = tabBaseX;
 
