@@ -41,12 +41,12 @@ final class QuestHistoryImageRenderer {
         if (asset == null || !asset.enabled()) return RenderResult.UNAVAILABLE;
         refreshCacheOwner();
         if (asset.item() != null && !asset.item().isEmpty()) {
+            if (blurred) return RenderResult.UNAVAILABLE;
             renderLoadingBackground(graphics, x, y, width, height, alpha, themeColor, false);
             int size = Math.min(width, height) - 14;
             int iconX = x + (width - size) / 2;
             int iconY = y + (height - size) / 2;
-            if (blurred) renderBlurredItem(graphics, asset, iconX, iconY, size, alpha);
-            else QuestIconRenderer.renderIcon(graphics, asset, iconX, iconY, size, size, alpha);
+            QuestIconRenderer.renderIcon(graphics, asset, iconX, iconY, size, size, alpha);
             return RenderResult.DRAWN;
         }
 
@@ -93,20 +93,6 @@ final class QuestHistoryImageRenderer {
                 int sourceX = Math.max(0, Math.min(info.width() - 1, Math.round(sampleU * (info.width() - 1))));
                 graphics.blit(texture, left, top, right - left, bottom - top,
                         sourceX, sourceY, 1, 1, info.width(), info.height());
-            }
-        }
-    }
-
-    private static void renderBlurredItem(GuiGraphics graphics, VisualAsset asset, int x, int y, int size,
-                                          float alpha) {
-        int radius = 3;
-        for (int sampleY = -radius; sampleY <= radius; sampleY++) {
-            for (int sampleX = -radius; sampleX <= radius; sampleX++) {
-                graphics.pose().pushPose();
-                graphics.pose().translate(sampleX * 5.5f, sampleY * 5.5f, 0f);
-                QuestIconRenderer.renderIcon(graphics, asset, x, y, size, size,
-                        alpha * 0.075f);
-                graphics.pose().popPose();
             }
         }
     }
