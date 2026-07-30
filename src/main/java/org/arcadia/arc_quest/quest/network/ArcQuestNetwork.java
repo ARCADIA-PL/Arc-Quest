@@ -271,7 +271,7 @@ public final class ArcQuestNetwork {
         PacketDistributor.sendToServer(new C2SSetTrackedQuestPacket(questId));
     }
 
-    public static void sendMarkPhaseStoryRead(String questId, String phaseId) {
+    public static void markPhaseStoryRead(String questId, String phaseId) {
         PacketDistributor.sendToServer(new C2SMarkPhaseStoryReadPacket(questId, phaseId));
     }
 
