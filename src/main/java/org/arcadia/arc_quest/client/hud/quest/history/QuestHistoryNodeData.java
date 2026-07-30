@@ -8,6 +8,7 @@ record QuestHistoryNodeData(
         String id,
         int x,
         int y,
+        int depth,
         boolean completed,
         boolean active,
         boolean reached,

@@ -18,8 +18,8 @@ import java.util.Set;
 final class QuestHistoryGraphBuilder {
 
     private static final List<SplashType> IMAGE_PRIORITY = List.of(
-            SplashType.PHASE_START,
             SplashType.QUEST_DETAIL,
+            SplashType.PHASE_START,
             SplashType.PHASE_COMPLETE,
             SplashType.QUEST_ACQUIRED,
             SplashType.QUEST_COMPLETED,
@@ -55,6 +55,7 @@ final class QuestHistoryGraphBuilder {
                         phaseId,
                         layer.getKey() * horizontalSpacing,
                         Math.round((index - (total - 1) / 2f) * verticalSpacing),
+                        layer.getKey(),
                         isCompleted,
                         isActive,
                         isCompleted || isActive,
