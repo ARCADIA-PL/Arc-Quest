@@ -153,6 +153,7 @@ public class JournalDetailControls {
                 return true;
             }
             if (bConfirm && mx >= confirmX && mx <= confirmX + btnW && my >= btnY && my <= btnY + btnH) {
+                screen.acknowledgeQuestChanges(entry.questId());
                 parent.notifyManualPhaseAdvance();
                 ArcQuestNetwork.sendQuestAction(C2SRequestQuestActionPacket.confirmPhaseAdvance(entry.questId(), runtime.getCurrentPendingManualAdvancePhaseId()));
                 screen.playClick();
