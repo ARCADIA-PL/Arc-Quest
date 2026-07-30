@@ -135,7 +135,7 @@ public final class GuideSplashRenderer {
         int textWidth = Math.max(30, x + width - 12 - contentX);
         List<FormattedCharSequence> titleLines = font.split(guide.getTitle(), textWidth);
         if (!titleLines.isEmpty()) {
-            graphics.drawString(font, titleLines.getFirst(), contentX, y + 28,
+            graphics.drawString(font, titleLines.get(0), contentX, y + 28,
                     HudAnimUtil.withAlpha(0xFFFFFF, a), true);
         }
         List<FormattedCharSequence> summaryLines = font.split(guide.getSummary(), textWidth);

@@ -2,7 +2,7 @@ package org.arcadia.arc_quest.api.event.guide;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.Event;
+import net.minecraftforge.eventbus.api.Event;
 
 /** Fired on the server when a player finishes reading every page of a guide. */
 public class GuideCompletedEvent extends Event {
