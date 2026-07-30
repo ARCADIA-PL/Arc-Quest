@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "6";
+    private static final String PROTOCOL_VERSION = "7";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -328,6 +328,14 @@ public final class ArcQuestNetwork {
                 S2CSyncTrackedQuestPacket::decode,
                 S2CSyncTrackedQuestPacket::handle
         );
+
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SMarkPhaseStoryReadPacket.class,
+                C2SMarkPhaseStoryReadPacket::encode,
+                C2SMarkPhaseStoryReadPacket::decode,
+                C2SMarkPhaseStoryReadPacket::handle
+        );
     }
 
     // ═══════════════════════════════════════════════════════
@@ -440,6 +448,10 @@ public final class ArcQuestNetwork {
 
     public static void sendTrackedQuestUpdate(@Nullable String questId) {
         CHANNEL.sendToServer(new C2SSetTrackedQuestPacket(questId));
+    }
+
+    public static void markPhaseStoryRead(String questId, String phaseId) {
+        CHANNEL.sendToServer(new C2SMarkPhaseStoryReadPacket(questId, phaseId));
     }
 
     public static void sendSubmitOffer(C2SSubmitOfferPacket packet) {

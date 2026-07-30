@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -25,16 +26,19 @@ public final class ArcQuestQuestState {
     private final Map<String, QuestRuntimeData> activeQuests;
     private final Set<String> completedQuests;
     private final Set<String> failedQuests;
+    private final Map<String, Set<String>> readPhaseStories;
     private final Map<String, QuestMarkerData> markers;
     private boolean dirty;
 
     public ArcQuestQuestState(Map<String, QuestRuntimeData> activeQuests,
                               Set<String> completedQuests,
                               Set<String> failedQuests,
+                              Map<String, Set<String>> readPhaseStories,
                               Map<String, QuestMarkerData> markers) {
         this.activeQuests = Objects.requireNonNull(activeQuests);
         this.completedQuests = Objects.requireNonNull(completedQuests);
         this.failedQuests = Objects.requireNonNull(failedQuests);
+        this.readPhaseStories = Objects.requireNonNull(readPhaseStories);
         this.markers = Objects.requireNonNull(markers);
     }
 
@@ -49,6 +53,26 @@ public final class ArcQuestQuestState {
     public void removeActiveQuest(String questId) {
         activeQuests.remove(questId);
         dirty = true;
+    }
+
+    public void resetQuest(String questId) {
+        activeQuests.remove(questId);
+        completedQuests.remove(questId);
+        failedQuests.remove(questId);
+        readPhaseStories.remove(questId);
+        dirty = true;
+    }
+
+    public boolean markPhaseStoryRead(String questId, String phaseId) {
+        if (questId == null || questId.isBlank() || phaseId == null || phaseId.isBlank()) return false;
+        boolean changed = readPhaseStories.computeIfAbsent(questId, ignored -> new LinkedHashSet<>()).add(phaseId);
+        if (changed) dirty = true;
+        return changed;
+    }
+
+    public boolean isPhaseStoryRead(String questId, String phaseId) {
+        Set<String> phaseIds = readPhaseStories.get(questId);
+        return phaseIds != null && phaseIds.contains(phaseId);
     }
 
     public void markCompleted(String questId) {
@@ -126,6 +150,17 @@ public final class ArcQuestQuestState {
         for (String id : failedQuests) failedList.add(StringTag.valueOf(id));
         root.put("FailedQuests", failedList);
 
+        ListTag readStoryList = new ListTag();
+        for (Map.Entry<String, Set<String>> entry : readPhaseStories.entrySet()) {
+            for (String phaseId : entry.getValue()) {
+                CompoundTag storyTag = new CompoundTag();
+                storyTag.putString("questId", entry.getKey());
+                storyTag.putString("phaseId", phaseId);
+                readStoryList.add(storyTag);
+            }
+        }
+        root.put("ReadPhaseStories", readStoryList);
+
         ListTag markerList = new ListTag();
         for (QuestMarkerData m : markers.values()) {
             CompoundTag t = new CompoundTag();
@@ -156,6 +191,7 @@ public final class ArcQuestQuestState {
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();
+        readPhaseStories.clear();
         markers.clear();
 
         ListTag activeList = root.getList("ActiveQuests", Tag.TAG_COMPOUND);
@@ -169,6 +205,16 @@ public final class ArcQuestQuestState {
 
         ListTag failedList = root.getList("FailedQuests", Tag.TAG_STRING);
         for (int i = 0; i < failedList.size(); i++) failedQuests.add(failedList.getString(i));
+
+        ListTag readStoryList = root.getList("ReadPhaseStories", Tag.TAG_COMPOUND);
+        int readStoryCount = Math.min(readStoryList.size(), 8192);
+        for (int i = 0; i < readStoryCount; i++) {
+            CompoundTag storyTag = readStoryList.getCompound(i);
+            String questId = storyTag.getString("questId");
+            String phaseId = storyTag.getString("phaseId");
+            if (questId.isBlank() || phaseId.isBlank() || questId.length() > 256 || phaseId.length() > 256) continue;
+            readPhaseStories.computeIfAbsent(questId, ignored -> new LinkedHashSet<>()).add(phaseId);
+        }
 
         ListTag markerList = root.getList("Markers", Tag.TAG_COMPOUND);
         for (int i = 0; i < markerList.size(); i++) {
@@ -219,6 +265,7 @@ public final class ArcQuestQuestState {
         activeQuests.clear();
         completedQuests.clear();
         failedQuests.clear();
+        readPhaseStories.clear();
         markers.clear();
         dirty = true;
     }
