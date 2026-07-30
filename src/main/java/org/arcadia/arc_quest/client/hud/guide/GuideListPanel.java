@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -130,6 +129,10 @@ public class GuideListPanel {
         screen.enableScissor(graphics, x, y, x + width - 6, y + height);
         int selectedIndex = getSelectedRowIndex();
         float effectiveAlpha = screen.getEffectiveAlpha();
+        if (effectiveAlpha <= 0.08f) {
+            graphics.disableScissor();
+            return;
+        }
 
         if (selectedIndex >= 0) {
             float selectedTop = getRowTop(selectedIndex);
@@ -206,11 +209,9 @@ public class GuideListPanel {
                 screen.getFont(), guide.getSummary(), (int) (maxTitleWidth / 0.72f));
         float titleY = hasSummary ? y + 2f : y + (rowHeight - screen.getFont().lineHeight) / 2f - 0.5f;
 
-        if (hasIcon) {
-            RenderSystem.setShaderColor(1f, 1f, 1f, rowAlpha);
+        if (hasIcon && screen.shouldRenderOpaqueItems()) {
             graphics.renderItem(guide.getVisualConfig().getIcon(), iconX,
                     y + Math.max(0, ((int) rowHeight - 16) / 2));
-            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         }
         graphics.drawString(screen.getFont(), displayTitle, titleX, (int) titleY, nameColor, false);
         if (hasSummary) {

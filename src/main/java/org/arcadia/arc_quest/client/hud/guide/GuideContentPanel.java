@@ -45,7 +45,7 @@ public class GuideContentPanel {
 
         float dAlpha = screen.getEffectiveAlpha();
         int safeA = (int) (255 * dAlpha);
-        if (safeA <= 8) return;
+        if (safeA <= 20) return;
 
         int scrollAreaY = y;
         int scrollAreaH = scrollAreaHeight(guide, h);
@@ -89,7 +89,9 @@ public class GuideContentPanel {
 
         lastMediaRect[0] = 0; lastMediaRect[1] = 0; lastMediaRect[2] = 0; lastMediaRect[3] = 0;
 
-        if (screen.getSelectedPageIndex() == 0 && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
+        if (screen.shouldRenderOpaqueItems()
+                && screen.getSelectedPageIndex() == 0
+                && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
             int iconSize = GuideConstants.INTRO_ICON_SIZE;
             int iconX = ((scrollAreaW - 24) - iconSize) / 2;
             g.pose().pushPose();

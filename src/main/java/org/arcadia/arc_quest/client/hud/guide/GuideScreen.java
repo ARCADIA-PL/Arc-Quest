@@ -345,7 +345,7 @@ public final class GuideScreen extends Screen {
         int panelY = getPanelY();
 
         int safeAlpha = (int) (255 * transitionAlpha);
-        if (safeAlpha <= 4) return;
+        if (safeAlpha <= 20) return;
 
         descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * 16f);
 
@@ -411,7 +411,9 @@ public final class GuideScreen extends Screen {
                     HudAnimUtil.withAlpha(0x000000, safeAlpha),
                     HudAnimUtil.withAlpha(0x333333, safeAlpha));
         }
-        if (currentPage == 0 && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
+        if (transitionAlpha >= 0.38f
+                && currentPage == 0
+                && guide.getVisualConfig().shouldRenderLargeIconOnIntro()) {
             g.pose().pushPose();
             g.pose().translate(textBaseX + contentW / 2f - GuideConstants.INTRO_ICON_SIZE / 2f,
                     mediaY + (mediaH - GuideConstants.INTRO_ICON_SIZE) / 2f, 0);
