@@ -286,6 +286,15 @@ public final class PhaseBuilder {
         return completeSplash(texture, 1.0f);
     }
 
+    public PhaseBuilder historyImage(ResourceLocation texture, float scale) {
+        visualConfigBuilder.splash(SplashType.QUEST_DETAIL, texture, scale);
+        return this;
+    }
+
+    public PhaseBuilder historyImage(ResourceLocation texture) {
+        return historyImage(texture, 1.0f);
+    }
+
     public PhaseBuilder useQuestSplashPresentation(boolean useQuestSplashPresentation) {
         visualConfigBuilder.useQuestSplashPresentation(useQuestSplashPresentation);
         return this;
