@@ -372,11 +372,13 @@ public class JournalDetailSinglePhase {
 
             int pColor = canSubmit ? HudAnimUtil.lerpColor(0x999999, 0xFFFFFF, hoverAnim) : 0x999999;
 
-            g.pose().pushPose();
-            g.pose().translate(objX + barW + 4, localY - 1, 0);
-            g.pose().scale(0.7f, 0.7f, 1f);
-            g.drawString(font, progress + " / " + required, 0, 0, HudAnimUtil.withAlpha(pColor, oA), false);
-            g.pose().popPose();
+            if (!phase.getObjectives().get(i).isBooleanProgress()) {
+                g.pose().pushPose();
+                g.pose().translate(objX + barW + 4, localY - 1, 0);
+                g.pose().scale(0.7f, 0.7f, 1f);
+                g.drawString(font, progress + " / " + required, 0, 0, HudAnimUtil.withAlpha(pColor, oA), false);
+                g.pose().popPose();
+            }
 
             localY += 12;
         }

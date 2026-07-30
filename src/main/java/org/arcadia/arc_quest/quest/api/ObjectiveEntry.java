@@ -103,6 +103,10 @@ public final class ObjectiveEntry {
         return requiredCount;
     }
 
+    public boolean isBooleanProgress() {
+        return !type.isCounting() || requiredCount <= 1;
+    }
+
     public int resolveRequiredCount(@Nullable ServerPlayer player) {
         if (player == null || countModifier == null) return requiredCount;
         return Math.max(1, countModifier.applyAsInt(player));

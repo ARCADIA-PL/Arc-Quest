@@ -628,7 +628,8 @@ public class JournalDetailParallelPhase {
                     int progress = runtime.getObjectiveProgress(phaseId, i), required = obj.getRequiredCount();
                     boolean complete = progress >= required;
                     int extraMargin = maxInnerScroll > 0 ? 8 : 0;
-                    String pr = progress + "/" + required;
+                    boolean showProgressText = !obj.isBooleanProgress();
+                    String pr = showProgressText ? progress + "/" + required : "";
 
                     boolean isOffer = obj.getType() == ObjectiveType.OFFER && progress < required;
                     boolean canUpload = screen.getCurrentTab() == JournalTypes.Tab.ACTIVE && isOffer;
@@ -674,7 +675,8 @@ public class JournalDetailParallelPhase {
                         displayText = targetName.isEmpty() ? submitBase : submitBase + " - " + targetName;
                     }
 
-                    int objMaxWidth = colW - 16 - contentShiftX - extraMargin - font.width(pr) - 6;
+                    int progressTextWidth = showProgressText ? font.width(pr) + 6 : 0;
+                    int objMaxWidth = colW - 16 - contentShiftX - extraMargin - progressTextWidth;
 
                     g.pose().pushPose();
                     if (hoverAnimOffer > 0.01f) {
@@ -689,7 +691,9 @@ public class JournalDetailParallelPhase {
                     }
 
                     drawScrollingString(g, font, displayText, cardX + 8 + contentShiftX, objY, objMaxWidth, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, objColor, Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absX2, absY2, intX1, intY1, intX2, intY2);
-                    g.drawString(font, pr, cardX + colW - 8 - extraMargin - font.width(pr), objY, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
+                    if (showProgressText) {
+                        g.drawString(font, pr, cardX + colW - 8 - extraMargin - font.width(pr), objY, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
+                    }
 
                     g.pose().popPose();
                     objY += OBJ_LINE_H;
