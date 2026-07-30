@@ -19,6 +19,7 @@ import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
@@ -83,6 +84,7 @@ public final class ClientEventHandler {
         QuestSplashRenderer.clear();
         GuideSplashRenderer.clear();
         GuidePopupOverlay.INSTANCE.clear();
+        QuestStoryPanel.clearClientSession();
         QuestHudOverlay.INSTANCE.clearClientSession();
     }
 
@@ -98,6 +100,7 @@ public final class ClientEventHandler {
         QuestSplashRenderer.clear();
         GuideSplashRenderer.clear();
         GuidePopupOverlay.INSTANCE.clear();
+        QuestStoryPanel.clearClientSession();
         QuestHudOverlay.INSTANCE.clearClientSession();
     }
 }

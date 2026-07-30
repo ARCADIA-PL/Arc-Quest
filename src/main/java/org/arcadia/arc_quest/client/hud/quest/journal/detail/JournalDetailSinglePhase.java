@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.detail;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -179,11 +180,15 @@ public class JournalDetailSinglePhase {
         g.pose().popPose();
         localY += 14;
 
-        if (phase.hasDescription()) {
+        if (phase.hasDescription() || phase.hasStory()) {
             boolean hasStory = phase.getStory() != null && !phase.getStory().getString().isEmpty();
-            float baseTextScale = 0.85f;
+            boolean unreadStory = hasStory && !QuestStoryPanel.hasBeenOpened(entry.questId(), phaseId);
+            String descriptionText = unreadStory
+                    ? Component.translatable("arc_quest.gui.journal.label.unread_phase_story").getString()
+                    : phase.getDescription().getString();
+            float baseTextScale = unreadStory ? 1.10f : 0.85f;
             int maxW = (int) ((scrollAreaW - 4) / baseTextScale);
-            List<String> phaseDescLines = getWrappedLines("desc:" + phaseId, phase.getDescription().getString(), maxW, font);
+            List<String> phaseDescLines = getWrappedLines("desc:" + phaseId + ":" + unreadStory, descriptionText, maxW, font);
 
             int unscaledLineSpacing = font.lineHeight + 4;
             int visualLineSpacing = (int) (unscaledLineSpacing * baseTextScale);
@@ -201,6 +206,7 @@ public class JournalDetailSinglePhase {
             boolean isHovered = hasStory && !panelsActive && mx >= absX && mx <= absX + hitW && my >= absY && my <= absY + hitH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
 
             descHoverAnim = HudAnimUtil.lerp(descHoverAnim, isHovered ? 1f : 0f, 0.2f, dt);
+            if (isHovered) screen.requestPointerCursor();
 
             if (isHovered) {
                 screen.setHoveredCustomTooltip(List.of(
@@ -215,9 +221,9 @@ public class JournalDetailSinglePhase {
             descHitBox[3] = hitH;
             currentDescPhaseId = hasStory ? phaseId : null;
 
-            // 如果悬停且包含剧情，文本放大且具有呼吸效果，略微染色
-            float breath = isHovered ? (float) (Math.sin(Util.getMillis() / 250.0) * 0.015f) : 0f;
-            float currentScale = baseTextScale + (0.02f * descHoverAnim) + breath;
+            float pulse = 0.5f - 0.5f * (float) Math.cos((Util.getMillis() % 2000L) / 2000f * Math.PI * 2.0);
+            float breathScale = unreadStory ? baseTextScale * 0.05f * pulse : 0f;
+            float currentScale = baseTextScale + breathScale + (0.20f * HudAnimUtil.easeOutCubic(descHoverAnim));
 
             g.pose().pushPose();
             // 设定枢轴点，使得放大时以中心左侧为原点，避免跳变
@@ -230,12 +236,28 @@ public class JournalDetailSinglePhase {
             g.pose().translate(0, localY, 0);
             g.pose().scale(baseTextScale, baseTextScale, 1f);
 
-            int descColor = HudAnimUtil.lerpColor(0xFFFFFF, activeTheme, descHoverAnim * 0.4f);
+            int descColor = HudAnimUtil.lerpColor(unreadStory ? 0xDCE5EE : 0xAAAAAA,
+                    activeTheme, HudAnimUtil.easeOutCubic(descHoverAnim));
 
             for (int i = 0; i < phaseDescLines.size(); i++) {
                 g.drawString(font, phaseDescLines.get(i), 0, i * unscaledLineSpacing, HudAnimUtil.withAlpha(descColor, safeA), false);
             }
             g.pose().popPose();
+
+            if (unreadStory && !phaseDescLines.isEmpty()) {
+                float diamondScale = 0.90f + 0.18f * pulse + 0.14f * descHoverAnim;
+                int diamondAlpha = (int) ((145 + 110 * pulse) * dAlpha);
+                int diamondColor = isHovered ? 0xFF3030 : 0xD93A4A;
+                float diamondX = Math.min(scrollAreaW - 8f,
+                        font.width(phaseDescLines.get(0)) * currentScale + 8f);
+                float diamondY = localY + blockH / 2f;
+                g.pose().pushPose();
+                g.pose().translate(diamondX, diamondY, 0);
+                g.pose().mulPose(Axis.ZP.rotationDegrees(45f));
+                g.pose().scale(diamondScale, diamondScale, 1f);
+                g.fill(-2, -2, 2, 2, HudAnimUtil.withAlpha(diamondColor, diamondAlpha));
+                g.pose().popPose();
+            }
 
             localY += blockH + 6;
         } else {

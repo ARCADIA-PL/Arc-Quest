@@ -17,7 +17,9 @@ import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class QuestStoryPanel {
 
@@ -46,6 +48,7 @@ public final class QuestStoryPanel {
 
     private static float prevHoverAnim = 0f;
     private static float nextHoverAnim = 0f;
+    private static final Set<StoryKey> openedStories = new HashSet<>();
 
     private QuestStoryPanel() {
     }
@@ -60,6 +63,7 @@ public final class QuestStoryPanel {
     public static void trigger(String qid, String pid) {
         questId = qid;
         phaseId = pid;
+        openedStories.add(new StoryKey(qid, pid));
         themeColor = ClientQuestCache.INSTANCE.getQuestThemeColor(qid, 0x5AD7FF);
         active = true;
         closing = false;
@@ -77,6 +81,16 @@ public final class QuestStoryPanel {
 
     public static boolean isActive() {
         return active;
+    }
+
+    public static boolean hasBeenOpened(String qid, String pid) {
+        return qid != null && pid != null && openedStories.contains(new StoryKey(qid, pid));
+    }
+
+    public static void clearClientSession() {
+        openedStories.clear();
+        active = false;
+        closing = false;
     }
 
     public static void close() {
@@ -386,5 +400,8 @@ public final class QuestStoryPanel {
             scale = s;
             lineHeight = lh;
         }
+    }
+
+    private record StoryKey(String questId, String phaseId) {
     }
 }
