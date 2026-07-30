@@ -186,7 +186,7 @@ public class JournalDetailSinglePhase {
             String descriptionText = unreadStory
                     ? Component.translatable("arc_quest.gui.journal.label.unread_phase_story").getString()
                     : phase.getDescription().getString();
-            float baseTextScale = unreadStory ? 1.10f : 0.85f;
+            float baseTextScale = unreadStory ? 0.98f : 0.85f;
             int maxW = (int) ((scrollAreaW - 4) / baseTextScale);
             List<String> phaseDescLines = getWrappedLines("desc:" + phaseId + ":" + unreadStory, descriptionText, maxW, font);
 
@@ -222,8 +222,8 @@ public class JournalDetailSinglePhase {
             currentDescPhaseId = hasStory ? phaseId : null;
 
             float pulse = 0.5f - 0.5f * (float) Math.cos((Util.getMillis() % 2000L) / 2000f * Math.PI * 2.0);
-            float breathScale = unreadStory ? baseTextScale * 0.05f * pulse : 0f;
-            float currentScale = baseTextScale + breathScale + (0.20f * HudAnimUtil.easeOutCubic(descHoverAnim));
+            float breathScale = unreadStory ? baseTextScale * 0.018f * pulse : 0f;
+            float currentScale = baseTextScale + breathScale + (0.045f * HudAnimUtil.easeOutCubic(descHoverAnim));
 
             g.pose().pushPose();
             // 设定枢轴点，使得放大时以中心左侧为原点，避免跳变
@@ -245,7 +245,7 @@ public class JournalDetailSinglePhase {
             g.pose().popPose();
 
             if (unreadStory && !phaseDescLines.isEmpty()) {
-                float diamondScale = 0.90f + 0.18f * pulse + 0.14f * descHoverAnim;
+                float diamondScale = 0.90f + 0.07f * pulse + 0.06f * descHoverAnim;
                 int diamondAlpha = (int) ((145 + 110 * pulse) * dAlpha);
                 int diamondColor = isHovered ? 0xFF3030 : 0xD93A4A;
                 float diamondX = Math.min(scrollAreaW - 8f,
