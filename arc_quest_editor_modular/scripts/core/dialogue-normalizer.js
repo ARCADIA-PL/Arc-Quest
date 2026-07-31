@@ -141,20 +141,10 @@ function normalizeVisualConfig(vc) {
     if (!vc || typeof vc !== 'object') return null;
     const out = {};
     if (vc.themeColor !== undefined && vc.themeColor !== null) out.themeColor = vc.themeColor;
-    if (vc.splashes && typeof vc.splashes === 'object' && Object.keys(vc.splashes).length) {
-        out.splashes = {};
-        for (const [key, asset] of Object.entries(vc.splashes)) {
-            if (!asset) continue;
-            out.splashes[key] = {texture: asset.texture || '', scale: asset.scale ?? 1.0};
-        }
-    }
-    if (vc.icons && typeof vc.icons === 'object' && Object.keys(vc.icons).length) {
-        out.icons = {};
-        for (const [key, asset] of Object.entries(vc.icons)) {
-            if (!asset) continue;
-            out.icons[key] = {texture: asset.texture || '', scale: asset.scale ?? 1.0};
-        }
-    }
+    const splashes = normalizeVisualAssetMap(vc.splashes);
+    if (Object.keys(splashes).length) out.splashes = splashes;
+    const icons = normalizeVisualAssetMap(vc.icons);
+    if (Object.keys(icons).length) out.icons = icons;
     return Object.keys(out).length ? out : null;
 }
 
@@ -303,20 +293,10 @@ export function exportDialogueToDatapack(dialogue) {
     if (dialogue.visualConfig) {
         const vc = {};
         if (dialogue.visualConfig.themeColor !== undefined && dialogue.visualConfig.themeColor !== null) vc.themeColor = dialogue.visualConfig.themeColor;
-        if (dialogue.visualConfig.splashes && typeof dialogue.visualConfig.splashes === 'object' && Object.keys(dialogue.visualConfig.splashes).length) {
-            vc.splashes = {};
-            for (const [key, asset] of Object.entries(dialogue.visualConfig.splashes)) {
-                if (!asset) continue;
-                vc.splashes[key] = {texture: asset.texture || '', scale: asset.scale ?? 1.0};
-            }
-        }
-        if (dialogue.visualConfig.icons && typeof dialogue.visualConfig.icons === 'object' && Object.keys(dialogue.visualConfig.icons).length) {
-            vc.icons = {};
-            for (const [key, asset] of Object.entries(dialogue.visualConfig.icons)) {
-                if (!asset) continue;
-                vc.icons[key] = {texture: asset.texture || '', scale: asset.scale ?? 1.0};
-            }
-        }
+        const splashes = exportVisualAssetMap(dialogue.visualConfig.splashes);
+        if (splashes) vc.splashes = splashes;
+        const icons = exportVisualAssetMap(dialogue.visualConfig.icons);
+        if (icons) vc.icons = icons;
         if (Object.keys(vc).length) out.visualConfig = vc;
     }
     if (dialogue.npcBindings?.length) out.npcBindings = dialogue.npcBindings.map(b => ({npcId: b.npcId || '', dialogueId: b.dialogueId || ''}));
@@ -324,3 +304,4 @@ export function exportDialogueToDatapack(dialogue) {
     cleanEmptyFields(out);
     return out;
 }
+import {exportVisualAssetMap, normalizeVisualAssetMap} from './visual-asset.js';

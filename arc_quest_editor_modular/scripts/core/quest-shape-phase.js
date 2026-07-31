@@ -203,7 +203,7 @@ export function setPhaseField(target, bind, value, inputType) {
         }
     } else if (k === 'autoStart' || k === 'autoAdvanceOnComplete') target.phases[+i][k] = value === 'true';
     else if (k === 'titleMode' || k === 'descriptionMode' || k === 'storyMode') target.phases[+i][k] = value;
-    else if (k === 'parallelPhaseIds' || k === 'choicePhaseIds' || k === 'flagsToSetOnEnter' || k === 'flagsToSetOnComplete') target.phases[+i][k] = splitList(value);
+    else if (k === 'parallelPhaseIds' || k === 'choicePhaseIds' || k === 'flagsToSetOnEnter' || k === 'flagsToSetOnComplete' || k === 'guidesToGrantOnEnter' || k === 'guidesToGrantOnComplete') target.phases[+i][k] = splitList(value);
     else if (k === 'relatedMarks') setLooseJson(target.phases[+i], 'relatedMarks', value);
     else if (k === 'visualConfig') setLooseJson(target.phases[+i], 'visualConfig', value);
     else if (k === 'rawEnterCondition' || k === 'transitions' || k === 'collectionEntryConfig' || k === 'choices') setLooseJson(target.phases[+i], k, value);

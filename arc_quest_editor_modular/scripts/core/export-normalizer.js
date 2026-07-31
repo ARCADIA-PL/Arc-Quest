@@ -1,4 +1,5 @@
 import {exportPhase, exportReward, cleanCondition} from './export-normalizer-phase.js';
+import {exportVisualAsset, exportVisualAssetMap} from './visual-asset.js';
 
 function isNonEmptyString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -19,7 +20,7 @@ function exportSplashes(splashes) {
     const out = {};
     (splashes || []).forEach(s => {
         if (!s?.eventType) return;
-        out[s.eventType] = {texture: s.texture || '', scale: Number(s.scale ?? 1)};
+        out[s.eventType] = exportVisualAsset(s);
     });
     return Object.keys(out).length ? out : undefined;
 }
@@ -56,7 +57,7 @@ export function exportQuestToDatapack(stateQuest) {
     if (q.relatedMarks?.length) out.relatedMarks = q.relatedMarks;
     if (q.visualConfig) {
         const splashes = exportSplashes(q.visualConfig.splashes);
-        const icons = q.visualConfig.icons && Object.keys(q.visualConfig.icons).length ? q.visualConfig.icons : undefined;
+        const icons = exportVisualAssetMap(q.visualConfig.icons);
         out.visualConfig = {
             themeColor: toThemeColor(q.visualConfig.themeColor)
         };
