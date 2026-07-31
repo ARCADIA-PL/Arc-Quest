@@ -5,11 +5,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
+import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
@@ -89,12 +91,28 @@ public final class GuidePopupOverlay {
     }
 
     public void clear() {
+        clearState();
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen instanceof InputHostScreen) {
+            minecraft.setScreen(null);
+        }
+    }
+
+    private void clearState() {
         guide = null;
         guideId = null;
         closing = false;
         animation = 0f;
         draggingScrollbar = false;
         ponderPanel.unbind();
+    }
+
+    /** Keeps the cursor and screen input available if the original owner closes mid-guide. */
+    public void ensureInputScreen() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (isActive() && minecraft.screen == null) {
+            minecraft.setScreen(new InputHostScreen());
+        }
     }
 
     public void close() {
@@ -112,7 +130,10 @@ public final class GuidePopupOverlay {
         lastRenderTime = now;
         animation = HudAnimUtil.step(animation, closing ? 0f : 1f, closing ? 5.5f : 4.2f, deltaTime);
         if (closing && animation <= 0.01f) {
-            clear();
+            Minecraft minecraft = Minecraft.getInstance();
+            boolean hosted = minecraft.screen instanceof InputHostScreen;
+            clearState();
+            if (hosted) minecraft.setScreen(DialogueScreen.fromCurrentSession());
             return;
         }
 
@@ -371,5 +392,27 @@ public final class GuidePopupOverlay {
 
     private boolean hit(double mouseX, double mouseY, int x, int y, int width, int height) {
         return mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
+    }
+
+    /** Empty screen used only to keep the cursor released while a detached popup is active. */
+    private static final class InputHostScreen extends Screen {
+        private InputHostScreen() {
+            super(Component.empty());
+        }
+
+        @Override
+        public boolean isPauseScreen() {
+            return false;
+        }
+
+        @Override
+        public boolean shouldCloseOnEsc() {
+            return false;
+        }
+
+        @Override
+        public void onClose() {
+            GuidePopupOverlay.INSTANCE.close();
+        }
     }
 }
