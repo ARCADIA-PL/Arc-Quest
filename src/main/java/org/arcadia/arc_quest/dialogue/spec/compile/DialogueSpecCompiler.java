@@ -11,6 +11,7 @@ import org.arcadia.arc_quest.dialogue.spec.validate.DialogueSpecValidator;
 import org.arcadia.arc_quest.dialogue.spec.validate.DialogueValidationIssue;
 import org.arcadia.arc_quest.quest.api.IconPosition;
 import org.arcadia.arc_quest.quest.api.QuestVisualConfig;
+import org.arcadia.arc_quest.quest.spec.compile.QuestVisualSpecCompiler;
 import org.arcadia.arc_quest.quest.api.SplashType;
 import org.arcadia.arc_quest.quest.spec.QuestVisualSpec;
 
@@ -216,17 +217,7 @@ public final class DialogueSpecCompiler {
     }
 
     private QuestVisualConfig compileVisual(QuestVisualSpec spec) {
-        if (spec == null) return null;
-        QuestVisualConfig.Builder builder = QuestVisualConfig.builder().themeColor(spec.themeColor);
-        for (var entry : spec.splashes.entrySet()) {
-            SplashType type = SplashType.valueOf(entry.getKey());
-            builder.splash(type, parseNullableId(entry.getValue().texture), entry.getValue().scale);
-        }
-        for (var entry : spec.icons.entrySet()) {
-            IconPosition pos = IconPosition.valueOf(entry.getKey());
-            builder.icon(pos, parseNullableId(entry.getValue().texture), entry.getValue().scale);
-        }
-        return builder.build();
+        return spec == null ? null : QuestVisualSpecCompiler.compile(spec);
     }
 
     private ResourceLocation parseNullableId(String id) {

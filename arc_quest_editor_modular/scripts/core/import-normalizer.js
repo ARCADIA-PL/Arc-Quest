@@ -1,3 +1,5 @@
+import {normalizeVisualAsset, normalizeVisualAssetMap} from './visual-asset.js';
+
 function asTextNode(value, fallback = '') {
     if (typeof value === 'string') return {text: value, mode: 'translatable'};
     if (value && typeof value === 'object' && 'value' in value) return {
@@ -17,8 +19,7 @@ function normalizeSplashMap(splashes) {
     if (!splashes || Array.isArray(splashes)) return splashes || [];
     return Object.entries(splashes).map(([eventType, cfg]) => ({
         eventType,
-        texture: cfg?.texture || '',
-        scale: cfg?.scale ?? 1
+        ...normalizeVisualAsset(cfg)
     }));
 }
 
@@ -172,11 +173,13 @@ function normalizePhase(phase, idx) {
         phaseStartSound: phase?.phaseStartSound || '',
         phaseCompleteSound: phase?.phaseCompleteSound || '',
         relatedMarks: phase?.relatedMarks || [],
+        guidesToGrantOnEnter: phase?.guidesToGrantOnEnter || [],
+        guidesToGrantOnComplete: phase?.guidesToGrantOnComplete || [],
         visualConfig: phase?.visualConfig ? {
             themeColor: phase.visualConfig.themeColor == null ? '' : toHexColor(phase.visualConfig.themeColor),
             useQuestSplashPresentation: phase.visualConfig.useQuestSplashPresentation === true,
             splashes: normalizeSplashMap(phase.visualConfig.splashes),
-            icons: phase.visualConfig.icons || {}
+            icons: normalizeVisualAssetMap(phase.visualConfig.icons)
         } : null,
         autoStart: !!phase?.autoEnterByCondition,
         parallelPhaseIds: mode === 'parallel' ? targetIds : [],
@@ -235,7 +238,7 @@ export function normalizeImportedQuest(input) {
         visualConfig: {
             themeColor: toHexColor(input.visualConfig?.themeColor),
             splashes: normalizeSplashMap(input.visualConfig?.splashes),
-            icons: input.visualConfig?.icons || {}
+            icons: normalizeVisualAssetMap(input.visualConfig?.icons)
         },
         rewards: (input.completionRewards || input.rewards || []).map(normalizeReward),
         phases: (input.phases || []).map(normalizePhase),
