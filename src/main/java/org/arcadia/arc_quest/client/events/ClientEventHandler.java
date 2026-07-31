@@ -52,6 +52,7 @@ public final class ClientEventHandler {
                 }
             });
         }
+        GuidePopupOverlay.INSTANCE.ensureInputScreen();
         GuidePopupOverlay.INSTANCE.tick();
 
         if (KEY_OPEN_JOURNAL.consumeClick()) {

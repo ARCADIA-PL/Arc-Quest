@@ -207,6 +207,20 @@ public class DialogueScreen extends Screen {
         if (clickAnim != null) for (int i = 0; i < clickAnim.length; i++) clickAnim[i] = 0f;
     }
 
+    /** Rebuilds the dialogue UI from the latest server-authoritative client session snapshot. */
+    @Nullable
+    public static DialogueScreen fromCurrentSession() {
+        ClientDialogueCache.DialogueSessionData session =
+                ClientDialogueCache.INSTANCE.getCurrentSession();
+        if (session == null) return null;
+        return new DialogueScreen(
+                session.treeId, session.speaker, session.text, session.choices,
+                session.isTerminal, session.hasAutoNext, session.delayMs, session.entityId,
+                session.lastSelectTimes, session.purchaseGameTimes, session.purchaseDayTimes,
+                session.cooldownTypes, session.cooldownValues, session.resetTimeTicks,
+                session.sessionId, session.revision, session.playerSessionEpoch);
+    }
+
     @Nullable
     public Entity getNpcEntity() {
         if (cachedNpcEntity == null && entityId != -1 && minecraft != null && minecraft.level != null)
