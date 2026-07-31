@@ -83,7 +83,7 @@ export function setTradeByPath(target, bind, value) {
                 if (value !== 'composite' && oldType === 'composite') {
                     delete offers[oi].offers;
                 }
-            } else if (['itemId', 'command', 'effectId', 'flagName', 'nbt', 'executeAs'].includes(field)) {
+            } else if (['itemId', 'itemTag', 'customIcon', 'command', 'effectId', 'flagName', 'nbt', 'executeAs'].includes(field)) {
                 offers[oi][field] = value;
             } else if (['count', 'duration', 'amplifier'].includes(field)) {
                 offers[oi][field] = Number(value) || 0;

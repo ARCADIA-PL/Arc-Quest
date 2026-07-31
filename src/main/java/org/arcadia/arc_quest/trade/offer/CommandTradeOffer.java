@@ -15,14 +15,24 @@ public final class CommandTradeOffer implements ITradeOffer {
 
     private final String commandTemplate;
     private final Component displayText;
+    private final boolean executeAsPlayer;
 
     public CommandTradeOffer(String commandTemplate, Component displayText) {
+        this(commandTemplate, displayText, false);
+    }
+
+    public CommandTradeOffer(String commandTemplate, Component displayText, boolean executeAsPlayer) {
         this.commandTemplate = commandTemplate;
         this.displayText = displayText;
+        this.executeAsPlayer = executeAsPlayer;
     }
 
     public CommandTradeOffer(String commandTemplate) {
         this(commandTemplate, Component.translatable("arc_quest.trade.command", commandTemplate));
+    }
+
+    public CommandTradeOffer(String commandTemplate, boolean executeAsPlayer) {
+        this(commandTemplate, Component.translatable("arc_quest.trade.command", commandTemplate), executeAsPlayer);
     }
 
     public static CommandTradeOffer reward(String command, String description) {
@@ -36,7 +46,11 @@ public final class CommandTradeOffer implements ITradeOffer {
 
     @Override
     public void execute(ServerPlayer player) {
-        CommandExecutor.runAsServer(player, commandTemplate);
+        if (executeAsPlayer) {
+            CommandExecutor.runAsPlayer(player, commandTemplate);
+        } else {
+            CommandExecutor.runAsServer(player, commandTemplate);
+        }
     }
 
     @Override

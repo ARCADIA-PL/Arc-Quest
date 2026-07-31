@@ -66,11 +66,11 @@ public final class TradeSpecValidator {
                 }
 
                 if (e.costs != null) {
-                    validateOffers(report, e.costs, prefix + ".costs");
+                    validateOffers(report, e.costs, prefix + ".costs", true);
                 }
 
                 if (e.rewards != null) {
-                    validateOffers(report, e.rewards, prefix + ".rewards");
+                    validateOffers(report, e.rewards, prefix + ".rewards", false);
                 }
 
                 if (e.category != null && !e.category.isBlank()) {
@@ -92,6 +92,10 @@ public final class TradeSpecValidator {
                     validateCondition(report, e.canBuyCondition, prefix + ".canBuyCondition");
                 }
 
+                if (e.purchaseResetCondition != null) {
+                    validateCondition(report, e.purchaseResetCondition, prefix + ".purchaseResetCondition");
+                }
+
                 if (e.cooldownType != null && !e.cooldownType.isBlank() && !VALID_COOLDOWN_TYPES.contains(e.cooldownType)) {
                     report.add(TradeValidationIssue.Severity.ERROR, prefix + ".cooldownType",
                             "Invalid cooldownType: " + e.cooldownType);
@@ -102,7 +106,7 @@ public final class TradeSpecValidator {
         return report;
     }
 
-    private void validateOffers(TradeValidationReport report, List<TradeOfferSpec> offers, String prefix) {
+    private void validateOffers(TradeValidationReport report, List<TradeOfferSpec> offers, String prefix, boolean isCost) {
         for (int i = 0; i < offers.size(); i++) {
             TradeOfferSpec offer = offers.get(i);
             String p = prefix + "[" + i + "]";
@@ -114,8 +118,12 @@ public final class TradeSpecValidator {
 
             switch (offer.type) {
                 case "item":
-                    if (offer.itemId == null || offer.itemId.isBlank()) {
-                        report.add(TradeValidationIssue.Severity.ERROR, p + ".itemId", "itemId is required for item offer");
+                    boolean hasItem = offer.itemId != null && !offer.itemId.isBlank();
+                    boolean hasTag = offer.itemTag != null && !offer.itemTag.isBlank();
+                    if (hasItem == hasTag) {
+                        report.add(TradeValidationIssue.Severity.ERROR, p, "Exactly one of itemId or itemTag is required");
+                    } else if (hasTag && !isCost) {
+                        report.add(TradeValidationIssue.Severity.ERROR, p + ".itemTag", "itemTag is only supported for costs");
                     }
                     break;
                 case "command":
@@ -137,7 +145,7 @@ public final class TradeSpecValidator {
                     if (offer.offers == null || offer.offers.isEmpty()) {
                         report.add(TradeValidationIssue.Severity.ERROR, p + ".offers", "At least one sub-offer is required for composite offer");
                     } else {
-                        validateOffers(report, offer.offers, p + ".offers");
+                        validateOffers(report, offer.offers, p + ".offers", isCost);
                     }
                     break;
             }
