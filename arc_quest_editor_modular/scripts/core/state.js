@@ -1,5 +1,6 @@
 import {createObjective, createPhase, createQuestSkeleton, createSplash,
     createNpcSkeleton, createDialogueSkeleton, createTradeSkeleton, createGachaSkeleton} from './factories.js';
+import {createGuideSkeleton} from './guide-normalizer.js';
 
 export const createBlankQuest = () => {
     const quest = createQuestSkeleton();
@@ -72,6 +73,13 @@ export const state = {
         q: createGachaSkeleton(),
         meta: {file: 'new_gacha.json', dirty: false},
         ui: { sel: {t: 'overview'}, itemFold: false },
+        diag: []
+    },
+    guide: {
+        kind: 'guide',
+        q: createGuideSkeleton(),
+        meta: {file: 'new_guide.json', dirty: false},
+        ui: {sel: {t: 'overview'}},
         diag: []
     }
 };

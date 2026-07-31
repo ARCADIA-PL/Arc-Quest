@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
 import org.arcadia.arc_quest.dialogue.spec.DialogueTextSpec;
+import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.trade.api.*;
 import org.arcadia.arc_quest.trade.gacha.api.*;
 import org.arcadia.arc_quest.trade.gacha.spec.*;
@@ -16,6 +17,7 @@ import org.arcadia.arc_quest.trade.gacha.spec.validate.GachaSpecValidator;
 import org.arcadia.arc_quest.trade.offer.*;
 import org.arcadia.arc_quest.trade.spec.TradeCategorySpec;
 import org.arcadia.arc_quest.trade.spec.TradeOfferSpec;
+import org.arcadia.arc_quest.trade.spec.compile.TradeOfferSpecCompiler;
 
 import java.util.*;
 
@@ -39,9 +41,9 @@ public final class GachaSpecCompiler {
 
         List<ITradeOffer> drawCosts;
         if (spec.drawCosts != null && !spec.drawCosts.isEmpty()) {
-            drawCosts = compileOffers(spec.drawCosts, true);
+            drawCosts = TradeOfferSpecCompiler.compileOffers(spec.drawCosts, true);
         } else if (spec.drawCost != null) {
-            drawCosts = List.of(compileOffer(spec.drawCost, true));
+            drawCosts = List.of(TradeOfferSpecCompiler.compileOffer(spec.drawCost, true));
         } else {
             drawCosts = List.of();
         }
@@ -57,7 +59,7 @@ public final class GachaSpecCompiler {
                 spec.description != null ? compileTradeText(spec.description) : null,
                 categories,
                 entries,
-                null,
+                ConditionBridge.toQuestCondition(spec.openCondition),
                 spec.simpleMode,
                 spec.themeColor,
                 parseNullableSound(spec.openSound),
@@ -67,16 +69,16 @@ public final class GachaSpecCompiler {
                 parseCooldownType(spec.cooldownType),
                 spec.cooldownValue,
                 spec.resetTimeTicks,
-                null,
+                ConditionBridge.toQuestCondition(spec.drawCondition),
                 spec.maxDraws,
-                null,
-                true,
-                spec.pity != null && spec.pity.resetOnEarlyTrigger,
+                ConditionBridge.toQuestCondition(spec.resetCondition),
+                spec.resetOnLimitReached,
+                spec.resetPityOnEarlyTrigger,
                 pityConfig,
-                null,
-                null,
-                null,
-                null
+                parseNullableSound(spec.drawCooldownSound),
+                parseNullableSound(spec.drawLimitReachedSound),
+                parseNullableSound(spec.drawConditionFailSound),
+                parseNullableSound(spec.drawFailSound)
         );
 
         if (spec.rarities != null) {
@@ -133,21 +135,31 @@ public final class GachaSpecCompiler {
 
         GachaItem.Rarity rarity = parseRarity(spec.rarity);
 
-        return new GachaItem(
+        ITradeOffer reward = spec.reward != null
+                ? TradeOfferSpecCompiler.compileOffer(spec.reward, false)
+                : new ItemTradeOffer(item, spec.minCount, false);
+        GachaItem result = new GachaItem(
                 spec.itemId,
                 new ItemStack(item, spec.maxCount),
-                new ItemTradeOffer(item, spec.minCount, false),
+                reward,
                 spec.weight,
                 rarity,
-                true,
+                spec.countsTowardsPity,
                 spec.minCount,
                 spec.maxCount,
-                null,
+                ConditionBridge.toQuestCondition(spec.visibleCondition),
                 blankToNull(spec.rewardIcon) != null ? ResourceLocation.tryParse(spec.rewardIcon) : null,
                 spec.themeColor,
                 parseNullableSound(spec.drawSuccessSound),
                 spec.sortOrder
         );
+        if (spec.weightModifiers != null) {
+            for (GachaWeightModifierSpec modifier : spec.weightModifiers) {
+                var condition = ConditionBridge.toQuestCondition(modifier.condition);
+                if (condition != null) result.addWeightModifier(condition, modifier.weightDelta);
+            }
+        }
+        return result;
     }
 
     private GachaItem.Rarity parseRarity(String rarity) {
@@ -161,50 +173,15 @@ public final class GachaSpecCompiler {
 
     private PityConfig compilePity(PityConfigSpec spec) {
         GachaItem.Rarity targetRarity = parseRarity(spec.targetRarity);
-        if (spec.guaranteedItemId != null && !spec.guaranteedItemId.isBlank()) {
-            return new PityConfig(spec.threshold, spec.guaranteedItemId, spec.resetOnEarlyTrigger);
-        }
-        return new PityConfig(spec.threshold, targetRarity, spec.resetOnEarlyTrigger);
-    }
-
-    private List<ITradeOffer> compileOffers(List<TradeOfferSpec> specs, boolean isCost) {
-        List<ITradeOffer> offers = new ArrayList<>();
-        if (specs == null) return offers;
-        for (TradeOfferSpec spec : specs) {
-            ITradeOffer offer = compileOffer(spec, isCost);
-            if (offer != null) offers.add(offer);
-        }
-        return offers;
-    }
-
-    private ITradeOffer compileOffer(TradeOfferSpec spec, boolean isCost) {
-        if (spec == null || spec.type == null) return null;
-
-        return switch (spec.type) {
-            case "item" -> {
-                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(spec.itemId));
-                if (item == null) throw new GachaCompileException("Unknown item: " + spec.itemId);
-                yield new ItemTradeOffer(item, spec.count, isCost);
-            }
-            case "command" -> new CommandTradeOffer(spec.command);
-            case "effect" -> {
-                MobEffect effect = BuiltInRegistries.MOB_EFFECT.get(ResourceLocation.tryParse(spec.effectId));
-                if (effect == null) throw new GachaCompileException("Unknown effect: " + spec.effectId);
-                yield new EffectTradeOffer(effect, spec.duration, spec.amplifier, isCost);
-            }
-            case "flag" -> new FlagTradeOffer(spec.flagName, isCost);
-            case "composite" -> {
-                List<ITradeOffer> children = new ArrayList<>();
-                if (spec.offers != null) {
-                    for (TradeOfferSpec child : spec.offers) {
-                        ITradeOffer compiled = compileOffer(child, isCost);
-                        if (compiled != null) children.add(compiled);
-                    }
-                }
-                yield new CompositeTradeOffer(children);
-            }
-            default -> throw new GachaCompileException("Unknown offer type: " + spec.type);
-        };
+        return new PityConfig(
+                spec.threshold,
+                spec.guaranteedItemId != null && !spec.guaranteedItemId.isBlank() ? spec.guaranteedItemId : null,
+                spec.guaranteedItemId != null && !spec.guaranteedItemId.isBlank() ? null : targetRarity,
+                parseCooldownType(spec.resetCooldownType),
+                spec.resetCooldownValue,
+                ConditionBridge.toQuestCondition(spec.resetCondition),
+                spec.resetOnTrigger
+        );
     }
 
     private TradeText compileTradeText(DialogueTextSpec spec) {

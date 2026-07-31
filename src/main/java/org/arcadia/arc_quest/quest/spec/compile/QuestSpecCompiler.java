@@ -384,20 +384,7 @@ public final class QuestSpecCompiler {
     }
 
     private QuestVisualConfig compileVisual(QuestVisualSpec spec) {
-        QuestVisualConfig.Builder builder = QuestVisualConfig.builder()
-                .themeColor(spec == null ? 0xFFFFFF : spec.themeColor)
-                .useQuestSplashPresentation(spec != null && Boolean.TRUE.equals(spec.useQuestSplashPresentation));
-        if (spec != null) {
-            for (Map.Entry<String, QuestVisualSpec.AssetSpec> entry : spec.splashes.entrySet()) {
-                SplashType type = SplashType.valueOf(entry.getKey());
-                builder.splash(type, parseId(entry.getValue().texture), entry.getValue().scale);
-            }
-            for (Map.Entry<String, QuestVisualSpec.AssetSpec> entry : spec.icons.entrySet()) {
-                IconPosition pos = IconPosition.valueOf(entry.getKey());
-                builder.icon(pos, parseId(entry.getValue().texture), entry.getValue().scale);
-            }
-        }
-        return builder.build();
+        return QuestVisualSpecCompiler.compile(spec);
     }
 
     private QuestText compileText(QuestTextSpec spec) {

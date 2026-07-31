@@ -8,6 +8,12 @@ export function setGachaByPath(target, bind, value) {
     if (bind === 'gacha.cooldownType') { target.cooldownType = value; return; }
     if (bind === 'gacha.cooldownValue') { target.cooldownValue = Number(value) || 0; return; }
     if (bind === 'gacha.resetTimeTicks') { target.resetTimeTicks = Number(value) || 0; return; }
+    if (bind === 'gacha.resetOnLimitReached') { target.resetOnLimitReached = value === 'true'; return; }
+    if (bind === 'gacha.resetPityOnEarlyTrigger') { target.resetPityOnEarlyTrigger = value === 'true'; return; }
+    if (['gacha.drawCooldownSound', 'gacha.drawLimitReachedSound', 'gacha.drawConditionFailSound', 'gacha.drawFailSound'].includes(bind)) {
+        target[bind.split('.')[1]] = value;
+        return;
+    }
 
     if (bind.startsWith('gacha.displayName.')) {
         const field = bind.split('.')[2];
@@ -22,12 +28,14 @@ export function setGachaByPath(target, bind, value) {
         return;
     }
 
-    if (bind.startsWith('gacha.drawCost.')) {
-        const field = bind.split('.')[2];
-        if (!target.drawCost) target.drawCost = {type: 'item', itemId: '', count: 1, nbt: '', command: '', executeAs: 'console', effectId: '', duration: 0, amplifier: 0, flagName: '', offers: []};
-        if (['itemId', 'command', 'effectId', 'flagName', 'nbt', 'executeAs'].includes(field)) target.drawCost[field] = value;
-        else if (['count', 'duration', 'amplifier'].includes(field)) target.drawCost[field] = Number(value) || 0;
-        else if (field === 'type') target.drawCost.type = value;
+    if (bind.startsWith('gacha.drawCosts.')) {
+        const parts = bind.split('.');
+        const index = Number(parts[2]);
+        const field = parts[3];
+        if (!target.drawCosts?.[index]) return;
+        if (['itemId', 'itemTag', 'customIcon', 'command', 'effectId', 'flagName', 'nbt', 'executeAs'].includes(field)) target.drawCosts[index][field] = value;
+        else if (['count', 'duration', 'amplifier'].includes(field)) target.drawCosts[index][field] = Number(value) || 0;
+        else if (field === 'type') target.drawCosts[index].type = value;
         return;
     }
 
@@ -41,9 +49,10 @@ export function setGachaByPath(target, bind, value) {
 
     if (bind.startsWith('gacha.pity.')) {
         const field = bind.split('.')[2];
-        if (!target.pity) target.pity = {threshold: 10, targetRarity: 'LEGENDARY', resetOnEarlyTrigger: true};
+        if (!target.pity) target.pity = {threshold: 10, targetRarity: 'LEGENDARY', guaranteedItemId: '', resetOnEarlyTrigger: true, resetCooldownType: 'NONE', resetCooldownValue: 0, resetCondition: null, resetOnTrigger: true};
         if (field === 'threshold') target.pity.threshold = Number(value) || 10;
-        else if (field === 'resetOnEarlyTrigger') target.pity.resetOnEarlyTrigger = value === 'true';
+        else if (field === 'resetCooldownValue') target.pity.resetCooldownValue = Number(value) || 0;
+        else if (field === 'resetOnEarlyTrigger' || field === 'resetOnTrigger') target.pity[field] = value === 'true';
         else target.pity[field] = value;
         return;
     }
@@ -59,10 +68,19 @@ export function setGachaByPath(target, bind, value) {
             const item = target.pools[pi].items[ii];
             if (!item) return;
             if (['itemId', 'item', 'rarity', 'rewardIcon', 'drawSuccessSound'].includes(field)) item[field] = value;
+            else if (field === 'countsTowardsPity') item.countsTowardsPity = value === 'true';
+            else if (field === 'visibleConditionJson') item.visibleCondition = parseJson(value, null);
+            else if (field === 'rewardJson') item.reward = parseJson(value, null);
+            else if (field === 'weightModifiersJson') item.weightModifiers = parseJson(value, []);
             else if (['weight', 'minCount', 'maxCount', 'sortOrder', 'themeColor'].includes(field)) item[field] = Number(value) || 0;
             return;
         }
         if (parts[3] === 'items' && parts.length === 4) return;
         return;
     }
+}
+
+function parseJson(value, fallback) {
+    if (!value || !String(value).trim()) return fallback;
+    try { return JSON.parse(value); } catch { return fallback; }
 }

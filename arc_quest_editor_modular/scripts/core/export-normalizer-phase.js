@@ -203,10 +203,11 @@ export function exportPhase(phase) {
         const splashArr = Array.isArray(phase.visualConfig.splashes) ? phase.visualConfig.splashes : [];
         const cleanSplashes = {};
         splashArr.forEach(s => {
-            if (s?.eventType) cleanSplashes[s.eventType] = {texture: s.texture || '', scale: Number(s.scale ?? 1)};
+            if (s?.eventType) cleanSplashes[s.eventType] = exportVisualAsset(s);
         });
         if (Object.keys(cleanSplashes).length) vc.splashes = cleanSplashes;
-        if (phase.visualConfig.icons && Object.keys(phase.visualConfig.icons).length) vc.icons = phase.visualConfig.icons;
+        const icons = exportVisualAssetMap(phase.visualConfig.icons);
+        if (icons) vc.icons = icons;
         if (Object.keys(vc).length) out.visualConfig = vc;
     }
     if (phase.choices?.length) {
@@ -224,9 +225,12 @@ export function exportPhase(phase) {
     }
     if (phase.flagsToSetOnEnter?.length) out.flagsToSetOnEnter = phase.flagsToSetOnEnter;
     if (phase.flagsToSetOnComplete?.length) out.flagsToSetOnComplete = phase.flagsToSetOnComplete;
+    if (phase.guidesToGrantOnEnter?.length) out.guidesToGrantOnEnter = phase.guidesToGrantOnEnter;
+    if (phase.guidesToGrantOnComplete?.length) out.guidesToGrantOnComplete = phase.guidesToGrantOnComplete;
     if (enterCondition.condition !== 'arc_quest:always') out.enterCondition = enterCondition;
     if (phase.autoStart) out.autoEnterByCondition = true;
     const collectionEntryConfig = cleanCollectionEntryConfig(phase.collectionEntryConfig);
     if (collectionEntryConfig) out.collectionEntryConfig = collectionEntryConfig;
     return out;
 }
+import {exportVisualAsset, exportVisualAssetMap} from './visual-asset.js';

@@ -32,6 +32,12 @@ public final class GachaSpecValidator {
         if (spec.cooldownType != null && !spec.cooldownType.isBlank() && !VALID_COOLDOWN_TYPES.contains(spec.cooldownType)) {
             report.add(GachaValidationIssue.Severity.ERROR, "cooldownType", "Invalid cooldownType: " + spec.cooldownType);
         }
+        if (spec.pity != null && spec.pity.resetCooldownType != null
+                && !spec.pity.resetCooldownType.isBlank()
+                && !VALID_COOLDOWN_TYPES.contains(spec.pity.resetCooldownType)) {
+            report.add(GachaValidationIssue.Severity.ERROR, "pity.resetCooldownType",
+                    "Invalid resetCooldownType: " + spec.pity.resetCooldownType);
+        }
 
         boolean hasDrawCost = (spec.drawCosts != null && !spec.drawCosts.isEmpty()) || spec.drawCost != null;
         if (!hasDrawCost) {
@@ -42,15 +48,15 @@ public final class GachaSpecValidator {
                 String prefix = "drawCosts[" + i + "]";
                 if (offer.type == null || !TradeSpecValidator.VALID_OFFER_TYPES.contains(offer.type)) {
                     report.add(GachaValidationIssue.Severity.ERROR, prefix + ".type", "Invalid offer type: " + offer.type);
-                } else if ("item".equals(offer.type) && (offer.itemId == null || offer.itemId.isBlank())) {
-                    report.add(GachaValidationIssue.Severity.ERROR, prefix + ".itemId", "itemId is required");
+                } else if ("item".equals(offer.type)) {
+                    validateItemOffer(report, offer, prefix, true);
                 }
             }
         } else if (spec.drawCost != null) {
             if (spec.drawCost.type == null || !TradeSpecValidator.VALID_OFFER_TYPES.contains(spec.drawCost.type)) {
                 report.add(GachaValidationIssue.Severity.ERROR, "drawCost.type", "Invalid offer type: " + spec.drawCost.type);
-            } else if ("item".equals(spec.drawCost.type) && (spec.drawCost.itemId == null || spec.drawCost.itemId.isBlank())) {
-                report.add(GachaValidationIssue.Severity.ERROR, "drawCost.itemId", "itemId is required");
+            } else if ("item".equals(spec.drawCost.type)) {
+                validateItemOffer(report, spec.drawCost, "drawCost", true);
             }
         }
 
@@ -76,12 +82,22 @@ public final class GachaSpecValidator {
         if (spec.pools == null || spec.pools.isEmpty()) {
             report.add(GachaValidationIssue.Severity.ERROR, "pools", "At least one pool is required");
         } else {
+            if (spec.pools.size() > 1) {
+                report.add(GachaValidationIssue.Severity.WARN, "pools",
+                        "Multiple pools are merged into one runtime pool; poolId is metadata only");
+            }
+            Set<String> poolIds = new HashSet<>();
             Set<String> rarityNames = spec.rarities != null
                     ? spec.rarities.stream().map(r -> r.rarity).collect(Collectors.toSet())
                     : Set.of();
             for (int pi = 0; pi < spec.pools.size(); pi++) {
                 GachaPoolSpec pool = spec.pools.get(pi);
                 String poolPrefix = "pools[" + pi + "]";
+                if (pool.poolId == null || pool.poolId.isBlank()) {
+                    report.add(GachaValidationIssue.Severity.ERROR, poolPrefix + ".poolId", "poolId is required");
+                } else if (!poolIds.add(pool.poolId)) {
+                    report.add(GachaValidationIssue.Severity.ERROR, poolPrefix + ".poolId", "Duplicate poolId: " + pool.poolId);
+                }
                 if (pool.items == null || pool.items.isEmpty()) {
                     report.add(GachaValidationIssue.Severity.ERROR, poolPrefix + ".items", "Pool has no items");
                     continue;
@@ -104,6 +120,21 @@ public final class GachaSpecValidator {
                     if (item.weight <= 0) {
                         report.add(GachaValidationIssue.Severity.ERROR, prefix + ".weight", "weight must be > 0");
                     }
+                    if (item.minCount <= 0 || item.maxCount < item.minCount) {
+                        report.add(GachaValidationIssue.Severity.ERROR, prefix + ".minCount",
+                                "count range must satisfy 1 <= minCount <= maxCount");
+                    }
+                    if (item.reward != null && "item".equals(item.reward.type)) {
+                        validateItemOffer(report, item.reward, prefix + ".reward", false);
+                    }
+                    if (item.weightModifiers != null) {
+                        for (int wi = 0; wi < item.weightModifiers.size(); wi++) {
+                            if (item.weightModifiers.get(wi).condition == null) {
+                                report.add(GachaValidationIssue.Severity.ERROR,
+                                        prefix + ".weightModifiers[" + wi + "].condition", "condition is required");
+                            }
+                        }
+                    }
 
                     if (item.rarity != null && !item.rarity.isBlank() && !rarityNames.isEmpty() && !rarityNames.contains(item.rarity)) {
                         report.add(GachaValidationIssue.Severity.WARN, prefix + ".rarity",
@@ -114,5 +145,18 @@ public final class GachaSpecValidator {
         }
 
         return report;
+    }
+
+    private void validateItemOffer(GachaValidationReport report, TradeOfferSpec offer,
+                                   String prefix, boolean isCost) {
+        boolean hasItem = offer.itemId != null && !offer.itemId.isBlank();
+        boolean hasTag = offer.itemTag != null && !offer.itemTag.isBlank();
+        if (hasItem == hasTag) {
+            report.add(GachaValidationIssue.Severity.ERROR, prefix,
+                    "Exactly one of itemId or itemTag is required");
+        } else if (hasTag && !isCost) {
+            report.add(GachaValidationIssue.Severity.ERROR, prefix + ".itemTag",
+                    "itemTag is only supported for costs");
+        }
     }
 }

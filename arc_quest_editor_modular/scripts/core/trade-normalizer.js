@@ -32,6 +32,7 @@ function normalizeEntriesMap(entries) {
             category: e.category || '',
             visibleCondition: e.visibleCondition || null,
             canBuyCondition: e.canBuyCondition || null,
+            purchaseResetCondition: e.purchaseResetCondition || null,
             cooldownType: e.cooldownType || 'NONE',
             cooldownValue: e.cooldownValue ?? 0,
             resetTimeTicks: e.resetTimeTicks ?? 0,
@@ -55,8 +56,10 @@ function normalizeOffers(offers) {
     return offers.map(o => ({
         type: o.type || 'item',
         itemId: o.itemId || '',
+        itemTag: o.itemTag || '',
         count: o.count ?? 1,
         nbt: o.nbt || '',
+        customIcon: o.customIcon || '',
         command: o.command || '',
         executeAs: o.executeAs || 'console',
         effectId: o.effectId || '',
@@ -79,9 +82,11 @@ function normalizeTextSpec(spec) {
 function exportOffer(o) {
     const out = {type: o.type || 'item'};
     if (o.type === 'item' || !o.type || o.type === 'item') {
-        out.itemId = o.itemId || '';
+        if (o.itemId) out.itemId = o.itemId;
+        if (o.itemTag) out.itemTag = o.itemTag;
         out.count = o.count ?? 1;
         if (o.nbt) out.nbt = o.nbt;
+        if (o.customIcon) out.customIcon = o.customIcon;
     } else if (o.type === 'command') {
         out.command = o.command || '';
         if (o.executeAs && o.executeAs !== 'console') out.executeAs = o.executeAs;
@@ -111,6 +116,7 @@ function exportEntry(key, e) {
     if (e.resetTimeTicks > 0) out.resetTimeTicks = e.resetTimeTicks;
     if (e.visibleCondition) out.visibleCondition = e.visibleCondition;
     if (e.canBuyCondition) out.canBuyCondition = e.canBuyCondition;
+    if (e.purchaseResetCondition) out.purchaseResetCondition = e.purchaseResetCondition;
     if (e.description) out.description = {mode: e.description.mode || 'literal', value: e.description.value || ''};
     if (e.rewardIcon) out.rewardIcon = e.rewardIcon;
     if (e.costIcon) out.costIcon = e.costIcon;

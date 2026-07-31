@@ -1,97 +1,37 @@
-const VALID_OFFER_TYPES = new Set(['item', 'command', 'effect', 'flag', 'composite']);
-const VALID_COOLDOWN_TYPES = new Set(['NONE', 'SECONDS', 'GAME_DAY', 'GAME_TICK']);
-
-function validateConditionNode(node, path, d) {
-    if (!node) return;
-    if (node.condition === 'arc_quest:always') return;
-    if (node.inner) validateConditionNode(node.inner, `${path}.inner`, d);
-    if (node.conditions) node.conditions.forEach((c, i) => validateConditionNode(c, `${path}.conditions.${i}`, d));
-}
+const VALID_TYPES = new Set(['item', 'command', 'effect', 'flag', 'composite']);
+const VALID_COOLDOWNS = new Set(['NONE', 'SECONDS', 'GAME_DAY', 'GAME_TICK']);
 
 export function validateTrade(trade) {
-    const d = [];
-
-    if (!trade.shopId || !trade.shopId.trim()) {
-        d.push({lvl: 'err', path: 'shopId', msg: '商店 ID 不能为空'});
+    const issues = [];
+    const error = (path, msg) => issues.push({lvl: 'err', path, msg});
+    if (!trade?.shopId?.trim()) error('shopId', 'shopId is required');
+    if (!trade?.displayName?.value?.trim()) error('displayName', 'displayName is required');
+    const entries = trade?.entries || {};
+    if (!Object.keys(entries).length) issues.push({lvl:'warn', path:'entries', msg:'shop has no entries'});
+    const ids = new Set();
+    for (const [key, entry] of Object.entries(entries)) {
+        const path = `entries.${key}`;
+        if (!entry.entryId) error(`${path}.entryId`, 'entryId is required');
+        else if (ids.has(entry.entryId)) error(`${path}.entryId`, 'duplicate entryId');
+        ids.add(entry.entryId);
+        if (!entry.rewards?.length) error(`${path}.rewards`, 'at least one reward is required');
+        (entry.costs || []).forEach((offer, index) => validateOffer(offer, `${path}.costs[${index}]`, true, error));
+        (entry.rewards || []).forEach((offer, index) => validateOffer(offer, `${path}.rewards[${index}]`, false, error));
+        if (!VALID_COOLDOWNS.has(entry.cooldownType || 'NONE')) error(`${path}.cooldownType`, 'invalid cooldown type');
     }
-    if (!trade.displayName || !trade.displayName.value || !trade.displayName.value.trim()) {
-        d.push({lvl: 'err', path: 'displayName', msg: '显示名称不能为空'});
-    }
-
-    const entries = trade.entries || {};
-    const entryIds = Object.keys(entries);
-    if (entryIds.length === 0) {
-        d.push({lvl: 'warn', path: 'entries', msg: '商店尚无条目'});
-    }
-
-    const seenIds = new Set();
-    for (const key of entryIds) {
-        const e = entries[key];
-        if (!e) continue;
-        const prefix = `entries.${key}`;
-
-        if (!e.entryId || !e.entryId.trim()) {
-            d.push({lvl: 'err', path: `${prefix}.entryId`, msg: '条目 ID 不能为空'});
-        } else if (seenIds.has(e.entryId)) {
-            d.push({lvl: 'err', path: `${prefix}.entryId`, msg: `重复的条目 ID: ${e.entryId}`});
-        } else {
-            seenIds.add(e.entryId);
-        }
-
-        if (!e.rewards || e.rewards.length === 0) {
-            d.push({lvl: 'err', path: `${prefix}.rewards`, msg: '至少需要一个奖励'});
-        }
-
-        if (e.costs && e.costs.length > 0) {
-            validateOffers(e.costs, `${prefix}.costs`, d);
-        }
-        if (e.rewards && e.rewards.length > 0) {
-            validateOffers(e.rewards, `${prefix}.rewards`, d);
-        }
-
-        if (e.visibleCondition) {
-            validateConditionNode(e.visibleCondition, `${prefix}.visibleCondition`, d);
-        }
-        if (e.canBuyCondition) {
-            validateConditionNode(e.canBuyCondition, `${prefix}.canBuyCondition`, d);
-        }
-        if (e.cooldownType && !VALID_COOLDOWN_TYPES.has(e.cooldownType)) {
-            d.push({lvl: 'err', path: `${prefix}.cooldownType`, msg: `无效的冷却类型: ${e.cooldownType}`});
-        }
-    }
-
-    if (trade.openCondition) {
-        validateConditionNode(trade.openCondition, 'openCondition', d);
-    }
-
-    return d;
+    return issues;
 }
 
-function validateOffers(offers, prefix, d) {
-    offers.forEach((o, i) => {
-        const p = `${prefix}[${i}]`;
-        if (!VALID_OFFER_TYPES.has(o.type)) {
-            d.push({lvl: 'err', path: `${p}.type`, msg: `无效的 offer 类型: ${o.type}`});
-            return;
-        }
-        if (o.type === 'item' && (!o.itemId || !o.itemId.trim())) {
-            d.push({lvl: 'err', path: `${p}.itemId`, msg: '物品 ID 不能为空'});
-        }
-        if (o.type === 'command' && (!o.command || !o.command.trim())) {
-            d.push({lvl: 'err', path: `${p}.command`, msg: '命令不能为空'});
-        }
-        if (o.type === 'effect' && (!o.effectId || !o.effectId.trim())) {
-            d.push({lvl: 'err', path: `${p}.effectId`, msg: '效果 ID 不能为空'});
-        }
-        if (o.type === 'flag' && (!o.flagName || !o.flagName.trim())) {
-            d.push({lvl: 'err', path: `${p}.flagName`, msg: 'Flag 名称不能为空'});
-        }
-        if (o.type === 'composite') {
-            if (!o.offers || o.offers.length === 0) {
-                d.push({lvl: 'err', path: `${p}.offers`, msg: '组合报价至少需要一个子项'});
-            } else {
-                validateOffers(o.offers, `${p}.offers`, d);
-            }
-        }
-    });
+function validateOffer(offer, path, isCost, error) {
+    if (!VALID_TYPES.has(offer?.type)) return error(`${path}.type`, 'invalid offer type');
+    if (offer.type === 'item') {
+        if (!!offer.itemId === !!offer.itemTag) error(path, 'exactly one of itemId or itemTag is required');
+        if (!isCost && offer.itemTag) error(`${path}.itemTag`, 'itemTag is only supported for costs');
+    } else if (offer.type === 'command' && !offer.command) error(`${path}.command`, 'command is required');
+    else if (offer.type === 'effect' && !offer.effectId) error(`${path}.effectId`, 'effectId is required');
+    else if (offer.type === 'flag' && !offer.flagName) error(`${path}.flagName`, 'flagName is required');
+    else if (offer.type === 'composite') {
+        if (!offer.offers?.length) error(`${path}.offers`, 'composite offer requires children');
+        (offer.offers || []).forEach((child, index) => validateOffer(child, `${path}.offers[${index}]`, isCost, error));
+    }
 }

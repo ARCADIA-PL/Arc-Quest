@@ -50,4 +50,18 @@ class QuestChangeNotificationManagerTest {
         assertFalse(manager.hasAnyUnread());
         assertFalse(manager.hasAnyUnreadNewQuest());
     }
+
+    @Test
+    void trackingTransitionConsumesHiddenNotificationsOnBothQuests() {
+        manager.markNewQuestUnread("arc_quest:main");
+        manager.markUnread("arc_quest:side");
+        manager.markUnread("arc_quest:unrelated");
+
+        manager.acknowledgeTrackedQuestTransition("arc_quest:main", "arc_quest:side");
+
+        assertFalse(manager.hasUnread("arc_quest:main"));
+        assertFalse(manager.hasUnread("arc_quest:side"));
+        assertFalse(manager.hasAnyUnreadNewQuest());
+        assertTrue(manager.hasUnread("arc_quest:unrelated"));
+    }
 }

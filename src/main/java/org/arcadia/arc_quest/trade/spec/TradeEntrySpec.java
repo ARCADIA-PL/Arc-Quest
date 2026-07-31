@@ -15,6 +15,7 @@ public class TradeEntrySpec {
     public String category = "";
     public ConditionSpec visibleCondition = null;
     public ConditionSpec canBuyCondition = null;
+    public ConditionSpec purchaseResetCondition = null;
     public String cooldownType = "NONE";
     public long cooldownValue = 0;
     public int resetTimeTicks = 0;

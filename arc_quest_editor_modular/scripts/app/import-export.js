@@ -9,6 +9,8 @@ import {normalizeImportedDialogue, exportDialogueToDatapack} from '../core/dialo
 import {normalizeImportedTrade, exportTradeToDatapack} from '../core/trade-normalizer.js';
 import {normalizeImportedGacha, exportGachaToDatapack} from '../core/gacha-normalizer.js';
 import {exportQuestToDatapack} from '../core/export-normalizer.js';
+import {normalizeImportedGuide, exportGuideToDatapack} from '../core/guide-normalizer.js';
+import {validateGuide} from '../core/guide-validators.js';
 import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
 import {validateCrossReferences} from '../core/cross-validator.js';
@@ -16,8 +18,10 @@ import {validateCrossReferences} from '../core/cross-validator.js';
 function detectJsonType(json) {
     if (json && json.nodes && Array.isArray(json.nodes)) return 'dialogue';
     if (json && json.entityType && Array.isArray(json.bindings)) return 'npc';
-    if (json && json.pools && json.drawCost) return 'gacha';
+    if (json && json.pools && (json.drawCost || json.drawCosts)) return 'gacha';
     if (json && json.entries && json.shopId) return 'trade';
+    if (json && Array.isArray(json.pages) && json.category && json.title) return 'guide';
+    if (json && json.displayName && Object.hasOwn(json, 'iconTexture') && !json.pages) return 'guideCategory';
     if (json && (Array.isArray(json.phases) || json.id)) return 'quest';
     return 'unknown';
 }
@@ -34,6 +38,20 @@ function exportBlob(json, filename) {
 }
 
 export function exportJson(state, rerender, dom) {
+    if (state.mode === 'guide') {
+        const diag = validateGuide(state.guide.q, state.guide.kind);
+        const blockingErrors = diag.filter(issue => issue.lvl === 'err');
+        if (blockingErrors.length) {
+            state.guide.diag = diag;
+            rerender();
+            showToast(dom, 'Export blocked', `${blockingErrors.length} schema errors`, 'error', 3600);
+            return;
+        }
+        exportBlob(exportGuideToDatapack(state.guide.q, state.guide.kind), state.guide.meta.file);
+        state.guide.meta.dirty = false;
+        rerender();
+        return;
+    }
     if (state.mode === 'npc') {
         const diag = validateNpc(state.npc.q);
         const blockingErrors = diag.filter(x => x.lvl === 'err');
@@ -127,6 +145,19 @@ export function importJson(state, rerender, dom, file) {
         try {
             const json = JSON.parse(r.result);
             const detectedType = detectJsonType(json);
+
+            if (detectedType === 'guide' || detectedType === 'guideCategory') {
+                const normalized = normalizeImportedGuide(json, detectedType);
+                importToRegistry(state, normalized, detectedType);
+                if (state.mode === 'guide') {
+                    state.guide.kind = detectedType;
+                    state.guide.q = normalized;
+                    state.guide.meta = {file: file.name, dirty: false};
+                    rerender();
+                    showToast(dom, 'Import success', `Loaded ${file.name}`, 'success');
+                }
+                return;
+            }
 
             if (detectedType === 'npc') {
                 const normalized = normalizeImportedNpc(json);

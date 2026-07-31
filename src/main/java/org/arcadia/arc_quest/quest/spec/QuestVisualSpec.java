@@ -11,6 +11,12 @@ public class QuestVisualSpec {
 
     public static class AssetSpec {
         public String texture = "";
+        public String itemId = "";
+        public int itemCount = 1;
         public float scale = 1.0f;
+        public float offsetX = 0f;
+        public float offsetY = 0f;
+        public int tintColor = 0xFFFFFFFF;
+        public boolean enabled = true;
     }
 }
