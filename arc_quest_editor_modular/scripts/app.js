@@ -12,6 +12,9 @@ import {validateNpc} from './core/npc-validators.js';
 import {validateDialogue} from './core/dialogue-validators.js';
 import {validateTrade} from './core/trade-validators.js';
 import {validateGacha} from './core/gacha-validators.js';
+import {validateGuide} from './core/guide-validators.js';
+import {createGuideSkeleton, createGuideCategorySkeleton} from './core/guide-normalizer.js';
+import {renderGuideEditor, bindGuideEditor} from './editors/guide-editor.js';
 import {exportJson, importJson, bindDragAndDropImport} from './app/import-export.js';
 import {validateCrossReferences} from './core/cross-validator.js';
 import {applyPaneLayout, bindPaneResizers} from './app/layout.js';
@@ -219,6 +222,13 @@ function ensureValidGachaSelection() {
     }
 }
 
+function renderGuide() {
+    state.guide.diag = validateGuide(state.guide.q, state.guide.kind);
+    applyPaneLayout(state, dom);
+    renderGuideEditor(state, dom);
+    bindGuideEditor(state, rerender, dom.mid);
+}
+
 let _prevUiState = null;
 
 function getUiState(state) {
@@ -226,6 +236,7 @@ function getUiState(state) {
     if (state.mode === 'npc') return state.npc.ui.sel;
     if (state.mode === 'trade') return state.trade.ui.sel;
     if (state.mode === 'gacha') return state.gacha.ui.sel;
+    if (state.mode === 'guide') return state.guide.ui.sel;
     return state.quest.ui.sel;
 }
 
@@ -273,6 +284,7 @@ function rerender() {
     else if (state.mode === 'dialogue') renderDialogue();
     else if (state.mode === 'trade') renderTrade();
     else if (state.mode === 'gacha') renderGacha();
+    else if (state.mode === 'guide') renderGuide();
     else renderQuest();
 
     bindAllAutocomplete(dom.mid);
@@ -308,6 +320,9 @@ dom.newBtn.onclick = () => {
         state.gacha.q = createGachaSkeleton();
         state.gacha.meta = {file: 'new_gacha.json', dirty: false};
         state.gacha.ui.sel = {t: 'overview'};
+    } else if (state.mode === 'guide') {
+        state.guide.q = state.guide.kind === 'guideCategory' ? createGuideCategorySkeleton() : createGuideSkeleton();
+        state.guide.meta = {file: state.guide.kind === 'guideCategory' ? 'new_guide_category.json' : 'new_guide.json', dirty: false};
     } else {
         state.quest.q = createBlankQuest();
         state.quest.meta = {file: 'new_quest.json', dirty: false};
@@ -324,6 +339,8 @@ dom.validateBtn.onclick = () => {
         state.trade.diag = validateTrade(state.trade.q);
     } else if (state.mode === 'gacha') {
         state.gacha.diag = validateGacha(state.gacha.q);
+    } else if (state.mode === 'guide') {
+        state.guide.diag = validateGuide(state.guide.q, state.guide.kind);
     }
     state.quest.ui.tab = 'validate';
     rerender();
@@ -374,6 +391,8 @@ if (dom.crossBtn) {
 }
 
 const MODE_LABELS = {quest: 'Quest', npc: 'NPC', dialogue: '对话', trade: '商店', gacha: '抽奖'};
+
+MODE_LABELS.guide = 'Guide';
 
 function updateNewBtnLabel() {
     const label = dom.newBtnLabel;
