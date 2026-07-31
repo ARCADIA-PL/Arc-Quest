@@ -2,72 +2,54 @@ const VALID_RARITIES = new Set(['LEGENDARY', 'EPIC', 'RARE', 'UNCOMMON', 'COMMON
 const VALID_COOLDOWN_TYPES = new Set(['NONE', 'SECONDS', 'GAME_DAY', 'GAME_TICK']);
 
 export function validateGacha(gacha) {
-    const d = [];
-
-    if (!gacha.shopId || !gacha.shopId.trim()) {
-        d.push({lvl: 'err', path: 'shopId', msg: '商店 ID 不能为空'});
-    }
-    if (!gacha.displayName || !gacha.displayName.value || !gacha.displayName.value.trim()) {
-        d.push({lvl: 'err', path: 'displayName', msg: '显示名称不能为空'});
-    }
-
-    if (!gacha.drawCost) {
-        d.push({lvl: 'err', path: 'drawCost', msg: '抽奖成本不能为空'});
-    } else if (gacha.drawCost.type === 'item' && (!gacha.drawCost.itemId || !gacha.drawCost.itemId.trim())) {
-        d.push({lvl: 'err', path: 'drawCost.itemId', msg: '成本物品 ID 不能为空'});
-    }
-
-    if (gacha.cooldownType && !VALID_COOLDOWN_TYPES.has(gacha.cooldownType)) {
-        d.push({lvl: 'err', path: 'cooldownType', msg: `无效的冷却类型: ${gacha.cooldownType}`});
-    }
-
-    const rarities = gacha.rarities || [];
-    if (rarities.length === 0) {
-        d.push({lvl: 'err', path: 'rarities', msg: '至少需要一个稀有度'});
-    }
-    const seenRarities = new Set();
-    rarities.forEach((r, i) => {
-        if (!VALID_RARITIES.has(r.rarity)) {
-            d.push({lvl: 'err', path: `rarities[${i}].rarity`, msg: `无效的稀有度: ${r.rarity}`});
-        } else if (seenRarities.has(r.rarity)) {
-            d.push({lvl: 'err', path: `rarities[${i}].rarity`, msg: `重复的稀有度: ${r.rarity}`});
-        } else {
-            seenRarities.add(r.rarity);
-        }
+    const issues = [];
+    const error = (path, msg) => issues.push({lvl: 'err', path, msg});
+    const warn = (path, msg) => issues.push({lvl: 'warn', path, msg});
+    if (!gacha?.shopId?.trim()) error('shopId', 'shopId is required');
+    if (!gacha?.displayName?.value?.trim()) error('displayName', 'displayName is required');
+    if (!Array.isArray(gacha?.drawCosts) || !gacha.drawCosts.length) error('drawCosts', 'at least one draw cost is required');
+    (gacha?.drawCosts || []).forEach((offer, index) => validateOffer(offer, `drawCosts[${index}]`, true, error));
+    if (!VALID_COOLDOWN_TYPES.has(gacha?.cooldownType || 'NONE')) error('cooldownType', 'invalid cooldown type');
+    if (gacha?.pity && !VALID_COOLDOWN_TYPES.has(gacha.pity.resetCooldownType || 'NONE')) error('pity.resetCooldownType', 'invalid reset cooldown type');
+    const rarities = gacha?.rarities || [];
+    if (!rarities.length) error('rarities', 'at least one rarity is required');
+    const rarityNames = new Set();
+    rarities.forEach((rarity, index) => {
+        if (!VALID_RARITIES.has(rarity.rarity)) error(`rarities[${index}].rarity`, 'invalid rarity');
+        else if (rarityNames.has(rarity.rarity)) error(`rarities[${index}].rarity`, 'duplicate rarity');
+        rarityNames.add(rarity.rarity);
     });
-
-    if (gacha.pity && !gacha.pity.threshold) {
-        d.push({lvl: 'err', path: 'pity.threshold', msg: '保底阈值必须 > 0'});
-    }
-
-    const pools = gacha.pools || [];
-    if (pools.length === 0 || pools.every(p => !p.items || p.items.length === 0)) {
-        d.push({lvl: 'err', path: 'pools', msg: '至少需要一个有物品的奖池'});
-    }
-
-    const rarityNames = new Set(rarities.map(r => r.rarity));
-    const seenItemIds = new Set();
-    pools.forEach((pool, pi) => {
-        (pool.items || []).forEach((item, ii) => {
-            const prefix = `pools[${pi}].items[${ii}]`;
-            if (!item.itemId || !item.itemId.trim()) {
-                d.push({lvl: 'err', path: `${prefix}.itemId`, msg: '物品 ID 不能为空'});
-            } else if (seenItemIds.has(item.itemId)) {
-                d.push({lvl: 'err', path: `${prefix}.itemId`, msg: `重复的物品 ID: ${item.itemId}`});
-            } else {
-                seenItemIds.add(item.itemId);
-            }
-            if (!item.item || !item.item.trim()) {
-                d.push({lvl: 'err', path: `${prefix}.item`, msg: '物品类型不能为空'});
-            }
-            if (!item.weight || item.weight <= 0) {
-                d.push({lvl: 'err', path: `${prefix}.weight`, msg: '权重必须 > 0'});
-            }
-            if (rarityNames.size > 0 && !rarityNames.has(item.rarity)) {
-                d.push({lvl: 'warn', path: `${prefix}.rarity`, msg: `稀有度 '${item.rarity}' 不在稀有度列表中`});
-            }
+    const pools = gacha?.pools || [];
+    if (!pools.length) error('pools', 'at least one pool is required');
+    if (pools.length > 1) warn('pools', 'runtime merges all pools; poolId is metadata only');
+    const poolIds = new Set();
+    const itemIds = new Set();
+    pools.forEach((pool, poolIndex) => {
+        if (!pool.poolId) error(`pools[${poolIndex}].poolId`, 'poolId is required');
+        else if (poolIds.has(pool.poolId)) error(`pools[${poolIndex}].poolId`, 'duplicate poolId');
+        poolIds.add(pool.poolId);
+        (pool.items || []).forEach((item, itemIndex) => {
+            const path = `pools[${poolIndex}].items[${itemIndex}]`;
+            if (!item.itemId) error(`${path}.itemId`, 'itemId is required');
+            else if (itemIds.has(item.itemId)) error(`${path}.itemId`, 'duplicate itemId');
+            itemIds.add(item.itemId);
+            if (!item.item) error(`${path}.item`, 'preview item is required');
+            if ((item.weight ?? 0) <= 0) error(`${path}.weight`, 'weight must be positive');
+            if ((item.minCount ?? 0) <= 0 || item.maxCount < item.minCount) error(`${path}.minCount`, 'invalid count range');
+            if (item.rarity && rarityNames.size && !rarityNames.has(item.rarity)) warn(`${path}.rarity`, 'rarity is not configured');
+            if (item.reward) validateOffer(item.reward, `${path}.reward`, false, error);
         });
     });
+    return issues;
+}
 
-    return d;
+function validateOffer(offer, path, isCost, error) {
+    if (!offer?.type) return error(`${path}.type`, 'offer type is required');
+    if (offer.type === 'item') {
+        if (!!offer.itemId === !!offer.itemTag) error(path, 'exactly one of itemId or itemTag is required');
+        if (!isCost && offer.itemTag) error(`${path}.itemTag`, 'itemTag is only supported for costs');
+    } else if (offer.type === 'command' && !offer.command) error(`${path}.command`, 'command is required');
+    else if (offer.type === 'effect' && !offer.effectId) error(`${path}.effectId`, 'effectId is required');
+    else if (offer.type === 'flag' && !offer.flagName) error(`${path}.flagName`, 'flagName is required');
+    else if (offer.type === 'composite') (offer.offers || []).forEach((child, index) => validateOffer(child, `${path}.offers[${index}]`, isCost, error));
 }

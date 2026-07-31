@@ -39,7 +39,9 @@ public final class GachaDatapackResourceLoader {
                         errors.add(new GachaDatapackLoadError(file, "Parsed gacha spec is null", null));
                         continue;
                     }
-                    if (spec.drawCost == null || spec.pools == null || spec.pools.isEmpty()) {
+                    boolean hasDrawCost = spec.drawCost != null
+                            || (spec.drawCosts != null && !spec.drawCosts.isEmpty());
+                    if (!hasDrawCost || spec.pools == null || spec.pools.isEmpty()) {
                         continue;
                     }
                     specs.put(file.toAbsolutePath().normalize(), spec);

@@ -34,6 +34,8 @@ export const createPhase = index => ({
     choicePhaseIds: [],
     flagsToSetOnEnter: [],
     flagsToSetOnComplete: [],
+    guidesToGrantOnEnter: [],
+    guidesToGrantOnComplete: [],
     objectives: [],
     rewards: [],
     transitions: []
@@ -180,8 +182,10 @@ export const createTradeEntrySkeleton = () => ({
 export const createTradeOfferSkeleton = () => ({
     type: 'item',
     itemId: '',
+    itemTag: '',
     count: 1,
     nbt: '',
+    customIcon: '',
     command: '',
     executeAs: 'console',
     effectId: '',
@@ -201,11 +205,20 @@ export const createGachaSkeleton = () => ({
     simpleMode: false,
     openSound: '',
     closeSound: '',
-    drawCost: createTradeOfferSkeleton(),
+    drawCost: null,
+    drawCosts: [createTradeOfferSkeleton()],
     maxDraws: -1,
     cooldownType: 'NONE',
     cooldownValue: 0,
     resetTimeTicks: 0,
+    drawCondition: null,
+    resetCondition: null,
+    resetOnLimitReached: true,
+    resetPityOnEarlyTrigger: true,
+    drawCooldownSound: '',
+    drawLimitReachedSound: '',
+    drawConditionFailSound: '',
+    drawFailSound: '',
     rarities: [],
     pity: null,
     pools: [
@@ -218,13 +231,17 @@ export const createGachaItemSkeleton = () => ({
     displayName: { mode: 'literal', value: '', args: [] },
     item: '',
     weight: 1,
+    countsTowardsPity: true,
     rarity: 'RARE',
     minCount: 1,
     maxCount: 1,
     sortOrder: 0,
     rewardIcon: '',
     themeColor: -1,
-    drawSuccessSound: ''
+    drawSuccessSound: '',
+    visibleCondition: null,
+    reward: null,
+    weightModifiers: []
 });
 
 export const createDialogueChoice = () => ({

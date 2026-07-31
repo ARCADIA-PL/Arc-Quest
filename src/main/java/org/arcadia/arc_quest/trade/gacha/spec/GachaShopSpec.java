@@ -25,6 +25,14 @@ public class GachaShopSpec {
     public String cooldownType = "NONE";
     public long cooldownValue = 0;
     public int resetTimeTicks = 0;
+    public ConditionSpec drawCondition = null;
+    public ConditionSpec resetCondition = null;
+    public boolean resetOnLimitReached = true;
+    public boolean resetPityOnEarlyTrigger = true;
+    public String drawCooldownSound = "";
+    public String drawLimitReachedSound = "";
+    public String drawConditionFailSound = "";
+    public String drawFailSound = "";
 
     public List<GachaRaritySpec> rarities = new ArrayList<>();
     public PityConfigSpec pity = null;

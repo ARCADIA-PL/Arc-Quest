@@ -7,7 +7,9 @@ const OFFER_LABELS = {item: '物品', command: '命令', effect: '效果', flag:
 
 export function renderGachaOverview(gacha, registry, state) {
 
-    const drawCostHtml = renderSingleOffer(gacha.drawCost, 'gacha.drawCost');
+    const drawCostHtml = (gacha.drawCosts || []).map((offer, index) =>
+        `${renderSingleOffer(offer, `gacha.drawCosts.${index}`)}<button data-dgachacost="${index}" class="toolbar-btn small-btn">Remove</button>`
+    ).join('');
 
     const raritiesHtml = (gacha.rarities || []).map((r, i) => {
         return `<div class="card" style="margin-bottom:4px"><div style="display:flex;align-items:center;gap:8px">
@@ -54,7 +56,8 @@ export function renderGachaOverview(gacha, registry, state) {
     </div>
     <div class="sec">
       <h3>抽奖成本</h3>
-      ${drawCostHtml}
+      ${drawCostHtml || '<div class="small">No draw costs</div>'}
+      <button id="addGachaCostBtn" class="toolbar-btn small-btn">Add draw cost</button>
     </div>
     <div class="sec">
       <div class="row">
@@ -91,8 +94,8 @@ function renderSingleOffer(o, bind) {
     const typeOptions = OFFER_TYPES.map(t => `<option value="${t}" ${o.type===t?'selected':''}>${OFFER_LABELS[t]}</option>`).join('');
     let fields = '';
     switch (o.type) {
-        case 'item': fields = `<input data-b="${bind}.itemId" value="${esc(o.itemId||'')}" placeholder="minecraft:stone" style="flex:1"><input type="number" data-b="${bind}.count" value="${o.count??1}" min="1" style="width:60px">`; break;
-        case 'command': fields = `<input data-b="${bind}.command" value="${esc(o.command||'')}" placeholder="say hello" style="flex:1">`; break;
+        case 'item': fields = `<input data-b="${bind}.itemId" value="${esc(o.itemId||'')}" placeholder="item ID" style="flex:1"><input data-b="${bind}.itemTag" value="${esc(o.itemTag||'')}" placeholder="or item tag" style="flex:1"><input type="number" data-b="${bind}.count" value="${o.count??1}" min="1" style="width:60px"><input data-b="${bind}.customIcon" value="${esc(o.customIcon||'')}" placeholder="custom icon" style="flex:1">`; break;
+        case 'command': fields = `<input data-b="${bind}.command" value="${esc(o.command||'')}" placeholder="say hello" style="flex:1"><select data-b="${bind}.executeAs"><option value="console" ${o.executeAs!=='player'?'selected':''}>console</option><option value="player" ${o.executeAs==='player'?'selected':''}>player</option></select>`; break;
         case 'effect': fields = `<input data-b="${bind}.effectId" value="${esc(o.effectId||'')}" placeholder="minecraft:regeneration" style="flex:1"><input type="number" data-b="${bind}.duration" value="${o.duration??0}" min="0" style="width:60px">`; break;
         case 'flag': fields = `<input data-b="${bind}.flagName" value="${esc(o.flagName||'')}" placeholder="flag_name" style="flex:1">`; break;
         case 'composite': fields = `<span class="tiny" style="opacity:.5;flex:1">组合报价</span>`; break;
@@ -144,6 +147,12 @@ export function renderGachaItemEditor(gacha, pi, ii) {
         <div class="f"><label>主题色</label>${renderColorInput(`${prefix}.themeColor`, item.themeColor ?? -1, true)}</div>
         <div class="f"><label>抽中音效</label><input data-b="${prefix}.drawSuccessSound" value="${esc(item.drawSuccessSound||'')}" placeholder="minecraft:entity.player.levelup"></div>
       </div>
+    </div>
+    <div class="sec">
+      <div class="f"><label>Counts towards pity</label><select data-b="${prefix}.countsTowardsPity"><option value="true" ${item.countsTowardsPity!==false?'selected':''}>true</option><option value="false" ${item.countsTowardsPity===false?'selected':''}>false</option></select></div>
+      <div class="f"><label>Visible condition JSON</label><textarea data-b="${prefix}.visibleConditionJson" rows="4">${esc(JSON.stringify(item.visibleCondition, null, 2))}</textarea></div>
+      <div class="f"><label>Custom reward offer JSON</label><textarea data-b="${prefix}.rewardJson" rows="5">${esc(JSON.stringify(item.reward, null, 2))}</textarea></div>
+      <div class="f"><label>Weight modifiers JSON</label><textarea data-b="${prefix}.weightModifiersJson" rows="5">${esc(JSON.stringify(item.weightModifiers || [], null, 2))}</textarea></div>
     </div>
     <div class="actions" style="margin-top:12px">
       <button data-dgachaitem="${pi}.${ii}">删除此物品</button>

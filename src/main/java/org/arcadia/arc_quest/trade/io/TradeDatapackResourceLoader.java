@@ -52,7 +52,8 @@ public final class TradeDatapackResourceLoader {
     }
 
     private static boolean isGachaJson(String json) {
-        return json.contains("\"pools\"") && json.contains("\"drawCost\"");
+        return json.contains("\"pools\"")
+                && (json.contains("\"drawCost\"") || json.contains("\"drawCosts\""));
     }
 
     public record LoadReport(Map<Path, TradeShopSpec> specs, List<TradeDatapackLoadError> errors, int scannedFiles) {
