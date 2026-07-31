@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public final class QuestChangeNotificationManager {
@@ -29,6 +30,12 @@ public final class QuestChangeNotificationManager {
     public void markRead(String questId) {
         unreadQuestIds.remove(questId);
         unreadNewQuestIds.remove(questId);
+    }
+
+    public void acknowledgeTrackedQuestTransition(String previousQuestId, String currentQuestId) {
+        if (Objects.equals(previousQuestId, currentQuestId)) return;
+        markRead(previousQuestId);
+        markRead(currentQuestId);
     }
 
     public void markAllRead() {

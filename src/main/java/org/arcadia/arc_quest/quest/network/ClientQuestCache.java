@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.core.event.ListenerRegistry;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
@@ -125,7 +126,11 @@ public final class ClientQuestCache {
     }
 
     public void applyTrackedQuestSync(@Nullable String questId) {
-        trackedQuestId = questId == null || questId.isBlank() ? null : questId;
+        String normalizedQuestId = questId == null || questId.isBlank() ? null : questId;
+        if (Objects.equals(trackedQuestId, normalizedQuestId)) return;
+        QuestChangeNotificationManager.INSTANCE.acknowledgeTrackedQuestTransition(
+                trackedQuestId, normalizedQuestId);
+        trackedQuestId = normalizedQuestId;
     }
 
     // ═══════════════════════════════════════════════════════
