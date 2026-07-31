@@ -1,4 +1,4 @@
-import {createGachaItemSkeleton} from '../../core/factories.js';
+import {createGachaItemSkeleton, createTradeOfferSkeleton} from '../../core/factories.js';
 
 export function handleGachaClickPrelude(e, midEl, state, rerender) {
     const nav = e.target.closest('[data-gacha-nav]');
@@ -30,6 +30,17 @@ export function handleGachaNonDeleteButtonAction(btn, state) {
         return true;
     }
 
+    if (id === 'addGachaCostBtn') {
+        state.gacha.q.drawCosts ||= [];
+        state.gacha.q.drawCosts.push(createTradeOfferSkeleton());
+        return true;
+    }
+
+    if (d.dgachacost !== undefined) {
+        state.gacha.q.drawCosts?.splice(+d.dgachacost, 1);
+        return true;
+    }
+
     if (id === 'addGachaRarityBtn') {
         state.gacha.q.rarities = state.gacha.q.rarities || [];
         state.gacha.q.rarities.push({rarity: 'RARE', color: 0xFFFFFF, drawSuccessSound: ''});
@@ -37,7 +48,7 @@ export function handleGachaNonDeleteButtonAction(btn, state) {
     }
 
     if (id === 'addGachaPityBtn') {
-        state.gacha.q.pity = {threshold: 10, targetRarity: 'LEGENDARY', resetOnEarlyTrigger: true};
+        state.gacha.q.pity = {threshold: 10, targetRarity: 'LEGENDARY', guaranteedItemId: '', resetOnEarlyTrigger: true, resetCooldownType: 'NONE', resetCooldownValue: 0, resetCondition: null, resetOnTrigger: true};
         return true;
     }
 
