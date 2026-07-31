@@ -3,8 +3,6 @@ package org.arcadia.arc_quest.trade.spec.compile;
 import net.minecraft.ChatFormatting;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.effect.MobEffect;
-import net.minecraft.world.item.Item;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.condition.ConditionBridge;
 import org.arcadia.arc_quest.dialogue.api.CooldownType;
@@ -76,8 +74,8 @@ public final class TradeSpecCompiler {
     }
 
     private TradeEntry compileEntry(TradeEntrySpec spec, List<TradeCategory> categories) {
-        List<ITradeOffer> costs = compileOffers(spec.costs, true);
-        List<ITradeOffer> rewards = compileOffers(spec.rewards, false);
+        List<ITradeOffer> costs = TradeOfferSpecCompiler.compileOffers(spec.costs, true);
+        List<ITradeOffer> rewards = TradeOfferSpecCompiler.compileOffers(spec.rewards, false);
 
         TradeCategory category = resolveCategory(spec.category, categories);
 
@@ -104,7 +102,7 @@ public final class TradeSpecCompiler {
                 blankToNull(spec.costIcon) != null ? ResourceLocation.tryParse(spec.costIcon) : null,
                 spec.sortOrder,
                 spec.themeColor,
-                null,
+                compileResetCondition(spec.purchaseResetCondition),
                 purchaseSuccessSound,
                 purchaseFailSound,
                 cooldownSound,
@@ -120,37 +118,14 @@ public final class TradeSpecCompiler {
                 .findFirst().orElse(null);
     }
 
-    private List<ITradeOffer> compileOffers(List<TradeOfferSpec> specs, boolean isCost) {
-        List<ITradeOffer> offers = new ArrayList<>();
-        if (specs == null) return offers;
-
-        for (TradeOfferSpec spec : specs) {
-            ITradeOffer offer = compileOffer(spec, isCost);
-            if (offer != null) {
-                offers.add(offer);
-            }
-        }
-        return offers;
-    }
-
-    private ITradeOffer compileOffer(TradeOfferSpec spec, boolean isCost) {
-        if (spec == null || spec.type == null) return null;
-
-        return switch (spec.type) {
-            case "item" -> {
-                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(spec.itemId));
-                if (item == null) throw new TradeCompileException("Unknown item: " + spec.itemId);
-                yield new ItemTradeOffer(item, spec.count, isCost);
-            }
-            case "command" -> new CommandTradeOffer(spec.command);
-            case "effect" -> {
-                MobEffect effect = BuiltInRegistries.MOB_EFFECT.get(ResourceLocation.tryParse(spec.effectId));
-                if (effect == null) throw new TradeCompileException("Unknown effect: " + spec.effectId);
-                yield new EffectTradeOffer(effect, spec.duration, spec.amplifier, isCost);
-            }
-            case "flag" -> new FlagTradeOffer(spec.flagName, isCost);
-            case "composite" -> new CompositeTradeOffer(compileOffers(spec.offers, isCost));
-            default -> throw new TradeCompileException("Unknown offer type: " + spec.type);
+    private java.util.function.Predicate<net.minecraft.server.level.ServerPlayer> compileResetCondition(
+            org.arcadia.arc_quest.condition.ConditionSpec spec) {
+        var condition = ConditionBridge.toQuestCondition(spec);
+        if (condition == null) return null;
+        return player -> {
+            var data = org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager.get(player);
+            if (data == null) return false;
+            return condition.test(player, data.getCompletedQuestLocations(), data.getAllFlags(), data.getAllVariables());
         };
     }
 

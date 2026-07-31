@@ -7,8 +7,10 @@ public class TradeOfferSpec {
     public String type = "item";
 
     public String itemId = "";
+    public String itemTag = "";
     public int count = 1;
     public String nbt = "";
+    public String customIcon = "";
 
     public String command = "";
     public String executeAs = "console";

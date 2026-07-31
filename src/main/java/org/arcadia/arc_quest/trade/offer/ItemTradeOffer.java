@@ -27,6 +27,8 @@ public final class ItemTradeOffer implements ITradeOffer {
     @Nullable
     private final Item item;
     @Nullable
+    private final ItemStack itemStackTemplate;
+    @Nullable
     private final TagKey<Item> itemTag;
     private final ToIntFunction<ServerPlayer> countResolver;
     private final int previewCount;
@@ -50,7 +52,11 @@ public final class ItemTradeOffer implements ITradeOffer {
      * @param customIcon 自定义图标路径
      */
     public ItemTradeOffer(Item item, int count, boolean isCost, @Nullable ResourceLocation customIcon) {
-        this(item, null, fixedCount(count), count, isCost, customIcon);
+        this(item, null, null, fixedCount(count), count, isCost, customIcon);
+    }
+
+    public ItemTradeOffer(ItemStack itemStack, int count, boolean isCost, @Nullable ResourceLocation customIcon) {
+        this(itemStack.getItem(), itemStack.copyWithCount(1), null, fixedCount(count), count, isCost, customIcon);
     }
 
     /**
@@ -60,7 +66,7 @@ public final class ItemTradeOffer implements ITradeOffer {
      * @param customIcon 自定义图标路径
      */
     public ItemTradeOffer(TagKey<Item> itemTag, int count, boolean isCost, @Nullable ResourceLocation customIcon) {
-        this(null, itemTag, fixedCount(count), count, isCost, customIcon);
+        this(null, null, itemTag, fixedCount(count), count, isCost, customIcon);
     }
 
     /**
@@ -75,7 +81,7 @@ public final class ItemTradeOffer implements ITradeOffer {
                           int previewCount,
                           boolean isCost,
                           @Nullable ResourceLocation customIcon) {
-        this(null, itemTag, countResolver, previewCount, isCost, customIcon);
+        this(null, null, itemTag, countResolver, previewCount, isCost, customIcon);
     }
 
     /**
@@ -90,10 +96,11 @@ public final class ItemTradeOffer implements ITradeOffer {
                           int previewCount,
                           boolean isCost,
                           @Nullable ResourceLocation customIcon) {
-        this(item, null, countResolver, previewCount, isCost, customIcon);
+        this(item, null, null, countResolver, previewCount, isCost, customIcon);
     }
 
     private ItemTradeOffer(@Nullable Item item,
+                           @Nullable ItemStack itemStackTemplate,
                            @Nullable TagKey<Item> itemTag,
                            ToIntFunction<ServerPlayer> countResolver,
                            int previewCount,
@@ -106,6 +113,7 @@ public final class ItemTradeOffer implements ITradeOffer {
             throw new IllegalArgumentException("item and itemTag cannot both be set");
         }
         this.item = item;
+        this.itemStackTemplate = itemStackTemplate;
         this.itemTag = itemTag;
         this.countResolver = Objects.requireNonNull(countResolver);
         this.previewCount = validateCount(previewCount);
@@ -169,7 +177,9 @@ public final class ItemTradeOffer implements ITradeOffer {
             }
         } else {
             Item rewardItem = Objects.requireNonNull(item, "reward mode requires explicit item");
-            ItemStack stack = new ItemStack(rewardItem, required);
+            ItemStack stack = itemStackTemplate != null
+                    ? itemStackTemplate.copyWithCount(required)
+                    : new ItemStack(rewardItem, required);
             if (!player.getInventory().add(stack)) {
                 player.drop(stack, false);
             }
@@ -250,7 +260,9 @@ public final class ItemTradeOffer implements ITradeOffer {
 
     private boolean matches(ItemStack stack) {
         if (item != null) {
-            return stack.is(item);
+            return itemStackTemplate != null
+                    ? ItemStack.isSameItemSameComponents(stack, itemStackTemplate)
+                    : stack.is(item);
         }
         return itemTag != null && stack.is(itemTag);
     }
@@ -275,7 +287,7 @@ public final class ItemTradeOffer implements ITradeOffer {
 
     private Component displayName() {
         if (item != null) {
-            return item.getDescription();
+            return itemStackTemplate != null ? itemStackTemplate.getHoverName() : item.getDescription();
         }
         return Component.literal("#" + Objects.requireNonNull(itemTag).location());
     }
