@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "7";
+    private static final String PROTOCOL_VERSION = "8";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -59,6 +59,14 @@ public final class ArcQuestNetwork {
      * 在 Mod 构造器（FMLCommonSetupEvent）中调用。
      */
     public static void register() {
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CDatapackReloadEpochPacket.class,
+                S2CDatapackReloadEpochPacket::encode,
+                S2CDatapackReloadEpochPacket::decode,
+                S2CDatapackReloadEpochPacket::handle
+        );
+
         // ─── S2C：全量同步 ───
         CHANNEL.registerMessage(
                 packetId++,
@@ -352,6 +360,10 @@ public final class ArcQuestNetwork {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new S2CSyncFullDataPacket(data, envelope.playerSessionEpoch(), envelope.newRevision()));
         syncMarkers(player, data);
+    }
+
+    public static void broadcastDatapackReloadEpoch(long epoch) {
+        CHANNEL.send(PacketDistributor.ALL.noArg(), new S2CDatapackReloadEpochPacket(epoch));
     }
 
     /**

@@ -63,7 +63,11 @@ public final class GachaDatapackHotReloadService {
             }
         }
 
-        GachaRegistry.replaceDatapack(newDatapackShops);
+        if (failed == 0) {
+            GachaRegistry.replaceDatapackSnapshot(newDatapackShops);
+        } else {
+            LOGGER.error("[GachaRegistry] Legacy reload rejected; retaining previous datapack snapshot because failed={}", failed);
+        }
 
         LOGGER.info("[GachaRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}",
                 report.scannedFiles(), loaded, failed);
