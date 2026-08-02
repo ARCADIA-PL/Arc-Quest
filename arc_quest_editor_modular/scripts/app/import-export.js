@@ -15,14 +15,19 @@ import {importToRegistry} from '../core/registry.js';
 import {showToast, setDropOverlayVisible} from './toast.js';
 import {validateCrossReferences} from '../core/cross-validator.js';
 
-function detectJsonType(json) {
+export function detectJsonType(json) {
     if (json && json.nodes && Array.isArray(json.nodes)) return 'dialogue';
     if (json && json.entityType && Array.isArray(json.bindings)) return 'npc';
     if (json && json.pools && (json.drawCost || json.drawCosts)) return 'gacha';
     if (json && json.entries && json.shopId) return 'trade';
     if (json && Array.isArray(json.pages) && json.category && json.title) return 'guide';
+    if (json && Array.isArray(json.phases)) return 'quest';
     if (json && json.displayName && Object.hasOwn(json, 'iconTexture') && !json.pages) return 'guideCategory';
-    if (json && (Array.isArray(json.phases) || json.id)) return 'quest';
+    if (json && json.id && (
+        Object.hasOwn(json, 'initialPhaseId')
+        || Object.hasOwn(json, 'completionPolicy')
+        || Object.hasOwn(json, 'unlockConditions')
+    )) return 'quest';
     return 'unknown';
 }
 
