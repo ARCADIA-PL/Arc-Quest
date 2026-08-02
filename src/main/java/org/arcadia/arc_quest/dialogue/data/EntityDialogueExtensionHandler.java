@@ -12,10 +12,10 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.EntityLeaveLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.dialogue.DialogueEndedEvent;
+import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
@@ -320,18 +320,15 @@ public class EntityDialogueExtensionHandler {
          * 模组加载完成时扫描并注册所有扩展
          */
         @SubscribeEvent
-        public static void onCommonSetup(FMLCommonSetupEvent event) {
-            event.enqueueWork(() -> {
-                List<IEntityDialogueExtension<?>> extensions = AnnotatedInstanceUtil.getModEntityExtensions();
-
-                if (!extensions.isEmpty()) {
-                    EntityDialogueExtensionManager.INSTANCE.registerAll(extensions);
-                    LOGGER.info("[EntityDialogueExtension] Auto-registered {} extensions via annotation scanning",
-                            extensions.size());
-                } else {
-                    LOGGER.debug("[EntityDialogueExtension] No annotated extensions found. Use manual registration.");
-                }
-            });
+        public static void onNpcRegistration(ArcQuestRegistrationEvent.Npc event) {
+            List<IEntityDialogueExtension<?>> extensions = AnnotatedInstanceUtil.getModEntityExtensions();
+            if (!extensions.isEmpty()) {
+                EntityDialogueExtensionManager.INSTANCE.registerAll(extensions);
+                LOGGER.info("[EntityDialogueExtension] Auto-registered {} extensions via annotation scanning",
+                        extensions.size());
+            } else {
+                LOGGER.debug("[EntityDialogueExtension] No annotated extensions found. Use manual registration.");
+            }
         }
     }
 

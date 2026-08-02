@@ -29,12 +29,13 @@ public class EntityDialogueExtensionManager {
     /**
      * 所有扩展列表
      */
-    private final List<IEntityDialogueExtension<?>> extensions = Lists.newArrayList();
+    private List<IEntityDialogueExtension<?>> extensions = Lists.newArrayList();
 
     /**
      * 按实体类型分组的扩展映射表
      */
-    private final Map<EntityType<?>, List<IEntityDialogueExtension<?>>> extensionsByType = new HashMap<>();
+    private Map<EntityType<?>, List<IEntityDialogueExtension<?>>> extensionsByType = new HashMap<>();
+    private boolean frozen;
 
     private EntityDialogueExtensionManager() {
     }
@@ -57,7 +58,11 @@ public class EntityDialogueExtensionManager {
      * @param extension 扩展实例
      */
     @SuppressWarnings("unchecked")
-    public void register(IEntityDialogueExtension<?> extension) {
+    public synchronized void register(IEntityDialogueExtension<?> extension) {
+        if (frozen) {
+            throw new IllegalStateException("EntityDialogueExtensionManager is frozen - cannot register extension for "
+                    + extension.getEntityType());
+        }
         EntityType<?> entityType = extension.getEntityType();
 
         // 注册到列表
@@ -76,7 +81,7 @@ public class EntityDialogueExtensionManager {
      *
      * @param extList 扩展列表
      */
-    public void registerAll(List<IEntityDialogueExtension<?>> extList) {
+    public synchronized void registerAll(List<IEntityDialogueExtension<?>> extList) {
         for (IEntityDialogueExtension<?> ext : extList) {
             register(ext);
         }
@@ -146,12 +151,28 @@ public class EntityDialogueExtensionManager {
         return extensions.size();
     }
 
+    public synchronized void freeze() {
+        if (frozen) return;
+        frozen = true;
+        extensions = List.copyOf(extensions);
+        Map<EntityType<?>, List<IEntityDialogueExtension<?>>> published = new HashMap<>();
+        extensionsByType.forEach((entityType, values) -> published.put(entityType, List.copyOf(values)));
+        extensionsByType = Collections.unmodifiableMap(published);
+        LOGGER.info("[EntityDialogueExtensionManager] Frozen. extensions={}, entityTypes={}",
+                extensions.size(), extensionsByType.size());
+    }
+
+    public boolean isFrozen() {
+        return frozen;
+    }
+
     /**
      * 清空所有扩展（用于测试或热重载）。
      */
-    public void clear() {
-        extensions.clear();
-        extensionsByType.clear();
+    public synchronized void clear() {
+        extensions = Lists.newArrayList();
+        extensionsByType = new HashMap<>();
+        frozen = false;
         LOGGER.warn("[EntityDialogueExtensionManager] All extensions cleared");
     }
 }

@@ -7,6 +7,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import org.arcadia.arc_quest.core.identity.EntityRef;
 import org.arcadia.arc_quest.condition.ConditionEvaluator;
+import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
+import org.arcadia.arc_quest.data.registry.RegistrySourceType;
 import org.arcadia.arc_quest.npc.spec.NpcBindingSpec;
 import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.slf4j.Logger;
@@ -21,32 +23,49 @@ public final class NpcBindingRegistry {
     public static final NpcBindingRegistry INSTANCE = new NpcBindingRegistry();
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    private Map<EntityType<?>, List<NpcSpec>> codeSpecsByType = new LinkedHashMap<>();
+    private volatile Map<EntityType<?>, List<NpcSpec>> datapackSpecsByType = Map.of();
     private volatile Map<EntityType<?>, List<NpcSpec>> specsByType = Map.of();
+    private volatile Map<String, RegistrySourceInfo> sourceInfoByBindingId = Map.of();
     private final AtomicLong snapshotEpoch = new AtomicLong();
     private final Set<String> codeBindingIds = ConcurrentHashMap.newKeySet();
     private final ConditionEvaluator conditionEvaluator = new ConditionEvaluator();
+    private boolean frozen;
 
     private NpcBindingRegistry() {
     }
 
     public synchronized void register(NpcSpec spec) {
+        registerCode(spec);
+    }
+
+    public synchronized void registerCode(NpcSpec spec) {
+        if (frozen) {
+            throw new IllegalStateException("NpcBindingRegistry is frozen - cannot register code npc spec for '" + spec.entityType + "'");
+        }
         EntityType<?> entityType = EntityType.byString(spec.entityType).orElse(null);
         if (entityType == null) {
             LOGGER.warn("[NpcBindingRegistry] Unknown entity type '{}', skipping npc spec", spec.entityType);
             return;
         }
 
-        Map<EntityType<?>, List<NpcSpec>> next = new LinkedHashMap<>(specsByType);
+        ensureUniqueCodeBindingIds(spec);
+        Map<EntityType<?>, List<NpcSpec>> next = mutableSnapshot(codeSpecsByType);
         List<NpcSpec> specs = new ArrayList<>(next.getOrDefault(entityType, List.of()));
         specs.add(copySpec(spec));
         specs.sort(NpcBindingRegistry::compareSpecs);
         next.put(entityType, List.copyOf(specs));
-        specsByType = Collections.unmodifiableMap(next);
+        codeSpecsByType = publishSnapshot(next);
+        rebuildMergedSnapshot();
         snapshotEpoch.incrementAndGet();
         LOGGER.debug("[NpcBindingRegistry] Registered npc spec for entity type: {}", spec.entityType);
     }
 
     public synchronized void replaceAll(Collection<NpcSpec> specs) {
+        replaceDatapackSnapshot(specs, snapshotEpoch.incrementAndGet());
+    }
+
+    public synchronized void replaceDatapackSnapshot(Collection<NpcSpec> specs, long epoch) {
         Map<EntityType<?>, List<NpcSpec>> staged = new LinkedHashMap<>();
         for (NpcSpec spec : specs) {
             EntityType<?> entityType = EntityType.byString(spec.entityType).orElse(null);
@@ -56,25 +75,40 @@ public final class NpcBindingRegistry {
             }
             staged.computeIfAbsent(entityType, ignored -> new ArrayList<>()).add(copySpec(spec));
         }
-        Map<EntityType<?>, List<NpcSpec>> published = new LinkedHashMap<>();
-        staged.forEach((entityType, values) -> {
-            values.sort(NpcBindingRegistry::compareSpecs);
-            published.put(entityType, List.copyOf(values));
-        });
-        specsByType = Collections.unmodifiableMap(published);
-        long epoch = snapshotEpoch.incrementAndGet();
+        datapackSpecsByType = publishSnapshot(staged);
+        rebuildMergedSnapshot();
+        snapshotEpoch.set(epoch);
         LOGGER.info("[NpcBindingRegistry] Published npc binding snapshot. specs={}, entityTypes={}, epoch={}",
                 size(), specsByType.size(), epoch);
     }
 
-    public void registerCodeBindingId(String bindingId) {
-        if (bindingId != null && !bindingId.isBlank()) {
-            codeBindingIds.add(bindingId);
+    public synchronized List<NpcSpec> getDatapackSnapshot() {
+        List<NpcSpec> snapshot = new ArrayList<>();
+        datapackSpecsByType.values().forEach(specs -> specs.forEach(spec -> snapshot.add(copySpec(spec))));
+        return List.copyOf(snapshot);
+    }
+
+    public synchronized void freeze() {
+        if (frozen) return;
+        frozen = true;
+        codeSpecsByType = publishSnapshot(codeSpecsByType);
+        rebuildMergedSnapshot();
+        LOGGER.info("[NpcBindingRegistry] Frozen. code={}, datapack={}, merged={}", codeSize(), datapackSize(), size());
+    }
+
+    public synchronized void registerCodeBindingId(String bindingId) {
+        if (bindingId != null && !bindingId.isBlank() && codeBindingIds.add(bindingId)) {
+            rebuildMergedSnapshot();
         }
     }
 
     public synchronized void clear() {
+        codeSpecsByType = new LinkedHashMap<>();
+        datapackSpecsByType = Map.of();
         specsByType = Map.of();
+        sourceInfoByBindingId = Map.of();
+        codeBindingIds.clear();
+        frozen = false;
         snapshotEpoch.incrementAndGet();
         LOGGER.info("[NpcBindingRegistry] Cleared all npc bindings");
     }
@@ -141,6 +175,23 @@ public final class NpcBindingRegistry {
 
     public int size() {
         return specsByType.values().stream().mapToInt(List::size).sum();
+    }
+
+    public int codeSize() {
+        return codeSpecsByType.values().stream().mapToInt(List::size).sum();
+    }
+
+    public int datapackSize() {
+        return datapackSpecsByType.values().stream().mapToInt(List::size).sum();
+    }
+
+    public boolean isFrozen() {
+        return frozen;
+    }
+
+    @Nullable
+    public RegistrySourceInfo getSourceInfo(String bindingId) {
+        return sourceInfoByBindingId.get(bindingId);
     }
 
     public long getSnapshotEpoch() {
@@ -234,6 +285,97 @@ public final class NpcBindingRegistry {
                 .sorted(NpcBindingRegistry::compareBindings)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new)) : new ArrayList<>();
         return copy;
+    }
+
+    private synchronized void rebuildMergedSnapshot() {
+        Set<String> codeSpecBindingIds = collectBindingIds(codeSpecsByType);
+        Map<EntityType<?>, List<NpcSpec>> merged = new LinkedHashMap<>();
+        Map<String, RegistrySourceInfo> sources = new LinkedHashMap<>();
+        int[] loadOrder = {0};
+
+        datapackSpecsByType.forEach((entityType, specs) -> {
+            for (NpcSpec spec : specs) {
+                NpcSpec filtered = copySpecFilteringBindings(spec, codeSpecBindingIds);
+                if (filtered.bindings.isEmpty()) continue;
+                merged.computeIfAbsent(entityType, ignored -> new ArrayList<>()).add(filtered);
+                for (NpcBindingSpec binding : filtered.bindings) {
+                    sources.put(bindingId(binding), new RegistrySourceInfo(
+                            RegistrySourceType.DATAPACK, entityType.toString(), loadOrder[0]++, null));
+                }
+            }
+        });
+
+        codeSpecsByType.forEach((entityType, specs) -> {
+            for (NpcSpec spec : specs) {
+                NpcSpec copied = copySpec(spec);
+                merged.computeIfAbsent(entityType, ignored -> new ArrayList<>()).add(copied);
+                for (NpcBindingSpec binding : copied.bindings) {
+                    String bindingId = bindingId(binding);
+                    boolean overridesDatapack = containsBinding(datapackSpecsByType, bindingId);
+                    sources.put(bindingId, new RegistrySourceInfo(
+                            RegistrySourceType.CODE, "code", loadOrder[0]++,
+                            overridesDatapack ? "datapack_ignored_due_to_code_priority" : null));
+                }
+            }
+        });
+        for (String bindingId : codeBindingIds) {
+            sources.putIfAbsent(bindingId, new RegistrySourceInfo(RegistrySourceType.CODE, "code_extension",
+                    loadOrder[0]++, "datapack_binding_reserved_by_code_extension"));
+        }
+        specsByType = publishSnapshot(merged);
+        sourceInfoByBindingId = Collections.unmodifiableMap(sources);
+    }
+
+    private void ensureUniqueCodeBindingIds(NpcSpec spec) {
+        Set<String> existing = collectBindingIds(codeSpecsByType);
+        if (spec.bindings == null) return;
+        for (NpcBindingSpec binding : spec.bindings) {
+            String bindingId = bindingId(binding);
+            if (!bindingId.isBlank() && !existing.add(bindingId)) {
+                throw new IllegalStateException("Duplicate code npc binding ID: " + bindingId);
+            }
+        }
+    }
+
+    private static Set<String> collectBindingIds(Map<EntityType<?>, List<NpcSpec>> snapshot) {
+        Set<String> ids = new LinkedHashSet<>();
+        snapshot.values().forEach(specs -> specs.forEach(spec -> {
+            if (spec.bindings != null) spec.bindings.forEach(binding -> {
+                String id = bindingId(binding);
+                if (!id.isBlank()) ids.add(id);
+            });
+        }));
+        return ids;
+    }
+
+    private static boolean containsBinding(Map<EntityType<?>, List<NpcSpec>> snapshot, String bindingId) {
+        if (bindingId.isBlank()) return false;
+        return snapshot.values().stream().flatMap(Collection::stream)
+                .filter(spec -> spec.bindings != null).flatMap(spec -> spec.bindings.stream())
+                .anyMatch(binding -> bindingId.equals(bindingId(binding)));
+    }
+
+    private static NpcSpec copySpecFilteringBindings(NpcSpec source, Set<String> excludedBindingIds) {
+        NpcSpec copy = copySpec(source);
+        copy.bindings.removeIf(binding -> excludedBindingIds.contains(bindingId(binding)));
+        return copy;
+    }
+
+    private static Map<EntityType<?>, List<NpcSpec>> mutableSnapshot(Map<EntityType<?>, List<NpcSpec>> source) {
+        Map<EntityType<?>, List<NpcSpec>> copy = new LinkedHashMap<>();
+        source.forEach((entityType, specs) -> copy.put(entityType,
+                specs.stream().map(NpcBindingRegistry::copySpec).collect(java.util.stream.Collectors.toCollection(ArrayList::new))));
+        return copy;
+    }
+
+    private static Map<EntityType<?>, List<NpcSpec>> publishSnapshot(Map<EntityType<?>, List<NpcSpec>> source) {
+        Map<EntityType<?>, List<NpcSpec>> published = new LinkedHashMap<>();
+        source.forEach((entityType, specs) -> {
+            List<NpcSpec> copied = specs.stream().map(NpcBindingRegistry::copySpec)
+                    .sorted(NpcBindingRegistry::compareSpecs).toList();
+            published.put(entityType, copied);
+        });
+        return Collections.unmodifiableMap(published);
     }
 
     private static NpcBindingSpec copyBinding(NpcBindingSpec source) {
