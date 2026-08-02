@@ -241,3 +241,5 @@ typings/
 /.trae/skills/agent-meeting/
 /BLUEPRINT_CORE_REFACTOR_MODERNIZATION.md
 /AGENTS.md
+/docs/arcq-architecture.md
+/docs/arcq-quickstart.md
