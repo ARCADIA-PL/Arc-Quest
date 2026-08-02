@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.api;
 
 import net.minecraft.resources.ResourceLocation;
+import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
@@ -9,6 +10,8 @@ import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideGroupDefinition;
 import org.arcadia.arc_quest.guide.registry.GuideGroupRegistry;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
+import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
+import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
@@ -39,6 +42,11 @@ public final class ArcQuestAPI {
 
     public static boolean hasQuest(ResourceLocation id) {
         return QuestRegistry.get(id) != null;
+    }
+
+    @Nullable
+    public static RegistrySourceInfo getQuestSourceInfo(ResourceLocation id) {
+        return QuestRegistry.getUnifiedSourceInfo(id);
     }
 
     public static void registerQuestGroup(QuestGroupDefinition definition) {
@@ -72,6 +80,11 @@ public final class ArcQuestAPI {
         return GuideRegistry.get(id) != null;
     }
 
+    @Nullable
+    public static RegistrySourceInfo getGuideSourceInfo(ResourceLocation id) {
+        return GuideRegistry.getUnifiedSourceInfo(id);
+    }
+
     public static void registerGuideGroup(GuideGroupDefinition definition) {
         GuideGroupRegistry.register(definition);
     }
@@ -103,8 +116,22 @@ public final class ArcQuestAPI {
         return DialogueRegistry.INSTANCE.get(dialogueId) != null;
     }
 
+    @Nullable
+    public static RegistrySourceInfo getDialogueSourceInfo(String dialogueId) {
+        return DialogueRegistry.INSTANCE.getSourceInfo(dialogueId);
+    }
+
     public static void registerDialogueExtension(IEntityDialogueExtension<?> extension) {
         EntityDialogueExtensionManager.INSTANCE.register(extension);
+    }
+
+    public static void registerNpcSpec(NpcSpec spec) {
+        NpcBindingRegistry.INSTANCE.registerCode(spec);
+    }
+
+    @Nullable
+    public static RegistrySourceInfo getNpcBindingSourceInfo(String bindingId) {
+        return NpcBindingRegistry.INSTANCE.getSourceInfo(bindingId);
     }
 
     public static void registerTradeShop(TradeShopDefinition shop) {
@@ -120,7 +147,17 @@ public final class ArcQuestAPI {
         return TradeRegistry.get(shopId) != null;
     }
 
+    @Nullable
+    public static RegistrySourceInfo getTradeShopSourceInfo(String shopId) {
+        return TradeRegistry.getSourceInfo(shopId);
+    }
+
     public static void registerGachaShop(GachaShopDefinition shop) {
         GachaRegistry.register(shop);
+    }
+
+    @Nullable
+    public static RegistrySourceInfo getGachaShopSourceInfo(String shopId) {
+        return GachaRegistry.getSourceInfo(shopId);
     }
 }

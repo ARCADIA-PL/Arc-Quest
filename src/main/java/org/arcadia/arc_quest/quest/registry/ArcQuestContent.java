@@ -11,8 +11,8 @@ import org.slf4j.Logger;
 /**
  * Built-in quest content registration.
  *
- * <p>The registration event path keeps the registry open for add-ons. The legacy
- * {@link #registerAll()} entry point retains its original register-and-freeze behavior.</p>
+ * <p>The registration event path keeps the registry open for add-ons. The built-in registration
+ * entry point no longer freezes registries; the mod lifecycle freezes all content layers together.</p>
  */
 public final class ArcQuestContent {
 
@@ -24,8 +24,6 @@ public final class ArcQuestContent {
     public static void registerAll() {
         registerBuiltInContent();
         registerBuiltInGroups(new ArcQuestRegistrationEvent.Quest());
-        QuestRegistry.freeze();
-        QuestGroupRegistry.freeze();
     }
 
     private static void registerBuiltInContent() {
