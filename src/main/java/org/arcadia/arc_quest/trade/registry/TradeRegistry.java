@@ -2,86 +2,114 @@ package org.arcadia.arc_quest.trade.registry;
 
 import com.mojang.logging.LogUtils;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.data.registry.LayeredRegistrySnapshot;
+import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 public final class TradeRegistry {
-
     private static final Logger LOGGER = LogUtils.getLogger();
     private static Map<String, TradeShopDefinition> codeShops = new LinkedHashMap<>();
-    private static volatile Map<String, TradeShopDefinition> datapackShops = Map.of();
-    private static boolean frozen = false;
+    private static volatile LayeredRegistrySnapshot<String, TradeShopDefinition> snapshot =
+            LayeredRegistrySnapshot.empty(codeShops);
+    private static boolean frozen;
 
     private TradeRegistry() {
     }
 
     public static void register(TradeShopDefinition definition) {
-        if (frozen) {
-            throw new IllegalStateException("TradeRegistry is frozen — cannot register '" + definition.getShopId() + "'");
-        }
+        registerCode(definition);
+    }
 
+    public static synchronized void registerCode(TradeShopDefinition definition) {
+        if (frozen) {
+            throw new IllegalStateException("TradeRegistry is frozen - cannot register '" + definition.getShopId() + "'");
+        }
         String id = definition.getShopId();
         if (codeShops.containsKey(id)) {
             throw new IllegalStateException("Duplicate trade shop ID: " + id);
         }
         codeShops.put(id, definition);
-        LOGGER.info("[ArcQuest] Registered trade shop: {} ({} entries)",
-                id, definition.getAllEntries().size());
+        rebuildSnapshot(snapshot.datapack());
+        LOGGER.info("[ArcQuest] Registered code trade shop: {} ({} entries)", id, definition.getAllEntries().size());
     }
 
-    public static void freeze() {
+    public static synchronized void registerDatapack(TradeShopDefinition definition) {
+        Map<String, TradeShopDefinition> datapack = new LinkedHashMap<>(snapshot.datapack());
+        datapack.put(definition.getShopId(), definition);
+        rebuildSnapshot(datapack);
+    }
+
+    public static synchronized void freeze() {
+        if (frozen) return;
         frozen = true;
         codeShops = Collections.unmodifiableMap(new LinkedHashMap<>(codeShops));
-        LOGGER.info("[ArcQuest] TradeRegistry frozen. Total code shops: {}", codeShops.size());
+        rebuildSnapshot(snapshot.datapack());
+        LOGGER.info("[ArcQuest] TradeRegistry frozen. code={}, datapack={}, merged={}",
+                codeSize(), datapackSize(), size());
     }
 
     public static void replaceDatapack(Map<String, TradeShopDefinition> shops) {
-        datapackShops = Collections.unmodifiableMap(new LinkedHashMap<>(shops));
-        LOGGER.info("[ArcQuest] TradeRegistry datapack replaced. Total datapack shops: {}", shops.size());
+        replaceDatapackSnapshot(shops);
     }
 
-    public static void clearDatapack() {
-        datapackShops = Map.of();
+    public static synchronized void replaceDatapackSnapshot(Map<String, TradeShopDefinition> shops) {
+        rebuildSnapshot(shops);
+        LOGGER.info("[ArcQuest] Trade datapack snapshot replaced. datapack={}, merged={}", datapackSize(), size());
+    }
+
+    public static Map<String, TradeShopDefinition> getDatapackSnapshot() {
+        return snapshot.datapack();
+    }
+
+    public static synchronized void clearDatapack() {
+        rebuildSnapshot(Map.of());
         LOGGER.info("[ArcQuest] TradeRegistry datapack cleared.");
     }
 
     @Nullable
     public static TradeShopDefinition get(String shopId) {
-        TradeShopDefinition shop = codeShops.get(shopId);
-        if (shop != null) return shop;
-
-        shop = datapackShops.get(shopId);
-        if (shop != null) return shop;
-
-        if (!shopId.contains(":")) {
-            String fullId = Arc_Quest.MOD_ID + ":" + shopId;
-            shop = codeShops.get(fullId);
-            if (shop != null) return shop;
-            return datapackShops.get(fullId);
+        if (shopId == null || shopId.isBlank()) return null;
+        TradeShopDefinition definition = snapshot.merged().get(shopId);
+        if (definition == null && !shopId.contains(":")) {
+            definition = snapshot.merged().get(Arc_Quest.MOD_ID + ":" + shopId);
         }
+        return definition;
+    }
 
-        return null;
+    @Nullable
+    public static TradeShopDefinition getCodeDefinition(String shopId) {
+        if (shopId == null || shopId.isBlank()) return null;
+        TradeShopDefinition definition = codeShops.get(shopId);
+        if (definition == null && !shopId.contains(":")) definition = codeShops.get(Arc_Quest.MOD_ID + ":" + shopId);
+        return definition;
+    }
+
+    @Nullable
+    public static RegistrySourceInfo getSourceInfo(String shopId) {
+        if (shopId == null || shopId.isBlank()) return null;
+        RegistrySourceInfo source = snapshot.sources().get(shopId);
+        if (source == null && !shopId.contains(":")) source = snapshot.sources().get(Arc_Quest.MOD_ID + ":" + shopId);
+        return source;
     }
 
     public static Collection<TradeShopDefinition> getAll() {
-        Map<String, TradeShopDefinition> merged = new LinkedHashMap<>();
-        merged.putAll(datapackShops);
-        merged.putAll(codeShops);
-        return Collections.unmodifiableCollection(merged.values());
+        return snapshot.merged().values();
     }
 
     public static Set<String> getAllIds() {
-        Set<String> ids = new LinkedHashSet<>();
-        ids.addAll(codeShops.keySet());
-        ids.addAll(datapackShops.keySet());
-        return Collections.unmodifiableSet(ids);
+        return snapshot.merged().keySet();
     }
 
     public static int size() {
-        return codeShops.size() + datapackShops.size();
+        return snapshot.merged().size();
     }
 
     public static int codeSize() {
@@ -89,12 +117,31 @@ public final class TradeRegistry {
     }
 
     public static int datapackSize() {
-        return datapackShops.size();
+        return snapshot.datapack().size();
     }
 
-    public static void clearAll() {
-        codeShops.clear();
-        datapackShops = Map.of();
+    public static boolean isFrozen() {
+        return frozen;
+    }
+
+    public static synchronized void clearAll() {
+        codeShops = new LinkedHashMap<>();
+        frozen = false;
+        snapshot = LayeredRegistrySnapshot.empty(codeShops);
         LOGGER.info("[ArcQuest] TradeRegistry cleared.");
+    }
+
+    private static void rebuildSnapshot(Map<String, TradeShopDefinition> datapack) {
+        LayeredRegistrySnapshot<String, TradeShopDefinition> next = LayeredRegistrySnapshot.create(codeShops, datapack);
+        logOverrides(next);
+        snapshot = next;
+    }
+
+    private static void logOverrides(LayeredRegistrySnapshot<String, TradeShopDefinition> next) {
+        next.sources().forEach((id, source) -> {
+            if (source.ignoredReason() != null) {
+                LOGGER.warn("[ArcQuest] Datapack trade shop '{}' ignored because code-defined shop has priority.", id);
+            }
+        });
     }
 }
