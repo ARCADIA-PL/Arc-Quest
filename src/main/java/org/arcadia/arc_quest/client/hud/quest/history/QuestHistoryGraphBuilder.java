@@ -41,7 +41,9 @@ final class QuestHistoryGraphBuilder {
         List<GraphNodeLayout> layouts = PhaseGraphLayoutEngine.layout(phaseIds, phaseId -> {
             PhaseDefinition phase = definition.getPhase(phaseId);
             if (phase == null) return List.of();
-            return phase.getTransitions().stream().map(PhaseTransition::getTargetPhaseId).toList();
+            return phase.getTransitions().stream()
+                    .flatMap(transition -> transition.getTargetPhaseIds().stream())
+                    .toList();
         }, horizontalSpacing, verticalSpacing);
         for (GraphNodeLayout layout : layouts) {
             String phaseId = layout.id();

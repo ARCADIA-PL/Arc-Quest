@@ -82,7 +82,7 @@ public final class QuestProgressHandler {
         }
 
         Set<ResourceLocation> completedQuests = data.getCompletedQuestLocations();
-        PhaseDefinition firstPhase = def.getInitialPhase();
+        PhaseDefinition firstPhase = def.selectInitialPhase(player.getRandom());
         QuestAcceptanceContext acceptance = new QuestAcceptanceContext(
                 player, data, def, questId, firstPhase,
                 new QuestConditionContext(player, completedQuests,
@@ -362,7 +362,7 @@ public final class QuestProgressHandler {
                     || evaluateCondition(tr.getCondition(), player, completedQuests, data);
             if (!ok) continue;
 
-            activatePhase(player, data, qdata, def, phaseId, tr.getTargetPhaseId(), true, ctx);
+            activatePhase(player, data, qdata, def, phaseId, tr.selectTargetPhaseId(player.getRandom()), true, ctx);
         }
 
         // enterCondition 自动扫描（仅 autoEnterByCondition=true 的 phase）
@@ -439,7 +439,7 @@ public final class QuestProgressHandler {
         for (PhaseTransition tr : phase.getTransitions()) {
             boolean ok = tr.getCondition() == null
                     || evaluateCondition(tr.getCondition(), player, completedQuests, data);
-            if (ok) activatePhase(player, data, qdata, def, phaseId, tr.getTargetPhaseId(), true, ctx);
+            if (ok) activatePhase(player, data, qdata, def, phaseId, tr.selectTargetPhaseId(player.getRandom()), true, ctx);
         }
         tryAutoEnterPhases(player, data, qdata, def, phaseId, ctx);
         processImmediatelySatisfiedPhases(player, data, qdata, def);
@@ -553,7 +553,7 @@ public final class QuestProgressHandler {
         toActivate.add(targetPhaseId);
 
         for (PhaseTransition tr : currentPhase.getTransitions()) {
-            String pid = tr.getTargetPhaseId();
+            String pid = tr.selectTargetPhaseId(player.getRandom());
             if (pid == null || pid.isEmpty() || pid.equals(targetPhaseId)) continue;
 
             ICondition cond = tr.getCondition();

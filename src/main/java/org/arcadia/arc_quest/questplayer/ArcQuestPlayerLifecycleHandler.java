@@ -239,7 +239,7 @@ public final class ArcQuestPlayerLifecycleHandler {
             }
 
             if (qdata.getState() == QuestState.ACTIVE && qdata.getActivePhaseIds().isEmpty()) {
-                PhaseDefinition init = def.getInitialPhase();
+                PhaseDefinition init = def.selectInitialPhase(player.getRandom());
                 if (init != null) {
                     qdata.activatePhase(init.getPhaseId(), init.getObjectives().size());
                     needsSync = true;
