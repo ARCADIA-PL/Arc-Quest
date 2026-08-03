@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.dialogue.spec;
 
+import org.arcadia.arc_quest.quest.spec.MarkSpecData;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,4 +21,5 @@ public class DialogueNodeSpec {
     public int resetTimeTicks = 0;
     public String nodeEnterSound = "";
     public String defaultSayId = "";
+    public List<MarkSpecData> relatedMarks = new ArrayList<>();
 }

@@ -205,6 +205,17 @@ public class DialogueTreeBuilder {
         return this;
     }
 
+    public DialogueTreeBuilder markOnNodeEnter(MarkSpec spec) {
+        return markOnNodeEnter(spec, MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS);
+    }
+
+    public DialogueTreeBuilder markOnNodeEnter(MarkSpec spec, int durationTicks) {
+        ensureOpenNode();
+        MarkSpec triggered = MarkTriggers.withTrigger(spec, MarkTrigger.DIALOGUE_NODE_ENTERED, durationTicks);
+        treeMarks.add(MarkTriggers.forDialogueNode(triggered, curNodeId));
+        return this;
+    }
+
 
     public DialogueTreeBuilder node(String nodeId) {
         commitCurrentNode();
@@ -1003,6 +1014,16 @@ public class DialogueTreeBuilder {
 
         public ChoiceBuilder markRelatedObject(MarkSpec spec) {
             relatedMarks.add(spec);
+            return this;
+        }
+
+        public ChoiceBuilder markOnSelected(MarkSpec spec) {
+            return markOnSelected(spec, MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS);
+        }
+
+        public ChoiceBuilder markOnSelected(MarkSpec spec, int durationTicks) {
+            relatedMarks.add(MarkTriggers.withTrigger(
+                    spec, MarkTrigger.DIALOGUE_CHOICE_SELECTED, durationTicks));
             return this;
         }
 
