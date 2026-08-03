@@ -16,6 +16,8 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questmarker.api.MarkTargetResolver;
+import org.arcadia.arc_quest.questmarker.api.MarkTargetResolverRegistry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
@@ -42,6 +44,19 @@ public final class ArcQuestAPI {
 
     public static boolean hasQuest(ResourceLocation id) {
         return QuestRegistry.get(id) != null;
+    }
+
+    public static void registerMarkTargetResolver(String resolverId, MarkTargetResolver resolver) {
+        MarkTargetResolverRegistry.register(resolverId, resolver);
+    }
+
+    public static void unregisterMarkTargetResolver(String resolverId) {
+        MarkTargetResolverRegistry.unregister(resolverId);
+    }
+
+    @Nullable
+    public static MarkTargetResolver getMarkTargetResolver(String resolverId) {
+        return MarkTargetResolverRegistry.get(resolverId);
     }
 
     @Nullable
