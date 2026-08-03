@@ -5,19 +5,26 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import org.arcadia.arc_quest.client.hud.component.HudListItemRenderer;
-import org.arcadia.arc_quest.client.hud.component.HudPanelRenderer;
+import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
-import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar;
-import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalTabStrip;
+import org.arcadia.arc_quest.client.hud.quest.graph.GraphBounds;
+import org.arcadia.arc_quest.client.hud.quest.graph.GraphNodeLayout;
+import org.arcadia.arc_quest.client.hud.quest.graph.GraphViewportController;
+import org.arcadia.arc_quest.client.hud.quest.graph.PhaseGraphLayoutEngine;
 import org.arcadia.arc_quest.quest.editor.network.C2SCloseQuestEditorPacket;
 import org.arcadia.arc_quest.quest.editor.network.C2SSaveQuestEditorPacket;
 import org.arcadia.arc_quest.quest.editor.network.S2CQuestEditorResultPacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.quest.api.QuestVisualConfig;
+import org.arcadia.arc_quest.quest.api.SplashType;
+import org.arcadia.arc_quest.quest.api.VisualAsset;
 import org.arcadia.arc_quest.quest.spec.PhaseSpec;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecJsonWriter;
+import org.arcadia.arc_quest.quest.spec.compile.QuestVisualSpecCompiler;
+import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,35 +32,29 @@ import java.util.UUID;
 
 public final class QuestEditorScreen extends Screen {
     private static final int THEME = QuestEditorTheme.ACCENT;
-    private static final int LIST_ROW_HEIGHT = 34;
-
     private final UUID sessionId;
     private final ResourceLocation questId;
     private final String sourceFileName;
     private final QuestSpec document;
-    private final Map<String, QuestEditorGraphRenderer.NodePosition> positions = new LinkedHashMap<>();
-    private final JournalTabStrip narrowTabStrip = new JournalTabStrip();
-    private final JournalScrollbar phaseScrollbar = new JournalScrollbar(2, 12);
-    private final JournalScrollbar inspectorScrollbar = new JournalScrollbar(2, 12);
+    private final Map<String, GraphNodeLayout> positions = new LinkedHashMap<>();
+    private final Map<String, VisualAsset> phaseImages = new LinkedHashMap<>();
+    private final GraphViewportController viewport = new GraphViewportController(0.5f, 1.75f, 1.1f);
+    private final QuestEditorPhaseListPanel phaseListPanel = new QuestEditorPhaseListPanel();
+    private final QuestEditorDetailPanel detailPanel = new QuestEditorDetailPanel();
     private long revision;
     private long reloadEpoch;
     private long lastRenderTime;
     private String selectedPhaseId;
-    private String status = "??";
+    private String status = "\u5c31\u7eea";
     private boolean dirty;
-    private boolean draggingNode;
     private boolean panning;
     private boolean initialViewportApplied;
+    private boolean pointerCursorApplied;
+    private long pointerCursorHandle;
+    private float titleVisibility = 1f;
     private double lastMouseX;
     private double lastMouseY;
-    private float panX;
-    private float panY;
-    private float zoom = 1.0f;
-    private int phaseScroll;
-    private int inspectorScroll;
-    private int inspectorContentHeight;
     private QuestEditorLayout layout;
-    private NarrowPane narrowPane = NarrowPane.GRAPH;
 
     public QuestEditorScreen(UUID sessionId, ResourceLocation questId, String sourceFileName,
                              long revision, long reloadEpoch, QuestSpec document) {
@@ -68,14 +69,43 @@ public final class QuestEditorScreen extends Screen {
     }
 
     private void buildInitialLayout() {
-        for (int index = 0; index < document.phases.size(); index++) {
-            PhaseSpec phase = document.phases.get(index);
-            positions.put(phase.phaseId, new QuestEditorGraphRenderer.NodePosition(
-                    36 + (index % 3) * 220, 36 + (index / 3) * 125));
-        }
+        rebuildGraphLayout();
         selectedPhaseId = document.initialPhaseId;
         if (selectedPhaseId == null && !document.phases.isEmpty()) {
             selectedPhaseId = document.phases.get(0).phaseId;
+        }
+    }
+
+    private void rebuildGraphLayout() {
+        Map<String, PhaseSpec> phasesById = new LinkedHashMap<>();
+        for (PhaseSpec phase : document.phases) phasesById.put(phase.phaseId, phase);
+        List<GraphNodeLayout> layouts = PhaseGraphLayoutEngine.layout(
+                new ArrayList<>(phasesById.keySet()), phaseId -> {
+                    PhaseSpec phase = phasesById.get(phaseId);
+                    if (phase == null) return List.of();
+                    return phase.transitions.stream().map(transition -> transition.targetPhaseId).toList();
+                }, QuestEditorGraphRenderer.NODE_WIDTH + 64,
+                QuestEditorGraphRenderer.NODE_HEIGHT + 38);
+        positions.clear();
+        for (GraphNodeLayout node : layouts) positions.put(node.id(), node);
+        phaseImages.clear();
+        for (PhaseSpec phase : document.phases) {
+            try {
+                QuestVisualConfig visual = QuestVisualSpecCompiler.compile(phase.visualConfig);
+                for (SplashType type : List.of(SplashType.QUEST_DETAIL, SplashType.PHASE_START,
+                        SplashType.PHASE_COMPLETE, SplashType.QUEST_ACQUIRED, SplashType.QUEST_COMPLETED,
+                        SplashType.DIALOGUE_START, SplashType.DIALOGUE_END, SplashType.QUEST_FAILED)) {
+                    VisualAsset asset = visual.getSplash(type).orElse(null);
+                    if (asset != null) {
+                        phaseImages.put(phase.phaseId, asset);
+                        break;
+                    }
+                }
+            } catch (RuntimeException exception) {
+                phaseImages.remove(phase.phaseId);
+                Arc_Quest.LOGGER.warn("Quest editor failed to resolve phase image: quest={}, phase={}",
+                        questId, phase.phaseId, exception);
+            }
         }
     }
 
@@ -84,7 +114,7 @@ public final class QuestEditorScreen extends Screen {
         layout = QuestEditorLayout.calculate(width, height);
         clampScrollOffsets();
         if (!initialViewportApplied) {
-            fitGraphToViewport();
+            fitGraphToViewport(true);
             initialViewportApplied = true;
         }
     }
@@ -93,150 +123,78 @@ public final class QuestEditorScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         layout = QuestEditorLayout.calculate(width, height);
         long now = Util.getMillis();
-        if (lastRenderTime == 0) lastRenderTime = now;
+        if (lastRenderTime == 0L) lastRenderTime = now;
         float deltaTime = Math.min(0.1f, (now - lastRenderTime) / 1000f);
         lastRenderTime = now;
-
+        viewport.update(deltaTime);
+        titleVisibility = org.arcadia.arc_quest.client.hud.HudAnimUtil.smoothExp(
+                titleVisibility, viewport.zoom() >= 0.68f ? 1f : 0f, 12f, deltaTime);
+        detailPanel.update(deltaTime);
         QuestEditorChromeRenderer.renderBackground(graphics, width, height, THEME);
         QuestEditorChromeRenderer.renderHeader(graphics, font, layout.header(),
-                questId + "  ?  " + sourceFileName, THEME, mouseX, mouseY);
-        if (layout.narrow()) {
-            renderNarrowTabs(graphics, mouseX, mouseY, deltaTime);
-            if (narrowPane == NarrowPane.LIST) renderPhaseList(graphics, mouseX, mouseY);
-            else if (narrowPane == NarrowPane.GRAPH) renderGraph(graphics, mouseX, mouseY);
-            else renderInspector(graphics);
-        } else {
-            renderPhaseList(graphics, mouseX, mouseY);
-            renderGraph(graphics, mouseX, mouseY);
-            renderInspector(graphics);
-        }
-        String statusText = status + "  ?  revision " + revision + "  ?  epoch " + reloadEpoch
-                + (dirty ? "  ?  ? ???" : "");
+                questId + "  \u00b7  " + sourceFileName, THEME, mouseX, mouseY);
+        renderPhaseList(graphics, mouseX, mouseY);
+        renderGraph(graphics, mouseX, mouseY, deltaTime);
+        detailPanel.render(graphics, font, layout.workspace(), findSelected(),
+                mouseX, mouseY, THEME, deltaTime);
+        String statusText = status + "  \u00b7  revision " + revision + "  \u00b7  epoch " + reloadEpoch
+                + (dirty ? "  \u00b7  \u672a\u4fdd\u5b58" : "");
         QuestEditorChromeRenderer.renderStatusBar(graphics, font, layout.statusBar(),
                 statusText, dirty, THEME);
         super.render(graphics, mouseX, mouseY, partialTick);
-    }
-
-    private void renderNarrowTabs(GuiGraphics graphics, int mouseX, int mouseY, float deltaTime) {
-        HudRect tabs = layout.narrowTabs();
-        HudPanelRenderer.drawJournalPanel(graphics, tabs, THEME, 0x35, 0x35);
-        List<JournalTabStrip.TabItem> items = narrowTabItems();
-        int stripWidth = narrowTabStrip.totalWidth(font, items, 4);
-        int startX = tabs.x() + Math.max(4, (tabs.width() - stripWidth) / 2);
-        narrowTabStrip.render(graphics, font, items, startX, tabs.y(), tabs.height(), 4,
-                mouseX, mouseY, THEME, 255, deltaTime);
+        applyPointerCursor(shouldUsePointerCursor(mouseX, mouseY));
     }
 
     private void renderPhaseList(GuiGraphics graphics, int mouseX, int mouseY) {
-        HudRect panel = layout.phaseList();
-        HudPanelRenderer.drawJournalPanel(graphics, panel, THEME,
-                QuestEditorTheme.PANEL_BACKGROUND_ALPHA, QuestEditorTheme.PANEL_BORDER_ALPHA);
-        HudPanelRenderer.drawJournalHeader(graphics, font, panel,
-                QuestEditorLayout.PANEL_HEADER_HEIGHT, "????",
-                Integer.toString(document.phases.size()), THEME, 255);
-
-        HudRect viewport = listViewport();
-        int contentHeight = phaseContentHeight();
-        phaseScroll = clamp(phaseScroll, 0, Math.max(0, contentHeight - viewport.height()));
-        HudRect contentViewport = new HudRect(viewport.x(), viewport.y(),
-                Math.max(1, viewport.width() - 6), viewport.height());
-        graphics.enableScissor(contentViewport.x(), contentViewport.y(),
-                contentViewport.right(), contentViewport.bottom());
-        for (int index = 0; index < document.phases.size(); index++) {
-            PhaseSpec phase = document.phases.get(index);
-            int rowY = contentViewport.y() + index * LIST_ROW_HEIGHT - phaseScroll;
-            if (rowY + LIST_ROW_HEIGHT < contentViewport.y() || rowY > contentViewport.bottom()) continue;
-            HudRect row = new HudRect(contentViewport.x(), rowY,
-                    contentViewport.width(), LIST_ROW_HEIGHT - 2);
-            String displayName = phase.displayName == null || phase.displayName.value == null
-                    || phase.displayName.value.isBlank() ? phase.phaseId : phase.displayName.value;
-            HudListItemRenderer.drawJournal(graphics, font, row, displayName, phase.phaseId,
-                    phase.phaseId.equals(selectedPhaseId), row.contains(mouseX, mouseY), THEME, 255);
-        }
-        graphics.disableScissor();
-        phaseScrollbar.render(graphics, phaseScrollbarTrack(), contentHeight,
-                phaseScroll, 1f, THEME);
+        phaseListPanel.render(graphics, font, layout.phaseList(), listViewport(),
+                document.phases, selectedPhaseId, mouseX, mouseY, THEME);
     }
 
-    private void renderGraph(GuiGraphics graphics, int mouseX, int mouseY) {
-        QuestEditorGraphRenderer.render(graphics, font, layout.graph(), graphViewport(),
-                document, positions, selectedPhaseId, mouseX, mouseY, panX, panY, zoom, THEME);
-    }
-
-    private void renderInspector(GuiGraphics graphics) {
-        HudRect viewport = inspectorViewport();
-        inspectorContentHeight = QuestEditorInspectorRenderer.render(graphics, font,
-                layout.inspector(), viewport, findSelected(), inspectorScroll,
-                inspectorScrollbar, THEME);
-        inspectorScroll = clamp(inspectorScroll, 0,
-                Math.max(0, inspectorContentHeight - viewport.height()));
+    private void renderGraph(GuiGraphics graphics, int mouseX, int mouseY, float deltaTime) {
+        String visualSelection = detailPanel.isSelected(selectedPhaseId) ? selectedPhaseId : null;
+        QuestEditorGraphRenderer.render(graphics, font, layout.workspace(), graphViewport(),
+                document, positions, phaseImages, visualSelection, mouseX, mouseY,
+                viewport.panX(), viewport.panY(), viewport.zoom(), THEME,
+                titleVisibility, deltaTime);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         lastMouseX = mouseX;
         lastMouseY = mouseY;
+        if (detailPanel.mouseClicked(mouseX, mouseY, button, layout.workspace())) return true;
         if (button == 0 && QuestEditorChromeRenderer.saveButton(layout.header()).contains(mouseX, mouseY)) {
             save();
             return true;
         }
         HudRect fitButton = QuestEditorChromeRenderer.fitButton(layout.header());
         if (button == 0 && fitButton.width() > 0 && fitButton.contains(mouseX, mouseY)) {
-            fitGraphToViewport();
-            status = "????????";
+            fitGraphToViewport(false);
+            status = "\u5df2\u9002\u914d\u62d3\u6251\u89c6\u56fe";
             return true;
         }
-        if (layout.narrow() && button == 0) {
-            List<JournalTabStrip.TabItem> items = narrowTabItems();
-            int stripWidth = narrowTabStrip.totalWidth(font, items, 4);
-            int startX = layout.narrowTabs().x()
-                    + Math.max(4, (layout.narrowTabs().width() - stripWidth) / 2);
-            String hitTab = narrowTabStrip.hitTest(font, items, startX,
-                    layout.narrowTabs().y(), layout.narrowTabs().height(), 4, mouseX, mouseY);
-            if (hitTab != null) {
-                narrowPane = NarrowPane.valueOf(hitTab);
-                return true;
-            }
-        }
-        if ((!layout.narrow() || narrowPane == NarrowPane.LIST) && button == 0) {
-            JournalScrollbar.ScrollInteraction interaction = phaseScrollbar.mouseClicked(
-                    mouseX, mouseY, phaseScrollbarTrack(), 6, phaseContentHeight(), phaseScroll);
-            if (interaction.consumed()) {
-                phaseScroll = clamp((int) Math.round(interaction.scrollOffset()), 0,
-                        Math.max(0, phaseContentHeight() - listViewport().height()));
-                return true;
-            }
-        }
-        if ((!layout.narrow() || narrowPane == NarrowPane.INSPECTOR) && button == 0) {
-            JournalScrollbar.ScrollInteraction interaction = inspectorScrollbar.mouseClicked(
-                    mouseX, mouseY, QuestEditorInspectorRenderer.scrollbarTrack(inspectorViewport()),
-                    6, inspectorContentHeight, inspectorScroll);
-            if (interaction.consumed()) {
-                inspectorScroll = clamp((int) Math.round(interaction.scrollOffset()), 0,
-                        Math.max(0, inspectorContentHeight - inspectorViewport().height()));
-                return true;
-            }
-        }
-        HudRect listViewport = listViewport();
-        if ((!layout.narrow() || narrowPane == NarrowPane.LIST)
-                && button == 0 && listViewport.contains(mouseX, mouseY)) {
-            int index = (int) ((mouseY - listViewport.y() + phaseScroll) / LIST_ROW_HEIGHT);
-            if (index >= 0 && index < document.phases.size()) {
-                selectedPhaseId = document.phases.get(index).phaseId;
-                inspectorScroll = 0;
+        String selectedFromList = phaseListPanel.mouseClicked(
+                mouseX, mouseY, button, listViewport(), document.phases);
+        if (selectedFromList != null) {
+            if (!selectedFromList.isEmpty()) {
+                selectedPhaseId = selectedFromList;
+                detailPanel.select(selectedPhaseId);
+                focusOnPhase(selectedPhaseId, false);
             }
             return true;
         }
-        PhaseSpec hit = (!layout.narrow() || narrowPane == NarrowPane.GRAPH)
-                ? findNode(mouseX, mouseY) : null;
-        if (hit != null && button == 0) {
+        if (button == 2 && graphViewport().contains(mouseX, mouseY)) {
+            focusOnPhase(selectedPhaseId, true);
+            return true;
+        }
+        PhaseSpec hit = findNode(mouseX, mouseY);
+        if (hit != null && (button == 0 || button == 1)) {
             selectedPhaseId = hit.phaseId;
-            inspectorScroll = 0;
-            draggingNode = true;
+            detailPanel.select(selectedPhaseId);
+            focusOnPhase(selectedPhaseId, button == 1);
             return true;
         }
-        if ((!layout.narrow() || narrowPane == NarrowPane.GRAPH)
-                && button == 0 && graphViewport().contains(mouseX, mouseY)) {
+        if (button == 0 && graphViewport().contains(mouseX, mouseY)) {
             panning = true;
             return true;
         }
@@ -246,34 +204,9 @@ public final class QuestEditorScreen extends Screen {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button,
                                 double dragX, double dragY) {
-        JournalScrollbar.ScrollInteraction phaseInteraction = phaseScrollbar.mouseDragged(
-                mouseY, phaseScrollbarTrack(), phaseContentHeight(), phaseScroll);
-        if (phaseInteraction.consumed()) {
-            phaseScroll = clamp((int) Math.round(phaseInteraction.scrollOffset()), 0,
-                    Math.max(0, phaseContentHeight() - listViewport().height()));
-            return true;
-        }
-        JournalScrollbar.ScrollInteraction inspectorInteraction = inspectorScrollbar.mouseDragged(
-                mouseY, QuestEditorInspectorRenderer.scrollbarTrack(inspectorViewport()),
-                inspectorContentHeight, inspectorScroll);
-        if (inspectorInteraction.consumed()) {
-            inspectorScroll = clamp((int) Math.round(inspectorInteraction.scrollOffset()), 0,
-                    Math.max(0, inspectorContentHeight - inspectorViewport().height()));
-            return true;
-        }
-        if (draggingNode) {
-            QuestEditorGraphRenderer.NodePosition position = positions.get(selectedPhaseId);
-            if (position != null) {
-                position.move((float) (mouseX - lastMouseX) / zoom,
-                        (float) (mouseY - lastMouseY) / zoom);
-            }
-            lastMouseX = mouseX;
-            lastMouseY = mouseY;
-            return true;
-        }
+        if (phaseListPanel.mouseDragged(mouseY, listViewport(), document.phases)) return true;
         if (panning) {
-            panX += mouseX - lastMouseX;
-            panY += mouseY - lastMouseY;
+            viewport.panBy((float) (mouseX - lastMouseX), (float) (mouseY - lastMouseY));
             lastMouseX = mouseX;
             lastMouseY = mouseY;
             return true;
@@ -283,36 +216,20 @@ public final class QuestEditorScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        boolean consumed = phaseScrollbar.mouseReleased(button) | inspectorScrollbar.mouseReleased(button);
-        draggingNode = false;
+        boolean consumed = phaseListPanel.mouseReleased(button);
         panning = false;
         return consumed || super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        HudRect listViewport = listViewport();
-        if ((!layout.narrow() || narrowPane == NarrowPane.LIST)
-                && listViewport.contains(mouseX, mouseY)) {
-            phaseScroll -= (int) Math.round(delta * LIST_ROW_HEIGHT * 2.0);
-            clampScrollOffsets();
-            return true;
-        }
-        HudRect inspectorViewport = inspectorViewport();
-        if ((!layout.narrow() || narrowPane == NarrowPane.INSPECTOR)
-                && inspectorViewport.contains(mouseX, mouseY)) {
-            inspectorScroll -= (int) Math.round(delta * 24.0);
-            clampScrollOffsets();
-            return true;
-        }
+        if (detailPanel.mouseScrolled(mouseX, mouseY, delta, layout.workspace())) return true;
+        if (phaseListPanel.mouseScrolled(mouseX, mouseY, delta,
+                listViewport(), document.phases)) return true;
         HudRect canvas = graphViewport();
-        if ((!layout.narrow() || narrowPane == NarrowPane.GRAPH) && canvas.contains(mouseX, mouseY)) {
-            float oldZoom = zoom;
-            float worldX = (float) ((mouseX - canvas.x() - panX) / oldZoom);
-            float worldY = (float) ((mouseY - canvas.y() - panY) / oldZoom);
-            zoom = Math.max(0.5f, Math.min(1.75f, zoom + (delta > 0 ? 0.1f : -0.1f)));
-            panX = (float) (mouseX - canvas.x() - worldX * zoom);
-            panY = (float) (mouseY - canvas.y() - worldY * zoom);
+        if (canvas.contains(mouseX, mouseY)) {
+            viewport.zoomAt((float) (mouseX - canvas.x()), (float) (mouseY - canvas.y()),
+                    (float) delta * 0.12f);
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, delta);
@@ -340,14 +257,14 @@ public final class QuestEditorScreen extends Screen {
     }
 
     private void save() {
-        status = "????...";
+        status = "\u4fdd\u5b58\u4e2d...";
         ArcQuestNetwork.sendQuestEditorSave(new C2SSaveQuestEditorPacket(
                 sessionId, revision, QuestSpecJsonWriter.write(document)));
     }
 
     private void deleteSelectedPhase() {
         if (selectedPhaseId == null || selectedPhaseId.equals(document.initialPhaseId)) {
-            status = "????????";
+            status = "\u521d\u59cb\u9636\u6bb5\u4e0d\u80fd\u5220\u9664";
             return;
         }
         String removed = selectedPhaseId;
@@ -356,9 +273,10 @@ public final class QuestEditorScreen extends Screen {
             phase.transitions.removeIf(transition -> removed.equals(transition.targetPhaseId));
             phase.choices.removeIf(choice -> removed.equals(choice.targetPhaseId));
         });
-        positions.remove(removed);
+        rebuildGraphLayout();
         selectedPhaseId = document.phases.isEmpty() ? null : document.phases.get(0).phaseId;
-        inspectorScroll = 0;
+        detailPanel.select(selectedPhaseId);
+        focusOnPhase(selectedPhaseId, false);
         dirty = true;
         clampScrollOffsets();
     }
@@ -376,45 +294,28 @@ public final class QuestEditorScreen extends Screen {
 
     @Override
     public void onClose() {
+        releasePointerCursor();
         ArcQuestNetwork.sendQuestEditorClose(new C2SCloseQuestEditorPacket());
         super.onClose();
     }
 
-    private void fitGraphToViewport() {
+    @Override
+    public void removed() {
+        releasePointerCursor();
+        super.removed();
+    }
+
+    private void fitGraphToViewport(boolean immediate) {
         if (layout == null) return;
-        QuestEditorGraphRenderer.ViewportTransform transform =
-                QuestEditorGraphRenderer.fit(graphViewport(), positions);
-        if (transform == null) return;
-        panX = transform.panX();
-        panY = transform.panY();
-        zoom = transform.zoom();
+        GraphBounds bounds = GraphBounds.of(positions.values(),
+                QuestEditorGraphRenderer.NODE_WIDTH / 2f + 24f,
+                QuestEditorGraphRenderer.NODE_HEIGHT / 2f + 24f);
+        viewport.fit(bounds, graphViewport().width(), graphViewport().height(), immediate);
     }
 
     private void clampScrollOffsets() {
         if (layout == null) return;
-        phaseScroll = clamp(phaseScroll, 0,
-                Math.max(0, phaseContentHeight() - listViewport().height()));
-        inspectorScroll = clamp(inspectorScroll, 0,
-                Math.max(0, inspectorContentHeight - inspectorViewport().height()));
-    }
-
-    private int phaseContentHeight() {
-        return document.phases.size() * LIST_ROW_HEIGHT;
-    }
-
-    private HudRect phaseScrollbarTrack() {
-        HudRect viewport = listViewport();
-        return new HudRect(viewport.right() - 3, viewport.y(), 2, viewport.height());
-    }
-
-    private List<JournalTabStrip.TabItem> narrowTabItems() {
-        return List.of(
-                new JournalTabStrip.TabItem(NarrowPane.LIST.name(), NarrowPane.LIST.label,
-                        narrowPane == NarrowPane.LIST, false),
-                new JournalTabStrip.TabItem(NarrowPane.GRAPH.name(), NarrowPane.GRAPH.label,
-                        narrowPane == NarrowPane.GRAPH, false),
-                new JournalTabStrip.TabItem(NarrowPane.INSPECTOR.name(), NarrowPane.INSPECTOR.label,
-                        narrowPane == NarrowPane.INSPECTOR, false));
+        phaseListPanel.clamp(listViewport(), document.phases);
     }
 
     private PhaseSpec findSelected() {
@@ -426,7 +327,15 @@ public final class QuestEditorScreen extends Screen {
 
     private PhaseSpec findNode(double mouseX, double mouseY) {
         return QuestEditorGraphRenderer.findNode(document, positions, graphViewport(),
-                mouseX, mouseY, panX, panY, zoom);
+                mouseX, mouseY, viewport.panX(), viewport.panY(), viewport.zoom());
+    }
+
+    private void focusOnPhase(String phaseId, boolean emphasize) {
+        if (phaseId == null || layout == null) return;
+        GraphNodeLayout node = positions.get(phaseId);
+        if (node == null) return;
+        viewport.focus(node.x(), node.y(), graphViewport().width(), graphViewport().height(),
+                emphasize ? 1.05f : 0.5f);
     }
 
     private HudRect listViewport() {
@@ -434,26 +343,41 @@ public final class QuestEditorScreen extends Screen {
     }
 
     private HudRect graphViewport() {
-        return layout.graphViewport();
+        HudRect base = layout.workspaceViewport();
+        return new HudRect(base.x(), base.y(),
+                Math.max(1, base.width() - detailPanel.getReservedWidth()), base.height());
     }
 
-    private HudRect inspectorViewport() {
-        return layout.inspectorViewport();
+    private boolean shouldUsePointerCursor(double mouseX, double mouseY) {
+        if (QuestEditorChromeRenderer.saveButton(layout.header()).contains(mouseX, mouseY)) return true;
+        HudRect fit = QuestEditorChromeRenderer.fitButton(layout.header());
+        if (fit.width() > 0 && fit.contains(mouseX, mouseY)) return true;
+        if (detailPanel.isCloseHovered(mouseX, mouseY, layout.workspace())) return true;
+        if (listViewport().contains(mouseX, mouseY)) return true;
+        return findNode(mouseX, mouseY) != null;
     }
 
-    private static int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private enum NarrowPane {
-        LIST("??"),
-        GRAPH("???"),
-        INSPECTOR("??");
-
-        private final String label;
-
-        NarrowPane(String label) {
-            this.label = label;
+    private void applyPointerCursor(boolean requested) {
+        if (minecraft == null || requested == pointerCursorApplied) return;
+        if (requested) {
+            if (pointerCursorHandle == 0L) {
+                pointerCursorHandle = GLFW.glfwCreateStandardCursor(GLFW.GLFW_HAND_CURSOR);
+            }
+            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), pointerCursorHandle);
+        } else {
+            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), 0L);
         }
+        pointerCursorApplied = requested;
+    }
+
+    private void releasePointerCursor() {
+        if (minecraft != null && pointerCursorApplied) {
+            GLFW.glfwSetCursor(minecraft.getWindow().getWindow(), 0L);
+        }
+        if (pointerCursorHandle != 0L) {
+            GLFW.glfwDestroyCursor(pointerCursorHandle);
+            pointerCursorHandle = 0L;
+        }
+        pointerCursorApplied = false;
     }
 }
