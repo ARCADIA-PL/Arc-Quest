@@ -1,5 +1,6 @@
 import {splitList} from './utils.js';
 import {setLooseJson, syncPhaseTransitions} from './quest-shape-core.js';
+import {setMarkerField} from './marker-shape.js';
 
 function setCollectionEntryField(phase, fieldName, value, inputType) {
     phase.collectionEntryConfig ||= {};
@@ -176,6 +177,10 @@ function setTransitionField(phase, transitionIndex, fieldName, value, pathParts)
 }
 
 export function setPhaseField(target, bind, value, inputType) {
+    if (bind.startsWith('ph.') && bind.includes('.relatedMarks.')) {
+        const parts = bind.split('.');
+        return setMarkerField(target.phases[+parts[1]].relatedMarks, parts.slice(3), value, inputType);
+    }
     if (!bind.startsWith('ph.')) return false;
     const [, i, k, sub, leaf] = bind.split('.');
     if (k === 'cec') {
@@ -217,6 +222,10 @@ export function setPhaseField(target, bind, value, inputType) {
 }
 
 export function setObjectiveField(target, bind, value, inputType) {
+    if (bind.startsWith('ob.') && bind.includes('.relatedMarks.')) {
+        const parts = bind.split('.');
+        return setMarkerField(target.phases[+parts[1]].objectives[+parts[2]].relatedMarks, parts.slice(4), value, inputType);
+    }
     if (!bind.startsWith('ob.')) return false;
     const [, pi, oi, k] = bind.split('.');
     if (k === 'extraData' || k === 'relatedMarks') {

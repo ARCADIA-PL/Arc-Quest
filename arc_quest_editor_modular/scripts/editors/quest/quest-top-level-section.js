@@ -1,6 +1,7 @@
 import {renderConditionTree} from '../condition-editor.js';
 import {chipEditor} from '../chip-editor.js';
 import {boolSelect, enumSelect, phaseSingleSelect, suggestInput} from '../quest-editor-sections.js';
+import {renderMarkEditor} from '../mark-editor.js';
 
 function renderUnlockConditionsSection(q, registry) {
     const conditions = Array.isArray(q.unlockConditions) ? q.unlockConditions : [];
@@ -69,7 +70,7 @@ export function renderQuestTopLevelSection(q, phaseIds, field, area, registry = 
       </div>
       <div class="row">
         <div class="f">${renderUnlockConditionsSection(q, registry)}</div>
-        ${area('相关标记 (relatedMarks JSON)', 'q.relatedMarks', q.relatedMarks ? JSON.stringify(q.relatedMarks, null, 2) : '')}
+        ${renderMarkEditor(q.relatedMarks, 'q.relatedMarks', 'Quest 相关标记')}
       </div>
     </div>
   `;

@@ -24,6 +24,36 @@ function hasLegacyObjectiveShape(obj) {
     return ['entityType', 'itemId', 'targetType', 'counterId', 'dialogueId', 'consumeOnSubmit'].some(k => Object.prototype.hasOwnProperty.call(obj || {}, k));
 }
 
+export function validateMarkers(markers, path, diagnostics, allowedTriggers = null) {
+    if (!Array.isArray(markers)) return;
+    const ids = new Set();
+    markers.forEach((marker, index) => {
+        const markerPath = `${path}[${index}]`;
+        if (!marker?.id) diagnostics.push({lvl: 'err', path: markerPath, msg: 'Marker ID 不能为空'});
+        else if (ids.has(marker.id)) diagnostics.push({lvl: 'err', path: markerPath, msg: `Marker ID 重复: ${marker.id}`});
+        else ids.add(marker.id);
+        if (!(Number(marker.maxDistance) > 0)) diagnostics.push({lvl: 'err', path: markerPath, msg: 'maxDistance 必须大于 0'});
+        if (!(Number(marker.refreshTicks) > 0)) diagnostics.push({lvl: 'err', path: markerPath, msg: 'refreshTicks 必须大于 0'});
+        if (!(Number(marker.durationTicks) > 0) || Number(marker.durationTicks) > 72000) {
+            diagnostics.push({lvl: 'err', path: markerPath, msg: 'durationTicks 必须在 1 到 72000 之间'});
+        }
+        if (allowedTriggers && !allowedTriggers.includes(marker.trigger || 'CONTINUOUS')) {
+            diagnostics.push({lvl: 'err', path: markerPath, msg: `当前作用域不支持触发类型: ${marker.trigger}`});
+        }
+        const target = marker.target || {};
+        if (!target.type) diagnostics.push({lvl: 'err', path: markerPath, msg: '缺少 target.type'});
+        if (['pos', 'block', 'dimension_pos'].includes(target.type)
+            && [target.x, target.y, target.z].some(value => !Number.isFinite(Number(value)))) {
+            diagnostics.push({lvl: 'err', path: markerPath, msg: '坐标 target 必须提供有效 x/y/z'});
+        }
+        if (target.type === 'dimension_pos' && !target.dimension) diagnostics.push({lvl: 'err', path: markerPath, msg: 'dimension_pos 缺少 dimension'});
+        if (target.type === 'entity_type_nearest' && !target.entityType) diagnostics.push({lvl: 'err', path: markerPath, msg: '实体标记缺少 entityType'});
+        if (target.type === 'entity_npc_id' && !target.npcId) diagnostics.push({lvl: 'err', path: markerPath, msg: 'NPC 标记缺少 npcId'});
+        if (target.type === 'structure_nearest' && !target.structureTag) diagnostics.push({lvl: 'err', path: markerPath, msg: '结构标记缺少 structureTag'});
+        if (target.type === 'custom' && !target.resolverId) diagnostics.push({lvl: 'err', path: markerPath, msg: 'Custom 标记缺少 resolverId'});
+    });
+}
+
 function validateConditionNode(node, path, d) {
     if (!node) return;
     const cond = node.condition || 'arc_quest:always';
@@ -66,10 +96,13 @@ export function validateQuest(state) {
     const q = state.quest.q;
     ensureQuestShape(q);
     const d = [];
+    validateMarkers(q.relatedMarks, 'relatedMarks', d, ['CONTINUOUS', 'QUEST_ACCEPTED']);
     if (!q.id?.trim()) d.push({lvl: 'err', path: 'quest', msg: 'Quest id 不能为空'});
     if (!q.phases.length) d.push({lvl: 'err', path: 'phases', msg: '至少需要一个 phase'});
     const ids = new Set();
     q.phases.forEach((p, pi) => {
+        validateMarkers(p.relatedMarks, `phases[${pi}].relatedMarks`, d,
+            ['CONTINUOUS', 'PHASE_ENTERED', 'PHASE_COMPLETED', 'PHASE_ADVANCED']);
         if (!p.id?.trim()) d.push({lvl: 'err', path: `phase:${pi}`, msg: `Phase ${pi + 1} 缺少 id`});
         if (ids.has(p.id)) d.push({lvl: 'err', path: `phase:${pi}`, msg: `Phase id 重复: ${p.id}`});
         ids.add(p.id);
@@ -130,6 +163,8 @@ export function validateQuest(state) {
         });
         const objectiveIds = new Set();
         p.objectives.forEach((o, oi) => {
+            validateMarkers(o.relatedMarks, `phases[${pi}].objectives[${oi}].relatedMarks`, d,
+                ['CONTINUOUS', 'OBJECTIVE_COMPLETED']);
             if (!o.id?.trim()) d.push({lvl: 'err', path: `objective:${pi}:${oi}`, msg: 'Objective missing stable id'});
             if (objectiveIds.has(o.id)) d.push({lvl: 'err', path: `objective:${pi}:${oi}`, msg: `Duplicate objective id: ${o.id}`});
             objectiveIds.add(o.id);

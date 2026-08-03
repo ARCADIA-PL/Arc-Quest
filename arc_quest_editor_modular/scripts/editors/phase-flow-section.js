@@ -1,5 +1,6 @@
 import {renderConditionTree} from './condition-editor.js';
 import {chipEditor} from './chip-editor.js';
+import {renderMarkEditor} from './mark-editor.js';
 
 export function renderPhaseFlowSection(s, p, phaseIds, field, area, registry) {
     const isParallel = p.mode === 'parallel';
@@ -51,7 +52,7 @@ export function renderPhaseFlowSection(s, p, phaseIds, field, area, registry) {
 
     <h4>Phase 附加结构</h4>
     <div class="card">
-      ${area('relatedMarks JSON', `ph.${s.pi}.relatedMarks`, p.relatedMarks ? JSON.stringify(p.relatedMarks, null, 2) : '')}
+      ${renderMarkEditor(p.relatedMarks, `ph.${s.pi}.relatedMarks`, 'Phase 相关标记')}
       ${area('visualConfig JSON', `ph.${s.pi}.visualConfig`, p.visualConfig ? JSON.stringify(p.visualConfig, null, 2) : '')}
     </div>
   `;
