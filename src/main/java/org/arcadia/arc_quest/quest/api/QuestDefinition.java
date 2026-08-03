@@ -4,11 +4,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.util.RandomSource;
 import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.random.RandomGenerator;
 
 /**
  * 不可变任务定义，由 QuestBuilder 构建。
@@ -32,6 +34,7 @@ public final class QuestDefinition {
     private final List<ICondition> unlockConditions;
     private final LinkedHashMap<String, PhaseDefinition> phases;
     private final String initialPhaseId;
+    private final List<String> initialPhaseIds;
     private final List<IReward> completionRewards;
     private final List<String> flagsToSetOnAccept;
     private final List<String> flagsToSetOnComplete;
@@ -261,16 +264,65 @@ public final class QuestDefinition {
                            @Nullable QuestTimeLimitType timeLimitType,
                            long timeLimitValue,
                            boolean allowAbandon) {
+        this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
+                unlockConditions, phases, initialPhaseId, completionRewards,
+                flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig,
+                mode, collectionConfig, chapterShopId, chapterShopType, chapterShopPersistent,
+                chapterStartSound, chapterFailSound, chapterCompleteSound,
+                completionPolicy, completionRequiredCount, completionTargetPhaseId,
+                timeLimitType, timeLimitValue, allowAbandon, List.of(initialPhaseId));
+    }
+
+    public QuestDefinition(ResourceLocation id,
+                           QuestCategory category,
+                           QuestText displayName,
+                           QuestText description,
+                           @Nullable ResourceLocation iconTexture,
+                           int sortOrder,
+                           boolean repeatable,
+                           List<ICondition> unlockConditions,
+                           LinkedHashMap<String, PhaseDefinition> phases,
+                           String initialPhaseId,
+                           List<IReward> completionRewards,
+                           List<String> flagsToSetOnAccept,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable QuestMode mode,
+                           @Nullable CollectionQuestConfig collectionConfig,
+                           @Nullable String chapterShopId,
+                           ChapterShopType chapterShopType,
+                           boolean chapterShopPersistent,
+                           @Nullable SoundEvent chapterStartSound,
+                           @Nullable SoundEvent chapterFailSound,
+                           @Nullable SoundEvent chapterCompleteSound,
+                           QuestCompletionPolicy completionPolicy,
+                           int completionRequiredCount,
+                           @Nullable String completionTargetPhaseId,
+                           @Nullable QuestTimeLimitType timeLimitType,
+                           long timeLimitValue,
+                           boolean allowAbandon,
+                           Collection<String> initialPhaseIds) {
         Objects.requireNonNull(id, "Quest id must not be null");
         Objects.requireNonNull(category);
         Objects.requireNonNull(displayName);
         if (phases.isEmpty()) {
             throw new IllegalArgumentException("Quest '" + id + "' must have at least one phase");
         }
-        if (!phases.containsKey(initialPhaseId)) {
-            throw new IllegalArgumentException(
-                    "Quest '" + id + "': initialPhaseId '" + initialPhaseId
-                            + "' not found in phases " + phases.keySet());
+        LinkedHashSet<String> normalizedInitialPhaseIds = new LinkedHashSet<>();
+        for (String candidate : Objects.requireNonNull(initialPhaseIds, "initialPhaseIds")) {
+            if (candidate == null || candidate.isBlank()) {
+                throw new IllegalArgumentException("Quest '" + id + "': initial phase ids must not contain blank values");
+            }
+            if (!phases.containsKey(candidate)) {
+                throw new IllegalArgumentException(
+                        "Quest '" + id + "': initial phase '" + candidate
+                                + "' not found in phases " + phases.keySet());
+            }
+            normalizedInitialPhaseIds.add(candidate);
+        }
+        if (normalizedInitialPhaseIds.isEmpty()) {
+            throw new IllegalArgumentException("Quest '" + id + "': initial phase ids must not be empty");
         }
         this.id = id;
         this.category = category;
@@ -285,7 +337,8 @@ public final class QuestDefinition {
         this.collectionConfig = collectionConfig;
         this.unlockConditions = Collections.unmodifiableList(unlockConditions);
         this.phases = new LinkedHashMap<>(phases);          // 防御性拷贝
-        this.initialPhaseId = initialPhaseId;
+        this.initialPhaseIds = List.copyOf(normalizedInitialPhaseIds);
+        this.initialPhaseId = this.initialPhaseIds.getFirst();
         this.completionRewards = Collections.unmodifiableList(completionRewards);
         this.flagsToSetOnAccept = Collections.unmodifiableList(flagsToSetOnAccept);
         this.flagsToSetOnComplete = Collections.unmodifiableList(flagsToSetOnComplete);
@@ -413,6 +466,24 @@ public final class QuestDefinition {
         return initialPhaseId;
     }
 
+    public List<String> getInitialPhaseIds() {
+        return initialPhaseIds;
+    }
+
+    public String selectInitialPhaseId(RandomGenerator random) {
+        Objects.requireNonNull(random, "random");
+        return initialPhaseIds.get(random.nextInt(initialPhaseIds.size()));
+    }
+
+    public String selectInitialPhaseId(RandomSource random) {
+        Objects.requireNonNull(random, "random");
+        return initialPhaseIds.get(random.nextInt(initialPhaseIds.size()));
+    }
+
+    public String selectInitialPhaseId(long seed) {
+        return selectInitialPhaseId(RandomSource.create(seed));
+    }
+
     @Nullable
     public PhaseDefinition getPhase(String phaseId) {
         return phases.get(phaseId);
@@ -420,6 +491,18 @@ public final class QuestDefinition {
 
     public PhaseDefinition getInitialPhase() {
         return phases.get(initialPhaseId);
+    }
+
+    public PhaseDefinition selectInitialPhase(RandomGenerator random) {
+        return phases.get(selectInitialPhaseId(random));
+    }
+
+    public PhaseDefinition selectInitialPhase(RandomSource random) {
+        return phases.get(selectInitialPhaseId(random));
+    }
+
+    public PhaseDefinition selectInitialPhase(long seed) {
+        return phases.get(selectInitialPhaseId(seed));
     }
 
     public Collection<PhaseDefinition> getAllPhases() {
@@ -575,7 +658,7 @@ public final class QuestDefinition {
             ICondition cond = transition.getCondition();
             if (cond == null || CoreProcessors.get().conditions().evaluate(
                     cond, new QuestConditionContext(player, completedQuests, flags, variables))) {
-                return transition.getTargetPhaseId();
+                return transition.selectTargetPhaseId(player.getRandom());
             }
         }
         // 无命中 → 任务完成
