@@ -1,4 +1,4 @@
-﻿package org.arcadia.arc_quest.quest.network;
+package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;

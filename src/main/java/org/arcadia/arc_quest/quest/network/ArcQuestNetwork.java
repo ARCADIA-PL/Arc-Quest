@@ -38,8 +38,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Arc Quest 缂冩垹绮堕柅姘繆娑擃厼绺鹃妴?
- * 娴ｈ法鏁?NeoForge PayloadRegistrar / CustomPacketPayload 鏉╂稖顢?S2C / C2S 閺佺増宓侀崠鍛暈閸愬奔绗岄崣鎴︹偓浣碘偓?
+ * Arc Quest 缂傚倸鍊搁崯顖炲垂閸︻厼鍨濋柛顐ｆ礃閻掔粯鎱ㄥ鍡椾簵缂佽妫楅埥澶愬箼閸愩劌绠圭紓浣规そ缁犳牗淇?
+ * 濠电偠鎻紞鈧繛澶嬫礋瀵?NeoForge PayloadRegistrar / CustomPacketPayload 闂佸搫顦弲婊呯矙閺嶎厹鈧?S2C / C2S 闂備浇妗ㄩ懗鑸垫櫠濡も偓閻ｅ灚绗熼埀顒€鐣烽悩璇插窛妞ゆ棁濮ゅ▓姗€姊洪崨濠傚濠靛倹姊荤划顓炵暆閸曨偆鐓戦梺纭呮彧閼靛綊宕戦幘瀛樺缁剧増锚娴?
  */
 public final class ArcQuestNetwork {
 
@@ -51,19 +51,19 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * 閸?Mod 閺嬪嫰鈧姴娅掗柌灞惧瘯閸?{@code modEventBus.addListener(ArcQuestNetwork::register)}閵?
+     * 闂?Mod 闂備礁鎼鍛偓姘嵆閸┾偓妞ゆ帒鍊稿瓭濠电偛鎳忕敮锟犲蓟瀹€鈧禒锕傚箚瑜忓Σ鎼佹⒑?{@code modEventBus.addListener(ArcQuestNetwork::register)}闂?
      */
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("7");
 
-        // 閳光偓閳光偓閳光偓 S2C閿涘潷lay to client閿涘鏀㈤埞鈧埞鈧?
+        // 闂備礁鍟块崢婊堝磻閹剧粯鐓冮柛蹇擃槸娴滈箖姊洪崘鎻掑辅闁?S2C闂備焦瀵х粙鎴濐焽缁屾槮y to client闂備焦瀵х粙鎴λ囬锕€缁╅柕蹇嬪€曢悡姗€鏌嶈閸撶喖宕洪悙鍝勭劦?
         if (FMLEnvironment.dist == Dist.CLIENT) {
             registerClientPayloadHandlers(registrar);
         } else {
             registerClientPayloadCodecs(registrar);
         }
 
-        // 閳光偓閳光偓閳光偓 C2S閿涘潷lay to server閿涘鏀㈤埞鈧埞鈧?
+        // 闂備礁鍟块崢婊堝磻閹剧粯鐓冮柛蹇擃槸娴滈箖姊洪崘鎻掑辅闁?C2S闂備焦瀵х粙鎴濐焽缁屾槮y to server闂備焦瀵х粙鎴λ囬锕€缁╅柕蹇嬪€曢悡姗€鏌嶈閸撶喖宕洪悙鍝勭劦?
         registrar.playToServer(C2SRequestQuestActionPacket.TYPE, C2SRequestQuestActionPacket.STREAM_CODEC, C2SRequestQuestActionPacket::handle);
         registrar.playToServer(C2SRequestQuestResyncPacket.TYPE, C2SRequestQuestResyncPacket.STREAM_CODEC, C2SRequestQuestResyncPacket::handle);
         registrar.playToServer(C2SRequestMarkerResyncPacket.TYPE, C2SRequestMarkerResyncPacket.STREAM_CODEC, C2SRequestMarkerResyncPacket::handle);
@@ -123,12 +123,12 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2CSyncTrackedQuestPacket.TYPE, S2CSyncTrackedQuestPacket.STREAM_CODEC, (packet, context) -> {});
     }
 
-    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
-    // 閺堝秴濮熺粩顖欑┒閹瑰嘲褰傞柅浣规煙濞?
-    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
+    // 闂備礁纾崕銈夊礉韫囨稑鐤鹃柡灞诲劚閻撴盯鏌熼懜顒€濡芥繛鍛矒閺屽秹鎮滃Ο鍝勵潊闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春?
+    // 闂備礁鎼悧鍡欑矓鐎涙ɑ鍙忛柣鏃囨閸楁碍銇勯弽銊ф噮闁宠甯￠弻鐔兼偡閺夋寧些閻熸粍婢橀崐鍧楀蓟閸涱喗濯撮悷娆忓閸橀潧鈹?
+    // 闂備礁纾崕銈夊礉韫囨稑鐤鹃柡灞诲劚閻撴盯鏌熼懜顒€濡芥繛鍛矒閺屽秹鎮滃Ο鍝勵潊闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春?
 
     /**
-     * 閸忋劑鍣洪崥灞绢劄閿涘牏娅ヨぐ?闁插秶鏁?缂佹潙瀹抽崚鍥ㄥ床閿?
+     * 闂備胶顭堢换鍫ュ礉閹达箑闂繛宸簻鐟欙箓鎮橀悙浣冩闁告柨瀚伴弻銊モ槈濡厧鈪卞┑鐐叉噷閸庢挳濡?闂傚倷鐒﹁ぐ鍐矓閸洖鏋?缂傚倸鍊烽悞锕€顭囧▎鎴斿亾鐟欏嫬鈻曠€规洘宀稿畷鍫曞Ω閵夈儳鍝庨梻?
      */
     public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
         resetMarkerStream(player);
@@ -140,7 +140,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * 閸楁洑鎹㈤崝锛勫Ц閹礁鎮撳?
+     * 闂備礁鎲￠〃鍡椕洪幋锕€绠查柕蹇嬪€曠粈澶愭煥濞戞ê顏╃粭鎴︽⒑鐠団€冲幐缂佲偓娓氣偓楠炲啴骞橀幇浣规〃?
      */
     public static void syncQuestState(ServerPlayer player, QuestRuntimeData data) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
@@ -152,7 +152,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * 婢х偤鍣烘潻娑樺閸氬本顒為敍鍫濈毈閸栧拑绱?
+     * 濠电姭鎷冮崨顓濇闂侀潻绲块崕銈咁焽鐠囨祴妲堟俊顖欒閸炴椽姊洪崨濠呭闁哄牜鍓熼、妤呮倷閻戞ɑ娅栭梺鍓插亝缁诲嫬袙閸儲鐓曢柡宓嫬鐝旂紓?
      */
     public static void syncDeltaProgress(ServerPlayer player,
                                          String questId,
@@ -176,7 +176,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * Flags / Variables 閸氬本顒?
+     * Flags / Variables 闂備礁鎲￠懝楣冨嫉椤掑嫷鏁?
      */
     public static void syncFlagsAndVars(ServerPlayer player, ArcQuestPlayer data) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
@@ -208,7 +208,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * Quest 閸氬本顒為崥搴ｇ埠娑撯偓鐟欙箑褰?Trade + Gacha 濞叉槒绌悾宀勬桨 push-first閵?
+     * Quest 闂備礁鎲￠懝楣冨嫉椤掑嫷鏁嗛柣鎰惈鐟欙箓骞栨潏鍓ф偧闁糕晝濮撮埥澶愬箻椤栨矮澹曢梺鑽ゅ枑閻熻京绮婚幋锝冧汗?Trade + Gacha 婵犵數鍋涘璺何ｉ幒鏃傜煔妞ゆ帒瀚崑鈺冣偓鍏夊亾闁告洦鍓氶妴?push-first闂?
      */
     private static void pushSyncForActiveUIs(ServerPlayer player,
                                              @Nullable ArcQuestPlayer data,
@@ -222,9 +222,9 @@ public final class ArcQuestNetwork {
         }
     }
 
-    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
-    // 鐎广垺鍩涚粩顖欑┒閹瑰嘲褰傞柅浣规煙濞?
-    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
+    // 闂備礁纾崕銈夊礉韫囨稑鐤鹃柡灞诲劚閻撴盯鏌熼懜顒€濡芥繛鍛矒閺屽秹鎮滃Ο鍝勵潊闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春?
+    // 闂佽楠哥粻宥夊垂濞差亜鏄ユ繛鎴炴皑閸楁碍銇勯弽銊ф噮闁宠甯￠弻鐔兼偡閺夋寧些閻熸粍婢橀崐鍧楀蓟閸涱喗濯撮悷娆忓閸橀潧鈹?
+    // 闂備礁纾崕銈夊礉韫囨稑鐤鹃柡灞诲劚閻撴盯鏌熼懜顒€濡芥繛鍛矒閺屽秹鎮滃Ο鍝勵潊闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春?
 
     public static void sendQuestAction(C2SRequestQuestActionPacket packet) {
         PacketDistributor.sendToServer(packet);
@@ -278,9 +278,9 @@ public final class ArcQuestNetwork {
         PacketDistributor.sendToServer(new C2SMarkPhaseStoryReadPacket(questId, phaseId));
     }
 
-    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
-    // 閺堝秴濮熺粩顖氱暰閸氭垵褰傞柅渚婄礄S2C閿?
-    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
+    // 闂備礁纾崕銈夊礉韫囨稑鐤鹃柡灞诲劚閻撴盯鏌熼懜顒€濡芥繛鍛矒閺屽秹鎮滃Ο鍝勵潊闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春?
+    // 闂備礁鎼悧鍡欑矓鐎涙ɑ鍙忛柣鏃囨閸楁碍銇勯弽銊︾殤闁哄棔鍗抽弻娑橆潩椤撶偟浠撮悷婊勬緲閸婂潡寮婚崨顔剧懝濠电姴瀚ˇ銖?C闂?
+    // 闂備礁纾崕銈夊礉韫囨稑鐤鹃柡灞诲劚閻撴盯鏌熼懜顒€濡芥繛鍛矒閺屽秹鎮滃Ο鍝勵潊闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春?
 
     public static void sendToPlayer(ServerPlayer player, S2COpenDialoguePacket packet) {
         PacketDistributor.sendToPlayer(player, packet);
@@ -328,6 +328,10 @@ public final class ArcQuestNetwork {
 
         PacketDistributor.sendToPlayer(player,
                 S2CSyncMarkersPacket.snapshot(epoch, revision, entries));
+    }
+
+    public static void requestMarkerResync() {
+        PacketDistributor.sendToServer(new C2SRequestMarkerResyncPacket());
     }
 
     public static void syncMarkerDeltaClear(ServerPlayer player) {

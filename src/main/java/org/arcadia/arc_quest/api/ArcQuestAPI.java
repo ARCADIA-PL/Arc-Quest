@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.registry.QuestSourceInfo;
 import org.arcadia.arc_quest.questmarker.api.MarkTargetResolver;
 import org.arcadia.arc_quest.questmarker.api.MarkTargetResolverRegistry;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
@@ -57,8 +58,8 @@ public final class ArcQuestAPI {
     }
 
     @Nullable
-    public static RegistrySourceInfo getQuestSourceInfo(ResourceLocation id) {
-        return QuestRegistry.getUnifiedSourceInfo(id);
+    public static QuestSourceInfo getQuestSourceInfo(ResourceLocation id) {
+        return QuestRegistry.getSourceInfo(id);
     }
 
     public static void registerQuestGroup(QuestGroupDefinition definition) {
