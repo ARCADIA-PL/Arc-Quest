@@ -32,6 +32,7 @@ public final class QuestBuilder {
     private boolean abandonable = true;
     private boolean canBeAutoTrack = true;
     private String initialPhaseId;
+    private List<String> initialPhaseIds = List.of();
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     private QuestMode mode = QuestMode.PROGRESSION;
     @Nullable
@@ -242,12 +243,45 @@ public final class QuestBuilder {
         if (phases.containsKey(pid))
             throw new IllegalArgumentException("Duplicate phase id '" + pid + "' in quest '" + id + "'");
         phases.put(pid, phase);
-        if (initialPhaseId == null) initialPhaseId = pid;
+        if (initialPhaseId == null) {
+            initialPhaseId = pid;
+            initialPhaseIds = List.of(pid);
+        }
         return this;
     }
 
     public QuestBuilder startAt(String phaseId) {
-        initialPhaseId = phaseId;
+        return setInitialPhase(phaseId);
+    }
+
+    public QuestBuilder initialPhase(String phaseId) {
+        return setInitialPhase(phaseId);
+    }
+
+    public QuestBuilder setInitialPhase(String phaseId) {
+        return setInitialPhases(List.of(phaseId));
+    }
+
+    public QuestBuilder setInitialPhase(String firstPhaseId, String... additionalPhaseIds) {
+        List<String> phaseIds = new ArrayList<>(1 + additionalPhaseIds.length);
+        phaseIds.add(firstPhaseId);
+        phaseIds.addAll(List.of(additionalPhaseIds));
+        return setInitialPhases(phaseIds);
+    }
+
+    public QuestBuilder setInitialPhases(Collection<String> phaseIds) {
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String phaseId : Objects.requireNonNull(phaseIds, "phaseIds")) {
+            if (phaseId == null || phaseId.isBlank()) {
+                throw new IllegalArgumentException("Initial phase ids must not contain blank values");
+            }
+            normalized.add(phaseId);
+        }
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("Initial phase ids must not be empty");
+        }
+        initialPhaseIds = List.copyOf(normalized);
+        initialPhaseId = initialPhaseIds.get(0);
         return this;
     }
 
@@ -385,11 +419,23 @@ public final class QuestBuilder {
     public QuestDefinition build() {
         if (displayName == null) displayName = QuestText.literal(id.getPath());
         if (phases.isEmpty()) throw new IllegalStateException("Quest '" + id + "' has no phases");
-        if (initialPhaseId == null) initialPhaseId = phases.keySet().iterator().next();
+        if (initialPhaseId == null) {
+            initialPhaseId = phases.keySet().iterator().next();
+            initialPhaseIds = List.of(initialPhaseId);
+        }
+        for (String candidate : initialPhaseIds) {
+            if (!phases.containsKey(candidate)) {
+                throw new IllegalStateException("Quest '" + id + "' references unknown initial phase '" + candidate + "'");
+            }
+        }
         for (PhaseDefinition phase : phases.values()) {
-            for (PhaseTransition tr : phase.getTransitions())
-                if (!phases.containsKey(tr.getTargetPhaseId()))
-                    throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "' references unknown phase '" + tr.getTargetPhaseId() + "'");
+            for (PhaseTransition tr : phase.getTransitions()) {
+                for (String targetPhaseId : tr.getTargetPhaseIds()) {
+                    if (!phases.containsKey(targetPhaseId)) {
+                        throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "' references unknown phase '" + targetPhaseId + "'");
+                    }
+                }
+            }
             for (ChoiceOption ch : phase.getChoices())
                 if (!phases.containsKey(ch.getTargetPhaseId()))
                     throw new IllegalStateException("Quest '" + id + "', phase '" + phase.getPhaseId() + "' choice references unknown phase '" + ch.getTargetPhaseId() + "'");
@@ -414,7 +460,7 @@ public final class QuestBuilder {
         if (completionPolicy != QuestCompletionPolicy.SPECIFIC_PHASE && completionTargetPhaseId != null && !completionTargetPhaseId.isEmpty())
             throw new IllegalStateException("Quest '" + id + "': completionTargetPhase only valid for SPECIFIC_PHASE");
         validateCollectionDefinition();
-        return new QuestDefinition(id, category, displayName, description, iconTexture, sortOrder, repeatable, new ArrayList<>(unlockConditions), new LinkedHashMap<>(phases), initialPhaseId, new ArrayList<>(completionRewards), new ArrayList<>(flagsOnAccept), new ArrayList<>(flagsOnComplete), new ArrayList<>(relatedMarks), visualConfigBuilder.build(), mode, collectionConfig, chapterShopId, chapterShopType, chapterShopPersistent, chapterStartSound, chapterFailSound, chapterCompleteSound, completionPolicy, completionRequiredCount, completionTargetPhaseId, timeLimitType, timeLimitValue, abandonable, canBeAutoTrack);
+        return new QuestDefinition(id, category, displayName, description, iconTexture, sortOrder, repeatable, new ArrayList<>(unlockConditions), new LinkedHashMap<>(phases), initialPhaseId, new ArrayList<>(completionRewards), new ArrayList<>(flagsOnAccept), new ArrayList<>(flagsOnComplete), new ArrayList<>(relatedMarks), visualConfigBuilder.build(), mode, collectionConfig, chapterShopId, chapterShopType, chapterShopPersistent, chapterStartSound, chapterFailSound, chapterCompleteSound, completionPolicy, completionRequiredCount, completionTargetPhaseId, timeLimitType, timeLimitValue, abandonable, initialPhaseIds, canBeAutoTrack);
     }
 
     private void validateCollectionDefinition() {
