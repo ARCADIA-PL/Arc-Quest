@@ -15,6 +15,8 @@ import org.arcadia.arc_quest.quest.event.QuestEventBus;
 import org.arcadia.arc_quest.quest.logic.profile.collection.*;
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
+import org.arcadia.arc_quest.quest.logic.QuestMarkerTriggerService;
+import org.arcadia.arc_quest.questmarker.api.MarkTrigger;
 import org.arcadia.arc_quest.guide.runtime.GuideUnlockService;
 
 import java.util.Set;
@@ -60,10 +62,14 @@ public final class CollectionQuestEngine {
         initializeQuest(player, data, def, runtime, collectionData);
         runtime.setCollectionData(collectionData);
         data.addActiveQuest(runtime);
+        QuestMarkerTriggerService.triggerQuest(
+                player, data, runtime, def, MarkTrigger.QUEST_ACCEPTED);
         for (String activePhaseId : runtime.getActivePhaseIds()) {
             PhaseDefinition activePhase = def.getPhase(activePhaseId);
             if (activePhase != null) {
                 GUIDE_UNLOCK_SERVICE.grantAll(player, activePhase.getGuidesToGrantOnEnter());
+                QuestMarkerTriggerService.triggerPhase(
+                        player, data, runtime, activePhase, MarkTrigger.PHASE_ENTERED);
             }
         }
 

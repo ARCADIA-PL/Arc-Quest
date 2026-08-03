@@ -27,6 +27,7 @@ import org.arcadia.arc_quest.quest.registry.QuestCategoryRegistry;
 import org.arcadia.arc_quest.questmarker.api.MarkActivation;
 import org.arcadia.arc_quest.questmarker.api.MarkActivations;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 
 import java.util.ArrayList;
@@ -314,10 +315,10 @@ public final class QuestSpecCompiler {
         return rewards;
     }
 
-    private List<MarkSpec> compileMarks(List<MarkSpecData> specs) {
+    public List<MarkSpec> compileMarks(List<MarkSpecData> specs) {
         List<MarkSpec> marks = new ArrayList<>();
         for (MarkSpecData spec : listOrEmpty(specs)) {
-            marks.add(new MarkSpec(
+            MarkSpec mark = new MarkSpec(
                     spec.id,
                     compileMarkTarget(spec.target),
                     compileMarkActivation(spec.activateWhen),
@@ -329,7 +330,8 @@ public final class QuestSpecCompiler {
                     spec.trackMovingEntity,
                     spec.oneShot,
                     spec.styleHints
-            ));
+            );
+            marks.add(MarkTriggers.withTrigger(mark, spec.trigger, spec.durationTicks));
         }
         return marks;
     }

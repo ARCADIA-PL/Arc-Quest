@@ -8,6 +8,7 @@ import org.arcadia.arc_quest.quest.api.QuestCompletionPolicy;
 import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestCategoryRegistry;
 import org.arcadia.arc_quest.quest.spec.*;
+import org.arcadia.arc_quest.questmarker.api.MarkTrigger;
 
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +22,7 @@ public final class QuestSpecValidator {
         validateCategory(r, spec.category, "category");
         txt(r, spec.displayName, "displayName");
         txt(r, spec.description, "description");
-        marks(r, spec.relatedMarks, "relatedMarks");
+        marks(r, spec.relatedMarks, "relatedMarks", Set.of(MarkTrigger.CONTINUOUS, MarkTrigger.QUEST_ACCEPTED));
         if (empty(spec.phases)) err(r, "phases", "Quest must contain at least one phase");
         req(r, spec.initialPhaseId, "initialPhaseId", "Initial phase is required");
 
@@ -30,7 +31,9 @@ public final class QuestSpecValidator {
             for (int i = 0; i < spec.phases.size(); i++) {
                 PhaseSpec p = spec.phases.get(i); String b = "phases[" + i + "]";
                 txt(r, p.displayName, b + ".displayName"); txt(r, p.description, b + ".description"); txt(r, p.story, b + ".story");
-                marks(r, p.relatedMarks, b + ".relatedMarks");
+                marks(r, p.relatedMarks, b + ".relatedMarks", Set.of(
+                        MarkTrigger.CONTINUOUS, MarkTrigger.PHASE_ENTERED,
+                        MarkTrigger.PHASE_COMPLETED, MarkTrigger.PHASE_ADVANCED));
                 if (blank(p.phaseId)) err(r, b + ".phaseId", "Phase id is required"); else if (!ids.add(p.phaseId)) err(r, b + ".phaseId", "Duplicate phase id: " + p.phaseId);
             }
             for (int i = 0; i < spec.phases.size(); i++) phase(r, spec.phases.get(i), i, ids);
@@ -75,7 +78,8 @@ public final class QuestSpecValidator {
 
     private void objective(ValidationReport r, ObjectiveSpec o, String p) {
         txt(r, o.displayText, p + ".displayText");
-        marks(r, o.relatedMarks, p + ".relatedMarks");
+        marks(r, o.relatedMarks, p + ".relatedMarks", Set.of(
+                MarkTrigger.CONTINUOUS, MarkTrigger.OBJECTIVE_COMPLETED));
         if (o.type == null) err(r, p + ".type", "Objective type is required");
         ObjectiveType t = objType(o.type);
         if (t != null && t.requiresTargetId() && blank(o.targetId)) err(r, p + ".targetId", "Objective targetId is required");
@@ -93,13 +97,77 @@ public final class QuestSpecValidator {
         if (t.value == null) err(r, p + ".value", "QuestTextSpec value is required");
     }
 
-    private void marks(ValidationReport r, List<MarkSpecData> ms, String p) { list(ms, (m,i) -> mark(r, m, p + "[" + i + "]")); }
+    private void marks(ValidationReport r, List<MarkSpecData> ms, String p, Set<MarkTrigger> allowedTriggers) {
+        if (ms == null) return;
+        if (ms.size() > 4096) err(r, p, "Marker collection exceeds 4096 entries");
+        Set<String> ids = new HashSet<>();
+        list(ms, (m, i) -> {
+            mark(r, m, p + "[" + i + "]");
+            if (m != null && m.trigger != null && !allowedTriggers.contains(m.trigger)) {
+                err(r, p + "[" + i + "].trigger", "Mark trigger is not valid in this scope: " + m.trigger);
+            }
+            if (m != null && !blank(m.id) && !ids.add(m.id)) err(r, p + "[" + i + "].id", "Duplicate marker id: " + m.id);
+        });
+    }
+
     private void mark(ValidationReport r, MarkSpecData m, String p) {
         if (m == null) { err(r, p, "MarkSpecData is required"); return; }
         req(r, m.id, p + ".id", "Mark id is required");
         if (m.markerType == null) err(r, p + ".markerType", "Mark markerType is required");
+        if (m.priority < 0) err(r, p + ".priority", "Mark priority must be >= 0");
         if (m.maxDistance <= 0) err(r, p + ".maxDistance", "Mark maxDistance must be > 0");
         if (m.refreshTicks <= 0) err(r, p + ".refreshTicks", "Mark refreshTicks must be > 0");
+        if (m.trigger == null) err(r, p + ".trigger", "Mark trigger is required");
+        if (m.durationTicks <= 0 || m.durationTicks > 72000) {
+            err(r, p + ".durationTicks", "Mark durationTicks must be between 1 and 72000");
+        }
+        if (m.styleHints != null && m.styleHints.size() > 64) err(r, p + ".styleHints", "Mark styleHints exceeds 64 entries");
+        markTarget(r, m.target, p + ".target");
+        markActivation(r, m.activateWhen, p + ".activateWhen", 0);
+        markActivation(r, m.deactivateWhen, p + ".deactivateWhen", 0);
+    }
+
+    private void markTarget(ValidationReport r, MarkTargetSpec target, String p) {
+        if (target == null || blank(target.type)) { err(r, p, "Mark target is required"); return; }
+        switch (target.type) {
+            case "pos", "block" -> markCoordinates(r, target, p);
+            case "dimension_pos" -> { resourceId(r, target.dimension, p + ".dimension"); markCoordinates(r, target, p); }
+            case "entity_type_nearest" -> { resourceId(r, target.entityType, p + ".entityType"); positive(r, target.searchRadius, p + ".searchRadius"); }
+            case "entity_npc_id" -> { req(r, target.npcId, p + ".npcId", "NPC id is required"); positive(r, target.searchRadius, p + ".searchRadius"); }
+            case "structure_nearest" -> { resourceId(r, target.structureTag, p + ".structureTag"); positive(r, target.searchRadius, p + ".searchRadius"); }
+            case "custom" -> req(r, target.resolverId, p + ".resolverId", "Custom resolver id is required");
+            default -> err(r, p + ".type", "Unsupported mark target type: " + target.type);
+        }
+    }
+
+    private void markCoordinates(ValidationReport r, MarkTargetSpec target, String p) {
+        if (target.x == null) err(r, p + ".x", "Mark x is required");
+        if (target.y == null) err(r, p + ".y", "Mark y is required");
+        if (target.z == null) err(r, p + ".z", "Mark z is required");
+    }
+
+    private void positive(ValidationReport r, Integer value, String p) {
+        if (value == null || value <= 0) err(r, p, "Value must be > 0");
+    }
+
+    private void markActivation(ValidationReport r, MarkActivationSpec activation, String p, int depth) {
+        if (activation == null) return;
+        if (depth > 16) { err(r, p, "Mark activation depth exceeds 16"); return; }
+        switch (activation.type) {
+            case "always", "never" -> { }
+            case "flag_set", "flag_not_set" -> req(r, activation.flag, p + ".flag", "Flag is required");
+            case "quest_active" -> resourceId(r, activation.questId, p + ".questId");
+            case "and", "or" -> {
+                if (activation.left == null || activation.right == null) err(r, p, "Binary activation requires left and right");
+                markActivation(r, activation.left, p + ".left", depth + 1);
+                markActivation(r, activation.right, p + ".right", depth + 1);
+            }
+            case "not" -> {
+                if (activation.left == null) err(r, p, "Not activation requires left");
+                markActivation(r, activation.left, p + ".left", depth + 1);
+            }
+            default -> err(r, p + ".type", "Unsupported mark activation type: " + activation.type);
+        }
     }
 
     private void completion(ValidationReport r, QuestSpec s, int n) {
