@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.dialogue.spec;
 
 import org.arcadia.arc_quest.condition.ConditionSpec;
+import org.arcadia.arc_quest.quest.spec.MarkSpecData;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,4 +19,5 @@ public class DialogueChoiceSpec {
     public int priority = 0;
     public String restoreNodeId = "";
     public String selectSound = "";
+    public List<MarkSpecData> relatedMarks = new ArrayList<>();
 }

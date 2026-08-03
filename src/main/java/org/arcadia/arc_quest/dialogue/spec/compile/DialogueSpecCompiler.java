@@ -12,14 +12,20 @@ import org.arcadia.arc_quest.dialogue.spec.validate.DialogueValidationIssue;
 import org.arcadia.arc_quest.quest.api.IconPosition;
 import org.arcadia.arc_quest.quest.api.QuestVisualConfig;
 import org.arcadia.arc_quest.quest.spec.compile.QuestVisualSpecCompiler;
+import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.MarkTrigger;
+import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.quest.api.SplashType;
 import org.arcadia.arc_quest.quest.spec.QuestVisualSpec;
+import org.arcadia.arc_quest.quest.spec.MarkSpecData;
 
 import java.util.*;
 
 public final class DialogueSpecCompiler {
 
     private final DialogueSpecValidator validator = new DialogueSpecValidator();
+    private final QuestSpecCompiler questSpecCompiler = new QuestSpecCompiler();
 
     public DialogueTree compile(DialogueSpec spec) {
         var report = validator.validate(spec);
@@ -28,8 +34,13 @@ public final class DialogueSpecCompiler {
         }
 
         Map<String, DialogueNode> nodes = new LinkedHashMap<>();
+        List<MarkSpec> nodeMarks = new ArrayList<>();
         for (DialogueNodeSpec nodeSpec : spec.nodes) {
             nodes.put(nodeSpec.nodeId, compileNode(nodeSpec));
+            for (MarkSpec triggered : compileTriggeredMarks(
+                    nodeSpec.relatedMarks, MarkTrigger.DIALOGUE_NODE_ENTERED)) {
+                nodeMarks.add(MarkTriggers.forDialogueNode(triggered, nodeSpec.nodeId));
+            }
         }
 
         String startNodeId = spec.startNodeId != null && !spec.startNodeId.isBlank()
@@ -46,7 +57,7 @@ public final class DialogueSpecCompiler {
                 spec.cooldownSeconds,
                 parseCooldownType(spec.cooldownType),
                 spec.resetTimeTicks,
-                List.of()
+                nodeMarks
         );
     }
 
@@ -117,8 +128,21 @@ public final class DialogueSpecCompiler {
                 spec.priority,
                 blankToNull(spec.restoreNodeId),
                 selectSound,
-                List.of()
+                compileTriggeredMarks(spec.relatedMarks, MarkTrigger.DIALOGUE_CHOICE_SELECTED)
         );
+    }
+
+    private List<MarkSpec> compileTriggeredMarks(List<MarkSpecData> specs, MarkTrigger trigger) {
+        List<MarkSpec> marks = new ArrayList<>();
+        if (specs == null) return marks;
+        for (MarkSpecData spec : specs) {
+            if (spec == null) continue;
+            List<MarkSpec> compiled = questSpecCompiler.compileMarks(List.of(spec));
+            if (!compiled.isEmpty()) {
+                marks.add(MarkTriggers.withTrigger(compiled.get(0), trigger, spec.durationTicks));
+            }
+        }
+        return marks;
     }
 
     private ConditionalSay compileConditionalSay(ConditionalSaySpec spec) {

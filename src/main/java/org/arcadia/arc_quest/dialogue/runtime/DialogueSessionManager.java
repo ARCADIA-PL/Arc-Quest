@@ -1,7 +1,6 @@
 package org.arcadia.arc_quest.dialogue.runtime;
 
 import com.mojang.logging.LogUtils;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -30,8 +29,9 @@ import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
 import org.arcadia.arc_quest.quest.network.SyncObservability.Reason;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
-import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -134,7 +134,7 @@ public final class DialogueSessionManager {
         LOGGER.info("[Dialogue] Started dialogue '{}' for player '{}' (entityId={}, namespace={}).", tree.dialogueId(), player.getName().getString(), entityId, namespace);
         progress.recordDialogueVisit(
                 namespace, dialogueId, now.realTime(), now.gameTime(), now.dayTime());
-        sendNodeToClient(session, true);
+        sendNodeToClient(session, true, true);
         SyncObservability.trace("dialogue", dialogueId, player.getName().getString(), SyncObservability.Stage.OPEN, Reason.DIALOGUE_OPEN);
         NeoForge.EVENT_BUS.post(new DialogueStartedEvent(player, npcEntity, dialogueId));
         return session;
@@ -152,18 +152,19 @@ public final class DialogueSessionManager {
                 SyncObservability.Stage.ACTION, Reason.DIALOGUE_CHOICE);
 
         DialogueNode currentNode = session.getCurrentNode();
+        DialogueChoice selectedChoice = null;
         if (currentNode != null) {
             var visibleChoices = session.getVisibleChoices();
             if (choiceIndex >= 0 && choiceIndex < visibleChoices.size()) {
                 Entity npc = session.getEntity();
                 var choice = visibleChoices.get(choiceIndex);
+                selectedChoice = choice;
                 Component choiceText = session.processDialogueText(choice.text());
 
                 NeoForge.EVENT_BUS.post(new DialogueChoiceSelectedEvent(
                         player, npc, session.getTree().dialogueId(),
                         currentNode.nodeId(), choiceIndex, choice.choiceId(), choiceText.getString()
                 ));
-
                 appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
                         CoreProcessors.get().time().realTimeMillis(),
                         "player",
@@ -178,6 +179,13 @@ public final class DialogueSessionManager {
         }
 
         DialogueNode next = session.choose(choiceIndex);
+        if (currentNode != null && selectedChoice != null) {
+            var data = ArcQuestPlayerManager.get(player);
+            if (data != null) {
+                DialogueMarkerTriggerService.triggerChoiceSelected(
+                        player, data, session.getTree(), currentNode.nodeId(), selectedChoice);
+            }
+        }
         if (session.isEnded() || next == null) {
             endDialogue(player);
             sendClose(player);
@@ -185,7 +193,7 @@ public final class DialogueSessionManager {
                     SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_END);
             return;
         }
-        sendNodeToClient(session, false);
+        sendNodeToClient(session, false, true);
         SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                 SyncObservability.Stage.RESULT, Reason.DIALOGUE_CHOICE_NEXT_NODE);
     }
@@ -233,7 +241,7 @@ public final class DialogueSessionManager {
                 fromNodeId,
                 toNodeId
         ));
-        sendNodeToClient(session, false);
+        sendNodeToClient(session, false, true);
         SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                 SyncObservability.Stage.RESULT, Reason.DIALOGUE_AUTO_ADVANCE_NEXT_NODE);
     }
@@ -256,7 +264,7 @@ public final class DialogueSessionManager {
                     restoreNodeId == null ? "" : restoreNodeId
             ));
             if (restoreNodeId != null && !restoreNodeId.isEmpty() && "__CURRENT__".equals(restoreNodeId)) {
-                sendNodeToClient(session, false);
+                sendNodeToClient(session, false, false);
                 SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                         SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
                 return;
@@ -275,7 +283,7 @@ public final class DialogueSessionManager {
                     ));
                 }
             }
-            sendNodeToClient(session, false);
+            sendNodeToClient(session, false, false);
             SyncObservability.trace("dialogue", session.getTree().dialogueId(), player.getName().getString(),
                     SyncObservability.Stage.RESULT, Reason.DIALOGUE_RESTORE_NEXT_NODE);
         } else {
@@ -415,7 +423,7 @@ public final class DialogueSessionManager {
         NpcInteractionLeaseManager.INSTANCE.clear();
     }
 
-    private void sendNodeToClient(DialogueSession session, boolean openMode) {
+    private void sendNodeToClient(DialogueSession session, boolean openMode, boolean triggerNodeEntry) {
         touchLease(session);
         ServerPlayer player = session.getPlayer();
         DialogueNode node = session.getCurrentNode();
@@ -474,7 +482,13 @@ public final class DialogueSessionManager {
         Component text = Component.literal(session.processText(sayIfResult.text));
         SoundEvent matchedSaySound = sayIfResult.sound;
         String selectedSayId = sayIfResult.sayId;
-        if (data != null) syncDialogueMarkers(session, node, sayIfResult);
+        if (data != null) {
+            syncDialogueMarkers(session, node, sayIfResult);
+            if (triggerNodeEntry) {
+                DialogueMarkerTriggerService.triggerNodeEntered(
+                        player, data, session.getTree(), node.nodeId());
+            }
+        }
 
         appendTranscriptDelta(session, new S2CDialogueTranscriptDeltaPacket.Entry(
                 CoreProcessors.get().time().realTimeMillis(),
@@ -540,13 +554,17 @@ public final class DialogueSessionManager {
             if (markerId.startsWith(cleanupPrefix)) data.removeMarker(markerId);
         }
 
+        for (MarkSpec spec : session.getTree().relatedMarks()) {
+            if (!MarkTriggers.isContinuous(spec)) continue;
+            String markerId = "aq:dlg:" + dialogueId + ":tree:" + spec.id();
+            QuestMarkerRuntimeManager.refresh(player, data, markerId, dialogueId, spec, null, -1, true);
+        }
+
         for (DialogueChoice c : session.getVisibleChoices()) {
             for (MarkSpec spec : c.relatedMarks()) {
-                boolean active = spec.activateWhen().test(player, data) && !spec.deactivateWhen().test(player, data);
-                if (!active) continue;
+                if (!MarkTriggers.isContinuous(spec)) continue;
                 String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":choice:" + c.choiceId() + ":" + spec.id();
-                QuestMarkerData marker = resolveDialogueMarker(markerId, spec, player, level, dialogueId);
-                if (marker != null) data.upsertMarker(marker);
+                QuestMarkerRuntimeManager.refresh(player, data, markerId, dialogueId, spec, null, -1, true);
             }
         }
 
@@ -554,11 +572,9 @@ public final class DialogueSessionManager {
             for (var entry : node.conditionalTexts().values()) {
                 if (!sayIfResult.sayId.equals(entry.sayId())) continue;
                 for (MarkSpec spec : entry.relatedMarks()) {
-                    boolean active = spec.activateWhen().test(player, data) && !spec.deactivateWhen().test(player, data);
-                    if (!active) continue;
+                    if (!MarkTriggers.isContinuous(spec)) continue;
                     String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":say:" + entry.sayId() + ":" + spec.id();
-                    QuestMarkerData marker = resolveDialogueMarker(markerId, spec, player, level, dialogueId);
-                    if (marker != null) data.upsertMarker(marker);
+                    QuestMarkerRuntimeManager.refresh(player, data, markerId, dialogueId, spec, null, -1, true);
                 }
             }
         }

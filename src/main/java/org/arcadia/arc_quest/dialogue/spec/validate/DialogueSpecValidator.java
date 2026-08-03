@@ -2,7 +2,11 @@ package org.arcadia.arc_quest.dialogue.spec.validate;
 
 import org.arcadia.arc_quest.condition.ConditionSpec;
 import org.arcadia.arc_quest.dialogue.spec.*;
+import org.arcadia.arc_quest.quest.spec.MarkSpecData;
+import org.arcadia.arc_quest.questmarker.api.MarkTrigger;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -68,6 +72,7 @@ public final class DialogueSpecValidator {
 
         validateText(report, node.speaker, prefix + ".speaker");
         validateText(report, node.text, prefix + ".text");
+        validateMarkers(report, node.relatedMarks, prefix + ".relatedMarks", MarkTrigger.DIALOGUE_NODE_ENTERED);
 
         if (node.autoNextId != null && !node.autoNextId.isBlank()) {
             if (!allNodeIds.contains(node.autoNextId)) {
@@ -106,6 +111,7 @@ public final class DialogueSpecValidator {
         }
 
         validateText(report, choice.text, prefix + ".text");
+        validateMarkers(report, choice.relatedMarks, prefix + ".relatedMarks", MarkTrigger.DIALOGUE_CHOICE_SELECTED);
 
         if (choice.nextNodeId != null && !choice.nextNodeId.isBlank()) {
             if (!allNodeIds.contains(choice.nextNodeId)) {
@@ -130,6 +136,40 @@ public final class DialogueSpecValidator {
         if (choice.actions != null) {
             for (int ai = 0; ai < choice.actions.size(); ai++) {
                 validateAction(report, choice.actions.get(ai), prefix + ".actions[" + ai + "]");
+            }
+        }
+    }
+
+    private void validateMarkers(DialogueValidationReport report, List<MarkSpecData> markers,
+                                 String prefix, MarkTrigger requiredTrigger) {
+        if (markers == null) return;
+        if (markers.size() > 4096) {
+            report.add(DialogueValidationIssue.Severity.ERROR, prefix, "Marker collection exceeds 4096 entries");
+            return;
+        }
+        Set<String> ids = new HashSet<>();
+        for (int i = 0; i < markers.size(); i++) {
+            MarkSpecData marker = markers.get(i);
+            String path = prefix + "[" + i + "]";
+            if (marker == null) {
+                report.add(DialogueValidationIssue.Severity.ERROR, path, "Marker is required");
+                continue;
+            }
+            if (isBlank(marker.id)) {
+                report.add(DialogueValidationIssue.Severity.ERROR, path + ".id", "Marker id is required");
+            } else if (!ids.add(marker.id)) {
+                report.add(DialogueValidationIssue.Severity.ERROR, path + ".id", "Duplicate marker id: " + marker.id);
+            }
+            if (marker.target == null || isBlank(marker.target.type)) {
+                report.add(DialogueValidationIssue.Severity.ERROR, path + ".target", "Marker target is required");
+            }
+            if (marker.trigger != requiredTrigger && marker.trigger != MarkTrigger.CONTINUOUS) {
+                report.add(DialogueValidationIssue.Severity.ERROR, path + ".trigger",
+                        "Marker trigger must be " + requiredTrigger + " in this scope");
+            }
+            if (marker.durationTicks <= 0 || marker.durationTicks > 72000) {
+                report.add(DialogueValidationIssue.Severity.ERROR, path + ".durationTicks",
+                        "Marker durationTicks must be between 1 and 72000");
             }
         }
     }
