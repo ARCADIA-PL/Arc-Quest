@@ -1,4 +1,5 @@
 import {createQuestSkeleton} from './factories.js';
+import {normalizeMarkers, setMarkerField} from './marker-shape.js';
 import {splitList} from './utils.js';
 
 export function setLooseJson(target, key, value) {
@@ -184,7 +185,7 @@ export function ensureQuestShape(q) {
     q.visualConfig.themeColor ||= defaults.visualConfig.themeColor;
     q.visualConfig.splashes ||= [...defaults.visualConfig.splashes];
     q.visualConfig.icons ||= {};
-    q.relatedMarks ||= [];
+    q.relatedMarks = normalizeMarkers(q.relatedMarks);
     q.completionPolicy ||= 'ALL';
     q.completionRequiredCount ||= 1;
     q.completionTargetPhaseId ||= '';
@@ -215,7 +216,7 @@ export function ensureQuestShape(q) {
             o.countMin ??= 1;
             o.countMax ??= -1;
             o.extraData ||= {};
-            o.relatedMarks ||= [];
+            o.relatedMarks = normalizeMarkers(o.relatedMarks);
         });
         p.rewards ||= [];
         p.flagsToSetOnEnter ||= [];
@@ -223,7 +224,7 @@ export function ensureQuestShape(q) {
         p.tradeShopId ||= '';
         p.phaseStartSound ||= '';
         p.phaseCompleteSound ||= '';
-        p.relatedMarks ||= [];
+        p.relatedMarks = normalizeMarkers(p.relatedMarks);
         p.visualConfig ||= null;
         p.choices ||= [];
         p.transitions ||= [];
@@ -231,6 +232,7 @@ export function ensureQuestShape(q) {
 }
 
 export function setQuestRootField(target, bind, value, inputType) {
+    if (bind.startsWith('q.relatedMarks.')) return setMarkerField(target.relatedMarks, bind.split('.').slice(2), value, inputType);
     if (bind === 'q.id') {
         target.id = value;
         return {fileName: (value || 'quest') + '.json'};

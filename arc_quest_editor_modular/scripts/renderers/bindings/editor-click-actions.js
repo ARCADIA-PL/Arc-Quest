@@ -23,8 +23,27 @@ import {
     fixCollectionRuleDefaults
 } from './editor-helpers.js';
 import {bindConditionEditorClicks} from './editor-click-actions-condition.js';
+import {createMarkerSpec, resolveMarkerList} from '../../core/marker-shape.js';
 
 export function handleClickPrelude(e, midEl, state, rerender) {
+    const markerAdd = e.target.closest('[data-marker-add]');
+    if (markerAdd) {
+        const list = resolveMarkerList(state.quest.q, markerAdd.dataset.markerAdd);
+        if (list) list.push(createMarkerSpec(list.length));
+        state.quest.meta.dirty = true;
+        rerender();
+        return true;
+    }
+    const markerDelete = e.target.closest('[data-marker-delete]');
+    if (markerDelete) {
+        const raw = markerDelete.dataset.markerDelete;
+        const separator = raw.lastIndexOf(':');
+        const list = resolveMarkerList(state.quest.q, raw.substring(0, separator));
+        if (list) list.splice(Number(raw.substring(separator + 1)), 1);
+        state.quest.meta.dirty = true;
+        rerender();
+        return true;
+    }
     const removeTarget = e.target.closest('[data-chip-remove]');
     if (removeTarget) {
         const [key, index] = String(removeTarget.dataset.chipRemove || '').split(':');
