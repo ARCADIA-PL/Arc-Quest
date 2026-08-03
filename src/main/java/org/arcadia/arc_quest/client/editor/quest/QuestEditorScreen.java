@@ -370,6 +370,10 @@ public final class QuestEditorScreen extends Screen {
         if (packet.success()) dirty = false;
     }
 
+    boolean isSession(UUID expectedSessionId) {
+        return sessionId.equals(expectedSessionId);
+    }
+
     @Override
     public void onClose() {
         ArcQuestNetwork.sendQuestEditorClose(new C2SCloseQuestEditorPacket());

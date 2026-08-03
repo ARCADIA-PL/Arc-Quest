@@ -12,6 +12,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.client.editor.quest.QuestEditorScreen;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
@@ -48,6 +49,7 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
+        if (event.getScreen() instanceof QuestEditorScreen) return;
         if (QuestSplashRenderer.isActive()) {
             QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
                     event.getScreen().width,
@@ -71,6 +73,7 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenMouseClickPre(ScreenEvent.MouseButtonPressed.Pre event) {
+        if (event.getScreen() instanceof QuestEditorScreen) return;
         if (GuidePopupOverlay.INSTANCE.isActive()) {
             GuidePopupOverlay.INSTANCE.mouseClicked(event.getMouseX(), event.getMouseY(), event.getButton());
             event.setCanceled(true);
@@ -123,6 +126,7 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenKeyPressPre(ScreenEvent.KeyPressed.Pre event) {
+        if (event.getScreen() instanceof QuestEditorScreen) return;
         if (GuidePopupOverlay.INSTANCE.isActive()) {
             GuidePopupOverlay.INSTANCE.keyPressed(event.getKeyCode());
             event.setCanceled(true);
@@ -160,6 +164,7 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenScrollPre(ScreenEvent.MouseScrolled.Pre event) {
+        if (event.getScreen() instanceof QuestEditorScreen) return;
         if (GuidePopupOverlay.INSTANCE.isActive()) {
             GuidePopupOverlay.INSTANCE.mouseScrolled(event.getScrollDeltaY());
             event.setCanceled(true);
@@ -185,6 +190,7 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenMouseDraggedPre(ScreenEvent.MouseDragged.Pre event) {
+        if (event.getScreen() instanceof QuestEditorScreen) return;
         if (!GuidePopupOverlay.INSTANCE.isActive()) return;
         GuidePopupOverlay.INSTANCE.mouseDragged(
                 event.getMouseX(), event.getMouseY(), event.getMouseButton());
@@ -193,6 +199,7 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenMouseReleasedPre(ScreenEvent.MouseButtonReleased.Pre event) {
+        if (event.getScreen() instanceof QuestEditorScreen) return;
         if (!GuidePopupOverlay.INSTANCE.isActive()) return;
         GuidePopupOverlay.INSTANCE.mouseReleased(event.getButton());
         event.setCanceled(true);
@@ -203,6 +210,7 @@ public class ClientHudEvents {
         // 打开任务/对话/交易/抽卡界面时隐藏血量/饥饿/护甲/氧气
         Minecraft mc = Minecraft.getInstance();
         if (!(mc.screen instanceof QuestJournalScreen
+                || mc.screen instanceof QuestEditorScreen
                 || mc.screen instanceof DialogueScreen
                 || mc.screen instanceof AbstractTradeScreen
                 || mc.screen instanceof GachaScreen)) {
