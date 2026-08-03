@@ -35,35 +35,38 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Arc Quest 网络通信中心。
- * 使用 NeoForge PayloadRegistrar / CustomPacketPayload 进行 S2C / C2S 数据包注册与发送。
+ * Arc Quest 缂冩垹绮堕柅姘繆娑擃厼绺鹃妴?
+ * 娴ｈ法鏁?NeoForge PayloadRegistrar / CustomPacketPayload 鏉╂稖顢?S2C / C2S 閺佺増宓侀崠鍛暈閸愬奔绗岄崣鎴︹偓浣碘偓?
  */
 public final class ArcQuestNetwork {
 
     private static final Map<UUID, Long> MARKER_EPOCH = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> MARKER_REVISION = new ConcurrentHashMap<>();
+    private static final AtomicLong MARKER_EPOCH_SEQUENCE = new AtomicLong(System.currentTimeMillis());
 
     private ArcQuestNetwork() {
     }
 
     /**
-     * 在 Mod 构造器里挂到 {@code modEventBus.addListener(ArcQuestNetwork::register)}。
+     * 閸?Mod 閺嬪嫰鈧姴娅掗柌灞惧瘯閸?{@code modEventBus.addListener(ArcQuestNetwork::register)}閵?
      */
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("7");
 
-        // ─── S2C（play to client）───
+        // 閳光偓閳光偓閳光偓 S2C閿涘潷lay to client閿涘鏀㈤埞鈧埞鈧?
         if (FMLEnvironment.dist == Dist.CLIENT) {
             registerClientPayloadHandlers(registrar);
         } else {
             registerClientPayloadCodecs(registrar);
         }
 
-        // ─── C2S（play to server）───
+        // 閳光偓閳光偓閳光偓 C2S閿涘潷lay to server閿涘鏀㈤埞鈧埞鈧?
         registrar.playToServer(C2SRequestQuestActionPacket.TYPE, C2SRequestQuestActionPacket.STREAM_CODEC, C2SRequestQuestActionPacket::handle);
         registrar.playToServer(C2SRequestQuestResyncPacket.TYPE, C2SRequestQuestResyncPacket.STREAM_CODEC, C2SRequestQuestResyncPacket::handle);
+        registrar.playToServer(C2SRequestMarkerResyncPacket.TYPE, C2SRequestMarkerResyncPacket.STREAM_CODEC, C2SRequestMarkerResyncPacket::handle);
         registrar.playToServer(C2SSubmitOfferPacket.TYPE, C2SSubmitOfferPacket.STREAM_CODEC, C2SSubmitOfferPacket::handle);
         registrar.playToServer(C2SClaimCollectionRewardPacket.TYPE, C2SClaimCollectionRewardPacket.STREAM_CODEC, C2SClaimCollectionRewardPacket::handle);
         registrar.playToServer(C2SGachaControlPacket.TYPE, C2SGachaControlPacket.STREAM_CODEC, C2SGachaControlPacket::handle);
@@ -120,12 +123,12 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2CSyncTrackedQuestPacket.TYPE, S2CSyncTrackedQuestPacket.STREAM_CODEC, (packet, context) -> {});
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 服务端便捷发送方法
-    // ═══════════════════════════════════════════════════════
+    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
+    // 閺堝秴濮熺粩顖欑┒閹瑰嘲褰傞柅浣规煙濞?
+    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
 
     /**
-     * 全量同步（登录/重生/维度切换）
+     * 閸忋劑鍣洪崥灞绢劄閿涘牏娅ヨぐ?闁插秶鏁?缂佹潙瀹抽崚鍥ㄥ床閿?
      */
     public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
         resetMarkerStream(player);
@@ -137,7 +140,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * 单任务状态同步
+     * 閸楁洑鎹㈤崝锛勫Ц閹礁鎮撳?
      */
     public static void syncQuestState(ServerPlayer player, QuestRuntimeData data) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
@@ -149,7 +152,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * 增量进度同步（小包）
+     * 婢х偤鍣烘潻娑樺閸氬本顒為敍鍫濈毈閸栧拑绱?
      */
     public static void syncDeltaProgress(ServerPlayer player,
                                          String questId,
@@ -173,7 +176,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * Flags / Variables 同步
+     * Flags / Variables 閸氬本顒?
      */
     public static void syncFlagsAndVars(ServerPlayer player, ArcQuestPlayer data) {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
@@ -205,7 +208,7 @@ public final class ArcQuestNetwork {
     }
 
     /**
-     * Quest 同步后统一触发 Trade + Gacha 活跃界面 push-first。
+     * Quest 閸氬本顒為崥搴ｇ埠娑撯偓鐟欙箑褰?Trade + Gacha 濞叉槒绌悾宀勬桨 push-first閵?
      */
     private static void pushSyncForActiveUIs(ServerPlayer player,
                                              @Nullable ArcQuestPlayer data,
@@ -219,9 +222,9 @@ public final class ArcQuestNetwork {
         }
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 客户端便捷发送方法
-    // ═══════════════════════════════════════════════════════
+    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
+    // 鐎广垺鍩涚粩顖欑┒閹瑰嘲褰傞柅浣规煙濞?
+    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
 
     public static void sendQuestAction(C2SRequestQuestActionPacket packet) {
         PacketDistributor.sendToServer(packet);
@@ -275,9 +278,9 @@ public final class ArcQuestNetwork {
         PacketDistributor.sendToServer(new C2SMarkPhaseStoryReadPacket(questId, phaseId));
     }
 
-    // ═══════════════════════════════════════════════════════
-    // 服务端定向发送（S2C）
-    // ═══════════════════════════════════════════════════════
+    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
+    // 閺堝秴濮熺粩顖氱暰閸氭垵褰傞柅渚婄礄S2C閿?
+    // 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡?
 
     public static void sendToPlayer(ServerPlayer player, S2COpenDialoguePacket packet) {
         PacketDistributor.sendToPlayer(player, packet);
@@ -357,11 +360,11 @@ public final class ArcQuestNetwork {
     }
 
     private static long currentMarkerEpoch(ServerPlayer player) {
-        return MARKER_EPOCH.computeIfAbsent(player.getUUID(), k -> System.currentTimeMillis());
+        return MARKER_EPOCH.computeIfAbsent(player.getUUID(), k -> MARKER_EPOCH_SEQUENCE.incrementAndGet());
     }
 
     private static void resetMarkerStream(ServerPlayer player) {
-        MARKER_EPOCH.put(player.getUUID(), System.currentTimeMillis());
+        MARKER_EPOCH.put(player.getUUID(), MARKER_EPOCH_SEQUENCE.incrementAndGet());
         MARKER_REVISION.put(player.getUUID(), 0L);
     }
 

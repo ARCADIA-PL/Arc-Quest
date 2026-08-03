@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.questmarker;
 
 import org.arcadia.arc_quest.core.state.VersionedStreamGate;
+import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 
 import java.util.Collection;
@@ -33,6 +34,7 @@ public final class QuestMarkerManager {
     public synchronized void clear() {
         markers.clear();
         revisionGate.clear();
+        MarkerHudRenderer.INSTANCE.clearVisualState();
     }
 
     public synchronized QuestMarkerData get(String id) {
@@ -70,6 +72,7 @@ public final class QuestMarkerManager {
         long baseRevision = revisionGate.revision();
         VersionedStreamGate.Decision decision = revisionGate.applyDelta(
                 epoch, baseRevision, revision, () -> mutator.accept(markers));
+        if (decision == VersionedStreamGate.Decision.GAP) ArcQuestNetwork.requestMarkerResync();
         if (decision != VersionedStreamGate.Decision.ACCEPT) return false;
         return true;
     }

@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 玩家Tick事件处理器：以固定节流频率执行“变更检测 -> 持久化快照 -> 网络同步”。
+ * 鐜╁Tick浜嬩欢澶勭悊鍣細浠ュ浐瀹氳妭娴侀鐜囨墽琛屸€滃彉鏇存娴?-> 鎸佷箙鍖栧揩鐓?-> 缃戠粶鍚屾鈥濄€?
  */
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class QuestDataTickHandler {
@@ -105,11 +105,11 @@ public final class QuestDataTickHandler {
         Object2ByteOpenHashMap<String> states = markerStateCache.computeIfAbsent(
                 pid, k -> new Object2ByteOpenHashMap<>());
 
-        // 清理缓存中已被移除的标记状态
+        // 娓呯悊缂撳瓨涓凡琚Щ闄ょ殑鏍囪鐘舵€?
         states.keySet().removeIf(markerId -> states.getByte(markerId) != 0
                 && !data.getAllMarkers().containsKey(markerId));
 
-        // 清理已失效的阶段标记（任务或阶段已不可用）
+        // 娓呯悊宸插け鏁堢殑闃舵鏍囪锛堜换鍔℃垨闃舵宸蹭笉鍙敤锛?
         for (QuestMarkerData marker : List.copyOf(data.getAllMarkers().values())) {
             if (!marker.getId().startsWith("aq:auto:") || !marker.hasQuestBinding()) continue;
 
@@ -307,7 +307,7 @@ public final class QuestDataTickHandler {
     }
 
     /**
-     * tick 中仅做网络同步，不做持久化（持久化交由 worldSave / playerLogout）。
+     * tick 涓粎鍋氱綉缁滃悓姝ワ紝涓嶅仛鎸佷箙鍖栵紙鎸佷箙鍖栦氦鐢?worldSave / playerLogout锛夈€?
      */
     private static void syncIfChanged(ServerPlayer player) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
@@ -317,7 +317,7 @@ public final class QuestDataTickHandler {
     }
 
     /**
-     * 有变更时才执行"快照持久化 + 客户端同步 + 清脏"。
+     * 鏈夊彉鏇存椂鎵嶆墽琛?蹇収鎸佷箙鍖?+ 瀹㈡埛绔悓姝?+ 娓呰剰"銆?
      */
     private static void persistAndSyncIfChanged(ServerPlayer player) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);

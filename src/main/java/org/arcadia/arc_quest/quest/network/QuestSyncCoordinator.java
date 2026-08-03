@@ -8,10 +8,10 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.slf4j.Logger;
 
 /**
- * Quest 同步语义协调器。
+ * Quest 鍚屾璇箟鍗忚皟鍣ㄣ€?
  * <p>
- * 统一承载 Quest 侧的“快照持久化 / 网络同步 / push触发”语义入口，
- * 让业务处理器（如 QuestProgressHandler）不直接依赖底层网络细节。
+ * 缁熶竴鎵胯浇 Quest 渚х殑鈥滃揩鐓ф寔涔呭寲 / 缃戠粶鍚屾 / push瑙﹀彂鈥濊涔夊叆鍙ｏ紝
+ * 璁╀笟鍔″鐞嗗櫒锛堝 QuestProgressHandler锛変笉鐩存帴渚濊禆搴曞眰缃戠粶缁嗚妭銆?
  */
 public final class QuestSyncCoordinator {
 
@@ -48,9 +48,9 @@ public final class QuestSyncCoordinator {
     }
 
     /**
-     * 统一语义入口：有变更才执行"快照持久化 + 客户端同步 + 清脏"。
+     * 缁熶竴璇箟鍏ュ彛锛氭湁鍙樻洿鎵嶆墽琛?蹇収鎸佷箙鍖?+ 瀹㈡埛绔悓姝?+ 娓呰剰"銆?
      * <p>
-     * 持久化层统一写入 ArcQuestPlayer 独立 SavedData，网络层则按 DirtyKind 选择最小同步包。
+     * 鎸佷箙鍖栧眰缁熶竴鍐欏叆 ArcQuestPlayer 鐙珛 SavedData锛岀綉缁滃眰鍒欐寜 DirtyKind 閫夋嫨鏈€灏忓悓姝ュ寘銆?
      */
     public static void persistAndSyncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
@@ -79,14 +79,27 @@ public final class QuestSyncCoordinator {
     }
 
     /**
-     * 仅网络同步，不持久化（用于高频 tick sync）。
+     * 浠呯綉缁滃悓姝ワ紝涓嶆寔涔呭寲锛堢敤浜庨珮棰?tick sync锛夈€?
      */
     public static void syncIfChanged(ServerPlayer player, ArcQuestPlayer data) {
-        persistAndSyncIfChanged(player, data);
+        ArcQuestPlayer.DirtyKind kind = data.getDirtyKind();
+        if (kind == ArcQuestPlayer.DirtyKind.NONE) return;
+        if (kind == ArcQuestPlayer.DirtyKind.FULL) {
+            syncFullDataAndPush(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.FLAGS_VARS) {
+            syncFlagsVarsAndPush(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.TRACKED_QUEST) {
+            ArcQuestNetwork.syncTrackedQuest(player, data);
+        } else if (kind == ArcQuestPlayer.DirtyKind.MARKERS) {
+            ArcQuestNetwork.syncMarkers(player, data);
+        } else {
+            syncQuestStateForDirty(player, data);
+        }
+        data.clearDirty(kind);
     }
 
     /**
-     * 将 ArcQuestPlayer 快照写入独立 SavedData 宿主。
+     * 灏?ArcQuestPlayer 蹇収鍐欏叆鐙珛 SavedData 瀹夸富銆?
      */
     public static void persistSnapshot(ServerPlayer player, ArcQuestPlayer data) {
         ArcQuestPlayerManager.persistSnapshot(player, data);

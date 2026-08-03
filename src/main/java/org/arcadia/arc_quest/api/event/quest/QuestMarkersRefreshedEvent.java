@@ -8,11 +8,20 @@ public class QuestMarkersRefreshedEvent extends Event {
     private final ServerPlayer player;
     private final ResourceLocation questId;
     private final int activePhaseCount;
+    private final int markerCount;
 
     public QuestMarkersRefreshedEvent(ServerPlayer player, ResourceLocation questId, int activePhaseCount) {
+        this(player, questId, activePhaseCount, -1);
+    }
+
+    public QuestMarkersRefreshedEvent(ServerPlayer player,
+                                      ResourceLocation questId,
+                                      int activePhaseCount,
+                                      int markerCount) {
         this.player = player;
         this.questId = questId;
         this.activePhaseCount = activePhaseCount;
+        this.markerCount = markerCount;
     }
 
     public ServerPlayer getPlayer() {
@@ -25,5 +34,9 @@ public class QuestMarkersRefreshedEvent extends Event {
 
     public int getActivePhaseCount() {
         return activePhaseCount;
+    }
+
+    public int getMarkerCount() {
+        return markerCount;
     }
 }

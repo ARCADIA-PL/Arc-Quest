@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 
 import java.util.HashMap;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -63,6 +64,11 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
 
     public static double getFarDistanceThreshold() {
         return farDistanceThreshold;
+    }
+
+    public void clearVisualState() {
+        stateMap.clear();
+        lastTimeMs = System.currentTimeMillis();
     }
 
     private static float[] insetFromEdge(float x, float y, float cx, float cy, float inset) {
@@ -182,7 +188,9 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
 
         AABB playerOcclusionBox = player.getBoundingBox().inflate(0.15);
 
-        for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all()) {
+        for (QuestMarkerData marker : QuestMarkerManager.INSTANCE.all().stream()
+                .sorted(Comparator.comparingInt(QuestMarkerData::getPriority))
+                .toList()) {
             if (!marker.isActive()) continue;
             if (!currentDim.equals(marker.getDimension())) continue;
             if (marker.hasEntityBinding() && !marker.hasEntityGuidBinding() && !marker.hasEntityUuidBinding()) continue;
@@ -190,6 +198,7 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
             double targetX = marker.getWorldX();
             double targetY = marker.getWorldY();
             double targetZ = marker.getWorldZ();
+            MarkerVisualState st = stateMap.computeIfAbsent(marker.getId(), ignored -> new MarkerVisualState());
 
             if (marker.hasEntityBinding()) {
                 Entity entity = null;
@@ -198,14 +207,20 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
                     if (matchesBinding(marker, fast)) entity = fast;
                 }
                 if (entity == null && marker.hasEntityGuidBinding()) {
+                    if (now < st.nextEntityResolveMs) continue;
                     Entity byGuid = findEntityByGuid(mc.level, marker.getFollowEntityGuid());
                     if (matchesBinding(marker, byGuid)) entity = byGuid;
                 }
                 if (entity == null && marker.hasEntityUuidBinding()) {
+                    if (now < st.nextEntityResolveMs) continue;
                     Entity byUuid = findEntityByUuid(mc.level, marker.getFollowEntityUuid());
                     if (matchesBinding(marker, byUuid)) entity = byUuid;
                 }
-                if (entity == null) continue;
+                if (entity == null) {
+                    st.nextEntityResolveMs = now + 250L;
+                    continue;
+                }
+                st.nextEntityResolveMs = 0L;
 
                 targetX = lerp(entity.xo, entity.getX(), partialTick);
                 targetZ = lerp(entity.zo, entity.getZ(), partialTick);
@@ -222,8 +237,6 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
             double dyDist = targetY - py;
             double dzDist = targetZ - pz;
             double dist = Math.sqrt(dxDist * dxDist + dyDist * dyDist + dzDist * dzDist);
-
-            MarkerVisualState st = stateMap.computeIfAbsent(marker.getId(), k -> new MarkerVisualState());
 
             float targetTier = DistanceTier.getTierForDistance(dist).getTargetValue();
             boolean isQuestActive = marker.getState() == QuestMarkerState.ACTIVE;
@@ -324,8 +337,9 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
 
                             if (distSqr < minSpace * minSpace) {
                                 if (distSqr < 0.001f) {
-                                    dx = (float) Math.random() - 0.5f;
-                                    dy = (float) Math.random() - 0.5f;
+                                    int hash = marker.getId().hashCode();
+                                    dx = ((hash & 0xFF) / 255.0f) - 0.5f;
+                                    dy = (((hash >>> 8) & 0xFF) / 255.0f) - 0.5f;
                                     distSqr = dx * dx + dy * dy;
                                 }
                                 float pDist = (float) Math.sqrt(distSqr);
@@ -342,6 +356,8 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
             }
 
             int color = normalizeColor(marker.getColorARGB());
+            color = withAlpha(color, Math.round(((color >>> 24) & 0xFF)
+                    * styleFloat(marker, "opacity", 1.0f, 0.05f, 1.0f)));
 
             float baseLightX = 0.15f;
             float baseLightY = -1.0f;
@@ -375,6 +391,8 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
 
         gui.pose().pushPose();
         gui.pose().translate(x, y, 0);
+        float markerScale = styleFloat(marker, "scale", 1.0f, 0.5f, 2.0f);
+        gui.pose().scale(markerScale, markerScale, 1.0f);
 
         float perspectiveScale = 1.0f;
         if (dist > closestDistanceThreshold) {
@@ -456,6 +474,8 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
 
         gui.pose().pushPose();
         gui.pose().translate(x, y, 0);
+        float markerScale = styleFloat(marker, "scale", 1.0f, 0.5f, 2.0f);
+        gui.pose().scale(markerScale, markerScale, 1.0f);
         gui.pose().pushPose();
 
         float ease = 1.0f - (1.0f - progress) * (1.0f - progress);
@@ -535,6 +555,20 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
         }
     }
 
+    private static float styleFloat(QuestMarkerData marker,
+                                    String key,
+                                    float fallback,
+                                    float minimum,
+                                    float maximum) {
+        String value = marker.getStyleHint(key);
+        if (value == null || value.isBlank()) return fallback;
+        try {
+            return Math.max(minimum, Math.min(maximum, Float.parseFloat(value)));
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
     public enum DistanceTier {
         CLOSEST(2.0f),
         NEAR(0.0f),
@@ -578,5 +612,6 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
         int cachedDistanceWidth = 0;
 
         boolean initialized;
+        long nextEntityResolveMs;
     }
 }
