@@ -23,6 +23,7 @@ import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
+import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
@@ -44,7 +45,10 @@ public final class ClientEventHandler {
         boolean guideScreenActive = mc.screen instanceof GuideScreen;
         if (!guideScreenActive && !GuidePopupOverlay.INSTANCE.isActive()) {
             ClientGuideCache.INSTANCE.consumePendingOpenRequest().ifPresent(request -> {
-                if (mc.screen == null) {
+                // Choice-driven dialogue updates may briefly leave screen null. Keep the guide
+                // attached to the active dialogue session so closing it restores the dialogue.
+                boolean dialogueActive = ClientDialogueCache.INSTANCE.getCurrentSession() != null;
+                if (shouldOpenStandaloneGuide(mc.screen != null, dialogueActive)) {
                     GuideScreen.tryOpen(request.guideId(), request.initialPage(), request.markSeenOnClose());
                 } else {
                     GuidePopupOverlay.INSTANCE.open(
@@ -73,6 +77,10 @@ public final class ClientEventHandler {
 
         QuestToastManager.tick();
         QuestIntelPanel.tick();
+    }
+
+    static boolean shouldOpenStandaloneGuide(boolean screenPresent, boolean dialogueActive) {
+        return !screenPresent && !dialogueActive;
     }
 
     @SubscribeEvent
