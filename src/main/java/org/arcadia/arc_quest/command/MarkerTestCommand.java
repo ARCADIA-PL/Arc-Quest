@@ -271,7 +271,10 @@ public class MarkerTestCommand {
                 .state(newState)
                 .color(old.getColorARGB())
                 .showDistance(old.isShowDistance())
-                .allowOffscreenArrow(old.isAllowOffscreenArrow());
+                .allowOffscreenArrow(old.isAllowOffscreenArrow())
+                .priority(old.getPriority())
+                .styleHints(old.getStyleHints())
+                .persistent(old.isPersistent());
 
         if (old.hasEntityBinding()) {
             builder.followEntity(

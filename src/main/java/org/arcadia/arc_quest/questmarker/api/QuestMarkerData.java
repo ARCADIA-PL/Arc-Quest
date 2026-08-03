@@ -2,6 +2,9 @@ package org.arcadia.arc_quest.questmarker.api;
 
 import org.arcadia.arc_quest.quest.api.QuestState;
 
+import java.util.Map;
+import java.util.Objects;
+
 /**
  * 任务标记数据模型（API 层）。
  * 支持直接绑定 Quest 运行时语义（questId / phaseId / objectiveIndex）。
@@ -29,6 +32,9 @@ public class QuestMarkerData {
     private final QuestMarkerState state;
     private final boolean showDistance;
     private final boolean allowOffscreenArrow;
+    private final int priority;
+    private final Map<String, String> styleHints;
+    private final boolean persistent;
 
     private QuestMarkerData(Builder builder) {
         id = builder.id;
@@ -52,6 +58,9 @@ public class QuestMarkerData {
         state = builder.state;
         showDistance = builder.showDistance;
         allowOffscreenArrow = builder.allowOffscreenArrow;
+        priority = builder.priority;
+        styleHints = Map.copyOf(builder.styleHints);
+        persistent = builder.persistent;
     }
 
     public static QuestMarkerData mainQuest(String id, double x, double y, double z, String label) {
@@ -165,6 +174,22 @@ public class QuestMarkerData {
         return allowOffscreenArrow;
     }
 
+    public int getPriority() {
+        return priority;
+    }
+
+    public Map<String, String> getStyleHints() {
+        return styleHints;
+    }
+
+    public String getStyleHint(String key) {
+        return styleHints.get(key);
+    }
+
+    public boolean isPersistent() {
+        return persistent;
+    }
+
     public boolean hasQuestBinding() {
         return questId != null && !questId.isEmpty();
     }
@@ -198,6 +223,40 @@ public class QuestMarkerData {
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof QuestMarkerData other)) return false;
+        return Double.compare(worldX, other.worldX) == 0
+                && Double.compare(worldY, other.worldY) == 0
+                && Double.compare(worldZ, other.worldZ) == 0
+                && objectiveIndex == other.objectiveIndex
+                && followEntityId == other.followEntityId
+                && colorARGB == other.colorARGB
+                && showDistance == other.showDistance
+                && allowOffscreenArrow == other.allowOffscreenArrow
+                && priority == other.priority
+                && persistent == other.persistent
+                && Objects.equals(id, other.id)
+                && Objects.equals(label, other.label)
+                && Objects.equals(dimension, other.dimension)
+                && Objects.equals(questId, other.questId)
+                && Objects.equals(phaseId, other.phaseId)
+                && Objects.equals(followEntityUuid, other.followEntityUuid)
+                && Objects.equals(followEntityGuid, other.followEntityGuid)
+                && attachPoint == other.attachPoint
+                && type == other.type
+                && state == other.state
+                && Objects.equals(styleHints, other.styleHints);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, worldX, worldY, worldZ, label, dimension, questId, phaseId,
+                objectiveIndex, followEntityId, followEntityUuid, followEntityGuid, attachPoint,
+                colorARGB, type, state, showDistance, allowOffscreenArrow, priority, styleHints, persistent);
+    }
+
     public enum EntityAttachPoint {
         HEAD,
         CENTER
@@ -223,6 +282,9 @@ public class QuestMarkerData {
         private QuestMarkerState state = QuestMarkerState.ACTIVE;
         private boolean showDistance = true;
         private boolean allowOffscreenArrow = true;
+        private int priority;
+        private Map<String, String> styleHints = Map.of();
+        private boolean persistent = true;
 
         public Builder(String id, double x, double y, double z, String label) {
             this.id = id;
@@ -320,6 +382,21 @@ public class QuestMarkerData {
 
         public Builder allowOffscreenArrow(boolean allow) {
             allowOffscreenArrow = allow;
+            return this;
+        }
+
+        public Builder priority(int priority) {
+            this.priority = Math.max(0, priority);
+            return this;
+        }
+
+        public Builder styleHints(Map<String, String> styleHints) {
+            this.styleHints = styleHints == null ? Map.of() : Map.copyOf(styleHints);
+            return this;
+        }
+
+        public Builder persistent(boolean persistent) {
+            this.persistent = persistent;
             return this;
         }
 

@@ -43,6 +43,7 @@ public final class ArcQuestPlayer {
         TRADE_GACHA(1 << 3),
         GUIDE_STATE(1 << 4),
         TRACKED_QUEST(1 << 5),
+        MARKERS(1 << 6),
         FULL(0xFF);
 
         private final int mask;
@@ -158,6 +159,7 @@ public final class ArcQuestPlayer {
     private final Map<String, Set<String>> readPhaseStories = new Object2ObjectOpenHashMap<>();
     private final Map<String, Integer> variables = new Object2IntOpenHashMap<>();
     private final Map<String, QuestMarkerData> markers = new LinkedHashMap<>();
+    private final Set<String> consumedOneShotMarkers = new ObjectOpenHashSet<>();
 
     private final ArcQuestQuestState questState;
     private final ArcQuestProfileState profileState;
@@ -173,7 +175,8 @@ public final class ArcQuestPlayer {
 
     public ArcQuestPlayer(UUID ownerUuid) {
         this.ownerUuid = Objects.requireNonNull(ownerUuid);
-        this.questState = new ArcQuestQuestState(activeQuests, completedQuests, failedQuests, readPhaseStories, markers);
+        this.questState = new ArcQuestQuestState(activeQuests, completedQuests, failedQuests,
+                readPhaseStories, markers, consumedOneShotMarkers);
         this.profileState = new ArcQuestProfileState(variables);
         this.guideState = new ArcQuestGuideState();
     }
@@ -432,6 +435,14 @@ public final class ArcQuestPlayer {
         return questState.getAllMarkers();
     }
 
+    public synchronized boolean isOneShotMarkerConsumed(String markerId) {
+        return questState.isOneShotMarkerConsumed(markerId);
+    }
+
+    public synchronized boolean consumeOneShotMarker(String markerId) {
+        return questState.consumeOneShotMarker(markerId);
+    }
+
     public CompoundTag serializeNBT() {
         CompoundTag root = new CompoundTag();
 
@@ -490,7 +501,8 @@ public final class ArcQuestPlayer {
 
         DirtyKind kind = DirtyKind.NONE;
         if (profileState.isDirty()) kind = kind.or(DirtyKind.FLAGS_VARS);
-        if (questState.isDirty()) kind = kind.or(DirtyKind.QUEST_STATE);
+        if (questState.isQuestStateDirty()) kind = kind.or(DirtyKind.QUEST_STATE);
+        if (questState.isMarkerDirty()) kind = kind.or(DirtyKind.MARKERS);
         if (guideState.isDirty()) kind = kind.or(DirtyKind.GUIDE_STATE);
         if (trackedQuestDirty) kind = kind.or(DirtyKind.TRACKED_QUEST);
         if (dialogueProgress.isDirty()) kind = kind.or(DirtyKind.DIALOGUE);
@@ -524,6 +536,7 @@ public final class ArcQuestPlayer {
         }
         if (kind == DirtyKind.FLAGS_VARS) profileState.clearDirty();
         if (kind == DirtyKind.QUEST_STATE) questState.clearDirty();
+        if (kind == DirtyKind.MARKERS) questState.clearMarkerDirty();
         if (kind == DirtyKind.GUIDE_STATE) guideState.clearDirty();
         if (kind == DirtyKind.TRACKED_QUEST) trackedQuestDirty = false;
         if (kind == DirtyKind.DIALOGUE) dialogueProgress.clearDirty();
