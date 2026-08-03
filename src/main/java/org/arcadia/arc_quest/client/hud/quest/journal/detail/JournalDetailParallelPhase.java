@@ -25,6 +25,7 @@ import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalMarqueeTextRenderer;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
@@ -166,76 +167,6 @@ public class JournalDetailParallelPhase {
         }
     }
 
-    private void drawScrollingString(GuiGraphics g, Font font, String text, int localX, int localY, int maxWidth, int color, boolean dropShadow, int absX, int absY, int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
-        int textWidth = font.width(text);
-        if (textWidth <= maxWidth) {
-            g.drawString(font, text, localX, localY, color, dropShadow);
-            return;
-        }
-        long time = Util.getMillis();
-        double speed = 30.0;
-        int pauseTime = 1500;
-        double maxShift = textWidth - maxWidth;
-        double totalScrollTime = (maxShift / speed) * 1000.0;
-        double halfPeriod = pauseTime + totalScrollTime;
-        double period = halfPeriod * 2.0;
-        double t = time % period;
-        double shift;
-        if (t < halfPeriod) {
-            shift = (t <= pauseTime) ? 0 : ((t - pauseTime) / 1000.0) * speed;
-        } else {
-            double tBack = t - halfPeriod;
-            shift = (tBack <= pauseTime) ? maxShift : maxShift - (((tBack - pauseTime) / 1000.0) * speed);
-        }
-
-        int cx1 = Math.max(parentClipX1, absX);
-        int cy1 = Math.max(parentClipY1, absY);
-        int cx2 = Math.min(parentClipX2, absX + maxWidth);
-        int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
-
-        if (cx1 < cx2 && cy1 < cy2) {
-            safeScissor(g, cx1, cy1, cx2, cy2);
-            g.drawString(font, text, localX - (int) shift, localY, color, dropShadow);
-            safeScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
-        }
-    }
-
-    private void drawScrollingComponent(GuiGraphics g, Font font, Component text, int localX, int localY,
-                                        int maxWidth, int color, boolean dropShadow, int absX, int absY,
-                                        int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
-        int textWidth = font.width(text);
-        if (textWidth <= maxWidth) {
-            g.drawString(font, text, localX, localY, color, dropShadow);
-            return;
-        }
-        long time = Util.getMillis();
-        double speed = 30.0;
-        int pauseTime = 1500;
-        double maxShift = textWidth - maxWidth;
-        double totalScrollTime = (maxShift / speed) * 1000.0;
-        double halfPeriod = pauseTime + totalScrollTime;
-        double t = time % (halfPeriod * 2.0);
-        double shift;
-        if (t < halfPeriod) {
-            shift = t <= pauseTime ? 0 : ((t - pauseTime) / 1000.0) * speed;
-        } else {
-            double tBack = t - halfPeriod;
-            shift = tBack <= pauseTime
-                    ? maxShift
-                    : maxShift - (((tBack - pauseTime) / 1000.0) * speed);
-        }
-
-        int cx1 = Math.max(parentClipX1, absX);
-        int cy1 = Math.max(parentClipY1, absY);
-        int cx2 = Math.min(parentClipX2, absX + maxWidth);
-        int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
-        if (cx1 < cx2 && cy1 < cy2) {
-            safeScissor(g, cx1, cy1, cx2, cy2);
-            g.drawString(font, text, localX - (int) shift, localY, color, dropShadow);
-            safeScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
-        }
-    }
-
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, List<String> activePhaseIds, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
         Font font = screen.getFont();
         objScrollAreas.clear();
@@ -334,7 +265,10 @@ public class JournalDetailParallelPhase {
             g.pose().pushPose();
             g.pose().translate(currentX1, headerBaseY + 1, 0);
             g.pose().scale(0.75f, 0.75f, 1f);
-            drawScrollingComponent(g, font, pName, 0, 0, (int) (remainingW / 0.75f), HudAnimUtil.withAlpha(0xFFFFFF, safeA), true, absTitleX, absTitleY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+            JournalMarqueeTextRenderer.drawComponent(g, font, pName, 0, 0,
+                    (int) (remainingW / 0.75f), HudAnimUtil.withAlpha(0xFFFFFF, safeA), true,
+                    absTitleX, absTitleY, x, scrollAreaY, x + scrollAreaW,
+                    scrollAreaY + scrollAreaH, this::safeScissor);
             g.pose().popPose();
 
             localY += titleH + 6;
@@ -533,7 +467,11 @@ public class JournalDetailParallelPhase {
 
             Component phaseName = getPhaseDisplayName(phase);
             int nameAbsX = absCardX + 8 + contentShiftX, nameAbsY = absCardY + 6;
-            drawScrollingComponent(g, font, phaseName, cardX + 8 + contentShiftX, cardY + 6, colW - 60, HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), true, nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
+            JournalMarqueeTextRenderer.drawComponent(g, font, phaseName,
+                    cardX + 8 + contentShiftX, cardY + 6, colW - 60,
+                    HudAnimUtil.withAlpha(selected ? 0xFFFFFF : 0xDDDDDD,
+                            (int) (cardSafeA * (actualDAlpha / dAlpha))), true,
+                    nameAbsX, nameAbsY, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2, this::safeScissor);
 
             ResourceLocation pIntel = phase.getIntelSceneId();
             boolean hasIntel = pIntel != null;
@@ -714,7 +652,11 @@ public class JournalDetailParallelPhase {
                         }
                     }
 
-                    drawScrollingString(g, font, displayText, cardX + 8 + contentShiftX, objY, objMaxWidth, HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, objColor, Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absX2, absY2, intX1, intY1, intX2, intY2);
+                    JournalMarqueeTextRenderer.drawString(g, font, displayText,
+                            cardX + 8 + contentShiftX, objY, objMaxWidth,
+                            HudAnimUtil.withAlpha(HudAnimUtil.lerpColor(0x000000, objColor,
+                                    Math.max(0.6f, powerFactor)), (int) (cardSafeA * (actualDAlpha / dAlpha))),
+                            false, absX2, absY2, intX1, intY1, intX2, intY2, this::safeScissor);
                     if (showProgressText) {
                         g.drawString(font, pr, cardX + colW - 8 - extraMargin - font.width(pr), objY, HudAnimUtil.withAlpha(0x888888, (int) (cardSafeA * (actualDAlpha / dAlpha))), false);
                     }
@@ -761,7 +703,12 @@ public class JournalDetailParallelPhase {
                     g.fill(btnX + btnW - 1, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
 
                     String choiceText = (i + 1) + ". " + getChoiceText(choice);
-                    drawScrollingString(g, font, choiceText, btnX + 6, btnY + 6, btnW - 12, HudAnimUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD, (int) (cardSafeA * (actualDAlpha / dAlpha))), false, absBtnX + 6, absBtnY + 6, clipAbsX1, clipAbsY1, clipAbsX2, clipAbsY2);
+                    JournalMarqueeTextRenderer.drawString(g, font, choiceText,
+                            btnX + 6, btnY + 6, btnW - 12,
+                            HudAnimUtil.withAlpha(btnHover ? activeTheme : 0xDDDDDD,
+                                    (int) (cardSafeA * (actualDAlpha / dAlpha))), false,
+                            absBtnX + 6, absBtnY + 6, clipAbsX1, clipAbsY1,
+                            clipAbsX2, clipAbsY2, this::safeScissor);
 
                     if (draggingPhaseId == null)
                         currentChoiceButtons.add(new JournalTypes.ChoiceButtonRect(absBtnX, absBtnY, btnW, btnH, phase.getChoices().indexOf(choice), phaseId));

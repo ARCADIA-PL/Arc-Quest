@@ -6,8 +6,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScaledTextRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.*;
 
 import java.util.List;
@@ -42,18 +45,23 @@ final class JournalDetailHistory {
 
         Font font = screen.getFont();
         int localY = 0;
-        drawScaled(g, font, "// QUEST CHANGE LOG", 0, localY, 0.92f, HudAnimUtil.withAlpha(theme, alpha), false);
+        JournalScaledTextRenderer.draw(g, font, "// QUEST CHANGE LOG", 0, localY,
+                0.92f, HudAnimUtil.withAlpha(theme, alpha), false);
         localY += 18;
 
-        drawButton(g, font, 0, localY, 44, 16, "ALL", theme, alpha, !currentQuestOnly || inside(mx, my, x, y + localY, 44, 16));
-        drawButton(g, font, 48, localY, 64, 16, "CURRENT", theme, alpha, currentQuestOnly || inside(mx, my, x + 48, y + localY, 64, 16));
+        JournalButtonRenderer.drawToggleButton(g, font, new HudRect(0, localY, 44, 16),
+                "ALL", theme, alpha, !currentQuestOnly || inside(mx, my, x, y + localY, 44, 16), 0.7f);
+        JournalButtonRenderer.drawToggleButton(g, font, new HudRect(48, localY, 64, 16),
+                "CURRENT", theme, alpha, currentQuestOnly || inside(mx, my, x + 48, y + localY, 64, 16), 0.7f);
         localY += 22;
 
         int fx = 0;
         for (QuestChangeHistoryCategory category : QuestChangeHistoryCategory.values()) {
             if (category == QuestChangeHistoryCategory.SYSTEM) continue;
             int fw = Math.max(34, font.width(category.shortLabel()) + 12);
-            drawButton(g, font, fx, localY, fw, 12, category.shortLabel(), theme, alpha, selectedCategory == category || inside(mx, my, x + fx, y + localY, fw, 12));
+            JournalButtonRenderer.drawToggleButton(g, font, new HudRect(fx, localY, fw, 12),
+                    category.shortLabel(), theme, alpha,
+                    selectedCategory == category || inside(mx, my, x + fx, y + localY, fw, 12), 0.7f);
             fx += fw + 4;
         }
         localY += 20;
@@ -70,7 +78,8 @@ final class JournalDetailHistory {
         screen.enableScissor(g, x, y + listY, x + listW, y + listY + listH);
         if (rows.isEmpty()) {
             String empty = currentQuestOnly ? "NO HISTORY FOR CURRENT QUEST" : "NO CHANGE HISTORY RECORDED";
-            drawScaled(g, font, empty, 4, listY + 8, 0.8f, HudAnimUtil.withAlpha(0x667788, alpha), false);
+            JournalScaledTextRenderer.draw(g, font, empty, 4, listY + 8,
+                    0.8f, HudAnimUtil.withAlpha(0x667788, alpha), false);
         } else {
             int rowY = listY - (int) scroll;
             for (QuestChangeHistoryEntry entry : rows) {
@@ -147,25 +156,12 @@ final class JournalDetailHistory {
         int color = entry.themeColor != 0 ? entry.themeColor : entry.type.accentColor();
         g.fill(x, y, x + w, y + ROW_H - 4, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * (alpha / 255f))));
         HudRenderUtil.drawCyberneticEdge(g, x, y, ROW_H - 4, color, alpha);
-        drawScaled(g, font, entry.type.displayName(), x + 8, y + 7, 0.72f, HudAnimUtil.withAlpha(color, alpha), false);
+        JournalScaledTextRenderer.draw(g, font, entry.type.displayName(), x + 8, y + 7,
+                0.72f, HudAnimUtil.withAlpha(color, alpha), false);
         String title = safe(entry.detail, entry.title);
         title = font.plainSubstrByWidth(title, (int) ((w - 18) / 0.85f));
-        drawScaled(g, font, title, x + 8, y + 21, 0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
-    }
-
-    private void drawButton(GuiGraphics g, Font font, int x, int y, int w, int h, String label, int theme, int alpha, boolean active) {
-        int bg = active ? 0x182026 : 0x05060A;
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(bg, (int) ((active ? 0xAA : 0x66) * (alpha / 255f))));
-        g.fill(x, y + h - 1, x + w, y + h, HudAnimUtil.withAlpha(active ? theme : 0x555555, alpha));
-        drawScaled(g, font, label, x + 6, y + Math.max(3, (h - 7) / 2), 0.7f, HudAnimUtil.withAlpha(active ? 0xFFFFFF : 0xAAB4C0, alpha), false);
-    }
-
-    private void drawScaled(GuiGraphics g, Font font, String text, int x, int y, float scale, int color, boolean shadow) {
-        g.pose().pushPose();
-        g.pose().translate(x, y, 0);
-        g.pose().scale(scale, scale, 1f);
-        g.drawString(font, text, 0, 0, color, shadow);
-        g.pose().popPose();
+        JournalScaledTextRenderer.draw(g, font, title, x + 8, y + 21,
+                0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
     }
 
     private boolean inside(double mx, double my, int x, int y, int w, int h) {
