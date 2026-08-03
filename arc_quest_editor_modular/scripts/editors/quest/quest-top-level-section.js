@@ -46,6 +46,10 @@ export function renderQuestTopLevelSection(q, phaseIds, field, area, registry = 
         ${boolSelect('是否限时', 'q.hasTimeLimit', isTimed)}
         ${phaseSingleSelect('初始阶段ID (Initial Phase ID)', 'q.initialPhaseId', q.initialPhaseId || '', phaseIds)}
       </div>
+      <div class="row">
+        ${field('随机初始阶段候选（逗号分隔）', 'q.initialPhaseIds', (q.initialPhaseIds || []).join(', '))}
+        <div class="f"><label>选择规则</label><div class="tiny">候选非空时均匀随机；为空时使用 Initial Phase ID。</div></div>
+      </div>
       ${isTimed ? `
       <div class="row">
         ${enumSelect('时限类型 (timeLimitType)', 'q.timeLimitType', q.timeLimitType || 'REAL_SECONDS', ['REAL_SECONDS', 'GAME_DAY_TIME'])}

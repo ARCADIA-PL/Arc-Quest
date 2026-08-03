@@ -142,13 +142,14 @@ export function validateQuest(state) {
             });
         });
         (p.transitions || []).forEach((tr, ti) => {
-            if (tr?.targetPhaseId && !q.phases.some(x => x.id === tr.targetPhaseId)) {
-                d.push({
+            const targets = tr?.targetPhaseIds?.length ? tr.targetPhaseIds : [tr?.targetPhaseId].filter(Boolean);
+            targets.forEach(targetPhaseId => {
+                if (!q.phases.some(x => x.id === targetPhaseId)) d.push({
                     lvl: 'err',
                     path: `phase:${pi}`,
-                    msg: `transition[${ti}] 引用了不存在的 phase: ${tr.targetPhaseId}`
+                    msg: `transition[${ti}] 引用了不存在的 phase: ${targetPhaseId}`
                 });
-            }
+            });
             validateConditionNode(tr?.condition, `phase:${pi}:transition:${ti}:condition`, d);
         });
         (p.choices || []).forEach((ch, ci) => {
@@ -248,6 +249,11 @@ export function validateQuest(state) {
     if (q.initialPhaseId && !q.phases.some(p => p.id === q.initialPhaseId)) {
         d.push({lvl: 'err', path: 'quest', msg: `initialPhaseId 引用了不存在的 phase: ${q.initialPhaseId}`});
     }
+    (q.initialPhaseIds || []).forEach(initialPhaseId => {
+        if (!q.phases.some(p => p.id === initialPhaseId)) {
+            d.push({lvl: 'err', path: 'quest', msg: `initialPhaseIds 引用了不存在的 phase: ${initialPhaseId}`});
+        }
+    });
     if (q.unlockConditions) validateConditionNode(q.unlockConditions, 'quest:unlockConditions', d);
     const sp = new Set((q.visualConfig.splashes || []).map(x => x.eventType));
     if (!sp.has('QUEST_ACQUIRED')) d.push({lvl: 'warn', path: 'visual', msg: '未配置 QUEST_ACQUIRED splash'});

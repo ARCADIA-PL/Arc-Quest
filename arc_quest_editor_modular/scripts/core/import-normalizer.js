@@ -186,6 +186,7 @@ function normalizePhase(phase, idx) {
         choicePhaseIds: mode === 'choice' ? targetIds : [],
         transitions: transitions.map(t => ({
             targetPhaseId: t?.targetPhaseId || '',
+            targetPhaseIds: Array.isArray(t?.targetPhaseIds) ? t.targetPhaseIds.filter(Boolean) : [],
             condition: normalizeCondition(t?.condition)
         })),
         choices: mode === 'choice' ? (phase?.choices || []).map(c => ({
@@ -222,6 +223,7 @@ export function normalizeImportedQuest(input) {
         chapterShopType: input.chapterShopType || '',
         chapterShopPersistent: !!input.chapterShopPersistent,
         initialPhaseId: input.initialPhaseId || '',
+        initialPhaseIds: Array.isArray(input.initialPhaseIds) ? input.initialPhaseIds.filter(Boolean) : [],
         iconTexture: input.iconTexture || '',
         flagsToSetOnAccept: input.flagsToSetOnAccept || [],
         flagsToSetOnComplete: input.flagsToSetOnComplete || [],

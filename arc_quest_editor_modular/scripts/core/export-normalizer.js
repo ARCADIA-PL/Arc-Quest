@@ -37,6 +37,7 @@ export function exportQuestToDatapack(stateQuest) {
         initialPhaseId: q.initialPhaseId || q.phases?.[0]?.id || '',
         phases: (q.phases || []).map(exportPhase)
     };
+    if (q.initialPhaseIds?.length) out.initialPhaseIds = q.initialPhaseIds;
     if (q.allowAbandon === false) out.allowAbandon = false;
     if (isNonEmptyString(q.description)) out.description = textNode(q.description, q.descriptionMode || 'translatable', '');
     if (q.chapterShopId) out.chapterShopId = q.chapterShopId;

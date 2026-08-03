@@ -162,7 +162,11 @@ function setEnterConditionField(phase, pathParts, value) {
 
 function setTransitionField(phase, transitionIndex, fieldName, value, pathParts) {
     phase.transitions ||= [];
-    phase.transitions[transitionIndex] ||= {targetPhaseId: '', condition: {condition: 'arc_quest:always'}};
+    phase.transitions[transitionIndex] ||= {targetPhaseId: '', targetPhaseIds: [], condition: {condition: 'arc_quest:always'}};
+    if (fieldName === 'targetPhaseIds') {
+        phase.transitions[transitionIndex].targetPhaseIds = String(value || '').split(',').map(x => x.trim()).filter(Boolean);
+        return;
+    }
     if (fieldName === 'conditionType') {
         phase.transitions[transitionIndex].condition ||= {};
         phase.transitions[transitionIndex].condition.condition = value;

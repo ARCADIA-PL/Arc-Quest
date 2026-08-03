@@ -27,7 +27,10 @@ function buildGraph(phases) {
         };
         if (p.mode === 'parallel') (p.parallelPhaseIds || []).forEach(id => add(id, 'parallel'));
         else if (p.mode === 'choice') (p.choicePhaseIds || []).forEach(id => add(id, 'choice'));
-        else (p.transitions || []).forEach(t => add(t.targetPhaseId, 'normal'));
+        else (p.transitions || []).forEach(t => {
+            const targets = t.targetPhaseIds?.length ? t.targetPhaseIds : [t.targetPhaseId];
+            targets.forEach(id => add(id, 'normal'));
+        });
     });
     let roots = [...map.values()].filter(n => n.inDegree === 0);
     if (!roots.length && map.size) roots = [[...map.values()][0]];
