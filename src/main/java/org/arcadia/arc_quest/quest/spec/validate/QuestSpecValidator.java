@@ -24,7 +24,9 @@ public final class QuestSpecValidator {
         txt(r, spec.description, "description");
         marks(r, spec.relatedMarks, "relatedMarks", Set.of(MarkTrigger.CONTINUOUS, MarkTrigger.QUEST_ACCEPTED));
         if (empty(spec.phases)) err(r, "phases", "Quest must contain at least one phase");
-        req(r, spec.initialPhaseId, "initialPhaseId", "Initial phase is required");
+        if (empty(spec.initialPhaseIds)) {
+            req(r, spec.initialPhaseId, "initialPhaseId", "Initial phase is required");
+        }
 
         Set<String> ids = new HashSet<>();
         if (spec.phases != null) {
@@ -40,7 +42,15 @@ public final class QuestSpecValidator {
         }
         list(spec.completionRewards, (x,i) -> reward(r, x, "completionRewards[" + i + "]"));
         list(spec.unlockConditions, (x,i) -> condition(r, x, "unlockConditions[" + i + "]"));
-        if (!blank(spec.initialPhaseId) && !ids.contains(spec.initialPhaseId)) err(r, "initialPhaseId", "Initial phase id not found: " + spec.initialPhaseId);
+        if (!empty(spec.initialPhaseIds)) {
+            for (int i = 0; i < spec.initialPhaseIds.size(); i++) {
+                String initialPhaseId = spec.initialPhaseIds.get(i);
+                if (blank(initialPhaseId)) err(r, "initialPhaseIds[" + i + "]", "Initial phase id is required");
+                else if (!ids.contains(initialPhaseId)) err(r, "initialPhaseIds[" + i + "]", "Initial phase id not found: " + initialPhaseId);
+            }
+        } else if (!blank(spec.initialPhaseId) && !ids.contains(spec.initialPhaseId)) {
+            err(r, "initialPhaseId", "Initial phase id not found: " + spec.initialPhaseId);
+        }
         completion(r, spec, ids.size());
         return r;
     }
@@ -49,8 +59,18 @@ public final class QuestSpecValidator {
         String b = "phases[" + i + "]";
         if (empty(p.objectives)) err(r, b + ".objectives", "Phase must contain at least one objective");
         list(p.transitions, (t,idx) -> {
-            if (blank(t.targetPhaseId)) err(r, b + ".transitions[" + idx + "]", "Transition targetPhaseId is required");
-            else if (!ids.contains(t.targetPhaseId)) err(r, b + ".transitions[" + idx + "]", "Transition targetPhaseId not found: " + t.targetPhaseId);
+            if (!empty(t.targetPhaseIds)) {
+                for (int targetIndex = 0; targetIndex < t.targetPhaseIds.size(); targetIndex++) {
+                    String targetPhaseId = t.targetPhaseIds.get(targetIndex);
+                    String path = b + ".transitions[" + idx + "].targetPhaseIds[" + targetIndex + "]";
+                    if (blank(targetPhaseId)) err(r, path, "Transition target phase id is required");
+                    else if (!ids.contains(targetPhaseId)) err(r, path, "Transition target phase id not found: " + targetPhaseId);
+                }
+            } else if (blank(t.targetPhaseId)) {
+                err(r, b + ".transitions[" + idx + "]", "Transition targetPhaseId is required");
+            } else if (!ids.contains(t.targetPhaseId)) {
+                err(r, b + ".transitions[" + idx + "]", "Transition targetPhaseId not found: " + t.targetPhaseId);
+            }
             condition(r, t.condition, b + ".transitions[" + idx + "].condition");
         });
         list(p.choices, (c,idx) -> {
