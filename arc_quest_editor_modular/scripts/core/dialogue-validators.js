@@ -1,3 +1,5 @@
+import {validateMarkers} from './validators.js';
+
 function validateConditionNode(node, path, d) {
     if (!node) return;
     if (!node.condition || node.condition === 'arc_quest:always') return;
@@ -33,6 +35,8 @@ export function validateDialogue(dialogue) {
         if (node.text && (!node.text.value || !node.text.value.trim())) {
             d.push({lvl: 'warn', path: `${p}.text.value`, msg: '节点文本为空'});
         }
+        validateMarkers(node.relatedMarks, `${p}.relatedMarks`, d,
+            ['CONTINUOUS', 'DIALOGUE_NODE_ENTERED']);
         if (node.conditionalTexts) {
             for (const [key, say] of Object.entries(node.conditionalTexts)) {
                 if (!say) continue;
@@ -66,6 +70,8 @@ export function validateDialogue(dialogue) {
             if (choice.restoreNodeId && !nodeIds.has(choice.restoreNodeId)) {
                 d.push({lvl: 'err', path: `${cp}.restoreNodeId`, msg: `恢复节点 "${choice.restoreNodeId}" 不在节点列表中`});
             }
+            validateMarkers(choice.relatedMarks, `${cp}.relatedMarks`, d,
+                ['CONTINUOUS', 'DIALOGUE_CHOICE_SELECTED']);
             for (let ai = 0; ai < (choice.actions || []).length; ai++) {
                 validateAction(choice.actions[ai], `${cp}.actions[${ai}]`, d);
             }

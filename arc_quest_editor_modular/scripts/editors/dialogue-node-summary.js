@@ -1,6 +1,7 @@
 import {esc} from '../core/utils.js';
 import {renderTextSpec} from './textspec-editor.js';
 import {renderCooldownGroup} from './cooldown-editor.js';
+import {renderMarkEditor} from './mark-editor.js';
 
 function condChipClasses(condition) {
     const cond = condition?.condition || '';
@@ -105,6 +106,7 @@ export function renderDialogueNodeDetail(dialogue, node, ni, registry, state) {
       </div>
       ${renderTextSpec(`${prefix}.speaker`, node.speaker || {}, 'Speaker')}
       ${renderCooldownGroup(prefix, node)}
+      ${renderMarkEditor(node.relatedMarks, `${prefix}.relatedMarks`, '进入节点时触发的 Marker')}
     </div>
 
     <div class="sec">

@@ -3,6 +3,7 @@ import {renderTextSpec} from './textspec-editor.js';
 import {renderCooldownGroup} from './cooldown-editor.js';
 import {renderConditionTree} from './condition-editor.js';
 import {renderCardStrip} from './dialogue-sayif-editor.js';
+import {renderMarkEditor} from './mark-editor.js';
 
 const ACTION_TYPES = [
     'start_quest', 'complete_quest', 'advance_phase',
@@ -98,6 +99,7 @@ export function renderDialogueChoiceEditor(node, choice, ni, ci, dialogue, regis
       <div class="f"><label>Select Sound</label><input data-b="${cp}.selectSound" value="${esc(choice.selectSound || '')}" placeholder="可选"></div>
       ${renderTextSpec(`${cp}.text`, choice.text || {}, '选项文本')}
       ${renderCooldownGroup(cp, choice)}
+      ${renderMarkEditor(choice.relatedMarks, `${cp}.relatedMarks`, '选择选项后触发的 Marker')}
       <div style="margin-top:8px">
         <div class="small" style="margin-bottom:4px"><b>Conditions</b></div>
         ${(choice.conditions || []).map((cond, cdi) =>

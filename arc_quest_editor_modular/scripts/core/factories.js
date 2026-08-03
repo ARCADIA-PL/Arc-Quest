@@ -131,7 +131,8 @@ export const createDialogueNode = () => ({
     cooldownSeconds: 0,
     cooldownType: 'NONE',
     resetTimeTicks: 0,
-    nodeEnterSound: ''
+    nodeEnterSound: '',
+    relatedMarks: []
 });
 
 export const createConditionalSay = () => ({
@@ -256,7 +257,8 @@ export const createDialogueChoice = () => ({
     resetTimeTicks: 0,
     priority: 0,
     restoreNodeId: '',
-    selectSound: ''
+    selectSound: '',
+    relatedMarks: []
 });
 
 export const createDialogueAction = (type = 'no_op') => ({
