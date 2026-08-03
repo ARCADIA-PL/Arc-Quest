@@ -14,7 +14,13 @@ public final class QuestDatapackWriter {
         if (spec == null) throw new IllegalArgumentException("spec must not be null");
         DatapackPathResolver.ensureDatapackDirsExist();
 
-        Path target = DatapackPathResolver.resolveQuestFile(questFileName);
+        return write(DatapackPathResolver.resolveQuestFile(questFileName), spec);
+    }
+
+    public Path write(Path target, QuestSpec spec) throws IOException {
+        if (spec == null) throw new IllegalArgumentException("spec must not be null");
+        DatapackPathResolver.ensureInsideDatapackRoot(target);
+        Files.createDirectories(target.toAbsolutePath().normalize().getParent());
         Path temp = target.resolveSibling(target.getFileName() + ".tmp");
 
         String payload = QuestSpecJsonWriter.write(spec);
