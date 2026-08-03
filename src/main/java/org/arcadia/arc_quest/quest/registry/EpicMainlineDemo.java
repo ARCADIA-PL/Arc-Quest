@@ -58,6 +58,7 @@ public final class EpicMainlineDemo {
                                 1f
                         )
                         .themeColor(ChatFormatting.GOLD)
+                        .initialPhase("arc_quest:start")
 
                         .phase(PhaseBuilder.create("arc_quest:start")
                                 .displayName(Component.translatable("arc_quest.phase.epic_prologue.gather_wood").append(Component.literal("test").withStyle(ChatFormatting.GOLD)))//测试改颜色
