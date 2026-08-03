@@ -210,6 +210,15 @@ public final class ObjectiveBuilder {
         return this;
     }
 
+    public ObjectiveBuilder markRelatedObject(MarkSpec spec, MarkTrigger trigger, int durationTicks) {
+        relatedMarks.add(MarkTriggers.withTrigger(spec, trigger, durationTicks));
+        return this;
+    }
+
+    public ObjectiveBuilder markOnComplete(MarkSpec spec) {
+        return markRelatedObject(spec, MarkTrigger.OBJECTIVE_COMPLETED, MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS);
+    }
+
     public ObjectiveEntry build() {
         Objects.requireNonNull(targetId, "targetId not set for ObjectiveBuilder");
         return new ObjectiveEntry(objectiveId, type, targetId, requiredCount, displayText,

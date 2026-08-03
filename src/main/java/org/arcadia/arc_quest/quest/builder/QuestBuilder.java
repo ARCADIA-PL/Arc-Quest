@@ -197,6 +197,15 @@ public final class QuestBuilder {
         return this;
     }
 
+    public QuestBuilder markRelatedObject(MarkSpec spec, MarkTrigger trigger, int durationTicks) {
+        relatedMarks.add(MarkTriggers.withTrigger(spec, trigger, durationTicks));
+        return this;
+    }
+
+    public QuestBuilder markOnAccept(MarkSpec spec) {
+        return markRelatedObject(spec, MarkTrigger.QUEST_ACCEPTED, MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS);
+    }
+
     public QuestBuilder unlockCondition(ICondition condition) {
         unlockConditions.add(condition);
         return this;

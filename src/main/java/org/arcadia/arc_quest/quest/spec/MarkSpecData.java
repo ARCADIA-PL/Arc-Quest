@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.quest.spec;
 
+import org.arcadia.arc_quest.questmarker.api.MarkTrigger;
+import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 
 import java.util.LinkedHashMap;
@@ -16,5 +18,7 @@ public class MarkSpecData {
     public int refreshTicks = 20;
     public boolean trackMovingEntity = true;
     public boolean oneShot = false;
+    public MarkTrigger trigger = MarkTrigger.CONTINUOUS;
+    public int durationTicks = MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS;
     public Map<String, String> styleHints = new LinkedHashMap<>();
 }

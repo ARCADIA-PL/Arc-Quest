@@ -228,6 +228,23 @@ public final class PhaseBuilder {
         return this;
     }
 
+    public PhaseBuilder markRelatedObject(MarkSpec spec, MarkTrigger trigger, int durationTicks) {
+        relatedMarks.add(MarkTriggers.withTrigger(spec, trigger, durationTicks));
+        return this;
+    }
+
+    public PhaseBuilder markOnEnter(MarkSpec spec) {
+        return markRelatedObject(spec, MarkTrigger.PHASE_ENTERED, MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS);
+    }
+
+    public PhaseBuilder markOnComplete(MarkSpec spec) {
+        return markRelatedObject(spec, MarkTrigger.PHASE_COMPLETED, MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS);
+    }
+
+    public PhaseBuilder markOnAdvance(MarkSpec spec) {
+        return markRelatedObject(spec, MarkTrigger.PHASE_ADVANCED, MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS);
+    }
+
     public PhaseBuilder phaseTrade(String shopId) {
         tradeShopId = shopId;
         return this;
