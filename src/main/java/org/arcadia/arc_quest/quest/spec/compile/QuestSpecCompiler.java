@@ -84,7 +84,11 @@ public final class QuestSpecCompiler {
         for (String flag : listOrEmpty(spec.flagsToSetOnComplete)) builder.setFlagOnComplete(flag);
         for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
         for (PhaseDefinition phase : phases.values()) builder.phase(phase);
-        if (spec.initialPhaseId != null) builder.startAt(spec.initialPhaseId);
+        if (spec.initialPhaseIds != null && !spec.initialPhaseIds.isEmpty()) {
+            builder.setInitialPhases(spec.initialPhaseIds);
+        } else if (spec.initialPhaseId != null) {
+            builder.startAt(spec.initialPhaseId);
+        }
 
         if (parseNullableSound(spec.chapterStartSound) != null) builder.chapterStartSound(parseNullableSound(spec.chapterStartSound));
         if (parseNullableSound(spec.chapterFailSound) != null) builder.chapterFailSound(parseNullableSound(spec.chapterFailSound));
@@ -101,7 +105,10 @@ public final class QuestSpecCompiler {
         List<PhaseTransition> transitions = new ArrayList<>();
         int priority = 0;
         for (TransitionSpec transitionSpec : listOrEmpty(spec.transitions)) {
-            transitions.add(new PhaseTransition(transitionSpec.targetPhaseId, ConditionBridge.toQuestCondition(transitionSpec.condition), priority++));
+            List<String> targetPhaseIds = transitionSpec.targetPhaseIds != null && !transitionSpec.targetPhaseIds.isEmpty()
+                    ? transitionSpec.targetPhaseIds
+                    : List.of(transitionSpec.targetPhaseId);
+            transitions.add(new PhaseTransition(targetPhaseIds, ConditionBridge.toQuestCondition(transitionSpec.condition), priority++));
         }
         List<ChoiceOption> choices = new ArrayList<>();
         for (ChoiceSpec choiceSpec : listOrEmpty(spec.choices)) {
