@@ -21,6 +21,10 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
+import org.arcadia.arc_quest.quest.editor.network.C2SCloseQuestEditorPacket;
+import org.arcadia.arc_quest.quest.editor.network.C2SSaveQuestEditorPacket;
+import org.arcadia.arc_quest.quest.editor.network.S2COpenQuestEditorPacket;
+import org.arcadia.arc_quest.quest.editor.network.S2CQuestEditorResultPacket;
 import org.arcadia.arc_quest.trade.gacha.network.*;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
@@ -42,7 +46,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "9";
+    private static final String PROTOCOL_VERSION = "10";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -355,6 +359,14 @@ public final class ArcQuestNetwork {
                 C2SMarkPhaseStoryReadPacket::decode,
                 C2SMarkPhaseStoryReadPacket::handle
         );
+        CHANNEL.registerMessage(packetId++, S2COpenQuestEditorPacket.class, S2COpenQuestEditorPacket::encode,
+                S2COpenQuestEditorPacket::decode, S2COpenQuestEditorPacket::handle);
+        CHANNEL.registerMessage(packetId++, C2SSaveQuestEditorPacket.class, C2SSaveQuestEditorPacket::encode,
+                C2SSaveQuestEditorPacket::decode, C2SSaveQuestEditorPacket::handle);
+        CHANNEL.registerMessage(packetId++, S2CQuestEditorResultPacket.class, S2CQuestEditorResultPacket::encode,
+                S2CQuestEditorResultPacket::decode, S2CQuestEditorResultPacket::handle);
+        CHANNEL.registerMessage(packetId++, C2SCloseQuestEditorPacket.class, C2SCloseQuestEditorPacket::encode,
+                C2SCloseQuestEditorPacket::decode, C2SCloseQuestEditorPacket::handle);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -376,6 +388,17 @@ public final class ArcQuestNetwork {
     public static void broadcastDatapackReloadEpoch(long epoch) {
         CHANNEL.send(PacketDistributor.ALL.noArg(), new S2CDatapackReloadEpochPacket(epoch));
     }
+
+    public static void sendQuestEditorOpen(ServerPlayer player, S2COpenQuestEditorPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendQuestEditorResult(ServerPlayer player, S2CQuestEditorResultPacket packet) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+    }
+
+    public static void sendQuestEditorSave(C2SSaveQuestEditorPacket packet) { CHANNEL.sendToServer(packet); }
+    public static void sendQuestEditorClose(C2SCloseQuestEditorPacket packet) { CHANNEL.sendToServer(packet); }
 
     /**
      * 单任务状态同步

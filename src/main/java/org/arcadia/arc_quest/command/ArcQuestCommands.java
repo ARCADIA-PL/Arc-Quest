@@ -33,6 +33,7 @@ public class ArcQuestCommands {
                         .then(ArcQuestSnapshotCommands.registerSubtree(dispatcher))
                         .then(NpcCommands.registerSubtree(dispatcher))
                         .then(AdminCommands.registerSubtree(dispatcher))
+                        .then(QuestEditorCommands.registerSubtree())
                         .then(Commands.literal("reload_arcquest")
                                 .executes(ArcQuestHotReloadCommand::reloadArcQuest))
         );
