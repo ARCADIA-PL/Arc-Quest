@@ -8,7 +8,11 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalUnreadBadgeRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.quest.api.IconPosition;
 import org.arcadia.arc_quest.quest.api.QuestCategory;
@@ -33,8 +37,7 @@ public class JournalListPanel {
     private float[] entryHoverAnim = new float[0];
     private double scrollOffset;
     private double targetScroll;
-    private boolean draggingScrollbar;
-    private double dragScrollbarOffset;
+    private final JournalScrollbar scrollbar = new JournalScrollbar();
 
     public JournalListPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -170,7 +173,7 @@ public class JournalListPanel {
             graphics.fill(x + 2, highlightY, x + width - 8,
                     highlightY + Math.max(1, (int) selectedHeight - 2),
                     HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x44 * effectiveAlpha)));
-            drawCyberneticEdge(graphics, x + 2, highlightY,
+            HudRenderUtil.drawCyberneticEdge(graphics, x + 2, highlightY,
                     Math.max(1, (int) selectedHeight - 2), entryTheme,
                     (int) (0xFF * effectiveAlpha));
         }
@@ -212,7 +215,8 @@ public class JournalListPanel {
 
         int contentHeight = getContentHeight();
         int maxScroll = Math.max(0, contentHeight - height);
-        renderScrollbar(graphics, x + width - 6, y + 2, height - 4, contentHeight, maxScroll);
+        scrollbar.render(graphics, scrollbarTrack(x, y, width, height), contentHeight,
+                scrollOffset, screen.getEffectiveAlpha(), 0xFFFFFF);
         renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
     }
 
@@ -275,8 +279,8 @@ public class JournalListPanel {
         String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
         if (QuestChangeNotificationManager.INSTANCE.hasUnread(entry.questId())
                 && !entry.questId().equals(trackedQuestId)) {
-            HudRenderUtil.drawBreathingRedDot(graphics, x + width - 18,
-                    y + Math.max(1, (int) rowHeight / 2), rowAlpha);
+            JournalUnreadBadgeRenderer.draw(graphics, x + width - 18,
+                    y + Math.max(1, (int) rowHeight / 2), (int) (255 * rowAlpha));
         }
     }
 
@@ -290,18 +294,9 @@ public class JournalListPanel {
         int buttonHeight = 14;
         boolean hovered = mouseX >= buttonX && mouseX <= buttonX + buttonWidth
                 && mouseY >= buttonY && mouseY <= buttonY + buttonHeight;
-        int background = hovered
-                ? HudAnimUtil.withAlpha(theme, (int) (0.25f * effectiveAlpha))
-                : HudAnimUtil.withAlpha(theme, (int) (0.10f * effectiveAlpha));
-        graphics.fill(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight, background);
-        graphics.fill(buttonX, buttonY, buttonX + 1, buttonY + buttonHeight,
-                HudAnimUtil.withAlpha(theme, (int) (0.5f * effectiveAlpha)));
-        graphics.pose().pushPose();
-        graphics.pose().translate(buttonX + 4, buttonY + 3, 0);
-        graphics.pose().scale(0.65f, 0.65f, 1f);
-        graphics.drawString(screen.getFont(), "MARK ALL READ", 0, 0,
-                HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * effectiveAlpha)), false);
-        graphics.pose().popPose();
+        JournalButtonRenderer.drawCompactButton(graphics, screen.getFont(),
+                new HudRect(buttonX, buttonY, buttonWidth, buttonHeight), "MARK ALL READ",
+                theme, effectiveAlpha, hovered, 0.65f);
     }
 
     private TextCache getTextCache(String key, Component displayName) {
@@ -325,37 +320,16 @@ public class JournalListPanel {
         return cachedText.lastDrawName;
     }
 
-    private void renderScrollbar(GuiGraphics graphics, int x, int y,
-                                 int viewHeight, int contentHeight, int maxScroll) {
-        if (maxScroll <= 0 || contentHeight <= 0) return;
-        int thumbHeight = Math.max(16, (int) (((float) viewHeight / contentHeight) * viewHeight));
-        int thumbY = y + (int) ((scrollOffset / maxScroll) * (viewHeight - thumbHeight));
-        graphics.fill(x, y, x + 4, y + viewHeight,
-                HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
-        graphics.fill(x, thumbY, x + 4, thumbY + thumbHeight,
-                HudAnimUtil.withAlpha(0xFFFFFF,
-                        (int) ((draggingScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
-    }
-
     public void clampScroll(int listHeight) {
         targetScroll = Math.max(0, Math.min(targetScroll, Math.max(0, getContentHeight() - listHeight)));
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
         int contentHeight = getContentHeight();
-        int maxListScroll = Math.max(0, contentHeight - height);
-        int scrollbarX = x + width - 6;
-        if (maxListScroll > 0 && mouseX >= scrollbarX && mouseX <= scrollbarX + 6
-                && mouseY >= y && mouseY <= y + height) {
-            draggingScrollbar = true;
-            int thumbHeight = Math.max(16, (int) (((float) height / contentHeight) * height));
-            int thumbY = y + (int) ((scrollOffset / maxListScroll) * (height - thumbHeight));
-            if (mouseY >= thumbY && mouseY <= thumbY + thumbHeight) {
-                dragScrollbarOffset = mouseY - thumbY;
-            } else {
-                dragScrollbarOffset = thumbHeight / 2.0;
-                updateScrollFromMouse(mouseY, y, height, maxListScroll);
-            }
+        JournalScrollbar.ScrollInteraction scrollInteraction = scrollbar.mouseClicked(
+                mouseX, mouseY, scrollbarTrack(x, y, width, height), 6, contentHeight, scrollOffset);
+        if (scrollInteraction.consumed()) {
+            targetScroll = scrollInteraction.scrollOffset();
             return true;
         }
 
@@ -389,15 +363,14 @@ public class JournalListPanel {
     }
 
     public boolean mouseDragged(double mouseX, double mouseY, int y, int height) {
-        if (!draggingScrollbar) return false;
-        updateScrollFromMouse(mouseY, y, height, Math.max(0, getContentHeight() - height));
-        return true;
+        JournalScrollbar.ScrollInteraction interaction = scrollbar.mouseDragged(mouseY,
+                new HudRect(0, y + 2, 4, Math.max(1, height - 4)), getContentHeight(), targetScroll);
+        if (interaction.consumed()) targetScroll = interaction.scrollOffset();
+        return interaction.consumed();
     }
 
     public boolean mouseReleased(int button) {
-        boolean wasDragging = draggingScrollbar;
-        if (button == 0) draggingScrollbar = false;
-        return wasDragging;
+        return scrollbar.mouseReleased(button);
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double delta,
@@ -410,23 +383,8 @@ public class JournalListPanel {
         return false;
     }
 
-    private void updateScrollFromMouse(double mouseY, int y, int viewHeight, int maxScroll) {
-        if (maxScroll <= 0) return;
-        int contentHeight = getContentHeight();
-        int thumbHeight = Math.max(16, (int) (((float) viewHeight / contentHeight) * viewHeight));
-        targetScroll = Math.max(0.0, Math.min(1.0,
-                (mouseY - y - dragScrollbarOffset) / (viewHeight - thumbHeight))) * maxScroll;
-    }
-
-    private void drawCyberneticEdge(GuiGraphics graphics, int x, int y,
-                                    int height, int themeColor, int alpha) {
-        if (alpha < 5) return;
-        int coreColor = themeColor & 0xFFFFFF;
-        int topColor = coreColor | (alpha << 24);
-        int bottomColor = coreColor | ((int) (alpha * 0.15f) << 24);
-        graphics.fillGradient(x, y, x + 3, y + height, topColor, bottomColor);
-        int glowColor = 0xFFFFFF | ((int) (alpha * 0.8f) << 24);
-        graphics.fillGradient(x, y, x + 1, y + (height / 2), glowColor, topColor);
+    private HudRect scrollbarTrack(int x, int y, int width, int height) {
+        return new HudRect(x + width - 6, y + 2, 4, Math.max(1, height - 4));
     }
 
     private static class TextCache {
