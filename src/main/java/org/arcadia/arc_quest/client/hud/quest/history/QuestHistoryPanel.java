@@ -291,8 +291,10 @@ public final class QuestHistoryPanel {
         if (definition != null) {
             for (QuestHistoryNodeData node : renderNodes) {
                 for (PhaseTransition transition : node.phase().getTransitions()) {
-                    QuestHistoryNodeData target = nodeMap.get(transition.getTargetPhaseId());
-                    if (target != null) drawConnection(graphics, node, target, alphaFactor);
+                    for (String targetPhaseId : transition.getTargetPhaseIds()) {
+                        QuestHistoryNodeData target = nodeMap.get(targetPhaseId);
+                        if (target != null) drawConnection(graphics, node, target, alphaFactor);
+                    }
                 }
             }
             boolean inTree = tree.contains(mouseX, mouseY);

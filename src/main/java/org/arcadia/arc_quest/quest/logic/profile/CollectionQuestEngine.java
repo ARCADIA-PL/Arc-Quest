@@ -39,7 +39,7 @@ public final class CollectionQuestEngine {
             return QuestRejectCodeDictionary.Code.ALREADY_COMPLETED_NOT_REPEATABLE;
         }
 
-        PhaseDefinition firstPhase = def.getInitialPhase();
+        PhaseDefinition firstPhase = def.selectInitialPhase(player.getRandom());
         if (firstPhase == null) {
             return QuestRejectCodeDictionary.Code.NO_INITIAL_PHASE;
         }
@@ -117,7 +117,8 @@ public final class CollectionQuestEngine {
         }
 
         if (!runtime.isPhaseActive(runtime.getCurrentPhaseId())) {
-            runtime.activatePhase(def.getInitialPhaseId(), Math.max(0, firstObjectiveCount(def)));
+            PhaseDefinition initialPhase = def.selectInitialPhase(player.getRandom());
+            runtime.activatePhase(initialPhase.getPhaseId(), Math.max(0, initialPhase.getObjectives().size()));
         }
         collectionData.clearDirty();
         runtime.clearDirty();
@@ -508,8 +509,4 @@ public final class CollectionQuestEngine {
         return CollectionRewardClaimResult.ok(rewardNodeId);
     }
 
-    private static int firstObjectiveCount(QuestDefinition def) {
-        PhaseDefinition first = def.getInitialPhase();
-        return first != null ? first.getObjectives().size() : 0;
-    }
 }

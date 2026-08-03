@@ -76,8 +76,9 @@ final class QuestHistoryGraphBuilder {
             if (phase == null) continue;
             int sourceDepth = depths.getOrDefault(phaseId, 0);
             for (PhaseTransition transition : phase.getTransitions()) {
-                String targetId = transition.getTargetPhaseId();
-                depths.put(targetId, Math.max(depths.getOrDefault(targetId, 0), sourceDepth + 1));
+                for (String targetId : transition.getTargetPhaseIds()) {
+                    depths.put(targetId, Math.max(depths.getOrDefault(targetId, 0), sourceDepth + 1));
+                }
             }
         }
         return depths;
