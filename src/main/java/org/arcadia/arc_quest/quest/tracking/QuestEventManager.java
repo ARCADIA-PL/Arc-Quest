@@ -25,6 +25,7 @@ import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionObjectiveDispatcher;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.slf4j.Logger;
 
@@ -227,6 +228,7 @@ public final class QuestEventManager {
         if (event.getEntity() instanceof ServerPlayer player) {
             ObjectiveTracker.INSTANCE.unregisterPlayer(player.getUUID());
             ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
+            QuestMarkerRuntimeManager.clearPlayer(player.getUUID());
             inventorySnapshots.remove(player.getUUID());
             LOGGER.debug("[QuestEvent] Cleared tracking and marker state for: {}", player.getGameProfile().getName());
         }

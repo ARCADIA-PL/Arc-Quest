@@ -30,9 +30,11 @@ import org.arcadia.arc_quest.trade.network.S2CSyncTradeStatePacket;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Arc Quest 网络通信中心。
@@ -40,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "8";
+    private static final String PROTOCOL_VERSION = "9";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -50,6 +52,7 @@ public final class ArcQuestNetwork {
     );
     private static final Map<UUID, Long> MARKER_EPOCH = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> MARKER_REVISION = new ConcurrentHashMap<>();
+    private static final AtomicLong MARKER_EPOCH_SEQUENCE = new AtomicLong(System.currentTimeMillis());
     private static int packetId = 0;
 
     private ArcQuestNetwork() {
@@ -284,6 +287,14 @@ public final class ArcQuestNetwork {
                 S2CSyncMarkersPacket::encode,
                 S2CSyncMarkersPacket::decode,
                 S2CSyncMarkersPacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SRequestMarkerResyncPacket.class,
+                C2SRequestMarkerResyncPacket::encode,
+                C2SRequestMarkerResyncPacket::decode,
+                C2SRequestMarkerResyncPacket::handle
         );
 
         // --- S2C: Open guide ---
@@ -579,6 +590,10 @@ public final class ArcQuestNetwork {
                 S2CSyncMarkersPacket.deltaRemove(epoch, revision, markerId));
     }
 
+    public static void requestMarkerResync() {
+        CHANNEL.sendToServer(new C2SRequestMarkerResyncPacket());
+    }
+
     public static void bumpMarkerEpoch(ServerPlayer player) {
         resetMarkerStream(player);
     }
@@ -588,39 +603,57 @@ public final class ArcQuestNetwork {
     }
 
     private static long currentMarkerEpoch(ServerPlayer player) {
-        return MARKER_EPOCH.computeIfAbsent(player.getUUID(), k -> System.currentTimeMillis());
+        return MARKER_EPOCH.computeIfAbsent(player.getUUID(), ignored -> MARKER_EPOCH_SEQUENCE.incrementAndGet());
     }
 
     private static void resetMarkerStream(ServerPlayer player) {
-        MARKER_EPOCH.put(player.getUUID(), System.currentTimeMillis());
+        MARKER_EPOCH.put(player.getUUID(), MARKER_EPOCH_SEQUENCE.incrementAndGet());
         MARKER_REVISION.put(player.getUUID(), 0L);
     }
 
     public static void clearPlayerMarkerState(UUID uuid) {
         MARKER_EPOCH.remove(uuid);
         MARKER_REVISION.remove(uuid);
+        C2SRequestMarkerResyncPacket.clearPlayer(uuid);
     }
 
     private static S2CSyncMarkersPacket.MarkerEntry toMarkerEntry(QuestMarkerData m) {
         return new S2CSyncMarkersPacket.MarkerEntry(
-                m.getId(),
+                limitMarkerString(m.getId(), 512),
                 m.getType().name(),
                 m.getWorldX(),
                 m.getWorldY(),
                 m.getWorldZ(),
-                m.getLabel(),
-                m.getDimension(),
-                m.getQuestId(),
-                m.getPhaseId(),
+                limitMarkerString(m.getLabel(), 1024),
+                limitMarkerString(m.getDimension(), 512),
+                limitMarkerString(m.getQuestId(), 512),
+                limitMarkerString(m.getPhaseId(), 512),
                 m.getObjectiveIndex(),
                 m.getFollowEntityId(),
-                m.getFollowEntityUuid(),
-                m.getFollowEntityGuid(),
+                limitMarkerString(m.getFollowEntityUuid(), 512),
+                limitMarkerString(m.getFollowEntityGuid(), 512),
                 m.getAttachPoint().name(),
                 m.getColorARGB(),
                 m.getState().name(),
                 m.isShowDistance(),
-                m.isAllowOffscreenArrow()
+                m.isAllowOffscreenArrow(),
+                m.getPriority(),
+                limitedStyleHints(m.getStyleHints())
         );
+    }
+
+    private static String limitMarkerString(String value, int maximumLength) {
+        if (value == null) return "";
+        return value.length() <= maximumLength ? value : value.substring(0, maximumLength);
+    }
+
+    private static Map<String, String> limitedStyleHints(Map<String, String> styles) {
+        Map<String, String> limited = new LinkedHashMap<>();
+        if (styles == null) return limited;
+        for (Map.Entry<String, String> entry : styles.entrySet()) {
+            if (limited.size() >= 64) break;
+            limited.put(limitMarkerString(entry.getKey(), 256), limitMarkerString(entry.getValue(), 256));
+        }
+        return limited;
     }
 }

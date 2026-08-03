@@ -23,7 +23,7 @@ public final class QuestMarkerService {
                                            ArcQuestPlayer data,
                                            QuestRuntimeData qdata,
                                            QuestDefinition def) {
-        List<String> removedIds = clearQuestMarkers(data, qdata.getQuestId());
+        List<String> removedIds = clearGeneratedLocationMarkers(data, qdata.getQuestId());
         for (String markerId : removedIds) {
             ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId);
         }
@@ -33,6 +33,7 @@ public final class QuestMarkerService {
                 ? QuestMarkerType.QUEST_MAIN
                 : QuestMarkerType.QUEST_SIDE;
 
+        int markerCount = 0;
         for (String phaseId : qdata.getActivePhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
             if (phase == null) continue;
@@ -68,17 +69,31 @@ public final class QuestMarkerService {
                         .color(0xFF000000 | def.getCategory().getThemeColor())
                         .showDistance(true)
                         .allowOffscreenArrow(true)
+                        .persistent(false)
                         .build();
                 data.upsertMarker(marker);
                 ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
+                markerCount++;
             }
         }
 
         MinecraftForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
                 player,
                 ResourceLocation.parse(qdata.getQuestId()),
-                qdata.getActivePhaseIds().size()
+                qdata.getActivePhaseIds().size(),
+                markerCount
         ));
+    }
+
+    public static List<String> clearGeneratedLocationMarkers(ArcQuestPlayer data, String questId) {
+        List<String> toRemove = data.getAllMarkers().values().stream()
+                .filter(marker -> marker.getId().startsWith("quest:")
+                        && marker.hasQuestBinding()
+                        && questId.equals(marker.getQuestId()))
+                .map(QuestMarkerData::getId)
+                .toList();
+        for (String id : toRemove) data.removeMarker(id);
+        return toRemove;
     }
 
     public static List<String> clearQuestMarkers(ArcQuestPlayer data, String questId) {

@@ -8,13 +8,20 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
  * S2C：服务端向客户端同步 Marker（版本化快照 + 增量）。
  */
 public class S2CSyncMarkersPacket {
+    public static final int MAX_MARKERS = 4096;
+    private static final int MAX_ID_LENGTH = 512;
+    private static final int MAX_LABEL_LENGTH = 1024;
+    private static final int MAX_STYLE_HINTS = 64;
+    private static final int MAX_STYLE_STRING_LENGTH = 256;
 
     public static final byte MODE_SNAPSHOT = 0;
     public static final byte MODE_DELTA = 1;
@@ -67,8 +74,9 @@ public class S2CSyncMarkersPacket {
         buf.writeLong(pkt.revision);
 
         if (pkt.mode == MODE_SNAPSHOT) {
-            buf.writeInt(pkt.entries.size());
-            for (MarkerEntry e : pkt.entries) {
+            int count = Math.min(pkt.entries.size(), MAX_MARKERS);
+            buf.writeInt(count);
+            for (MarkerEntry e : pkt.entries.subList(0, count)) {
                 writeEntry(buf, e);
             }
             return;
@@ -76,8 +84,9 @@ public class S2CSyncMarkersPacket {
 
         buf.writeByte(pkt.op);
         if (pkt.op == OP_ADD) {
-            buf.writeInt(pkt.entries.size());
-            for (MarkerEntry e : pkt.entries) {
+            int count = Math.min(pkt.entries.size(), MAX_MARKERS);
+            buf.writeInt(count);
+            for (MarkerEntry e : pkt.entries.subList(0, count)) {
                 writeEntry(buf, e);
             }
         } else if (pkt.op == OP_REMOVE) {
@@ -91,7 +100,7 @@ public class S2CSyncMarkersPacket {
         long revision = buf.readLong();
 
         if (mode == MODE_SNAPSHOT) {
-            int count = buf.readInt();
+            int count = readMarkerCount(buf);
             List<MarkerEntry> list = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {
                 list.add(readEntry(buf));
@@ -101,7 +110,7 @@ public class S2CSyncMarkersPacket {
 
         byte op = buf.readByte();
         if (op == OP_ADD) {
-            int count = buf.readInt();
+            int count = readMarkerCount(buf);
             List<MarkerEntry> list = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {
                 list.add(readEntry(buf));
@@ -109,7 +118,7 @@ public class S2CSyncMarkersPacket {
             return deltaAdd(epoch, revision, list);
         }
         if (op == OP_REMOVE) {
-            return deltaRemove(epoch, revision, buf.readUtf());
+            return deltaRemove(epoch, revision, buf.readUtf(MAX_ID_LENGTH));
         }
         return deltaClear(epoch, revision);
     }
@@ -141,46 +150,57 @@ public class S2CSyncMarkersPacket {
     }
 
     private static void writeEntry(FriendlyByteBuf buf, MarkerEntry e) {
-        buf.writeUtf(e.id());
-        buf.writeUtf(e.type());
+        buf.writeUtf(e.id(), MAX_ID_LENGTH);
+        buf.writeUtf(e.type(), MAX_ID_LENGTH);
         buf.writeDouble(e.x());
         buf.writeDouble(e.y());
         buf.writeDouble(e.z());
-        buf.writeUtf(e.label());
-        buf.writeUtf(e.dimension());
-        buf.writeUtf(e.questId());
-        buf.writeUtf(e.phaseId());
+        buf.writeUtf(e.label(), MAX_LABEL_LENGTH);
+        buf.writeUtf(e.dimension(), MAX_ID_LENGTH);
+        buf.writeUtf(e.questId(), MAX_ID_LENGTH);
+        buf.writeUtf(e.phaseId(), MAX_ID_LENGTH);
         buf.writeInt(e.objectiveIndex());
         buf.writeInt(e.followEntityId());
-        buf.writeUtf(e.followEntityUuid());
-        buf.writeUtf(e.followEntityGuid());
-        buf.writeUtf(e.attachPoint());
+        buf.writeUtf(e.followEntityUuid(), MAX_ID_LENGTH);
+        buf.writeUtf(e.followEntityGuid(), MAX_ID_LENGTH);
+        buf.writeUtf(e.attachPoint(), MAX_ID_LENGTH);
         buf.writeInt(e.color());
-        buf.writeUtf(e.state());
+        buf.writeUtf(e.state(), MAX_ID_LENGTH);
         buf.writeBoolean(e.showDistance());
         buf.writeBoolean(e.allowOffscreenArrow());
+        buf.writeInt(e.priority());
+        int styleCount = Math.min(e.styleHints().size(), MAX_STYLE_HINTS);
+        buf.writeVarInt(styleCount);
+        int written = 0;
+        for (Map.Entry<String, String> style : e.styleHints().entrySet()) {
+            if (written++ >= styleCount) break;
+            buf.writeUtf(style.getKey(), MAX_STYLE_STRING_LENGTH);
+            buf.writeUtf(style.getValue(), MAX_STYLE_STRING_LENGTH);
+        }
     }
 
     private static MarkerEntry readEntry(FriendlyByteBuf buf) {
         return new MarkerEntry(
-                buf.readUtf(),
-                buf.readUtf(),
+                buf.readUtf(MAX_ID_LENGTH),
+                buf.readUtf(MAX_ID_LENGTH),
                 buf.readDouble(),
                 buf.readDouble(),
                 buf.readDouble(),
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readUtf(),
+                buf.readUtf(MAX_LABEL_LENGTH),
+                buf.readUtf(MAX_ID_LENGTH),
+                buf.readUtf(MAX_ID_LENGTH),
+                buf.readUtf(MAX_ID_LENGTH),
                 buf.readInt(),
                 buf.readInt(),
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readUtf(),
+                buf.readUtf(MAX_ID_LENGTH),
+                buf.readUtf(MAX_ID_LENGTH),
+                buf.readUtf(MAX_ID_LENGTH),
                 buf.readInt(),
-                buf.readUtf(),
+                buf.readUtf(MAX_ID_LENGTH),
                 buf.readBoolean(),
-                buf.readBoolean()
+                buf.readBoolean(),
+                buf.readInt(),
+                readStyleHints(buf)
         );
     }
 
@@ -219,7 +239,30 @@ public class S2CSyncMarkersPacket {
                 .color(e.color())
                 .showDistance(e.showDistance())
                 .allowOffscreenArrow(e.allowOffscreenArrow())
+                .priority(e.priority())
+                .styleHints(e.styleHints())
+                .persistent(false)
                 .build();
+    }
+
+    private static int readMarkerCount(FriendlyByteBuf buffer) {
+        int count = buffer.readInt();
+        if (count < 0 || count > MAX_MARKERS) {
+            throw new IllegalArgumentException("Marker count exceeds limit: " + count);
+        }
+        return count;
+    }
+
+    private static Map<String, String> readStyleHints(FriendlyByteBuf buffer) {
+        int count = buffer.readVarInt();
+        if (count < 0 || count > MAX_STYLE_HINTS) {
+            throw new IllegalArgumentException("Marker style hint count exceeds limit: " + count);
+        }
+        Map<String, String> styles = new LinkedHashMap<>();
+        for (int i = 0; i < count; i++) {
+            styles.put(buffer.readUtf(MAX_STYLE_STRING_LENGTH), buffer.readUtf(MAX_STYLE_STRING_LENGTH));
+        }
+        return styles;
     }
 
     public record MarkerEntry(
@@ -240,7 +283,12 @@ public class S2CSyncMarkersPacket {
             int color,
             String state,
             boolean showDistance,
-            boolean allowOffscreenArrow
+            boolean allowOffscreenArrow,
+            int priority,
+            Map<String, String> styleHints
     ) {
+        public MarkerEntry {
+            styleHints = styleHints == null ? Map.of() : Map.copyOf(styleHints);
+        }
     }
 }
