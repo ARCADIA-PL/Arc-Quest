@@ -1,3 +1,5 @@
+import {normalizeMarkers} from './marker-shape.js';
+
 export function normalizeImportedDialogue(input) {
     return {
         id: input.id || '',
@@ -28,7 +30,8 @@ function normalizeNode(node) {
         cooldownSeconds: node.cooldownSeconds ?? 0,
         cooldownType: node.cooldownType || 'NONE',
         resetTimeTicks: node.resetTimeTicks ?? 0,
-        nodeEnterSound: node.nodeEnterSound || ''
+        nodeEnterSound: node.nodeEnterSound || '',
+        relatedMarks: normalizeDialogueMarkers(node.relatedMarks, 'DIALOGUE_NODE_ENTERED')
     };
 }
 
@@ -45,8 +48,17 @@ function normalizeChoice(choice) {
         resetTimeTicks: choice.resetTimeTicks ?? 0,
         priority: choice.priority ?? 0,
         restoreNodeId: choice.restoreNodeId || '',
-        selectSound: choice.selectSound || ''
+        selectSound: choice.selectSound || '',
+        relatedMarks: normalizeDialogueMarkers(choice.relatedMarks, 'DIALOGUE_CHOICE_SELECTED')
     };
+}
+
+function normalizeDialogueMarkers(markers, trigger) {
+    const normalized = normalizeMarkers(markers);
+    normalized.forEach(marker => {
+        if (!marker.trigger || marker.trigger === 'CONTINUOUS') marker.trigger = trigger;
+    });
+    return normalized;
 }
 
 function normalizeTextSpec(spec) {

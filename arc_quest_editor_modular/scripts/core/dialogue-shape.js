@@ -1,4 +1,19 @@
 import {setConditionNodeField} from './quest-shape-core.js';
+import {setMarkerField} from './marker-shape.js';
+
+export function resolveDialogueMarkerList(dialogue, prefix) {
+    const parts = prefix.split('.');
+    if (parts[0] !== 'diag' || parts[1] !== 'node') return null;
+    const node = dialogue.nodes?.[+parts[2]];
+    if (!node) return null;
+    if (parts[3] === 'relatedMarks') return node.relatedMarks ||= [];
+    if (parts[3] === 'ch') {
+        const choice = node.choices?.[+parts[4]];
+        if (!choice) return null;
+        return choice.relatedMarks ||= [];
+    }
+    return null;
+}
 
 function walkTextSpec(target, bindBase, value, inputType) {
     const field = bindBase.split('.').pop();
@@ -46,6 +61,12 @@ export function setDialogueByPath(target, bind, value, inputType) {
             return;
         }
 
+        if (parts[3] === 'relatedMarks' && parts.length >= 5) {
+            node.relatedMarks ||= [];
+            setMarkerField(node.relatedMarks, parts.slice(4), value, inputType);
+            return;
+        }
+
         if (parts[3] === 'condText' && parts.length >= 5) {
             const mapKey = parts[4];
             const entry = node.conditionalTexts[mapKey];
@@ -57,6 +78,13 @@ export function setDialogueByPath(target, bind, value, inputType) {
 
             if (parts[5] === 'text' && parts.length >= 7) {
                 walkTextSpec(entry.text, parts.slice(6).join('.'), value, inputType);
+                return;
+            }
+
+
+            if (parts[5] === 'relatedMarks' && parts.length >= 7) {
+                choice.relatedMarks ||= [];
+                setMarkerField(choice.relatedMarks, parts.slice(6), value, inputType);
                 return;
             }
 

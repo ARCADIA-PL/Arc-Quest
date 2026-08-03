@@ -1,8 +1,37 @@
 import {createDialogueNode, createConditionalSay, createDialogueChoice, createDialogueAction} from '../../core/factories.js';
 import {addChipValue, removeChipValue} from './editor-helpers.js';
 import {bindConditionEditorClicks} from './editor-click-actions-condition.js';
+import {createMarkerSpec} from '../../core/marker-shape.js';
+import {resolveDialogueMarkerList} from '../../core/dialogue-shape.js';
 
 export function handleDialogueClickPrelude(e, midEl, state, rerender) {
+    const markerAdd = e.target.closest('[data-marker-add]');
+    if (markerAdd) {
+        const prefix = markerAdd.dataset.markerAdd;
+        const list = resolveDialogueMarkerList(state.dialogue.q, prefix);
+        if (list) {
+            const marker = createMarkerSpec(list.length);
+            marker.trigger = prefix.includes('.ch.')
+                ? 'DIALOGUE_CHOICE_SELECTED'
+                : 'DIALOGUE_NODE_ENTERED';
+            list.push(marker);
+        }
+        state.dialogue.meta.dirty = true;
+        rerender();
+        return true;
+    }
+
+    const markerDelete = e.target.closest('[data-marker-delete]');
+    if (markerDelete) {
+        const raw = markerDelete.dataset.markerDelete;
+        const separator = raw.lastIndexOf(':');
+        const list = resolveDialogueMarkerList(state.dialogue.q, raw.substring(0, separator));
+        if (list) list.splice(Number(raw.substring(separator + 1)), 1);
+        state.dialogue.meta.dirty = true;
+        rerender();
+        return true;
+    }
+
     const removeTarget = e.target.closest('[data-chip-remove]');
     if (removeTarget) {
         const [key, index] = String(removeTarget.dataset.chipRemove || '').split(':');
