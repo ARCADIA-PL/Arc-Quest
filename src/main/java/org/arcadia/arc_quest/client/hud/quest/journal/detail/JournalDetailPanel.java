@@ -8,10 +8,13 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
@@ -34,8 +37,8 @@ public class JournalDetailPanel {
     private final String questCompletedText = Component.translatable("arc_quest.gui.journal.label.quest_completed").getString();
     private final String questFailedText = Component.translatable("arc_quest.gui.journal.label.quest_failed").getString();
     private final String selectQuestText = Component.translatable("arc_quest.gui.journal.label.select_quest").getString();
-    private double detailScrollOffset = 0, detailTargetScroll = 0, dragDetailYOffset = 0;
-    private boolean isDraggingDetailScrollbar = false;
+    private double detailScrollOffset = 0, detailTargetScroll = 0;
+    private final JournalScrollbar detailScrollbar = new JournalScrollbar();
     private int detailContentHeight = 0;
     private float detailReveal = 0f, historyBtnHoverAnim = 0f;
     private String lastPhaseVisualSignature = "";
@@ -86,24 +89,8 @@ public class JournalDetailPanel {
         pendingManualTransition = true;
     }
     public static void drawCyberButton(GuiGraphics g, QuestJournalScreen screen, int x, int y, int w, int h, String text, int themeColor, float hoverEase, boolean hovered) {
-        int bgAlpha = (int) ((0x33 + 0x44 * hoverEase) * screen.getEffectiveAlpha()), borderAlpha = (int) ((0x66 + 0x99 * hoverEase) * screen.getEffectiveAlpha());
-        int borderRgb = hovered ? (themeColor & 0xFFFFFF) : 0xCCCCCC;
-        g.fill(x, y, x + w, y + h, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(x, y, x + w, y + 1, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y + h - 1, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x, y, x + 1, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-        g.fill(x + w - 1, y, x + w, y + h, HudAnimUtil.withAlpha(borderRgb, borderAlpha));
-
-        if (screen.getEffectiveAlpha() > 0.05f) {
-            int textW = screen.getFont().width(text);
-            float baseScale = 0.85f;
-            if (textW * baseScale > w - 4) baseScale = Math.max(0.5f, (w - 6) / (float) textW);
-            g.pose().pushPose();
-            g.pose().translate(x + w / 2f, y + h / 2f - (screen.getFont().lineHeight * baseScale) / 2f + 1, 0);
-            g.pose().scale(baseScale, baseScale, 1f);
-            g.drawCenteredString(screen.getFont(), text, 0, 0, HudAnimUtil.withAlpha(0xFFFFFF, (int) (255 * screen.getEffectiveAlpha())));
-            g.pose().popPose();
-        }
+        JournalButtonRenderer.drawCyberButton(g, screen.getFont(), new HudRect(x, y, w, h),
+                text, themeColor, hoverEase, hovered, screen.getEffectiveAlpha());
     }
 
     public static boolean shouldShowBranchChoices(QuestDefinition def, QuestRuntimeData runtime, String phaseId) {
@@ -304,7 +291,8 @@ public class JournalDetailPanel {
         detailContentHeight = localY + 12;
         g.pose().popPose();
         g.disableScissor();
-        renderScrollbar(g, x + w - 6, scrollAreaY + 2, scrollAreaH - 4, detailContentHeight, Math.max(0, detailContentHeight - scrollAreaH));
+        detailScrollbar.render(g, detailScrollbarTrack(x, w, scrollAreaY, scrollAreaH),
+                detailContentHeight, detailScrollOffset, screen.getEffectiveAlpha(), 0xFFFFFF);
         controlsRenderer.render(g, entry, def, runtime, x, y, w, h, mx, my, dt, activeTheme);
     }
 
@@ -327,25 +315,16 @@ public class JournalDetailPanel {
             g.drawCenteredString(screen.getFont(), selectQuestText, x + w / 2, y + h / 2, HudAnimUtil.withAlpha(0x666666, (int) (120 * screen.getEffectiveAlpha())));
     }
 
-    private void renderScrollbar(GuiGraphics g, int x, int y, int viewH, int contentH, int maxScroll) {
-        if (maxScroll <= 0) return;
-        int thumbH = Math.max(16, (int) (((float) viewH / contentH) * viewH)), thumbY = y + (int) ((detailScrollOffset / maxScroll) * (viewH - thumbH));
-        g.fill(x, y, x + 4, y + viewH, HudAnimUtil.withAlpha(0x000000, (int) (40 * screen.getEffectiveAlpha())));
-        g.fill(x, thumbY, x + 4, thumbY + thumbH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((isDraggingDetailScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
-    }
-
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
         int scrollAreaH = h - 40, maxDetailScroll = Math.max(0, detailContentHeight - scrollAreaH);
         boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
         if (!panelsActive && rewardsRenderer.mouseClicked(mx, my)) return true;
-        if (!panelsActive && maxDetailScroll > 0 && mx >= x + w - 6 && mx <= x + w && my >= y && my <= y + scrollAreaH) {
-            isDraggingDetailScrollbar = true;
-            int thumbH = Math.max(16, (int) (((float) scrollAreaH / detailContentHeight) * scrollAreaH)), thumbY = y + (int) ((detailScrollOffset / maxDetailScroll) * (scrollAreaH - thumbH));
-            if (my >= thumbY && my <= thumbY + thumbH) dragDetailYOffset = my - thumbY;
-            else {
-                dragDetailYOffset = thumbH / 2.0;
-                updateScrollFromMouse(my, y, scrollAreaH, maxDetailScroll);
-            }
+        JournalScrollbar.ScrollInteraction scrollInteraction = panelsActive
+                ? new JournalScrollbar.ScrollInteraction(false, detailScrollOffset)
+                : detailScrollbar.mouseClicked(mx, my, detailScrollbarTrack(x, w, y, scrollAreaH),
+                6, detailContentHeight, detailScrollOffset);
+        if (scrollInteraction.consumed()) {
+            detailTargetScroll = scrollInteraction.scrollOffset();
             return true;
         }
         if (!panelsActive && controlsRenderer.mouseClicked(mx, my, x, y, w, h)) return true;
@@ -377,8 +356,10 @@ public class JournalDetailPanel {
 
     public boolean mouseDragged(double mx, double my, int y, int h) {
         if (rewardsRenderer.mouseDragged(mx, my)) return true;
-        if (isDraggingDetailScrollbar) {
-            updateScrollFromMouse(my, y, h - 40, Math.max(0, detailContentHeight - (h - 40)));
+        JournalScrollbar.ScrollInteraction interaction = detailScrollbar.mouseDragged(my,
+                detailScrollbarTrack(0, 6, y, h - 40), detailContentHeight, detailTargetScroll);
+        if (interaction.consumed()) {
+            detailTargetScroll = interaction.scrollOffset();
             return true;
         }
         return parallelPhaseRenderer.mouseDragged(mx, my);
@@ -387,10 +368,9 @@ public class JournalDetailPanel {
     public boolean mouseReleased(int button) {
         if (rewardsRenderer.mouseReleased(button)) return true;
         if (button == 0) {
-            isDraggingDetailScrollbar = false;
             parallelPhaseRenderer.onMouseReleased();
         }
-        return isDraggingDetailScrollbar;
+        return detailScrollbar.mouseReleased(button);
     }
 
     public boolean mouseScrolled(double mx, double my, double delta, int x, int y, int w, int h) {
@@ -408,10 +388,8 @@ public class JournalDetailPanel {
         detailTargetScroll = Math.max(0, Math.min(detailTargetScroll, Math.max(0, detailContentHeight - scrollAreaH)));
     }
 
-    private void updateScrollFromMouse(double my, int y0, int viewH, int maxScroll) {
-        if (maxScroll <= 0) return;
-        int thumbH = Math.max(16, (int) (((float) viewH / detailContentHeight) * viewH));
-        detailTargetScroll = Math.max(0.0, Math.min(1.0, (my - y0 - dragDetailYOffset) / (viewH - thumbH))) * maxScroll;
+    private HudRect detailScrollbarTrack(int x, int width, int y, int height) {
+        return new HudRect(x + width - 6, y + 2, 4, Math.max(1, height - 4));
     }
 
     private boolean entryIsCollectionActive() {

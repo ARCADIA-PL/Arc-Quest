@@ -7,8 +7,13 @@ import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScaledTextRenderer;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalUnreadBadgeRenderer;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 
 import java.util.ArrayList;
@@ -27,6 +32,7 @@ public final class QuestChangeHistoryPanel {
     private List<QuestChangeHistoryEntry> cachedRows = new ArrayList<>();
     private String lastQuestId = null;
     private FilterTab selectedTab = FilterTab.ALL;
+    private final JournalScrollbar scrollbar = new JournalScrollbar(1, 16);
 
     public QuestChangeHistoryPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -80,7 +86,8 @@ public final class QuestChangeHistoryPanel {
         screen.enableScissor(g, contentX, listY, contentX + contentW, listY + listH);
 
         if (cachedRows.isEmpty()) {
-            drawScaled(g, font, "[ NO RECORDS FOUND IN THIS CATEGORY ]", contentX + 4, listY + 12, 0.8f, HudAnimUtil.withAlpha(0x556677, alpha), false);
+            JournalScaledTextRenderer.draw(g, font, "[ NO RECORDS FOUND IN THIS CATEGORY ]",
+                    contentX + 4, listY + 12, 0.8f, HudAnimUtil.withAlpha(0x556677, alpha), false);
         } else {
             int rowY = listY - (int) scroll;
             for (QuestChangeHistoryEntry entry : cachedRows) {
@@ -94,12 +101,8 @@ public final class QuestChangeHistoryPanel {
         g.disableScissor();
 
         // 5. 极简科幻滚动条
-        if (maxScroll > 0) {
-            int thumbH = Math.max(16, (int) (((float) listH / (cachedRows.size() * rowH)) * listH));
-            int thumbY = listY + (int) ((scroll / maxScroll) * (listH - thumbH));
-            g.fill(contentX + contentW + 4, listY, contentX + contentW + 5, listY + listH, HudAnimUtil.withAlpha(0x000000, (int) (40 * (alpha / 255f))));
-            g.fill(contentX + contentW + 4, thumbY, contentX + contentW + 5, thumbY + thumbH, HudAnimUtil.withAlpha(theme, (int) (200 * (alpha / 255f))));
-        }
+        scrollbar.render(g, new HudRect(contentX + contentW + 4, listY, 1, listH),
+                cachedRows.size() * rowH, scroll, alpha / 255f, theme, 200, 200);
     }
 
     private void updateRowsIfNeeded() {
@@ -123,21 +126,8 @@ public final class QuestChangeHistoryPanel {
             boolean active = (selectedTab == tab);
             boolean hovered = inside(mx, my, fx, py, fw, 18);
 
-            // 背景色
-            int bg = active ? HudAnimUtil.withAlpha(theme, (int) (alpha * 0.15f)) : (hovered ? HudAnimUtil.withAlpha(0x334455, alpha) : 0);
-            if (bg != 0) g.fill(fx, py, fx + fw, py + 18, bg);
-
-            // 底部指示条
-            if (active) {
-                g.fill(fx, py + 17, fx + fw, py + 18, HudAnimUtil.withAlpha(theme, alpha));
-            } else {
-                g.fill(fx, py + 17, fx + fw, py + 18, HudAnimUtil.withAlpha(0x334455, alpha));
-            }
-
-            // 文字
-            int textColor = active ? 0xFFFFFF : (hovered ? 0xDDDDDD : 0x778899);
-            drawScaled(g, font, tab.label, fx + 8, py + 6, 0.8f, HudAnimUtil.withAlpha(textColor, alpha), false);
-
+            JournalButtonRenderer.drawFilterTab(g, font, new HudRect(fx, py, fw, 18),
+                    tab.label, theme, alpha, active, hovered, 0.8f);
             fx += fw + 4; // 紧凑间距
         }
     }
@@ -166,7 +156,8 @@ public final class QuestChangeHistoryPanel {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(entry.timeMs);
         String timeStr = String.format("%02d:%02d:%02d", cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND));
-        drawScaled(g, font, timeStr, x, y + 15, 0.75f, HudAnimUtil.withAlpha(0x8899AA, alpha), false);
+        JournalScaledTextRenderer.draw(g, font, timeStr, x, y + 15,
+                0.75f, HudAnimUtil.withAlpha(0x8899AA, alpha), false);
 
         int axisX = x + 40;
         g.fill(axisX, y, axisX + 1, y + rowH, HudAnimUtil.withAlpha(0xFFFFFF, (int) (0.1f * alpha)));
@@ -179,16 +170,18 @@ public final class QuestChangeHistoryPanel {
         }
 
         int contentX = axisX + 12;
-        drawScaled(g, font, entry.type.displayName(), contentX, y + 7, 0.7f, HudAnimUtil.withAlpha(color, alpha), false);
+        JournalScaledTextRenderer.draw(g, font, entry.type.displayName(), contentX, y + 7,
+                0.7f, HudAnimUtil.withAlpha(color, alpha), false);
 
         String title = safe(entry.detail, entry.title);
         title = font.plainSubstrByWidth(title, (int) ((w - contentX + x) / 0.85f));
-        drawScaled(g, font, title, contentX, y + 18, 0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
+        JournalScaledTextRenderer.draw(g, font, title, contentX, y + 18,
+                0.85f, HudAnimUtil.withAlpha(0xFFFFFF, alpha), true);
 
         if (isUnread && ArcQuestConfig.shouldShowQuestHistoryUnreadDots()) {
             int dotX = x + w - 12;
             int dotY = y + rowH / 2;
-            HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, alpha / 255f);
+            JournalUnreadBadgeRenderer.draw(g, dotX, dotY, alpha);
         }
 
         if (hovered) {
@@ -239,14 +232,6 @@ public final class QuestChangeHistoryPanel {
         List<JournalTypes.QuestListEntry> entries = screen.getCurrentEntries();
         if (idx < 0 || idx >= entries.size()) return "";
         return entries.get(idx).displayName().getString();
-    }
-
-    private void drawScaled(GuiGraphics g, Font font, String text, int x, int y, float scale, int color, boolean shadow) {
-        g.pose().pushPose();
-        g.pose().translate(x, y, 0);
-        g.pose().scale(scale, scale, 1f);
-        g.drawString(font, text, 0, 0, color, shadow);
-        g.pose().popPose();
     }
 
     private boolean inside(double mx, double my, int x, int y, int w, int h) {

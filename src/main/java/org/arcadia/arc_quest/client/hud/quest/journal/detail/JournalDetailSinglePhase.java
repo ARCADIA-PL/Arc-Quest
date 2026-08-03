@@ -19,6 +19,7 @@ import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalMarqueeTextRenderer;
 import org.arcadia.arc_quest.client.hud.quest.offer.QuestOfferPanel;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
@@ -73,91 +74,9 @@ public class JournalDetailSinglePhase {
         textLayoutCache.clear();
     }
 
-    private void drawScrollingString(GuiGraphics g, Font font, String text, int localX, int localY, int maxWidth, int color, boolean dropShadow, int absX, int absY, int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
-        int textWidth = font.width(text);
-        if (textWidth <= maxWidth) {
-            g.drawString(font, text, localX, localY, color, dropShadow);
-            return;
-        }
-
-        long time = Util.getMillis();
-        double speed = 30.0;
-        int pauseTime = 1500;
-
-        double maxShift = textWidth - maxWidth;
-        double totalScrollTime = (maxShift / speed) * 1000.0;
-
-        double halfPeriod = pauseTime + totalScrollTime;
-        double period = halfPeriod * 2.0;
-        double t = time % period;
-
-        double shift;
-        if (t < halfPeriod) {
-            if (t <= pauseTime) {
-                shift = 0;
-            } else {
-                shift = ((t - pauseTime) / 1000.0) * speed;
-            }
-        } else {
-            double tBack = t - halfPeriod;
-            if (tBack <= pauseTime) {
-                shift = maxShift;
-            } else {
-                shift = maxShift - (((tBack - pauseTime) / 1000.0) * speed);
-            }
-        }
-
-        int cx1 = Math.max(parentClipX1, absX);
-        int cy1 = Math.max(parentClipY1, absY);
-        int cx2 = Math.min(parentClipX2, absX + maxWidth);
-        int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
-
-        if (cx1 < cx2 && cy1 < cy2) {
-            g.disableScissor();
-            screen.enableScissor(g, cx1, cy1, cx2, cy2);
-            g.drawString(font, text, localX - (int) shift, localY, color, dropShadow);
-            g.disableScissor();
-            screen.enableScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
-        }
-    }
-
-    private void drawScrollingComponent(GuiGraphics g, Font font, Component text, int localX, int localY,
-                                        int maxWidth, int color, boolean dropShadow, int absX, int absY,
-                                        int parentClipX1, int parentClipY1, int parentClipX2, int parentClipY2) {
-        int textWidth = font.width(text);
-        if (textWidth <= maxWidth) {
-            g.drawString(font, text, localX, localY, color, dropShadow);
-            return;
-        }
-
-        long time = Util.getMillis();
-        double speed = 30.0;
-        int pauseTime = 1500;
-        double maxShift = textWidth - maxWidth;
-        double totalScrollTime = (maxShift / speed) * 1000.0;
-        double halfPeriod = pauseTime + totalScrollTime;
-        double t = time % (halfPeriod * 2.0);
-        double shift;
-        if (t < halfPeriod) {
-            shift = t <= pauseTime ? 0 : ((t - pauseTime) / 1000.0) * speed;
-        } else {
-            double tBack = t - halfPeriod;
-            shift = tBack <= pauseTime
-                    ? maxShift
-                    : maxShift - (((tBack - pauseTime) / 1000.0) * speed);
-        }
-
-        int cx1 = Math.max(parentClipX1, absX);
-        int cy1 = Math.max(parentClipY1, absY);
-        int cx2 = Math.min(parentClipX2, absX + maxWidth);
-        int cy2 = Math.min(parentClipY2, absY + font.lineHeight + 4);
-        if (cx1 < cx2 && cy1 < cy2) {
-            g.disableScissor();
-            screen.enableScissor(g, cx1, cy1, cx2, cy2);
-            g.drawString(font, text, localX - (int) shift, localY, color, dropShadow);
-            g.disableScissor();
-            screen.enableScissor(g, parentClipX1, parentClipY1, parentClipX2, parentClipY2);
-        }
+    private void safeScissor(GuiGraphics graphics, int x1, int y1, int x2, int y2) {
+        graphics.disableScissor();
+        if (x2 > x1 && y2 > y1) screen.enableScissor(graphics, x1, y1, x2, y2);
     }
 
     public int render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, String phaseId, int x, int scrollAreaY, int scrollAreaW, int scrollAreaH, int mx, int my, float dt, int activeTheme, float dAlpha, int safeA, int localY) {
@@ -175,7 +94,9 @@ public class JournalDetailSinglePhase {
         int maxTitleW = (int) ((scrollAreaW - 10) / 0.8f);
         int nameAbsX = x;
         int nameAbsY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
-        drawScrollingComponent(g, font, titleText, 0, 0, maxTitleW, HudAnimUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+        JournalMarqueeTextRenderer.drawComponent(g, font, titleText, 0, 0, maxTitleW,
+                HudAnimUtil.withAlpha(activeTheme, safeA), true, nameAbsX, nameAbsY,
+                x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH, this::safeScissor);
 
         g.pose().popPose();
         localY += 14;
@@ -457,7 +378,9 @@ public class JournalDetailSinglePhase {
                 int stringAbsX = absX + 8;
                 int stringAbsY = absY + (int) ((choiceBtnH - font.lineHeight * textScale) / 2f + 1);
 
-                drawScrollingString(g, font, choiceText, 0, 0, maxChoiceW, HudAnimUtil.withAlpha(textColor, safeA), false, stringAbsX, stringAbsY, x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH);
+                JournalMarqueeTextRenderer.drawString(g, font, choiceText, 0, 0, maxChoiceW,
+                        HudAnimUtil.withAlpha(textColor, safeA), false, stringAbsX, stringAbsY,
+                        x, scrollAreaY, x + scrollAreaW, scrollAreaY + scrollAreaH, this::safeScissor);
 
                 g.pose().popPose();
                 localY += choiceBtnH + 5;
