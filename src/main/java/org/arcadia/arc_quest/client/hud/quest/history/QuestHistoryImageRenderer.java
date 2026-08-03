@@ -21,7 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-final class QuestHistoryImageRenderer {
+public final class QuestHistoryImageRenderer {
 
     private static final int MAX_CACHED_IMAGES = 128;
     private static final Map<ResourceLocation, ImageInfo> IMAGE_INFO = new LinkedHashMap<>(32, 0.75f, true) {
@@ -36,8 +36,8 @@ final class QuestHistoryImageRenderer {
     private QuestHistoryImageRenderer() {
     }
 
-    static RenderResult renderCover(GuiGraphics graphics, VisualAsset asset, int x, int y, int width, int height,
-                                    float alpha, boolean blurred, int themeColor) {
+    public static RenderResult renderCover(GuiGraphics graphics, VisualAsset asset, int x, int y, int width, int height,
+                                           float alpha, boolean blurred, int themeColor) {
         if (asset == null || !asset.enabled()) return RenderResult.UNAVAILABLE;
         refreshCacheOwner();
         if (asset.item() != null && !asset.item().isEmpty()) {
@@ -172,7 +172,7 @@ final class QuestHistoryImageRenderer {
         }
     }
 
-    enum RenderResult {
+    public enum RenderResult {
         DRAWN,
         LOADING,
         UNAVAILABLE
