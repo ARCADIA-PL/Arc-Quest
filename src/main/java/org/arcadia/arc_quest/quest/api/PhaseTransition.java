@@ -1,8 +1,15 @@
 package org.arcadia.arc_quest.quest.api;
 
+import net.minecraft.util.RandomSource;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
+import java.util.random.RandomGenerator;
 
 /**
  * 阶段自动跳转规则。
@@ -13,7 +20,7 @@ import java.util.Objects;
  */
 public final class PhaseTransition implements Comparable<PhaseTransition> {
 
-    private final String targetPhaseId;
+    private final List<String> targetPhaseIds;
     @Nullable
     private final ICondition condition;
     private final int priority;
@@ -21,14 +28,48 @@ public final class PhaseTransition implements Comparable<PhaseTransition> {
     public PhaseTransition(String targetPhaseId,
                            @Nullable ICondition condition,
                            int priority) {
-        Objects.requireNonNull(targetPhaseId);
-        this.targetPhaseId = targetPhaseId;
+        this(List.of(targetPhaseId), condition, priority);
+    }
+
+    public PhaseTransition(Collection<String> targetPhaseIds,
+                           @Nullable ICondition condition,
+                           int priority) {
+        Objects.requireNonNull(targetPhaseIds, "targetPhaseIds");
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (String targetPhaseId : targetPhaseIds) {
+            if (targetPhaseId == null || targetPhaseId.isBlank()) {
+                throw new IllegalArgumentException("targetPhaseIds must not contain blank values");
+            }
+            normalized.add(targetPhaseId);
+        }
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("targetPhaseIds must not be empty");
+        }
+        this.targetPhaseIds = Collections.unmodifiableList(new ArrayList<>(normalized));
         this.condition = condition;
         this.priority = priority;
     }
 
     public String getTargetPhaseId() {
-        return targetPhaseId;
+        return targetPhaseIds.getFirst();
+    }
+
+    public List<String> getTargetPhaseIds() {
+        return targetPhaseIds;
+    }
+
+    public String selectTargetPhaseId(RandomGenerator random) {
+        Objects.requireNonNull(random, "random");
+        return targetPhaseIds.get(random.nextInt(targetPhaseIds.size()));
+    }
+
+    public String selectTargetPhaseId(RandomSource random) {
+        Objects.requireNonNull(random, "random");
+        return targetPhaseIds.get(random.nextInt(targetPhaseIds.size()));
+    }
+
+    public String selectTargetPhaseId(long seed) {
+        return selectTargetPhaseId(RandomSource.create(seed));
     }
 
     @Nullable

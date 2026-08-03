@@ -12,6 +12,7 @@ import org.arcadia.arc_quest.questmarker.api.*;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -135,15 +136,56 @@ public final class PhaseBuilder {
     }
 
     public PhaseBuilder thenGoTo(String targetPhaseId) {
-        transitions.add(new PhaseTransition(
-                targetPhaseId, null, transitionPriorityCounter++));
-        return this;
+        return thenGoTo(targetPhaseId, (ICondition) null);
     }
 
-    public PhaseBuilder thenGoToIf(String targetPhaseId, ICondition condition) {
+    public PhaseBuilder thenGoTo(String targetPhaseId, @Nullable ICondition condition) {
         transitions.add(new PhaseTransition(
                 targetPhaseId, condition, transitionPriorityCounter++));
         return this;
+    }
+
+    public PhaseBuilder thenGoTo(String firstTargetPhaseId, String... additionalTargetPhaseIds) {
+        List<String> targetPhaseIds = new ArrayList<>(1 + additionalTargetPhaseIds.length);
+        targetPhaseIds.add(firstTargetPhaseId);
+        targetPhaseIds.addAll(List.of(additionalTargetPhaseIds));
+        return thenGoTo(targetPhaseIds);
+    }
+
+    public PhaseBuilder thenGoTo(Collection<String> targetPhaseIds) {
+        return thenGoTo(targetPhaseIds, null);
+    }
+
+    public PhaseBuilder thenGoTo(Collection<String> targetPhaseIds, @Nullable ICondition condition) {
+        transitions.add(new PhaseTransition(
+                targetPhaseIds, condition, transitionPriorityCounter++));
+        return this;
+    }
+
+    public PhaseBuilder thenGoTo(String firstTargetPhaseId,
+                                 ICondition condition,
+                                 String... additionalTargetPhaseIds) {
+        List<String> targetPhaseIds = new ArrayList<>(1 + additionalTargetPhaseIds.length);
+        targetPhaseIds.add(firstTargetPhaseId);
+        targetPhaseIds.addAll(List.of(additionalTargetPhaseIds));
+        return thenGoTo(targetPhaseIds, Objects.requireNonNull(condition, "condition"));
+    }
+
+    public PhaseBuilder thenGoToIf(Collection<String> targetPhaseIds, ICondition condition) {
+        return thenGoTo(targetPhaseIds, Objects.requireNonNull(condition, "condition"));
+    }
+
+    public PhaseBuilder thenGoToIf(String firstTargetPhaseId,
+                                   ICondition condition,
+                                   String... additionalTargetPhaseIds) {
+        List<String> targetPhaseIds = new ArrayList<>(1 + additionalTargetPhaseIds.length);
+        targetPhaseIds.add(firstTargetPhaseId);
+        targetPhaseIds.addAll(List.of(additionalTargetPhaseIds));
+        return thenGoTo(targetPhaseIds, Objects.requireNonNull(condition, "condition"));
+    }
+
+    public PhaseBuilder thenGoToIf(String targetPhaseId, ICondition condition) {
+        return thenGoTo(targetPhaseId, Objects.requireNonNull(condition, "condition"));
     }
 
     public PhaseBuilder choice(Component text, String flagToSet, String targetPhaseId) {
