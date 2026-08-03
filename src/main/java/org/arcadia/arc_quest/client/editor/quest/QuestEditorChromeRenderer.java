@@ -14,23 +14,26 @@ final class QuestEditorChromeRenderer {
 
     static void renderBackground(GuiGraphics graphics, int width, int height, int themeColor) {
         int tint = HudAnimUtil.lerpColor(0x000000, themeColor, 0.05f);
-        graphics.fill(0, 0, width, height, HudAnimUtil.withAlpha(tint, 224));
+        graphics.fill(0, 0, width, height, HudAnimUtil.withAlpha(tint, 255));
     }
 
     static void renderHeader(GuiGraphics graphics, Font font, HudRect header,
                              String questSource, int themeColor, int mouseX, int mouseY) {
-        String title = "ARC QUEST ? ?????";
-        graphics.drawCenteredString(font, title, header.x() + header.width() / 2,
-                header.y() + 9, 0xFFFFFFFF);
+        graphics.pose().pushPose();
+        graphics.pose().translate(header.x() + 16, header.y() + 7, 0f);
+        graphics.pose().scale(0.85f, 0.85f, 1f);
+        graphics.drawString(font, "SYS.ARC_QUEST // QUEST EDITOR  >>  MOUSE-3: FOCUS CURRENT",
+                0, 0, HudAnimUtil.withAlpha(0xAAAAAA, 255), false);
+        graphics.pose().popPose();
 
         HudRect saveButton = saveButton(header);
         HudRect fitButton = fitButton(header);
         boolean saveHovered = saveButton.contains(mouseX, mouseY);
         boolean fitHovered = fitButton.width() > 0 && fitButton.contains(mouseX, mouseY);
-        JournalButtonRenderer.drawCyberButton(graphics, font, saveButton, "??",
+        JournalButtonRenderer.drawCyberButton(graphics, font, saveButton, "\u4fdd\u5b58",
                 themeColor, saveHovered ? 1f : 0f, saveHovered, 1f);
         if (fitButton.width() > 0) {
-            JournalButtonRenderer.drawCyberButton(graphics, font, fitButton, "????",
+            JournalButtonRenderer.drawCyberButton(graphics, font, fitButton, "\u9002\u914d\u89c6\u56fe",
                     themeColor, fitHovered ? 1f : 0f, fitHovered, 1f);
         }
 
@@ -38,13 +41,13 @@ final class QuestEditorChromeRenderer {
         int maxSourceWidth = Math.max(40, sourceRight - 16);
         graphics.drawString(font, HudTextUtil.ellipsize(font, questSource, maxSourceWidth),
                 16, header.y() + 33, HudAnimUtil.withAlpha(0xAAB4C0, 230), false);
-        graphics.fill(16, header.bottom() - 2, header.right() - 16, header.bottom() - 1,
-                HudAnimUtil.withAlpha(themeColor, 150));
+        graphics.fill(10, 23, header.right() - 10, 24,
+                HudAnimUtil.withAlpha(0xCCCCCC, 90));
     }
 
     static void renderStatusBar(GuiGraphics graphics, Font font, HudRect statusBar,
                                 String statusText, boolean dirty, int themeColor) {
-        HudPanelRenderer.drawJournalPanel(graphics, statusBar, themeColor, 0x44, 0x44);
+        HudPanelRenderer.drawJournalPanel(graphics, statusBar, themeColor, 0x44, 0x55);
         String visibleText = HudTextUtil.ellipsize(font, statusText,
                 Math.max(20, statusBar.width() - 20));
         graphics.drawString(font, visibleText, statusBar.x() + 9,

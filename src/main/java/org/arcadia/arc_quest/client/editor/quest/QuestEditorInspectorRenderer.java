@@ -23,9 +23,9 @@ final class QuestEditorInspectorRenderer {
         HudPanelRenderer.drawJournalPanel(graphics, panel, themeColor,
                 QuestEditorTheme.PANEL_BACKGROUND_ALPHA, QuestEditorTheme.PANEL_BORDER_ALPHA);
         HudPanelRenderer.drawJournalHeader(graphics, font, panel,
-                QuestEditorLayout.PANEL_HEADER_HEIGHT, "????", null, themeColor, 255);
+                QuestEditorLayout.PANEL_HEADER_HEIGHT, "\u9636\u6bb5\u8be6\u60c5", null, themeColor, 255);
         if (phase == null) {
-            graphics.drawCenteredString(font, "???????????",
+            graphics.drawCenteredString(font, "\u9009\u62e9\u9636\u6bb5\u4ee5\u67e5\u770b\u8be6\u60c5",
                     viewport.x() + viewport.width() / 2,
                     viewport.y() + Math.max(0, viewport.height() / 2 - font.lineHeight / 2),
                     HudAnimUtil.withAlpha(QuestEditorTheme.TEXT_MUTED, 220));
@@ -37,19 +37,19 @@ final class QuestEditorInspectorRenderer {
         graphics.enableScissor(contentViewport.x(), contentViewport.y(),
                 contentViewport.right(), contentViewport.bottom());
         int y = contentViewport.y() - scrollOffset;
-        y = renderField(graphics, font, contentViewport, y, "?? ID", phase.phaseId,
+        y = renderField(graphics, font, contentViewport, y, "\u9636\u6bb5 ID", phase.phaseId,
                 QuestEditorTheme.TEXT_PRIMARY, themeColor);
-        y = renderField(graphics, font, contentViewport, y, "????",
+        y = renderField(graphics, font, contentViewport, y, "\u663e\u793a\u540d\u79f0",
                 phase.displayName == null ? "" : phase.displayName.value,
                 QuestEditorTheme.TEXT_PRIMARY, themeColor);
         if (phase.description != null && phase.description.value != null
                 && !phase.description.value.isBlank()) {
-            y = renderField(graphics, font, contentViewport, y, "????",
+            y = renderField(graphics, font, contentViewport, y, "\u9636\u6bb5\u63cf\u8ff0",
                     phase.description.value, 0xC8D0DA, themeColor);
         }
-        y = renderField(graphics, font, contentViewport, y, "????",
-                "?? " + phase.objectives.size() + "  ?  ?? " + phase.transitions.size()
-                        + "  ?  ?? " + phase.choices.size(),
+        y = renderField(graphics, font, contentViewport, y, "\u5185\u5bb9\u7edf\u8ba1",
+                "\u76ee\u6807 " + phase.objectives.size() + "  \u00b7  \u8df3\u8f6c "
+                        + phase.transitions.size() + "  \u00b7  \u9009\u9879 " + phase.choices.size(),
                 QuestEditorTheme.TEXT_SECONDARY, themeColor);
         y += 2;
         HudPanelRenderer.drawDivider(graphics, contentViewport.x(), y,
@@ -57,9 +57,10 @@ final class QuestEditorInspectorRenderer {
         y += 9;
         JournalButtonRenderer.drawToggleButton(graphics, font,
                 new HudRect(contentViewport.x(), y, Math.min(164, contentViewport.width()), 18),
-                "???????", themeColor, 255, phase.autoAdvanceOnComplete, 0.78f);
+                "\u5b8c\u6210\u540e\u81ea\u52a8\u63a8\u8fdb", themeColor, 255,
+                phase.autoAdvanceOnComplete, 0.78f);
         y += 25;
-        graphics.drawString(font, "? A ?? ? Delete ??????",
+        graphics.drawString(font, "A \u5207\u6362  \u00b7  Delete \u5220\u9664\u9636\u6bb5",
                 contentViewport.x(), y, HudAnimUtil.withAlpha(themeColor, 220), false);
         y += font.lineHeight + 9;
         graphics.disableScissor();
