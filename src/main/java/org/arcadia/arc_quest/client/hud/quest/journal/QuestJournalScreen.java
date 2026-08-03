@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScreenLayout;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
@@ -240,19 +241,18 @@ public class QuestJournalScreen extends Screen {
 
         if (isClosing || button != 0) return super.mouseClicked(mx, my, button);
 
-        float slideOffset = (1f - getEaseProgress()) * 200f;
-        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
-        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
-        int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
+        JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, getEaseProgress());
 
-        if (tabPanel.mouseClicked(smx, smy, listX, detailX + detailW)) return true;
-        if (listPanel.mouseClicked(smx, smy, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
+        if (tabPanel.mouseClicked(smx, smy, layout.listPanel().x(), layout.rightEdge())) return true;
+        if (listPanel.mouseClicked(smx, smy, layout.listPanel().x(), layout.listPanel().y(),
+                layout.listPanel().width(), layout.listPanel().height())) return true;
 
         if (isShowingChangeLog()) {
-            if (changeHistoryPanel.mouseClicked(smx, smy, button, detailX, listY, detailW, listH)) return true;
+            if (changeHistoryPanel.mouseClicked(smx, smy, button, layout.detailPanel().x(),
+                    layout.detailPanel().y(), layout.detailPanel().width(), layout.detailPanel().height())) return true;
         } else {
-            if (detailPanel.mouseClicked(smx, smy, detailX, listY, detailW, listH)) return true;
+            if (detailPanel.mouseClicked(smx, smy, layout.detailPanel().x(), layout.detailPanel().y(),
+                    layout.detailPanel().width(), layout.detailPanel().height())) return true;
         }
         return super.mouseClicked(mx, my, button);
     }
@@ -261,17 +261,17 @@ public class QuestJournalScreen extends Screen {
     public boolean mouseDragged(double mx, double my, int button, double dragX, double dragY) {
         float uiScale = getUiScale();
         double smx = mx / uiScale, smy = my / uiScale;
-        int sh = getScaledHeight();
+        JournalScreenLayout layout = JournalScreenLayout.calculate(
+                getScaledWidth(), getScaledHeight(), getEaseProgress());
         if (QuestIntelPanel.isActive()) { QuestIntelPanel.mouseDragged(smx, smy); return true; }
         if (QuestOfferPanel.isActive()) { QuestOfferPanel.mouseDragged(smx, smy); return true; }
         if (QuestStoryPanel.isActive()) { QuestStoryPanel.mouseDragged(smx, smy); return true; }
         if (CollectionHistoryPanel.isActive()) { CollectionHistoryPanel.mouseDragged(smx, smy); return true; }
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseDragged(smx, smy); return true; }
 
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
-        if (listPanel.mouseDragged(smx, smy, listY, listH)) return true;
+        if (listPanel.mouseDragged(smx, smy, layout.listPanel().y(), layout.listPanel().height())) return true;
         if (!isShowingChangeLog()) {
-            if (detailPanel.mouseDragged(smx, smy, listY, listH)) return true;
+            if (detailPanel.mouseDragged(smx, smy, layout.detailPanel().y(), layout.detailPanel().height())) return true;
         }
         return super.mouseDragged(mx, my, button, dragX, dragY);
     }
@@ -301,18 +301,17 @@ public class QuestJournalScreen extends Screen {
         if (QuestHistoryPanel.isActive()) { QuestHistoryPanel.mouseScrolled(smx, smy, delta); return true; }
         if (isClosing) return false;
 
-        float slideOffset = (1f - getEaseProgress()) * 200f;
-        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6, listH = sh - 20 - listY;
-        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
-        int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
+        JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, getEaseProgress());
 
-        if (listPanel.mouseScrolled(smx, smy, delta, listX, listY, JournalConstants.LIST_WIDTH, listH)) return true;
+        if (listPanel.mouseScrolled(smx, smy, delta, layout.listPanel().x(), layout.listPanel().y(),
+                layout.listPanel().width(), layout.listPanel().height())) return true;
 
         if (isShowingChangeLog()) {
-            if (changeHistoryPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
+            if (changeHistoryPanel.mouseScrolled(smx, smy, delta, layout.detailPanel().x(),
+                    layout.detailPanel().y(), layout.detailPanel().width(), layout.detailPanel().height())) return true;
         } else {
-            if (detailPanel.mouseScrolled(smx, smy, delta, detailX, listY, detailW, listH)) return true;
+            if (detailPanel.mouseScrolled(smx, smy, delta, layout.detailPanel().x(),
+                    layout.detailPanel().y(), layout.detailPanel().width(), layout.detailPanel().height())) return true;
         }
         return super.mouseScrolled(mx, my, delta);
     }
@@ -355,7 +354,6 @@ public class QuestJournalScreen extends Screen {
 
         effectiveAlpha = transitionAlpha * suspendAlpha;
         float easeProgress = getEaseProgress();
-        float slideOffset = (1f - easeProgress) * 200f;
         int safeAlpha = (int) (255 * effectiveAlpha);
 
         g.pose().pushPose();
@@ -375,24 +373,29 @@ public class QuestJournalScreen extends Screen {
         }
 
         int theme = getThemeColor();
-        int listX = JournalConstants.LIST_MARGIN - (int) slideOffset;
-        int listY = 38 + JournalConstants.TAB_HEIGHT + 6;
-        int listH = sh - 20 - listY;
-        int detailX = JournalConstants.LIST_MARGIN + JournalConstants.LIST_WIDTH + JournalConstants.DETAIL_MARGIN + (int) slideOffset;
-        int detailW = sw - detailX - JournalConstants.DETAIL_MARGIN;
+        JournalScreenLayout layout = JournalScreenLayout.calculate(sw, sh, easeProgress);
 
         // 渲染顶部 Tabs (包含集成在右侧的 Guide Button)
-        tabPanel.render(g, smx, smy, safeAlpha, listX, detailX + detailW, theme, dt);
+        tabPanel.render(g, smx, smy, safeAlpha, layout.listPanel().x(), layout.rightEdge(), theme, dt);
 
-        HudAnimUtil.drawFrame(g, listX, listY, JournalConstants.LIST_WIDTH, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)), HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
-        listPanel.render(g, listX, listY, JournalConstants.LIST_WIDTH, listH, smx, smy, theme, dt);
+        HudAnimUtil.drawFrame(g, layout.listPanel().x(), layout.listPanel().y(),
+                layout.listPanel().width(), layout.listPanel().height(),
+                HudAnimUtil.withAlpha(0x000000, (int) (0x55 * effectiveAlpha)),
+                HudAnimUtil.withAlpha(theme, (int) (0x55 * effectiveAlpha)));
+        listPanel.render(g, layout.listPanel().x(), layout.listPanel().y(),
+                layout.listPanel().width(), layout.listPanel().height(), smx, smy, theme, dt);
 
-        HudAnimUtil.drawFrame(g, detailX, listY, detailW, listH, HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)), HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
+        HudAnimUtil.drawFrame(g, layout.detailPanel().x(), layout.detailPanel().y(),
+                layout.detailPanel().width(), layout.detailPanel().height(),
+                HudAnimUtil.withAlpha(0x000000, (int) (0x44 * effectiveAlpha)),
+                HudAnimUtil.withAlpha(currentThemeColor, (int) (0x55 * effectiveAlpha)));
 
         if (isShowingChangeLog()) {
-            changeHistoryPanel.render(g, detailX, listY, detailW, listH, smx, smy, dt);
+            changeHistoryPanel.render(g, layout.detailPanel().x(), layout.detailPanel().y(),
+                    layout.detailPanel().width(), layout.detailPanel().height(), smx, smy, dt);
         } else {
-            detailPanel.render(g, detailX, listY, detailW, listH, smx, smy, theme, dt);
+            detailPanel.render(g, layout.detailPanel().x(), layout.detailPanel().y(),
+                    layout.detailPanel().width(), layout.detailPanel().height(), smx, smy, theme, dt);
         }
 
         if (intelActive) QuestIntelPanel.render(g, sw, sh, smx, smy, partialTick);

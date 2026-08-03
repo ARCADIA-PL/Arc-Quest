@@ -3,19 +3,20 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalTabStrip;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class JournalTabPanel {
 
     private final QuestJournalScreen screen;
     private final JournalGuideMenu guideMenu;
-    private float tabSlideAnim = 0f;
-    private float tabWidthAnim = 0f;
+    private final JournalTabStrip tabStrip = new JournalTabStrip();
 
     public JournalTabPanel(QuestJournalScreen screen) {
         this.screen = screen;
@@ -36,107 +37,48 @@ public class JournalTabPanel {
 
     public void render(GuiGraphics g, int mx, int my, int safeAlpha, int tabBaseX, int rightEdgeX, int theme, float dt) {
         int tabY = 38;
-        float targetTabX = 0, currentTabX = tabBaseX, targetTabW = 0;
-
-        // 1. 计算基础 Tabs 宽度和目标位置
-        for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
-            int tw = screen.getFont().width(getTabLabel(tab.name())) + 16;
-            if (tab == screen.getCurrentTab() && !screen.isShowingChangeLog()) {
-                targetTabX = currentTabX;
-                targetTabW = tw;
-            }
-            currentTabX += tw + 4;
-        }
-
-        // 2. 计算 HISTORY Tab 宽度和目标位置
-        String labelHistory = getTabLabel("HISTORY");
-        int logTw = screen.getFont().width(labelHistory) + 16;
-        if (screen.isShowingChangeLog()) {
-            targetTabX = currentTabX;
-            targetTabW = logTw;
-        }
-
-        // 滑块动画插值
-        if (tabWidthAnim <= 0.1f) {
-            tabSlideAnim = targetTabX;
-            tabWidthAnim = targetTabW;
-        }
-        float lerpFactor = Math.min(1.0f, dt * 15f);
-        tabSlideAnim += (targetTabX - tabSlideAnim) * lerpFactor;
-        tabWidthAnim += (targetTabW - tabWidthAnim) * lerpFactor;
-
-        // 3. 渲染基础 Tabs
-        currentTabX = tabBaseX;
-        for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
-            String label = getTabLabel(tab.name());
-            int tw = screen.getFont().width(label) + 16;
-            boolean hovered = mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
-            boolean active = tab == screen.getCurrentTab() && !screen.isShowingChangeLog();
-            int textColor = active ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
-
-            if (safeAlpha > 8) {
-                g.drawString(screen.getFont(), label, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, textColor, true);
-            }
-            currentTabX += tw + 4;
-        }
-
-        // 4. 渲染 HISTORY Tab
-        if (ArcQuestConfig.isQuestHistoryTabEnabled()) {
-            boolean hoveredLog = mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT;
-            boolean activeLog = screen.isShowingChangeLog();
-            int logColor = activeLog ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hoveredLog ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
-
-            if (safeAlpha > 8) {
-                g.drawString(screen.getFont(), labelHistory, (int) currentTabX + 8, tabY + (JournalConstants.TAB_HEIGHT - screen.getFont().lineHeight) / 2, logColor, true);
-            }
-
-            if (ArcQuestConfig.shouldShowQuestHistoryUnreadDots()
-                    && QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(QuestHudOverlay.INSTANCE.getTrackedQuestId())
-                    && safeAlpha > 8) {
-                int dotX = (int) currentTabX + logTw - 4;
-                int dotY = tabY + 4;
-                HudRenderUtil.drawBreathingRedDot(g, dotX, dotY, safeAlpha / 255f);
-            }
-        }
-
-        // 5. 渲染底部主滑动指示条
-        if (safeAlpha > 8 && tabWidthAnim > 0) {
-            g.fill((int) tabSlideAnim, tabY + JournalConstants.TAB_HEIGHT - 2, (int) (tabSlideAnim + tabWidthAnim), tabY + JournalConstants.TAB_HEIGHT, HudAnimUtil.withAlpha(theme, safeAlpha));
-        }
-
+        tabStrip.render(g, screen.getFont(), buildTabs(), tabBaseX, tabY,
+                JournalConstants.TAB_HEIGHT, 4, mx, my, theme, safeAlpha, dt);
         guideMenu.render(g, mx, my, safeAlpha, rightEdgeX, tabY, theme, dt);
     }
 
     public boolean mouseClicked(double mx, double my, int tabBaseX, int rightEdgeX) {
         if (QuestHistoryPanel.isActive()) return true;
         int tabY = 38;
-        int currentTabX = tabBaseX;
-
-        for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
-            int tw = screen.getFont().width(getTabLabel(tab.name())) + 16;
-            if (mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
+        String tabId = tabStrip.hitTest(screen.getFont(), buildTabs(), tabBaseX, tabY,
+                JournalConstants.TAB_HEIGHT, 4, mx, my);
+        if (tabId != null) {
+            if ("HISTORY".equals(tabId)) {
+                if (!screen.isShowingChangeLog()) {
+                    screen.setShowingChangeLog(true);
+                    screen.playClick();
+                }
+            } else {
+                JournalTypes.Tab tab = JournalTypes.Tab.valueOf(tabId);
                 if (screen.isShowingChangeLog() || screen.getCurrentTab() != tab) {
                     screen.setShowingChangeLog(false);
                     screen.setCurrentTab(tab);
                     screen.playClick();
                 }
-                return true;
             }
-            currentTabX += tw + 4;
+            return true;
         }
-
-        if (ArcQuestConfig.isQuestHistoryTabEnabled()) {
-            String labelHistory = getTabLabel("HISTORY");
-            int logTw = screen.getFont().width(labelHistory) + 16;
-            if (mx >= currentTabX && mx <= currentTabX + logTw && my >= tabY && my <= tabY + JournalConstants.TAB_HEIGHT) {
-                if (!screen.isShowingChangeLog()) {
-                    screen.setShowingChangeLog(true);
-                    screen.playClick();
-                }
-                return true;
-            }
-        }
-
         return guideMenu.mouseClicked(mx, my, rightEdgeX, tabY);
+    }
+
+    private List<JournalTabStrip.TabItem> buildTabs() {
+        List<JournalTabStrip.TabItem> tabs = new ArrayList<>();
+        for (JournalTypes.Tab tab : JournalTypes.Tab.values()) {
+            tabs.add(new JournalTabStrip.TabItem(tab.name(), getTabLabel(tab.name()),
+                    tab == screen.getCurrentTab() && !screen.isShowingChangeLog(), false));
+        }
+        if (ArcQuestConfig.isQuestHistoryTabEnabled()) {
+            boolean unread = ArcQuestConfig.shouldShowQuestHistoryUnreadDots()
+                    && QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(
+                    QuestHudOverlay.INSTANCE.getTrackedQuestId());
+            tabs.add(new JournalTabStrip.TabItem("HISTORY", getTabLabel("HISTORY"),
+                    screen.isShowingChangeLog(), unread));
+        }
+        return tabs;
     }
 }
