@@ -28,6 +28,8 @@ import org.arcadia.arc_quest.npc.spec.io.NpcSpecJsonReader;
 import org.arcadia.arc_quest.npc.spec.validate.NpcSpecValidator;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
+import org.arcadia.arc_quest.quest.editor.QuestAuthoringEntry;
+import org.arcadia.arc_quest.quest.editor.QuestAuthoringSnapshotRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
@@ -101,6 +103,7 @@ public final class ArcQuestReloadCoordinator {
         if (!hasErrors) {
             synchronized (commitLock) {
                 var previousQuests = QuestRegistry.getDatapackSnapshot();
+                var previousAuthoringQuests = QuestAuthoringSnapshotRegistry.getDatapackSnapshot();
                 var previousDialogues = DialogueRegistry.INSTANCE.getDatapackSnapshot();
                 var previousNpcs = NpcBindingRegistry.INSTANCE.getDatapackSnapshot();
                 long previousNpcEpoch = NpcBindingRegistry.INSTANCE.getSnapshotEpoch();
@@ -109,6 +112,7 @@ public final class ArcQuestReloadCoordinator {
                 var previousGuides = GuideRegistry.getDatapackSnapshot();
                 try {
                     QuestRegistry.replaceDatapackSnapshot(plan.quests().snapshot().definitions());
+                    QuestAuthoringSnapshotRegistry.replaceDatapackSnapshot(plan.quests().snapshot().authoringEntries());
                     DialogueRegistry.INSTANCE.replaceDatapackSnapshot(plan.dialogues().snapshot().trees(),
                             plan.dialogues().snapshot().npcBindings(), plan.dialogues().snapshot().entityBindings(), epoch);
                     NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(plan.npcs().snapshot().specs(), epoch);
@@ -119,6 +123,7 @@ public final class ArcQuestReloadCoordinator {
                     applied = true;
                 } catch (RuntimeException exception) {
                     QuestRegistry.replaceDatapackSnapshot(previousQuests);
+                    QuestAuthoringSnapshotRegistry.replaceDatapackSnapshot(previousAuthoringQuests);
                     DialogueRegistry.INSTANCE.replaceDatapackSnapshot(previousDialogues.trees(), previousDialogues.npcBindings(),
                             previousDialogues.entityBindings(), previousDialogues.epoch());
                     NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(previousNpcs, previousNpcEpoch);
@@ -156,6 +161,7 @@ public final class ArcQuestReloadCoordinator {
         var scan = scanner.scan(module, DatapackPathResolver.resolveQuestsDir(), (json, tree) -> QuestSpecJsonReader.read(json));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         Map<ResourceLocation, QuestDefinition> definitions = new LinkedHashMap<>();
+        Map<ResourceLocation, QuestAuthoringEntry> authoringEntries = new LinkedHashMap<>();
         Map<ResourceLocation, Path> sources = new LinkedHashMap<>();
         QuestSpecValidator validator = new QuestSpecValidator();
         QuestSpecCompiler compiler = new QuestSpecCompiler();
@@ -167,10 +173,13 @@ public final class ArcQuestReloadCoordinator {
             report.getIssues().forEach(issue -> diagnostics.add(diagnostic(module, entry.getKey(), issue.path, issue.message,
                     issue.severity.name().equals("ERROR"))));
             if (report.hasErrors()) continue;
-            try { definitions.put(id, compiler.compile(spec)); }
+            try {
+                definitions.put(id, compiler.compile(spec));
+                authoringEntries.put(id, new QuestAuthoringEntry(id, entry.getKey(), spec));
+            }
             catch (Exception exception) { diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "$", "Compile failed: " + exception.getMessage(), exception)); }
         }
-        return new ModulePreparation<>(module, new QuestSnapshot(Map.copyOf(definitions)), scan.scannedFiles(), scan.parsedBytes(), diagnostics);
+        return new ModulePreparation<>(module, new QuestSnapshot(Map.copyOf(definitions), Map.copyOf(authoringEntries)), scan.scannedFiles(), scan.parsedBytes(), diagnostics);
     }
 
     private ModulePreparation<DialogueSnapshot> prepareDialogues(SafeDatapackScanner scanner) {
@@ -432,7 +441,8 @@ public final class ArcQuestReloadCoordinator {
         }
     }
 
-    public record QuestSnapshot(Map<ResourceLocation, QuestDefinition> definitions) { }
+    public record QuestSnapshot(Map<ResourceLocation, QuestDefinition> definitions,
+                                Map<ResourceLocation, QuestAuthoringEntry> authoringEntries) { }
     public record DialogueSnapshot(List<DialogueTree> trees, Map<String, String> npcBindings,
                                    Map<EntityType<?>, String> entityBindings, Set<String> dialogueIds) { }
     public record NpcSnapshot(List<NpcSpec> specs) { }
