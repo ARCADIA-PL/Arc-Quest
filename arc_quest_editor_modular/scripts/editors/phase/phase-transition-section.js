@@ -16,6 +16,7 @@ export function renderPhaseTransitionsSection(s, p, phaseIds, registry) {
         <div class="card" style="margin:8px 0; border-color: rgba(255,255,255,0.1);">
           <div class="row">
             ${transitionTargetSelect('目标阶段 (targetPhaseId)', `ph.${s.pi}.tr.${ti}.targetPhaseId`, t.targetPhaseId || '', phaseIds, p.id)}
+            <div class="f"><label>随机目标候选（逗号分隔）</label><input data-b="ph.${s.pi}.tr.${ti}.targetPhaseIds" value="${(t.targetPhaseIds || []).join(', ')}" placeholder="phase_a, phase_b"></div>
           </div>
           ${renderConditionTree(`ph.${s.pi}.tr.${ti}.c`, t.condition, registry)}
           <div class="actions"><button data-dt="${ti}" class="danger">删除过渡</button></div>

@@ -178,6 +178,7 @@ export function exportPhase(phase) {
     const transitions = Array.isArray(phase.transitions)
         ? phase.transitions.map(tr => ({
             targetPhaseId: tr?.targetPhaseId || '',
+            ...(tr?.targetPhaseIds?.length ? {targetPhaseIds: tr.targetPhaseIds} : {}),
             condition: cleanCondition(tr?.condition)
         }))
         : [];

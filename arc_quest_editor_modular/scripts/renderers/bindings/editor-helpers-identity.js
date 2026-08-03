@@ -10,12 +10,14 @@ import {
 export function syncPhaseIdReferences(q, oldId, newId) {
     if (!oldId || !newId || oldId === newId) return;
     if (q.initialPhaseId === oldId) q.initialPhaseId = newId;
+    q.initialPhaseIds = (q.initialPhaseIds || []).map(id => id === oldId ? newId : id);
     (q.phases || []).forEach(phase => {
         phase.parallelPhaseIds = (phase.parallelPhaseIds || []).map(id => id === oldId ? newId : id);
         phase.choicePhaseIds = (phase.choicePhaseIds || []).map(id => id === oldId ? newId : id);
         phase.transitions = (phase.transitions || []).map(tr => ({
             ...tr,
-            targetPhaseId: tr.targetPhaseId === oldId ? newId : tr.targetPhaseId
+            targetPhaseId: tr.targetPhaseId === oldId ? newId : tr.targetPhaseId,
+            targetPhaseIds: (tr.targetPhaseIds || []).map(id => id === oldId ? newId : id)
         }));
     });
 }
@@ -23,10 +25,14 @@ export function syncPhaseIdReferences(q, oldId, newId) {
 export function removePhaseReferences(q, removedId) {
     if (!removedId) return;
     if (q.initialPhaseId === removedId) q.initialPhaseId = q.phases?.[0]?.id || '';
+    q.initialPhaseIds = (q.initialPhaseIds || []).filter(id => id && id !== removedId);
     (q.phases || []).forEach(phase => {
         phase.parallelPhaseIds = (phase.parallelPhaseIds || []).filter(id => id && id !== removedId);
         phase.choicePhaseIds = (phase.choicePhaseIds || []).filter(id => id && id !== removedId);
-        phase.transitions = (phase.transitions || []).filter(tr => tr?.targetPhaseId && tr.targetPhaseId !== removedId);
+        phase.transitions = (phase.transitions || []).map(tr => ({
+            ...tr,
+            targetPhaseIds: (tr.targetPhaseIds || []).filter(id => id && id !== removedId)
+        })).filter(tr => (tr.targetPhaseIds?.length || (tr?.targetPhaseId && tr.targetPhaseId !== removedId)));
     });
 }
 

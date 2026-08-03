@@ -76,6 +76,7 @@ function extractQuestSummary(json) {
         mode: json.mode || 'PROGRESSION',
         repeatable: !!json.repeatable,
         initialPhaseId: json.initialPhaseId || '',
+        initialPhaseIds: Array.isArray(json.initialPhaseIds) ? json.initialPhaseIds : [],
         completionPolicy: json.completionPolicy || 'ALL',
         phases: (json.phases || []).map(p => ({
             id: p.phaseId || p.id || '',

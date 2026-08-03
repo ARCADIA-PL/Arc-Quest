@@ -10,6 +10,8 @@ export const createQuestSkeleton = () => ({
     canBeAutoTrack: true,
     mode: 'PROGRESSION',
     category: '',
+    initialPhaseId: '',
+    initialPhaseIds: [],
     tags: [],
     flagsToSetOnAccept: [],
     flagsToSetOnComplete: [],
@@ -61,7 +63,7 @@ export const createObjective = index => ({
 
 export const createReward = () => ({type: 'item', itemId: 'minecraft:iron_ingot', count: 1});
 export const createSplash = (eventType = 'QUEST_ACQUIRED') => ({eventType, texture: '', scale: 1});
-export const createTransition = () => ({targetPhaseId: '', condition: {condition: 'arc_quest:always'}});
+export const createTransition = () => ({targetPhaseId: '', targetPhaseIds: [], condition: {condition: 'arc_quest:always'}});
 export const createCollectionCategory = index => ({
     categoryId: `category_${index + 1}`,
     displayName: {mode: 'translatable', value: `arc_quest.collection.category_${index + 1}`},

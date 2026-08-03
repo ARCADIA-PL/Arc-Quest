@@ -251,6 +251,7 @@ export function setQuestRootField(target, bind, value, inputType) {
     if (bind === 'q.icons') return setLooseJson(target.visualConfig, 'icons', value);
     if (bind === 'q.category') return target.category = value;
     if (bind === 'q.mode') return target.mode = value;
+    if (bind === 'q.initialPhaseIds') return target.initialPhaseIds = splitList(value);
     if (bind === 'q.chapterShopId') return target.chapterShopId = value;
     if (bind === 'q.chapterShopType') return target.chapterShopType = value;
     if (bind === 'q.chapterStartSound') return target.chapterStartSound = value;
