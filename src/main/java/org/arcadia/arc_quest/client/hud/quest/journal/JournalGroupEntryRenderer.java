@@ -1,4 +1,4 @@
-﻿package org.arcadia.arc_quest.client.hud.quest.journal;
+package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;

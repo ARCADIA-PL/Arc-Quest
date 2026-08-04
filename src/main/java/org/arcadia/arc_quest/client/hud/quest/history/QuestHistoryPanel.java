@@ -104,7 +104,6 @@ public final class QuestHistoryPanel {
         questId = null;
         renderNodes.clear();
         nodeMap.clear();
-        VIEWPORT.reset();
         DETAIL_PANEL.reset();
         QuestHistoryNodeRenderer.reset();
     }
