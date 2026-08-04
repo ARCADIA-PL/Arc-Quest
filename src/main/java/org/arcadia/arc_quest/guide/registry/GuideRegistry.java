@@ -4,6 +4,8 @@ import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
+import org.arcadia.arc_quest.data.registry.RegistrySourceType;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.jetbrains.annotations.Nullable;
@@ -26,6 +28,10 @@ public final class GuideRegistry {
     }
 
     public static synchronized void register(GuideDefinition definition) {
+        registerCode(definition);
+    }
+
+    public static synchronized void registerCode(GuideDefinition definition) {
         if (frozen) {
             throw new IllegalStateException("GuideRegistry is frozen - cannot register '" + definition.getId() + "' after commonSetup");
         }
@@ -50,6 +56,18 @@ public final class GuideRegistry {
         RL_CACHE.clear();
         rebuildMergedRegistry();
         LOGGER.info("[ArcQuest] Cleared {} datapack guide(s) before reload.", previous);
+    }
+
+    public static synchronized void replaceDatapackSnapshot(Map<ResourceLocation, GuideDefinition> definitions) {
+        DATAPACK_REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(definitions));
+        RL_CACHE.clear();
+        rebuildMergedRegistry();
+        LOGGER.info("[ArcQuest] Guide datapack snapshot replaced. datapack={}, merged={}",
+                DATAPACK_REGISTRY.size(), MERGED_REGISTRY.size());
+    }
+
+    public static synchronized Map<ResourceLocation, GuideDefinition> getDatapackSnapshot() {
+        return Map.copyOf(DATAPACK_REGISTRY);
     }
 
     public static synchronized GuideRegistryMergeResult rebuildMergedRegistry() {
@@ -85,6 +103,11 @@ public final class GuideRegistry {
     @Nullable
     public static synchronized GuideDefinition get(ResourceLocation id) {
         return MERGED_REGISTRY.get(id);
+    }
+
+    @Nullable
+    public static synchronized GuideDefinition getCodeDefinition(ResourceLocation id) {
+        return CODE_REGISTRY.get(id);
     }
 
     @Nullable
@@ -152,5 +175,13 @@ public final class GuideRegistry {
     @Nullable
     public static synchronized GuideSourceInfo getSourceInfo(ResourceLocation id) {
         return SOURCE_INFO.get(id);
+    }
+
+    @Nullable
+    public static synchronized RegistrySourceInfo getUnifiedSourceInfo(ResourceLocation id) {
+        GuideSourceInfo source = SOURCE_INFO.get(id);
+        if (source == null) return null;
+        return new RegistrySourceInfo(RegistrySourceType.valueOf(source.sourceType().name()),
+                source.sourceId(), source.loadOrder(), source.ignoredReason());
     }
 }

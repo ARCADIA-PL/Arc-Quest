@@ -3,9 +3,6 @@ package org.arcadia.arc_quest.dialogue.registry;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.Arc_Quest;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.api.ArcQuestAPI;
 import org.arcadia.arc_quest.dialogue.api.DialogueCondition;
 import org.arcadia.arc_quest.dialogue.api.DialogueText;
@@ -18,7 +15,6 @@ import java.util.List;
  * <p>
  * 展示如何使用 ArcQuestAPI 进行对话树注册（Lib 模组标准实践）。
  */
-@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class EpicDialogueTrees {
 
     public static final DialogueText example = DialogueText.translatable(
@@ -38,11 +34,6 @@ public final class EpicDialogueTrees {
         registerVillageGuard();
         registerMysteriousMerchant();
         registerDiamondGuidePopupTest();
-    }
-
-    @SubscribeEvent
-    public static void onDialogueRegistration(ArcQuestRegistrationEvent.Dialogue event) {
-        registerAll();
     }
 
     /**

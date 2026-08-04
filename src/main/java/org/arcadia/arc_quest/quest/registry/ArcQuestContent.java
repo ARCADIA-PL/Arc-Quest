@@ -3,8 +3,6 @@ package org.arcadia.arc_quest.quest.registry;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
@@ -13,10 +11,9 @@ import org.slf4j.Logger;
 /**
  * Built-in quest content registration.
  *
- * <p>The registration event path keeps the registry open for add-ons. The legacy
- * {@link #registerAll()} entry point retains its original register-and-freeze behavior.</p>
+ * <p>The registration event path keeps the registry open for add-ons. The built-in registration
+ * entry point no longer freezes registries; the mod lifecycle freezes all content layers together.</p>
  */
-@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class ArcQuestContent {
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -27,14 +24,6 @@ public final class ArcQuestContent {
     public static void registerAll() {
         registerBuiltInContent();
         registerBuiltInGroups(new ArcQuestRegistrationEvent.Quest());
-        QuestRegistry.freeze();
-        QuestGroupRegistry.freeze();
-    }
-
-    @SubscribeEvent
-    public static void onQuestRegistration(ArcQuestRegistrationEvent.Quest event) {
-        registerBuiltInContent();
-        registerBuiltInGroups(event);
     }
 
     private static void registerBuiltInContent() {
@@ -58,6 +47,5 @@ public final class ArcQuestContent {
         event.assignQuestToGroup("arc_quest:epic_prologue", groupId.toString());
         event.assignQuestToGroup("arc_quest:epic_prologue_datapack", groupId.toString());
     }
-
 
 }

@@ -6,6 +6,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.data.registry.RegistrySourceInfo;
+import org.arcadia.arc_quest.data.registry.RegistrySourceType;
 import org.arcadia.arc_quest.quest.api.*;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveTypeIndex;
 import org.jetbrains.annotations.Nullable;
@@ -31,6 +33,10 @@ public final class QuestRegistry {
     }
 
     public static void register(QuestDefinition definition) {
+        registerCode(definition);
+    }
+
+    public static void registerCode(QuestDefinition definition) {
         if (frozen) {
             throw new IllegalStateException("QuestRegistry is frozen - cannot register '" + definition.getId() + "' after commonSetup");
         }
@@ -57,6 +63,19 @@ public final class QuestRegistry {
         rlCache.clear();
         rebuildMergedRegistry();
         LOGGER.info("[ArcQuest] Cleared {} datapack quest(s) before reload.", previous);
+    }
+
+    public static synchronized void replaceDatapackSnapshot(Map<ResourceLocation, QuestDefinition> definitions) {
+        DATAPACK_REGISTRY = Collections.unmodifiableMap(new LinkedHashMap<>(definitions));
+        datapackLoadOrder = definitions.size();
+        rlCache.clear();
+        rebuildMergedRegistry();
+        LOGGER.info("[ArcQuest] Quest datapack snapshot replaced. datapack={}, merged={}",
+                DATAPACK_REGISTRY.size(), MERGED_REGISTRY.size());
+    }
+
+    public static synchronized Map<ResourceLocation, QuestDefinition> getDatapackSnapshot() {
+        return Map.copyOf(DATAPACK_REGISTRY);
     }
 
     public static QuestRegistryMergeResult rebuildMergedRegistry() {
@@ -125,10 +144,6 @@ public final class QuestRegistry {
         return def;
     }
 
-    public static Map<ResourceLocation, QuestDefinition> getDatapackSnapshot() {
-        return Collections.unmodifiableMap(new LinkedHashMap<>(DATAPACK_REGISTRY));
-    }
-
     public static Collection<QuestDefinition> getAll() {
         return Collections.unmodifiableCollection(MERGED_REGISTRY.values());
     }
@@ -159,6 +174,14 @@ public final class QuestRegistry {
     @Nullable
     public static QuestSourceInfo getSourceInfo(ResourceLocation id) {
         return SOURCE_INFO.get(id);
+    }
+
+    @Nullable
+    public static RegistrySourceInfo getUnifiedSourceInfo(ResourceLocation id) {
+        QuestSourceInfo source = SOURCE_INFO.get(id);
+        if (source == null) return null;
+        return new RegistrySourceInfo(RegistrySourceType.valueOf(source.sourceType().name()),
+                source.sourceId(), source.loadOrder(), source.ignoredReason());
     }
 
     @Nullable

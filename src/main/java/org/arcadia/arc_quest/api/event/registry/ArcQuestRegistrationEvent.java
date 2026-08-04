@@ -4,8 +4,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.Event;
 import net.neoforged.fml.event.IModBusEvent;
 import org.arcadia.arc_quest.api.ArcQuestAPI;
+import org.arcadia.arc_quest.dialogue.api.DialogueTree;
+import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
+import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideGroupDefinition;
+import org.arcadia.arc_quest.npc.spec.NpcSpec;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
+import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
+import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 
 /**
  * Base type for Arc Quest business-content registration events.
@@ -21,6 +28,10 @@ public abstract class ArcQuestRegistrationEvent extends Event implements IModBus
 
     /** Registers quest definitions. */
     public static final class Quest extends ArcQuestRegistrationEvent {
+
+        public void register(QuestDefinition definition) {
+            ArcQuestAPI.registerQuest(definition);
+        }
 
         public void registerGroup(QuestGroupDefinition definition) {
             ArcQuestAPI.registerQuestGroup(definition);
@@ -38,6 +49,10 @@ public abstract class ArcQuestRegistrationEvent extends Event implements IModBus
     /** Registers guide definitions. */
     public static final class Guide extends ArcQuestRegistrationEvent {
 
+        public void register(GuideDefinition definition) {
+            ArcQuestAPI.registerGuide(definition);
+        }
+
         public void registerGroup(GuideGroupDefinition definition) {
             ArcQuestAPI.registerGuideGroup(definition);
         }
@@ -53,17 +68,33 @@ public abstract class ArcQuestRegistrationEvent extends Event implements IModBus
 
     /** Registers trade shop definitions. */
     public static final class Trade extends ArcQuestRegistrationEvent {
+        public void register(TradeShopDefinition definition) {
+            ArcQuestAPI.registerTradeShop(definition);
+        }
     }
 
     /** Registers gacha shop definitions. */
     public static final class Gacha extends ArcQuestRegistrationEvent {
+        public void register(GachaShopDefinition definition) {
+            ArcQuestAPI.registerGachaShop(definition);
+        }
     }
 
     /** Registers NPC dialogue extensions and bindings. */
     public static final class Npc extends ArcQuestRegistrationEvent {
+        public void register(NpcSpec spec) {
+            ArcQuestAPI.registerNpcSpec(spec);
+        }
+
+        public void registerExtension(IEntityDialogueExtension<?> extension) {
+            ArcQuestAPI.registerDialogueExtension(extension);
+        }
     }
 
     /** Registers dialogue tree definitions. */
     public static final class Dialogue extends ArcQuestRegistrationEvent {
+        public void register(DialogueTree tree) {
+            ArcQuestAPI.registerDialogueTree(tree);
+        }
     }
 }

@@ -32,13 +32,21 @@ import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.data.ArcQuestDataGenerators;
+import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
+import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
+import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
 import org.arcadia.arc_quest.guide.registry.ArcQuestGuideContent;
 import org.arcadia.arc_quest.guide.registry.GuideGroupRegistry;
 import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.quest.registry.ArcQuestContent;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questplayer.attachment.ArcQuestAttachments;
+import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
+import org.arcadia.arc_quest.trade.gacha.registry.DemoGachaShops;
+import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
+import org.arcadia.arc_quest.trade.registry.TradeContent;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
@@ -65,17 +73,27 @@ public class Arc_Quest {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            ArcQuestContent.registerAll();
+            EpicDialogueTrees.registerAll();
+            TradeContent.registerAll();
+            ArcQuestGuideContent.registerAll();
+            DemoGachaShops.registerDemoShops();
+            LOGGER.info("[ArcQuest] Demo gacha shops registered.");
+
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Quest());
-            ModLoader.postEvent(new ArcQuestRegistrationEvent.Npc());
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Dialogue());
+            ModLoader.postEvent(new ArcQuestRegistrationEvent.Npc());
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Trade());
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Gacha());
             ModLoader.postEvent(new ArcQuestRegistrationEvent.Guide());
 
-            ArcQuestGuideContent.registerAll();
             QuestRegistry.freeze();
             QuestGroupRegistry.freeze();
+            DialogueRegistry.INSTANCE.freeze();
+            NpcBindingRegistry.INSTANCE.freeze();
+            EntityDialogueExtensionManager.INSTANCE.freeze();
             TradeRegistry.freeze();
+            GachaRegistry.freeze();
             GuideRegistry.freeze();
             GuideGroupRegistry.freeze();
         });
