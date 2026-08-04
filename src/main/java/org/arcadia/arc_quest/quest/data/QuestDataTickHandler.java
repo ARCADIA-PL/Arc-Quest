@@ -15,6 +15,7 @@ import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.api.QuestTimeLimitType;
+import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -27,6 +28,7 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ByteOpenHashMap;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +42,6 @@ public final class QuestDataTickHandler {
 
     private static final Object2LongOpenHashMap<String> markerRefreshClock = new Object2LongOpenHashMap<>();
     private static final Map<UUID, Object2ByteOpenHashMap<String>> markerStateCache = new HashMap<>();
-    private static int tickCounter = 0;
 
     private QuestDataTickHandler() {
     }
@@ -50,9 +51,7 @@ public final class QuestDataTickHandler {
         if (event.getEntity().level().isClientSide()) return;
 
         ServerPlayer player = (ServerPlayer) event.getEntity();
-
-        tickCounter++;
-        if (tickCounter % 20 != 0) return;
+        if (player.tickCount % 20 != 0) return;
 
         checkQuestTimeouts(player);
         refreshDynamicMarkers(player);
@@ -67,6 +66,7 @@ public final class QuestDataTickHandler {
         long nowRealMs = now.realTime();
         long nowDayTime = now.dayTime();
 
+        List<String> timedOutQuestIds = new ArrayList<>();
         for (QuestRuntimeData qdata : data.getAllActiveQuests().values()) {
             if (qdata.getState() != QuestState.ACTIVE) continue;
 
@@ -89,11 +89,12 @@ public final class QuestDataTickHandler {
             }
 
             if (timeout) {
-                qdata.setState(QuestState.FAILED);
-                data.markFailed(qdata.getQuestId());
-                data.removeActiveQuest(qdata.getQuestId());
+                timedOutQuestIds.add(qdata.getQuestId());
             }
         }
+        // Fail after iteration so the handler can safely remove active entries and emit the
+        // standard failure event used by quest-specific cleanup and synchronization listeners.
+        timedOutQuestIds.forEach(questId -> QuestProgressHandler.failQuest(player, questId));
     }
 
     private static void refreshDynamicMarkers(ServerPlayer player) {
