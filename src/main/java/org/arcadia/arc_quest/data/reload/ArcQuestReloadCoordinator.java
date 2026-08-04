@@ -135,7 +135,10 @@ public final class ArcQuestReloadCoordinator {
                 }
             }
             if (applied) {
-                ArcQuestNetwork.broadcastDatapackReloadEpoch(epoch);
+                if (!ArcQuestNetwork.tryBroadcastDatapackReloadEpoch(epoch)) {
+                    LOGGER.debug("[ArcQuestReload] epoch={} committed before server availability; client notification deferred until login",
+                            epoch);
+                }
                 ArcQuestWebSocketServer.rebuildAndBroadcast(epoch);
             }
         }

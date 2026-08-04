@@ -1,10 +1,12 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
+import net.minecraftforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
@@ -386,7 +388,23 @@ public final class ArcQuestNetwork {
     }
 
     public static void broadcastDatapackReloadEpoch(long epoch) {
-        CHANNEL.send(PacketDistributor.ALL.noArg(), new S2CDatapackReloadEpochPacket(epoch));
+        tryBroadcastDatapackReloadEpoch(epoch);
+    }
+
+    public static boolean tryBroadcastDatapackReloadEpoch(long epoch) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return false;
+
+        S2CDatapackReloadEpochPacket packet = new S2CDatapackReloadEpochPacket(epoch);
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        }
+        return true;
+    }
+
+    public static void sendDatapackReloadEpoch(ServerPlayer player, long epoch) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new S2CDatapackReloadEpochPacket(epoch));
     }
 
     public static void sendQuestEditorOpen(ServerPlayer player, S2COpenQuestEditorPacket packet) {

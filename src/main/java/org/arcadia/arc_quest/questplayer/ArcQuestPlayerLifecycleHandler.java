@@ -14,6 +14,7 @@ import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
+import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
 import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -53,6 +54,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         validateAndFixQuestData(sp, data);
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         ArcQuestNetwork.syncFullData(sp, data);
+        ArcQuestNetwork.sendDatapackReloadEpoch(sp, ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
         GuidePlayerStateSyncService.sync(sp, data);
         PendingDrawManager.compensateAndGrant(sp);
         LOGGER.debug("[ArcQuest] Login sync complete for: {}", sp.getGameProfile().getName());
