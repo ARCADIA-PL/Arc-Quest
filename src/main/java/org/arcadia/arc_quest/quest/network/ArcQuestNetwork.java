@@ -1,12 +1,14 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
@@ -27,6 +29,7 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
+import org.arcadia.arc_quest.questmarker.internal.codec.MarkerNetworkCodec;
 import org.arcadia.arc_quest.trade.gacha.network.*;
 import org.arcadia.arc_quest.trade.gacha.runtime.GachaScreenOpener;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
@@ -58,7 +61,7 @@ public final class ArcQuestNetwork {
      * 闂?Mod 闂備礁鎼鍛偓姘嵆閸┾偓妞ゆ帒鍊稿瓭濠电偛鎳忕敮锟犲蓟瀹€鈧禒锕傚箚瑜忓Σ鎼佹⒑?{@code modEventBus.addListener(ArcQuestNetwork::register)}闂?
      */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("7");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("8");
 
         // 闂備礁鍟块崢婊堝磻閹剧粯鐓冮柛蹇擃槸娴滈箖姊洪崘鎻掑辅闁?S2C闂備焦瀵х粙鎴濐焽缁屾槮y to client闂備焦瀵х粙鎴λ囬锕€缁╅柕蹇嬪€曢悡姗€鏌嶈閸撶喖宕洪悙鍝勭劦?
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -88,6 +91,7 @@ public final class ArcQuestNetwork {
     }
 
     private static void registerClientPayloadHandlers(PayloadRegistrar registrar) {
+        registrar.playToClient(S2CDatapackReloadEpochPacket.TYPE, S2CDatapackReloadEpochPacket.STREAM_CODEC, S2CDatapackReloadEpochPacket::handle);
         registrar.playToClient(S2CSyncFullDataPacket.TYPE, S2CSyncFullDataPacket.STREAM_CODEC, S2CSyncFullDataPacket::handle);
         registrar.playToClient(S2CSyncQuestStatePacket.TYPE, S2CSyncQuestStatePacket.STREAM_CODEC, S2CSyncQuestStatePacket::handle);
         registrar.playToClient(S2CDeltaProgressPacket.TYPE, S2CDeltaProgressPacket.STREAM_CODEC, S2CDeltaProgressPacket::handle);
@@ -111,6 +115,7 @@ public final class ArcQuestNetwork {
     }
 
     private static void registerClientPayloadCodecs(PayloadRegistrar registrar) {
+        registrar.playToClient(S2CDatapackReloadEpochPacket.TYPE, S2CDatapackReloadEpochPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncFullDataPacket.TYPE, S2CSyncFullDataPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncQuestStatePacket.TYPE, S2CSyncQuestStatePacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CDeltaProgressPacket.TYPE, S2CDeltaProgressPacket.STREAM_CODEC, (packet, context) -> {});
@@ -404,25 +409,24 @@ public final class ArcQuestNetwork {
     }
 
     private static S2CSyncMarkersPacket.MarkerEntry toMarkerEntry(QuestMarkerData m) {
-        return new S2CSyncMarkersPacket.MarkerEntry(
-                m.getId(),
-                m.getType().name(),
-                m.getWorldX(),
-                m.getWorldY(),
-                m.getWorldZ(),
-                m.getLabel(),
-                m.getDimension(),
-                m.getQuestId(),
-                m.getPhaseId(),
-                m.getObjectiveIndex(),
-                m.getFollowEntityId(),
-                m.getFollowEntityUuid(),
-                m.getFollowEntityGuid(),
-                m.getAttachPoint().name(),
-                m.getColorARGB(),
-                m.getState().name(),
-                m.isShowDistance(),
-                m.isAllowOffscreenArrow()
-        );
+        return MarkerNetworkCodec.toEntry(m);
+    }
+
+    public static void broadcastDatapackReloadEpoch(long epoch) {
+        tryBroadcastDatapackReloadEpoch(epoch);
+    }
+
+    public static boolean tryBroadcastDatapackReloadEpoch(long epoch) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return false;
+        S2CDatapackReloadEpochPacket packet = new S2CDatapackReloadEpochPacket(epoch);
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            PacketDistributor.sendToPlayer(player, packet);
+        }
+        return true;
+    }
+
+    public static void sendDatapackReloadEpoch(ServerPlayer player, long epoch) {
+        PacketDistributor.sendToPlayer(player, new S2CDatapackReloadEpochPacket(epoch));
     }
 }

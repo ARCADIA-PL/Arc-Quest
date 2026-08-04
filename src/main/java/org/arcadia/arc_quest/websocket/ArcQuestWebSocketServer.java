@@ -7,6 +7,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -37,6 +38,7 @@ public final class ArcQuestWebSocketServer {
     private static volatile ServerSocket serverSocket;
     private static volatile Thread acceptThread;
     private static volatile String cachedFullJson;
+    private static volatile long cachedEpoch;
 
     private ArcQuestWebSocketServer() {
     }
@@ -54,6 +56,7 @@ public final class ArcQuestWebSocketServer {
     public static void start() {
         try {
             cachedFullJson = RegistryCollector.collectAll().toString();
+            cachedEpoch = ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch();
         } catch (Exception e) {
             LOGGER.error("[ArcQuest-WS] Failed to collect registry data", e);
             cachedFullJson = "{}";
@@ -92,18 +95,23 @@ public final class ArcQuestWebSocketServer {
     }
 
     public static void rebuildAndBroadcast() {
+        rebuildAndBroadcast(ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
+    }
+
+    public static void rebuildAndBroadcast(long epoch) {
         try {
             cachedFullJson = RegistryCollector.collectAll().toString();
+            cachedEpoch = epoch;
         } catch (Exception e) {
             LOGGER.error("[ArcQuest-WS] Failed to rebuild registry data", e);
             return;
         }
-        broadcast(cachedFullJson, true);
+        broadcast(cachedFullJson, true, epoch);
     }
 
-    private static void broadcast(String json, boolean isDelta) {
+    private static void broadcast(String json, boolean isDelta, long epoch) {
         String type = isDelta ? "delta" : "full";
-        String msg = "{\"type\":\"" + type + "\",\"data\":" + json + "}";
+        String msg = "{\"type\":\"" + type + "\",\"epoch\":" + epoch + ",\"data\":" + json + "}";
         byte[] frame = buildTextFrame(msg);
         for (Socket sock : CONNECTIONS) {
             try {
@@ -149,7 +157,7 @@ public final class ArcQuestWebSocketServer {
             LOGGER.info("[ArcQuest-WS] Editor connected ({} active)", CONNECTIONS.size());
 
             if (cachedFullJson != null) {
-                String msg = "{\"type\":\"full\",\"data\":" + cachedFullJson + "}";
+                String msg = "{\"type\":\"full\",\"epoch\":" + cachedEpoch + ",\"data\":" + cachedFullJson + "}";
                 synchronized (sock) {
                     out.write(buildTextFrame(msg));
                     out.flush();

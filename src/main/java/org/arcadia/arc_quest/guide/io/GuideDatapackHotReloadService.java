@@ -29,8 +29,6 @@ public final class GuideDatapackHotReloadService {
 
     public GuideReloadResult reload() {
         var report = resourceLoader.loadFromDatapack();
-        GuideRegistry.clearDatapack();
-
         int categoryLoaded = 0;
         int guideLoaded = 0;
         int categoryFailed = report.failedCount();
@@ -68,6 +66,7 @@ public final class GuideDatapackHotReloadService {
 
         GuideSpecCompiler guideCompiler = new GuideSpecCompiler(categories);
         Map<ResourceLocation, GuideSpec> guideSpecs = new LinkedHashMap<>();
+        Map<ResourceLocation, GuideDefinition> stagedGuides = new LinkedHashMap<>();
         for (Map.Entry<Path, GuideSpec> entry : report.guides().entrySet()) {
             GuideSpec spec = entry.getValue();
             ResourceLocation id = ResourceLocation.tryParse(spec.id);
@@ -88,12 +87,19 @@ public final class GuideDatapackHotReloadService {
             }
             try {
                 GuideDefinition guide = guideCompiler.compile(entry.getValue());
-                GuideRegistry.registerDatapack(guide, entry.getKey().toString());
+                stagedGuides.put(entry.getKey(), guide);
                 guideLoaded++;
             } catch (Exception ex) {
                 guideFailed++;
                 LOGGER.error("[GuideRegistry] Compile/register failed for {}", entry.getKey(), ex);
             }
+        }
+
+        if (categoryFailed == 0 && guideFailed == 0) {
+            GuideRegistry.replaceDatapackSnapshot(stagedGuides);
+        } else {
+            LOGGER.error("[GuideRegistry] Legacy guide reload rejected; retaining previous datapack snapshot because failedCategories={}, failedGuides={}",
+                    categoryFailed, guideFailed);
         }
 
         LOGGER.info("[GuideRegistry] Datapack reload complete. categorySpecs={}, compiledCategories={}, failedCategories={}, guideSpecs={}, loadedGuides={}, failedGuides={}",

@@ -63,7 +63,11 @@ public final class TradeDatapackHotReloadService {
             }
         }
 
-        TradeRegistry.replaceDatapack(newDatapackShops);
+        if (failed == 0) {
+            TradeRegistry.replaceDatapackSnapshot(newDatapackShops);
+        } else {
+            LOGGER.error("[TradeRegistry] Legacy reload rejected; retaining previous datapack snapshot because failed={}", failed);
+        }
 
         LOGGER.info("[TradeRegistry] Datapack reload complete. scanned={}, loaded={}, failed={}",
                 report.scannedFiles(), loaded, failed);

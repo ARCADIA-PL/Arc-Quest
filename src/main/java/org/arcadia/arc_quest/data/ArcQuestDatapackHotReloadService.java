@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecResourceLoader;
@@ -46,10 +47,9 @@ public class ArcQuestDatapackHotReloadService {
             LOGGER.info("[ArcQuest] Hot reload fallback to resource-manager source.");
         }
 
-        QuestRegistry.clearDatapack();
-
         int loaded = 0;
         int failed = report.failedCount();
+        Map<ResourceLocation, QuestDefinition> stagedDefinitions = new LinkedHashMap<>();
         for (Map.Entry<ResourceLocation, QuestSpec> entry : specs.entrySet()) {
             var validation = validator.validate(entry.getValue());
             if (validation.hasErrors()) {
@@ -64,12 +64,18 @@ public class ArcQuestDatapackHotReloadService {
                 continue;
             }
             try {
-                QuestRegistry.registerDatapack(compiler.compile(entry.getValue()), entry.getKey().toString());
+                stagedDefinitions.put(entry.getKey(), compiler.compile(entry.getValue()));
                 loaded++;
             } catch (Exception ex) {
                 failed++;
                 LOGGER.error("[ArcQuest] Compile/register failed for {}", entry.getKey(), ex);
             }
+        }
+
+        if (failed == 0) {
+            QuestRegistry.replaceDatapackSnapshot(stagedDefinitions);
+        } else {
+            LOGGER.error("[ArcQuest] Legacy quest reload rejected; retaining previous datapack snapshot because failed={}", failed);
         }
 
         return new ReloadResult(report.scannedFiles(), loaded, failed, QuestRegistry.datapackSize(), QuestRegistry.size(), usedFallback);

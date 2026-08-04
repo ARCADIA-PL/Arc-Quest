@@ -9,16 +9,16 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
+import org.arcadia.arc_quest.questmarker.internal.codec.MarkerLimits;
+import org.arcadia.arc_quest.questmarker.internal.codec.MarkerNetworkCodec;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
-/**
- * S2C：服务端向客户端同步 Marker（版本化快照 + 增量）。
- */
 public final class S2CSyncMarkersPacket implements CustomPacketPayload {
+
+    public static final int MAX_MARKERS = MarkerLimits.MAX_MARKERS;
 
     public static final byte MODE_SNAPSHOT = 0;
     public static final byte MODE_DELTA = 1;
@@ -36,7 +36,6 @@ public final class S2CSyncMarkersPacket implements CustomPacketPayload {
     private final byte mode;
     private final long epoch;
     private final long revision;
-
     private final byte op;
     private final List<MarkerEntry> entries;
     private final String removeId;
@@ -71,55 +70,37 @@ public final class S2CSyncMarkersPacket implements CustomPacketPayload {
         return new S2CSyncMarkersPacket(MODE_DELTA, epoch, revision, OP_REMOVE, List.of(), removeId);
     }
 
-    public static void encode(S2CSyncMarkersPacket pkt, FriendlyByteBuf buf) {
-        buf.writeByte(pkt.mode);
-        buf.writeLong(pkt.epoch);
-        buf.writeLong(pkt.revision);
+    public static void encode(S2CSyncMarkersPacket packet, FriendlyByteBuf buffer) {
+        buffer.writeByte(packet.mode);
+        buffer.writeLong(packet.epoch);
+        buffer.writeLong(packet.revision);
 
-        if (pkt.mode == MODE_SNAPSHOT) {
-            buf.writeInt(pkt.entries.size());
-            for (MarkerEntry e : pkt.entries) {
-                writeEntry(buf, e);
-            }
+        if (packet.mode == MODE_SNAPSHOT) {
+            writeEntries(buffer, packet.entries);
             return;
         }
 
-        buf.writeByte(pkt.op);
-        if (pkt.op == OP_ADD) {
-            buf.writeInt(pkt.entries.size());
-            for (MarkerEntry e : pkt.entries) {
-                writeEntry(buf, e);
-            }
-        } else if (pkt.op == OP_REMOVE) {
-            buf.writeUtf(pkt.removeId);
+        buffer.writeByte(packet.op);
+        if (packet.op == OP_ADD) {
+            writeEntries(buffer, packet.entries);
+        } else if (packet.op == OP_REMOVE) {
+            buffer.writeUtf(packet.removeId, MarkerLimits.MAX_ID_LENGTH);
         }
     }
 
-    public static S2CSyncMarkersPacket decode(FriendlyByteBuf buf) {
-        byte mode = buf.readByte();
-        long epoch = buf.readLong();
-        long revision = buf.readLong();
+    public static S2CSyncMarkersPacket decode(FriendlyByteBuf buffer) {
+        byte mode = buffer.readByte();
+        long epoch = buffer.readLong();
+        long revision = buffer.readLong();
 
         if (mode == MODE_SNAPSHOT) {
-            int count = buf.readInt();
-            List<MarkerEntry> list = new ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                list.add(readEntry(buf));
-            }
-            return snapshot(epoch, revision, list);
+            return snapshot(epoch, revision, readEntries(buffer));
         }
 
-        byte op = buf.readByte();
-        if (op == OP_ADD) {
-            int count = buf.readInt();
-            List<MarkerEntry> list = new ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                list.add(readEntry(buf));
-            }
-            return deltaAdd(epoch, revision, list);
-        }
+        byte op = buffer.readByte();
+        if (op == OP_ADD) return deltaAdd(epoch, revision, readEntries(buffer));
         if (op == OP_REMOVE) {
-            return deltaRemove(epoch, revision, buf.readUtf());
+            return deltaRemove(epoch, revision, buffer.readUtf(MarkerLimits.MAX_ID_LENGTH));
         }
         return deltaClear(epoch, revision);
     }
@@ -129,111 +110,46 @@ public final class S2CSyncMarkersPacket implements CustomPacketPayload {
         return TYPE;
     }
 
-    public static void handle(S2CSyncMarkersPacket pkt, IPayloadContext ctx) {
-        ctx.enqueueWork(() -> {
-            if (pkt.mode == MODE_SNAPSHOT) {
-                List<QuestMarkerData> snapshot = pkt.entries.stream()
-                        .map(S2CSyncMarkersPacket::toMarkerData)
+    public static void handle(S2CSyncMarkersPacket packet, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (packet.mode == MODE_SNAPSHOT) {
+                List<QuestMarkerData> snapshot = packet.entries.stream()
+                        .map(MarkerNetworkCodec::toMarkerData)
                         .toList();
-                QuestMarkerManager.INSTANCE.applySnapshot(pkt.epoch, pkt.revision, snapshot);
+                QuestMarkerManager.INSTANCE.applySnapshot(packet.epoch, packet.revision, snapshot);
                 return;
             }
 
-            QuestMarkerManager.INSTANCE.applyDelta(pkt.epoch, pkt.revision, map -> {
-                switch (pkt.op) {
-                    case OP_CLEAR -> map.clear();
+            QuestMarkerManager.INSTANCE.applyDelta(packet.epoch, packet.revision, markers -> {
+                switch (packet.op) {
+                    case OP_CLEAR -> markers.clear();
                     case OP_ADD -> {
-                        for (MarkerEntry e : pkt.entries) {
-                            QuestMarkerData data = toMarkerData(e);
-                            map.put(data.getId(), data);
+                        for (MarkerEntry entry : packet.entries) {
+                            QuestMarkerData marker = MarkerNetworkCodec.toMarkerData(entry);
+                            markers.put(marker.getId(), marker);
                         }
                     }
-                    case OP_REMOVE -> map.remove(pkt.removeId);
+                    case OP_REMOVE -> markers.remove(packet.removeId);
                 }
             });
         });
     }
 
-    private static void writeEntry(FriendlyByteBuf buf, MarkerEntry e) {
-        buf.writeUtf(e.id());
-        buf.writeUtf(e.type());
-        buf.writeDouble(e.x());
-        buf.writeDouble(e.y());
-        buf.writeDouble(e.z());
-        buf.writeUtf(e.label());
-        buf.writeUtf(e.dimension());
-        buf.writeUtf(e.questId());
-        buf.writeUtf(e.phaseId());
-        buf.writeInt(e.objectiveIndex());
-        buf.writeInt(e.followEntityId());
-        buf.writeUtf(e.followEntityUuid());
-        buf.writeUtf(e.followEntityGuid());
-        buf.writeUtf(e.attachPoint());
-        buf.writeInt(e.color());
-        buf.writeUtf(e.state());
-        buf.writeBoolean(e.showDistance());
-        buf.writeBoolean(e.allowOffscreenArrow());
+    private static void writeEntries(FriendlyByteBuf buffer, List<MarkerEntry> entries) {
+        int count = Math.min(entries.size(), MAX_MARKERS);
+        buffer.writeInt(count);
+        for (MarkerEntry entry : entries.subList(0, count)) {
+            MarkerNetworkCodec.writeEntry(buffer, entry);
+        }
     }
 
-    private static MarkerEntry readEntry(FriendlyByteBuf buf) {
-        return new MarkerEntry(
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readDouble(),
-                buf.readDouble(),
-                buf.readDouble(),
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readInt(),
-                buf.readInt(),
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readUtf(),
-                buf.readInt(),
-                buf.readUtf(),
-                buf.readBoolean(),
-                buf.readBoolean()
-        );
-    }
-
-    private static QuestMarkerData toMarkerData(MarkerEntry e) {
-        QuestMarkerType type;
-        QuestMarkerState state;
-        QuestMarkerData.EntityAttachPoint attachPoint;
-
-        try {
-            type = QuestMarkerType.valueOf(e.type()).canonical();
-        } catch (IllegalArgumentException ex) {
-            type = QuestMarkerType.CUSTOM;
+    private static List<MarkerEntry> readEntries(FriendlyByteBuf buffer) {
+        int count = MarkerNetworkCodec.readMarkerCount(buffer);
+        List<MarkerEntry> entries = new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            entries.add(MarkerNetworkCodec.readEntry(buffer));
         }
-
-        try {
-            state = QuestMarkerState.valueOf(e.state());
-        } catch (IllegalArgumentException ex) {
-            state = QuestMarkerState.ACTIVE;
-        }
-
-        try {
-            attachPoint = QuestMarkerData.EntityAttachPoint.valueOf(e.attachPoint());
-        } catch (IllegalArgumentException ex) {
-            attachPoint = QuestMarkerData.EntityAttachPoint.HEAD;
-        }
-
-        return new QuestMarkerData.Builder(
-                e.id(), e.x(), e.y(), e.z(), e.label())
-                .dimension(e.dimension())
-                .bindQuest(e.questId())
-                .bindPhase(e.phaseId())
-                .bindObjective(e.objectiveIndex())
-                .followEntity(e.followEntityId(), e.followEntityUuid(), e.followEntityGuid(), attachPoint)
-                .type(type)
-                .state(state)
-                .color(e.color())
-                .showDistance(e.showDistance())
-                .allowOffscreenArrow(e.allowOffscreenArrow())
-                .build();
+        return entries;
     }
 
     public record MarkerEntry(
@@ -254,7 +170,12 @@ public final class S2CSyncMarkersPacket implements CustomPacketPayload {
             int color,
             String state,
             boolean showDistance,
-            boolean allowOffscreenArrow
+            boolean allowOffscreenArrow,
+            int priority,
+            Map<String, String> styleHints
     ) {
+        public MarkerEntry {
+            styleHints = styleHints == null ? Map.of() : Map.copyOf(styleHints);
+        }
     }
 }

@@ -77,6 +77,7 @@ public final class ClientQuestCache {
     private String trackedQuestId;
     private boolean hasAppliedFullSync = false;
     private final QuestClientRevisionGate revisionGate = new QuestClientRevisionGate();
+    private volatile long datapackReloadEpoch;
 
     private final ListenerRegistry<QuestCacheListener> listeners = new ListenerRegistry<>();
 
@@ -995,5 +996,12 @@ public final class ClientQuestCache {
         if (mc.screen instanceof QuestJournalScreen journalScreen) {
             journalScreen.rebuildEntries();
         }
+    }
+    public void setDatapackReloadEpoch(long epoch) {
+        datapackReloadEpoch = Math.max(datapackReloadEpoch, epoch);
+    }
+
+    public long getDatapackReloadEpoch() {
+        return datapackReloadEpoch;
     }
 }

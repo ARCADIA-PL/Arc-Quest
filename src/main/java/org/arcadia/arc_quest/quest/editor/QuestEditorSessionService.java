@@ -136,7 +136,10 @@ public final class QuestEditorSessionService {
             new QuestSpecCompiler().compile(candidate);
             if (hadOriginal) Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
             new QuestDatapackWriter().write(target, candidate);
-            int loaded = ArcQuestReloadListener.reloadArcQuestDatapacksOnly(player.server.getResourceManager());
+            var reloadSummary = ArcQuestReloadListener.reloadArcQuestDatapacksOnly(player.server.getResourceManager());
+            if (!reloadSummary.applied()) {
+                throw new IllegalStateException("????????????: " + reloadSummary.formatForCommand());
+            }
             long reloadEpoch = EDITOR_RELOAD_EPOCH.incrementAndGet();
             Files.deleteIfExists(backup);
             session.replaceDraft(candidate);
