@@ -1,4 +1,9 @@
 {
+  "arc_quest.category.adventure": "Adventure",
+  "arc_quest.category.archon": "Archon",
+  "arc_quest.category.companion": "Companion",
+  "arc_quest.category.daily": "Daily",
+  "arc_quest.category.event": "Event",
   "arc_quest.choice.epic_branch_choice.gather_info.0": "§cI shall storm the Blazing Fortress!",
   "arc_quest.choice.epic_branch_choice.gather_info.1": "§bI wish to explore the Ocean Ruins.",
   "arc_quest.choice.epic_branch_choice.gather_info.2": "§6§l[Hidden] I will conquer both!",

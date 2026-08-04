@@ -1,4 +1,9 @@
 {
+  "arc_quest.category.adventure": "冒险",
+  "arc_quest.category.archon": "主线",
+  "arc_quest.category.companion": "同伴",
+  "arc_quest.category.daily": "日常",
+  "arc_quest.category.event": "活动",
   "arc_quest.choice.epic_branch_choice.gather_info.0": "§c我要挑战烈焰堡垒！燃烧吧，我的战魂！",
   "arc_quest.choice.epic_branch_choice.gather_info.1": "§b我想探索深海遗迹……那里一定藏着古老的秘密。",
   "arc_quest.choice.epic_branch_choice.gather_info.2": "§6§l【隐藏】全、都、要！这就是我的觉悟！",
