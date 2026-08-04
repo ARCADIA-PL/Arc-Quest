@@ -21,6 +21,8 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
@@ -47,18 +49,17 @@ public final class QuestDataTickHandler {
     }
 
     public static void clearMarkerRuntimeState(UUID playerId) {
-        markerRefreshClocks.remove(playerId);
-        markerStateCache.remove(playerId);
+        QuestMarkerRuntimeManager.clearPlayer(playerId);
     }
 
     public static void clearMarkerRuntimeState() {
-        markerRefreshClocks.clear();
-        markerStateCache.clear();
+        QuestMarkerRuntimeManager.clearAll();
     }
 
     public static void rebuildDynamicMarkers(ServerPlayer player) {
         clearMarkerRuntimeState(player.getUUID());
-        refreshDynamicMarkers(player);
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data != null) QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(player, data, true);
     }
 
     @SubscribeEvent
@@ -69,6 +70,7 @@ public final class QuestDataTickHandler {
         if (player.tickCount % 20 != 0) return;
 
         checkQuestTimeouts(player);
+        expireTriggeredMarkers(player);
         refreshDynamicMarkers(player);
         persistAndSyncIfChanged(player);
     }
@@ -115,218 +117,16 @@ public final class QuestDataTickHandler {
     private static void refreshDynamicMarkers(ServerPlayer player) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
-
-        ServerLevel level = player.serverLevel();
-        UUID pid = player.getUUID();
-        Object2ByteOpenHashMap<String> states = markerStateCache.computeIfAbsent(
-                pid, k -> new Object2ByteOpenHashMap<>());
-
-        // 娓呯悊缂撳瓨涓凡琚Щ闄ょ殑鏍囪鐘舵€?
-        states.keySet().removeIf(markerId -> states.getByte(markerId) != 0
-                && !data.getAllMarkers().containsKey(markerId));
-
-        // 娓呯悊宸插け鏁堢殑闃舵鏍囪锛堜换鍔℃垨闃舵宸蹭笉鍙敤锛?
-        for (QuestMarkerData marker : List.copyOf(data.getAllMarkers().values())) {
-            if (!marker.getId().startsWith("aq:auto:") || !marker.hasQuestBinding()) continue;
-
-            QuestRuntimeData quest = data.getActiveQuest(marker.getQuestId());
-            boolean stale = quest == null || quest.getState() != QuestState.ACTIVE;
-            if (!stale && marker.hasPhaseBinding()) {
-                stale = !quest.isPhaseActive(marker.getPhaseId());
-            }
-            if (!stale) continue;
-
-            data.removeMarker(marker.getId());
-            states.removeByte(marker.getId());
-            ArcQuestNetwork.syncMarkerDeltaRemove(player, marker.getId());
-        }
-
-        for (Map.Entry<String, QuestRuntimeData> e : data.getAllActiveQuests().entrySet()) {
-            String questId = e.getKey();
-            QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
-            if (def == null) continue;
-
-            for (MarkSpec spec : def.getRelatedMarks()) {
-                String markerId = "aq:auto:" + questId + ":" + spec.id();
-                refreshMarker(markerId, questId, spec, player, data, level, states, null, -1);
-            }
-
-            for (String phaseId : e.getValue().getActivePhaseIds()) {
-                var phase = def.getPhase(phaseId);
-                if (phase == null) continue;
-
-                for (MarkSpec spec : phase.getRelatedMarks()) {
-                    String markerId = "aq:auto:" + questId + ":" + phaseId + ":phase:" + spec.id();
-                    refreshMarker(markerId, questId, spec, player, data, level, states, phaseId, -1);
-                }
-
-                int[] progress = e.getValue().getAllProgress(phaseId);
-                var objectives = phase.getObjectives();
-                for (int i = 0; i < objectives.size(); i++) {
-                    var obj = objectives.get(i);
-                    int p = i < progress.length ? progress[i] : 0;
-                    int required = obj.resolveRequiredCount(player);
-                    if (p >= required) continue;
-
-                    for (MarkSpec spec : obj.getRelatedMarks()) {
-                        String markerId = "aq:auto:" + questId + ":" + phaseId + ":obj" + i + ":" + spec.id();
-                        refreshMarker(markerId, questId, spec, player, data, level, states, phaseId, i);
-                    }
-                }
-            }
-        }
+        QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(player, data, false);
     }
 
-    private static void refreshMarker(String markerId, String questId, MarkSpec spec,
-                                       ServerPlayer player, ArcQuestPlayer data, ServerLevel level,
-                                       Object2ByteOpenHashMap<String> states,
-                                       String phaseId, int objIndex) {
-        if (!shouldRefresh(player.getUUID(), markerId, spec.refreshTicks(), player.server.getTickCount())) return;
-
-        byte newState = (byte) (spec.activateWhen().test(player, data)
-                && !spec.deactivateWhen().test(player, data) ? 1 : 0);
-        byte oldState = states.getByte(markerId);
-        if (oldState == newState && oldState != 0) return;
-
-        states.put(markerId, newState);
-        if (newState == 0) {
-            data.removeMarker(markerId);
-            return;
+    private static void expireTriggeredMarkers(ServerPlayer player) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        if (data == null) return;
+        for (String markerId : QuestMarkerRuntimeManager.expire(player, data)) {
+            ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId);
         }
-
-        QuestMarkerData marker = resolveMarker(markerId, questId, spec, player, level);
-        if (marker == null) return;
-
-        if (phaseId != null) {
-            marker = new QuestMarkerData.Builder(marker.getId(), marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), marker.getLabel())
-                    .dimension(marker.getDimension())
-                    .bindQuest(questId)
-                    .bindPhase(phaseId)
-                    .followEntity(marker.getFollowEntityId(), marker.getFollowEntityUuid(), marker.getFollowEntityGuid(), marker.getAttachPoint())
-                    .type(marker.getType())
-                    .state(marker.getState())
-                    .color(marker.getColorARGB())
-                    .showDistance(marker.isShowDistance())
-                    .allowOffscreenArrow(marker.isAllowOffscreenArrow())
-                    .build();
-            if (objIndex >= 0) {
-                marker = new QuestMarkerData.Builder(marker.getId(), marker.getWorldX(), marker.getWorldY(), marker.getWorldZ(), marker.getLabel())
-                        .dimension(marker.getDimension())
-                        .bindQuest(questId)
-                        .bindPhase(phaseId)
-                        .bindObjective(objIndex)
-                        .followEntity(marker.getFollowEntityId(), marker.getFollowEntityUuid(), marker.getFollowEntityGuid(), marker.getAttachPoint())
-                        .type(marker.getType())
-                        .state(marker.getState())
-                        .color(marker.getColorARGB())
-                        .showDistance(marker.isShowDistance())
-                        .allowOffscreenArrow(marker.isAllowOffscreenArrow())
-                        .build();
-            }
-        }
-        data.upsertMarker(marker);
     }
-
-    private static QuestMarkerData resolveMarker(String markerId,
-                                                 String questId,
-                                                 MarkSpec spec,
-                                                 ServerPlayer player,
-                                                 ServerLevel level) {
-        MarkableObject target = spec.target();
-
-        QuestMarkerData marker = null;
-
-        if (target instanceof MarkableObject.Pos p) {
-            marker = new QuestMarkerData.Builder(markerId, p.x() + 0.5, p.y(), p.z() + 0.5, spec.id())
-                    .dimension(level.dimension().location().toString())
-                    .bindQuest(questId)
-                    .type(spec.markerType())
-                    .build();
-        } else if (target instanceof MarkableObject.BlockPosition bp) {
-            marker = new QuestMarkerData.Builder(markerId, bp.pos().getX() + 0.5, bp.pos().getY(), bp.pos().getZ() + 0.5, spec.id())
-                    .dimension(level.dimension().location().toString())
-                    .bindQuest(questId)
-                    .type(spec.markerType())
-                    .build();
-        } else if (target instanceof MarkableObject.DimensionPos dp) {
-            if (!level.dimension().equals(dp.dimension())) return null;
-            marker = new QuestMarkerData.Builder(markerId, dp.x() + 0.5, dp.y(), dp.z() + 0.5, spec.id())
-                    .dimension(dp.dimension().location().toString())
-                    .bindQuest(questId)
-                    .type(spec.markerType())
-                    .build();
-        } else if (target instanceof MarkableObject.EntityByUuid byUuid) {
-            Entity ent = level.getEntity(byUuid.uuid());
-            if (ent == null) return null;
-            marker = new QuestMarkerData.Builder(markerId, ent.getX(), ent.getY(), ent.getZ(), spec.id())
-                    .dimension(level.dimension().location().toString())
-                    .bindQuest(questId)
-                    .followEntity(ent.getId(), byUuid.uuid().toString(), "", QuestMarkerData.EntityAttachPoint.HEAD)
-                    .type(spec.markerType())
-                    .build();
-        } else if (target instanceof MarkableObject.EntityByNpcId byNpc) {
-            Entity nearestNpc = level.getEntities(player,
-                            player.getBoundingBox().inflate(byNpc.searchRadius()),
-                            e -> e.getPersistentData().contains("ArcQuestNpcId")
-                                    && byNpc.npcId().equals(e.getPersistentData().getString("ArcQuestNpcId")))
-                    .stream()
-                    .min((a, b) -> Double.compare(a.distanceToSqr(player), b.distanceToSqr(player)))
-                    .orElse(null);
-            if (nearestNpc == null) return null;
-            UUID uuid = nearestNpc.getUUID();
-            marker = new QuestMarkerData.Builder(markerId, nearestNpc.getX(), nearestNpc.getY(), nearestNpc.getZ(), spec.id())
-                    .dimension(level.dimension().location().toString())
-                    .bindQuest(questId)
-                    .followEntity(nearestNpc.getId(), uuid.toString(), byNpc.npcId(), QuestMarkerData.EntityAttachPoint.HEAD)
-                    .type(spec.markerType())
-                    .build();
-        } else if (target instanceof MarkableObject.EntityByTypeNearest byType) {
-            Entity nearest = level.getEntities(player,
-                            player.getBoundingBox().inflate(byType.searchRadius()),
-                            e -> e.getType() == byType.type())
-                    .stream()
-                    .min((a, b) -> Double.compare(a.distanceToSqr(player), b.distanceToSqr(player)))
-                    .orElse(null);
-            if (nearest == null) return null;
-            UUID uuid = nearest.getUUID();
-            marker = new QuestMarkerData.Builder(markerId, nearest.getX(), nearest.getY(), nearest.getZ(), spec.id())
-                    .dimension(level.dimension().location().toString())
-                    .bindQuest(questId)
-                    .followEntity(nearest.getId(), uuid.toString(), "", QuestMarkerData.EntityAttachPoint.HEAD)
-                    .type(spec.markerType())
-                    .build();
-        } else if (target instanceof MarkableObject.StructureNearest byStructure) {
-            BlockPos pos = level.findNearestMapStructure(byStructure.structureTag(), player.blockPosition(), byStructure.searchRadius(), false);
-            if (pos == null) return null;
-            marker = new QuestMarkerData.Builder(markerId, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, spec.id())
-                    .dimension(level.dimension().location().toString())
-                    .bindQuest(questId)
-                    .type(spec.markerType())
-                    .build();
-        }
-
-        if (marker == null) return null;
-        if (spec.maxDistance() > 0 && marker.distanceTo(player.getX(), player.getY(), player.getZ()) > spec.maxDistance()) {
-            return null;
-        }
-        return marker;
-    }
-
-    private static boolean shouldRefresh(UUID playerId, String markerId, int refreshTicks, long serverTick) {
-        int period = Math.max(1, refreshTicks);
-        Object2LongOpenHashMap<String> clocks = markerRefreshClocks.computeIfAbsent(
-                playerId, ignored -> new Object2LongOpenHashMap<>());
-        long last = clocks.getLong(markerId);
-        if (!clocks.containsKey(markerId) || (serverTick >= last && serverTick - last >= period)) {
-            clocks.put(markerId, serverTick);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * 鏈夊彉鏇存椂鎵嶆墽琛?蹇収鎸佷箙鍖?+ 瀹㈡埛绔悓姝?+ 娓呰剰"銆?
-     */
     private static void persistAndSyncIfChanged(ServerPlayer player) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data != null) {

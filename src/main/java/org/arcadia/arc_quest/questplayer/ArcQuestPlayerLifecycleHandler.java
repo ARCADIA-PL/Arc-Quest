@@ -15,6 +15,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
+import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
 import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -29,6 +30,8 @@ import org.arcadia.arc_quest.quest.network.C2SRequestQuestResyncPacket;
 import org.arcadia.arc_quest.quest.network.QuestSyncRevisionManager;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.questplayer.snapshot.ArcQuestSnapshotReason;
 import org.arcadia.arc_quest.questplayer.snapshot.FileArcQuestPlayerSnapshotStore;
 import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
@@ -56,6 +59,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         QuestDataTickHandler.rebuildDynamicMarkers(sp);
         ArcQuestNetwork.syncFullData(sp, data);
+        ArcQuestNetwork.sendDatapackReloadEpoch(sp, ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
         GuidePlayerStateSyncService.sync(sp, data);
         PendingDrawManager.compensateAndGrant(sp);
         LOGGER.debug("[ArcQuest] Login sync complete for: {}", sp.getGameProfile().getName());
@@ -76,6 +80,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
         if (data == null) return;
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
+        QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(sp, data, true);
         ArcQuestNetwork.syncFullData(sp, data);
         GuidePlayerStateSyncService.sync(sp, data);
     }
@@ -134,6 +139,8 @@ public final class ArcQuestPlayerLifecycleHandler {
     public static void onPlayerDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             DialogueSessionManager.INSTANCE.onPlayerLogout(player);
+            QuestMarkerRuntimeManager.clearPlayer(player.getUUID());
+            ArcQuestNetwork.clearPlayerMarkerState(player.getUUID());
         }
     }
 
