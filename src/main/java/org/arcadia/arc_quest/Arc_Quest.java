@@ -40,6 +40,7 @@ import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.ArcQuestContent;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questplayer.capability.ArcQuestCapabilities;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
@@ -58,6 +59,7 @@ public class Arc_Quest {
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ArcQuestConfig.SPEC);
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(ArcQuestCapabilities::register);
         MinecraftForge.EVENT_BUS.register(this);
     }
 
