@@ -368,12 +368,15 @@ public final class ArcQuestReloadCoordinator {
                         ? GachaRegistry.getCodeDefinition(quest.getChapterShopId()) != null
                         : TradeRegistry.getCodeDefinition(quest.getChapterShopId()) != null;
                 if (!shops.contains(quest.getChapterShopId()) && !codeShopExists)
-                    plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("quest", null, "chapter_shop_id", "Unknown shop id: " + quest.getChapterShopId()));
+                    plan.coordinatorDiagnostics().add(ReloadDiagnostic.warning("quest", null, "chapter_shop_id",
+                            "Optional chapter shop id is unavailable; quest remains loadable: " + quest.getChapterShopId()));
             }
             for (PhaseDefinition phase : quest.getAllPhases()) {
                 if (phase.hasTradeShop() && !tradeIds.contains(phase.getTradeShopId())
                         && TradeRegistry.getCodeDefinition(phase.getTradeShopId()) == null)
-                    plan.coordinatorDiagnostics().add(ReloadDiagnostic.error("quest", null, "phases." + phase.getPhaseId() + ".trade_shop_id", "Unknown trade shop id: " + phase.getTradeShopId()));
+                    plan.coordinatorDiagnostics().add(ReloadDiagnostic.warning("quest", null,
+                            "phases." + phase.getPhaseId() + ".trade_shop_id",
+                            "Optional phase trade shop id is unavailable; phase remains loadable: " + phase.getTradeShopId()));
                 validateGuideReferences(plan, quest, phase.getGuidesToGrantOnEnter(), guideIds, "guides_to_grant_on_enter");
                 validateGuideReferences(plan, quest, phase.getGuidesToGrantOnComplete(), guideIds, "guides_to_grant_on_complete");
             }
