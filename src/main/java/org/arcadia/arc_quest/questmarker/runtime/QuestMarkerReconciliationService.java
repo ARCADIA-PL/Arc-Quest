@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
+import org.arcadia.arc_quest.questmarker.internal.MarkerIds;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public final class QuestMarkerReconciliationService {
 
             for (MarkSpec spec : definition.getRelatedMarks()) {
                 if (!MarkTriggers.isContinuous(spec)) continue;
-                String markerId = "aq:auto:" + questId + ":" + spec.id();
+                String markerId = MarkerIds.autoQuest(questId, spec.id());
                 changed |= QuestMarkerRuntimeManager.refresh(
                         player, data, markerId, questId, spec, null, -1, force);
             }
@@ -43,7 +44,7 @@ public final class QuestMarkerReconciliationService {
 
                 for (MarkSpec spec : phase.getRelatedMarks()) {
                     if (!MarkTriggers.isContinuous(spec)) continue;
-                    String markerId = "aq:auto:" + questId + ":" + phaseId + ":phase:" + spec.id();
+                    String markerId = MarkerIds.autoPhase(questId, phaseId, spec.id());
                     changed |= QuestMarkerRuntimeManager.refresh(
                             player, data, markerId, questId, spec, phaseId, -1, force);
                 }
@@ -57,8 +58,7 @@ public final class QuestMarkerReconciliationService {
 
                     for (MarkSpec spec : objective.getRelatedMarks()) {
                         if (!MarkTriggers.isContinuous(spec)) continue;
-                        String markerId = "aq:auto:" + questId + ":" + phaseId
-                                + ":obj" + objectiveIndex + ":" + spec.id();
+                        String markerId = MarkerIds.autoObjective(questId, phaseId, objectiveIndex, spec.id());
                         changed |= QuestMarkerRuntimeManager.refresh(
                                 player, data, markerId, questId, spec, phaseId, objectiveIndex, force);
                     }
@@ -71,7 +71,7 @@ public final class QuestMarkerReconciliationService {
     private static boolean removeStaleMarkers(ServerPlayer player, ArcQuestPlayer data) {
         boolean changed = false;
         for (QuestMarkerData marker : List.copyOf(data.getAllMarkers().values())) {
-            if (!marker.getId().startsWith("aq:auto:") || !marker.hasQuestBinding()) continue;
+            if (!MarkerIds.isAuto(marker.getId()) || !marker.hasQuestBinding()) continue;
 
             QuestRuntimeData runtime = data.getActiveQuest(marker.getQuestId());
             boolean stale = runtime == null || runtime.getState() != QuestState.ACTIVE;

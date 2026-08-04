@@ -11,7 +11,10 @@ import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
+import org.arcadia.arc_quest.questmarker.internal.MarkerIds;
+import org.arcadia.arc_quest.questmarker.internal.runtime.MarkerReconciliationEngine;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class QuestMarkerService {
@@ -23,17 +26,12 @@ public final class QuestMarkerService {
                                            ArcQuestPlayer data,
                                            QuestRuntimeData qdata,
                                            QuestDefinition def) {
-        List<String> removedIds = clearGeneratedLocationMarkers(data, qdata.getQuestId());
-        for (String markerId : removedIds) {
-            ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId);
-        }
-
         String dimension = player.level().dimension().location().toString();
         QuestMarkerType questType = def.getCategory() == QuestCategory.ARCHON
                 ? QuestMarkerType.QUEST_MAIN
                 : QuestMarkerType.QUEST_SIDE;
 
-        int markerCount = 0;
+        List<QuestMarkerData> desiredMarkers = new ArrayList<>();
         for (String phaseId : qdata.getActivePhaseIds()) {
             PhaseDefinition phase = def.getPhase(phaseId);
             if (phase == null) continue;
@@ -71,29 +69,33 @@ public final class QuestMarkerService {
                         .allowOffscreenArrow(true)
                         .persistent(false)
                         .build();
-                data.upsertMarker(marker);
-                ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker);
-                markerCount++;
+                desiredMarkers.add(marker);
             }
         }
+
+        String questId = qdata.getQuestId();
+        MarkerReconciliationEngine.Result result = MarkerReconciliationEngine.reconcile(data,
+                marker -> MarkerIds.isLegacyLocation(marker.getId())
+                        && marker.hasQuestBinding()
+                        && questId.equals(marker.getQuestId()),
+                desiredMarkers);
+        result.removed().forEach(markerId -> ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId));
+        result.upserted().forEach(marker -> ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker));
 
         MinecraftForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
                 player,
                 ResourceLocation.parse(qdata.getQuestId()),
                 qdata.getActivePhaseIds().size(),
-                markerCount
+                desiredMarkers.size()
         ));
     }
 
     public static List<String> clearGeneratedLocationMarkers(ArcQuestPlayer data, String questId) {
-        List<String> toRemove = data.getAllMarkers().values().stream()
-                .filter(marker -> marker.getId().startsWith("quest:")
+        return MarkerReconciliationEngine.reconcile(data,
+                marker -> MarkerIds.isLegacyLocation(marker.getId())
                         && marker.hasQuestBinding()
-                        && questId.equals(marker.getQuestId()))
-                .map(QuestMarkerData::getId)
-                .toList();
-        for (String id : toRemove) data.removeMarker(id);
-        return toRemove;
+                        && questId.equals(marker.getQuestId()),
+                List.of()).removed();
     }
 
     public static List<String> clearQuestMarkers(ArcQuestPlayer data, String questId) {
@@ -108,7 +110,7 @@ public final class QuestMarkerService {
     }
 
     public static String buildMarkerId(String questId, String phaseId, int objectiveIndex) {
-        return "quest:" + questId + ":" + phaseId + ":" + objectiveIndex;
+        return MarkerIds.legacyLocation(questId, phaseId, objectiveIndex);
     }
 
     static String firstNonEmpty(String... candidates) {
