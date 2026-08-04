@@ -98,6 +98,17 @@ public final class QuestIntelPanel {
         return activeScenes != null;
     }
 
+    public static void clearClientSession() {
+        activeScenes = null;
+        sceneIndex = 0;
+        enterTimer = 0f;
+        exitTimer = 0f;
+        isClosing = false;
+        isPaused = false;
+        buttonHoverStates.clear();
+        IntelPonderUIStub.invalidate();
+    }
+
     public static boolean hasScene(ResourceLocation sceneId) {
         if (sceneId == null) return false;
         return ArcQuestPonderSceneRegistry.hasScene(sceneId) && PonderIndex.getSceneAccess().doScenesExistForId(sceneId);

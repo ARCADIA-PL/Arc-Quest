@@ -96,6 +96,19 @@ public final class QuestHistoryPanel {
         return active;
     }
 
+    public static void clearClientSession() {
+        active = false;
+        closing = false;
+        panning = false;
+        pendingFocusActive = false;
+        questId = null;
+        renderNodes.clear();
+        nodeMap.clear();
+        VIEWPORT.reset();
+        DETAIL_PANEL.reset();
+        QuestHistoryNodeRenderer.reset();
+    }
+
     public static void close() {
         if (!active || closing) return;
         closing = true;

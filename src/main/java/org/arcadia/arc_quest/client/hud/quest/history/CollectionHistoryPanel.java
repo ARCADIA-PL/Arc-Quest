@@ -77,6 +77,18 @@ public final class CollectionHistoryPanel {
         return active;
     }
 
+    public static void clearClientSession() {
+        active = false;
+        closing = false;
+        panning = false;
+        questId = null;
+        hoveredPhaseId = null;
+        categories.clear();
+        scroll = 0f;
+        targetScroll = 0f;
+        maxScroll = 0f;
+    }
+
     public static void close() {
         if (!active || closing) return;
         closing = true;

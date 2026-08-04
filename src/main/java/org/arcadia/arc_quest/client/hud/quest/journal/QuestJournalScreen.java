@@ -127,6 +127,7 @@ public class QuestJournalScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        clearTransientPanels();
         QuestChangeHistoryStore.INSTANCE.ensureLoaded();
         lastRenderTime = 0;
 
@@ -220,8 +221,17 @@ public class QuestJournalScreen extends Screen {
     @Override
     public void removed() {
         QuestChangeHistoryStore.INSTANCE.flush();
+        clearTransientPanels();
         releasePointerCursor();
         super.removed();
+    }
+
+    private void clearTransientPanels() {
+        QuestIntelPanel.clearClientSession();
+        QuestOfferPanel.clearClientSession();
+        CollectionHistoryPanel.clearClientSession();
+        QuestHistoryPanel.clearClientSession();
+        QuestStoryPanel.clearClientSession();
     }
 
     @Override
