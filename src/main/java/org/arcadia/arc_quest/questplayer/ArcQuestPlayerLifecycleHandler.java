@@ -28,6 +28,7 @@ import org.arcadia.arc_quest.quest.network.C2SRequestQuestResyncPacket;
 import org.arcadia.arc_quest.quest.network.QuestSyncRevisionManager;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
 import org.arcadia.arc_quest.questplayer.snapshot.ArcQuestSnapshotReason;
 import org.arcadia.arc_quest.questplayer.snapshot.FileArcQuestPlayerSnapshotStore;
 import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
@@ -53,6 +54,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(sp);
         validateAndFixQuestData(sp, data);
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
+        QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(sp, data, true);
         ArcQuestNetwork.syncFullData(sp, data);
         ArcQuestNetwork.sendDatapackReloadEpoch(sp, ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
         GuidePlayerStateSyncService.sync(sp, data);

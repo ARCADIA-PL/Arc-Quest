@@ -7,6 +7,7 @@ import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.PlayerSessionEpochManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,8 +30,9 @@ public final class QuestMarkerRuntimeManager {
                                   String phaseId,
                                   int objectiveIndex,
                                   boolean force) {
-        PlayerRuntimeState runtime = PLAYER_STATES.computeIfAbsent(player.getUUID(), ignored -> new PlayerRuntimeState());
-        if (!force && !runtime.shouldRefresh(markerId, spec.refreshTicks(), player.tickCount)) return false;
+        PlayerRuntimeState runtime = stateFor(player);
+        int currentTick = player.server.getTickCount();
+        if (!force && !runtime.shouldRefresh(markerId, spec.refreshTicks(), currentTick)) return false;
 
         QuestMarkerData existing = data.getAllMarkers().get(markerId);
         boolean active = spec.activateWhen().test(player, data) && !spec.deactivateWhen().test(player, data);
@@ -71,16 +73,15 @@ public final class QuestMarkerRuntimeManager {
         boolean changed = refresh(player, data, markerId, ownerId, spec, phaseId, objectiveIndex, true);
         QuestMarkerData marker = data.getAllMarkers().get(markerId);
         if (marker != null) {
-            PLAYER_STATES.computeIfAbsent(player.getUUID(), ignored -> new PlayerRuntimeState())
-                    .setExpiry(markerId, player.tickCount + MarkTriggers.durationTicks(spec));
+            stateFor(player).setExpiry(markerId,
+                    player.server.getTickCount() + MarkTriggers.durationTicks(spec));
         }
         return changed;
     }
 
     public static List<String> expire(ServerPlayer player, ArcQuestPlayer data) {
-        PlayerRuntimeState state = PLAYER_STATES.get(player.getUUID());
-        if (state == null) return List.of();
-        List<String> expired = state.removeExpired(player.tickCount);
+        PlayerRuntimeState state = stateFor(player);
+        List<String> expired = state.removeExpired(player.server.getTickCount());
         for (String markerId : expired) data.removeMarker(markerId);
         return expired;
     }
@@ -99,6 +100,14 @@ public final class QuestMarkerRuntimeManager {
 
     public static void clearAll() {
         PLAYER_STATES.clear();
+    }
+
+    private static PlayerRuntimeState stateFor(ServerPlayer player) {
+        long sessionEpoch = PlayerSessionEpochManager.getOrCreate(player);
+        return PLAYER_STATES.compute(player.getUUID(), (playerId, existing) ->
+                existing == null || existing.sessionEpoch != sessionEpoch
+                        ? new PlayerRuntimeState(sessionEpoch)
+                        : existing);
     }
 
     private static boolean isEntityTarget(MarkableObject target) {
@@ -128,13 +137,19 @@ public final class QuestMarkerRuntimeManager {
     }
 
     private static final class PlayerRuntimeState {
+        private final long sessionEpoch;
         private final Map<String, Integer> refreshTicks = new HashMap<>();
         private final Map<String, Integer> expiryTicks = new HashMap<>();
+
+        private PlayerRuntimeState(long sessionEpoch) {
+            this.sessionEpoch = sessionEpoch;
+        }
 
         private boolean shouldRefresh(String markerId, int period, int currentTick) {
             int normalizedPeriod = Math.max(1, period);
             Integer previous = refreshTicks.get(markerId);
-            if (previous != null && currentTick - previous < normalizedPeriod) return false;
+            if (previous != null && currentTick >= previous
+                    && currentTick - previous < normalizedPeriod) return false;
             refreshTicks.put(markerId, currentTick);
             return true;
         }

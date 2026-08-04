@@ -16,15 +16,12 @@ import org.arcadia.arc_quest.quest.api.QuestTimeLimitType;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
-import org.arcadia.arc_quest.questmarker.api.MarkSpec;
-import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
-import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 
 import java.util.List;
-import java.util.Map;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class QuestDataTickHandler {
@@ -82,65 +79,7 @@ public final class QuestDataTickHandler {
     private static void refreshDynamicMarkers(ServerPlayer player) {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
         if (data == null) return;
-
-        for (QuestMarkerData marker : List.copyOf(data.getAllMarkers().values())) {
-            if (!marker.getId().startsWith("aq:auto:") || !marker.hasQuestBinding()) continue;
-            QuestRuntimeData quest = data.getActiveQuest(marker.getQuestId());
-            boolean stale = quest == null || quest.getState() != QuestState.ACTIVE;
-            if (!stale && marker.hasPhaseBinding()) stale = !quest.isPhaseActive(marker.getPhaseId());
-            if (!stale && marker.hasObjectiveBinding()) {
-                QuestDefinition definition = QuestRegistry.get(ResourceLocation.parse(marker.getQuestId()));
-                var phase = definition == null ? null : definition.getPhase(marker.getPhaseId());
-                int objectiveIndex = marker.getObjectiveIndex();
-                if (phase == null || objectiveIndex < 0 || objectiveIndex >= phase.getObjectives().size()) {
-                    stale = true;
-                } else {
-                    int[] progress = quest.getAllProgress(marker.getPhaseId());
-                    int current = objectiveIndex < progress.length ? progress[objectiveIndex] : 0;
-                    stale = current >= phase.getObjectives().get(objectiveIndex).resolveRequiredCount(player);
-                }
-            }
-            if (stale) data.removeMarker(marker.getId());
-        }
-
-        for (Map.Entry<String, QuestRuntimeData> entry : data.getAllActiveQuests().entrySet()) {
-            String questId = entry.getKey();
-            QuestDefinition definition = QuestRegistry.get(ResourceLocation.parse(questId));
-            if (definition == null) continue;
-
-            for (MarkSpec spec : definition.getRelatedMarks()) {
-                if (!MarkTriggers.isContinuous(spec)) continue;
-                String markerId = "aq:auto:" + questId + ":" + spec.id();
-                QuestMarkerRuntimeManager.refresh(player, data, markerId, questId, spec, null, -1, false);
-            }
-
-            for (String phaseId : entry.getValue().getActivePhaseIds()) {
-                var phase = definition.getPhase(phaseId);
-                if (phase == null) continue;
-
-                for (MarkSpec spec : phase.getRelatedMarks()) {
-                    if (!MarkTriggers.isContinuous(spec)) continue;
-                    String markerId = "aq:auto:" + questId + ":" + phaseId + ":phase:" + spec.id();
-                    QuestMarkerRuntimeManager.refresh(player, data, markerId, questId, spec, phaseId, -1, false);
-                }
-
-                int[] progress = entry.getValue().getAllProgress(phaseId);
-                var objectives = phase.getObjectives();
-                for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
-                    var objective = objectives.get(objectiveIndex);
-                    int current = objectiveIndex < progress.length ? progress[objectiveIndex] : 0;
-                    if (current >= objective.resolveRequiredCount(player)) continue;
-
-                    for (MarkSpec spec : objective.getRelatedMarks()) {
-                        if (!MarkTriggers.isContinuous(spec)) continue;
-                        String markerId = "aq:auto:" + questId + ":" + phaseId
-                                + ":obj" + objectiveIndex + ":" + spec.id();
-                        QuestMarkerRuntimeManager.refresh(
-                                player, data, markerId, questId, spec, phaseId, objectiveIndex, false);
-                    }
-                }
-            }
-        }
+        QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(player, data, false);
     }
 
     private static void expireTriggeredMarkers(ServerPlayer player) {
