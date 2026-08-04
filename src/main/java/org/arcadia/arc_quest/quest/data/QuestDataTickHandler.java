@@ -38,7 +38,7 @@ public final class QuestDataTickHandler {
         checkQuestTimeouts(player);
         expireTriggeredMarkers(player);
         refreshDynamicMarkers(player);
-        syncIfChanged(player);
+        persistAndSyncIfChanged(player);
     }
 
     private static void checkQuestTimeouts(ServerPlayer player) {
@@ -88,11 +88,6 @@ public final class QuestDataTickHandler {
         for (String markerId : QuestMarkerRuntimeManager.expire(player, data)) {
             ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId);
         }
-    }
-
-    private static void syncIfChanged(ServerPlayer player) {
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (data != null) QuestSyncCoordinator.syncIfChanged(player, data);
     }
 
     private static void persistAndSyncIfChanged(ServerPlayer player) {
