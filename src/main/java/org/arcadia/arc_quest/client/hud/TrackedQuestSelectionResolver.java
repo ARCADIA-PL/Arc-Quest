@@ -13,7 +13,7 @@ final class TrackedQuestSelectionResolver {
                           Collection<String> activeQuestIds,
                           boolean fullSyncApplied) {
         if (!fullSyncApplied) return trackedQuestId;
-        if (trackedQuestId != null && activeQuestIds.contains(trackedQuestId)) return trackedQuestId;
+        if (trackedQuestId == null || activeQuestIds.contains(trackedQuestId)) return trackedQuestId;
         return activeQuestIds.stream().findFirst().orElse(null);
     }
 }

@@ -52,7 +52,7 @@ public final class SafeDatapackScanner {
                     continue;
                 }
                 if (files.size() > limits.maxFiles()) {
-                    diagnostics.add(ReloadDiagnostic.error(module, normalized, "$",
+                    diagnostics.add(ReloadDiagnostic.error(module, null, "$",
                             "File count exceeds limit " + limits.maxFiles()));
                     break;
                 }
@@ -63,7 +63,7 @@ public final class SafeDatapackScanner {
                     continue;
                 }
                 if (parsedBytes + size > limits.maxParsedBytes()) {
-                    diagnostics.add(ReloadDiagnostic.error(module, normalized, "$",
+                    diagnostics.add(ReloadDiagnostic.error(module, null, "$",
                             "Total parsed bytes exceed limit " + limits.maxParsedBytes()));
                     break;
                 }
@@ -94,7 +94,7 @@ public final class SafeDatapackScanner {
                 }
             }
         } catch (IOException exception) {
-            diagnostics.add(ReloadDiagnostic.error(module, root, "$",
+            diagnostics.add(ReloadDiagnostic.error(module, null, "$",
                     "Failed to scan directory: " + exception.getMessage(), exception));
         }
         return new ScanResult<>(values, files, parsedBytes, diagnostics, fingerprints);

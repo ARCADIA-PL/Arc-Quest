@@ -9,6 +9,13 @@ public record ReloadDiagnostic(Severity severity, String module, @Nullable Path 
 
     public boolean isBlocking() { return severity == Severity.ERROR; }
 
+    /**
+     * 带具体文件的错误只跳过当前文件；无文件关联的协调器、目录或跨模块错误才阻断整次快照提交。
+     */
+    public boolean blocksReload() {
+        return isBlocking() && (file == null || "coordinator".equals(module));
+    }
+
     public static ReloadDiagnostic error(String module, @Nullable Path file, String location, String message) {
         return new ReloadDiagnostic(Severity.ERROR, module, file, location, message, null);
     }

@@ -98,7 +98,7 @@ public final class ArcQuestReloadCoordinator {
     public ReloadSummary apply(ReloadPlan plan) {
         long epoch = epochSequence.incrementAndGet();
         List<ReloadDiagnostic> diagnostics = plan.allDiagnostics();
-        boolean hasErrors = diagnostics.stream().anyMatch(ReloadDiagnostic::isBlocking);
+        boolean hasErrors = diagnostics.stream().anyMatch(ReloadDiagnostic::blocksReload);
         boolean applied = false;
         if (!hasErrors) {
             synchronized (commitLock) {
