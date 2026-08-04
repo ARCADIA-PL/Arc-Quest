@@ -140,6 +140,20 @@ public final class QuestOfferPanel {
         return active;
     }
 
+    public static void clearClientSession() {
+        active = false;
+        closing = false;
+        cleared = false;
+        questId = null;
+        phaseId = null;
+        objectiveIndex = -1;
+        lastValidVm = null;
+        hoveredStack = ItemStack.EMPTY;
+        pendingSubmitCheckAt = 0L;
+        isDraggingSlider = false;
+        serverCloseMode = S2COfferSubmitResultPacket.CloseMode.NONE;
+    }
+
     public static void close() {
         if (!active || closing) return;
         closing = true;

@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -62,7 +63,8 @@ public class JournalDetailControls {
 
     public void render(GuiGraphics g, JournalTypes.QuestListEntry entry, QuestDefinition def, QuestRuntimeData runtime, int x, int y, int w, int h, int mx, int my, float dt, int activeTheme) {
         int btnH = 20, btnY = y + h - btnH - 8;
-        boolean active = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
+        boolean active = QuestIntelPanel.isActive() || QuestOfferPanel.isActive()
+                || CollectionHistoryPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
 
         boolean bShop = shouldShowShop(def);
         boolean bActive = shouldShowActiveBtns(runtime);
@@ -131,7 +133,8 @@ public class JournalDetailControls {
     }
 
     public boolean mouseClicked(double mx, double my, int x, int y, int w, int h) {
-        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive())
+        if (QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || CollectionHistoryPanel.isActive()
+                || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive())
             return false;
         if (screen.getSelectedIndex() < 0 || screen.getSelectedIndex() >= screen.getCurrentEntries().size())
             return false;
