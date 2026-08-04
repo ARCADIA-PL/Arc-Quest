@@ -399,7 +399,11 @@ public class QuestJournalScreen extends Screen {
         if (intelActive) QuestIntelPanel.render(g, sw, sh, smx, smy, partialTick);
         if (offerActive) QuestOfferPanel.render(g, sw, sh, smx, smy, partialTick);
         if (collectionHistoryActive) CollectionHistoryPanel.render(g, smx, smy, partialTick);
-        if (historyActive) QuestHistoryPanel.render(g, smx, smy, partialTick);
+        if (historyActive) {
+            hoveredRewardTooltip = null;
+            hoveredCustomTooltip = null;
+            QuestHistoryPanel.render(g, smx, smy, partialTick);
+        }
         if (storyActive) QuestStoryPanel.render(g, sw, sh, smx, smy, partialTick);
 
         updateAndRenderTooltip(g, smx, smy);
@@ -439,7 +443,8 @@ public class QuestJournalScreen extends Screen {
     private void updateAndRenderTooltip(GuiGraphics g, int mouseX, int mouseY) {
         boolean hasCustom = hoveredCustomTooltip != null && !hoveredCustomTooltip.isEmpty();
         boolean hasItem = hoveredRewardTooltip != null;
-        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive() && !QuestOfferPanel.isActive() && !CollectionHistoryPanel.isActive() && !QuestHistoryPanel.isActive() && !QuestStoryPanel.isActive();
+        boolean isHoveringValid = (hasCustom || hasItem) && !QuestIntelPanel.isActive()
+                && !QuestOfferPanel.isActive() && !CollectionHistoryPanel.isActive() && !QuestStoryPanel.isActive();
 
         if (isHoveringValid) {
             if (hasCustom) {

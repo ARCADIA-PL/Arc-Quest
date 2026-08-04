@@ -1,15 +1,19 @@
 package org.arcadia.arc_quest.client.hud.quest.history;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.reward.ItemReward;
 
 import java.util.List;
 
@@ -109,7 +113,12 @@ final class QuestHistoryDetailPanel {
         enableScissor(graphics, x + 2, contentTop, x + WIDTH - 2, contentBottom, screenX, screenY, screenScale);
         graphics.pose().pushPose();
         graphics.pose().translate(x + PADDING, contentTop - scrollOffset, 2f);
-        int contentHeight = renderContent(graphics, font, runtime, WIDTH - PADDING * 2, themeColor, alphaFactor, alpha);
+        float contentMouseX = mouseX - x - PADDING;
+        float contentMouseY = mouseY - contentTop + (float) scrollOffset;
+        boolean contentHovered = mouseX >= x + PADDING && mouseX <= x + WIDTH - PADDING
+                && mouseY >= contentTop && mouseY <= contentBottom;
+        int contentHeight = renderContent(graphics, font, runtime, WIDTH - PADDING * 2, themeColor,
+                alphaFactor, alpha, contentMouseX, contentMouseY, contentHovered);
         graphics.pose().popPose();
         graphics.disableScissor();
         maxScroll = Math.max(0, contentHeight - (contentBottom - contentTop));
@@ -119,7 +128,8 @@ final class QuestHistoryDetailPanel {
     }
 
     private int renderContent(GuiGraphics graphics, Font font, QuestRuntimeData runtime, int width,
-                              int themeColor, float alphaFactor, int alpha) {
+                              int themeColor, float alphaFactor, int alpha,
+                              float mouseX, float mouseY, boolean contentHovered) {
         int y = 0;
         int stateColor = selectedNode.completed() ? 0x69E79A : selectedNode.active() ? themeColor : 0x7B8591;
         String stateText = selectedNode.completed() ? "COMPLETED" : selectedNode.active() ? "IN PROGRESS" : "UNREACHED";
@@ -136,6 +146,8 @@ final class QuestHistoryDetailPanel {
         }
         y = renderImage(graphics, font, y, width, themeColor, alphaFactor, alpha);
         y = renderObjectives(graphics, font, runtime, y, width, themeColor, alphaFactor, alpha);
+        y = renderRewards(graphics, font, y, width, themeColor, alphaFactor, alpha,
+                mouseX, mouseY, contentHovered);
         return renderStory(graphics, font, y, width, themeColor, alpha) + 10;
     }
 
@@ -173,6 +185,96 @@ final class QuestHistoryDetailPanel {
             index++;
         }
         return y + 8;
+    }
+
+    private int renderRewards(GuiGraphics graphics, Font font, int y, int width,
+                              int themeColor, float alphaFactor, int alpha,
+                              float mouseX, float mouseY, boolean contentHovered) {
+        List<IReward> rewards = selectedNode.phase().getPhaseRewards();
+        if (rewards.isEmpty()) return y;
+
+        y = renderSectionTitle(graphics, font, "PHASE REWARDS", y, width, themeColor, alpha);
+        for (IReward reward : rewards) {
+            if (reward instanceof ItemReward itemReward) {
+                y = renderItemReward(graphics, font, itemReward, y, width, themeColor, alphaFactor, alpha,
+                        mouseX, mouseY, contentHovered);
+            } else {
+                y = renderTextReward(graphics, font, reward, y, width, themeColor, alphaFactor, alpha);
+            }
+        }
+        return y + 8;
+    }
+
+    private int renderItemReward(GuiGraphics graphics, Font font, ItemReward reward, int y, int width,
+                                 int themeColor, float alphaFactor, int alpha,
+                                 float mouseX, float mouseY, boolean contentHovered) {
+        int rowHeight = 28;
+        ItemStack stack = new ItemStack(reward.getItem(), reward.getCount());
+        boolean hovered = contentHovered && mouseX >= 0 && mouseX <= width
+                && mouseY >= y && mouseY <= y + rowHeight;
+        if (hovered && Minecraft.getInstance().screen instanceof QuestJournalScreen journalScreen) {
+            journalScreen.setHoveredRewardTooltip(stack);
+            journalScreen.requestPointerCursor();
+        }
+        graphics.fill(0, y, width, y + rowHeight,
+                HudAnimUtil.withAlpha(hovered ? 0x18212B : 0x11161D, Math.round(190 * alphaFactor)));
+        graphics.fill(0, y, 2, y + rowHeight,
+                HudAnimUtil.withAlpha(themeColor, Math.round(165 * alphaFactor)));
+        graphics.fill(4, y + 4, 24, y + 24,
+                HudAnimUtil.withAlpha(0x090C11, Math.round(205 * alphaFactor)));
+        drawFrame(graphics, 4, y + 4, 20, 20, 1,
+                HudAnimUtil.withAlpha(themeColor, Math.round(75 * alphaFactor)));
+
+        if (alphaFactor > 0.04f) {
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            try {
+                RenderSystem.setShaderColor(1f, 1f, 1f, alphaFactor);
+                graphics.renderFakeItem(stack, 6, y + 6);
+                if (alphaFactor >= 0.55f) {
+                    graphics.pose().pushPose();
+                    graphics.pose().translate(0, 0, 200f);
+                    graphics.renderItemDecorations(font, stack, 6, y + 6);
+                    graphics.pose().popPose();
+                }
+            } finally {
+                RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+                RenderSystem.disableBlend();
+            }
+        }
+
+        List<FormattedCharSequence> nameLines = font.split(stack.getHoverName(), Math.max(20, width - 36));
+        if (!nameLines.isEmpty()) {
+            graphics.drawString(font, nameLines.get(0), 31, y + 9,
+                    HudAnimUtil.withAlpha(0xE2E6EB, alpha), false);
+        }
+        return y + rowHeight + 4;
+    }
+
+    private int renderTextReward(GuiGraphics graphics, Font font, IReward reward, int y, int width,
+                                 int themeColor, float alphaFactor, int alpha) {
+        Component description = Component.literal(reward.describe());
+        float scale = 0.88f;
+        List<FormattedCharSequence> lines = font.split(description,
+                Math.max(1, Math.round((width - 18) / scale)));
+        int textHeight = Math.max(font.lineHeight, lines.size() * (font.lineHeight + 1));
+        int rowHeight = Math.max(24, 10 + Math.round(textHeight * scale));
+        graphics.fill(0, y, width, y + rowHeight,
+                HudAnimUtil.withAlpha(0x11161D, Math.round(178 * alphaFactor)));
+        graphics.fill(0, y, 2, y + rowHeight,
+                HudAnimUtil.withAlpha(themeColor, Math.round(135 * alphaFactor)));
+        graphics.fill(7, y + 8, 11, y + 12,
+                HudAnimUtil.withAlpha(themeColor, Math.round(210 * alphaFactor)));
+        graphics.pose().pushPose();
+        graphics.pose().translate(16, y + 6, 1f);
+        graphics.pose().scale(scale, scale, 1f);
+        int textY = 0;
+        for (FormattedCharSequence line : lines) {
+            graphics.drawString(font, line, 0, textY, HudAnimUtil.withAlpha(0xD3D8DF, alpha), false);
+            textY += font.lineHeight + 1;
+        }
+        graphics.pose().popPose();
+        return y + rowHeight + 4;
     }
 
     private int renderStory(GuiGraphics graphics, Font font, int y, int width, int themeColor, int alpha) {
