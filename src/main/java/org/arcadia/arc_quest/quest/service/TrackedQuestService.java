@@ -14,6 +14,12 @@ public final class TrackedQuestService {
     private TrackedQuestService() {
     }
 
+    public static boolean trackIfAbsent(ServerPlayer player, String questId) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+        if (data.getTrackedQuestId() != null) return false;
+        return setTrackedQuest(player, questId);
+    }
+
     public static boolean setTrackedQuest(ServerPlayer player, @Nullable String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         String normalized = normalize(questId);

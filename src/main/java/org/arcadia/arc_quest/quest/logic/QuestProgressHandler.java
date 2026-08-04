@@ -26,6 +26,7 @@ import org.arcadia.arc_quest.quest.logic.profile.CollectionVisibilityUpdateResul
 import org.arcadia.arc_quest.quest.network.QuestRejectCodeDictionary;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.service.TrackedQuestService;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveKey;
 import org.arcadia.arc_quest.quest.tracking.ObjectiveTracker;
 import org.arcadia.arc_quest.quest.tracking.TrackedObjective;
@@ -985,6 +986,7 @@ public final class QuestProgressHandler {
                 acceptedTime.dayTime()
         );
         data.addActiveQuest(runtime);
+        TrackedQuestService.trackIfAbsent(player, questId);
 
         boolean flagsChanged = false;
         for (String flag : definition.getFlagsToSetOnAccept()) {
