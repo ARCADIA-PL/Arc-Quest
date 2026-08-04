@@ -20,6 +20,7 @@ import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
+import org.arcadia.arc_quest.quest.data.QuestDataTickHandler;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.C2SMarkPhaseStoryReadPacket;
@@ -53,6 +54,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(sp);
         validateAndFixQuestData(sp, data);
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
+        QuestDataTickHandler.rebuildDynamicMarkers(sp);
         ArcQuestNetwork.syncFullData(sp, data);
         GuidePlayerStateSyncService.sync(sp, data);
         PendingDrawManager.compensateAndGrant(sp);
@@ -98,6 +100,7 @@ public final class ArcQuestPlayerLifecycleHandler {
             writeRecoverySnapshot(sp, data, ArcQuestSnapshotReason.PLAYER_LOGOUT);
         }
         ArcQuestPlayerManager.persistAndUnload(sp);
+        QuestDataTickHandler.clearMarkerRuntimeState(sp.getUUID());
         RequestIdempotencyStore.INSTANCE.clearPlayer(sp.getUUID());
         C2SRequestTradePacket.clearPlayer(sp.getUUID());
         C2SRequestQuestResyncPacket.clearPlayer(sp.getUUID());
@@ -163,6 +166,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         C2SSetTrackedQuestPacket.clear();
         QuestSyncRevisionManager.clear();
         PlayerSessionEpochManager.clear();
+        QuestDataTickHandler.clearMarkerRuntimeState();
     }
 
     @SubscribeEvent

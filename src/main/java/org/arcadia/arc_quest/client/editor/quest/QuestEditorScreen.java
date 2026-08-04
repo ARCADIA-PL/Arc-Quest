@@ -222,17 +222,17 @@ public final class QuestEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (detailPanel.mouseScrolled(mouseX, mouseY, delta, layout.workspace())) return true;
-        if (phaseListPanel.mouseScrolled(mouseX, mouseY, delta,
+    public boolean mouseScrolled(double mouseX, double mouseY, double deltaX, double deltaY) {
+        if (detailPanel.mouseScrolled(mouseX, mouseY, deltaY, layout.workspace())) return true;
+        if (phaseListPanel.mouseScrolled(mouseX, mouseY, deltaY,
                 listViewport(), document.phases)) return true;
         HudRect canvas = graphViewport();
         if (canvas.contains(mouseX, mouseY)) {
             viewport.zoomAt((float) (mouseX - canvas.x()), (float) (mouseY - canvas.y()),
-                    (float) delta * 0.12f);
+                    (float) deltaY * 0.12f);
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, deltaX, deltaY);
     }
 
     @Override

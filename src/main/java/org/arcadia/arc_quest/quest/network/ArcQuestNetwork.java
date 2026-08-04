@@ -17,6 +17,10 @@ import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.quest.editor.network.C2SCloseQuestEditorPacket;
+import org.arcadia.arc_quest.quest.editor.network.C2SSaveQuestEditorPacket;
+import org.arcadia.arc_quest.quest.editor.network.S2COpenQuestEditorPacket;
+import org.arcadia.arc_quest.quest.editor.network.S2CQuestEditorResultPacket;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -79,6 +83,8 @@ public final class ArcQuestNetwork {
         registrar.playToServer(C2SUpdateGuideProgressPacket.TYPE, C2SUpdateGuideProgressPacket.STREAM_CODEC, C2SUpdateGuideProgressPacket::handle);
         registrar.playToServer(C2SSetTrackedQuestPacket.TYPE, C2SSetTrackedQuestPacket.STREAM_CODEC, C2SSetTrackedQuestPacket::handle);
         registrar.playToServer(C2SMarkPhaseStoryReadPacket.TYPE, C2SMarkPhaseStoryReadPacket.STREAM_CODEC, C2SMarkPhaseStoryReadPacket::handle);
+        registrar.playToServer(C2SCloseQuestEditorPacket.TYPE, C2SCloseQuestEditorPacket.STREAM_CODEC, C2SCloseQuestEditorPacket::handle);
+        registrar.playToServer(C2SSaveQuestEditorPacket.TYPE, C2SSaveQuestEditorPacket.STREAM_CODEC, C2SSaveQuestEditorPacket::handle);
     }
 
     private static void registerClientPayloadHandlers(PayloadRegistrar registrar) {
@@ -100,6 +106,8 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2COpenGuidePacket.TYPE, S2COpenGuidePacket.STREAM_CODEC, S2COpenGuidePacket::handle);
         registrar.playToClient(S2CSyncGuideStatePacket.TYPE, S2CSyncGuideStatePacket.STREAM_CODEC, S2CSyncGuideStatePacket::handle);
         registrar.playToClient(S2CSyncTrackedQuestPacket.TYPE, S2CSyncTrackedQuestPacket.STREAM_CODEC, S2CSyncTrackedQuestPacket::handle);
+        registrar.playToClient(S2COpenQuestEditorPacket.TYPE, S2COpenQuestEditorPacket.STREAM_CODEC, S2COpenQuestEditorPacket::handle);
+        registrar.playToClient(S2CQuestEditorResultPacket.TYPE, S2CQuestEditorResultPacket.STREAM_CODEC, S2CQuestEditorResultPacket::handle);
     }
 
     private static void registerClientPayloadCodecs(PayloadRegistrar registrar) {
@@ -121,6 +129,8 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2COpenGuidePacket.TYPE, S2COpenGuidePacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncGuideStatePacket.TYPE, S2CSyncGuideStatePacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncTrackedQuestPacket.TYPE, S2CSyncTrackedQuestPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2COpenQuestEditorPacket.TYPE, S2COpenQuestEditorPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CQuestEditorResultPacket.TYPE, S2CQuestEditorResultPacket.STREAM_CODEC, (packet, context) -> {});
     }
 
     // 闂備礁纾崕銈夊礉韫囨稑鐤鹃柡灞诲劚閻撴盯鏌熼懜顒€濡芥繛鍛矒閺屽秹鎮滃Ο鍝勵潊闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春閿熺姴绠涢柕濠忛檮閻濇娊姊哄畷鍥у妺闁告柨绻樺鏌ュ蓟閵夈儳鍘搁梺纭呭焽閸斿秴鈻嶅鍫熺厓闁绘垶锚婵偓闂佸搫鎳忛悡锟犲春?
@@ -130,6 +140,22 @@ public final class ArcQuestNetwork {
     /**
      * 闂備胶顭堢换鍫ュ礉閹达箑闂繛宸簻鐟欙箓鎮橀悙浣冩闁告柨瀚伴弻銊モ槈濡厧鈪卞┑鐐叉噷閸庢挳濡?闂傚倷鐒﹁ぐ鍐矓閸洖鏋?缂傚倸鍊烽悞锕€顭囧▎鎴斿亾鐟欏嫬鈻曠€规洘宀稿畷鍫曞Ω閵夈儳鍝庨梻?
      */
+    public static void sendQuestEditorOpen(ServerPlayer player, S2COpenQuestEditorPacket packet) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    public static void sendQuestEditorResult(ServerPlayer player, S2CQuestEditorResultPacket packet) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+
+    public static void sendQuestEditorSave(C2SSaveQuestEditorPacket packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+
+    public static void sendQuestEditorClose(C2SCloseQuestEditorPacket packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+
     public static void syncFullData(ServerPlayer player, ArcQuestPlayer data) {
         resetMarkerStream(player);
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);

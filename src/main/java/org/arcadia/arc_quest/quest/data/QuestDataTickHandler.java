@@ -40,10 +40,25 @@ import java.util.UUID;
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class QuestDataTickHandler {
 
-    private static final Object2LongOpenHashMap<String> markerRefreshClock = new Object2LongOpenHashMap<>();
+    private static final Map<UUID, Object2LongOpenHashMap<String>> markerRefreshClocks = new HashMap<>();
     private static final Map<UUID, Object2ByteOpenHashMap<String>> markerStateCache = new HashMap<>();
 
     private QuestDataTickHandler() {
+    }
+
+    public static void clearMarkerRuntimeState(UUID playerId) {
+        markerRefreshClocks.remove(playerId);
+        markerStateCache.remove(playerId);
+    }
+
+    public static void clearMarkerRuntimeState() {
+        markerRefreshClocks.clear();
+        markerStateCache.clear();
+    }
+
+    public static void rebuildDynamicMarkers(ServerPlayer player) {
+        clearMarkerRuntimeState(player.getUUID());
+        refreshDynamicMarkers(player);
     }
 
     @SubscribeEvent
@@ -166,7 +181,7 @@ public final class QuestDataTickHandler {
                                        ServerPlayer player, ArcQuestPlayer data, ServerLevel level,
                                        Object2ByteOpenHashMap<String> states,
                                        String phaseId, int objIndex) {
-        if (!shouldRefresh(markerId, spec.refreshTicks(), player.tickCount)) return;
+        if (!shouldRefresh(player.getUUID(), markerId, spec.refreshTicks(), player.server.getTickCount())) return;
 
         byte newState = (byte) (spec.activateWhen().test(player, data)
                 && !spec.deactivateWhen().test(player, data) ? 1 : 0);
@@ -297,11 +312,13 @@ public final class QuestDataTickHandler {
         return marker;
     }
 
-    private static boolean shouldRefresh(String markerId, int refreshTicks, int playerTick) {
+    private static boolean shouldRefresh(UUID playerId, String markerId, int refreshTicks, long serverTick) {
         int period = Math.max(1, refreshTicks);
-        long last = markerRefreshClock.getLong(markerId);
-        if (!markerRefreshClock.containsKey(markerId) || (playerTick - last) >= period) {
-            markerRefreshClock.put(markerId, playerTick);
+        Object2LongOpenHashMap<String> clocks = markerRefreshClocks.computeIfAbsent(
+                playerId, ignored -> new Object2LongOpenHashMap<>());
+        long last = clocks.getLong(markerId);
+        if (!clocks.containsKey(markerId) || (serverTick >= last && serverTick - last >= period)) {
+            clocks.put(markerId, serverTick);
             return true;
         }
         return false;

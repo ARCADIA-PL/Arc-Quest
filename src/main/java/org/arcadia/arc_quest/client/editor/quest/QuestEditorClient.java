@@ -3,10 +3,11 @@ package org.arcadia.arc_quest.client.editor.quest;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.editor.network.C2SCloseQuestEditorPacket;
 import org.arcadia.arc_quest.quest.editor.network.S2COpenQuestEditorPacket;
@@ -14,8 +15,7 @@ import org.arcadia.arc_quest.quest.editor.network.S2CQuestEditorResultPacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecJsonReader;
 
-@Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT,
-        bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
 public final class QuestEditorClient {
     private static S2COpenQuestEditorPacket pendingOpen;
     private static int pendingDelayTicks;
@@ -33,8 +33,8 @@ public final class QuestEditorClient {
     }
 
     @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || pendingOpen == null) return;
+    public static void onClientTick(ClientTickEvent.Post event) {
+        if ( pendingOpen == null) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null) {
             pendingOpen = null;

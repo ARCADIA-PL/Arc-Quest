@@ -125,6 +125,10 @@ public final class QuestRegistry {
         return def;
     }
 
+    public static Map<ResourceLocation, QuestDefinition> getDatapackSnapshot() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(DATAPACK_REGISTRY));
+    }
+
     public static Collection<QuestDefinition> getAll() {
         return Collections.unmodifiableCollection(MERGED_REGISTRY.values());
     }

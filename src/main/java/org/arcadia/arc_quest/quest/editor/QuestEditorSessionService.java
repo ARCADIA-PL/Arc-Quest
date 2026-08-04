@@ -3,13 +3,13 @@ package org.arcadia.arc_quest.quest.editor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
-import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
-import org.arcadia.arc_quest.data.reload.ReloadSummary;
+import org.arcadia.arc_quest.data.ArcQuestReloadListener;
+
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
@@ -29,10 +29,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-@Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(modid = Arc_Quest.MOD_ID)
 public final class QuestEditorSessionService {
     public static final QuestEditorSessionService INSTANCE = new QuestEditorSessionService();
     public static final int MAX_DOCUMENT_CHARS = 1_048_576;
+    private static final java.util.concurrent.atomic.AtomicLong EDITOR_RELOAD_EPOCH = new java.util.concurrent.atomic.AtomicLong();
     private final Map<UUID, QuestEditorSession> sessions = new HashMap<>();
     private final Map<ResourceLocation, UUID> locks = new HashMap<>();
 
@@ -98,7 +99,7 @@ public final class QuestEditorSessionService {
         locks.put(questId, player.getUUID());
         ArcQuestNetwork.sendQuestEditorOpen(player, new S2COpenQuestEditorPacket(session.sessionId(), questId,
                 DatapackPathResolver.resolveQuestsDir().relativize(entry.sourcePath()).toString().replace('\\', '/'),
-                session.revision(), ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch(),
+                session.revision(), EDITOR_RELOAD_EPOCH.get(),
                 QuestSpecJsonWriter.write(copy)));
     }
 
@@ -135,16 +136,11 @@ public final class QuestEditorSessionService {
             new QuestSpecCompiler().compile(candidate);
             if (hadOriginal) Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
             new QuestDatapackWriter().write(target, candidate);
-            ReloadSummary summary = ArcQuestReloadCoordinator.INSTANCE.apply(ArcQuestReloadCoordinator.INSTANCE.prepare());
-            if (!summary.applied()) {
-                if (Files.exists(backup)) Files.move(backup, target, StandardCopyOption.REPLACE_EXISTING);
-                else if (!hadOriginal) Files.deleteIfExists(target);
-                sendResult(player, false, session.revision(), summary.formatForCommand(), summary.epoch());
-                return;
-            }
+            int loaded = ArcQuestReloadListener.reloadArcQuestDatapacksOnly(player.server.getResourceManager());
+            long reloadEpoch = EDITOR_RELOAD_EPOCH.incrementAndGet();
             Files.deleteIfExists(backup);
             session.replaceDraft(candidate);
-            sendResult(player, true, session.revision(), "任务已保存并完成热重载", summary.epoch());
+            sendResult(player, true, session.revision(), "任务已保存并完成热重载", reloadEpoch);
         } catch (Exception exception) {
             try {
                 if (Files.exists(backup)) Files.move(backup, target, StandardCopyOption.REPLACE_EXISTING);
@@ -169,9 +165,4 @@ public final class QuestEditorSessionService {
         INSTANCE.close(event.getEntity().getUUID());
     }
 
-    @SubscribeEvent
-    public static void onServerStopping(ServerStoppingEvent event) {
-        INSTANCE.sessions.clear();
-        INSTANCE.locks.clear();
-    }
 }
