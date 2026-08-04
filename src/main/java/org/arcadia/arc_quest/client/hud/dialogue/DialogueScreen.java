@@ -13,7 +13,6 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
-import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
@@ -422,8 +421,9 @@ public class DialogueScreen extends Screen {
 
         boolean splashActive = QuestSplashRenderer.isActive(), historyActive = DialogueHistoryPanel.isActive();
         boolean suspendContent = splashActive || historyActive;
-        boolean guidePresentationActive = GuideSplashRenderer.isActive()
-                || GuidePopupOverlay.INSTANCE.isActive();
+        // The unlock notification is informational and must not pause dialogue playback.
+        // An explicitly opened guide popup remains interactive and therefore still pauses it.
+        boolean guidePresentationActive = GuidePopupOverlay.INSTANCE.isActive();
         boolean playbackPaused = splashActive || guidePresentationActive;
 
         if (suspendContent) {
