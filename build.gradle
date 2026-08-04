@@ -68,6 +68,10 @@ repositories {
     maven { url = 'https://maven.neoforged.net/releases' }
     maven { url = 'https://maven.createmod.net' }
     maven { url = 'https://maven.tterrag.com/' }
+    maven {
+        url "https://chocolateminecraft.com/maven"
+        name "Xaero's Maven"
+    }
     exclusiveContent {
         forRepository { maven { url = 'https://api.modrinth.com/maven' } }
         filter { includeGroup 'maven.modrinth' }
@@ -78,6 +82,8 @@ dependencies {
     implementation "net.createmod.ponder:ponder-neoforge:${ponder_version}"
     compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}"
     runtimeOnly "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
+
+    implementation "xaero.minimap:xaerominimap-neoforge-1.21.1:26.4.2"
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testImplementation 'org.slf4j:slf4j-api:2.0.9'

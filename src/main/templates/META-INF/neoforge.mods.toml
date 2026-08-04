@@ -32,3 +32,10 @@ config="arc_quest.mixins.json"
     versionRange="[1.0.64,)"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="xaerominimap"
+    type="optional"
+    versionRange="[26.4.2,27)"
+    ordering="NONE"
+    side="CLIENT"

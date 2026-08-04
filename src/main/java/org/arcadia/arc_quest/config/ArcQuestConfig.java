@@ -6,6 +6,7 @@ public final class ArcQuestConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ENABLE_QUEST_HISTORY_TAB;
     public static final ModConfigSpec.BooleanValue SHOW_QUEST_HISTORY_UNREAD_DOTS;
+    public static final ModConfigSpec.BooleanValue SYNC_QUEST_MARKERS_TO_XAERO_MINIMAP;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -16,6 +17,11 @@ public final class ArcQuestConfig {
         SHOW_QUEST_HISTORY_UNREAD_DOTS = builder
                 .comment("Whether to show unread red-dot indicators for quest history.")
                 .define("show_history_unread_dots", true);
+        builder.pop();
+        builder.push("quest_markers");
+        SYNC_QUEST_MARKERS_TO_XAERO_MINIMAP = builder
+                .comment("Whether Arc Quest markers are mirrored to Xaero's Minimap as third-party waypoints when installed.")
+                .define("sync_to_xaero_minimap", true);
         builder.pop();
         SPEC = builder.build();
     }
@@ -29,5 +35,9 @@ public final class ArcQuestConfig {
 
     public static boolean shouldShowQuestHistoryUnreadDots() {
         return SHOW_QUEST_HISTORY_UNREAD_DOTS.get();
+    }
+
+    public static boolean shouldSyncQuestMarkersToXaeroMinimap() {
+        return SYNC_QUEST_MARKERS_TO_XAERO_MINIMAP.get();
     }
 }
