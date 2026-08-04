@@ -12,10 +12,10 @@ import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 import org.arcadia.arc_quest.questmarker.api.ResolvedMarkTarget;
+import org.arcadia.arc_quest.questmarker.internal.MarkerPresentationResolver;
+import org.arcadia.arc_quest.questmarker.internal.model.MarkerPresentation;
 import org.slf4j.Logger;
 
-import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 
 public final class QuestMarkerTargetService {
@@ -44,19 +44,18 @@ public final class QuestMarkerTargetService {
             if (dx * dx + dy * dy + dz * dz > (double) spec.maxDistance() * spec.maxDistance()) return null;
         }
 
-        Map<String, String> styleHints = spec.styleHints();
-        String label = styleHints.getOrDefault("label", spec.id());
+        MarkerPresentation presentation = MarkerPresentationResolver.resolve(spec);
         QuestMarkerData.Builder builder = new QuestMarkerData.Builder(
-                markerId, target.x(), target.y(), target.z(), label)
+                markerId, target.x(), target.y(), target.z(), presentation.label())
                 .dimension(target.dimension())
                 .bindQuest(ownerId)
-                .type(spec.markerType())
+                .type(presentation.type())
                 .state(QuestMarkerState.ACTIVE)
-                .color(parseColor(styleHints.get("color"), 0xFFFFFFFF))
-                .showDistance(parseBoolean(styleHints.get("showDistance"), true))
-                .allowOffscreenArrow(parseBoolean(styleHints.get("allowOffscreenArrow"), true))
-                .priority(spec.priority())
-                .styleHints(styleHints)
+                .color(presentation.colorArgb())
+                .showDistance(presentation.showDistance())
+                .allowOffscreenArrow(presentation.allowOffscreenArrow())
+                .priority(presentation.priority())
+                .styleHints(presentation.extensionHints())
                 .persistent(false);
 
         if (phaseId != null && !phaseId.isBlank()) builder.bindPhase(phaseId);
@@ -135,21 +134,4 @@ public final class QuestMarkerTargetService {
                 entity.getId(), uuid.toString(), guid, attachPoint);
     }
 
-    private static boolean parseBoolean(String value, boolean fallback) {
-        return value == null ? fallback : Boolean.parseBoolean(value);
-    }
-
-    private static int parseColor(String value, int fallback) {
-        if (value == null || value.isBlank()) return fallback;
-        try {
-            String normalized = value.trim().toLowerCase(Locale.ROOT);
-            if (normalized.startsWith("#")) normalized = normalized.substring(1);
-            if (normalized.startsWith("0x")) normalized = normalized.substring(2);
-            long parsed = Long.parseUnsignedLong(normalized, 16);
-            if (normalized.length() <= 6) parsed |= 0xFF000000L;
-            return (int) parsed;
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
-    }
 }
