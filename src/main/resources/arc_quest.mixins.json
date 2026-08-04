@@ -2,6 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "org.arcadia.arc_quest.mixin",
+  "plugin": "org.arcadia.arc_quest.mixin.ArcQuestMixinPlugin",
   "compatibilityLevel": "JAVA_21",
   "refmap": "arc_quest.refmap.json",
   "mixins": [
@@ -9,6 +10,7 @@
   ],
   "client": [
     "client.MixinGameRendererAccessor",
+    "client.compat.MixinXaeroWaypointRenderProvider",
     "client.ponder.MixinPonderScene",
     "client.ponder.MixinPonderUIStubAccessor"
   ],
