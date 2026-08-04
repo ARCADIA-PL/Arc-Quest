@@ -70,6 +70,10 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
     maven { name "create maven"; url "https://maven.createmod.net" }
+    maven {
+        url "https://chocolateminecraft.com/maven"
+        name "Xaero's Maven"
+    }
     maven { url "https://cursemaven.com"; content { includeGroup "curse.maven" } }
     exclusiveContent {
         forRepository { maven { name = "Modrinth"; url = "https://api.modrinth.com/maven" } }
@@ -89,6 +93,8 @@ dependencies {
     implementation fg.deobf("curse.maven:embeddium-908741:5556138")
     implementation fg.deobf("curse.maven:chloride-931925:6615986")
     implementation fg.deobf("curse.maven:oculus-581495:5299671")
+    compileOnly "xaero.minimap:xaerominimap-forge-1.20.1:26.4.2:dev"
+    runtimeOnly "xaero.minimap:xaerominimap-forge-1.20.1:26.4.2:dev"
 
     runtimeOnly fg.deobf("curse.maven:selene-499980:5478857")
     runtimeOnly fg.deobf("curse.maven:mmmmmmmmmmmm-225738:5319203")

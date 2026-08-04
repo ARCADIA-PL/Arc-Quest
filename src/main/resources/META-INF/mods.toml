@@ -61,3 +61,10 @@ mandatory = true
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "xaerominimap"
+mandatory = false
+versionRange = "[26.4.2,27)"
+ordering = "NONE"
+side = "CLIENT"
