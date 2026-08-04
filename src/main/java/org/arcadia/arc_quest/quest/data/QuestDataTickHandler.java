@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.core.CoreProcessors;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.api.QuestTimeLimitType;
+import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
@@ -21,6 +22,7 @@ import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
@@ -49,7 +51,8 @@ public final class QuestDataTickHandler {
         long nowRealMs = now.realTime();
         long nowDayTime = now.dayTime();
 
-        for (QuestRuntimeData questData : List.copyOf(data.getAllActiveQuests().values())) {
+        List<String> timedOutQuestIds = new ArrayList<>();
+        for (QuestRuntimeData questData : data.getAllActiveQuests().values()) {
             if (questData.getState() != QuestState.ACTIVE) continue;
 
             QuestDefinition definition = QuestRegistry.get(ResourceLocation.parse(questData.getQuestId()));
@@ -68,12 +71,10 @@ public final class QuestDataTickHandler {
             }
 
             if (timeout) {
-                questData.setState(QuestState.FAILED);
-                data.markFailed(questData.getQuestId());
-                data.removeActiveQuest(questData.getQuestId());
-                QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questData.getQuestId());
+                timedOutQuestIds.add(questData.getQuestId());
             }
         }
+        timedOutQuestIds.forEach(questId -> QuestProgressHandler.failQuest(player, questId));
     }
 
     private static void refreshDynamicMarkers(ServerPlayer player) {
