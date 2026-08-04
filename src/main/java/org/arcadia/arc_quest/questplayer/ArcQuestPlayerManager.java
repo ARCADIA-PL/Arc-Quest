@@ -17,7 +17,7 @@ public final class ArcQuestPlayerManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ConcurrentHashMap<UUID, ArcQuestPlayer> MAP = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<UUID, Long> PERSISTENCE_REVISIONS = new ConcurrentHashMap<>();
-    private static ArcQuestPlayerRepository repository = SavedDataArcQuestPlayerRepository.INSTANCE;
+    private static ArcQuestPlayerRepository repository = CapabilityArcQuestPlayerRepository.INSTANCE;
 
     private ArcQuestPlayerManager() {
     }
@@ -74,13 +74,18 @@ public final class ArcQuestPlayerManager {
     }
 
     public static void clone(ServerPlayer from, ServerPlayer to) {
-        ArcQuestPlayer old = MAP.remove(from.getUUID());
-        if (old != null) {
-            ArcQuestPlayer clone = new ArcQuestPlayer(to.getUUID());
-            clone.deserializeNBT(old.serializeNBT());
-            MAP.put(to.getUUID(), clone);
-            persist(to, clone, true);
+        ArcQuestPlayer old = MAP.get(from.getUUID());
+        if (old == null) {
+            old = new ArcQuestPlayer(from.getUUID());
+            CompoundTag saved = repository.loadSnapshot(from, from.getUUID());
+            if (!saved.isEmpty()) old.deserializeNBT(saved);
         }
+
+        ArcQuestPlayer clone = new ArcQuestPlayer(to.getUUID());
+        clone.deserializeNBT(old.serializeNBT());
+        MAP.remove(from.getUUID());
+        MAP.put(to.getUUID(), clone);
+        persist(to, clone, true);
     }
 
     public static void flushCheckpoints() {
