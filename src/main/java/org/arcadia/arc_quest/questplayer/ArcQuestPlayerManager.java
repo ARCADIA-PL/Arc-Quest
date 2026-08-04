@@ -17,7 +17,7 @@ public final class ArcQuestPlayerManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final ConcurrentHashMap<UUID, ArcQuestPlayer> MAP = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<UUID, Long> PERSISTENCE_REVISIONS = new ConcurrentHashMap<>();
-    private static ArcQuestPlayerRepository repository = SavedDataArcQuestPlayerRepository.INSTANCE;
+    private static ArcQuestPlayerRepository repository = AttachmentArcQuestPlayerRepository.INSTANCE;
 
     private ArcQuestPlayerManager() {
     }
