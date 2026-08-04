@@ -41,20 +41,12 @@ final class QuestHistoryGraphBuilder {
         List<GraphNodeLayout> layouts = PhaseGraphLayoutEngine.layout(phaseIds, phaseId -> {
             PhaseDefinition phase = definition.getPhase(phaseId);
             if (phase == null) return List.of();
-            return phase.getTransitions().stream().map(PhaseTransition::getTargetPhaseId).toList();
+            return phase.getTransitions().stream().map(PhaseTransition::getTargetPhaseIds).flatMap(List::stream).toList();
         }, horizontalSpacing, verticalSpacing);
         for (GraphNodeLayout layout : layouts) {
             String phaseId = layout.id();
             PhaseDefinition phase = definition.getPhase(phaseId);
             if (phase == null) continue;
-<<<<<<< HEAD
-            int sourceDepth = depths.getOrDefault(phaseId, 0);
-            for (PhaseTransition transition : phase.getTransitions()) {
-                for (String targetId : transition.getTargetPhaseIds()) {
-                    depths.put(targetId, Math.max(depths.getOrDefault(targetId, 0), sourceDepth + 1));
-                }
-            }
-=======
             boolean isCompleted = completed.contains(phaseId);
             boolean isActive = !isCompleted && activePhases.contains(phaseId);
             nodes.add(new QuestHistoryNodeData(
@@ -69,7 +61,6 @@ final class QuestHistoryGraphBuilder {
                     phase,
                     resolvePhaseImage(phase)
             ));
->>>>>>> 6ef14700 (提取任务阶段拓扑与视口组件)
         }
         return nodes;
     }
