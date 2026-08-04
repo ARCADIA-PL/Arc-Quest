@@ -98,10 +98,9 @@ public final class ArcQuestPlayerLifecycleHandler {
         DialogueSessionManager.INSTANCE.onPlayerLogout(sp);
         ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
         if (data != null) {
-            ArcQuestPlayerManager.persistSnapshot(sp, data);
             writeRecoverySnapshot(sp, data, ArcQuestSnapshotReason.PLAYER_LOGOUT);
         }
-        ArcQuestPlayerManager.unload(sp.getUUID());
+        ArcQuestPlayerManager.persistAndUnload(sp);
         RequestIdempotencyStore.INSTANCE.clearPlayer(sp.getUUID());
         C2SRequestTradePacket.clearPlayer(sp.getUUID());
         C2SRequestQuestResyncPacket.clearPlayer(sp.getUUID());
@@ -119,8 +118,7 @@ public final class ArcQuestPlayerLifecycleHandler {
             DialogueSessionManager.INSTANCE.onPlayerLogout(player);
             ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
             if (data != null) {
-                ArcQuestPlayerManager.persistSnapshot(player, data);
-                ArcQuestPlayerManager.unload(player.getUUID());
+                ArcQuestPlayerManager.persistAndUnload(player);
                 RequestIdempotencyStore.INSTANCE.clearPlayer(player.getUUID());
                 C2SRequestTradePacket.clearPlayer(player.getUUID());
                 C2SRequestQuestResyncPacket.clearPlayer(player.getUUID());
@@ -156,6 +154,10 @@ public final class ArcQuestPlayerLifecycleHandler {
 
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
+        for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
+            ArcQuestPlayerManager.persistAndUnload(player);
+        }
+        ArcQuestPlayerManager.flushCheckpoints();
         DialogueSessionManager.INSTANCE.shutdown();
         DialogueNpcStateManager.clearAll();
         RequestIdempotencyStore.INSTANCE.clear();
