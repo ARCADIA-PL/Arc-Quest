@@ -50,6 +50,13 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuiTranslations() {
+        add("arc_quest.category.archon", "Archon");
+        add("arc_quest.category.companion", "Companion");
+        add("arc_quest.category.adventure", "Adventure");
+        add("arc_quest.category.daily", "Daily");
+        add("arc_quest.category.event", "Event");
+        add("arc_quest.quest_group.epic_mainline", "Epic Mainline");
+
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] Quest Panel");
         add("arc_quest.gui.tracker.new_quest", "New Quest");
         add("arc_quest.gui.tracker.new_guide", "New tutorial available. Press [%s] to view");

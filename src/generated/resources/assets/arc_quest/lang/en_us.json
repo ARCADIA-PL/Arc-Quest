@@ -1,4 +1,9 @@
 {
+  "arc_quest.category.adventure": "Adventure",
+  "arc_quest.category.archon": "Archon",
+  "arc_quest.category.companion": "Companion",
+  "arc_quest.category.daily": "Daily",
+  "arc_quest.category.event": "Event",
   "arc_quest.choice.epic_branch_choice.gather_info.0": "§cI shall storm the Blazing Fortress!",
   "arc_quest.choice.epic_branch_choice.gather_info.1": "§bI wish to explore the Ocean Ruins.",
   "arc_quest.choice.epic_branch_choice.gather_info.2": "§6§l[Hidden] I will conquer both!",
@@ -318,6 +323,7 @@
   "arc_quest.quest_action.confirm_phase_advance": "Confirm phase completion",
   "arc_quest.quest_action.open_chapter_shop": "Open chapter shop",
   "arc_quest.quest_action_result.template": "[Quest] %1$s failed: %2$s (%3$s)",
+  "arc_quest.quest_group.epic_mainline": "Epic Mainline",
   "arc_quest.quest_reject.abandon_not_allowed": "This quest cannot be abandoned",
   "arc_quest.quest_reject.already_active": "Quest is already active",
   "arc_quest.quest_reject.already_completed_not_repeatable": "Quest is already completed and not repeatable",

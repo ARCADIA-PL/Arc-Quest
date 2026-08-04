@@ -50,6 +50,13 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuiTranslations() {
+        add("arc_quest.category.archon", "主线");
+        add("arc_quest.category.companion", "同伴");
+        add("arc_quest.category.adventure", "冒险");
+        add("arc_quest.category.daily", "日常");
+        add("arc_quest.category.event", "活动");
+        add("arc_quest.quest_group.epic_mainline", "史诗主线");
+
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] 任务面板");
         add("arc_quest.gui.tracker.new_quest", "新任务");
         add("arc_quest.gui.tracker.new_guide", "有新教程，按[%s]查看");
