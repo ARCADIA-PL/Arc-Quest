@@ -1,11 +1,14 @@
 package org.arcadia.arc_quest.client.hud.questmarker;
 
+import net.neoforged.neoforge.common.NeoForge;
+import org.arcadia.arc_quest.client.events.QuestMarkerClientSnapshotEvent;
 import org.arcadia.arc_quest.core.state.VersionedStreamGate;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -23,18 +26,31 @@ public final class QuestMarkerManager {
     private QuestMarkerManager() {
     }
 
-    public synchronized void add(QuestMarkerData data) {
-        markers.put(data.getId(), data);
+    public void add(QuestMarkerData data) {
+        Collection<QuestMarkerData> snapshot;
+        synchronized (this) {
+            markers.put(data.getId(), data);
+            snapshot = snapshot();
+        }
+        publish(snapshot);
     }
 
-    public synchronized void remove(String id) {
-        markers.remove(id);
+    public void remove(String id) {
+        Collection<QuestMarkerData> snapshot;
+        synchronized (this) {
+            markers.remove(id);
+            snapshot = snapshot();
+        }
+        publish(snapshot);
     }
 
-    public synchronized void clear() {
-        markers.clear();
-        revisionGate.clear();
-        MarkerHudRenderer.INSTANCE.clearVisualState();
+    public void clear() {
+        synchronized (this) {
+            markers.clear();
+            revisionGate.clear();
+            MarkerHudRenderer.INSTANCE.clearVisualState();
+        }
+        publish(List.of());
     }
 
     public synchronized QuestMarkerData get(String id) {
@@ -57,23 +73,41 @@ public final class QuestMarkerManager {
         return revisionGate.revision();
     }
 
-    public synchronized boolean applySnapshot(long epoch, long revision, Collection<QuestMarkerData> snapshot) {
-        VersionedStreamGate.Decision decision = revisionGate.applySnapshot(epoch, revision, () -> {
-            markers.clear();
-            for (QuestMarkerData data : snapshot) {
-                markers.put(data.getId(), data);
-            }
-        });
-        if (decision != VersionedStreamGate.Decision.ACCEPT) return false;
+    public boolean applySnapshot(long epoch, long revision, Collection<QuestMarkerData> incomingSnapshot) {
+        Collection<QuestMarkerData> acceptedSnapshot;
+        synchronized (this) {
+            VersionedStreamGate.Decision decision = revisionGate.applySnapshot(epoch, revision, () -> {
+                markers.clear();
+                for (QuestMarkerData data : incomingSnapshot) {
+                    markers.put(data.getId(), data);
+                }
+            });
+            if (decision != VersionedStreamGate.Decision.ACCEPT) return false;
+            acceptedSnapshot = snapshot();
+        }
+        publish(acceptedSnapshot);
         return true;
     }
 
-    public synchronized boolean applyDelta(long epoch, long revision, Consumer<Map<String, QuestMarkerData>> mutator) {
-        long baseRevision = revisionGate.revision();
-        VersionedStreamGate.Decision decision = revisionGate.applyDelta(
-                epoch, baseRevision, revision, () -> mutator.accept(markers));
-        if (decision == VersionedStreamGate.Decision.GAP) ArcQuestNetwork.requestMarkerResync();
-        if (decision != VersionedStreamGate.Decision.ACCEPT) return false;
+    public boolean applyDelta(long epoch, long revision, Consumer<Map<String, QuestMarkerData>> mutator) {
+        Collection<QuestMarkerData> acceptedSnapshot;
+        synchronized (this) {
+            long baseRevision = revisionGate.revision();
+            VersionedStreamGate.Decision decision = revisionGate.applyDelta(
+                    epoch, baseRevision, revision, () -> mutator.accept(markers));
+            if (decision == VersionedStreamGate.Decision.GAP) ArcQuestNetwork.requestMarkerResync();
+            if (decision != VersionedStreamGate.Decision.ACCEPT) return false;
+            acceptedSnapshot = snapshot();
+        }
+        publish(acceptedSnapshot);
         return true;
+    }
+
+    private Collection<QuestMarkerData> snapshot() {
+        return List.copyOf(markers.values());
+    }
+
+    private static void publish(Collection<QuestMarkerData> snapshot) {
+        NeoForge.EVENT_BUS.post(new QuestMarkerClientSnapshotEvent(snapshot));
     }
 }

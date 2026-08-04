@@ -12,6 +12,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.client.compat.marker.QuestMarkerExternalSync;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
@@ -84,7 +85,18 @@ public final class ClientEventHandler {
     }
 
     @SubscribeEvent
+    public static void onLoggedIn(ClientPlayerNetworkEvent.LoggingIn event) {
+        QuestMarkerExternalSync.replaceAll(QuestMarkerManager.INSTANCE.all());
+    }
+
+    @SubscribeEvent
+    public static void onQuestMarkerSnapshot(QuestMarkerClientSnapshotEvent event) {
+        QuestMarkerExternalSync.replaceAll(event.markers());
+    }
+
+    @SubscribeEvent
     public static void onLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        QuestMarkerExternalSync.clear();
         ClientGuideCache.INSTANCE.clear();
         ClientQuestCache.INSTANCE.clear();
         ClientTradeCache.INSTANCE.clear();
@@ -101,6 +113,7 @@ public final class ClientEventHandler {
     @SubscribeEvent
     public static void onClientWorldUnload(LevelEvent.Unload event) {
         if (!event.getLevel().isClientSide()) return;
+        QuestMarkerExternalSync.clear();
         ClientGuideCache.INSTANCE.clear();
         ClientQuestCache.INSTANCE.clear();
         ClientTradeCache.INSTANCE.clear();
