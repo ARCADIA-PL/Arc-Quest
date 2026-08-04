@@ -11,6 +11,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.client.compat.marker.QuestMarkerExternalSync;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
@@ -73,6 +74,16 @@ public final class ClientEventHandler {
 
         QuestToastManager.tick();
         QuestIntelPanel.tick();
+    }
+
+    @SubscribeEvent
+    public static void onLoggedIn(ClientPlayerNetworkEvent.LoggingIn event) {
+        QuestMarkerExternalSync.replaceAll(QuestMarkerManager.INSTANCE.all());
+    }
+
+    @SubscribeEvent
+    public static void onQuestMarkerSnapshot(QuestMarkerClientSnapshotEvent event) {
+        QuestMarkerExternalSync.replaceAll(event.markers());
     }
 
     @SubscribeEvent
