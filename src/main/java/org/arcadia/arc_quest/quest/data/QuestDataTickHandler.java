@@ -70,7 +70,7 @@ public final class QuestDataTickHandler {
 
         checkQuestTimeouts(player);
         refreshDynamicMarkers(player);
-        syncIfChanged(player);
+        persistAndSyncIfChanged(player);
     }
 
     private static void checkQuestTimeouts(ServerPlayer player) {
@@ -322,16 +322,6 @@ public final class QuestDataTickHandler {
             return true;
         }
         return false;
-    }
-
-    /**
-     * tick 涓粎鍋氱綉缁滃悓姝ワ紝涓嶅仛鎸佷箙鍖栵紙鎸佷箙鍖栦氦鐢?worldSave / playerLogout锛夈€?
-     */
-    private static void syncIfChanged(ServerPlayer player) {
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        if (data != null) {
-            QuestSyncCoordinator.syncIfChanged(player, data);
-        }
     }
 
     /**
