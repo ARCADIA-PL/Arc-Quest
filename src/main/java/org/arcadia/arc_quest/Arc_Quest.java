@@ -38,6 +38,7 @@ import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questplayer.attachment.ArcQuestAttachments;
 import org.arcadia.arc_quest.trade.registry.TradeRegistry;
 import org.slf4j.Logger;
 
@@ -47,6 +48,7 @@ public class Arc_Quest {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public Arc_Quest(IEventBus modEventBus, ModContainer modContainer) {
+        ArcQuestAttachments.register(modEventBus);
         modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT, org.arcadia.arc_quest.config.ArcQuestConfig.SPEC);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(ArcQuestNetwork::register);
