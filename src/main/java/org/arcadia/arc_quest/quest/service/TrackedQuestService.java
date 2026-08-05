@@ -40,11 +40,6 @@ public final class TrackedQuestService {
         return setTrackedQuest(player, candidateQuestId);
     }
 
-    public static boolean hasValidTrackedQuest(ServerPlayer player) {
-        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
-        return data != null && isTrackable(data, normalize(data.getTrackedQuestId()));
-    }
-
     public static boolean setTrackedQuest(ServerPlayer player, @Nullable String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         String normalized = normalize(questId);
