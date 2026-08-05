@@ -16,6 +16,7 @@ import org.arcadia.arc_quest.quest.api.QuestTimeLimitType;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.service.TrackedQuestService;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
@@ -35,6 +36,7 @@ public final class QuestDataTickHandler {
         ServerPlayer player = (ServerPlayer) event.player;
         if (player.tickCount % 20 != 0) return;
 
+        reconcileTrackedQuest(player);
         checkQuestTimeouts(player);
         expireTriggeredMarkers(player);
         refreshDynamicMarkers(player);
@@ -73,6 +75,12 @@ public final class QuestDataTickHandler {
                 data.removeActiveQuest(questData.getQuestId());
                 QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questData.getQuestId());
             }
+        }
+    }
+
+    private static void reconcileTrackedQuest(ServerPlayer player) {
+        if (!TrackedQuestService.hasValidTrackedQuest(player)) {
+            TrackedQuestService.ensureTrackedQuest(player, null);
         }
     }
 

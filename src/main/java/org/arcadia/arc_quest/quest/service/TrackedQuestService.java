@@ -4,6 +4,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.quest.TrackedQuestChangedEvent;
+import org.arcadia.arc_quest.quest.api.QuestState;
+import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
@@ -18,18 +20,19 @@ public final class TrackedQuestService {
 
     public static boolean trackIfAbsent(ServerPlayer player, String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
-        if (data.getTrackedQuestId() != null) return false;
-        return setTrackedQuest(player, questId);
+        if (isTrackable(data, data.getTrackedQuestId())) return false;
+        return ensureTrackedQuest(player, questId);
     }
 
     public static boolean ensureTrackedQuest(ServerPlayer player, @Nullable String preferredQuestId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         String currentQuestId = normalize(data.getTrackedQuestId());
-        if (currentQuestId != null && data.isQuestActive(currentQuestId)) return false;
+        if (isTrackable(data, currentQuestId)) return false;
 
         String candidateQuestId = normalize(preferredQuestId);
-        if (candidateQuestId == null || !data.isQuestActive(candidateQuestId)) {
+        if (candidateQuestId == null || !isTrackable(data, candidateQuestId)) {
             candidateQuestId = data.getAllActiveQuests().keySet().stream()
+                    .filter(id -> isTrackable(data, id))
                     .min(Comparator.<String>comparingLong(id -> data.getActiveQuest(id).getAcceptedAtTick())
                             .thenComparing(Comparator.naturalOrder()))
                     .orElse(null);
@@ -37,11 +40,16 @@ public final class TrackedQuestService {
         return setTrackedQuest(player, candidateQuestId);
     }
 
+    public static boolean hasValidTrackedQuest(ServerPlayer player) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.get(player);
+        return data != null && isTrackable(data, normalize(data.getTrackedQuestId()));
+    }
+
     public static boolean setTrackedQuest(ServerPlayer player, @Nullable String questId) {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         String normalized = normalize(questId);
         if (normalized != null) {
-            if (ResourceLocation.tryParse(normalized) == null || !data.isQuestActive(normalized)) return false;
+            if (ResourceLocation.tryParse(normalized) == null || !isTrackable(data, normalized)) return false;
         }
 
         String oldQuestId = data.getTrackedQuestId();
@@ -51,6 +59,12 @@ public final class TrackedQuestService {
                 player.serverLevel(), player, oldQuestId, normalized));
         QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
         return true;
+    }
+
+    private static boolean isTrackable(ArcQuestPlayer data, @Nullable String questId) {
+        if (questId == null) return false;
+        QuestRuntimeData runtime = data.getActiveQuest(questId);
+        return runtime != null && runtime.getState() == QuestState.ACTIVE;
     }
 
     @Nullable
