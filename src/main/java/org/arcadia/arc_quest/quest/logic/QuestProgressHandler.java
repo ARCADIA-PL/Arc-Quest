@@ -616,12 +616,12 @@ public final class QuestProgressHandler {
 
         qdata.setState(QuestState.FAILED);
         data.markFailed(questId);
-        TrackedQuestService.ensureTrackedQuest(player, null);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(data, questId);
         QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questId);
 
         syncQuestStateAndPush(player, qdata);
+        TrackedQuestService.ensureTrackedQuest(player, null);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -652,12 +652,12 @@ public final class QuestProgressHandler {
         }
 
         data.markFailed(questId);
-        TrackedQuestService.ensureTrackedQuest(player, null);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(data, questId);
         QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questId);
 
         syncFullDataAndPush(player, data);
+        TrackedQuestService.ensureTrackedQuest(player, null);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
@@ -719,7 +719,6 @@ public final class QuestProgressHandler {
 
         qdata.setState(QuestState.COMPLETED);
         data.markCompleted(questId);
-        TrackedQuestService.ensureTrackedQuest(player, null);
 
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(data, questId);
@@ -729,6 +728,7 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName(), logPrefix, questId);
 
         syncQuestStateAndPush(player, qdata);
+        TrackedQuestService.ensureTrackedQuest(player, null);
         syncFlagsVarsAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
         MinecraftForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
@@ -990,7 +990,6 @@ public final class QuestProgressHandler {
                 acceptedTime.dayTime()
         );
         data.addActiveQuest(runtime);
-        TrackedQuestService.ensureTrackedQuest(player, questId);
 
         boolean flagsChanged = false;
         for (String flag : definition.getFlagsToSetOnAccept()) {
@@ -1015,6 +1014,7 @@ public final class QuestProgressHandler {
         flagsChanged = flagsChanged || activation.flagsChanged;
 
         syncQuestStateAndPush(player, runtime);
+        TrackedQuestService.ensureTrackedQuest(player, questId);
         if (flagsChanged) syncFlagsVarsAndPush(player, data);
         return QuestRejectCodeDictionary.Code.OK;
     }

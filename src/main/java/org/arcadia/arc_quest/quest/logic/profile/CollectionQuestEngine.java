@@ -63,7 +63,6 @@ public final class CollectionQuestEngine {
         initializeQuest(player, data, def, runtime, collectionData);
         runtime.setCollectionData(collectionData);
         data.addActiveQuest(runtime);
-        TrackedQuestService.ensureTrackedQuest(player, questId);
         QuestMarkerTriggerService.triggerQuest(
                 player, data, runtime, def, MarkTrigger.QUEST_ACCEPTED);
         for (String activePhaseId : runtime.getActivePhaseIds()) {
@@ -82,6 +81,7 @@ public final class CollectionQuestEngine {
         }
 
         QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
+        TrackedQuestService.ensureTrackedQuest(player, questId);
         if (flagsChanged) {
             QuestSyncCoordinator.syncFlagsVarsAndPush(player, data);
         }
@@ -397,9 +397,9 @@ public final class CollectionQuestEngine {
 
         runtime.setState(QuestState.COMPLETED);
         data.markCompleted(def.getId().toString());
-        TrackedQuestService.ensureTrackedQuest(player, null);
         evaluateQuestRewardUnlocks(player, data, def, runtime);
         QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
+        TrackedQuestService.ensureTrackedQuest(player, null);
         return true;
     }
 
