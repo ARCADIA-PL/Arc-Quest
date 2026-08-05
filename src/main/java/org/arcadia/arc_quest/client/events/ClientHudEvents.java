@@ -42,9 +42,18 @@ public class ClientHudEvents {
                     event.getPartialTick());
         }
 
+<<<<<<< HEAD
         GuidePopupOverlay.INSTANCE.render(null, event.getGuiGraphics(),
                 event.getWindow().getGuiScaledWidth(),
                 event.getWindow().getGuiScaledHeight(), event.getPartialTick());
+=======
+        if (GuideSplashRenderer.isActive()) {
+            GuideSplashRenderer.render(event.getGuiGraphics(), w);
+        }
+
+        GuidePopupOverlay.INSTANCE.render(null, event.getGuiGraphics(), w, h, partialTick);
+
+>>>>>>> 8beb7831 (修复指南解锁提示跨窗口渲染)
     }
 
     @SubscribeEvent
