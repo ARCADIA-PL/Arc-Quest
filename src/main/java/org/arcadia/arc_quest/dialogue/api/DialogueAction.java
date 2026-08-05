@@ -20,6 +20,7 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.service.TrackedQuestService;
 import org.arcadia.arc_quest.quest.tracking.QuestEventManager;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -69,6 +70,7 @@ public sealed interface DialogueAction {
             if (qdata != null) {
                 qdata.setState(QuestState.COMPLETED);
                 data.markCompleted(questId);
+                TrackedQuestService.ensureTrackedQuest(player, null);
             }
         }
     }

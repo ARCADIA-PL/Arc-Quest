@@ -9,6 +9,8 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
+
 public final class TrackedQuestService {
 
     private TrackedQuestService() {
@@ -18,6 +20,21 @@ public final class TrackedQuestService {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         if (data.getTrackedQuestId() != null) return false;
         return setTrackedQuest(player, questId);
+    }
+
+    public static boolean ensureTrackedQuest(ServerPlayer player, @Nullable String preferredQuestId) {
+        ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+        String currentQuestId = normalize(data.getTrackedQuestId());
+        if (currentQuestId != null && data.isQuestActive(currentQuestId)) return false;
+
+        String candidateQuestId = normalize(preferredQuestId);
+        if (candidateQuestId == null || !data.isQuestActive(candidateQuestId)) {
+            candidateQuestId = data.getAllActiveQuests().keySet().stream()
+                    .min(Comparator.<String>comparingLong(id -> data.getActiveQuest(id).getAcceptedAtTick())
+                            .thenComparing(Comparator.naturalOrder()))
+                    .orElse(null);
+        }
+        return setTrackedQuest(player, candidateQuestId);
     }
 
     public static boolean setTrackedQuest(ServerPlayer player, @Nullable String questId) {

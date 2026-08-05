@@ -617,6 +617,7 @@ public final class QuestProgressHandler {
 
         qdata.setState(QuestState.FAILED);
         data.markFailed(questId);
+        TrackedQuestService.ensureTrackedQuest(player, null);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(data, questId);
         QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questId);
@@ -650,6 +651,7 @@ public final class QuestProgressHandler {
         qdata.setState(QuestState.FAILED);
 
         data.markFailed(questId);
+        TrackedQuestService.ensureTrackedQuest(player, null);
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(data, questId);
         QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questId);
@@ -716,6 +718,7 @@ public final class QuestProgressHandler {
 
         qdata.setState(QuestState.COMPLETED);
         data.markCompleted(questId);
+        TrackedQuestService.ensureTrackedQuest(player, null);
 
         ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
         QuestMarkerService.clearQuestMarkers(data, questId);
@@ -785,6 +788,7 @@ public final class QuestProgressHandler {
             QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
         }
 
+        TrackedQuestService.ensureTrackedQuest(player, null);
         NeoForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
     }
 
@@ -984,7 +988,7 @@ public final class QuestProgressHandler {
                 acceptedTime.dayTime()
         );
         data.addActiveQuest(runtime);
-        TrackedQuestService.trackIfAbsent(player, questId);
+        TrackedQuestService.ensureTrackedQuest(player, questId);
 
         boolean flagsChanged = false;
         for (String flag : definition.getFlagsToSetOnAccept()) {
