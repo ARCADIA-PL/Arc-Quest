@@ -43,6 +43,10 @@ public class ClientHudEvents {
             GachaResultRenderer.INSTANCE.render(event.getGuiGraphics(), w, h, partialTick);
         }
 
+        if (GuideSplashRenderer.isActive()) {
+            GuideSplashRenderer.render(event.getGuiGraphics(), w);
+        }
+
         GuidePopupOverlay.INSTANCE.render(null, event.getGuiGraphics(), w, h, partialTick);
 
     }
