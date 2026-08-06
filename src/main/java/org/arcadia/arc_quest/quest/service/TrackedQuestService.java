@@ -11,8 +11,6 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
-
 public final class TrackedQuestService {
 
     private TrackedQuestService() {
@@ -33,8 +31,10 @@ public final class TrackedQuestService {
         if (candidateQuestId == null || !isTrackable(data, candidateQuestId)) {
             candidateQuestId = data.getAllActiveQuests().keySet().stream()
                     .filter(id -> isTrackable(data, id))
-                    .min(Comparator.<String>comparingLong(id -> data.getActiveQuest(id).getAcceptedAtTick())
-                            .thenComparing(Comparator.naturalOrder()))
+                    .map(id -> QuestTrackingPriority.resolve(
+                            id, data.getActiveQuest(id).getAcceptedAtTick()))
+                    .min(QuestTrackingPriority::compareTo)
+                    .map(QuestTrackingPriority::questId)
                     .orElse(null);
         }
         return setTrackedQuest(player, candidateQuestId);
