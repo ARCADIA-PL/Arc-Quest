@@ -1,7 +1,7 @@
 export function createMarkerSpec(index = 0) {
     return {
         id: `marker_${index + 1}`,
-        target: {type: 'pos', dimension: '', x: 0, y: 64, z: 0, entityType: '', npcId: '', searchRadius: 32, structureTag: '', resolverId: '', args: {}},
+        target: {type: 'pos', dimension: '', x: 0, y: 64, z: 0, entityType: '', npcId: '', searchRadius: 32, structureTag: '', useSurfaceY: false, resolverId: '', args: {}},
         activateWhen: null,
         deactivateWhen: null,
         markerType: 'QUEST_OBJECTIVE',
@@ -22,7 +22,10 @@ export function normalizeMarkers(markers) {
         const defaults = createMarkerSpec(index);
         marker.id ||= defaults.id;
         marker.target ||= {...defaults.target};
-        Object.entries(defaults.target).forEach(([key, value]) => marker.target[key] ??= value);
+        Object.entries(defaults.target).forEach(([key, value]) => {
+            if (key === 'y' && marker.target.type === 'structure_nearest') return;
+            marker.target[key] ??= value;
+        });
         marker.markerType ||= defaults.markerType;
         marker.priority ??= 0;
         marker.maxDistance ??= 256;
@@ -52,6 +55,17 @@ export function setMarkerField(markers, pathParts, value, inputType) {
         const targetField = pathParts[2];
         marker.target ||= createMarkerSpec().target;
         if (targetField === 'args') marker.target.args = parseJson(value, {});
+        else if (targetField === 'type') {
+            marker.target.type = value;
+            if (value === 'structure_nearest') {
+                marker.target.y = null;
+                marker.target.useSurfaceY = false;
+            } else if (['pos', 'block', 'dimension_pos'].includes(value) && marker.target.y == null) {
+                marker.target.y = 64;
+            }
+        }
+        else if (targetField === 'useSurfaceY') marker.target.useSurfaceY = value === 'true';
+        else if (targetField === 'y' && inputType === 'number' && value === '') marker.target.y = null;
         else marker.target[targetField] = inputType === 'number' ? Number(value || 0) : value;
         return true;
     }

@@ -34,6 +34,7 @@ import org.arcadia.arc_quest.questmarker.api.MarkableObject;
 import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
+import org.arcadia.arc_quest.questmarker.runtime.StructureMarkerPositionResolver;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -649,6 +650,7 @@ public final class DialogueSessionManager {
         }
         if (target instanceof MarkableObject.StructureNearest byStructure) {
             BlockPos pos = level.findNearestMapStructure(byStructure.structureTag(), player.blockPosition(), byStructure.searchRadius(), false);
+            pos = StructureMarkerPositionResolver.adjustY(level, pos, byStructure);
             if (pos == null) return null;
             return new QuestMarkerData.Builder(markerId, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, spec.id())
                     .dimension(level.dimension().location().toString())

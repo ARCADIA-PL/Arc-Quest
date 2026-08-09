@@ -154,7 +154,13 @@ public final class QuestSpecValidator {
             case "dimension_pos" -> { resourceId(r, target.dimension, p + ".dimension"); markCoordinates(r, target, p); }
             case "entity_type_nearest" -> { resourceId(r, target.entityType, p + ".entityType"); positive(r, target.searchRadius, p + ".searchRadius"); }
             case "entity_npc_id" -> { req(r, target.npcId, p + ".npcId", "NPC id is required"); positive(r, target.searchRadius, p + ".searchRadius"); }
-            case "structure_nearest" -> { resourceId(r, target.structureTag, p + ".structureTag"); positive(r, target.searchRadius, p + ".searchRadius"); }
+            case "structure_nearest" -> {
+                resourceId(r, target.structureTag, p + ".structureTag");
+                positive(r, target.searchRadius, p + ".searchRadius");
+                if (target.y != null && target.useSurfaceY) {
+                    err(r, p, "Structure mark y and useSurfaceY cannot both be set");
+                }
+            }
             case "custom" -> req(r, target.resolverId, p + ".resolverId", "Custom resolver id is required");
             default -> err(r, p + ".type", "Unsupported mark target type: " + target.type);
         }
