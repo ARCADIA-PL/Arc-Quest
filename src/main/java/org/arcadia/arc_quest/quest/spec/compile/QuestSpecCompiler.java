@@ -350,7 +350,11 @@ public final class QuestSpecCompiler {
             case "entity_npc_id" ->
                     new MarkableObject.EntityByNpcId(spec.npcId, requirePositiveInt(spec.searchRadius, "mark searchRadius"));
             case "structure_nearest" ->
-                    new MarkableObject.StructureNearest(TagKey.create(Registries.STRUCTURE, parseId(spec.structureTag)), requirePositiveInt(spec.searchRadius, "mark searchRadius"));
+                    new MarkableObject.StructureNearest(
+                            TagKey.create(Registries.STRUCTURE, parseId(spec.structureTag)),
+                            requirePositiveInt(spec.searchRadius, "mark searchRadius"),
+                            spec.y,
+                            spec.useSurfaceY);
             case "custom" -> new MarkableObject.CustomResolver(spec.resolverId, spec.args);
             default -> throw new QuestCompileException("Unsupported mark target type: " + spec.type);
         };

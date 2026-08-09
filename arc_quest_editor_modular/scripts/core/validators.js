@@ -50,6 +50,7 @@ export function validateMarkers(markers, path, diagnostics, allowedTriggers = nu
         if (target.type === 'entity_type_nearest' && !target.entityType) diagnostics.push({lvl: 'err', path: markerPath, msg: '实体标记缺少 entityType'});
         if (target.type === 'entity_npc_id' && !target.npcId) diagnostics.push({lvl: 'err', path: markerPath, msg: 'NPC 标记缺少 npcId'});
         if (target.type === 'structure_nearest' && !target.structureTag) diagnostics.push({lvl: 'err', path: markerPath, msg: '结构标记缺少 structureTag'});
+        if (target.type === 'structure_nearest' && target.y != null && target.useSurfaceY) diagnostics.push({lvl: 'err', path: markerPath, msg: '结构标记不能同时设置固定 Y 和地表 Y'});
         if (target.type === 'custom' && !target.resolverId) diagnostics.push({lvl: 'err', path: markerPath, msg: 'Custom 标记缺少 resolverId'});
     });
 }

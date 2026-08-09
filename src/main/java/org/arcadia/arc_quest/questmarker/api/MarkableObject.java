@@ -50,14 +50,46 @@ public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObjec
         }
     }
 
-    record StructureNearest(TagKey<Structure> structureTag, int searchRadius) implements MarkableObject {
+    /**
+     * Locates the nearest structure and optionally replaces its located Y coordinate.
+     * The two-argument constructor preserves the original located Y behavior.
+     */
+    record StructureNearest(TagKey<Structure> structureTag, int searchRadius,
+                            Integer y, boolean useSurfaceY) implements MarkableObject {
+        public StructureNearest(TagKey<Structure> structureTag, int searchRadius) {
+            this(structureTag, searchRadius, null, false);
+        }
+
+        public StructureNearest(TagKey<Structure> structureTag, int searchRadius, int y) {
+            this(structureTag, searchRadius, y, false);
+        }
+
+        public StructureNearest(TagKey<Structure> structureTag, int searchRadius, boolean useSurfaceY) {
+            this(structureTag, searchRadius, null, useSurfaceY);
+        }
+
         public StructureNearest {
             Objects.requireNonNull(structureTag, "structureTag");
             if (searchRadius <= 0) throw new IllegalArgumentException("searchRadius must be > 0");
+            if (y != null && useSurfaceY) {
+                throw new IllegalArgumentException("y and useSurfaceY cannot both be set");
+            }
         }
 
         public static StructureNearest of(ResourceLocation structureId, int searchRadius) {
             return new StructureNearest(TagKey.create(Registries.STRUCTURE, structureId), searchRadius);
+        }
+
+        public static StructureNearest of(ResourceLocation structureId, int searchRadius, int y) {
+            return new StructureNearest(TagKey.create(Registries.STRUCTURE, structureId), searchRadius, y);
+        }
+
+        public static StructureNearest of(ResourceLocation structureId, int searchRadius, boolean useSurfaceY) {
+            return new StructureNearest(TagKey.create(Registries.STRUCTURE, structureId), searchRadius, useSurfaceY);
+        }
+
+        public static StructureNearest atSurface(ResourceLocation structureId, int searchRadius) {
+            return of(structureId, searchRadius, true);
         }
     }
 

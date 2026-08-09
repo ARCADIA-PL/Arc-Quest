@@ -30,7 +30,7 @@ function targetFields(marker, base) {
     if (type === 'pos' || type === 'block' || type === 'dimension_pos') return `<div class="row">${type === 'dimension_pos' ? input('Dimension', `${base}.target.dimension`, target.dimension) : ''}${input('X', `${base}.target.x`, target.x, 'number')}${input('Y', `${base}.target.y`, target.y, 'number')}${input('Z', `${base}.target.z`, target.z, 'number')}</div>`;
     if (type === 'entity_type_nearest') return `<div class="row">${input('Entity Type', `${base}.target.entityType`, target.entityType)}${input('Search Radius', `${base}.target.searchRadius`, target.searchRadius, 'number')}</div>`;
     if (type === 'entity_npc_id') return `<div class="row">${input('NPC ID', `${base}.target.npcId`, target.npcId)}${input('Search Radius', `${base}.target.searchRadius`, target.searchRadius, 'number')}</div>`;
-    if (type === 'structure_nearest') return `<div class="row">${input('Structure Tag', `${base}.target.structureTag`, target.structureTag)}${input('Search Radius', `${base}.target.searchRadius`, target.searchRadius, 'number')}</div>`;
+    if (type === 'structure_nearest') return `<div class="row">${input('Structure Tag', `${base}.target.structureTag`, target.structureTag)}${input('Search Radius', `${base}.target.searchRadius`, target.searchRadius, 'number')}${input('Fixed Y (optional)', `${base}.target.y`, target.y, 'number')}${select('Use Surface Y', `${base}.target.useSurfaceY`, String(!!target.useSurfaceY), ['false','true'])}</div>`;
     return `<div class="row">${input('Resolver ID', `${base}.target.resolverId`, target.resolverId)}${jsonArea('Resolver Args JSON', `${base}.target.args`, target.args)}</div>`;
 }
 
