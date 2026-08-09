@@ -21,8 +21,7 @@ final class QuestChangeHistoryPersistence {
     private QuestChangeHistoryPersistence() {
     }
 
-    static HistoryFile load() {
-        Path file = filePath();
+    static HistoryFile load(Path file) {
         if (file == null || !Files.exists(file)) return new HistoryFile();
         try {
             HistoryFile data = GSON.fromJson(Files.readString(file), HistoryFile.class);
@@ -40,8 +39,7 @@ final class QuestChangeHistoryPersistence {
         }
     }
 
-    static void save(HistoryFile data) {
-        Path file = filePath();
+    static void save(Path file, HistoryFile data) {
         if (file == null || data == null) return;
         try {
             Files.createDirectories(file.getParent());
@@ -51,7 +49,7 @@ final class QuestChangeHistoryPersistence {
         }
     }
 
-    private static Path filePath() {
+    static Path filePath() {
         try {
             Minecraft mc = Minecraft.getInstance();
             if (mc == null || !mc.hasSingleplayerServer()) return null;

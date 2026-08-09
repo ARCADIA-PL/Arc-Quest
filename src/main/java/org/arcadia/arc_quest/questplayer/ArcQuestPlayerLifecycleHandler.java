@@ -165,6 +165,7 @@ public final class ArcQuestPlayerLifecycleHandler {
             ArcQuestPlayerManager.persistAndUnload(player);
         }
         ArcQuestPlayerManager.flushCheckpoints();
+        ArcQuestPlayerManager.clearRuntimeState();
         DialogueSessionManager.INSTANCE.shutdown();
         DialogueNpcStateManager.clearAll();
         RequestIdempotencyStore.INSTANCE.clear();
