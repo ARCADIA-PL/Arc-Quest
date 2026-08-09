@@ -106,6 +106,7 @@ public final class QuestMarkerTargetService {
         if (target instanceof MarkableObject.StructureNearest structure) {
             BlockPos pos = level.findNearestMapStructure(
                     structure.structureTag(), player.blockPosition(), structure.searchRadius(), false);
+            pos = StructureMarkerPositionResolver.adjustY(level, pos, structure);
             return pos == null ? null : ResolvedMarkTarget.position(
                     pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, level.dimension().location().toString());
         }
