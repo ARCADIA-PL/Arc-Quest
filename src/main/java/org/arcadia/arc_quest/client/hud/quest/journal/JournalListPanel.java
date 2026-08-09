@@ -50,6 +50,12 @@ public class JournalListPanel {
         scrollToSelected();
     }
 
+    public void refreshEntries() {
+        rebuildRows();
+        float selectedTop = getSelectedRowTop();
+        if (selectedSlide < 0f || selectedTop < 0f) selectedSlide = selectedTop;
+    }
+
     private void rebuildRows() {
         rows = JournalListLayout.build(screen.getCurrentEntries(), this::resolveJournalGroup);
         for (JournalListLayout.Row row : rows) {
