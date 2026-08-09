@@ -1,6 +1,6 @@
 import {esc} from '../core/utils.js';
 
-const TARGET_TYPES = ['pos', 'dimension_pos', 'block', 'entity_type_nearest', 'entity_npc_id', 'structure_nearest', 'custom'];
+const TARGET_TYPES = ['pos', 'dimension_pos', 'block', 'entity_type_nearest', 'entity_type_then_structure', 'entity_npc_id', 'structure_nearest', 'custom'];
 const MARKER_TYPES = ['QUEST_MAIN', 'QUEST_SIDE', 'QUEST_PHASE', 'QUEST_OBJECTIVE', 'NPC_INTERACT', 'ENEMY_TARGET', 'LOCATION', 'CUSTOM'];
 
 function triggerOptions(prefix) {
@@ -29,6 +29,7 @@ function targetFields(marker, base) {
     const type = target.type || 'pos';
     if (type === 'pos' || type === 'block' || type === 'dimension_pos') return `<div class="row">${type === 'dimension_pos' ? input('Dimension', `${base}.target.dimension`, target.dimension) : ''}${input('X', `${base}.target.x`, target.x, 'number')}${input('Y', `${base}.target.y`, target.y, 'number')}${input('Z', `${base}.target.z`, target.z, 'number')}</div>`;
     if (type === 'entity_type_nearest') return `<div class="row">${input('Entity Type', `${base}.target.entityType`, target.entityType)}${input('Search Radius', `${base}.target.searchRadius`, target.searchRadius, 'number')}</div>`;
+    if (type === 'entity_type_then_structure') return `<div class="row">${input('Entity Type', `${base}.target.entityType`, target.entityType)}${input('Entity Search Radius', `${base}.target.searchRadius`, target.searchRadius, 'number')}${input('Structure Tag', `${base}.target.structureTag`, target.structureTag)}${input('Structure Search Radius', `${base}.target.structureSearchRadius`, target.structureSearchRadius ?? target.searchRadius, 'number')}</div>`;
     if (type === 'entity_npc_id') return `<div class="row">${input('NPC ID', `${base}.target.npcId`, target.npcId)}${input('Search Radius', `${base}.target.searchRadius`, target.searchRadius, 'number')}</div>`;
     if (type === 'structure_nearest') return `<div class="row">${input('Structure Tag', `${base}.target.structureTag`, target.structureTag)}${input('Search Radius', `${base}.target.searchRadius`, target.searchRadius, 'number')}${input('Fixed Y (optional)', `${base}.target.y`, target.y, 'number')}${select('Use Surface Y', `${base}.target.useSurfaceY`, String(!!target.useSurfaceY), ['false','true'])}</div>`;
     return `<div class="row">${input('Resolver ID', `${base}.target.resolverId`, target.resolverId)}${jsonArea('Resolver Args JSON', `${base}.target.args`, target.args)}</div>`;

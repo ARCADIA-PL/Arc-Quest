@@ -354,6 +354,17 @@ public final class QuestSpecCompiler {
                     new MarkableObject.BlockPosition(new BlockPos(requireInt(spec.x, "mark x"), requireInt(spec.y, "mark y"), requireInt(spec.z, "mark z")));
             case "entity_type_nearest" ->
                     new MarkableObject.EntityByTypeNearest(requireEntityType(spec.entityType), requirePositiveInt(spec.searchRadius, "mark searchRadius"));
+            case "entity_type_then_structure" -> {
+                int entitySearchRadius = requirePositiveInt(spec.searchRadius, "mark searchRadius");
+                int structureSearchRadius = spec.structureSearchRadius == null
+                        ? entitySearchRadius
+                        : requirePositiveInt(spec.structureSearchRadius, "mark structureSearchRadius");
+                yield new MarkableObject.EntityByTypeThenStructure(
+                        requireEntityType(spec.entityType),
+                        entitySearchRadius,
+                        TagKey.create(Registries.STRUCTURE, parseId(spec.structureTag)),
+                        structureSearchRadius);
+            }
             case "entity_npc_id" ->
                     new MarkableObject.EntityByNpcId(spec.npcId, requirePositiveInt(spec.searchRadius, "mark searchRadius"));
             case "structure_nearest" ->

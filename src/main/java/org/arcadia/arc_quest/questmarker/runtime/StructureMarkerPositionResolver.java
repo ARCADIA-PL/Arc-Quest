@@ -20,6 +20,11 @@ public final class StructureMarkerPositionResolver {
         return findSurface(level, located.getX(), located.getZ(), located);
     }
 
+    public static BlockPos atSurface(ServerLevel level, BlockPos located) {
+        if (located == null) return null;
+        return findSurface(level, located.getX(), located.getZ(), located);
+    }
+
     private static BlockPos findSurface(ServerLevel level, int x, int z, BlockPos fallback) {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(
                 x, level.getMaxBuildHeight() - 1, z);

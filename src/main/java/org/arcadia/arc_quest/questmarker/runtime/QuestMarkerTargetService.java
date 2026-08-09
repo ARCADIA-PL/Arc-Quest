@@ -32,7 +32,18 @@ public final class QuestMarkerTargetService {
                                           MarkSpec spec,
                                           ServerPlayer player,
                                           ServerLevel level) {
-        ResolvedMarkTarget target = resolveTarget(spec.target(), player, level);
+        return resolve(markerId, ownerId, phaseId, objectiveIndex, spec, player, level, null);
+    }
+
+    static QuestMarkerData resolve(String markerId,
+                                   String ownerId,
+                                   String phaseId,
+                                   int objectiveIndex,
+                                   MarkSpec spec,
+                                   ServerPlayer player,
+                                   ServerLevel level,
+                                   QuestMarkerData existing) {
+        ResolvedMarkTarget target = resolveTarget(spec.target(), player, level, existing);
         if (target == null) return null;
         if (!Double.isFinite(target.x()) || !Double.isFinite(target.y()) || !Double.isFinite(target.z())) return null;
 
@@ -68,7 +79,8 @@ public final class QuestMarkerTargetService {
 
     private static ResolvedMarkTarget resolveTarget(MarkableObject target,
                                                      ServerPlayer player,
-                                                     ServerLevel level) {
+                                                     ServerLevel level,
+                                                     QuestMarkerData existing) {
         if (target instanceof MarkableObject.Pos pos) {
             return ResolvedMarkTarget.position(pos.x() + 0.5, pos.y(), pos.z() + 0.5,
                     level.dimension().location().toString());
@@ -95,13 +107,24 @@ public final class QuestMarkerTargetService {
             return fromEntity(nearest, entityByNpcId.npcId(), QuestMarkerData.EntityAttachPoint.HEAD, level);
         }
         if (target instanceof MarkableObject.EntityByTypeNearest entityByType) {
-            Entity nearest = level.getEntities(player,
-                            player.getBoundingBox().inflate(entityByType.searchRadius()),
-                            entity -> entity.getType() == entityByType.type())
-                    .stream()
-                    .min((left, right) -> Double.compare(left.distanceToSqr(player), right.distanceToSqr(player)))
-                    .orElse(null);
+            Entity nearest = findNearestEntity(level, player, entityByType.type(), entityByType.searchRadius());
             return fromEntity(nearest, "", QuestMarkerData.EntityAttachPoint.HEAD, level);
+        }
+        if (target instanceof MarkableObject.EntityByTypeThenStructure combined) {
+            Entity nearest = findNearestEntity(level, player, combined.type(), combined.searchRadius());
+            if (nearest != null) {
+                return fromEntity(nearest, "", QuestMarkerData.EntityAttachPoint.HEAD, level);
+            }
+            if (existing != null && !existing.hasEntityBinding()
+                    && level.dimension().location().toString().equals(existing.getDimension())) {
+                return ResolvedMarkTarget.position(existing.getWorldX(), existing.getWorldY(), existing.getWorldZ(),
+                        existing.getDimension());
+            }
+            BlockPos pos = level.findNearestMapStructure(
+                    combined.structureTag(), player.blockPosition(), combined.structureSearchRadius(), false);
+            pos = StructureMarkerPositionResolver.atSurface(level, pos);
+            return pos == null ? null : ResolvedMarkTarget.position(
+                    pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, level.dimension().location().toString());
         }
         if (target instanceof MarkableObject.StructureNearest structure) {
             BlockPos pos = level.findNearestMapStructure(
@@ -122,6 +145,17 @@ public final class QuestMarkerTargetService {
             }
         }
         return null;
+    }
+
+    private static Entity findNearestEntity(ServerLevel level, ServerPlayer player,
+                                            net.minecraft.world.entity.EntityType<?> type,
+                                            int searchRadius) {
+        return level.getEntities(player,
+                        player.getBoundingBox().inflate(searchRadius),
+                        entity -> entity.getType() == type)
+                .stream()
+                .min((left, right) -> Double.compare(left.distanceToSqr(player), right.distanceToSqr(player)))
+                .orElse(null);
     }
 
     private static ResolvedMarkTarget fromEntity(Entity entity,

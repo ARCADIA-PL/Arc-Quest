@@ -44,7 +44,7 @@ public final class QuestMarkerRuntimeManager {
 
         ServerLevel level = player.serverLevel();
         QuestMarkerData resolved = QuestMarkerTargetService.resolve(
-                markerId, ownerId, phaseId, objectiveIndex, spec, player, level);
+                markerId, ownerId, phaseId, objectiveIndex, spec, player, level, existing);
         if (resolved == null) {
             if (existing != null && movingTarget) {
                 data.removeMarker(markerId);
@@ -97,6 +97,7 @@ public final class QuestMarkerRuntimeManager {
         return target instanceof MarkableObject.EntityByUuid
                 || target instanceof MarkableObject.EntityByNpcId
                 || target instanceof MarkableObject.EntityByTypeNearest
+                || target instanceof MarkableObject.EntityByTypeThenStructure
                 || target instanceof MarkableObject.CustomResolver;
     }
 

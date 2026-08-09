@@ -648,6 +648,29 @@ public final class DialogueSessionManager {
                     .type(spec.markerType())
                     .build();
         }
+        if (target instanceof MarkableObject.EntityByTypeThenStructure combined) {
+            Entity nearest = level.getEntities(player,
+                            player.getBoundingBox().inflate(combined.searchRadius()),
+                            e -> e.getType() == combined.type())
+                    .stream().min((a, b) -> Double.compare(a.distanceToSqr(player), b.distanceToSqr(player))).orElse(null);
+            if (nearest != null) {
+                return new QuestMarkerData.Builder(markerId, nearest.getX(), nearest.getY(), nearest.getZ(), spec.id())
+                        .dimension(level.dimension().location().toString())
+                        .bindQuest(dialogueId)
+                        .followEntity(nearest.getId(), nearest.getUUID().toString(), "", QuestMarkerData.EntityAttachPoint.HEAD)
+                        .type(spec.markerType())
+                        .build();
+            }
+            BlockPos pos = level.findNearestMapStructure(
+                    combined.structureTag(), player.blockPosition(), combined.structureSearchRadius(), false);
+            pos = StructureMarkerPositionResolver.atSurface(level, pos);
+            if (pos == null) return null;
+            return new QuestMarkerData.Builder(markerId, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, spec.id())
+                    .dimension(level.dimension().location().toString())
+                    .bindQuest(dialogueId)
+                    .type(spec.markerType())
+                    .build();
+        }
         if (target instanceof MarkableObject.StructureNearest byStructure) {
             BlockPos pos = level.findNearestMapStructure(byStructure.structureTag(), player.blockPosition(), byStructure.searchRadius(), false);
             pos = StructureMarkerPositionResolver.adjustY(level, pos, byStructure);

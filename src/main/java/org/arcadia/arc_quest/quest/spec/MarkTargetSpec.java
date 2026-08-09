@@ -13,6 +13,7 @@ public class MarkTargetSpec {
     public String npcId = "";
     public Integer searchRadius = null;
     public String structureTag = "";
+    public Integer structureSearchRadius = null;
     public boolean useSurfaceY = false;
     public String resolverId = "";
     public Map<String, String> args = new LinkedHashMap<>();
