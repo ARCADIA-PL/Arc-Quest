@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObject.DimensionPos, MarkableObject.BlockPosition, MarkableObject.EntityByUuid, MarkableObject.EntityByTypeNearest, MarkableObject.EntityByNpcId, MarkableObject.StructureNearest, MarkableObject.CustomResolver {
+public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObject.DimensionPos, MarkableObject.BlockPosition, MarkableObject.EntityByUuid, MarkableObject.EntityByTypeNearest, MarkableObject.EntityByTypeThenStructure, MarkableObject.EntityByNpcId, MarkableObject.StructureNearest, MarkableObject.CustomResolver {
 
     record Pos(int x, int y, int z) implements MarkableObject {
     }
@@ -40,6 +40,40 @@ public sealed interface MarkableObject permits MarkableObject.Pos, MarkableObjec
         public EntityByTypeNearest {
             Objects.requireNonNull(type, "type");
             if (searchRadius <= 0) throw new IllegalArgumentException("searchRadius must be > 0");
+        }
+    }
+
+    /**
+     * Searches for the nearest entity first, then falls back to the nearest structure at surface height.
+     */
+    record EntityByTypeThenStructure(EntityType<?> type, int searchRadius,
+                                     TagKey<Structure> structureTag,
+                                     int structureSearchRadius) implements MarkableObject {
+        public EntityByTypeThenStructure(EntityType<?> type, int searchRadius,
+                                         TagKey<Structure> structureTag) {
+            this(type, searchRadius, structureTag, searchRadius);
+        }
+
+        public EntityByTypeThenStructure {
+            Objects.requireNonNull(type, "type");
+            Objects.requireNonNull(structureTag, "structureTag");
+            if (searchRadius <= 0) throw new IllegalArgumentException("searchRadius must be > 0");
+            if (structureSearchRadius <= 0) {
+                throw new IllegalArgumentException("structureSearchRadius must be > 0");
+            }
+        }
+
+        public static EntityByTypeThenStructure of(EntityType<?> type, int searchRadius,
+                                                   ResourceLocation structureId) {
+            return new EntityByTypeThenStructure(type, searchRadius,
+                    TagKey.create(Registries.STRUCTURE, structureId));
+        }
+
+        public static EntityByTypeThenStructure of(EntityType<?> type, int searchRadius,
+                                                   ResourceLocation structureId,
+                                                   int structureSearchRadius) {
+            return new EntityByTypeThenStructure(type, searchRadius,
+                    TagKey.create(Registries.STRUCTURE, structureId), structureSearchRadius);
         }
     }
 

@@ -41,6 +41,12 @@ export function validateMarkers(markers, path, diagnostics, allowedTriggers = nu
             diagnostics.push({lvl: 'err', path: markerPath, msg: `当前作用域不支持触发类型: ${marker.trigger}`});
         }
         const target = marker.target || {};
+        if (target.type === 'entity_type_then_structure') {
+            if (!target.entityType) diagnostics.push({lvl: 'err', path: markerPath, msg: 'entity_type_then_structure requires entityType'});
+            if (!target.structureTag) diagnostics.push({lvl: 'err', path: markerPath, msg: 'entity_type_then_structure requires structureTag'});
+            if (!(Number(target.searchRadius) > 0)) diagnostics.push({lvl: 'err', path: markerPath, msg: 'Entity search radius must be greater than 0'});
+            if (target.structureSearchRadius != null && !(Number(target.structureSearchRadius) > 0)) diagnostics.push({lvl: 'err', path: markerPath, msg: 'Structure search radius must be greater than 0'});
+        }
         if (!target.type) diagnostics.push({lvl: 'err', path: markerPath, msg: '缺少 target.type'});
         if (['pos', 'block', 'dimension_pos'].includes(target.type)
             && [target.x, target.y, target.z].some(value => !Number.isFinite(Number(value)))) {

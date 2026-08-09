@@ -1,7 +1,7 @@
 export function createMarkerSpec(index = 0) {
     return {
         id: `marker_${index + 1}`,
-        target: {type: 'pos', dimension: '', x: 0, y: 64, z: 0, entityType: '', npcId: '', searchRadius: 32, structureTag: '', useSurfaceY: false, resolverId: '', args: {}},
+        target: {type: 'pos', dimension: '', x: 0, y: 64, z: 0, entityType: '', npcId: '', searchRadius: 32, structureTag: '', structureSearchRadius: 32, useSurfaceY: false, resolverId: '', args: {}},
         activateWhen: null,
         deactivateWhen: null,
         markerType: 'QUEST_OBJECTIVE',
@@ -23,9 +23,13 @@ export function normalizeMarkers(markers) {
         marker.id ||= defaults.id;
         marker.target ||= {...defaults.target};
         Object.entries(defaults.target).forEach(([key, value]) => {
-            if (key === 'y' && marker.target.type === 'structure_nearest') return;
+            if (key === 'y' && ['structure_nearest', 'entity_type_then_structure'].includes(marker.target.type)) return;
+            if (key === 'structureSearchRadius' && marker.target.type === 'entity_type_then_structure') return;
             marker.target[key] ??= value;
         });
+        if (marker.target.type === 'entity_type_then_structure') {
+            marker.target.structureSearchRadius ??= marker.target.searchRadius;
+        }
         marker.markerType ||= defaults.markerType;
         marker.priority ??= 0;
         marker.maxDistance ??= 256;
@@ -60,6 +64,10 @@ export function setMarkerField(markers, pathParts, value, inputType) {
             if (value === 'structure_nearest') {
                 marker.target.y = null;
                 marker.target.useSurfaceY = false;
+            } else if (value === 'entity_type_then_structure') {
+                marker.target.y = null;
+                marker.target.useSurfaceY = false;
+                marker.target.structureSearchRadius ||= marker.target.searchRadius || 32;
             } else if (['pos', 'block', 'dimension_pos'].includes(value) && marker.target.y == null) {
                 marker.target.y = 64;
             }

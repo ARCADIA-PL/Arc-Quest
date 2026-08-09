@@ -133,6 +133,14 @@ public final class QuestSpecValidator {
             case "pos", "block" -> markCoordinates(r, target, p);
             case "dimension_pos" -> { resourceId(r, target.dimension, p + ".dimension"); markCoordinates(r, target, p); }
             case "entity_type_nearest" -> { resourceId(r, target.entityType, p + ".entityType"); positive(r, target.searchRadius, p + ".searchRadius"); }
+            case "entity_type_then_structure" -> {
+                resourceId(r, target.entityType, p + ".entityType");
+                positive(r, target.searchRadius, p + ".searchRadius");
+                resourceId(r, target.structureTag, p + ".structureTag");
+                if (target.structureSearchRadius != null) {
+                    positive(r, target.structureSearchRadius, p + ".structureSearchRadius");
+                }
+            }
             case "entity_npc_id" -> { req(r, target.npcId, p + ".npcId", "NPC id is required"); positive(r, target.searchRadius, p + ".searchRadius"); }
             case "structure_nearest" -> {
                 resourceId(r, target.structureTag, p + ".structureTag");
