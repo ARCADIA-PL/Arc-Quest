@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal.history;
 
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -10,33 +11,81 @@ public final class QuestChangeHistoryStore {
 
     private static final long DEDUP_WINDOW_MS = 1200L;
     private final Object lock = new Object();
+    private final Object persistenceLock = new Object();
     private final List<QuestChangeHistoryEntry> entries = new ArrayList<>();
     private final Map<String, Long> recentKeys = new HashMap<>();
     private boolean loaded = false;
     private boolean saveQueued = false;
     private boolean saveDirty = false;
     private int maxEntries = 500;
+    private Path loadedFile;
+    private volatile long sessionGeneration = 0L;
 
     private QuestChangeHistoryStore() {
     }
 
     public void ensureLoaded() {
+        Path currentFile = QuestChangeHistoryPersistence.filePath();
         synchronized (lock) {
-            if (loaded) return;
-            QuestChangeHistoryPersistence.HistoryFile file = QuestChangeHistoryPersistence.load();
+            if (loaded && Objects.equals(loadedFile, currentFile)) return;
+            if (loaded) {
+                long previousGeneration = sessionGeneration;
+                QuestChangeHistoryPersistence.HistoryFile previousSnapshot = snapshotLocked();
+                Path previousFile = loadedFile;
+                sessionGeneration++;
+                synchronized (persistenceLock) {
+                    if (previousGeneration < sessionGeneration) {
+                        QuestChangeHistoryPersistence.save(previousFile, previousSnapshot);
+                    }
+                }
+            }
+            QuestChangeHistoryPersistence.HistoryFile file = QuestChangeHistoryPersistence.load(currentFile);
             maxEntries = Math.max(1, file.maxEntries);
             entries.clear();
+            recentKeys.clear();
             if (file.entries != null) entries.addAll(file.entries);
             entries.sort(Comparator.comparingLong((QuestChangeHistoryEntry e) -> e.timeMs).reversed().thenComparingInt(e -> e.sortPriority));
             trimLocked();
+            loadedFile = currentFile;
+            saveQueued = false;
+            saveDirty = false;
             loaded = true;
         }
     }
 
     public void flush() {
         ensureLoaded();
-        QuestChangeHistoryPersistence.HistoryFile snapshot = snapshot();
-        QuestChangeHistoryPersistence.save(snapshot);
+        long generation;
+        Path file;
+        QuestChangeHistoryPersistence.HistoryFile snapshot;
+        synchronized (lock) {
+            generation = sessionGeneration;
+            file = loadedFile;
+            snapshot = snapshotLocked();
+        }
+        saveSnapshot(generation, file, snapshot);
+    }
+
+    public void flushAndResetClientSession() {
+        Path file;
+        QuestChangeHistoryPersistence.HistoryFile snapshot;
+        synchronized (lock) {
+            file = loadedFile;
+            snapshot = loaded ? snapshotLocked() : null;
+            sessionGeneration++;
+            loaded = false;
+            loadedFile = null;
+            entries.clear();
+            recentKeys.clear();
+            saveQueued = false;
+            saveDirty = false;
+            maxEntries = 500;
+        }
+        if (snapshot != null) {
+            synchronized (persistenceLock) {
+                QuestChangeHistoryPersistence.save(file, snapshot);
+            }
+        }
     }
 
     public void clear() {
@@ -198,38 +247,56 @@ public final class QuestChangeHistoryStore {
     }
 
     private void queueSave() {
+        long generation;
         synchronized (lock) {
             saveDirty = true;
             if (saveQueued) return;
             saveQueued = true;
+            generation = sessionGeneration;
         }
-        CompletableFuture.runAsync(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(500L);
-                } catch (InterruptedException ignored) {
-                }
-                synchronized (lock) {
-                    saveDirty = false;
-                }
-                QuestChangeHistoryPersistence.HistoryFile snapshot = snapshot();
-                QuestChangeHistoryPersistence.save(snapshot);
-                synchronized (lock) {
-                    if (!saveDirty) {
-                        saveQueued = false;
-                        return;
-                    }
-                }
-            }
-        });
+        CompletableFuture.runAsync(() -> runSaveLoop(generation));
     }
 
-    private QuestChangeHistoryPersistence.HistoryFile snapshot() {
-        QuestChangeHistoryPersistence.HistoryFile file = new QuestChangeHistoryPersistence.HistoryFile();
-        synchronized (lock) {
-            file.maxEntries = maxEntries;
-            file.entries = new ArrayList<>(entries);
+    private void runSaveLoop(long generation) {
+        while (true) {
+            try {
+                Thread.sleep(500L);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            Path file;
+            QuestChangeHistoryPersistence.HistoryFile snapshot;
+            synchronized (lock) {
+                if (generation != sessionGeneration) return;
+                saveDirty = false;
+                file = loadedFile;
+                snapshot = snapshotLocked();
+            }
+            saveSnapshot(generation, file, snapshot);
+            synchronized (lock) {
+                if (generation != sessionGeneration) return;
+                if (!saveDirty) {
+                    saveQueued = false;
+                    return;
+                }
+            }
         }
+    }
+
+    private void saveSnapshot(long generation, Path file,
+                              QuestChangeHistoryPersistence.HistoryFile snapshot) {
+        synchronized (persistenceLock) {
+            if (generation != sessionGeneration) return;
+            QuestChangeHistoryPersistence.save(file, snapshot);
+        }
+    }
+
+    private QuestChangeHistoryPersistence.HistoryFile snapshotLocked() {
+        QuestChangeHistoryPersistence.HistoryFile file = new QuestChangeHistoryPersistence.HistoryFile();
+        file.maxEntries = maxEntries;
+        file.entries = new ArrayList<>(entries);
         return file;
     }
+
 }

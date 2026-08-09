@@ -18,6 +18,7 @@ import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
+import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
@@ -90,6 +91,7 @@ public final class ClientEventHandler {
     public static void onLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientGuideCache.INSTANCE.clear();
         ClientQuestCache.INSTANCE.clear();
+        QuestChangeHistoryStore.INSTANCE.flushAndResetClientSession();
         ClientTradeCache.INSTANCE.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
@@ -106,6 +108,7 @@ public final class ClientEventHandler {
         if (!event.getLevel().isClientSide()) return;
         ClientGuideCache.INSTANCE.clear();
         ClientQuestCache.INSTANCE.clear();
+        QuestChangeHistoryStore.INSTANCE.flushAndResetClientSession();
         ClientTradeCache.INSTANCE.clear();
         QuestMarkerManager.INSTANCE.clear();
         QuestToastManager.clear();
