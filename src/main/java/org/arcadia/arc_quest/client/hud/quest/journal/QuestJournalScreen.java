@@ -143,15 +143,14 @@ public class QuestJournalScreen extends Screen {
     }
 
     public void rebuildEntries() {
-        String targetQuestId = resolveTargetQuestForOpen();
-        List<String> lastActivePhases = null;
-        boolean hadLiveSelectionBeforeRebuild = false;
-        if (selectedIndex >= 0 && selectedIndex < currentEntries.size()) {
-            hadLiveSelectionBeforeRebuild = true;
-            targetQuestId = currentEntries.get(selectedIndex).questId();
-            var rt = ClientQuestCache.INSTANCE.getActiveQuest(targetQuestId);
-            if (rt != null) lastActivePhases = new ArrayList<>(rt.getActivePhaseIds());
-        }
+        rebuildEntries(true);
+    }
+
+    private void rebuildEntries(boolean preserveSelection) {
+        JournalTypes.QuestListEntry previousEntry = selectedIndex >= 0 && selectedIndex < currentEntries.size()
+                ? currentEntries.get(selectedIndex)
+                : null;
+        String fallbackQuestId = preserveSelection ? resolveTargetQuestForOpen() : null;
 
         currentEntries.clear();
         switch (currentTab) {
@@ -179,21 +178,15 @@ public class QuestJournalScreen extends Screen {
         }
         JournalQuestOrder.sortByDefinition(currentEntries);
 
-        if (targetQuestId != null) {
-            for (int i = 0; i < currentEntries.size(); i++) {
-                if (currentEntries.get(i).questId().equals(targetQuestId)) {
-                    selectedIndex = i;
-                    if (!hadLiveSelectionBeforeRebuild) {
-                        listPanel.resetState();
-                        detailPanel.resetState();
-                    }
-                    return;
-                }
-            }
+        JournalSelectionResolver.Result selection = JournalSelectionResolver.resolve(
+                currentEntries, previousEntry, fallbackQuestId, preserveSelection);
+        selectedIndex = selection.selectedIndex();
+        if (selection.contextChanged()) {
+            listPanel.resetState();
+            detailPanel.resetState();
+        } else {
+            listPanel.refreshEntries();
         }
-        selectedIndex = currentEntries.isEmpty() ? -1 : 0;
-        listPanel.resetState();
-        detailPanel.resetState();
     }
 
     @Override
@@ -574,7 +567,10 @@ public class QuestJournalScreen extends Screen {
     public float getDt() { return dt; }
     public int getThemeColor() { return currentTab == JournalTypes.Tab.ACTIVE ? JournalConstants.THEME_ACTIVE : currentTab == JournalTypes.Tab.COMPLETED ? JournalConstants.THEME_COMPLETED : JournalConstants.THEME_FAILED; }
     public JournalTypes.Tab getCurrentTab() { return currentTab; }
-    public void setCurrentTab(JournalTypes.Tab tab) { currentTab = tab; rebuildEntries(); }
+    public void setCurrentTab(JournalTypes.Tab tab) {
+        currentTab = tab;
+        rebuildEntries(false);
+    }
     public List<JournalTypes.QuestListEntry> getCurrentEntries() { return currentEntries; }
     public int getSelectedIndex() { return selectedIndex; }
     @Nullable public String getSelectedQuestId() { return (selectedIndex >= 0 && selectedIndex < currentEntries.size()) ? currentEntries.get(selectedIndex).questId() : null; }
