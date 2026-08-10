@@ -7,7 +7,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
-import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.compat.marker.QuestMarkerExternalSync;
 import org.arcadia.arc_quest.config.ArcQuestConfig;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
@@ -30,8 +29,6 @@ import java.util.Map;
 public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink {
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final ResourceLocation ORIGIN_ID =
-            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "quest_markers");
     private static final int MAX_WAYPOINT_NAME_LENGTH = 128;
 
     private final Map<String, Projection> desired = new LinkedHashMap<>();
@@ -64,6 +61,7 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
             if (sessionIdentity != context.identity()) {
                 sessionIdentity = context.identity();
                 applied.clear();
+                XaeroQuestMarkerIconRegistry.clear();
             }
             reconcile(context.session(), context.root());
             applied.clear();
@@ -81,6 +79,7 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
             if (context != null) reconcile(context.session(), context.root());
             applied.clear();
             sessionIdentity = 0;
+            XaeroQuestMarkerIconRegistry.clear();
         } catch (RuntimeException | LinkageError exception) {
             disable(exception);
         }
@@ -118,7 +117,8 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
 
     private static void add(MinimapSession session, MinimapWorldRootContainer root, Projection projection) {
         MinimapWorldContainer container = resolveContainer(session, root, projection.dimension());
-        ThirdPartyWaypoints waypoints = container.getThirdPartyWaypointManager().get(ORIGIN_ID);
+        ThirdPartyWaypoints waypoints = container.getThirdPartyWaypointManager()
+                .get(XaeroQuestMarkerIconRegistry.ORIGIN_ID);
         if (!waypoints.hasEnabledStateGetter()) {
             waypoints.setEnabledStateGetter(ArcQuestConfig::shouldSyncQuestMarkersToXaeroMinimap);
         }
@@ -126,11 +126,15 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
                 projection.symbol(), nearestColor(projection.colorArgb()), WaypointPurpose.NORMAL);
         waypoint.setVisibility(WaypointVisibilityType.LOCAL);
         waypoints.add(projection.markerId(), waypoint);
+        XaeroQuestMarkerIconRegistry.register(waypoint, projection.colorArgb());
     }
 
     private static void remove(MinimapSession session, MinimapWorldRootContainer root, Projection projection) {
         MinimapWorldContainer container = resolveContainer(session, root, projection.dimension());
-        container.getThirdPartyWaypointManager().get(ORIGIN_ID).remove(projection.markerId());
+        ThirdPartyWaypoints waypoints = container.getThirdPartyWaypointManager()
+                .get(XaeroQuestMarkerIconRegistry.ORIGIN_ID);
+        XaeroQuestMarkerIconRegistry.unregister(waypoints.get(projection.markerId()));
+        waypoints.remove(projection.markerId());
     }
 
     private static MinimapWorldContainer resolveContainer(MinimapSession session,
@@ -145,6 +149,7 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
         disabled = true;
         desired.clear();
         applied.clear();
+        XaeroQuestMarkerIconRegistry.clear();
         LOGGER.error("[ArcQuest/Xaero] Disabled waypoint integration after an incompatible API failure", exception);
     }
 
