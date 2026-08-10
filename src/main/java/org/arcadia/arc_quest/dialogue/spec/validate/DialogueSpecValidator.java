@@ -245,6 +245,22 @@ public final class DialogueSpecValidator {
                             "Condition type 'variable_check' requires key");
                 }
                 break;
+            case "arc_quest:hold_item":
+                if (isBlank(cond.itemId)) {
+                    report.add(DialogueValidationIssue.Severity.ERROR, prefix + ".itemId",
+                            "Condition type 'hold_item' requires itemId");
+                }
+                if (cond.count < 1) {
+                    report.add(DialogueValidationIssue.Severity.ERROR, prefix + ".count",
+                            "Condition type 'hold_item' requires count >= 1");
+                }
+                if (!isBlank(cond.itemSource)
+                        && !"hands".equalsIgnoreCase(cond.itemSource)
+                        && !"inventory".equalsIgnoreCase(cond.itemSource)) {
+                    report.add(DialogueValidationIssue.Severity.ERROR, prefix + ".itemSource",
+                            "Condition type 'hold_item' itemSource must be hands or inventory");
+                }
+                break;
             case "arc_quest:game_time_in_range":
                 if (cond.startTick == 0 && cond.endTick == 0) {
                     report.add(DialogueValidationIssue.Severity.WARNING, prefix,

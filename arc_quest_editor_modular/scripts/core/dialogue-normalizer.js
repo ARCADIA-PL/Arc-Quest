@@ -105,6 +105,8 @@ function normalizeCondition(c) {
     if (c.value) out.value = c.value;
     if (c.count) out.count = c.count;
     if (c.effectId) out.effectId = c.effectId;
+    if (c.itemId) out.itemId = c.itemId;
+    if (c.itemSource && c.itemSource !== 'hands') out.itemSource = c.itemSource;
     if (c.inner) out.inner = normalizeCondition(c.inner);
     if (Array.isArray(c.conditions) && c.conditions.length) out.conditions = normalizeConditions(c.conditions);
     if (c.predicate && typeof c.predicate === 'object') out.predicate = {...c.predicate};

@@ -89,7 +89,7 @@ function summarizeCondition(node) {
         case 'arc_quest:all_completed_in_range': return `all_completed(${c.questId || '?'}, ${c.fromPhaseId || '?'}-${c.toPhaseId || '?'})`;
         case 'arc_quest:has_flag': return `has_flag(${c.flag || '?'})`;
         case 'arc_quest:not_has_flag': return `not_has_flag(${c.flag || '?'})`;
-        case 'arc_quest:hold_item': return `hold_item(${c.itemId || '?'}, ${c.count || 1})`;
+        case 'arc_quest:hold_item': return `hold_item(${c.itemId || '?'}, ${c.count || 1}, ${c.itemSource || 'hands'})`;
         case 'arc_quest:variable_check': return `variable_check(${c.key || '?'}, ${c.op || 'EQUAL'}, ${c.value ?? 0})`;
         case 'arc_quest:entity_nbt': return `entity_nbt(${c.nbtKey || '?'}, ${c.nbtValue || '?'})`;
         case 'arc_quest:entity_name': return `entity_name(${c.namePattern || '?'})`;
@@ -152,6 +152,7 @@ export function renderConditionTree(bindBase, condition, registry = null, deleta
             body = `
       <div class="row">
         <div class="f"><label>Item ID</label><input data-b="${bindBase}.itemId" data-ac-registry="items" value="${c.itemId || ''}" placeholder="minecraft:diamond"></div>
+        ${enumSelect('Item Source', `${bindBase}.itemSource`, c.itemSource || 'hands', ['hands', 'inventory'])}
         ${numberInput('Min Count', `${bindBase}.count`, c.count ?? 1)}
       </div>`;
             break;

@@ -131,7 +131,10 @@ public final class ConditionBridge {
             case "arc_quest:node_on_cooldown" -> new DialogueCondition.NodeOnCooldown(spec.nodeId, (int) spec.cooldownSeconds);
             case "arc_quest:choice_on_cooldown" -> new DialogueCondition.ChoiceOnCooldown(spec.choiceId, (int) spec.cooldownSeconds);
             case "arc_quest:dialogue_on_cooldown" -> new DialogueCondition.DialogueOnCooldown(spec.dialogueId, (int) spec.cooldownSeconds);
-            case "arc_quest:hold_item" -> new DialogueCondition.HoldItem(spec.itemId, spec.count > 0 ? spec.count : 1);
+            case "arc_quest:hold_item" -> new DialogueCondition.HoldItem(
+                    spec.itemId,
+                    spec.count > 0 ? spec.count : 1,
+                    DialogueCondition.ItemSource.fromSerializedName(spec.itemSource));
             case "arc_quest:custom" -> new DialogueCondition.CustomCondition(spec.name);
             case "arc_quest:and" -> toDialogueAllCondition(spec);
             case "arc_quest:or" -> toDialogueAnyCondition(spec);

@@ -112,6 +112,8 @@ function normalizeCondition(node) {
             op: node.op,
             value: node.value,
             item: node.item,
+            itemId: node.itemId,
+            itemSource: node.itemSource || 'hands',
             dimension: node.dimension,
             pos: node.pos,
             entityType: node.entityType,
