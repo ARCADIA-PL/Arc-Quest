@@ -39,6 +39,7 @@ export function exportQuestToDatapack(stateQuest) {
     };
     if (q.initialPhaseIds?.length) out.initialPhaseIds = q.initialPhaseIds;
     if (q.allowAbandon === false) out.allowAbandon = false;
+    if (q.canBeAutoTrack === false) out.canBeAutoTrack = false;
     if (isNonEmptyString(q.description)) out.description = textNode(q.description, q.descriptionMode || 'translatable', '');
     if (q.chapterShopId) out.chapterShopId = q.chapterShopId;
     if (q.chapterShopType) out.chapterShopType = q.chapterShopType;

@@ -19,6 +19,7 @@ export function renderQuestInfoSection(q, field, area) {
       </div>
       <div class="row">
         ${boolSelect('允许放弃任务 (Allow Abandon)', 'q.allowAbandon', q.allowAbandon !== false)}
+        ${boolSelect('允许自动追踪 (Can Be Auto Track)', 'q.canBeAutoTrack', q.canBeAutoTrack !== false)}
       </div>
       <div class="row">
         ${chipEditor('标签池 (Tags)', q.tags || [], 'q.tags', 'q.tags', '输入 tag 后点击添加')}
