@@ -7,6 +7,7 @@ export const createQuestSkeleton = () => ({
     sortOrder: 0,
     repeatable: false,
     abandonable: true,
+    canBeAutoTrack: true,
     mode: 'PROGRESSION',
     category: '',
     tags: [],

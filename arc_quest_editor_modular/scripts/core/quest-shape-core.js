@@ -173,6 +173,7 @@ export function ensureQuestShape(q) {
     q.sortOrder ??= defaults.sortOrder;
     q.repeatable ??= defaults.repeatable;
     q.abandonable ??= defaults.abandonable;
+    q.canBeAutoTrack ??= defaults.canBeAutoTrack;
     q.mode ||= defaults.mode;
     q.category ||= defaults.category;
     q.tags ||= [...defaults.tags];
@@ -244,6 +245,7 @@ export function setQuestRootField(target, bind, value, inputType) {
     if (bind === 'q.sortOrder') return target.sortOrder = inputType === 'number' ? Number(value) : Number(value || 0);
     if (bind === 'q.repeatable') return target.repeatable = value === 'true';
     if (bind === 'q.abandonable') return target.abandonable = value === 'true';
+    if (bind === 'q.canBeAutoTrack') return target.canBeAutoTrack = value === 'true';
     if (bind === 'q.tags') return target.tags = splitList(value);
     if (bind === 'q.theme') return target.visualConfig.themeColor = value;
     if (bind === 'q.icons') return setLooseJson(target.visualConfig, 'icons', value);
