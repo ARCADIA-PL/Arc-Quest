@@ -167,8 +167,20 @@ public class TradeScreen extends AbstractTradeScreen {
     @Override
     public boolean mouseScrolled(double mx, double my, double d) {
         if (isClosing || dt == 0) return false;
-        listPanel.mouseScrolled(d, panelH() - 36 - BOTTOM_PADDING);
-        return true;
+        int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
+        float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
+        int lx = px - (int) slide;
+        int panelY = py + 36;
+        int panelHeight = ph - 36 - BOTTOM_PADDING;
+        if (categoryPanel.mouseScrolled(mx, my, d, lx, panelY, CAT_WIDTH, panelHeight)) return true;
+
+        int rx = px + CAT_WIDTH + 16 + (int) slide;
+        int rw = pw - CAT_WIDTH - 16;
+        if (mx >= rx && mx < rx + rw && my >= panelY && my < panelY + panelHeight) {
+            listPanel.mouseScrolled(d, panelHeight);
+            return true;
+        }
+        return super.mouseScrolled(mx, my, d);
     }
 
     @Override
