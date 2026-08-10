@@ -26,6 +26,7 @@ public final class QuestDefinition {
     private final int sortOrder;
     private final boolean repeatable;
     private final boolean allowAbandon;
+    private final boolean canBeAutoTrack;
     private final QuestVisualConfig visualConfig;
     private final QuestMode mode;
     @Nullable
@@ -303,6 +304,46 @@ public final class QuestDefinition {
                            long timeLimitValue,
                            boolean allowAbandon,
                            Collection<String> initialPhaseIds) {
+        this(id, category, displayName, description, iconTexture, sortOrder, repeatable,
+                unlockConditions, phases, initialPhaseId, completionRewards,
+                flagsToSetOnAccept, flagsToSetOnComplete, relatedMarks, visualConfig,
+                mode, collectionConfig, chapterShopId, chapterShopType, chapterShopPersistent,
+                chapterStartSound, chapterFailSound, chapterCompleteSound,
+                completionPolicy, completionRequiredCount, completionTargetPhaseId,
+                timeLimitType, timeLimitValue, allowAbandon, initialPhaseIds, true);
+    }
+
+    public QuestDefinition(ResourceLocation id,
+                           QuestCategory category,
+                           QuestText displayName,
+                           QuestText description,
+                           @Nullable ResourceLocation iconTexture,
+                           int sortOrder,
+                           boolean repeatable,
+                           List<ICondition> unlockConditions,
+                           LinkedHashMap<String, PhaseDefinition> phases,
+                           String initialPhaseId,
+                           List<IReward> completionRewards,
+                           List<String> flagsToSetOnAccept,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable QuestMode mode,
+                           @Nullable CollectionQuestConfig collectionConfig,
+                           @Nullable String chapterShopId,
+                           ChapterShopType chapterShopType,
+                           boolean chapterShopPersistent,
+                           @Nullable SoundEvent chapterStartSound,
+                           @Nullable SoundEvent chapterFailSound,
+                           @Nullable SoundEvent chapterCompleteSound,
+                           QuestCompletionPolicy completionPolicy,
+                           int completionRequiredCount,
+                           @Nullable String completionTargetPhaseId,
+                           @Nullable QuestTimeLimitType timeLimitType,
+                           long timeLimitValue,
+                           boolean allowAbandon,
+                           Collection<String> initialPhaseIds,
+                           boolean canBeAutoTrack) {
         Objects.requireNonNull(id, "Quest id must not be null");
         Objects.requireNonNull(category);
         Objects.requireNonNull(displayName);
@@ -332,6 +373,7 @@ public final class QuestDefinition {
         this.sortOrder = sortOrder;
         this.repeatable = repeatable;
         this.allowAbandon = allowAbandon;
+        this.canBeAutoTrack = canBeAutoTrack;
         this.visualConfig = visualConfig != null ? visualConfig : QuestVisualConfig.EMPTY;
         this.mode = mode != null ? mode : QuestMode.PROGRESSION;
         this.collectionConfig = collectionConfig;
@@ -443,6 +485,10 @@ public final class QuestDefinition {
 
     public boolean isAbandonAllowed() {
         return allowAbandon;
+    }
+
+    public boolean canBeAutoTrack() {
+        return canBeAutoTrack;
     }
 
     public QuestMode getMode() {

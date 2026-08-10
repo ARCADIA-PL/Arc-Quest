@@ -58,6 +58,7 @@ public final class QuestSpecCompiler {
                 .icon(parseNullableId(spec.iconTexture))
                 .sortOrder(spec.sortOrder)
                 .allowAbandon(spec.allowAbandon)
+                .canBeAutoTrack(spec.canBeAutoTrack)
                 .mode(spec.mode)
                 .collectionConfig(compileCollectionConfig(spec.collectionConfig))
                 .completionPolicy(spec.completionPolicy)
