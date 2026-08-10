@@ -10,6 +10,7 @@
   ],
   "client": [
     "client.MixinGameRendererAccessor",
+    "client.compat.MixinXaeroWaypointMapRenderer",
     "client.compat.MixinXaeroWaypointRenderProvider",
     "client.ponder.MixinPonderScene",
     "client.ponder.MixinPonderUIStubAccessor"

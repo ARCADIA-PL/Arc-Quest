@@ -1,7 +1,6 @@
 package org.arcadia.arc_quest.mixin.client.compat;
 
-import net.minecraft.resources.ResourceLocation;
-import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.client.compat.xaero.XaeroQuestMarkerIconRegistry;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,9 +16,6 @@ import java.util.stream.Stream;
 @Mixin(targets = "xaero.hud.minimap.waypoint.render.AbstractWaypointRenderProvider", remap = false)
 public abstract class MixinXaeroWaypointRenderProvider {
 
-    private static final ResourceLocation ARC_QUEST_MARKER_ORIGIN =
-            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "quest_markers");
-
     @Redirect(
             method = "begin(Lxaero/hud/minimap/element/render/MinimapElementRenderLocation;Lxaero/hud/minimap/waypoint/render/AbstractWaypointRenderContext;)V",
             at = @At(
@@ -33,6 +29,6 @@ public abstract class MixinXaeroWaypointRenderProvider {
                                                          AbstractWaypointRenderContext context) {
         Stream<Waypoint> filtered = stream.filter(originalFilter);
         if (location != MinimapElementRenderLocation.IN_WORLD) return filtered;
-        return filtered.filter(waypoint -> !ARC_QUEST_MARKER_ORIGIN.equals(waypoint.getThirdPartyOrigin()));
+        return filtered.filter(waypoint -> !XaeroQuestMarkerIconRegistry.isArcQuestWaypoint(waypoint));
     }
 }
