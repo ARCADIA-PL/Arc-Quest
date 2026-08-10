@@ -63,6 +63,7 @@ public final class QuestSpecCompiler {
                 .completionRequiredCount(spec.completionRequiredCount)
                 .completionTargetPhase(blankToNull(spec.completionTargetPhaseId))
                 .abandonable(spec.abandonable)
+                .canBeAutoTrack(spec.canBeAutoTrack)
                 .visualConfig(compileVisual(spec.visualConfig));
 
         if (spec.repeatable) builder.repeatable();

@@ -15,6 +15,7 @@ public class QuestSpec {
     public int sortOrder = 0;
     public boolean repeatable = false;
     public boolean abandonable = true;
+    public boolean canBeAutoTrack = true;
     public QuestMode mode = QuestMode.PROGRESSION;
     public CollectionQuestSpecData collectionConfig = null;
     public String initialPhaseId = "";

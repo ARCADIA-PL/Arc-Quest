@@ -30,6 +30,7 @@ public final class QuestBuilder {
     private int sortOrder;
     private boolean repeatable;
     private boolean abandonable = true;
+    private boolean canBeAutoTrack = true;
     private String initialPhaseId;
     private QuestVisualConfig.Builder visualConfigBuilder = QuestVisualConfig.builder();
     private QuestMode mode = QuestMode.PROGRESSION;
@@ -134,6 +135,11 @@ public final class QuestBuilder {
 
     public QuestBuilder abandonable(boolean abandonable) {
         this.abandonable = abandonable;
+        return this;
+    }
+
+    public QuestBuilder canBeAutoTrack(boolean canBeAutoTrack) {
+        this.canBeAutoTrack = canBeAutoTrack;
         return this;
     }
 
@@ -408,7 +414,7 @@ public final class QuestBuilder {
         if (completionPolicy != QuestCompletionPolicy.SPECIFIC_PHASE && completionTargetPhaseId != null && !completionTargetPhaseId.isEmpty())
             throw new IllegalStateException("Quest '" + id + "': completionTargetPhase only valid for SPECIFIC_PHASE");
         validateCollectionDefinition();
-        return new QuestDefinition(id, category, displayName, description, iconTexture, sortOrder, repeatable, new ArrayList<>(unlockConditions), new LinkedHashMap<>(phases), initialPhaseId, new ArrayList<>(completionRewards), new ArrayList<>(flagsOnAccept), new ArrayList<>(flagsOnComplete), new ArrayList<>(relatedMarks), visualConfigBuilder.build(), mode, collectionConfig, chapterShopId, chapterShopType, chapterShopPersistent, chapterStartSound, chapterFailSound, chapterCompleteSound, completionPolicy, completionRequiredCount, completionTargetPhaseId, timeLimitType, timeLimitValue, abandonable);
+        return new QuestDefinition(id, category, displayName, description, iconTexture, sortOrder, repeatable, new ArrayList<>(unlockConditions), new LinkedHashMap<>(phases), initialPhaseId, new ArrayList<>(completionRewards), new ArrayList<>(flagsOnAccept), new ArrayList<>(flagsOnComplete), new ArrayList<>(relatedMarks), visualConfigBuilder.build(), mode, collectionConfig, chapterShopId, chapterShopType, chapterShopPersistent, chapterStartSound, chapterFailSound, chapterCompleteSound, completionPolicy, completionRequiredCount, completionTargetPhaseId, timeLimitType, timeLimitValue, abandonable, canBeAutoTrack);
     }
 
     private void validateCollectionDefinition() {
