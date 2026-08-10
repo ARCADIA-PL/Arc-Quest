@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
-import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
@@ -203,7 +203,7 @@ public final class JournalDetailCollection {
         CollectionEntryConfig c = p.getCollectionEntryConfig();
         boolean seen = ClientQuestCache.INSTANCE.isCollectionEntryDiscovered(q, id);
         boolean done = rt.isPhaseCompleted(id);
-        boolean tracked = !done && q.equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) && id.equals(QuestHudOverlay.INSTANCE.getTrackedPhaseId());
+        boolean tracked = !done && q.equals(ClientQuestTrackingController.INSTANCE.trackedQuestId()) && id.equals(ClientQuestTrackingController.INSTANCE.trackedPhaseId());
         boolean rewardReady = hasClaimableReward(q, c.getRewardNodes());
 
         int cnt = ClientQuestCache.INSTANCE.getCollectionEntryCount(q, id);
@@ -372,7 +372,7 @@ public final class JournalDetailCollection {
             lines.add(Component.literal("Entry Reward: Claimable").withStyle(Style.EMPTY.withColor(0xFFD166)));
         if (done) {
             lines.add(Component.literal("Completed").withStyle(Style.EMPTY.withColor(0x88FF88)));
-        } else if (q.equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) && id.equals(QuestHudOverlay.INSTANCE.getTrackedPhaseId())) {
+        } else if (q.equals(ClientQuestTrackingController.INSTANCE.trackedQuestId()) && id.equals(ClientQuestTrackingController.INSTANCE.trackedPhaseId())) {
             lines.add(Component.literal("Tracked Entry").withStyle(Style.EMPTY.withColor(0x66CCFF)));
         } else {
             lines.add(Component.literal("Click to track this entry").withStyle(Style.EMPTY.withColor(0xFFD166)));
@@ -450,7 +450,7 @@ public final class JournalDetailCollection {
         for (Card c : cards)
             if (mx >= c.x && mx <= c.x + c.w && my >= c.y && my <= c.y + c.h) {
                 if (!c.trackable) return true;
-                QuestHudOverlay.INSTANCE.setTrackedFocus(c.questId, c.phaseId);
+                ClientQuestTrackingController.INSTANCE.requestFocus(c.questId, c.phaseId);
                 screen.playClick();
                 return true;
             }

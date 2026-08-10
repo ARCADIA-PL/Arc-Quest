@@ -467,8 +467,10 @@ public final class ArcQuestNetwork {
     }
 
     public static void syncTrackedQuest(ServerPlayer player, ArcQuestPlayer data) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new S2CSyncTrackedQuestPacket(data.getTrackedQuestId()));
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncTrackedQuestPacket(
+                data.getQuestTrackingSnapshot(), data.getLastQuestTrackingChangeReason(),
+                envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
     }
 
     private static String resolveObjectiveId(ServerPlayer player, String questId,

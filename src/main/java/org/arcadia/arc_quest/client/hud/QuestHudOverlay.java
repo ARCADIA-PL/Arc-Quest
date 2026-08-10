@@ -1,16 +1,11 @@
 package org.arcadia.arc_quest.client.hud;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.client.gui.overlay.ForgeGui;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.loading.FMLPaths;
-import org.arcadia.arc_quest.api.event.quest.TrackedQuestChangedEvent;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -18,17 +13,15 @@ import org.arcadia.arc_quest.client.hud.quest.toast.BranchChoiceToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
-import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 public class QuestHudOverlay implements IGuiOverlay {
 
@@ -36,12 +29,7 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     private static final int POPUP_H = 36;
     private static final int LEFT_BASE_X = 20;
-    private static final Gson GSON = new GsonBuilder().create();
-    private static Path trackedCacheFile = null;
-
     private final QuestTrackerPanel trackerPanel = new QuestTrackerPanel();
-    private final Object trackedSelectionWriteLock = new Object();
-    private CompletableFuture<Void> trackedSelectionWrite = CompletableFuture.completedFuture(null);
 
     private long lastRenderTime = 0;
     private float dt = 0f;
@@ -56,47 +44,28 @@ public class QuestHudOverlay implements IGuiOverlay {
     private float currentPhasePopupY = -1;
     private float currentBranchToastY = -1;
 
-    private boolean trackedSelectionLoaded = false;
-
     private QuestHudOverlay() {
     }
 
-    private static Path getTrackedCacheFile() {
-        if (trackedCacheFile != null) return trackedCacheFile;
-        try {
-            Path configDir = FMLPaths.CONFIGDIR.get();
-            if (configDir == null) return null;
-            trackedCacheFile = configDir.resolve("arc_quest_tracked_cache.json");
-            return trackedCacheFile;
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
     public void setTrackedQuest(String questId) {
-        boolean questChanged = applyTrackedQuest(questId);
-        saveTrackedSelection();
-        if (questChanged) syncTrackedQuestToServer(questId);
+        ClientQuestTrackingController.INSTANCE.requestTrack(questId);
     }
 
     public void setTrackedFocus(String questId, String phaseId) {
-        boolean questChanged = applyTrackedFocus(questId, phaseId);
-        saveTrackedSelection();
-        if (questChanged) syncTrackedQuestToServer(questId);
+        ClientQuestTrackingController.INSTANCE.requestFocus(questId, phaseId);
     }
 
     public String getTrackedPhaseId() {
-        return trackerPanel.getTrackedPhaseId();
+        return ClientQuestTrackingController.INSTANCE.trackedPhaseId();
     }
 
     public String getTrackedQuestId() {
-        return trackerPanel.getTrackedQuestId();
+        return ClientQuestTrackingController.INSTANCE.trackedQuestId();
     }
 
     /** Clears selection and transient HUD state when the client world is unloaded. */
     public void clearClientSession() {
         trackerPanel.setTrackedQuest(null);
-        trackedSelectionLoaded = true;
         lastTrackedQuestId = null;
         lastKnownPhaseId = null;
         lastKnownActivePhaseIds.clear();
@@ -104,14 +73,12 @@ public class QuestHudOverlay implements IGuiOverlay {
         branchChoiceToast = null;
         currentPhasePopupY = -1;
         currentBranchToastY = -1;
-        saveTrackedSelection();
     }
 
     @Override
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.level == null || mc.options.hideGui) return;
-        if (!trackedSelectionLoaded) loadTrackedSelectionFromDisk();
+        if (mc.player == null || mc.options.hideGui) return;
 
         boolean isSplashActive = QuestSplashRenderer.isActive();
         boolean isBlockingScreen = isSplashActive || mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen;
@@ -229,104 +196,24 @@ public class QuestHudOverlay implements IGuiOverlay {
     }
 
     private QuestRuntimeData resolveTrackedQuest(Map<String, QuestRuntimeData> active) {
-        String localTrackedQuestId = trackerPanel.getTrackedQuestId();
-        boolean syncReady = ClientQuestCache.INSTANCE.isFullSyncApplied();
-        String authoritativeQuestId = syncReady
-                ? ClientQuestCache.INSTANCE.getTrackedQuestId()
-                : localTrackedQuestId;
-        String resolvedQuestId = TrackedQuestSelectionResolver.resolve(
-                authoritativeQuestId, active.keySet(), syncReady);
-
-        if (!Objects.equals(localTrackedQuestId, resolvedQuestId)) {
-            applyTrackedQuest(resolvedQuestId);
-            saveTrackedSelectionAsync();
+        if (!ClientQuestCache.INSTANCE.isFullSyncApplied()) return null;
+        String authoritativeQuestId = ClientQuestTrackingStore.INSTANCE.trackedQuestId();
+        String focusedPhaseId = ClientQuestTrackingController.INSTANCE.trackedPhaseId();
+        if (!Objects.equals(trackerPanel.getTrackedQuestId(), authoritativeQuestId)
+                || !Objects.equals(trackerPanel.getTrackedPhaseId(), focusedPhaseId)) {
+            if (authoritativeQuestId != null && focusedPhaseId != null) {
+                trackerPanel.setTrackedFocus(authoritativeQuestId, focusedPhaseId);
+            } else {
+                trackerPanel.setTrackedQuest(authoritativeQuestId);
+            }
         }
-        if (syncReady && !Objects.equals(authoritativeQuestId, resolvedQuestId)) {
-            syncTrackedQuestToServer(resolvedQuestId);
-        }
-
-        if (!syncReady || resolvedQuestId == null) return null;
-        return active.get(resolvedQuestId);
+        return authoritativeQuestId != null ? active.get(authoritativeQuestId) : null;
     }
 
     private void resetPhaseTrackingState() {
         lastTrackedQuestId = null;
         lastKnownPhaseId = null;
         lastKnownActivePhaseIds.clear();
-    }
-
-    private void loadTrackedSelectionFromDisk() {
-        trackedSelectionLoaded = true;
-        Path cacheFile = getTrackedCacheFile();
-        if (cacheFile == null || !Files.exists(cacheFile)) return;
-        try {
-            TrackedSelection saved = GSON.fromJson(Files.readString(cacheFile), TrackedSelection.class);
-            if (saved != null && saved.questId != null && !saved.questId.isEmpty()) {
-                applyTrackedFocus(saved.questId, saved.phaseId);
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    private boolean applyTrackedQuest(String questId) {
-        String oldQuestId = trackerPanel.getTrackedQuestId();
-        trackerPanel.setTrackedQuest(questId);
-        String newQuestId = trackerPanel.getTrackedQuestId();
-        postTrackedQuestChanged(oldQuestId, newQuestId);
-        return !Objects.equals(oldQuestId, newQuestId);
-    }
-
-    private boolean applyTrackedFocus(String questId, String phaseId) {
-        String oldQuestId = trackerPanel.getTrackedQuestId();
-        trackerPanel.setTrackedFocus(questId, phaseId);
-        String newQuestId = trackerPanel.getTrackedQuestId();
-        postTrackedQuestChanged(oldQuestId, newQuestId);
-        return !Objects.equals(oldQuestId, newQuestId);
-    }
-
-    private void postTrackedQuestChanged(String oldQuestId, String newQuestId) {
-        if (Objects.equals(oldQuestId, newQuestId)) return;
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level == null || minecraft.player == null) return;
-        MinecraftForge.EVENT_BUS.post(new TrackedQuestChangedEvent(
-                minecraft.level, minecraft.player, oldQuestId, newQuestId));
-    }
-
-    private void syncTrackedQuestToServer(String questId) {
-        ClientQuestCache.INSTANCE.applyTrackedQuestSync(questId);
-        if (Minecraft.getInstance().getConnection() != null) {
-            ArcQuestNetwork.sendTrackedQuestUpdate(questId);
-        }
-    }
-
-    private void saveTrackedSelection() {
-        queueTrackedSelectionWrite(true);
-    }
-
-    private void saveTrackedSelectionAsync() {
-        queueTrackedSelectionWrite(false);
-    }
-
-    private void queueTrackedSelectionWrite(boolean waitForCompletion) {
-        Path cacheFile = getTrackedCacheFile();
-        if (cacheFile == null) return;
-        TrackedSelection snapshot = new TrackedSelection(trackerPanel.getTrackedQuestId(), trackerPanel.getTrackedPhaseId());
-        CompletableFuture<Void> write;
-        synchronized (trackedSelectionWriteLock) {
-            trackedSelectionWrite = trackedSelectionWrite
-                    .handle((ignored, error) -> null)
-                    .thenRunAsync(() -> writeTrackedSelection(cacheFile, snapshot));
-            write = trackedSelectionWrite;
-        }
-        if (waitForCompletion) write.join();
-    }
-
-    private void writeTrackedSelection(Path cacheFile, TrackedSelection snapshot) {
-        try {
-            Files.createDirectories(cacheFile.getParent());
-            Files.writeString(cacheFile, GSON.toJson(snapshot));
-        } catch (Exception ignored) {
-        }
     }
 
     public void showBranchChoiceToast(String questId) {
@@ -361,6 +248,4 @@ public class QuestHudOverlay implements IGuiOverlay {
         return branchChoiceToast != null ? branchChoiceToast.getQuestId() : null;
     }
 
-    private record TrackedSelection(String questId, String phaseId) {
-    }
 }
