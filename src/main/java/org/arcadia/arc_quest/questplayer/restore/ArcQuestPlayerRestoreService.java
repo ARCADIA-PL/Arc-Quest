@@ -3,6 +3,8 @@ package org.arcadia.arc_quest.questplayer.restore;
 import net.minecraft.server.level.ServerPlayer;
 import org.arcadia.arc_quest.quest.logic.QuestProgressHandler;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
+import org.arcadia.arc_quest.quest.service.TrackedQuestService;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerLifecycleHandler;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
@@ -35,6 +37,7 @@ public final class ArcQuestPlayerRestoreService {
         ArcQuestPlayerManager.persistSnapshot(player, targetData);
         ArcQuestPlayerLifecycleHandler.validateAndFixQuestData(player, targetData);
         QuestProgressHandler.rebuildTrackingIndex(player, targetData);
+        TrackedQuestService.reconcile(player, QuestTrackingChangeReason.RECONCILE);
         ArcQuestNetwork.syncFullData(player, targetData);
 
         return new ArcQuestPlayerMigrationApplyResult(true, report, preRestoreSnapshot);

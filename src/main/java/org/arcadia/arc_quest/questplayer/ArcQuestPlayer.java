@@ -14,6 +14,9 @@ import org.arcadia.arc_quest.quest.data.GachaDataStore;
 import org.arcadia.arc_quest.quest.data.NbtVersionManager;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.data.TradeDataStore;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingSnapshot;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingState;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
 import org.arcadia.arc_quest.questplayer.state.ArcQuestGuideState;
 import org.arcadia.arc_quest.questplayer.state.ArcQuestProfileState;
@@ -169,6 +172,9 @@ public final class ArcQuestPlayer {
     private final GachaDataStore gachaData = new GachaDataStore();
     @Nullable
     private String trackedQuestId;
+    private QuestTrackingState questTrackingState = QuestTrackingState.EMPTY;
+    private long questTrackingRevision;
+    private QuestTrackingChangeReason lastQuestTrackingChangeReason = QuestTrackingChangeReason.UNKNOWN;
     private boolean trackedQuestDirty;
 
     private boolean fullDirty;
@@ -192,8 +198,49 @@ public final class ArcQuestPlayer {
 
     public synchronized boolean setTrackedQuestId(@Nullable String questId) {
         String normalized = questId == null || questId.isBlank() ? null : questId;
-        if (Objects.equals(trackedQuestId, normalized)) return false;
-        trackedQuestId = normalized;
+        QuestTrackingState state = normalized != null
+                ? QuestTrackingState.TRACKING_MANUAL
+                : activeQuests.isEmpty()
+                ? QuestTrackingState.EMPTY
+                : QuestTrackingState.UNTRACKED_MANUAL;
+        return applyQuestTracking(normalized, state);
+    }
+
+    public synchronized QuestTrackingSnapshot getQuestTrackingSnapshot() {
+        return new QuestTrackingSnapshot(trackedQuestId, questTrackingState, questTrackingRevision);
+    }
+
+    public synchronized QuestTrackingState getQuestTrackingState() {
+        return questTrackingState;
+    }
+
+    public synchronized long getQuestTrackingRevision() {
+        return questTrackingRevision;
+    }
+
+    public synchronized QuestTrackingChangeReason getLastQuestTrackingChangeReason() {
+        return lastQuestTrackingChangeReason;
+    }
+
+    public synchronized boolean applyQuestTracking(@Nullable String questId, QuestTrackingState state) {
+        return applyQuestTracking(questId, state, QuestTrackingChangeReason.UNKNOWN);
+    }
+
+    public synchronized boolean applyQuestTracking(@Nullable String questId,
+                                                   QuestTrackingState state,
+                                                   QuestTrackingChangeReason reason) {
+        QuestTrackingSnapshot normalized = new QuestTrackingSnapshot(
+                questId, state, questTrackingRevision);
+        if (Objects.equals(trackedQuestId, normalized.questId())
+                && questTrackingState == normalized.state()) return false;
+        trackedQuestId = normalized.questId();
+        questTrackingState = normalized.state();
+        questTrackingRevision = questTrackingRevision == Long.MAX_VALUE
+                ? 1L
+                : questTrackingRevision + 1L;
+        lastQuestTrackingChangeReason = reason == null
+                ? QuestTrackingChangeReason.UNKNOWN
+                : reason;
         trackedQuestDirty = true;
         return true;
     }
@@ -454,6 +501,9 @@ public final class ArcQuestPlayer {
         root.put("TradeData", tradeData.serialize());
         root.put("GachaData", gachaData.serialize());
         if (trackedQuestId != null) root.putString("TrackedQuestId", trackedQuestId);
+        root.putString("TrackedQuestState", questTrackingState.name());
+        root.putLong("TrackedQuestRevision", questTrackingRevision);
+        root.putString("TrackedQuestChangeReason", lastQuestTrackingChangeReason.name());
 
         VERSION_MANAGER.setInitialVersion(root);
         return root;
@@ -469,6 +519,11 @@ public final class ArcQuestPlayer {
                 ? root.getString("TrackedQuestId")
                 : null;
         if (trackedQuestId != null && trackedQuestId.isBlank()) trackedQuestId = null;
+        questTrackingState = parseQuestTrackingState(
+                root.getString("TrackedQuestState"), trackedQuestId);
+        questTrackingRevision = Math.max(0L, root.getLong("TrackedQuestRevision"));
+        lastQuestTrackingChangeReason = parseQuestTrackingReason(
+                root.getString("TrackedQuestChangeReason"));
         trackedQuestDirty = false;
 
         if (root.contains("DialogueProgress", Tag.TAG_COMPOUND)) {
@@ -572,10 +627,39 @@ public final class ArcQuestPlayer {
         profileState.clear();
         guideState.clear();
         trackedQuestId = null;
+        questTrackingState = QuestTrackingState.EMPTY;
+        questTrackingRevision = questTrackingRevision == Long.MAX_VALUE
+                ? 1L
+                : questTrackingRevision + 1L;
+        lastQuestTrackingChangeReason = QuestTrackingChangeReason.RECONCILE;
         trackedQuestDirty = false;
         dialogueProgress.clear();
         tradeData.clear();
         gachaData.clear();
         fullDirty = true;
+    }
+
+    private static QuestTrackingState parseQuestTrackingState(String value,
+                                                               @Nullable String trackedQuestId) {
+        if (value != null && !value.isBlank()) {
+            try {
+                QuestTrackingState parsed = QuestTrackingState.valueOf(value);
+                if (parsed.isTracking() == (trackedQuestId != null)) return parsed;
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return trackedQuestId != null
+                ? QuestTrackingState.TRACKING_AUTOMATIC
+                : QuestTrackingState.EMPTY;
+    }
+
+    private static QuestTrackingChangeReason parseQuestTrackingReason(String value) {
+        if (value != null && !value.isBlank()) {
+            try {
+                return QuestTrackingChangeReason.valueOf(value);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return QuestTrackingChangeReason.UNKNOWN;
     }
 }

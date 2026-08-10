@@ -9,11 +9,11 @@ import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import java.util.Comparator;
 
-record QuestTrackingPriority(int groupSortOrder,
-                             String groupKey,
-                             int questSortOrder,
-                             long acceptedAtTick,
-                             String questId) implements Comparable<QuestTrackingPriority> {
+public record QuestTrackingPriority(int groupSortOrder,
+                                    String groupKey,
+                                    int questSortOrder,
+                                    long acceptedAtTick,
+                                    String questId) implements Comparable<QuestTrackingPriority> {
 
     private static final Comparator<QuestTrackingPriority> ORDER = Comparator
             .comparingInt(QuestTrackingPriority::groupSortOrder)
@@ -22,7 +22,7 @@ record QuestTrackingPriority(int groupSortOrder,
             .thenComparingLong(QuestTrackingPriority::acceptedAtTick)
             .thenComparing(QuestTrackingPriority::questId);
 
-    static QuestTrackingPriority resolve(String questId, long acceptedAtTick) {
+    public static QuestTrackingPriority resolve(String questId, long acceptedAtTick) {
         ResourceLocation questKey = ResourceLocation.tryParse(questId);
         QuestDefinition definition = questKey != null ? QuestRegistry.get(questKey) : null;
         QuestGroupDefinition explicitGroup = questKey != null

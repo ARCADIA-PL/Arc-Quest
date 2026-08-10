@@ -28,6 +28,8 @@ import org.arcadia.arc_quest.quest.network.C2SRequestQuestResyncPacket;
 import org.arcadia.arc_quest.quest.network.QuestSyncRevisionManager;
 import org.arcadia.arc_quest.quest.network.QuestSyncCoordinator;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.service.TrackedQuestService;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerRuntimeManager;
 import org.arcadia.arc_quest.questplayer.snapshot.ArcQuestSnapshotReason;
@@ -55,6 +57,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(sp);
         validateAndFixQuestData(sp, data);
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
+        TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.PLAYER_LOADED);
         QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(sp, data, true);
         ArcQuestNetwork.syncFullData(sp, data);
         ArcQuestNetwork.sendDatapackReloadEpoch(sp, ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
@@ -83,6 +86,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
         if (data == null) return;
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
+        TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.PLAYER_RESPAWNED);
         QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(sp, data, true);
         ArcQuestNetwork.syncFullData(sp, data);
         GuidePlayerStateSyncService.sync(sp, data);
@@ -95,6 +99,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         ArcQuestPlayer data = ArcQuestPlayerManager.get(sp);
         if (data == null) return;
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
+        TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.DIMENSION_CHANGED);
         ArcQuestNetwork.syncFullData(sp, data);
         GuidePlayerStateSyncService.sync(sp, data);
     }

@@ -267,7 +267,7 @@ public class QuestCommands {
             ObjectiveTracker.INSTANCE.unregisterQuest(player.getUUID(), questId);
             QuestMarkerService.clearQuestMarkers(data, questId);
             data.resetQuest(questId);
-            if (wasTracked) TrackedQuestService.setTrackedQuest(player, null);
+            if (wasTracked) TrackedQuestService.onQuestReset(player);
             else ArcQuestNetwork.syncFullData(player, data);
             success(ctx, Component.translatable("arc_quest.command.reset.success", questId, player.getName().getString()).getString());
         }
