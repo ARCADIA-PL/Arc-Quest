@@ -1,7 +1,7 @@
 package org.arcadia.arc_quest.client.quest.tracking;
 
 import net.minecraft.client.Minecraft;
-import net.neoforged.neoforge.common.NeoForge;
+import net.minecraftforge.common.MinecraftForge;
 import org.arcadia.arc_quest.api.event.quest.TrackedQuestChangedEvent;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
@@ -65,7 +65,7 @@ public final class ClientQuestTrackingStore {
                 previous.questId(), incoming.questId());
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level != null && minecraft.player != null) {
-            NeoForge.EVENT_BUS.post(new TrackedQuestChangedEvent(
+            MinecraftForge.EVENT_BUS.post(new TrackedQuestChangedEvent(
                     minecraft.level, minecraft.player,
                     previous.questId(), incoming.questId(),
                     reason, incoming.revision(), true));

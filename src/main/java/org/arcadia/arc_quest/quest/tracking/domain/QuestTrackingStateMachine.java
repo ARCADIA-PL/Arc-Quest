@@ -87,6 +87,6 @@ public final class QuestTrackingStateMachine {
     }
 
     private String first(List<String> activeQuestIds) {
-        return activeQuestIds.isEmpty() ? null : activeQuestIds.getFirst();
+        return activeQuestIds.isEmpty() ? null : activeQuestIds.get(0);
     }
 }

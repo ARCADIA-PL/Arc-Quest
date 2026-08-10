@@ -51,7 +51,7 @@ public final class PhaseTransition implements Comparable<PhaseTransition> {
     }
 
     public String getTargetPhaseId() {
-        return targetPhaseIds.getFirst();
+        return targetPhaseIds.get(0);
     }
 
     public List<String> getTargetPhaseIds() {
