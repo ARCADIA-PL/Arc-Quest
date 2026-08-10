@@ -4,7 +4,7 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
@@ -94,7 +94,7 @@ public class JournalDetailControls {
         if (bActive) {
             boolean tHover = !active && mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH;
             trackBtnHover = HudAnimUtil.step(trackBtnHover, tHover ? 1f : 0f, 8f, dt);
-            JournalDetailPanel.drawCyberButton(g, screen, trackX, btnY, btnW, btnH, entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.untrack").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
+            JournalDetailPanel.drawCyberButton(g, screen, trackX, btnY, btnW, btnH, entry.questId().equals(ClientQuestTrackingController.INSTANCE.trackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.untrack").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
 
             if (bConfirm) {
                 boolean cHover = !active && mx >= confirmX && mx <= confirmX + btnW && my >= btnY && my <= btnY + btnH;
@@ -171,10 +171,10 @@ public class JournalDetailControls {
 
         if (bActive) {
             if (mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH) {
-                if (entry.questId().equals(QuestHudOverlay.INSTANCE.getTrackedQuestId())) {
-                    QuestHudOverlay.INSTANCE.setTrackedQuest(null);
+                if (entry.questId().equals(ClientQuestTrackingController.INSTANCE.trackedQuestId())) {
+                    ClientQuestTrackingController.INSTANCE.requestTrack(null);
                 } else {
-                    QuestHudOverlay.INSTANCE.setTrackedQuest(entry.questId());
+                    ClientQuestTrackingController.INSTANCE.requestTrack(entry.questId());
                 }
                 screen.playClick();
                 return true;

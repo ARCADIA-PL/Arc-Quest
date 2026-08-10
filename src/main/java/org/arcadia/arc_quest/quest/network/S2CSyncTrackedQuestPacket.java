@@ -7,9 +7,10 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingSnapshot;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingState;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.function.Supplier;
 
 public final class S2CSyncTrackedQuestPacket implements CustomPacketPayload {
 
@@ -18,28 +19,66 @@ public final class S2CSyncTrackedQuestPacket implements CustomPacketPayload {
     public static final StreamCodec<RegistryFriendlyByteBuf, S2CSyncTrackedQuestPacket> STREAM_CODEC =
             StreamCodec.ofMember(S2CSyncTrackedQuestPacket::encode, S2CSyncTrackedQuestPacket::decode);
 
-    @Nullable
-    private final String questId;
+    private final QuestTrackingSnapshot snapshot;
+    private final QuestTrackingChangeReason reason;
+    private final long playerSessionEpoch;
+    private final long baseRevision;
+    private final long newRevision;
 
-    public S2CSyncTrackedQuestPacket(@Nullable String questId) {
-        this.questId = questId;
+    public S2CSyncTrackedQuestPacket(QuestTrackingSnapshot snapshot,
+                                     QuestTrackingChangeReason reason,
+                                     long playerSessionEpoch,
+                                     long baseRevision,
+                                     long newRevision) {
+        this.snapshot = snapshot;
+        this.reason = reason;
+        this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
+        this.baseRevision = Math.max(0L, baseRevision);
+        this.newRevision = Math.max(0L, newRevision);
     }
 
     public static void encode(S2CSyncTrackedQuestPacket packet, FriendlyByteBuf buffer) {
-        buffer.writeBoolean(packet.questId != null);
-        if (packet.questId != null) buffer.writeUtf(packet.questId, 256);
+        String questId = packet.snapshot.questId();
+        buffer.writeBoolean(questId != null);
+        if (questId != null) buffer.writeUtf(questId, 256);
+        buffer.writeVarInt(packet.snapshot.state().ordinal());
+        buffer.writeLong(packet.snapshot.revision());
+        buffer.writeVarInt(packet.reason.ordinal());
+        buffer.writeLong(packet.playerSessionEpoch);
+        buffer.writeLong(packet.baseRevision);
+        buffer.writeLong(packet.newRevision);
     }
 
     public static S2CSyncTrackedQuestPacket decode(FriendlyByteBuf buffer) {
-        return new S2CSyncTrackedQuestPacket(buffer.readBoolean() ? buffer.readUtf(256) : null);
+        String questId = buffer.readBoolean() ? buffer.readUtf(256) : null;
+        QuestTrackingState state = enumValue(
+                QuestTrackingState.values(), buffer.readVarInt(), QuestTrackingState.EMPTY);
+        long trackingRevision = buffer.readLong();
+        QuestTrackingChangeReason reason = enumValue(
+                QuestTrackingChangeReason.values(), buffer.readVarInt(), QuestTrackingChangeReason.UNKNOWN);
+        long playerSessionEpoch = buffer.readLong();
+        long baseRevision = buffer.readLong();
+        long newRevision = buffer.readLong();
+        return new S2CSyncTrackedQuestPacket(
+                new QuestTrackingSnapshot(questId, state, trackingRevision),
+                reason, playerSessionEpoch, baseRevision, newRevision);
     }
 
     public static void handle(S2CSyncTrackedQuestPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> ClientQuestCache.INSTANCE.applyTrackedQuestSync(packet.questId));
+        context.enqueueWork(() -> {
+            if (ClientQuestCache.INSTANCE.acceptDelta(
+                    packet.playerSessionEpoch, packet.baseRevision, packet.newRevision)) {
+                ClientQuestCache.INSTANCE.applyTrackedQuestSync(packet.snapshot, packet.reason);
+            }
+        });
     }
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
+    }
+
+    private static <T> T enumValue(T[] values, int ordinal, T fallback) {
+        return ordinal >= 0 && ordinal < values.length ? values[ordinal] : fallback;
     }
 }

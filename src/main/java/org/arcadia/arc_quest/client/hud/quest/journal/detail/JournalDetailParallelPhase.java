@@ -21,6 +21,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalConstants;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
@@ -847,7 +848,7 @@ public class JournalDetailParallelPhase {
                 for (JournalTypes.PhaseTagRect rect : currentPhaseTags) {
                     if (mx >= rect.x && mx < rect.x + rect.w && my >= rect.y && my < rect.y + rect.h && my >= scrollAreaY && my < scrollAreaY + scrollAreaH) {
                         selectedPhaseId = rect.phaseId;
-                        QuestHudOverlay.INSTANCE.setTrackedFocus(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId);
+                        ClientQuestTrackingController.INSTANCE.requestFocus(screen.getCurrentEntries().get(screen.getSelectedIndex()).questId(), rect.phaseId);
                         screen.playClick();
                         potentialDragPhaseId = rect.phaseId;
                         potentialDragStartX = mx;
@@ -955,7 +956,7 @@ public class JournalDetailParallelPhase {
         if (def == null || runtime == null) return null;
         if (selectedPhaseId != null && !selectedPhaseId.isEmpty() && runtime.isPhaseActive(selectedPhaseId) && def.getPhase(selectedPhaseId) != null)
             return selectedPhaseId;
-        String tQuest = QuestHudOverlay.INSTANCE.getTrackedQuestId(), tPhase = QuestHudOverlay.INSTANCE.getTrackedPhaseId();
+        String tQuest = ClientQuestTrackingController.INSTANCE.trackedQuestId(), tPhase = ClientQuestTrackingController.INSTANCE.trackedPhaseId();
         if (tQuest != null && tQuest.equals(runtime.getQuestId()) && tPhase != null && !tPhase.isEmpty() && runtime.isPhaseActive(tPhase) && def.getPhase(tPhase) != null)
             return selectedPhaseId = tPhase;
         String current = runtime.getCurrentPhaseId();

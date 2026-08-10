@@ -11,8 +11,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.arcadia.arc_quest.core.event.ListenerRegistry;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
-import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
+import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -22,6 +22,9 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionCategorySnapshot;
 import org.arcadia.arc_quest.quest.logic.profile.collection.CollectionCategoryStateResolver;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingChangeReason;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingSnapshot;
+import org.arcadia.arc_quest.quest.tracking.api.QuestTrackingState;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -73,8 +76,6 @@ public final class ClientQuestCache {
      * 全局 Variables
      */
     private final Object2IntOpenHashMap<String> variables = new Object2IntOpenHashMap<>();
-    @Nullable
-    private String trackedQuestId;
     private boolean hasAppliedFullSync = false;
     private final QuestClientRevisionGate revisionGate = new QuestClientRevisionGate();
     private volatile long datapackReloadEpoch;
@@ -102,6 +103,7 @@ public final class ClientQuestCache {
         QuestClientRevisionGate.Decision decision = revisionGate.acceptDelta(
                 playerSessionEpoch, baseRevision, newRevision);
         if (decision == QuestClientRevisionGate.Decision.GAP) {
+            ClientQuestTrackingStore.INSTANCE.markReconciling();
             LOGGER.warn("[QuestSync] Revision gap detected: epoch={}, base={}, incoming={}, current={}",
                     playerSessionEpoch, baseRevision, newRevision, revisionGate.revision());
             PacketDistributor.sendToServer(new C2SRequestQuestResyncPacket(
@@ -124,15 +126,23 @@ public final class ClientQuestCache {
 
     @Nullable
     public String getTrackedQuestId() {
-        return trackedQuestId;
+        return ClientQuestTrackingStore.INSTANCE.trackedQuestId();
     }
 
     public void applyTrackedQuestSync(@Nullable String questId) {
-        String normalizedQuestId = questId == null || questId.isBlank() ? null : questId;
-        if (Objects.equals(trackedQuestId, normalizedQuestId)) return;
-        QuestChangeNotificationManager.INSTANCE.acknowledgeTrackedQuestTransition(
-                trackedQuestId, normalizedQuestId);
-        trackedQuestId = normalizedQuestId;
+        QuestTrackingSnapshot current = ClientQuestTrackingStore.INSTANCE.snapshot();
+        ClientQuestTrackingStore.INSTANCE.applyAuthoritative(
+                new QuestTrackingSnapshot(questId,
+                        questId == null || questId.isBlank()
+                                ? QuestTrackingState.EMPTY
+                                : QuestTrackingState.TRACKING_AUTOMATIC,
+                        current.revision() + 1L),
+                QuestTrackingChangeReason.UNKNOWN);
+    }
+
+    public void applyTrackedQuestSync(QuestTrackingSnapshot snapshot,
+                                      QuestTrackingChangeReason reason) {
+        ClientQuestTrackingStore.INSTANCE.applyAuthoritative(snapshot, reason);
     }
 
     // ═══════════════════════════════════════════════════════
@@ -158,9 +168,15 @@ public final class ClientQuestCache {
         readPhaseStories.clear();
         flags.clear();
         variables.clear();
-        applyTrackedQuestSync(capData.contains("TrackedQuestId", Tag.TAG_STRING)
+        String trackedQuestId = capData.contains("TrackedQuestId", Tag.TAG_STRING)
                 ? capData.getString("TrackedQuestId")
-                : null);
+                : null;
+        QuestTrackingState trackingState = parseTrackingState(
+                capData.getString("TrackedQuestState"), trackedQuestId);
+        long trackingRevision = Math.max(0L, capData.getLong("TrackedQuestRevision"));
+        applyTrackedQuestSync(new QuestTrackingSnapshot(
+                        trackedQuestId, trackingState, trackingRevision),
+                QuestTrackingChangeReason.FULL_SYNC);
 
         // 活跃任务
         ListTag activeList = capData.getList("ActiveQuests", Tag.TAG_COMPOUND);
@@ -652,10 +668,23 @@ public final class ClientQuestCache {
         readPhaseStories.clear();
         flags.clear();
         variables.clear();
-        trackedQuestId = null;
+        ClientQuestTrackingStore.INSTANCE.clear();
         hasAppliedFullSync = false;
         revisionGate.clear();
         LOGGER.info("[ClientCache] Cache cleared.");
+    }
+
+    private QuestTrackingState parseTrackingState(String value, @Nullable String questId) {
+        if (value != null && !value.isBlank()) {
+            try {
+                QuestTrackingState parsed = QuestTrackingState.valueOf(value);
+                if (parsed.isTracking() == (questId != null && !questId.isBlank())) return parsed;
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return questId == null || questId.isBlank()
+                ? QuestTrackingState.EMPTY
+                : QuestTrackingState.TRACKING_AUTOMATIC;
     }
 
     // ═══════════════════════════════════════════════════════
@@ -846,16 +875,9 @@ public final class ClientQuestCache {
     @Nullable
     public QuestRuntimeData resolveTrackedQuest(@Nullable String trackedQuestId) {
         // 1. 尝试获取指定的追踪任务
-        if (trackedQuestId != null) {
-            QuestRuntimeData data = activeQuests.get(trackedQuestId);
-            if (data != null) return data;
-        }
+        if (trackedQuestId != null) return activeQuests.get(trackedQuestId);
 
         // 2. 后备：返回第一个活跃任务（LinkedHashMap 保证插入顺序，即最早激活的任务）
-        if (!activeQuests.isEmpty()) {
-            return activeQuests.values().iterator().next();
-        }
-
         return null;
     }
 

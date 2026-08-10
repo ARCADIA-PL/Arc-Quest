@@ -9,11 +9,11 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.service.TrackedQuestService;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
+import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 
 public final class C2SSetTrackedQuestPacket implements CustomPacketPayload {
 
@@ -21,9 +21,6 @@ public final class C2SSetTrackedQuestPacket implements CustomPacketPayload {
             new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "set_tracked_quest"));
     public static final StreamCodec<RegistryFriendlyByteBuf, C2SSetTrackedQuestPacket> STREAM_CODEC =
             StreamCodec.ofMember(C2SSetTrackedQuestPacket::encode, C2SSetTrackedQuestPacket::decode);
-
-    private static final int UPDATE_COOLDOWN_TICKS = 2;
-    private static final ConcurrentHashMap<UUID, Integer> LAST_UPDATE_TICK = new ConcurrentHashMap<>();
 
     @Nullable
     private final String questId;
@@ -44,8 +41,12 @@ public final class C2SSetTrackedQuestPacket implements CustomPacketPayload {
     public static void handle(C2SSetTrackedQuestPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             ServerPlayer player = context.player() instanceof ServerPlayer serverPlayer ? serverPlayer : null;
-            if (player != null && acquireUpdateSlot(player)) {
-                TrackedQuestService.setTrackedQuest(player, packet.questId);
+            if (player != null) {
+                boolean changed = TrackedQuestService.setTrackedQuest(player, packet.questId);
+                if (!changed) {
+                    ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
+                    ArcQuestNetwork.syncTrackedQuest(player, data);
+                }
             }
         });
     }
@@ -55,19 +56,9 @@ public final class C2SSetTrackedQuestPacket implements CustomPacketPayload {
         return TYPE;
     }
 
-    private static boolean acquireUpdateSlot(ServerPlayer player) {
-        int currentTick = player.getServer().getTickCount();
-        Integer previousTick = LAST_UPDATE_TICK.get(player.getUUID());
-        if (previousTick != null && currentTick - previousTick < UPDATE_COOLDOWN_TICKS) return false;
-        LAST_UPDATE_TICK.put(player.getUUID(), currentTick);
-        return true;
-    }
-
     public static void clearPlayer(UUID playerId) {
-        LAST_UPDATE_TICK.remove(playerId);
     }
 
     public static void clear() {
-        LAST_UPDATE_TICK.clear();
     }
 }
