@@ -622,7 +622,7 @@ public final class QuestProgressHandler {
         QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questId);
 
         syncQuestStateAndPush(player, qdata);
-        TrackedQuestService.ensureTrackedQuest(player, null);
+        TrackedQuestService.onQuestTerminated(player);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         NeoForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         QuestDefinition def = QuestRegistry.get(ResourceLocation.parse(questId));
@@ -656,7 +656,7 @@ public final class QuestProgressHandler {
         QuestMarkerRuntimeManager.clearQuest(player.getUUID(), questId);
 
         syncFullDataAndPush(player, data);
-        TrackedQuestService.ensureTrackedQuest(player, null);
+        TrackedQuestService.onQuestTerminated(player);
         QuestEventBus.fire(QuestChangeEvent.questFailed(ResourceLocation.parse(questId)));
         NeoForge.EVENT_BUS.post(new QuestFailedEvent(player, ResourceLocation.parse(questId)));
         NeoForge.EVENT_BUS.post(new QuestAbandonedEvent(player, ResourceLocation.parse(questId)));
@@ -727,7 +727,7 @@ public final class QuestProgressHandler {
                 player.getGameProfile().getName(), logPrefix, questId);
 
         syncQuestStateAndPush(player, qdata);
-        TrackedQuestService.ensureTrackedQuest(player, null);
+        TrackedQuestService.onQuestTerminated(player);
         syncFlagsVarsAndPush(player, data);
         QuestEventBus.fire(QuestChangeEvent.questCompleted(ResourceLocation.parse(questId)));
         NeoForge.EVENT_BUS.post(new QuestCompletedEvent(player, ResourceLocation.parse(questId)));
@@ -788,7 +788,6 @@ public final class QuestProgressHandler {
             QuestMarkerService.refreshQuestMarkers(player, data, qdata, def);
         }
 
-        TrackedQuestService.ensureTrackedQuest(player, null);
         NeoForge.EVENT_BUS.post(new QuestTrackerRebuiltEvent(player, activeQuestCount));
     }
 
@@ -1012,7 +1011,7 @@ public final class QuestProgressHandler {
         flagsChanged = flagsChanged || activation.flagsChanged;
 
         syncQuestStateAndPush(player, runtime);
-        TrackedQuestService.ensureTrackedQuest(player, questId);
+        TrackedQuestService.onQuestAccepted(player, questId);
         if (flagsChanged) syncFlagsVarsAndPush(player, data);
         return QuestRejectCodeDictionary.Code.OK;
     }

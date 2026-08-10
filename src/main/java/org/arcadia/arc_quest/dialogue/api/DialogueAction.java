@@ -70,7 +70,7 @@ public sealed interface DialogueAction {
             if (qdata != null) {
                 qdata.setState(QuestState.COMPLETED);
                 data.markCompleted(questId);
-                TrackedQuestService.ensureTrackedQuest(player, null);
+                TrackedQuestService.onQuestTerminated(player);
             }
         }
     }

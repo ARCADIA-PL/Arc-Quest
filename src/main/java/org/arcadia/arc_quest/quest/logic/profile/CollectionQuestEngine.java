@@ -81,7 +81,7 @@ public final class CollectionQuestEngine {
         }
 
         QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
-        TrackedQuestService.ensureTrackedQuest(player, questId);
+        TrackedQuestService.onQuestAccepted(player, questId);
         if (flagsChanged) {
             QuestSyncCoordinator.syncFlagsVarsAndPush(player, data);
         }
@@ -400,7 +400,7 @@ public final class CollectionQuestEngine {
         data.markCompleted(def.getId().toString());
         evaluateQuestRewardUnlocks(player, data, def, runtime);
         QuestSyncCoordinator.syncQuestStateAndPush(player, runtime);
-        TrackedQuestService.ensureTrackedQuest(player, null);
+        TrackedQuestService.onQuestTerminated(player);
         return true;
     }
 
