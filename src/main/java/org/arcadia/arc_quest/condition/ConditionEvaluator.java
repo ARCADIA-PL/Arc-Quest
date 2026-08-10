@@ -84,6 +84,25 @@ public final class ConditionEvaluator {
 
     public boolean evaluateWithEntity(ConditionSpec spec, @Nullable ServerPlayer player, @Nullable Entity entity) {
         if (spec == null || spec.isAlways()) return true;
+        if ("arc_quest:entity_nbt".equals(spec.condition)) return evaluateEntityNbt(spec, entity);
+        if ("arc_quest:entity_name".equals(spec.condition)) return evaluateEntityName(spec, entity);
+
+        var playerData = player == null ? null : ArcQuestPlayerManager.get(player);
+        Set<ResourceLocation> completedQuests = playerData == null
+                ? Set.of()
+                : playerData.getCompletedQuestLocations();
+        Set<String> flags = playerData == null ? Set.of() : playerData.getAllFlags();
+        Map<String, Integer> variables = playerData == null ? Map.of() : playerData.getAllVariables();
+        return evaluateWithEntity(spec, player, entity, completedQuests, flags, variables);
+    }
+
+    private boolean evaluateWithEntity(ConditionSpec spec,
+                                       @Nullable ServerPlayer player,
+                                       @Nullable Entity entity,
+                                       Set<ResourceLocation> completedQuests,
+                                       Set<String> flags,
+                                       Map<String, Integer> variables) {
+        if (spec == null || spec.isAlways()) return true;
 
         String cond = spec.condition;
         if (cond == null || cond.isBlank()) return true;
@@ -95,7 +114,33 @@ public final class ConditionEvaluator {
             return evaluateEntityName(spec, entity);
         }
 
-        return evaluate(spec, player, Set.of(), Set.of(), Map.of());
+        return switch (cond) {
+            case "arc_quest:and" -> {
+                if (spec.conditions == null || spec.conditions.isEmpty()) yield true;
+                boolean matched = true;
+                for (ConditionSpec child : spec.conditions) {
+                    if (!evaluateWithEntity(child, player, entity, completedQuests, flags, variables)) {
+                        matched = false;
+                        break;
+                    }
+                }
+                yield matched;
+            }
+            case "arc_quest:or" -> {
+                if (spec.conditions == null || spec.conditions.isEmpty()) yield false;
+                boolean matched = false;
+                for (ConditionSpec child : spec.conditions) {
+                    if (evaluateWithEntity(child, player, entity, completedQuests, flags, variables)) {
+                        matched = true;
+                        break;
+                    }
+                }
+                yield matched;
+            }
+            case "arc_quest:not" -> spec.inner == null
+                    || !evaluateWithEntity(spec.inner, player, entity, completedQuests, flags, variables);
+            default -> evaluate(spec, player, completedQuests, flags, variables);
+        };
     }
 
     private boolean evaluateVanillaPredicate(ConditionSpec spec, @Nullable ServerPlayer player) {

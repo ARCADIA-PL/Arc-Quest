@@ -43,6 +43,16 @@ export function cleanCondition(node) {
         case 'arc_quest:variable_check':
             return {condition: 'arc_quest:variable_check', key: node.key || '', op: node.op || 'EQUAL', value: Number(node.value ?? 0)};
 
+        case 'arc_quest:hold_item': {
+            const condition = {
+                condition: 'arc_quest:hold_item',
+                itemId: node.itemId || '',
+                count: Math.max(1, Number(node.count ?? 1))
+            };
+            if ((node.itemSource || 'hands') !== 'hands') condition.itemSource = node.itemSource;
+            return condition;
+        }
+
         case 'arc_quest:entity_nbt':
             return {condition: 'arc_quest:entity_nbt', nbtScope: node.nbtScope || 'default', nbtKey: node.nbtKey || '', nbtValue: node.nbtValue || ''};
 

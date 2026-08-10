@@ -526,7 +526,38 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
      * @param itemId   物品注册名，如 {@code "minecraft:diamond"}
      * @param minCount 最少需要持有的数量
      */
-    record HoldItem(String itemId, int minCount) implements DialogueCondition {
+    enum ItemSource {
+        HANDS("hands"),
+        INVENTORY("inventory");
+
+        private final String serializedName;
+
+        ItemSource(String serializedName) {
+            this.serializedName = serializedName;
+        }
+
+        public String serializedName() {
+            return serializedName;
+        }
+
+        public static ItemSource fromSerializedName(String value) {
+            if (value == null || value.isBlank()) return HANDS;
+            for (ItemSource source : values()) {
+                if (source.serializedName.equalsIgnoreCase(value)) return source;
+            }
+            throw new IllegalArgumentException("Unknown item source: " + value);
+        }
+    }
+
+    record HoldItem(String itemId, int minCount, ItemSource itemSource) implements DialogueCondition {
+        public HoldItem(String itemId, int minCount) {
+            this(itemId, minCount, ItemSource.HANDS);
+        }
+
+        public HoldItem {
+            if (itemSource == null) itemSource = ItemSource.HANDS;
+        }
+
         /**
          * 通过 {@link ItemStack} 直接创建条件（默认数量 = 1）。
          */
@@ -546,10 +577,43 @@ public sealed interface DialogueCondition extends CoreCondition<DialogueEvalCont
             return new HoldItem(id.toString(), minCount);
         }
 
+        public static HoldItem inInventory(String itemId, int minCount) {
+            return new HoldItem(itemId, minCount, ItemSource.INVENTORY);
+        }
+
+        public static HoldItem inInventory(String itemId) {
+            return inInventory(itemId, 1);
+        }
+
+        public static HoldItem inInventory(ItemStack stack) {
+            return inInventory(stack, 1);
+        }
+
+        public static HoldItem inInventory(ItemStack stack, int minCount) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (id == null) throw new IllegalArgumentException("Unregistered item: " + stack.getItem());
+            return inInventory(id.toString(), minCount);
+        }
+
         @Override
         public boolean test(DialogueEvalContext ctx) {
+            if (ctx == null || ctx.player() == null) return false;
             ResourceLocation target = ResourceLocation.tryParse(itemId);
             if (target == null) return false;
+
+            if (itemSource == ItemSource.INVENTORY) {
+                int total = 0;
+                var inventory = ctx.player().getInventory();
+                for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+                    ItemStack stack = inventory.getItem(slot);
+                    if (stack.isEmpty()) continue;
+                    ResourceLocation stackId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+                    if (target.equals(stackId)) total += stack.getCount();
+                    if (total >= minCount) return true;
+                }
+                return total >= minCount;
+            }
+
             int total = 0;
             var mainHand = ctx.player().getMainHandItem();
             if (!mainHand.isEmpty()) {

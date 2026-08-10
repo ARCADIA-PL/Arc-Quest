@@ -31,7 +31,7 @@ export function setConditionNodeField(rootNode, pathParts, value) {
             'key', 'op', 'value', 'inner', 'conditions', 'predicate',
             'nbtScope', 'nbtKey', 'nbtValue', 'namePattern',
             'dialogueId', 'nodeId', 'choiceId', 'startTick', 'endTick',
-            'quest_id', 'phase_id', 'questId', 'itemId', 'count'];
+            'quest_id', 'phase_id', 'questId', 'itemId', 'itemSource', 'count'];
         const clearAll = () => { for (const f of ALL_DATA_FIELDS) delete cursor[f]; };
 
         switch (value) {
@@ -46,6 +46,7 @@ export function setConditionNodeField(rootNode, pathParts, value) {
             case 'arc_quest:hold_item':
                 clearAll();
                 cursor.itemId = '';
+                cursor.itemSource = 'hands';
                 cursor.count = 1;
                 return;
             case 'arc_quest:quest_completed':

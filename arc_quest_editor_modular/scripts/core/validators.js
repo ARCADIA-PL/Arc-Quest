@@ -86,6 +86,16 @@ function validateConditionNode(node, path, d) {
             msg: 'variable_check.op 非标准'
         });
     }
+    if (cond === 'arc_quest:hold_item') {
+        if (!node.itemId) d.push({lvl: 'err', path: `${path}.itemId`, msg: 'hold_item 缺少 itemId'});
+        if (!Number.isFinite(Number(node.count)) || Number(node.count) < 1) {
+            d.push({lvl: 'err', path: `${path}.count`, msg: 'hold_item.count 必须至少为 1'});
+        }
+        const itemSource = node.itemSource || 'hands';
+        if (itemSource !== 'hands' && itemSource !== 'inventory') {
+            d.push({lvl: 'err', path: `${path}.itemSource`, msg: 'hold_item.itemSource 仅支持 hands 或 inventory'});
+        }
+    }
     if (cond === 'arc_quest:and' || cond === 'arc_quest:or') {
         (node.conditions || []).forEach((sub, idx) => {
             validateConditionNode(sub, `${path}.conditions.${idx}`, d);

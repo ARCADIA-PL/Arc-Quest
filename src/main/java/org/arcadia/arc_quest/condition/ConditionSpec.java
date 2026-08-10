@@ -29,6 +29,7 @@ public class ConditionSpec {
     public int count;
     public String effectId;
     public String itemId;
+    public String itemSource = "hands";
 
     public ConditionSpec inner;
     public List<ConditionSpec> conditions = new ArrayList<>();

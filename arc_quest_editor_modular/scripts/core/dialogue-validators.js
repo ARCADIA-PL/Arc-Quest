@@ -3,6 +3,18 @@ import {validateMarkers} from './validators.js';
 function validateConditionNode(node, path, d) {
     if (!node) return;
     if (!node.condition || node.condition === 'arc_quest:always') return;
+    if (node.condition === 'arc_quest:hold_item') {
+        if (!node.itemId || !node.itemId.trim()) {
+            d.push({lvl: 'err', path: `${path}.itemId`, msg: 'hold_item requires itemId'});
+        }
+        if (!Number.isFinite(Number(node.count)) || Number(node.count) < 1) {
+            d.push({lvl: 'err', path: `${path}.count`, msg: 'hold_item count must be at least 1'});
+        }
+        const itemSource = node.itemSource || 'hands';
+        if (itemSource !== 'hands' && itemSource !== 'inventory') {
+            d.push({lvl: 'err', path: `${path}.itemSource`, msg: 'hold_item itemSource must be hands or inventory'});
+        }
+    }
     if (node.inner) validateConditionNode(node.inner, `${path}.inner`, d);
     if (node.conditions) node.conditions.forEach((c, i) => validateConditionNode(c, `${path}.conditions.${i}`, d));
 }
