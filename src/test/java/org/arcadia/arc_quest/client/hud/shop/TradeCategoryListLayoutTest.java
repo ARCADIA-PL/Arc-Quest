@@ -1,4 +1,4 @@
-·package org.arcadia.arc_quest.client.hud.shop;
+package org.arcadia.arc_quest.client.hud.shop;
 
 import org.junit.jupiter.api.Test;
 
