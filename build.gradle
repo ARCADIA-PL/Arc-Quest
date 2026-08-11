@@ -84,6 +84,7 @@ dependencies {
     runtimeOnly "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
 
     implementation "xaero.minimap:xaerominimap-neoforge-1.21.1:26.4.2"
+    implementation "xaero.map:xaeroworldmap-neoforge-1.21.1:1.44.2"
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
     testImplementation 'org.slf4j:slf4j-api:2.0.9'
