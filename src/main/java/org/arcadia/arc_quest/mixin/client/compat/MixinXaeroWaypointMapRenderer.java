@@ -30,8 +30,8 @@ public abstract class MixinXaeroWaypointMapRenderer {
                                            int centerY,
                                            int opacity,
                                            MultiBufferSource.BufferSource bufferSource,
-                                           VertexConsumer texturedIconConsumer,
                                            VertexConsumer waypointBackgroundConsumer,
+                                           VertexConsumer texturedIconConsumer,
                                            CallbackInfo callback) {
         if (!XaeroQuestMarkerIconRegistry.isArcQuestWaypoint(waypoint)) return;
         XaeroQuestMarkerIconRenderer.render(gui, waypointBackgroundConsumer,
