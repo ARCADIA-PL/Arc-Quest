@@ -30,6 +30,10 @@ public final class QuestMarkerExternalSync {
         SINK.clear();
     }
 
+    public static void tick() {
+        SINK.tick();
+    }
+
     private static Sink createSink() {
         if (!ModList.get().isLoaded(XAERO_MOD_ID)) return Sink.NOOP;
         try {
@@ -54,5 +58,8 @@ public final class QuestMarkerExternalSync {
         void replaceAll(Collection<QuestMarkerData> markers);
 
         void clear();
+
+        default void tick() {
+        }
     }
 }

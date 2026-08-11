@@ -79,6 +79,7 @@ public final class ClientEventHandler {
 
         QuestToastManager.tick();
         QuestIntelPanel.tick();
+        QuestMarkerExternalSync.tick();
     }
 
     static boolean shouldOpenStandaloneGuide(boolean screenPresent, boolean dialogueActive) {

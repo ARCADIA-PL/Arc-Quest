@@ -30,10 +30,12 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_WAYPOINT_NAME_LENGTH = 128;
+    private static final int RECONCILE_INTERVAL_TICKS = 20;
 
     private final Map<String, Projection> desired = new LinkedHashMap<>();
     private final Map<String, Projection> applied = new LinkedHashMap<>();
     private int sessionIdentity;
+    private int reconcileTicker;
     private boolean disabled;
 
     @Override
@@ -51,11 +53,27 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
         runOnClientThread(this::clearProjected);
     }
 
+    @Override
+    public void tick() {
+        if (disabled || ++reconcileTicker < RECONCILE_INTERVAL_TICKS) return;
+        reconcileTicker = 0;
+        syncDesired();
+    }
+
     private void replaceProjected(Map<String, Projection> next) {
         if (disabled) return;
         try {
             desired.clear();
             desired.putAll(next);
+            syncDesired();
+        } catch (RuntimeException | LinkageError exception) {
+            disable(exception);
+        }
+    }
+
+    private void syncDesired() {
+        if (disabled) return;
+        try {
             SessionContext context = currentContext();
             if (context == null) return;
             if (sessionIdentity != context.identity()) {
@@ -63,6 +81,7 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
                 applied.clear();
                 XaeroQuestMarkerIconRegistry.clear();
             }
+            if (desired.equals(applied)) return;
             reconcile(context.session(), context.root());
             applied.clear();
             applied.putAll(desired);
@@ -79,6 +98,7 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
             if (context != null) reconcile(context.session(), context.root());
             applied.clear();
             sessionIdentity = 0;
+            reconcileTicker = 0;
             XaeroQuestMarkerIconRegistry.clear();
         } catch (RuntimeException | LinkageError exception) {
             disable(exception);
