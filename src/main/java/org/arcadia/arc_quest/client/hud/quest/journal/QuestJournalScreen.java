@@ -18,6 +18,7 @@ import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.detail.JournalDetailPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScreenLayout;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalTooltipRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeNotificationManager;
@@ -38,8 +39,6 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static org.arcadia.arc_quest.client.hud.HudRenderUtil.drawCyberneticEdge;
 
 public class QuestJournalScreen extends Screen {
 
@@ -498,23 +497,13 @@ public class QuestJournalScreen extends Screen {
         renderTooltipLayout(g, buildTooltipLayoutNoCache(tooltipLines), mouseX, mouseY);
     }
 
-    private TooltipLayoutCache buildTooltipLayoutNoCache(List<Component> lines) {
-        TooltipLayoutCache layout = new TooltipLayoutCache();
-        layout.lines = lines == null ? List.of() : lines;
-        int padding = 6, cyberEdgeWidth = 3;
-        for (Component line : layout.lines) {
-            int lineWidth = font.width(line);
-            if (lineWidth > layout.textMaxWidth) layout.textMaxWidth = lineWidth;
-        }
-        layout.targetW = layout.textMaxWidth + padding * 2 + cyberEdgeWidth + 2;
-        layout.targetH = layout.lines.size() * font.lineHeight + padding * 2;
-        return layout;
+    private JournalTooltipRenderer.Layout buildTooltipLayoutNoCache(List<Component> lines) {
+        return JournalTooltipRenderer.measure(font, lines);
     }
 
-    private void renderTooltipLayout(GuiGraphics g, TooltipLayoutCache layout, int mouseX, int mouseY) {
-        if (layout == null || layout.lines.isEmpty()) return;
-        int padding = 6, cyberEdgeWidth = 3;
-        int targetW = layout.targetW, targetH = layout.targetH, targetX = mouseX + 12, targetY = mouseY - 12;
+    private void renderTooltipLayout(GuiGraphics g, JournalTooltipRenderer.Layout layout, int mouseX, int mouseY) {
+        if (layout == null || layout.lines().isEmpty()) return;
+        int targetW = layout.width(), targetH = layout.height(), targetX = mouseX + 12, targetY = mouseY - 12;
 
         int sw = getScaledWidth(), sh = getScaledHeight();
         if (targetX + targetW > sw) targetX = mouseX - targetW - 8;
@@ -536,8 +525,6 @@ public class QuestJournalScreen extends Screen {
 
         int drawX = (int) animTipX, drawY = (int) animTipY, drawW = (int) animTipW, drawH = (int) animTipH;
         float finalTipAlpha = (tooltipTipAlpha == 0 ? 1f : tooltipTipAlpha) * effectiveAlpha;
-        int bgAlpha = (int) (0xD0 * finalTipAlpha), borderAlpha = (int) (0x66 * finalTipAlpha), edgeAlpha = (int) (255 * finalTipAlpha);
-
         g.pose().pushPose();
         g.pose().translate(0, 0, 5000);
         float centerX = drawX + drawW / 2f, centerY = drawY + drawH / 2f;
@@ -545,19 +532,9 @@ public class QuestJournalScreen extends Screen {
         g.pose().scale(scale, scale, 1f);
         g.pose().translate(-centerX, -centerY, 0);
 
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0x000000, bgAlpha));
-        g.fill(drawX + cyberEdgeWidth, drawY, drawX + drawW, drawY + 1, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        g.fill(drawX + cyberEdgeWidth, drawY + drawH - 1, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-        g.fill(drawX + drawW - 1, drawY, drawX + drawW, drawY + drawH, HudAnimUtil.withAlpha(0xCCCCCC, borderAlpha));
-
-        drawCyberneticEdge(g, drawX, drawY, drawH, currentThemeColor, edgeAlpha);
+        JournalTooltipRenderer.drawFrame(g, drawX, drawY, drawW, drawH, currentThemeColor, finalTipAlpha);
         enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
-
-        int textX = drawX + cyberEdgeWidth + padding + 1, textY = drawY + padding;
-        for (Component line : layout.lines) {
-            g.drawString(font, line, textX, textY, HudAnimUtil.withAlpha(0xFFFFFF, edgeAlpha), true);
-            textY += font.lineHeight;
-        }
+        JournalTooltipRenderer.drawText(g, font, layout.lines(), drawX, drawY, finalTipAlpha);
         g.disableScissor();
         g.pose().popPose();
     }
@@ -614,10 +591,4 @@ public class QuestJournalScreen extends Screen {
     public JournalDetailPanel getDetailPanel() { return detailPanel; }
     public QuestChangeHistoryPanel getChangeHistoryPanel() { return changeHistoryPanel; }
 
-    private static class TooltipLayoutCache {
-        List<Component> lines = List.of();
-        int textMaxWidth = 0;
-        int targetW = 0;
-        int targetH = 0;
-    }
 }
