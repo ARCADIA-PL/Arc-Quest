@@ -2,9 +2,9 @@ package org.arcadia.arc_quest.client.hud.quest.journal;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.api.QuestCategory;
 import org.arcadia.arc_quest.quest.api.QuestGroupDefinition;
+import org.arcadia.arc_quest.quest.service.QuestJournalOrder;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -83,10 +83,7 @@ final class JournalListLayout {
 
         static GroupDefinition category(QuestCategory category) {
             ResourceLocation categoryId = category.getId();
-            ResourceLocation journalGroupId = ResourceLocation.fromNamespaceAndPath(
-                    Arc_Quest.MOD_ID,
-                    "journal_category/" + categoryId.getNamespace() + "/" + categoryId.getPath()
-            );
+            ResourceLocation journalGroupId = QuestJournalOrder.categoryGroupId(categoryId);
             return new GroupDefinition(
                     journalGroupId,
                     category.getDisplayName(),
