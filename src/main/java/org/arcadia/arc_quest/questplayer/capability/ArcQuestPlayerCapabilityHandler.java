@@ -12,7 +12,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 public final class ArcQuestPlayerCapabilityHandler {
 
     private static final ResourceLocation PLAYER_DATA_ID =
-            new ResourceLocation(Arc_Quest.MOD_ID, "player_data");
+            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "player_data");
 
     private ArcQuestPlayerCapabilityHandler() {
     }
