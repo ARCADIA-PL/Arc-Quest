@@ -75,6 +75,7 @@ public final class ClientEventHandler {
 
         QuestToastManager.tick();
         QuestIntelPanel.tick();
+        QuestMarkerExternalSync.tick();
     }
 
     @SubscribeEvent

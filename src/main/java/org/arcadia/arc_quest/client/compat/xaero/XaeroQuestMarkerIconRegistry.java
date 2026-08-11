@@ -20,7 +20,7 @@ public final class XaeroQuestMarkerIconRegistry {
     }
 
     public static void register(Waypoint waypoint, int colorArgb) {
-        if (waypoint != null) COLORS.put(waypoint, colorArgb);
+        if (waypoint != null) COLORS.put(waypoint, normalizeColor(colorArgb));
     }
 
     public static void unregister(Waypoint waypoint) {
@@ -38,5 +38,9 @@ public final class XaeroQuestMarkerIconRegistry {
     public static int resolveColor(Waypoint waypoint) {
         Integer color = COLORS.get(waypoint);
         return color != null ? color : 0xFF000000 | waypoint.getActualColor();
+    }
+
+    private static int normalizeColor(int colorArgb) {
+        return (colorArgb >>> 24) == 0 ? 0xFF000000 | colorArgb : colorArgb;
     }
 }
