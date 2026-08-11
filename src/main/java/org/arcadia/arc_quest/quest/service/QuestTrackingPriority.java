@@ -19,8 +19,8 @@ public record QuestTrackingPriority(int groupSortOrder,
             .comparingInt(QuestTrackingPriority::groupSortOrder)
             .thenComparing(QuestTrackingPriority::groupKey)
             .thenComparingInt(QuestTrackingPriority::questSortOrder)
-            .thenComparingLong(QuestTrackingPriority::acceptedAtTick)
-            .thenComparing(QuestTrackingPriority::questId);
+            .thenComparing(QuestTrackingPriority::questId)
+            .thenComparingLong(QuestTrackingPriority::acceptedAtTick);
 
     public static QuestTrackingPriority resolve(String questId, long acceptedAtTick) {
         ResourceLocation questKey = ResourceLocation.tryParse(questId);
@@ -32,7 +32,7 @@ public record QuestTrackingPriority(int groupSortOrder,
         if (explicitGroup != null) {
             return new QuestTrackingPriority(
                     explicitGroup.getSortOrder(),
-                    "group:" + explicitGroup.getId(),
+                    explicitGroup.getId().toString(),
                     definition != null ? definition.getSortOrder() : Integer.MAX_VALUE,
                     acceptedAtTick,
                     questId
@@ -43,7 +43,7 @@ public record QuestTrackingPriority(int groupSortOrder,
         if (category != null) {
             return new QuestTrackingPriority(
                     category.getSortOrder(),
-                    "category:" + category.getId(),
+                    QuestJournalOrder.categoryGroupId(category.getId()).toString(),
                     definition.getSortOrder(),
                     acceptedAtTick,
                     questId
