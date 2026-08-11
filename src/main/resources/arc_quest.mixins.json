@@ -12,6 +12,8 @@
     "client.MixinGameRendererAccessor",
     "client.compat.MixinXaeroWaypointMapRenderer",
     "client.compat.MixinXaeroWaypointRenderProvider",
+    "client.compat.MixinXaeroWorldMapWaypointReader",
+    "client.compat.MixinXaeroWorldMapWaypointRenderer",
     "client.ponder.MixinPonderScene",
     "client.ponder.MixinPonderUIStubAccessor"
   ],

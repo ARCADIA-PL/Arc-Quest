@@ -13,10 +13,18 @@ public final class ArcQuestMixinPlugin implements IMixinConfigPlugin {
             "org.arcadia.arc_quest.mixin.client.compat.MixinXaeroWaypointRenderProvider";
     private static final String XAERO_MAP_ICON_MIXIN =
             "org.arcadia.arc_quest.mixin.client.compat.MixinXaeroWaypointMapRenderer";
+    private static final String XAERO_WORLD_MAP_ICON_MIXIN =
+            "org.arcadia.arc_quest.mixin.client.compat.MixinXaeroWorldMapWaypointRenderer";
+    private static final String XAERO_WORLD_MAP_READER_MIXIN =
+            "org.arcadia.arc_quest.mixin.client.compat.MixinXaeroWorldMapWaypointReader";
     private static final String XAERO_WORLD_PROVIDER =
             "xaero.hud.minimap.waypoint.render.world.WaypointWorldRenderProvider";
     private static final String XAERO_MAP_RENDERER =
             "xaero.hud.minimap.waypoint.render.WaypointMapRenderer";
+    private static final String XAERO_WORLD_MAP_RENDERER =
+            "xaero.map.mods.gui.WaypointRenderer";
+    private static final String XAERO_WORLD_MAP_READER =
+            "xaero.map.mods.gui.WaypointReader";
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -31,6 +39,8 @@ public final class ArcQuestMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (XAERO_WORLD_FILTER_MIXIN.equals(mixinClassName)) return isClassPresent(XAERO_WORLD_PROVIDER);
         if (XAERO_MAP_ICON_MIXIN.equals(mixinClassName)) return isClassPresent(XAERO_MAP_RENDERER);
+        if (XAERO_WORLD_MAP_ICON_MIXIN.equals(mixinClassName)) return isClassPresent(XAERO_WORLD_MAP_RENDERER);
+        if (XAERO_WORLD_MAP_READER_MIXIN.equals(mixinClassName)) return isClassPresent(XAERO_WORLD_MAP_READER);
         return true;
     }
 
