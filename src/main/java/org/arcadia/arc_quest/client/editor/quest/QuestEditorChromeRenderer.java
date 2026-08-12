@@ -13,8 +13,7 @@ final class QuestEditorChromeRenderer {
     }
 
     static void renderBackground(GuiGraphics graphics, int width, int height, int themeColor) {
-        int tint = HudAnimUtil.lerpColor(0x000000, themeColor, 0.05f);
-        graphics.fill(0, 0, width, height, HudAnimUtil.withAlpha(tint, 255));
+        graphics.fill(0, 0, width, height, HudAnimUtil.withAlpha(QuestEditorTheme.BACKGROUND, 255));
     }
 
     static void renderHeader(GuiGraphics graphics, Font font, HudRect header,
@@ -22,7 +21,7 @@ final class QuestEditorChromeRenderer {
         graphics.pose().pushPose();
         graphics.pose().translate(header.x() + 16, header.y() + 7, 0f);
         graphics.pose().scale(0.85f, 0.85f, 1f);
-        graphics.drawString(font, "SYS.ARC_QUEST // QUEST EDITOR  >>  MOUSE-3: FOCUS CURRENT",
+        graphics.drawString(font, "SYS.ARC_QUEST // EDITOR  M3 FOCUS  F5 STEP  F6 SNAP  F7 BACK  F8 RESET  B BREAK",
                 0, 0, HudAnimUtil.withAlpha(0xAAAAAA, 255), false);
         graphics.pose().popPose();
 
@@ -40,7 +39,7 @@ final class QuestEditorChromeRenderer {
         int sourceRight = (fitButton.width() > 0 ? fitButton.x() : saveButton.x()) - 8;
         int maxSourceWidth = Math.max(40, sourceRight - 16);
         graphics.drawString(font, HudTextUtil.ellipsize(font, questSource, maxSourceWidth),
-                16, header.y() + 33, HudAnimUtil.withAlpha(0xAAB4C0, 230), false);
+                16, header.y() + 33, HudAnimUtil.withAlpha(QuestEditorTheme.TEXT_SECONDARY, 230), false);
         graphics.fill(10, 23, header.right() - 10, 24,
                 HudAnimUtil.withAlpha(0xCCCCCC, 90));
     }

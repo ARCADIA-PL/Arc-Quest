@@ -1,5 +1,7 @@
 package org.arcadia.arc_quest.quest.spec.io;
 
+import net.minecraft.resources.ResourceLocation;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,6 +47,16 @@ public final class DatapackPathResolver {
         }
         String normalized = questFileName.endsWith(".json") ? questFileName : (questFileName + ".json");
         Path target = resolveQuestsDir().resolve(normalized).normalize();
+        ensureInsideDatapackRoot(target);
+        return target;
+    }
+
+    public static Path resolveQuestFile(ResourceLocation questId) {
+        if (questId == null) throw new IllegalArgumentException("questId must not be null");
+        Path target = resolveQuestsDir()
+                .resolve(questId.getNamespace())
+                .resolve(questId.getPath() + ".json")
+                .normalize();
         ensureInsideDatapackRoot(target);
         return target;
     }

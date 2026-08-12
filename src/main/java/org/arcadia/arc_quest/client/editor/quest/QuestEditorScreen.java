@@ -35,14 +35,17 @@ public final class QuestEditorScreen extends Screen {
     private final UUID sessionId;
     private final ResourceLocation questId;
     private final String sourceFileName;
-    private final QuestSpec document;
+    private QuestSpec document;
+    private final QuestEditorDocumentController documentController;
     private final Map<String, GraphNodeLayout> positions = new LinkedHashMap<>();
     private final Map<String, VisualAsset> phaseImages = new LinkedHashMap<>();
     private final GraphViewportController viewport = new GraphViewportController(0.5f, 1.75f, 1.1f);
     private final QuestEditorPhaseListPanel phaseListPanel = new QuestEditorPhaseListPanel();
-    private final QuestEditorDetailPanel detailPanel = new QuestEditorDetailPanel();
+    private final QuestEditorPropertyPanel propertyPanel = new QuestEditorPropertyPanel();
+    private final QuestEditorDebugController debugController = new QuestEditorDebugController(0x41524351L);
     private long revision;
     private long reloadEpoch;
+    private long savingGeneration = -1L;
     private long lastRenderTime;
     private String selectedPhaseId;
     private String status = "\u5c31\u7eea";
@@ -65,6 +68,7 @@ public final class QuestEditorScreen extends Screen {
         this.revision = revision;
         this.reloadEpoch = reloadEpoch;
         this.document = document;
+        this.documentController = new QuestEditorDocumentController(document);
         buildInitialLayout();
     }
 
@@ -129,14 +133,12 @@ public final class QuestEditorScreen extends Screen {
         viewport.update(deltaTime);
         titleVisibility = org.arcadia.arc_quest.client.hud.HudAnimUtil.smoothExp(
                 titleVisibility, viewport.zoom() >= 0.68f ? 1f : 0f, 12f, deltaTime);
-        detailPanel.update(deltaTime);
         QuestEditorChromeRenderer.renderBackground(graphics, width, height, THEME);
         QuestEditorChromeRenderer.renderHeader(graphics, font, layout.header(),
                 questId + "  \u00b7  " + sourceFileName, THEME, mouseX, mouseY);
         renderPhaseList(graphics, mouseX, mouseY);
         renderGraph(graphics, mouseX, mouseY, deltaTime);
-        detailPanel.render(graphics, font, layout.workspace(), findSelected(),
-                mouseX, mouseY, THEME, deltaTime);
+        propertyPanel.render(graphics, font, layout.workspace(), documentController, findSelected(), mouseX, mouseY);
         String statusText = status + "  \u00b7  revision " + revision + "  \u00b7  epoch " + reloadEpoch
                 + (dirty ? "  \u00b7  \u672a\u4fdd\u5b58" : "");
         QuestEditorChromeRenderer.renderStatusBar(graphics, font, layout.statusBar(),
@@ -151,7 +153,7 @@ public final class QuestEditorScreen extends Screen {
     }
 
     private void renderGraph(GuiGraphics graphics, int mouseX, int mouseY, float deltaTime) {
-        String visualSelection = detailPanel.isSelected(selectedPhaseId) ? selectedPhaseId : null;
+        String visualSelection = selectedPhaseId;
         QuestEditorGraphRenderer.render(graphics, font, layout.workspace(), graphViewport(),
                 document, positions, phaseImages, visualSelection, mouseX, mouseY,
                 viewport.panX(), viewport.panY(), viewport.zoom(), THEME,
@@ -162,7 +164,12 @@ public final class QuestEditorScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         lastMouseX = mouseX;
         lastMouseY = mouseY;
-        if (detailPanel.mouseClicked(mouseX, mouseY, button, layout.workspace())) return true;
+        if (propertyPanel.mouseClicked(mouseX, mouseY, button, layout.workspace(), documentController, findSelected())) {
+            document = documentController.document();
+            dirty = true;
+            rebuildGraphLayout();
+            return true;
+        }
         if (button == 0 && QuestEditorChromeRenderer.saveButton(layout.header()).contains(mouseX, mouseY)) {
             save();
             return true;
@@ -178,7 +185,7 @@ public final class QuestEditorScreen extends Screen {
         if (selectedFromList != null) {
             if (!selectedFromList.isEmpty()) {
                 selectedPhaseId = selectedFromList;
-                detailPanel.select(selectedPhaseId);
+                propertyPanel.reset(documentController, findSelected());
                 focusOnPhase(selectedPhaseId, false);
             }
             return true;
@@ -190,7 +197,7 @@ public final class QuestEditorScreen extends Screen {
         PhaseSpec hit = findNode(mouseX, mouseY);
         if (hit != null && (button == 0 || button == 1)) {
             selectedPhaseId = hit.phaseId;
-            detailPanel.select(selectedPhaseId);
+            propertyPanel.reset(documentController, findSelected());
             focusOnPhase(selectedPhaseId, button == 1);
             return true;
         }
@@ -223,7 +230,7 @@ public final class QuestEditorScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (detailPanel.mouseScrolled(mouseX, mouseY, delta, layout.workspace())) return true;
+        if (propertyPanel.mouseScrolled(mouseX, mouseY, delta, layout.workspace())) return true;
         if (phaseListPanel.mouseScrolled(mouseX, mouseY, delta,
                 listViewport(), document.phases)) return true;
         HudRect canvas = graphViewport();
@@ -237,14 +244,69 @@ public final class QuestEditorScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (propertyPanel.keyPressed(keyCode, documentController)) {
+            document = documentController.document();
+            dirty = true;
+            rebuildGraphLayout();
+            return true;
+        }
         if (hasControlDown() && keyCode == 83) {
             save();
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_F5) {
+            status = debugController.step(document);
+            if (debugController.currentPhaseId() != null) {
+                selectedPhaseId = debugController.currentPhaseId();
+                propertyPanel.reset(documentController, findSelected());
+                focusOnPhase(selectedPhaseId, true);
+            }
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_F6) {
+            debugController.checkpoint();
+            status = "Debug checkpoint saved";
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_F7) {
+            status = debugController.rollback();
+            selectedPhaseId = debugController.currentPhaseId();
+            propertyPanel.reset(documentController, findSelected());
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_F8) {
+            debugController.reset(document);
+            selectedPhaseId = debugController.currentPhaseId();
+            status = "Debug sandbox reset";
+            propertyPanel.reset(documentController, findSelected());
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_B && selectedPhaseId != null) {
+            debugController.toggleBreakpoint(selectedPhaseId);
+            status = "Toggled breakpoint: " + selectedPhaseId;
+            return true;
+        }
+        if (hasControlDown() && (keyCode == GLFW.GLFW_KEY_Z || keyCode == GLFW.GLFW_KEY_Y)) {
+            if (keyCode == GLFW.GLFW_KEY_Y || hasShiftDown()) documentController.redo();
+            else documentController.undo();
+            document = documentController.document();
+            rebuildGraphLayout();
+            dirty = true;
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_INSERT) {
+            PhaseSpec phase = documentController.addPhase();
+            document = documentController.document();
+            selectedPhaseId = phase.phaseId;
+            rebuildGraphLayout();
+            propertyPanel.reset(documentController, findSelected());
+            dirty = true;
             return true;
         }
         if (keyCode == 65) {
             PhaseSpec phase = findSelected();
             if (phase != null) {
-                phase.autoAdvanceOnComplete = !phase.autoAdvanceOnComplete;
+                documentController.mutate(spec -> phase.autoAdvanceOnComplete = !phase.autoAdvanceOnComplete);
                 dirty = true;
             }
             return true;
@@ -256,26 +318,36 @@ public final class QuestEditorScreen extends Screen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (propertyPanel.charTyped(codePoint)) return true;
+        return super.charTyped(codePoint, modifiers);
+    }
+
     private void save() {
+        if (documentController.hasErrors()) {
+            var issue = documentController.issues().stream()
+                    .filter(candidate -> candidate.severity == org.arcadia.arc_quest.quest.spec.validate.ValidationIssue.Severity.ERROR)
+                    .findFirst().orElse(null);
+            status = issue == null ? "Validation failed" : issue.path + ": " + issue.message;
+            return;
+        }
         status = "\u4fdd\u5b58\u4e2d...";
         ArcQuestNetwork.sendQuestEditorSave(new C2SSaveQuestEditorPacket(
                 sessionId, revision, QuestSpecJsonWriter.write(document)));
+        savingGeneration = documentController.generation();
     }
 
     private void deleteSelectedPhase() {
-        if (selectedPhaseId == null || selectedPhaseId.equals(document.initialPhaseId)) {
+        if (selectedPhaseId == null || !documentController.deletePhase(selectedPhaseId)) {
             status = "\u521d\u59cb\u9636\u6bb5\u4e0d\u80fd\u5220\u9664";
             return;
         }
         String removed = selectedPhaseId;
-        document.phases.removeIf(phase -> phase.phaseId.equals(removed));
-        document.phases.forEach(phase -> {
-            phase.transitions.removeIf(transition -> removed.equals(transition.targetPhaseId));
-            phase.choices.removeIf(choice -> removed.equals(choice.targetPhaseId));
-        });
+        document = documentController.document();
         rebuildGraphLayout();
         selectedPhaseId = document.phases.isEmpty() ? null : document.phases.get(0).phaseId;
-        detailPanel.select(selectedPhaseId);
+        propertyPanel.reset(documentController, findSelected());
         focusOnPhase(selectedPhaseId, false);
         dirty = true;
         clampScrollOffsets();
@@ -285,7 +357,8 @@ public final class QuestEditorScreen extends Screen {
         status = packet.message();
         revision = packet.revision();
         if (packet.reloadEpoch() > 0) reloadEpoch = packet.reloadEpoch();
-        if (packet.success()) dirty = false;
+        if (packet.success() && savingGeneration == documentController.generation()) dirty = false;
+        else if (packet.success()) status = packet.message() + " (newer edits remain unsaved)";
     }
 
     boolean isSession(UUID expectedSessionId) {
@@ -345,14 +418,16 @@ public final class QuestEditorScreen extends Screen {
     private HudRect graphViewport() {
         HudRect base = layout.workspaceViewport();
         return new HudRect(base.x(), base.y(),
-                Math.max(1, base.width() - detailPanel.getReservedWidth()), base.height());
+                Math.max(1, base.width() - propertyPanel.reservedWidth(layout.workspace())), base.height());
     }
 
     private boolean shouldUsePointerCursor(double mouseX, double mouseY) {
         if (QuestEditorChromeRenderer.saveButton(layout.header()).contains(mouseX, mouseY)) return true;
         HudRect fit = QuestEditorChromeRenderer.fitButton(layout.header());
         if (fit.width() > 0 && fit.contains(mouseX, mouseY)) return true;
-        if (detailPanel.isCloseHovered(mouseX, mouseY, layout.workspace())) return true;
+        int propertyWidth = propertyPanel.reservedWidth(layout.workspace());
+        if (new HudRect(layout.workspace().right() - propertyWidth, layout.workspace().y(),
+                propertyWidth, layout.workspace().height()).contains(mouseX, mouseY)) return true;
         if (listViewport().contains(mouseX, mouseY)) return true;
         return findNode(mouseX, mouseY) != null;
     }
