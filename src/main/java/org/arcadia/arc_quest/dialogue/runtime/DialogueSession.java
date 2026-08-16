@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.UnaryOperator;
 
 /**
  * 单次对话会话（服务端状态）。
@@ -418,6 +419,23 @@ public class DialogueSession {
             result = context.resolve(result);
         }
         return result;
+    }
+
+    /**
+     * Preserves structured components unless legacy string placeholders need
+     * substitution. This keeps translations client-local while retaining the
+     * existing %player%, %npc% and DialogueContext behavior for old content.
+     */
+    Component processDialogueComponent(Component component) {
+        return preserveComponentUnlessChanged(component, this::processText);
+    }
+
+    static Component preserveComponentUnlessChanged(
+            Component component, UnaryOperator<String> legacyProcessor) {
+        if (component == null) return Component.empty();
+        String original = component.getString();
+        String processed = legacyProcessor.apply(original);
+        return Objects.equals(original, processed) ? component : Component.literal(processed);
     }
 
     // ═══════════════════════════════════════════════

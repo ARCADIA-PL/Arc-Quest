@@ -454,7 +454,7 @@ public final class DialogueSessionManager {
                 if (display != null) {
                     String s = display.getString();
                     if (s != null && !s.isBlank()) {
-                        speaker = Component.literal(s);
+                        speaker = display;
                     }
                 }
             }
@@ -481,12 +481,14 @@ public final class DialogueSessionManager {
         DialogueProgressStore progress = data != null ? data.getDialogueProgress() : null;
         Entity npc = session.getEntity();
         DialogueEvalContext ctx = DialogueEvalContext.of(session.getPlayer(), npc, session.getNamespace(), progress);
-        ConditionalTextEvaluator.SayIfResult sayIfResult = ConditionalTextEvaluator.evaluateWithIndex(ctx, node.conditionalTexts(), session.processDialogueText(node.text()).getString());
-        Component text = Component.literal(session.processText(sayIfResult.text));
-        SoundEvent matchedSaySound = sayIfResult.sound;
-        String selectedSayId = sayIfResult.sayId;
+        ConditionalTextEvaluator.DialogueTextSelection sayIfResult =
+                ConditionalTextEvaluator.evaluateDialogueWithIndex(ctx, node.conditionalTexts(), node.text());
+        Component text = session.processDialogueComponent(
+                session.processDialogueText(sayIfResult.text()));
+        SoundEvent matchedSaySound = sayIfResult.sound();
+        String selectedSayId = sayIfResult.sayId();
         if (data != null) {
-            syncDialogueMarkers(session, node, sayIfResult);
+            syncDialogueMarkers(session, node, selectedSayId);
             if (triggerNodeEntry) {
                 DialogueMarkerTriggerService.triggerNodeEntered(
                         player, data, session.getTree(), node.nodeId());
@@ -543,7 +545,7 @@ public final class DialogueSessionManager {
 
     private void syncDialogueMarkers(DialogueSession session,
                                      DialogueNode node,
-                                     ConditionalTextEvaluator.SayIfResult sayIfResult) {
+                                     String selectedSayId) {
         var data = ArcQuestPlayerManager.get(session.getPlayer());
         if (data == null) return;
 
@@ -571,9 +573,9 @@ public final class DialogueSessionManager {
             }
         }
 
-        if (sayIfResult.sayId != null && !sayIfResult.sayId.isBlank()) {
+        if (selectedSayId != null && !selectedSayId.isBlank()) {
             for (var entry : node.conditionalTexts().values()) {
-                if (!sayIfResult.sayId.equals(entry.sayId())) continue;
+                if (!selectedSayId.equals(entry.sayId())) continue;
                 for (MarkSpec spec : entry.relatedMarks()) {
                     if (!MarkTriggers.isContinuous(spec)) continue;
                     String markerId = "aq:dlg:" + dialogueId + ":" + nodeId + ":say:" + entry.sayId() + ":" + spec.id();

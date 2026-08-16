@@ -261,8 +261,27 @@ public final class ConditionalTextEvaluator {
      * @return 包含选中索引、文本和音效的结果对象
      */
     public static SayIfResult evaluateWithIndex(DialogueEvalContext ctx, Map<String, ConditionalSay> conditionalTexts, String defaultText) {
+        DialogueTextSelection selection = evaluateDialogueWithIndex(
+                ctx, conditionalTexts, DialogueText.literal(defaultText));
+        if (selection.selectedIndex() < 0) {
+            return new SayIfResult(selection.sayId(), selection.selectedIndex(), defaultText, selection.sound());
+        }
+        String resolvedText = selection.text().resolve(ctx.player(), ctx.npc()).getString();
+        return new SayIfResult(selection.sayId(), selection.selectedIndex(), resolvedText, selection.sound());
+    }
+
+    /**
+     * Component-preserving variant used by the dialogue network path. Keeping
+     * the selected DialogueText unresolved lets each client translate it in
+     * its own language.
+     */
+    static DialogueTextSelection evaluateDialogueWithIndex(
+            DialogueEvalContext ctx,
+            Map<String, ConditionalSay> conditionalTexts,
+            DialogueText defaultText) {
+        DialogueText fallback = defaultText == null ? DialogueText.literal("") : defaultText;
         if (conditionalTexts == null || conditionalTexts.isEmpty()) {
-            return new SayIfResult(null, -1, defaultText, null);
+            return new DialogueTextSelection(null, -1, fallback, null);
         }
 
         ArcQuestPlayer data = ctx.questData();
@@ -298,16 +317,17 @@ public final class ConditionalTextEvaluator {
         }
 
         if (matches.isEmpty()) {
-            return new SayIfResult(null, -1, defaultText, null);
+            return new DialogueTextSelection(null, -1, fallback, null);
         }
 
         int maxPriority = matches.stream().mapToInt(m -> m.priority).max().orElse(0);
         for (SayMatch match : matches) {
             if (match.priority == maxPriority) {
-                return new SayIfResult(matchedSayId, matchIndex, match.say.text().resolve(ctx.player(), ctx.npc()).getString(), match.say.soundEvent());
+                return new DialogueTextSelection(
+                        matchedSayId, matchIndex, match.say.text(), match.say.soundEvent());
             }
         }
-        return new SayIfResult(null, -1, defaultText, null);
+        return new DialogueTextSelection(null, -1, fallback, null);
     }
 
     /**
@@ -321,6 +341,13 @@ public final class ConditionalTextEvaluator {
             this.text = text;
             this.priority = priority;
         }
+    }
+
+    record DialogueTextSelection(
+            @Nullable String sayId,
+            int selectedIndex,
+            DialogueText text,
+            @Nullable SoundEvent sound) {
     }
 
     /**
