@@ -12,14 +12,26 @@ public final class MarkerRhombusRenderer {
     }
 
     public static void draw(GuiGraphics gui, int accentColor, float time, float activeProgress, float lightX, float lightY, float tier) {
+        draw(gui, Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR),
+                accentColor, time, activeProgress, lightX, lightY, tier);
+    }
+
+    public static void drawIsolated(GuiGraphics gui, int accentColor, float time, float activeProgress,
+                                    float lightX, float lightY, float tier) {
+        try (ByteBufferBuilder byteBuffer = new ByteBufferBuilder(1024)) {
+            BufferBuilder builder = new BufferBuilder(
+                    byteBuffer, VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            draw(gui, builder, accentColor, time, activeProgress, lightX, lightY, tier);
+        }
+    }
+
+    private static void draw(GuiGraphics gui, BufferBuilder builder, int accentColor, float time,
+                             float activeProgress, float lightX, float lightY, float tier) {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
 
-        Tesselator tesselator = Tesselator.getInstance();
         Matrix4f matrix = gui.pose().last().pose();
-
-        BufferBuilder builder = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         int baseAlpha = (accentColor >> 24) & 0xFF;
 

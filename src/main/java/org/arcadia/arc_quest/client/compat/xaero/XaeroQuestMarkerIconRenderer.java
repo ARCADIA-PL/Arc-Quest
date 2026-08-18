@@ -26,7 +26,7 @@ public final class XaeroQuestMarkerIconRenderer {
         float time = (System.currentTimeMillis() % 100000L) / 1000.0F;
         gui.pose().pushPose();
         gui.pose().scale(scale, scale, 1.0F);
-        MarkerRhombusRenderer.draw(
+        MarkerRhombusRenderer.drawIsolated(
                 gui,
                 colorArgb,
                 time,
