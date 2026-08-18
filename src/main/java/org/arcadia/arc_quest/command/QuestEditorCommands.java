@@ -18,7 +18,31 @@ public final class QuestEditorCommands {
     private QuestEditorCommands() { }
 
     public static LiteralArgumentBuilder<CommandSourceStack> registerSubtree() {
-        return Commands.literal("editor").then(Commands.literal("open")
+        return Commands.literal("editor")
+                .then(Commands.literal("create")
+                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .executes(context -> {
+                                    QuestEditorSessionService.INSTANCE.create(context.getSource().getPlayerOrException(),
+                                            ResourceLocationArgument.getId(context, "quest_id"));
+                                    return 1;
+                                })))
+                .then(Commands.literal("delete")
+                        .then(Commands.argument("quest_id", ResourceLocationArgument.id())
+                                .executes(context -> {
+                                    QuestEditorSessionService.INSTANCE.delete(context.getSource().getPlayerOrException(),
+                                            ResourceLocationArgument.getId(context, "quest_id"));
+                                    return 1;
+                                })))
+                .then(Commands.literal("duplicate")
+                        .then(Commands.argument("source_id", ResourceLocationArgument.id())
+                                .then(Commands.argument("target_id", ResourceLocationArgument.id())
+                                        .executes(context -> {
+                                            QuestEditorSessionService.INSTANCE.duplicate(context.getSource().getPlayerOrException(),
+                                                    ResourceLocationArgument.getId(context, "source_id"),
+                                                    ResourceLocationArgument.getId(context, "target_id"));
+                                            return 1;
+                                        }))))
+                .then(Commands.literal("open")
                 .then(Commands.argument("quest_id", ResourceLocationArgument.id())
                         .suggests((context, builder) -> {
                             Set<ResourceLocation> questIds = new LinkedHashSet<>(

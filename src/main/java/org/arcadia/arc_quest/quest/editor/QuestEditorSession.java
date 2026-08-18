@@ -13,6 +13,7 @@ public final class QuestEditorSession {
     private final Path sourcePath;
     private QuestSpec draft;
     private long revision;
+    private UUID activeSaveRequestId;
 
     public QuestEditorSession(UUID playerId, ResourceLocation questId, Path sourcePath, QuestSpec draft) {
         this.sessionId = UUID.randomUUID();
@@ -29,4 +30,18 @@ public final class QuestEditorSession {
     public QuestSpec draft() { return draft; }
     public long revision() { return revision; }
     public void replaceDraft(QuestSpec draft) { this.draft = draft; this.revision++; }
+
+    public boolean beginSave(UUID requestId) {
+        if (activeSaveRequestId != null) return false;
+        activeSaveRequestId = requestId;
+        return true;
+    }
+
+    public boolean ownsSave(UUID requestId) {
+        return requestId != null && requestId.equals(activeSaveRequestId);
+    }
+
+    public void finishSave(UUID requestId) {
+        if (ownsSave(requestId)) activeSaveRequestId = null;
+    }
 }
