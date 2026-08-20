@@ -60,7 +60,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.quest_group.epic_mainline", "史诗主线");
 
         add("arc_quest.gui.tracker.open_journal_shortcut", "[%s] 任务面板");
-        add("arc_quest.gui.tracker.new_quest", "新任务");
+        add("arc_quest.gui.tracker.new_quest", "有新任务，按[%s]查看");
         add("arc_quest.gui.tracker.new_guide", "有新教程，按[%s]查看");
         add("arc_quest.guide.splash.status", "新教程已解锁");
 
