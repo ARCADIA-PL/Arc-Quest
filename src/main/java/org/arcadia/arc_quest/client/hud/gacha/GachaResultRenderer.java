@@ -9,6 +9,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
@@ -72,6 +73,7 @@ public class GachaResultRenderer {
                 return;
             }
         }
+        HudCursorManager.requestPointer(currentState == State.HOLD);
 
         int frameW = 200, frameH = 100;
         float baseScale = 1.3f, revealProgress = 1.0f, wipeProgress = 0.0f, driftX = 0f, alpha = 1.0f;

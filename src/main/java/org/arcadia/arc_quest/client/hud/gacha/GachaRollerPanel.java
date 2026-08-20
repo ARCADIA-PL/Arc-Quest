@@ -7,6 +7,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
 import org.arcadia.arc_quest.trade.gacha.network.ClientGachaCache;
 
@@ -78,6 +79,7 @@ public class GachaRollerPanel {
 
     public void render(GuiGraphics g, float dt) {
         if (!isRolling) return;
+        HudCursorManager.requestPointer(currentState == State.ENTER || currentState == State.ROLLING);
         long now = Util.getMillis();
 
         switch (currentState) {

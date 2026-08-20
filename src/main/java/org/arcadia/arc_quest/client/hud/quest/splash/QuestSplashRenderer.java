@@ -9,6 +9,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
@@ -116,6 +117,7 @@ public class QuestSplashRenderer {
             exitStartTime = now;
             skipStartX = lastRenderX;
         }
+        HudCursorManager.requestPointer(currentState == State.HOLD);
 
         if (currentState == State.EXIT) {
             long exitElapsed = now - exitStartTime;

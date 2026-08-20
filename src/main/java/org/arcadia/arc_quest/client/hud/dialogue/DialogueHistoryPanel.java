@@ -9,6 +9,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache.TranscriptEntry;
 
@@ -204,6 +205,14 @@ public final class DialogueHistoryPanel {
 
         // === PASS 1: 面板纯 2D 批处理 ===
         renderPanel(g, mc.font, Math.max(0, Math.min(255, (int) (255 * alphaF))), alphaF, dt);
+        if (!closing && maxScroll > 0) {
+            float localX = (mx - currentDrawX) / currentScale;
+            float localY = (my - currentDrawY) / currentScale;
+            int contentYStart = 34;
+            int viewHeight = PANEL_H - contentYStart - 12;
+            HudCursorManager.requestPointer(localX >= 0 && localX <= PANEL_W
+                    && localY >= contentYStart && localY <= contentYStart + viewHeight);
+        }
 
         g.pose().popPose();
         g.disableScissor();

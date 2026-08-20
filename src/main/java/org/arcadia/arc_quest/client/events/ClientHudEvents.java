@@ -11,6 +11,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.editor.quest.QuestEditorScreen;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
@@ -30,6 +31,7 @@ public class ClientHudEvents {
     @SubscribeEvent
     public static void onRenderGuiOverlay(RenderGuiOverlayEvent.Post event) {
         if (Minecraft.getInstance().screen != null) return;
+        HudCursorManager.beginFrame();
 
         QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
                 event.getWindow().getGuiScaledWidth(),
@@ -49,11 +51,13 @@ public class ClientHudEvents {
         GuidePopupOverlay.INSTANCE.render(null, event.getGuiGraphics(),
                 event.getWindow().getGuiScaledWidth(),
                 event.getWindow().getGuiScaledHeight(), event.getPartialTick());
+        HudCursorManager.apply();
     }
 
     @SubscribeEvent
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
         if (event.getScreen() instanceof QuestEditorScreen) return;
+        boolean cursorFrame = beginInteractiveOverlayCursorFrame();
         if (QuestSplashRenderer.isActive()) {
             QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
                     event.getScreen().width,
@@ -72,6 +76,19 @@ public class ClientHudEvents {
         }
         GuidePopupOverlay.INSTANCE.render(event.getScreen(), event.getGuiGraphics(),
                 event.getScreen().width, event.getScreen().height, event.getPartialTick());
+        applyInteractiveOverlayCursorFrame(cursorFrame);
+    }
+
+    private static boolean beginInteractiveOverlayCursorFrame() {
+        boolean active = QuestSplashRenderer.isActive()
+                || GachaResultRenderer.INSTANCE.isActive()
+                || GuidePopupOverlay.INSTANCE.isActive();
+        if (active) HudCursorManager.beginFrame();
+        return active;
+    }
+
+    private static void applyInteractiveOverlayCursorFrame(boolean active) {
+        if (active) HudCursorManager.apply();
     }
 
     @SubscribeEvent
