@@ -75,7 +75,6 @@ public final class ClientDatapackContentReceiver {
         appliedEpoch = -1L;
         appliedHash = "";
         lastResyncRequestNanos = 0L;
-        if (!Minecraft.getInstance().hasSingleplayerServer()) ClientDatapackContentApplier.clear(0L);
     }
 
     public synchronized long appliedEpoch() {

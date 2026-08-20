@@ -228,11 +228,16 @@ public final class ArcQuestPlayerLifecycleHandler {
 
             QuestDefinition def = QuestRegistry.get(rl);
             if (def == null) {
-                LOGGER.warn("[ArcQuest] Quest '{}' no longer exists in registry. Marking as failed for player: {}",
+                LOGGER.warn("[ArcQuest] Quest '{}' is temporarily unavailable during player validation; preserving runtime data for player: {}",
                         questId, player.getName().getString());
-                qdata.setState(QuestState.FAILED);
-                needsSync = true;
                 continue;
+            }
+
+            if (qdata.getState() != QuestState.ACTIVE) {
+                LOGGER.warn("[ArcQuest] Restoring inconsistent active quest '{}' from state {} for player: {}",
+                        questId, qdata.getState(), player.getName().getString());
+                qdata.setState(QuestState.ACTIVE);
+                needsSync = true;
             }
 
             var activeIds = new ArrayList<>(qdata.getActivePhaseIds());
