@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
@@ -284,6 +285,7 @@ public final class QuestStoryPanel {
         int btnW = 80, btnH = 16, btnY = PH - btnH - 12;
         boolean hoverPrev = !closing && currentPageIndex > 0 && lx >= 20 && lx <= 20 + btnW && ly >= btnY && ly <= btnY + btnH;
         boolean hoverNext = !closing && currentPageIndex < pages.size() - 1 && lx >= PW - btnW - 20 && lx <= PW - 20 && ly >= btnY && ly <= btnY + btnH;
+        HudCursorManager.requestPointer(hoverPrev || hoverNext);
 
         prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverPrev ? 1f : 0f, 15f, dt);
         nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverNext ? 1f : 0f, 15f, dt);

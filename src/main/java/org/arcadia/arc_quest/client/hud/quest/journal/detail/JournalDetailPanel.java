@@ -9,6 +9,7 @@ import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
@@ -180,6 +181,7 @@ public class JournalDetailPanel {
         boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive()
                 || CollectionHistoryPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
         boolean hHover = !panelsActive && mx >= absBtnX - hBtnR - 4 && mx <= absBtnX + hBtnR + 4 && my >= absBtnY - hBtnR - 4 && my <= absBtnY + hBtnR + 4;
+        HudCursorManager.requestPointer(hHover && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH);
         historyBtnHoverAnim = HudAnimUtil.step(historyBtnHoverAnim, hHover ? 1f : 0f, 15f, dt);
 
         g.pose().pushPose();
@@ -295,6 +297,10 @@ public class JournalDetailPanel {
         g.disableScissor();
         detailScrollbar.render(g, detailScrollbarTrack(x, w, scrollAreaY, scrollAreaH),
                 detailContentHeight, detailScrollOffset, screen.getEffectiveAlpha(), 0xFFFFFF);
+        if (!panelsActive) {
+            detailScrollbar.requestPointer(mx, my, detailScrollbarTrack(x, w, scrollAreaY, scrollAreaH),
+                    6, detailContentHeight, detailScrollOffset);
+        }
         controlsRenderer.render(g, entry, def, runtime, x, y, w, h, mx, my, dt, activeTheme);
     }
 

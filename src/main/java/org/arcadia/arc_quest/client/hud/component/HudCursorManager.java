@@ -23,6 +23,16 @@ public final class HudCursorManager {
         if (hovered) requestPointer();
     }
 
+    public static void requestPointer(double mouseX, double mouseY,
+                                      double x, double y, double width, double height) {
+        requestPointer(mouseX >= x && mouseX <= x + width
+                && mouseY >= y && mouseY <= y + height);
+    }
+
+    public static void requestPointer(double mouseX, double mouseY, HudRect bounds) {
+        requestPointer(mouseX, mouseY, bounds.x(), bounds.y(), bounds.width(), bounds.height());
+    }
+
     public static void apply() {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft == null || minecraft.getWindow() == null || pointerRequested == pointerApplied) return;

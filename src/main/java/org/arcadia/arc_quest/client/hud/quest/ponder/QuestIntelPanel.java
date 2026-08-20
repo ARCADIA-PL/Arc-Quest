@@ -19,6 +19,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
 import org.joml.Matrix4f;
@@ -310,6 +311,8 @@ public final class QuestIntelPanel {
 
         renderPonderScene(g, scene, sceneX, sceneY, sceneW, sceneH, pt);
         renderMinimalProgressBar(g, scene, alpha, alphaF);
+        HudCursorManager.requestPointer(lx >= PROG_PAD && lx <= PW - PROG_PAD
+                && ly >= PANEL_H - 16 && ly <= PANEL_H - 8 && alpha > 8);
 
         g.pose().pushPose();
         g.pose().scale(0.6f, 0.6f, 1f);
@@ -338,6 +341,7 @@ public final class QuestIntelPanel {
     private static void drawContentHologramButton(GuiGraphics g, Font font, String id, int x, int y, int w, int h, String text, float lx, float ly, int alpha, int colorTheme, boolean enabled, float dt) {
         if (!enabled) return;
         boolean hovered = lx >= x && lx <= x + w && ly >= y && ly <= y + h;
+        HudCursorManager.requestPointer(hovered && alpha > 8);
 
         float hoverTarget = hovered ? 1f : 0f;
         float currentHover = buttonHoverStates.getOrDefault(id, 0f);

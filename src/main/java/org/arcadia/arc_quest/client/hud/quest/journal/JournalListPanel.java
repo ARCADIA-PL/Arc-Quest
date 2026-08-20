@@ -225,6 +225,8 @@ public class JournalListPanel {
         int maxScroll = Math.max(0, contentHeight - height);
         scrollbar.render(graphics, scrollbarTrack(x, y, width, height), contentHeight,
                 scrollOffset, screen.getEffectiveAlpha(), 0xFFFFFF);
+        scrollbar.requestPointer(mouseX, mouseY, scrollbarTrack(x, y, width, height),
+                6, contentHeight, scrollOffset);
         renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
     }
 

@@ -17,6 +17,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.ObjectiveEntry;
 import org.arcadia.arc_quest.quest.api.ObjectiveType;
@@ -433,6 +434,7 @@ public final class QuestOfferPanel {
             int sliderW = 160, sliderX = PW / 2 - sliderW / 2, sliderY = 95;
 
             boolean sliderHover = !cleared && !isDraggingSlider && maxSelectable > 1 && lx >= sliderX - 5 && lx <= sliderX + sliderW + 5 && ly >= sliderY - 6 && ly <= sliderY + 8;
+            HudCursorManager.requestPointer(sliderHover || isDraggingSlider);
             sliderHoverAnim = HudAnimUtil.step(sliderHoverAnim, sliderHover ? 1f : 0f, 18f, dt);
 
             g.pose().pushPose();
@@ -455,6 +457,7 @@ public final class QuestOfferPanel {
             int btnW = 140, btnH = 16, btnX = PW / 2 - btnW / 2, btnY = PANEL_H - btnH - 10;
             boolean disabled = sliderValue <= 0 || maxSelectable <= 0;
             boolean hoverSubmit = !cleared && !disabled && lx >= btnX && lx <= btnX + btnW && ly >= btnY && ly <= btnY + btnH;
+            HudCursorManager.requestPointer(hoverSubmit);
             submitHoverAnim = HudAnimUtil.step(submitHoverAnim, hoverSubmit ? 1f : 0f, 15f, dt);
 
             drawCyberButton(g, font, btnX, btnY, btnW, btnH, "SUBMIT [ " + sliderValue + " ]", submitHoverAnim, disabled, contentAlpha, contentAlphaF);

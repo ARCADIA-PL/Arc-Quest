@@ -4,6 +4,7 @@ import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.hud.quest.history.CollectionHistoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.history.QuestHistoryPanel;
@@ -84,17 +85,20 @@ public class JournalDetailControls {
 
         if (bShop) {
             boolean shopHover = !active && mx >= shopBtnX && mx <= shopBtnX + btnW && my >= btnY && my <= btnY + btnH;
+            HudCursorManager.requestPointer(shopHover);
             chapterShopBtnHover = HudAnimUtil.step(chapterShopBtnHover, shopHover ? 1f : 0f, 8f, dt);
             JournalDetailPanel.drawCyberButton(g, screen, shopBtnX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.chapter_shop").getString(), activeTheme, HudAnimUtil.easeOutCubic(chapterShopBtnHover), shopHover);
         }
 
         if (bActive) {
             boolean tHover = !active && mx >= trackX && mx <= trackX + btnW && my >= btnY && my <= btnY + btnH;
+            HudCursorManager.requestPointer(tHover);
             trackBtnHover = HudAnimUtil.step(trackBtnHover, tHover ? 1f : 0f, 8f, dt);
             JournalDetailPanel.drawCyberButton(g, screen, trackX, btnY, btnW, btnH, entry.questId().equals(ClientQuestTrackingController.INSTANCE.trackedQuestId()) ? Component.translatable("arc_quest.gui.journal.button.untrack").getString() : Component.translatable("arc_quest.gui.journal.button.track").getString(), activeTheme, HudAnimUtil.easeOutCubic(trackBtnHover), tHover);
 
             if (bConfirm) {
                 boolean cHover = !active && mx >= confirmX && mx <= confirmX + btnW && my >= btnY && my <= btnY + btnH;
+                HudCursorManager.requestPointer(cHover);
                 confirmBtnHover = HudAnimUtil.step(confirmBtnHover, cHover ? 1f : 0f, 8f, dt);
                 JournalDetailPanel.drawCyberButton(g, screen, confirmX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.confirm_phase_complete").getString(), activeTheme, HudAnimUtil.easeOutCubic(confirmBtnHover), cHover);
                 if (shouldPulseConfirmBtn(def, runtime)) {
@@ -104,11 +108,13 @@ public class JournalDetailControls {
 
             if (bAbandon) {
                 boolean aHover = !active && mx >= abanX && mx <= abanX + btnW && my >= btnY && my <= btnY + btnH;
+                HudCursorManager.requestPointer(aHover);
                 abandonBtnHover = HudAnimUtil.step(abandonBtnHover, aHover ? 1f : 0f, 8f, dt);
                 JournalDetailPanel.drawCyberButton(g, screen, abanX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.abandon").getString(), 0xFF4444, HudAnimUtil.easeOutCubic(abandonBtnHover), aHover);
             }
         } else if (bFailed) {
             boolean rHover = !active && mx >= restartX && mx <= restartX + btnW && my >= btnY && my <= btnY + btnH;
+            HudCursorManager.requestPointer(rHover);
             failedRestartBtnHover = HudAnimUtil.step(failedRestartBtnHover, rHover ? 1f : 0f, 8f, dt);
             JournalDetailPanel.drawCyberButton(g, screen, restartX, btnY, btnW, btnH, Component.translatable("arc_quest.gui.journal.button.restart").getString(), activeTheme, HudAnimUtil.easeOutCubic(failedRestartBtnHover), rHover);
         }
