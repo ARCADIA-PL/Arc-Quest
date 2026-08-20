@@ -7,12 +7,15 @@ public final class HudCursorManager {
     private static long pointerCursorHandle;
     private static boolean pointerRequested;
     private static boolean pointerApplied;
+    private static int frameDepth;
 
     private HudCursorManager() {
     }
 
     public static void beginFrame() {
-        pointerRequested = false;
+        if (frameDepth++ == 0) {
+            pointerRequested = false;
+        }
     }
 
     public static void requestPointer() {
@@ -34,6 +37,8 @@ public final class HudCursorManager {
     }
 
     public static void apply() {
+        if (frameDepth > 0 && --frameDepth > 0) return;
+
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft == null || minecraft.getWindow() == null || pointerRequested == pointerApplied) return;
 
@@ -51,6 +56,7 @@ public final class HudCursorManager {
     }
 
     public static void reset() {
+        frameDepth = 0;
         pointerRequested = false;
         if (!pointerApplied) return;
 
