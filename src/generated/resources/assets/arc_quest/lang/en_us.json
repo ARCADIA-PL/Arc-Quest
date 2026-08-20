@@ -149,7 +149,7 @@
   "arc_quest.gui.quest_story.page": "PAGE %1$s / %2$s",
   "arc_quest.gui.quest_story.prev": "<< PREV",
   "arc_quest.gui.tracker.new_guide": "New tutorial available. Press [%s] to view",
-  "arc_quest.gui.tracker.new_quest": "New Quest",
+  "arc_quest.gui.tracker.new_quest": "New quest available. Press [%s] to view",
   "arc_quest.gui.tracker.open_journal_shortcut": "[%s] Quest Panel",
   "arc_quest.gui.trade.btn.empty": "Empty",
   "arc_quest.gui.trade.btn.locked": "Locked",
