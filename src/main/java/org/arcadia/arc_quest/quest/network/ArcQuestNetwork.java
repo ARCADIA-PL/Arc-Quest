@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 import net.minecraftforge.server.ServerLifecycleHooks;
@@ -12,6 +13,9 @@ import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
+import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentChunkPacket;
+import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentStartPacket;
+import org.arcadia.arc_quest.data.sync.network.C2SRequestDatapackContentPacket;
 import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
 import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
@@ -38,6 +42,7 @@ import org.arcadia.arc_quest.trade.network.S2CSyncTradeStatePacket;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -48,7 +53,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "10";
+    private static final String PROTOCOL_VERSION = "11";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -70,10 +75,35 @@ public final class ArcQuestNetwork {
     public static void register() {
         CHANNEL.registerMessage(
                 packetId++,
+                S2CDatapackContentStartPacket.class,
+                S2CDatapackContentStartPacket::encode,
+                S2CDatapackContentStartPacket::decode,
+                S2CDatapackContentStartPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+        CHANNEL.registerMessage(
+                packetId++,
+                S2CDatapackContentChunkPacket.class,
+                S2CDatapackContentChunkPacket::encode,
+                S2CDatapackContentChunkPacket::decode,
+                S2CDatapackContentChunkPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SRequestDatapackContentPacket.class,
+                C2SRequestDatapackContentPacket::encode,
+                C2SRequestDatapackContentPacket::decode,
+                C2SRequestDatapackContentPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
+        );
+        CHANNEL.registerMessage(
+                packetId++,
                 S2CDatapackReloadEpochPacket.class,
                 S2CDatapackReloadEpochPacket::encode,
                 S2CDatapackReloadEpochPacket::decode,
-                S2CDatapackReloadEpochPacket::handle
+                S2CDatapackReloadEpochPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // ─── S2C：全量同步 ───

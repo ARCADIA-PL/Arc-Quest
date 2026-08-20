@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import org.arcadia.arc_quest.data.sync.network.DatapackContentClientNetworkBridge;
 
 import java.util.function.Supplier;
 
@@ -16,7 +17,7 @@ public record S2CDatapackReloadEpochPacket(long epoch) {
 
     public static void handle(S2CDatapackReloadEpochPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> ClientQuestCache.INSTANCE.setDatapackReloadEpoch(packet.epoch));
+        context.enqueueWork(() -> DatapackContentClientNetworkBridge.handleEpoch(packet.epoch));
         context.setPacketHandled(true);
     }
 }
