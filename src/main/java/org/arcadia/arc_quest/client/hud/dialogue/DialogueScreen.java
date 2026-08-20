@@ -417,6 +417,7 @@ public class DialogueScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         HudCursorManager.beginFrame();
+        HudCursorManager.requestPointer(QuestSplashRenderer.requestsPointerCursor());
         long now = Util.getMillis();
         long frameElapsedMs = lastRenderTime == 0 ? 0 : Math.min(100L, now - lastRenderTime);
         if (lastRenderTime == 0) lastRenderTime = now;

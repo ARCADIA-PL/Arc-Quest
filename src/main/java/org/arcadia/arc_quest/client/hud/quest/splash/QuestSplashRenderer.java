@@ -79,6 +79,10 @@ public class QuestSplashRenderer {
         return SEQUENCE.isActive();
     }
 
+    public static boolean requestsPointerCursor() {
+        return isActive() && currentState == State.HOLD;
+    }
+
     public static int getPendingCount() {
         return SEQUENCE.pendingCount();
     }
@@ -117,7 +121,7 @@ public class QuestSplashRenderer {
             exitStartTime = now;
             skipStartX = lastRenderX;
         }
-        HudCursorManager.requestPointer(currentState == State.HOLD);
+        HudCursorManager.requestPointer(requestsPointerCursor());
 
         if (currentState == State.EXIT) {
             long exitElapsed = now - exitStartTime;
