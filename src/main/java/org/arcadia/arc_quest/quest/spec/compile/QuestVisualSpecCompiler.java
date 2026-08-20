@@ -18,23 +18,28 @@ public final class QuestVisualSpecCompiler {
     }
 
     public static QuestVisualConfig compile(QuestVisualSpec spec) {
+        return compile(spec, false);
+    }
+
+    public static QuestVisualConfig compile(QuestVisualSpec spec, boolean tolerateMissingItems) {
         QuestVisualConfig.Builder builder = QuestVisualConfig.builder()
                 .themeColor(spec == null ? 0xFFFFFF : spec.themeColor)
                 .useQuestSplashPresentation(spec != null && Boolean.TRUE.equals(spec.useQuestSplashPresentation));
         if (spec == null) return builder.build();
 
         for (Map.Entry<String, QuestVisualSpec.AssetSpec> entry : spec.splashes.entrySet()) {
-            VisualAsset asset = compileAsset(entry.getValue(), "splashes." + entry.getKey());
+            VisualAsset asset = compileAsset(entry.getValue(), "splashes." + entry.getKey(), tolerateMissingItems);
             if (asset.enabled()) builder.splash(parseEnum(SplashType.class, entry.getKey()), asset);
         }
         for (Map.Entry<String, QuestVisualSpec.AssetSpec> entry : spec.icons.entrySet()) {
-            VisualAsset asset = compileAsset(entry.getValue(), "icons." + entry.getKey());
+            VisualAsset asset = compileAsset(entry.getValue(), "icons." + entry.getKey(), tolerateMissingItems);
             if (asset.enabled()) builder.icon(parseEnum(IconPosition.class, entry.getKey()), asset);
         }
         return builder.build();
     }
 
-    private static VisualAsset compileAsset(QuestVisualSpec.AssetSpec spec, String path) {
+    private static VisualAsset compileAsset(QuestVisualSpec.AssetSpec spec, String path,
+                                            boolean tolerateMissingItems) {
         if (spec == null || !spec.enabled) return VisualAsset.DISABLED;
 
         VisualAsset.Builder builder = VisualAsset.builder()
@@ -48,8 +53,9 @@ public final class QuestVisualSpecCompiler {
         }
         if (spec.itemId != null && !spec.itemId.isBlank()) {
             ResourceLocation itemId = parseId(spec.itemId, path + ".itemId");
-            Item item = BuiltInRegistries.ITEM.getOptional(itemId)
-                    .orElseThrow(() -> new QuestCompileException("Unknown item id at " + path + ": " + itemId));
+            Item item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
+            if (item == null && tolerateMissingItems) return VisualAsset.DISABLED;
+            if (item == null) throw new QuestCompileException("Unknown item id at " + path + ": " + itemId);
             builder.item(new ItemStack(item, Math.max(1, spec.itemCount)));
         }
         if ((spec.texture == null || spec.texture.isBlank()) && (spec.itemId == null || spec.itemId.isBlank())) {
