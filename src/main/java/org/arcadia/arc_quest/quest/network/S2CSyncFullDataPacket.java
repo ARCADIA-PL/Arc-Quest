@@ -1,10 +1,17 @@
 package org.arcadia.arc_quest.quest.network;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.util.zip.GZIPInputStream;
 import java.util.function.Supplier;
 
 /**
@@ -14,6 +21,8 @@ import java.util.function.Supplier;
  * 虽然数据量稍大，但仅在登录/重生时发送，可接受。
  */
 public class S2CSyncFullDataPacket {
+    private static final int MAX_COMPRESSED_BYTES = 2 * 1024 * 1024;
+    private static final int MAX_UNCOMPRESSED_NBT_BYTES = 16 * 1024 * 1024;
 
     private final CompoundTag playerData;
     private final long playerSessionEpoch;
@@ -42,7 +51,7 @@ public class S2CSyncFullDataPacket {
     public static void encode(S2CSyncFullDataPacket pkt, FriendlyByteBuf buf) {
         buf.writeLong(pkt.playerSessionEpoch);
         buf.writeLong(pkt.revision);
-        buf.writeNbt(pkt.playerData);
+        buf.writeByteArray(compress(pkt.playerData));
     }
 
     // ── 解码 ──────────────────────────────────────────
@@ -50,8 +59,8 @@ public class S2CSyncFullDataPacket {
     public static S2CSyncFullDataPacket decode(FriendlyByteBuf buf) {
         long playerSessionEpoch = buf.readLong();
         long revision = buf.readLong();
-        CompoundTag tag = buf.readNbt();
-        return new S2CSyncFullDataPacket(tag != null ? tag : new CompoundTag(), playerSessionEpoch, revision);
+        CompoundTag tag = decompress(buf.readByteArray(MAX_COMPRESSED_BYTES));
+        return new S2CSyncFullDataPacket(tag, playerSessionEpoch, revision);
     }
 
     // ── 处理（客户端）─────────────────────────────────
@@ -73,5 +82,27 @@ public class S2CSyncFullDataPacket {
 
     public long getRevision() {
         return revision;
+    }
+
+    private static byte[] compress(CompoundTag tag) {
+        try {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            NbtIo.writeCompressed(tag, output);
+            byte[] compressed = output.toByteArray();
+            if (compressed.length > MAX_COMPRESSED_BYTES) {
+                throw new IllegalArgumentException("Player quest snapshot exceeds compressed limit");
+            }
+            return compressed;
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to encode player quest snapshot", exception);
+        }
+    }
+
+    private static CompoundTag decompress(byte[] compressed) {
+        try (DataInputStream input = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(compressed)))) {
+            return NbtIo.read(input, new NbtAccounter(MAX_UNCOMPRESSED_NBT_BYTES));
+        } catch (IOException | RuntimeException exception) {
+            throw new IllegalArgumentException("Invalid compressed player quest snapshot", exception);
+        }
     }
 }
