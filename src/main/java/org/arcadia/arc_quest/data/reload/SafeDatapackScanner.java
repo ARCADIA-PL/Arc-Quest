@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,7 +44,8 @@ public final class SafeDatapackScanner {
 
         try (var stream = Files.walk(root, limits.maxDirectoryDepth() + 1)) {
             for (Path file : (Iterable<Path>) stream.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".json"))::iterator) {
+                    .filter(path -> path.getFileName().toString().endsWith(".json"))
+                    .sorted()::iterator) {
                 Path normalized = file.toAbsolutePath().normalize();
                 files.add(normalized);
                 int relativeDepth = root.toAbsolutePath().normalize().relativize(normalized).getNameCount();
@@ -98,6 +101,19 @@ public final class SafeDatapackScanner {
                     "Failed to scan directory: " + exception.getMessage(), exception));
         }
         return new ScanResult<>(values, files, parsedBytes, diagnostics, fingerprints);
+    }
+
+    public <T> ScanResult<T> scan(String module, Path root, ResourceManager manager,
+                                  String resourcePrefix, JsonDecoder<T> decoder) {
+        if (manager == null) return scan(module, root, decoder);
+        ScanResult<T> resources = scanResources(module, manager, resourcePrefix, decoder);
+        ScanResult<T> external = scan(module, root, decoder);
+        return ResourceDatapackScanner.merge(module, root, resourcePrefix, limits, resources, external);
+    }
+
+    private <T> ScanResult<T> scanResources(String module, ResourceManager manager,
+                                             String prefix, JsonDecoder<T> decoder) {
+        return ResourceDatapackScanner.scan(module, manager, prefix, limits, decoder);
     }
 
     private static int countCollectionElements(JsonElement element, int limit) {
