@@ -12,6 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.client.events.ClientEventHandler;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
@@ -117,6 +118,7 @@ public final class GuideListScreen extends Screen {
     @Override
     public void removed() {
         ponderPanel.onScreenClosed();
+        HudCursorManager.reset();
         super.removed();
     }
 
@@ -202,6 +204,7 @@ public final class GuideListScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        HudCursorManager.beginFrame();
         float uiScale = getUiScale();
         int smx = (int) (mouseX / uiScale), smy = (int) (mouseY / uiScale);
         int sw = getScaledWidth(), sh = getScaledHeight();
@@ -220,6 +223,7 @@ public final class GuideListScreen extends Screen {
                 parentScreen = null;
                 minecraft.setScreen(restoreScreen);
             }
+            HudCursorManager.apply();
             return;
         }
 
@@ -267,6 +271,7 @@ public final class GuideListScreen extends Screen {
         contentPanel.render(g, detailX, listY, detailW, listH, smx, smy, currentThemeColor, dt);
 
         g.pose().popPose();
+        HudCursorManager.apply();
     }
 
     void rebuildSelection() {

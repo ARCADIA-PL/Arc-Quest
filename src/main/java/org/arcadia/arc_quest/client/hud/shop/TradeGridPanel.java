@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.api.TradeEntry;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
@@ -131,6 +132,7 @@ public class TradeGridPanel {
             }
 
             hoverAnims[i] = HudAnimUtil.smoothHalfLife(hoverAnims[i], hov && state.canBuy ? 1f : 0f, 0.05f, dt);
+            HudCursorManager.requestPointer(hov && state.canBuy);
             fd.hEase = HudAnimUtil.easeOutCubic(hoverAnims[i]);
             fd.bgScale = (isClosing ? 1.0f : flyEase) + fd.hEase * 0.06f;
             fd.contentScale = isClosing ? HudAnimUtil.easeInCubic(Math.max(0f, (screen.getTransitionAnim() - 0.4f) / 0.6f)) : fd.bgScale;

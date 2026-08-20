@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
@@ -136,6 +137,7 @@ public final class JournalDetailCollection {
 
             boolean sel = id.equals(cat);
             boolean hover = mx >= x && mx <= x + w && my >= rowY && my <= rowY + tabH;
+            HudCursorManager.requestPointer(hover && a > 8);
 
             float hAnim = tabHoverAnims.getOrDefault(id, 0f);
             hAnim = HudAnimUtil.lerp(hAnim, hover ? 1f : 0f, 0.2f, dt);
@@ -187,9 +189,11 @@ public final class JournalDetailCollection {
             int x = (i % cols) * (CW + GAP);
             int cy = y + (i / cols) * (CH + GAP);
             boolean hover = mx >= x && mx <= x + CW && my >= cy && my <= cy + CH;
+            boolean trackable = !rt.isPhaseCompleted(p.getPhaseId());
+            HudCursorManager.requestPointer(hover && trackable && a > 8);
 
             card(g, q, rt, p, x, cy, a, theme, time, hover, dt, i);
-            cards.add(new Card(x, cy, CW, CH, q, p.getPhaseId(), !rt.isPhaseCompleted(p.getPhaseId())));
+            cards.add(new Card(x, cy, CW, CH, q, p.getPhaseId(), trackable));
 
             if (hover) tooltip(q, p);
             i++;

@@ -4,6 +4,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 
 public class TradeCategoryPanel {
     private final TradeScreen screen;
@@ -69,6 +70,7 @@ public class TradeCategoryPanel {
         boolean hov = !isClosing && dt > 0 && mx >= x && mx < x + w
                 && my >= viewportY && my < viewportY + viewportHeight
                 && my >= y && my < y + TradeCategoryListLayout.ROW_HEIGHT;
+        HudCursorManager.requestPointer(hov && alpha > 0.05f);
         catHoverAnims[idx] = HudAnimUtil.step(catHoverAnims[idx], hov ? 1f : 0f, 8f, dt);
         float hEase = HudAnimUtil.easeOutCubic(catHoverAnims[idx]), contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         int textX = x + 16 + (sel ? 6 : (int) (4 * hEase)), c = sel ? 0xFFFFFF : Math.round(150 + 105 * hEase);

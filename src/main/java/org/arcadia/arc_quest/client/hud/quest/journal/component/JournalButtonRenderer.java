@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal.component;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 
 public final class JournalButtonRenderer {
@@ -28,6 +29,7 @@ public final class JournalButtonRenderer {
     public static void drawCyberButton(GuiGraphics graphics, Font font, HudRect bounds,
                                        String text, int themeColor, float hoverProgress,
                                        boolean hovered, float alphaFactor) {
+        HudCursorManager.requestPointer(hovered && alphaFactor > 0.05f);
         int backgroundAlpha = (int) ((0x33 + 0x44 * hoverProgress) * alphaFactor);
         int borderAlpha = (int) ((0x66 + 0x99 * hoverProgress) * alphaFactor);
         int borderRgb = hovered ? themeColor & 0xFFFFFF : 0xCCCCCC;
@@ -53,6 +55,7 @@ public final class JournalButtonRenderer {
     public static void drawCompactButton(GuiGraphics graphics, Font font, HudRect bounds,
                                          String label, int themeColor, float alphaFactor,
                                          boolean hovered, float textScale) {
+        HudCursorManager.requestPointer(hovered && alphaFactor > 0.05f);
         int backgroundAlpha = hovered
                 ? (int) (0.25f * alphaFactor)
                 : (int) (0.10f * alphaFactor);
@@ -67,6 +70,7 @@ public final class JournalButtonRenderer {
     public static void drawFilterTab(GuiGraphics graphics, Font font, HudRect bounds,
                                      String label, int themeColor, int alpha,
                                      boolean active, boolean hovered, float textScale) {
+        HudCursorManager.requestPointer(hovered && alpha > 8);
         int background = active
                 ? HudAnimUtil.withAlpha(themeColor, Math.round(alpha * 0.15f))
                 : hovered ? HudAnimUtil.withAlpha(0x334455, alpha) : 0;

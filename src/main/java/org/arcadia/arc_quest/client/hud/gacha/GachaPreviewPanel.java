@@ -9,6 +9,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.trade.api.CostShortfallLine;
 import org.arcadia.arc_quest.trade.api.ITradeOffer;
 import org.arcadia.arc_quest.trade.gacha.api.GachaItem;
@@ -730,6 +731,7 @@ public class GachaPreviewPanel {
         boolean unavailable = !waiting && !canInteract;
 
         boolean hov = !isWiping && !isClosing && mx >= l.btnX() && mx < l.btnX() + l.btnW() && my >= l.btnY() && my < l.btnY() + l.btnH();
+        HudCursorManager.requestPointer(hov && canInteract);
 
         if (!isWiping && !isClosing) {
             btnHoverAnim = HudAnimUtil.step(btnHoverAnim, hov ? 1f : 0f, 12f, dt); // Snappy 的 12F 加速步进

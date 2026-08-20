@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
@@ -140,6 +141,12 @@ public abstract class AbstractTradeScreen extends Screen {
     }
 
     @Override
+    public void removed() {
+        HudCursorManager.reset();
+        super.removed();
+    }
+
+    @Override
     public boolean isPauseScreen() {
         return false;
     }
@@ -174,6 +181,7 @@ public abstract class AbstractTradeScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mx, int my, float pt) {
+        HudCursorManager.beginFrame();
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
         float realDt = Math.min(0.1f, (now - lastRenderTime) / 1000f);
@@ -228,6 +236,7 @@ public abstract class AbstractTradeScreen extends Screen {
                 } else {
                     minecraft.setScreen(null);
                 }
+                HudCursorManager.apply();
                 return;
             }
         }
@@ -248,7 +257,10 @@ public abstract class AbstractTradeScreen extends Screen {
 
         // 渲染商店自身半透明遮罩
         g.fill(0, 0, width, height, ((int) (140 * effectiveAlpha) << 24));
-        if (safeAlpha <= 5) return;
+        if (safeAlpha <= 5) {
+            HudCursorManager.apply();
+            return;
+        }
 
         renderContent(g, mx, my, pt);
         /*renderTradeFailToast(g);*/
@@ -256,6 +268,7 @@ public abstract class AbstractTradeScreen extends Screen {
         if (tooltipRenderer != null) {
             tooltipRenderer.updateAndRender(g, getHoveredEntry(mx, my), mx, my, dt, isClosing);
         }
+        HudCursorManager.apply();
     }
 
     private void renderTradeFailToast(GuiGraphics g) {

@@ -7,6 +7,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.quest.api.IReward;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -86,6 +87,7 @@ public class JournalDetailRewards {
             phaseTabRect[2] = phaseTw + 8;
             phaseTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, phaseTabRect);
+            HudCursorManager.requestPointer(hovered && safeA > 8);
             int color = (activeTab == Tab.PHASE) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
             g.drawString(font, phaseRewardText, phaseTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
         }
@@ -96,6 +98,7 @@ public class JournalDetailRewards {
             chapterTabRect[2] = chapTw + 8;
             chapterTabRect[3] = font.lineHeight + 8;
             boolean hovered = isHovering(mx, my, chapterTabRect);
+            HudCursorManager.requestPointer(hovered && safeA > 8);
             int color = (activeTab == Tab.CHAPTER) ? activeTheme : (hovered ? 0xFFFFFF : 0x888888);
             g.drawString(font, chapterRewardText, chapTabX, currentY, HudAnimUtil.withAlpha(color, safeA), false);
         }

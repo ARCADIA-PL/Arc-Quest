@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.api.GuideMediaType;
@@ -201,6 +202,7 @@ public class GuideContentPanel {
         boolean canNext = screen.getSelectedPageIndex() + 1 < guide.getPageCount();
         boolean leftHovered = canPrevious && hit(mx, my, leftX, buttonY, buttonWidth, buttonHeight);
         boolean rightHovered = canNext && hit(mx, my, rightX, buttonY, buttonWidth, buttonHeight);
+        HudCursorManager.requestPointer((leftHovered || rightHovered) && alpha > 8);
         leftBtnHover = HudAnimUtil.step(leftBtnHover, leftHovered ? 1f : 0f, 10f, dt);
         rightBtnHover = HudAnimUtil.step(rightBtnHover, rightHovered ? 1f : 0f, 10f, dt);
 

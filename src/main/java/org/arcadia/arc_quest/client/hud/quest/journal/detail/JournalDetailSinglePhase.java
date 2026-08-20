@@ -359,6 +359,7 @@ public class JournalDetailSinglePhase {
                 currentChoiceButtons.add(new JournalTypes.ChoiceButtonRect(absX, absY, choiceBtnW, choiceBtnH, i, phaseId));
 
                 boolean isHovered = mx >= absX && mx <= absX + choiceBtnW && my >= absY && my <= absY + choiceBtnH && my >= scrollAreaY && my <= scrollAreaY + scrollAreaH;
+                if (isHovered) screen.requestPointerCursor();
                 int borderColor = isHovered ? activeTheme : 0x666666;
                 int textColor = isHovered ? activeTheme : 0xCCCCCC;
 

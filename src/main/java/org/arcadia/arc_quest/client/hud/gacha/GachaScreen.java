@@ -6,6 +6,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
@@ -159,6 +160,7 @@ public class GachaScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
+        HudCursorManager.beginFrame();
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
         dt = Math.min((now - lastRenderTime) / 1000f, 0.1f);
@@ -167,10 +169,14 @@ public class GachaScreen extends Screen {
         transitionAnim = HudAnimUtil.lerp(transitionAnim, isClosing ? 0f : 1f, isClosing ? 0.15f : 0.1f, dt);
         if (isClosing && transitionAnim <= 0.01f) {
             minecraft.setScreen(null);
+            HudCursorManager.apply();
             return;
         }
 
-        if (shopDef == null) return;
+        if (shopDef == null) {
+            HudCursorManager.apply();
+            return;
+        }
 
         if (currentPhase == Phase.WAITING_SERVER && System.currentTimeMillis() - requestTimestamp > DRAW_REQUEST_TIMEOUT) {
             currentPhase = Phase.PREVIEW;
@@ -190,6 +196,7 @@ public class GachaScreen extends Screen {
         if (switchingToResult) {
             if (GachaResultRenderer.INSTANCE.isActive()) {
                 GachaResultRenderer.INSTANCE.render(g, width, height, dt);
+                HudCursorManager.apply();
                 return;
             } else {
                 switchingToResult = false;
@@ -208,6 +215,7 @@ public class GachaScreen extends Screen {
         if (currentPhase == Phase.ROLLING) {
             rollerPanel.render(g, dt);
         }
+        HudCursorManager.apply();
     }
 
     @Override
@@ -255,6 +263,12 @@ public class GachaScreen extends Screen {
             ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createRestorePacket());
             LOGGER.debug("[Gacha-Client] RESTORE_DIALOGUE packet sent");
         }
+    }
+
+    @Override
+    public void removed() {
+        HudCursorManager.reset();
+        super.removed();
     }
 
     public enum Phase {PREVIEW, WAITING_SERVER, ROLLING}

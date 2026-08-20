@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
@@ -160,6 +161,7 @@ public class GuideListPanel {
             boolean hovered = mouseX >= x && mouseX <= x + width - 8
                     && mouseY >= entryY && mouseY <= entryY + rowHeight
                     && mouseY >= y && mouseY <= y + height;
+            HudCursorManager.requestPointer(hovered && effectiveAlpha > 0.05f);
             entryHoverAnim[index] = HudAnimUtil.step(
                     entryHoverAnim[index], hovered ? 1f : 0f, 8f, deltaTime);
             float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[index]);

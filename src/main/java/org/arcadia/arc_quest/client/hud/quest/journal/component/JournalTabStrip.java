@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.client.hud.quest.journal.component;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public final class JournalTabStrip {
         for (TabBounds tabBounds : layout.tabs()) {
             HudRect bounds = tabBounds.bounds();
             boolean hovered = bounds.contains(mouseX, mouseY);
+            HudCursorManager.requestPointer(hovered && alpha > 8);
             TabItem item = tabBounds.item();
             int textColor = item.active()
                     ? HudAnimUtil.withAlpha(0xFFFFFF, alpha)

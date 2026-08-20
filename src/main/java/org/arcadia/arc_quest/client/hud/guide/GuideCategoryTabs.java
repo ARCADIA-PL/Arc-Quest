@@ -4,6 +4,7 @@ package org.arcadia.arc_quest.client.hud.guide;
 import net.minecraft.client.gui.GuiGraphics;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.guide.api.GuideCategory;
 
 import java.util.List;
@@ -63,6 +64,7 @@ public class GuideCategoryTabs {
             String label = cat.getDisplayName().getString();
             int tw = screen.getFont().width(label) + 16;
             boolean hovered = mx >= currentTabX && mx <= currentTabX + tw && my >= tabY && my <= tabY + GuideConstants.TAB_HEIGHT;
+            HudCursorManager.requestPointer(hovered && safeAlpha > 8);
             boolean active = cat.getId().equals(screen.getSelectedCategoryId());
             int textColor = active ? HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha) : hovered ? HudAnimUtil.withAlpha(0xDDDDDD, safeAlpha) : HudAnimUtil.withAlpha(0x888888, safeAlpha);
 

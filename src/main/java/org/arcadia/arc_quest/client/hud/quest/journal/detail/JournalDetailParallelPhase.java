@@ -502,6 +502,7 @@ public class JournalDetailParallelPhase {
                 int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
                 boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
                 boolean btnHovered = !isBeingDragged && !panelsActive && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
+                if (btnHovered && intelAnim > 0.5f) screen.requestPointerCursor();
 
                 float btnSelfHover = phaseIntelBtnHoverAnims.getOrDefault(phaseId, 0f);
                 btnSelfHover = HudAnimUtil.step(btnSelfHover, (btnHovered && intelAnim > 0.5f) ? 1f : 0f, 15f, dt);
@@ -612,6 +613,7 @@ public class JournalDetailParallelPhase {
                     if (canUpload) {
                         boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
                         if (!panelsActive) {
+                            if (textHovered) screen.requestPointerCursor();
                             offerHoverAnims.put(offerKey, hoverAnimOffer);
                             if (draggingPhaseId == null)
                                 recordParallelOfferProgressRect(absX2, absY2, hitW2, hitH2, phaseId, i);
@@ -696,6 +698,7 @@ public class JournalDetailParallelPhase {
                     int absBtnX = x + 12 + btnX, absBtnY = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + btnY);
 
                     boolean btnHover = !isBeingDragged && mx >= absBtnX && mx < absBtnX + btnW && my >= absBtnY && my < absBtnY + btnH && my >= scrollAreaY && my < scrollAreaY + scrollAreaH && mx >= clipAbsX1 && mx < clipAbsX2;
+                    if (btnHover) screen.requestPointerCursor();
 
                     g.fill(btnX, btnY, btnX + btnW, btnY + btnH, HudAnimUtil.withAlpha(0xFFFFFF, (int) ((btnHover ? 0x22 : 0x12) * actualDAlpha * cardEase)));
                     g.fill(btnX, btnY, btnX + btnW, btnY + 1, HudAnimUtil.withAlpha(activeTheme, (int) (170 * actualDAlpha * cardEase)));
@@ -729,11 +732,13 @@ public class JournalDetailParallelPhase {
             int absLeftX = x + 12, absRightX = x + 12 + cardAreaW - btnW, absTrackX = absLeftX + btnW + trackGap;
 
             boolean lHover = mx >= absLeftX && mx < absLeftX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
+            if (lHover) screen.requestPointerCursor();
             leftBtnHover = HudAnimUtil.step(leftBtnHover, lHover ? 1f : 0f, 10f, dt);
             int leftColor = HudAnimUtil.lerpColor(0x777777, activeTheme, leftBtnHover);
             g.drawString(font, "<", 0, localY - 2, HudAnimUtil.withAlpha(leftColor, safeA), false);
 
             boolean rHover = mx >= absRightX && mx < absRightX + btnW && my >= absCtrlY - 2 && my < absCtrlY + 8 && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
+            if (rHover) screen.requestPointerCursor();
             rightBtnHover = HudAnimUtil.step(rightBtnHover, rHover ? 1f : 0f, 10f, dt);
             int rightColor = HudAnimUtil.lerpColor(0x777777, activeTheme, rightBtnHover);
             g.drawString(font, ">", cardAreaW - btnW + 4, localY - 2, HudAnimUtil.withAlpha(rightColor, safeA), false);

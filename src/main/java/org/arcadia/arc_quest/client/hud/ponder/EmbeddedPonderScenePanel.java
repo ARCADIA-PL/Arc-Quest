@@ -17,6 +17,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.IntelPonderUIStub; // <--- 新增导入
 import org.arcadia.arc_quest.client.ponder.ArcQuestPonderSceneRegistry;
@@ -132,6 +133,7 @@ public final class EmbeddedPonderScenePanel {
     private void drawHologramButton(GuiGraphics g, Font font, String id, int absX, int absY, int bw, int bh, String text, float lx, float ly, float localBtnX, float localBtnY, int alpha, boolean enabled, float dt) {
         if (!enabled) return;
         boolean hovered = lx >= localBtnX && lx <= localBtnX + bw && ly >= localBtnY && ly <= localBtnY + bh;
+        HudCursorManager.requestPointer(hovered && enabled);
 
         float currentHover = buttonHoverStates.getOrDefault(id, 0f);
         currentHover += ((hovered ? 1f : 0f) - currentHover) * Math.min(1f, dt * 18f);

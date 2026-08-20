@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.api.GuideMediaDefinition;
@@ -105,6 +106,7 @@ public final class GuideScreen extends Screen {
     @Override
     public void removed() {
         ponderPanel.onScreenClosed();
+        HudCursorManager.reset();
         super.removed();
     }
 
@@ -321,7 +323,11 @@ public final class GuideScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        if (guide == null) return;
+        HudCursorManager.beginFrame();
+        if (guide == null) {
+            HudCursorManager.apply();
+            return;
+        }
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -332,6 +338,7 @@ public final class GuideScreen extends Screen {
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, dt);
         if (isClosing && transitionAlpha <= 0.01f) {
             if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
+            HudCursorManager.apply();
             return;
         }
 
@@ -345,7 +352,10 @@ public final class GuideScreen extends Screen {
         int panelY = getPanelY();
 
         int safeAlpha = (int) (255 * transitionAlpha);
-        if (safeAlpha <= 20) return;
+        if (safeAlpha <= 20) {
+            HudCursorManager.apply();
+            return;
+        }
 
         descScroll += (descTargetScroll - descScroll) * Math.min(1.0f, dt * 16f);
 
@@ -473,6 +483,7 @@ public final class GuideScreen extends Screen {
         if (canNext()) {
             curBtnX -= btnSize;
             boolean hoverN = hit(mouseX, mouseY, curBtnX - 4, navY - 4, btnSize + 8, btnSize + 8);
+            HudCursorManager.requestPointer(hoverN);
             nextHoverAnim = HudAnimUtil.step(nextHoverAnim, hoverN ? 1f : 0f, 15f, dt);
 
             g.pose().pushPose();
@@ -492,6 +503,7 @@ public final class GuideScreen extends Screen {
         if (canPrev()) {
             curBtnX -= btnSize;
             boolean hoverP = hit(mouseX, mouseY, curBtnX - 4, navY - 4, btnSize + 8, btnSize + 8);
+            HudCursorManager.requestPointer(hoverP);
             prevHoverAnim = HudAnimUtil.step(prevHoverAnim, hoverP ? 1f : 0f, 15f, dt);
 
             g.pose().pushPose();
@@ -507,9 +519,12 @@ public final class GuideScreen extends Screen {
         // ==========================================
         int closeX = panelX + panelW - 24;
         int closeY = panelY + 16;
-        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16) ? 1f : 0f, 15f, dt);
+        boolean closeHovered = hit(mouseX, mouseY, closeX - 4, closeY - 4, 16, 16);
+        HudCursorManager.requestPointer(closeHovered);
+        closeHoverAnim = HudAnimUtil.step(closeHoverAnim, closeHovered ? 1f : 0f, 15f, dt);
         int closeColor = HudAnimUtil.withAlpha(themeColor, (int) (safeAlpha * (0.6f + 0.4f * HudAnimUtil.easeOutCubic(closeHoverAnim))));
         g.drawString(font, "\u2715", closeX, closeY, closeColor, false);
+        HudCursorManager.apply();
     }
 
     private void nextPage() {

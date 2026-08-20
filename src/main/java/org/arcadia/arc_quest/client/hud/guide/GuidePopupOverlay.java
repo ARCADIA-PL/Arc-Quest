@@ -11,6 +11,7 @@ import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.ponder.EmbeddedPonderScenePanel;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
@@ -124,16 +125,20 @@ public final class GuidePopupOverlay {
     public void render(@Nullable Screen owner, GuiGraphics graphics,
                        int screenWidth, int screenHeight, float partialTick) {
         if (!isActive()) return;
+        HudCursorManager.beginFrame();
+        Minecraft minecraft = Minecraft.getInstance();
+        double mouseX = minecraft.mouseHandler.xpos() * screenWidth / minecraft.getWindow().getScreenWidth();
+        double mouseY = minecraft.mouseHandler.ypos() * screenHeight / minecraft.getWindow().getScreenHeight();
         long now = Util.getMillis();
         if (lastRenderTime == 0L) lastRenderTime = now;
         float deltaTime = Math.min(0.1f, (now - lastRenderTime) / 1000f);
         lastRenderTime = now;
         animation = HudAnimUtil.step(animation, closing ? 0f : 1f, closing ? 5.5f : 4.2f, deltaTime);
         if (closing && animation <= 0.01f) {
-            Minecraft minecraft = Minecraft.getInstance();
             boolean hosted = minecraft.screen instanceof InputHostScreen;
             clearState();
             if (hosted) minecraft.setScreen(DialogueScreen.fromCurrentSession());
+            HudCursorManager.apply();
             return;
         }
 
@@ -202,7 +207,7 @@ public final class GuidePopupOverlay {
             graphics.pose().popPose();
         } else if (currentMedia().getType() != GuideMediaType.NONE) {
             GuideMediaRenderer.drawMedia(owner, graphics, mediaX, mediaY, mediaWidth, mediaHeight,
-                    currentMedia(), ponderPanel, 0, 0, partialTick, alpha, theme);
+                    currentMedia(), ponderPanel, (int) mouseX, (int) mouseY, partialTick, alpha, theme);
         }
 
         descriptionX = contentX;
@@ -251,7 +256,14 @@ public final class GuidePopupOverlay {
                         navigationY - 1, alpha / 255f);
             }
         }
+        boolean closeHovered = hit(mouseX, mouseY, panelX + panelWidth - 32, panelY + 8, 28, 28);
+        boolean previousHovered = pageIndex > 0
+                && hit(mouseX, mouseY, panelX + panelWidth - 62, navigationY - 5, 24, 24);
+        boolean nextHovered = pageIndex + 1 < guide.getPageCount()
+                && hit(mouseX, mouseY, panelX + panelWidth - 38, navigationY - 5, 24, 24);
+        HudCursorManager.requestPointer(alpha > 8 && (closeHovered || previousHovered || nextHovered));
         graphics.pose().popPose();
+        HudCursorManager.apply();
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {

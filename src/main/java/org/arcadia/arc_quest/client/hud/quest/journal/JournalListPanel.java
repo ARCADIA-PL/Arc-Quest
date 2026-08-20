@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.QuestHudOverlay;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.QuestIconRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalScrollbar;
@@ -198,6 +199,7 @@ public class JournalListPanel {
             boolean hovered = mouseX >= x && mouseX <= x + width - 8
                     && mouseY >= entryY && mouseY <= entryY + rowHeight
                     && mouseY >= y && mouseY <= y + height;
+            HudCursorManager.requestPointer(hovered && effectiveAlpha > 0.05f);
             entryHoverAnim[rowIndex] = HudAnimUtil.step(
                     entryHoverAnim[rowIndex], hovered ? 1f : 0f, 8f, deltaTime);
             float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[rowIndex]);

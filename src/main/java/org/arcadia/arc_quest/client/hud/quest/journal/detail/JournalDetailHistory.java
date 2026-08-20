@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Style;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.quest.journal.JournalTypes;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
@@ -49,19 +50,24 @@ final class JournalDetailHistory {
                 0.92f, HudAnimUtil.withAlpha(theme, alpha), false);
         localY += 18;
 
+        boolean allHovered = inside(mx, my, x, y + localY, 44, 16);
+        boolean currentHovered = inside(mx, my, x + 48, y + localY, 64, 16);
+        HudCursorManager.requestPointer((allHovered || currentHovered) && alpha > 8);
         JournalButtonRenderer.drawToggleButton(g, font, new HudRect(0, localY, 44, 16),
-                "ALL", theme, alpha, !currentQuestOnly || inside(mx, my, x, y + localY, 44, 16), 0.7f);
+                "ALL", theme, alpha, !currentQuestOnly || allHovered, 0.7f);
         JournalButtonRenderer.drawToggleButton(g, font, new HudRect(48, localY, 64, 16),
-                "CURRENT", theme, alpha, currentQuestOnly || inside(mx, my, x + 48, y + localY, 64, 16), 0.7f);
+                "CURRENT", theme, alpha, currentQuestOnly || currentHovered, 0.7f);
         localY += 22;
 
         int fx = 0;
         for (QuestChangeHistoryCategory category : QuestChangeHistoryCategory.values()) {
             if (category == QuestChangeHistoryCategory.SYSTEM) continue;
             int fw = Math.max(34, font.width(category.shortLabel()) + 12);
+            boolean hovered = inside(mx, my, x + fx, y + localY, fw, 12);
+            HudCursorManager.requestPointer(hovered && alpha > 8);
             JournalButtonRenderer.drawToggleButton(g, font, new HudRect(fx, localY, fw, 12),
                     category.shortLabel(), theme, alpha,
-                    selectedCategory == category || inside(mx, my, x + fx, y + localY, fw, 12), 0.7f);
+                    selectedCategory == category || hovered, 0.7f);
             fx += fw + 4;
         }
         localY += 20;

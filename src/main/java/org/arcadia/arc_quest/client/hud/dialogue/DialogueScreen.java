@@ -12,6 +12,7 @@ import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
@@ -394,6 +395,12 @@ public class DialogueScreen extends Screen {
         startClose();
     }
 
+    @Override
+    public void removed() {
+        HudCursorManager.reset();
+        super.removed();
+    }
+
     public void startCloseAnimation() {
         startClose();
     }
@@ -409,6 +416,7 @@ public class DialogueScreen extends Screen {
 
     @Override
     public void render(@NotNull GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        HudCursorManager.beginFrame();
         long now = Util.getMillis();
         long frameElapsedMs = lastRenderTime == 0 ? 0 : Math.min(100L, now - lastRenderTime);
         if (lastRenderTime == 0) lastRenderTime = now;
@@ -445,6 +453,7 @@ public class DialogueScreen extends Screen {
                 ArcQuestNetwork.sendDialogueChoice(ClientDialogueCache.INSTANCE.createClosePacket());
                 minecraft.setScreen(null);
             }
+            HudCursorManager.apply();
             return;
         }
 
@@ -500,6 +509,7 @@ public class DialogueScreen extends Screen {
             String btnText = "■ SYS.LOG";
             int logBtnY = (targetBarHeight - font.lineHeight) / 2, logBtnX = 20, logBtnW = font.width(btnText);
             boolean logHovered = !historyActive && smx >= logBtnX && smx <= logBtnX + logBtnW && smy >= logBtnY && smy <= logBtnY + font.lineHeight;
+            HudCursorManager.requestPointer(logHovered);
             historyHoverAnim = HudAnimUtil.step(historyHoverAnim, logHovered ? 1f : 0f, 10f, dt);
             float hEase = HudAnimUtil.easeOutCubic(historyHoverAnim);
 
@@ -560,6 +570,7 @@ public class DialogueScreen extends Screen {
 
                 int currentExpand = Math.round(15 * HudAnimUtil.easeOutCubic(choiceHover[i]));
                 boolean hovered = !isClosing && !suspendContent && !onCooldown && !hasClickSelection && smx >= choiceX - currentExpand && smx <= choiceX + choiceW && smy >= cy && smy <= cy + choiceH;
+                HudCursorManager.requestPointer(hovered);
 
                 choiceReveal[i] = HudAnimUtil.step(choiceReveal[i], (!isClosing && timeSinceTextDone >= 0.05f + (i * 0.08f)) ? 1f : 0f, isClosing ? 15f : 5.0f, dt);
                 float progress = choiceReveal[i], revealEase = HudAnimUtil.easeOutCubic(progress), slideEase = progress * progress * (3f - 2f * progress);
@@ -643,5 +654,6 @@ public class DialogueScreen extends Screen {
         if (!pass2Tasks.isEmpty()) {
             for (Runnable task : pass2Tasks) task.run();
         }
+        HudCursorManager.apply();
     }
 }
