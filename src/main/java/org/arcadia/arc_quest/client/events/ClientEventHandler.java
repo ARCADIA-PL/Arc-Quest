@@ -14,6 +14,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.compat.marker.QuestMarkerExternalSync;
+import org.arcadia.arc_quest.client.data.sync.ClientDatapackContentReceiver;
 import org.arcadia.arc_quest.client.hud.guide.GuideListScreen;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
 import org.arcadia.arc_quest.client.hud.guide.GuideScreen;
@@ -120,6 +121,7 @@ public final class ClientEventHandler {
     @SubscribeEvent
     public static void onLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
         QuestMarkerExternalSync.clear();
+        ClientDatapackContentReceiver.INSTANCE.clear();
         ClientGuideCache.INSTANCE.clear();
         ClientQuestCache.INSTANCE.clear();
         QuestChangeHistoryStore.INSTANCE.flushAndResetClientSession();

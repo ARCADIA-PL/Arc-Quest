@@ -14,6 +14,9 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
+import org.arcadia.arc_quest.data.sync.DatapackContentSyncService;
+import org.arcadia.arc_quest.data.sync.DatapackRegistrySnapshotLifecycle;
+import org.arcadia.arc_quest.data.sync.network.C2SRequestDatapackContentPacket;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
 import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
 import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
@@ -61,6 +64,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.PLAYER_LOADED);
         QuestDataTickHandler.rebuildDynamicMarkers(sp);
+        DatapackContentSyncService.sendToPlayer(sp);
         ArcQuestNetwork.syncFullData(sp, data);
         ArcQuestNetwork.sendDatapackReloadEpoch(sp, ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
         GuidePlayerStateSyncService.sync(sp, data);
@@ -113,6 +117,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         QuestDataTickHandler.clearMarkerRuntimeState(sp.getUUID());
         RequestIdempotencyStore.INSTANCE.clearPlayer(sp.getUUID());
         C2SRequestTradePacket.clearPlayer(sp.getUUID());
+        C2SRequestDatapackContentPacket.clearPlayer(sp.getUUID());
         C2SRequestQuestResyncPacket.clearPlayer(sp.getUUID());
         C2SMarkPhaseStoryReadPacket.clearPlayer(sp.getUUID());
         C2SSetTrackedQuestPacket.clearPlayer(sp.getUUID());
@@ -175,12 +180,15 @@ public final class ArcQuestPlayerLifecycleHandler {
         DialogueNpcStateManager.clearAll();
         RequestIdempotencyStore.INSTANCE.clear();
         C2SRequestTradePacket.clearAll();
+        C2SRequestDatapackContentPacket.clear();
         C2SRequestQuestResyncPacket.clear();
         C2SMarkPhaseStoryReadPacket.clear();
         C2SSetTrackedQuestPacket.clear();
         QuestSyncRevisionManager.clear();
         PlayerSessionEpochManager.clear();
         QuestDataTickHandler.clearMarkerRuntimeState();
+        DatapackRegistrySnapshotLifecycle.clear(0L);
+        DatapackContentSyncService.reset();
     }
 
     @SubscribeEvent

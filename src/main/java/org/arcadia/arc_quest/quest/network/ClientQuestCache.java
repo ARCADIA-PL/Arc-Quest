@@ -671,6 +671,7 @@ public final class ClientQuestCache {
         ClientQuestTrackingStore.INSTANCE.clear();
         hasAppliedFullSync = false;
         revisionGate.clear();
+        datapackReloadEpoch = 0L;
         LOGGER.info("[ClientCache] Cache cleared.");
     }
 
