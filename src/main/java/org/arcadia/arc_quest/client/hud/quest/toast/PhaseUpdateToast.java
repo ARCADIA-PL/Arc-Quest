@@ -51,7 +51,8 @@ public class PhaseUpdateToast {
         return kind;
     }
 
-    public boolean render(GuiGraphics g, Font font, int baseX, int baseY, float parentAlpha, boolean isFrozen) {
+    public boolean render(GuiGraphics g, Font font, int baseX, int baseY,
+                          float uiScale, float parentAlpha, boolean isFrozen) {
         long now = Util.getMillis();
         long dt = now - lastRenderTime;
         lastRenderTime = now;
@@ -100,7 +101,8 @@ public class PhaseUpdateToast {
             scRight = baseX + POPUP_W + 20;
         }
 
-        g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
+        g.enableScissor((int) (scLeft * uiScale), (int) ((baseY - 10) * uiScale),
+                (int) (scRight * uiScale), (int) ((baseY + POPUP_H + 20) * uiScale));
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();

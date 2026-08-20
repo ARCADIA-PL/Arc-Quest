@@ -68,7 +68,8 @@ public class BranchChoiceToast {
         return phaseId.equals(otherPhaseId);
     }
 
-    public boolean render(GuiGraphics g, int baseX, int baseY, float parentAlpha, float partialTick, boolean isFrozen) {
+    public boolean render(GuiGraphics g, int baseX, int baseY, float uiScale,
+                          float parentAlpha, float partialTick, boolean isFrozen) {
         long now = Util.getMillis();
 
         if (isFrozen) {
@@ -119,7 +120,8 @@ public class BranchChoiceToast {
             scRight = baseX + (int) (POPUP_W * (1f - wipeProgress));
         }
 
-        g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
+        g.enableScissor((int) (scLeft * uiScale), (int) ((baseY - 10) * uiScale),
+                (int) (scRight * uiScale), (int) ((baseY + POPUP_H + 20) * uiScale));
 
         int bgA = (int) (finalAlpha * 0x88);
         int accentA = (int) (finalAlpha * 255);
