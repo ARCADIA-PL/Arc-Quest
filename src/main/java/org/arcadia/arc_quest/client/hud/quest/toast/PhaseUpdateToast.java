@@ -2,7 +2,6 @@ package org.arcadia.arc_quest.client.hud.quest.toast;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -101,9 +100,7 @@ public class PhaseUpdateToast {
             scRight = baseX + POPUP_W + 20;
         }
 
-        Minecraft mc = Minecraft.getInstance();
-        float uiScale = HudRenderUtil.getUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-        g.enableScissor((int) (scLeft * uiScale), (int) ((baseY - 10) * uiScale), (int) (scRight * uiScale), (int) ((baseY + POPUP_H + 20) * uiScale));
+        g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();

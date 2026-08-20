@@ -119,10 +119,7 @@ public class BranchChoiceToast {
             scRight = baseX + (int) (POPUP_W * (1f - wipeProgress));
         }
 
-        // 仅在裁剪器（Scissor）计算时获取全局 uiScale（因为 Scissor 必须用物理像素/绝对 gui 缩放）
-        Minecraft mc = Minecraft.getInstance();
-        float uiScale = HudRenderUtil.getUniversalUiScale(mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
-        g.enableScissor((int) (scLeft * uiScale), (int) ((baseY - 10) * uiScale), (int) (scRight * uiScale), (int) ((baseY + POPUP_H + 20) * uiScale));
+        g.enableScissor(scLeft, baseY - 10, scRight, baseY + POPUP_H + 20);
 
         int bgA = (int) (finalAlpha * 0x88);
         int accentA = (int) (finalAlpha * 255);
