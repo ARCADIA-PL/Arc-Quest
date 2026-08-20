@@ -17,8 +17,8 @@ import org.arcadia.arc_quest.dialogue.data.DialogueNpcStateManager;
 import org.arcadia.arc_quest.data.sync.DatapackContentSyncService;
 import org.arcadia.arc_quest.data.sync.DatapackRegistrySnapshotLifecycle;
 import org.arcadia.arc_quest.data.sync.network.C2SRequestDatapackContentPacket;
+import org.arcadia.arc_quest.data.sync.network.C2SDatapackContentReadyPacket;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSessionManager;
-import org.arcadia.arc_quest.data.reload.ArcQuestReloadCoordinator;
 import org.arcadia.arc_quest.npc.runtime.NpcInteractionLeaseManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -65,11 +65,8 @@ public final class ArcQuestPlayerLifecycleHandler {
         TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.PLAYER_LOADED);
         QuestDataTickHandler.rebuildDynamicMarkers(sp);
         DatapackContentSyncService.sendToPlayer(sp);
-        ArcQuestNetwork.syncFullData(sp, data);
-        ArcQuestNetwork.sendDatapackReloadEpoch(sp, ArcQuestReloadCoordinator.INSTANCE.getCommittedEpoch());
-        GuidePlayerStateSyncService.sync(sp, data);
         PendingDrawManager.compensateAndGrant(sp);
-        LOGGER.debug("[ArcQuest] Login sync complete for: {}", sp.getGameProfile().getName());
+        LOGGER.debug("[ArcQuest] Login content sync started for: {}", sp.getGameProfile().getName());
     }
 
     @SubscribeEvent
@@ -118,6 +115,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         RequestIdempotencyStore.INSTANCE.clearPlayer(sp.getUUID());
         C2SRequestTradePacket.clearPlayer(sp.getUUID());
         C2SRequestDatapackContentPacket.clearPlayer(sp.getUUID());
+        C2SDatapackContentReadyPacket.clearPlayer(sp.getUUID());
         C2SRequestQuestResyncPacket.clearPlayer(sp.getUUID());
         C2SMarkPhaseStoryReadPacket.clearPlayer(sp.getUUID());
         C2SSetTrackedQuestPacket.clearPlayer(sp.getUUID());
@@ -181,6 +179,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         RequestIdempotencyStore.INSTANCE.clear();
         C2SRequestTradePacket.clearAll();
         C2SRequestDatapackContentPacket.clear();
+        C2SDatapackContentReadyPacket.clear();
         C2SRequestQuestResyncPacket.clear();
         C2SMarkPhaseStoryReadPacket.clear();
         C2SSetTrackedQuestPacket.clear();
