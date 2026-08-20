@@ -7,6 +7,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.data.sync.network.DatapackContentClientNetworkBridge;
 
 public record S2CDatapackReloadEpochPacket(long epoch) implements CustomPacketPayload {
     public static final Type<S2CDatapackReloadEpochPacket> TYPE =
@@ -23,7 +24,7 @@ public record S2CDatapackReloadEpochPacket(long epoch) implements CustomPacketPa
     }
 
     public static void handle(S2CDatapackReloadEpochPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> ClientQuestCache.INSTANCE.setDatapackReloadEpoch(packet.epoch));
+        context.enqueueWork(() -> DatapackContentClientNetworkBridge.handleEpoch(packet.epoch));
     }
 
     @Override
