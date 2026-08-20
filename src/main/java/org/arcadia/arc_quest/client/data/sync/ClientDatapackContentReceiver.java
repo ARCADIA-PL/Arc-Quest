@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.data.sync.DatapackContentTransfer;
 import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentChunkPacket;
 import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentStartPacket;
 import org.arcadia.arc_quest.data.sync.network.C2SRequestDatapackContentPacket;
+import org.arcadia.arc_quest.data.sync.network.C2SDatapackContentReadyPacket;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.slf4j.Logger;
@@ -44,6 +45,7 @@ public final class ClientDatapackContentReceiver {
         }
         if (packet.epoch() == appliedEpoch && packet.contentHash().equals(appliedHash)) {
             transfer = null;
+            signalReady(packet.epoch());
             return;
         }
         transfer = new TransferState(packet.epoch(), packet.contentHash(), packet.chunkCount(),
@@ -99,11 +101,14 @@ public final class ClientDatapackContentReceiver {
             }
             DatapackContentTransfer encoded = new DatapackContentTransfer(current.epoch, current.contentHash,
                     current.uncompressedBytes, output.toByteArray());
-            ClientDatapackContentApplier.apply(DatapackContentCodec.decode(encoded));
+            ClientDatapackContentApplier.ApplyResult result = ClientDatapackContentApplier.apply(
+                    DatapackContentCodec.decode(encoded));
             appliedEpoch = current.epoch;
             appliedHash = current.contentHash;
             ClientQuestCache.INSTANCE.setDatapackReloadEpoch(current.epoch);
             refreshOpenJournal();
+            if (result.failedModules().contains("quest")) requestResync();
+            else signalReady(current.epoch);
             LOGGER.info("[DatapackSync] Applied client content snapshot epoch={} hash={} compressedBytes={}",
                     current.epoch, current.contentHash, current.compressedBytes);
         } catch (Exception exception) {
@@ -117,6 +122,10 @@ public final class ClientDatapackContentReceiver {
         if (now - lastResyncRequestNanos < 1_000_000_000L) return;
         lastResyncRequestNanos = now;
         ArcQuestNetwork.CHANNEL.sendToServer(new C2SRequestDatapackContentPacket(appliedEpoch));
+    }
+
+    private static void signalReady(long epoch) {
+        ArcQuestNetwork.CHANNEL.sendToServer(new C2SDatapackContentReadyPacket(epoch));
     }
 
     private static boolean isValidHash(String hash) {

@@ -16,6 +16,7 @@ import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentChunkPacket;
 import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentStartPacket;
 import org.arcadia.arc_quest.data.sync.network.C2SRequestDatapackContentPacket;
+import org.arcadia.arc_quest.data.sync.network.C2SDatapackContentReadyPacket;
 import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
 import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
@@ -53,7 +54,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class ArcQuestNetwork {
 
-    private static final String PROTOCOL_VERSION = "11";
+    private static final String PROTOCOL_VERSION = "12";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "main"),
@@ -95,6 +96,14 @@ public final class ArcQuestNetwork {
                 C2SRequestDatapackContentPacket::encode,
                 C2SRequestDatapackContentPacket::decode,
                 C2SRequestDatapackContentPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER)
+        );
+        CHANNEL.registerMessage(
+                packetId++,
+                C2SDatapackContentReadyPacket.class,
+                C2SDatapackContentReadyPacket::encode,
+                C2SDatapackContentReadyPacket::decode,
+                C2SDatapackContentReadyPacket::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER)
         );
         CHANNEL.registerMessage(
