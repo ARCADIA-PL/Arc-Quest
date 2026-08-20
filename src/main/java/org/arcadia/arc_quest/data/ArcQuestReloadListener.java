@@ -24,7 +24,7 @@ public final class ArcQuestReloadListener extends SimplePreparableReloadListener
     }
 
     public static ReloadSummary reloadArcQuestDatapacksOnly(@NotNull ResourceManager manager) {
-        ArcQuestReloadCoordinator.ReloadPlan plan = ArcQuestReloadCoordinator.INSTANCE.prepare();
+        ArcQuestReloadCoordinator.ReloadPlan plan = ArcQuestReloadCoordinator.INSTANCE.prepare(manager);
         return ArcQuestReloadCoordinator.INSTANCE.apply(plan);
     }
 
@@ -33,7 +33,7 @@ public final class ArcQuestReloadListener extends SimplePreparableReloadListener
                                                                     @NotNull ProfilerFiller profiler) {
         profiler.push("arcquest_prepare");
         try {
-            return ArcQuestReloadCoordinator.INSTANCE.prepare();
+            return ArcQuestReloadCoordinator.INSTANCE.prepare(manager);
         } finally {
             profiler.pop();
         }

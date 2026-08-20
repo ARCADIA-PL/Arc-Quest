@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.data.reload;
 import com.google.gson.JsonElement;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
@@ -60,6 +61,7 @@ import org.arcadia.arc_quest.data.sync.DatapackContentModule;
 import org.arcadia.arc_quest.data.sync.DatapackContentSnapshot;
 import org.arcadia.arc_quest.data.sync.DatapackContentSyncService;
 import org.arcadia.arc_quest.data.sync.DatapackContentTransfer;
+import org.arcadia.arc_quest.data.sync.ClientQuestSnapshotProjector;
 import org.arcadia.arc_quest.websocket.ArcQuestWebSocketServer;
 import org.slf4j.Logger;
 
@@ -88,15 +90,19 @@ public final class ArcQuestReloadCoordinator {
     }
 
     public ReloadPlan prepare() {
+        return prepare(null);
+    }
+
+    public ReloadPlan prepare(ResourceManager resourceManager) {
         long startedNanos = System.nanoTime();
         ReloadLimits limits = ReloadLimits.configured();
         SafeDatapackScanner scanner = new SafeDatapackScanner(limits);
-        CompletableFuture<ModulePreparation<QuestSnapshot>> quests = CompletableFuture.supplyAsync(() -> prepareQuests(scanner));
-        CompletableFuture<ModulePreparation<DialogueSnapshot>> dialogues = CompletableFuture.supplyAsync(() -> prepareDialogues(scanner));
-        CompletableFuture<ModulePreparation<NpcSnapshot>> npcs = CompletableFuture.supplyAsync(() -> prepareNpcs(scanner));
-        CompletableFuture<ModulePreparation<TradeSnapshot>> trades = CompletableFuture.supplyAsync(() -> prepareTrades(scanner));
-        CompletableFuture<ModulePreparation<GachaSnapshot>> gachas = CompletableFuture.supplyAsync(() -> prepareGachas(scanner));
-        CompletableFuture<ModulePreparation<GuideSnapshot>> guides = CompletableFuture.supplyAsync(() -> prepareGuides(scanner));
+        CompletableFuture<ModulePreparation<QuestSnapshot>> quests = CompletableFuture.supplyAsync(() -> prepareQuests(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<DialogueSnapshot>> dialogues = CompletableFuture.supplyAsync(() -> prepareDialogues(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<NpcSnapshot>> npcs = CompletableFuture.supplyAsync(() -> prepareNpcs(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<TradeSnapshot>> trades = CompletableFuture.supplyAsync(() -> prepareTrades(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<GachaSnapshot>> gachas = CompletableFuture.supplyAsync(() -> prepareGachas(scanner, resourceManager));
+        CompletableFuture<ModulePreparation<GuideSnapshot>> guides = CompletableFuture.supplyAsync(() -> prepareGuides(scanner, resourceManager));
         CompletableFuture.allOf(quests, dialogues, npcs, trades, gachas, guides).join();
 
         ReloadPlan plan = new ReloadPlan(quests.join(), dialogues.join(), npcs.join(), trades.join(), gachas.join(), guides.join(),
@@ -184,9 +190,10 @@ public final class ArcQuestReloadCoordinator {
         return lastSummary;
     }
 
-    private ModulePreparation<QuestSnapshot> prepareQuests(SafeDatapackScanner scanner) {
+    private ModulePreparation<QuestSnapshot> prepareQuests(SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "quest";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveQuestsDir(), (json, tree) -> QuestSpecJsonReader.read(json));
+        var scan = scanner.scan(module, DatapackPathResolver.resolveQuestsDir(), manager, "arc_quest/quests",
+                (json, tree) -> QuestSpecJsonReader.read(tree));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         Map<ResourceLocation, QuestDefinition> definitions = new LinkedHashMap<>();
         Map<ResourceLocation, QuestAuthoringEntry> authoringEntries = new LinkedHashMap<>();
@@ -204,7 +211,9 @@ public final class ArcQuestReloadCoordinator {
             if (report.hasErrors()) continue;
             try {
                 definitions.put(id, compiler.compile(spec));
-                authoringEntries.put(id, new QuestAuthoringEntry(id, entry.getKey(), spec));
+                if (!ResourceDatapackScanner.isResourcePath(entry.getKey())) {
+                    authoringEntries.put(id, new QuestAuthoringEntry(id, entry.getKey(), spec));
+                }
                 documents.add(QuestSpecJsonWriter.write(spec));
             }
             catch (Exception exception) { diagnostics.add(ReloadDiagnostic.error(module, entry.getKey(), "$", "Compile failed: " + exception.getMessage(), exception)); }
@@ -213,9 +222,10 @@ public final class ArcQuestReloadCoordinator {
                 List.copyOf(documents)), scan.scannedFiles(), scan.parsedBytes(), diagnostics);
     }
 
-    private ModulePreparation<DialogueSnapshot> prepareDialogues(SafeDatapackScanner scanner) {
+    private ModulePreparation<DialogueSnapshot> prepareDialogues(SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "dialogue";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveDialoguesDir(), (json, tree) -> DialogueSpecJsonReader.read(json));
+        var scan = scanner.scan(module, DatapackPathResolver.resolveDialoguesDir(), manager, "arc_quest/dialogues",
+                (json, tree) -> DialogueSpecJsonReader.read(tree));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         Map<ResourceLocation, Path> sources = new LinkedHashMap<>();
         List<DialogueTree> trees = new ArrayList<>();
@@ -257,9 +267,10 @@ public final class ArcQuestReloadCoordinator {
                 scan.scannedFiles(), scan.parsedBytes(), diagnostics);
     }
 
-    private ModulePreparation<NpcSnapshot> prepareNpcs(SafeDatapackScanner scanner) {
+    private ModulePreparation<NpcSnapshot> prepareNpcs(SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "npc";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveNpcDir(), (json, tree) -> NpcSpecJsonReader.read(json));
+        var scan = scanner.scan(module, DatapackPathResolver.resolveNpcDir(), manager, "arc_quest/npc",
+                (json, tree) -> NpcSpecJsonReader.read(tree));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         List<NpcSpec> specs = new ArrayList<>();
         List<String> documents = new ArrayList<>();
@@ -283,11 +294,11 @@ public final class ArcQuestReloadCoordinator {
                 scan.scannedFiles(), scan.parsedBytes(), diagnostics);
     }
 
-    private ModulePreparation<TradeSnapshot> prepareTrades(SafeDatapackScanner scanner) {
+    private ModulePreparation<TradeSnapshot> prepareTrades(SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "trade";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveTradesDir(), (json, tree) -> {
+        var scan = scanner.scan(module, DatapackPathResolver.resolveTradesDir(), manager, "arc_quest/trades", (json, tree) -> {
             if (isGacha(tree)) throw SafeDatapackScanner.SkipFileException.INSTANCE;
-            return TradeSpecJsonReader.read(json);
+            return TradeSpecJsonReader.read(tree);
         });
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         Map<String, TradeShopDefinition> definitions = new LinkedHashMap<>();
@@ -313,11 +324,11 @@ public final class ArcQuestReloadCoordinator {
                 scan.scannedFiles(), scan.parsedBytes(), diagnostics);
     }
 
-    private ModulePreparation<GachaSnapshot> prepareGachas(SafeDatapackScanner scanner) {
+    private ModulePreparation<GachaSnapshot> prepareGachas(SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "gacha";
-        var scan = scanner.scan(module, DatapackPathResolver.resolveTradesDir(), (json, tree) -> {
+        var scan = scanner.scan(module, DatapackPathResolver.resolveTradesDir(), manager, "arc_quest/trades", (json, tree) -> {
             if (!isGacha(tree)) throw SafeDatapackScanner.SkipFileException.INSTANCE;
-            return GachaSpecJsonReader.read(json);
+            return GachaSpecJsonReader.read(tree);
         });
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(scan.diagnostics());
         Map<String, GachaShopDefinition> definitions = new LinkedHashMap<>();
@@ -343,11 +354,13 @@ public final class ArcQuestReloadCoordinator {
                 scan.scannedFiles(), scan.parsedBytes(), diagnostics);
     }
 
-    private ModulePreparation<GuideSnapshot> prepareGuides(SafeDatapackScanner scanner) {
+    private ModulePreparation<GuideSnapshot> prepareGuides(SafeDatapackScanner scanner, ResourceManager manager) {
         String module = "guide";
         Path root = DatapackPathResolver.resolveDatapackRoot();
-        var categoryScan = scanner.scan(module, root.resolve("guide_categories"), (json, tree) -> GuideCategorySpecJsonReader.read(json));
-        var guideScan = scanner.scan(module, root.resolve("guides"), (json, tree) -> GuideSpecJsonReader.read(json));
+        var categoryScan = scanner.scan(module, root.resolve("guide_categories"), manager, "arc_quest/guide_categories",
+                (json, tree) -> GuideCategorySpecJsonReader.read(tree));
+        var guideScan = scanner.scan(module, root.resolve("guides"), manager, "arc_quest/guides",
+                (json, tree) -> GuideSpecJsonReader.read(tree));
         List<ReloadDiagnostic> diagnostics = new ArrayList<>(categoryScan.diagnostics());
         diagnostics.addAll(guideScan.diagnostics());
         Map<ResourceLocation, GuideCategory> categories = new LinkedHashMap<>();
@@ -549,7 +562,8 @@ public final class ArcQuestReloadCoordinator {
                     DatapackContentModule.TRADE, trades.snapshot().documents(),
                     DatapackContentModule.GACHA, gachas.snapshot().documents(),
                     DatapackContentModule.GUIDE_CATEGORY, guides.snapshot().categoryDocuments(),
-                    DatapackContentModule.GUIDE, guides.snapshot().guideDocuments()));
+                    DatapackContentModule.GUIDE, guides.snapshot().guideDocuments()),
+                    ClientQuestSnapshotProjector.projectObjectiveTypes(quests.snapshot().definitions()));
         }
     }
 }

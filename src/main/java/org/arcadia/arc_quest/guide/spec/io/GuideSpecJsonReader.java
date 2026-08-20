@@ -2,10 +2,9 @@ package org.arcadia.arc_quest.guide.spec.io;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.stream.JsonReader;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import org.arcadia.arc_quest.guide.spec.GuideSpec;
-
-import java.io.StringReader;
 
 public final class GuideSpecJsonReader {
     private static final Gson GSON = new GsonBuilder().create();
@@ -14,9 +13,11 @@ public final class GuideSpecJsonReader {
     }
 
     public static GuideSpec read(String json) {
-        JsonReader reader = new JsonReader(new StringReader(json));
-        reader.setLenient(true);
-        GuideSpec spec = GSON.fromJson(reader, GuideSpec.class);
+        return read(JsonParser.parseString(json));
+    }
+
+    public static GuideSpec read(JsonElement json) {
+        GuideSpec spec = GSON.fromJson(json, GuideSpec.class);
         return spec == null ? new GuideSpec() : spec;
     }
 }
