@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.data.sync;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -28,11 +29,12 @@ import org.arcadia.arc_quest.npc.spec.NpcSpec;
 import org.arcadia.arc_quest.npc.spec.io.NpcSpecJsonReader;
 import org.arcadia.arc_quest.npc.spec.validate.NpcSpecValidator;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
+import org.arcadia.arc_quest.quest.api.ObjectiveType;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.registry.ObjectiveTypeRegistry;
 import org.arcadia.arc_quest.quest.spec.QuestSpec;
 import org.arcadia.arc_quest.quest.spec.compile.QuestSpecCompiler;
 import org.arcadia.arc_quest.quest.spec.io.QuestSpecJsonReader;
-import org.arcadia.arc_quest.quest.spec.validate.QuestSpecValidator;
 import org.arcadia.arc_quest.trade.api.TradeShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.api.GachaShopDefinition;
 import org.arcadia.arc_quest.trade.gacha.registry.GachaRegistry;
@@ -45,6 +47,7 @@ import org.arcadia.arc_quest.trade.spec.TradeShopSpec;
 import org.arcadia.arc_quest.trade.spec.compile.TradeSpecCompiler;
 import org.arcadia.arc_quest.trade.spec.io.TradeSpecJsonReader;
 import org.arcadia.arc_quest.trade.spec.validate.TradeSpecValidator;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -54,65 +57,49 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ClientDatapackContentApplier {
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     private ClientDatapackContentApplier() {
     }
 
-    public static void apply(DatapackContentSnapshot snapshot) {
-        CompiledSnapshot compiled = compile(snapshot);
-        var previousQuests = QuestRegistry.getDatapackSnapshot();
-        var previousDialogues = DialogueRegistry.INSTANCE.getDatapackSnapshot();
-        var previousNpcs = NpcBindingRegistry.INSTANCE.getDatapackSnapshot();
-        long previousNpcEpoch = NpcBindingRegistry.INSTANCE.getSnapshotEpoch();
-        var previousTrades = TradeRegistry.getDatapackSnapshot();
-        var previousGachas = GachaRegistry.getDatapackSnapshot();
-        var previousGuides = GuideRegistry.getDatapackSnapshot();
-        try {
-            QuestRegistry.replaceDatapackSnapshot(compiled.quests());
-            DialogueRegistry.INSTANCE.replaceDatapackSnapshot(compiled.dialogues(), compiled.npcBindings(),
+    public static ApplyResult apply(DatapackContentSnapshot snapshot) {
+        List<String> failures = new ArrayList<>();
+        applyModule("quest", failures, () -> QuestRegistry.replaceDatapackSnapshot(compileQuests(snapshot)));
+        applyModule("dialogue", failures, () -> {
+            DialogueCompilation compiled = compileDialogues(snapshot.documents(DatapackContentModule.DIALOGUE));
+            DialogueRegistry.INSTANCE.replaceDatapackSnapshot(compiled.trees(), compiled.npcBindings(),
                     compiled.entityBindings(), snapshot.epoch());
-            NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(compiled.npcs(), snapshot.epoch());
-            TradeRegistry.replaceDatapackSnapshot(compiled.trades());
-            GachaRegistry.replaceDatapackSnapshot(compiled.gachas());
-            GuideRegistry.replaceDatapackSnapshot(compiled.guides());
-        } catch (RuntimeException exception) {
-            QuestRegistry.replaceDatapackSnapshot(previousQuests);
-            DialogueRegistry.INSTANCE.replaceDatapackSnapshot(previousDialogues.trees(), previousDialogues.npcBindings(),
-                    previousDialogues.entityBindings(), previousDialogues.epoch());
-            NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(previousNpcs, previousNpcEpoch);
-            TradeRegistry.replaceDatapackSnapshot(previousTrades);
-            GachaRegistry.replaceDatapackSnapshot(previousGachas);
-            GuideRegistry.replaceDatapackSnapshot(previousGuides);
-            throw exception;
-        }
+        });
+        applyModule("npc", failures, () -> NpcBindingRegistry.INSTANCE.replaceDatapackSnapshot(
+                compileNpcs(snapshot.documents(DatapackContentModule.NPC)), snapshot.epoch()));
+        applyModule("trade", failures, () -> TradeRegistry.replaceDatapackSnapshot(
+                compileTrades(snapshot.documents(DatapackContentModule.TRADE))));
+        applyModule("gacha", failures, () -> GachaRegistry.replaceDatapackSnapshot(
+                compileGachas(snapshot.documents(DatapackContentModule.GACHA))));
+        applyModule("guide", failures, () -> GuideRegistry.replaceDatapackSnapshot(compileGuides(
+                snapshot.documents(DatapackContentModule.GUIDE_CATEGORY),
+                snapshot.documents(DatapackContentModule.GUIDE))));
+        return new ApplyResult(snapshot.epoch(), List.copyOf(failures));
     }
 
     public static void clear(long epoch) {
         DatapackRegistrySnapshotLifecycle.clear(epoch);
     }
 
-    private static CompiledSnapshot compile(DatapackContentSnapshot snapshot) {
-        Map<ResourceLocation, QuestDefinition> quests = compileQuests(snapshot.documents(DatapackContentModule.QUEST));
-        DialogueCompilation dialogues = compileDialogues(snapshot.documents(DatapackContentModule.DIALOGUE));
-        List<NpcSpec> npcs = compileNpcs(snapshot.documents(DatapackContentModule.NPC));
-        Map<String, TradeShopDefinition> trades = compileTrades(snapshot.documents(DatapackContentModule.TRADE));
-        Map<String, GachaShopDefinition> gachas = compileGachas(snapshot.documents(DatapackContentModule.GACHA));
-        Map<ResourceLocation, GuideDefinition> guides = compileGuides(
-                snapshot.documents(DatapackContentModule.GUIDE_CATEGORY),
-                snapshot.documents(DatapackContentModule.GUIDE));
-        return new CompiledSnapshot(quests, dialogues.trees(), dialogues.npcBindings(), dialogues.entityBindings(),
-                npcs, trades, gachas, guides);
-    }
-
-    private static Map<ResourceLocation, QuestDefinition> compileQuests(List<String> documents) {
-        QuestSpecValidator validator = new QuestSpecValidator();
-        QuestSpecCompiler compiler = new QuestSpecCompiler();
+    private static Map<ResourceLocation, QuestDefinition> compileQuests(DatapackContentSnapshot snapshot) {
+        Map<ResourceLocation, ObjectiveType> objectiveTypes = new LinkedHashMap<>();
+        snapshot.objectiveTypes().forEach(descriptor -> objectiveTypes.put(descriptor.id(),
+                ObjectiveTypeRegistry.get(descriptor.id()) != null
+                        ? ObjectiveTypeRegistry.get(descriptor.id())
+                        : descriptor.createClientType()));
         Map<ResourceLocation, QuestDefinition> definitions = new LinkedHashMap<>();
-        for (String document : documents) {
+        for (String document : snapshot.documents(DatapackContentModule.QUEST)) {
             QuestSpec spec = QuestSpecJsonReader.read(document);
-            if (validator.validate(spec).hasErrors()) throw new IllegalArgumentException("Invalid synchronized quest: " + spec.id);
+            if (spec == null || spec.phases == null || spec.phases.isEmpty()) {
+                throw new IllegalArgumentException("Invalid synchronized quest structure");
+            }
             ResourceLocation id = requireId(spec.id, "quest");
-            if (definitions.putIfAbsent(id, compiler.compile(spec)) != null) {
+            if (definitions.putIfAbsent(id, QuestSpecCompiler.compileClientPresentation(spec, objectiveTypes)) != null) {
                 throw new IllegalArgumentException("Duplicate synchronized quest: " + id);
             }
         }
@@ -233,17 +220,23 @@ public final class ClientDatapackContentApplier {
         return id;
     }
 
+    private static void applyModule(String module, List<String> failures, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException exception) {
+            failures.add(module);
+            LOGGER.error("[DatapackSync] Failed to apply client module {}", module, exception);
+        }
+    }
+
+    public record ApplyResult(long epoch, List<String> failedModules) {
+        public boolean fullyApplied() {
+            return failedModules.isEmpty();
+        }
+    }
+
     private record DialogueCompilation(List<DialogueTree> trees, Map<String, String> npcBindings,
                                        Map<EntityType<?>, String> entityBindings) {
     }
 
-    private record CompiledSnapshot(Map<ResourceLocation, QuestDefinition> quests,
-                                    List<DialogueTree> dialogues,
-                                    Map<String, String> npcBindings,
-                                    Map<EntityType<?>, String> entityBindings,
-                                    List<NpcSpec> npcs,
-                                    Map<String, TradeShopDefinition> trades,
-                                    Map<String, GachaShopDefinition> gachas,
-                                    Map<ResourceLocation, GuideDefinition> guides) {
-    }
 }

@@ -39,11 +39,31 @@ public final class QuestSpecCompiler {
     private static final ResourceLocation NULL_OBJECTIVE_TARGET = ResourceLocation.fromNamespaceAndPath("arc_quest", "null_objective");
 
     private final QuestSpecValidator validator = new QuestSpecValidator();
+    private final boolean clientPresentation;
+    private final Map<ResourceLocation, ObjectiveType> presentationTypes;
+
+    public QuestSpecCompiler() {
+        this(false, Map.of());
+    }
+
+    private QuestSpecCompiler(boolean clientPresentation, Map<ResourceLocation, ObjectiveType> presentationTypes) {
+        this.clientPresentation = clientPresentation;
+        this.presentationTypes = Map.copyOf(presentationTypes);
+    }
 
     public QuestDefinition compile(QuestSpec spec) {
-        var report = validator.validate(spec);
-        if (report.hasErrors()) {
-            throw new QuestCompileException("QuestSpec validation failed for '" + (spec == null ? "null" : spec.id) + "'");
+        return compileInternal(spec, true);
+    }
+
+    public static QuestDefinition compileClientPresentation(QuestSpec spec,
+                                                             Map<ResourceLocation, ObjectiveType> objectiveTypes) {
+        return new QuestSpecCompiler(true, objectiveTypes).compileInternal(spec, false);
+    }
+
+    private QuestDefinition compileInternal(QuestSpec spec, boolean validate) {
+        if (spec == null) throw new QuestCompileException("QuestSpec must not be null");
+        if (validate && validator.validate(spec).hasErrors()) {
+            throw new QuestCompileException("QuestSpec validation failed for '" + spec.id + "'");
         }
 
         LinkedHashMap<String, PhaseDefinition> phases = new LinkedHashMap<>();
@@ -79,11 +99,13 @@ public final class QuestSpecCompiler {
             else if (spec.timeLimitType == QuestTimeLimitType.GAME_DAY_TIME) builder.questTimeLimitDayTicks(spec.timeLimitValue);
         }
 
-        for (ICondition cond : ConditionBridge.toQuestConditions(spec.unlockConditions)) builder.unlockCondition(cond);
+        if (!clientPresentation) {
+            for (ICondition cond : ConditionBridge.toQuestConditions(spec.unlockConditions)) builder.unlockCondition(cond);
+        }
         for (IReward reward : compileRewards(spec.completionRewards)) builder.reward(reward);
         for (String flag : listOrEmpty(spec.flagsToSetOnAccept)) builder.setFlagOnAccept(flag);
         for (String flag : listOrEmpty(spec.flagsToSetOnComplete)) builder.setFlagOnComplete(flag);
-        for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
+        if (!clientPresentation) for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
         for (PhaseDefinition phase : phases.values()) builder.phase(phase);
         if (spec.initialPhaseIds != null && !spec.initialPhaseIds.isEmpty()) {
             builder.setInitialPhases(spec.initialPhaseIds);
@@ -109,7 +131,8 @@ public final class QuestSpecCompiler {
             List<String> targetPhaseIds = transitionSpec.targetPhaseIds != null && !transitionSpec.targetPhaseIds.isEmpty()
                     ? transitionSpec.targetPhaseIds
                     : List.of(transitionSpec.targetPhaseId);
-            transitions.add(new PhaseTransition(targetPhaseIds, ConditionBridge.toQuestCondition(transitionSpec.condition), priority++));
+            transitions.add(new PhaseTransition(targetPhaseIds,
+                    clientPresentation ? null : ConditionBridge.toQuestCondition(transitionSpec.condition), priority++));
         }
         List<ChoiceOption> choices = new ArrayList<>();
         for (ChoiceSpec choiceSpec : listOrEmpty(spec.choices)) {
@@ -117,7 +140,7 @@ public final class QuestSpecCompiler {
                     compileText(choiceSpec.text).resolve(null, QuestTextContext.empty()),
                     choiceSpec.flagToSet == null ? "" : choiceSpec.flagToSet,
                     choiceSpec.targetPhaseId,
-                    ConditionBridge.toQuestCondition(choiceSpec.visibleCondition)
+                    clientPresentation ? null : ConditionBridge.toQuestCondition(choiceSpec.visibleCondition)
             ));
         }
 
@@ -130,7 +153,7 @@ public final class QuestSpecCompiler {
                 .intelScene(compileIntelSceneId(spec.intelSceneId, spec.phaseId))
                 .autoAdvanceOnComplete(spec.autoAdvanceOnComplete);
 
-        ICondition enterCond = ConditionBridge.toQuestCondition(spec.enterCondition);
+        ICondition enterCond = clientPresentation ? null : ConditionBridge.toQuestCondition(spec.enterCondition);
         if (enterCond != null) builder.enterWhen(enterCond, spec.autoEnterByCondition);
 
         for (ObjectiveEntry obj : objectives) builder.objective(obj);
@@ -147,7 +170,7 @@ public final class QuestSpecCompiler {
             ResourceLocation parsed = parseNullableId(guideId);
             if (parsed != null) builder.grantGuideOnComplete(parsed);
         }
-        for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
+        if (!clientPresentation) for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
         if (blankToNull(spec.tradeShopId) != null) builder.phaseTrade(blankToNull(spec.tradeShopId));
         if (parseNullableSound(spec.phaseStartSound) != null) builder.phaseStartSound(parseNullableSound(spec.phaseStartSound));
         if (parseNullableSound(spec.phaseCompleteSound) != null) builder.phaseCompleteSound(parseNullableSound(spec.phaseCompleteSound));
@@ -187,6 +210,10 @@ public final class QuestSpecCompiler {
             throw new QuestCompileException("Invalid quest category id: '" + rawCategory + "'");
         }
         QuestCategory category = QuestCategoryRegistry.get(categoryId);
+        if (category == null && clientPresentation) {
+            return new QuestCategory(categoryId, "arc_quest.category." + categoryId.getNamespace() + "."
+                    + categoryId.getPath().replace('/', '.'), 0xFFFFFF, false);
+        }
         if (category == null) {
             throw new QuestCompileException("Unknown quest category: '" + categoryId + "'");
         }
@@ -234,7 +261,7 @@ public final class QuestSpecCompiler {
                 spec.categoryId,
                 enumOrNull(VisibilityMode.class, spec.visibilityMode),
                 enumOrNull(HiddenPresentationMode.class, spec.hiddenPresentationMode),
-                ConditionBridge.toQuestConditions(spec.visibilityConditions),
+                clientPresentation ? List.of() : ConditionBridge.toQuestConditions(spec.visibilityConditions),
                 enumOrNull(CountingMode.class, spec.countingMode),
                 spec.completionTarget,
                 spec.repeatableProgress,
@@ -314,16 +341,21 @@ public final class QuestSpecCompiler {
 
     private ResourceLocation resolveObjectiveTarget(ObjectiveSpec spec, ObjectiveType objectiveType) {
         if (ObjectiveType.NULL.equals(objectiveType)) return NULL_OBJECTIVE_TARGET;
+        if (clientPresentation && (spec.targetId == null || spec.targetId.isBlank())) return NULL_OBJECTIVE_TARGET;
         return parseId(spec.targetId);
     }
 
     private List<IReward> compileRewards(List<RewardSpec> specs) {
         List<IReward> rewards = new ArrayList<>();
-        for (RewardSpec spec : listOrEmpty(specs)) rewards.add(compileReward(spec));
+        for (RewardSpec spec : listOrEmpty(specs)) {
+            IReward reward = compileReward(spec);
+            if (reward != null) rewards.add(reward);
+        }
         return rewards;
     }
 
     public List<MarkSpec> compileMarks(List<MarkSpecData> specs) {
+        if (clientPresentation) return List.of();
         List<MarkSpec> marks = new ArrayList<>();
         for (MarkSpecData spec : listOrEmpty(specs)) {
             MarkSpec mark = new MarkSpec(
@@ -396,7 +428,12 @@ public final class QuestSpecCompiler {
 
     private IReward compileReward(RewardSpec spec) {
         return switch (spec.type) {
-            case "item" -> new ItemReward(requireItem(spec.itemId), Math.max(1, spec.count));
+            case "item" -> {
+                Item item = clientPresentation
+                        ? ForgeRegistries.ITEMS.getValue(parseId(spec.itemId))
+                        : requireItem(spec.itemId);
+                yield item == null ? null : new ItemReward(item, Math.max(1, spec.count));
+            }
             case "flag_set" -> FlagReward.set(spec.flag);
             case "flag_clear" -> FlagReward.clear(spec.flag);
             case "command" -> new CommandReward(spec.command);
@@ -409,7 +446,7 @@ public final class QuestSpecCompiler {
     }
 
     private QuestVisualConfig compileVisual(QuestVisualSpec spec) {
-        return QuestVisualSpecCompiler.compile(spec);
+        return QuestVisualSpecCompiler.compile(spec, clientPresentation);
     }
 
     private QuestText compileText(QuestTextSpec spec) {
@@ -432,6 +469,10 @@ public final class QuestSpecCompiler {
             throw new QuestCompileException("Objective type is required");
         }
         ObjectiveType type = ObjectiveTypeRegistry.get(typeId);
+        if (type == null && clientPresentation) type = presentationTypes.get(typeId);
+        if (type == null && clientPresentation) {
+            type = new ObjectiveType(typeId, true, false, "arc_quest.objective.unknown", false, "generic");
+        }
         if (type == null) {
             throw new QuestCompileException("Unknown objective type: " + spec.type);
         }
@@ -463,6 +504,7 @@ public final class QuestSpecCompiler {
     }
 
     private SoundEvent parseNullableSound(String id) {
+        if (clientPresentation) return null;
         if (id == null || id.isBlank()) return null;
         SoundEvent sound = BuiltInRegistries.SOUND_EVENT.get(parseId(id));
         if (sound == null) throw new QuestCompileException("Unknown sound id: " + id);
