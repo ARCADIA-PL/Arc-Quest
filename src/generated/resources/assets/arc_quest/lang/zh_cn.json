@@ -149,7 +149,7 @@
   "arc_quest.gui.quest_story.page": "第 %1$s / %2$s 页",
   "arc_quest.gui.quest_story.prev": "<< 上一页",
   "arc_quest.gui.tracker.new_guide": "有新教程，按[%s]查看",
-  "arc_quest.gui.tracker.new_quest": "新任务",
+  "arc_quest.gui.tracker.new_quest": "有新任务，按[%s]查看",
   "arc_quest.gui.tracker.open_journal_shortcut": "[%s] 任务面板",
   "arc_quest.gui.trade.btn.empty": "暂无",
   "arc_quest.gui.trade.btn.locked": "锁定",
