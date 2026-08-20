@@ -7,7 +7,6 @@ import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.PacketDistributor;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.api.event.gacha.GachaEvents;
-import org.arcadia.arc_quest.client.util.ClientCooldownHelper;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.network.SyncObservability;
@@ -406,14 +405,8 @@ public class C2SDrawGachaPacket {
             lastDrawDayTime = cooldownEntry.dayTime();
 
             if (canDraw) {
-                boolean onCooldown = ClientCooldownHelper.isOnCooldown(
-                        lastDrawRealTime,
-                        lastDrawGameTime,
-                        lastDrawDayTime,
-                        gachaShop.getCooldownType().ordinal(),
-                        gachaShop.getCooldownValue(),
-                        gachaShop.getResetTimeTicks()
-                );
+                boolean onCooldown = GachaEntryStateResolver.isOnCooldown(
+                        player, data, gachaShop.getShopId(), gachaShop);
                 if (onCooldown) {
                     canDraw = false;
                 }

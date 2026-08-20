@@ -237,6 +237,11 @@ public class S2COpenTradePacket {
     }
 
     public static void handle(S2COpenTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
+        ClientHandler.handle(pkt, ctx);
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2COpenTradePacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.playerSessionEpoch > 0L && !pkt.shopId.isEmpty()
@@ -308,6 +313,7 @@ public class S2COpenTradePacket {
             }
         });
         ctx.get().setPacketHandled(true);
+        }
     }
 
     public void encode(FriendlyByteBuf buf) {

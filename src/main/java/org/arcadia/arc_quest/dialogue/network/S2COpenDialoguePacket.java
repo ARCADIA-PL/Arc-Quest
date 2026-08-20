@@ -384,6 +384,12 @@ public class S2COpenDialoguePacket {
 
     public static void handle(S2COpenDialoguePacket pkt,
                               Supplier<NetworkEvent.Context> ctx) {
+        ClientHandler.handle(pkt, ctx);
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2COpenDialoguePacket pkt,
+                                   Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.mode == Mode.CLOSE || pkt.isClose) {
@@ -430,7 +436,7 @@ public class S2COpenDialoguePacket {
                 } else if (pkt.mode == Mode.UPDATE) {
                     LOGGER.warn("[Dialogue] Ignored UPDATE for non-current screen session: {}", pkt.sessionId);
                 } else {
-                    mc.setScreen(createScreen(pkt));
+                    openScreen(pkt);
                 }
             } else if (pkt.mode == Mode.UPDATE) {
                 LOGGER.debug("[Dialogue] Ignore UPDATE packet when no DialogueScreen is active: {}", pkt.dialogueId);
@@ -439,20 +445,21 @@ public class S2COpenDialoguePacket {
                             mc.screen instanceof SimpleTradePanel)) {
                 // 如果当前是商店界面，忽略此包
             } else {
-                mc.setScreen(createScreen(pkt));
+                openScreen(pkt);
             }
         });
         ctx.get().setPacketHandled(true);
-    }
+        }
 
-    private static DialogueScreen createScreen(S2COpenDialoguePacket pkt) {
-        return new DialogueScreen(pkt.dialogueId, pkt.speaker,
+    private static void openScreen(S2COpenDialoguePacket pkt) {
+        Minecraft.getInstance().setScreen(new DialogueScreen(pkt.dialogueId, pkt.speaker,
                 pkt.text, pkt.choices, pkt.isTerminal, pkt.hasAutoNext,
                 pkt.delayMs, pkt.entityId,
                 pkt.choiceLastSelectTimes, pkt.choicePurchaseGameTimes,
                 pkt.choicePurchaseDayTimes, pkt.choiceCooldownTypes,
                 pkt.choiceCooldownValues, pkt.choiceResetTimeTicks,
-                pkt.sessionId, pkt.revision, pkt.playerSessionEpoch);
+                pkt.sessionId, pkt.revision, pkt.playerSessionEpoch));
+    }
     }
 
     public void encode(FriendlyByteBuf buf) {

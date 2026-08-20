@@ -73,6 +73,11 @@ public class S2CDrawFailedPacket {
     }
 
     public static void handle(S2CDrawFailedPacket pkt, Supplier<NetworkEvent.Context> ctx) {
+        ClientHandler.handle(pkt, ctx);
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2CDrawFailedPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
@@ -92,5 +97,6 @@ public class S2CDrawFailedPacket {
             }
         });
         ctx.get().setPacketHandled(true);
+        }
     }
 }

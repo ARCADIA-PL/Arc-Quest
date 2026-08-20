@@ -84,6 +84,11 @@ public class S2CDrawResultPacket {
     }
 
     public static void handle(S2CDrawResultPacket pkt, Supplier<NetworkEvent.Context> ctx) {
+        ClientHandler.handle(pkt, ctx);
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2CDrawResultPacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
@@ -131,5 +136,6 @@ public class S2CDrawResultPacket {
             }
         });
         ctx.get().setPacketHandled(true);
+        }
     }
 }

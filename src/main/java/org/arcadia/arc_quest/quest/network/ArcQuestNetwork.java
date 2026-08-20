@@ -121,7 +121,8 @@ public final class ArcQuestNetwork {
                 S2CSyncQuestStatePacket.class,
                 S2CSyncQuestStatePacket::encode,
                 S2CSyncQuestStatePacket::decode,
-                S2CSyncQuestStatePacket::handle
+                ArcQuestClientPacketBridge::handleQuestState,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // ─── S2C：增量进度同步 ───
@@ -180,7 +181,8 @@ public final class ArcQuestNetwork {
                 S2COfferSubmitResultPacket.class,
                 S2COfferSubmitResultPacket::encode,
                 S2COfferSubmitResultPacket::decode,
-                S2COfferSubmitResultPacket::handle
+                ArcQuestClientPacketBridge::handleOfferResult,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // ─── S2C：任务动作结果（标准拒绝码）───
@@ -189,7 +191,8 @@ public final class ArcQuestNetwork {
                 S2CQuestActionResultPacket.class,
                 S2CQuestActionResultPacket::encode,
                 S2CQuestActionResultPacket::decode,
-                S2CQuestActionResultPacket::handle
+                ArcQuestClientPacketBridge::handleQuestActionResult,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // ─── S2C：打开对话界面 ───
@@ -198,7 +201,8 @@ public final class ArcQuestNetwork {
                 S2COpenDialoguePacket.class,
                 S2COpenDialoguePacket::encode,
                 S2COpenDialoguePacket::decode,
-                S2COpenDialoguePacket::handle
+                ArcQuestClientPacketBridge::handleDialogue,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         CHANNEL.registerMessage(
@@ -232,7 +236,8 @@ public final class ArcQuestNetwork {
                 S2COpenTradePacket.class,
                 S2COpenTradePacket::encode,
                 S2COpenTradePacket::decode,
-                S2COpenTradePacket::handle
+                ArcQuestClientPacketBridge::handleOpenTrade,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // --- S2C: Trade state sync ---
@@ -241,7 +246,8 @@ public final class ArcQuestNetwork {
                 S2CSyncTradeStatePacket.class,
                 S2CSyncTradeStatePacket::encode,
                 S2CSyncTradeStatePacket::decode,
-                S2CSyncTradeStatePacket::handle
+                ArcQuestClientPacketBridge::handleTradeState,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // --- C2S: Trade request ---
@@ -277,7 +283,8 @@ public final class ArcQuestNetwork {
                 S2CGachaStatePacket.class,
                 S2CGachaStatePacket::encode,
                 S2CGachaStatePacket::decode,
-                S2CGachaStatePacket::handle
+                ArcQuestClientPacketBridge::handleGachaState,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // --- C2S: Gacha draw request ---
@@ -304,7 +311,8 @@ public final class ArcQuestNetwork {
                 S2CDrawResultPacket.class,
                 S2CDrawResultPacket::encode,
                 S2CDrawResultPacket::decode,
-                S2CDrawResultPacket::handle
+                ArcQuestClientPacketBridge::handleDrawResult,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // --- S2C: Gacha draw failed ---
@@ -313,7 +321,8 @@ public final class ArcQuestNetwork {
                 S2CDrawFailedPacket.class,
                 S2CDrawFailedPacket::encode,
                 S2CDrawFailedPacket::decode,
-                S2CDrawFailedPacket::handle
+                ArcQuestClientPacketBridge::handleDrawFailed,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         // --- S2C: Sync quest markers ---
@@ -322,7 +331,8 @@ public final class ArcQuestNetwork {
                 S2CSyncMarkersPacket.class,
                 S2CSyncMarkersPacket::encode,
                 S2CSyncMarkersPacket::decode,
-                S2CSyncMarkersPacket::handle
+                ArcQuestClientPacketBridge::handleMarkers,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
 
         CHANNEL.registerMessage(
@@ -392,11 +402,13 @@ public final class ArcQuestNetwork {
                 C2SMarkPhaseStoryReadPacket::handle
         );
         CHANNEL.registerMessage(packetId++, S2COpenQuestEditorPacket.class, S2COpenQuestEditorPacket::encode,
-                S2COpenQuestEditorPacket::decode, S2COpenQuestEditorPacket::handle);
+                S2COpenQuestEditorPacket::decode, ArcQuestClientPacketBridge::handleOpenEditor,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(packetId++, C2SSaveQuestEditorPacket.class, C2SSaveQuestEditorPacket::encode,
                 C2SSaveQuestEditorPacket::decode, C2SSaveQuestEditorPacket::handle);
         CHANNEL.registerMessage(packetId++, S2CQuestEditorResultPacket.class, S2CQuestEditorResultPacket::encode,
-                S2CQuestEditorResultPacket::decode, S2CQuestEditorResultPacket::handle);
+                S2CQuestEditorResultPacket::decode, ArcQuestClientPacketBridge::handleEditorResult,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(packetId++, C2SCloseQuestEditorPacket.class, C2SCloseQuestEditorPacket::encode,
                 C2SCloseQuestEditorPacket::decode, C2SCloseQuestEditorPacket::handle);
     }

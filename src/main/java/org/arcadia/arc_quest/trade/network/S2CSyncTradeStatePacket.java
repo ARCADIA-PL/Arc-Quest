@@ -124,6 +124,11 @@ public class S2CSyncTradeStatePacket {
     }
 
     public static void handle(S2CSyncTradeStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
+        ClientHandler.handle(pkt, ctx);
+    }
+
+    private static final class ClientHandler {
+        private static void handle(S2CSyncTradeStatePacket pkt, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             Minecraft mc = Minecraft.getInstance();
             if (pkt.playerSessionEpoch > 0L
@@ -152,5 +157,6 @@ public class S2CSyncTradeStatePacket {
             }
         });
         ctx.get().setPacketHandled(true);
+        }
     }
 }
