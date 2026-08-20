@@ -70,7 +70,9 @@ final class TrackerNewQuestIndicator {
 
     private Component resolveMessage() {
         boolean guideMessage = ClientGuideCache.INSTANCE.hasUnreadGuides();
-        Component keyMessage = ClientEventHandler.KEY_OPEN_JOURNAL.getTranslatedKeyMessage();
+        Component keyMessage = (guideMessage
+                ? ClientEventHandler.KEY_OPEN_GUIDE_LIST
+                : ClientEventHandler.KEY_OPEN_JOURNAL).getTranslatedKeyMessage();
         String keyName = keyMessage.getString();
         if (!keyName.equals(cachedKeyName) || guideMessage != cachedGuideMessage) {
             cachedKeyName = keyName;
