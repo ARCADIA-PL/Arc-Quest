@@ -107,7 +107,8 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
 
         updatePhasePopup(tracked, currentThemeColor);
 
-        int centerY = screenHeight / 2;
+        float popupUiScale = HudRenderUtil.getUniversalUiScale(screenWidth, screenHeight);
+        int centerY = (int) (screenHeight / popupUiScale / 2f);
         int gap = 8;
 
         boolean isPhaseActive = phaseUpdateToast != null;
@@ -134,16 +135,23 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
             currentBranchToastY = HudAnimUtil.lerp(currentBranchToastY, targetBranchY, 0.15f, dt);
         }
 
-        if (isPhaseActive) {
-            if (!phaseUpdateToast.render(g, mc.font, LEFT_BASE_X, (int) currentPhasePopupY, 1f, isBlockingScreen)) {
-                phaseUpdateToast = null;
+        if (isPhaseActive || isBranchActive) {
+            g.pose().pushPose();
+            g.pose().scale(popupUiScale, popupUiScale, 1f);
+            if (isPhaseActive) {
+                if (!phaseUpdateToast.render(g, mc.font, LEFT_BASE_X, (int) currentPhasePopupY,
+                        popupUiScale, 1f, isBlockingScreen)) {
+                    phaseUpdateToast = null;
+                }
             }
-        }
-        if (isBranchActive) {
-            if (!branchChoiceToast.render(g, LEFT_BASE_X, (int) currentBranchToastY, 1f, partialTick, isBlockingScreen)) {
-                branchChoiceToast = null;
-                currentBranchToastY = -1;
+            if (isBranchActive) {
+                if (!branchChoiceToast.render(g, LEFT_BASE_X, (int) currentBranchToastY,
+                        popupUiScale, 1f, partialTick, isBlockingScreen)) {
+                    branchChoiceToast = null;
+                    currentBranchToastY = -1;
+                }
             }
+            g.pose().popPose();
         }
 
         // 解除强行截断，让 TrackerPanel 内部处理状态机，从而触发滑出/滑入动画！
