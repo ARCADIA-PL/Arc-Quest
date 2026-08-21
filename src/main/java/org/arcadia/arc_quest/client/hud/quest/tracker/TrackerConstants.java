@@ -3,8 +3,13 @@ package org.arcadia.arc_quest.client.hud.quest.tracker;
 public class TrackerConstants {
     // 布局常量
     public static final int PANEL_WIDTH = 175;
+    public static final int MIN_PANEL_WIDTH = 160;
+    public static final int MAX_PANEL_WIDTH = 220;
     public static final int MARGIN_RIGHT = 6;
     public static final int MARGIN_TOP = 30;
+    public static final int MIN_PHYSICAL_PANEL_WIDTH = 280;
+    public static final int MAX_PHYSICAL_PANEL_WIDTH = 760;
+    public static final float TARGET_SCREEN_WIDTH_RATIO = 0.24f;
     public static final int ACCENT_WIDTH = 3;
     public static final int TITLE_HEIGHT = 14;
     public static final int OBJ_ROW_HEIGHT = 11;

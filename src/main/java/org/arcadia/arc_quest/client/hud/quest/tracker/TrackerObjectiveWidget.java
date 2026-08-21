@@ -28,6 +28,11 @@ public class TrackerObjectiveWidget {
     private float[] animProgressRatio = new float[0];
 
     public int computeHeight(Font font, QuestRuntimeData tracked, String phaseId, List<ObjectiveEntry> objectives) {
+        return computeHeight(font, tracked, phaseId, objectives, TrackerConstants.PANEL_WIDTH);
+    }
+
+    public int computeHeight(Font font, QuestRuntimeData tracked, String phaseId,
+                             List<ObjectiveEntry> objectives, int panelWidth) {
         int height = 0;
         String resolvedPhaseId = phaseId != null ? phaseId : tracked.getCurrentPhaseId();
         for (int i = 0; i < objectives.size(); i++) {
@@ -36,7 +41,8 @@ public class TrackerObjectiveWidget {
             int required = objective.getRequiredCount();
             boolean complete = progress >= required;
             ObjectiveTextCache text = getTextCache(objective, progress, required, font);
-            height += rowTextHeight(getObjectiveLines(text, complete, objectiveTextWidth(text, objective, font), font), font)
+            height += rowTextHeight(getObjectiveLines(text, complete,
+                    objectiveTextWidth(text, objective, font, panelWidth), font), font)
                     + TrackerConstants.PROGRESS_BAR_H + 6;
         }
         return height;
@@ -77,6 +83,14 @@ public class TrackerObjectiveWidget {
     }
 
     public void render(GuiGraphics g, Font font, QuestRuntimeData tracked, String displayedPhaseId, List<ObjectiveEntry> objectives, int themeColor, float dt, float alpha, float wipeAlpha, float wipeDrift, int panelX, int textX, int textY) {
+        render(g, font, tracked, displayedPhaseId, objectives, themeColor, dt, alpha,
+                wipeAlpha, wipeDrift, panelX, textX, textY, TrackerConstants.PANEL_WIDTH);
+    }
+
+    public void render(GuiGraphics g, Font font, QuestRuntimeData tracked, String displayedPhaseId,
+                       List<ObjectiveEntry> objectives, int themeColor, float dt, float alpha,
+                       float wipeAlpha, float wipeDrift, int panelX, int textX, int textY,
+                       int panelWidth) {
         int objCount = objectives.size();
         ensureArraySize(objCount);
         String phaseId = displayedPhaseId != null ? displayedPhaseId : tracked.getCurrentPhaseId();
@@ -112,7 +126,7 @@ public class TrackerObjectiveWidget {
 
             ObjectiveTextCache cachedText = getTextCache(obj, progress, required, font);
             boolean showProgressText = !obj.isBooleanProgress();
-            int maxObjTextWidth = objectiveTextWidth(cachedText, obj, font);
+            int maxObjTextWidth = objectiveTextWidth(cachedText, obj, font, panelWidth);
             List<FormattedCharSequence> objectiveLines = getObjectiveLines(cachedText, complete, maxObjTextWidth, font);
             int textBlockHeight = rowTextHeight(objectiveLines, font);
 
@@ -149,7 +163,7 @@ public class TrackerObjectiveWidget {
                 );
             }
 
-            int textRightX = panelX + TrackerConstants.PANEL_WIDTH - TrackerConstants.PADDING + (int) wipeDrift;
+            int textRightX = panelX + panelWidth - TrackerConstants.PADDING + (int) wipeDrift;
             int numW = showProgressText ? (int) (cachedText.progressWidth * 0.8f) : 0;
             int numX = textRightX - numW;
 
@@ -172,7 +186,7 @@ public class TrackerObjectiveWidget {
 
             textY += textBlockHeight;
 
-            int barW = TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - (int) rowSlide;
+            int barW = panelWidth - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - (int) rowSlide;
             int fillW = (int) (barW * displayRatio);
 
             int bgC = HudAnimUtil.withAlpha(0xFFFFFF, (int) (0x33 * objAlpha));
@@ -254,8 +268,9 @@ public class TrackerObjectiveWidget {
         return lines.size() <= 2 ? lines : new ArrayList<>(lines.subList(0, 2));
     }
 
-    private int objectiveTextWidth(ObjectiveTextCache cache, ObjectiveEntry objective, Font font) {
-        int contentWidth = TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
+    private int objectiveTextWidth(ObjectiveTextCache cache, ObjectiveEntry objective, Font font,
+                                   int panelWidth) {
+        int contentWidth = panelWidth - TrackerConstants.ACCENT_WIDTH
                 - TrackerConstants.PADDING * 2;
         int progressWidth = !objective.isBooleanProgress()
                 ? (int) (cache.progressWidth * 0.8f) + 8 : 0;

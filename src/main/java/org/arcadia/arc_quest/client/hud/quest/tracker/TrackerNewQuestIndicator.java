@@ -33,6 +33,12 @@ final class TrackerNewQuestIndicator {
 
     void render(GuiGraphics graphics, Font font, int panelX, int panelY, int panelHeight,
                 String trackedQuestId, float panelAlpha, long now) {
+        render(graphics, font, panelX, panelY, panelHeight, TrackerConstants.PANEL_WIDTH,
+                trackedQuestId, panelAlpha, now);
+    }
+
+    void render(GuiGraphics graphics, Font font, int panelX, int panelY, int panelHeight,
+                int panelWidth, String trackedQuestId, float panelAlpha, long now) {
         if (!isVisible(trackedQuestId)) {
             wasVisible = false;
             return;
@@ -45,7 +51,7 @@ final class TrackerNewQuestIndicator {
 
         float fadeIn = clamp((now - visibleSinceMs) / (float) FADE_IN_DURATION_MS);
         float alpha = panelAlpha * fadeIn;
-        int right = panelX + TrackerConstants.PANEL_WIDTH - TrackerConstants.PADDING - RIGHT_INSET;
+        int right = panelX + panelWidth - TrackerConstants.PADDING - RIGHT_INSET;
         int indicatorLeft = panelX + TrackerConstants.ACCENT_WIDTH + TrackerConstants.PADDING;
         int dotCenterX = indicatorLeft + 6;
         float messageX = indicatorLeft + 14;

@@ -29,6 +29,21 @@ public final class TrackerCollectionWidget {
                        int y,
                        float panelReveal,
                        float wipeAlpha) {
+        render(g, font, tracked, def, phase, currentThemeColor, x, y,
+                panelReveal, wipeAlpha, TrackerConstants.PANEL_WIDTH);
+    }
+
+    public void render(GuiGraphics g,
+                       Font font,
+                       QuestRuntimeData tracked,
+                       QuestDefinition def,
+                       PhaseDefinition phase,
+                       int currentThemeColor,
+                       int x,
+                       int y,
+                       float panelReveal,
+                       float wipeAlpha,
+                       int panelWidth) {
         CollectionEntryConfig entryConfig = phase != null ? phase.getCollectionEntryConfig() : null;
         CollectionRuntimeData collectionData = tracked.getCollectionData();
         if (entryConfig == null || collectionData == null) return;
@@ -44,7 +59,7 @@ public final class TrackerCollectionWidget {
         int a = (int) (255 * panelReveal * wipeAlpha);
         if (a <= 5) return;
 
-        int barW = TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 4;
+        int barW = panelWidth - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 4;
 
         // 1. Entry Focus (聚焦条目)
         g.pose().pushPose();
