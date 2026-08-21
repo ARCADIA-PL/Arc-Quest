@@ -44,14 +44,6 @@ public final class QuestSplashCardRenderer {
                 Math.round(255 * alpha));
         graphics.fillGradient(0, 0, FRAME_WIDTH, FRAME_HEIGHT, topColor, bottomColor);
 
-        int gridColor = HudAnimUtil.withAlpha(themeColor, Math.round(25 * alpha));
-        for (int gridX = 0; gridX < FRAME_WIDTH; gridX += 32) {
-            graphics.fill(gridX, 0, gridX + 1, FRAME_HEIGHT, gridColor);
-        }
-        for (int gridY = 0; gridY < FRAME_HEIGHT; gridY += 24) {
-            graphics.fill(0, gridY, FRAME_WIDTH, gridY + 1, gridColor);
-        }
-
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null) return;
 
