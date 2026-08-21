@@ -20,8 +20,8 @@ import java.util.List;
 
 public final class QuestTrackingMenuScreen extends Screen {
     private static final long DETAIL_HOVER_DELAY_MS = 500L;
-    private static final long OPEN_DURATION_MS = 260L;
-    private static final long CLOSE_DURATION_MS = 220L;
+    private static final long OPEN_DURATION_MS = 420L;
+    private static final long CLOSE_DURATION_MS = 300L;
     private static final double DRAG_THRESHOLD = 4.0;
 
     private List<QuestTrackingMenuEntry> entries = List.of();
@@ -30,12 +30,13 @@ public final class QuestTrackingMenuScreen extends Screen {
     private long lastRenderTime;
     private long openedAt;
     private long closeStartedAt;
-    private float closeStartTransition;
+    private float closeStartProgress;
     private boolean closing;
     private double position;
     private double targetPosition;
     private String selectedQuestId;
     private String hoveredQuestId;
+    private String detailQuestId;
     private long hoverStartedAt;
     private float detailAlpha;
     private String pressedQuestId;
@@ -57,8 +58,12 @@ public final class QuestTrackingMenuScreen extends Screen {
         openedAt = Util.getMillis();
         lastRenderTime = openedAt;
         closeStartedAt = 0L;
-        closeStartTransition = 1f;
+        closeStartProgress = 1f;
         closing = false;
+        hoveredQuestId = null;
+        detailQuestId = null;
+        hoverStartedAt = 0L;
+        detailAlpha = 0f;
         updateInteractionRailLeft();
     }
 
@@ -69,8 +74,8 @@ public final class QuestTrackingMenuScreen extends Screen {
         lastRenderTime = now;
         refreshEntries(false);
 
-        float transition = getTransition(now);
-        if (closing && transition <= 0f) {
+        float transitionProgress = getTransitionProgress(now);
+        if (closing && transitionProgress <= 0f) {
             HudCursorManager.beginFrame();
             HudCursorManager.apply();
             if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
@@ -87,19 +92,28 @@ public final class QuestTrackingMenuScreen extends Screen {
         interactionRailLeft = railLeft;
         int centerX = railLeft + railWidth / 2;
 
+        float headingProgress = staggeredProgress(transitionProgress, 0.04f);
+        float headingMotion = HudAnimUtil.easeOutQuintic(headingProgress);
+        float headingAlpha = HudAnimUtil.smoothStep(headingProgress);
         Component heading = Component.translatable("gui.arc_quest.tracking_menu.title");
-        int headingX = centerX - font.width(heading) / 2;
-        graphics.drawString(font, heading, headingX, 12,
-                HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * transition)), true);
+        int headingX = centerX - font.width(heading) / 2 + Math.round((1f - headingMotion) * 20f);
+        int headingY = 12 - Math.round((1f - headingMotion) * 5f);
+        graphics.drawString(font, heading, headingX, headingY,
+                HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * headingAlpha)), true);
+
+        float hintProgress = staggeredProgress(transitionProgress, 0.14f);
+        float hintMotion = HudAnimUtil.easeOutQuintic(hintProgress);
+        float hintAlpha = HudAnimUtil.smoothStep(hintProgress);
         Component hint = Component.translatable("arc_quest.gui.tracking_menu.hint");
-        drawCenteredScaledString(graphics, hint, centerX, 12 + font.lineHeight + 3,
-                railWidth - 8, HudAnimUtil.withAlpha(0x999999, Math.round(210 * transition)));
+        drawCenteredScaledString(graphics, hint, centerX + Math.round((1f - hintMotion) * 24f),
+                12 + font.lineHeight + 3, railWidth - 8,
+                HudAnimUtil.withAlpha(0x999999, Math.round(210 * hintAlpha)));
 
         cardHits.clear();
         if (entries.isEmpty()) {
             Component empty = Component.translatable("arc_quest.gui.tracking_menu.empty");
             graphics.drawCenteredString(font, empty, centerX,
-                    height / 2, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * transition)));
+                    height / 2, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * headingAlpha)));
             HudCursorManager.beginFrame();
             HudCursorManager.apply();
             return;
@@ -114,18 +128,27 @@ public final class QuestTrackingMenuScreen extends Screen {
             double distance = index - position;
             if (Math.abs(distance) > 3.4) continue;
             float distanceAbs = (float) Math.abs(distance);
-            float scale = Math.max(0.72f, 1f - distanceAbs * 0.10f);
+            float revealDelay = Math.min(0.24f, distanceAbs * 0.065f);
+            float cardProgress = staggeredProgress(transitionProgress, revealDelay);
+            float cardMotion = HudAnimUtil.easeOutQuintic(cardProgress);
+            float cardScale = 0.92f + 0.08f * HudAnimUtil.easeOutBack(cardProgress);
+            float distanceScale = Math.max(0.72f, 1f - distanceAbs * 0.10f);
+            float scale = distanceScale * cardScale;
             int drawWidth = Math.round(cardWidth * scale);
             int drawHeight = Math.round(cardHeight * scale);
-            int drawX = centerX - drawWidth / 2 + Math.round((1f - transition) * 36f);
-            int drawY = centerY + (int) Math.round(distance * cardSpacing) - drawHeight / 2;
-            float alpha = transition * Math.max(0.24f, 1f - distanceAbs * 0.23f);
+            float spread = 0.84f + 0.16f * cardMotion;
+            int slideDistance = Math.round(54f + distanceAbs * 12f);
+            int drawX = centerX - drawWidth / 2 + Math.round((1f - cardMotion) * slideDistance);
+            int drawY = centerY + (int) Math.round(distance * cardSpacing * spread) - drawHeight / 2;
+            float alpha = HudAnimUtil.smoothStep(cardProgress)
+                    * Math.max(0.24f, 1f - distanceAbs * 0.23f);
             states.add(new CardRenderState(index, drawX, drawY, drawWidth, drawHeight, alpha, distanceAbs));
         }
         states.sort(Comparator.comparingDouble(CardRenderState::distanceAbs).reversed());
 
         graphics.enableScissor(railLeft, 38, railRight, height);
         for (CardRenderState state : states) {
+            if (state.alpha() <= 0.08f) continue;
             QuestTrackingMenuEntry entry = entries.get(state.index());
             cardHits.add(new CardHit(entry.questId(), state.index(), state.x(), state.y(),
                     state.width(), state.height(), state.distanceAbs()));
@@ -136,7 +159,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         for (CardRenderState state : states) {
             QuestTrackingMenuEntry entry = entries.get(state.index());
             boolean isHovered = hovered != null && hovered.questId().equals(entry.questId());
-            float cardDetailAlpha = isHovered ? detailAlpha : 0f;
+            float cardDetailAlpha = entry.questId().equals(detailQuestId) ? detailAlpha : 0f;
             QuestTrackingMenuCardRenderer.render(graphics, font, entry,
                     state.x(), state.y(), state.width(), state.height(), state.alpha(),
                     cardDetailAlpha, isHovered);
@@ -148,13 +171,17 @@ public final class QuestTrackingMenuScreen extends Screen {
         HudCursorManager.apply();
     }
 
-    private float getTransition(long now) {
+    private float getTransitionProgress(long now) {
         if (closing) {
             float progress = Math.min(1f, (now - closeStartedAt) / (float) CLOSE_DURATION_MS);
-            return closeStartTransition * (1f - HudAnimUtil.easeInCubic(progress));
+            return closeStartProgress * (1f - HudAnimUtil.smoothStep(progress));
         }
-        float progress = Math.min(1f, (now - openedAt) / (float) OPEN_DURATION_MS);
-        return HudAnimUtil.easeOutCubic(progress);
+        return Math.min(1f, (now - openedAt) / (float) OPEN_DURATION_MS);
+    }
+
+    private static float staggeredProgress(float progress, float delay) {
+        if (progress <= delay) return 0f;
+        return Math.min(1f, (progress - delay) / (1f - delay));
     }
 
     private void drawCenteredScaledString(GuiGraphics graphics, Component text, int centerX, int y,
@@ -207,10 +234,28 @@ public final class QuestTrackingMenuScreen extends Screen {
         if (!java.util.Objects.equals(hoveredQuestId, nextHoveredQuestId)) {
             hoveredQuestId = nextHoveredQuestId;
             hoverStartedAt = now;
-            detailAlpha = 0f;
         }
-        boolean detailVisible = hoveredQuestId != null && now - hoverStartedAt >= DETAIL_HOVER_DELAY_MS;
-        detailAlpha = HudAnimUtil.lerp(detailAlpha, detailVisible ? 1f : 0f, 0.18f, dt);
+
+        boolean candidateReady = hoveredQuestId != null
+                && now - hoverStartedAt >= DETAIL_HOVER_DELAY_MS;
+        if (detailQuestId != null && !detailQuestId.equals(hoveredQuestId)) {
+            detailAlpha = HudAnimUtil.smoothHalfLife(detailAlpha, 0f, 0.055f, dt);
+            if (detailAlpha <= 0.015f) {
+                detailAlpha = 0f;
+                detailQuestId = null;
+            }
+            return;
+        }
+
+        if (detailQuestId == null && candidateReady) detailQuestId = hoveredQuestId;
+        float targetAlpha = detailQuestId != null && detailQuestId.equals(hoveredQuestId)
+                && candidateReady ? 1f : 0f;
+        float halfLife = targetAlpha > detailAlpha ? 0.065f : 0.085f;
+        detailAlpha = HudAnimUtil.smoothHalfLife(detailAlpha, targetAlpha, halfLife, dt);
+        if (targetAlpha == 0f && detailAlpha <= 0.015f) {
+            detailAlpha = 0f;
+            detailQuestId = null;
+        }
     }
 
     @Override
@@ -325,7 +370,7 @@ public final class QuestTrackingMenuScreen extends Screen {
     private void requestClose() {
         if (closing) return;
         long now = Util.getMillis();
-        closeStartTransition = getTransition(now);
+        closeStartProgress = getTransitionProgress(now);
         closing = true;
         closeStartedAt = now;
         dragging = false;
