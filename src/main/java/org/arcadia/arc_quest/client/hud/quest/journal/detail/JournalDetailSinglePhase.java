@@ -302,13 +302,15 @@ public class JournalDetailSinglePhase {
 
             boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive()
                     || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
-            int absBarX = x + 12 + objX;
+            int absObjectiveX = x + 12 + objX;
+            int absObjectiveY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + textStartY;
             int absBarY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
-            boolean progressBarHovered = !panelsActive
-                    && mx >= absBarX && mx < absBarX + barW
-                    && my >= absBarY - 2 && my < absBarY + 4
+            int objectiveHitW = Math.max(1, scrollAreaW - 40 - objX);
+            boolean objectiveHovered = !panelsActive
+                    && mx >= absObjectiveX && mx < absObjectiveX + objectiveHitW
+                    && my >= absObjectiveY && my < absBarY + 4
                     && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
-            CollectObjectiveTooltip.request(screen, phase.getObjectives().get(i), progressBarHovered);
+            CollectObjectiveTooltip.request(screen, phase.getObjectives().get(i), objectiveHovered);
 
             if (canSubmit) {
                 if (!panelsActive) {

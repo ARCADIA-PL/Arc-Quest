@@ -620,6 +620,13 @@ public class JournalDetailParallelPhase {
                     int absX2 = x + 12 + hitX2, absY2 = (int) Math.round(scrollAreaY + 12 - parent.getDetailScrollOffset() + hitY2 - currentInnerScroll);
 
                     boolean textHovered = !isBeingDragged && mx >= absX2 && mx < absX2 + hitW2 && my >= absY2 && my < absY2 + hitH2 && my >= intY1 && my < intY2 && mx >= intX1 && mx < intX2;
+                    int objectiveRowRight = x + 12 + cardX + colW - 8 - extraMargin;
+                    boolean objectiveRowHovered = !isBeingDragged
+                            && mx >= absX2 && mx < objectiveRowRight
+                            && my >= absY2 && my < absY2 + OBJ_LINE_H
+                            && my >= intY1 && my < intY2
+                            && mx >= intX1 && mx < intX2;
+                    CollectObjectiveTooltip.request(screen, obj, objectiveRowHovered);
                     hoverAnimOffer = HudAnimUtil.lerp(hoverAnimOffer, textHovered ? 1f : 0f, 0.2f, dt);
 
                     if (canUpload) {
