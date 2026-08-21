@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.trackingmenu;
 
+import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -149,16 +150,21 @@ public final class QuestTrackingMenuScreen extends Screen {
         String trackedQuestId = ClientQuestTrackingController.INSTANCE.trackedQuestId();
         CardRenderState trackedState = null;
         QuestTrackingMenuEntry trackedEntry = null;
-        int firstFullyVisibleIndex = Integer.MAX_VALUE;
-        int lastFullyVisibleIndex = -1;
-        int fullyVisibleTop = 42;
-        int fullyVisibleBottom = height - 22;
+        int firstIntersectingIndex = Integer.MAX_VALUE;
+        int lastIntersectingIndex = -1;
+        boolean partialAbove = false;
+        boolean partialBelow = false;
+        int viewportTop = 38;
+        int viewportBottom = height;
         for (CardRenderState state : states) {
             if (state.alpha() <= 0.08f) continue;
-            if (state.y() >= fullyVisibleTop && state.y() + state.height() <= fullyVisibleBottom) {
-                firstFullyVisibleIndex = Math.min(firstFullyVisibleIndex, state.index());
-                lastFullyVisibleIndex = Math.max(lastFullyVisibleIndex, state.index());
-            }
+            boolean intersectsViewport = state.y() + state.height() > viewportTop
+                    && state.y() < viewportBottom;
+            if (!intersectsViewport) continue;
+            firstIntersectingIndex = Math.min(firstIntersectingIndex, state.index());
+            lastIntersectingIndex = Math.max(lastIntersectingIndex, state.index());
+            partialAbove |= state.y() < viewportTop;
+            partialBelow |= state.y() + state.height() > viewportBottom;
             QuestTrackingMenuEntry entry = entries.get(state.index());
             if (entry.questId().equals(trackedQuestId)) {
                 trackedState = state;
@@ -190,12 +196,13 @@ public final class QuestTrackingMenuScreen extends Screen {
             renderTrackedCursor(graphics, trackedState, trackedEntry.definition().getThemeColor());
         }
         float indicatorAlpha = HudAnimUtil.smoothStep(transitionProgress);
-        if (firstFullyVisibleIndex != Integer.MAX_VALUE && firstFullyVisibleIndex > 0) {
-            renderOverflowIndicator(graphics, centerX, 41, firstFullyVisibleIndex, false, indicatorAlpha);
+        int hiddenAbove = firstIntersectingIndex == Integer.MAX_VALUE ? 0 : firstIntersectingIndex;
+        if (partialAbove || hiddenAbove > 0) {
+            renderOverflowIndicator(graphics, centerX, 41, hiddenAbove, false, indicatorAlpha);
         }
-        if (lastFullyVisibleIndex >= 0 && lastFullyVisibleIndex < entries.size() - 1) {
-            renderOverflowIndicator(graphics, centerX, height - 12,
-                    entries.size() - 1 - lastFullyVisibleIndex, true, indicatorAlpha);
+        int hiddenBelow = lastIntersectingIndex < 0 ? 0 : entries.size() - 1 - lastIntersectingIndex;
+        if (partialBelow || hiddenBelow > 0) {
+            renderOverflowIndicator(graphics, centerX, height - 12, hiddenBelow, true, indicatorAlpha);
         }
 
         HudCursorManager.beginFrame();
@@ -205,20 +212,25 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     private void renderTrackedCursor(GuiGraphics graphics, CardRenderState state, int themeColor) {
         int centerY = state.y() + state.height() / 2;
-        int tipX = state.x() - 3;
-        int baseX = tipX - 10;
-        int glowColor = HudAnimUtil.withAlpha(themeColor, Math.round(70 * state.alpha()));
+        int tipX = state.x() - 5;
+        int shadowColor = HudAnimUtil.withAlpha(0x000000, Math.round(145 * state.alpha()));
         int cursorColor = HudAnimUtil.withAlpha(themeColor, Math.round(255 * state.alpha()));
-        for (int step = 0; step < 6; step++) {
-            int halfHeight = 6 - step;
-            int stepX = baseX - 1 + step * 2;
-            graphics.fill(stepX, centerY - halfHeight, stepX + 3, centerY + halfHeight + 1, glowColor);
-        }
-        for (int step = 0; step < 5; step++) {
-            int halfHeight = 5 - step;
-            int stepX = baseX + step * 2;
-            graphics.fill(stepX, centerY - halfHeight, stepX + 2, centerY + halfHeight + 1, cursorColor);
-        }
+        drawChevron(graphics, tipX + 1, centerY + 1, 9, shadowColor);
+        drawChevron(graphics, tipX, centerY, 8, cursorColor);
+    }
+
+    private void drawChevron(GuiGraphics graphics, int tipX, int centerY, int armLength, int color) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(tipX, centerY, 0f);
+        graphics.pose().mulPose(Axis.ZP.rotationDegrees(38f));
+        graphics.fill(-armLength, -1, 1, 1, color);
+        graphics.pose().popPose();
+
+        graphics.pose().pushPose();
+        graphics.pose().translate(tipX, centerY, 0f);
+        graphics.pose().mulPose(Axis.ZP.rotationDegrees(-38f));
+        graphics.fill(-armLength, -1, 1, 1, color);
+        graphics.pose().popPose();
     }
 
     private void renderOverflowIndicator(GuiGraphics graphics, int centerX, int y,
@@ -232,7 +244,9 @@ public final class QuestTrackingMenuScreen extends Screen {
                     centerX + (width + 1) / 2 + 1, rowY + 2, shadowColor);
             graphics.fill(centerX - width / 2, rowY, centerX + (width + 1) / 2, rowY + 1, color);
         }
-        graphics.drawString(font, "+" + hiddenCount, centerX + 8, y - 2, color, true);
+        if (hiddenCount > 0) {
+            graphics.drawString(font, "+" + hiddenCount, centerX + 8, y - 2, color, true);
+        }
     }
 
     private float getTransitionProgress(long now) {
