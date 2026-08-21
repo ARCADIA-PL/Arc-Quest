@@ -25,6 +25,7 @@ import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
+import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
@@ -35,6 +36,7 @@ import org.lwjgl.glfw.GLFW;
 public final class ClientEventHandler {
     public static final KeyMapping KEY_OPEN_JOURNAL = new KeyMapping("key.arc_quest.open_journal", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, "key.categories.arc_quest");
     public static final KeyMapping KEY_OPEN_GUIDE_LIST = new KeyMapping("key.arc_quest.open_guide_list", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_I, "key.categories.arc_quest");
+    public static final KeyMapping KEY_OPEN_TRACKING_MENU = new KeyMapping("key.arc_quest.open_tracking_menu", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, "key.categories.arc_quest");
 
     private ClientEventHandler() {
     }
@@ -65,6 +67,10 @@ public final class ClientEventHandler {
             } else if (mc.screen instanceof QuestJournalScreen) {
                 mc.screen.onClose();
             }
+        }
+
+        if (KEY_OPEN_TRACKING_MENU.consumeClick() && mc.screen == null) {
+            mc.setScreen(new QuestTrackingMenuScreen());
         }
 
         if (KEY_OPEN_GUIDE_LIST.consumeClick()) {

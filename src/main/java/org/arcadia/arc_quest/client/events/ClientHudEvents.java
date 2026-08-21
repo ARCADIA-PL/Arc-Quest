@@ -20,6 +20,7 @@ import org.arcadia.arc_quest.client.hud.guide.GuideSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -230,6 +231,7 @@ public class ClientHudEvents {
         // 打开任务/对话/交易/抽卡界面时隐藏生存状态与聊天 HUD
         Minecraft mc = Minecraft.getInstance();
         if (!(mc.screen instanceof QuestJournalScreen
+                || mc.screen instanceof QuestTrackingMenuScreen
                 || mc.screen instanceof QuestEditorScreen
                 || mc.screen instanceof DialogueScreen
                 || mc.screen instanceof AbstractTradeScreen
