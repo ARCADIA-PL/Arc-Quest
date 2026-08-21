@@ -5,6 +5,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -34,11 +35,25 @@ import org.lwjgl.glfw.GLFW;
 
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
 public final class ClientEventHandler {
-    public static final KeyMapping KEY_OPEN_JOURNAL = new KeyMapping("key.arc_quest.open_journal", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_J, "key.categories.arc_quest");
-    public static final KeyMapping KEY_OPEN_GUIDE_LIST = new KeyMapping("key.arc_quest.open_guide_list", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_I, "key.categories.arc_quest");
-    public static final KeyMapping KEY_OPEN_TRACKING_MENU = new KeyMapping("key.arc_quest.open_tracking_menu", KeyConflictContext.IN_GAME, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, "key.categories.arc_quest");
+    public static KeyMapping KEY_OPEN_JOURNAL;
+    public static KeyMapping KEY_OPEN_GUIDE_LIST;
+    public static KeyMapping KEY_OPEN_TRACKING_MENU;
 
     private ClientEventHandler() {
+    }
+
+    public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
+        KEY_OPEN_JOURNAL = createKeyMapping("key.arc_quest.open_journal", GLFW.GLFW_KEY_J);
+        KEY_OPEN_GUIDE_LIST = createKeyMapping("key.arc_quest.open_guide_list", GLFW.GLFW_KEY_I);
+        KEY_OPEN_TRACKING_MENU = createKeyMapping("key.arc_quest.open_tracking_menu", GLFW.GLFW_KEY_K);
+        event.register(KEY_OPEN_JOURNAL);
+        event.register(KEY_OPEN_GUIDE_LIST);
+        event.register(KEY_OPEN_TRACKING_MENU);
+    }
+
+    private static KeyMapping createKeyMapping(String translationKey, int defaultKey) {
+        return new KeyMapping(translationKey, KeyConflictContext.IN_GAME,
+                InputConstants.Type.KEYSYM, defaultKey, "key.categories.arc_quest");
     }
 
     @SubscribeEvent
