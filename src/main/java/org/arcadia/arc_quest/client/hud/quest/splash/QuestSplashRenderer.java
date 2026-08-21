@@ -133,8 +133,8 @@ public class QuestSplashRenderer {
             }
         }
 
-        int frameW = 400;
-        int frameH = 225;
+        int frameW = QuestSplashCardRenderer.FRAME_WIDTH;
+        int frameH = QuestSplashCardRenderer.FRAME_HEIGHT;
 
         float finalScale = (screenHeight * 0.70f) / (float) frameH;
 
@@ -233,19 +233,8 @@ public class QuestSplashRenderer {
         guiGraphics.pose().translate(currentX - scaleOffsetW, currentY - scaleOffsetH, 0);
         guiGraphics.pose().scale(scaleAnim, scaleAnim, 1f);
 
-        guiGraphics.setColor(1f, 1f, 1f, alpha);
-        guiGraphics.blit(request.texture(), 0, 0, 0, 0, frameW, frameH, frameW, frameH);
-        guiGraphics.setColor(1f, 1f, 1f, 1f);
-
-        int borderAlpha = Math.max(0, Math.min(255, (int) (alpha * 255)));
-        int borderColor = (borderAlpha << 24) | (themeColor & 0xFFFFFF);
-        guiGraphics.fill(0, 0, 3, frameH, borderColor);
-
-        int decColor = (borderAlpha << 24) | 0xFFFFFF;
-        guiGraphics.fill(0, 0, 20, 2, decColor); // 左上横
-        guiGraphics.fill(0, 0, 2, 20, decColor); // 左上竖
-        guiGraphics.fill(frameW - 20, frameH - 2, frameW, frameH, decColor); // 右下横
-        guiGraphics.fill(frameW - 2, frameH - 20, frameW, frameH, decColor); // 右下竖
+        QuestSplashCardRenderer.render(guiGraphics, request.quest(), request.texture(),
+                0, 0, frameW, frameH, themeColor, alpha);
 
         guiGraphics.pose().popPose();
 
