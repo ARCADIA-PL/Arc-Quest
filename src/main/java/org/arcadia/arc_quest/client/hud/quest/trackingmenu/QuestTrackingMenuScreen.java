@@ -19,7 +19,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class QuestTrackingMenuScreen extends Screen {
-    private static final long DETAIL_HOVER_DELAY_MS = 1000L;
+    private static final long DETAIL_HOVER_DELAY_MS = 500L;
     private static final long OPEN_DURATION_MS = 260L;
     private static final long CLOSE_DURATION_MS = 220L;
     private static final double DRAG_THRESHOLD = 4.0;
@@ -80,7 +80,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         targetPosition = clampPosition(targetPosition);
         position += (targetPosition - position) * Math.min(1.0, dt * 14.0);
 
-        int railWidth = Math.max(96, Math.min(220, Math.round(width * 0.20f)));
+        int railWidth = calculateRailWidth();
         int railRightMargin = Math.max(12, Math.round(width * 0.07f));
         int railRight = width - railRightMargin;
         int railLeft = railRight - railWidth;
@@ -109,8 +109,6 @@ public final class QuestTrackingMenuScreen extends Screen {
         int cardHeight = Math.max(54, Math.round(cardWidth * 9f / 16f));
         cardSpacing = cardHeight + Math.max(8, Math.round(cardHeight * 0.08f));
         int centerY = height / 2 + 8;
-        int trackedIndex = indexOf(ClientQuestTrackingController.INSTANCE.trackedQuestId());
-
         List<CardRenderState> states = new ArrayList<>();
         for (int index = 0; index < entries.size(); index++) {
             double distance = index - position;
@@ -141,7 +139,7 @@ public final class QuestTrackingMenuScreen extends Screen {
             float cardDetailAlpha = isHovered ? detailAlpha : 0f;
             QuestTrackingMenuCardRenderer.render(graphics, font, entry,
                     state.x(), state.y(), state.width(), state.height(), state.alpha(),
-                    cardDetailAlpha, state.index() == trackedIndex, isHovered);
+                    cardDetailAlpha, isHovered);
         }
         graphics.disableScissor();
 
@@ -171,9 +169,13 @@ public final class QuestTrackingMenuScreen extends Screen {
     }
 
     private void updateInteractionRailLeft() {
-        int railWidth = Math.max(96, Math.min(220, Math.round(width * 0.20f)));
+        int railWidth = calculateRailWidth();
         int railRightMargin = Math.max(12, Math.round(width * 0.07f));
         interactionRailLeft = width - railRightMargin - railWidth;
+    }
+
+    private int calculateRailWidth() {
+        return Math.max(124, Math.min(286, Math.round(width * 0.26f)));
     }
 
     private void refreshEntries(boolean initializePosition) {
