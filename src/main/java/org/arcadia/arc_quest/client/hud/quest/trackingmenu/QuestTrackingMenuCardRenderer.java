@@ -13,14 +13,13 @@ import java.util.List;
 
 final class QuestTrackingMenuCardRenderer {
     private static final int CARD_PADDING = 9;
-    private static final int MAX_OBJECTIVE_LINES = 3;
 
     private QuestTrackingMenuCardRenderer() {
     }
 
     static void render(GuiGraphics graphics, Font font, QuestTrackingMenuEntry entry,
                        int x, int y, int width, int height,
-                       float alpha, float detailAlpha, boolean tracked, boolean hovered) {
+                       float alpha, float detailAlpha, boolean hovered) {
         int themeColor = entry.definition().getThemeColor();
         QuestSplashCardRenderer.render(graphics, entry.definition(), entry.splashTexture(),
                 x, y, width, height, themeColor, alpha);
@@ -34,20 +33,6 @@ final class QuestTrackingMenuCardRenderer {
             drawEllipsized(graphics, font, entry.definition().getDisplayName(),
                     x + CARD_PADDING, y + height - font.lineHeight - 7,
                     width - CARD_PADDING * 2, titleColor);
-        }
-
-        if (tracked) {
-            int accent = HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha));
-            graphics.fill(x - 2, y - 2, x + width + 2, y, accent);
-            graphics.fill(x - 2, y + height, x + width + 2, y + height + 2, accent);
-            graphics.fill(x - 2, y, x, y + height, accent);
-            graphics.fill(x + width, y, x + width + 2, y + height, accent);
-            Component trackedLabel = Component.translatable("arc_quest.gui.tracking_menu.tracked");
-            int labelWidth = font.width(trackedLabel) + 8;
-            graphics.fill(x + width - labelWidth, y, x + width, y + font.lineHeight + 6,
-                    HudAnimUtil.withAlpha(0x000000, Math.round(190 * alpha)));
-            graphics.drawString(font, trackedLabel, x + width - labelWidth + 4, y + 3,
-                    HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), true);
         }
 
         if (hovered && detailAlpha < 0.01f) {
@@ -87,28 +72,70 @@ final class QuestTrackingMenuCardRenderer {
             return;
         }
 
-        int renderedLines = 0;
         List<ObjectiveEntry> objectives = phase.getObjectives();
-        for (int objectiveIndex = 0;
-             objectiveIndex < objectives.size() && renderedLines < MAX_OBJECTIVE_LINES;
-             objectiveIndex++) {
+        Component description = phase.getDescription();
+        if (!description.getString().isBlank()) {
+            List<FormattedCharSequence> descriptionLines = font.split(description, textWidth);
+            int descriptionLineCount = Math.min(2, descriptionLines.size());
+            for (int lineIndex = 0; lineIndex < descriptionLineCount; lineIndex++) {
+                graphics.drawString(font, descriptionLines.get(lineIndex), textX, textY,
+                        HudAnimUtil.withAlpha(0xAAB1BC, Math.round(235 * alpha)), true);
+                textY += font.lineHeight + 2;
+            }
+            textY += 2;
+        }
+
+        int completedObjectives = 0;
+        int visibleObjectives = 0;
+        for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
+            int required = Math.max(1, objective.getRequiredCount());
             int progress = entry.runtime().getObjectiveProgress(entry.phaseId(), objectiveIndex);
-            int required = objective.getRequiredCount();
+            if (!objective.isHidden()) {
+                visibleObjectives++;
+                if (progress >= required) completedObjectives++;
+            }
+        }
+        Component phaseProgress = Component.translatable("arc_quest.gui.tracking_menu.phase_progress",
+                completedObjectives, visibleObjectives);
+        graphics.drawString(font, phaseProgress, textX, textY,
+                HudAnimUtil.withAlpha(themeColor, Math.round(240 * alpha)), true);
+        textY += font.lineHeight + 5;
+
+        int renderedObjectives = 0;
+        int bottomY = y + height - CARD_PADDING;
+        for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
+            ObjectiveEntry objective = objectives.get(objectiveIndex);
+            if (objective.isHidden()) continue;
+            int progress = entry.runtime().getObjectiveProgress(entry.phaseId(), objectiveIndex);
+            int required = Math.max(1, objective.getRequiredCount());
             boolean complete = progress >= required;
             Component line = objective.isBooleanProgress()
-                    ? Component.literal((complete ? "? " : "? ")).append(objective.getDisplayText())
-                    : Component.literal((complete ? "? " : "? "))
+                    ? Component.literal(complete ? "[x] " : "[ ] ").append(objective.getDisplayText())
+                    : Component.literal(complete ? "[x] " : "[ ] ")
                     .append(objective.getDisplayText())
                     .append(Component.literal("  " + progress + "/" + required));
+            if (objective.isOptional()) {
+                line = line.copy().append(Component.translatable("arc_quest.gui.tracking_menu.optional"));
+            }
             List<FormattedCharSequence> wrapped = font.split(line, textWidth);
             if (wrapped.isEmpty()) continue;
             int color = complete ? 0x88FF88 : 0xDDDDDD;
-            graphics.drawString(font, wrapped.get(0), textX, textY,
-                    HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), true);
-            textY += font.lineHeight + 3;
-            renderedLines++;
-            if (textY + font.lineHeight > y + height - CARD_PADDING) break;
+            int objectiveLineCount = Math.min(2, wrapped.size());
+            if (textY + objectiveLineCount * (font.lineHeight + 2) > bottomY) break;
+            for (int lineIndex = 0; lineIndex < objectiveLineCount; lineIndex++) {
+                graphics.drawString(font, wrapped.get(lineIndex), textX, textY,
+                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), true);
+                textY += font.lineHeight + 2;
+            }
+            renderedObjectives++;
+        }
+
+        int remainingObjectives = visibleObjectives - renderedObjectives;
+        if (remainingObjectives > 0 && textY + font.lineHeight <= bottomY) {
+            graphics.drawString(font,
+                    Component.translatable("arc_quest.gui.tracking_menu.more_objectives", remainingObjectives),
+                    textX, textY, HudAnimUtil.withAlpha(0x8E96A3, Math.round(230 * alpha)), true);
         }
     }
 
