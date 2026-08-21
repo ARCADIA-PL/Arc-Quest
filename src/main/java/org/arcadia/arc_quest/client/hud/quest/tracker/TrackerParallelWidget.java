@@ -24,6 +24,13 @@ public class TrackerParallelWidget {
     }
 
     public static int render(GuiGraphics g, Font font, QuestRuntimeData tracked, QuestDefinition def, List<String> activePhaseOrder, String displayedPhaseId, int themeColor, int textX, int textY, float alpha, float wipeAlpha) {
+        return render(g, font, tracked, def, activePhaseOrder, displayedPhaseId, themeColor,
+                textX, textY, alpha, wipeAlpha, TrackerConstants.PANEL_WIDTH);
+    }
+
+    public static int render(GuiGraphics g, Font font, QuestRuntimeData tracked, QuestDefinition def,
+                             List<String> activePhaseOrder, String displayedPhaseId, int themeColor,
+                             int textX, int textY, float alpha, float wipeAlpha, int panelWidth) {
         if (activePhaseOrder.size() <= 1) return textY;
 
         int a = (int) (255 * alpha * wipeAlpha);
@@ -74,7 +81,7 @@ public class TrackerParallelWidget {
 
             int textColor = isFocused ? 0xFFFFFF : (isComplete ? 0x99FF99 : 0xAAB4C0);
             var displayTxt = StyledTextUtil.fitSingleLine(font, laneName,
-                    TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 14);
+                    panelWidth - TrackerConstants.ACCENT_WIDTH - TrackerConstants.PADDING * 2 - 14);
 
             g.drawString(font, displayTxt, textX + 12, textY, HudAnimUtil.withAlpha(textColor, a), false);
 

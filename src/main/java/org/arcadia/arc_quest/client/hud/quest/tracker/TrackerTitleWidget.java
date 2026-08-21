@@ -28,11 +28,18 @@ public class TrackerTitleWidget {
     private static long activeDescriptionStartedAtMs;
 
     public static void renderTitle(GuiGraphics g, QuestRuntimeData tracked, int textX, int textY, float alpha, float wipeAlpha, Font font) {
-        renderTitle(g, tracked, textX, textY, alpha, wipeAlpha, font, 0);
+        renderTitle(g, tracked, textX, textY, alpha, wipeAlpha, font, TrackerConstants.PANEL_WIDTH, 0);
     }
 
     public static void renderTitle(GuiGraphics g, QuestRuntimeData tracked, int textX, int textY,
                                    float alpha, float wipeAlpha, Font font, int reservedRightWidth) {
+        renderTitle(g, tracked, textX, textY, alpha, wipeAlpha, font,
+                TrackerConstants.PANEL_WIDTH, reservedRightWidth);
+    }
+
+    public static void renderTitle(GuiGraphics g, QuestRuntimeData tracked, int textX, int textY,
+                                   float alpha, float wipeAlpha, Font font, int panelWidth,
+                                   int reservedRightWidth) {
         int titleA = (int) (255 * alpha * wipeAlpha);
         if (titleA > 8) {
             int iconOffset = 0;
@@ -57,7 +64,7 @@ public class TrackerTitleWidget {
             float timeScale = 0.85f; // 统一、干脆的字体缩放
 
             // 计算面板可用总宽度（也是最右侧边缘的X坐标相对值）
-            int availableW = Math.max(0, TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
+            int availableW = Math.max(0, panelWidth - TrackerConstants.ACCENT_WIDTH
                     - TrackerConstants.PADDING * 2 - 4 - iconOffset - reservedRightWidth);
             int maxRightX = textX + iconOffset + availableW;
 
@@ -107,11 +114,25 @@ public class TrackerTitleWidget {
     }
 
     public static int computePhaseNameHeight(QuestRuntimeData tracked, String displayedPhaseId, Font font) {
-        return phaseNameLines(tracked, displayedPhaseId, font).size() * (font.lineHeight + 1) + 5;
+        return computePhaseNameHeight(tracked, displayedPhaseId, font, TrackerConstants.PANEL_WIDTH);
+    }
+
+    public static int computePhaseNameHeight(QuestRuntimeData tracked, String displayedPhaseId,
+                                             Font font, int panelWidth) {
+        return phaseNameLines(tracked, displayedPhaseId, font, panelWidth).size()
+                * (font.lineHeight + 1) + 5;
     }
 
     public static int renderPhaseName(GuiGraphics g, QuestRuntimeData tracked, String displayedPhaseId, int themeColor, int textX, int textY, float alpha, float wipeAlpha, Font font) {
-        List<net.minecraft.util.FormattedCharSequence> lines = phaseNameLines(tracked, displayedPhaseId, font);
+        return renderPhaseName(g, tracked, displayedPhaseId, themeColor, textX, textY,
+                alpha, wipeAlpha, font, TrackerConstants.PANEL_WIDTH);
+    }
+
+    public static int renderPhaseName(GuiGraphics g, QuestRuntimeData tracked, String displayedPhaseId,
+                                      int themeColor, int textX, int textY, float alpha,
+                                      float wipeAlpha, Font font, int panelWidth) {
+        List<net.minecraft.util.FormattedCharSequence> lines = phaseNameLines(
+                tracked, displayedPhaseId, font, panelWidth);
         int height = lines.size() * (font.lineHeight + 1) + 5;
         int subA = (int) (255 * alpha * wipeAlpha);
         if (subA > 5) {
@@ -128,10 +149,10 @@ public class TrackerTitleWidget {
     }
 
     private static List<net.minecraft.util.FormattedCharSequence> phaseNameLines(
-            QuestRuntimeData tracked, String displayedPhaseId, Font font) {
+            QuestRuntimeData tracked, String displayedPhaseId, Font font, int panelWidth) {
         Component phaseName = ClientQuestCache.INSTANCE.getPhaseDisplayComponent(tracked.getQuestId(), displayedPhaseId);
         Component phasePrefix = Component.translatable("arc_quest.hud.phase_prefix", phaseName);
-        int availableWidth = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
+        int availableWidth = (int) ((panelWidth - TrackerConstants.ACCENT_WIDTH
                 - TrackerConstants.PADDING * 2 - 11) / 0.95f);
         List<net.minecraft.util.FormattedCharSequence> wrapped = font.split(phasePrefix, Math.max(1, availableWidth));
         if (wrapped.size() <= 2) return wrapped;
@@ -139,21 +160,31 @@ public class TrackerTitleWidget {
     }
 
     public static int computeDescriptionHeight(PhaseDefinition phase, Font font) {
+        return computeDescriptionHeight(phase, font, TrackerConstants.PANEL_WIDTH);
+    }
+
+    public static int computeDescriptionHeight(PhaseDefinition phase, Font font, int panelWidth) {
         if (!phase.hasDescription()) return 0;
         float scale = 0.85f;
-        List<FormattedCharSequence> descLines = descriptionLines(phase, font, scale);
+        List<FormattedCharSequence> descLines = descriptionLines(phase, font, scale, panelWidth);
 
         int unscaledLineH = font.lineHeight + 3;
         return (int) (Math.min(descLines.size(), DESCRIPTION_VISIBLE_LINES) * unscaledLineH * scale) + 4;
     }
 
     public static int renderDescription(GuiGraphics g, PhaseDefinition phase, int textX, int textY, float alpha, float wipeAlpha, Font font) {
+        return renderDescription(g, phase, textX, textY, alpha, wipeAlpha, font,
+                TrackerConstants.PANEL_WIDTH);
+    }
+
+    public static int renderDescription(GuiGraphics g, PhaseDefinition phase, int textX, int textY,
+                                        float alpha, float wipeAlpha, Font font, int panelWidth) {
         if (!phase.hasDescription()) return textY;
 
         int descA = (int) (255 * alpha * wipeAlpha);
         if (descA > 4) {
             float scale = 0.85f;
-            List<FormattedCharSequence> descLines = descriptionLines(phase, font, scale);
+            List<FormattedCharSequence> descLines = descriptionLines(phase, font, scale, panelWidth);
 
             int unscaledLineH = font.lineHeight + 3;
             int visibleLines = Math.min(descLines.size(), DESCRIPTION_VISIBLE_LINES);
@@ -198,8 +229,8 @@ public class TrackerTitleWidget {
     }
 
     private static List<FormattedCharSequence> descriptionLines(
-            PhaseDefinition phase, Font font, float scale) {
-        int maxWidth = (int) ((TrackerConstants.PANEL_WIDTH - TrackerConstants.ACCENT_WIDTH
+            PhaseDefinition phase, Font font, float scale, int panelWidth) {
+        int maxWidth = (int) ((panelWidth - TrackerConstants.ACCENT_WIDTH
                 - TrackerConstants.PADDING * 2 - 6) / scale);
         return font.split(phase.getDescription(), Math.max(1, maxWidth));
     }
