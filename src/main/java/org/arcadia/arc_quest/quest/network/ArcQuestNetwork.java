@@ -10,6 +10,10 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.arcadia.arc_quest.Arc_Quest;
+import org.arcadia.arc_quest.data.sync.network.C2SDatapackContentReadyPacket;
+import org.arcadia.arc_quest.data.sync.network.C2SRequestDatapackContentPacket;
+import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentChunkPacket;
+import org.arcadia.arc_quest.data.sync.network.S2CDatapackContentStartPacket;
 import org.arcadia.arc_quest.dialogue.network.C2SDialogueChoicePacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
@@ -61,7 +65,7 @@ public final class ArcQuestNetwork {
      * 闂?Mod 闂備礁鎼鍛偓姘嵆閸┾偓妞ゆ帒鍊稿瓭濠电偛鎳忕敮锟犲蓟瀹€鈧禒锕傚箚瑜忓Σ鎼佹⒑?{@code modEventBus.addListener(ArcQuestNetwork::register)}闂?
      */
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("8");
+        PayloadRegistrar registrar = event.registrar(Arc_Quest.MOD_ID).versioned("10");
 
         // 闂備礁鍟块崢婊堝磻閹剧粯鐓冮柛蹇擃槸娴滈箖姊洪崘鎻掑辅闁?S2C闂備焦瀵х粙鎴濐焽缁屾槮y to client闂備焦瀵х粙鎴λ囬锕€缁╅柕蹇嬪€曢悡姗€鏌嶈閸撶喖宕洪悙鍝勭劦?
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -73,6 +77,8 @@ public final class ArcQuestNetwork {
         // 闂備礁鍟块崢婊堝磻閹剧粯鐓冮柛蹇擃槸娴滈箖姊洪崘鎻掑辅闁?C2S闂備焦瀵х粙鎴濐焽缁屾槮y to server闂備焦瀵х粙鎴λ囬锕€缁╅柕蹇嬪€曢悡姗€鏌嶈閸撶喖宕洪悙鍝勭劦?
         registrar.playToServer(C2SRequestQuestActionPacket.TYPE, C2SRequestQuestActionPacket.STREAM_CODEC, C2SRequestQuestActionPacket::handle);
         registrar.playToServer(C2SRequestQuestResyncPacket.TYPE, C2SRequestQuestResyncPacket.STREAM_CODEC, C2SRequestQuestResyncPacket::handle);
+        registrar.playToServer(C2SRequestDatapackContentPacket.TYPE, C2SRequestDatapackContentPacket.STREAM_CODEC, C2SRequestDatapackContentPacket::handle);
+        registrar.playToServer(C2SDatapackContentReadyPacket.TYPE, C2SDatapackContentReadyPacket.STREAM_CODEC, C2SDatapackContentReadyPacket::handle);
         registrar.playToServer(C2SRequestMarkerResyncPacket.TYPE, C2SRequestMarkerResyncPacket.STREAM_CODEC, C2SRequestMarkerResyncPacket::handle);
         registrar.playToServer(C2SSubmitOfferPacket.TYPE, C2SSubmitOfferPacket.STREAM_CODEC, C2SSubmitOfferPacket::handle);
         registrar.playToServer(C2SClaimCollectionRewardPacket.TYPE, C2SClaimCollectionRewardPacket.STREAM_CODEC, C2SClaimCollectionRewardPacket::handle);
@@ -92,6 +98,8 @@ public final class ArcQuestNetwork {
 
     private static void registerClientPayloadHandlers(PayloadRegistrar registrar) {
         registrar.playToClient(S2CDatapackReloadEpochPacket.TYPE, S2CDatapackReloadEpochPacket.STREAM_CODEC, S2CDatapackReloadEpochPacket::handle);
+        registrar.playToClient(S2CDatapackContentStartPacket.TYPE, S2CDatapackContentStartPacket.STREAM_CODEC, S2CDatapackContentStartPacket::handle);
+        registrar.playToClient(S2CDatapackContentChunkPacket.TYPE, S2CDatapackContentChunkPacket.STREAM_CODEC, S2CDatapackContentChunkPacket::handle);
         registrar.playToClient(S2CSyncFullDataPacket.TYPE, S2CSyncFullDataPacket.STREAM_CODEC, S2CSyncFullDataPacket::handle);
         registrar.playToClient(S2CSyncQuestStatePacket.TYPE, S2CSyncQuestStatePacket.STREAM_CODEC, S2CSyncQuestStatePacket::handle);
         registrar.playToClient(S2CDeltaProgressPacket.TYPE, S2CDeltaProgressPacket.STREAM_CODEC, S2CDeltaProgressPacket::handle);
@@ -116,6 +124,8 @@ public final class ArcQuestNetwork {
 
     private static void registerClientPayloadCodecs(PayloadRegistrar registrar) {
         registrar.playToClient(S2CDatapackReloadEpochPacket.TYPE, S2CDatapackReloadEpochPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CDatapackContentStartPacket.TYPE, S2CDatapackContentStartPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CDatapackContentChunkPacket.TYPE, S2CDatapackContentChunkPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncFullDataPacket.TYPE, S2CSyncFullDataPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncQuestStatePacket.TYPE, S2CSyncQuestStatePacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CDeltaProgressPacket.TYPE, S2CDeltaProgressPacket.STREAM_CODEC, (packet, context) -> {});
