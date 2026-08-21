@@ -42,6 +42,15 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addScreenTitles() {
+        add("gui.arc_quest.tracking_menu.title", "任务追踪");
+        add("arc_quest.gui.tracking_menu.hint", "滚轮或拖拽浏览 · 点击切换追踪 · 悬浮查看阶段");
+        add("arc_quest.gui.tracking_menu.empty", "当前没有进行中的任务");
+        add("arc_quest.gui.tracking_menu.tracked", "追踪中");
+        add("arc_quest.gui.tracking_menu.current_phase", "当前阶段：%s");
+        add("arc_quest.gui.tracking_menu.no_phase", "暂无活动阶段");
+        add("arc_quest.gui.tracking_menu.no_objectives", "暂无活动目标");
+        add("key.categories.arc_quest", "Arc Quest");
+        add("key.arc_quest.open_tracking_menu", "打开任务追踪菜单");
         add("gui.arc_quest.journal.title", "任务日志");
         add("arc_quest.guide_group.minerals", "矿物");
     }

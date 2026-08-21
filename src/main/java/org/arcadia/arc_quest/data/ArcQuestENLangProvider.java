@@ -42,6 +42,15 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addScreenTitles() {
+        add("gui.arc_quest.tracking_menu.title", "Quest Tracking");
+        add("arc_quest.gui.tracking_menu.hint", "Scroll or drag to browse • Click to track • Hover for phase details");
+        add("arc_quest.gui.tracking_menu.empty", "No active quests");
+        add("arc_quest.gui.tracking_menu.tracked", "TRACKING");
+        add("arc_quest.gui.tracking_menu.current_phase", "CURRENT PHASE: %s");
+        add("arc_quest.gui.tracking_menu.no_phase", "No active phase");
+        add("arc_quest.gui.tracking_menu.no_objectives", "No active objectives");
+        add("key.categories.arc_quest", "Arc Quest");
+        add("key.arc_quest.open_tracking_menu", "Open Quest Tracking Menu");
         add("gui.arc_quest.journal.title", "Quest Journal");
         add("arc_quest.guide_group.minerals", "Minerals");
     }
