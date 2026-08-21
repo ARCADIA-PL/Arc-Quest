@@ -57,7 +57,8 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
-        if (event.getScreen() instanceof QuestEditorScreen) return;
+        if (event.getScreen() instanceof QuestEditorScreen
+                || event.getScreen() instanceof QuestTrackingMenuScreen) return;
         boolean cursorFrame = beginInteractiveOverlayCursorFrame();
         if (QuestSplashRenderer.isActive()) {
             QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
@@ -230,8 +231,11 @@ public class ClientHudEvents {
     public static void onRenderGuiOverlayPre(RenderGuiOverlayEvent.Pre event) {
         // 打开任务/对话/交易/抽卡界面时隐藏生存状态与聊天 HUD
         Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof QuestTrackingMenuScreen) {
+            event.setCanceled(true);
+            return;
+        }
         if (!(mc.screen instanceof QuestJournalScreen
-                || mc.screen instanceof QuestTrackingMenuScreen
                 || mc.screen instanceof QuestEditorScreen
                 || mc.screen instanceof DialogueScreen
                 || mc.screen instanceof AbstractTradeScreen
