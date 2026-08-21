@@ -146,6 +146,26 @@ public final class QuestTrackingMenuScreen extends Screen {
         }
         states.sort(Comparator.comparingDouble(CardRenderState::distanceAbs).reversed());
 
+        String trackedQuestId = ClientQuestTrackingController.INSTANCE.trackedQuestId();
+        CardRenderState trackedState = null;
+        QuestTrackingMenuEntry trackedEntry = null;
+        int firstFullyVisibleIndex = Integer.MAX_VALUE;
+        int lastFullyVisibleIndex = -1;
+        int fullyVisibleTop = 42;
+        int fullyVisibleBottom = height - 22;
+        for (CardRenderState state : states) {
+            if (state.alpha() <= 0.08f) continue;
+            if (state.y() >= fullyVisibleTop && state.y() + state.height() <= fullyVisibleBottom) {
+                firstFullyVisibleIndex = Math.min(firstFullyVisibleIndex, state.index());
+                lastFullyVisibleIndex = Math.max(lastFullyVisibleIndex, state.index());
+            }
+            QuestTrackingMenuEntry entry = entries.get(state.index());
+            if (entry.questId().equals(trackedQuestId)) {
+                trackedState = state;
+                trackedEntry = entry;
+            }
+        }
+
         graphics.enableScissor(railLeft, 38, railRight, height);
         for (CardRenderState state : states) {
             if (state.alpha() <= 0.08f) continue;
@@ -166,9 +186,53 @@ public final class QuestTrackingMenuScreen extends Screen {
         }
         graphics.disableScissor();
 
+        if (trackedState != null && trackedEntry != null && trackedState.alpha() > 0.08f) {
+            renderTrackedCursor(graphics, trackedState, trackedEntry.definition().getThemeColor());
+        }
+        float indicatorAlpha = HudAnimUtil.smoothStep(transitionProgress);
+        if (firstFullyVisibleIndex != Integer.MAX_VALUE && firstFullyVisibleIndex > 0) {
+            renderOverflowIndicator(graphics, centerX, 41, firstFullyVisibleIndex, false, indicatorAlpha);
+        }
+        if (lastFullyVisibleIndex >= 0 && lastFullyVisibleIndex < entries.size() - 1) {
+            renderOverflowIndicator(graphics, centerX, height - 12,
+                    entries.size() - 1 - lastFullyVisibleIndex, true, indicatorAlpha);
+        }
+
         HudCursorManager.beginFrame();
         HudCursorManager.requestPointer(!closing && hovered != null && !dragMoved);
         HudCursorManager.apply();
+    }
+
+    private void renderTrackedCursor(GuiGraphics graphics, CardRenderState state, int themeColor) {
+        int centerY = state.y() + state.height() / 2;
+        int tipX = state.x() - 3;
+        int baseX = tipX - 10;
+        int glowColor = HudAnimUtil.withAlpha(themeColor, Math.round(70 * state.alpha()));
+        int cursorColor = HudAnimUtil.withAlpha(themeColor, Math.round(255 * state.alpha()));
+        for (int step = 0; step < 6; step++) {
+            int halfHeight = 6 - step;
+            int stepX = baseX - 1 + step * 2;
+            graphics.fill(stepX, centerY - halfHeight, stepX + 3, centerY + halfHeight + 1, glowColor);
+        }
+        for (int step = 0; step < 5; step++) {
+            int halfHeight = 5 - step;
+            int stepX = baseX + step * 2;
+            graphics.fill(stepX, centerY - halfHeight, stepX + 2, centerY + halfHeight + 1, cursorColor);
+        }
+    }
+
+    private void renderOverflowIndicator(GuiGraphics graphics, int centerX, int y,
+                                         int hiddenCount, boolean downward, float alpha) {
+        int shadowColor = HudAnimUtil.withAlpha(0x000000, Math.round(135 * alpha));
+        int color = HudAnimUtil.withAlpha(0xFFFFFF, Math.round(180 * alpha));
+        for (int row = 0; row < 3; row++) {
+            int width = downward ? 9 - row * 4 : 1 + row * 4;
+            int rowY = y + row * 2;
+            graphics.fill(centerX - width / 2 + 1, rowY + 1,
+                    centerX + (width + 1) / 2 + 1, rowY + 2, shadowColor);
+            graphics.fill(centerX - width / 2, rowY, centerX + (width + 1) / 2, rowY + 1, color);
+        }
+        graphics.drawString(font, "+" + hiddenCount, centerX + 8, y - 2, color, true);
     }
 
     private float getTransitionProgress(long now) {
