@@ -90,9 +90,9 @@ dependencies {
     implementation fg.deobf("curse.maven:epic-fight-mod-405076:7919289")
     implementation fg.deobf("curse.maven:epic-fight-skill-tree-1295882:7734067")
     implementation fg.deobf('libs:epic_fight_ponder:1.0.0')
-/*    implementation fg.deobf("curse.maven:embeddium-908741:5556138")
+    implementation fg.deobf("curse.maven:embeddium-908741:5556138")
     implementation fg.deobf("curse.maven:chloride-931925:6615986")
-    implementation fg.deobf("curse.maven:oculus-581495:5299671")*/
+    implementation fg.deobf("curse.maven:oculus-581495:5299671")
     compileOnly "xaero.minimap:xaerominimap-forge-1.20.1:26.4.2:dev"
     runtimeOnly "xaero.minimap:xaerominimap-forge-1.20.1:26.4.2:dev"
     implementation "xaero.map:xaeroworldmap-forge-1.20.1:1.44.2:dev"
