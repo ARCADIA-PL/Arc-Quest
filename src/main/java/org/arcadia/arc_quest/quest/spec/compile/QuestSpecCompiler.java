@@ -430,7 +430,7 @@ public final class QuestSpecCompiler {
         return switch (spec.type) {
             case "item" -> {
                 Item item = clientPresentation
-                        ? ForgeRegistries.ITEMS.getValue(parseId(spec.itemId))
+                        ? BuiltInRegistries.ITEM.get(parseId(spec.itemId))
                         : requireItem(spec.itemId);
                 yield item == null ? null : new ItemReward(item, Math.max(1, spec.count));
             }

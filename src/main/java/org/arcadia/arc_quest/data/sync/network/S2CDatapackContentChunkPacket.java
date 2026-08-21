@@ -14,7 +14,7 @@ import java.util.Arrays;
 public record S2CDatapackContentChunkPacket(long epoch, String contentHash, int chunkIndex,
                                             byte[] payload) implements CustomPacketPayload {
     public static final Type<S2CDatapackContentChunkPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, datapack_content_chunk));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "datapack_content_chunk"));
     public static final StreamCodec<RegistryFriendlyByteBuf, S2CDatapackContentChunkPacket> STREAM_CODEC =
             StreamCodec.ofMember(S2CDatapackContentChunkPacket::encode, S2CDatapackContentChunkPacket::decode);
     public S2CDatapackContentChunkPacket {

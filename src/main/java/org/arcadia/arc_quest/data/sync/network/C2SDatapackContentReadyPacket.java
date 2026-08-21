@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public record C2SDatapackContentReadyPacket(long epoch) implements CustomPacketPayload {
     public static final Type<C2SDatapackContentReadyPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, datapack_content_ready));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "datapack_content_ready"));
     public static final StreamCodec<RegistryFriendlyByteBuf, C2SDatapackContentReadyPacket> STREAM_CODEC =
             StreamCodec.ofMember(C2SDatapackContentReadyPacket::encode, C2SDatapackContentReadyPacket::decode);
     private static final Map<UUID, Long> ACKNOWLEDGED_EPOCHS = new ConcurrentHashMap<>();

@@ -3,7 +3,7 @@ package org.arcadia.arc_quest.client.data.sync;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.arcadia.arc_quest.data.sync.DatapackContentModule;
 import org.arcadia.arc_quest.data.sync.DatapackContentSnapshot;
 import org.arcadia.arc_quest.data.sync.DatapackRegistrySnapshotLifecycle;
@@ -125,7 +125,7 @@ public final class ClientDatapackContentApplier {
             if (spec.entityBindings != null) {
                 spec.entityBindings.forEach(binding -> {
                     ResourceLocation entityId = ResourceLocation.tryParse(binding.entityType);
-                    EntityType<?> entityType = entityId == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(entityId);
+                    EntityType<?> entityType = entityId == null ? null : BuiltInRegistries.ENTITY_TYPE.get(entityId);
                     if (entityType == null) throw new IllegalArgumentException("Unknown synchronized entity type: " + binding.entityType);
                     entityBindings.put(entityType, binding.dialogueId);
                 });

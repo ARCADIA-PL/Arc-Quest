@@ -125,7 +125,8 @@ public final class ClientDatapackContentReceiver {
     }
 
     private static void signalReady(long epoch) {
-        ArcQuestNetwork.CHANNEL.sendToServer(new C2SDatapackContentReadyPacket(epoch));
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new C2SDatapackContentReadyPacket(epoch));
     }
 
     private static boolean isValidHash(String hash) {

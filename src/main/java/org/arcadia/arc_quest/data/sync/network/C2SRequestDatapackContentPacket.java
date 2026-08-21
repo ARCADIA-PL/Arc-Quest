@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 public record C2SRequestDatapackContentPacket(long clientEpoch) implements CustomPacketPayload {
     public static final Type<C2SRequestDatapackContentPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, request_datapack_content));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "request_datapack_content"));
     public static final StreamCodec<RegistryFriendlyByteBuf, C2SRequestDatapackContentPacket> STREAM_CODEC =
             StreamCodec.ofMember(C2SRequestDatapackContentPacket::encode, C2SRequestDatapackContentPacket::decode);
     private static final long REQUEST_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(1L);

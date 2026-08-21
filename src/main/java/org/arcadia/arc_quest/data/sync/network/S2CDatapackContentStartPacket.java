@@ -11,7 +11,7 @@ import org.arcadia.arc_quest.Arc_Quest;
 public record S2CDatapackContentStartPacket(long epoch, String contentHash, int chunkCount,
                                             int compressedBytes, int uncompressedBytes) implements CustomPacketPayload {
     public static final Type<S2CDatapackContentStartPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, datapack_content_start));
+            new Type<>(ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "datapack_content_start"));
     public static final StreamCodec<RegistryFriendlyByteBuf, S2CDatapackContentStartPacket> STREAM_CODEC =
             StreamCodec.ofMember(S2CDatapackContentStartPacket::encode, S2CDatapackContentStartPacket::decode);
     public static void encode(S2CDatapackContentStartPacket packet, FriendlyByteBuf buffer) {

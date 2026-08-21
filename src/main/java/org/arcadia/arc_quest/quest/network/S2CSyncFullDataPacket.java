@@ -112,7 +112,7 @@ public final class S2CSyncFullDataPacket implements CustomPacketPayload {
 
     private static CompoundTag decompress(byte[] compressed) {
         try (DataInputStream input = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(compressed)))) {
-            return NbtIo.read(input, new NbtAccounter(MAX_UNCOMPRESSED_NBT_BYTES));
+            return NbtIo.read(input, new NbtAccounter(MAX_UNCOMPRESSED_NBT_BYTES, 512));
         } catch (IOException | RuntimeException exception) {
             throw new IllegalArgumentException("Invalid compressed player quest snapshot", exception);
         }
