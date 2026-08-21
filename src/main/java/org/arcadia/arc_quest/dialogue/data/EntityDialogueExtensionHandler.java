@@ -20,6 +20,7 @@ import org.arcadia.arc_quest.api.event.registry.ArcQuestRegistrationEvent;
 import org.arcadia.arc_quest.dialogue.api.DialogueContext;
 import org.arcadia.arc_quest.dialogue.api.DialogueTree;
 import org.arcadia.arc_quest.dialogue.api.IEntityDialogueExtension;
+import org.arcadia.arc_quest.dialogue.api.IDialogueNpc;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.dialogue.runtime.DialogueSession;
@@ -222,7 +223,9 @@ public class EntityDialogueExtensionHandler {
      * 检查距离，超过最大距离则终止对话
      */
     private static void checkDistance(LivingEntity entity, ServerPlayer player) {
-        double maxDist = 5.0;
+        double maxDist = entity instanceof IDialogueNpc npc
+                ? npc.getMaxDialogueDistance()
+                : 5.0;
 
         if (EntityDialogueExtensionManager.INSTANCE.hasExtensionsForEntityType(entity.getType())) {
             var extensions = EntityDialogueExtensionManager.INSTANCE.getExtensionsForEntityType(entity.getType());

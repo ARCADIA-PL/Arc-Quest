@@ -19,6 +19,7 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
 
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
@@ -40,7 +41,7 @@ public final class S2CSyncQuestStatePacket implements CustomPacketPayload {
 
     public S2CSyncQuestStatePacket(QuestRuntimeData data, long playerSessionEpoch,
                                    long baseRevision, long newRevision) {
-        this.data = data;
+        this.data = Objects.requireNonNull(data, "data").copy();
         this.playerSessionEpoch = Math.max(0L, playerSessionEpoch);
         this.baseRevision = Math.max(0L, baseRevision);
         this.newRevision = Math.max(0L, newRevision);
