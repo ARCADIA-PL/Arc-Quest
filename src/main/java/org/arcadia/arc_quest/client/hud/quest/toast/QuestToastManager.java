@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -105,6 +106,7 @@ public final class QuestToastManager {
         boolean isJournalVisible = mc.screen instanceof QuestJournalScreen;
         boolean isFrozen = QuestSplashRenderer.isActive() ||
                 isJournalVisible ||
+                mc.screen instanceof QuestTrackingMenuScreen ||
                 mc.screen instanceof DialogueScreen;
 
         // 1. 让存活的 Toast 更新冻结时间戳

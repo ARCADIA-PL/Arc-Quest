@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.client.hud.quest.toast.BranchChoiceToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.PhaseUpdateToast;
 import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
+import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
@@ -84,7 +85,8 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
         if (mc.player == null || mc.options.hideGui) return;
 
         boolean isSplashActive = QuestSplashRenderer.isActive();
-        boolean isBlockingScreen = isSplashActive || mc.screen instanceof QuestJournalScreen || mc.screen instanceof DialogueScreen;
+        boolean isBlockingScreen = isSplashActive || mc.screen instanceof QuestJournalScreen
+                || mc.screen instanceof QuestTrackingMenuScreen || mc.screen instanceof DialogueScreen;
 
         long now = Util.getMillis();
         if (lastRenderTime == 0) lastRenderTime = now;

@@ -22,6 +22,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.shop.AbstractTradeScreen;
 import org.arcadia.arc_quest.client.hud.quest.ponder.QuestIntelPanel;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
+import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.SplashType;
@@ -214,6 +215,7 @@ public class ClientHudEvents {
         // 打开任务/对话/交易/抽卡界面时隐藏血量/饥饿/护甲/氧气
         Minecraft mc = Minecraft.getInstance();
         if (!(mc.screen instanceof QuestJournalScreen
+                || mc.screen instanceof QuestTrackingMenuScreen
                 || mc.screen instanceof QuestEditorScreen
                 || mc.screen instanceof DialogueScreen
                 || mc.screen instanceof AbstractTradeScreen
