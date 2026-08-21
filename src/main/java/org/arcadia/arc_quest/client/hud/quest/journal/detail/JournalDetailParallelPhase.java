@@ -556,8 +556,20 @@ public class JournalDetailParallelPhase {
                         g.fill((int) cx, cy, (int) (cx + sFill), cy + 2, fillColor);
                         g.fill((int) (cx + sFill) - 2, cy - 1, (int) (cx + sFill), cy + 3, brightColor);
                     }
+
+                    boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive()
+                            || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
+                    int absSegmentX = x + 12 + (int) cx;
+                    int absSegmentY = (int) Math.round(scrollAreaY + 12
+                            - parent.getDetailScrollOffset() + cy);
+                    boolean progressBarHovered = !isBeingDragged && !panelsActive
+                            && mx >= absSegmentX && mx < x + 12 + (int) (cx + segW)
+                            && my >= absSegmentY - 2 && my < absSegmentY + 4
+                            && mx >= clipAbsX1 && mx < clipAbsX2
+                            && my >= clipAbsY1 && my < clipAbsY2;
+                    CollectObjectiveTooltip.request(screen, obj, progressBarHovered);
+
                     if (canUpload) {
-                        boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
                         if (!panelsActive) {
                             float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
                             int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * cardSafeA * (actualDAlpha / dAlpha) / 255f));

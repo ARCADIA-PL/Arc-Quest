@@ -300,8 +300,17 @@ public class JournalDetailSinglePhase {
                 g.fill(objX + fillW - 2, localY - 1, objX + fillW, localY + 3, brightColor);
             }
 
+            boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive()
+                    || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
+            int absBarX = x + 12 + objX;
+            int absBarY = scrollAreaY + 12 - (int) parent.getDetailScrollOffset() + localY;
+            boolean progressBarHovered = !panelsActive
+                    && mx >= absBarX && mx < absBarX + barW
+                    && my >= absBarY - 2 && my < absBarY + 4
+                    && my >= scrollAreaY && my < scrollAreaY + scrollAreaH;
+            CollectObjectiveTooltip.request(screen, phase.getObjectives().get(i), progressBarHovered);
+
             if (canSubmit) {
-                boolean panelsActive = QuestIntelPanel.isActive() || QuestOfferPanel.isActive() || QuestHistoryPanel.isActive() || QuestStoryPanel.isActive();
                 if (!panelsActive) {
                     float breath = (float) (Math.sin(Util.getMillis() / 250.0) * 0.5f + 0.5f);
                     int glowColor = HudAnimUtil.withAlpha(activeTheme, (int) (60 * breath * oAlpha));
