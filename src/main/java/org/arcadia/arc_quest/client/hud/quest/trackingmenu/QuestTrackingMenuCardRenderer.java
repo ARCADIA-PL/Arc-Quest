@@ -21,7 +21,7 @@ final class QuestTrackingMenuCardRenderer {
                        int x, int y, int width, int height,
                        float alpha, float detailAlpha, boolean hovered) {
         int themeColor = entry.definition().getThemeColor();
-        float detailProgress = HudAnimUtil.smoothStep(Math.max(0f, Math.min(1f, detailAlpha)));
+        float detailProgress = Math.max(0f, Math.min(1f, detailAlpha));
         QuestSplashCardRenderer.render(graphics, entry.definition(), entry.splashTexture(),
                 x, y, width, height, themeColor, alpha);
 
@@ -34,26 +34,20 @@ final class QuestTrackingMenuCardRenderer {
         if ((titleColor >>> 24) > 3) {
             drawEllipsized(graphics, font, entry.definition().getDisplayName(),
                     x + CARD_PADDING,
-                    y + height - font.lineHeight - 7 + Math.round(detailProgress * 4f),
+                    y + height - font.lineHeight - 7,
                     width - CARD_PADDING * 2, titleColor);
         }
 
-        if (hovered && detailProgress < 0.99f) {
-            int hoverColor = HudAnimUtil.withAlpha(0xFFFFFF,
-                    Math.round(42 * alpha * (1f - detailProgress)));
-            graphics.fill(x, y, x + width, y + height, hoverColor);
-        }
-
-        if (detailProgress > 0.01f) {
+        if (detailProgress > 0.02f) {
             renderPhaseSummary(graphics, font, entry, x, y, width, height,
-                    themeColor, alpha * detailProgress, detailProgress);
+                    themeColor, alpha * detailProgress);
         }
     }
 
     private static void renderPhaseSummary(GuiGraphics graphics, Font font,
                                            QuestTrackingMenuEntry entry,
                                            int x, int y, int width, int height,
-                                           int themeColor, float alpha, float revealProgress) {
+                                           int themeColor, float alpha) {
         int overlayAlpha = Math.round(225 * alpha);
         graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x03060B, overlayAlpha));
         graphics.fill(x, y, x + 3, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
@@ -64,15 +58,15 @@ final class QuestTrackingMenuCardRenderer {
                 : phase.getDisplayName();
         Component phaseHeader = Component.translatable("arc_quest.gui.tracking_menu.current_phase", phaseName);
         int textX = x + CARD_PADDING + 3;
-        int textY = y + CARD_PADDING + Math.round((1f - revealProgress) * 7f);
+        int textY = y + CARD_PADDING;
         int textWidth = width - CARD_PADDING * 2 - 3;
         drawEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
-                HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
+                HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), false);
         textY += font.lineHeight + 5;
 
         if (phase == null || entry.phaseId() == null || phase.getObjectives().isEmpty()) {
             graphics.drawString(font, Component.translatable("arc_quest.gui.tracking_menu.no_objectives"),
-                    textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)), true);
+                    textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)), false);
             return;
         }
 
@@ -83,7 +77,7 @@ final class QuestTrackingMenuCardRenderer {
             int descriptionLineCount = Math.min(2, descriptionLines.size());
             for (int lineIndex = 0; lineIndex < descriptionLineCount; lineIndex++) {
                 graphics.drawString(font, descriptionLines.get(lineIndex), textX, textY,
-                        HudAnimUtil.withAlpha(0xAAB1BC, Math.round(235 * alpha)), true);
+                        HudAnimUtil.withAlpha(0xAAB1BC, Math.round(235 * alpha)), false);
                 textY += font.lineHeight + 2;
             }
             textY += 2;
@@ -103,7 +97,7 @@ final class QuestTrackingMenuCardRenderer {
         Component phaseProgress = Component.translatable("arc_quest.gui.tracking_menu.phase_progress",
                 completedObjectives, visibleObjectives);
         graphics.drawString(font, phaseProgress, textX, textY,
-                HudAnimUtil.withAlpha(themeColor, Math.round(240 * alpha)), true);
+                HudAnimUtil.withAlpha(themeColor, Math.round(240 * alpha)), false);
         textY += font.lineHeight + 5;
 
         int renderedObjectives = 0;
@@ -129,7 +123,7 @@ final class QuestTrackingMenuCardRenderer {
             if (textY + objectiveLineCount * (font.lineHeight + 2) > bottomY) break;
             for (int lineIndex = 0; lineIndex < objectiveLineCount; lineIndex++) {
                 graphics.drawString(font, wrapped.get(lineIndex), textX, textY,
-                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), true);
+                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), false);
                 textY += font.lineHeight + 2;
             }
             renderedObjectives++;
@@ -139,20 +133,25 @@ final class QuestTrackingMenuCardRenderer {
         if (remainingObjectives > 0 && textY + font.lineHeight <= bottomY) {
             graphics.drawString(font,
                     Component.translatable("arc_quest.gui.tracking_menu.more_objectives", remainingObjectives),
-                    textX, textY, HudAnimUtil.withAlpha(0x8E96A3, Math.round(230 * alpha)), true);
+                    textX, textY, HudAnimUtil.withAlpha(0x8E96A3, Math.round(230 * alpha)), false);
         }
     }
 
     private static void drawEllipsized(GuiGraphics graphics, Font font, Component text,
                                        int x, int y, int maxWidth, int color) {
+        drawEllipsized(graphics, font, text, x, y, maxWidth, color, true);
+    }
+
+    private static void drawEllipsized(GuiGraphics graphics, Font font, Component text,
+                                       int x, int y, int maxWidth, int color, boolean shadow) {
         if (font.width(text) <= maxWidth) {
-            graphics.drawString(font, text, x, y, color, true);
+            graphics.drawString(font, text, x, y, color, shadow);
             return;
         }
         String value = text.getString();
         String ellipsis = "...";
         int allowed = Math.max(0, maxWidth - font.width(ellipsis));
         graphics.drawString(font, font.plainSubstrByWidth(value, allowed) + ellipsis,
-                x, y, color, true);
+                x, y, color, shadow);
     }
 }
