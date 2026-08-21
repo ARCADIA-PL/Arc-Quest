@@ -21,6 +21,7 @@ final class QuestTrackingMenuCardRenderer {
                        int x, int y, int width, int height,
                        float alpha, float detailAlpha, boolean hovered) {
         int themeColor = entry.definition().getThemeColor();
+        float detailProgress = HudAnimUtil.smoothStep(Math.max(0f, Math.min(1f, detailAlpha)));
         QuestSplashCardRenderer.render(graphics, entry.definition(), entry.splashTexture(),
                 x, y, width, height, themeColor, alpha);
 
@@ -28,28 +29,31 @@ final class QuestTrackingMenuCardRenderer {
         graphics.fillGradient(x, y + height - bottomShadeHeight, x + width, y + height,
                 HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, Math.round(220 * alpha)));
 
-        int titleColor = HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * alpha * (1f - detailAlpha)));
+        int titleColor = HudAnimUtil.withAlpha(0xFFFFFF,
+                Math.round(255 * alpha * (1f - detailProgress)));
         if ((titleColor >>> 24) > 3) {
             drawEllipsized(graphics, font, entry.definition().getDisplayName(),
-                    x + CARD_PADDING, y + height - font.lineHeight - 7,
+                    x + CARD_PADDING,
+                    y + height - font.lineHeight - 7 + Math.round(detailProgress * 4f),
                     width - CARD_PADDING * 2, titleColor);
         }
 
-        if (hovered && detailAlpha < 0.01f) {
-            int hoverColor = HudAnimUtil.withAlpha(0xFFFFFF, Math.round(42 * alpha));
+        if (hovered && detailProgress < 0.99f) {
+            int hoverColor = HudAnimUtil.withAlpha(0xFFFFFF,
+                    Math.round(42 * alpha * (1f - detailProgress)));
             graphics.fill(x, y, x + width, y + height, hoverColor);
         }
 
-        if (detailAlpha > 0.01f) {
+        if (detailProgress > 0.01f) {
             renderPhaseSummary(graphics, font, entry, x, y, width, height,
-                    themeColor, alpha * detailAlpha);
+                    themeColor, alpha * detailProgress, detailProgress);
         }
     }
 
     private static void renderPhaseSummary(GuiGraphics graphics, Font font,
                                            QuestTrackingMenuEntry entry,
                                            int x, int y, int width, int height,
-                                           int themeColor, float alpha) {
+                                           int themeColor, float alpha, float revealProgress) {
         int overlayAlpha = Math.round(225 * alpha);
         graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x03060B, overlayAlpha));
         graphics.fill(x, y, x + 3, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
@@ -60,7 +64,7 @@ final class QuestTrackingMenuCardRenderer {
                 : phase.getDisplayName();
         Component phaseHeader = Component.translatable("arc_quest.gui.tracking_menu.current_phase", phaseName);
         int textX = x + CARD_PADDING + 3;
-        int textY = y + CARD_PADDING;
+        int textY = y + CARD_PADDING + Math.round((1f - revealProgress) * 7f);
         int textWidth = width - CARD_PADDING * 2 - 3;
         drawEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
                 HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
