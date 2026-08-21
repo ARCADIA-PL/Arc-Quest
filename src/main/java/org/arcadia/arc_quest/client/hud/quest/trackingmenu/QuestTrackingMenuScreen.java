@@ -83,7 +83,7 @@ public final class QuestTrackingMenuScreen extends Screen {
             return;
         }
 
-        targetPosition = clampPosition(targetPosition);
+        rebaseCircularPosition();
         position += (targetPosition - position) * Math.min(1.0, dt * 14.0);
 
         int railWidth = calculateRailWidth();
@@ -126,7 +126,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         int centerY = height / 2 + 8;
         List<CardRenderState> states = new ArrayList<>();
         for (int index = 0; index < entries.size(); index++) {
-            double distance = index - position;
+            double distance = circularDistance(index, position);
             if (Math.abs(distance) > 3.4) continue;
             float distanceAbs = (float) Math.abs(distance);
             float revealDelay = Math.min(0.24f, distanceAbs * 0.065f);
@@ -143,17 +143,14 @@ public final class QuestTrackingMenuScreen extends Screen {
             int drawY = centerY + (int) Math.round(distance * cardSpacing * spread) - drawHeight / 2;
             float alpha = HudAnimUtil.smoothStep(cardProgress)
                     * Math.max(0.24f, 1f - distanceAbs * 0.23f);
-            states.add(new CardRenderState(index, drawX, drawY, drawWidth, drawHeight, alpha, distanceAbs));
+            states.add(new CardRenderState(index, drawX, drawY, drawWidth, drawHeight,
+                    alpha, distance, distanceAbs));
         }
         states.sort(Comparator.comparingDouble(CardRenderState::distanceAbs).reversed());
 
         String trackedQuestId = ClientQuestTrackingController.INSTANCE.trackedQuestId();
         CardRenderState trackedState = null;
         QuestTrackingMenuEntry trackedEntry = null;
-        int firstIntersectingIndex = Integer.MAX_VALUE;
-        int lastIntersectingIndex = -1;
-        boolean partialAbove = false;
-        boolean partialBelow = false;
         int viewportTop = 38;
         int viewportBottom = height;
         for (CardRenderState state : states) {
@@ -161,10 +158,6 @@ public final class QuestTrackingMenuScreen extends Screen {
             boolean intersectsViewport = state.y() + state.height() > viewportTop
                     && state.y() < viewportBottom;
             if (!intersectsViewport) continue;
-            firstIntersectingIndex = Math.min(firstIntersectingIndex, state.index());
-            lastIntersectingIndex = Math.max(lastIntersectingIndex, state.index());
-            partialAbove |= state.y() < viewportTop;
-            partialBelow |= state.y() + state.height() > viewportBottom;
             QuestTrackingMenuEntry entry = entries.get(state.index());
             if (entry.questId().equals(trackedQuestId)) {
                 trackedState = state;
@@ -177,7 +170,7 @@ public final class QuestTrackingMenuScreen extends Screen {
             if (state.alpha() <= 0.08f) continue;
             QuestTrackingMenuEntry entry = entries.get(state.index());
             cardHits.add(new CardHit(entry.questId(), state.index(), state.x(), state.y(),
-                    state.width(), state.height(), state.distanceAbs()));
+                    state.width(), state.height(), state.distance(), state.distanceAbs()));
         }
         CardHit hovered = closing ? null : findTopCard(mouseX, mouseY);
         updateHoverState(hovered, now, dt);
@@ -194,15 +187,6 @@ public final class QuestTrackingMenuScreen extends Screen {
 
         if (trackedState != null && trackedEntry != null && trackedState.alpha() > 0.08f) {
             renderTrackedCursor(graphics, trackedState, trackedEntry.definition().getThemeColor());
-        }
-        float indicatorAlpha = HudAnimUtil.smoothStep(transitionProgress);
-        int hiddenAbove = firstIntersectingIndex == Integer.MAX_VALUE ? 0 : firstIntersectingIndex;
-        if (partialAbove || hiddenAbove > 0) {
-            renderOverflowIndicator(graphics, centerX, 41, hiddenAbove, false, indicatorAlpha);
-        }
-        int hiddenBelow = lastIntersectingIndex < 0 ? 0 : entries.size() - 1 - lastIntersectingIndex;
-        if (partialBelow || hiddenBelow > 0) {
-            renderOverflowIndicator(graphics, centerX, height - 12, hiddenBelow, true, indicatorAlpha);
         }
 
         HudCursorManager.beginFrame();
@@ -231,22 +215,6 @@ public final class QuestTrackingMenuScreen extends Screen {
         graphics.pose().mulPose(Axis.ZP.rotationDegrees(-38f));
         graphics.fill(-armLength, -1, 1, 1, color);
         graphics.pose().popPose();
-    }
-
-    private void renderOverflowIndicator(GuiGraphics graphics, int centerX, int y,
-                                         int hiddenCount, boolean downward, float alpha) {
-        int shadowColor = HudAnimUtil.withAlpha(0x000000, Math.round(135 * alpha));
-        int color = HudAnimUtil.withAlpha(0xFFFFFF, Math.round(180 * alpha));
-        for (int row = 0; row < 3; row++) {
-            int width = downward ? 9 - row * 4 : 1 + row * 4;
-            int rowY = y + row * 2;
-            graphics.fill(centerX - width / 2 + 1, rowY + 1,
-                    centerX + (width + 1) / 2 + 1, rowY + 2, shadowColor);
-            graphics.fill(centerX - width / 2, rowY, centerX + (width + 1) / 2, rowY + 1, color);
-        }
-        if (hiddenCount > 0) {
-            graphics.drawString(font, "+" + hiddenCount, centerX + 8, y - 2, color, true);
-        }
     }
 
     private float getTransitionProgress(long now) {
@@ -304,7 +272,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         if (desiredIndex < 0) desiredIndex = 0;
         selectedQuestId = entries.get(desiredIndex).questId();
         if (initializePosition) position = targetPosition = desiredIndex;
-        else targetPosition = desiredIndex;
+        else targetPosition = nearestVirtualPosition(position, desiredIndex);
     }
 
     private void updateHoverState(CardHit hovered, long now, float dt) {
@@ -339,8 +307,9 @@ public final class QuestTrackingMenuScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollDelta) {
         if (closing || mouseX < interactionRailLeft || entries.isEmpty() || scrollDelta == 0.0) return false;
-        targetPosition = clampPosition(Math.rint(targetPosition - Math.signum(scrollDelta)));
-        selectedQuestId = entries.get((int) Math.round(targetPosition)).questId();
+        if (entries.size() == 1) return true;
+        targetPosition = Math.rint(targetPosition - Math.signum(scrollDelta));
+        selectedQuestId = entries.get(wrappedIndex(targetPosition)).questId();
         return true;
     }
 
@@ -357,6 +326,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         pressedQuestId = hit.questId();
         dragging = true;
         dragMoved = false;
+        targetPosition = position;
         dragStartX = mouseX;
         dragStartY = mouseY;
         lastDragY = mouseY;
@@ -374,7 +344,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         }
         double deltaY = mouseY - lastDragY;
         lastDragY = mouseY;
-        targetPosition = clampPosition(targetPosition - deltaY / Math.max(1, cardSpacing));
+        targetPosition -= deltaY / Math.max(1, cardSpacing);
         position = targetPosition;
         return true;
     }
@@ -385,10 +355,12 @@ public final class QuestTrackingMenuScreen extends Screen {
         dragging = false;
         if (!dragMoved) {
             CardHit hit = findTopCard(mouseX, mouseY);
-            if (hit != null && hit.questId().equals(pressedQuestId)) selectAndTrack(hit.index());
+            if (hit != null && hit.questId().equals(pressedQuestId)) {
+                selectAndTrack(hit.index(), hit.distance());
+            }
         } else {
-            targetPosition = clampPosition(Math.rint(targetPosition));
-            int selectedIndex = (int) Math.round(targetPosition);
+            targetPosition = Math.rint(targetPosition);
+            int selectedIndex = wrappedIndex(targetPosition);
             selectedQuestId = entries.get(selectedIndex).questId();
         }
         pressedQuestId = null;
@@ -396,11 +368,11 @@ public final class QuestTrackingMenuScreen extends Screen {
         return true;
     }
 
-    private void selectAndTrack(int index) {
+    private void selectAndTrack(int index, double distance) {
         if (index < 0 || index >= entries.size()) return;
         QuestTrackingMenuEntry entry = entries.get(index);
         selectedQuestId = entry.questId();
-        targetPosition = index;
+        targetPosition = Math.rint(position + distance);
         if (entry.phaseId() != null) {
             ClientQuestTrackingController.INSTANCE.requestFocus(entry.questId(), entry.phaseId());
         } else {
@@ -425,9 +397,36 @@ public final class QuestTrackingMenuScreen extends Screen {
         return -1;
     }
 
-    private double clampPosition(double value) {
-        if (entries.isEmpty()) return 0.0;
-        return Math.max(0.0, Math.min(entries.size() - 1.0, value));
+    private double circularDistance(int index, double referencePosition) {
+        int size = entries.size();
+        if (size <= 1) return 0.0;
+        double distance = index - referencePosition;
+        return distance - Math.floor(distance / size + 0.5) * size;
+    }
+
+    private double nearestVirtualPosition(double referencePosition, int index) {
+        int size = entries.size();
+        if (size <= 1) return 0.0;
+        double cycle = Math.rint((referencePosition - index) / size);
+        return index + cycle * size;
+    }
+
+    private int wrappedIndex(double virtualPosition) {
+        if (entries.isEmpty()) return 0;
+        long roundedPosition = Math.round(virtualPosition);
+        return Math.floorMod(roundedPosition, entries.size());
+    }
+
+    private void rebaseCircularPosition() {
+        int size = entries.size();
+        if (size <= 1) {
+            position = targetPosition = 0.0;
+            return;
+        }
+        if (Math.abs(position) < 4096.0 && Math.abs(targetPosition) < 4096.0) return;
+        double completedCycles = Math.floor(position / size);
+        position -= completedCycles * size;
+        targetPosition -= completedCycles * size;
     }
 
     @Override
@@ -462,11 +461,11 @@ public final class QuestTrackingMenuScreen extends Screen {
     }
 
     private record CardRenderState(int index, int x, int y, int width, int height,
-                                   float alpha, float distanceAbs) {
+                                   float alpha, double distance, float distanceAbs) {
     }
 
     private record CardHit(String questId, int index, int x, int y, int width, int height,
-                           float distanceAbs) {
+                           double distance, float distanceAbs) {
         boolean contains(double mouseX, double mouseY) {
             return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
         }
