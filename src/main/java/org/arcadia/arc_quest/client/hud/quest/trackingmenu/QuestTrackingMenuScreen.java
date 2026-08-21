@@ -12,6 +12,7 @@ import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -19,13 +20,18 @@ import java.util.List;
 
 public final class QuestTrackingMenuScreen extends Screen {
     private static final long DETAIL_HOVER_DELAY_MS = 1000L;
+    private static final long OPEN_DURATION_MS = 260L;
+    private static final long CLOSE_DURATION_MS = 220L;
     private static final double DRAG_THRESHOLD = 4.0;
 
     private List<QuestTrackingMenuEntry> entries = List.of();
     private final List<CardHit> cardHits = new ArrayList<>();
     private long knownRevision = Long.MIN_VALUE;
     private long lastRenderTime;
-    private float openAlpha;
+    private long openedAt;
+    private long closeStartedAt;
+    private float closeStartTransition;
+    private boolean closing;
     private double position;
     private double targetPosition;
     private String selectedQuestId;
@@ -39,6 +45,7 @@ public final class QuestTrackingMenuScreen extends Screen {
     private double dragStartY;
     private double lastDragY;
     private int cardSpacing = 80;
+    private int interactionRailLeft;
 
     public QuestTrackingMenuScreen() {
         super(Component.translatable("gui.arc_quest.tracking_menu.title"));
@@ -47,8 +54,12 @@ public final class QuestTrackingMenuScreen extends Screen {
     @Override
     protected void init() {
         refreshEntries(true);
-        lastRenderTime = Util.getMillis();
-        openAlpha = 0f;
+        openedAt = Util.getMillis();
+        lastRenderTime = openedAt;
+        closeStartedAt = 0L;
+        closeStartTransition = 1f;
+        closing = false;
+        updateInteractionRailLeft();
     }
 
     @Override
@@ -58,40 +69,45 @@ public final class QuestTrackingMenuScreen extends Screen {
         lastRenderTime = now;
         refreshEntries(false);
 
-        openAlpha = HudAnimUtil.lerp(openAlpha, 1f, 0.18f, dt);
+        float transition = getTransition(now);
+        if (closing && transition <= 0f) {
+            HudCursorManager.beginFrame();
+            HudCursorManager.apply();
+            if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
+            return;
+        }
+
         targetPosition = clampPosition(targetPosition);
         position += (targetPosition - position) * Math.min(1.0, dt * 14.0);
 
-        graphics.fill(0, 0, width, height, HudAnimUtil.withAlpha(0x000000, Math.round(92 * openAlpha)));
-        int railLeft = width / 2;
-        graphics.fill(railLeft, 0, width, height,
-                HudAnimUtil.withAlpha(0x02050A, Math.round(125 * openAlpha)));
-        graphics.fill(railLeft, 0, railLeft + 1, height,
-                HudAnimUtil.withAlpha(0xFFFFFF, Math.round(28 * openAlpha)));
+        int railWidth = Math.max(96, Math.min(220, Math.round(width * 0.20f)));
+        int railRightMargin = Math.max(12, Math.round(width * 0.07f));
+        int railRight = width - railRightMargin;
+        int railLeft = railRight - railWidth;
+        interactionRailLeft = railLeft;
+        int centerX = railLeft + railWidth / 2;
 
         Component heading = Component.translatable("gui.arc_quest.tracking_menu.title");
-        int headingX = railLeft + (width - railLeft - font.width(heading)) / 2;
+        int headingX = centerX - font.width(heading) / 2;
         graphics.drawString(font, heading, headingX, 12,
-                HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * openAlpha)), true);
+                HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * transition)), true);
         Component hint = Component.translatable("arc_quest.gui.tracking_menu.hint");
-        int hintX = railLeft + (width - railLeft - font.width(hint)) / 2;
-        graphics.drawString(font, hint, hintX, 12 + font.lineHeight + 3,
-                HudAnimUtil.withAlpha(0x999999, Math.round(210 * openAlpha)), true);
+        drawCenteredScaledString(graphics, hint, centerX, 12 + font.lineHeight + 3,
+                railWidth - 8, HudAnimUtil.withAlpha(0x999999, Math.round(210 * transition)));
 
         cardHits.clear();
         if (entries.isEmpty()) {
             Component empty = Component.translatable("arc_quest.gui.tracking_menu.empty");
-            graphics.drawCenteredString(font, empty, railLeft + (width - railLeft) / 2,
-                    height / 2, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * openAlpha)));
+            graphics.drawCenteredString(font, empty, centerX,
+                    height / 2, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * transition)));
             HudCursorManager.beginFrame();
             HudCursorManager.apply();
             return;
         }
 
-        int cardWidth = Math.max(150, Math.min(320, width / 2 - 44));
-        int cardHeight = Math.max(84, Math.round(cardWidth * 9f / 16f));
-        cardSpacing = Math.max(56, Math.round(cardHeight * 0.66f));
-        int centerX = railLeft + (width - railLeft) / 2;
+        int cardWidth = railWidth - 12;
+        int cardHeight = Math.max(54, Math.round(cardWidth * 9f / 16f));
+        cardSpacing = cardHeight + Math.max(8, Math.round(cardHeight * 0.08f));
         int centerY = height / 2 + 8;
         int trackedIndex = indexOf(ClientQuestTrackingController.INSTANCE.trackedQuestId());
 
@@ -100,23 +116,23 @@ public final class QuestTrackingMenuScreen extends Screen {
             double distance = index - position;
             if (Math.abs(distance) > 3.4) continue;
             float distanceAbs = (float) Math.abs(distance);
-            float scale = Math.max(0.62f, 1f - distanceAbs * 0.16f);
+            float scale = Math.max(0.72f, 1f - distanceAbs * 0.10f);
             int drawWidth = Math.round(cardWidth * scale);
             int drawHeight = Math.round(cardHeight * scale);
-            int drawX = centerX - drawWidth / 2 + Math.round((1f - openAlpha) * 36f);
+            int drawX = centerX - drawWidth / 2 + Math.round((1f - transition) * 36f);
             int drawY = centerY + (int) Math.round(distance * cardSpacing) - drawHeight / 2;
-            float alpha = openAlpha * Math.max(0.24f, 1f - distanceAbs * 0.23f);
+            float alpha = transition * Math.max(0.24f, 1f - distanceAbs * 0.23f);
             states.add(new CardRenderState(index, drawX, drawY, drawWidth, drawHeight, alpha, distanceAbs));
         }
         states.sort(Comparator.comparingDouble(CardRenderState::distanceAbs).reversed());
 
-        graphics.enableScissor(railLeft + 1, 38, width, height);
+        graphics.enableScissor(railLeft, 38, railRight, height);
         for (CardRenderState state : states) {
             QuestTrackingMenuEntry entry = entries.get(state.index());
             cardHits.add(new CardHit(entry.questId(), state.index(), state.x(), state.y(),
                     state.width(), state.height(), state.distanceAbs()));
         }
-        CardHit hovered = findTopCard(mouseX, mouseY);
+        CardHit hovered = closing ? null : findTopCard(mouseX, mouseY);
         updateHoverState(hovered, now, dt);
 
         for (CardRenderState state : states) {
@@ -130,8 +146,34 @@ public final class QuestTrackingMenuScreen extends Screen {
         graphics.disableScissor();
 
         HudCursorManager.beginFrame();
-        HudCursorManager.requestPointer(hovered != null && !dragMoved);
+        HudCursorManager.requestPointer(!closing && hovered != null && !dragMoved);
         HudCursorManager.apply();
+    }
+
+    private float getTransition(long now) {
+        if (closing) {
+            float progress = Math.min(1f, (now - closeStartedAt) / (float) CLOSE_DURATION_MS);
+            return closeStartTransition * (1f - HudAnimUtil.easeInCubic(progress));
+        }
+        float progress = Math.min(1f, (now - openedAt) / (float) OPEN_DURATION_MS);
+        return HudAnimUtil.easeOutCubic(progress);
+    }
+
+    private void drawCenteredScaledString(GuiGraphics graphics, Component text, int centerX, int y,
+                                          int maxWidth, int color) {
+        int textWidth = font.width(text);
+        float scale = textWidth <= maxWidth ? 1f : Math.max(0.7f, maxWidth / (float) textWidth);
+        graphics.pose().pushPose();
+        graphics.pose().translate(centerX, y, 0f);
+        graphics.pose().scale(scale, scale, 1f);
+        graphics.drawString(font, text, -textWidth / 2, 0, color, true);
+        graphics.pose().popPose();
+    }
+
+    private void updateInteractionRailLeft() {
+        int railWidth = Math.max(96, Math.min(220, Math.round(width * 0.20f)));
+        int railRightMargin = Math.max(12, Math.round(width * 0.07f));
+        interactionRailLeft = width - railRightMargin - railWidth;
     }
 
     private void refreshEntries(boolean initializePosition) {
@@ -171,7 +213,7 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollDelta) {
-        if (mouseX < width / 2.0 || entries.isEmpty() || scrollDelta == 0.0) return false;
+        if (closing || mouseX < interactionRailLeft || entries.isEmpty() || scrollDelta == 0.0) return false;
         targetPosition = clampPosition(Math.rint(targetPosition - Math.signum(scrollDelta)));
         selectedQuestId = entries.get((int) Math.round(targetPosition)).questId();
         return true;
@@ -180,6 +222,11 @@ public final class QuestTrackingMenuScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+        if (closing) return true;
+        if (mouseX < interactionRailLeft) {
+            requestClose();
+            return true;
+        }
         CardHit hit = findTopCard(mouseX, mouseY);
         if (hit == null) return false;
         pressedQuestId = hit.questId();
@@ -194,7 +241,7 @@ public final class QuestTrackingMenuScreen extends Screen {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button,
                                 double dragX, double dragY) {
-        if (!dragging || button != 0 || entries.isEmpty()) {
+        if (closing || !dragging || button != 0 || entries.isEmpty()) {
             return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
         }
         if (!dragMoved && Math.hypot(mouseX - dragStartX, mouseY - dragStartY) >= DRAG_THRESHOLD) {
@@ -209,7 +256,7 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (!dragging || button != 0) return super.mouseReleased(mouseX, mouseY, button);
+        if (closing || !dragging || button != 0) return super.mouseReleased(mouseX, mouseY, button);
         dragging = false;
         if (!dragMoved) {
             CardHit hit = findTopCard(mouseX, mouseY);
@@ -260,11 +307,28 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matches(keyCode, scanCode)) {
-            onClose();
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE
+                || ClientEventHandler.KEY_OPEN_TRACKING_MENU.matches(keyCode, scanCode)) {
+            requestClose();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public void onClose() {
+        requestClose();
+    }
+
+    private void requestClose() {
+        if (closing) return;
+        long now = Util.getMillis();
+        closeStartTransition = getTransition(now);
+        closing = true;
+        closeStartedAt = now;
+        dragging = false;
+        dragMoved = false;
+        pressedQuestId = null;
     }
 
     @Override
