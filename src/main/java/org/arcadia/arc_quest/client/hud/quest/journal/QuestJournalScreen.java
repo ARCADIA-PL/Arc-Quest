@@ -489,19 +489,20 @@ public class QuestJournalScreen extends Screen {
         if (minecraft == null || minecraft.player == null) return;
         List<Component> lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.EMPTY, minecraft.player, minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
         if (lines.isEmpty()) return;
-        renderTooltipLayout(g, buildTooltipLayoutNoCache(lines), mouseX, mouseY);
+        renderTooltipLayout(g, JournalTooltipRenderer.measureWithItemIcon(font, lines), stack, mouseX, mouseY);
     }
 
     public void renderTooltipLines(GuiGraphics g, List<Component> tooltipLines, int mouseX, int mouseY) {
         if (tooltipLines == null || tooltipLines.isEmpty()) return;
-        renderTooltipLayout(g, buildTooltipLayoutNoCache(tooltipLines), mouseX, mouseY);
+        renderTooltipLayout(g, buildTooltipLayoutNoCache(tooltipLines), ItemStack.EMPTY, mouseX, mouseY);
     }
 
     private JournalTooltipRenderer.Layout buildTooltipLayoutNoCache(List<Component> lines) {
         return JournalTooltipRenderer.measure(font, lines);
     }
 
-    private void renderTooltipLayout(GuiGraphics g, JournalTooltipRenderer.Layout layout, int mouseX, int mouseY) {
+    private void renderTooltipLayout(GuiGraphics g, JournalTooltipRenderer.Layout layout, ItemStack iconStack,
+                                     int mouseX, int mouseY) {
         if (layout == null || layout.lines().isEmpty()) return;
         int targetW = layout.width(), targetH = layout.height(), targetX = mouseX + 12, targetY = mouseY - 12;
 
@@ -534,7 +535,12 @@ public class QuestJournalScreen extends Screen {
 
         JournalTooltipRenderer.drawFrame(g, drawX, drawY, drawW, drawH, currentThemeColor, finalTipAlpha);
         enableScissor(g, drawX, drawY, drawX + drawW, drawY + drawH);
-        JournalTooltipRenderer.drawText(g, font, layout.lines(), drawX, drawY, finalTipAlpha);
+        if (iconStack.isEmpty()) {
+            JournalTooltipRenderer.drawText(g, font, layout.lines(), drawX, drawY, finalTipAlpha);
+        } else {
+            JournalTooltipRenderer.drawItemTooltipText(g, font, layout.lines(), drawX, drawY, finalTipAlpha);
+            JournalTooltipRenderer.drawItemIcon(g, iconStack, layout, drawX, drawY);
+        }
         g.disableScissor();
         g.pose().popPose();
     }
