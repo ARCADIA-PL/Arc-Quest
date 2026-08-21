@@ -54,7 +54,8 @@ public class ClientHudEvents {
 
     @SubscribeEvent
     public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
-        if (event.getScreen() instanceof QuestEditorScreen) return;
+        if (event.getScreen() instanceof QuestEditorScreen
+                || event.getScreen() instanceof QuestTrackingMenuScreen) return;
         if (QuestSplashRenderer.isActive()) {
             QuestSplashRenderer.render(event.getGuiGraphics(), event.getPartialTick(),
                     event.getScreen().width,
@@ -214,8 +215,11 @@ public class ClientHudEvents {
     public static void onRenderGuiLayerPre(RenderGuiLayerEvent.Pre event) {
         // 打开任务/对话/交易/抽卡界面时隐藏血量/饥饿/护甲/氧气
         Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof QuestTrackingMenuScreen) {
+            event.setCanceled(true);
+            return;
+        }
         if (!(mc.screen instanceof QuestJournalScreen
-                || mc.screen instanceof QuestTrackingMenuScreen
                 || mc.screen instanceof QuestEditorScreen
                 || mc.screen instanceof DialogueScreen
                 || mc.screen instanceof AbstractTradeScreen
