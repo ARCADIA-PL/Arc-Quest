@@ -45,7 +45,7 @@ public final class ClientEventHandler {
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
         KEY_OPEN_JOURNAL = createKeyMapping("key.arc_quest.open_journal", GLFW.GLFW_KEY_J);
         KEY_OPEN_GUIDE_LIST = createKeyMapping("key.arc_quest.open_guide_list", GLFW.GLFW_KEY_I);
-        KEY_OPEN_TRACKING_MENU = createKeyMapping("key.arc_quest.open_tracking_menu", GLFW.GLFW_KEY_K);
+        KEY_OPEN_TRACKING_MENU = createKeyMapping("key.arc_quest.open_tracking_menu", GLFW.GLFW_KEY_TAB);
         event.register(KEY_OPEN_JOURNAL);
         event.register(KEY_OPEN_GUIDE_LIST);
         event.register(KEY_OPEN_TRACKING_MENU);
