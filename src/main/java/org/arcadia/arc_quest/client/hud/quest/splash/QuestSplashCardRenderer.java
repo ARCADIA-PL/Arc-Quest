@@ -58,7 +58,7 @@ public final class QuestSplashCardRenderer {
         graphics.fill(headX - 8, headY - 8, headX - 5, headY + headSize + 8, outlineColor);
         graphics.fill(headX + headSize + 5, headY - 8, headX + headSize + 8, headY + headSize + 8, outlineColor);
 
-        ResourceLocation skin = minecraft.player.getSkinTextureLocation();
+        ResourceLocation skin = minecraft.player.getSkin().texture();
         graphics.setColor(1f, 1f, 1f, alpha);
         graphics.blit(skin, headX, headY, headSize, headSize, 8f, 8f, 8, 8, 64, 64);
         graphics.blit(skin, headX, headY, headSize, headSize, 40f, 8f, 8, 8, 64, 64);

@@ -305,10 +305,10 @@ public final class QuestTrackingMenuScreen extends Screen {
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollDelta) {
-        if (closing || mouseX < interactionRailLeft || entries.isEmpty() || scrollDelta == 0.0) return false;
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (closing || mouseX < interactionRailLeft || entries.isEmpty() || scrollY == 0.0) return false;
         if (entries.size() == 1) return true;
-        targetPosition = Math.rint(targetPosition - Math.signum(scrollDelta));
+        targetPosition = Math.rint(targetPosition - Math.signum(scrollY));
         selectedQuestId = entries.get(wrappedIndex(targetPosition)).questId();
         return true;
     }
