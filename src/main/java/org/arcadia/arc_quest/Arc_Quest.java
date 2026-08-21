@@ -115,8 +115,7 @@ public class Arc_Quest {
 
         @SubscribeEvent
         public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
-            event.register(ClientEventHandler.KEY_OPEN_JOURNAL);
-            event.register(ClientEventHandler.KEY_OPEN_TRACKING_MENU);
+            ClientEventHandler.registerKeyMappings(event);
         }
     }
 
