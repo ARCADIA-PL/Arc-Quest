@@ -351,6 +351,10 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matchesMouse(button)) {
+            closeFromKeyRelease();
+            return true;
+        }
         if (closing || !dragging || button != 0) return super.mouseReleased(mouseX, mouseY, button);
         dragging = false;
         if (!dragMoved) {
@@ -431,8 +435,7 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE
-                || ClientEventHandler.KEY_OPEN_TRACKING_MENU.matches(keyCode, scanCode)) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             requestClose();
             return true;
         }
@@ -440,7 +443,20 @@ public final class QuestTrackingMenuScreen extends Screen {
     }
 
     @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matches(keyCode, scanCode)) {
+            closeFromKeyRelease();
+            return true;
+        }
+        return super.keyReleased(keyCode, scanCode, modifiers);
+    }
+
+    @Override
     public void onClose() {
+        requestClose();
+    }
+
+    public void closeFromKeyRelease() {
         requestClose();
     }
 
