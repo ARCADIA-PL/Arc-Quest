@@ -52,6 +52,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.tracking_menu.optional", " (Optional)");
         add("arc_quest.gui.tracking_menu.more_objectives", "%s more objectives");
         add("key.categories.arc_quest", "Arc Quest");
+        add("key.arc_quest.open_journal", "Open Quest Panel");
         add("key.arc_quest.open_tracking_menu", "Open Quest Tracking Menu");
         add("gui.arc_quest.journal.title", "Quest Journal");
     }

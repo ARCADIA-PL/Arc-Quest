@@ -8,9 +8,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.Entity;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.guide.GuidePopupOverlay;
@@ -67,7 +67,7 @@ public class DialogueScreen extends Screen {
     private long autoAdvanceTime = 0;
     private boolean isClosing = false;
 
-    private List<String> wrappedLines;
+    private List<FormattedCharSequence> wrappedLines;
     private float historyHoverAnim = 0f;
 
     public DialogueScreen(String dialogueId, Component speaker, Component text, Component[] choices, boolean isTerminal, boolean hasAutoNext, int delayMs) {
@@ -99,6 +99,33 @@ public class DialogueScreen extends Screen {
 
     private static String textOf(Component c) {
         return c == null ? "" : c.getString();
+    }
+
+    private static int codePointLength(String text) {
+        return text == null ? 0 : text.codePointCount(0, text.length());
+    }
+
+    static int sequenceLength(FormattedCharSequence sequence) {
+        if (sequence == null) return 0;
+        int[] count = {0};
+        sequence.accept((position, style, codePoint) -> {
+            count[0]++;
+            return true;
+        });
+        return count[0];
+    }
+
+    static FormattedCharSequence prefix(FormattedCharSequence sequence, int length) {
+        if (sequence == null || length <= 0) return FormattedCharSequence.EMPTY;
+        List<FormattedCharSequence> parts = new ArrayList<>(length);
+        int[] count = {0};
+        sequence.accept((position, style, codePoint) -> {
+            if (count[0] >= length) return false;
+            parts.add(FormattedCharSequence.codepoint(codePoint, style));
+            count[0]++;
+            return count[0] < length;
+        });
+        return FormattedCharSequence.composite(parts);
     }
 
     public float getUiScale() {
@@ -297,7 +324,7 @@ public class DialogueScreen extends Screen {
         }
         if (keyCode == 32 || keyCode == 257) {
             if (!typewriterDone) {
-                typewriterProgress = textOf(fullText).length();
+                typewriterProgress = codePointLength(textOf(fullText));
                 typewriterDone = true;
                 typewriterDoneTime = Util.getMillis();
                 return true;
@@ -342,7 +369,7 @@ public class DialogueScreen extends Screen {
         if (DialogueHistoryPanel.isActive()) return true;
 
         if (!typewriterDone) {
-            typewriterProgress = textOf(fullText).length();
+            typewriterProgress = codePointLength(textOf(fullText));
             typewriterDone = true;
             typewriterDoneTime = Util.getMillis();
             playClick();
@@ -463,8 +490,9 @@ public class DialogueScreen extends Screen {
 
         if (!typewriterDone && masterAnim > 0.1f) {
             typewriterProgress += CHARS_PER_SECOND * dt;
-            if (typewriterProgress >= textOf(fullText).length()) {
-                typewriterProgress = textOf(fullText).length();
+            int totalTextLength = codePointLength(textOf(fullText));
+            if (typewriterProgress >= totalTextLength) {
+                typewriterProgress = totalTextLength;
                 typewriterDone = true;
                 typewriterDoneTime = now;
             }
@@ -493,7 +521,9 @@ public class DialogueScreen extends Screen {
 
         int baseChoiceX = getChoiceX(), textBaseX = Math.max(30, (int) (sw * 0.05f));
         int maxTextWidth = (choices.length > 0) ? (baseChoiceX - textBaseX - Math.max(20, (int) (sw * 0.05f))) : (sw - textBaseX - Math.max(40, (int) (sw * 0.1f)));
-        if (wrappedLines == null) wrappedLines = HudRenderUtil.wrapText(textOf(fullText), maxTextWidth, font);
+        if (wrappedLines == null) {
+            wrappedLines = font.split(fullText == null ? Component.empty() : fullText, maxTextWidth);
+        }
 
         int lineHeight = font.lineHeight + 6;
         int totalContentHeight = ((!textOf(speaker).isBlank()) ? 28 : 10) + wrappedLines.size() * lineHeight;
@@ -539,7 +569,8 @@ public class DialogueScreen extends Screen {
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
             g.pose().scale(1.1f, 1.1f, 1f);
-            g.drawString(font, textOf(speaker), 0, 0, HudAnimUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
+            g.drawString(font, speaker.getVisualOrderText(), 0, 0,
+                    HudAnimUtil.withAlpha(0xFFFFFFFF, safeContentAlpha), true);
             g.pose().popPose();
             int spkW = (int) (font.width(textOf(speaker)) * 1.1f);
             g.fill(textBaseX, textBaseY + 12, textBaseX + spkW + 8, textBaseY + 13, HudAnimUtil.withAlpha(0x44FFFFFF, safeContentAlpha));
@@ -550,12 +581,14 @@ public class DialogueScreen extends Screen {
             int visibleChars = (int) typewriterProgress, charCount = 0;
             g.pose().pushPose();
             g.pose().translate(textBaseX, textBaseY, 0);
-            for (String line : wrappedLines) {
+            for (FormattedCharSequence line : wrappedLines) {
                 if (charCount >= visibleChars) break;
-                int lineVisible = Math.min(line.length(), visibleChars - charCount);
-                g.drawString(font, line.substring(0, lineVisible), 0, 0, HudAnimUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
+                int lineLength = sequenceLength(line);
+                int lineVisible = Math.min(lineLength, visibleChars - charCount);
+                g.drawString(font, prefix(line, lineVisible), 0, 0,
+                        HudAnimUtil.withAlpha(0xFFDDDDDD, safeContentAlpha), true);
                 g.pose().translate(0, lineHeight, 0);
-                charCount += line.length();
+                charCount += lineLength;
             }
             g.pose().popPose();
         }
