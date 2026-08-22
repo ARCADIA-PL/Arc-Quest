@@ -215,8 +215,11 @@ public class ClientHudEvents {
     public static void onRenderGuiLayerPre(RenderGuiLayerEvent.Pre event) {
         // 打开任务/对话/交易/抽卡界面时隐藏血量/饥饿/护甲/氧气
         Minecraft mc = Minecraft.getInstance();
+        ResourceLocation layerName = event.getName();
         if (mc.screen instanceof QuestTrackingMenuScreen) {
-            event.setCanceled(true);
+            if (isSurvivalStatusLayer(layerName)) {
+                event.setCanceled(true);
+            }
             return;
         }
         if (!(mc.screen instanceof QuestJournalScreen
@@ -226,11 +229,16 @@ public class ClientHudEvents {
                 || mc.screen instanceof GachaScreen)) {
             return;
         }
-        ResourceLocation n = event.getName();
-        if (n.equals(VanillaGuiLayers.PLAYER_HEALTH) || n.equals(VanillaGuiLayers.FOOD_LEVEL)
-                || n.equals(VanillaGuiLayers.ARMOR_LEVEL) || n.equals(VanillaGuiLayers.AIR_LEVEL) || n.equals(VanillaGuiLayers.CHAT)) {
+        if (isSurvivalStatusLayer(layerName) || layerName.equals(VanillaGuiLayers.CHAT)) {
             event.setCanceled(true);
         }
+    }
+
+    private static boolean isSurvivalStatusLayer(ResourceLocation layerName) {
+        return layerName.equals(VanillaGuiLayers.PLAYER_HEALTH)
+                || layerName.equals(VanillaGuiLayers.FOOD_LEVEL)
+                || layerName.equals(VanillaGuiLayers.ARMOR_LEVEL)
+                || layerName.equals(VanillaGuiLayers.AIR_LEVEL);
     }
 
     public static void handleVisualTrigger(QuestDefinition quest, SplashType type, String phaseId) {
