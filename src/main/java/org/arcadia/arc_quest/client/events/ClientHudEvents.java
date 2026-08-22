@@ -1,6 +1,9 @@
 package org.arcadia.arc_quest.client.events;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.InputEvent;
@@ -13,6 +16,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.editor.quest.QuestEditorScreen;
+import org.arcadia.arc_quest.client.config.ArcQuestToastConfigScreen;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
@@ -29,6 +33,16 @@ import org.arcadia.arc_quest.quest.api.SplashType;
 
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
 public class ClientHudEvents {
+
+    @SubscribeEvent
+    public static void onScreenInitPost(ScreenEvent.Init.Post event) {
+        if (!(event.getScreen() instanceof PauseScreen) || Minecraft.getInstance().level == null) return;
+        event.addListener(Button.builder(
+                        Component.translatable("gui.arc_quest.toast_config.pause_button"),
+                        button -> Minecraft.getInstance().setScreen(new ArcQuestToastConfigScreen(event.getScreen())))
+                .bounds(8, 8, 128, 20)
+                .build());
+    }
 
     @SubscribeEvent
     public static void onRenderGuiOverlay(RenderGuiEvent.Post event) {

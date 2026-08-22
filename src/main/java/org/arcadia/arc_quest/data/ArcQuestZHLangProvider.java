@@ -19,6 +19,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addGuiTranslations();
         addHudTranslations();
         addToastTranslations();
+        addToastConfigTranslations();
         addCommandTranslations();
         addDialogueTranslations();
         addEpicDialogueTranslations();
@@ -247,6 +248,35 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.toast.prefix.quest_failed", "✘ QUEST FAILED");
         add("arc_quest.toast.prefix.phase_advanced", "▸ PHASE ADVANCED");
         add("arc_quest.toast.prefix.objective_complete", "✔ OBJECTIVE DONE");
+    }
+
+    private void addToastConfigTranslations() {
+        add("gui.arc_quest.toast_config.title", "任务 Toast 通知");
+        add("gui.arc_quest.toast_config.subtitle", "选择允许显示在 HUD 上的任务通知。");
+        add("gui.arc_quest.toast_config.enabled", "开启");
+        add("gui.arc_quest.toast_config.disabled", "关闭");
+        add("gui.arc_quest.toast_config.reset", "恢复默认");
+        add("gui.arc_quest.toast_config.pause_button", "Arc Quest 通知设置");
+        addToastConfigOption("quest_accepted", "接受任务", "新任务进入进行中状态时显示。");
+        addToastConfigOption("quest_completed", "完成任务", "任务完成时显示。");
+        addToastConfigOption("quest_failed", "任务失败", "任务失败时显示。");
+        addToastConfigOption("phase_advanced", "阶段推进", "任务推进到其他阶段时显示。");
+        addToastConfigOption("objective_complete", "目标完成", "任务目标完成时显示。");
+        addToastConfigOption("collection_entry_discovered", "发现收集条目", "发现隐藏的收集条目时显示。");
+        addToastConfigOption("collection_entry_completed", "完成收集条目", "收集条目完成时显示。");
+        addToastConfigOption("collection_reward_unlocked", "解锁收集奖励", "收集奖励变为可领取时显示。");
+        addToastConfigOption("collection_reward_claimed", "领取收集奖励", "领取收集奖励后显示。");
+        addToastConfigOption("phase_added", "追踪阶段新增", "追踪任务新增活动阶段时显示。");
+        addToastConfigOption("phase_switched", "追踪阶段切换", "追踪任务的焦点阶段切换时显示。");
+        addToastConfigOption("phase_completed", "追踪阶段完成", "当前追踪阶段完成时显示。");
+        addToastConfigOption("phase_pending_confirm", "等待阶段确认", "追踪阶段等待手动确认时显示。");
+        addToastConfigOption("branch_choice", "可选择任务分支", "追踪任务出现可选分支时显示。");
+    }
+
+    private void addToastConfigOption(String key, String title, String description) {
+        String prefix = "gui.arc_quest.toast_config.option." + key;
+        add(prefix, title);
+        add(prefix + ".description", description);
     }
 
     // ═══════════════════════════════════════════════════════
