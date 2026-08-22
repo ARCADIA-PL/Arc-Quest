@@ -39,8 +39,8 @@ public final class ObjectiveBuilder {
         b.targetId = key;
         b.requiredCount = count;
         b.displayText = QuestText.translatable("arc_quest.obj.kill",
-                QuestText.Arg.of((p, c) -> Component.translatable(entityType.getDescriptionId())),
-                QuestText.Arg.of((p, c) -> count));
+                QuestText.Arg.constant(Component.translatable(entityType.getDescriptionId())),
+                QuestText.Arg.constant(count));
         return b;
     }
 
@@ -51,8 +51,8 @@ public final class ObjectiveBuilder {
         b.targetId = key;
         b.requiredCount = count;
         b.displayText = QuestText.translatable("arc_quest.obj.collect",
-                QuestText.Arg.of((p, c) -> item.getDescription()),
-                QuestText.Arg.of((p, c) -> count));
+                QuestText.Arg.constant(item.getDescription()),
+                QuestText.Arg.constant(count));
         return b;
     }
 
@@ -62,8 +62,8 @@ public final class ObjectiveBuilder {
         b.requiredCount = count;
         b.extraData.put("target_tag", itemTagId.toString());
         b.displayText = QuestText.translatable("arc_quest.obj.collect",
-                QuestText.Arg.of((p, c) -> Component.literal("#" + itemTagId)),
-                QuestText.Arg.of((p, c) -> count));
+                QuestText.Arg.constant(Component.literal("#" + itemTagId)),
+                QuestText.Arg.constant(count));
         return b;
     }
 
@@ -71,7 +71,8 @@ public final class ObjectiveBuilder {
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.TALK);
         b.targetId = npcId;
         b.requiredCount = 1;
-        b.displayText = QuestText.translatable("arc_quest.obj.talk", QuestText.Arg.of((p, c) -> Component.literal(npcId.getPath())));
+        b.displayText = QuestText.translatable("arc_quest.obj.talk",
+                QuestText.Arg.constant(Component.literal(npcId.getPath())));
         return b;
     }
 
@@ -82,8 +83,8 @@ public final class ObjectiveBuilder {
         b.targetId = key;
         b.requiredCount = count;
         b.displayText = QuestText.translatable("arc_quest.obj.deliver",
-                QuestText.Arg.of((p, c) -> item.getDescription()),
-                QuestText.Arg.of((p, c) -> count));
+                QuestText.Arg.constant(item.getDescription()),
+                QuestText.Arg.constant(count));
         b.extraData.put("npc_id", npcId.toString());
         return b;
     }
@@ -92,7 +93,8 @@ public final class ObjectiveBuilder {
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.REACH_LOCATION);
         b.targetId = locationId;
         b.requiredCount = 1;
-        b.displayText = QuestText.translatable("arc_quest.obj.reach", QuestText.Arg.of((p, c) -> Component.literal(locationId.getPath())));
+        b.displayText = QuestText.translatable("arc_quest.obj.reach",
+                QuestText.Arg.constant(Component.literal(locationId.getPath())));
         b.extraData.put("x", String.valueOf(x));
         b.extraData.put("y", String.valueOf(y));
         b.extraData.put("z", String.valueOf(z));
@@ -104,7 +106,8 @@ public final class ObjectiveBuilder {
         ObjectiveBuilder b = new ObjectiveBuilder(ObjectiveType.INTERACT);
         b.targetId = targetId;
         b.requiredCount = 1;
-        b.displayText = QuestText.translatable("arc_quest.obj.interact", QuestText.Arg.of((p, c) -> Component.literal(targetId.getPath())));
+        b.displayText = QuestText.translatable("arc_quest.obj.interact",
+                QuestText.Arg.constant(Component.literal(targetId.getPath())));
         return b;
     }
 
@@ -129,8 +132,8 @@ public final class ObjectiveBuilder {
         b.targetId = key;
         b.requiredCount = count;
         b.displayText = QuestText.translatable("arc_quest.obj.deliver",
-                QuestText.Arg.of((p, c) -> item.getDescription()),
-                QuestText.Arg.of((p, c) -> count));
+                QuestText.Arg.constant(item.getDescription()),
+                QuestText.Arg.constant(count));
         return b;
     }
 
@@ -140,8 +143,8 @@ public final class ObjectiveBuilder {
         b.requiredCount = count;
         b.extraData.put("target_tag", itemTagId.toString());
         b.displayText = QuestText.translatable("arc_quest.obj.deliver",
-                QuestText.Arg.of((p, c) -> Component.literal("#" + itemTagId)),
-                QuestText.Arg.of((p, c) -> count));
+                QuestText.Arg.constant(Component.literal("#" + itemTagId)),
+                QuestText.Arg.constant(count));
         return b;
     }
 
