@@ -7,6 +7,7 @@ import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.splash.QuestSplashRenderer;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
+import org.arcadia.arc_quest.config.ArcQuestToastConfig;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -36,7 +37,7 @@ public final class QuestToastManager {
     }
 
     public static void show(ToastType type, String questName) {
-        if (type == null || questName == null) return;
+        if (type == null || !type.isEnabled() || questName == null) return;
 
         String text = questName.trim();
         if (text.isEmpty()) return;
@@ -45,7 +46,7 @@ public final class QuestToastManager {
     }
 
     public static void show(ToastType type, Component questName) {
-        if (type == null || questName == null) return;
+        if (type == null || !type.isEnabled() || questName == null) return;
 
         String plainText = questName.getString().trim();
         if (plainText.isEmpty()) return;
@@ -101,7 +102,6 @@ public final class QuestToastManager {
     public static void tick() {
         long now = System.currentTimeMillis();
         Minecraft mc = Minecraft.getInstance();
-
         // 核心修复：如果 Splash 在播放，或者日志、对话在看，全盘冻结！
         boolean isJournalVisible = mc.screen instanceof QuestJournalScreen;
         boolean isFrozen = QuestSplashRenderer.isActive() ||
@@ -133,6 +133,13 @@ public final class QuestToastManager {
         }
 
         pruneRecentShown(now);
+    }
+
+    public static void refreshConfiguration() {
+        removeDisabledToasts();
+        recentShownAt.clear();
+        lastQueuedKey = null;
+        lastQueuedAt = 0L;
     }
 
     public static int getPushDownOffset() {
@@ -187,6 +194,17 @@ public final class QuestToastManager {
         recentShownAt.entrySet().removeIf(e -> now - e.getValue() > 5000L);
     }
 
+    private static void removeDisabledToasts() {
+        pendingQueue.removeIf(pending -> !pending.type().isEnabled());
+        for (int index = 0; index < activeSlots.length; index++) {
+            QuestNotificationToast toast = activeSlots[index];
+            if (toast != null && !toast.getType().isEnabled()) {
+                activeSlots[index] = null;
+                activeKeys[index] = null;
+            }
+        }
+    }
+
     public enum ToastType {
         QUEST_ACCEPTED(0x4FC3F7, "arc_quest.toast.prefix.quest_accepted"),
         QUEST_COMPLETED(0x66FF66, "arc_quest.toast.prefix.quest_completed"),
@@ -213,6 +231,20 @@ public final class QuestToastManager {
             return Minecraft.getInstance().player != null
                     ? Component.translatable(translationKey).getString()
                     : translationKey;
+        }
+
+        public boolean isEnabled() {
+            return switch (this) {
+                case QUEST_ACCEPTED -> ArcQuestToastConfig.QUEST_ACCEPTED.get();
+                case QUEST_COMPLETED -> ArcQuestToastConfig.QUEST_COMPLETED.get();
+                case QUEST_FAILED -> ArcQuestToastConfig.QUEST_FAILED.get();
+                case COLLECTION_ENTRY_DISCOVERED -> ArcQuestToastConfig.COLLECTION_ENTRY_DISCOVERED.get();
+                case COLLECTION_ENTRY_COMPLETED -> ArcQuestToastConfig.COLLECTION_ENTRY_COMPLETED.get();
+                case COLLECTION_REWARD_UNLOCKED -> ArcQuestToastConfig.COLLECTION_REWARD_UNLOCKED.get();
+                case COLLECTION_REWARD_CLAIMED -> ArcQuestToastConfig.COLLECTION_REWARD_CLAIMED.get();
+                case PHASE_ADVANCED -> ArcQuestToastConfig.PHASE_ADVANCED.get();
+                case OBJECTIVE_COMPLETE -> ArcQuestToastConfig.OBJECTIVE_COMPLETE.get();
+            };
         }
     }
 
