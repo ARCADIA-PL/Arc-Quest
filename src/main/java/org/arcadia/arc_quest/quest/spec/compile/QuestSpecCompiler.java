@@ -456,7 +456,7 @@ public final class QuestSpecCompiler {
                 return QuestText.translatable(spec.value);
             }
             QuestText.Arg[] args = spec.args.stream()
-                    .map(value -> QuestText.Arg.of((player, ctx) -> value))
+                    .map(QuestText.Arg::constant)
                     .toArray(QuestText.Arg[]::new);
             return QuestText.translatable(spec.value, args);
         }

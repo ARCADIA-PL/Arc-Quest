@@ -9,6 +9,9 @@ import java.util.function.BiFunction;
 
 public final class QuestText {
 
+    private static final Object NO_FALLBACK = new Object();
+    private static final Component MISSING_FALLBACK = Component.literal("<?>");
+
     private final BiFunction<ServerPlayer, QuestTextContext, Component> resolver;
     private final Component fallback;
 
@@ -36,7 +39,23 @@ public final class QuestText {
     }
 
     public static QuestText translatable(String key, Arg... args) {
-        Component fallback = Component.translatable(key);
+        Object[] fallbackArgs = new Object[args == null ? 0 : args.length];
+        boolean hasFallback = false;
+        if (args != null) {
+            for (int i = 0; i < args.length; i++) {
+                Arg arg = args[i];
+                Object fallbackArg = arg == null ? NO_FALLBACK : arg.resolveFallback();
+                if (fallbackArg == NO_FALLBACK) {
+                    fallbackArgs[i] = MISSING_FALLBACK;
+                } else {
+                    fallbackArgs[i] = fallbackArg;
+                    hasFallback = true;
+                }
+            }
+        }
+        Component fallback = hasFallback
+                ? Component.translatable(key, fallbackArgs)
+                : Component.translatable(key);
         return new QuestText((player, ctx) -> {
             Object[] resolved = new Object[args == null ? 0 : args.length];
             if (args != null) {
@@ -68,6 +87,46 @@ public final class QuestText {
 
         static Arg of(BiFunction<ServerPlayer, QuestTextContext, Object> fn) {
             return fn::apply;
+        }
+
+        /**
+         * Creates a server-resolved argument with an explicit value for player-less client rendering.
+         */
+        static Arg of(BiFunction<ServerPlayer, QuestTextContext, Object> fn, Object fallback) {
+            Objects.requireNonNull(fn, "fn");
+            return new Arg() {
+                @Override
+                public Object resolve(ServerPlayer player, QuestTextContext context) {
+                    return fn.apply(player, context);
+                }
+
+                @Override
+                public Object resolveFallback() {
+                    return fallback == null ? "" : fallback;
+                }
+            };
+        }
+
+        /**
+         * Creates an argument whose value is identical on the server and client.
+         */
+        static Arg constant(Object value) {
+            Object normalized = value == null ? "" : value;
+            return new Arg() {
+                @Override
+                public Object resolve(ServerPlayer player, QuestTextContext context) {
+                    return normalized;
+                }
+
+                @Override
+                public Object resolveFallback() {
+                    return normalized;
+                }
+            };
+        }
+
+        default Object resolveFallback() {
+            return NO_FALLBACK;
         }
 
         Object resolve(ServerPlayer player, QuestTextContext context);
