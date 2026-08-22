@@ -6,14 +6,16 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
-import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache.TranscriptEntry;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public final class DialogueHistoryPanel {
 
@@ -248,9 +250,10 @@ public final class DialogueHistoryPanel {
                 currentY += block.height;
                 continue;
             }
-            g.drawString(font, block.speaker, leftX, currentY, HudAnimUtil.withAlpha(block.isPlayer ? THEME_COLOR : 0xAAAAAA, alpha), false);
+            g.drawString(font, block.speaker, leftX, currentY,
+                    HudAnimUtil.withAlpha(block.isPlayer ? THEME_COLOR : 0xAAAAAA, alpha), false);
             int textY = currentY + 14, textColor = block.isPlayer ? 0xFFFFFF : 0xCCCCCC;
-            for (String line : block.lines) {
+            for (FormattedCharSequence line : block.lines) {
                 g.drawString(font, line, leftX + 12, textY, HudAnimUtil.withAlpha(textColor, alpha), false);
                 textY += font.lineHeight + 6;
             }
@@ -276,8 +279,12 @@ public final class DialogueHistoryPanel {
             boolean isPlayer = "player".equalsIgnoreCase(entry.role());
             RenderBlock block = new RenderBlock();
             block.isPlayer = isPlayer;
-            block.speaker = (entry.speaker() == null || entry.speaker().getString().isBlank()) ? (isPlayer ? "YOU" : "UNKNOWN") : entry.speaker().getString();
-            block.lines = HudRenderUtil.wrapText(entry.text() == null ? "" : entry.text().getString(), wrapWidth, font);
+            Component speaker = entry.speaker();
+            block.speaker = (speaker == null || speaker.getString().isBlank())
+                    ? Component.literal(isPlayer ? "YOU" : "UNKNOWN").getVisualOrderText()
+                    : speaker.getVisualOrderText();
+            Component text = entry.text() == null ? Component.empty() : entry.text();
+            block.lines = font.split(text, wrapWidth);
             block.height = 14 + (block.lines.size() * (font.lineHeight + 6)) + 16;
             blocks.add(block);
             totalHeight += block.height;
@@ -386,16 +393,21 @@ public final class DialogueHistoryPanel {
 
     private static class RenderBlock {
         boolean isPlayer;
-        String speaker;
-        List<String> lines;
+        FormattedCharSequence speaker;
+        List<FormattedCharSequence> lines;
         int height;
     }
 
     private static final class EntryKey {
         private final String role, speaker, text, nodeId, sayId, choiceId;
-        private final int choiceIndex, hash;
+        private final int choiceIndex, speakerComponentHash, textComponentHash, hash;
 
         private EntryKey(String role, String speaker, String text, String nodeId, String sayId, String choiceId, int choiceIndex) {
+            this(role, speaker, text, nodeId, sayId, choiceId, choiceIndex, 0, 0);
+        }
+
+        private EntryKey(String role, String speaker, String text, String nodeId, String sayId, String choiceId,
+                         int choiceIndex, int speakerComponentHash, int textComponentHash) {
             this.role = role;
             this.speaker = speaker;
             this.text = text;
@@ -403,6 +415,8 @@ public final class DialogueHistoryPanel {
             this.sayId = sayId;
             this.choiceId = choiceId;
             this.choiceIndex = choiceIndex;
+            this.speakerComponentHash = speakerComponentHash;
+            this.textComponentHash = textComponentHash;
             int h = 17;
             h = 31 * h + role.hashCode();
             h = 31 * h + speaker.hashCode();
@@ -410,18 +424,23 @@ public final class DialogueHistoryPanel {
             h = 31 * h + nodeId.hashCode();
             h = 31 * h + sayId.hashCode();
             h = 31 * h + choiceId.hashCode();
+            h = 31 * h + speakerComponentHash;
+            h = 31 * h + textComponentHash;
             hash = 31 * h + choiceIndex;
         }
 
         static EntryKey of(TranscriptEntry e) {
+            Component speaker = e.speaker();
+            Component text = e.text();
             return new EntryKey(
                     normFast(e.role()),
-                    normFast(e.speaker() == null ? "" : e.speaker().getString()),
-                    normFast(e.text() == null ? "" : e.text().getString()),
+                    normFast(speaker == null ? "" : speaker.getString()),
+                    normFast(text == null ? "" : text.getString()),
                     normFast(e.nodeId()),
                     normFast(e.sayId()),
                     normFast(e.choiceId()),
-                    e.choiceIndex() == null ? Integer.MIN_VALUE : e.choiceIndex()
+                    e.choiceIndex() == null ? Integer.MIN_VALUE : e.choiceIndex(),
+                    Objects.hashCode(speaker), Objects.hashCode(text)
             );
         }
 
@@ -434,7 +453,12 @@ public final class DialogueHistoryPanel {
         public boolean equals(Object obj) {
             if (this == obj) return true;
             if (!(obj instanceof EntryKey other)) return false;
-            return choiceIndex == other.choiceIndex && role.equals(other.role) && speaker.equals(other.speaker) && text.equals(other.text) && nodeId.equals(other.nodeId) && sayId.equals(other.sayId) && choiceId.equals(other.choiceId);
+            return choiceIndex == other.choiceIndex
+                    && speakerComponentHash == other.speakerComponentHash
+                    && textComponentHash == other.textComponentHash
+                    && role.equals(other.role) && speaker.equals(other.speaker)
+                    && text.equals(other.text) && nodeId.equals(other.nodeId)
+                    && sayId.equals(other.sayId) && choiceId.equals(other.choiceId);
         }
     }
 }

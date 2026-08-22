@@ -52,6 +52,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.tracking_menu.optional", "（可选）");
         add("arc_quest.gui.tracking_menu.more_objectives", "另有 %s 个目标");
         add("key.categories.arc_quest", "Arc Quest");
+        add("key.arc_quest.open_journal", "打开任务面板");
         add("key.arc_quest.open_tracking_menu", "打开任务追踪菜单");
         add("gui.arc_quest.journal.title", "任务日志");
         add("arc_quest.guide_group.minerals", "矿物");
