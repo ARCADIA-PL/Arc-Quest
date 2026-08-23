@@ -87,7 +87,8 @@ public final class ClientEventHandler {
             }
         }
 
-        if (KEY_OPEN_TRACKING_MENU.consumeClick() && mc.screen == null) {
+        boolean trackingMenuPressed = KEY_OPEN_TRACKING_MENU.consumeClick();
+        if (trackingMenuPressed && isTrackingMenuControlPhysicallyDown(mc) && mc.screen == null) {
             mc.setScreen(new QuestTrackingMenuScreen());
         }
 
@@ -102,6 +103,18 @@ public final class ClientEventHandler {
         QuestToastManager.tick();
         QuestIntelPanel.tick();
         QuestMarkerExternalSync.tick();
+    }
+
+    private static boolean isTrackingMenuControlPhysicallyDown(Minecraft minecraft) {
+        InputConstants.Key key = KEY_OPEN_TRACKING_MENU.getKey();
+        long window = minecraft.getWindow().getWindow();
+        if (key.getType() == InputConstants.Type.KEYSYM) {
+            return InputConstants.isKeyDown(window, key.getValue());
+        }
+        if (key.getType() == InputConstants.Type.MOUSE) {
+            return GLFW.glfwGetMouseButton(window, key.getValue()) == GLFW.GLFW_PRESS;
+        }
+        return true;
     }
 
     static boolean shouldOpenStandaloneGuide(boolean screenPresent, boolean dialogueActive) {

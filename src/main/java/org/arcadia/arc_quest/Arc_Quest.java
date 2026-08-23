@@ -32,6 +32,7 @@ import org.arcadia.arc_quest.client.hud.questmarker.MarkerHudRenderer;
 import org.arcadia.arc_quest.client.ponder.QuestPonderPlugin;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.data.ArcQuestDataGenerators;
+import org.arcadia.arc_quest.config.ArcQuestToastConfig;
 import org.arcadia.arc_quest.dialogue.registry.DialogueRegistry;
 import org.arcadia.arc_quest.dialogue.registry.EntityDialogueExtensionManager;
 import org.arcadia.arc_quest.dialogue.registry.EpicDialogueTrees;
@@ -58,6 +59,8 @@ public class Arc_Quest {
     public Arc_Quest(IEventBus modEventBus, ModContainer modContainer) {
         ArcQuestAttachments.register(modEventBus);
         modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT, org.arcadia.arc_quest.config.ArcQuestConfig.SPEC);
+        modContainer.registerConfig(net.neoforged.fml.config.ModConfig.Type.CLIENT,
+                ArcQuestToastConfig.SPEC, ArcQuestToastConfig.FILE_NAME);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(ArcQuestNetwork::register);
         NeoForge.EVENT_BUS.register(this);

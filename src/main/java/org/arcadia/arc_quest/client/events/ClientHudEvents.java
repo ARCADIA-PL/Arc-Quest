@@ -1,6 +1,9 @@
 package org.arcadia.arc_quest.client.events;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.client.event.InputEvent;
@@ -13,6 +16,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.client.editor.quest.QuestEditorScreen;
+import org.arcadia.arc_quest.client.config.ArcQuestToastConfigScreen;
 import org.arcadia.arc_quest.client.hud.dialogue.DialogueScreen;
 import org.arcadia.arc_quest.client.hud.gacha.GachaResultRenderer;
 import org.arcadia.arc_quest.client.hud.gacha.GachaScreen;
@@ -29,6 +33,16 @@ import org.arcadia.arc_quest.quest.api.SplashType;
 
 @EventBusSubscriber(modid = Arc_Quest.MOD_ID, value = Dist.CLIENT)
 public class ClientHudEvents {
+
+    @SubscribeEvent
+    public static void onScreenInitPost(ScreenEvent.Init.Post event) {
+        if (!(event.getScreen() instanceof PauseScreen) || Minecraft.getInstance().level == null) return;
+        event.addListener(Button.builder(
+                        Component.translatable("gui.arc_quest.toast_config.pause_button"),
+                        button -> Minecraft.getInstance().setScreen(new ArcQuestToastConfigScreen(event.getScreen())))
+                .bounds(8, 8, 128, 20)
+                .build());
+    }
 
     @SubscribeEvent
     public static void onRenderGuiOverlay(RenderGuiEvent.Post event) {
@@ -215,8 +229,11 @@ public class ClientHudEvents {
     public static void onRenderGuiLayerPre(RenderGuiLayerEvent.Pre event) {
         // 打开任务/对话/交易/抽卡界面时隐藏血量/饥饿/护甲/氧气
         Minecraft mc = Minecraft.getInstance();
+        ResourceLocation layerName = event.getName();
         if (mc.screen instanceof QuestTrackingMenuScreen) {
-            event.setCanceled(true);
+            if (isSurvivalStatusLayer(layerName)) {
+                event.setCanceled(true);
+            }
             return;
         }
         if (!(mc.screen instanceof QuestJournalScreen
@@ -226,11 +243,16 @@ public class ClientHudEvents {
                 || mc.screen instanceof GachaScreen)) {
             return;
         }
-        ResourceLocation n = event.getName();
-        if (n.equals(VanillaGuiLayers.PLAYER_HEALTH) || n.equals(VanillaGuiLayers.FOOD_LEVEL)
-                || n.equals(VanillaGuiLayers.ARMOR_LEVEL) || n.equals(VanillaGuiLayers.AIR_LEVEL) || n.equals(VanillaGuiLayers.CHAT)) {
+        if (isSurvivalStatusLayer(layerName) || layerName.equals(VanillaGuiLayers.CHAT)) {
             event.setCanceled(true);
         }
+    }
+
+    private static boolean isSurvivalStatusLayer(ResourceLocation layerName) {
+        return layerName.equals(VanillaGuiLayers.PLAYER_HEALTH)
+                || layerName.equals(VanillaGuiLayers.FOOD_LEVEL)
+                || layerName.equals(VanillaGuiLayers.ARMOR_LEVEL)
+                || layerName.equals(VanillaGuiLayers.AIR_LEVEL);
     }
 
     public static void handleVisualTrigger(QuestDefinition quest, SplashType type, String phaseId) {
