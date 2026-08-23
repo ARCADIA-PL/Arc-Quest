@@ -43,6 +43,7 @@ import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 import org.arcadia.arc_quest.quest.registry.ArcQuestContent;
 import org.arcadia.arc_quest.quest.registry.QuestGroupRegistry;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.questmarker.runtime.BuiltInMarkTargetResolvers;
 import org.arcadia.arc_quest.questplayer.attachment.ArcQuestAttachments;
 import org.arcadia.arc_quest.npc.runtime.NpcBindingRegistry;
 import org.arcadia.arc_quest.trade.gacha.registry.DemoGachaShops;
@@ -76,6 +77,7 @@ public class Arc_Quest {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            BuiltInMarkTargetResolvers.registerAll();
             ArcQuestContent.registerAll();
             EpicDialogueTrees.registerAll();
             TradeContent.registerAll();
