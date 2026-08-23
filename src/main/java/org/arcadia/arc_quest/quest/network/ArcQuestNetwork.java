@@ -397,6 +397,14 @@ public final class ArcQuestNetwork {
 
         CHANNEL.registerMessage(
                 packetId++,
+                C2SSetTrackedPhaseFocusPacket.class,
+                C2SSetTrackedPhaseFocusPacket::encode,
+                C2SSetTrackedPhaseFocusPacket::decode,
+                C2SSetTrackedPhaseFocusPacket::handle
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
                 S2CSyncTrackedQuestPacket.class,
                 S2CSyncTrackedQuestPacket::encode,
                 S2CSyncTrackedQuestPacket::decode,
@@ -564,11 +572,19 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendTrackedQuestUpdate(@Nullable String questId) {
-        sendTrackedQuestUpdate(questId, null);
+        CHANNEL.sendToServer(new C2SSetTrackedQuestPacket(questId));
     }
 
     public static void sendTrackedQuestUpdate(@Nullable String questId, @Nullable String phaseId) {
-        CHANNEL.sendToServer(new C2SSetTrackedQuestPacket(questId, phaseId));
+        if (questId != null && phaseId != null && !phaseId.isBlank()) {
+            sendTrackedPhaseFocusUpdate(questId, phaseId);
+        } else {
+            sendTrackedQuestUpdate(questId);
+        }
+    }
+
+    public static void sendTrackedPhaseFocusUpdate(String questId, String phaseId) {
+        CHANNEL.sendToServer(new C2SSetTrackedPhaseFocusPacket(questId, phaseId));
     }
 
     public static void markPhaseStoryRead(String questId, String phaseId) {
