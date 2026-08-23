@@ -120,6 +120,7 @@ export function validateQuest(state) {
     q.phases.forEach((p, pi) => {
         validateMarkers(p.relatedMarks, `phases[${pi}].relatedMarks`, d,
             ['CONTINUOUS', 'PHASE_ENTERED', 'PHASE_COMPLETED', 'PHASE_ADVANCED']);
+        validateMarkers(p.trackingMarks, `phases[${pi}].trackingMarks`, d, ['CONTINUOUS']);
         if (!p.id?.trim()) d.push({lvl: 'err', path: `phase:${pi}`, msg: `Phase ${pi + 1} 缺少 id`});
         if (ids.has(p.id)) d.push({lvl: 'err', path: `phase:${pi}`, msg: `Phase id 重复: ${p.id}`});
         ids.add(p.id);

@@ -41,6 +41,8 @@ export const createPhase = index => ({
     guidesToGrantOnComplete: [],
     objectives: [],
     rewards: [],
+    relatedMarks: [],
+    trackingMarks: [],
     transitions: []
 });
 

@@ -227,6 +227,7 @@ export function ensureQuestShape(q) {
         p.phaseStartSound ||= '';
         p.phaseCompleteSound ||= '';
         p.relatedMarks = normalizeMarkers(p.relatedMarks);
+        p.trackingMarks = normalizeMarkers(p.trackingMarks);
         p.visualConfig ||= null;
         p.choices ||= [];
         p.transitions ||= [];

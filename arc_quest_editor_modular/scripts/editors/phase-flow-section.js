@@ -53,6 +53,7 @@ export function renderPhaseFlowSection(s, p, phaseIds, field, area, registry) {
     <h4>Phase 附加结构</h4>
     <div class="card">
       ${renderMarkEditor(p.relatedMarks, `ph.${s.pi}.relatedMarks`, 'Phase 相关标记')}
+      ${renderMarkEditor(p.trackingMarks, `ph.${s.pi}.trackingMarks`, 'Phase Tracking Markers')}
       ${area('visualConfig JSON', `ph.${s.pi}.visualConfig`, p.visualConfig ? JSON.stringify(p.visualConfig, null, 2) : '')}
     </div>
   `;
