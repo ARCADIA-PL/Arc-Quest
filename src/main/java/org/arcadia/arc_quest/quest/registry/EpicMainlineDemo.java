@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.quest.registry;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Items;
@@ -16,6 +17,10 @@ import org.arcadia.arc_quest.quest.builder.QuestBuilder;
 import org.arcadia.arc_quest.quest.reward.FlagReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.quest.reward.VariableReward;
+import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.runtime.BuiltInMarkTargetResolvers;
+
+import java.util.Map;
 
 /**
  * 史诗级主线任务链 DEMO —— 基于 Minecraft 原版内容。
@@ -118,6 +123,12 @@ public final class EpicMainlineDemo {
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.1")))
                                 .objective(ObjectiveBuilder.offerTag(ItemTags.WALLS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.2")))
+                                .trackingMarker(new MarkableObject.CustomResolver(
+                                        BuiltInMarkTargetResolvers.NEAREST_BLOCK_TAG,
+                                        Map.of(
+                                                "tag", BlockTags.LOGS.location().toString(),
+                                                "horizontal_radius", "48",
+                                                "vertical_radius", "16")))
                                 .setFlagOnComplete("arc_quest:gate_reinforced")
                                 // 手动转入汇合阶段（D）
                                 .thenGoTo("arc_quest:craft_sword"))
