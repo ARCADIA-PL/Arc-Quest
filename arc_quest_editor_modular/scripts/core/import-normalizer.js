@@ -175,6 +175,7 @@ function normalizePhase(phase, idx) {
         phaseStartSound: phase?.phaseStartSound || '',
         phaseCompleteSound: phase?.phaseCompleteSound || '',
         relatedMarks: phase?.relatedMarks || [],
+        trackingMarks: phase?.trackingMarks || [],
         guidesToGrantOnEnter: phase?.guidesToGrantOnEnter || [],
         guidesToGrantOnComplete: phase?.guidesToGrantOnComplete || [],
         visualConfig: phase?.visualConfig ? {

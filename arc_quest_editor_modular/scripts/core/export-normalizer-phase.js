@@ -207,6 +207,7 @@ export function exportPhase(phase) {
     if (phase.phaseStartSound) out.phaseStartSound = phase.phaseStartSound;
     if (phase.phaseCompleteSound) out.phaseCompleteSound = phase.phaseCompleteSound;
     if (phase.relatedMarks?.length) out.relatedMarks = phase.relatedMarks;
+    if (phase.trackingMarks?.length) out.trackingMarks = phase.trackingMarks;
     if (phase.visualConfig) {
         const vc = {};
         if (phase.visualConfig.themeColor) vc.themeColor = String(phase.visualConfig.themeColor);
