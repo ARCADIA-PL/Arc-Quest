@@ -91,6 +91,7 @@ public final class ArcQuestNetwork {
         registrar.playToServer(C2SMarkGuideSeenPacket.TYPE, C2SMarkGuideSeenPacket.STREAM_CODEC, C2SMarkGuideSeenPacket::handle);
         registrar.playToServer(C2SUpdateGuideProgressPacket.TYPE, C2SUpdateGuideProgressPacket.STREAM_CODEC, C2SUpdateGuideProgressPacket::handle);
         registrar.playToServer(C2SSetTrackedQuestPacket.TYPE, C2SSetTrackedQuestPacket.STREAM_CODEC, C2SSetTrackedQuestPacket::handle);
+        registrar.playToServer(C2SSetTrackedPhaseFocusPacket.TYPE, C2SSetTrackedPhaseFocusPacket.STREAM_CODEC, C2SSetTrackedPhaseFocusPacket::handle);
         registrar.playToServer(C2SMarkPhaseStoryReadPacket.TYPE, C2SMarkPhaseStoryReadPacket.STREAM_CODEC, C2SMarkPhaseStoryReadPacket::handle);
         registrar.playToServer(C2SCloseQuestEditorPacket.TYPE, C2SCloseQuestEditorPacket.STREAM_CODEC, C2SCloseQuestEditorPacket::handle);
         registrar.playToServer(C2SSaveQuestEditorPacket.TYPE, C2SSaveQuestEditorPacket.STREAM_CODEC, C2SSaveQuestEditorPacket::handle);
@@ -315,11 +316,11 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendTrackedQuestUpdate(@Nullable String questId) {
-        sendTrackedQuestUpdate(questId, null);
+        PacketDistributor.sendToServer(new C2SSetTrackedQuestPacket(questId));
     }
 
-    public static void sendTrackedQuestUpdate(@Nullable String questId, @Nullable String phaseId) {
-        PacketDistributor.sendToServer(new C2SSetTrackedQuestPacket(questId, phaseId));
+    public static void sendTrackedPhaseFocusUpdate(String questId, String phaseId) {
+        PacketDistributor.sendToServer(new C2SSetTrackedPhaseFocusPacket(questId, phaseId));
     }
 
     public static void markPhaseStoryRead(String questId, String phaseId) {
