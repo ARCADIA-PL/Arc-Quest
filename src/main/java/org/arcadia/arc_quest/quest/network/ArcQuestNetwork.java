@@ -413,6 +413,15 @@ public final class ArcQuestNetwork {
 
         CHANNEL.registerMessage(
                 packetId++,
+                S2CSyncTrackedPhaseFocusPacket.class,
+                S2CSyncTrackedPhaseFocusPacket::encode,
+                S2CSyncTrackedPhaseFocusPacket::decode,
+                S2CSyncTrackedPhaseFocusPacket::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
+
+        CHANNEL.registerMessage(
+                packetId++,
                 C2SMarkPhaseStoryReadPacket.class,
                 C2SMarkPhaseStoryReadPacket::encode,
                 C2SMarkPhaseStoryReadPacket::decode,
@@ -529,6 +538,14 @@ public final class ArcQuestNetwork {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncTrackedQuestPacket(
                 data.getQuestTrackingSnapshot(), data.getLastQuestTrackingChangeReason(),
+                envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
+        syncTrackedPhaseFocus(player, data);
+    }
+
+    public static void syncTrackedPhaseFocus(ServerPlayer player, ArcQuestPlayer data) {
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new S2CSyncTrackedPhaseFocusPacket(
+                data.getTrackedQuestId(), data.getTrackedPhaseId(),
                 envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
     }
 
