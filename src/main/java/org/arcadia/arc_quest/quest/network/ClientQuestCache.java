@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.client.hud.quest.journal.QuestJournalScreen;
 import org.arcadia.arc_quest.client.hud.quest.journal.history.QuestChangeHistoryStore;
 import org.arcadia.arc_quest.client.hud.quest.story.QuestStoryPanel;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
+import org.arcadia.arc_quest.client.quest.tracking.QuestTrackingPresentationState;
 import org.arcadia.arc_quest.client.util.GuiSoundManager;
 import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
@@ -145,6 +146,17 @@ public final class ClientQuestCache {
         ClientQuestTrackingStore.INSTANCE.applyAuthoritative(snapshot, reason);
     }
 
+    public void applyTrackedPhaseFocusSync(@Nullable String questId, @Nullable String phaseId) {
+        String trackedQuestId = ClientQuestTrackingStore.INSTANCE.trackedQuestId();
+        QuestRuntimeData runtime = questId == null ? null : activeQuests.get(questId);
+        if (!Objects.equals(trackedQuestId, questId) || runtime == null
+                || phaseId == null || !runtime.isPhaseActive(phaseId)) {
+            QuestTrackingPresentationState.INSTANCE.focus(trackedQuestId, null);
+            return;
+        }
+        QuestTrackingPresentationState.INSTANCE.focus(questId, phaseId);
+    }
+
     // ═══════════════════════════════════════════════════════
     //  网络包调用的更新方法
     // ═══════════════════════════════════════════════════════
@@ -171,6 +183,9 @@ public final class ClientQuestCache {
         String trackedQuestId = capData.contains("TrackedQuestId", Tag.TAG_STRING)
                 ? capData.getString("TrackedQuestId")
                 : null;
+        String trackedPhaseId = capData.contains("TrackedPhaseId", Tag.TAG_STRING)
+                ? capData.getString("TrackedPhaseId")
+                : null;
         QuestTrackingState trackingState = parseTrackingState(
                 capData.getString("TrackedQuestState"), trackedQuestId);
         long trackingRevision = Math.max(0L, capData.getLong("TrackedQuestRevision"));
@@ -184,6 +199,7 @@ public final class ClientQuestCache {
             QuestRuntimeData data = QuestRuntimeData.deserializeNBT(activeList.getCompound(i));
             activeQuests.put(data.getQuestId(), data);
         }
+        applyTrackedPhaseFocusSync(trackedQuestId, trackedPhaseId);
 
         // 已完成
         ListTag completedList = capData.getList("CompletedQuests", Tag.TAG_STRING);

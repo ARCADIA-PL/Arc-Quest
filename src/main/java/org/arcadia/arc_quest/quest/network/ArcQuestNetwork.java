@@ -119,6 +119,7 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2COpenGuidePacket.TYPE, S2COpenGuidePacket.STREAM_CODEC, S2COpenGuidePacket::handle);
         registrar.playToClient(S2CSyncGuideStatePacket.TYPE, S2CSyncGuideStatePacket.STREAM_CODEC, S2CSyncGuideStatePacket::handle);
         registrar.playToClient(S2CSyncTrackedQuestPacket.TYPE, S2CSyncTrackedQuestPacket.STREAM_CODEC, S2CSyncTrackedQuestPacket::handle);
+        registrar.playToClient(S2CSyncTrackedPhaseFocusPacket.TYPE, S2CSyncTrackedPhaseFocusPacket.STREAM_CODEC, S2CSyncTrackedPhaseFocusPacket::handle);
         registrar.playToClient(S2COpenQuestEditorPacket.TYPE, S2COpenQuestEditorPacket.STREAM_CODEC, S2COpenQuestEditorPacket::handle);
         registrar.playToClient(S2CQuestEditorResultPacket.TYPE, S2CQuestEditorResultPacket.STREAM_CODEC, S2CQuestEditorResultPacket::handle);
     }
@@ -145,6 +146,7 @@ public final class ArcQuestNetwork {
         registrar.playToClient(S2COpenGuidePacket.TYPE, S2COpenGuidePacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncGuideStatePacket.TYPE, S2CSyncGuideStatePacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CSyncTrackedQuestPacket.TYPE, S2CSyncTrackedQuestPacket.STREAM_CODEC, (packet, context) -> {});
+        registrar.playToClient(S2CSyncTrackedPhaseFocusPacket.TYPE, S2CSyncTrackedPhaseFocusPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2COpenQuestEditorPacket.TYPE, S2COpenQuestEditorPacket.STREAM_CODEC, (packet, context) -> {});
         registrar.playToClient(S2CQuestEditorResultPacket.TYPE, S2CQuestEditorResultPacket.STREAM_CODEC, (packet, context) -> {});
     }
@@ -233,6 +235,14 @@ public final class ArcQuestNetwork {
         QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
         PacketDistributor.sendToPlayer(player, new S2CSyncTrackedQuestPacket(
                 data.getQuestTrackingSnapshot(), data.getLastQuestTrackingChangeReason(),
+                envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
+        syncTrackedPhaseFocus(player, data);
+    }
+
+    public static void syncTrackedPhaseFocus(ServerPlayer player, ArcQuestPlayer data) {
+        QuestSyncRevisionManager.Envelope envelope = QuestSyncRevisionManager.next(player);
+        PacketDistributor.sendToPlayer(player, new S2CSyncTrackedPhaseFocusPacket(
+                data.getTrackedQuestId(), data.getTrackedPhaseId(),
                 envelope.playerSessionEpoch(), envelope.baseRevision(), envelope.newRevision()));
     }
 
