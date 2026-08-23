@@ -79,9 +79,11 @@ repositories {
 }
 
 dependencies {
-    implementation "net.createmod.ponder:ponder-neoforge:${ponder_version}"
+    implementation(jarJar("net.createmod.ponder:ponder-neoforge:${ponder_version}")) {
+        transitive = false
+    }
     compileOnly "dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}"
-    runtimeOnly "dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"
+    implementation(jarJar("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}"))
 
     implementation "xaero.minimap:xaerominimap-neoforge-1.21.1:26.4.2"
     implementation "xaero.map:xaeroworldmap-neoforge-1.21.1:1.44.2"
