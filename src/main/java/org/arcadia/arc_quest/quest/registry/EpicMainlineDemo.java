@@ -140,7 +140,7 @@ public final class EpicMainlineDemo {
                                         QuestMarkerType.LOCATION,
                                         10,
                                         256,
-                                        100,
+                                        60,
                                         false,
                                         false,
                                         Map.of("labelKey", "arc_quest.marker.epic_prologue.nearest_tree")))
