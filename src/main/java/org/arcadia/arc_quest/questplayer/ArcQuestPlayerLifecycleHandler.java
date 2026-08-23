@@ -118,7 +118,6 @@ public final class ArcQuestPlayerLifecycleHandler {
         C2SDatapackContentReadyPacket.clearPlayer(sp.getUUID());
         C2SRequestQuestResyncPacket.clearPlayer(sp.getUUID());
         C2SMarkPhaseStoryReadPacket.clearPlayer(sp.getUUID());
-        C2SSetTrackedQuestPacket.clearPlayer(sp.getUUID());
         QuestSyncRevisionManager.clearPlayer(sp.getUUID());
         PlayerSessionEpochManager.endSession(sp.getUUID());
     }
@@ -136,7 +135,6 @@ public final class ArcQuestPlayerLifecycleHandler {
                 C2SRequestTradePacket.clearPlayer(player.getUUID());
                 C2SRequestQuestResyncPacket.clearPlayer(player.getUUID());
                 C2SMarkPhaseStoryReadPacket.clearPlayer(player.getUUID());
-                C2SSetTrackedQuestPacket.clearPlayer(player.getUUID());
                 QuestSyncRevisionManager.clearPlayer(player.getUUID());
                 PlayerSessionEpochManager.endSession(player.getUUID());
             }
@@ -182,7 +180,6 @@ public final class ArcQuestPlayerLifecycleHandler {
         C2SDatapackContentReadyPacket.clear();
         C2SRequestQuestResyncPacket.clear();
         C2SMarkPhaseStoryReadPacket.clear();
-        C2SSetTrackedQuestPacket.clear();
         QuestSyncRevisionManager.clear();
         PlayerSessionEpochManager.clear();
         QuestDataTickHandler.clearMarkerRuntimeState();

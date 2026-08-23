@@ -94,7 +94,6 @@ public final class QuestTrackingManager implements QuestTrackingFacade {
                     action.reason(), null);
         }
 
-        TrackedPhaseFocusService.onTrackedQuestChanged(player.getUUID(), target.questId());
         data.applyQuestTracking(target.questId(), target.state(), action.reason());
         QuestTrackingSnapshot after = data.getQuestTrackingSnapshot();
         if (!Objects.equals(before.questId(), after.questId())) {

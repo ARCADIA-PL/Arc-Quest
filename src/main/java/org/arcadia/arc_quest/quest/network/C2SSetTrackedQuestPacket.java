@@ -9,13 +9,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.arcadia.arc_quest.Arc_Quest;
 import org.arcadia.arc_quest.quest.service.TrackedQuestService;
-import org.arcadia.arc_quest.quest.tracking.application.TrackedPhaseFocusService;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.UUID;
 
 public final class C2SSetTrackedQuestPacket implements CustomPacketPayload {
 
@@ -43,7 +40,6 @@ public final class C2SSetTrackedQuestPacket implements CustomPacketPayload {
         context.enqueueWork(() -> {
             ServerPlayer player = context.player() instanceof ServerPlayer serverPlayer ? serverPlayer : null;
             if (player != null) {
-                TrackedPhaseFocusService.prepare(player.getUUID(), packet.questId, null);
                 boolean changed = TrackedQuestService.setTrackedQuest(player, packet.questId);
                 if (!changed) {
                     ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
@@ -60,11 +56,4 @@ public final class C2SSetTrackedQuestPacket implements CustomPacketPayload {
         return TYPE;
     }
 
-    public static void clearPlayer(UUID playerId) {
-        TrackedPhaseFocusService.clearPlayer(playerId);
-    }
-
-    public static void clear() {
-        TrackedPhaseFocusService.clearAll();
-    }
 }

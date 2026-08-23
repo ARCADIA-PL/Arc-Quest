@@ -76,8 +76,8 @@ public final class QuestMarkerReconciliationService {
         QuestRuntimeData runtime = trackedQuestId == null ? null : data.getActiveQuest(trackedQuestId);
         ResourceLocation parsedQuestId = trackedQuestId == null ? null : ResourceLocation.tryParse(trackedQuestId);
         QuestDefinition definition = parsedQuestId == null ? null : QuestRegistry.get(parsedQuestId);
-        String trackedPhaseId = runtime == null ? null : TrackedPhaseFocusService.resolve(
-                player.getUUID(), trackedQuestId, runtime);
+        String trackedPhaseId = TrackedPhaseFocusService.resolve(
+                data, trackedQuestId, runtime, definition);
 
         if (runtime != null && runtime.getState() == QuestState.ACTIVE
                 && definition != null && trackedPhaseId != null) {
