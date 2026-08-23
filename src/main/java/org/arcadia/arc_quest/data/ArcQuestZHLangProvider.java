@@ -260,7 +260,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("quest_accepted", "接受任务", "新任务进入进行中状态时显示。");
         addToastConfigOption("quest_completed", "完成任务", "任务完成时显示。");
         addToastConfigOption("quest_failed", "任务失败", "任务失败时显示。");
-        addToastConfigOption("phase_advanced", "阶段推进", "任务推进到其他阶段时显示。");
+        addToastConfigOption("phase_advanced", "阶段更新（总开关）", "控制下方所有阶段新增、切换、完成与确认提示。");
         addToastConfigOption("objective_complete", "目标完成", "任务目标完成时显示。");
         addToastConfigOption("collection_entry_discovered", "发现收集条目", "发现隐藏的收集条目时显示。");
         addToastConfigOption("collection_entry_completed", "完成收集条目", "收集条目完成时显示。");

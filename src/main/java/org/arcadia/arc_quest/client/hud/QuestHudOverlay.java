@@ -276,6 +276,7 @@ public class QuestHudOverlay implements LayeredDraw.Layer {
     }
 
     private static boolean isPhaseToastEnabled(PhaseUpdateToast.Kind kind) {
+        if (!ArcQuestToastConfig.PHASE_ADVANCED.get()) return false;
         if (kind == null) return ArcQuestToastConfig.PHASE_ADDED.get();
         return switch (kind) {
             case ADDED -> ArcQuestToastConfig.PHASE_ADDED.get();
