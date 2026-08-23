@@ -4,13 +4,11 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 import org.arcadia.arc_quest.quest.service.TrackedQuestService;
-import org.arcadia.arc_quest.quest.tracking.application.TrackedPhaseFocusService;
 import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.UUID;
 import java.util.function.Supplier;
 
 public final class C2SSetTrackedQuestPacket {
@@ -35,7 +33,6 @@ public final class C2SSetTrackedQuestPacket {
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
             if (player != null) {
-                TrackedPhaseFocusService.prepare(player.getUUID(), packet.questId, null);
                 boolean changed = TrackedQuestService.setTrackedQuest(player, packet.questId);
                 if (!changed) {
                     ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
@@ -48,11 +45,4 @@ public final class C2SSetTrackedQuestPacket {
         context.setPacketHandled(true);
     }
 
-    public static void clearPlayer(UUID playerId) {
-        TrackedPhaseFocusService.clearPlayer(playerId);
-    }
-
-    public static void clear() {
-        TrackedPhaseFocusService.clearAll();
-    }
 }

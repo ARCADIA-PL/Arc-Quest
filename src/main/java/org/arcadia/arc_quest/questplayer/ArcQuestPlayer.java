@@ -172,6 +172,8 @@ public final class ArcQuestPlayer {
     private final GachaDataStore gachaData = new GachaDataStore();
     @Nullable
     private String trackedQuestId;
+    @Nullable
+    private String trackedPhaseId;
     private QuestTrackingState questTrackingState = QuestTrackingState.EMPTY;
     private long questTrackingRevision;
     private QuestTrackingChangeReason lastQuestTrackingChangeReason = QuestTrackingChangeReason.UNKNOWN;
@@ -194,6 +196,20 @@ public final class ArcQuestPlayer {
     @Nullable
     public synchronized String getTrackedQuestId() {
         return trackedQuestId;
+    }
+
+    @Nullable
+    public synchronized String getTrackedPhaseId() {
+        return trackedPhaseId;
+    }
+
+    public synchronized boolean setTrackedPhaseId(@Nullable String phaseId) {
+        String normalized = normalizeTrackedId(phaseId);
+        if (trackedQuestId == null) normalized = null;
+        if (Objects.equals(trackedPhaseId, normalized)) return false;
+        trackedPhaseId = normalized;
+        trackedQuestDirty = true;
+        return true;
     }
 
     public synchronized boolean setTrackedQuestId(@Nullable String questId) {
@@ -233,7 +249,9 @@ public final class ArcQuestPlayer {
                 questId, state, questTrackingRevision);
         if (Objects.equals(trackedQuestId, normalized.questId())
                 && questTrackingState == normalized.state()) return false;
+        String previousQuestId = trackedQuestId;
         trackedQuestId = normalized.questId();
+        if (!Objects.equals(previousQuestId, trackedQuestId)) trackedPhaseId = null;
         questTrackingState = normalized.state();
         questTrackingRevision = questTrackingRevision == Long.MAX_VALUE
                 ? 1L
@@ -501,6 +519,7 @@ public final class ArcQuestPlayer {
         root.put("TradeData", tradeData.serialize());
         root.put("GachaData", gachaData.serialize());
         if (trackedQuestId != null) root.putString("TrackedQuestId", trackedQuestId);
+        if (trackedPhaseId != null) root.putString("TrackedPhaseId", trackedPhaseId);
         root.putString("TrackedQuestState", questTrackingState.name());
         root.putLong("TrackedQuestRevision", questTrackingRevision);
         root.putString("TrackedQuestChangeReason", lastQuestTrackingChangeReason.name());
@@ -519,6 +538,9 @@ public final class ArcQuestPlayer {
                 ? root.getString("TrackedQuestId")
                 : null;
         if (trackedQuestId != null && trackedQuestId.isBlank()) trackedQuestId = null;
+        trackedPhaseId = trackedQuestId != null && root.contains("TrackedPhaseId", Tag.TAG_STRING)
+                ? normalizeTrackedId(root.getString("TrackedPhaseId"))
+                : null;
         questTrackingState = parseQuestTrackingState(
                 root.getString("TrackedQuestState"), trackedQuestId);
         questTrackingRevision = Math.max(0L, root.getLong("TrackedQuestRevision"));
@@ -627,6 +649,7 @@ public final class ArcQuestPlayer {
         profileState.clear();
         guideState.clear();
         trackedQuestId = null;
+        trackedPhaseId = null;
         questTrackingState = QuestTrackingState.EMPTY;
         questTrackingRevision = questTrackingRevision == Long.MAX_VALUE
                 ? 1L
@@ -637,6 +660,13 @@ public final class ArcQuestPlayer {
         tradeData.clear();
         gachaData.clear();
         fullDirty = true;
+    }
+
+    @Nullable
+    private static String normalizeTrackedId(@Nullable String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.trim();
+        return normalized.length() <= 256 ? normalized : null;
     }
 
     private static QuestTrackingState parseQuestTrackingState(String value,
