@@ -30,7 +30,7 @@ public final class ArcQuestToastConfig {
         QUEST_ACCEPTED = define(builder, "quest_accepted", "Show the quest accepted notification.");
         QUEST_COMPLETED = define(builder, "quest_completed", "Show the quest completed notification.");
         QUEST_FAILED = define(builder, "quest_failed", "Show the quest failed notification.");
-        PHASE_ADVANCED = define(builder, "phase_advanced", "Show the phase advanced notification.");
+        PHASE_ADVANCED = define(builder, "phase_advanced", "Master switch for all phase update notifications.");
         OBJECTIVE_COMPLETE = define(builder, "objective_complete", "Show the objective completed notification.");
         builder.pop();
 

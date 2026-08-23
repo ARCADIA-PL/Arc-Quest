@@ -263,7 +263,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addToastConfigOption("quest_accepted", "Quest Accepted", "Shown when a new quest becomes active.");
         addToastConfigOption("quest_completed", "Quest Completed", "Shown when a quest is completed.");
         addToastConfigOption("quest_failed", "Quest Failed", "Shown when a quest fails.");
-        addToastConfigOption("phase_advanced", "Phase Advanced", "Shown when quest progress advances to another phase.");
+        addToastConfigOption("phase_advanced", "Phase Updates (Master)", "Master switch for every phase update toast listed below.");
         addToastConfigOption("objective_complete", "Objective Completed", "Shown when an objective is completed.");
         addToastConfigOption("collection_entry_discovered", "Collection Entry Discovered", "Shown when a hidden collection entry is discovered.");
         addToastConfigOption("collection_entry_completed", "Collection Entry Completed", "Shown when a collection entry is completed.");
