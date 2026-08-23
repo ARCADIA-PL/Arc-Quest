@@ -206,9 +206,10 @@ public final class XaeroQuestMarkerSink implements QuestMarkerExternalSync.Sink 
             if (marker == null || !marker.isActive()) return null;
             ResourceLocation dimension = ResourceLocation.tryParse(marker.getDimension());
             if (dimension == null) return null;
-            String name = marker.getLabel() == null || marker.getLabel().isBlank()
+            String localizedLabel = marker.getLabelComponent().getString();
+            String name = localizedLabel.isBlank()
                     ? marker.getId()
-                    : marker.getLabel();
+                    : localizedLabel;
             if (name.length() > MAX_WAYPOINT_NAME_LENGTH) name = name.substring(0, MAX_WAYPOINT_NAME_LENGTH);
             return new Projection(marker.getId(), dimension,
                     Mth.floor(marker.getWorldX()), Mth.floor(marker.getWorldY()), Mth.floor(marker.getWorldZ()),

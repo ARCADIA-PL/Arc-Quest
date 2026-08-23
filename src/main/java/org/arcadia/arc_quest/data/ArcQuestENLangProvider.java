@@ -52,6 +52,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.tracking_menu.phase_progress", "Phase progress: %s/%s");
         add("arc_quest.gui.tracking_menu.optional", " (Optional)");
         add("arc_quest.gui.tracking_menu.more_objectives", "%s more objectives");
+        add("arc_quest.marker.epic_prologue.nearest_tree", "Nearest Tree");
         add("key.categories.arc_quest", "Arc Quest");
         add("key.arc_quest.open_journal", "Open Quest Screen");
         add("key.arc_quest.open_tracking_menu", "Hold to Open Quest Tracking Menu");

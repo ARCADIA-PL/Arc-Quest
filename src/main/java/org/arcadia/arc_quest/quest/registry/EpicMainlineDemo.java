@@ -18,6 +18,9 @@ import org.arcadia.arc_quest.quest.reward.FlagReward;
 import org.arcadia.arc_quest.quest.reward.ItemReward;
 import org.arcadia.arc_quest.quest.reward.VariableReward;
 import org.arcadia.arc_quest.questmarker.api.MarkableObject;
+import org.arcadia.arc_quest.questmarker.api.MarkActivations;
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
+import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 import org.arcadia.arc_quest.questmarker.runtime.BuiltInMarkTargetResolvers;
 
 import java.util.Map;
@@ -124,12 +127,23 @@ public final class EpicMainlineDemo {
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.1")))
                                 .objective(ObjectiveBuilder.offerTag(ItemTags.WALLS.location(), 8)
                                         .display(Component.translatable("arc_quest.objective.epic_prologue.reinforce_gate.2")))
-                                .trackingMarker(new MarkableObject.CustomResolver(
-                                        BuiltInMarkTargetResolvers.NEAREST_BLOCK_TAG,
-                                        Map.of(
-                                                "tag", BlockTags.LOGS.location().toString(),
-                                                "horizontal_radius", "48",
-                                                "vertical_radius", "16")))
+                                .trackingMarker(new MarkSpec(
+                                        "reinforce_gate_nearest_tree",
+                                        new MarkableObject.CustomResolver(
+                                                BuiltInMarkTargetResolvers.NEAREST_BLOCK_TAG,
+                                                Map.of(
+                                                        "tag", BlockTags.LOGS.location().toString(),
+                                                        "horizontal_radius", "48",
+                                                        "vertical_radius", "16")),
+                                        MarkActivations.always(),
+                                        MarkActivations.never(),
+                                        QuestMarkerType.LOCATION,
+                                        10,
+                                        256,
+                                        100,
+                                        false,
+                                        false,
+                                        Map.of("labelKey", "arc_quest.marker.epic_prologue.nearest_tree")))
                                 .setFlagOnComplete("arc_quest:gate_reinforced")
                                 // 手动转入汇合阶段（D）
                                 .thenGoTo("arc_quest:craft_sword"))

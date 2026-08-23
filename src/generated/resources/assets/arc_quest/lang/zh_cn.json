@@ -189,6 +189,7 @@
   "arc_quest.hud.toast.phase_completed": "[// 阶段已完成 ]",
   "arc_quest.hud.toast.phase_pending_confirm": "[// 等待手动确认 ]",
   "arc_quest.hud.toast.phase_switched": "[// 当前焦点已切换 ]",
+  "arc_quest.marker.epic_prologue.nearest_tree": "最近的树木",
   "arc_quest.message.quest_action.abandon": "放弃任务",
   "arc_quest.message.quest_action.accept": "接受任务",
   "arc_quest.message.quest_action.choose": "选择分支",

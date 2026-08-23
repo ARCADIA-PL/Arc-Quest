@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.questmarker.api;
 
+import net.minecraft.network.chat.Component;
 import org.arcadia.arc_quest.quest.api.QuestState;
 
 import java.util.Map;
@@ -120,6 +121,13 @@ public class QuestMarkerData {
 
     public String getLabel() {
         return label;
+    }
+
+    public Component getLabelComponent() {
+        String translationKey = styleHints.get("labelKey");
+        return translationKey == null || translationKey.isBlank()
+                ? Component.literal(label)
+                : Component.translatable(translationKey);
     }
 
     public String getDimension() {
