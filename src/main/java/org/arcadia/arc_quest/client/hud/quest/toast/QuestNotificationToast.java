@@ -40,6 +40,10 @@ public class QuestNotificationToast {
         lastUpdateTime = now;
     }
 
+    QuestToastManager.ToastType getType() {
+        return type;
+    }
+
     public void tick(boolean isFrozen) {
         long now = Util.getMillis();
         long dt = now - lastUpdateTime;

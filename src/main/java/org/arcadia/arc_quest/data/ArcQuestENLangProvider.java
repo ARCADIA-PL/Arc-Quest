@@ -19,6 +19,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuiTranslations();
         addHudTranslations();
         addToastTranslations();
+        addToastConfigTranslations();
         addCommandTranslations();
         addDialogueTranslations();
         addEpicDialogueTranslations();
@@ -52,8 +53,8 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.gui.tracking_menu.optional", " (Optional)");
         add("arc_quest.gui.tracking_menu.more_objectives", "%s more objectives");
         add("key.categories.arc_quest", "Arc Quest");
-        add("key.arc_quest.open_journal", "Open Quest Panel");
-        add("key.arc_quest.open_tracking_menu", "Open Quest Tracking Menu");
+        add("key.arc_quest.open_journal", "Open Quest Screen");
+        add("key.arc_quest.open_tracking_menu", "Hold to Open Quest Tracking Menu");
         add("gui.arc_quest.journal.title", "Quest Journal");
     }
 
@@ -250,6 +251,35 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("arc_quest.toast.prefix.quest_failed", "✘ QUEST FAILED");
         add("arc_quest.toast.prefix.phase_advanced", "▸ PHASE ADVANCED");
         add("arc_quest.toast.prefix.objective_complete", "✔ OBJECTIVE DONE");
+    }
+
+    private void addToastConfigTranslations() {
+        add("gui.arc_quest.toast_config.title", "Toast Notifications");
+        add("gui.arc_quest.toast_config.subtitle", "Choose which quest notifications may appear on your HUD.");
+        add("gui.arc_quest.toast_config.enabled", "ON");
+        add("gui.arc_quest.toast_config.disabled", "OFF");
+        add("gui.arc_quest.toast_config.reset", "Reset Defaults");
+        add("gui.arc_quest.toast_config.pause_button", "Arc Quest Notifications");
+        addToastConfigOption("quest_accepted", "Quest Accepted", "Shown when a new quest becomes active.");
+        addToastConfigOption("quest_completed", "Quest Completed", "Shown when a quest is completed.");
+        addToastConfigOption("quest_failed", "Quest Failed", "Shown when a quest fails.");
+        addToastConfigOption("phase_advanced", "Phase Advanced", "Shown when quest progress advances to another phase.");
+        addToastConfigOption("objective_complete", "Objective Completed", "Shown when an objective is completed.");
+        addToastConfigOption("collection_entry_discovered", "Collection Entry Discovered", "Shown when a hidden collection entry is discovered.");
+        addToastConfigOption("collection_entry_completed", "Collection Entry Completed", "Shown when a collection entry is completed.");
+        addToastConfigOption("collection_reward_unlocked", "Collection Reward Unlocked", "Shown when a collection reward becomes available.");
+        addToastConfigOption("collection_reward_claimed", "Collection Reward Claimed", "Shown after claiming a collection reward.");
+        addToastConfigOption("phase_added", "Tracked Phase Added", "Shown when a phase is added to the tracked quest.");
+        addToastConfigOption("phase_switched", "Tracked Phase Switched", "Shown when tracked quest focus changes phase.");
+        addToastConfigOption("phase_completed", "Tracked Phase Completed", "Shown when the tracked phase is completed.");
+        addToastConfigOption("phase_pending_confirm", "Phase Confirmation Required", "Shown when the tracked phase awaits manual confirmation.");
+        addToastConfigOption("branch_choice", "Branch Choice Available", "Shown when the tracked quest has an available branch choice.");
+    }
+
+    private void addToastConfigOption(String key, String title, String description) {
+        String prefix = "gui.arc_quest.toast_config.option." + key;
+        add(prefix, title);
+        add(prefix + ".description", description);
     }
 
     // ═══════════════════════════════════════════════════════

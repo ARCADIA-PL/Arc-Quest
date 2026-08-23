@@ -1,6 +1,5 @@
 package org.arcadia.arc_quest.client.hud.quest.trackingmenu;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.math.Axis;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -44,7 +43,6 @@ public final class QuestTrackingMenuScreen extends Screen {
     private String pressedQuestId;
     private boolean dragging;
     private boolean dragMoved;
-    private boolean trackingMenuKeyHeld;
     private double dragStartX;
     private double dragStartY;
     private double lastDragY;
@@ -67,8 +65,6 @@ public final class QuestTrackingMenuScreen extends Screen {
         detailQuestId = null;
         hoverStartedAt = 0L;
         detailAlpha = 0f;
-        // This screen is opened by consuming the mapping's press; wait for its matching release.
-        trackingMenuKeyHeld = true;
         updateInteractionRailLeft();
     }
 
@@ -77,18 +73,13 @@ public final class QuestTrackingMenuScreen extends Screen {
         long now = Util.getMillis();
         float dt = lastRenderTime == 0L ? 0f : Math.min(0.1f, (now - lastRenderTime) / 1000f);
         lastRenderTime = now;
-        if (trackingMenuKeyHeld && !isTrackingMenuKeyPhysicallyDown()) {
-            trackingMenuKeyHeld = false;
-        }
         refreshEntries(false);
 
         float transitionProgress = getTransitionProgress(now);
         if (closing && transitionProgress <= 0f) {
             HudCursorManager.beginFrame();
             HudCursorManager.apply();
-            if (!trackingMenuKeyHeld && minecraft != null && minecraft.screen == this) {
-                minecraft.setScreen(null);
-            }
+            if (minecraft != null && minecraft.screen == this) minecraft.setScreen(null);
             return;
         }
 
@@ -324,13 +315,6 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matchesMouse(button)) {
-            if (!trackingMenuKeyHeld) {
-                trackingMenuKeyHeld = true;
-                requestClose();
-            }
-            return true;
-        }
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
         if (closing) return true;
         if (mouseX < interactionRailLeft) {
@@ -368,8 +352,8 @@ public final class QuestTrackingMenuScreen extends Screen {
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matchesMouse(button)) {
-            trackingMenuKeyHeld = false;
-            return super.mouseReleased(mouseX, mouseY, button);
+            closeFromKeyRelease();
+            return true;
         }
         if (closing || !dragging || button != 0) return super.mouseReleased(mouseX, mouseY, button);
         dragging = false;
@@ -455,26 +439,24 @@ public final class QuestTrackingMenuScreen extends Screen {
             requestClose();
             return true;
         }
-        if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matches(keyCode, scanCode)) {
-            if (!trackingMenuKeyHeld) {
-                trackingMenuKeyHeld = true;
-                requestClose();
-            }
-            return true;
-        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
         if (ClientEventHandler.KEY_OPEN_TRACKING_MENU.matches(keyCode, scanCode)) {
-            trackingMenuKeyHeld = false;
+            closeFromKeyRelease();
+            return true;
         }
         return super.keyReleased(keyCode, scanCode, modifiers);
     }
 
     @Override
     public void onClose() {
+        requestClose();
+    }
+
+    public void closeFromKeyRelease() {
         requestClose();
     }
 
@@ -487,20 +469,6 @@ public final class QuestTrackingMenuScreen extends Screen {
         dragging = false;
         dragMoved = false;
         pressedQuestId = null;
-    }
-
-    private boolean isTrackingMenuKeyPhysicallyDown() {
-        if (minecraft == null) return false;
-        InputConstants.Key key = ClientEventHandler.KEY_OPEN_TRACKING_MENU.getKey();
-        long window = minecraft.getWindow().getWindow();
-        if (key.getType() == InputConstants.Type.MOUSE) {
-            return GLFW.glfwGetMouseButton(window, key.getValue()) == GLFW.GLFW_PRESS;
-        }
-        if (key.getType() == InputConstants.Type.KEYSYM) {
-            return InputConstants.isKeyDown(window, key.getValue());
-        }
-        // GLFW does not expose an inverse scancode lookup. The release callback clears the latch.
-        return key.getType() == InputConstants.Type.SCANCODE && trackingMenuKeyHeld;
     }
 
     @Override

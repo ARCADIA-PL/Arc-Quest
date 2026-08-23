@@ -16,6 +16,7 @@ import org.arcadia.arc_quest.client.hud.quest.tracker.QuestTrackerPanel;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingController;
 import org.arcadia.arc_quest.client.quest.tracking.ClientQuestTrackingStore;
+import org.arcadia.arc_quest.config.ArcQuestToastConfig;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 
@@ -80,6 +81,7 @@ public class QuestHudOverlay implements IGuiOverlay {
     public void render(ForgeGui gui, GuiGraphics g, float partialTick, int screenWidth, int screenHeight) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.options.hideGui) return;
+        refreshToastConfiguration();
 
         boolean isSplashActive = QuestSplashRenderer.isActive();
         boolean isBlockingScreen = isSplashActive || mc.screen instanceof QuestJournalScreen
@@ -231,6 +233,11 @@ public class QuestHudOverlay implements IGuiOverlay {
     }
 
     public void showBranchChoiceToast(String questId, String phaseId) {
+        if (!ArcQuestToastConfig.BRANCH_CHOICE.get()) {
+            branchChoiceToast = null;
+            currentBranchToastY = -1;
+            return;
+        }
         if (branchChoiceToast != null && branchChoiceToast.sameTarget(questId, phaseId)) return;
         branchChoiceToast = new BranchChoiceToast(questId, phaseId);
     }
@@ -246,7 +253,33 @@ public class QuestHudOverlay implements IGuiOverlay {
 
     public void showPhaseUpdateToast(Component phaseName, int themeColor, PhaseUpdateToast.Kind kind) {
         if (phaseName == null || phaseName.getString().isEmpty()) return;
+        if (!isPhaseToastEnabled(kind)) {
+            phaseUpdateToast = null;
+            currentPhasePopupY = -1;
+            return;
+        }
         phaseUpdateToast = new PhaseUpdateToast(phaseName, themeColor, kind);
+    }
+
+    public void refreshToastConfiguration() {
+        if (phaseUpdateToast != null && !isPhaseToastEnabled(phaseUpdateToast.getKind())) {
+            phaseUpdateToast = null;
+            currentPhasePopupY = -1;
+        }
+        if (branchChoiceToast != null && !ArcQuestToastConfig.BRANCH_CHOICE.get()) {
+            branchChoiceToast = null;
+            currentBranchToastY = -1;
+        }
+    }
+
+    private static boolean isPhaseToastEnabled(PhaseUpdateToast.Kind kind) {
+        if (kind == null) return ArcQuestToastConfig.PHASE_ADDED.get();
+        return switch (kind) {
+            case ADDED -> ArcQuestToastConfig.PHASE_ADDED.get();
+            case SWITCHED -> ArcQuestToastConfig.PHASE_SWITCHED.get();
+            case COMPLETED -> ArcQuestToastConfig.PHASE_COMPLETED.get();
+            case PENDING_CONFIRM -> ArcQuestToastConfig.PHASE_PENDING_CONFIRM.get();
+        };
     }
 
     public void clearBranchChoiceToast(String questId, String phaseId) {
