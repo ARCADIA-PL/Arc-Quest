@@ -171,6 +171,7 @@ public final class QuestSpecCompiler {
             if (parsed != null) builder.grantGuideOnComplete(parsed);
         }
         if (!clientPresentation) for (MarkSpec mark : compileMarks(spec.relatedMarks)) builder.markRelatedObject(mark);
+        if (!clientPresentation) for (MarkSpec mark : compileMarks(spec.trackingMarks)) builder.trackingMarker(mark);
         if (blankToNull(spec.tradeShopId) != null) builder.phaseTrade(blankToNull(spec.tradeShopId));
         if (parseNullableSound(spec.phaseStartSound) != null) builder.phaseStartSound(parseNullableSound(spec.phaseStartSound));
         if (parseNullableSound(spec.phaseCompleteSound) != null) builder.phaseCompleteSound(parseNullableSound(spec.phaseCompleteSound));

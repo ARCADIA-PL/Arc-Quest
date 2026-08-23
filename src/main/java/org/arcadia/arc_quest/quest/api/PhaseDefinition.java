@@ -32,6 +32,7 @@ public final class PhaseDefinition {
     private final List<ResourceLocation> guidesToGrantOnEnter;
     private final List<ResourceLocation> guidesToGrantOnComplete;
     private final List<MarkSpec> relatedMarks;
+    private final List<MarkSpec> trackingMarks;
     private final QuestVisualConfig visualConfig;
     @Nullable
     private final ICondition enterCondition;
@@ -190,6 +191,36 @@ public final class PhaseDefinition {
                            boolean autoAdvanceOnComplete,
                            List<ResourceLocation> guidesToGrantOnEnter,
                            List<ResourceLocation> guidesToGrantOnComplete) {
+        this(phaseId, displayName, description, story, objectives, transitions, choices, phaseRewards,
+                flagsToSetOnEnter, flagsToSetOnComplete, relatedMarks, visualConfig, tradeShopId,
+                phaseStartSound, phaseCompleteSound, collectionEntryConfig, intelSceneId, enterCondition,
+                autoEnterByCondition, autoAdvanceOnComplete, guidesToGrantOnEnter, guidesToGrantOnComplete,
+                List.of());
+    }
+
+    public PhaseDefinition(String phaseId,
+                           QuestText displayName,
+                           QuestText description,
+                           QuestText story,
+                           List<ObjectiveEntry> objectives,
+                           List<PhaseTransition> transitions,
+                           List<ChoiceOption> choices,
+                           List<IReward> phaseRewards,
+                           List<String> flagsToSetOnEnter,
+                           List<String> flagsToSetOnComplete,
+                           List<MarkSpec> relatedMarks,
+                           QuestVisualConfig visualConfig,
+                           @Nullable String tradeShopId,
+                           @Nullable SoundEvent phaseStartSound,
+                           @Nullable SoundEvent phaseCompleteSound,
+                           @Nullable CollectionEntryConfig collectionEntryConfig,
+                           @Nullable ResourceLocation intelSceneId,
+                           @Nullable ICondition enterCondition,
+                           boolean autoEnterByCondition,
+                           boolean autoAdvanceOnComplete,
+                           List<ResourceLocation> guidesToGrantOnEnter,
+                           List<ResourceLocation> guidesToGrantOnComplete,
+                           List<MarkSpec> trackingMarks) {
         Objects.requireNonNull(phaseId);
         Objects.requireNonNull(displayName);
         if (objectives.isEmpty()) {
@@ -208,6 +239,7 @@ public final class PhaseDefinition {
         this.guidesToGrantOnEnter = List.copyOf(guidesToGrantOnEnter == null ? List.of() : guidesToGrantOnEnter);
         this.guidesToGrantOnComplete = List.copyOf(guidesToGrantOnComplete == null ? List.of() : guidesToGrantOnComplete);
         this.relatedMarks = relatedMarks == null ? List.of() : List.copyOf(relatedMarks);
+        this.trackingMarks = trackingMarks == null ? List.of() : List.copyOf(trackingMarks);
         this.visualConfig = visualConfig != null ? visualConfig : QuestVisualConfig.EMPTY;
         this.tradeShopId = tradeShopId;
         this.phaseStartSound = phaseStartSound;
@@ -362,6 +394,10 @@ public final class PhaseDefinition {
 
     public List<MarkSpec> getRelatedMarks() {
         return relatedMarks;
+    }
+
+    public List<MarkSpec> getTrackingMarks() {
+        return trackingMarks;
     }
 
     public QuestVisualConfig getVisualConfig() {

@@ -17,6 +17,7 @@ import org.arcadia.arc_quest.quest.tracking.domain.QuestTrackingStateMachine;
 import org.arcadia.arc_quest.quest.tracking.domain.QuestTrackingTransition;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -100,6 +101,7 @@ public final class QuestTrackingManager implements QuestTrackingFacade {
                     player.serverLevel(), player, before.questId(), after.questId(),
                     action.reason(), after.revision(), true));
         }
+        QuestMarkerReconciliationService.reconcileTrackingPhaseMarkers(player, data, true);
         QuestSyncCoordinator.persistAndSyncIfChanged(player, data);
         return new QuestTrackingResult(true, true, before, after,
                 action.reason(), null);

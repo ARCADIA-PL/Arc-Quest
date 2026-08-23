@@ -19,6 +19,7 @@ public class PhaseSpec {
     public List<String> guidesToGrantOnEnter = new ArrayList<>();
     public List<String> guidesToGrantOnComplete = new ArrayList<>();
     public List<MarkSpecData> relatedMarks = new ArrayList<>();
+    public List<MarkSpecData> trackingMarks = new ArrayList<>();
     public String tradeShopId = "";
     /**
      * 支持三种写法：

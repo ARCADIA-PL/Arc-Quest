@@ -40,6 +40,7 @@ public final class PhaseBuilder {
     private final List<ResourceLocation> guidesOnEnter = new ArrayList<>();
     private final List<ResourceLocation> guidesOnComplete = new ArrayList<>();
     private final List<MarkSpec> relatedMarks = new ArrayList<>();
+    private final List<MarkSpec> trackingMarks = new ArrayList<>();
     private QuestText displayName;
     private QuestText description = QuestText.component(Component.empty());
     private QuestText story = QuestText.component(Component.empty());
@@ -287,6 +288,25 @@ public final class PhaseBuilder {
         return markRelatedObject(spec, MarkTrigger.PHASE_ADVANCED, MarkTriggers.DEFAULT_TRIGGER_DURATION_TICKS);
     }
 
+    public PhaseBuilder trackingMarker(MarkableObject object) {
+        return trackingMarker(object, MarkActivations.always());
+    }
+
+    public PhaseBuilder trackingMarker(MarkableObject object, MarkActivation activation) {
+        String id = phaseId + "::tracking_mark_" + trackingMarks.size();
+        return trackingMarker(new MarkSpec(id, object, activation, MarkActivations.never(),
+                QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false, Map.of()));
+    }
+
+    public PhaseBuilder trackingMarker(MarkSpec spec) {
+        Objects.requireNonNull(spec, "spec");
+        if (!MarkTriggers.isContinuous(spec)) {
+            throw new IllegalArgumentException("Phase tracking markers must use the CONTINUOUS trigger");
+        }
+        trackingMarks.add(spec);
+        return this;
+    }
+
     public PhaseBuilder phaseTrade(String shopId) {
         tradeShopId = shopId;
         return this;
@@ -448,7 +468,8 @@ public final class PhaseBuilder {
                 autoEnterByCondition,
                 autoAdvanceOnComplete,
                 new ArrayList<>(guidesOnEnter),
-                new ArrayList<>(guidesOnComplete)
+                new ArrayList<>(guidesOnComplete),
+                new ArrayList<>(trackingMarks)
         );
     }
 }

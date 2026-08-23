@@ -13,6 +13,7 @@ import org.arcadia.arc_quest.questmarker.api.QuestMarkerState;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
 import org.arcadia.arc_quest.questmarker.internal.MarkerIds;
 import org.arcadia.arc_quest.questmarker.internal.runtime.MarkerReconciliationEngine;
+import org.arcadia.arc_quest.questmarker.runtime.QuestMarkerReconciliationService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -81,6 +82,7 @@ public final class QuestMarkerService {
                 desiredMarkers);
         result.removed().forEach(markerId -> ArcQuestNetwork.syncMarkerDeltaRemove(player, markerId));
         result.upserted().forEach(marker -> ArcQuestNetwork.syncMarkerDeltaUpsert(player, marker));
+        QuestMarkerReconciliationService.reconcileTrackingPhaseMarkers(player, data, true);
 
         NeoForge.EVENT_BUS.post(new QuestMarkersRefreshedEvent(
                 player,
