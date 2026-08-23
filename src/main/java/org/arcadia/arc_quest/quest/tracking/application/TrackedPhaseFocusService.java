@@ -6,6 +6,8 @@ import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Objects;
+
 public final class TrackedPhaseFocusService {
 
     private TrackedPhaseFocusService() {
@@ -17,7 +19,8 @@ public final class TrackedPhaseFocusService {
                                  @Nullable QuestRuntimeData runtime,
                                  @Nullable QuestDefinition definition) {
         if (trackedQuestId == null || runtime == null || runtime.getState() != QuestState.ACTIVE
-                || definition == null || !trackedQuestId.equals(runtime.getQuestId())) {
+                || definition == null || !trackedQuestId.equals(runtime.getQuestId())
+                || !Objects.equals(data.getTrackedQuestId(), trackedQuestId)) {
             data.setTrackedPhaseId(null);
             return null;
         }
