@@ -36,6 +36,7 @@ public final class QuestSpecValidator {
                 marks(r, p.relatedMarks, b + ".relatedMarks", Set.of(
                         MarkTrigger.CONTINUOUS, MarkTrigger.PHASE_ENTERED,
                         MarkTrigger.PHASE_COMPLETED, MarkTrigger.PHASE_ADVANCED));
+                marks(r, p.trackingMarks, b + ".trackingMarks", Set.of(MarkTrigger.CONTINUOUS));
                 if (blank(p.phaseId)) err(r, b + ".phaseId", "Phase id is required"); else if (!ids.add(p.phaseId)) err(r, b + ".phaseId", "Duplicate phase id: " + p.phaseId);
             }
             for (int i = 0; i < spec.phases.size(); i++) phase(r, spec.phases.get(i), i, ids);

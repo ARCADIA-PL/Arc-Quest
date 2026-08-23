@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.questmarker.internal;
 public final class MarkerIds {
 
     private static final String AUTO_PREFIX = "aq:auto:";
+    private static final String TRACKING_PREFIX = "aq:tracking:";
     private static final String DIALOGUE_PREFIX = "aq:dlg:";
     private static final String TRIGGER_PREFIX = "aq:trigger:";
     private static final String LEGACY_LOCATION_PREFIX = "quest:";
@@ -26,6 +27,10 @@ public final class MarkerIds {
         return autoQuestPrefix(questId) + phaseId + ":obj" + objectiveIndex + ":" + markerSpecId;
     }
 
+    public static String trackingPhase(String questId, String phaseId, String markerSpecId) {
+        return TRACKING_PREFIX + questId + ":" + phaseId + ":" + markerSpecId;
+    }
+
     public static String triggeredQuestPrefix(String questId) {
         return TRIGGER_PREFIX + "quest:" + questId + ":";
     }
@@ -36,6 +41,10 @@ public final class MarkerIds {
 
     public static boolean isAuto(String markerId) {
         return markerId != null && markerId.startsWith(AUTO_PREFIX);
+    }
+
+    public static boolean isTracking(String markerId) {
+        return markerId != null && markerId.startsWith(TRACKING_PREFIX);
     }
 
     public static boolean isDialogue(String markerId) {
@@ -52,6 +61,7 @@ public final class MarkerIds {
     }
 
     public static boolean isDerived(String markerId) {
-        return isAuto(markerId) || isDialogue(markerId) || isTriggered(markerId) || isLegacyLocation(markerId);
+        return isAuto(markerId) || isTracking(markerId) || isDialogue(markerId)
+                || isTriggered(markerId) || isLegacyLocation(markerId);
     }
 }
