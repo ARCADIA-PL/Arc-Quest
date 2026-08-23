@@ -564,7 +564,11 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendTrackedQuestUpdate(@Nullable String questId) {
-        CHANNEL.sendToServer(new C2SSetTrackedQuestPacket(questId));
+        sendTrackedQuestUpdate(questId, null);
+    }
+
+    public static void sendTrackedQuestUpdate(@Nullable String questId, @Nullable String phaseId) {
+        CHANNEL.sendToServer(new C2SSetTrackedQuestPacket(questId, phaseId));
     }
 
     public static void markPhaseStoryRead(String questId, String phaseId) {

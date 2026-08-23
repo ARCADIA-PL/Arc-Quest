@@ -6,6 +6,7 @@ import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.api.QuestState;
 import org.arcadia.arc_quest.quest.data.QuestRuntimeData;
 import org.arcadia.arc_quest.quest.registry.QuestRegistry;
+import org.arcadia.arc_quest.quest.tracking.application.TrackedPhaseFocusService;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerData;
@@ -13,9 +14,7 @@ import org.arcadia.arc_quest.questmarker.internal.MarkerIds;
 import org.arcadia.arc_quest.questplayer.ArcQuestPlayer;
 
 import java.util.List;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 
 public final class QuestMarkerReconciliationService {
     private QuestMarkerReconciliationService() {
@@ -72,19 +71,22 @@ public final class QuestMarkerReconciliationService {
     }
 
     public static boolean reconcileTrackingPhaseMarkers(ServerPlayer player, ArcQuestPlayer data, boolean force) {
-        Set<String> desiredMarkerIds = new LinkedHashSet<>();
+        List<String> desiredMarkerIds = new java.util.ArrayList<>();
         String trackedQuestId = data.getTrackedQuestId();
         QuestRuntimeData runtime = trackedQuestId == null ? null : data.getActiveQuest(trackedQuestId);
         ResourceLocation parsedQuestId = trackedQuestId == null ? null : ResourceLocation.tryParse(trackedQuestId);
         QuestDefinition definition = parsedQuestId == null ? null : QuestRegistry.get(parsedQuestId);
+        String trackedPhaseId = runtime == null ? null : TrackedPhaseFocusService.resolve(
+                player.getUUID(), trackedQuestId, runtime);
 
-        if (runtime != null && runtime.getState() == QuestState.ACTIVE && definition != null) {
-            for (String phaseId : runtime.getActivePhaseIds()) {
-                var phase = definition.getPhase(phaseId);
-                if (phase == null) continue;
+        if (runtime != null && runtime.getState() == QuestState.ACTIVE
+                && definition != null && trackedPhaseId != null) {
+            var phase = definition.getPhase(trackedPhaseId);
+            if (phase != null) {
                 for (MarkSpec spec : phase.getTrackingMarks()) {
-                    if (!MarkTriggers.isContinuous(spec)) continue;
-                    desiredMarkerIds.add(MarkerIds.trackingPhase(trackedQuestId, phaseId, spec.id()));
+                    if (MarkTriggers.isContinuous(spec)) {
+                        desiredMarkerIds.add(MarkerIds.trackingPhase(trackedQuestId, trackedPhaseId, spec.id()));
+                    }
                 }
             }
         }
@@ -96,15 +98,15 @@ public final class QuestMarkerReconciliationService {
             changed = true;
         }
 
-        if (runtime == null || runtime.getState() != QuestState.ACTIVE || definition == null) return changed;
-        for (String phaseId : runtime.getActivePhaseIds()) {
-            var phase = definition.getPhase(phaseId);
-            if (phase == null) continue;
+        if (runtime == null || runtime.getState() != QuestState.ACTIVE
+                || definition == null || trackedPhaseId == null) return changed;
+        var phase = definition.getPhase(trackedPhaseId);
+        if (phase != null) {
             for (MarkSpec spec : phase.getTrackingMarks()) {
                 if (!MarkTriggers.isContinuous(spec)) continue;
-                String markerId = MarkerIds.trackingPhase(trackedQuestId, phaseId, spec.id());
+                String markerId = MarkerIds.trackingPhase(trackedQuestId, trackedPhaseId, spec.id());
                 changed |= QuestMarkerRuntimeManager.refresh(
-                        player, data, markerId, trackedQuestId, spec, phaseId, -1, force);
+                        player, data, markerId, trackedQuestId, spec, trackedPhaseId, -1, force);
             }
         }
         return changed;

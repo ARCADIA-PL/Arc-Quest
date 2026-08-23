@@ -14,12 +14,14 @@ public final class ClientQuestTrackingController {
     public void requestTrack(@Nullable String questId) {
         if (Minecraft.getInstance().getConnection() == null) return;
         ClientQuestTrackingStore.INSTANCE.markRequestPending();
-        ArcQuestNetwork.sendTrackedQuestUpdate(questId);
+        ArcQuestNetwork.sendTrackedQuestUpdate(questId, null);
     }
 
     public void requestFocus(String questId, @Nullable String phaseId) {
         QuestTrackingPresentationState.INSTANCE.focus(questId, phaseId);
-        requestTrack(questId);
+        if (Minecraft.getInstance().getConnection() == null) return;
+        ClientQuestTrackingStore.INSTANCE.markRequestPending();
+        ArcQuestNetwork.sendTrackedQuestUpdate(questId, phaseId);
     }
 
     @Nullable
