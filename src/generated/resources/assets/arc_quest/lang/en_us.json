@@ -189,6 +189,7 @@
   "arc_quest.hud.toast.phase_completed": "[// LANE SECURED ]",
   "arc_quest.hud.toast.phase_pending_confirm": "[// AWAITING MANUAL CONFIRM ]",
   "arc_quest.hud.toast.phase_switched": "[// FOCUS SHIFTED ]",
+  "arc_quest.marker.epic_prologue.nearest_tree": "Nearest Tree",
   "arc_quest.message.quest_action.abandon": "Abandon quest",
   "arc_quest.message.quest_action.accept": "Accept quest",
   "arc_quest.message.quest_action.choose": "Choose branch",

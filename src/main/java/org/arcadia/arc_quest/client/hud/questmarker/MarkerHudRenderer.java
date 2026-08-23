@@ -421,7 +421,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
         gui.pose().popPose();
 
-        String name = marker.getLabel();
+        String name = marker.getLabelComponent().getString();
         updateLabelCache(st, font, name);
         float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4f, tier - 1.0f);
         float scaledRadius = baseRadius * finalScale;
