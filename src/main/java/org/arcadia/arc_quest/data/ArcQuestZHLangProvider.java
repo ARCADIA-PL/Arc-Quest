@@ -44,12 +44,14 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
     private void addScreenTitles() {
         add("gui.arc_quest.tracking_menu.title", "任务追踪");
-        add("arc_quest.gui.tracking_menu.hint", "滚轮或拖拽浏览 · 点击切换追踪 · 悬浮查看阶段");
+        add("arc_quest.gui.tracking_menu.hint", "滚轮或拖拽切换任务 · 在阶段栏滚动或点击切换阶段");
         add("arc_quest.gui.tracking_menu.empty", "当前没有进行中的任务");
         add("arc_quest.gui.tracking_menu.current_phase", "当前阶段：%s");
         add("arc_quest.gui.tracking_menu.no_phase", "暂无活动阶段");
         add("arc_quest.gui.tracking_menu.no_objectives", "暂无活动目标");
         add("arc_quest.gui.tracking_menu.phase_progress", "阶段进度：%s/%s");
+        add("arc_quest.gui.tracking_menu.parallel_phases", "并行阶段  %s/%s");
+        add("arc_quest.gui.tracking_menu.phase_objectives", "目标进度 %s/%s");
         add("arc_quest.gui.tracking_menu.optional", "（可选）");
         add("arc_quest.gui.tracking_menu.more_objectives", "另有 %s 个目标");
         add("arc_quest.marker.epic_prologue.nearest_tree", "\u6700\u8fd1\u7684\u6811\u6728");
