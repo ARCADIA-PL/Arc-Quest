@@ -41,6 +41,8 @@ public final class QuestTrackingMenuScreen extends Screen {
     private String hoveredQuestId;
     private String detailQuestId;
     private String detailPhaseId;
+    private String closingDetailQuestId;
+    private String closingDetailPhaseId;
     private long hoverStartedAt;
     private float detailAlpha;
     private String pressedQuestId;
@@ -67,6 +69,8 @@ public final class QuestTrackingMenuScreen extends Screen {
         hoveredQuestId = null;
         detailQuestId = null;
         detailPhaseId = null;
+        closingDetailQuestId = null;
+        closingDetailPhaseId = null;
         hoverStartedAt = 0L;
         detailAlpha = 0f;
         updateInteractionRailLeft();
@@ -200,17 +204,25 @@ public final class QuestTrackingMenuScreen extends Screen {
                 : hoveredPhase != null
                 ? hoverEntry.phaseById(hoveredPhase.phaseId())
                 : phaseSelector.selectedPhase(hoverEntry);
-        updateHoverState(hoverQuestId,
-                hoverSelectedPhase == null ? null : hoverSelectedPhase.phaseId(),
-                hoveredPhase != null, now, dt);
+        if (closing) {
+            updateClosingDetailState(dt);
+        } else {
+            updateHoverState(hoverQuestId,
+                    hoverSelectedPhase == null ? null : hoverSelectedPhase.phaseId(),
+                    hoveredPhase != null, now, dt);
+        }
+
+        String renderedDetailQuestId = closing ? closingDetailQuestId : detailQuestId;
+        String renderedDetailPhaseId = closing ? closingDetailPhaseId : detailPhaseId;
 
         for (CardRenderState state : states) {
             QuestTrackingMenuEntry entry = entries.get(state.index());
             boolean isHovered = hovered != null && hovered.questId().equals(entry.questId());
-            float cardDetailAlpha = entry.questId().equals(detailQuestId) ? detailAlpha : 0f;
+            float cardDetailAlpha = renderedDetailQuestId != null
+                    && entry.questId().equals(renderedDetailQuestId) ? detailAlpha : 0f;
             QuestTrackingMenuPhaseEntry entrySelectedPhase = phaseSelector.selectedPhase(entry);
             QuestTrackingMenuPhaseEntry renderedPhase = cardDetailAlpha > 0f
-                    ? entry.phaseById(detailPhaseId) : entrySelectedPhase;
+                    ? entry.phaseById(renderedDetailPhaseId) : entrySelectedPhase;
             if (renderedPhase == null) renderedPhase = entrySelectedPhase;
             QuestTrackingMenuCardRenderer.render(graphics, font, entry, renderedPhase,
                     state.x(), state.y(), state.width(), state.height(), state.alpha(),
@@ -346,6 +358,11 @@ public final class QuestTrackingMenuScreen extends Screen {
             detailQuestId = null;
             detailPhaseId = null;
         }
+    }
+
+    private void updateClosingDetailState(float dt) {
+        if (closingDetailQuestId == null) return;
+        detailAlpha = HudAnimUtil.smoothHalfLife(detailAlpha, 0f, 0.085f, dt);
     }
 
     @Override
@@ -550,6 +567,8 @@ public final class QuestTrackingMenuScreen extends Screen {
         closeStartProgress = getTransitionProgress(now);
         closing = true;
         closeStartedAt = now;
+        closingDetailQuestId = detailQuestId;
+        closingDetailPhaseId = detailPhaseId;
         dragging = false;
         dragMoved = false;
         pressedQuestId = null;
