@@ -40,7 +40,7 @@ public final class ArcQuestGuideContent {
                 .sortOrder(-100)
                 .page(GuidePageBuilder.create()
                         .none()
-                        .description(Component.translatable("guide.arc_quest.journal_basics.page.1")))
+                        .description(Component.translatable("guide.arc_quest.journal_basics.page_1")))
                 .buildAndRegister();
 
         GuideBuilder.create(TRACKING_MENU_GUIDE_ID)
@@ -53,7 +53,7 @@ public final class ArcQuestGuideContent {
                 .sortOrder(-90)
                 .page(GuidePageBuilder.create()
                         .none()
-                        .description(Component.translatable("guide.arc_quest.tracking_menu_basics.page.1")))
+                        .description(Component.translatable("guide.arc_quest.tracking_menu_basics.page_1")))
                 .buildAndRegister();
 
         GuideBuilder.create("arc_quest:diamond_demo")
