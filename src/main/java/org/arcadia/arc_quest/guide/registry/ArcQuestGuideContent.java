@@ -14,6 +14,10 @@ import org.slf4j.Logger;
 public final class ArcQuestGuideContent {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    public static final ResourceLocation JOURNAL_BASICS_GUIDE_ID =
+            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "journal_basics");
+    public static final ResourceLocation TRACKING_MENU_GUIDE_ID =
+            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "tracking_menu_basics");
 
     private ArcQuestGuideContent() {
     }
@@ -26,6 +30,32 @@ public final class ArcQuestGuideContent {
     }
 
     private static void registerBuiltinGuides() {
+        GuideBuilder.create(JOURNAL_BASICS_GUIDE_ID)
+                .category(GuideCategory.BASICS)
+                .title(Component.translatable("guide.arc_quest.journal_basics.title"))
+                .summary(Component.translatable("guide.arc_quest.journal_basics.summary"))
+                .icon(Items.BOOK)
+                .renderLargeIconOnIntro(true)
+                .unlockPopup(true)
+                .sortOrder(-100)
+                .page(GuidePageBuilder.create()
+                        .none()
+                        .description(Component.translatable("guide.arc_quest.journal_basics.page.1")))
+                .buildAndRegister();
+
+        GuideBuilder.create(TRACKING_MENU_GUIDE_ID)
+                .category(GuideCategory.BASICS)
+                .title(Component.translatable("guide.arc_quest.tracking_menu_basics.title"))
+                .summary(Component.translatable("guide.arc_quest.tracking_menu_basics.summary"))
+                .icon(Items.COMPASS)
+                .renderLargeIconOnIntro(true)
+                .unlockPopup(true)
+                .sortOrder(-90)
+                .page(GuidePageBuilder.create()
+                        .none()
+                        .description(Component.translatable("guide.arc_quest.tracking_menu_basics.page.1")))
+                .buildAndRegister();
+
         GuideBuilder.create("arc_quest:diamond_demo")
                 .category(GuideCategory.BASICS)
                 .title("这就是钻石？")

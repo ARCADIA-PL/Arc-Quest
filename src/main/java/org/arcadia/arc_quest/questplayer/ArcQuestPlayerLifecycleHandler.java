@@ -41,6 +41,7 @@ import org.arcadia.arc_quest.sync.RequestIdempotencyStore;
 import org.arcadia.arc_quest.trade.network.C2SRequestTradePacket;
 import org.arcadia.arc_quest.trade.gacha.network.PendingDrawManager;
 import org.arcadia.arc_quest.guide.runtime.GuidePlayerStateSyncService;
+import org.arcadia.arc_quest.guide.runtime.GuideAutoTriggerService;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -62,6 +63,7 @@ public final class ArcQuestPlayerLifecycleHandler {
         QuestProgressHandler.rebuildTrackingIndex(sp, data);
         TrackedQuestService.reconcile(sp, QuestTrackingChangeReason.PLAYER_LOADED);
         QuestMarkerReconciliationService.reconcileContinuousQuestMarkers(sp, data, true);
+        GuideAutoTriggerService.onPlayerLogin(sp);
         DatapackContentSyncService.sendToPlayer(sp);
         PendingDrawManager.compensateAndGrant(sp);
         LOGGER.debug("[ArcQuest] Login content sync started for: {}", sp.getGameProfile().getName());

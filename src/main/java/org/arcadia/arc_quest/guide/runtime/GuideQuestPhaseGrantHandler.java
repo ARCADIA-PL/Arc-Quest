@@ -21,6 +21,7 @@ public final class GuideQuestPhaseGrantHandler {
 
     @SubscribeEvent
     public static void onQuestStarted(QuestStartedEvent event) {
+        GuideAutoTriggerService.onQuestStarted(event.getPlayer());
         QuestDefinition quest = QuestRegistry.get(event.getQuestId());
         if (quest == null) return;
         var playerData = ArcQuestPlayerManager.get(event.getPlayer());
