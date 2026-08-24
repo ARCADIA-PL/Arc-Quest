@@ -32,9 +32,7 @@ record QuestTrackingMenuEntry(String questId,
 
             QuestRuntimeData runtime = activeEntry.getValue();
             List<QuestTrackingMenuPhaseEntry> activePhases = orderedActivePhases(definition, runtime);
-            ResourceLocation splashTexture = definition.getSplashConfig(SplashType.QUEST_ACQUIRED)
-                    .map(asset -> asset.texture())
-                    .orElse(null);
+            ResourceLocation splashTexture = resolveSplashTexture(definition);
             entries.add(new QuestTrackingMenuEntry(
                     questId, definition, runtime, activePhases, splashTexture));
         }
@@ -42,6 +40,19 @@ record QuestTrackingMenuEntry(String questId,
         entries.sort(Comparator.comparing(entry -> QuestTrackingPriority.resolve(
                 entry.questId(), entry.runtime().getAcceptedAtTick())));
         return List.copyOf(entries);
+    }
+
+    @Nullable
+    static ResourceLocation resolveSplashTexture(QuestDefinition definition) {
+        ResourceLocation questSplash = definition.getSplashConfig(SplashType.QUEST_ACQUIRED)
+                .map(asset -> asset.texture())
+                .orElse(null);
+        if (questSplash != null) return questSplash;
+
+        PhaseDefinition firstPhase = definition.getInitialPhase();
+        return firstPhase == null ? null : firstPhase.getSplashConfig(SplashType.QUEST_DETAIL)
+                .map(asset -> asset.texture())
+                .orElse(null);
     }
 
     static List<QuestTrackingMenuPhaseEntry> orderedActivePhases(
