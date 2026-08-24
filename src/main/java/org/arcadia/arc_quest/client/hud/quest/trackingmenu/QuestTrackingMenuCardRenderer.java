@@ -13,11 +13,11 @@ import java.util.List;
 
 final class QuestTrackingMenuCardRenderer {
     private static final int CARD_PADDING = 9;
-    private static final float HEADER_SCALE = 0.98f;
-    private static final float DESCRIPTION_SCALE = 0.84f;
-    private static final float PROGRESS_SCALE = 0.88f;
-    private static final float OBJECTIVE_SCALE = 0.84f;
-    private static final float FOOTER_SCALE = 0.80f;
+    private static final float HEADER_SCALE = 0.86f;
+    private static final float DESCRIPTION_SCALE = 0.72f;
+    private static final float PROGRESS_SCALE = 0.74f;
+    private static final float OBJECTIVE_SCALE = 0.72f;
+    private static final float FOOTER_SCALE = 0.70f;
 
     private QuestTrackingMenuCardRenderer() {
     }
@@ -70,29 +70,20 @@ final class QuestTrackingMenuCardRenderer {
         int textWidth = width - CARD_PADDING * 2 - 3;
         int bottomY = y + height - CARD_PADDING;
 
-        if (phase == null || phaseId == null || phase.getObjectives().isEmpty()) {
-            drawScaledEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
-                    HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), HEADER_SCALE, false);
-            textY += scaledLineHeight(font, HEADER_SCALE) + 4;
-            drawScaled(graphics, font,
-                    Component.translatable("arc_quest.gui.tracking_menu.no_objectives"),
-                    textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)),
-                    DESCRIPTION_SCALE, false);
-            return;
-        }
-
-        if (height < 104) {
-            renderCompactPhaseSummary(graphics, font, entry, phase, phaseId,
-                    x, y, width, height, themeColor, alpha, textX, textY, textWidth, bottomY);
-            return;
-        }
-
         drawScaledEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
                 HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), HEADER_SCALE, false);
         textY += scaledLineHeight(font, HEADER_SCALE) + 4;
         graphics.fill(textX, textY, textX + textWidth, textY + 1,
                 HudAnimUtil.withAlpha(themeColor, Math.round(90 * alpha)));
         textY += 4;
+
+        if (phase == null || phaseId == null || phase.getObjectives().isEmpty()) {
+            drawScaled(graphics, font,
+                    Component.translatable("arc_quest.gui.tracking_menu.no_objectives"),
+                    textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)),
+                    DESCRIPTION_SCALE, false);
+            return;
+        }
 
         Component description = phase.getDescription();
         if (!description.getString().isBlank()) {
@@ -168,100 +159,6 @@ final class QuestTrackingMenuCardRenderer {
                     textX, textY, HudAnimUtil.withAlpha(0x8E96A3, Math.round(230 * alpha)),
                     FOOTER_SCALE, false);
         }
-    }
-
-    private static void renderCompactPhaseSummary(GuiGraphics graphics, Font font,
-                                                  QuestTrackingMenuEntry entry,
-                                                  PhaseDefinition phase, String phaseId,
-                                                  int x, int y, int width, int height,
-                                                  int themeColor, float alpha,
-                                                  int textX, int textY, int textWidth, int bottomY) {
-        float compactScale = resolveCompactTextScale(height, textWidth);
-        int compactPadding = Math.max(4, Math.min(CARD_PADDING, height / 12));
-        int compactTextX = x + compactPadding + 3;
-        int compactTextWidth = Math.max(1, width - compactPadding * 2 - 3);
-        int compactBottomY = y + height - compactPadding;
-
-        Component phaseHeader = Component.translatable("arc_quest.gui.tracking_menu.current_phase",
-                phase.getDisplayName());
-        drawScaledEllipsized(graphics, font, phaseHeader, compactTextX, y + compactPadding,
-                compactTextWidth, HudAnimUtil.withAlpha(0xFFFFFF, Math.round(255 * alpha)),
-                compactScale, false);
-        int currentY = y + compactPadding + scaledLineHeight(font, compactScale) + 2;
-        graphics.fill(compactTextX, currentY, compactTextX + compactTextWidth, currentY + 1,
-                HudAnimUtil.withAlpha(themeColor, Math.round(90 * alpha)));
-        currentY += 2;
-
-        Component description = phase.getDescription();
-        if (!description.getString().isBlank()) {
-            List<FormattedCharSequence> lines = font.split(description,
-                    logicalWidth(compactTextWidth, compactScale));
-            if (!lines.isEmpty() && currentY + scaledLineHeight(font, compactScale) <= compactBottomY) {
-                drawScaled(graphics, font, lines.getFirst(), compactTextX, currentY,
-                        HudAnimUtil.withAlpha(0xAAB1BC, Math.round(235 * alpha)), compactScale, false);
-                currentY += scaledLineHeight(font, compactScale) + 1;
-            }
-        }
-
-        List<ObjectiveEntry> objectives = phase.getObjectives();
-        int visibleObjectives = 0;
-        int completedObjectives = 0;
-        for (ObjectiveEntry objective : objectives) {
-            if (objective.isHidden()) continue;
-            visibleObjectives++;
-        }
-        for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
-            ObjectiveEntry objective = objectives.get(objectiveIndex);
-            if (!objective.isHidden()) {
-                int required = Math.max(1, objective.getRequiredCount());
-                if (entry.runtime().getObjectiveProgress(phaseId, objectiveIndex) >= required) completedObjectives++;
-            }
-        }
-
-        Component progress = Component.translatable("arc_quest.gui.tracking_menu.phase_progress",
-                completedObjectives, visibleObjectives);
-        if (currentY + scaledLineHeight(font, compactScale) <= compactBottomY) {
-            drawScaled(graphics, font, progress, compactTextX, currentY,
-                    HudAnimUtil.withAlpha(themeColor, Math.round(245 * alpha)), compactScale, false);
-            currentY += scaledLineHeight(font, compactScale) + 2;
-        }
-
-        int columns = resolveObjectiveColumns(height, compactTextWidth);
-        int columnWidth = Math.max(1, (compactTextWidth - (columns - 1) * 4) / columns);
-        int lineAdvance = scaledLineHeight(font, compactScale) + 1;
-        int renderedObjectives = 0;
-        for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
-            ObjectiveEntry objective = objectives.get(objectiveIndex);
-            if (objective.isHidden()) continue;
-            int row = renderedObjectives / columns;
-            int column = renderedObjectives % columns;
-            int drawY = currentY + row * lineAdvance;
-            if (drawY + lineAdvance > compactBottomY) break;
-
-            int required = Math.max(1, objective.getRequiredCount());
-            int progressValue = entry.runtime().getObjectiveProgress(phaseId, objectiveIndex);
-            boolean complete = progressValue >= required;
-            var line = Component.literal(complete ? "[x] " : "[ ] ")
-                    .append(objective.getDisplayText());
-            if (!objective.isBooleanProgress()) {
-                line = line.append(Component.literal(" " + progressValue + "/" + required));
-            }
-            int color = complete ? 0x88FF88 : 0xDDDDDD;
-            drawScaledEllipsized(graphics, font, line,
-                    compactTextX + column * (columnWidth + 4), drawY, columnWidth,
-                    HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), compactScale, false);
-            renderedObjectives++;
-        }
-    }
-
-    static int resolveObjectiveColumns(int height, int textWidth) {
-        return height >= 72 && textWidth >= 86 ? 2 : 1;
-    }
-
-    static float resolveCompactTextScale(int height, int textWidth) {
-        if (height < 64 || textWidth < 86) return 0.74f;
-        if (height < 84) return 0.82f;
-        return 0.88f;
     }
 
     private static int logicalWidth(int physicalWidth, float scale) {
