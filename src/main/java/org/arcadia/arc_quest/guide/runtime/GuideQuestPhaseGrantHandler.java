@@ -32,6 +32,7 @@ public final class GuideQuestPhaseGrantHandler {
 
     @SubscribeEvent
     public static void onPhaseActivated(QuestPhaseActivatedEvent event) {
+        GuideAutoTriggerService.onPhaseActivated(event.getPlayer());
         PhaseDefinition phase = resolvePhase(event.getQuestId(), event.getToPhaseId());
         if (phase != null) UNLOCK_SERVICE.grantAll(event.getPlayer(), phase.getGuidesToGrantOnEnter());
     }
