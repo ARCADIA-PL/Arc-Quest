@@ -3,6 +3,7 @@ package org.arcadia.arc_quest.questmarker.internal;
 import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.internal.model.MarkerPresentation;
 
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -13,7 +14,18 @@ public final class MarkerPresentationResolver {
 
     public static MarkerPresentation resolve(MarkSpec spec) {
         Map<String, String> hints = spec.styleHints();
-        return new MarkerPresentation(hints.getOrDefault("label", spec.id()), spec.markerType(),
+        String label = hints.getOrDefault("label", spec.id());
+
+        // Before labelKey was introduced, translated labels were commonly supplied as the
+        // marker id. Preserve that behavior only for the default label; an explicit label is
+        // always literal unless its producer also supplies an explicit labelKey.
+        if (!hints.containsKey("label") && !hints.containsKey("labelKey")) {
+            Map<String, String> translatedHints = new LinkedHashMap<>(hints);
+            translatedHints.put("labelKey", spec.id());
+            hints = Map.copyOf(translatedHints);
+        }
+
+        return new MarkerPresentation(label, spec.markerType(),
                 parseColor(hints.get("color"), 0xFFFFFFFF),
                 parseBoolean(hints.get("showDistance"), true),
                 parseBoolean(hints.get("allowOffscreenArrow"), true), spec.priority(), hints);
