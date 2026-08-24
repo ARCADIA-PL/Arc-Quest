@@ -292,16 +292,17 @@ public class JournalListPanel {
 
     private void renderMarkAllRead(GuiGraphics graphics, int x, int y, int width, int height,
                                    int mouseX, int mouseY, int theme, float effectiveAlpha) {
-        String trackedQuestId = QuestHudOverlay.INSTANCE.getTrackedQuestId();
-        if (!QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(trackedQuestId)) return;
+        if (!QuestChangeNotificationManager.INSTANCE.hasAnyUnread()) return;
         int buttonX = x + 4;
         int buttonY = y + height - 18;
         int buttonWidth = 80;
         int buttonHeight = 14;
         boolean hovered = mouseX >= buttonX && mouseX <= buttonX + buttonWidth
                 && mouseY >= buttonY && mouseY <= buttonY + buttonHeight;
+        if (hovered) screen.requestPointerCursor();
         JournalButtonRenderer.drawCompactButton(graphics, screen.getFont(),
-                new HudRect(buttonX, buttonY, buttonWidth, buttonHeight), "MARK ALL READ",
+                new HudRect(buttonX, buttonY, buttonWidth, buttonHeight),
+                Component.translatable("gui.arc_quest.mark_all_read").getString(),
                 theme, effectiveAlpha, hovered, 0.65f);
     }
 
@@ -340,8 +341,7 @@ public class JournalListPanel {
         }
 
         if (mouseX < x || mouseX > x + width - 6 || mouseY < y || mouseY > y + height) return false;
-        if (QuestChangeNotificationManager.INSTANCE.hasUnreadOtherThan(
-                QuestHudOverlay.INSTANCE.getTrackedQuestId())
+        if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
                 && mouseX >= x + 4 && mouseX <= x + 84
                 && mouseY >= y + height - 18 && mouseY <= y + height - 4) {
             QuestChangeNotificationManager.INSTANCE.markAllRead();

@@ -1373,6 +1373,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuideTranslations() {
+        add("gui.arc_quest.mark_all_read", "全部已读");
         addGuiGuideListText("title", "指南");
         addGuiGuideListText("no_guides", "暂无已解锁指南");
         addGuiGuideListText("no_guides_hint", "完成教学、任务或剧情后将在这里收录");

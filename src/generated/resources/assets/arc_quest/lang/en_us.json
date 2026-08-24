@@ -584,6 +584,7 @@
   "gui.arc_quest.guide_list.no_guides_hint": "Complete tutorials, quests, or story to archive them here",
   "gui.arc_quest.guide_list.title": "Guides",
   "gui.arc_quest.journal.title": "Quest Journal",
+  "gui.arc_quest.mark_all_read": "Mark All Read",
   "gui.arc_quest.toast_config.disabled": "OFF",
   "gui.arc_quest.toast_config.enabled": "ON",
   "gui.arc_quest.toast_config.option.branch_choice": "Branch Choice Available",

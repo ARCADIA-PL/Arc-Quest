@@ -589,6 +589,7 @@
   "gui.arc_quest.guide_list.no_guides_hint": "完成教学、任务或剧情后将在这里收录",
   "gui.arc_quest.guide_list.title": "指南",
   "gui.arc_quest.journal.title": "任务日志",
+  "gui.arc_quest.mark_all_read": "全部已读",
   "gui.arc_quest.toast_config.disabled": "关闭",
   "gui.arc_quest.toast_config.enabled": "开启",
   "gui.arc_quest.toast_config.option.branch_choice": "可选择任务分支",

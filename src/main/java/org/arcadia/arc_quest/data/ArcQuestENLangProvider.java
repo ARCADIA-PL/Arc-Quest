@@ -1373,6 +1373,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
     // ═══════════════════════════════════════════════════════
 
     private void addGuideTranslations() {
+        add("gui.arc_quest.mark_all_read", "Mark All Read");
         addGuiGuideListText("title", "Guides");
         addGuiGuideListText("no_guides", "No unlocked guides");
         addGuiGuideListText("no_guides_hint", "Complete tutorials, quests, or story to archive them here");
