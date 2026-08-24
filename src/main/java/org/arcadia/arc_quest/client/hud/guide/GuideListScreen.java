@@ -218,6 +218,7 @@ public final class GuideListScreen extends Screen {
         transitionAlpha = HudAnimUtil.lerp(transitionAlpha, isClosing ? 0f : 1f, isClosing ? 0.2f : 0.12f, dt);
         renderParentScreen(g, partialTick);
         if (isClosing && transitionAlpha <= 0.01f) {
+            HudCursorManager.apply();
             if (minecraft != null) {
                 Screen restoreScreen = parentScreen;
                 parentScreen = null;

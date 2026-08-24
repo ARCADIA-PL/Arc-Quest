@@ -1,14 +1,20 @@
 package org.arcadia.arc_quest.client.hud.guide;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
 import org.arcadia.arc_quest.client.hud.HudRenderUtil;
 import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
 import org.arcadia.arc_quest.client.hud.StyledTextUtil;
+import org.arcadia.arc_quest.client.hud.component.HudCursorManager;
+import org.arcadia.arc_quest.client.hud.component.HudRect;
+import org.arcadia.arc_quest.client.hud.quest.journal.component.JournalButtonRenderer;
 import org.arcadia.arc_quest.guide.api.GuideDefinition;
+import org.arcadia.arc_quest.guide.network.C2SMarkAllGuidesSeenPacket;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
 import org.arcadia.arc_quest.guide.registry.GuideGroupRegistry;
+import org.arcadia.arc_quest.quest.network.ArcQuestNetwork;
 
 import java.util.HashMap;
 import java.util.List;
@@ -180,6 +186,7 @@ public class GuideListPanel {
         int contentHeight = contentHeight();
         int maxScroll = Math.max(0, contentHeight - height);
         renderScrollbar(graphics, x + width - 6, y + 2, height - 4, contentHeight, maxScroll);
+        renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
     }
 
     private void renderGuideRow(GuiGraphics graphics, GuideListLayout.GuideRow row,
@@ -259,12 +266,34 @@ public class GuideListPanel {
                         (int) ((draggingListScrollbar ? 180 : 120) * screen.getEffectiveAlpha())));
     }
 
+    private void renderMarkAllRead(GuiGraphics graphics, int x, int y, int width, int height,
+                                   int mouseX, int mouseY, int theme, float effectiveAlpha) {
+        if (!ClientGuideCache.INSTANCE.hasUnreadGuides()) return;
+        HudRect bounds = markAllReadBounds(x, y, height);
+        boolean hovered = bounds.contains(mouseX, mouseY);
+        HudCursorManager.requestPointer(hovered);
+        JournalButtonRenderer.drawCompactButton(graphics, screen.getFont(), bounds,
+                Component.translatable("gui.arc_quest.mark_all_read").getString(),
+                theme, effectiveAlpha, hovered, 0.65f);
+    }
+
+    private HudRect markAllReadBounds(int x, int y, int height) {
+        return new HudRect(x + 4, y + height - 18, 80, 14);
+    }
+
     public void clampScroll(int listHeight) {
         targetScroll = Math.max(0, Math.min(targetScroll, Math.max(0, contentHeight() - listHeight)));
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
         refreshRows();
+        if (ClientGuideCache.INSTANCE.hasUnreadGuides()
+                && markAllReadBounds(x, y, height).contains(mouseX, mouseY)) {
+            ClientGuideCache.INSTANCE.applyLocalAllSeen();
+            ArcQuestNetwork.sendMarkAllGuidesSeen(new C2SMarkAllGuidesSeenPacket());
+            screen.playClick();
+            return true;
+        }
         int maxScroll = Math.max(0, contentHeight() - height);
         int scrollbarX = x + width - 6;
         if (maxScroll > 0 && mouseX >= scrollbarX && mouseX <= scrollbarX + 6

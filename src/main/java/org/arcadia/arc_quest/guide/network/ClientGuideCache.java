@@ -55,6 +55,10 @@ public final class ClientGuideCache {
         }
     }
 
+    public void applyLocalAllSeen() {
+        seenGuides.addAll(unlockedGuides);
+    }
+
     public void applyLocalProgress(ResourceLocation guideId, int pageIndex) {
         if (guideId != null) guideProgress.put(guideId, Math.max(0, pageIndex));
     }
