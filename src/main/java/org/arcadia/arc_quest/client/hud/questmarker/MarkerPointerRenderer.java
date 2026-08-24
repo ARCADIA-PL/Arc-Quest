@@ -44,18 +44,18 @@ public final class MarkerPointerRenderer {
         float mixLy = lightY * (1.0f - highlightMix) + flowLy * highlightMix;
 
         // 尺寸修改：FAR(phase2) 时箭头依然保持足够的宽度和高度，绝不聚拢成点
-        float baseOutY = lerp(lerp(5.5f, 4.8f, phase1), 4.0f, phase2) * breathScale;
-        float baseInY = lerp(lerp(3.8f, 3.2f, phase1), 2.6f, phase2) * breathScale;
-        float baseXOut = lerp(lerp(7.2f, 6.2f, phase1), 5.2f, phase2) * breathScale;
-        float baseXIn = lerp(lerp(4.8f, 4.0f, phase1), 3.2f, phase2) * breathScale;
+        float baseOutY = lerp(lerp(5.5f, 4.8f, phase1), 4.8f, phase2) * breathScale;
+        float baseInY = lerp(lerp(3.8f, 3.2f, phase1), 3.2f, phase2) * breathScale;
+        float baseXOut = lerp(lerp(7.2f, 6.2f, phase1), 6.2f, phase2) * breathScale;
+        float baseXIn = lerp(lerp(4.8f, 4.0f, phase1), 4.0f, phase2) * breathScale;
 
-        float tipOutY = lerp(lerp(-7.2f, -6.2f, phase1), -5.2f, phase2) * breathScale;
-        float tipInY = lerp(lerp(-3.8f, -3.2f, phase1), -2.6f, phase2) * breathScale;
+        float tipOutY = lerp(lerp(-7.2f, -6.2f, phase1), -6.2f, phase2) * breathScale;
+        float tipInY = lerp(lerp(-3.8f, -3.2f, phase1), -3.2f, phase2) * breathScale;
         float tipX = 0f;
 
         // 透明度修改：保底全局Alpha极高（0.75），发光核心永不熄灭（保底0.6）！
-        float globalAlpha = lerp(lerp(1.0f, 0.85f, phase1), 0.75f, phase2);
-        float coreAlphaMod = lerp(lerp(1.0f, 0.8f, phase1), 0.6f, phase2);
+        float globalAlpha = lerp(lerp(1.0f, 0.9f, phase1), 0.9f, phase2);
+        float coreAlphaMod = lerp(lerp(1.0f, 0.85f, phase1), 0.8f, phase2);
 
         float aa = 0.9f * breathScale;
         float tipOuterY = tipOutY - aa * 1.5f;
