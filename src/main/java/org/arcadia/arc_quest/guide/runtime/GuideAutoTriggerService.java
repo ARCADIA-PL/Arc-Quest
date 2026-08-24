@@ -19,7 +19,7 @@ public final class GuideAutoTriggerService {
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         ensureUnlockedAndOpen(player, ArcQuestGuideContent.JOURNAL_BASICS_GUIDE_ID);
         if (data.getAllActiveQuests().size() > 1) {
-            ensureUnlockedAndOpen(player, ArcQuestGuideContent.TRACKING_MENU_GUIDE_ID);
+            ensureUnlocked(player, ArcQuestGuideContent.TRACKING_MENU_GUIDE_ID);
         }
     }
 
@@ -28,11 +28,15 @@ public final class GuideAutoTriggerService {
         TRIGGER_SERVICE.openIfUnread(player, guideId);
     }
 
+    private static void ensureUnlocked(ServerPlayer player, ResourceLocation guideId) {
+        UNLOCK_SERVICE.grant(player, guideId);
+    }
+
     public static void onQuestStarted(ServerPlayer player) {
         if (player == null) return;
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         if (data.getAllActiveQuests().size() > 1) {
-            ensureUnlockedAndOpen(player, ArcQuestGuideContent.TRACKING_MENU_GUIDE_ID);
+            ensureUnlocked(player, ArcQuestGuideContent.TRACKING_MENU_GUIDE_ID);
         }
     }
 }
