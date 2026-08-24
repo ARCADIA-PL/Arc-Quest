@@ -140,6 +140,7 @@
   "arc_quest.gui.journal.tab.failed": "已失败",
   "arc_quest.gui.journal.tab.guide": "游玩指南",
   "arc_quest.gui.journal.tab.history": "历史记录",
+  "arc_quest.gui.journal.title_with_key": "[ %s ] 任务日志",
   "arc_quest.gui.quest_intel.header": "SYS.ARC_QUEST // 阶段情报",
   "arc_quest.gui.quest_intel.hint_close": "ESC / 点击外侧关闭",
   "arc_quest.gui.quest_offer.header": "SYS.ARC_QUEST // 上传协议",

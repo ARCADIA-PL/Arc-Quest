@@ -58,6 +58,7 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         add("key.arc_quest.open_journal", "Open Quest Screen");
         add("key.arc_quest.open_tracking_menu", "Hold to Open Quest Tracking Menu");
         add("gui.arc_quest.journal.title", "Quest Journal");
+        add("arc_quest.gui.journal.title_with_key", "[ %s ] Quest Journal");
         add("arc_quest.guide_group.minerals", "Minerals");
     }
 
