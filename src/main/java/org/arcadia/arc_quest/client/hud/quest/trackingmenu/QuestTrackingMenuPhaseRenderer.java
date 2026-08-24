@@ -26,9 +26,9 @@ final class QuestTrackingMenuPhaseRenderer {
 
         int selectedIndex = phases.indexOf(selectedPhase);
         if (selectedIndex < 0) selectedIndex = 0;
-        int rowHeight = Math.max(22, Math.min(26, cardHeight / 5));
-        int desiredRowWidth = Math.max(96, Math.min(168, Math.round(cardWidth * 0.66f)));
-        int rowWidth = Math.min(desiredRowWidth, Math.max(72, cardX - CARD_GAP - 4));
+        int rowHeight = Math.max(14, Math.min(26, cardHeight / 5));
+        int desiredRowWidth = Math.max(56, Math.min(168, Math.round(cardWidth * 0.66f)));
+        int rowWidth = Math.min(desiredRowWidth, Math.max(48, cardX - CARD_GAP - 4));
         int centerY = cardY + cardHeight / 2;
         int slideOffset = Math.round((1f - alpha) * 18f);
         int baseRight = cardX - CARD_GAP + slideOffset;
@@ -63,8 +63,10 @@ final class QuestTrackingMenuPhaseRenderer {
         if (layout.rows().isEmpty()) return;
         int themeColor = entry.definition().getThemeColor();
         Component heading = Component.translatable("arc_quest.gui.tracking_menu.parallel_phases");
-        graphics.drawString(font, heading, layout.left(), layout.top() - font.lineHeight - 3,
-                HudAnimUtil.withAlpha(0xB9C0CC, Math.round(220 * layout.alpha())), true);
+        float headingScale = Math.max(0.65f, Math.min(1f, layout.rows().getFirst().width() / 168f));
+        drawScaled(graphics, font, heading, layout.left(),
+                layout.top() - Math.round(font.lineHeight * headingScale) - 3,
+                HudAnimUtil.withAlpha(0xB9C0CC, Math.round(220 * layout.alpha())), headingScale, true);
 
         for (Row row : layout.rows()) {
             boolean isHovered = hovered != null && hovered.phaseId().equals(row.phase().phaseId());
@@ -79,10 +81,11 @@ final class QuestTrackingMenuPhaseRenderer {
             graphics.fill(row.x(), row.y(), row.x() + (row.selected() ? 3 : 2), row.y() + row.height(),
                     HudAnimUtil.withAlpha(themeColor, Math.round((row.selected() ? 255 : 150) * row.alpha())));
 
+            float textScale = Math.max(0.65f, Math.min(1f, row.width() / 168f));
             int textX = row.x() + 7;
-            int textY = row.y() + (row.height() - font.lineHeight) / 2;
-            drawEllipsized(graphics, font, row.phase().definition().getDisplayName(),
-                    textX, textY, row.width() - 13,
+            int textY = row.y() + Math.max(1, (row.height() - Math.round(font.lineHeight * textScale)) / 2);
+            drawEllipsizedScaled(graphics, font, row.phase().definition().getDisplayName(),
+                    textX, textY, row.width() - 13, textScale,
                     HudAnimUtil.withAlpha(row.selected() ? 0xFFFFFF : 0xC3C8D0,
                             Math.round(255 * row.alpha())));
 
@@ -114,6 +117,27 @@ final class QuestTrackingMenuPhaseRenderer {
         int allowed = Math.max(0, maxWidth - font.width(ellipsis));
         graphics.drawString(font, font.plainSubstrByWidth(text.getString(), allowed) + ellipsis,
                 x, y, color, false);
+    }
+
+    private static void drawEllipsizedScaled(GuiGraphics graphics, Font font, Component text,
+                                             int x, int y, int maxWidth, float scale, int color) {
+        int logicalMaxWidth = Math.max(1, Math.round(maxWidth / scale));
+        Component rendered = text;
+        if (font.width(text) > logicalMaxWidth) {
+            String ellipsis = "...";
+            int allowed = Math.max(0, logicalMaxWidth - font.width(ellipsis));
+            rendered = Component.literal(font.plainSubstrByWidth(text.getString(), allowed) + ellipsis);
+        }
+        drawScaled(graphics, font, rendered, x, y, color, scale, false);
+    }
+
+    private static void drawScaled(GuiGraphics graphics, Font font, Component text,
+                                   int x, int y, int color, float scale, boolean shadow) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 0f);
+        graphics.pose().scale(scale, scale, 1f);
+        graphics.drawString(font, text, 0, 0, color, shadow);
+        graphics.pose().popPose();
     }
 
     record Layout(List<Row> rows, int left, int top, int right, int bottom, float alpha) {

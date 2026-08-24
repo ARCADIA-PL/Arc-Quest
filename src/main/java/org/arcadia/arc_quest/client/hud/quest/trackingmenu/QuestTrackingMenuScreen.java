@@ -91,12 +91,12 @@ public final class QuestTrackingMenuScreen extends Screen {
         rebaseCircularPosition();
         position += (targetPosition - position) * Math.min(1.0, dt * 14.0);
 
-        int railWidth = calculateRailWidth();
-        int railRightMargin = Math.max(12, Math.round(width * 0.07f));
-        int railRight = width - railRightMargin;
-        int railLeft = railRight - railWidth;
+        QuestTrackingMenuLayout.Metrics layout = QuestTrackingMenuLayout.resolve(width, height);
+        int railWidth = layout.railWidth();
+        int railRight = layout.railRight();
+        int railLeft = layout.railLeft();
         interactionRailLeft = railLeft;
-        int centerX = railLeft + railWidth / 2;
+        int centerX = layout.centerX();
 
         float headingProgress = staggeredProgress(transitionProgress, 0.04f);
         float headingMotion = HudAnimUtil.easeOutQuintic(headingProgress);
@@ -125,10 +125,10 @@ public final class QuestTrackingMenuScreen extends Screen {
             return;
         }
 
-        int cardWidth = railWidth - 12;
-        int cardHeight = Math.max(54, Math.round(cardWidth * 9f / 16f));
-        cardSpacing = cardHeight + Math.max(8, Math.round(cardHeight * 0.08f));
-        int centerY = height / 2 + 8;
+        int cardWidth = layout.cardWidth();
+        int cardHeight = layout.cardHeight();
+        cardSpacing = layout.cardSpacing();
+        int centerY = layout.centerY();
         List<CardRenderState> states = new ArrayList<>();
         for (int index = 0; index < entries.size(); index++) {
             double distance = circularDistance(index, position, entries.size());
@@ -169,7 +169,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         String trackedQuestId = ClientQuestTrackingController.INSTANCE.trackedQuestId();
         CardRenderState trackedState = null;
         QuestTrackingMenuEntry trackedEntry = null;
-        int viewportTop = 38;
+        int viewportTop = layout.viewportTop();
         int viewportBottom = height;
         for (CardRenderState state : states) {
             if (state.alpha() <= 0.08f) continue;
@@ -183,7 +183,7 @@ public final class QuestTrackingMenuScreen extends Screen {
             }
         }
 
-        graphics.enableScissor(railLeft, 38, railRight, height);
+        graphics.enableScissor(railLeft, layout.viewportTop(), railRight, height);
         for (CardRenderState state : states) {
             if (state.alpha() <= 0.08f) continue;
             QuestTrackingMenuEntry entry = entries.get(state.index());
@@ -284,13 +284,7 @@ public final class QuestTrackingMenuScreen extends Screen {
     }
 
     private void updateInteractionRailLeft() {
-        int railWidth = calculateRailWidth();
-        int railRightMargin = Math.max(12, Math.round(width * 0.07f));
-        interactionRailLeft = width - railRightMargin - railWidth;
-    }
-
-    private int calculateRailWidth() {
-        return Math.max(124, Math.min(286, Math.round(width * 0.26f)));
+        interactionRailLeft = QuestTrackingMenuLayout.resolve(width, height).railLeft();
     }
 
     private void refreshEntries(boolean initializePosition) {

@@ -35,19 +35,27 @@ final class QuestTrackingMenuCardRenderer {
         graphics.fillGradient(x, y + height - bottomShadeHeight, x + width, y + height,
                 HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, Math.round(220 * alpha)));
 
+        float contentScale = QuestTrackingMenuLayout.contentScale(width, height);
+        int logicalWidth = Math.max(1, Math.round(width / contentScale));
+        int logicalHeight = Math.max(1, Math.round(height / contentScale));
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 0f);
+        graphics.pose().scale(contentScale, contentScale, 1f);
+
         int titleColor = HudAnimUtil.withAlpha(0xFFFFFF,
                 Math.round(255 * alpha * (1f - detailProgress)));
         if ((titleColor >>> 24) > 3) {
             drawEllipsized(graphics, font, entry.definition().getDisplayName(),
-                    x + CARD_PADDING,
-                    y + height - font.lineHeight - 7,
-                    width - CARD_PADDING * 2, titleColor);
+                    CARD_PADDING,
+                    logicalHeight - font.lineHeight - 7,
+                    logicalWidth - CARD_PADDING * 2, titleColor);
         }
 
         if (detailProgress > 0.02f) {
-            renderPhaseSummary(graphics, font, entry, selectedPhase, x, y, width, height,
+            renderPhaseSummary(graphics, font, entry, selectedPhase, 0, 0, logicalWidth, logicalHeight,
                     themeColor, alpha * detailProgress);
         }
+        graphics.pose().popPose();
     }
 
     private static void renderPhaseSummary(GuiGraphics graphics, Font font,
