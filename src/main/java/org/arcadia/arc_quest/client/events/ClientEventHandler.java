@@ -35,9 +35,14 @@ import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = Arc_Quest.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public final class ClientEventHandler {
+    private static final int TRACKING_MENU_HOLD_TICKS = 4;
+
     public static KeyMapping KEY_OPEN_JOURNAL;
     public static KeyMapping KEY_OPEN_GUIDE_LIST;
     public static KeyMapping KEY_OPEN_TRACKING_MENU;
+
+    private static int trackingMenuHeldTicks;
+    private static boolean trackingMenuOpenedForCurrentHold;
 
     private ClientEventHandler() {
     }
@@ -60,7 +65,10 @@ public final class ClientEventHandler {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
+        if (mc.player == null) {
+            resetTrackingMenuHold();
+            return;
+        }
 
         boolean guideScreenActive = mc.screen instanceof GuideScreen;
         if (!guideScreenActive && !GuidePopupOverlay.INSTANCE.isActive()) {
@@ -84,10 +92,7 @@ public final class ClientEventHandler {
             }
         }
 
-        boolean trackingMenuPressed = KEY_OPEN_TRACKING_MENU.consumeClick();
-        if (trackingMenuPressed && isTrackingMenuControlPhysicallyDown(mc) && mc.screen == null) {
-            mc.setScreen(new QuestTrackingMenuScreen());
-        }
+        tickTrackingMenuKey(mc);
 
         if (KEY_OPEN_GUIDE_LIST.consumeClick()) {
             if (mc.screen == null) {
@@ -100,6 +105,30 @@ public final class ClientEventHandler {
         QuestToastManager.tick();
         QuestIntelPanel.tick();
         QuestMarkerExternalSync.tick();
+    }
+
+    private static void tickTrackingMenuKey(Minecraft minecraft) {
+        KEY_OPEN_TRACKING_MENU.consumeClick();
+
+        if (!isTrackingMenuControlPhysicallyDown(minecraft)) {
+            resetTrackingMenuHold();
+            return;
+        }
+
+        if (trackingMenuHeldTicks <= TRACKING_MENU_HOLD_TICKS) {
+            trackingMenuHeldTicks++;
+        }
+        if (!trackingMenuOpenedForCurrentHold
+                && trackingMenuHeldTicks > TRACKING_MENU_HOLD_TICKS
+                && minecraft.screen == null) {
+            trackingMenuOpenedForCurrentHold = true;
+            minecraft.setScreen(new QuestTrackingMenuScreen());
+        }
+    }
+
+    private static void resetTrackingMenuHold() {
+        trackingMenuHeldTicks = 0;
+        trackingMenuOpenedForCurrentHold = false;
     }
 
     private static boolean isTrackingMenuControlPhysicallyDown(Minecraft minecraft) {
@@ -131,6 +160,8 @@ public final class ClientEventHandler {
     @SubscribeEvent
     public static void onLoggedOut(ClientPlayerNetworkEvent.LoggingOut event) {
         HudCursorManager.release();
+        resetTrackingMenuHold();
+        QuestMarkerExternalSync.clear();
         ClientDatapackContentReceiver.INSTANCE.clear();
         ClientGuideCache.INSTANCE.clear();
         ClientQuestCache.INSTANCE.clear();
