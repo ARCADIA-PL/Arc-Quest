@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 public class GuideListPanel {
+    private static final int MARK_ALL_READ_FOOTER_HEIGHT = 26;
+    private static final int MARK_ALL_READ_BUTTON_HEIGHT = 17;
+
     private final GuideListScreen screen;
     private final GuideGroupEntryRenderer groupRenderer;
     private final Map<ResourceLocation, Boolean> groupExpanded = new HashMap<>();
@@ -127,12 +130,13 @@ public class GuideListPanel {
                        int mouseX, int mouseY, int theme, float deltaTime) {
         refreshRows();
         updateGroupAnimations(deltaTime);
-        clampScroll(height);
+        int listHeight = contentViewportHeight(height);
+        clampScroll(listHeight);
         scrollOffset += Math.abs(targetScroll - scrollOffset) > 0.5
                 ? (targetScroll - scrollOffset) * Math.min(1.0, deltaTime * 14.0)
                 : targetScroll - scrollOffset;
 
-        screen.enableScissor(graphics, x, y, x + width - 6, y + height);
+        screen.enableScissor(graphics, x, y, x + width - 6, y + listHeight);
         int selectedIndex = getSelectedRowIndex();
         float effectiveAlpha = screen.getEffectiveAlpha();
         if (effectiveAlpha <= 0.08f) {
@@ -159,13 +163,13 @@ public class GuideListPanel {
             float rowHeight = getRowHeight(row);
             int entryY = (int) (y + 2 - scrollOffset + rowTop);
             rowTop += rowHeight;
-            if (rowHeight < 0.5f || entryY + rowHeight < y || entryY > y + height) {
+            if (rowHeight < 0.5f || entryY + rowHeight < y || entryY > y + listHeight) {
                 entryHoverAnim[index] = 0f;
                 continue;
             }
             boolean hovered = mouseX >= x && mouseX <= x + width - 8
                     && mouseY >= entryY && mouseY <= entryY + rowHeight
-                    && mouseY >= y && mouseY <= y + height;
+                    && mouseY >= y && mouseY <= y + listHeight;
             entryHoverAnim[index] = HudAnimUtil.step(
                     entryHoverAnim[index], hovered ? 1f : 0f, 8f, deltaTime);
             float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[index]);
@@ -182,8 +186,9 @@ public class GuideListPanel {
         graphics.disableScissor();
 
         int contentHeight = contentHeight();
-        int maxScroll = Math.max(0, contentHeight - height);
-        renderScrollbar(graphics, x + width - 6, y + 2, height - 4, contentHeight, maxScroll);
+        int maxScroll = Math.max(0, contentHeight - listHeight);
+        renderScrollbar(graphics, x + width - 6, y + 2,
+                Math.max(1, listHeight - 4), contentHeight, maxScroll);
         renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
     }
 
@@ -267,16 +272,25 @@ public class GuideListPanel {
     private void renderMarkAllRead(GuiGraphics graphics, int x, int y, int width, int height,
                                    int mouseX, int mouseY, int theme, float effectiveAlpha) {
         if (!ClientGuideCache.INSTANCE.hasUnreadGuides()) return;
-        HudRect bounds = markAllReadBounds(x, y, height);
+        HudRect bounds = markAllReadBounds(x, y, width, height);
         boolean hovered = bounds.contains(mouseX, mouseY);
         HudCursorManager.requestPointer(hovered);
-        JournalButtonRenderer.drawCompactButton(graphics, screen.getFont(), bounds,
+        int footerTop = y + contentViewportHeight(height);
+        graphics.fill(x + 3, footerTop, x + width - 3, footerTop + 1,
+                HudAnimUtil.withAlpha(theme, (int) (150 * effectiveAlpha)));
+        JournalButtonRenderer.drawCyberButton(graphics, screen.getFont(), bounds,
                 Component.translatable("gui.arc_quest.mark_all_read").getString(),
-                theme, effectiveAlpha, hovered, 0.65f);
+                theme, hovered ? 1f : 0f, true, effectiveAlpha);
     }
 
-    private HudRect markAllReadBounds(int x, int y, int height) {
-        return new HudRect(x + 4, y + height - 18, 80, 14);
+    private int contentViewportHeight(int height) {
+        return Math.max(1, height - (ClientGuideCache.INSTANCE.hasUnreadGuides()
+                ? MARK_ALL_READ_FOOTER_HEIGHT : 0));
+    }
+
+    private HudRect markAllReadBounds(int x, int y, int width, int height) {
+        return new HudRect(x + 4, y + height - MARK_ALL_READ_BUTTON_HEIGHT - 4,
+                Math.max(1, width - 8), MARK_ALL_READ_BUTTON_HEIGHT);
     }
 
     public void clampScroll(int listHeight) {
@@ -286,28 +300,29 @@ public class GuideListPanel {
     public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
         refreshRows();
         if (ClientGuideCache.INSTANCE.hasUnreadGuides()
-                && markAllReadBounds(x, y, height).contains(mouseX, mouseY)) {
+                && markAllReadBounds(x, y, width, height).contains(mouseX, mouseY)) {
             ClientGuideCache.INSTANCE.applyLocalAllSeen();
             ArcQuestNetwork.sendMarkAllGuidesSeen(new C2SMarkAllGuidesSeenPacket());
             screen.playClick();
             return true;
         }
-        int maxScroll = Math.max(0, contentHeight() - height);
+        int listHeight = contentViewportHeight(height);
+        int maxScroll = Math.max(0, contentHeight() - listHeight);
         int scrollbarX = x + width - 6;
         if (maxScroll > 0 && mouseX >= scrollbarX && mouseX <= scrollbarX + 6
-                && mouseY >= y && mouseY <= y + height) {
+                && mouseY >= y && mouseY <= y + listHeight) {
             draggingListScrollbar = true;
-            int thumbHeight = Math.max(16, (int) (((float) height / contentHeight()) * height));
-            int thumbY = y + (int) ((scrollOffset / maxScroll) * (height - thumbHeight));
+            int thumbHeight = Math.max(16, (int) (((float) listHeight / contentHeight()) * listHeight));
+            int thumbY = y + (int) ((scrollOffset / maxScroll) * (listHeight - thumbHeight));
             if (mouseY >= thumbY && mouseY <= thumbY + thumbHeight) dragListYOffset = mouseY - thumbY;
             else {
                 dragListYOffset = thumbHeight / 2.0;
-                updateScrollFromMouse(mouseY, y, height, maxScroll);
+                updateScrollFromMouse(mouseY, y, listHeight, maxScroll);
             }
             return true;
         }
 
-        if (mouseX >= x && mouseX <= x + width - 6 && mouseY >= y && mouseY <= y + height) {
+        if (mouseX >= x && mouseX <= x + width - 6 && mouseY >= y && mouseY <= y + listHeight) {
             double relativeY = mouseY - y + scrollOffset;
             float rowTop = 0f;
             for (GuideListLayout.Row row : rows) {
@@ -316,7 +331,7 @@ public class GuideListPanel {
                     if (row instanceof GuideListLayout.GroupRow groupRow) {
                         ResourceLocation groupId = groupRow.group().getId();
                         groupExpanded.put(groupId, !isGroupExpanded(groupId));
-                        clampScroll(height);
+                        clampScroll(listHeight);
                         screen.playClick();
                     } else if (rowHeight > 4f) {
                         screen.selectGuide(((GuideListLayout.GuideRow) row).guide().getId());
@@ -331,7 +346,8 @@ public class GuideListPanel {
 
     public boolean mouseDragged(double mouseX, double mouseY, int y, int height) {
         if (!draggingListScrollbar) return false;
-        updateScrollFromMouse(mouseY, y, height, Math.max(0, contentHeight() - height));
+        int listHeight = contentViewportHeight(height);
+        updateScrollFromMouse(mouseY, y, listHeight, Math.max(0, contentHeight() - listHeight));
         return true;
     }
 
@@ -343,9 +359,10 @@ public class GuideListPanel {
 
     public boolean mouseScrolled(double mouseX, double mouseY, double delta,
                                  int x, int y, int width, int height) {
-        if (mouseX < x || mouseX > x + width || mouseY < y || mouseY > y + height) return false;
+        int listHeight = contentViewportHeight(height);
+        if (mouseX < x || mouseX > x + width || mouseY < y || mouseY > y + listHeight) return false;
         targetScroll -= delta * GuideConstants.ENTRY_HEIGHT;
-        clampScroll(height);
+        clampScroll(listHeight);
         return true;
     }
 

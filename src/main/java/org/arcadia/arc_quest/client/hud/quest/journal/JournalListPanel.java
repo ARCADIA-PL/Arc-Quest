@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 public class JournalListPanel {
+    private static final int MARK_ALL_READ_FOOTER_HEIGHT = 26;
+    private static final int MARK_ALL_READ_BUTTON_HEIGHT = 17;
+
     private final QuestJournalScreen screen;
     private final JournalGroupEntryRenderer groupRenderer;
     private final Map<String, TextCache> textCache = new HashMap<>();
@@ -155,12 +158,13 @@ public class JournalListPanel {
     public void render(GuiGraphics graphics, int x, int y, int width, int height,
                        int mouseX, int mouseY, int theme, float deltaTime) {
         updateGroupAnimations(deltaTime);
-        clampScroll(height);
+        int listHeight = contentViewportHeight(height);
+        clampScroll(listHeight);
         scrollOffset += Math.abs(targetScroll - scrollOffset) > 0.5
                 ? (targetScroll - scrollOffset) * Math.min(1.0, deltaTime * 14.0)
                 : targetScroll - scrollOffset;
 
-        screen.enableScissor(graphics, x, y, x + width - 6, y + height);
+        screen.enableScissor(graphics, x, y, x + width - 6, y + listHeight);
         float effectiveAlpha = screen.getEffectiveAlpha();
         int selectedRowIndex = getSelectedRowIndex();
         float selectedTop = getSelectedRowTop();
@@ -190,14 +194,14 @@ public class JournalListPanel {
             float rowHeight = getRowHeight(row);
             int entryY = (int) (y + 2 - scrollOffset + rowTop);
             rowTop += rowHeight;
-            if (rowHeight < 0.5f || entryY + rowHeight < y || entryY > y + height) {
+            if (rowHeight < 0.5f || entryY + rowHeight < y || entryY > y + listHeight) {
                 if (rowIndex < entryHoverAnim.length) entryHoverAnim[rowIndex] = 0f;
                 continue;
             }
 
             boolean hovered = mouseX >= x && mouseX <= x + width - 8
                     && mouseY >= entryY && mouseY <= entryY + rowHeight
-                    && mouseY >= y && mouseY <= y + height;
+                    && mouseY >= y && mouseY <= y + listHeight;
             entryHoverAnim[rowIndex] = HudAnimUtil.step(
                     entryHoverAnim[rowIndex], hovered ? 1f : 0f, 8f, deltaTime);
             float hover = HudAnimUtil.easeOutCubic(entryHoverAnim[rowIndex]);
@@ -220,8 +224,7 @@ public class JournalListPanel {
         graphics.disableScissor();
 
         int contentHeight = getContentHeight();
-        int maxScroll = Math.max(0, contentHeight - height);
-        scrollbar.render(graphics, scrollbarTrack(x, y, width, height), contentHeight,
+        scrollbar.render(graphics, scrollbarTrack(x, y, width, listHeight), contentHeight,
                 scrollOffset, screen.getEffectiveAlpha(), 0xFFFFFF);
         renderMarkAllRead(graphics, x, y, width, height, mouseX, mouseY, theme, effectiveAlpha);
     }
@@ -293,17 +296,25 @@ public class JournalListPanel {
     private void renderMarkAllRead(GuiGraphics graphics, int x, int y, int width, int height,
                                    int mouseX, int mouseY, int theme, float effectiveAlpha) {
         if (!QuestChangeNotificationManager.INSTANCE.hasAnyUnread()) return;
-        int buttonX = x + 4;
-        int buttonY = y + height - 18;
-        int buttonWidth = 80;
-        int buttonHeight = 14;
-        boolean hovered = mouseX >= buttonX && mouseX <= buttonX + buttonWidth
-                && mouseY >= buttonY && mouseY <= buttonY + buttonHeight;
+        HudRect bounds = markAllReadBounds(x, y, width, height);
+        boolean hovered = bounds.contains(mouseX, mouseY);
         if (hovered) screen.requestPointerCursor();
-        JournalButtonRenderer.drawCompactButton(graphics, screen.getFont(),
-                new HudRect(buttonX, buttonY, buttonWidth, buttonHeight),
+        int footerTop = y + contentViewportHeight(height);
+        graphics.fill(x + 3, footerTop, x + width - 3, footerTop + 1,
+                HudAnimUtil.withAlpha(theme, (int) (150 * effectiveAlpha)));
+        JournalButtonRenderer.drawCyberButton(graphics, screen.getFont(), bounds,
                 Component.translatable("gui.arc_quest.mark_all_read").getString(),
-                theme, effectiveAlpha, hovered, 0.65f);
+                theme, hovered ? 1f : 0f, true, effectiveAlpha);
+    }
+
+    private int contentViewportHeight(int height) {
+        return Math.max(1, height - (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+                ? MARK_ALL_READ_FOOTER_HEIGHT : 0));
+    }
+
+    private HudRect markAllReadBounds(int x, int y, int width, int height) {
+        return new HudRect(x + 4, y + height - MARK_ALL_READ_BUTTON_HEIGHT - 4,
+                Math.max(1, width - 8), MARK_ALL_READ_BUTTON_HEIGHT);
     }
 
     private TextCache getTextCache(String key, Component displayName) {
@@ -333,21 +344,21 @@ public class JournalListPanel {
 
     public boolean mouseClicked(double mouseX, double mouseY, int x, int y, int width, int height) {
         int contentHeight = getContentHeight();
+        if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
+                && markAllReadBounds(x, y, width, height).contains(mouseX, mouseY)) {
+            QuestChangeNotificationManager.INSTANCE.markAllRead();
+            screen.playClick();
+            return true;
+        }
+        int listHeight = contentViewportHeight(height);
         JournalScrollbar.ScrollInteraction scrollInteraction = scrollbar.mouseClicked(
-                mouseX, mouseY, scrollbarTrack(x, y, width, height), 6, contentHeight, scrollOffset);
+                mouseX, mouseY, scrollbarTrack(x, y, width, listHeight), 6, contentHeight, scrollOffset);
         if (scrollInteraction.consumed()) {
             targetScroll = scrollInteraction.scrollOffset();
             return true;
         }
 
-        if (mouseX < x || mouseX > x + width - 6 || mouseY < y || mouseY > y + height) return false;
-        if (QuestChangeNotificationManager.INSTANCE.hasAnyUnread()
-                && mouseX >= x + 4 && mouseX <= x + 84
-                && mouseY >= y + height - 18 && mouseY <= y + height - 4) {
-            QuestChangeNotificationManager.INSTANCE.markAllRead();
-            screen.playClick();
-            return true;
-        }
+        if (mouseX < x || mouseX > x + width - 6 || mouseY < y || mouseY > y + listHeight) return false;
 
         double relativeY = mouseY - y + scrollOffset;
         float rowTop = 0f;
@@ -357,6 +368,7 @@ public class JournalListPanel {
                 if (row instanceof JournalListLayout.GroupRow groupRow) {
                     ResourceLocation groupId = groupRow.group().id();
                     groupExpanded.put(groupId, !isGroupExpanded(groupId));
+                    clampScroll(listHeight);
                     screen.playClick();
                 } else if (row instanceof JournalListLayout.QuestRow questRow && rowHeight > 4f) {
                     screen.onEntrySelected(questRow.questIndex());
@@ -369,8 +381,9 @@ public class JournalListPanel {
     }
 
     public boolean mouseDragged(double mouseX, double mouseY, int y, int height) {
+        int listHeight = contentViewportHeight(height);
         JournalScrollbar.ScrollInteraction interaction = scrollbar.mouseDragged(mouseY,
-                new HudRect(0, y + 2, 4, Math.max(1, height - 4)), getContentHeight(), targetScroll);
+                new HudRect(0, y + 2, 4, Math.max(1, listHeight - 4)), getContentHeight(), targetScroll);
         if (interaction.consumed()) targetScroll = interaction.scrollOffset();
         return interaction.consumed();
     }
@@ -381,9 +394,10 @@ public class JournalListPanel {
 
     public boolean mouseScrolled(double mouseX, double mouseY, double delta,
                                  int x, int y, int width, int height) {
-        if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+        int listHeight = contentViewportHeight(height);
+        if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + listHeight) {
             targetScroll -= delta * JournalConstants.ENTRY_HEIGHT;
-            clampScroll(height);
+            clampScroll(listHeight);
             return true;
         }
         return false;
