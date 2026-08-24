@@ -15,7 +15,6 @@ import java.util.List;
 
 public class TradeScreen extends AbstractTradeScreen {
 
-    private static final int CAT_WIDTH = 130;
     private static final int BOTTOM_PADDING = 8;
 
     private final List<TradeEntry> allEntries;
@@ -62,18 +61,23 @@ public class TradeScreen extends AbstractTradeScreen {
         }
     }
 
+    private TradeScreenLayout.Metrics layout() {
+        return TradeScreenLayout.full(width, height);
+    }
+
     private int panelW() {
-        return Math.max(380, Math.min(800, (int) (width * 0.85f)));
+        return layout().panelWidth();
     }
 
     private int panelH() {
-        return Math.max(220, Math.min(600, (int) (height * 0.85f)));
+        return layout().panelHeight();
     }
 
     @Override
     protected void renderContent(GuiGraphics g, int mx, int my, float pt) {
         float easeProgress = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : HudAnimUtil.easeOutCubic(transitionAnim)) * HudAnimUtil.easeOutCubic(suspendAlpha);
-        int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
+        TradeScreenLayout.Metrics layout = layout();
+        int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
         float slideOffset = (1f - easeProgress) * 200f;
 
         g.pose().pushPose();
@@ -83,7 +87,10 @@ public class TradeScreen extends AbstractTradeScreen {
             return;
         }
 
-        float titleScale = isClosing ? HudAnimUtil.easeInCubic(transitionAnim) : (0.95f + 0.05f * easeProgress);
+        float titleFitScale = Math.min(1f, Math.max(0.45f,
+                (pw - 12f) / Math.max(1, font.width(shop.getDisplayName()))));
+        float titleScale = (isClosing ? HudAnimUtil.easeInCubic(transitionAnim)
+                : (0.95f + 0.05f * easeProgress)) * titleFitScale;
         if (titleScale > 0.01f) {
             g.pose().pushPose();
             g.pose().translate(width / 2f, py + 16, 0);
@@ -93,8 +100,10 @@ public class TradeScreen extends AbstractTradeScreen {
             g.pose().popPose();
         }
 
-        int lx = px - (int) slideOffset, ly = py + 36, lw = CAT_WIDTH, lh = ph - 36;
-        int rx = px + CAT_WIDTH + 16 + (int) slideOffset, ry = py + 36, rw = pw - CAT_WIDTH - 16, rh = ph - 36;
+        int lx = px - (int) slideOffset, ly = py + layout.headerHeight(),
+                lw = layout.categoryWidth(), lh = ph - layout.headerHeight();
+        int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slideOffset,
+                ry = py + layout.headerHeight(), rw = layout.listWidth(), rh = ph - layout.headerHeight();
 
         g.fill(lx, ly, lx + lw, ly + lh, HudAnimUtil.withAlpha(0x05050A, (int) (120 * effectiveAlpha)));
         HudAnimUtil.drawFrame(g, lx, ly, lw, lh, 1, HudAnimUtil.withAlpha(0xFFFFFF, (int) (100 * effectiveAlpha)));
@@ -110,9 +119,12 @@ public class TradeScreen extends AbstractTradeScreen {
 
     @Override
     protected TradeEntry getHoveredEntry(int mx, int my) {
-        int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
-        int rx = px + CAT_WIDTH + 16 + (int) ((1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
-        return listPanel.getHoveredEntry(mx, my, rx, py + 36, pw - CAT_WIDTH - 16, ph - 36 - BOTTOM_PADDING);
+        TradeScreenLayout.Metrics layout = layout();
+        int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
+        int rx = px + layout.categoryWidth() + layout.panelGap()
+                + (int) ((1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f);
+        return listPanel.getHoveredEntry(mx, my, rx, py + layout.headerHeight(),
+                layout.listWidth(), ph - layout.headerHeight() - BOTTOM_PADDING);
     }
 
     @Override
@@ -121,7 +133,8 @@ public class TradeScreen extends AbstractTradeScreen {
             return super.mouseClicked(mx, my, btn);
         }
 
-        int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
+        TradeScreenLayout.Metrics layout = layout();
+        int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
 
         if (closeIfClickedOutside(mx, my, btn, px, py, pw, ph)) {
             return true;
@@ -129,17 +142,18 @@ public class TradeScreen extends AbstractTradeScreen {
 
         float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
 
-        if (categoryPanel.mouseClicked(mx, my, px - (int) slide, py + 36, CAT_WIDTH, ph - 36 - BOTTOM_PADDING)) {
+        if (categoryPanel.mouseClicked(mx, my, px - (int) slide, py + layout.headerHeight(),
+                layout.categoryWidth(), ph - layout.headerHeight() - BOTTOM_PADDING)) {
             return true;
         }
 
         TradeEntry entry = getHoveredEntry((int) mx, (int) my);
         if (entry != null) {
-            int rx = px + CAT_WIDTH + 16 + (int) slide;
-            int rw = pw - CAT_WIDTH - 16;
+            int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
+            int rw = layout.listWidth();
             int vi = filteredEntries.indexOf(entry);
             int btnX = rx + rw - 100;
-            int btnY = py + 36 + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset())
+            int btnY = py + layout.headerHeight() + (int) (vi * (TradeListPanel.CARD_HEIGHT + 8) - listPanel.getScrollOffset())
                     + 8 + (TradeListPanel.CARD_HEIGHT - 24) / 2;
 
             if (mx >= btnX && mx < btnX + 80 && my >= btnY && my < btnY + 24) {
@@ -167,15 +181,16 @@ public class TradeScreen extends AbstractTradeScreen {
     @Override
     public boolean mouseScrolled(double mx, double my, double d) {
         if (isClosing || dt == 0) return false;
-        int pw = panelW(), ph = panelH(), px = (width - pw) / 2, py = (height - ph) / 2;
+        TradeScreenLayout.Metrics layout = layout();
+        int pw = layout.panelWidth(), ph = layout.panelHeight(), px = (width - pw) / 2, py = (height - ph) / 2;
         float slide = (1f - (HudAnimUtil.easeOutCubic(transitionAnim) * HudAnimUtil.easeOutCubic(suspendAlpha))) * 200f;
         int lx = px - (int) slide;
-        int panelY = py + 36;
-        int panelHeight = ph - 36 - BOTTOM_PADDING;
-        if (categoryPanel.mouseScrolled(mx, my, d, lx, panelY, CAT_WIDTH, panelHeight)) return true;
+        int panelY = py + layout.headerHeight();
+        int panelHeight = ph - layout.headerHeight() - BOTTOM_PADDING;
+        if (categoryPanel.mouseScrolled(mx, my, d, lx, panelY, layout.categoryWidth(), panelHeight)) return true;
 
-        int rx = px + CAT_WIDTH + 16 + (int) slide;
-        int rw = pw - CAT_WIDTH - 16;
+        int rx = px + layout.categoryWidth() + layout.panelGap() + (int) slide;
+        int rw = layout.listWidth();
         if (mx >= rx && mx < rx + rw && my >= panelY && my < panelY + panelHeight) {
             listPanel.mouseScrolled(d, panelHeight);
             return true;
