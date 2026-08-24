@@ -133,7 +133,7 @@ public class GuideContentPanel {
             localY += mediaH + 16;
         }
 
-        var description = page.getDescriptionText().resolve(null, null);
+        var description = GuideClientTextResolver.resolve(page.getDescriptionText().resolve(null, null));
         if (!description.getString().isEmpty()) {
             float textScale = 0.95f;
             int safeMaxWidth = (int) ((scrollAreaW - 24) / textScale);

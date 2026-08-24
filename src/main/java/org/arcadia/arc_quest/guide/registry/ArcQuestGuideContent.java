@@ -49,7 +49,7 @@ public final class ArcQuestGuideContent {
                 .summary(Component.translatable("guide.arc_quest.tracking_menu_basics.summary"))
                 .icon(Items.COMPASS)
                 .renderLargeIconOnIntro(true)
-                .unlockPopup(true)
+                .unlockPopup(false)
                 .sortOrder(-90)
                 .page(GuidePageBuilder.create()
                         .none()
