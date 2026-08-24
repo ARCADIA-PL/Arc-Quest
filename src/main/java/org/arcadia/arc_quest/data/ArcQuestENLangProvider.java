@@ -1388,6 +1388,11 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
         addGuidePageDesc("tracking_menu_basics", 1,
                 "Hold [%s] to open the tracking menu, then drag or scroll through the cards to switch the tracked quest.");
 
+        addGuideTitle("parallel_phases_basics", "Parallel Phases");
+        add("guide.arc_quest.parallel_phases_basics.summary", "Learn how parallel phases work and how to manage their focus.");
+        addGuidePageDesc("parallel_phases_basics", 1,
+                "Some quests can have multiple active phases at once. Switch the focus to choose which phase your tracker follows, and drag phase cards in the Quest Journal to reorder them.");
+
         addGuideTitle("movement_basics", "Movement Basics");
         addGuidePageDesc("movement_basics", 1, "Master the basics of movement to explore the world freely.");
         addGuidePageDesc("movement_basics", 2, "Watch the demonstration to learn advanced movement techniques.");
