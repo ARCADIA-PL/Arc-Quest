@@ -29,7 +29,9 @@ import org.arcadia.arc_quest.client.hud.quest.toast.QuestToastManager;
 import org.arcadia.arc_quest.client.hud.quest.trackingmenu.QuestTrackingMenuScreen;
 import org.arcadia.arc_quest.client.hud.questmarker.QuestMarkerManager;
 import org.arcadia.arc_quest.dialogue.network.ClientDialogueCache;
+import org.arcadia.arc_quest.guide.api.GuideDefinition;
 import org.arcadia.arc_quest.guide.network.ClientGuideCache;
+import org.arcadia.arc_quest.guide.registry.GuideRegistry;
 import org.arcadia.arc_quest.quest.network.ClientQuestCache;
 import org.arcadia.arc_quest.trade.network.ClientTradeCache;
 import org.lwjgl.glfw.GLFW;
@@ -72,17 +74,27 @@ public final class ClientEventHandler {
 
         boolean guideScreenActive = mc.screen instanceof GuideScreen;
         if (!guideScreenActive && !GuidePopupOverlay.INSTANCE.isActive()) {
-            ClientGuideCache.INSTANCE.consumePendingOpenRequest().ifPresent(request -> {
-                // Choice-driven dialogue updates may briefly leave screen null. Keep the guide
-                // attached to the active dialogue session so closing it restores the dialogue.
-                boolean dialogueActive = ClientDialogueCache.INSTANCE.getCurrentSession() != null;
-                if (shouldOpenStandaloneGuide(mc.screen != null, dialogueActive)) {
-                    GuideScreen.tryOpen(request.guideId(), request.initialPage(), request.markSeenOnClose());
-                } else {
-                    GuidePopupOverlay.INSTANCE.open(
-                            request.guideId(), request.initialPage(), request.markSeenOnClose());
+            ClientGuideCache.PendingOpenRequest request =
+                    ClientGuideCache.INSTANCE.getPendingOpenRequest().orElse(null);
+            if (request != null) {
+                GuideDefinition guide = GuideRegistry.get(request.guideId());
+                boolean screenPresent = mc.screen != null;
+                boolean forceOpen = guide == null || guide.getVisualConfig().shouldForceOpenWithScreen();
+                if (!screenPresent || forceOpen) {
+                    ClientGuideCache.INSTANCE.consumePendingOpenRequest().ifPresent(consumedRequest -> {
+                        // Choice-driven dialogue updates may briefly leave screen null. Keep the guide
+                        // attached to the active dialogue session so closing it restores the dialogue.
+                        boolean dialogueActive = ClientDialogueCache.INSTANCE.getCurrentSession() != null;
+                        if (shouldOpenStandaloneGuide(screenPresent, dialogueActive)) {
+                            GuideScreen.tryOpen(consumedRequest.guideId(), consumedRequest.initialPage(),
+                                    consumedRequest.markSeenOnClose());
+                        } else {
+                            GuidePopupOverlay.INSTANCE.open(consumedRequest.guideId(), consumedRequest.initialPage(),
+                                    consumedRequest.markSeenOnClose());
+                        }
+                    });
                 }
-            });
+            }
         }
         GuidePopupOverlay.INSTANCE.ensureInputScreen();
         GuidePopupOverlay.INSTANCE.tick();
