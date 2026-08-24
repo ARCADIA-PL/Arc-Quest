@@ -18,6 +18,7 @@ final class QuestTrackingMenuCardRenderer {
     }
 
     static void render(GuiGraphics graphics, Font font, QuestTrackingMenuEntry entry,
+                       QuestTrackingMenuPhaseEntry selectedPhase,
                        int x, int y, int width, int height,
                        float alpha, float detailAlpha, boolean hovered) {
         int themeColor = entry.definition().getThemeColor();
@@ -39,20 +40,22 @@ final class QuestTrackingMenuCardRenderer {
         }
 
         if (detailProgress > 0.02f) {
-            renderPhaseSummary(graphics, font, entry, x, y, width, height,
+            renderPhaseSummary(graphics, font, entry, selectedPhase, x, y, width, height,
                     themeColor, alpha * detailProgress);
         }
     }
 
     private static void renderPhaseSummary(GuiGraphics graphics, Font font,
                                            QuestTrackingMenuEntry entry,
+                                           QuestTrackingMenuPhaseEntry selectedPhase,
                                            int x, int y, int width, int height,
                                            int themeColor, float alpha) {
         int overlayAlpha = Math.round(225 * alpha);
         graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x03060B, overlayAlpha));
         graphics.fill(x, y, x + 3, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
 
-        PhaseDefinition phase = entry.phase();
+        PhaseDefinition phase = selectedPhase == null ? null : selectedPhase.definition();
+        String phaseId = selectedPhase == null ? null : selectedPhase.phaseId();
         Component phaseName = phase == null
                 ? Component.translatable("arc_quest.gui.tracking_menu.no_phase")
                 : phase.getDisplayName();
@@ -64,7 +67,7 @@ final class QuestTrackingMenuCardRenderer {
                 HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), false);
         textY += font.lineHeight + 5;
 
-        if (phase == null || entry.phaseId() == null || phase.getObjectives().isEmpty()) {
+        if (phase == null || phaseId == null || phase.getObjectives().isEmpty()) {
             graphics.drawString(font, Component.translatable("arc_quest.gui.tracking_menu.no_objectives"),
                     textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)), false);
             return;
@@ -88,7 +91,7 @@ final class QuestTrackingMenuCardRenderer {
         for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
             int required = Math.max(1, objective.getRequiredCount());
-            int progress = entry.runtime().getObjectiveProgress(entry.phaseId(), objectiveIndex);
+            int progress = entry.runtime().getObjectiveProgress(phaseId, objectiveIndex);
             if (!objective.isHidden()) {
                 visibleObjectives++;
                 if (progress >= required) completedObjectives++;
@@ -105,7 +108,7 @@ final class QuestTrackingMenuCardRenderer {
         for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
             if (objective.isHidden()) continue;
-            int progress = entry.runtime().getObjectiveProgress(entry.phaseId(), objectiveIndex);
+            int progress = entry.runtime().getObjectiveProgress(phaseId, objectiveIndex);
             int required = Math.max(1, objective.getRequiredCount());
             boolean complete = progress >= required;
             Component line = objective.isBooleanProgress()

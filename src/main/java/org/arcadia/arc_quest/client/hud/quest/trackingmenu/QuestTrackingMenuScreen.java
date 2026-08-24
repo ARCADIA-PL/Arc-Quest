@@ -27,6 +27,8 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     private List<QuestTrackingMenuEntry> entries = List.of();
     private final List<CardHit> cardHits = new ArrayList<>();
+    private final QuestTrackingMenuPhaseSelector phaseSelector = new QuestTrackingMenuPhaseSelector();
+    private QuestTrackingMenuPhaseRenderer.Layout phaseLayout = QuestTrackingMenuPhaseRenderer.Layout.EMPTY;
     private long knownRevision = Long.MIN_VALUE;
     private long lastRenderTime;
     private long openedAt;
@@ -38,6 +40,7 @@ public final class QuestTrackingMenuScreen extends Screen {
     private String selectedQuestId;
     private String hoveredQuestId;
     private String detailQuestId;
+    private String detailPhaseId;
     private long hoverStartedAt;
     private float detailAlpha;
     private String pressedQuestId;
@@ -63,6 +66,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         closing = false;
         hoveredQuestId = null;
         detailQuestId = null;
+        detailPhaseId = null;
         hoverStartedAt = 0L;
         detailAlpha = 0f;
         updateInteractionRailLeft();
@@ -71,6 +75,7 @@ public final class QuestTrackingMenuScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         long now = Util.getMillis();
+        phaseSelector.update(now);
         float dt = lastRenderTime == 0L ? 0f : Math.min(0.1f, (now - lastRenderTime) / 1000f);
         lastRenderTime = now;
         refreshEntries(false);
@@ -148,6 +153,19 @@ public final class QuestTrackingMenuScreen extends Screen {
         }
         states.sort(Comparator.comparingDouble(CardRenderState::distanceAbs).reversed());
 
+        CardRenderState phaseState = states.stream()
+                .filter(state -> state.alpha() > 0.08f && state.distanceAbs() <= 0.55f)
+                .min(Comparator.comparingDouble(CardRenderState::distanceAbs))
+                .orElse(null);
+        QuestTrackingMenuEntry phaseEntry = phaseState == null ? null : entries.get(phaseState.index());
+        QuestTrackingMenuPhaseEntry selectedPhase = phaseEntry == null
+                ? null : phaseSelector.selectedPhase(phaseEntry);
+        float phaseAlpha = phaseState == null ? 0f
+                : phaseState.alpha() * Math.max(0f, 1f - phaseState.distanceAbs() / 0.55f);
+        phaseLayout = phaseEntry == null ? QuestTrackingMenuPhaseRenderer.Layout.EMPTY
+                : QuestTrackingMenuPhaseRenderer.layout(phaseEntry, selectedPhase,
+                phaseState.x(), phaseState.y(), phaseState.width(), phaseState.height(), phaseAlpha);
+
         String trackedQuestId = ClientQuestTrackingController.INSTANCE.trackedQuestId();
         CardRenderState trackedState = null;
         QuestTrackingMenuEntry trackedEntry = null;
@@ -173,24 +191,45 @@ public final class QuestTrackingMenuScreen extends Screen {
                     state.width(), state.height(), state.distance(), state.distanceAbs()));
         }
         CardHit hovered = closing ? null : findTopCard(mouseX, mouseY);
-        updateHoverState(hovered, now, dt);
+        QuestTrackingMenuPhaseRenderer.PhaseHit hoveredPhase = closing
+                ? null : phaseLayout.find(mouseX, mouseY);
+        String hoverQuestId = hoveredPhase != null ? hoveredPhase.questId()
+                : hovered == null ? null : hovered.questId();
+        QuestTrackingMenuEntry hoverEntry = entryById(hoverQuestId);
+        QuestTrackingMenuPhaseEntry hoverSelectedPhase = hoverEntry == null
+                ? null : phaseSelector.selectedPhase(hoverEntry);
+        updateHoverState(hoverQuestId,
+                hoverSelectedPhase == null ? null : hoverSelectedPhase.phaseId(), now, dt);
 
         for (CardRenderState state : states) {
             QuestTrackingMenuEntry entry = entries.get(state.index());
             boolean isHovered = hovered != null && hovered.questId().equals(entry.questId());
             float cardDetailAlpha = entry.questId().equals(detailQuestId) ? detailAlpha : 0f;
-            QuestTrackingMenuCardRenderer.render(graphics, font, entry,
+            QuestTrackingMenuPhaseEntry entrySelectedPhase = phaseSelector.selectedPhase(entry);
+            QuestTrackingMenuPhaseEntry renderedPhase = cardDetailAlpha > 0f
+                    ? entry.phaseById(detailPhaseId) : entrySelectedPhase;
+            if (renderedPhase == null) renderedPhase = entrySelectedPhase;
+            QuestTrackingMenuCardRenderer.render(graphics, font, entry, renderedPhase,
                     state.x(), state.y(), state.width(), state.height(), state.alpha(),
                     cardDetailAlpha, isHovered);
         }
         graphics.disableScissor();
+
+        String trackedPhaseId = phaseEntry != null
+                && phaseEntry.questId().equals(ClientQuestTrackingController.INSTANCE.trackedQuestId())
+                ? ClientQuestTrackingController.INSTANCE.trackedPhaseId()
+                : null;
+        if (phaseEntry != null) {
+            QuestTrackingMenuPhaseRenderer.render(graphics, font, phaseEntry,
+                    phaseLayout, trackedPhaseId, hoveredPhase);
+        }
 
         if (trackedState != null && trackedEntry != null && trackedState.alpha() > 0.08f) {
             renderTrackedCursor(graphics, trackedState, trackedEntry.definition().getThemeColor());
         }
 
         HudCursorManager.beginFrame();
-        HudCursorManager.requestPointer(!closing && hovered != null && !dragMoved);
+        HudCursorManager.requestPointer(!closing && (hovered != null || hoveredPhase != null) && !dragMoved);
         HudCursorManager.apply();
     }
 
@@ -258,13 +297,15 @@ public final class QuestTrackingMenuScreen extends Screen {
         String previousSelected = selectedQuestId;
         entries = QuestTrackingMenuEntry.snapshot();
         knownRevision = revision;
+        String trackedQuestId = ClientQuestTrackingController.INSTANCE.trackedQuestId();
+        phaseSelector.reconcile(entries, trackedQuestId,
+                ClientQuestTrackingController.INSTANCE.trackedPhaseId());
         if (entries.isEmpty()) {
             selectedQuestId = null;
             position = targetPosition = 0.0;
             return;
         }
 
-        String trackedQuestId = ClientQuestTrackingController.INSTANCE.trackedQuestId();
         String desiredQuestId = previousSelected != null && indexOf(previousSelected) >= 0
                 ? previousSelected
                 : trackedQuestId;
@@ -275,8 +316,8 @@ public final class QuestTrackingMenuScreen extends Screen {
         else targetPosition = nearestVirtualPosition(position, desiredIndex);
     }
 
-    private void updateHoverState(CardHit hovered, long now, float dt) {
-        String nextHoveredQuestId = hovered == null ? null : hovered.questId();
+    private void updateHoverState(String nextHoveredQuestId, String nextHoveredPhaseId,
+                                  long now, float dt) {
         if (!java.util.Objects.equals(hoveredQuestId, nextHoveredQuestId)) {
             hoveredQuestId = nextHoveredQuestId;
             hoverStartedAt = now;
@@ -284,16 +325,21 @@ public final class QuestTrackingMenuScreen extends Screen {
 
         boolean candidateReady = hoveredQuestId != null
                 && now - hoverStartedAt >= DETAIL_HOVER_DELAY_MS;
-        if (detailQuestId != null && !detailQuestId.equals(hoveredQuestId)) {
+        if (detailQuestId != null && (!detailQuestId.equals(hoveredQuestId)
+                || !java.util.Objects.equals(detailPhaseId, nextHoveredPhaseId))) {
             detailAlpha = HudAnimUtil.smoothHalfLife(detailAlpha, 0f, 0.055f, dt);
             if (detailAlpha <= 0.015f) {
                 detailAlpha = 0f;
                 detailQuestId = null;
+                detailPhaseId = null;
             }
             return;
         }
 
-        if (detailQuestId == null && candidateReady) detailQuestId = hoveredQuestId;
+        if (detailQuestId == null && candidateReady) {
+            detailQuestId = hoveredQuestId;
+            detailPhaseId = nextHoveredPhaseId;
+        }
         float targetAlpha = detailQuestId != null && detailQuestId.equals(hoveredQuestId)
                 && candidateReady ? 1f : 0f;
         float halfLife = targetAlpha > detailAlpha ? 0.065f : 0.085f;
@@ -301,12 +347,24 @@ public final class QuestTrackingMenuScreen extends Screen {
         if (targetAlpha == 0f && detailAlpha <= 0.015f) {
             detailAlpha = 0f;
             detailQuestId = null;
+            detailPhaseId = null;
         }
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollDelta) {
-        if (closing || mouseX < interactionRailLeft || entries.isEmpty() || scrollDelta == 0.0) return false;
+        if (closing || entries.isEmpty()) return false;
+        QuestTrackingMenuPhaseRenderer.PhaseHit phaseHit = phaseLayout.find(mouseX, mouseY);
+        if ((phaseHit != null || phaseLayout.contains(mouseX, mouseY))
+                && scrollDelta != 0.0) {
+            QuestTrackingMenuEntry entry = entryById(
+                    phaseHit == null ? phaseLayout.questId() : phaseHit.questId());
+            if (entry != null && phaseSelector.cycle(entry, scrollDelta > 0.0 ? -1 : 1)) {
+                playSelectionSound(0.82f);
+                return true;
+            }
+        }
+        if (mouseX < interactionRailLeft || scrollDelta == 0.0) return false;
         if (entries.size() == 1) return true;
         targetPosition = Math.rint(targetPosition - Math.signum(scrollDelta));
         selectedQuestId = entries.get(wrappedIndex(targetPosition)).questId();
@@ -317,6 +375,15 @@ public final class QuestTrackingMenuScreen extends Screen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
         if (closing) return true;
+        QuestTrackingMenuPhaseRenderer.PhaseHit phaseHit = phaseLayout.find(mouseX, mouseY);
+        if (phaseHit != null) {
+            QuestTrackingMenuEntry entry = entryById(phaseHit.questId());
+            if (entry != null && phaseSelector.selectImmediate(entry, phaseHit.phaseId())) {
+                selectedQuestId = entry.questId();
+                playSelectionSound(1f);
+            }
+            return true;
+        }
         if (mouseX < interactionRailLeft) {
             requestClose();
             return true;
@@ -377,13 +444,8 @@ public final class QuestTrackingMenuScreen extends Screen {
         QuestTrackingMenuEntry entry = entries.get(index);
         selectedQuestId = entry.questId();
         targetPosition = Math.rint(position + distance);
-        if (entry.phaseId() != null) {
-            ClientQuestTrackingController.INSTANCE.requestFocus(entry.questId(), entry.phaseId());
-        } else {
-            ClientQuestTrackingController.INSTANCE.requestTrack(entry.questId());
-        }
-        Minecraft minecraft = Minecraft.getInstance();
-        minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1f));
+        phaseSelector.commitSelected(entry);
+        playSelectionSound(1f);
     }
 
     private CardHit findTopCard(double mouseX, double mouseY) {
@@ -399,6 +461,17 @@ public final class QuestTrackingMenuScreen extends Screen {
             if (questId.equals(entries.get(index).questId())) return index;
         }
         return -1;
+    }
+
+    private QuestTrackingMenuEntry entryById(String questId) {
+        int index = indexOf(questId);
+        return index < 0 ? null : entries.get(index);
+    }
+
+    private void playSelectionSound(float pitch) {
+        Minecraft minecraft = Minecraft.getInstance();
+        minecraft.getSoundManager().play(SimpleSoundInstance.forUI(
+                SoundEvents.UI_BUTTON_CLICK, pitch));
     }
 
     private double circularDistance(int index, double referencePosition) {
@@ -439,6 +512,15 @@ public final class QuestTrackingMenuScreen extends Screen {
             requestClose();
             return true;
         }
+        if (keyCode == GLFW.GLFW_KEY_LEFT || keyCode == GLFW.GLFW_KEY_A
+                || keyCode == GLFW.GLFW_KEY_RIGHT || keyCode == GLFW.GLFW_KEY_D) {
+            QuestTrackingMenuEntry entry = entryById(selectedQuestId);
+            int direction = keyCode == GLFW.GLFW_KEY_LEFT || keyCode == GLFW.GLFW_KEY_A ? -1 : 1;
+            if (entry != null && phaseSelector.cycle(entry, direction)) {
+                playSelectionSound(0.82f);
+                return true;
+            }
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -462,6 +544,7 @@ public final class QuestTrackingMenuScreen extends Screen {
 
     private void requestClose() {
         if (closing) return;
+        phaseSelector.flush();
         long now = Util.getMillis();
         closeStartProgress = getTransitionProgress(now);
         closing = true;
