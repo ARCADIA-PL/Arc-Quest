@@ -5,9 +5,9 @@ final class QuestTrackingMenuLayout {
     static final int REFERENCE_CARD_HEIGHT = 135;
 
     private static final int VIEWPORT_TOP = 38;
-    private static final int MIN_RAIL_WIDTH = 96;
+    private static final int MIN_RAIL_WIDTH = 124;
     private static final int MAX_RAIL_WIDTH = 286;
-    private static final int MIN_CARD_HEIGHT = 36;
+    private static final int MIN_CARD_HEIGHT = 54;
 
     private QuestTrackingMenuLayout() {
     }
@@ -25,10 +25,7 @@ final class QuestTrackingMenuLayout {
         int cardHeight = Math.max(MIN_CARD_HEIGHT, Math.round(cardWidth * 9f / 16f));
         int availableHeight = Math.max(MIN_CARD_HEIGHT, screenHeight - VIEWPORT_TOP - 4);
         int maximumCardHeight = Math.max(MIN_CARD_HEIGHT, Math.round(availableHeight * 0.46f));
-        if (cardHeight > maximumCardHeight) {
-            cardHeight = maximumCardHeight;
-            cardWidth = Math.max(48, Math.round(cardHeight * 16f / 9f));
-        }
+        cardHeight = Math.min(cardHeight, maximumCardHeight);
 
         int cardSpacing = cardHeight + Math.max(6, Math.min(12, Math.round(cardHeight * 0.08f)));
         int minimumCenterY = VIEWPORT_TOP + cardHeight / 2;
