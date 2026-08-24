@@ -57,6 +57,7 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
         add("key.categories.arc_quest", "Arc Quest");
         add("key.arc_quest.open_tracking_menu", "打开任务追踪菜单");
         add("gui.arc_quest.journal.title", "任务日志");
+        add("arc_quest.gui.journal.title_with_key", "[ %s ] 任务日志");
     }
 
     // ═══════════════════════════════════════════════════════

@@ -140,6 +140,7 @@
   "arc_quest.gui.journal.tab.failed": "FAILED",
   "arc_quest.gui.journal.tab.guide": "PLAY GUIDE",
   "arc_quest.gui.journal.tab.history": "HISTORY",
+  "arc_quest.gui.journal.title_with_key": "[ %s ] Quest Journal",
   "arc_quest.gui.quest_intel.header": "SYS.ARC_QUEST // PHASE INTEL",
   "arc_quest.gui.quest_intel.hint_close": "ESC / Click outside to close",
   "arc_quest.gui.quest_offer.header": "SYS.ARC_QUEST // UPLOAD PROTOCOL",

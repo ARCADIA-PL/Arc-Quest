@@ -5,6 +5,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
@@ -367,7 +368,13 @@ public class QuestJournalScreen extends Screen {
             float titleScale = 0.95f + 0.05f * easeProgress;
             g.pose().scale(titleScale, titleScale, 1f);
             g.pose().translate(-sw / 2f, -14, 0);
-            g.drawCenteredString(font, title, sw / 2, 14, HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
+            Component journalKey = ClientEventHandler.KEY_OPEN_JOURNAL.getTranslatedKeyMessage()
+                    .copy()
+                    .withStyle(style -> style.withColor(ChatFormatting.GOLD).withBold(true));
+            Component journalTitle = Component.translatable(
+                    "arc_quest.gui.journal.title_with_key", journalKey);
+            g.drawCenteredString(font, journalTitle, sw / 2, 14,
+                    HudAnimUtil.withAlpha(0xFFFFFF, safeAlpha));
             g.pose().popPose();
         }
 
