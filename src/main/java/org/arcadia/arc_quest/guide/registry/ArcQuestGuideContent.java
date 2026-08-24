@@ -36,7 +36,7 @@ public final class ArcQuestGuideContent {
                 .summary(Component.translatable("guide.arc_quest.journal_basics.summary"))
                 .icon(Items.BOOK)
                 .renderLargeIconOnIntro(true)
-                .unlockPopup(true)
+                .unlockPopup(true,false)
                 .sortOrder(-100)
                 .page(GuidePageBuilder.create()
                         .none()
