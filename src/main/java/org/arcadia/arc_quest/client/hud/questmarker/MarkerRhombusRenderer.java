@@ -59,15 +59,15 @@ public final class MarkerRhombusRenderer {
             mixLy /= mixLen;
         }
 
-        float outSize = lerp(lerp(10f, 5f, phase1), 3.5f, phase2);
-        float inSize = lerp(lerp(7f, 3f, phase1), 0.0f, phase2);
-        float gap = lerp(lerp(0f, 3.5f, phase1), 0.0f, phase2);
+        float outSize = lerp(lerp(10f, 5f, phase1), 5.2f, phase2);
+        float inSize = lerp(lerp(7f, 3f, phase1), 2.5f, phase2);
+        float gap = lerp(lerp(0f, 3.5f, phase1), 1.2f, phase2);
 
         float finalScaleX = breathScale;
         float finalScaleY = breathScale;
 
-        float lightBlend = 1.0f - phase2;
-        float globalAlpha = lerp(lerp(1.0f, 0.8f, phase1), 0.75f, phase2);
+        float lightBlend = lerp(1.0f, 0.45f, phase2);
+        float globalAlpha = lerp(lerp(1.0f, 0.85f, phase1), 0.9f, phase2);
 
         float glassAlphaMod = Math.max(0f, 1.0f - phase1 * 1.5f);
         float rimAlphaMod = Math.max(0f, 1.0f - phase1 * 2.0f);
@@ -126,8 +126,8 @@ public final class MarkerRhombusRenderer {
         addDyn(builder, matrix, 0, -inSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
         addDyn(builder, matrix, 0, -outSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
 
-        float coreSize = lerp(lerp(2.0f, 1.5f, phase1), 1.2f, phase2);
-        float coreBaseA = lerp(lerp(1.0f, 0.7f, phase1), 0.9f, phase2);
+        float coreSize = lerp(lerp(2.0f, 1.5f, phase1), 1.6f, phase2);
+        float coreBaseA = lerp(lerp(1.0f, 0.75f, phase1), 1.0f, phase2);
 
         float coreGlow = lerp(0.7f, 0.6f + 0.4f * breathFactor, activeProgress);
         int coreA = (int) (baseAlpha * coreBaseA * coreGlow);

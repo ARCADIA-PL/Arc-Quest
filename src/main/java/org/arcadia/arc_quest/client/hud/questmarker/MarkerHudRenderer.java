@@ -263,7 +263,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
                 tierDistRatio = (float) Math.min(1.0, (dist - farDistanceThreshold) / range);
             }
 
-            float targetDistAlpha = 1.0f - (tierDistRatio * 0.65f);
+            float targetDistAlpha = 1.0f - (tierDistRatio * 0.45f);
 
             float dxCenter = proj.x - cx;
             float dyCenter = proj.y - cy;
@@ -424,7 +424,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
 
         String name = marker.getLabelComponent().getString();
         updateLabelCache(st, font, name);
-        float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4f, tier - 1.0f);
+        float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 7f, tier - 1.0f);
         float scaledRadius = baseRadius * finalScale;
 
         float textScale = 1.0f;
@@ -439,10 +439,10 @@ public class MarkerHudRenderer implements IGuiOverlay {
             extraSpacing = lerp(2f, 3f, t);
         } else if (dist <= farDistanceThreshold) {
             float t = (float) ((dist - nearDistanceThreshold) / (farDistanceThreshold - nearDistanceThreshold));
-            textScale = lerp(0.85f, 0.7f, t);
+            textScale = lerp(0.85f, 0.82f, t);
             extraSpacing = lerp(4f, 6f, t);
         } else {
-            textScale = 0.7f;
+            textScale = 0.82f;
             extraSpacing = 6f; // 极远距离时将文字远远推开，防止遮挡微小标记
         }
 
