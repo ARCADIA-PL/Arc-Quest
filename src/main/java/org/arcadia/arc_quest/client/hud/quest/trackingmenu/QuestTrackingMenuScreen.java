@@ -131,7 +131,7 @@ public final class QuestTrackingMenuScreen extends Screen {
         int centerY = height / 2 + 8;
         List<CardRenderState> states = new ArrayList<>();
         for (int index = 0; index < entries.size(); index++) {
-            double distance = circularDistance(index, position);
+            double distance = circularDistance(index, position, entries.size());
             if (Math.abs(distance) > 3.4) continue;
             float distanceAbs = (float) Math.abs(distance);
             float revealDelay = Math.min(0.24f, distanceAbs * 0.065f);
@@ -478,11 +478,14 @@ public final class QuestTrackingMenuScreen extends Screen {
                 SoundEvents.UI_BUTTON_CLICK, pitch));
     }
 
-    private double circularDistance(int index, double referencePosition) {
-        int size = entries.size();
+    static double circularDistance(int index, double referencePosition, int size) {
         if (size <= 1) return 0.0;
         double distance = index - referencePosition;
-        return distance - Math.floor(distance / size + 0.5) * size;
+        double wrappedDistance = distance % size;
+        double halfCycle = size / 2.0;
+        if (wrappedDistance > halfCycle) wrappedDistance -= size;
+        else if (wrappedDistance < -halfCycle) wrappedDistance += size;
+        return wrappedDistance;
     }
 
     private double nearestVirtualPosition(double referencePosition, int index) {
