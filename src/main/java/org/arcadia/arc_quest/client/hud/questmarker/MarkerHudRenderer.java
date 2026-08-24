@@ -35,6 +35,7 @@ public class MarkerHudRenderer implements IGuiOverlay {
     private static final float ANIMATION_SPEED = 6.66f;
     private static final float TIER_TRANSITION_SPEED = 18.0f;
     private static final float OCCLUSION_TRANSITION_SPEED = 12.0f;
+    private static final float FAR_OFFSCREEN_SCALE_BOOST = 0.18f;
 
     private static final long OFFSCREEN_ENTER_DELAY_MS = 60L;
     private static final long OFFSCREEN_EXIT_DELAY_MS = 90L;
@@ -472,7 +473,9 @@ public class MarkerHudRenderer implements IGuiOverlay {
         gui.pose().pushPose();
         gui.pose().translate(x, y, 0);
         float markerScale = styleFloat(marker, "scale", 1.0f, 0.5f, 2.0f);
-        gui.pose().scale(markerScale, markerScale, 1.0f);
+        float farVisibility = Math.max(0f, Math.min(1f, tier - 1.0f));
+        float offscreenScale = markerScale * (1.0f + FAR_OFFSCREEN_SCALE_BOOST * farVisibility);
+        gui.pose().scale(offscreenScale, offscreenScale, 1.0f);
         gui.pose().pushPose();
 
         float ease = 1.0f - (1.0f - progress) * (1.0f - progress);
@@ -499,9 +502,9 @@ public class MarkerHudRenderer implements IGuiOverlay {
         float textScale = 1.0f;
         if (dist > nearDistanceThreshold && dist <= farDistanceThreshold) {
             float t = (float) ((dist - nearDistanceThreshold) / (farDistanceThreshold - nearDistanceThreshold));
-            textScale = lerp(1.0f, 0.75f, t);
+            textScale = lerp(1.0f, 0.9f, t);
         } else if (dist > farDistanceThreshold) {
-            textScale = 0.75f;
+            textScale = 0.9f;
         }
 
         gui.pose().pushPose();
