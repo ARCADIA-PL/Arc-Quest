@@ -2,6 +2,7 @@ package org.arcadia.arc_quest.client.hud.quest.trackingmenu;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import org.arcadia.arc_quest.client.hud.HudAnimUtil;
@@ -12,6 +13,7 @@ import org.arcadia.arc_quest.quest.api.PhaseDefinition;
 import java.util.List;
 
 final class QuestTrackingMenuCardRenderer {
+    private static final double REFERENCE_GUI_SCALE = 3.0;
     private static final int CARD_PADDING = 9;
     private static final float HEADER_SCALE = 0.86f;
     private static final float DESCRIPTION_SCALE = 0.72f;
@@ -28,6 +30,7 @@ final class QuestTrackingMenuCardRenderer {
                        float alpha, float detailAlpha, boolean hovered) {
         int themeColor = entry.definition().getThemeColor();
         float detailProgress = Math.max(0f, Math.min(1f, detailAlpha));
+        float guiScaleCorrection = guiScaleCorrection();
         QuestSplashCardRenderer.render(graphics, entry.definition(), entry.splashTexture(),
                 x, y, width, height, themeColor, alpha);
 
@@ -38,15 +41,16 @@ final class QuestTrackingMenuCardRenderer {
         int titleColor = HudAnimUtil.withAlpha(0xFFFFFF,
                 Math.round(255 * alpha * (1f - detailProgress)));
         if ((titleColor >>> 24) > 3) {
-            drawEllipsized(graphics, font, entry.definition().getDisplayName(),
-                    x + CARD_PADDING,
-                    y + height - font.lineHeight - 7,
-                    width - CARD_PADDING * 2, titleColor);
+            int padding = scaledPixels(CARD_PADDING, guiScaleCorrection);
+            drawScaledEllipsized(graphics, font, entry.definition().getDisplayName(),
+                    x + padding,
+                    y + height - scaledLineHeight(font, guiScaleCorrection) - scaledPixels(7, guiScaleCorrection),
+                    width - padding * 2, titleColor, guiScaleCorrection, true);
         }
 
         if (detailProgress > 0.02f) {
             renderPhaseSummary(graphics, font, entry, selectedPhase, x, y, width, height,
-                    themeColor, alpha * detailProgress);
+                    themeColor, alpha * detailProgress, guiScaleCorrection);
         }
     }
 
@@ -54,10 +58,11 @@ final class QuestTrackingMenuCardRenderer {
                                            QuestTrackingMenuEntry entry,
                                            QuestTrackingMenuPhaseEntry selectedPhase,
                                            int x, int y, int width, int height,
-                                           int themeColor, float alpha) {
+                                           int themeColor, float alpha, float guiScaleCorrection) {
         int overlayAlpha = Math.round(225 * alpha);
         graphics.fill(x, y, x + width, y + height, HudAnimUtil.withAlpha(0x03060B, overlayAlpha));
-        graphics.fill(x, y, x + 3, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
+        int accentWidth = scaledPixels(3, guiScaleCorrection);
+        graphics.fill(x, y, x + accentWidth, y + height, HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)));
 
         PhaseDefinition phase = selectedPhase == null ? null : selectedPhase.definition();
         String phaseId = selectedPhase == null ? null : selectedPhase.phaseId();
@@ -65,37 +70,43 @@ final class QuestTrackingMenuCardRenderer {
                 ? Component.translatable("arc_quest.gui.tracking_menu.no_phase")
                 : phase.getDisplayName();
         Component phaseHeader = Component.translatable("arc_quest.gui.tracking_menu.current_phase", phaseName);
-        int textX = x + CARD_PADDING + 3;
-        int textY = y + CARD_PADDING;
-        int textWidth = width - CARD_PADDING * 2 - 3;
-        int bottomY = y + height - CARD_PADDING;
+        int padding = scaledPixels(CARD_PADDING, guiScaleCorrection);
+        int textX = x + padding + accentWidth;
+        int textY = y + padding;
+        int textWidth = width - padding * 2 - accentWidth;
+        int bottomY = y + height - padding;
+        float headerScale = HEADER_SCALE * guiScaleCorrection;
+        float descriptionScale = DESCRIPTION_SCALE * guiScaleCorrection;
+        float progressScale = PROGRESS_SCALE * guiScaleCorrection;
+        float objectiveScale = OBJECTIVE_SCALE * guiScaleCorrection;
+        float footerScale = FOOTER_SCALE * guiScaleCorrection;
 
         drawScaledEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
-                HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), HEADER_SCALE, false);
-        textY += scaledLineHeight(font, HEADER_SCALE) + 4;
+                HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), headerScale, false);
+        textY += scaledLineHeight(font, headerScale) + scaledPixels(4, guiScaleCorrection);
         graphics.fill(textX, textY, textX + textWidth, textY + 1,
                 HudAnimUtil.withAlpha(themeColor, Math.round(90 * alpha)));
-        textY += 4;
+        textY += scaledPixels(4, guiScaleCorrection);
 
         if (phase == null || phaseId == null || phase.getObjectives().isEmpty()) {
             drawScaled(graphics, font,
                     Component.translatable("arc_quest.gui.tracking_menu.no_objectives"),
                     textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)),
-                    DESCRIPTION_SCALE, false);
+                    descriptionScale, false);
             return;
         }
 
         Component description = phase.getDescription();
         if (!description.getString().isBlank()) {
-            int logicalWidth = logicalWidth(textWidth, DESCRIPTION_SCALE);
+            int logicalWidth = logicalWidth(textWidth, descriptionScale);
             List<FormattedCharSequence> descriptionLines = font.split(description, logicalWidth);
             int descriptionLineCount = Math.min(height >= 120 ? 3 : 2, descriptionLines.size());
-            int lineAdvance = scaledLineHeight(font, DESCRIPTION_SCALE) + 2;
+            int lineAdvance = scaledLineHeight(font, descriptionScale) + scaledPixels(2, guiScaleCorrection);
             for (int lineIndex = 0; lineIndex < descriptionLineCount; lineIndex++) {
                 if (textY + lineAdvance > bottomY) break;
                 drawScaled(graphics, font, descriptionLines.get(lineIndex), textX, textY,
                         HudAnimUtil.withAlpha(0xAAB1BC, Math.round(235 * alpha)),
-                        DESCRIPTION_SCALE, false);
+                        descriptionScale, false);
                 textY += lineAdvance;
             }
             textY += 2;
@@ -116,12 +127,12 @@ final class QuestTrackingMenuCardRenderer {
         Component phaseProgress = Component.translatable("arc_quest.gui.tracking_menu.phase_progress",
                 completedObjectives, visibleObjectives);
         drawScaled(graphics, font, phaseProgress, textX, textY,
-                HudAnimUtil.withAlpha(themeColor, Math.round(245 * alpha)), PROGRESS_SCALE, false);
-        textY += scaledLineHeight(font, PROGRESS_SCALE) + 4;
+                HudAnimUtil.withAlpha(themeColor, Math.round(245 * alpha)), progressScale, false);
+        textY += scaledLineHeight(font, progressScale) + scaledPixels(4, guiScaleCorrection);
 
         int renderedObjectives = 0;
-        int objectiveLineAdvance = scaledLineHeight(font, OBJECTIVE_SCALE) + 2;
-        int logicalObjectiveWidth = logicalWidth(textWidth, OBJECTIVE_SCALE);
+        int objectiveLineAdvance = scaledLineHeight(font, objectiveScale) + scaledPixels(2, guiScaleCorrection);
+        int logicalObjectiveWidth = logicalWidth(textWidth, objectiveScale);
         for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
             if (objective.isHidden()) continue;
@@ -145,7 +156,7 @@ final class QuestTrackingMenuCardRenderer {
             int color = complete ? 0x88FF88 : 0xDDDDDD;
             for (int lineIndex = 0; lineIndex < objectiveLineCount; lineIndex++) {
                 drawScaled(graphics, font, wrapped.get(lineIndex), textX, textY,
-                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), OBJECTIVE_SCALE, false);
+                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), objectiveScale, false);
                 textY += objectiveLineAdvance;
             }
             renderedObjectives++;
@@ -153,16 +164,29 @@ final class QuestTrackingMenuCardRenderer {
 
         int remainingObjectives = visibleObjectives - renderedObjectives;
         if (remainingObjectives > 0
-                && textY + scaledLineHeight(font, FOOTER_SCALE) <= bottomY) {
+                && textY + scaledLineHeight(font, footerScale) <= bottomY) {
             drawScaled(graphics, font,
                     Component.translatable("arc_quest.gui.tracking_menu.more_objectives", remainingObjectives),
                     textX, textY, HudAnimUtil.withAlpha(0x8E96A3, Math.round(230 * alpha)),
-                    FOOTER_SCALE, false);
+                    footerScale, false);
         }
     }
 
     private static int logicalWidth(int physicalWidth, float scale) {
         return Math.max(1, (int) Math.floor(physicalWidth / scale));
+    }
+
+    static float guiScaleCorrection(double guiScale) {
+        return (float) (REFERENCE_GUI_SCALE / Math.max(1.0, guiScale));
+    }
+
+    private static float guiScaleCorrection() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return guiScaleCorrection(minecraft.getWindow().getGuiScale());
+    }
+
+    private static int scaledPixels(int pixels, float scale) {
+        return Math.max(1, Math.round(pixels * scale));
     }
 
     private static int scaledLineHeight(Font font, float scale) {
