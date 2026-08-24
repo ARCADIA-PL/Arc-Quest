@@ -81,10 +81,12 @@ public final class QuestTrackingMenuScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         long now = Util.getMillis();
-        phaseSelector.update(now);
         float dt = lastRenderTime == 0L ? 0f : Math.min(0.1f, (now - lastRenderTime) / 1000f);
         lastRenderTime = now;
-        refreshEntries(false);
+        if (!closing) {
+            phaseSelector.update(now);
+            refreshEntries(false);
+        }
 
         float transitionProgress = getTransitionProgress(now);
         if (closing && transitionProgress <= 0f) {
@@ -94,8 +96,10 @@ public final class QuestTrackingMenuScreen extends Screen {
             return;
         }
 
-        rebaseCircularPosition();
-        position += (targetPosition - position) * Math.min(1.0, dt * 14.0);
+        if (!closing) {
+            rebaseCircularPosition();
+            position += (targetPosition - position) * Math.min(1.0, dt * 14.0);
+        }
 
         QuestTrackingMenuLayout.Metrics layout = QuestTrackingMenuLayout.resolve(width, height);
         int railWidth = layout.railWidth();
