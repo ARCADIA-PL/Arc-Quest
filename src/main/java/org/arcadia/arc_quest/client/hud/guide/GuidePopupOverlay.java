@@ -356,7 +356,7 @@ public final class GuidePopupOverlay {
         if (cachedPage == pageIndex && cachedTextWidth == width) return;
         descriptionLines.clear();
         descriptionLines.addAll(Minecraft.getInstance().font.split(
-                guide.getPage(pageIndex).getDescriptionText().resolve(null, null), Math.max(1, width)));
+                GuideClientTextResolver.resolve(guide.getPage(pageIndex).getDescriptionText().resolve(null, null)), Math.max(1, width)));
         cachedPage = pageIndex;
         cachedTextWidth = width;
     }

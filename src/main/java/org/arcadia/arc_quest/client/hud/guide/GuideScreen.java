@@ -205,7 +205,7 @@ public final class GuideScreen extends Screen {
         int lineHeight = font.lineHeight + 5; // 增加行距，更舒适
 
         for (FormattedCharSequence line : font.split(
-                guide.getPage(currentPage).getDescriptionText().resolve(null, null),
+                GuideClientTextResolver.resolve(guide.getPage(currentPage).getDescriptionText().resolve(null, null)),
                 Math.max(1, width))) {
             cachedLines.add(new RenderLine(line, currentY));
             currentY += lineHeight;
