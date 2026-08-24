@@ -18,8 +18,7 @@ import java.util.Map;
 record QuestTrackingMenuEntry(String questId,
                               QuestDefinition definition,
                               QuestRuntimeData runtime,
-                              @Nullable String phaseId,
-                              @Nullable PhaseDefinition phase,
+                              List<QuestTrackingMenuPhaseEntry> activePhases,
                               @Nullable ResourceLocation splashTexture) {
 
     static List<QuestTrackingMenuEntry> snapshot() {
@@ -32,13 +31,12 @@ record QuestTrackingMenuEntry(String questId,
             if (definition == null) continue;
 
             QuestRuntimeData runtime = activeEntry.getValue();
-            String phaseId = resolvePhaseId(definition, runtime);
-            PhaseDefinition phase = phaseId == null ? null : definition.getPhase(phaseId);
+            List<QuestTrackingMenuPhaseEntry> activePhases = orderedActivePhases(definition, runtime);
             ResourceLocation splashTexture = definition.getSplashConfig(SplashType.QUEST_ACQUIRED)
                     .map(asset -> asset.texture())
                     .orElse(null);
             entries.add(new QuestTrackingMenuEntry(
-                    questId, definition, runtime, phaseId, phase, splashTexture));
+                    questId, definition, runtime, activePhases, splashTexture));
         }
 
         entries.sort(Comparator.comparing(entry -> QuestTrackingPriority.resolve(
@@ -46,19 +44,28 @@ record QuestTrackingMenuEntry(String questId,
         return List.copyOf(entries);
     }
 
-    private static String resolvePhaseId(QuestDefinition definition, QuestRuntimeData runtime) {
-        String currentPhaseId = runtime.getCurrentPhaseId();
-        if (isUsablePhase(definition, runtime, currentPhaseId)) return currentPhaseId;
-        for (String activePhaseId : runtime.getActivePhaseIds()) {
-            if (isUsablePhase(definition, runtime, activePhaseId)) return activePhaseId;
+    static List<QuestTrackingMenuPhaseEntry> orderedActivePhases(
+            QuestDefinition definition, QuestRuntimeData runtime) {
+        List<QuestTrackingMenuPhaseEntry> phases = new ArrayList<>();
+        for (String phaseId : definition.getPhaseIds()) {
+            if (!runtime.isPhaseActive(phaseId)) continue;
+            PhaseDefinition phase = definition.getPhase(phaseId);
+            if (phase != null) phases.add(new QuestTrackingMenuPhaseEntry(phaseId, phase));
+        }
+        return List.copyOf(phases);
+    }
+
+    @Nullable
+    QuestTrackingMenuPhaseEntry phaseById(@Nullable String phaseId) {
+        if (phaseId == null) return null;
+        for (QuestTrackingMenuPhaseEntry phase : activePhases) {
+            if (phase.phaseId().equals(phaseId)) return phase;
         }
         return null;
     }
 
-    private static boolean isUsablePhase(QuestDefinition definition, QuestRuntimeData runtime,
-                                         @Nullable String phaseId) {
-        return phaseId != null && !phaseId.isEmpty()
-                && runtime.isPhaseActive(phaseId)
-                && definition.getPhase(phaseId) != null;
+    @Nullable
+    QuestTrackingMenuPhaseEntry firstActivePhase() {
+        return activePhases.isEmpty() ? null : activePhases.getFirst();
     }
 }
