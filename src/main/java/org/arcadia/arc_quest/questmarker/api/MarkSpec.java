@@ -34,4 +34,16 @@ public record MarkSpec(
         return new MarkSpec(id, target, MarkActivations.always(), MarkActivations.never(),
                 QuestMarkerType.QUEST_OBJECTIVE, 0, DEFAULT_MAX_DISTANCE, 20, true, false, Map.of());
     }
+
+    /**
+     * Creates a marker whose visible label is resolved on the client from a translation key.
+     */
+    public static MarkSpec translated(String id, String translationKey, MarkableObject target) {
+        if (translationKey == null || translationKey.isBlank()) {
+            throw new IllegalArgumentException("translationKey cannot be blank");
+        }
+        return new MarkSpec(id, target, MarkActivations.always(), MarkActivations.never(),
+                QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false,
+                Map.of("labelKey", translationKey));
+    }
 }
