@@ -59,9 +59,9 @@ public final class MarkerRhombusRenderer {
             mixLy /= mixLen;
         }
 
-        float outSize = lerp(lerp(10f, 5f, phase1), 5.2f, phase2);
-        float inSize = lerp(lerp(7f, 3f, phase1), 2.5f, phase2);
-        float gap = lerp(lerp(0f, 3.5f, phase1), 1.2f, phase2);
+        float outSize = lerp(lerp(10f, 5f, phase1), 3.8f, phase2);
+        float inSize = lerp(lerp(7f, 3f, phase1), 1.6f, phase2);
+        float gap = lerp(lerp(0f, 3.5f, phase1), 0.35f, phase2);
 
         float finalScaleX = breathScale;
         float finalScaleY = breathScale;
@@ -126,7 +126,7 @@ public final class MarkerRhombusRenderer {
         addDyn(builder, matrix, 0, -inSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
         addDyn(builder, matrix, 0, -outSize, -gap, -gap, finalScaleX, finalScaleY, mixLx, mixLy, flowPhase, accentColor, globalAlpha, lightBlend, activeProgress);
 
-        float coreSize = lerp(lerp(2.0f, 1.5f, phase1), 1.6f, phase2);
+        float coreSize = lerp(lerp(2.0f, 1.5f, phase1), 1.45f, phase2);
         float coreBaseA = lerp(lerp(1.0f, 0.75f, phase1), 1.0f, phase2);
 
         float coreGlow = lerp(0.7f, 0.6f + 0.4f * breathFactor, activeProgress);
