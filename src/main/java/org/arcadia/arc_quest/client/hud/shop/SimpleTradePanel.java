@@ -56,8 +56,9 @@ public class SimpleTradePanel extends AbstractTradeScreen {
             return super.mouseClicked(mx, my, btn);
         }
 
-        int panelW = Math.max(220, (int) (width * 0.85f));
-        int panelH = Math.max(140, (int) (height * 0.70f));
+        TradeScreenLayout.Metrics layout = TradeScreenLayout.simple(width, height);
+        int panelW = layout.panelWidth();
+        int panelH = layout.panelHeight();
         int panelX = (width - panelW) / 2;
         int panelY = (height - panelH) / 2;
 

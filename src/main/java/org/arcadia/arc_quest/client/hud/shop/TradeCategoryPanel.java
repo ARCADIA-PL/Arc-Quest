@@ -72,6 +72,10 @@ public class TradeCategoryPanel {
         catHoverAnims[idx] = HudAnimUtil.step(catHoverAnims[idx], hov ? 1f : 0f, 8f, dt);
         float hEase = HudAnimUtil.easeOutCubic(catHoverAnims[idx]), contentScale = isClosing ? HudAnimUtil.easeInCubic(fastClose) : 1.0f;
         int textX = x + 16 + (sel ? 6 : (int) (4 * hEase)), c = sel ? 0xFFFFFF : Math.round(150 + 105 * hEase);
+        int maxTextWidth = Math.max(1, w - (textX - x) - 8);
+        if (font.width(text) > maxTextWidth) {
+            text = font.plainSubstrByWidth(text, Math.max(0, maxTextWidth - font.width("..."))) + "...";
+        }
 
         if (contentScale > 0.01f) {
             g.pose().pushPose();
