@@ -62,7 +62,7 @@ public final class ArcQuestGuideContent {
                 .category(GuideCategory.BASICS)
                 .title(Component.translatable("guide.arc_quest.parallel_phases_basics.title"))
                 .summary(Component.translatable("guide.arc_quest.parallel_phases_basics.summary"))
-                .icon(Items.COMPASS)
+                .icon(Items.CLOCK)
                 .renderLargeIconOnIntro(true)
                 .unlockPopup(false)
                 .sortOrder(-80)
