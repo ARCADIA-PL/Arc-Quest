@@ -13,11 +13,11 @@ import java.util.List;
 
 final class QuestTrackingMenuCardRenderer {
     private static final int CARD_PADDING = 9;
-    private static final float HEADER_SCALE = 0.86f;
-    private static final float DESCRIPTION_SCALE = 0.72f;
-    private static final float PROGRESS_SCALE = 0.74f;
-    private static final float OBJECTIVE_SCALE = 0.72f;
-    private static final float FOOTER_SCALE = 0.70f;
+    private static final float HEADER_SCALE = 0.98f;
+    private static final float DESCRIPTION_SCALE = 0.84f;
+    private static final float PROGRESS_SCALE = 0.88f;
+    private static final float OBJECTIVE_SCALE = 0.84f;
+    private static final float FOOTER_SCALE = 0.80f;
 
     private QuestTrackingMenuCardRenderer() {
     }
@@ -35,27 +35,19 @@ final class QuestTrackingMenuCardRenderer {
         graphics.fillGradient(x, y + height - bottomShadeHeight, x + width, y + height,
                 HudAnimUtil.withAlpha(0x000000, 0), HudAnimUtil.withAlpha(0x000000, Math.round(220 * alpha)));
 
-        float contentScale = QuestTrackingMenuLayout.contentScale(width, height);
-        int logicalWidth = Math.max(1, Math.round(width / contentScale));
-        int logicalHeight = Math.max(1, Math.round(height / contentScale));
-        graphics.pose().pushPose();
-        graphics.pose().translate(x, y, 0f);
-        graphics.pose().scale(contentScale, contentScale, 1f);
-
         int titleColor = HudAnimUtil.withAlpha(0xFFFFFF,
                 Math.round(255 * alpha * (1f - detailProgress)));
         if ((titleColor >>> 24) > 3) {
             drawEllipsized(graphics, font, entry.definition().getDisplayName(),
-                    CARD_PADDING,
-                    logicalHeight - font.lineHeight - 7,
-                    logicalWidth - CARD_PADDING * 2, titleColor);
+                    x + CARD_PADDING,
+                    y + height - font.lineHeight - 7,
+                    width - CARD_PADDING * 2, titleColor);
         }
 
         if (detailProgress > 0.02f) {
-            renderPhaseSummary(graphics, font, entry, selectedPhase, 0, 0, logicalWidth, logicalHeight,
+            renderPhaseSummary(graphics, font, entry, selectedPhase, x, y, width, height,
                     themeColor, alpha * detailProgress);
         }
-        graphics.pose().popPose();
     }
 
     private static void renderPhaseSummary(GuiGraphics graphics, Font font,
