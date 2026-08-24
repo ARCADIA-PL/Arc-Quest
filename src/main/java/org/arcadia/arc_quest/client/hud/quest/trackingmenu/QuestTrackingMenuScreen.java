@@ -1,6 +1,7 @@
 package org.arcadia.arc_quest.client.hud.quest.trackingmenu;
 
 import com.mojang.math.Axis;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -70,6 +71,13 @@ public final class QuestTrackingMenuScreen extends Screen {
         hoverStartedAt = 0L;
         detailAlpha = 0f;
         updateInteractionRailLeft();
+        syncVanillaPlayerListKeyState();
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        syncVanillaPlayerListKeyState();
     }
 
     @Override
@@ -545,6 +553,12 @@ public final class QuestTrackingMenuScreen extends Screen {
         requestClose();
     }
 
+    @Override
+    public void removed() {
+        syncVanillaPlayerListKeyState();
+        super.removed();
+    }
+
     public void closeFromKeyRelease() {
         requestClose();
     }
@@ -559,6 +573,21 @@ public final class QuestTrackingMenuScreen extends Screen {
         dragging = false;
         dragMoved = false;
         pressedQuestId = null;
+    }
+
+    private void syncVanillaPlayerListKeyState() {
+        if (minecraft == null || minecraft.getWindow() == null) return;
+        InputConstants.Key key = minecraft.options.keyPlayerList.getKey();
+        long window = minecraft.getWindow().getWindow();
+        boolean physicallyDown;
+        if (key.getType() == InputConstants.Type.KEYSYM) {
+            physicallyDown = InputConstants.isKeyDown(window, key.getValue());
+        } else if (key.getType() == InputConstants.Type.MOUSE) {
+            physicallyDown = GLFW.glfwGetMouseButton(window, key.getValue()) == GLFW.GLFW_PRESS;
+        } else {
+            return;
+        }
+        minecraft.options.keyPlayerList.setDown(physicallyDown);
     }
 
     @Override
