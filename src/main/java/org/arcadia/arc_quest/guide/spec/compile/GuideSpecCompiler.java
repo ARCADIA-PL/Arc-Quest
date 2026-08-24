@@ -66,7 +66,7 @@ public final class GuideSpecCompiler {
         ResourceLocation iconId = parseNullableId(spec.icon);
         if (iconId != null) builder.icon(BuiltInRegistries.ITEM.get(iconId));
         builder.renderLargeIconOnIntro(spec.renderLargeIconOnIntro)
-                .unlockPopup(spec.showUnlockPopup)
+                .unlockPopup(spec.showUnlockPopup, spec.forceOpenWithScreen)
                 .renderPopupBackground(spec.renderPopupBackground);
         ResourceLocation popupBackground = parseNullableId(spec.popupBackground);
         if (popupBackground != null) builder.popupBackground(popupBackground)
