@@ -196,10 +196,13 @@ public final class QuestTrackingMenuScreen extends Screen {
         String hoverQuestId = hoveredPhase != null ? hoveredPhase.questId()
                 : hovered == null ? null : hovered.questId();
         QuestTrackingMenuEntry hoverEntry = entryById(hoverQuestId);
-        QuestTrackingMenuPhaseEntry hoverSelectedPhase = hoverEntry == null
-                ? null : phaseSelector.selectedPhase(hoverEntry);
+        QuestTrackingMenuPhaseEntry hoverSelectedPhase = hoverEntry == null ? null
+                : hoveredPhase != null
+                ? hoverEntry.phaseById(hoveredPhase.phaseId())
+                : phaseSelector.selectedPhase(hoverEntry);
         updateHoverState(hoverQuestId,
-                hoverSelectedPhase == null ? null : hoverSelectedPhase.phaseId(), now, dt);
+                hoverSelectedPhase == null ? null : hoverSelectedPhase.phaseId(),
+                hoveredPhase != null, now, dt);
 
         for (CardRenderState state : states) {
             QuestTrackingMenuEntry entry = entries.get(state.index());
@@ -317,14 +320,14 @@ public final class QuestTrackingMenuScreen extends Screen {
     }
 
     private void updateHoverState(String nextHoveredQuestId, String nextHoveredPhaseId,
-                                  long now, float dt) {
+                                  boolean immediatePreview, long now, float dt) {
         if (!java.util.Objects.equals(hoveredQuestId, nextHoveredQuestId)) {
             hoveredQuestId = nextHoveredQuestId;
             hoverStartedAt = now;
         }
 
         boolean candidateReady = hoveredQuestId != null
-                && now - hoverStartedAt >= DETAIL_HOVER_DELAY_MS;
+                && (immediatePreview || now - hoverStartedAt >= DETAIL_HOVER_DELAY_MS);
         if (detailQuestId != null && (!detailQuestId.equals(hoveredQuestId)
                 || !java.util.Objects.equals(detailPhaseId, nextHoveredPhaseId))) {
             detailAlpha = HudAnimUtil.smoothHalfLife(detailAlpha, 0f, 0.055f, dt);
