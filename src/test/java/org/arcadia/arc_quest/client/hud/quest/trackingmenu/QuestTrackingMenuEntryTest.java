@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.client.hud.quest.trackingmenu;
 
+import net.minecraft.resources.ResourceLocation;
 import org.arcadia.arc_quest.quest.api.QuestDefinition;
 import org.arcadia.arc_quest.quest.builder.ObjectiveBuilder;
 import org.arcadia.arc_quest.quest.builder.PhaseBuilder;
@@ -10,8 +11,32 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class QuestTrackingMenuEntryTest {
+
+    @Test
+    void fallsBackToFirstPhaseHistoryImageWhenQuestHasNoSplash() {
+        ResourceLocation historyImage = ResourceLocation.fromNamespaceAndPath(
+                "arc_quest", "textures/gui/splash/phase_history.png");
+        QuestDefinition definition = QuestBuilder.create("arc_quest:history_fallback")
+                .phase(PhaseBuilder.create("arc_quest:first")
+                        .historyImage(historyImage)
+                        .objective(ObjectiveBuilder.nullObjective()))
+                .build();
+
+        assertEquals(historyImage, QuestTrackingMenuEntry.resolveSplashTexture(definition));
+    }
+
+    @Test
+    void keepsFallbackEmptyWhenQuestAndFirstPhaseHaveNoSplash() {
+        QuestDefinition definition = QuestBuilder.create("arc_quest:no_splash")
+                .phase(PhaseBuilder.create("arc_quest:first")
+                        .objective(ObjectiveBuilder.nullObjective()))
+                .build();
+
+        assertNull(QuestTrackingMenuEntry.resolveSplashTexture(definition));
+    }
 
     @Test
     void ordersActiveParallelPhasesByQuestDefinition() {
