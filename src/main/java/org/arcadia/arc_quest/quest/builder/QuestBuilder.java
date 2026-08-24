@@ -195,7 +195,8 @@ public final class QuestBuilder {
 
     public QuestBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
         String markId = id + "::quest_mark_" + relatedMarks.size();
-        relatedMarks.add(new MarkSpec(markId, object, activation, MarkActivations.never(), QuestMarkerType.QUEST_MAIN, 0, 256, 20, true, false, Map.of()));
+        relatedMarks.add(new MarkSpec(markId, object, activation, MarkActivations.never(), QuestMarkerType.QUEST_MAIN,
+                0, MarkSpec.DEFAULT_MAX_DISTANCE, 20, true, false, Map.of()));
         return this;
     }
 

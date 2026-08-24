@@ -262,7 +262,7 @@ public final class PhaseBuilder {
     public PhaseBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
         String id = phaseId + "::phase_mark_" + relatedMarks.size();
         relatedMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false, Map.of()));
+                QuestMarkerType.QUEST_OBJECTIVE, 0, MarkSpec.DEFAULT_MAX_DISTANCE, 20, true, false, Map.of()));
         return this;
     }
 
@@ -295,7 +295,7 @@ public final class PhaseBuilder {
     public PhaseBuilder trackingMarker(MarkableObject object, MarkActivation activation) {
         String id = phaseId + "::tracking_mark_" + trackingMarks.size();
         return trackingMarker(new MarkSpec(id, object, activation, MarkActivations.never(),
-                QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false, Map.of()));
+                QuestMarkerType.QUEST_OBJECTIVE, 0, MarkSpec.DEFAULT_MAX_DISTANCE, 20, true, false, Map.of()));
     }
 
     public PhaseBuilder trackingMarker(MarkSpec spec) {

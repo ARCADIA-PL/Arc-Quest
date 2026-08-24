@@ -6,7 +6,7 @@ export function createMarkerSpec(index = 0) {
         deactivateWhen: null,
         markerType: 'QUEST_OBJECTIVE',
         priority: 0,
-        maxDistance: 256,
+        maxDistance: 512,
         refreshTicks: 20,
         trackMovingEntity: true,
         oneShot: false,
@@ -32,7 +32,7 @@ export function normalizeMarkers(markers) {
         }
         marker.markerType ||= defaults.markerType;
         marker.priority ??= 0;
-        marker.maxDistance ??= 256;
+        marker.maxDistance ??= 512;
         marker.refreshTicks ??= 20;
         marker.trackMovingEntity ??= true;
         marker.oneShot ??= false;

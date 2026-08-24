@@ -196,7 +196,7 @@ public class DialogueTreeBuilder {
     public DialogueTreeBuilder markRelatedObject(MarkableObject object, MarkActivation activation) {
         String id = dialogueId + "::dialogue_mark_" + treeMarks.size();
         treeMarks.add(new MarkSpec(id, object, activation, MarkActivations.never(),
-                QuestMarkerType.NPC_INTERACT, 0, 256, 20, true, false, Map.of()));
+                QuestMarkerType.NPC_INTERACT, 0, MarkSpec.DEFAULT_MAX_DISTANCE, 20, true, false, Map.of()));
         return this;
     }
 

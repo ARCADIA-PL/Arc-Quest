@@ -1,5 +1,6 @@
 package org.arcadia.arc_quest.quest.spec;
 
+import org.arcadia.arc_quest.questmarker.api.MarkSpec;
 import org.arcadia.arc_quest.questmarker.api.MarkTrigger;
 import org.arcadia.arc_quest.questmarker.api.MarkTriggers;
 import org.arcadia.arc_quest.questmarker.api.QuestMarkerType;
@@ -14,7 +15,7 @@ public class MarkSpecData {
     public MarkActivationSpec deactivateWhen = null;
     public QuestMarkerType markerType = QuestMarkerType.QUEST_OBJECTIVE;
     public int priority = 0;
-    public int maxDistance = 256;
+    public int maxDistance = MarkSpec.DEFAULT_MAX_DISTANCE;
     public int refreshTicks = 20;
     public boolean trackMovingEntity = true;
     public boolean oneShot = false;
