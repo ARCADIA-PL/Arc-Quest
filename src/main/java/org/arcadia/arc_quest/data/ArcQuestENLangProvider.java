@@ -1379,6 +1379,15 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
         add("key.arc_quest.open_guide_list", "Open Guide List");
 
+        addGuideTitle("journal_basics", "Quest Journal");
+        add("guide.arc_quest.journal_basics.summary", "Learn how to open the quest journal.");
+        addGuidePageDesc("journal_basics", 1,
+                "Press the Quest Journal key (default: J) to open the Quest Journal and review active, completed, and failed quests.");
+        addGuideTitle("tracking_menu_basics", "Quick Quest Switching");
+        add("guide.arc_quest.tracking_menu_basics.summary", "Learn how to switch between active quests quickly.");
+        addGuidePageDesc("tracking_menu_basics", 1,
+                "Hold the Quest Tracking key (default: TAB) to open the tracking menu, then drag or scroll through the cards to switch the tracked quest.");
+
         addGuideTitle("movement_basics", "Movement Basics");
         addGuidePageDesc("movement_basics", 1, "Master the basics of movement to explore the world freely.");
         addGuidePageDesc("movement_basics", 2, "Watch the demonstration to learn advanced movement techniques.");

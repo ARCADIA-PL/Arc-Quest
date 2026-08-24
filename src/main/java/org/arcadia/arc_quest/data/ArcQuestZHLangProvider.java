@@ -1379,6 +1379,15 @@ public class ArcQuestZHLangProvider extends ArcQuestLangProvider {
 
         add("key.arc_quest.open_guide_list", "打开指南列表");
 
+        addGuideTitle("journal_basics", "任务日志");
+        add("guide.arc_quest.journal_basics.summary", "学习如何打开任务日志。");
+        addGuidePageDesc("journal_basics", 1,
+                "按下任务日志按键（默认：J）打开任务日志，查看进行中、已完成和已失败的任务。");
+        addGuideTitle("tracking_menu_basics", "快速切换任务");
+        add("guide.arc_quest.tracking_menu_basics.summary", "学习如何快速切换进行中的任务。");
+        addGuidePageDesc("tracking_menu_basics", 1,
+                "长按任务追踪按键（默认：TAB）打开任务追踪菜单，然后拖拽或滚动卡片来切换当前追踪的任务。");
+
         addGuideTitle("movement_basics", "移动基础");
         addGuidePageDesc("movement_basics", 1, "掌握基础移动技巧，自由探索世界。");
         addGuidePageDesc("movement_basics", 2, "观看演示学习高级移动技巧。");
