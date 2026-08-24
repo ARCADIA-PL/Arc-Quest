@@ -13,6 +13,11 @@ import java.util.List;
 
 final class QuestTrackingMenuCardRenderer {
     private static final int CARD_PADDING = 9;
+    private static final float HEADER_SCALE = 0.86f;
+    private static final float DESCRIPTION_SCALE = 0.72f;
+    private static final float PROGRESS_SCALE = 0.74f;
+    private static final float OBJECTIVE_SCALE = 0.72f;
+    private static final float FOOTER_SCALE = 0.70f;
 
     private QuestTrackingMenuCardRenderer() {
     }
@@ -63,48 +68,60 @@ final class QuestTrackingMenuCardRenderer {
         int textX = x + CARD_PADDING + 3;
         int textY = y + CARD_PADDING;
         int textWidth = width - CARD_PADDING * 2 - 3;
-        drawEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
-                HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), false);
-        textY += font.lineHeight + 5;
+        int bottomY = y + height - CARD_PADDING;
+
+        drawScaledEllipsized(graphics, font, phaseHeader, textX, textY, textWidth,
+                HudAnimUtil.withAlpha(themeColor, Math.round(255 * alpha)), HEADER_SCALE, false);
+        textY += scaledLineHeight(font, HEADER_SCALE) + 4;
+        graphics.fill(textX, textY, textX + textWidth, textY + 1,
+                HudAnimUtil.withAlpha(themeColor, Math.round(90 * alpha)));
+        textY += 4;
 
         if (phase == null || phaseId == null || phase.getObjectives().isEmpty()) {
-            graphics.drawString(font, Component.translatable("arc_quest.gui.tracking_menu.no_objectives"),
-                    textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)), false);
+            drawScaled(graphics, font,
+                    Component.translatable("arc_quest.gui.tracking_menu.no_objectives"),
+                    textX, textY, HudAnimUtil.withAlpha(0xAAAAAA, Math.round(255 * alpha)),
+                    DESCRIPTION_SCALE, false);
             return;
         }
 
-        List<ObjectiveEntry> objectives = phase.getObjectives();
         Component description = phase.getDescription();
         if (!description.getString().isBlank()) {
-            List<FormattedCharSequence> descriptionLines = font.split(description, textWidth);
-            int descriptionLineCount = Math.min(2, descriptionLines.size());
+            int logicalWidth = logicalWidth(textWidth, DESCRIPTION_SCALE);
+            List<FormattedCharSequence> descriptionLines = font.split(description, logicalWidth);
+            int descriptionLineCount = Math.min(height >= 120 ? 3 : 2, descriptionLines.size());
+            int lineAdvance = scaledLineHeight(font, DESCRIPTION_SCALE) + 2;
             for (int lineIndex = 0; lineIndex < descriptionLineCount; lineIndex++) {
-                graphics.drawString(font, descriptionLines.get(lineIndex), textX, textY,
-                        HudAnimUtil.withAlpha(0xAAB1BC, Math.round(235 * alpha)), false);
-                textY += font.lineHeight + 2;
+                if (textY + lineAdvance > bottomY) break;
+                drawScaled(graphics, font, descriptionLines.get(lineIndex), textX, textY,
+                        HudAnimUtil.withAlpha(0xAAB1BC, Math.round(235 * alpha)),
+                        DESCRIPTION_SCALE, false);
+                textY += lineAdvance;
             }
             textY += 2;
         }
 
+        List<ObjectiveEntry> objectives = phase.getObjectives();
         int completedObjectives = 0;
         int visibleObjectives = 0;
         for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
+            if (objective.isHidden()) continue;
             int required = Math.max(1, objective.getRequiredCount());
             int progress = entry.runtime().getObjectiveProgress(phaseId, objectiveIndex);
-            if (!objective.isHidden()) {
-                visibleObjectives++;
-                if (progress >= required) completedObjectives++;
-            }
+            visibleObjectives++;
+            if (progress >= required) completedObjectives++;
         }
+
         Component phaseProgress = Component.translatable("arc_quest.gui.tracking_menu.phase_progress",
                 completedObjectives, visibleObjectives);
-        graphics.drawString(font, phaseProgress, textX, textY,
-                HudAnimUtil.withAlpha(themeColor, Math.round(240 * alpha)), false);
-        textY += font.lineHeight + 5;
+        drawScaled(graphics, font, phaseProgress, textX, textY,
+                HudAnimUtil.withAlpha(themeColor, Math.round(245 * alpha)), PROGRESS_SCALE, false);
+        textY += scaledLineHeight(font, PROGRESS_SCALE) + 4;
 
         int renderedObjectives = 0;
-        int bottomY = y + height - CARD_PADDING;
+        int objectiveLineAdvance = scaledLineHeight(font, OBJECTIVE_SCALE) + 2;
+        int logicalObjectiveWidth = logicalWidth(textWidth, OBJECTIVE_SCALE);
         for (int objectiveIndex = 0; objectiveIndex < objectives.size(); objectiveIndex++) {
             ObjectiveEntry objective = objectives.get(objectiveIndex);
             if (objective.isHidden()) continue;
@@ -119,42 +136,79 @@ final class QuestTrackingMenuCardRenderer {
             if (objective.isOptional()) {
                 line = line.copy().append(Component.translatable("arc_quest.gui.tracking_menu.optional"));
             }
-            List<FormattedCharSequence> wrapped = font.split(line, textWidth);
+
+            List<FormattedCharSequence> wrapped = font.split(line, logicalObjectiveWidth);
             if (wrapped.isEmpty()) continue;
-            int color = complete ? 0x88FF88 : 0xDDDDDD;
             int objectiveLineCount = Math.min(2, wrapped.size());
-            if (textY + objectiveLineCount * (font.lineHeight + 2) > bottomY) break;
+            int requiredHeight = objectiveLineCount * objectiveLineAdvance;
+            if (textY + requiredHeight > bottomY) break;
+            int color = complete ? 0x88FF88 : 0xDDDDDD;
             for (int lineIndex = 0; lineIndex < objectiveLineCount; lineIndex++) {
-                graphics.drawString(font, wrapped.get(lineIndex), textX, textY,
-                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), false);
-                textY += font.lineHeight + 2;
+                drawScaled(graphics, font, wrapped.get(lineIndex), textX, textY,
+                        HudAnimUtil.withAlpha(color, Math.round(255 * alpha)), OBJECTIVE_SCALE, false);
+                textY += objectiveLineAdvance;
             }
             renderedObjectives++;
         }
 
         int remainingObjectives = visibleObjectives - renderedObjectives;
-        if (remainingObjectives > 0 && textY + font.lineHeight <= bottomY) {
-            graphics.drawString(font,
+        if (remainingObjectives > 0
+                && textY + scaledLineHeight(font, FOOTER_SCALE) <= bottomY) {
+            drawScaled(graphics, font,
                     Component.translatable("arc_quest.gui.tracking_menu.more_objectives", remainingObjectives),
-                    textX, textY, HudAnimUtil.withAlpha(0x8E96A3, Math.round(230 * alpha)), false);
+                    textX, textY, HudAnimUtil.withAlpha(0x8E96A3, Math.round(230 * alpha)),
+                    FOOTER_SCALE, false);
         }
+    }
+
+    private static int logicalWidth(int physicalWidth, float scale) {
+        return Math.max(1, (int) Math.floor(physicalWidth / scale));
+    }
+
+    private static int scaledLineHeight(Font font, float scale) {
+        return Math.max(1, Math.round(font.lineHeight * scale));
+    }
+
+    private static void drawScaled(GuiGraphics graphics, Font font, Component text,
+                                   int x, int y, int color, float scale, boolean shadow) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 0f);
+        graphics.pose().scale(scale, scale, 1f);
+        graphics.drawString(font, text, 0, 0, color, shadow);
+        graphics.pose().popPose();
+    }
+
+    private static void drawScaled(GuiGraphics graphics, Font font, FormattedCharSequence text,
+                                   int x, int y, int color, float scale, boolean shadow) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 0f);
+        graphics.pose().scale(scale, scale, 1f);
+        graphics.drawString(font, text, 0, 0, color, shadow);
+        graphics.pose().popPose();
+    }
+
+    private static void drawScaledEllipsized(GuiGraphics graphics, Font font, Component text,
+                                             int x, int y, int maxWidth, int color,
+                                             float scale, boolean shadow) {
+        int logicalMaxWidth = logicalWidth(maxWidth, scale);
+        Component rendered = text;
+        if (font.width(text) > logicalMaxWidth) {
+            String ellipsis = "...";
+            int allowed = Math.max(0, logicalMaxWidth - font.width(ellipsis));
+            rendered = Component.literal(font.plainSubstrByWidth(text.getString(), allowed) + ellipsis);
+        }
+        drawScaled(graphics, font, rendered, x, y, color, scale, shadow);
     }
 
     private static void drawEllipsized(GuiGraphics graphics, Font font, Component text,
                                        int x, int y, int maxWidth, int color) {
-        drawEllipsized(graphics, font, text, x, y, maxWidth, color, true);
-    }
-
-    private static void drawEllipsized(GuiGraphics graphics, Font font, Component text,
-                                       int x, int y, int maxWidth, int color, boolean shadow) {
         if (font.width(text) <= maxWidth) {
-            graphics.drawString(font, text, x, y, color, shadow);
+            graphics.drawString(font, text, x, y, color, true);
             return;
         }
-        String value = text.getString();
         String ellipsis = "...";
         int allowed = Math.max(0, maxWidth - font.width(ellipsis));
-        graphics.drawString(font, font.plainSubstrByWidth(value, allowed) + ellipsis,
-                x, y, color, shadow);
+        graphics.drawString(font, font.plainSubstrByWidth(text.getString(), allowed) + ellipsis,
+                x, y, color, true);
     }
 }
