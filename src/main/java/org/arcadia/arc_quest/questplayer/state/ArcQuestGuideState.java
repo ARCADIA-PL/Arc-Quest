@@ -47,6 +47,12 @@ public final class ArcQuestGuideState {
         return changed;
     }
 
+    public boolean markAllUnlockedSeen() {
+        boolean changed = seenGuides.addAll(unlockedGuides);
+        if (changed) dirty = true;
+        return changed;
+    }
+
     public boolean clearSeen(ResourceLocation guideId) {
         boolean changed = seenGuides.remove(guideId);
         if (changed) dirty = true;

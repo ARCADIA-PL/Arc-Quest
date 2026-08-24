@@ -19,6 +19,7 @@ import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptDeltaPacket;
 import org.arcadia.arc_quest.dialogue.network.S2CDialogueTranscriptSnapshotPacket;
 import org.arcadia.arc_quest.dialogue.network.S2COpenDialoguePacket;
 import org.arcadia.arc_quest.guide.network.C2SMarkGuideSeenPacket;
+import org.arcadia.arc_quest.guide.network.C2SMarkAllGuidesSeenPacket;
 import org.arcadia.arc_quest.guide.network.C2SUpdateGuideProgressPacket;
 import org.arcadia.arc_quest.guide.network.S2COpenGuidePacket;
 import org.arcadia.arc_quest.guide.network.S2CSyncGuideStatePacket;
@@ -89,6 +90,7 @@ public final class ArcQuestNetwork {
         registrar.playToServer(C2SRequestTradeSyncPacket.TYPE, C2SRequestTradeSyncPacket.STREAM_CODEC, C2SRequestTradeSyncPacket::handle);
         registrar.playToServer(C2SDialogueChoicePacket.TYPE, C2SDialogueChoicePacket.STREAM_CODEC, C2SDialogueChoicePacket::handle);
         registrar.playToServer(C2SMarkGuideSeenPacket.TYPE, C2SMarkGuideSeenPacket.STREAM_CODEC, C2SMarkGuideSeenPacket::handle);
+        registrar.playToServer(C2SMarkAllGuidesSeenPacket.TYPE, C2SMarkAllGuidesSeenPacket.STREAM_CODEC, C2SMarkAllGuidesSeenPacket::handle);
         registrar.playToServer(C2SUpdateGuideProgressPacket.TYPE, C2SUpdateGuideProgressPacket.STREAM_CODEC, C2SUpdateGuideProgressPacket::handle);
         registrar.playToServer(C2SSetTrackedQuestPacket.TYPE, C2SSetTrackedQuestPacket.STREAM_CODEC, C2SSetTrackedQuestPacket::handle);
         registrar.playToServer(C2SSetTrackedPhaseFocusPacket.TYPE, C2SSetTrackedPhaseFocusPacket.STREAM_CODEC, C2SSetTrackedPhaseFocusPacket::handle);
@@ -318,6 +320,10 @@ public final class ArcQuestNetwork {
     }
 
     public static void sendMarkGuideSeen(C2SMarkGuideSeenPacket packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+
+    public static void sendMarkAllGuidesSeen(C2SMarkAllGuidesSeenPacket packet) {
         PacketDistributor.sendToServer(packet);
     }
 

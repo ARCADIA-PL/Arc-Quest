@@ -303,6 +303,10 @@ public final class ArcQuestPlayer {
         return guideState.markSeen(guideId);
     }
 
+    public synchronized boolean markAllUnlockedGuidesSeen() {
+        return guideState.markAllUnlockedSeen();
+    }
+
     public synchronized boolean clearGuideSeen(ResourceLocation guideId) {
         return guideState.clearSeen(guideId);
     }
