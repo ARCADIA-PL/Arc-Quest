@@ -44,12 +44,14 @@ public class ArcQuestENLangProvider extends ArcQuestLangProvider {
 
     private void addScreenTitles() {
         add("gui.arc_quest.tracking_menu.title", "Quest Tracking");
-        add("arc_quest.gui.tracking_menu.hint", "Scroll or drag to browse • Click to track • Hover for phase details");
+        add("arc_quest.gui.tracking_menu.hint", "Scroll or drag to browse quests • Scroll or click the phase rail to switch phases");
         add("arc_quest.gui.tracking_menu.empty", "No active quests");
         add("arc_quest.gui.tracking_menu.current_phase", "CURRENT PHASE: %s");
         add("arc_quest.gui.tracking_menu.no_phase", "No active phase");
         add("arc_quest.gui.tracking_menu.no_objectives", "No active objectives");
         add("arc_quest.gui.tracking_menu.phase_progress", "Phase progress: %s/%s");
+        add("arc_quest.gui.tracking_menu.parallel_phases", "Parallel phases  %s/%s");
+        add("arc_quest.gui.tracking_menu.phase_objectives", "Objectives %s/%s");
         add("arc_quest.gui.tracking_menu.optional", " (Optional)");
         add("arc_quest.gui.tracking_menu.more_objectives", "%s more objectives");
         add("arc_quest.marker.epic_prologue.nearest_tree", "Nearest Tree");
