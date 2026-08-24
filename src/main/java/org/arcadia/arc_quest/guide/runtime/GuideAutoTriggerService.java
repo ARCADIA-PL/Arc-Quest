@@ -9,6 +9,7 @@ import org.arcadia.arc_quest.questplayer.ArcQuestPlayerManager;
 public final class GuideAutoTriggerService {
 
     private static final GuideUnlockService UNLOCK_SERVICE = new GuideUnlockService();
+    private static final GuideTriggerService TRIGGER_SERVICE = new GuideTriggerService();
 
     private GuideAutoTriggerService() {
     }
@@ -16,17 +17,22 @@ public final class GuideAutoTriggerService {
     public static void onPlayerLogin(ServerPlayer player) {
         if (player == null) return;
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
-        UNLOCK_SERVICE.grant(player, ArcQuestGuideContent.JOURNAL_BASICS_GUIDE_ID);
+        ensureUnlockedAndOpen(player, ArcQuestGuideContent.JOURNAL_BASICS_GUIDE_ID);
         if (data.getAllActiveQuests().size() > 1) {
-            UNLOCK_SERVICE.grant(player, ArcQuestGuideContent.TRACKING_MENU_GUIDE_ID);
+            ensureUnlockedAndOpen(player, ArcQuestGuideContent.TRACKING_MENU_GUIDE_ID);
         }
+    }
+
+    private static void ensureUnlockedAndOpen(ServerPlayer player, ResourceLocation guideId) {
+        UNLOCK_SERVICE.grant(player, guideId);
+        TRIGGER_SERVICE.openIfUnread(player, guideId);
     }
 
     public static void onQuestStarted(ServerPlayer player) {
         if (player == null) return;
         ArcQuestPlayer data = ArcQuestPlayerManager.getOrCreate(player);
         if (data.getAllActiveQuests().size() > 1) {
-            UNLOCK_SERVICE.grant(player, ArcQuestGuideContent.TRACKING_MENU_GUIDE_ID);
+            ensureUnlockedAndOpen(player, ArcQuestGuideContent.TRACKING_MENU_GUIDE_ID);
         }
     }
 }
