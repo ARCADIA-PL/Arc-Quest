@@ -16,6 +16,8 @@ public record MarkSpec(
         boolean oneShot,
         Map<String, String> styleHints
 ) {
+    public static final int DEFAULT_MAX_DISTANCE = 512;
+
     public MarkSpec {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("id cannot be blank");
         Objects.requireNonNull(target, "target");
@@ -23,13 +25,13 @@ public record MarkSpec(
         deactivateWhen = deactivateWhen == null ? MarkActivations.never() : deactivateWhen;
         markerType = markerType == null ? QuestMarkerType.QUEST_OBJECTIVE : markerType;
         priority = Math.max(0, priority);
-        maxDistance = maxDistance <= 0 ? 256 : maxDistance;
+        maxDistance = maxDistance <= 0 ? DEFAULT_MAX_DISTANCE : maxDistance;
         refreshTicks = refreshTicks <= 0 ? 20 : refreshTicks;
         styleHints = styleHints == null ? Map.of() : Map.copyOf(styleHints);
     }
 
     public static MarkSpec of(String id, MarkableObject target) {
         return new MarkSpec(id, target, MarkActivations.always(), MarkActivations.never(),
-                QuestMarkerType.QUEST_OBJECTIVE, 0, 256, 20, true, false, Map.of());
+                QuestMarkerType.QUEST_OBJECTIVE, 0, DEFAULT_MAX_DISTANCE, 20, true, false, Map.of());
     }
 }
