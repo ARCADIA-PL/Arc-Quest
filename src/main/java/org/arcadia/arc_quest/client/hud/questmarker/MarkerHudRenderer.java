@@ -427,7 +427,7 @@ public class MarkerHudRenderer implements LayeredDraw.Layer {
 
         String name = marker.getLabelComponent().getString();
         updateLabelCache(st, font, name);
-        float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 7f, tier - 1.0f);
+        float baseRadius = tier <= 1.0f ? lerp(16f, 10f, tier) : lerp(10f, 4.5f, tier - 1.0f);
         float scaledRadius = baseRadius * finalScale;
 
         float textScale = 1.0f;
