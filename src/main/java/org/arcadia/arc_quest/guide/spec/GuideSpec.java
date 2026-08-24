@@ -16,6 +16,7 @@ public class GuideSpec {
     public String icon = "";
     public boolean renderLargeIconOnIntro = false;
     public boolean showUnlockPopup = false;
+    public boolean forceOpenWithScreen = true;
     public boolean renderPopupBackground = false;
     public String popupBackground = "";
     public List<ConditionSpec> unlockConditions = new ArrayList<>();

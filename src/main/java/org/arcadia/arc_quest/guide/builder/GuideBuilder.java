@@ -31,6 +31,7 @@ public final class GuideBuilder {
     private ItemStack icon = ItemStack.EMPTY;
     private boolean renderLargeIconOnIntro;
     private boolean showUnlockPopup;
+    private boolean forceOpenWithScreen = true;
     private boolean renderPopupBackground;
     private ResourceLocation popupBackground;
 
@@ -104,7 +105,12 @@ public final class GuideBuilder {
     }
 
     public GuideBuilder unlockPopup(boolean enabled) {
+        return unlockPopup(enabled, true);
+    }
+
+    public GuideBuilder unlockPopup(boolean enabled, boolean forceOpenWithScreen) {
         this.showUnlockPopup = enabled;
+        this.forceOpenWithScreen = forceOpenWithScreen;
         return this;
     }
 
@@ -176,7 +182,7 @@ public final class GuideBuilder {
             throw new IllegalStateException("Guide '" + id + "' has no pages");
         }
         GuideVisualConfig visualConfig = new GuideVisualConfig(icon, renderLargeIconOnIntro,
-                showUnlockPopup, renderPopupBackground, popupBackground);
+                showUnlockPopup, forceOpenWithScreen, renderPopupBackground, popupBackground);
         return new GuideDefinition(id, category, title, summary, sortOrder, hidden, repeatablePopup,
                 new ArrayList<>(unlockConditions), new ArrayList<>(pages), visualConfig);
     }
