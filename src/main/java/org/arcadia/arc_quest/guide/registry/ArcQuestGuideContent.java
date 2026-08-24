@@ -18,6 +18,8 @@ public final class ArcQuestGuideContent {
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "journal_basics");
     public static final ResourceLocation TRACKING_MENU_GUIDE_ID =
             ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "tracking_menu_basics");
+    public static final ResourceLocation PARALLEL_PHASES_GUIDE_ID =
+            ResourceLocation.fromNamespaceAndPath(Arc_Quest.MOD_ID, "parallel_phases_basics");
 
     private ArcQuestGuideContent() {
     }
@@ -54,6 +56,19 @@ public final class ArcQuestGuideContent {
                 .page(GuidePageBuilder.create()
                         .none()
                         .description(Component.translatable("guide.arc_quest.tracking_menu_basics.page_1")))
+                .buildAndRegister();
+
+        GuideBuilder.create(PARALLEL_PHASES_GUIDE_ID)
+                .category(GuideCategory.BASICS)
+                .title(Component.translatable("guide.arc_quest.parallel_phases_basics.title"))
+                .summary(Component.translatable("guide.arc_quest.parallel_phases_basics.summary"))
+                .icon(Items.COMPASS)
+                .renderLargeIconOnIntro(true)
+                .unlockPopup(false)
+                .sortOrder(-80)
+                .page(GuidePageBuilder.create()
+                        .none()
+                        .description(Component.translatable("guide.arc_quest.parallel_phases_basics.page_1")))
                 .buildAndRegister();
 
         GuideBuilder.create("arc_quest:diamond_demo")
